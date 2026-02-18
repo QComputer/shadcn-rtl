@@ -1,5 +1,6 @@
 {
-  "name": "shadcn-rtl",
+  "name": "zero-community",
+  "description": "Multi-tenant/locale e-commerce and booking services",
   "version": "0.1.0",
   "private": true,
   "scripts": {

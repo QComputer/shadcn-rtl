@@ -1,0 +1,82 @@
+{
+  "common": {
+    "loading": "جاري التحميل...",
+    "error": "حدث خطأ",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "create": "إنشاء",
+    "search": "بحث",
+    "filter": "تصفية",
+    "actions": "إجراءات"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "logout": "تسجيل الخروج",
+    "register": "تسجيل",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "forgotPassword": "هل نسيت كلمة المرور؟",
+    "noAccount": "ليس لديك حساب؟",
+    "hasAccount": "لديك حساب بالفعل؟"
+  },
+  "navigation": {
+    "home": "الرئيسية",
+    "dashboard": "لوحة التحكم",
+    "organizations": "المنظمات",
+    "orders": "الطلبات",
+    "products": "المنتجات",
+    "services": "الخدمات",
+    "settings": "الإعدادات",
+    "profile": "الملف الشخصي"
+  },
+  "organization": {
+    "title": "منظمة",
+    "create": "إنشاء منظمة",
+    "name": "الاسم",
+    "slug": "الرابط",
+    "type": "النوع",
+    "description": "الوصف",
+    "address": "العنوان",
+    "phone": "الهاتف",
+    "email": "البريد الإلكتروني",
+    "shop": "متجر",
+    "appointment": "موعد",
+    "members": "الأعضاء",
+    "businessHours": "ساعات العمل"
+  },
+  "product": {
+    "title": "منتج",
+    "products": "المنتجات",
+    "create": "إنشاء منتج",
+    "name": "الاسم",
+    "price": "السعر",
+    "category": "الفئة",
+    "inventory": "المخزون",
+    "variants": "المتغيرات",
+    "addToCart": "أضف إلى السلة"
+  },
+  "order": {
+    "title": "طلب",
+    "orders": "الطلبات",
+    "create": "إنشاء طلب",
+    "status": "الحالة",
+    "type": "النوع",
+    "delivery": "توصيل",
+    "pickup": "استلام",
+    "total": "الإجمالي",
+    "subtotal": "المجموع الفرعي",
+    "deliveryFee": "رسوم التوصيل",
+    "discount": "الخصم",
+    "deliveryAddress": "عنوان التوصيل"
+  },
+  "cart": {
+    "title": "السلة",
+    "empty": "سلتك فارغة",
+    "checkout": "الدفع",
+    "items": "العناصر",
+    "quantity": "الكمية"
+  }
+}

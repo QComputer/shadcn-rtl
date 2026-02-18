@@ -1,0 +1,82 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "filter": "Filter",
+    "actions": "Actions"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "forgotPassword": "Forgot Password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?"
+  },
+  "navigation": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "organizations": "Organizations",
+    "orders": "Orders",
+    "products": "Products",
+    "services": "Services",
+    "settings": "Settings",
+    "profile": "Profile"
+  },
+  "organization": {
+    "title": "Organization",
+    "create": "Create Organization",
+    "name": "Name",
+    "slug": "Slug",
+    "type": "Type",
+    "description": "Description",
+    "address": "Address",
+    "phone": "Phone",
+    "email": "Email",
+    "shop": "Shop",
+    "appointment": "Appointment",
+    "members": "Members",
+    "businessHours": "Business Hours"
+  },
+  "product": {
+    "title": "Product",
+    "products": "Products",
+    "create": "Create Product",
+    "name": "Name",
+    "price": "Price",
+    "category": "Category",
+    "inventory": "Inventory",
+    "variants": "Variants",
+    "addToCart": "Add to Cart"
+  },
+  "order": {
+    "title": "Order",
+    "orders": "Orders",
+    "create": "Create Order",
+    "status": "Status",
+    "type": "Type",
+    "delivery": "Delivery",
+    "pickup": "Pick Up",
+    "total": "Total",
+    "subtotal": "Subtotal",
+    "deliveryFee": "Delivery Fee",
+    "discount": "Discount",
+    "deliveryAddress": "Delivery Address"
+  },
+  "cart": {
+    "title": "Cart",
+    "empty": "Your cart is empty",
+    "checkout": "Checkout",
+    "items": "Items",
+    "quantity": "Quantity"
+  }
+}

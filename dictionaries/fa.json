@@ -1,0 +1,82 @@
+{
+  "common": {
+    "loading": "در حال بارگذاری...",
+    "error": "خطایی رخ داد",
+    "save": "ذخیره",
+    "cancel": "لغو",
+    "delete": "حذف",
+    "edit": "ویرایش",
+    "create": "ایجاد",
+    "search": "جستجو",
+    "filter": "فیلتر",
+    "actions": "عملیات"
+  },
+  "auth": {
+    "login": "ورود",
+    "logout": "خروج",
+    "register": "ثبت نام",
+    "email": "ایمیل",
+    "password": "رمز عبور",
+    "confirmPassword": "تأیید رمز عبور",
+    "forgotPassword": "فراموشی رمز عبور؟",
+    "noAccount": "حساب کاربری ندارید؟",
+    "hasAccount": "از قبل حساب کاربری دارید؟"
+  },
+  "navigation": {
+    "home": "خانه",
+    "dashboard": "داشبورد",
+    "organizations": "سازمان‌ها",
+    "orders": "سفارشات",
+    "products": "محصولات",
+    "services": "خدمات",
+    "settings": "تنظیمات",
+    "profile": "پروفایل"
+  },
+  "organization": {
+    "title": "سازمان",
+    "create": "ایجاد سازمان",
+    "name": "نام",
+    "slug": "اسلاگ",
+    "type": "نوع",
+    "description": "توضیحات",
+    "address": "آدرس",
+    "phone": "تلفن",
+    "email": "ایمیل",
+    "shop": "فروشگاه",
+    "appointment": "وقت ملاقات",
+    "members": "اعضا",
+    "businessHours": "ساعات کاری"
+  },
+  "product": {
+    "title": "محصول",
+    "products": "محصولات",
+    "create": "ایجاد محصول",
+    "name": "نام",
+    "price": "قیمت",
+    "category": "دسته‌بندی",
+    "inventory": "موجودی",
+    "variants": "انواع",
+    "addToCart": "افزودن به سبد"
+  },
+  "order": {
+    "title": "سفارش",
+    "orders": "سفارشات",
+    "create": "ایجاد سفارش",
+    "status": "وضعیت",
+    "type": "نوع",
+    "delivery": "تحویل",
+    "pickup": "دریافت",
+    "total": "مجموع",
+    "subtotal": "جمع جزئی",
+    "deliveryFee": "هزینه ارسال",
+    "discount": "تخفیف",
+    "deliveryAddress": "آدرس تحویل"
+  },
+  "cart": {
+    "title": "سبد",
+    "empty": "سبد خرید شما خالی است",
+    "checkout": "پرداخت",
+    "items": "آیتم‌ها",
+    "quantity": "تعداد"
+  }
+}

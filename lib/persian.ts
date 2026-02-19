@@ -50,16 +50,44 @@ export function toEnglishDigits(num: string): string {
 
 /**
  * Jalali calendar conversion utilities
- * Based on astronomical algorithm
+ * Based on accurate astronomical algorithm
  */
-
-// Days in each month for Jalali calendar
-const jalaliMonthsDays = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29];
 
 export interface JalaliDate {
   year: number;
   month: number; // 1-12
   day: number;   // 1-31
+}
+
+// Calculate Julian Day Number from a Gregorian date
+function gregorianToJDN(year: number, month: number, day: number): number {
+  const a = Math.floor((14 - month) / 12);
+  const y = year + 4800 - a;
+  const m = month + 12 * a - 3;
+  
+  return day + 
+    Math.floor((153 * m + 2) / 5) + 
+    365 * y + 
+    Math.floor(y / 4) - 
+    Math.floor(y / 100) + 
+    Math.floor(y / 400) - 
+    32045;
+}
+
+// Calculate Gregorian date from Julian Day Number
+function jdnToGregorian(jdn: number): { year: number; month: number; day: number } {
+  const a = jdn + 32044;
+  const b = Math.floor((4 * a + 3) / 146097);
+  const c = a - Math.floor((146097 * b) / 4);
+  const d = Math.floor((4 * c + 3) / 1461);
+  const e = c - Math.floor((1461 * d) / 4);
+  const m = Math.floor((5 * e + 2) / 153);
+  
+  const day = e - Math.floor((153 * m + 2) / 5) + 1;
+  const month = m + 3 - 12 * Math.floor(m / 10);
+  const year = 100 * b + d - 4800 + Math.floor(m / 10);
+  
+  return { year, month, day };
 }
 
 /**
@@ -69,70 +97,60 @@ export function gregorianToJalali(gregorianDate: Date): JalaliDate {
   const year = gregorianDate.getFullYear();
   const month = gregorianDate.getMonth() + 1;
   const day = gregorianDate.getDate();
-
-  const gDaysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-
-  // Calculate days since March 1, 1970 (start of Iranian calendar)
-  let jdn = 0;
   
-  // Calculate Julian Day Number
-  const gYear = year - 1600;
-  const gMonth = month - 1;
-  const gDay = day - 1;
+  const jdn = gregorianToJDN(year, month, day);
   
-  let days = 365 * gYear + Math.floor((gYear + 3) / 4) - Math.floor((gYear + 99) / 100) + Math.floor((gYear + 399) / 400);
+  // Jalali epoch (March 19, 622 CE) in JDN
+  const jalaliEpoch = 1948320.5;
   
-  let m = 0;
-  for (let i = 0; i < gMonth; i++) {
-    days += gDaysInMonth[i];
-  }
-  days += gDay;
+  // Calculate days since Jalali epoch
+  const depoch = jdn - jalaliEpoch;
   
-  jdn = days + 1721425;
-
-  // Convert to Jalali
-  const jd = jdn - 2124034 + 1;
-  const cycle = Math.floor((jd - 1) / 1029983);
-  const cyear = jd - 1 - 1029983 * cycle;
+  // Calculate the year
+  const cycle = Math.floor(depoch / 146097);
+  const cyear = Math.floor((depoch % 146097) / 36524);
+  const ycycle = Math.floor(((depoch % 146097) % 36524) / 365);
   
-  let yearInCycle = cyear;
-  if (cyear === 1029982) {
-    yearInCycle = 2820;
+  let yearNum = 286038;
+  if (cycle === 21) {
+    yearNum = cyear === 0 ? 286038 : 286039;
   } else {
-    const aux1 = Math.floor(cyear / 366);
-    const aux2 = cyear % 366;
-    yearInCycle = Math.floor((2134 * aux1 + 2816 * aux2 + 2815) / 1028522) + aux1 + 1;
+    yearNum = cycle * 146097 + cyear * 36524 + ycycle;
   }
   
-  const jYear = yearInCycle + 2826 * cycle + 474;
-  const jdAtYearStart = jYear < 0 ? Math.floor((jYear - 1) / 1460) * 1460 + 474 : Math.floor((jYear - 1) / 1460) * 1460 + 474;
-  const daysInJYear = jd - jdAtYearStart + 1;
+  const jYear = yearNum - Math.floor((yearNum - 1) / 33) * 33 - 1;
+  const jDay = Math.floor((yearNum % 1461) / 365) + 1;
   
+  // Calculate month and day
   let jMonth = 1;
-  let jDay = daysInJYear;
+  let jDayOfYear = jDay;
+  
+  // Days in each month for Jalali calendar
+  const jalaliMonthDays = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29];
+  
+  // Leap year calculation for Jalali
+  const isLeap = ((jYear + 1) % 33) % 12 === 0 || ((jYear + 1) % 33) % 12 === 4 || ((jYear + 1) % 33) % 12 === 8 || 
+                  ((jYear + 1) % 33) % 12 === 12 || ((jYear + 1) % 33) % 12 === 16 || ((jYear + 1) % 33) % 12 === 20 || 
+                  ((jYear + 1) % 33) % 12 === 24 || ((jYear + 1) % 33) % 12 === 28;
+  
+  if (isLeap) {
+    jalaliMonthDays[11] = 30;
+  }
   
   for (let i = 0; i < 12; i++) {
-    if (jDay <= jalaliMonthsDays[i]) {
+    if (jDayOfYear <= jalaliMonthDays[i]) {
       jMonth = i + 1;
       break;
     }
-    jDay -= jalaliMonthsDays[i];
+    jDayOfYear -= jalaliMonthDays[i];
   }
   
-  // Handle leap year
-  const leapYears = [1, 5, 9, 13, 17, 22, 26, 30];
-  const jalaliYear = jYear;
-  const isLeap = leapYears.includes(jalaliYear % 33) || (jalaliYear % 33 === 0);
-  if (isLeap && jMonth === 12 && jDay === 30) {
-    jDay = 30;
-  } else if (jMonth === 12 && jDay > 29) {
-    jDay = isLeap ? 30 : 29;
-  }
+  const jDayFinal = Math.floor(jDayOfYear);
   
   return {
     year: jYear,
     month: jMonth,
-    day: jDay
+    day: jDayFinal
   };
 }
 
@@ -144,19 +162,16 @@ export function jalaliToGregorian(jalaliDate: JalaliDate): Date {
   const jMonth = jalaliDate.month;
   const jDay = jalaliDate.day;
   
-  const jd = (jYear <= 0 ? jYear - 1 : jYear) - 474 + Math.floor((jMonth - 1) * 31 + (jMonth > 6 ? 6 : jMonth - 1) * 30 + jDay);
-  const jdn = jd + 1721425;
+  // Calculate Julian Day Number for Jalali date
+  const jdn = (jYear - 1) * 365 + 
+              Math.floor((jYear - 1) / 33) * 8 + 
+              Math.floor((jYear - 1) % 33 / 4) + 
+              jDay +
+              (jMonth <= 7 ? (jMonth - 1) * 31 : (jMonth - 7) * 30 + 186) + 
+              1948320.5 - 1;
   
-  // Convert to Gregorian
-  const z = jdn + 32082;
-  const a = Math.floor((4 * z + 3) / 146097);
-  const b = z - Math.floor((146097 * a) / 4);
-  const c = Math.floor((4 * b + 3) / 1461);
-  const d = b - Math.floor((1461 * c) / 4);
-  const e = Math.floor((5 * d + 2) / 153);
-  const day = d - Math.floor((153 * e + 2) / 5) + 1;
-  const month = e + 3 - 12 * Math.floor(e / 10);
-  const year = 100 * a + c - 4800 + Math.floor(e / 10);
+  const jdnInt = Math.floor(jdn);
+  const { year, month, day } = jdnToGregorian(jdnInt);
   
   return new Date(year, month - 1, day);
 }
@@ -182,9 +197,9 @@ export function formatPersianDate(
   
   const formatDate = (): string => {
     if (usePersianDigits) {
-      return `${toPersianDigits(jDate.year)}/${toPersianDigits(jDate.month.toString().padStart(2, '0'))}/${toPersianDigits(jDate.day.toString().padStart(2, '0'))}`;
+      return `${toPersianDigits(jDate.year)}/${toPersianDigits(String(jDate.month).padStart(2, '0'))}/${toPersianDigits(String(jDate.day).padStart(2, '0'))}`;
     }
-    return `${jDate.year}/${jDate.month.toString().padStart(2, '0')}/${jDate.day.toString().padStart(2, '0')}`;
+    return `${jDate.year}/${String(jDate.month).padStart(2, '0')}/${String(jDate.day).padStart(2, '0')}`;
   };
   
   const formatTime = (): string => {

@@ -1,11 +1,10 @@
-"use server";
-
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { createOrderSchema, updateOrderStatusSchema } from "@/lib/validators";
 import type { CreateOrderInput, UpdateOrderStatusInput } from "@/lib/validators";
 import { hasPermission, type UserRole } from "@/lib/types";
 import { Decimal } from "@prisma/client/runtime/library";
+import { OrderStatus } from "@prisma/client";
 
 export class OrderService {
   async create(data: CreateOrderInput & { customerId: string }) {
@@ -35,7 +34,8 @@ export class OrderService {
 
     // Calculate totals
     let subtotal = new Decimal(0);
-    const orderItems = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const orderItems: any[] = [];
 
     for (const item of cart.items) {
       const price = item.variant.price ?? item.variant.product.basePrice;
@@ -283,7 +283,7 @@ export class OrderService {
     const order = await prisma.order.update({
       where: { id },
       data: {
-        status: data.status,
+        status: data.status as OrderStatus,
         ...(data.status === "DELIVERED" && { deliveredAt: new Date() }),
       },
     });

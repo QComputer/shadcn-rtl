@@ -1,0 +1,243 @@
+import { prisma } from "@/lib/db";
+import { revalidatePath } from "next/cache";
+import { 
+  createProductSchema, 
+  updateProductSchema,
+  createProductVariantSchema,
+  updateProductVariantSchema,
+  productFilterSchema 
+} from "@/lib/validators";
+import type { 
+  CreateProductInput, 
+  UpdateProductInput,
+  CreateProductVariantInput,
+  UpdateProductVariantInput 
+} from "@/lib/validators";
+import { hasPermission, type UserRole } from "@/lib/types";
+
+export class ProductService {
+  async create(organizationId: string, data: CreateProductInput, userRole: UserRole) {
+    if (!hasPermission(userRole, "product:create")) {
+      throw new Error("Unauthorized");
+    }
+
+    const product = await prisma.product.create({
+      data: {
+        ...data,
+        organizationId,
+      },
+      include: {
+        category: true,
+        variants: true,
+      },
+    });
+
+    revalidatePath(`/dashboard/products`);
+    return product;
+  }
+
+  async getById(id: string) {
+    return prisma.product.findUnique({
+      where: { id },
+      include: {
+        category: true,
+        variants: {
+          where: { deletedAt: null },
+        },
+      },
+    });
+  }
+
+  async getBySlug(slug: string, organizationSlug: string) {
+    const organization = await prisma.organization.findUnique({
+      where: { slug: organizationSlug },
+    });
+
+    if (!organization) {
+      throw new Error("Organization not found");
+    }
+
+    return prisma.product.findFirst({
+      where: { 
+        id: slug,
+        organizationId: organization.id,
+        isActive: true,
+        deletedAt: null,
+      },
+      include: {
+        category: true,
+        variants: {
+          where: { deletedAt: null },
+        },
+      },
+    });
+  }
+
+  async list(params: {
+    page?: number;
+    pageSize?: number;
+    organizationId?: string;
+    categoryId?: string;
+    isActive?: boolean;
+    search?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    inStock?: boolean;
+  }) {
+    const { 
+      page = 1, 
+      pageSize = 20, 
+      organizationId, 
+      categoryId, 
+      isActive, 
+      search,
+      minPrice,
+      maxPrice,
+      inStock 
+    } = params;
+
+    const where: Record<string, unknown> = {
+      deletedAt: null,
+    };
+
+    if (organizationId) where.organizationId = organizationId;
+    if (categoryId) where.categoryId = categoryId;
+    if (isActive !== undefined) where.isActive = isActive;
+    
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    if (minPrice || maxPrice) {
+      where.basePrice = {};
+      if (minPrice) (where.basePrice as Record<string, number>).gte = minPrice;
+      if (maxPrice) (where.basePrice as Record<string, number>).lte = maxPrice;
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { sortOrder: "asc" },
+        include: {
+          category: true,
+          variants: {
+            where: { deletedAt: null },
+          },
+        },
+      }),
+      prisma.product.count({ where }),
+    ]);
+
+    // Filter inStock if needed
+    let filteredData = data;
+    if (inStock) {
+      filteredData = data.filter(product => 
+        product.variants.some(v => v.inventory > 0) || !product.trackInventory
+      );
+    }
+
+    return {
+      data: filteredData,
+      total: inStock ? filteredData.length : total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
+
+  async update(id: string, data: UpdateProductInput, userRole: UserRole) {
+    if (!hasPermission(userRole, "product:update")) {
+      throw new Error("Unauthorized");
+    }
+
+    const product = await prisma.product.update({
+      where: { id },
+      data,
+      include: {
+        category: true,
+        variants: true,
+      },
+    });
+
+    revalidatePath(`/dashboard/products`);
+    return product;
+  }
+
+  async delete(id: string, userRole: UserRole) {
+    if (!hasPermission(userRole, "product:delete")) {
+      throw new Error("Unauthorized");
+    }
+
+    // Soft delete
+    const product = await prisma.product.update({
+      where: { id },
+      data: { deletedAt: new Date(), isActive: false },
+    });
+
+    revalidatePath(`/dashboard/products`);
+    return product;
+  }
+
+  // Variant methods
+  async createVariant(productId: string, data: CreateProductVariantInput, userRole: UserRole) {
+    if (!hasPermission(userRole, "product:update")) {
+      throw new Error("Unauthorized");
+    }
+
+    const variant = await prisma.productVariant.create({
+      data: {
+        ...data,
+        productId,
+      },
+    });
+
+    revalidatePath(`/dashboard/products`);
+    return variant;
+  }
+
+  async updateVariant(id: string, data: UpdateProductVariantInput, userRole: UserRole) {
+    if (!hasPermission(userRole, "product:update")) {
+      throw new Error("Unauthorized");
+    }
+
+    const variant = await prisma.productVariant.update({
+      where: { id },
+      data,
+    });
+
+    revalidatePath(`/dashboard/products`);
+    return variant;
+  }
+
+  async deleteVariant(id: string, userRole: UserRole) {
+    if (!hasPermission(userRole, "product:delete")) {
+      throw new Error("Unauthorized");
+    }
+
+    // Soft delete
+    const variant = await prisma.productVariant.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+
+    revalidatePath(`/dashboard/products`);
+    return variant;
+  }
+
+  async getVariants(productId: string) {
+    return prisma.productVariant.findMany({
+      where: { 
+        productId,
+        deletedAt: null,
+      },
+      orderBy: { name: "asc" },
+    });
+  }
+}
+
+export const productService = new ProductService();

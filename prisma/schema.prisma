@@ -61,6 +61,7 @@ enum OrderStatus {
   PICKED_UP
   DELIVERED
   RECEIVED
+  CANCELLED
   REFUNDED
 }
 

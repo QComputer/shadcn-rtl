@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { supportedLocales } from "@/lib/i18n";
 
 const locales = supportedLocales;
-const defaultLocale = "en";
+const defaultLocale = "fa";
 
 function getLocale(request: NextRequest) {
   const pathname = request.nextUrl.pathname;

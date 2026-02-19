@@ -48,37 +48,36 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Handle root path - no locale prefix needed
+  if (pathname === "/") {
+    return NextResponse.next();
+  }
+
   const pathnameHasLocale = locales.some(
     (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
   );
 
+  // If pathname has a locale, check if the route exists
   if (pathnameHasLocale) {
+    // Extract the path without locale
+    const locale = pathname.split("/")[1];
+    const pathWithoutLocale = "/" + pathname.split("/").slice(2).join("/");
+    
+    // Check if the route exists by trying to access without locale
+    // For now, just pass through - Next.js will handle 404 if route doesn't exist
     return NextResponse.next();
   }
 
-  const locale = getLocale(request);
-
-  if (locale === defaultLocale) {
-    return NextResponse.next();
-  }
-
-  // Redirect to localized URL
-  const newUrl = new URL(`/${locale}${pathname}`, request.url);
-  const response = NextResponse.redirect(newUrl);
-
-  // Set cookie for future requests
-  response.cookies.set("locale", locale as string, {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365, // 1 year
-    httpOnly: true,
-  });
-
-  return response;
+  // For now, we don't redirect to locale-prefixed URLs
+  // The app handles Persian as the default language
+  // This can be enhanced later with proper locale-based routing
+  
+  return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    // Skip all internal paths (_next)
+    // Match all paths except API routes, static files, and Next.js internals
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
   ],
 };

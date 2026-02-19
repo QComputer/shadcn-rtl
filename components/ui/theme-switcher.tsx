@@ -6,6 +6,7 @@ import { MoonIcon, SunIcon, MonitorIcon } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
@@ -13,8 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
-import { useTheme, type Theme } from "@/hooks/use-theme"
+import { useTheme, type Theme, themeNames, themeDescriptions } from "@/hooks/use-theme"
 
 interface ThemeSwitcherProps {
   align?: "start" | "center" | "end"
@@ -22,25 +22,47 @@ interface ThemeSwitcherProps {
 }
 
 export function ThemeSwitcher({ align = "end", sideOffset = 4 }: ThemeSwitcherProps) {
-  const { theme, setTheme, resolvedTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
 
   const themeOptions: { value: Theme; label: string; icon: React.ReactNode }[] = [
-    { value: "light", label: "Light", icon: <SunIcon className="h-4 w-4" /> },
-    { value: "dark", label: "Dark", icon: <MoonIcon className="h-4 w-4" /> },
-    { value: "system", label: "System", icon: <MonitorIcon className="h-4 w-4" /> },
+    { 
+      value: "light", 
+      label: themeNames.light, 
+      icon: <SunIcon className="h-4 w-4" /> 
+    },
+    { 
+      value: "warm-cream", 
+      label: themeNames["warm-cream"], 
+      icon: <SunIcon className="h-4 w-4" /> 
+    },
+    { 
+      value: "dark", 
+      label: themeNames.dark, 
+      icon: <MoonIcon className="h-4 w-4" /> 
+    },
+    { 
+      value: "charcoal-gray", 
+      label: themeNames["charcoal-gray"], 
+      icon: <MoonIcon className="h-4 w-4" /> 
+    },
+    { 
+      value: "system", 
+      label: themeNames.system, 
+      icon: <MonitorIcon className="h-4 w-4" /> 
+    },
   ]
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
-        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-md border-0">
-          <SunIcon className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <MoonIcon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <span className="sr-only">Toggle theme</span>
-        </Button>
+      <DropdownMenuTrigger className="h-9 w-9 rounded-md border-0 bg-transparent cursor-pointer flex items-center justify-center hover:bg-accent hover:text-accent-foreground rounded-md">
+        <SunIcon className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+        <MoonIcon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+        <span className="sr-only">تغییر تم</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align={align} sideOffset={sideOffset} className="bg-popover text-popover-foreground">
-        <DropdownMenuLabel>Appearance</DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>انتخاب تم</DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as Theme)}>
           {themeOptions.map((option) => (
@@ -70,20 +92,32 @@ export function ThemeSelector({
   const themeOptions: { value: Theme; label: string; description: string; icon: React.ReactNode }[] = [
     { 
       value: "light", 
-      label: "Light", 
-      description: "Always use light theme",
+      label: themeNames.light, 
+      description: themeDescriptions.light,
+      icon: <SunIcon className="h-4 w-4" /> 
+    },
+    { 
+      value: "warm-cream", 
+      label: themeNames["warm-cream"], 
+      description: themeDescriptions["warm-cream"],
       icon: <SunIcon className="h-4 w-4" /> 
     },
     { 
       value: "dark", 
-      label: "Dark", 
-      description: "Always use dark theme",
+      label: themeNames.dark, 
+      description: themeDescriptions.dark,
+      icon: <MoonIcon className="h-4 w-4" /> 
+    },
+    { 
+      value: "charcoal-gray", 
+      label: themeNames["charcoal-gray"], 
+      description: themeDescriptions["charcoal-gray"],
       icon: <MoonIcon className="h-4 w-4" /> 
     },
     { 
       value: "system", 
-      label: "System", 
-      description: "Follow system preference",
+      label: themeNames.system, 
+      description: themeDescriptions.system,
       icon: <MonitorIcon className="h-4 w-4" /> 
     },
   ]
@@ -96,7 +130,7 @@ export function ThemeSelector({
           type="button"
           onClick={() => onValueChange(option.value)}
           className={`
-            flex items-center gap-3 rounded-lg border p-3 text-left transition-all
+            flex items-center gap-3 rounded-lg border p-3 text-right transition-all
             ${value === option.value 
               ? "border-primary bg-accent" 
               : "border-border hover:bg-muted"}
@@ -105,7 +139,7 @@ export function ThemeSelector({
           <span className={value === option.value ? "text-primary" : "text-muted-foreground"}>
             {option.icon}
           </span>
-          <div>
+          <div className="text-right">
             <p className="text-sm font-medium">{option.label}</p>
             <p className="text-xs text-muted-foreground">{option.description}</p>
           </div>

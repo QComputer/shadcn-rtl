@@ -2,7 +2,7 @@
 
 import * as React from "react"
 
-export type Theme = "light" | "dark" | "system"
+export type Theme = "light" | "dark" | "warm-cream" | "charcoal-gray" | "system"
 
 export interface ThemeProviderProps {
   children: React.ReactNode
@@ -20,7 +20,7 @@ const ThemeContext = React.createContext<ThemeContextValue | undefined>(undefine
 
 export function ThemeProvider({
   children,
-  defaultTheme = "system",
+  defaultTheme = "light",
   storageKey = "shadcn-rtl-theme",
 }: ThemeProviderProps) {
   const [theme, setThemeState] = React.useState<Theme>(() => {
@@ -36,7 +36,7 @@ export function ThemeProvider({
     const root = window.document.documentElement
 
     // Remove old theme class
-    root.classList.remove("light", "dark")
+    root.classList.remove("light", "dark", "warm-cream", "charcoal-gray")
 
     // Resolve system theme
     const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -44,10 +44,19 @@ export function ThemeProvider({
       : "light"
 
     // Determine the resolved theme
-    const resolved = theme === "system" ? systemTheme : theme
+    let resolved: "light" | "dark"
+    
+    if (theme === "system") {
+      resolved = systemTheme
+    } else if (theme === "light" || theme === "warm-cream") {
+      resolved = "light"
+    } else {
+      resolved = "dark"
+    }
+    
     setResolvedTheme(resolved)
 
-    // Apply the theme class
+    // Apply the theme class (for backward compatibility with .dark class)
     root.classList.add(resolved)
     
     // Also set data-theme attribute for custom themes
@@ -64,7 +73,7 @@ export function ThemeProvider({
         setResolvedTheme(resolved)
         
         const root = window.document.documentElement
-        root.classList.remove("light", "dark")
+        root.classList.remove("light", "dark", "warm-cream", "charcoal-gray")
         root.classList.add(resolved)
       }
     }
@@ -106,4 +115,22 @@ export function useThemeEffect(callback: (theme: "light" | "dark") => void) {
   React.useEffect(() => {
     callback(resolvedTheme)
   }, [callback, resolvedTheme])
+}
+
+// Theme display names for UI (in Persian)
+export const themeNames: Record<Theme, string> = {
+  light: "سفید",
+  dark: "آبی تیره",
+  "warm-cream": "کرم گرم",
+  "charcoal-gray": "خاکستری",
+  system: "سیستم",
+}
+
+// Theme descriptions (in Persian)
+export const themeDescriptions: Record<Theme, string> = {
+  light: "تم روشن و سفید",
+  dark: "تم تیره با رنگ آبی 深",
+  "warm-cream": "تم روشن با رنگ کرم گرم",
+  "charcoal-gray": "تم تیره با رنگ خاکستری تیره",
+  system: "پیروی از تنظیمات سیستم",
 }

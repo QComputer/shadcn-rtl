@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -47,7 +49,52 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
-:root {
+/* ============================================
+   RTL (Right-to-Left) Support for Persian
+   ============================================ */
+
+/* Base RTL styles */
+html[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+html[dir="rtl"] body {
+  text-align: right;
+}
+
+/* RTL-specific spacing adjustments */
+html[dir="rtl"] .rtl-space-x-reverse > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+
+/* RTL margin/padding utilities */
+html[dir="rtl"] .rtl-mr-auto {
+  margin-right: auto;
+  margin-left: 0;
+}
+
+html[dir="rtl"] .rtl-ml-auto {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+/* Flip icons in RTL mode */
+html[dir="rtl"] .rtl-flip-rtl {
+  transform: scaleX(-1);
+}
+
+/* ============================================
+   Theme System - 4 Themes
+   2 Light: clean-white, warm-cream
+   2 Dark: deep-navy, charcoal-gray
+   ============================================ */
+
+/* ============================================
+   Light Theme: Clean White (default)
+   ============================================ */
+:root,
+[data-theme="light"] {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -80,8 +127,56 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  
+  /* Theme identifier */
+  --theme-name: 'light';
 }
 
+/* ============================================
+   Light Theme: Warm Cream
+   ============================================ */
+[data-theme="warm-cream"] {
+  --background: oklch(0.98 0.02 80);
+  --foreground: oklch(0.25 0.05 80);
+  --card: oklch(0.98 0.02 80);
+  --card-foreground: oklch(0.25 0.05 80);
+  --popover: oklch(0.98 0.02 80);
+  --popover-foreground: oklch(0.25 0.05 80);
+  --primary: oklch(0.55 0.15 45);
+  --primary-foreground: oklch(0.98 0.02 80);
+  --secondary: oklch(0.92 0.04 70);
+  --secondary-foreground: oklch(0.25 0.05 80);
+  --muted: oklch(0.94 0.03 75);
+  --muted-foreground: oklch(0.45 0.08 80);
+  --accent: oklch(0.92 0.04 70);
+  --accent-foreground: oklch(0.25 0.05 80);
+  --destructive: oklch(0.6 0.18 25);
+  --border: oklch(0.88 0.04 75);
+  --input: oklch(0.88 0.04 75);
+  --ring: oklch(0.55 0.15 45);
+  --chart-1: oklch(0.7 0.15 45);
+  --chart-2: oklch(0.6 0.12 55);
+  --chart-3: oklch(0.5 0.1 65);
+  --chart-4: oklch(0.45 0.08 70);
+  --chart-5: oklch(0.4 0.06 75);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.95 0.03 75);
+  --sidebar-foreground: oklch(0.25 0.05 80);
+  --sidebar-primary: oklch(0.55 0.15 45);
+  --sidebar-primary-foreground: oklch(0.98 0.02 80);
+  --sidebar-accent: oklch(0.92 0.04 70);
+  --sidebar-accent-foreground: oklch(0.25 0.05 80);
+  --sidebar-border: oklch(0.88 0.04 75);
+  --sidebar-ring: oklch(0.55 0.15 45);
+  
+  /* Theme identifier */
+  --theme-name: 'warm-cream';
+}
+
+/* ============================================
+   Dark Theme: Deep Navy
+   ============================================ */
+[data-theme="dark"],
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
@@ -114,13 +209,224 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  
+  /* Theme identifier */
+  --theme-name: 'dark';
 }
 
+/* ============================================
+   Dark Theme: Charcoal Gray
+   ============================================ */
+[data-theme="charcoal-gray"] {
+  --background: oklch(0.18 0.02 280);
+  --foreground: oklch(0.95 0.01 280);
+  --card: oklch(0.22 0.02 280);
+  --card-foreground: oklch(0.95 0.01 280);
+  --popover: oklch(0.22 0.02 280);
+  --popover-foreground: oklch(0.95 0.01 280);
+  --primary: oklch(0.55 0.15 250);
+  --primary-foreground: oklch(0.95 0.01 280);
+  --secondary: oklch(0.28 0.03 280);
+  --secondary-foreground: oklch(0.95 0.01 280);
+  --muted: oklch(0.25 0.02 280);
+  --muted-foreground: oklch(0.65 0.05 280);
+  --accent: oklch(0.3 0.04 280);
+  --accent-foreground: oklch(0.95 0.01 280);
+  --destructive: oklch(0.65 0.18 25);
+  --border: oklch(1 0 0 / 15%);
+  --input: oklch(1 0 0 / 20%);
+  --ring: oklch(0.55 0.15 250);
+  --chart-1: oklch(0.55 0.15 250);
+  --chart-2: oklch(0.5 0.12 260);
+  --chart-3: oklch(0.45 0.1 270);
+  --chart-4: oklch(0.4 0.08 275);
+  --chart-5: oklch(0.35 0.06 280);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.22 0.02 280);
+  --sidebar-foreground: oklch(0.95 0.01 280);
+  --sidebar-primary: oklch(0.55 0.15 250);
+  --sidebar-primary-foreground: oklch(0.95 0.01 280);
+  --sidebar-accent: oklch(0.28 0.03 280);
+  --sidebar-accent-foreground: oklch(0.95 0.01 280);
+  --sidebar-border: oklch(1 0 0 / 15%);
+  --sidebar-ring: oklch(0.55 0.15 250);
+  
+  /* Theme identifier */
+  --theme-name: 'charcoal-gray';
+}
+
+/* ============================================
+   System Theme Support
+   ============================================ */
+[data-theme="system"] {
+  @media (prefers-color-scheme: light) {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.488 0.243 264.376);
+    --primary-foreground: oklch(0.97 0.014 254.604);
+    --secondary: oklch(0.967 0.001 286.375);
+    --secondary-foreground: oklch(0.21 0.006 285.885);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.58 0.22 27);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+    --chart-1: oklch(0.809 0.105 251.813);
+    --chart-2: oklch(0.623 0.214 259.815);
+    --chart-3: oklch(0.546 0.245 262.881);
+    --chart-4: oklch(0.488 0.243 264.376);
+    --chart-5: oklch(0.424 0.199 265.638);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.546 0.245 262.881);
+    --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
+    --theme-name: 'light';
+  }
+
+  @media (prefers-color-scheme: dark) {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.42 0.18 266);
+    --primary-foreground: oklch(0.97 0.014 254.604);
+    --secondary: oklch(0.274 0.006 286.033);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.371 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --chart-1: oklch(0.809 0.105 251.813);
+    --chart-2: oklch(0.623 0.214 259.815);
+    --chart-3: oklch(0.546 0.245 262.881);
+    --chart-4: oklch(0.488 0.243 264.376);
+    --chart-5: oklch(0.424 0.199 265.638);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.623 0.214 259.815);
+    --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+    --theme-name: 'dark';
+  }
+}
+
+/* ============================================
+   Base Layer
+   ============================================ */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Persian typography improvements */
+  html[dir="rtl"] body {
+    font-family: var(--font-vazirmatn, system-ui, -apple-system, sans-serif);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Proper text alignment for RTL */
+  html[dir="rtl"] input,
+  html[dir="rtl"] textarea {
+    text-align: right;
+  }
+
+  /* Fix for placeholder text in RTL */
+  html[dir="rtl"] input::placeholder,
+  html[dir="rtl"] textarea::placeholder {
+    text-align: right;
+    direction: rtl;
+  }
+
+  /* Number inputs should stay LTR */
+  html[dir="rtl"] input[type="number"] {
+    direction: ltr;
+    text-align: left;
+  }
+
+  /* Select elements in RTL */
+  html[dir="rtl"] select {
+    background-position: left center;
+    padding-right: 2rem;
+  }
+}
+
+/* Apply Vazirmatn font for Persian text */
+html[dir="rtl"] {
+  --font-vazirmatn: 'Vazirmatn', system-ui, -apple-system, sans-serif;
+}
+
+html[dir="rtl"] body,
+html[dir="rtl"] .font-persian {
+  font-family: var(--font-vazirmatn, system-ui, -apple-system, sans-serif);
+}
+
+/* ============================================
+   Utility Classes for RTL
+   ============================================ */
+
+/* Text alignment */
+.text-right {
+  text-align: right;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-center {
+  text-align: center;
+}
+
+/* Float utilities */
+.float-right {
+  float: right;
+}
+
+.float-left {
+  float: left;
+}
+
+/* ============================================
+   Animation for theme transitions
+   ============================================ */
+.theme-transition,
+.theme-transition *::before,
+.theme-transition *::after {
+  transition: 
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    color 0.3s ease,
+    fill 0.3s ease,
+    stroke 0.3s ease !important;
+}
+
+/* Disable transitions during theme change */
+.no-transition * {
+  transition: none !important;
 }

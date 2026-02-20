@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { $Enums, type Prisma } from "@prisma/client";
 
 export type AuditAction = 
   | 'user.login'
@@ -32,7 +33,9 @@ export interface CreateAuditLogInput {
   entityId: string;
   userId?: string;
   organizationId?: string;
-  changes?: Record<string, unknown>;
+  previousValue?: Prisma.InputJsonValue;
+  newValue?: Prisma.InputJsonValue;
+  description?: string;
   ipAddress?: string;
   userAgent?: string;
 }
@@ -41,12 +44,14 @@ export class AuditService {
   async create(input: CreateAuditLogInput) {
     const auditLog = await prisma.auditLog.create({
       data: {
-        action: input.action,
+        action: input.action as $Enums.AuditAction,
         entityType: input.entityType,
         entityId: input.entityId,
         userId: input.userId,
         organizationId: input.organizationId,
-        changes: input.changes as Record<string, unknown> || {},
+        previousValue: input.previousValue,
+        newValue: input.newValue,
+        description: input.description,
         ipAddress: input.ipAddress,
         userAgent: input.userAgent,
       },
@@ -180,25 +185,14 @@ export async function logEntityChange(
   userId?: string,
   organizationId?: string
 ) {
-  const changes: Record<string, { from: unknown; to: unknown }> = {};
-  
-  for (const key of Object.keys(after)) {
-    if (JSON.stringify(before[key]) !== JSON.stringify(after[key])) {
-      changes[key] = {
-        from: before[key],
-        to: after[key],
-      };
-    }
-  }
-
-  if (Object.keys(changes).length > 0) {
-    await auditService.create({
-      action: `${entityType.toLowerCase()}.update` as AuditAction,
-      entityType,
-      entityId,
-      userId,
-      organizationId,
-      changes,
-    });
-  }
+  // Use type assertion to satisfy TypeScript
+  await auditService.create({
+    action: `${entityType.toLowerCase()}.update` as AuditAction,
+    entityType,
+    entityId,
+    userId,
+    organizationId,
+    previousValue: before as unknown as Prisma.InputJsonValue,
+    newValue: after as unknown as Prisma.InputJsonValue,
+  });
 }

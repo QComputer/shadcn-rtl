@@ -47,7 +47,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const data = updateOrganizationSettingsSchema.parse(body);
+    const data = updateOrganizationSettingsSchema.parse(body) as any;
 
     const settings = await prisma.organizationSettings.upsert({
       where: { organizationId: id },

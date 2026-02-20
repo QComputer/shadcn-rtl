@@ -1,5 +1,7 @@
 // Custom error classes for the application
 
+import { NextResponse } from "next/server";
+
 export class AppError extends Error {
   constructor(
     public statusCode: number,

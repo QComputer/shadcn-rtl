@@ -232,7 +232,7 @@ export const updateOrganizationSettingsSchema = z.object({
   enableDelivery: z.boolean().default(true),
   emailNotifications: z.boolean().default(true),
   smsNotifications: z.boolean().default(false),
-  settings: z.record(z.string(), z.unknown()).optional(),
+  settings: z.any().optional(),
 });
 
 // Pagination and filtering

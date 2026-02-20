@@ -56,7 +56,7 @@ async function main() {
         isActive: true,
         isTeamMember: true,
         locale: 'fa',
-        theme: 'light',
+        theme: 'dark',
       },
     }),
     prisma.user.create({

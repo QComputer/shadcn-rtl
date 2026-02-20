@@ -85,13 +85,18 @@ export async function DELETE(
 
     // Customers can cancel their own appointments
     // Staff/Admin can cancel any appointment
-    if (session.user.role === "CUSTOMER") {
+    const userRole = session.user.role;
+    if (!userRole) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
+    if (userRole === "CUSTOMER") {
       await appointmentService.cancel(id, session.user.id);
     } else {
       await appointmentService.update(
         id,
         { status: "CANCELLED" },
-        session.user.role,
+        userRole,
         session.user.id
       );
     }

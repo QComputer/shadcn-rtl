@@ -6,7 +6,7 @@ import { createReviewSchema } from "@/lib/validators";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl;
-    const organizationId = searchParams.get("organizationId");
+    const organizationId = searchParams.get("organizationId")!;
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "20");
 

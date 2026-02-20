@@ -11,8 +11,8 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = request.nextUrl;
-    const page = parseInt(searchParams.get("page") || "1");
-    const pageSize = parseInt(searchParams.get("pageSize") || "20");
+    const page = parseInt(searchParams.get("page")! || "1");
+    const pageSize = parseInt(searchParams.get("pageSize")! || "20");
 
     const conversations = await messagingService.getConversations(session.user.id, {
       page,

@@ -13,11 +13,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Organization ID is required" }, { status: 400 });
     }
 
-    const params: Record<string, string | boolean | undefined> = {};
-    if (searchParams.get("page")) params.page = parseInt(searchParams.get("page")!);
-    if (searchParams.get("pageSize")) params.pageSize = parseInt(searchParams.get("pageSize")!);
-    if (searchParams.get("isActive")) params.isActive = searchParams.get("isActive") === "true";
-    if (searchParams.get("search")) params.search = searchParams.get("search")!;
+    const params: Record<string, string | boolean | number | undefined> = {};
+    params.page = parseInt(searchParams.get("page") || "1");
+    params.pageSize = parseInt(searchParams.get("pageSize") || "20");
+    params.isActive = searchParams.get("isActive") === "true";
+    params.search = searchParams.get("search")!;
 
     const categories = await serviceCategoryService.list(organizationId, params);
 

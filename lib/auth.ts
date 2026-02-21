@@ -153,7 +153,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   jwt: {
     maxAge: 30 * 24 * 60 * 60,
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || "development-secret-change-in-production",
   
   // Custom pages for authentication flows
   pages: {

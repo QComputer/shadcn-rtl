@@ -229,11 +229,14 @@ export default function ProductsPage() {
       <header className="lg:hidden sticky top-0 z-40 bg-background border-b">
         <div className="flex items-center justify-between p-4">
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-            <SheetTrigger>
-              <Button variant="ghost" size="icon" aria-label="منو">
-                <Menu className="h-6 w-6" />
-              </Button>
-            </SheetTrigger>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="منو"
+              onClick={() => setIsMobileMenuOpen(true)}
+            >
+              <Menu className="h-6 w-6" />
+            </Button>
             <SheetContent side="right" className="w-72">
               <SheetHeader>
                 <SheetTitle>منو</SheetTitle>

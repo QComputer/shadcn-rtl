@@ -171,6 +171,7 @@ export default function DashboardPage() {
   const [mounted, setMounted] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -243,12 +244,18 @@ export default function DashboardPage() {
 
           <h1 className="text-lg font-semibold">داشبورد</h1>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger>
-              <Button variant="ghost" size="icon" aria-label="اعلانات" className="rounded-full">
-                <Bell className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
+          <DropdownMenu open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="اعلانات"
+              aria-expanded={isNotificationsOpen}
+              aria-haspopup="true"
+              className="rounded-full"
+              onClick={() => setIsNotificationsOpen(true)}
+            >
+              <Bell className="h-5 w-5" />
+            </Button>
             <DropdownMenuContent align="end" className="w-80">
               <DropdownMenuLabel>اعلانات</DropdownMenuLabel>
               <DropdownMenuSeparator />

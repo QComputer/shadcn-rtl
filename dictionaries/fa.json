@@ -31,7 +31,11 @@
     "no_results": "نتیجه‌ای یافت نشد",
     "select_option": "انتخاب کنید",
     "required": "اجباری",
-    "optional": "اختیاری"
+    "optional": "اختیاری",
+    "since": "عضو از",
+    "showing": "نمایش",
+    "of": "از",
+    "all": "همه"
   },
   "auth": {
     "login": "ورود",
@@ -73,7 +77,10 @@
     "about": "درباره ما",
     "contact": "تماس با ما",
     "privacy": "حریم خصوصی",
-    "terms": "قوانین و شرایط"
+    "terms": "قوانین و شرایط",
+    "customers": "مشتریان",
+    "appointments": "نوبت‌ها",
+    "menu": "منو"
   },
   "organization": {
     "title": "سازمان",

@@ -31,7 +31,11 @@
     "no_results": "لم يتم العثور على نتائج",
     "select_option": "اختر خياراً",
     "required": "مطلوب",
-    "optional": "اختياري"
+    "optional": "اختياري",
+    "since": "منذ",
+    "showing": "عرض",
+    "of": "من",
+    "all": "الكل"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -73,7 +77,10 @@
     "about": "من نحن",
     "contact": "اتصل بنا",
     "privacy": "الخصوصية",
-    "terms": "الشروط والأحكام"
+    "terms": "الشروط والأحكام",
+    "customers": "العملاء",
+    "appointments": "المواعيد",
+    "menu": "القائمة"
   },
   "organization": {
     "title": "منظمة",

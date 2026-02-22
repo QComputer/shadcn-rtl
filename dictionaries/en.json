@@ -31,7 +31,11 @@
     "no_results": "No results found",
     "select_option": "Select option",
     "required": "Required",
-    "optional": "Optional"
+    "optional": "Optional",
+    "since": "Since",
+    "showing": "Showing",
+    "of": "of",
+    "all": "All"
   },
   "auth": {
     "login": "Login",
@@ -73,7 +77,10 @@
     "about": "About Us",
     "contact": "Contact Us",
     "privacy": "Privacy Policy",
-    "terms": "Terms and Conditions"
+    "terms": "Terms and Conditions",
+    "customers": "Customers",
+    "appointments": "Appointments",
+    "menu": "Menu"
   },
   "organization": {
     "title": "Organization",

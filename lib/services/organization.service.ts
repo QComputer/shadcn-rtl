@@ -85,6 +85,26 @@ export class OrganizationService {
     });
   }
 
+  async getBySlugPublic(slug: string) {
+    return prisma.organization.findUnique({
+      where: { slug, isActive: true },
+      select: {
+        id: true,
+        type: true,
+        name: true,
+        slug: true,
+        description: true,
+        address: true,
+        phone: true,
+        email: true,
+        logo: true,
+        coverImage: true,
+        locale: true,
+        timezone: true,
+      },
+    });
+  }
+
   async list(params: {
     page?: number;
     pageSize?: number;

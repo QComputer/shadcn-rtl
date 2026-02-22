@@ -106,7 +106,15 @@
     "verify": "تأیید هویت",
     "verified": "تأیید شده",
     "unverified": "تأیید نشده",
-    "categories": "دسته‌بندی‌ها"
+    "categories": "دسته‌بندی‌ها",
+    "welcome": "خوش آمدید",
+    "bookNow": "رزرو آنلاین",
+    "ourServices": "خدمات ما",
+    "contactUs": "تماس با ما",
+    "aboutUs": "درباره ما",
+    "closed": "بسته",
+    "open": "باز",
+    "today": "امروز"
   },
   "product": {
     "title": "محصول",
@@ -248,7 +256,17 @@
     "duration": "مدت زمان",
     "notes": "یادداشت‌ها",
     "provider": "ارائه‌دهنده خدمات",
-    "selectProvider": "انتخاب ارائه‌دهنده"
+    "selectProvider": "انتخاب ارائه‌دهنده",
+    "yourInfo": "اطلاعات شما",
+    "success": "رزرو با موفقیت انجام شد",
+    "availableSlots": "زمان‌های خالی",
+    "noSlots": "متأسفانه زمان خالی وجود ندارد",
+    "minutes": "دقیقه",
+    "hour": "ساعت",
+    "bookingConfirmed": "رزرو شما تأیید شد",
+    "bookingDetails": "جزئیات رزرو",
+    "appointmentNumber": "شماره نوبت",
+    "thankYou": "سپاس از انتخاب ما"
   },
   "service": {
     "title": "خدمات",
@@ -352,5 +370,17 @@
     "toman": "تومان",
     "rial": "ریال",
     "free": "رایگان"
+  },
+  "calendar": {
+    "today": "امروز",
+    "week": "هفته",
+    "month": "ماه",
+    "upcoming": "نوبت‌های آینده",
+    "past": "نوبت‌های گذشته",
+    "cancel": "لغو نوبت",
+    "reschedule": "تغییر زمان",
+    "noAppointments": "نوبتی وجود ندارد",
+    "viewDetails": "مشاهده جزئیات",
+    "appointmentHistory": "تاریخچه نوبت‌ها"
   }
 }

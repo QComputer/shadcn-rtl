@@ -176,6 +176,33 @@ export class ServiceCategoryService {
     };
   }
 
+  async listPublic(organizationId: string) {
+    return prisma.serviceCategory.findMany({
+      where: {
+        organizationId,
+        deletedAt: null,
+        isActive: true,
+      },
+      orderBy: { sortOrder: "asc" },
+      include: {
+        services: {
+          where: { deletedAt: null, isActive: true },
+          orderBy: { sortOrder: "asc" },
+          include: {
+            serviceProvider: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                avatar: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
   async update(id: string, data: UpdateServiceCategoryInput) {
     const category = await prisma.serviceCategory.update({
       where: { id },

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
   title: "پنل مدیریت - فروشگاه آنلاین",
@@ -9,22 +8,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
+  // This layout should NOT redirect - middleware handles locale redirects
+  // The [locale] layout will handle locale-specific rendering
   return (
-    <html lang="fa" dir="rtl">
-      <head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="antialiased">
-        <Providers>
-          {children}
-        </Providers>
-      </body>
-    </html>
+    // This is a minimal root layout
+    // All actual content is rendered by app/[locale]/layout.tsx
+    <>
+      {children}
+    </>
   );
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { signIn } from "@/lib/auth";
 
 // Validation schema for registration - only username and password required
 const registerSchema = z.object({
@@ -16,8 +17,9 @@ export async function POST(request: NextRequest) {
     // Validate input
     const validation = registerSchema.safeParse(body);
     if (!validation.success) {
+      const errorMessage = validation.error.issues[0]?.message || "Validation failed";
       return NextResponse.json(
-        { error: validation.error.errors[0].message },
+        { error: errorMessage },
         { status: 400 }
       );
     }
@@ -59,10 +61,46 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(
-      { message: "User created successfully", user },
-      { status: 201 }
-    );
+    // Auto-login by calling NextAuth signIn with credentials
+    // This will create a session for the user
+    try {
+      const signInResult = await signIn("credentials", {
+        username,
+        password,
+        redirect: false,
+      });
+
+      if (signInResult?.error) {
+        // Even if signIn fails, user was created
+        return NextResponse.json(
+          { 
+            message: "User created successfully, but auto-login failed", 
+            user,
+            autoLogin: false 
+          },
+          { status: 201 }
+        );
+      }
+
+      return NextResponse.json(
+        { 
+          message: "User created and logged in successfully", 
+          user,
+          autoLogin: true 
+        },
+        { status: 201 }
+      );
+    } catch (signInError) {
+      console.error("Auto-login error:", signInError);
+      return NextResponse.json(
+        { 
+          message: "User created successfully", 
+          user,
+          autoLogin: false 
+        },
+        { status: 201 }
+      );
+    }
   } catch (error) {
     console.error("Error registering user:", error);
     return NextResponse.json(

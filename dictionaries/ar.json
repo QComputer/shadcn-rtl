@@ -67,6 +67,7 @@
     "registrationSuccess": "تم التسجيل بنجاح",
     "registrationSuccessDesc": "تم إنشاء حسابك بنجاح",
     "redirecting": "جاري التوجيه إلى صفحة تسجيل الدخول...",
+    "redirectingHome": "جاري التوجيه إلى الصفحة الرئيسية...",
     "passwordMismatch": "كلمات المرور غير متطابقة",
     "passwordTooShort": "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل",
     "registrationFailed": "فشل التسجيل",

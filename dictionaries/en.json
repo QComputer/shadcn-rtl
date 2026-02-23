@@ -67,6 +67,7 @@
     "registrationSuccess": "Registration Successful",
     "registrationSuccessDesc": "Your account has been created successfully",
     "redirecting": "Redirecting to login page...",
+    "redirectingHome": "Redirecting to homepage...",
     "passwordMismatch": "Passwords do not match",
     "passwordTooShort": "Password must be at least 6 characters",
     "registrationFailed": "Registration failed",

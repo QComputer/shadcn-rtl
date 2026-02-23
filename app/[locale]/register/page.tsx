@@ -77,10 +77,17 @@ function RegisterForm({ locale }: { locale: string }) {
 
       setSuccess(true)
       
-      // Redirect to login after a short delay
-      setTimeout(() => {
-        router.push(`/${locale}/login?registered=true`)
-      }, 2000)
+      // If auto-login was successful, redirect to home/dashboard
+      // Otherwise redirect to login page
+      if (data.autoLogin) {
+        setTimeout(() => {
+          router.push(`/${locale}`)
+        }, 1500)
+      } else {
+        setTimeout(() => {
+          router.push(`/${locale}/login?registered=true`)
+        }, 1500)
+      }
     } catch (err) {
       setError(t("auth.error") || "خطایی رخ داد. لطفاً دوباره تلاش کنید")
     } finally {
@@ -130,7 +137,7 @@ function RegisterForm({ locale }: { locale: string }) {
                 {t("auth.registrationSuccessDesc") || "حساب کاربری شما با موفقیت ایجاد شد"}
               </p>
               <p className="text-sm text-muted-foreground">
-                {t("auth.redirecting") || "در حال انتقال به صفحه ورود..."}
+                {t("auth.redirectingHome") || "در حال انتقال به صفحه اصلی..."}
               </p>
             </div>
           </CardContent>

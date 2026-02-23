@@ -67,6 +67,7 @@
     "registrationSuccess": "ثبت نام موفق",
     "registrationSuccessDesc": "حساب کاربری شما با موفقیت ایجاد شد",
     "redirecting": "در حال انتقال به صفحه ورود...",
+    "redirectingHome": "در حال انتقال به صفحه اصلی...",
     "passwordMismatch": "رمزهای عبور مطابقت ندارند",
     "passwordTooShort": "رمز عبور باید حداقل ۶ کاراکتر باشد",
     "registrationFailed": "ثبت نام ناموفق بود",

@@ -1,252 +1,260 @@
-"use client"
-
-import { useState, useEffect, useMemo } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { ThemeSwitcher } from "@/components/ui/theme-switcher"
+import { prisma } from "@/lib/db"
+import { getDictionary } from "@/lib/dictionary"
 import { LocaleSwitcher } from "@/components/ui/locale-switcher"
-import { 
-  formatPersianDate, 
-  formatRelativePersianDate, 
-  formatToman, 
-  toPersianDigits,
-  formatNumber 
-} from "@/lib/persian"
-import { useLocale } from "@/components/locale-provider"
-import { getDictionary, getDictValue, type Dictionary } from "@/lib/dictionary"
+import { ThemeSwitcher } from "@/components/ui/theme-switcher"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { Building2, ShoppingBag, Calendar, ArrowLeft, ArrowRight } from "lucide-react"
 
-// Product data - localized names stored in dictionary
-const products = [
-  { id: 1, price: 15000000, oldPrice: 18000000, inventory: 15 },
-  { id: 2, price: 25000000, inventory: 8 },
-  { id: 3, price: 3500000, inventory: 25 },
-  { id: 4, price: 5200000, inventory: 0 },
-]
+interface OrganizationWithDetails {
+  id: string
+  name: string
+  slug: string
+  type: string
+  description: string | null
+  logo: string | null
+  coverImage: string | null
+  address: string | null
+}
 
-// Product name keys in dictionary
-const productNameKeys = [
-  "home.products.smartphone",
-  "home.products.laptop", 
-  "home.products.headphone",
-  "home.products.smartwatch"
-]
+export default async function HomePage({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}) {
+  const resolvedParams = await params
+  const locale = resolvedParams.locale as "fa" | "en" | "ar"
+  const dict = await getDictionary(locale)
 
-export default function HomePage() {
-  const [mounted, setMounted] = useState(false)
-  const [now, setNow] = useState<Date>(new Date())
-  const { locale } = useLocale()
-  
-  // Get dictionary based on locale
-  const dict = useMemo(() => getDictionary(locale), [locale])
-  
-  // Helper function to get translated value
-  const t = (key: string): string => getDictValue(dict, key)
-  
-  // Product name getter
-  const getProductName = (index: number): string => {
-    const key = productNameKeys[index]
-    if (key) {
-      const value = t(key)
-      // If key not found in dictionary, fall back to Persian
-      return value === key ? getProductFallback(index) : value
+  // Fetch organizations directly from Prisma
+  const organizations = await prisma.organization.findMany({
+    where: {
+      isActive: true,
+    },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      type: true,
+      description: true,
+      logo: true,
+      coverImage: true,
+      address: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: 20,
+  })
+
+  // Group organizations by type
+  const shopOrganizations = organizations.filter(
+    (org) => org.type === "SHOP"
+  )
+  const appointmentOrganizations = organizations.filter(
+    (org) => org.type === "APPOINTMENT"
+  )
+
+  // Helper to get translations based on locale
+  const t = (key: string): string => {
+    const keys = key.split(".")
+    let value: any = dict
+    for (const k of keys) {
+      value = value?.[k]
     }
-    return getProductFallback(index)
+    return value || key
   }
-  
-  // Fallback product names in Persian
-  const getProductFallback = (index: number): string => {
-    const persianNames = ["گوشی هوشمند", "لپ‌تاپ", "هدفون", "ساعت هوشمند"]
-    return persianNames[index] || "محصول"
-  }
-  
-  // Stock status helper
-  const getStockStatus = (inventory: number): { label: string; variant: "default" | "secondary" | "destructive" } => {
-    if (inventory === 0) {
-      return { label: t("product.outOfStock"), variant: "destructive" }
-    }
-    if (inventory < 10) {
-      return { label: t("product.limitedStock"), variant: "secondary" }
-    }
-    return { label: t("product.inStock"), variant: "default" }
-  }
-  
-  useEffect(() => {
-    setMounted(true)
-    setNow(new Date())
-  }, [])
-  
-  if (!mounted) {
-    return (
-      <div className="min-h-screen bg-background p-8">
-        <div className="max-w-6xl mx-auto space-y-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">{t("common.loading")}</h1>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-  
+
+  const isRTL = locale === "ar"
+
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex justify-between items-center flex-wrap gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">
-              {t("home.title")}
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              {t("home.subtitle")}
-            </p>
-          </div>
-          <div className="flex gap-2 items-center">
-            <LocaleSwitcher />
-            <ThemeSwitcher />
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link
+                href={`/${locale}/dashboard`}
+                className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
+              >
+                <Building2 className="h-6 w-6" />
+                <span className="font-bold text-xl">{t("home.platformName") || "پلتفرم تجارت"}</span>
+              </Link>
+            </div>
+            <div className="flex items-center gap-4">
+              <LocaleSwitcher />
+              <ThemeSwitcher />
+              <Link href={`/${locale}/login`}>
+                <Button variant="default" size="sm">
+                  {t("auth.login") || "ورود"}
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
+      </header>
 
-        {/* Date Display */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("home.dateTitle")}</CardTitle>
-            <CardDescription>{t("home.dateDesc")}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">{t("home.fullDate")}</p>
-                <p className="text-lg font-semibold">{formatPersianDate(now, 'full')}</p>
-              </div>
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">{t("home.date")}</p>
-                <p className="text-lg font-semibold">{formatPersianDate(now, 'date')}</p>
-              </div>
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">{t("home.dateTime")}</p>
-                <p className="text-lg font-semibold">{formatPersianDate(now, 'datetime')}</p>
-              </div>
+      {/* Hero Section */}
+      <section className="relative py-20 lg:py-32 overflow-hidden">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <h1 className="text-4xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              {t("home.hero.title") || "بهترین پلتفرم تجارت الکترونیک"}
+            </h1>
+            <p className="text-xl text-muted-foreground mb-8">
+              {t("home.hero.subtitle") || "خرید آنلاین و رزرو خدمات در یک پلتفرم مدرن"}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href={`/${locale}/dashboard`}>
+                <Button size="lg" className="w-full sm:w-auto">
+                  {t("home.hero.dashboard") || "ورود به پنل مدیریت"}
+                  {isRTL ? <ArrowLeft className="mr-2 h-4 w-4" /> : <ArrowRight className="ml-2 h-4 w-4" />}
+                </Button>
+              </Link>
             </div>
-            <div className="p-4 bg-muted rounded-lg">
-              <p className="text-sm text-muted-foreground">{t("home.relativeDate")}</p>
-              <p className="text-lg font-semibold">{formatRelativePersianDate(now)}</p>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      </section>
 
-        {/* Currency Display */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("home.currencyTitle")}</CardTitle>
-            <CardDescription>{t("home.currencyDesc")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {products.map((product) => {
-                const stock = getStockStatus(product.inventory)
-                return (
-                  <div key={product.id} className="p-4 border rounded-lg">
-                    <h3 className="font-semibold">{getProductName(product.id - 1)}</h3>
-                    <div className="mt-2 space-y-1">
-                      <p className="text-xl font-bold text-primary">
-                        {formatToman(product.price)}
-                      </p>
-                      {product.oldPrice && (
-                        <p className="text-sm text-muted-foreground line-through">
-                          {formatToman(product.oldPrice)}
+      {/* Shop Organizations */}
+      {shopOrganizations.length > 0 && (
+        <section className="py-16 bg-muted/30">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center gap-3 mb-8">
+              <ShoppingBag className="h-8 w-8 text-primary" />
+              <h2 className="text-3xl font-bold">
+                {t("home.shops") || "فروشگاه‌ها"}
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {shopOrganizations.map((org) => (
+                <Link
+                  key={org.id}
+                  href={`/${locale}/organizations/${org.slug}`}
+                  className="group"
+                >
+                  <div className="bg-background rounded-xl overflow-hidden border hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                    <div className="aspect-video bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+                      {org.coverImage ? (
+                        <img
+                          src={org.coverImage}
+                          alt={org.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <ShoppingBag className="h-16 w-16 text-primary/30" />
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
+                        {org.name}
+                      </h3>
+                      {org.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {org.description}
+                        </p>
+                      )}
+                      {org.address && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          📍 {org.address}
                         </p>
                       )}
                     </div>
-                    <div className="mt-2">
-                      <Badge variant={stock.variant}>{stock.label}</Badge>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Appointment Organizations */}
+      {appointmentOrganizations.length > 0 && (
+        <section className="py-16">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center gap-3 mb-8">
+              <Calendar className="h-8 w-8 text-primary" />
+              <h2 className="text-3xl font-bold">
+                {t("home.services") || "خدمات"}
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {appointmentOrganizations.map((org) => (
+                <Link
+                  key={org.id}
+                  href={`/${locale}/organizations/${org.slug}`}
+                  className="group"
+                >
+                  <div className="bg-background rounded-xl overflow-hidden border hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                    <div className="aspect-video bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+                      {org.coverImage ? (
+                        <img
+                          src={org.coverImage}
+                          alt={org.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Calendar className="h-16 w-16 text-primary/30" />
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
+                        {org.name}
+                      </h3>
+                      {org.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {org.description}
+                        </p>
+                      )}
+                      {org.address && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          📍 {org.address}
+                        </p>
+                      )}
                     </div>
                   </div>
-                )
-              })}
+                </Link>
+              ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
+      )}
 
-        {/* Number Formatting */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("home.numberTitle")}</CardTitle>
-            <CardDescription>{t("home.numberDesc")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-4 bg-muted rounded-lg text-center">
-                <p className="text-2xl font-bold">{toPersianDigits(1234567)}</p>
-                <p className="text-sm text-muted-foreground">{t("home.number")}</p>
-              </div>
-              <div className="p-4 bg-muted rounded-lg text-center">
-                <p className="text-2xl font-bold">{formatNumber(9876543)}</p>
-                <p className="text-sm text-muted-foreground">{t("home.withSeparator")}</p>
-              </div>
-              <div className="p-4 bg-muted rounded-lg text-center">
-                <p className="text-2xl font-bold">{toPersianDigits("0912")} {toPersianDigits("345")} {toPersianDigits("6789")}</p>
-                <p className="text-sm text-muted-foreground">{t("home.phone")}</p>
-              </div>
-              <div className="p-4 bg-muted rounded-lg text-center">
-                <p className="text-2xl font-bold">{toPersianDigits("1404/01/01")}</p>
-                <p className="text-sm text-muted-foreground">{t("home.dateStr")}</p>
-              </div>
+      {/* Empty State */}
+      {organizations.length === 0 && (
+        <section className="py-20">
+          <div className="container mx-auto px-4 text-center">
+            <Building2 className="h-20 w-20 mx-auto text-muted-foreground/30 mb-6" />
+            <h2 className="text-2xl font-bold mb-4">
+              {t("home.noOrganizations") || "سازمانی یافت نشد"}
+            </h2>
+            <p className="text-muted-foreground mb-8">
+              {t("home.noOrganizationsDesc") || "در حال حاضر هیچ سازمانی در پلتفرم فعال نیست"}
+            </p>
+            <Link href={`/${locale}/login`}>
+              <Button>
+                {t("home.createFirst") || "ایجاد اولین سازمان"}
+              </Button>
+            </Link>
+          </div>
+        </section>
+      )}
+
+      {/* Footer */}
+      <footer className="bg-muted/50 py-12 mt-12">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-6 w-6 text-primary" />
+              <span className="font-semibold">{t("home.platformName") || "پلتفرم تجارت"}</span>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Persian Typography */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("home.typographyTitle")}</CardTitle>
-            <CardDescription>{t("home.typographyDesc")}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="font-persian">
-              <h1 className="text-4xl font-bold">{t("home.mainTitle")}</h1>
-              <h2 className="text-3xl font-bold mt-4">{t("home.secondTitle")}</h2>
-              <h3 className="text-2xl font-semibold mt-4">{t("home.thirdTitle")}</h3>
-              <p className="text-lg mt-4 leading-relaxed">
-                {t("home.sampleText")}
-              </p>
-              <p className="mt-4 leading-relaxed text-muted-foreground">
-                {t("home.mutedText")}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Theme Showcase */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("home.themeTitle")}</CardTitle>
-            <CardDescription>{t("home.themeDesc")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex gap-4 flex-wrap">
-                <button className="px-4 py-2 bg-primary text-primary-foreground rounded-md">{t("home.primaryBtn")}</button>
-                <button className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md">{t("home.secondaryBtn")}</button>
-                <button className="px-4 py-2 border border-input bg-background rounded-md">{t("home.outlineBtn")}</button>
-                <button className="px-4 py-2 bg-destructive text-destructive-foreground rounded-md">{t("home.dangerBtn")}</button>
-              </div>
-              <div className="flex gap-4 flex-wrap">
-                <Badge>{t("home.defaultBadge")}</Badge>
-                <Badge variant="secondary">{t("home.secondaryBadge")}</Badge>
-                <Badge variant="outline">{t("home.outlineBadge")}</Badge>
-                <Badge variant="destructive">{t("home.dangerBadge")}</Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Footer */}
-        <footer className="text-center text-muted-foreground py-8">
-          <p>© ۱۴۰۴ - {t("home.footer")}</p>
-        </footer>
-      </div>
+            <p className="text-sm text-muted-foreground">
+              © 2026 {t("home.copyright") || "تمامی حقوق محفوظ است"}
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

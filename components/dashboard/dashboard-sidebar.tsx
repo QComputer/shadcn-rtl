@@ -16,7 +16,8 @@ import {
   ChevronRight,
   ChevronLeft,
   Scissors,
-  Building2
+  Building2,
+  LogOut
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -46,6 +47,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Briefcase,
   Scissors,
   Building2,
+  LogOut,
 }
 
 function getIconComponent(iconName: string) {
@@ -61,7 +63,7 @@ export function DashboardSidebar({
 }: DashboardSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, organizationMembership, isLoading } = useAuth()
+  const { user, organizationMembership, isLoading, signOut } = useAuth()
   const [filteredItems, setFilteredItems] = useState<NavItem[]>([])
   const [mounted, setMounted] = useState(false)
 
@@ -139,19 +141,35 @@ export function DashboardSidebar({
 
   if (isMobile) {
     return (
-      <Sheet open={isOpen} onOpenChange={onOpenChange}>
-        <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="lg:hidden" aria-label="منو">
-            <Menu className="h-6 w-6" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="right" className="w-72">
-          <SheetHeader>
-            <SheetTitle>{t("navigation.menu") || "منو"}</SheetTitle>
-          </SheetHeader>
-          {content}
-        </SheetContent>
-      </Sheet>
+      <>
+        <Sheet open={isOpen} onOpenChange={onOpenChange}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="lg:hidden" aria-label="منو">
+              <Menu className="h-6 w-6" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-72">
+            <SheetHeader>
+              <SheetTitle>{t("navigation.menu") || "منو"}</SheetTitle>
+            </SheetHeader>
+            {content}
+            {/* Logout Button for Mobile */}
+            <div className="p-4 border-t mt-auto">
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                onClick={() => {
+                  onOpenChange?.(false)
+                  signOut()
+                }}
+              >
+                <LogOut className="h-5 w-5 ml-2" />
+                {t("auth.logout") || "خروج"}
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </>
     )
   }
 
@@ -166,6 +184,19 @@ export function DashboardSidebar({
         </Link>
       </div>
       {content}
+      {/* Logout Button */}
+      <div className="p-4 border-t">
+        <Button
+          variant="ghost"
+          className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          onClick={() => {
+            signOut()
+          }}
+        >
+          <LogOut className="h-5 w-5 ml-2" />
+          {t("auth.logout") || "خروج"}
+        </Button>
+      </div>
     </aside>
   )
 }

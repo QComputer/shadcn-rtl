@@ -392,8 +392,20 @@
     "free": "Free"
   },
   "home": {
+    "platformName": "Zero Community",
     "title": "Online Store",
     "subtitle": "Best products with best prices",
+    "hero": {
+      "title": "The Best E-Commerce Platform",
+      "subtitle": "Online shopping and service booking in one modern platform",
+      "dashboard": "Go to Dashboard"
+    },
+    "shops": "Shops",
+    "services": "Services",
+    "noOrganizations": "No Organizations Found",
+    "noOrganizationsDesc": "Currently there are no active organizations on the platform",
+    "createFirst": "Create First Organization",
+    "copyright": "All Rights Reserved",
     "dateTitle": "Persian Date",
     "dateDesc": "Displaying Jalali calendar",
     "fullDate": "Full Date",

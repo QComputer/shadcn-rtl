@@ -46,9 +46,6 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
   // Settings is a universal access page - all authenticated users can access
   return (
     <div className="p-4 lg:p-6 space-y-6">
-      {/* Breadcrumb Navigation */}
-      <DashboardBreadcrumb locale={locale} />
-      
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold">{t("navigation.settings") || "تنظیمات"}</h2>

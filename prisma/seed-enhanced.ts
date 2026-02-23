@@ -50,11 +50,11 @@ async function main() {
     // ========================================
     prisma.user.create({
       data: {
-        email: 'superadmin@example.com',
+        // email is now optional
         password: hashedPassword,
         firstName: 'سوپر',
         lastName: 'ادمین',
-        name: 'superadmin',
+        name: 'superadmin', // unique username
         phone: '+989100000001',
         role: UserRole.SUPER_ADMIN,
         isActive: true,
@@ -72,11 +72,11 @@ async function main() {
     // Access: dashboard, organization details, members, orders, products, product categories
     prisma.user.create({
       data: {
-        email: 'shop-admin@shop.ir',
+        email: 'shop-admin@shop.ir', // optional
         password: hashedPassword,
         firstName: 'مدیر',
         lastName: 'فروشگاه',
-        name: 'shop-admin',
+        name: 'shop-admin', // unique username
         phone: '+989100000002',
         role: UserRole.ADMIN,
         isActive: true,
@@ -90,11 +90,11 @@ async function main() {
     // Access: dashboard, organization details, members, orders, products, product categories
     prisma.user.create({
       data: {
-        email: 'shop-manager@shop.ir',
+        email: 'shop-manager@shop.ir', // optional
         password: hashedPassword,
         firstName: 'معاون',
         lastName: 'فروشگاه',
-        name: 'shop-manager',
+        name: 'shop-manager', // unique username
         phone: '+989100000003',
         role: UserRole.MANAGER,
         isActive: true,
@@ -109,11 +109,11 @@ async function main() {
     // Note: STAFF without ADMIN/MANAGER org role has limited access
     prisma.user.create({
       data: {
-        email: 'shop-staff@shop.ir',
+        email: 'shop-staff@shop.ir', // optional
         password: hashedPassword,
         firstName: 'کارمند',
         lastName: 'فروشگاه',
-        name: 'shop-staff',
+        name: 'shop-staff', // unique username
         phone: '+989100000004',
         role: UserRole.STAFF,
         isActive: true,
@@ -127,11 +127,11 @@ async function main() {
     // Access: dashboard, my orders, settings, calendar
     prisma.user.create({
       data: {
-        email: 'shop-driver@shop.ir',
+        email: 'shop-driver@shop.ir', // optional
         password: hashedPassword,
         firstName: 'راننده',
         lastName: 'فروشگاه',
-        name: 'shop-driver',
+        name: 'shop-driver', // unique username
         phone: '+989100000005',
         role: UserRole.DRIVER,
         isActive: true,
@@ -149,11 +149,11 @@ async function main() {
     // Access: dashboard, organization details, members, appointments, services, service categories
     prisma.user.create({
       data: {
-        email: 'appt-admin@clinic.ir',
+        email: 'appt-admin@clinic.ir', // optional
         password: hashedPassword,
         firstName: 'مدیر',
         lastName: 'کلینیک',
-        name: 'appt-admin',
+        name: 'appt-admin', // unique username
         phone: '+989100000006',
         role: UserRole.ADMIN,
         isActive: true,
@@ -167,11 +167,11 @@ async function main() {
     // Access: dashboard, organization details, members, appointments, services, service categories
     prisma.user.create({
       data: {
-        email: 'appt-manager@clinic.ir',
+        email: 'appt-manager@clinic.ir', // optional
         password: hashedPassword,
         firstName: 'معاون',
         lastName: 'کلینیک',
-        name: 'appt-manager',
+        name: 'appt-manager', // unique username
         phone: '+989100000007',
         role: UserRole.MANAGER,
         isActive: true,
@@ -185,11 +185,11 @@ async function main() {
     // Access: dashboard, my appointments, my services, settings, calendar
     prisma.user.create({
       data: {
-        email: 'appt-staff@clinic.ir',
+        email: 'appt-staff@clinic.ir', // optional
         password: hashedPassword,
         firstName: 'کارمند',
         lastName: 'کلینیک',
-        name: 'appt-staff',
+        name: 'appt-staff', // unique username
         phone: '+989100000008',
         role: UserRole.STAFF,
         isActive: true,
@@ -203,11 +203,11 @@ async function main() {
     // Access: dashboard, organizations, appointments, services, service categories
     prisma.user.create({
       data: {
-        email: 'staff-admin-appt@clinic.ir',
+        email: 'staff-admin-appt@clinic.ir', // optional
         password: hashedPassword,
         firstName: 'کارمند',
         lastName: 'ادمین',
-        name: 'staff-admin-appt',
+        name: 'staff-admin-appt', // unique username
         phone: '+989100000009',
         role: UserRole.STAFF,
         isActive: true,
@@ -221,11 +221,11 @@ async function main() {
     // Access: dashboard, organizations, appointments, services, service categories
     prisma.user.create({
       data: {
-        email: 'staff-manager-appt@clinic.ir',
+        email: 'staff-manager-appt@clinic.ir', // optional
         password: hashedPassword,
         firstName: 'کارمند',
         lastName: 'منیجر',
-        name: 'staff-manager-appt',
+        name: 'staff-manager-appt', // unique username
         phone: '+989100000010',
         role: UserRole.STAFF,
         isActive: true,
@@ -238,11 +238,11 @@ async function main() {
     // Service Provider 1 - Dermatologist (index 10)
     prisma.user.create({
       data: {
-        email: 'dr-derma@clinic.ir',
+        email: 'dr-derma@clinic.ir', // optional
         password: hashedPassword,
         firstName: 'دکتر',
         lastName: 'پوست',
-        name: 'dr-derma',
+        name: 'dr-derma', // unique username
         phone: '+989100000011',
         role: UserRole.STAFF,
         isActive: true,
@@ -255,11 +255,11 @@ async function main() {
     // Service Provider 2 - Hair Stylist (index 11)
     prisma.user.create({
       data: {
-        email: 'hairstylist@clinic.ir',
+        email: 'hairstylist@clinic.ir', // optional
         password: hashedPassword,
         firstName: 'آرایشگر',
         lastName: 'مو',
-        name: 'hairstylist',
+        name: 'hairstylist', // unique username
         phone: '+989100000012',
         role: UserRole.STAFF,
         isActive: true,
@@ -277,11 +277,11 @@ async function main() {
     // Access: dashboard, my orders, my appointments, settings, calendar
     prisma.user.create({
       data: {
-        email: 'customer1@example.com',
+        email: 'customer1@example.com', // optional
         password: hashedPassword,
         firstName: 'مشتری',
         lastName: 'اول',
-        name: 'customer1',
+        name: 'customer1', // unique username
         phone: '+989100000013',
         role: UserRole.CUSTOMER,
         isActive: true,
@@ -293,11 +293,11 @@ async function main() {
     // CUSTOMER 2 (index 13)
     prisma.user.create({
       data: {
-        email: 'customer2@example.com',
+        email: 'customer2@example.com', // optional
         password: hashedPassword,
         firstName: 'مشتری',
         lastName: 'دوم',
-        name: 'customer2',
+        name: 'customer2', // unique username
         phone: '+989100000014',
         role: UserRole.CUSTOMER,
         isActive: true,
@@ -309,11 +309,11 @@ async function main() {
     // CUSTOMER 3 (index 14)
     prisma.user.create({
       data: {
-        email: 'customer3@example.com',
+        // No email - demonstrating optional email
         password: hashedPassword,
         firstName: 'مشتری',
         lastName: 'سوم',
-        name: 'customer3',
+        name: 'customer3', // unique username
         phone: '+989100000015',
         role: UserRole.CUSTOMER,
         isActive: true,
@@ -330,11 +330,11 @@ async function main() {
     // Access: dashboard, my orders, settings, calendar
     prisma.user.create({
       data: {
-        email: 'driver1@shop.ir',
+        email: 'driver1@shop.ir', // optional
         password: hashedPassword,
         firstName: 'راننده',
         lastName: 'اول',
-        name: 'driver1',
+        name: 'driver1', // unique username
         phone: '+989100000016',
         role: UserRole.DRIVER,
         isActive: true,
@@ -347,11 +347,11 @@ async function main() {
     // DRIVER 2 (index 16)
     prisma.user.create({
       data: {
-        email: 'driver2@shop.ir',
+        // No email - demonstrating optional email
         password: hashedPassword,
         firstName: 'راننده',
         lastName: 'دوم',
-        name: 'driver2',
+        name: 'driver2', // unique username
         phone: '+989100000017',
         role: UserRole.DRIVER,
         isActive: true,
@@ -460,10 +460,11 @@ async function main() {
 
   // ========================================
   // 3. CREATE ORGANIZATION MEMBERS - All Role Combinations
+  // Note: Each user can only belong to ONE organization (unique userId constraint)
   // ========================================
   console.log('👥 Creating organization members with all role combinations...');
 
-  // Health Shop Members (SHOP type)
+  // Health Shop Members (SHOP type) - users[1-4, 15]
   await prisma.organizationMember.create({
     data: { organizationId: healthShop.id, userId: users[1].id, role: OrgMemberRole.ADMIN, isActive: true },
   });
@@ -480,18 +481,7 @@ async function main() {
     data: { organizationId: healthShop.id, userId: users[15].id, role: OrgMemberRole.STAFF, isActive: true },
   });
 
-  // Food Delivery Members (SHOP type)
-  await prisma.organizationMember.create({
-    data: { organizationId: foodDelivery.id, userId: users[1].id, role: OrgMemberRole.ADMIN, isActive: true },
-  });
-  await prisma.organizationMember.create({
-    data: { organizationId: foodDelivery.id, userId: users[3].id, role: OrgMemberRole.STAFF, isActive: true },
-  });
-  await prisma.organizationMember.create({
-    data: { organizationId: foodDelivery.id, userId: users[16].id, role: OrgMemberRole.STAFF, isActive: true },
-  });
-
-  // Beauty Clinic Members (APPOINTMENT type)
+  // Beauty Clinic Members (APPOINTMENT type) - users[5-11]
   await prisma.organizationMember.create({
     data: { organizationId: beautyClinic.id, userId: users[5].id, role: OrgMemberRole.ADMIN, isActive: true },
   });
@@ -517,18 +507,8 @@ async function main() {
     data: { organizationId: beautyClinic.id, userId: users[11].id, role: OrgMemberRole.STAFF, isActive: true },
   });
 
-  // Dental Clinic Members (APPOINTMENT type)
-  await prisma.organizationMember.create({
-    data: { organizationId: dentalClinic.id, userId: users[5].id, role: OrgMemberRole.ADMIN, isActive: true },
-  });
-  await prisma.organizationMember.create({
-    data: { organizationId: dentalClinic.id, userId: users[10].id, role: OrgMemberRole.STAFF, isActive: true },
-  });
-
-  // SPA Center Members (APPOINTMENT type)
-  await prisma.organizationMember.create({
-    data: { organizationId: spaCenter.id, userId: users[6].id, role: OrgMemberRole.ADMIN, isActive: true },
-  });
+  // Note: users[12-14] are CUSTOMERs - no organization membership
+  // Note: users[16] is DRIVER - no organization membership (drivers are assigned via orders)
 
   console.log('✅ Created organization members with all role combinations\n');
 
@@ -889,28 +869,29 @@ async function main() {
   console.log(`   - All OrgMemberRole types: ADMIN, MANAGER, STAFF`);
   console.log('\n🔑 Test Credentials (all passwords: password123):');
   console.log('\n   === SUPER_ADMIN ===');
-  console.log('   - superadmin@example.com (Full access to all features)');
+  console.log('   - Username: superadmin (Full access to all features)');
   console.log('\n   === SHOP Organization ===');
-  console.log('   - shop-admin@shop.ir (ADMIN role, ADMIN org role - Access: orders, products, customers)');
-  console.log('   - shop-manager@shop.ir (MANAGER role, MANAGER org role - Access: orders, products)');
-  console.log('   - shop-staff@shop.ir (STAFF role, STAFF org role - Limited access)');
-  console.log('   - shop-driver@shop.ir (DRIVER role - Access: my-orders)');
+  console.log('   - Username: shop-admin (ADMIN role, ADMIN org role - Access: orders, products, customers)');
+  console.log('   - Username: shop-manager (MANAGER role, MANAGER org role - Access: orders, products)');
+  console.log('   - Username: shop-staff (STAFF role, STAFF org role - Limited access)');
+  console.log('   - Username: shop-driver (DRIVER role - Access: my-orders)');
   console.log('\n   === APPOINTMENT Organization ===');
-  console.log('   - appt-admin@clinic.ir (ADMIN role, ADMIN org role - Access: appointments, services)');
-  console.log('   - appt-manager@clinic.ir (MANAGER role, MANAGER org role - Access: appointments, services)');
-  console.log('   - appt-staff@clinic.ir (STAFF role, STAFF org role - Access: my-appointments, my-services)');
-  console.log('   - staff-admin-appt@clinic.ir (STAFF role, ADMIN org role - Full appointment access)');
-  console.log('   - staff-manager-appt@clinic.ir (STAFF role, MANAGER org role - Full appointment access)');
+  console.log('   - Username: appt-admin (ADMIN role, ADMIN org role - Access: appointments, services)');
+  console.log('   - Username: appt-manager (MANAGER role, MANAGER org role - Access: appointments, services)');
+  console.log('   - Username: appt-staff (STAFF role, STAFF org role - Access: my-appointments, my-services)');
+  console.log('   - Username: staff-admin-appt (STAFF role, ADMIN org role - Full appointment access)');
+  console.log('   - Username: staff-manager-appt (STAFF role, MANAGER org role - Full appointment access)');
   console.log('\n   === CUSTOMER ===');
-  console.log('   - customer1@example.com (Access: my-orders, my-appointments)');
-  console.log('   - customer2@example.com (Access: my-orders, my-appointments)');
-  console.log('   - customer3@example.com (Access: my-orders, my-appointments)');
+  console.log('   - Username: customer1 (Access: my-orders, my-appointments)');
+  console.log('   - Username: customer2 (Access: my-orders, my-appointments)');
+  console.log('   - Username: customer3 (No email - Access: my-orders, my-appointments)');
   console.log('\n   === DRIVER ===');
-  console.log('   - driver1@shop.ir (Access: my-orders)');
-  console.log('   - driver2@shop.ir (Access: my-orders)');
+  console.log('   - Username: driver1 (Access: my-orders)');
+  console.log('   - Username: driver2 (No email - Access: my-orders)');
   console.log('\n📍 Universal Access (All Users):');
   console.log('   - Settings: /dashboard/settings');
   console.log('   - Calendar: /dashboard/calendar');
+  console.log('\n📝 Note: Email is now optional. Users can authenticate using their unique username.');
 }
 
 main()

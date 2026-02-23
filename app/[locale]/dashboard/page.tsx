@@ -53,6 +53,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 
 // Simple Plus icon component
@@ -92,9 +93,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
   const locale = resolvedParams.locale || "fa"
   
   const [mounted, setMounted] = useState(false)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
 
   useEffect(() => {
@@ -112,16 +111,6 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
     if (!dict) return key
     return getDictValue(dict, key)
   }
-
-  // Navigation items with locale prefix
-  const navItems = [
-    { id: "dashboard", label: t("navigation.dashboard") || "داشبورد", icon: LayoutDashboard, href: `/${locale}/dashboard` },
-    { id: "orders", label: t("navigation.orders") || "سفارش‌ها", icon: ShoppingCart, href: `/${locale}/dashboard/orders` },
-    { id: "products", label: t("navigation.products") || "محصولات", icon: Package, href: `/${locale}/dashboard/products` },
-    { id: "appointments", label: t("navigation.appointments") || "نوبت‌ها", icon: Calendar, href: `/${locale}/dashboard/appointments` },
-    { id: "customers", label: t("organization.members") || "مشتریان", icon: Users, href: `/${locale}/dashboard/customers` },
-    { id: "settings", label: t("navigation.settings") || "تنظیمات", icon: Settings, href: `/${locale}/dashboard/settings` },
-  ]
 
   // Mock data for dashboard metrics
   const salesData = [
@@ -160,110 +149,9 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile Header */}
-      <header className="lg:hidden sticky top-0 z-40 bg-background border-b">
-        <div className="flex items-center justify-between p-4">
-          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="منو"
-              onClick={() => setIsMobileMenuOpen(true)}
-            >
-              <Menu className="h-6 w-6" />
-            </Button>
-            <SheetContent side="right" className="w-72">
-              <SheetHeader>
-                <SheetTitle>{t("navigation.menu") || "منو"}</SheetTitle>
-              </SheetHeader>
-              <ScrollArea className="h-[calc(100vh-8rem)] py-4">
-                <nav className="space-y-2">
-                  {navItems.map((item) => (
-                    <Link
-                      key={item.id}
-                      href={item.href}
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg hover:bg-muted transition-colors"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {item.label}
-                    </Link>
-                  ))}
-                </nav>
-              </ScrollArea>
-            </SheetContent>
-          </Sheet>
-
-          <h1 className="text-lg font-semibold">{t("navigation.dashboard") || "داشبورد"}</h1>
-
-          <DropdownMenu open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="اعلانات"
-              aria-expanded={isNotificationsOpen}
-              aria-haspopup="true"
-              className="rounded-full"
-              onClick={() => setIsNotificationsOpen(true)}
-            >
-              <Bell className="h-5 w-5" />
-            </Button>
-            <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel>{t("navigation.notifications") || "اعلانات"}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-                <span className="font-medium">{t("order.newOrder") || "سفارش جدید"}</span>
-                <span className="text-xs text-muted-foreground">سفارش جدید از علی محمدی</span>
-                <span className="text-xs text-muted-foreground">۵ دقیقه پیش</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-                <span className="font-medium">{t("product.review") || "نظر جدید"}</span>
-                <span className="text-xs text-muted-foreground">نظر ۵ ستاره از کاربر</span>
-                <span className="text-xs text-muted-foreground">۱ ساعت پیش</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </header>
-
-      <div className="flex">
-        {/* Desktop Sidebar - Hidden on mobile */}
-        <aside className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:right-0 lg:w-64 lg:border-l lg:bg-background">
-          <div className="flex items-center gap-2 p-6 border-b">
-            <div className="h-8 w-8 rounded-lg bg-primary" />
-            <span className="text-lg font-semibold">{t("navigation.dashboard") || "پنل مدیریت"}</span>
-          </div>
-          <ScrollArea className="flex-1 p-4">
-            <nav className="space-y-2">
-              {navItems.map((item) => (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  className="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg hover:bg-muted transition-colors"
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-          </ScrollArea>
-          <div className="p-4 border-t">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src="/placeholder-avatar.jpg" alt="آواتار" />
-                <AvatarFallback>آ</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{t("user.admin") || "مدیر فروشگاه"}</p>
-                <p className="text-xs text-muted-foreground truncate">admin@store.com</p>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 lg:pr-64 pb-20 lg:pb-0">
-          <div className="p-4 lg:p-6 space-y-6">
+      {/* Content - Sidebar is now in layout */}
+      <main className="pb-20 lg:pb-0">
+        <div className="p-4 lg:p-6 space-y-6">
             {/* Welcome Section */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
@@ -484,7 +372,6 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
             </div>
           </div>
         </main>
-      </div>
     </div>
   )
 }

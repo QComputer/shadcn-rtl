@@ -35,13 +35,15 @@
     "since": "Since",
     "showing": "Showing",
     "of": "of",
-    "all": "All"
+    "all": "All",
+    "viewAll": "View All"
   },
   "auth": {
     "login": "Login",
     "logout": "Logout",
     "register": "Register",
     "email": "Email",
+    "username": "Username",
     "password": "Password",
     "confirmPassword": "Confirm Password",
     "forgotPassword": "Forgot Password?",
@@ -80,7 +82,11 @@
     "terms": "Terms and Conditions",
     "customers": "Customers",
     "appointments": "Appointments",
-    "menu": "Menu"
+    "menu": "Menu",
+    "myOrders": "My Orders",
+    "myAppointments": "My Appointments",
+    "myServices": "My Services",
+    "calendar": "Calendar"
   },
   "organization": {
     "title": "Organization",

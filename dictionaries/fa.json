@@ -35,13 +35,15 @@
     "since": "عضو از",
     "showing": "نمایش",
     "of": "از",
-    "all": "همه"
+    "all": "همه",
+    "viewAll": "مشاهده همه"
   },
   "auth": {
     "login": "ورود",
     "logout": "خروج",
     "register": "ثبت نام",
     "email": "ایمیل",
+    "username": "نام کاربری",
     "password": "رمز عبور",
     "confirmPassword": "تأیید رمز عبور",
     "forgotPassword": "فراموشی رمز عبور؟",
@@ -80,7 +82,11 @@
     "terms": "قوانین و شرایط",
     "customers": "مشتریان",
     "appointments": "نوبت‌ها",
-    "menu": "منو"
+    "menu": "منو",
+    "myOrders": "سفارشات من",
+    "myAppointments": "نوبت‌های من",
+    "myServices": "خدمات من",
+    "calendar": "تقویم"
   },
   "organization": {
     "title": "سازمان",

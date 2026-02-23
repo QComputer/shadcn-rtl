@@ -238,7 +238,7 @@ function LoginForm({ locale }: { locale: string }) {
                 variant="outline"
                 className="w-full"
                 onClick={() => {
-                  setUsername("admin@example.com")
+                  setUsername("superadmin")
                   setPassword("password123")
                 }}
               >

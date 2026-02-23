@@ -13,7 +13,7 @@ import { checkRouteAccess, type UserAccessContext, type AccessCheckResult } from
 interface AuthUser {
   id: string
   email: string
-  name?: string
+  name: string
   role: UserRole
   locale: string
   theme: string
@@ -35,7 +35,7 @@ interface AuthContextType {
   user: AuthUser | null
   isLoading: boolean
   isAuthenticated: boolean
-  signIn: (email: string, password: string) => Promise<void>
+  signIn: (username: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   hasPermission: (permission: string) => boolean
   // New access control methods
@@ -101,11 +101,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     orgMemberRole: organizationMembership?.role,
   } : null
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (username: string, password: string) => {
     setIsLoading(true)
     try {
       const result = await signInAuth("credentials", {
-        email,
+        username,
         password,
         redirect: false,
       })

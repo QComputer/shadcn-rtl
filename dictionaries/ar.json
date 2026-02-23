@@ -35,13 +35,15 @@
     "since": "منذ",
     "showing": "عرض",
     "of": "من",
-    "all": "الكل"
+    "all": "الكل",
+    "viewAll": "عرض الكل"
   },
   "auth": {
     "login": "تسجيل الدخول",
     "logout": "تسجيل الخروج",
     "register": "تسجيل",
     "email": "البريد الإلكتروني",
+    "username": "اسم المستخدم",
     "password": "كلمة المرور",
     "confirmPassword": "تأكيد كلمة المرور",
     "forgotPassword": "هل نسيت كلمة المرور؟",
@@ -80,7 +82,11 @@
     "terms": "الشروط والأحكام",
     "customers": "العملاء",
     "appointments": "المواعيد",
-    "menu": "القائمة"
+    "menu": "القائمة",
+    "myOrders": "طلباتي",
+    "myAppointments": "مواعيدي",
+    "myServices": "خدماتي",
+    "calendar": "التقويم"
   },
   "organization": {
     "title": "منظمة",

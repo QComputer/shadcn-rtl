@@ -126,9 +126,6 @@ export default function CustomersPage({ params }: { params: Promise<{ locale: st
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
-      {/* Breadcrumb Navigation */}
-      <DashboardBreadcrumb locale={locale} />
-      
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -163,12 +160,12 @@ export default function CustomersPage({ params }: { params: Promise<{ locale: st
                 <Avatar>
                   <AvatarImage src={customer.email} />
                   <AvatarFallback>
-                    {customer.firstName[0]}{customer.lastName[0]}
+                    {customer.name[0]}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <CardTitle className="text-lg">
-                    {customer.firstName} {customer.lastName}
+                    {customer.name} {customer.firstName} {customer.lastName}
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
                     {t("common.since") || "عضو از"} {customer.joinDate.toLocaleDateString("fa-IR")}

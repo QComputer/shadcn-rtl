@@ -2,8 +2,8 @@
 
 ## خلاصه وضعیت - Status Summary
 
-**تاریخ به‌روزرسانی:** ۲ اسفند ۱۴۰۴
-**وضعیت کلی:** ✅ تکمیل شده (با به‌روزرسانی جدید - مسیریابی چند زبانه)
+**تاریخ به‌روزرسانی:** ۴ اسفند ۱۴۰۴
+**وضعیت کلی:** ✅ تکمیل شده
 
 ---
 
@@ -48,118 +48,120 @@
 - اطلاعات تماس
 - تاریخچه سفارشات
 
-#### صفحه تنظیمات
-- تنظیمات ظاهر
-- تنظیمات زبان
-- مدیریت حساب کاربری
+---
 
-### 5. کامپوننت‌های UI ✅
-- Button, Card, Badge, Avatar
-- Dialog, Sheet (Drawer)
-- Select, Combobox
-- Input, Textarea
-- Dropdown Menu
-- Tabs
-- Skeleton Loading
-- Theme Switcher
-- Switch
-- Checkbox
-- Error Boundary
-- **Locale Switcher** (جدید)
+## ویژگی‌های جدید - APPOINTMENT ✅
 
-### 6. ویژگی‌های پیشرفته ✅
-- بارگذاری اسکلتون (Skeleton Loading)
-- مدیریت خطا با Error Boundary
-- انیمیشن‌های نرم با Framer Motion
-- دسترس‌پذیری (Accessibility) کامل
+### 1. صفحه لندینگ سازمان‌های نوبت‌دهی ✅
+- طراحی حرفه‌ای و جذاب
+- نمایش خدمات به صورت دسته‌بندی شده
+- نمایش ساعات کاری
+- اطلاعات تماس و آدرس
+- دکمه رزرو نوبت
 
-### 7. فایل‌های پشتیبان ✅
-- دیکشنری‌های زبانی (فارسی، عربی، انگلیسی)
-- ابزارهای کمکی فارسی
-- سرویس‌های پایگاه داده
-- اعتبارسنجی‌ها
+### 2. سیستم رزرو نوبت ✅
+- انتخاب خدمات
+- انتخاب تاریخ و ساعت
+- فرم اطلاعات مشتری
+- تأیید نوبت
+- ذخیره در دیتابیس
 
-### 8. مسیریابی چند زبانه ✅ (جدید)
-- پیاده‌سازی proxy.ts برای Next.js 16
-- پشتیبانی از سه زبان: فارسی (RTL)، انگلیسی (LTR)، عربی (RTL)
-- LocaleProvider برای مدیریت زبان در سمت کلاینت
-- LocaleSwitcher برای تغییر زبان توسط کاربر
-- تشخیص خودکار زبان از کوکی و Accept-Language
-- ریدایرکت خودکار به URL با پیشوند زبان
+### 3. تقویم مشتریان ✅
+- نمایش نوبت‌های رزرو شده
+- فیلتر بر اساس وضعیت
+- مشاهده جزئیات نوبت
+- لغو نوبت
+
+### 4. تقویم کارکنان ✅
+- نمایش تمام نوبت‌ها
+- مدیریت نوبت‌ها
+- تغییر وضعیت نوبت
+- فیلتر و جستجو
+
+### 5. API جدید ✅
+- مسیر عمومی سازمان‌ها: `/api/public/organizations/[slug]`
+- API اسلات‌های زمانی: `/api/services/[id]/slots`
 
 ---
 
-## وضعیت API ها
+## نقش‌های کاربری - User Roles ✅
 
-### API های پیاده‌سازی شده
-- ✅ `/api/auth/[...nextauth]` - احراز هویت
-- ✅ `/api/users` - مدیریت کاربران
-- ✅ `/api/products` - مدیریت محصولات
-- ✅ `/api/orders` - مدیریت سفارشات
-- ✅ `/api/customers` - مدیریت مشتریان
-- ✅ `/api/organizations` - سازمان‌ها
-- ✅ `/api/appointments` - قرار ملاقات‌ها
-- ✅ `/api/cart` - سبد خرید
-- ✅ `/api/reviews` - نظرات
-- ✅ `/api/services` - خدمات
-- ✅ `/api/categories` - دسته‌بندی‌ها
+| نقش | توضیحات |
+|-----|---------|
+| SUPER_ADMIN | دسترسی کامل به سیستم |
+| ADMIN | مدیریت سازمان |
+| MANAGER | مدیریت تیم و خدمات |
+| STAFF | انجام وظایف محول شده |
+| DRIVER | سفارشاتDelivery |
+| CUSTOMER | مشتری نهایی |
 
 ---
 
-## مسائل رفع شده
+## سازمان‌ها - Organizations ✅
 
-1. **Button Nesting Error**: رفع خطای تودرتویی دکمه در SheetTrigger و DropdownMenuTrigger
-2. **Select Component**: جایگزینی @base-ui/react با @radix-ui/react-select
-3. **TypeScript Errors**: رفع خطاهای نوع‌دهی
-4. **NextAuth Session**: اصلاح imports
-5. **Prisma JSON**: رفع مشکل cast نوع داده
-6. **Hydration**: افزودن Suspense برای searchParams
-7. **Auth Secret**: افزودن secret پیش‌فرض برای توسعه
-8. **Multi-locale Routing**: پیاده‌سازی کامل مسیریابی چند زبانه با Next.js 16
+### انواع سازمان
+| نوع | توضیحات |
+|-----|---------|
+| SHOP | فروشگاه اینترنتی |
+| APPOINTMENT | نوبت‌دهی و رزرو |
+
+### نقش‌های اعضای سازمان
+| نقش | توضیحات |
+|-----|---------|
+| ADMIN | کنترل کامل سازمان |
+| MANAGER | مدیریت تیم و خدمات |
+| STAFF | انجام وظایف |
 
 ---
 
-## نحوه اجرا
+## داده‌های تست - Seed Data ✅
 
-```bash
-# نصب وابستگی‌ها
-npm install
+فایل: `prisma/seed-enhanced.ts`
 
-# اجرای مایگریشن دیتابیس
-npx prisma migrate deploy
+### کاربران تستی
+- Super Admin: superadmin@example.com
+- Admin: admin@shop.ir
+- Manager: manager@clinic.ir
+- Staff: staff@shop.ir
+- Driver: driver@shop.ir
+- Customer: customer1@example.com
 
-# اجرای سرور توسعه
-npm run dev
+**رمز عبور همه کاربران:** password123
+
+---
+
+## مستندات - Documentation ✅
+
+فایل راهنما: `docs/SEED_TESTING_GUIDE.md`
+
+شامل:
+- نحوه اجرای seed
+- تست احراز هویت
+- تست API
+- چک‌لیست تست
+
+---
+
+## وضعیت فنی - Technical Status
+
+### ✅ بیلد موفق
 ```
+npx next build
+```
+تمام مسیرها بدون خطا بیلد می‌شوند.
+
+### ✅ مسیریابی
+- `/[locale]/organizations/[slug]` - صفحه عمومی سازمان
+- `/[locale]/organizations/[slug]/booking` - رزرو نوبت
+- `/[locale]/my-appointments` - نوبت‌های مشتری
+- `/[locale]/dashboard/calendar` - تقویم کارکنان
 
 ---
 
-## دسترسی به برنامه
+## کارهای آینده - Future Work
 
-- **داشبورد:** http://localhost:3000/fa/dashboard
-- **صفحه ورود:** http://localhost:3000/fa/login
-- **انگلیسی:** http://localhost:3000/en/dashboard
-- **عربی:** http://localhost:3000/ar/dashboard
-
----
-
-## نکات مهم
-
-1. تمام متون رابط کاربری به زبان فارسی با جهت RTL هستند
-2. فونت Vazirmatn برای نمایش فارسی استفاده می‌شود
-3. طراحی کاملاً ریسپانسیو است
-4. از Shadcn UI و Radix UI استفاده شده است
-5. مسیریابی چند زبانه با proxy.ts در Next.js 16 پیاده‌سازی شده است
-6. زبان پیش‌فرض فارسی (fa) با جهت RTL است
-
----
-
-## کارهای آینده (اختیاری)
-
-- [ ] تست کامل مسیریابی چند زبانه
-- [ ] تکمیل ترجمه‌های انگلیسی و عربی
-- [ ] به‌روزرسانی تمام صفحات با locale parameter
-- [ ] پیاده‌سازی SEO چند زبانه
-- [ ] ترجمه ایمیل‌ها و اعلان‌ها
-- [ ] افزودن تست‌های واحد
+- [ ] بهبود UI/UX
+- [ ] افزودن اعلان‌ها
+- [ ] پرداخت آنلاین
+- [ ] اپلیکیشن موبایل
 - [ ] بهینه‌سازی عملکرد

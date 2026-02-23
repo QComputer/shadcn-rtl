@@ -1,4 +1,4 @@
-// Prisma 6+ Schema for Multi-Tenant Multi-Locale Next.js Application
+// Prisma 6 Schema for Multi-Tenant Multi-Locale Next.js Application
 // Production-Ready version with all gaps filled
 
 generator client {
@@ -20,8 +20,6 @@ enum OrganizationType {
 
 enum UserRole {
   SUPER_ADMIN
-  ADMIN
-  MANAGER
   STAFF
   DRIVER
   CUSTOMER
@@ -128,12 +126,12 @@ model Organization {
   // Relations
   members              OrganizationMember[]
   businessHours        BusinessHour[]
-  serviceCategories    ServiceCategory[]
-  services             Service[]
-  productCategories    ProductCategory[]
-  products             Product[]
-  carts                ShopCart[]
-  orders               Order[]
+  serviceCategories    ServiceCategory[] // for organization of type APPOINTMENT
+  services             Service[] // for organization of type APPOINTMENT
+  productCategories    ProductCategory[] // for organization of type SHOP
+  products             Product[] // for organization of type SHOP
+  carts                ShopCart[] // for organization of type SHOP
+  orders               Order[] // for organization of type SHOP
   followers            Follow[]
   locations            Location[]
   reviews              Review[]            @relation("OrgReviews")
@@ -156,6 +154,7 @@ model User {
   phone               String?
   name                String?
   avatar              String?
+  cover               String?
   role                UserRole  @default(CUSTOMER)
   isActive            Boolean   @default(true)
   isTeamMember        Boolean   @default(false)

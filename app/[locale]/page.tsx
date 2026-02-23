@@ -85,6 +85,11 @@ export default async function HomePage({
             <div className="flex items-center gap-4">
               <LocaleSwitcher />
               <ThemeSwitcher />
+              <Link href={`/${locale}/register`}>
+                <Button variant="outline" size="sm">
+                  {t("auth.register") || "ثبت نام"}
+                </Button>
+              </Link>
               <Link href={`/${locale}/login`}>
                 <Button variant="default" size="sm">
                   {t("auth.login") || "ورود"}

@@ -80,6 +80,7 @@ export class AppointmentService {
         customer: {
           select: {
             id: true,
+            name: true,
             firstName: true,
             lastName: true,
             email: true,
@@ -104,6 +105,7 @@ export class AppointmentService {
             serviceProvider: {
               select: {
                 id: true,
+                name: true,
                 firstName: true,
                 lastName: true,
               },
@@ -113,6 +115,7 @@ export class AppointmentService {
         customer: {
           select: {
             id: true,
+            name: true,
             firstName: true,
             lastName: true,
             email: true,
@@ -177,6 +180,7 @@ export class AppointmentService {
           customer: {
             select: {
               id: true,
+              name: true,
               firstName: true,
               lastName: true,
               email: true,

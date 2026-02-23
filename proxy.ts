@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
+import type { UserRole, OrgMemberRole, OrganizationType } from "@/lib/types";
 
 // Supported locales - Persian is the default (primary native language)
 export const locales = ["fa", "en", "ar"] as const;
@@ -31,6 +33,123 @@ export const localeConfig: Record<Locale, {
   }
 };
 
+// ============================================
+// Access Control Configuration
+// ============================================
+
+interface RouteAccessConfig {
+  allowedRoles: UserRole[];
+  requiresOrgMembership?: boolean;
+  requiredOrgType?: OrganizationType[];
+  requiredOrgMemberRole?: OrgMemberRole[];
+  isMyOnly?: boolean;
+  isUniversal?: boolean;
+}
+
+/**
+ * Dashboard route access configuration
+ */
+const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
+  // Main dashboard - accessible by all authenticated users
+  "/dashboard": {
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF", "DRIVER", "CUSTOMER"],
+  },
+
+  // Universal access routes
+  "/dashboard/settings": {
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF", "DRIVER", "CUSTOMER"],
+    isUniversal: true,
+  },
+  "/dashboard/calendar": {
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF", "DRIVER", "CUSTOMER"],
+    isUniversal: true,
+  },
+
+  // SUPER_ADMIN only
+  "/dashboard/organizations": {
+    allowedRoles: ["SUPER_ADMIN"],
+  },
+
+  // SHOP organization routes
+  "/dashboard/orders": {
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+    requiresOrgMembership: true,
+    requiredOrgType: ["SHOP"],
+    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+  },
+  "/dashboard/products": {
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+    requiresOrgMembership: true,
+    requiredOrgType: ["SHOP"],
+    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+  },
+  "/dashboard/product-categories": {
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+    requiresOrgMembership: true,
+    requiredOrgType: ["SHOP"],
+    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+  },
+  "/dashboard/customers": {
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+    requiresOrgMembership: true,
+    requiredOrgType: ["SHOP"],
+    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+  },
+  "/dashboard/members": {
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+    requiresOrgMembership: true,
+    requiredOrgType: ["SHOP"],
+    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+  },
+
+  // APPOINTMENT organization routes
+  "/dashboard/appointments": {
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
+    requiresOrgMembership: true,
+    requiredOrgType: ["APPOINTMENT"],
+    requiredOrgMemberRole: ["ADMIN", "MANAGER", "STAFF"],
+  },
+  "/dashboard/services": {
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+    requiresOrgMembership: true,
+    requiredOrgType: ["APPOINTMENT"],
+    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+  },
+  "/dashboard/service-categories": {
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+    requiresOrgMembership: true,
+    requiredOrgType: ["APPOINTMENT"],
+    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+  },
+
+  // Organization details (for org members with admin/manager role)
+  "/dashboard/organization-details": {
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
+    requiresOrgMembership: true,
+    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+  },
+
+  // "My" routes - limited access
+  "/dashboard/my-orders": {
+    allowedRoles: ["SUPER_ADMIN", "CUSTOMER", "DRIVER"],
+    isMyOnly: true,
+  },
+  "/dashboard/my-appointments": {
+    allowedRoles: ["SUPER_ADMIN", "CUSTOMER", "STAFF"],
+    isMyOnly: true,
+  },
+  "/dashboard/my-services": {
+    allowedRoles: ["SUPER_ADMIN", "STAFF"],
+    isMyOnly: true,
+    requiresOrgMembership: true,
+    requiredOrgType: ["APPOINTMENT"],
+  },
+};
+
+// ============================================
+// Helper Functions
+// ============================================
+
 /**
  * Check if pathname has a locale prefix
  */
@@ -41,11 +160,7 @@ function pathnameHasLocale(pathname: string): boolean {
 }
 
 /**
- * Get locale from request based on:
- * 1. Pathname (already has locale)
- * 2. Cookie preference
- * 3. Accept-Language header
- * 4. Default locale (Persian)
+ * Get locale from request
  */
 function getLocale(request: NextRequest): Locale {
   const pathname = request.nextUrl.pathname;
@@ -66,19 +181,16 @@ function getLocale(request: NextRequest): Locale {
 
   const acceptLanguage = request.headers.get("Accept-Language");
   if (acceptLanguage) {
-    // Parse accept-language header: "fa,en;q=0.9,ar;q=0.8"
     const preferredLocales = acceptLanguage.split(",").map((lang) => {
       const [locale, quality] = lang.trim().split(";q=");
       return {
-        locale: locale.split("-")[0], // "fa-IR" -> "fa"
+        locale: locale.split("-")[0],
         quality: quality ? parseFloat(quality) : 1.0
       };
     });
 
-    // Sort by quality (descending)
     preferredLocales.sort((a, b) => b.quality - a.quality);
 
-    // Find first matching locale
     for (const { locale } of preferredLocales) {
       if (locales.includes(locale as Locale)) {
         return locale as Locale;
@@ -104,12 +216,144 @@ export function isRTL(locale: Locale): boolean {
 }
 
 /**
- * Main proxy/middleware function for Next.js 16
- * Handles locale detection, routing, and direction
- * 
- * This middleware works with the /app/[locale] directory structure
+ * Check if path is a dashboard route
  */
-export function proxy(request: NextRequest) {
+function isDashboardRoute(pathname: string): boolean {
+  // Remove locale prefix if present
+  let path = pathname;
+  for (const locale of locales) {
+    if (pathname.startsWith(`/${locale}/`)) {
+      path = pathname.substring(locale.length + 1);
+      break;
+    }
+  }
+  
+  return path.startsWith("/dashboard");
+}
+
+/**
+ * Normalize route path (remove locale prefix and trailing slash)
+ */
+function normalizeRoute(pathname: string): string {
+  let route = pathname;
+  
+  // Remove locale prefix
+  for (const locale of locales) {
+    if (pathname.startsWith(`/${locale}/`)) {
+      route = pathname.substring(locale.length + 1);
+      break;
+    } else if (pathname === `/${locale}`) {
+      route = "/";
+      break;
+    }
+  }
+  
+  // Remove trailing slash
+  if (route.endsWith("/") && route.length > 1) {
+    route = route.slice(0, -1);
+  }
+  
+  return route;
+}
+
+/**
+ * Get route config for a given path
+ */
+function getRouteConfig(route: string): RouteAccessConfig | null {
+  // Direct match
+  if (dashboardRouteConfig[route]) {
+    return dashboardRouteConfig[route];
+  }
+
+  // Check for dynamic routes (e.g., /dashboard/orders/123)
+  const routeSegments = route.split("/");
+  for (let i = routeSegments.length; i > 1; i--) {
+    const parentRoute = routeSegments.slice(0, i).join("/");
+    if (dashboardRouteConfig[parentRoute]) {
+      return dashboardRouteConfig[parentRoute];
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Get redirect path based on user role
+ */
+function getRedirectPathForRole(role: UserRole, locale: Locale): string {
+  switch (role) {
+    case "SUPER_ADMIN":
+      return `/${locale}/dashboard`;
+    case "ADMIN":
+    case "MANAGER":
+      return `/${locale}/dashboard`;
+    case "STAFF":
+      return `/${locale}/dashboard/my-appointments`;
+    case "DRIVER":
+      return `/${locale}/dashboard/my-orders`;
+    case "CUSTOMER":
+      return `/${locale}/dashboard/my-orders`;
+    default:
+      return `/${locale}/dashboard`;
+  }
+}
+
+/**
+ * Check route access for a user
+ */
+async function checkRouteAccess(
+  request: NextRequest,
+  route: string,
+  token: any
+): Promise<{ hasAccess: boolean; redirectPath?: string }> {
+  const routeConfig = getRouteConfig(route);
+  
+  // If no config found, allow access (will be handled by page)
+  if (!routeConfig) {
+    return { hasAccess: true };
+  }
+
+  const userRole = token.role as UserRole;
+  
+  // SUPER_ADMIN has access to everything
+  if (userRole === "SUPER_ADMIN") {
+    return { hasAccess: true };
+  }
+
+  // Universal routes are accessible by all authenticated users
+  if (routeConfig.isUniversal) {
+    return { hasAccess: true };
+  }
+
+  // Check if user role is allowed
+  if (!routeConfig.allowedRoles.includes(userRole)) {
+    const locale = getLocale(request);
+    return {
+      hasAccess: false,
+      redirectPath: getRedirectPathForRole(userRole, locale),
+    };
+  }
+
+  // For routes requiring organization membership, we need to check
+  // This would require a database call, so we'll pass the info to the client
+  // The client-side will do the full check
+  // For middleware, we just check the basic role requirements
+  
+  // Note: Full organization membership check is done client-side
+  // because middleware shouldn't make database calls for performance
+  
+  return { hasAccess: true };
+}
+
+// ============================================
+// Main Middleware Function
+// ============================================
+
+/**
+ * Main proxy/middleware function for Next.js 16
+ * Handles locale detection, routing, authentication, and access control
+ */
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip API routes, static files, and Next.js internals
@@ -149,17 +393,62 @@ export function proxy(request: NextRequest) {
     return response;
   }
 
-  // Path already has locale - extract it and set headers
+  // Path already has locale - extract it
   const locale = pathname.split("/")[1] as Locale;
   
   // Validate locale
   if (!locales.includes(locale)) {
-    // Invalid locale - redirect to default
     const newUrl = new URL(`/${defaultLocale}${pathname}`, request.url);
     return NextResponse.redirect(newUrl);
   }
 
-  // Create response and set locale/direction headers
+  // Check if this is a dashboard route
+  const normalizedRoute = normalizeRoute(pathname);
+  const isDashboard = isDashboardRoute(pathname);
+
+  if (isDashboard) {
+    // Get authentication token
+    const token = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET || "development-secret-change-in-production",
+    });
+
+    // If no token, redirect to login
+    if (!token) {
+      const loginUrl = new URL(`/${locale}/login`, request.url);
+      loginUrl.searchParams.set("callbackUrl", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // Check route access
+    const accessCheck = await checkRouteAccess(request, normalizedRoute, token);
+    
+    if (!accessCheck.hasAccess && accessCheck.redirectPath) {
+      return NextResponse.redirect(new URL(accessCheck.redirectPath, request.url));
+    }
+
+    // Create response with user context headers
+    const response = NextResponse.next();
+    
+    // Set user context headers for downstream use
+    response.headers.set("x-user-id", token.id as string || "");
+    response.headers.set("x-user-role", token.role as string || "");
+    response.headers.set("x-locale", locale);
+    response.headers.set("x-direction", localeConfig[locale].dir);
+    
+    // Set locale cookie if not already set
+    if (!request.cookies.has("locale")) {
+      response.cookies.set("locale", locale, {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365,
+        httpOnly: false,
+      });
+    }
+
+    return response;
+  }
+
+  // Non-dashboard routes - just set locale headers
   const response = NextResponse.next();
   
   // Set headers for downstream use

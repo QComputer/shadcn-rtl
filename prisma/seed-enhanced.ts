@@ -37,21 +37,24 @@ async function main() {
   console.log('✅ Cleaned existing data\n');
 
   // ========================================
-  // 1. CREATE USERS - All Roles
+  // 1. CREATE USERS - All Roles for Access Control Testing
   // ========================================
-  console.log('👤 Creating users with all roles...');
+  console.log('👤 Creating users with all roles for access control testing...');
 
   const hashedPassword = await bcrypt.hash('password123', 12);
 
   const users = await Promise.all([
+    // ========================================
     // SUPER_ADMIN (index 0)
+    // Full access to all features, pages, and functionality
+    // ========================================
     prisma.user.create({
       data: {
         email: 'superadmin@example.com',
         password: hashedPassword,
-        firstName: 'آدمین',
-        lastName: 'اصلی',
-        name: 'آدمین اصلی',
+        firstName: 'سوپر',
+        lastName: 'ادمین',
+        name: 'superadmin',
         phone: '+989100000001',
         role: UserRole.SUPER_ADMIN,
         isActive: true,
@@ -60,14 +63,20 @@ async function main() {
         theme: 'dark',
       },
     }),
-    // ADMIN (index 1)
+
+    // ========================================
+    // SHOP Organization Users (indices 1-5)
+    // ========================================
+    
+    // SHOP ADMIN (index 1)
+    // Access: dashboard, organization details, members, orders, products, product categories
     prisma.user.create({
       data: {
-        email: 'admin@shop.ir',
+        email: 'shop-admin@shop.ir',
         password: hashedPassword,
-        firstName: 'محمد',
-        lastName: 'رحیمی',
-        name: 'محمد رحیمی',
+        firstName: 'مدیر',
+        lastName: 'فروشگاه',
+        name: 'shop-admin',
         phone: '+989100000002',
         role: UserRole.ADMIN,
         isActive: true,
@@ -76,14 +85,16 @@ async function main() {
         theme: 'light',
       },
     }),
-    // MANAGER (index 2)
+
+    // SHOP MANAGER (index 2)
+    // Access: dashboard, organization details, members, orders, products, product categories
     prisma.user.create({
       data: {
-        email: 'manager@clinic.ir',
+        email: 'shop-manager@shop.ir',
         password: hashedPassword,
-        firstName: 'سارا',
-        lastName: 'احمدی',
-        name: 'سارا احمدی',
+        firstName: 'معاون',
+        lastName: 'فروشگاه',
+        name: 'shop-manager',
         phone: '+989100000003',
         role: UserRole.MANAGER,
         isActive: true,
@@ -92,14 +103,17 @@ async function main() {
         theme: 'light',
       },
     }),
-    // STAFF (index 3)
+
+    // SHOP STAFF (index 3)
+    // Access: dashboard, my orders (if also CUSTOMER), settings, calendar
+    // Note: STAFF without ADMIN/MANAGER org role has limited access
     prisma.user.create({
       data: {
-        email: 'staff@shop.ir',
+        email: 'shop-staff@shop.ir',
         password: hashedPassword,
-        firstName: 'علی',
-        lastName: 'محمدی',
-        name: 'علی محمدی',
+        firstName: 'کارمند',
+        lastName: 'فروشگاه',
+        name: 'shop-staff',
         phone: '+989100000004',
         role: UserRole.STAFF,
         isActive: true,
@@ -108,14 +122,16 @@ async function main() {
         theme: 'light',
       },
     }),
-    // DRIVER (index 4)
+
+    // SHOP DRIVER (index 4)
+    // Access: dashboard, my orders, settings, calendar
     prisma.user.create({
       data: {
-        email: 'driver@shop.ir',
+        email: 'shop-driver@shop.ir',
         password: hashedPassword,
-        firstName: 'رضا',
-        lastName: 'طالبی',
-        name: 'رضا طالبی',
+        firstName: 'راننده',
+        lastName: 'فروشگاه',
+        name: 'shop-driver',
         phone: '+989100000005',
         role: UserRole.DRIVER,
         isActive: true,
@@ -124,74 +140,92 @@ async function main() {
         theme: 'light',
       },
     }),
-    // CUSTOMER 1 (index 5)
+
+    // ========================================
+    // APPOINTMENT Organization Users (indices 5-10)
+    // ========================================
+
+    // APPOINTMENT ADMIN (index 5)
+    // Access: dashboard, organization details, members, appointments, services, service categories
     prisma.user.create({
       data: {
-        email: 'customer1@example.com',
+        email: 'appt-admin@clinic.ir',
         password: hashedPassword,
-        firstName: 'مریم',
-        lastName: 'کاظمی',
-        name: 'مریم کاظمی',
+        firstName: 'مدیر',
+        lastName: 'کلینیک',
+        name: 'appt-admin',
         phone: '+989100000006',
-        role: UserRole.CUSTOMER,
+        role: UserRole.ADMIN,
         isActive: true,
+        isTeamMember: true,
         locale: 'fa',
         theme: 'light',
       },
     }),
-    // CUSTOMER 2 (index 6)
+
+    // APPOINTMENT MANAGER (index 6)
+    // Access: dashboard, organization details, members, appointments, services, service categories
     prisma.user.create({
       data: {
-        email: 'customer2@example.com',
+        email: 'appt-manager@clinic.ir',
         password: hashedPassword,
-        firstName: 'نورا',
-        lastName: 'رضایی',
-        name: 'نورا رضایی',
+        firstName: 'معاون',
+        lastName: 'کلینیک',
+        name: 'appt-manager',
         phone: '+989100000007',
-        role: UserRole.CUSTOMER,
+        role: UserRole.MANAGER,
         isActive: true,
+        isTeamMember: true,
         locale: 'fa',
-        theme: 'dark',
+        theme: 'light',
       },
     }),
-    // CUSTOMER 3 (index 7)
+
+    // APPOINTMENT STAFF with STAFF org role (index 7)
+    // Access: dashboard, my appointments, my services, settings, calendar
     prisma.user.create({
       data: {
-        email: 'customer3@example.com',
+        email: 'appt-staff@clinic.ir',
         password: hashedPassword,
-        firstName: 'پارسا',
-        lastName: 'وحیدی',
-        name: 'پارسا وحیدی',
+        firstName: 'کارمند',
+        lastName: 'کلینیک',
+        name: 'appt-staff',
         phone: '+989100000008',
-        role: UserRole.CUSTOMER,
+        role: UserRole.STAFF,
         isActive: true,
+        isTeamMember: true,
         locale: 'fa',
         theme: 'light',
       },
     }),
-    // CUSTOMER 4 (index 8)
+
+    // STAFF with ADMIN org role in APPOINTMENT org (index 8)
+    // Access: dashboard, organizations, appointments, services, service categories
     prisma.user.create({
       data: {
-        email: 'customer4@example.com',
+        email: 'staff-admin-appt@clinic.ir',
         password: hashedPassword,
-        firstName: 'مینا',
-        lastName: 'جلیلی',
-        name: 'مینا جلیلی',
+        firstName: 'کارمند',
+        lastName: 'ادمین',
+        name: 'staff-admin-appt',
         phone: '+989100000009',
-        role: UserRole.CUSTOMER,
+        role: UserRole.STAFF,
         isActive: true,
+        isTeamMember: true,
         locale: 'fa',
         theme: 'light',
       },
     }),
-    // SERVICE PROVIDER 1 - Dermatologist (index 9)
+
+    // STAFF with MANAGER org role in APPOINTMENT org (index 9)
+    // Access: dashboard, organizations, appointments, services, service categories
     prisma.user.create({
       data: {
-        email: 'dr.dermatologist@clinic.ir',
+        email: 'staff-manager-appt@clinic.ir',
         password: hashedPassword,
-        firstName: 'دکتر',
-        lastName: 'پوست',
-        name: 'دکتر پوست',
+        firstName: 'کارمند',
+        lastName: 'منیجر',
+        name: 'staff-manager-appt',
         phone: '+989100000010',
         role: UserRole.STAFF,
         isActive: true,
@@ -200,14 +234,15 @@ async function main() {
         theme: 'light',
       },
     }),
-    // SERVICE PROVIDER 2 - Hair Stylist (index 10)
+
+    // Service Provider 1 - Dermatologist (index 10)
     prisma.user.create({
       data: {
-        email: 'hairstylist@clinic.ir',
+        email: 'dr-derma@clinic.ir',
         password: hashedPassword,
-        firstName: 'نازنین',
-        lastName: 'میرزایی',
-        name: 'نازنین میرزایی',
+        firstName: 'دکتر',
+        lastName: 'پوست',
+        name: 'dr-derma',
         phone: '+989100000011',
         role: UserRole.STAFF,
         isActive: true,
@@ -216,14 +251,15 @@ async function main() {
         theme: 'light',
       },
     }),
-    // SERVICE PROVIDER 3 - Massage Therapist (index 11)
+
+    // Service Provider 2 - Hair Stylist (index 11)
     prisma.user.create({
       data: {
-        email: 'masseur@spa.ir',
+        email: 'hairstylist@clinic.ir',
         password: hashedPassword,
-        firstName: 'حمید',
-        lastName: 'قاسمی',
-        name: 'حمید قاسمی',
+        firstName: 'آرایشگر',
+        lastName: 'مو',
+        name: 'hairstylist',
         phone: '+989100000012',
         role: UserRole.STAFF,
         isActive: true,
@@ -232,32 +268,92 @@ async function main() {
         theme: 'light',
       },
     }),
-    // SERVICE PROVIDER 4 - Beauty Consultant (index 12)
+
+    // ========================================
+    // CUSTOMER Users (indices 12-14)
+    // ========================================
+
+    // CUSTOMER 1 (index 12)
+    // Access: dashboard, my orders, my appointments, settings, calendar
     prisma.user.create({
       data: {
-        email: 'beautician@clinic.ir',
+        email: 'customer1@example.com',
         password: hashedPassword,
-        firstName: 'زهرا',
-        lastName: 'ابراهیمی',
-        name: 'زهرا ابراهیمی',
+        firstName: 'مشتری',
+        lastName: 'اول',
+        name: 'customer1',
         phone: '+989100000013',
-        role: UserRole.STAFF,
+        role: UserRole.CUSTOMER,
+        isActive: true,
+        locale: 'fa',
+        theme: 'light',
+      },
+    }),
+
+    // CUSTOMER 2 (index 13)
+    prisma.user.create({
+      data: {
+        email: 'customer2@example.com',
+        password: hashedPassword,
+        firstName: 'مشتری',
+        lastName: 'دوم',
+        name: 'customer2',
+        phone: '+989100000014',
+        role: UserRole.CUSTOMER,
+        isActive: true,
+        locale: 'fa',
+        theme: 'dark',
+      },
+    }),
+
+    // CUSTOMER 3 (index 14)
+    prisma.user.create({
+      data: {
+        email: 'customer3@example.com',
+        password: hashedPassword,
+        firstName: 'مشتری',
+        lastName: 'سوم',
+        name: 'customer3',
+        phone: '+989100000015',
+        role: UserRole.CUSTOMER,
+        isActive: true,
+        locale: 'fa',
+        theme: 'light',
+      },
+    }),
+
+    // ========================================
+    // DRIVER Users (indices 15-16)
+    // ========================================
+
+    // DRIVER 1 (index 15)
+    // Access: dashboard, my orders, settings, calendar
+    prisma.user.create({
+      data: {
+        email: 'driver1@shop.ir',
+        password: hashedPassword,
+        firstName: 'راننده',
+        lastName: 'اول',
+        name: 'driver1',
+        phone: '+989100000016',
+        role: UserRole.DRIVER,
         isActive: true,
         isTeamMember: true,
         locale: 'fa',
         theme: 'light',
       },
     }),
-    // SECOND MANAGER (index 13)
+
+    // DRIVER 2 (index 16)
     prisma.user.create({
       data: {
-        email: 'manager2@shop.ir',
+        email: 'driver2@shop.ir',
         password: hashedPassword,
-        firstName: 'امیر',
-        lastName: 'نوری',
-        name: 'امیر نوری',
-        phone: '+989100000014',
-        role: UserRole.MANAGER,
+        firstName: 'راننده',
+        lastName: 'دوم',
+        name: 'driver2',
+        phone: '+989100000017',
+        role: UserRole.DRIVER,
         isActive: true,
         isTeamMember: true,
         locale: 'fa',
@@ -269,7 +365,7 @@ async function main() {
   console.log(`✅ Created ${users.length} users with all roles\n`);
 
   // ========================================
-  // 2. CREATE ORGANIZATIONS - All Types
+  // 2. CREATE ORGANIZATIONS - SHOP and APPOINTMENT Types
   // ========================================
   console.log('🏢 Creating organizations...');
 
@@ -304,23 +400,6 @@ async function main() {
       email: 'order@khoone-food.ir',
       logo: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200',
       coverImage: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=1200',
-      isActive: true,
-    },
-  });
-
-  const electronicsShop = await prisma.organization.create({
-    data: {
-      type: OrganizationType.SHOP,
-      locale: 'fa',
-      timezone: 'Asia/Tehran',
-      name: 'دیجی کالا',
-      slug: 'digikala-shop',
-      description: 'فروشگاه تخصصی لوازم الکترونیکی و دیجیتال',
-      address: 'تهران، خیابان آزادی، پلاک ۱۰۰',
-      phone: '+982188666666',
-      email: 'info@digikala-shop.ir',
-      logo: 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=200',
-      coverImage: 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=1200',
       isActive: true,
     },
   });
@@ -377,19 +456,19 @@ async function main() {
     },
   });
 
-  console.log(`✅ Created 6 organizations (3 SHOP, 3 APPOINTMENT)\n`);
+  console.log(`✅ Created 5 organizations (2 SHOP, 3 APPOINTMENT)\n`);
 
   // ========================================
-  // 3. CREATE ORGANIZATION MEMBERS - All Roles
+  // 3. CREATE ORGANIZATION MEMBERS - All Role Combinations
   // ========================================
-  console.log('👥 Creating organization members...');
+  console.log('👥 Creating organization members with all role combinations...');
 
-  // Health Shop Members
+  // Health Shop Members (SHOP type)
   await prisma.organizationMember.create({
     data: { organizationId: healthShop.id, userId: users[1].id, role: OrgMemberRole.ADMIN, isActive: true },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: healthShop.id, userId: users[13].id, role: OrgMemberRole.MANAGER, isActive: true },
+    data: { organizationId: healthShop.id, userId: users[2].id, role: OrgMemberRole.MANAGER, isActive: true },
   });
   await prisma.organizationMember.create({
     data: { organizationId: healthShop.id, userId: users[3].id, role: OrgMemberRole.STAFF, isActive: true },
@@ -397,8 +476,11 @@ async function main() {
   await prisma.organizationMember.create({
     data: { organizationId: healthShop.id, userId: users[4].id, role: OrgMemberRole.STAFF, isActive: true },
   });
+  await prisma.organizationMember.create({
+    data: { organizationId: healthShop.id, userId: users[15].id, role: OrgMemberRole.STAFF, isActive: true },
+  });
 
-  // Food Delivery Members
+  // Food Delivery Members (SHOP type)
   await prisma.organizationMember.create({
     data: { organizationId: foodDelivery.id, userId: users[1].id, role: OrgMemberRole.ADMIN, isActive: true },
   });
@@ -406,55 +488,56 @@ async function main() {
     data: { organizationId: foodDelivery.id, userId: users[3].id, role: OrgMemberRole.STAFF, isActive: true },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: foodDelivery.id, userId: users[4].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: { organizationId: foodDelivery.id, userId: users[16].id, role: OrgMemberRole.STAFF, isActive: true },
   });
 
-  // Electronics Shop Members
+  // Beauty Clinic Members (APPOINTMENT type)
   await prisma.organizationMember.create({
-    data: { organizationId: electronicsShop.id, userId: users[1].id, role: OrgMemberRole.ADMIN, isActive: true },
+    data: { organizationId: beautyClinic.id, userId: users[5].id, role: OrgMemberRole.ADMIN, isActive: true },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: electronicsShop.id, userId: users[2].id, role: OrgMemberRole.MANAGER, isActive: true },
-  });
-
-  // Beauty Clinic Members
-  await prisma.organizationMember.create({
-    data: { organizationId: beautyClinic.id, userId: users[2].id, role: OrgMemberRole.ADMIN, isActive: true },
+    data: { organizationId: beautyClinic.id, userId: users[6].id, role: OrgMemberRole.MANAGER, isActive: true },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: beautyClinic.id, userId: users[9].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: { organizationId: beautyClinic.id, userId: users[7].id, role: OrgMemberRole.STAFF, isActive: true },
   });
+  // STAFF with ADMIN org role in APPOINTMENT org
+  await prisma.organizationMember.create({
+    data: { organizationId: beautyClinic.id, userId: users[8].id, role: OrgMemberRole.ADMIN, isActive: true },
+  });
+  // STAFF with MANAGER org role in APPOINTMENT org
+  await prisma.organizationMember.create({
+    data: { organizationId: beautyClinic.id, userId: users[9].id, role: OrgMemberRole.MANAGER, isActive: true },
+  });
+  // Service providers
   await prisma.organizationMember.create({
     data: { organizationId: beautyClinic.id, userId: users[10].id, role: OrgMemberRole.STAFF, isActive: true },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: beautyClinic.id, userId: users[12].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: { organizationId: beautyClinic.id, userId: users[11].id, role: OrgMemberRole.STAFF, isActive: true },
   });
 
-  // Dental Clinic Members
+  // Dental Clinic Members (APPOINTMENT type)
   await prisma.organizationMember.create({
-    data: { organizationId: dentalClinic.id, userId: users[2].id, role: OrgMemberRole.ADMIN, isActive: true },
+    data: { organizationId: dentalClinic.id, userId: users[5].id, role: OrgMemberRole.ADMIN, isActive: true },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: dentalClinic.id, userId: users[9].id, role: OrgMemberRole.STAFF, isActive: true },
-  });
-
-  // SPA Center Members
-  await prisma.organizationMember.create({
-    data: { organizationId: spaCenter.id, userId: users[2].id, role: OrgMemberRole.ADMIN, isActive: true },
-  });
-  await prisma.organizationMember.create({
-    data: { organizationId: spaCenter.id, userId: users[11].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: { organizationId: dentalClinic.id, userId: users[10].id, role: OrgMemberRole.STAFF, isActive: true },
   });
 
-  console.log('✅ Created organization members with all roles\n');
+  // SPA Center Members (APPOINTMENT type)
+  await prisma.organizationMember.create({
+    data: { organizationId: spaCenter.id, userId: users[6].id, role: OrgMemberRole.ADMIN, isActive: true },
+  });
+
+  console.log('✅ Created organization members with all role combinations\n');
 
   // ========================================
   // 4. CREATE BUSINESS HOURS
   // ========================================
   console.log('🕐 Creating business hours...');
 
-  const allOrgs = [healthShop, foodDelivery, electronicsShop, beautyClinic, dentalClinic, spaCenter];
+  const allOrgs = [healthShop, foodDelivery, beautyClinic, dentalClinic, spaCenter];
   const days: DayOfWeek[] = [DayOfWeek.SATURDAY, DayOfWeek.SUNDAY, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY];
   
   for (const org of allOrgs) {
@@ -487,96 +570,24 @@ async function main() {
   // ========================================
   console.log('⚙️ Creating organization settings...');
 
-  await prisma.organizationSettings.create({
-    data: {
-      organizationId: healthShop.id,
-      settings: { theme: 'light', language: 'fa' },
-      currency: 'IRR',
-      dateFormat: 'YYYY/MM/DD',
-      timeFormat: '24h',
-      minimumOrderAmount: 100000,
-      maximumOrderAmount: 50000000,
-      deliveryRadius: 10,
-      enablePickup: true,
-      enableDelivery: true,
-      emailNotifications: true,
-      smsNotifications: false,
-    },
-  });
-
-  await prisma.organizationSettings.create({
-    data: {
-      organizationId: foodDelivery.id,
-      settings: { theme: 'light', language: 'fa' },
-      currency: 'IRR',
-      dateFormat: 'YYYY/MM/DD',
-      timeFormat: '24h',
-      minimumOrderAmount: 50000,
-      deliveryRadius: 5,
-      enablePickup: true,
-      enableDelivery: true,
-      emailNotifications: true,
-      smsNotifications: false,
-    },
-  });
-
-  await prisma.organizationSettings.create({
-    data: {
-      organizationId: electronicsShop.id,
-      settings: { theme: 'dark', language: 'fa' },
-      currency: 'IRR',
-      dateFormat: 'YYYY/MM/DD',
-      timeFormat: '24h',
-      minimumOrderAmount: 500000,
-      deliveryRadius: 15,
-      enablePickup: true,
-      enableDelivery: true,
-      emailNotifications: true,
-      smsNotifications: true,
-    },
-  });
-
-  await prisma.organizationSettings.create({
-    data: {
-      organizationId: beautyClinic.id,
-      settings: { theme: 'light', language: 'fa' },
-      currency: 'IRR',
-      dateFormat: 'YYYY/MM/DD',
-      timeFormat: '24h',
-      enablePickup: false,
-      enableDelivery: false,
-      emailNotifications: true,
-      smsNotifications: true,
-    },
-  });
-
-  await prisma.organizationSettings.create({
-    data: {
-      organizationId: dentalClinic.id,
-      settings: { theme: 'light', language: 'fa' },
-      currency: 'IRR',
-      dateFormat: 'YYYY/MM/DD',
-      timeFormat: '24h',
-      enablePickup: false,
-      enableDelivery: false,
-      emailNotifications: true,
-      smsNotifications: true,
-    },
-  });
-
-  await prisma.organizationSettings.create({
-    data: {
-      organizationId: spaCenter.id,
-      settings: { theme: 'light', language: 'fa' },
-      currency: 'IRR',
-      dateFormat: 'YYYY/MM/DD',
-      timeFormat: '24h',
-      enablePickup: false,
-      enableDelivery: false,
-      emailNotifications: true,
-      smsNotifications: true,
-    },
-  });
+  for (const org of allOrgs) {
+    await prisma.organizationSettings.create({
+      data: {
+        organizationId: org.id,
+        settings: { theme: 'light', language: 'fa' },
+        currency: 'IRR',
+        dateFormat: 'YYYY/MM/DD',
+        timeFormat: '24h',
+        minimumOrderAmount: 100000,
+        maximumOrderAmount: 50000000,
+        deliveryRadius: 10,
+        enablePickup: true,
+        enableDelivery: true,
+        emailNotifications: true,
+        smsNotifications: false,
+      },
+    });
+  }
 
   console.log('✅ Created organization settings\n');
 
@@ -593,11 +604,6 @@ async function main() {
   const foodCategories = await Promise.all([
     prisma.productCategory.create({ data: { organizationId: foodDelivery.id, name: 'غذاهای اصلی', description: 'غذاهای ایرانی', sortOrder: 1, isActive: true } }),
     prisma.productCategory.create({ data: { organizationId: foodDelivery.id, name: 'پیش غذا', description: 'سالاد و سوپ', sortOrder: 2, isActive: true } }),
-  ]);
-
-  const electronicsCategories = await Promise.all([
-    prisma.productCategory.create({ data: { organizationId: electronicsShop.id, name: 'موبایل و تبلت', description: 'گوشی و تبلت', sortOrder: 1, isActive: true } }),
-    prisma.productCategory.create({ data: { organizationId: electronicsShop.id, name: 'لپتاپ', description: 'لپتاپ و کامپیوتر', sortOrder: 2, isActive: true } }),
   ]);
 
   console.log(`✅ Created product categories\n`);
@@ -624,6 +630,22 @@ async function main() {
         variants: { create: [{ name: '۳۰ عددی', price: 450000, inventory: 100, sku: 'HEALTH-SUP-001-30' }] },
       },
     }),
+    prisma.product.create({
+      data: {
+        organizationId: healthShop.id,
+        categoryId: healthCategories[1].id,
+        name: 'کرم مرطوب‌کننده',
+        description: 'کرم مرطوب‌کننده صورت',
+        basePrice: 280000,
+        sku: 'HEALTH-SKIN-001',
+        images: ['https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400'],
+        trackInventory: true,
+        lowStockThreshold: 15,
+        isActive: true,
+        sortOrder: 1,
+        variants: { create: [{ name: '۵۰ میلی', price: 280000, inventory: 50, sku: 'HEALTH-SKIN-001-50' }] },
+      },
+    }),
   ]);
 
   const foodProducts = await Promise.all([
@@ -640,6 +662,21 @@ async function main() {
         lowStockThreshold: 10,
         isActive: true,
         sortOrder: 1,
+      },
+    }),
+    prisma.product.create({
+      data: {
+        organizationId: foodDelivery.id,
+        categoryId: foodCategories[0].id,
+        name: 'جوجه کباب',
+        description: 'جوجه کباب زعفرانی',
+        basePrice: 320000,
+        sku: 'FOOD-JJ-001',
+        images: ['https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=400'],
+        trackInventory: true,
+        lowStockThreshold: 10,
+        isActive: true,
+        sortOrder: 2,
       },
     }),
   ]);
@@ -660,11 +697,10 @@ async function main() {
   ]);
 
   const beautyServices = await Promise.all([
-    prisma.service.create({ data: { organizationId: beautyClinic.id, categoryId: beautyCategories[0].id, serviceProviderId: users[9].id, name: 'بوتاکس', description: 'تزریق بوتاکس', price: 3500000, duration: 30, isActive: true, sortOrder: 1 } }),
-    prisma.service.create({ data: { organizationId: beautyClinic.id, categoryId: beautyCategories[0].id, serviceProviderId: users[9].id, name: 'فیلر لب', description: 'تزریق فیلر', price: 2800000, duration: 45, isActive: true, sortOrder: 2 } }),
-    prisma.service.create({ data: { organizationId: beautyClinic.id, categoryId: beautyCategories[1].id, serviceProviderId: users[10].id, name: 'کوتاهی مو', description: 'کوتاهی مو', price: 350000, duration: 30, isActive: true, sortOrder: 1 } }),
-    prisma.service.create({ data: { organizationId: beautyClinic.id, categoryId: beautyCategories[1].id, serviceProviderId: users[10].id, name: 'رنگ مو', description: 'رنگ مو', price: 800000, duration: 90, isActive: true, sortOrder: 2 } }),
-    prisma.service.create({ data: { organizationId: beautyClinic.id, categoryId: beautyCategories[2].id, serviceProviderId: users[12].id, name: 'میکاپ', description: 'آرایش', price: 500000, duration: 60, isActive: true, sortOrder: 1 } }),
+    prisma.service.create({ data: { organizationId: beautyClinic.id, categoryId: beautyCategories[0].id, serviceProviderId: users[10].id, name: 'بوتاکس', description: 'تزریق بوتاکس', price: 3500000, duration: 30, isActive: true, sortOrder: 1 } }),
+    prisma.service.create({ data: { organizationId: beautyClinic.id, categoryId: beautyCategories[0].id, serviceProviderId: users[10].id, name: 'فیلر لب', description: 'تزریق فیلر', price: 2800000, duration: 45, isActive: true, sortOrder: 2 } }),
+    prisma.service.create({ data: { organizationId: beautyClinic.id, categoryId: beautyCategories[1].id, serviceProviderId: users[11].id, name: 'کوتاهی مو', description: 'کوتاهی مو', price: 350000, duration: 30, isActive: true, sortOrder: 1 } }),
+    prisma.service.create({ data: { organizationId: beautyClinic.id, categoryId: beautyCategories[1].id, serviceProviderId: users[11].id, name: 'رنگ مو', description: 'رنگ مو', price: 800000, duration: 90, isActive: true, sortOrder: 2 } }),
   ]);
 
   // Dental Clinic Services
@@ -673,9 +709,8 @@ async function main() {
   ]);
 
   const dentalServices = await Promise.all([
-    prisma.service.create({ data: { organizationId: dentalClinic.id, categoryId: dentalCategories[0].id, serviceProviderId: users[9].id, name: 'جرم‌گیری', description: 'جرم‌گیری دندان', price: 500000, duration: 30, isActive: true, sortOrder: 1 } }),
-    prisma.service.create({ data: { organizationId: dentalClinic.id, categoryId: dentalCategories[0].id, serviceProviderId: users[9].id, name: ' سفیدکردن', description: 'بلیچینگ', price: 1500000, duration: 60, isActive: true, sortOrder: 2 } }),
-    prisma.service.create({ data: { organizationId: dentalClinic.id, categoryId: dentalCategories[0].id, serviceProviderId: users[9].id, name: 'کشیدن دندان', description: 'کشیدن دندان', price: 400000, duration: 30, isActive: true, sortOrder: 3 } }),
+    prisma.service.create({ data: { organizationId: dentalClinic.id, categoryId: dentalCategories[0].id, serviceProviderId: users[10].id, name: 'جرم‌گیری', description: 'جرم‌گیری دندان', price: 500000, duration: 30, isActive: true, sortOrder: 1 } }),
+    prisma.service.create({ data: { organizationId: dentalClinic.id, categoryId: dentalCategories[0].id, serviceProviderId: users[10].id, name: 'سفیدکردن', description: 'بلیچینگ', price: 1500000, duration: 60, isActive: true, sortOrder: 2 } }),
   ]);
 
   // SPA Services
@@ -684,9 +719,8 @@ async function main() {
   ]);
 
   const spaServices = await Promise.all([
-    prisma.service.create({ data: { organizationId: spaCenter.id, categoryId: spaCategories[0].id, serviceProviderId: users[11].id, name: 'ماساژ سوئدی', description: 'ماساژ آرامش‌بخش', price: 1200000, duration: 60, isActive: true, sortOrder: 1 } }),
-    prisma.service.create({ data: { organizationId: spaCenter.id, categoryId: spaCategories[0].id, serviceProviderId: users[11].id, name: 'ماساژ تایلندی', description: 'ماساژ تایلندی', price: 1500000, duration: 90, isActive: true, sortOrder: 2 } }),
-    prisma.service.create({ data: { organizationId: spaCenter.id, categoryId: spaCategories[0].id, serviceProviderId: users[11].id, name: 'اسکراب بدن', description: 'لایه‌برداری', price: 900000, duration: 45, isActive: true, sortOrder: 3 } }),
+    prisma.service.create({ data: { organizationId: spaCenter.id, categoryId: spaCategories[0].id, name: 'ماساژ سوئدی', description: 'ماساژ آرامش‌بخش', price: 1200000, duration: 60, isActive: true, sortOrder: 1 } }),
+    prisma.service.create({ data: { organizationId: spaCenter.id, categoryId: spaCategories[0].id, name: 'ماساژ تایلندی', description: 'ماساژ تایلندی', price: 1500000, duration: 90, isActive: true, sortOrder: 2 } }),
   ]);
 
   console.log(`✅ Created service categories and services\n`);
@@ -699,7 +733,7 @@ async function main() {
   // Beauty Clinic Appointments
   await prisma.appointment.create({
     data: {
-      customerId: users[5].id,
+      customerId: users[12].id,
       serviceId: beautyServices[0].id,
       date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
       startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000),
@@ -711,7 +745,7 @@ async function main() {
 
   await prisma.appointment.create({
     data: {
-      customerId: users[6].id,
+      customerId: users[13].id,
       serviceId: beautyServices[2].id,
       date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
       startTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000),
@@ -722,7 +756,7 @@ async function main() {
 
   await prisma.appointment.create({
     data: {
-      customerId: users[7].id,
+      customerId: users[14].id,
       serviceId: beautyServices[3].id,
       date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
       startTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 16 * 60 * 60 * 1000),
@@ -731,21 +765,10 @@ async function main() {
     },
   });
 
-  await prisma.appointment.create({
-    data: {
-      customerId: users[5].id,
-      serviceId: beautyServices[1].id,
-      date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      startTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 11 * 60 * 60 * 1000),
-      endTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 11 * 60 * 60 * 1000 + 45 * 60 * 1000),
-      status: AppointmentStatus.COMPLETED,
-    },
-  });
-
   // Dental Clinic Appointments
   await prisma.appointment.create({
     data: {
-      customerId: users[8].id,
+      customerId: users[12].id,
       serviceId: dentalServices[0].id,
       date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
       startTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 9 * 60 * 60 * 1000),
@@ -757,24 +780,13 @@ async function main() {
   // SPA Appointments
   await prisma.appointment.create({
     data: {
-      customerId: users[6].id,
+      customerId: users[13].id,
       serviceId: spaServices[0].id,
       date: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
       startTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 15 * 60 * 60 * 1000),
       endTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 16 * 60 * 60 * 1000),
       status: AppointmentStatus.PENDING,
       notes: 'ماساژ آرامش‌بخش',
-    },
-  });
-
-  await prisma.appointment.create({
-    data: {
-      customerId: users[7].id,
-      serviceId: spaServices[1].id,
-      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      startTime: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000),
-      endTime: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 15 * 60 * 60 * 1000 + 30 * 60 * 1000),
-      status: AppointmentStatus.COMPLETED,
     },
   });
 
@@ -789,7 +801,8 @@ async function main() {
     data: {
       orderNumber: 'ORD-1404-0001',
       organizationId: healthShop.id,
-      customerId: users[5].id,
+      customerId: users[12].id,
+      driverId: users[15].id,
       type: OrderType.DELIVERY,
       status: OrderStatus.DELIVERED,
       subtotal: 800000,
@@ -808,7 +821,8 @@ async function main() {
     data: {
       orderNumber: 'ORD-1404-0002',
       organizationId: foodDelivery.id,
-      customerId: users[6].id,
+      customerId: users[13].id,
+      driverId: users[16].id,
       type: OrderType.DELIVERY,
       status: OrderStatus.PREPARING,
       subtotal: 350000,
@@ -821,6 +835,22 @@ async function main() {
     },
   });
 
+  await prisma.order.create({
+    data: {
+      orderNumber: 'ORD-1404-0003',
+      organizationId: healthShop.id,
+      customerId: users[14].id,
+      type: OrderType.PICK_UP,
+      status: OrderStatus.PLACED,
+      subtotal: 560000,
+      deliveryFee: 0,
+      tax: 50400,
+      total: 610400,
+      paymentMethod: PaymentMethod.CASH,
+      items: { create: [{ productId: healthProducts[1].id, variantId: allVariants[1]?.id || '', quantity: 2, price: 280000, discount: 0 }] },
+    },
+  });
+
   console.log('✅ Created orders\n');
 
   // ========================================
@@ -829,15 +859,11 @@ async function main() {
   console.log('⭐ Creating reviews...');
 
   await prisma.review.create({
-    data: { organizationId: beautyClinic.id, userId: users[5].id, rating: 5, comment: 'عالی بود', isVerifiedPurchase: true },
+    data: { organizationId: beautyClinic.id, userId: users[12].id, rating: 5, comment: 'عالی بود', isVerifiedPurchase: true },
   });
 
   await prisma.review.create({
-    data: { organizationId: healthShop.id, userId: users[6].id, rating: 4, comment: 'خوب بود', isVerifiedPurchase: true },
-  });
-
-  await prisma.review.create({
-    data: { organizationId: spaCenter.id, userId: users[7].id, rating: 5, comment: 'عالی بود', isVerifiedPurchase: true },
+    data: { organizationId: healthShop.id, userId: users[13].id, rating: 4, comment: 'خوب بود', isVerifiedPurchase: true },
   });
 
   console.log('✅ Created reviews\n');
@@ -847,23 +873,44 @@ async function main() {
   // ========================================
   console.log('❤️ Creating follows...');
 
-  await prisma.follow.create({ data: { organizationId: beautyClinic.id, customerId: users[5].id } });
-  await prisma.follow.create({ data: { organizationId: healthShop.id, customerId: users[6].id } });
-  await prisma.follow.create({ data: { organizationId: spaCenter.id, customerId: users[7].id } });
+  await prisma.follow.create({ data: { organizationId: beautyClinic.id, customerId: users[12].id } });
+  await prisma.follow.create({ data: { organizationId: healthShop.id, customerId: users[13].id } });
+  await prisma.follow.create({ data: { organizationId: spaCenter.id, customerId: users[14].id } });
 
   console.log('✅ Created follows\n');
 
+  // ========================================
+  // Summary
+  // ========================================
   console.log('🎉 Database seeding completed successfully!');
   console.log('\n📊 Summary:');
-  console.log(`   - ${users.length} users (SUPER_ADMIN, ADMIN, MANAGER, STAFF, DRIVER, CUSTOMER)`);
-  console.log(`   - 6 organizations (3 SHOP, 3 APPOINTMENT)`);
+  console.log(`   - ${users.length} users with all role combinations`);
+  console.log(`   - 5 organizations (2 SHOP, 3 APPOINTMENT)`);
   console.log(`   - All OrgMemberRole types: ADMIN, MANAGER, STAFF`);
-  console.log('\n🔑 Test Credentials:');
-  console.log('   - Super Admin: superadmin@example.com / password123');
-  console.log('   - Admin: admin@shop.ir / password123');
-  console.log('   - Manager: manager@clinic.ir / password123');
-  console.log('   - Customer: customer1@example.com / password123');
-  console.log('   - Service Provider: dr.dermatologist@clinic.ir / password123');
+  console.log('\n🔑 Test Credentials (all passwords: password123):');
+  console.log('\n   === SUPER_ADMIN ===');
+  console.log('   - superadmin@example.com (Full access to all features)');
+  console.log('\n   === SHOP Organization ===');
+  console.log('   - shop-admin@shop.ir (ADMIN role, ADMIN org role - Access: orders, products, customers)');
+  console.log('   - shop-manager@shop.ir (MANAGER role, MANAGER org role - Access: orders, products)');
+  console.log('   - shop-staff@shop.ir (STAFF role, STAFF org role - Limited access)');
+  console.log('   - shop-driver@shop.ir (DRIVER role - Access: my-orders)');
+  console.log('\n   === APPOINTMENT Organization ===');
+  console.log('   - appt-admin@clinic.ir (ADMIN role, ADMIN org role - Access: appointments, services)');
+  console.log('   - appt-manager@clinic.ir (MANAGER role, MANAGER org role - Access: appointments, services)');
+  console.log('   - appt-staff@clinic.ir (STAFF role, STAFF org role - Access: my-appointments, my-services)');
+  console.log('   - staff-admin-appt@clinic.ir (STAFF role, ADMIN org role - Full appointment access)');
+  console.log('   - staff-manager-appt@clinic.ir (STAFF role, MANAGER org role - Full appointment access)');
+  console.log('\n   === CUSTOMER ===');
+  console.log('   - customer1@example.com (Access: my-orders, my-appointments)');
+  console.log('   - customer2@example.com (Access: my-orders, my-appointments)');
+  console.log('   - customer3@example.com (Access: my-orders, my-appointments)');
+  console.log('\n   === DRIVER ===');
+  console.log('   - driver1@shop.ir (Access: my-orders)');
+  console.log('   - driver2@shop.ir (Access: my-orders)');
+  console.log('\n📍 Universal Access (All Users):');
+  console.log('   - Settings: /dashboard/settings');
+  console.log('   - Calendar: /dashboard/calendar');
 }
 
 main()

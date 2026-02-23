@@ -33,8 +33,10 @@ export class OrganizationService {
               select: {
                 id: true,
                 email: true,
+                name: true,
                 firstName: true,
                 lastName: true,
+                role: true,
               },
             },
           },
@@ -45,7 +47,7 @@ export class OrganizationService {
     // Update user's isTeamMember flag
     await prisma.user.update({
       where: { id: userId },
-      data: { isTeamMember: true },
+      data: { isTeamMember: true, role: "ADMIN" },
     });
 
     revalidatePath("/dashboard");
@@ -228,10 +230,13 @@ export class OrganizationService {
       },
     });
 
-    // Update user's isTeamMember flag
+    // Update user's isTeamMember flag and role
     await prisma.user.update({
       where: { id: userId },
-      data: { isTeamMember: true },
+      data: { 
+        isTeamMember: true,
+        role, 
+      },
     });
 
     revalidatePath(`/dashboard/organizations/${organizationId}/members`);
@@ -249,6 +254,11 @@ export class OrganizationService {
       },
       data: { role },
     });
+    // Update user's role
+    await prisma.user.update({
+      where: { id: userId },
+      data: { role},
+    });
 
     revalidatePath(`/dashboard/organizations/${organizationId}/members`);
     return member;
@@ -258,6 +268,15 @@ export class OrganizationService {
     await prisma.organizationMember.delete({
       where: {
         organizationId_userId: { organizationId, userId },
+      },
+    });
+
+    // Update user's isTeamMember flag and role
+    await prisma.user.update({
+      where: { id: userId },
+      data: { 
+        isTeamMember: false,
+        role: "CUSTOMER", 
       },
     });
 

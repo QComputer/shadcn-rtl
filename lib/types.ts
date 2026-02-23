@@ -29,8 +29,8 @@ import type {
 
 // Re-export all Prisma types
 export type {
-  Organization,
   User,
+  Organization,
   OrganizationMember,
   BusinessHour,
   ServiceCategory,
@@ -59,7 +59,13 @@ export type {
 
 // Enums
 export type OrganizationType = "SHOP" | "APPOINTMENT";
-export type UserRole = "SUPER_ADMIN" | "ADMIN" | "MANAGER" | "STAFF" | "DRIVER" | "CUSTOMER";
+export type UserRole =
+  | "SUPER_ADMIN"
+  | "ADMIN"
+  | "MANAGER"
+  | "STAFF"
+  | "DRIVER"
+  | "CUSTOMER";
 export type OrgMemberRole = "ADMIN" | "MANAGER" | "STAFF";
 export type AppointmentStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
 export type CartStatus = "ACTIVE" | "CHECKED_OUT" | "ABANDONED";
@@ -162,9 +168,10 @@ export interface SearchParams {
 // Session types
 export interface SessionUser {
   id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
+  username: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
   role: UserRole;
   locale: string;
   theme: string;
@@ -175,7 +182,8 @@ export interface SessionUser {
 // Auth types
 export interface JWTPayload {
   sub: string;
-  email: string;
+  username: string;
+  email?: string;
   role: UserRole;
   isTeamMember: boolean;
   locale: string;

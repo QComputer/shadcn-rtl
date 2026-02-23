@@ -20,7 +20,7 @@ function LoginForm({ locale }: { locale: string }) {
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get("callbackUrl") || `/${locale}/dashboard`
 
-  const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
@@ -49,7 +49,7 @@ function LoginForm({ locale }: { locale: string }) {
 
     try {
       const result = await signIn("credentials", {
-        email,
+        username,
         password,
         redirect: false,
       })
@@ -137,18 +137,18 @@ function LoginForm({ locale }: { locale: string }) {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">{t("auth.email") || "ایمیل"}</Label>
+                <Label htmlFor="username">{t("auth.username") || "نام کاربری"}</Label>
                 <Input
-                  id="email"
-                  type="email"
+                  id="username"
+                  type="text"
                   placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
                   className="text-left"
                   dir="ltr"
-                  autoComplete="email"
-                  aria-describedby="email-error"
+                  autoComplete="username"
+                  aria-describedby="username-error"
                 />
               </div>
 
@@ -238,7 +238,7 @@ function LoginForm({ locale }: { locale: string }) {
                 variant="outline"
                 className="w-full"
                 onClick={() => {
-                  setEmail("admin@example.com")
+                  setUsername("admin@example.com")
                   setPassword("password123")
                 }}
               >

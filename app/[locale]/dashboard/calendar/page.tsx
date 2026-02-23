@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import Link from "next/link"
 import { 
   Calendar, 
@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatPersianDate, formatToman, toPersianDigits } from "@/lib/persian"
+import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 
 interface Appointment {
   id: string
@@ -81,6 +82,9 @@ export default function StaffCalendarPage({
 }: { 
   params: Promise<{ locale: string }>
 }) {
+  const resolvedParams = use(params)
+  const locale = resolvedParams.locale || "fa"
+  
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [appointments, setAppointments] = useState<Appointment[]>([])
@@ -94,7 +98,7 @@ export default function StaffCalendarPage({
     setMounted(true)
     
     import("@/lib/dictionary").then(({ getDictionary }) => {
-      setDict(getDictionary("fa"))
+      setDict(getDictionary(locale))
     })
     
     // Fetch all appointments
@@ -167,16 +171,12 @@ export default function StaffCalendarPage({
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto">
+        {/* Breadcrumb Navigation */}
+        <DashboardBreadcrumb locale={locale} />
+        
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
-            <Link 
-              href="/fa/dashboard"
-              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-2"
-            >
-              <ChevronRight className="h-4 w-4 rotate-180" />
-              {t("common.back")}
-            </Link>
             <h1 className="text-3xl font-bold">تقویم نوبت‌ها</h1>
             <p className="text-muted-foreground">مدیریت و پیگیری نوبت‌ها</p>
           </div>

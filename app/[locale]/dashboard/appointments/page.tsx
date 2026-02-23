@@ -22,6 +22,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
+import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
+import { useDashboardAccess } from "@/hooks/use-auth"
 
 interface Appointment {
   id: string
@@ -64,6 +66,9 @@ export default function AppointmentsPage({ params }: { params: Promise<{ locale:
   const resolvedParams = use(params)
   const locale = resolvedParams.locale || "fa"
   
+  // Access control check
+  const { hasAccess, isLoading: accessLoading } = useDashboardAccess()
+  
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -90,7 +95,8 @@ export default function AppointmentsPage({ params }: { params: Promise<{ locale:
     return matchesSearch && matchesStatus
   })
 
-  if (!mounted) {
+  // Show loading state while checking access
+  if (accessLoading || !mounted) {
     return (
       <div className="p-6 space-y-4">
         <div className="h-10 bg-muted rounded w-1/4" />
@@ -103,8 +109,22 @@ export default function AppointmentsPage({ params }: { params: Promise<{ locale:
     )
   }
 
+  // Show access denied message if no access
+  if (!hasAccess) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold text-muted-foreground">دسترسی محدود</h2>
+          <p className="text-muted-foreground mt-2">شما دسترسی به این صفحه را ندارید</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-4 lg:p-6 space-y-6">
+      {/* Breadcrumb Navigation */}
+      <DashboardBreadcrumb locale={locale} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

@@ -20,7 +20,9 @@ enum OrganizationType {
 
 enum UserRole {
   SUPER_ADMIN
-  ORGANIZATION_MEMBER
+  ADMIN
+  MANAGER
+  STAFF
   DRIVER
   CUSTOMER
 }
@@ -147,12 +149,12 @@ model Organization {
 
 model User {
   id                  String    @id @default(cuid())
-  email               String    @unique
-  password            String
-  firstName           String
-  lastName            String
+  email               String?    @unique
+  password            String    
+  name                String    @unique
+  firstName           String?
+  lastName            String?
   phone               String?
-  name                String?
   avatar              String?
   role                UserRole  @default(CUSTOMER)
   isActive            Boolean   @default(true)
@@ -193,6 +195,7 @@ model User {
   conversationParticipants ConversationParticipant[]
 
   @@index([email])
+  @@index([name])
   @@index([role])
   @@index([isActive])
   @@index([deletedAt])
@@ -202,7 +205,7 @@ model User {
 model OrganizationMember {
   id             String        @id @default(cuid())
   organizationId String
-  userId         String         @unique
+  userId         String        @unique
   role           OrgMemberRole @default(STAFF)
   isActive       Boolean       @default(true)
   joinedAt       DateTime      @default(now())

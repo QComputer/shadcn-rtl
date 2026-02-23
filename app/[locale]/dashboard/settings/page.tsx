@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
+import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 
 export default function SettingsPage({ params }: { params: Promise<{ locale: string }> }) {
   const resolvedParams = use(params)
@@ -42,8 +43,12 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
     )
   }
 
+  // Settings is a universal access page - all authenticated users can access
   return (
     <div className="p-4 lg:p-6 space-y-6">
+      {/* Breadcrumb Navigation */}
+      <DashboardBreadcrumb locale={locale} />
+      
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold">{t("navigation.settings") || "تنظیمات"}</h2>
@@ -85,9 +90,14 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
+                  <Label htmlFor="username">{t("user.username") || "نام کاربری"}</Label>
+                  <Input id="username" defaultValue="محمدی" />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="firstName">{t("user.firstName") || "نام"}</Label>
                   <Input id="firstName" defaultValue="علی" />
                 </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="lastName">{t("user.lastName") || "نام خانوادگی"}</Label>
                   <Input id="lastName" defaultValue="محمدی" />

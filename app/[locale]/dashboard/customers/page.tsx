@@ -29,13 +29,16 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
+import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
+import { useDashboardAccess } from "@/hooks/use-auth"
 
 interface Customer {
   id: string
-  firstName: string
-  lastName: string
-  email: string
-  phone: string
+  name: string
+  firstName?: string
+  lastName?: string
+  email?: string
+  phone?: string
   address?: string
   totalOrders: number
   totalSpent: number
@@ -58,16 +61,19 @@ function formatToman(amount: number): string {
 
 // Sample data
 const sampleCustomers: Customer[] = [
-  { id: "1", firstName: "علی", lastName: "محمدی", email: "ali@example.com", phone: "۰۹۱۲۳۴۵۶۷۸۹", address: "تهران، خیابان ولیعصر", totalOrders: 12, totalSpent: 45000000, joinDate: new Date("2024-01-15"), status: "active" },
-  { id: "2", firstName: "سارا", lastName: "احمدی", email: "sara@example.com", phone: "۰۹۱۲۳۴۵۶۷۸۸", address: "تهران، خیابان انقلاب", totalOrders: 8, totalSpent: 28000000, joinDate: new Date("2024-03-20"), status: "active" },
-  { id: "3", firstName: "محمد", lastName: "رضایی", email: "mohammad@example.com", phone: "۰۹۱۲۳۴۵۶۷۸۷", address: "تهران، خیابان شریعتی", totalOrders: 25, totalSpent: 85000000, joinDate: new Date("2023-11-10"), status: "active" },
-  { id: "4", firstName: "مریم", lastName: "کاظمی", email: "maryam@example.com", phone: "۰۹۱۲۳۴۵۶۷۸۶", address: "تهران، خیابان آزادی", totalOrders: 3, totalSpent: 5200000, joinDate: new Date("2024-06-01"), status: "inactive" },
-  { id: "5", firstName: "احمد", lastName: "حسنی", email: "ahmad@example.com", phone: "۰۹۱۲۳۴۵۶۷۸۵", address: "تهران، خیابان مدرس", totalOrders: 18, totalSpent: 62000000, joinDate: new Date("2024-02-28"), status: "active" },
+  { id: "1", firstName: "علی", lastName: "محمدی", name: "ali", phone: "۰۹۱۲۳۴۵۶۷۸۹", address: "تهران، خیابان ولیعصر", totalOrders: 12, totalSpent: 45000000, joinDate: new Date("2024-01-15"), status: "active" },
+  { id: "2", firstName: "سارا", lastName: "احمدی", name: "sara", phone: "۰۹۱۲۳۴۵۶۷۸۸", address: "تهران، خیابان انقلاب", totalOrders: 8, totalSpent: 28000000, joinDate: new Date("2024-03-20"), status: "active" },
+  { id: "3", firstName: "محمد", lastName: "رضایی", name: "mohammad", phone: "۰۹۱۲۳۴۵۶۷۸۷", address: "تهران، خیابان شریعتی", totalOrders: 25, totalSpent: 85000000, joinDate: new Date("2023-11-10"), status: "active" },
+  { id: "4", firstName: "مریم", lastName: "کاظمی", name: "maryam", phone: "۰۹۱۲۳۴۵۶۷۸۶", address: "تهران، خیابان آزادی", totalOrders: 3, totalSpent: 5200000, joinDate: new Date("2024-06-01"), status: "inactive" },
+  { id: "5", firstName: "احمد", lastName: "حسنی", name: "ahmad", phone: "۰۹۱۲۳۴۵۶۷۸۵", address: "تهران، خیابان مدرس", totalOrders: 18, totalSpent: 62000000, joinDate: new Date("2024-02-28"), status: "active" },
 ]
 
 export default function CustomersPage({ params }: { params: Promise<{ locale: string }> }) {
   const resolvedParams = use(params)
   const locale = resolvedParams.locale || "fa"
+  
+  // Access control check
+  const { hasAccess, isLoading: accessLoading } = useDashboardAccess()
   
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -87,12 +93,13 @@ export default function CustomersPage({ params }: { params: Promise<{ locale: st
   }
 
   const filteredCustomers = customers.filter(customer => 
-    customer.firstName.includes(searchQuery) ||
-    customer.lastName.includes(searchQuery) ||
-    customer.email.includes(searchQuery)
+    customer.firstName?.includes(searchQuery) ||
+    customer.lastName?.includes(searchQuery) ||
+    customer.name.includes(searchQuery)
   )
 
-  if (!mounted) {
+  // Show loading state while checking access
+  if (accessLoading || !mounted) {
     return (
       <div className="p-6 space-y-4">
         <div className="h-10 bg-muted rounded w-1/4" />
@@ -105,8 +112,23 @@ export default function CustomersPage({ params }: { params: Promise<{ locale: st
     )
   }
 
+  // Show access denied message if no access
+  if (!hasAccess) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold text-muted-foreground">دسترسی محدود</h2>
+          <p className="text-muted-foreground mt-2">شما دسترسی به این صفحه را ندارید</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-4 lg:p-6 space-y-6">
+      {/* Breadcrumb Navigation */}
+      <DashboardBreadcrumb locale={locale} />
+      
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

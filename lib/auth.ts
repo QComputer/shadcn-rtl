@@ -73,10 +73,10 @@ const buildProviders = (): Provider[] => {
     CredentialsProvider({
       name: "credentials",
       credentials: {
-        email: {
-           label: "Email",
-           type: "email",
-            placeholder: "Enter your email"
+        username: {
+           label: "username",
+           type: "text",
+            placeholder: "Enter your username or email"
           },
         password: { 
           label: "Password", 
@@ -86,39 +86,44 @@ const buildProviders = (): Provider[] => {
       },
       async authorize(credentials) {
         // Validate that credentials are provided
-        if (!credentials?.email || !credentials?.password) {
+        if (!credentials?.username || !credentials?.password) {
           console.warn("[Auth] Missing credentials during sign-in attempt");
           throw new Error("Username and password are required");
         }
 
-        const email = credentials.email as string;
+        //const email = credentials.email as string;
         const password = credentials.password as string;
+        const username = credentials.username as string;
         
         // Normalize username to lowercase for consistent lookup
-        //const normalizedUsername = username.trim().toLowerCase();
+        const normalizedUsername = username.trim().toLowerCase();
 
         try {
           // Find user by username
           const user = await prisma.user.findFirst({
-            where: { email },
+            where: { name: normalizedUsername },
           });
 
           // User not found
           if (!user) {
-            console.warn(`[Auth] User not found: ${email}`);
+            console.warn(`[Auth] User not found: ${normalizedUsername}`);
             throw new Error("Invalid username or password");
           }
 
           // User has no password set (OAuth user trying to use credentials)
           if (!user.password) {
-            console.warn(`[Auth] OAuth user attempted credentials login: ${email}`);
+            console.warn(
+              `[Auth] OAuth user attempted credentials login: ${normalizedUsername}`,
+            );
             return null;
           }
 
           // Verify password
           const validPassword = await bcrypt.compare(password, user.password);
           if (!validPassword) {
-            console.warn(`[Auth] Invalid password for user: ${email}`);
+            console.warn(
+              `[Auth] Invalid password for user: ${normalizedUsername}`,
+            );
             throw new Error("Invalid username or password");
           }
 
@@ -127,8 +132,9 @@ const buildProviders = (): Provider[] => {
           return {
             id: user.id,
             email: user.email,
-            //name: normalizedUsername || undefined,
+            name: normalizedUsername || undefined,
             role: user.role,
+            isTeamMember: user.isTeamMember || false,
           };
         } catch (error) {
           console.error("[Auth] Error during credentials validation:", error);

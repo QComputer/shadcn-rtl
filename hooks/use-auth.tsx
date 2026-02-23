@@ -7,7 +7,8 @@ import {
   signOut as signOutAuth, 
   useSession,
 } from "next-auth/react"
-import { type UserRole } from "@/lib/types"
+import { type UserRole, type OrgMemberRole, type OrganizationType } from "@/lib/types"
+import { checkRouteAccess, type UserAccessContext, type AccessCheckResult } from "@/lib/access-control"
 
 interface AuthUser {
   id: string
@@ -20,6 +21,16 @@ interface AuthUser {
   isActive: boolean
 }
 
+interface OrganizationMembership {
+  id: string
+  organizationId: string
+  organizationName: string
+  organizationSlug: string
+  organizationType: OrganizationType
+  role: OrgMemberRole
+  isActive: boolean
+}
+
 interface AuthContextType {
   user: AuthUser | null
   isLoading: boolean
@@ -27,6 +38,11 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   hasPermission: (permission: string) => boolean
+  // New access control methods
+  organizationMembership: OrganizationMembership | null
+  accessContext: UserAccessContext | null
+  checkAccess: (route: string) => AccessCheckResult
+  hasRouteAccess: (route: string) => boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -36,11 +52,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const [isLoading, setIsLoading] = useState(true)
+  const [organizationMembership, setOrganizationMembership] = useState<OrganizationMembership | null>(null)
 
   useEffect(() => {
     // Set loading state based on auth status
     setIsLoading(status === "loading")
   }, [status])
+
+  // Fetch organization membership when user is authenticated
+  useEffect(() => {
+    if (status === "authenticated" && session?.user?.id) {
+      fetchOrganizationMembership()
+    } else {
+      setOrganizationMembership(null)
+    }
+  }, [status, session?.user?.id])
+
+  const fetchOrganizationMembership = async () => {
+    try {
+      const response = await fetch("/api/users/me/membership")
+      if (response.ok) {
+        const data = await response.json()
+        setOrganizationMembership(data.membership)
+      }
+    } catch (error) {
+      console.error("Error fetching organization membership:", error)
+      setOrganizationMembership(null)
+    }
+  }
 
   const authUser: AuthUser | null = session?.user ? {
     id: session.user.id as string,
@@ -51,6 +90,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     theme: session.user.theme as string,
     isTeamMember: session.user.isTeamMember as boolean,
     isActive: true,
+  } : null
+
+  // Build access context for permission checks
+  const accessContext: UserAccessContext | null = authUser ? {
+    userId: authUser.id,
+    userRole: authUser.role,
+    organizationId: organizationMembership?.organizationId,
+    organizationType: organizationMembership?.organizationType,
+    orgMemberRole: organizationMembership?.role,
   } : null
 
   const signIn = async (email: string, password: string) => {
@@ -143,6 +191,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return rolePermissions[authUser.role]?.includes(permission) ?? false
   }
 
+  // Check access for a specific route
+  const checkAccess = (route: string): AccessCheckResult => {
+    if (!accessContext) {
+      return {
+        hasAccess: false,
+        reason: "User not authenticated",
+        redirectPath: "/login",
+      }
+    }
+    return checkRouteAccess(route, accessContext)
+  }
+
+  // Simple boolean check for route access
+  const hasRouteAccess = (route: string): boolean => {
+    return checkAccess(route).hasAccess
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -152,6 +217,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signOut,
         hasPermission,
+        organizationMembership,
+        accessContext,
+        checkAccess,
+        hasRouteAccess,
       }}
     >
       {children}
@@ -190,4 +259,102 @@ export function useProtectedRoute(redirectTo: string = "/login") {
   }, [isLoading, isAuthenticated, router, pathname, redirectTo])
 
   return { isLoading, isAuthenticated }
+}
+
+// Hook for dashboard access control
+export function useDashboardAccess() {
+  const { isAuthenticated, isLoading, accessContext, checkAccess, hasRouteAccess } = useAuth()
+  const router = useRouter()
+  const pathname = usePathname()
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      const accessCheck = checkAccess(pathname)
+      if (!accessCheck.hasAccess && accessCheck.redirectPath) {
+        router.push(accessCheck.redirectPath)
+      }
+    }
+  }, [isLoading, isAuthenticated, pathname, checkAccess, router])
+
+  return {
+    isLoading,
+    isAuthenticated,
+    accessContext,
+    hasAccess: isAuthenticated ? checkAccess(pathname).hasAccess : false,
+  }
+}
+
+// Hook for organization context
+export function useOrganizationContext() {
+  const { organizationMembership, accessContext } = useAuth()
+  
+  return {
+    organization: organizationMembership ? {
+      id: organizationMembership.organizationId,
+      name: organizationMembership.organizationName,
+      slug: organizationMembership.organizationSlug,
+      type: organizationMembership.organizationType,
+    } : null,
+    membership: organizationMembership,
+    isLoading: false,
+  }
+}
+
+// Hook for checking specific access permissions
+export function useAccessCheck(route: string) {
+  const { checkAccess, isLoading, isAuthenticated } = useAuth()
+  
+  const accessResult = checkAccess(route)
+  
+  return {
+    hasAccess: accessResult.hasAccess,
+    reason: accessResult.reason,
+    redirectPath: accessResult.redirectPath,
+    isLoading,
+    isAuthenticated,
+  }
+}
+
+// Hook for navigation items filtering
+export function useFilteredNavItems<T extends { requiredRoles?: UserRole[]; requiredOrgType?: OrganizationType[]; requiredOrgMemberRole?: OrgMemberRole[]; isUniversal?: boolean }>(
+  items: T[]
+): T[] {
+  const { accessContext, isAuthenticated } = useAuth()
+  
+  if (!isAuthenticated || !accessContext) {
+    return items.filter(item => item.isUniversal)
+  }
+  
+  return items.filter((item) => {
+    // Universal items are always visible
+    if (item.isUniversal) {
+      return true
+    }
+
+    // SUPER_ADMIN sees everything
+    if (accessContext.userRole === "SUPER_ADMIN") {
+      return true
+    }
+
+    // Check role requirement
+    if (item.requiredRoles && !item.requiredRoles.includes(accessContext.userRole)) {
+      return false
+    }
+
+    // Check org type requirement
+    if (item.requiredOrgType && accessContext.organizationType) {
+      if (!item.requiredOrgType.includes(accessContext.organizationType)) {
+        return false
+      }
+    }
+
+    // Check org member role requirement
+    if (item.requiredOrgMemberRole && accessContext.orgMemberRole) {
+      if (!item.requiredOrgMemberRole.includes(accessContext.orgMemberRole)) {
+        return false
+      }
+    }
+
+    return true
+  })
 }

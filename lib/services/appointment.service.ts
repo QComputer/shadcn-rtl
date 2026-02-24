@@ -10,6 +10,16 @@ import type {
 } from "@/lib/validators";
 import { hasPermission, type UserRole } from "@/lib/types";
 
+// Generate a unique booking reference
+function generateBookingReference(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 export class AppointmentService {
   async create(customerId: string, data: CreateAppointmentInput) {
     // Verify service exists
@@ -61,6 +71,24 @@ export class AppointmentService {
       throw new Error("Time slot is not available");
     }
 
+    // Generate unique booking reference
+    let bookingReference = generateBookingReference();
+    let attempts = 0;
+    while (attempts < 10) {
+      const existing = await prisma.appointment.findUnique({
+        where: { bookingReference },
+      });
+      if (!existing) break;
+      bookingReference = generateBookingReference();
+      attempts++;
+    }
+
+    // Get customer info for snapshot
+    const customer = await prisma.user.findUnique({
+      where: { id: customerId },
+      select: { firstName: true, lastName: true, phone: true, email: true },
+    });
+
     const appointment = await prisma.appointment.create({
       data: {
         date: appointmentDate,
@@ -70,6 +98,11 @@ export class AppointmentService {
         notes: data.notes,
         customerId,
         serviceId: data.serviceId,
+        bookingReference,
+        customerNameAtBooking: data.customerName || 
+          (customer ? `${customer.firstName || ''} ${customer.lastName || ''}`.trim() : null),
+        customerPhoneAtBooking: data.customerPhone || customer?.phone || null,
+        customerEmailAtBooking: data.customerEmail || customer?.email || null,
       },
       include: {
         service: {

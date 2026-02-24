@@ -140,6 +140,8 @@ model Organization {
   bookingSettings   BookingSettings?
   promotions        Promotion[]
   auditLogs         AuditLog[]
+  staffAvailability StaffAvailability[]
+  bookingSessions   BookingSession[]
 
   @@index([type])
   @@index([slug])
@@ -210,8 +212,9 @@ model OrganizationMember {
   isActive       Boolean       @default(true)
   joinedAt       DateTime      @default(now())
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  user         User         @relation(fields: [userId], references: [id])
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  user         User                @relation(fields: [userId], references: [id])
+  availability StaffAvailability[]
 
   @@unique([organizationId, userId])
   @@index([organizationId])
@@ -329,6 +332,24 @@ model Appointment {
   cancellationReason String?
   cancelledBy        String?
 
+  // Confirmation details
+  confirmedAt DateTime?
+  confirmedBy String?
+
+  // Reminder tracking
+  reminderSentAt DateTime?
+  reminderSentBy String?
+  followUpSentAt DateTime?
+  followUpSentBy String?
+
+  // Customer contact info at booking time (for guests)
+  customerNameAtBooking  String?
+  customerPhoneAtBooking String?
+  customerEmailAtBooking String?
+
+  // Booking reference for guest lookup
+  bookingReference String? @unique
+
   customerId String
   serviceId  String
 
@@ -344,6 +365,63 @@ model Appointment {
   @@index([date])
   @@index([status])
   @@index([deletedAt])
+  @@index([bookingReference])
+}
+
+// Staff availability for service providers
+model StaffAvailability {
+  id          String    @id @default(cuid())
+  dayOfWeek   DayOfWeek
+  startTime   String // Format "HH:mm"
+  endTime     String // Format "HH:mm"
+  isAvailable Boolean   @default(true)
+  breakStart  String? // Format "HH:mm"
+  breakEnd    String? // Format "HH:mm"
+
+  // Specific date override (for vacations, special hours, etc.)
+  specificDate DateTime?
+  isDayOff     Boolean   @default(false)
+
+  organizationId String
+  staffId        String
+
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  staff        OrganizationMember @relation(fields: [staffId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([staffId, dayOfWeek, specificDate])
+  @@index([organizationId])
+  @@index([staffId])
+  @@index([specificDate])
+}
+
+// Booking session for tracking booking attempts and analytics
+model BookingSession {
+  id             String    @id @default(cuid())
+  sessionId      String    @unique
+  organizationId String
+  serviceId      String?
+  selectedDate   DateTime?
+  selectedTime   String?
+  customerName   String?
+  customerPhone  String?
+  customerEmail  String?
+  status         String    @default("started") // started, service_selected, datetime_selected, completed, abandoned
+  completedAt    DateTime?
+  abandonedAt    DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt DateTime
+
+  @@index([organizationId])
+  @@index([sessionId])
+  @@index([status])
+  @@index([expiresAt])
 }
 
 // --- SHOP MODELS ---

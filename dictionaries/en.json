@@ -123,7 +123,14 @@
     "verify": "Verify",
     "verified": "Verified",
     "unverified": "Unverified",
-    "categories": "Categories"
+    "categories": "Categories",
+    "bookNow": "Book Now",
+    "ourServices": "Our Services",
+    "open": "Open",
+    "closed": "Closed",
+    "viewAllServices": "View All Services",
+    "viewStaff": "View Our Team",
+    "myAppointments": "My Appointments"
   },
   "product": {
     "title": "Product",
@@ -297,7 +304,22 @@
     "duration": "Duration",
     "notes": "Notes",
     "provider": "Service Provider",
-    "selectProvider": "Select Provider"
+    "selectProvider": "Select Provider",
+    "minutes": "minutes",
+    "availableSlots": "Available Time Slots",
+    "noSlots": "No available slots for this date",
+    "yourInfo": "Your Information",
+    "bookingConfirmed": "Booking Confirmed!",
+    "thankYou": "Thank you for your booking. You will receive a confirmation shortly.",
+    "bookingReference": "Booking Reference",
+    "lookupTitle": "Find Your Appointment",
+    "lookupDesc": "Enter your phone number or booking reference to view your appointments"
+  },
+  "booking": {
+    "summary": "Booking Summary",
+    "selectServiceFirst": "Please select a service first",
+    "reviewDetails": "Review your booking details",
+    "termsAgree": "By confirming this booking, you agree to our terms and conditions"
   },
   "service": {
     "title": "Service",

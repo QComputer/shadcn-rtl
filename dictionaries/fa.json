@@ -131,7 +131,10 @@
     "aboutUs": "درباره ما",
     "closed": "بسته",
     "open": "باز",
-    "today": "امروز"
+    "today": "امروز",
+    "viewAllServices": "مشاهده همه خدمات",
+    "viewStaff": "مشاهده تیم ما",
+    "myAppointments": "نوبت‌های من"
   },
   "product": {
     "title": "محصول",

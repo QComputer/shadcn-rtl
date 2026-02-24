@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { orderService } from "@/lib/services/order.service";
 import { createOrderSchema, orderFilterSchema } from "@/lib/validators";
+import { prisma } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,6 +14,21 @@ export async function GET(request: NextRequest) {
 
     const searchParams = Object.fromEntries(request.nextUrl.searchParams);
     const params = orderFilterSchema.parse(searchParams);
+
+    // Auto-filter by organization for staff users (not SUPER_ADMIN)
+    if (session.user?.role && 
+        !["SUPER_ADMIN", "CUSTOMER", "DRIVER"].includes(session.user.role) && 
+        !params.organizationId) {
+      // Get user's organization membership
+      const membership = await prisma.organizationMember.findFirst({
+        where: { userId: session.user.id },
+        select: { organizationId: true },
+      });
+      
+      if (membership) {
+        params.organizationId = membership.organizationId;
+      }
+    }
 
     // Filter by user role
     let orders;

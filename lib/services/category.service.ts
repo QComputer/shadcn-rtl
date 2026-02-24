@@ -231,7 +231,7 @@ export class ServiceService {
     price: number;
     duration: number;
     categoryId: string;
-    serviceProviderId?: string;
+    serviceProviderId?: string | null;
   }) {
     const { price, duration, categoryId, serviceProviderId, ...categoryData } = data;
     
@@ -257,7 +257,7 @@ export class ServiceService {
         duration,
         categoryId: category.id,
         organizationId,
-        serviceProviderId,
+        ...(serviceProviderId ? { serviceProviderId } : {}),
       },
       include: {
         category: true,

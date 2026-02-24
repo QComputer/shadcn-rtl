@@ -23,6 +23,7 @@ async function main() {
   await prisma.productCategory.deleteMany();
   await prisma.service.deleteMany();
   await prisma.serviceCategory.deleteMany();
+  await prisma.bookingSettings.deleteMany();
   await prisma.organizationSettings.deleteMany();
   await prisma.promotion.deleteMany();
   await prisma.businessHour.deleteMany();
@@ -572,6 +573,39 @@ async function main() {
   console.log('✅ Created organization settings\n');
 
   // ========================================
+  // 5.5. CREATE BOOKING SETTINGS (APPOINTMENT)
+  // ========================================
+  console.log('📅 Creating booking settings for appointment organizations...');
+
+  const appointmentOrgs = [beautyClinic, dentalClinic, spaCenter];
+
+  for (const org of appointmentOrgs) {
+    await prisma.bookingSettings.create({
+      data: {
+        organizationId: org.id,
+        // Slot configuration
+        slotDuration: 30,        // 30-minute slots
+        bufferBefore: 5,         // 5 minutes buffer before
+        bufferAfter: 10,         // 10 minutes buffer after
+        // Booking rules
+        minBookingNotice: 120,   // 2 hours minimum notice
+        maxBookingAdvance: 43200, // 30 days in advance
+        maxAppointmentsPerDay: 20,
+        allowCancellation: true,
+        cancellationDeadline: 1440, // 24 hours before
+        // Customer info requirements
+        requirePhone: true,
+        requireEmail: false,
+        requireName: true,
+        // Auto-confirmation (disabled - requires manual confirmation)
+        autoConfirm: false,
+      },
+    });
+  }
+
+  console.log(`✅ Created booking settings for ${appointmentOrgs.length} appointment organizations\n`);
+
+  // ========================================
   // 6. CREATE PRODUCT CATEGORIES (SHOP)
   // ========================================
   console.log('📦 Creating product categories...');
@@ -866,6 +900,7 @@ async function main() {
   console.log('\n📊 Summary:');
   console.log(`   - ${users.length} users with all role combinations`);
   console.log(`   - 5 organizations (2 SHOP, 3 APPOINTMENT)`);
+  console.log(`   - 3 booking settings for appointment organizations`);
   console.log(`   - All OrgMemberRole types: ADMIN, MANAGER, STAFF`);
   console.log('\n🔑 Test Credentials (all passwords: password123):');
   console.log('\n   === SUPER_ADMIN ===');

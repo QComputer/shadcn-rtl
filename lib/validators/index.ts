@@ -121,6 +121,10 @@ export const createAppointmentSchema = z.object({
   date: z.string().datetime(),
   startTime: z.string().datetime(),
   notes: z.string().max(2000).optional(),
+  // Customer details for guest booking
+  customerName: z.string().min(2, "Name is required").max(200).optional(),
+  customerPhone: z.string().min(10, "Phone number is required").max(20).optional(),
+  customerEmail: z.string().email("Invalid email").optional().or(z.literal("")),
 });
 
 export const updateAppointmentSchema = z.object({
@@ -251,6 +255,7 @@ export const organizationFilterSchema = z.object({
 
 export const productFilterSchema = z.object({
   categoryId: z.string().cuid().optional(),
+  organizationId: z.string().cuid().optional(),
   isActive: z.boolean().optional(),
   search: z.string().optional(),
   minPrice: z.number().nonnegative().optional(),
@@ -261,6 +266,7 @@ export const productFilterSchema = z.object({
 export const orderFilterSchema = z.object({
   status: z.enum(["PENDING", "PLACED", "ACCEPTED", "PREPARING", "READY", "PICKED_UP", "DELIVERED", "RECEIVED", "REFUNDED"]).optional(),
   type: z.enum(["DELIVERY", "PICK_UP"]).optional(),
+  organizationId: z.string().cuid().optional(),
   driverId: z.string().cuid().optional(),
   customerId: z.string().cuid().optional(),
   fromDate: z.string().datetime().optional(),

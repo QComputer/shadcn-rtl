@@ -134,6 +134,7 @@ export class AppointmentService {
     status?: string;
     fromDate?: string;
     toDate?: string;
+    organizationId?: string;
   }) {
     const { 
       page = 1, 
@@ -142,7 +143,8 @@ export class AppointmentService {
       serviceId, 
       status,
       fromDate,
-      toDate 
+      toDate,
+      organizationId
     } = params;
 
     const where: Record<string, unknown> = {
@@ -152,6 +154,11 @@ export class AppointmentService {
     if (customerId) where.customerId = customerId;
     if (serviceId) where.serviceId = serviceId;
     if (status) where.status = status;
+    
+    // Filter by organization through Service relation
+    if (organizationId) {
+      where.service = { organizationId };
+    }
     
     if (fromDate || toDate) {
       where.date = {};
@@ -271,20 +278,27 @@ export class AppointmentService {
   async getAvailableSlots(serviceId: string, date: string) {
     const service = await prisma.service.findUnique({
       where: { id: serviceId },
+      include: { organization: true },
     });
 
     if (!service) {
       throw new Error("Service not found");
     }
 
+    // Get organization timezone (default to UTC if not set)
+    const timezone = service.organization.timezone || "UTC";
+
+    // Parse the date and create a date object in the organization's timezone
     const targetDate = new Date(date);
-    const dayOfWeek = targetDate.toLocaleDateString("en-US", { weekday: "long" });
+    
+    // Get day of week in organization's timezone
+    const dayOfWeek = this.getDayOfWeekInTimezone(targetDate, timezone);
 
     // Get business hours for this day
     const businessHours = await prisma.businessHour.findFirst({
       where: {
         organizationId: service.organizationId,
-        day: dayOfWeek as "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY",
+        day: dayOfWeek,
         isOpen: true,
       },
     });
@@ -293,9 +307,9 @@ export class AppointmentService {
       return [];
     }
 
-    // Get existing appointments for this service on this date
-    const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
+    // Create start and end of day in organization's timezone, then convert to UTC for DB query
+    const startOfDay = new Date(date + "T00:00:00.000Z");
+    const endOfDay = new Date(date + "T23:59:59.999Z");
 
     const existingAppointments = await prisma.appointment.findMany({
       where: {
@@ -315,35 +329,63 @@ export class AppointmentService {
     const [openHour, openMinute] = businessHours.openTime.split(":").map(Number);
     const [closeHour, closeMinute] = businessHours.closeTime.split(":").map(Number);
 
-    let currentTime = new Date(targetDate);
-    currentTime.setHours(openHour, openMinute, 0, 0);
-
-    const closeTime = new Date(targetDate);
-    closeTime.setHours(closeHour, closeMinute, 0, 0);
+    // Create slot times in the organization's timezone context
+    // We work with the date string directly to avoid timezone conversion issues
+    const baseDateStr = date.split("T")[0]; // Get YYYY-MM-DD part
+    
+    let currentSlot = new Date(`${baseDateStr}T${String(openHour).padStart(2, "0")}:${String(openMinute).padStart(2, "0")}:00.000Z`);
+    const closeSlot = new Date(`${baseDateStr}T${String(closeHour).padStart(2, "0")}:${String(closeMinute).padStart(2, "0")}:00.000Z`);
 
     const slotDuration = service.duration;
+    const now = new Date();
 
-    while (currentTime.getTime() + slotDuration * 60 * 1000 <= closeTime.getTime()) {
-      const slotEnd = new Date(currentTime.getTime() + slotDuration * 60 * 1000);
+    while (currentSlot.getTime() + slotDuration * 60 * 1000 <= closeSlot.getTime()) {
+      const slotEnd = new Date(currentSlot.getTime() + slotDuration * 60 * 1000);
       
       // Check if slot conflicts with existing appointments
       const isAvailable = !existingAppointments.some(apt => {
         return (
-          (currentTime >= apt.startTime && currentTime < apt.endTime) ||
+          (currentSlot >= apt.startTime && currentSlot < apt.endTime) ||
           (slotEnd > apt.startTime && slotEnd <= apt.endTime) ||
-          (currentTime <= apt.startTime && slotEnd >= apt.endTime)
+          (currentSlot <= apt.startTime && slotEnd >= apt.endTime)
         );
       });
 
-      if (isAvailable && currentTime > new Date()) {
-        slots.push(currentTime.toISOString());
+      // Only include slots that are in the future
+      if (isAvailable && currentSlot > now) {
+        slots.push(currentSlot.toISOString());
       }
 
       // Move to next slot (30 minute intervals)
-      currentTime = new Date(currentTime.getTime() + 30 * 60 * 1000);
+      currentSlot = new Date(currentSlot.getTime() + 30 * 60 * 1000);
     }
 
     return slots;
+  }
+
+  // Helper method to get day of week in a specific timezone
+  private getDayOfWeekInTimezone(date: Date, timezone: string): "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY" {
+    try {
+      // Use Intl.DateTimeFormat to get day in specific timezone
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: timezone,
+        weekday: "long",
+      });
+      const dayName = formatter.format(date).toUpperCase();
+      
+      // Validate and return the day
+      const validDays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"] as const;
+      if (validDays.includes(dayName as typeof validDays[number])) {
+        return dayName as typeof validDays[number];
+      }
+      
+      // Fallback to UTC day if invalid
+      return date.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase() as typeof validDays[number];
+    } catch {
+      // Fallback to local day if timezone is invalid
+      const days = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"] as const;
+      return days[date.getDay()];
+    }
   }
 }
 

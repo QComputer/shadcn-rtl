@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { productService } from "@/lib/services/product.service";
 import { createProductSchema, productFilterSchema } from "@/lib/validators";
+import { prisma } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,6 +13,21 @@ export async function GET(request: NextRequest) {
     // For customers, only show active products
     if (!session || session.user?.role === "CUSTOMER") {
       params.isActive = true;
+    }
+
+    // Auto-filter by organization for staff users (not SUPER_ADMIN)
+    if (session?.user?.role && 
+        !["SUPER_ADMIN"].includes(session.user.role) && 
+        !params.organizationId) {
+      // Get user's organization membership
+      const membership = await prisma.organizationMember.findFirst({
+        where: { userId: session.user.id },
+        select: { organizationId: true },
+      });
+      
+      if (membership) {
+        params.organizationId = membership.organizationId;
+      }
     }
 
     const products = await productService.list(params);

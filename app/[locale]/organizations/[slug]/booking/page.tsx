@@ -213,6 +213,10 @@ export default function BookingPage({
           date: selectedDate.toISOString(),
           startTime: selectedTime,
           notes: notes || undefined,
+          // Include customer details for guest booking
+          customerName: customerName || undefined,
+          customerPhone: customerPhone || undefined,
+          customerEmail: customerEmail || undefined,
         }),
       })
 

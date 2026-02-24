@@ -10,7 +10,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 // --- ENUMS ---
 
 enum OrganizationType {
@@ -102,44 +101,45 @@ enum AuditAction {
   CHANGE_STATUS
 }
 
-
 // --- CORE MODELS ---
 
 model Organization {
-  id           String           @id @default(cuid())
-  type         OrganizationType
-  locale       String           @default("en")
-  timezone     String           @default("UTC")
-  name         String
-  slug         String           @unique
-  description  String?          @db.Text
-  address      String?
-  phone        String?
-  email        String?
-  logo         String?
-  coverImage   String?
-  isActive     Boolean          @default(true)
+  id          String           @id @default(cuid())
+  type        OrganizationType
+  locale      String           @default("en")
+  timezone    String           @default("UTC")
+  name        String
+  slug        String           @unique
+  description String?          @db.Text
+  address     String?
+  phone       String?
+  email       String?
+  logo        String?
+  coverImage  String?
+  isActive    Boolean          @default(true)
 
   // Timestamps & Soft Delete
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  deletedAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   // Relations
-  members              OrganizationMember[]
-  businessHours        BusinessHour[]
-  serviceCategories    ServiceCategory[]
-  services             Service[]
-  productCategories    ProductCategory[]
-  products             Product[]
-  carts                ShopCart[]
-  orders               Order[]
-  followers            Follow[]
-  locations            Location[]
-  reviews              Review[]            @relation("OrgReviews")
-  settings             OrganizationSettings?
-  promotions           Promotion[]
-  auditLogs            AuditLog[]
+  members           OrganizationMember[]
+  businessHours     BusinessHour[]
+  serviceCategories ServiceCategory[]
+  services          Service[]
+  productCategories ProductCategory[]
+  products          Product[]
+  carts             ShopCart[]
+  guestCarts        GuestCart[]
+  orders            Order[]
+  followers         Follow[]
+  locations         Location[]
+  reviews           Review[]              @relation("OrgReviews")
+  settings          OrganizationSettings?
+  bookingSettings   BookingSettings?
+  promotions        Promotion[]
+  auditLogs         AuditLog[]
 
   @@index([type])
   @@index([slug])
@@ -148,24 +148,24 @@ model Organization {
 }
 
 model User {
-  id                  String    @id @default(cuid())
-  password            String    
-  name                String    @unique
-  email               String?   @unique
-  firstName           String?
-  lastName            String?
-  phone               String?
-  avatar              String?
-  role                UserRole  @default(CUSTOMER)
-  isActive            Boolean   @default(true)
-  isTeamMember        Boolean   @default(false)
+  id           String   @id @default(cuid())
+  password     String
+  name         String   @unique
+  email        String?  @unique
+  firstName    String?
+  lastName     String?
+  phone        String?
+  avatar       String?
+  role         UserRole @default(CUSTOMER)
+  isActive     Boolean  @default(true)
+  isTeamMember Boolean  @default(false)
 
   // Email verification
-  emailVerified       DateTime?
+  emailVerified DateTime?
 
   // User Preferences
-  locale              String    @default("en")
-  theme               String    @default("light")
+  locale String @default("en")
+  theme  String @default("light")
 
   // Security
   lastLoginAt         DateTime?
@@ -173,25 +173,25 @@ model User {
   lockedUntil         DateTime?
 
   // Timestamps & Soft Delete
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  deletedAt           DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   // Relations
-  memberOf                OrganizationMember?    
-  providedServices        Service[]              @relation("ServiceProviderRelation")
-  appointments            Appointment[]          @relation("CustomerAppointmentRelation")
-  carts                   ShopCart[]
-  orders                  Order[]                @relation("CustomerOrderRelation")
-  assignedDeliveries      Order[]                @relation("DriverOrderRelation")
-  following               Follow[]
-  sentMessages            Message[]              @relation("SentMessages")
-  receivedMessages        Message[]              @relation("ReceivedMessages")
-  locations               Location[]
-  reviewsWritten          Review[]               @relation("UserReviews")
-  passwordResets          PasswordReset[]
-  emailVerifications      EmailVerification[]
-  auditLogs               AuditLog[]
+  memberOf                 OrganizationMember?
+  providedServices         Service[]                 @relation("ServiceProviderRelation")
+  appointments             Appointment[]             @relation("CustomerAppointmentRelation")
+  carts                    ShopCart[]
+  orders                   Order[]                   @relation("CustomerOrderRelation")
+  assignedDeliveries       Order[]                   @relation("DriverOrderRelation")
+  following                Follow[]
+  sentMessages             Message[]                 @relation("SentMessages")
+  receivedMessages         Message[]                 @relation("ReceivedMessages")
+  locations                Location[]
+  reviewsWritten           Review[]                  @relation("UserReviews")
+  passwordResets           PasswordReset[]
+  emailVerifications       EmailVerification[]
+  auditLogs                AuditLog[]
   conversationParticipants ConversationParticipant[]
 
   @@index([email])
@@ -210,8 +210,8 @@ model OrganizationMember {
   isActive       Boolean       @default(true)
   joinedAt       DateTime      @default(now())
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  user           User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
 
   @@unique([organizationId, userId])
   @@index([organizationId])
@@ -220,19 +220,18 @@ model OrganizationMember {
 }
 
 model BusinessHour {
-  id             String       @id @default(cuid())
+  id             String    @id @default(cuid())
   day            DayOfWeek
-  openTime       String       // Format "HH:mm"
-  closeTime      String       // Format "HH:mm"
-  isOpen         Boolean      @default(true)
+  openTime       String // Format "HH:mm"
+  closeTime      String // Format "HH:mm"
+  isOpen         Boolean   @default(true)
   organizationId String
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([organizationId, day])
   @@index([organizationId])
 }
-
 
 // --- AUTHENTICATION MODELS ---
 
@@ -244,7 +243,7 @@ model PasswordReset {
   usedAt    DateTime?
   createdAt DateTime  @default(now())
 
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([token])
@@ -252,65 +251,64 @@ model PasswordReset {
 }
 
 model EmailVerification {
-  id          String    @id @default(cuid())
-  userId      String    @unique
-  token       String    @unique
-  email       String
-  expiresAt   DateTime
-  verifiedAt  DateTime?
-  createdAt   DateTime  @default(now())
+  id         String    @id @default(cuid())
+  userId     String    @unique
+  token      String    @unique
+  email      String
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
 
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([expiresAt])
 }
 
-
 // --- APPOINTMENT MODELS ---
 
 model ServiceCategory {
-  id             String       @id @default(cuid())
+  id             String  @id @default(cuid())
   name           String
-  description    String?      @db.Text
+  description    String? @db.Text
   image          String?
-  sortOrder      Int          @default(0)
-  isActive       Boolean      @default(true)
+  sortOrder      Int     @default(0)
+  isActive       Boolean @default(true)
   organizationId String
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  services       Service[]
+  organization Organization @relation(fields: [organizationId], references: [id])
+  services     Service[]
 
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  deletedAt      DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([deletedAt])
 }
 
 model Service {
-  id                String          @id @default(cuid())
-  name              String
-  description       String?         @db.Text
-  price             Decimal         @db.Decimal(12, 2)
-  duration          Int             // In minutes
-  image             String?
-  isActive          Boolean         @default(true)
-  sortOrder         Int             @default(0)
+  id          String  @id @default(cuid())
+  name        String
+  description String? @db.Text
+  price       Decimal @db.Decimal(12, 2)
+  duration    Int // In minutes
+  image       String?
+  isActive    Boolean @default(true)
+  sortOrder   Int     @default(0)
 
   organizationId    String
   categoryId        String
   serviceProviderId String?
 
-  organization      Organization    @relation(fields: [organizationId], references: [id])
-  category          ServiceCategory @relation(fields: [categoryId], references: [id])
-  serviceProvider   User?           @relation("ServiceProviderRelation", fields: [serviceProviderId], references: [id])
-  appointments      Appointment[]
+  organization    Organization    @relation(fields: [organizationId], references: [id])
+  category        ServiceCategory @relation(fields: [categoryId], references: [id])
+  serviceProvider User?           @relation("ServiceProviderRelation", fields: [serviceProviderId], references: [id])
+  appointments    Appointment[]
 
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  deletedAt         DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([categoryId])
@@ -319,27 +317,27 @@ model Service {
 }
 
 model Appointment {
-  id          String            @id @default(cuid())
-  date        DateTime
-  startTime   DateTime
-  endTime     DateTime
-  status      AppointmentStatus @default(PENDING)
-  notes       String?           @db.Text
+  id        String            @id @default(cuid())
+  date      DateTime
+  startTime DateTime
+  endTime   DateTime
+  status    AppointmentStatus @default(PENDING)
+  notes     String?           @db.Text
 
   // Cancellation details
-  cancelledAt          DateTime?
-  cancellationReason    String?
-  cancelledBy          String?
+  cancelledAt        DateTime?
+  cancellationReason String?
+  cancelledBy        String?
 
-  customerId  String
-  serviceId   String
+  customerId String
+  serviceId  String
 
-  customer    User              @relation("CustomerAppointmentRelation", fields: [customerId], references: [id])
-  service     Service           @relation(fields: [serviceId], references: [id])
+  customer User    @relation("CustomerAppointmentRelation", fields: [customerId], references: [id])
+  service  Service @relation(fields: [serviceId], references: [id])
 
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  deletedAt   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([customerId])
   @@index([serviceId])
@@ -348,54 +346,53 @@ model Appointment {
   @@index([deletedAt])
 }
 
-
 // --- SHOP MODELS ---
 
 model ProductCategory {
-  id             String       @id @default(cuid())
+  id             String  @id @default(cuid())
   name           String
-  description    String?      @db.Text
+  description    String? @db.Text
   image          String?
-  sortOrder      Int          @default(0)
-  isActive       Boolean      @default(true)
+  sortOrder      Int     @default(0)
+  isActive       Boolean @default(true)
   organizationId String
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  products       Product[]
+  organization Organization @relation(fields: [organizationId], references: [id])
+  products     Product[]
 
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  deletedAt      DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([deletedAt])
 }
 
 model Product {
-  id             String          @id @default(cuid())
-  name           String
-  description    String?         @db.Text
-  basePrice      Decimal         @db.Decimal(12, 2)
-  images         String[]
-  sku            String?
-  isActive       Boolean         @default(true)
-  sortOrder      Int             @default(0)
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  basePrice   Decimal  @db.Decimal(12, 2)
+  images      String[]
+  sku         String?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
 
   // Inventory management
-  trackInventory Boolean         @default(true)
-  lowStockThreshold Int          @default(10)
+  trackInventory    Boolean @default(true)
+  lowStockThreshold Int     @default(10)
 
   organizationId String
   categoryId     String
 
-  organization   Organization    @relation(fields: [organizationId], references: [id])
-  category       ProductCategory @relation(fields: [categoryId], references: [id])
-  variants       ProductVariant[]
-  orderItems     OrderItem[]
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  category     ProductCategory  @relation(fields: [categoryId], references: [id])
+  variants     ProductVariant[]
+  orderItems   OrderItem[]
 
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  deletedAt      DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([categoryId])
@@ -407,42 +404,43 @@ model Product {
 model ProductVariant {
   id        String   @id @default(cuid())
   sku       String?  @unique
-  name      String   // e.g., "Large / Red"
+  name      String // e.g., "Large / Red"
   price     Decimal? @db.Decimal(12, 2) // Override basePrice if set
   inventory Int      @default(0)
 
   // Stock management
-  reservedQuantity Int    @default(0)
-  allowBackOrder  Boolean @default(false)
+  reservedQuantity Int     @default(0)
+  allowBackOrder   Boolean @default(false)
 
   productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  cartItems   ShopCartItem[]
-  orderItems  OrderItem[]
+  cartItems      ShopCartItem[]
+  guestCartItems GuestCartItem[]
+  orderItems     OrderItem[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([productId])
   @@index([deletedAt])
 }
 
 model ShopCart {
-  id             String       @id @default(cuid())
-  status         CartStatus   @default(ACTIVE)
+  id     String     @id @default(cuid())
+  status CartStatus @default(ACTIVE)
 
   organizationId String
   customerId     String
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  customer       User         @relation(fields: [customerId], references: [id])
-  items          ShopCartItem[]
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  customer     User           @relation(fields: [customerId], references: [id])
+  items        ShopCartItem[]
 
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  expiresAt     DateTime?    // Cart expiration for abandoned carts
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  expiresAt DateTime? // Cart expiration for abandoned carts
 
   @@unique([organizationId, customerId])
   @@index([organizationId, customerId])
@@ -451,70 +449,126 @@ model ShopCart {
 }
 
 model ShopCartItem {
-  id         String   @id @default(cuid())
-  quantity   Int
+  id       String @id @default(cuid())
+  quantity Int
 
-  cartId     String
-  variantId  String
+  cartId    String
+  variantId String
 
-  cart       ShopCart       @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  variant    ProductVariant @relation(fields: [variantId], references: [id])
+  cart    ShopCart       @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id])
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([cartId])
   @@index([variantId])
 }
 
+// Guest Cart for non-authenticated users
+model GuestCart {
+  id        String     @id @default(cuid())
+  sessionId String     @unique
+  status    CartStatus @default(ACTIVE)
+
+  organizationId String
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  items        GuestCartItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt DateTime // Cart expiration (e.g., 7 days)
+
+  @@index([sessionId])
+  @@index([organizationId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model GuestCartItem {
+  id       String @id @default(cuid())
+  quantity Int
+
+  cartId    String
+  variantId String
+
+  cart    GuestCart      @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cartId])
+  @@index([variantId])
+}
+
+// Guest Customer for checkout without account
+model GuestCustomer {
+  id      String  @id @default(cuid())
+  name    String
+  phone   String
+  email   String?
+  address String?
+
+  orders Order[]
+
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+}
+
 model Order {
-  id                    String      @id @default(cuid())
-  orderNumber           String      @unique
-  type                  OrderType
-  status                OrderStatus @default(PENDING)
+  id          String      @id @default(cuid())
+  orderNumber String      @unique
+  type        OrderType
+  status      OrderStatus @default(PENDING)
 
   // Pricing
-  subtotal              Decimal     @db.Decimal(12, 2)
-  deliveryFee           Decimal     @db.Decimal(12, 2) @default(0)
-  tax                   Decimal     @db.Decimal(12, 2) @default(0)
-  discount              Decimal     @db.Decimal(12, 2) @default(0)
-  total                 Decimal     @db.Decimal(12, 2)
+  subtotal    Decimal @db.Decimal(12, 2)
+  deliveryFee Decimal @default(0) @db.Decimal(12, 2)
+  tax         Decimal @default(0) @db.Decimal(12, 2)
+  discount    Decimal @default(0) @db.Decimal(12, 2)
+  total       Decimal @db.Decimal(12, 2)
 
   // Delivery details
   deliveryAddress       String?
   estimatedDeliveryTime DateTime?
-  deliveredAt          DateTime?
+  deliveredAt           DateTime?
 
   // Notes
-  notes                 String?     @db.Text
+  notes String? @db.Text
 
   // Payment
-  paidAt                DateTime?
-  paymentMethod         PaymentMethod?
-  paymentId             String?
+  paidAt        DateTime?
+  paymentMethod PaymentMethod?
+  paymentId     String?
 
   // Promotion
-  promotionId           String?
-  promotionCode         String?
+  promotionId   String?
+  promotionCode String?
 
   // Metadata
-  organizationId        String
-  customerId            String
-  driverId              String?
+  organizationId  String
+  customerId      String?
+  guestCustomerId String?
+  driverId        String?
 
-  organization          Organization  @relation(fields: [organizationId], references: [id])
-  customer              User          @relation("CustomerOrderRelation", fields: [customerId], references: [id])
-  assignedDriver       User?         @relation("DriverOrderRelation", fields: [driverId], references: [id])
-  items                OrderItem[]
-  payment              Payment?
-  promotion            Promotion?    @relation(fields: [promotionId], references: [id])
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  customer       User?          @relation("CustomerOrderRelation", fields: [customerId], references: [id])
+  guestCustomer  GuestCustomer? @relation(fields: [guestCustomerId], references: [id])
+  assignedDriver User?          @relation("DriverOrderRelation", fields: [driverId], references: [id])
+  items          OrderItem[]
+  payment        Payment?
+  promotion      Promotion?     @relation(fields: [promotionId], references: [id])
 
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
-  deletedAt             DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([customerId])
+  @@index([guestCustomerId])
   @@index([driverId])
   @@index([status])
   @@index([createdAt])
@@ -524,20 +578,20 @@ model Order {
 }
 
 model OrderItem {
-  id        String  @id @default(cuid())
-  quantity  Int
-  price     Decimal @db.Decimal(12, 2)
+  id       String  @id @default(cuid())
+  quantity Int
+  price    Decimal @db.Decimal(12, 2)
 
   // Optional discount per item
-  discount  Decimal @db.Decimal(12, 2) @default(0)
+  discount Decimal @default(0) @db.Decimal(12, 2)
 
   orderId   String
   productId String
   variantId String?
 
-  order     Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product   Product         @relation(fields: [productId], references: [id])
-  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+  order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
 
   createdAt DateTime @default(now())
 
@@ -547,18 +601,18 @@ model OrderItem {
 }
 
 model Payment {
-  id              String        @id @default(cuid())
-  amount          Decimal       @db.Decimal(12, 2)
-  method          PaymentMethod
-  status          PaymentStatus @default(PENDING)
-  transactionId   String?
-  metadata        Json?
+  id            String        @id @default(cuid())
+  amount        Decimal       @db.Decimal(12, 2)
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  transactionId String?
+  metadata      Json?
 
-  orderId         String        @unique
-  order           Order         @relation(fields: [orderId], references: [id])
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id])
 
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([orderId])
   @@index([status])
@@ -566,25 +620,25 @@ model Payment {
 }
 
 model Promotion {
-  id              String    @id @default(cuid())
-  code            String    @unique
-  description     String?
-  discountType    String    // "percentage" | "fixed"
-  discountValue   Decimal   @db.Decimal(12, 2)
-  minOrderAmount  Decimal?  @db.Decimal(12, 2)
-  maxUses         Int?
-  usedCount       Int       @default(0)
-  startsAt        DateTime
-  expiresAt       DateTime
-  isActive        Boolean   @default(true)
+  id             String   @id @default(cuid())
+  code           String   @unique
+  description    String?
+  discountType   String // "percentage" | "fixed"
+  discountValue  Decimal  @db.Decimal(12, 2)
+  minOrderAmount Decimal? @db.Decimal(12, 2)
+  maxUses        Int?
+  usedCount      Int      @default(0)
+  startsAt       DateTime
+  expiresAt      DateTime
+  isActive       Boolean  @default(true)
 
-  organizationId  String
-  organization    Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
-  orders          Order[]
+  orders Order[]
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([organizationId])
   @@index([code])
@@ -592,25 +646,24 @@ model Promotion {
   @@index([isActive])
 }
 
-
 // --- SOCIAL & FEEDBACK ---
 
 model Review {
-  id             String       @id @default(cuid())
-  rating         Int          @default(5)
-  comment        String?      @db.Text
+  id      String  @id @default(cuid())
+  rating  Int     @default(5)
+  comment String? @db.Text
 
   // Review metadata
-  isVerifiedPurchase Boolean  @default(false)
+  isVerifiedPurchase Boolean @default(false)
 
   userId         String
   organizationId String
 
-  user           User         @relation("UserReviews", fields: [userId], references: [id])
-  organization   Organization @relation("OrgReviews", fields: [organizationId], references: [id])
+  user         User         @relation("UserReviews", fields: [userId], references: [id])
+  organization Organization @relation("OrgReviews", fields: [organizationId], references: [id])
 
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, organizationId]) // One review per user per org
   @@index([organizationId])
@@ -618,13 +671,13 @@ model Review {
 }
 
 model Follow {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   customerId     String
   organizationId String
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime @default(now())
 
-  customer       User         @relation(fields: [customerId], references: [id])
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  customer     User         @relation(fields: [customerId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([customerId, organizationId])
   @@index([organizationId])
@@ -633,27 +686,27 @@ model Follow {
 model Conversation {
   id            String    @id @default(cuid())
   type          String    @default("direct") // "direct" | "group"
-  name          String?   // For group chats
+  name          String? // For group chats
   lastMessage   String?   @db.Text
   lastMessageAt DateTime?
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  participants  ConversationParticipant[]
-  messages      Message[]
+  participants ConversationParticipant[]
+  messages     Message[]
 }
 
 model ConversationParticipant {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   conversationId String
   userId         String
-  role           String       @default("member") // "member" | "admin"
-  joinedAt       DateTime     @default(now())
-  lastReadAt     DateTime     @default(now())
+  role           String   @default("member") // "member" | "admin"
+  joinedAt       DateTime @default(now())
+  lastReadAt     DateTime @default(now())
 
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [userId], references: [id])
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
 
   @@unique([conversationId, userId])
   @@index([userId])
@@ -661,20 +714,20 @@ model ConversationParticipant {
 }
 
 model Message {
-  id             String       @id @default(cuid())
-  content        String       @db.Text
-  isRead         Boolean      @default(false)
-  readAt         DateTime?
+  id      String    @id @default(cuid())
+  content String    @db.Text
+  isRead  Boolean   @default(false)
+  readAt  DateTime?
 
   senderId       String
   receiverId     String
   conversationId String
 
-  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
-  receiver       User         @relation("ReceivedMessages", fields: [receiverId], references: [id])
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  sender       User         @relation("SentMessages", fields: [senderId], references: [id])
+  receiver     User         @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  conversation Conversation @relation(fields: [conversationId], references: [id])
 
-  createdAt      DateTime     @default(now())
+  createdAt DateTime @default(now())
 
   @@index([conversationId])
   @@index([senderId])
@@ -683,83 +736,114 @@ model Message {
 }
 
 model Location {
-  id             String       @id @default(cuid())
-  latitude       Float
-  longitude      Float
-  timestamp      DateTime     @default(now())
-  accuracy       Float?
-  altitude       Float?
-  speed          Float?
+  id        String   @id @default(cuid())
+  latitude  Float
+  longitude Float
+  timestamp DateTime @default(now())
+  accuracy  Float?
+  altitude  Float?
+  speed     Float?
 
   userId         String
   organizationId String?
 
-  user           User         @relation(fields: [userId], references: [id])
-  organization   Organization? @relation(fields: [organizationId], references: [id])
+  user         User          @relation(fields: [userId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
 
   @@index([userId])
   @@index([organizationId])
   @@index([timestamp])
 }
 
-
 // --- SETTINGS & CONFIGURATION ---
 
 model OrganizationSettings {
-  id             String   @id @default(cuid())
-  organizationId String   @unique
+  id             String @id @default(cuid())
+  organizationId String @unique
 
   // General settings
-  settings       Json     // Flexible configuration store
-  currency       String   @default("USD")
-  dateFormat     String   @default("YYYY-MM-DD")
-  timeFormat     String   @default("24h")
+  settings   Json // Flexible configuration store
+  currency   String @default("USD")
+  dateFormat String @default("YYYY-MM-DD")
+  timeFormat String @default("24h")
 
   // Business settings
   minimumOrderAmount Decimal? @db.Decimal(12, 2)
   maximumOrderAmount Decimal? @db.Decimal(12, 2)
-  deliveryRadius    Float?
-  enablePickup     Boolean  @default(true)
-  enableDelivery   Boolean  @default(true)
+  deliveryRadius     Float?
+  enablePickup       Boolean  @default(true)
+  enableDelivery     Boolean  @default(true)
 
   // Notification settings
   emailNotifications Boolean @default(true)
   smsNotifications   Boolean @default(false)
 
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
 }
 
+// Booking Settings for appointment-based organizations
+model BookingSettings {
+  id             String @id @default(cuid())
+  organizationId String @unique
+
+  // Slot configuration
+  slotDuration Int @default(30) // minutes
+  bufferBefore Int @default(0) // minutes before appointment
+  bufferAfter  Int @default(0) // minutes after appointment
+
+  // Booking rules
+  minBookingNotice      Int     @default(60) // minutes before appointment
+  maxBookingAdvance     Int     @default(43200) // minutes (30 days default)
+  maxAppointmentsPerDay Int?
+  allowCancellation     Boolean @default(true)
+  cancellationDeadline  Int     @default(1440) // minutes before (24h default)
+
+  // Customer info requirements
+  requirePhone Boolean @default(true)
+  requireEmail Boolean @default(false)
+  requireName  Boolean @default(true)
+
+  // Auto-confirmation
+  autoConfirm Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+}
 
 // --- AUDIT & LOGGING ---
 
 model AuditLog {
-  id             String      @id @default(cuid())
-  action         AuditAction
-  entityType     String      // e.g., "Order", "User", "Organization"
-  entityId       String
-  description    String?
+  id          String      @id @default(cuid())
+  action      AuditAction
+  entityType  String // e.g., "Order", "User", "Organization"
+  entityId    String
+  description String?
 
   // Before/after values
-  previousValue  Json?
-  newValue       Json?
+  previousValue Json?
+  newValue      Json?
 
   // Request metadata
-  ipAddress      String?
-  userAgent      String?
+  ipAddress String?
+  userAgent String?
 
   // User info
   userId         String?
   organizationId String?
 
-  user           User?        @relation(fields: [userId], references: [id])
-  organization   Organization? @relation(fields: [organizationId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
 
-  createdAt      DateTime     @default(now())
+  createdAt DateTime @default(now())
 
   @@index([entityType, entityId])
   @@index([userId])

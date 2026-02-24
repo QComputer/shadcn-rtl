@@ -1,0 +1,199 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { randomUUID } from "crypto";
+import { Decimal } from "@prisma/client/runtime/library";
+
+// Generate a unique order number
+function generateOrderNumber(): string {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = randomUUID().split("-")[0].toUpperCase();
+  return `ORD-${timestamp}-${random}`;
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const {
+      organizationId,
+      customerName,
+      customerPhone,
+      customerEmail,
+      shippingAddress,
+      city,
+      postalCode,
+      notes,
+      items,
+    } = body;
+
+    // Validate required fields
+    if (!organizationId) {
+      return NextResponse.json({ error: "Organization ID is required" }, { status: 400 });
+    }
+
+    if (!customerName || !customerPhone || !shippingAddress || !city || !postalCode) {
+      return NextResponse.json({ error: "Missing required customer information" }, { status: 400 });
+    }
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: "Order must contain at least one item" }, { status: 400 });
+    }
+
+    // Verify organization exists
+    const organization = await prisma.organization.findUnique({
+      where: { id: organizationId },
+    });
+
+    if (!organization) {
+      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+    }
+
+    // Validate items and calculate total
+    let subtotal = new Decimal(0);
+    const orderItems: Array<{
+      productId: string;
+      variantId: string;
+      quantity: number;
+      price: Decimal;
+    }> = [];
+
+    for (const item of items) {
+      const variant = await prisma.productVariant.findUnique({
+        where: { id: item.variantId },
+        include: {
+          product: {
+            include: { organization: true },
+          },
+        },
+      });
+
+      if (!variant) {
+        return NextResponse.json(
+          { error: `Product variant ${item.variantId} not found` },
+          { status: 404 }
+        );
+      }
+
+      if (variant.product.organizationId !== organizationId) {
+        return NextResponse.json(
+          { error: `Product ${variant.product.name} does not belong to this organization` },
+          { status: 400 }
+        );
+      }
+
+      // Check inventory if tracked
+      if (variant.product.trackInventory && variant.inventory < item.quantity) {
+        return NextResponse.json(
+          { error: `Insufficient inventory for ${variant.product.name} - ${variant.name}` },
+          { status: 400 }
+        );
+      }
+
+      const price = new Decimal(item.price || variant.price || variant.product.basePrice);
+      subtotal = subtotal.add(price.mul(item.quantity));
+
+      orderItems.push({
+        productId: variant.productId,
+        variantId: variant.id,
+        quantity: item.quantity,
+        price,
+      });
+    }
+
+    // Create or find guest customer
+    let guestCustomer = await prisma.guestCustomer.findFirst({
+      where: {
+        phone: customerPhone,
+      },
+    });
+
+    if (!guestCustomer) {
+      guestCustomer = await prisma.guestCustomer.create({
+        data: {
+          name: customerName,
+          phone: customerPhone,
+          email: customerEmail || null,
+          address: `${shippingAddress}, ${city}, ${postalCode}`,
+        },
+      });
+    } else {
+      // Update customer info if provided
+      await prisma.guestCustomer.update({
+        where: { id: guestCustomer.id },
+        data: {
+          name: customerName,
+          email: customerEmail || guestCustomer.email,
+          address: `${shippingAddress}, ${city}, ${postalCode}`,
+        },
+      });
+    }
+
+    // Create order with items in a transaction
+    const orderNumber = generateOrderNumber();
+    const fullAddress = `${shippingAddress}, ${city}, ${postalCode}`;
+
+    const order = await prisma.$transaction(async (tx) => {
+      // Create the order
+      const newOrder = await tx.order.create({
+        data: {
+          orderNumber,
+          type: "DELIVERY", // Default to delivery
+          status: "PENDING",
+          subtotal,
+          total: subtotal, // For now, total = subtotal (no tax/delivery fee calculation)
+          deliveryAddress: fullAddress,
+          notes: notes || null,
+          organizationId,
+          guestCustomerId: guestCustomer!.id,
+          items: {
+            create: orderItems.map((item) => ({
+              quantity: item.quantity,
+              price: item.price,
+              productId: item.productId,
+              variantId: item.variantId,
+            })),
+          },
+        },
+        include: {
+          items: {
+            include: {
+              variant: {
+                include: {
+                  product: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Update inventory for each item
+      for (const item of orderItems) {
+        const variant = await tx.productVariant.findUnique({
+          where: { id: item.variantId },
+          include: { product: true },
+        });
+
+        if (variant && variant.product.trackInventory) {
+          await tx.productVariant.update({
+            where: { id: item.variantId },
+            data: {
+              inventory: {
+                decrement: item.quantity,
+              },
+            },
+          });
+        }
+      }
+
+      return newOrder;
+    });
+
+    return NextResponse.json(order, { status: 201 });
+  } catch (error) {
+    console.error("Error creating order:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

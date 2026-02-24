@@ -27,15 +27,38 @@ import { useDashboardAccess } from "@/hooks/use-auth"
 
 interface Appointment {
   id: string
-  customerName: string
-  customerPhone: string
-  serviceName: string
-  staffName?: string
-  date: Date
+  date: string
   startTime: string
   endTime: string
-  status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED"
-  notes?: string
+  status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW"
+  notes: string | null
+  service: {
+    id: string
+    name: string
+    price: number
+    duration: number
+    category: {
+      name: string
+    }
+    serviceProvider: {
+      id: string
+      firstName: string
+      lastName: string
+    } | null
+    organization: {
+      id: string
+      name: string
+      slug: string
+    }
+  }
+  customer: {
+    id: string
+    name: string
+    firstName: string | null
+    lastName: string | null
+    email: string | null
+    phone: string | null
+  }
 }
 
 // Persian number helper
@@ -46,14 +69,6 @@ function toPersianDigits(str: string | number): string {
     .map((char) => (/\d/.test(char) ? persianDigits[parseInt(char)] : char))
     .join("");
 }
-
-const sampleAppointments: Appointment[] = [
-  { id: "1", customerName: "علی محمدی", customerPhone: "۰۹۱۲۳۴۵۶۷۸۹", serviceName: "مشاوره طراحی", staffName: "سارا احمدی", date: new Date(), startTime: "۱۰:۰۰", endTime: "۱۱:۰۰", status: "PENDING", notes: "مشاوره اولیه" },
-  { id: "2", customerName: "سارا احمدی", customerPhone: "۰۹۱۲۳۴۵۶۷۸۸", serviceName: "طراحی لوگو", staffName: "محمد رضایی", date: new Date(Date.now() + 86400000), startTime: "۱۴:۰۰", endTime: "۱۶:۰۰", status: "CONFIRMED" },
-  { id: "3", customerName: "مریم کاظمی", customerPhone: "۰۹۱۲۳۴۵۶۷۸۶", serviceName: "توسعه وب", staffName: "احمد حسنی", date: new Date(Date.now() + 172800000), startTime: "۰۹:۰۰", endTime: "۱۳:۰۰", status: "PENDING" },
-  { id: "4", customerName: "احمد حسنی", customerPhone: "۰۹۱۲۳۴۵۶۷۸۵", serviceName: "مشاوره سئو", date: new Date(Date.now() - 86400000), startTime: "۱۱:۰۰", endTime: "۱۲:۰۰", status: "COMPLETED", notes: "جلسه موفق" },
-  { id: "5", customerName: "زهرا علوی", customerPhone: "۰۹۱۲۳۴۵۶۷۸۴", serviceName: "طراحی گرافیک", date: new Date(Date.now() - 172800000), startTime: "۱۵:۰۰", endTime: "۱۷:۰۰", status: "CANCELLED", notes: "کنسل شده توسط مشتری" },
-]
 
 const statusConfig: Record<string, { label: string; icon: any; color: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   PENDING: { label: "در انتظار", icon: AlertCircle, color: "bg-yellow-500", variant: "default" },
@@ -72,7 +87,9 @@ export default function AppointmentsPage({ params }: { params: Promise<{ locale:
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [appointments] = useState<Appointment[]>(sampleAppointments)
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
 
   useEffect(() => {
@@ -82,15 +99,53 @@ export default function AppointmentsPage({ params }: { params: Promise<{ locale:
     })
   }, [locale])
 
+  // Fetch appointments from API
+  useEffect(() => {
+    if (!hasAccess || accessLoading) return
+    
+    setLoading(true)
+    fetch("/api/appointments")
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to fetch appointments")
+        return res.json()
+      })
+      .then(data => {
+        setAppointments(data.data || [])
+        setError(null)
+      })
+      .catch(err => {
+        setError(err.message)
+        setAppointments([])
+      })
+      .finally(() => setLoading(false))
+  }, [hasAccess, accessLoading])
+
   const t = (key: string): string => {
     if (!dict) return key
     return getDictValue(dict, key)
   }
 
+  // Get customer display name
+  const getCustomerName = (apt: Appointment) => {
+    if (apt.customer.firstName && apt.customer.lastName) {
+      return `${apt.customer.firstName} ${apt.customer.lastName}`
+    }
+    return apt.customer.name
+  }
+
+  // Get staff display name
+  const getStaffName = (apt: Appointment) => {
+    if (apt.service.serviceProvider) {
+      return `${apt.service.serviceProvider.firstName} ${apt.service.serviceProvider.lastName}`
+    }
+    return undefined
+  }
+
   const filteredAppointments = appointments.filter(apt => {
-    const matchesSearch = apt.customerName.includes(searchQuery) || 
-                         apt.serviceName.includes(searchQuery) ||
-                         apt.customerPhone.includes(searchQuery)
+    const customerName = getCustomerName(apt)
+    const matchesSearch = customerName.includes(searchQuery) || 
+                         apt.service.name.includes(searchQuery) ||
+                         (apt.customer.phone?.includes(searchQuery) ?? false)
     const matchesStatus = statusFilter === "all" || apt.status === statusFilter
     return matchesSearch && matchesStatus
   })
@@ -187,82 +242,121 @@ export default function AppointmentsPage({ params }: { params: Promise<{ locale:
         </div>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="space-y-4">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-32 bg-muted rounded animate-pulse" />
+          ))}
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <Card>
+          <CardContent className="py-8 text-center text-destructive">
+            <p>{error}</p>
+            <Button variant="outline" className="mt-4" onClick={() => {
+              setLoading(true)
+              fetch("/api/appointments")
+                .then(res => res.json())
+                .then(data => {
+                  setAppointments(data.data || [])
+                  setError(null)
+                })
+                .catch(err => setError(err.message))
+                .finally(() => setLoading(false))
+            }}>
+              تلاش مجدد
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Appointments List */}
-      <div className="space-y-4">
-        {filteredAppointments.map((apt) => {
-          const status = statusConfig[apt.status]
-          const StatusIcon = status.icon
-          
-          return (
-            <Card key={apt.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  {/* Date & Time */}
-                  <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-lg ${status.color}`}>
-                      <Calendar className="h-6 w-6 text-white" />
+      {!loading && !error && (
+        <div className="space-y-4">
+          {filteredAppointments.map((apt) => {
+            const status = statusConfig[apt.status] || statusConfig.PENDING
+            const StatusIcon = status.icon
+            const customerName = getCustomerName(apt)
+            const staffName = getStaffName(apt)
+            const aptDate = new Date(apt.date)
+            
+            return (
+              <Card key={apt.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    {/* Date & Time */}
+                    <div className="flex items-center gap-4">
+                      <div className={`p-3 rounded-lg ${status.color}`}>
+                        <Calendar className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-lg">
+                          {aptDate.toLocaleDateString("fa-IR", { 
+                            year: "numeric", 
+                            month: "long", 
+                            day: "numeric",
+                            weekday: "long"
+                          })}
+                        </p>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Clock className="h-4 w-4" />
+                          <span>
+                            {new Date(apt.startTime).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" })} - 
+                            {new Date(apt.endTime).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-bold text-lg">
-                        {apt.date.toLocaleDateString("fa-IR", { 
-                          year: "numeric", 
-                          month: "long", 
-                          day: "numeric",
-                          weekday: "long"
-                        })}
-                      </p>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Clock className="h-4 w-4" />
-                        <span>{apt.startTime} - {apt.endTime}</span>
+
+                    {/* Customer & Service Info */}
+                    <div className="flex-1">
+                      <p className="font-bold">{customerName}</p>
+                      <p className="text-sm text-muted-foreground">{apt.customer.phone || "-"}</p>
+                      <p className="text-sm">{apt.service.name}</p>
+                      {staffName && (
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <User className="h-3 w-3" />
+                          <span>{staffName}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Status & Actions */}
+                    <div className="flex items-center gap-4">
+                      <Badge variant={status.variant}>
+                        <StatusIcon className="h-3 w-3 ml-1" />
+                        {status.label}
+                      </Badge>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="icon">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </div>
-
-                  {/* Customer & Service Info */}
-                  <div className="flex-1">
-                    <p className="font-bold">{apt.customerName}</p>
-                    <p className="text-sm text-muted-foreground">{apt.customerPhone}</p>
-                    <p className="text-sm">{apt.serviceName}</p>
-                    {apt.staffName && (
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <User className="h-3 w-3" />
-                        <span>{apt.staffName}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Status & Actions */}
-                  <div className="flex items-center gap-4">
-                    <Badge variant={status.variant}>
-                      <StatusIcon className="h-3 w-3 ml-1" />
-                      {status.label}
-                    </Badge>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="icon">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                {apt.notes && (
-                  <p className="text-sm text-muted-foreground mt-2 pt-2 border-t">
-                    {apt.notes}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
+                  {apt.notes && (
+                    <p className="text-sm text-muted-foreground mt-2 pt-2 border-t">
+                      {apt.notes}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      )}
 
       {/* Empty State */}
-      {filteredAppointments.length === 0 && (
+      {!loading && !error && filteredAppointments.length === 0 && (
         <div className="text-center py-12">
           <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <p className="text-lg font-medium">{t("common.no_results") || "نوبتی یافت نشد"}</p>

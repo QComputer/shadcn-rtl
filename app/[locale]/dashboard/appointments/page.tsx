@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   Calendar,
   Search,
@@ -21,6 +22,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import { useDashboardAccess } from "@/hooks/use-auth"
@@ -91,6 +102,10 @@ export default function AppointmentsPage({ params }: { params: Promise<{ locale:
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     setMounted(true)
@@ -123,6 +138,32 @@ export default function AppointmentsPage({ params }: { params: Promise<{ locale:
   const t = (key: string): string => {
     if (!dict) return key
     return getDictValue(dict, key)
+  }
+
+  // Delete appointment handler
+  const handleDelete = async () => {
+    if (!appointmentToDelete) return
+    
+    setDeleting(true)
+    try {
+      const response = await fetch(`/api/appointments/${appointmentToDelete.id}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to delete appointment")
+      }
+
+      // Remove from local state
+      setAppointments(prev => prev.filter(apt => apt.id !== appointmentToDelete.id))
+      setDeleteDialogOpen(false)
+      setAppointmentToDelete(null)
+    } catch (error) {
+      console.error("Error deleting appointment:", error)
+      setError("Failed to delete appointment")
+    } finally {
+      setDeleting(false)
+    }
   }
 
   // Get customer display name
@@ -331,13 +372,29 @@ export default function AppointmentsPage({ params }: { params: Promise<{ locale:
                         {status.label}
                       </Badge>
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="icon">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => router.push(`/${locale}/dashboard/appointments/${apt.id}`)}
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => router.push(`/${locale}/dashboard/appointments/${apt.id}`)}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-destructive"
+                          onClick={() => {
+                            setAppointmentToDelete(apt)
+                            setDeleteDialogOpen(true)
+                          }}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -377,6 +434,30 @@ export default function AppointmentsPage({ params }: { params: Promise<{ locale:
           </Button>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("appointment.delete_title") || "Delete Appointment"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("appointment.delete_description") || "Are you sure you want to delete this appointment? This action cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>
+              {t("common.cancel") || "Cancel"}
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deleting ? (t("common.deleting") || "Deleting...") : (t("common.delete") || "Delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

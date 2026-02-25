@@ -168,6 +168,7 @@ export class AppointmentService {
     fromDate?: string;
     toDate?: string;
     organizationId?: string;
+    serviceProviderId?: string;
   }) {
     const { 
       page = 1, 
@@ -177,7 +178,8 @@ export class AppointmentService {
       status,
       fromDate,
       toDate,
-      organizationId
+      organizationId,
+      serviceProviderId
     } = params;
 
     const where: Record<string, unknown> = {
@@ -191,6 +193,14 @@ export class AppointmentService {
     // Filter by organization through Service relation
     if (organizationId) {
       where.service = { organizationId };
+    }
+    
+    // Filter by service provider (staff member)
+    if (serviceProviderId) {
+      where.service = { 
+        ...(where.service as object),
+        serviceProviderId 
+      };
     }
     
     if (fromDate || toDate) {
@@ -213,6 +223,13 @@ export class AppointmentService {
                   id: true,
                   name: true,
                   slug: true,
+                },
+              },
+              serviceProvider: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
                 },
               },
             },

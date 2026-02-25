@@ -32,8 +32,21 @@ export async function GET(request: NextRequest) {
         ...params,
         customerId: session.user.id,
       });
+    } else if (session.user.role === "STAFF") {
+      // Staff members see appointments where they are the service provider
+      // First get their membership to find the organization
+      const membership = await prisma.organizationMember.findFirst({
+        where: { userId: session.user.id },
+        select: { organizationId: true },
+      });
+      
+      appointments = await appointmentService.list({
+        ...params,
+        organizationId: membership?.organizationId,
+        serviceProviderId: session.user.id,
+      });
     } else {
-      // For staff/admin, auto-filter by their organization if not specified
+      // For admin/manager, auto-filter by their organization if not specified
       if (!params.organizationId && session.user.isTeamMember) {
         const membership = await prisma.organizationMember.findFirst({
           where: { userId: session.user.id },

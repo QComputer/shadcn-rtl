@@ -17,7 +17,8 @@ import {
   ChevronLeft,
   Scissors,
   Building2,
-  LogOut
+  LogOut,
+  FolderOpen
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -48,6 +49,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Scissors,
   Building2,
   LogOut,
+  FolderOpen,
 }
 
 function getIconComponent(iconName: string) {

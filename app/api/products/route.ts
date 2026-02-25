@@ -8,7 +8,14 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     const searchParams = Object.fromEntries(request.nextUrl.searchParams);
-    const params = productFilterSchema.parse(searchParams);
+    
+    // Convert string booleans to actual booleans
+    const sanitizedParams: Record<string, unknown> = { ...searchParams };
+    if (sanitizedParams.isActive === "true") sanitizedParams.isActive = true;
+    if (sanitizedParams.isActive === "false") sanitizedParams.isActive = false;
+    if (sanitizedParams.isActive === "") sanitizedParams.isActive = undefined;
+    
+    const params = productFilterSchema.parse(sanitizedParams);
 
     // For customers, only show active products
     if (!session || session.user?.role === "CUSTOMER") {

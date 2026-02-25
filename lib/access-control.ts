@@ -393,6 +393,15 @@ export const dashboardNavItems: NavItem[] = [
     requiredOrgMemberRole: ["ADMIN", "MANAGER"],
   },
   {
+    id: "service-categories",
+    labelKey: "service.categories",
+    href: "/dashboard/service-categories",
+    icon: "FolderOpen",
+    requiredRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+    requiredOrgType: ["APPOINTMENT"],
+    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+  },
+  {
     id: "customers",
     labelKey: "navigation.customers",
     href: "/dashboard/customers",

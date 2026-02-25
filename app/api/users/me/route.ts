@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
+import {compare, hash} from "bcryptjs";
 
 const updateProfileSchema = z.object({
   firstName: z.string().min(1).max(100).optional(),
@@ -135,7 +136,7 @@ export async function PATCH(request: NextRequest) {
     console.error("Error updating user profile:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Validation error", details: error.errors },
+        { error: "Validation error", details: error.issues },
         { status: 400 }
       );
     }
@@ -173,7 +174,8 @@ export async function POST(request: NextRequest) {
 
       // Verify current password (in production, use bcrypt)
       // For now, we'll just check if it matches (you should implement proper password verification)
-      const { compare } = await import("bcrypt");
+      //const { compare } = bcrypt 
+      ;
       const isValid = await compare(data.currentPassword, user.password);
 
       if (!isValid) {
@@ -184,7 +186,6 @@ export async function POST(request: NextRequest) {
       }
 
       // Hash new password
-      const { hash } = await import("bcrypt");
       const hashedPassword = await hash(data.newPassword, 10);
 
       // Update password
@@ -201,7 +202,7 @@ export async function POST(request: NextRequest) {
     console.error("Error changing password:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Validation error", details: error.errors },
+        { error: "Validation error", details: error.issues },
         { status: 400 }
       );
     }

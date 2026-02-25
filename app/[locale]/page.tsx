@@ -52,10 +52,10 @@ export default async function HomePage({
 
   // Group organizations by type
   const shopOrganizations = organizations.filter(
-    (org) => org.type === "SHOP"
+    (org: { type: string }) => org.type === "SHOP"
   )
   const appointmentOrganizations = organizations.filter(
-    (org) => org.type === "APPOINTMENT"
+    (org: { type: string }) => org.type === "APPOINTMENT"
   )
 
   // Helper to get translations based on locale
@@ -136,7 +136,7 @@ export default async function HomePage({
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {shopOrganizations.map((org) => (
+              {shopOrganizations.map((org: OrganizationWithDetails) => (
                 <Link
                   key={org.id}
                   href={`/${locale}/organizations/${org.slug}`}
@@ -188,7 +188,7 @@ export default async function HomePage({
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {appointmentOrganizations.map((org) => (
+              {appointmentOrganizations.map((org: OrganizationWithDetails) => (
                 <Link
                   key={org.id}
                   href={`/${locale}/organizations/${org.slug}`}

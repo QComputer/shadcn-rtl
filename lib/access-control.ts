@@ -173,15 +173,15 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     isMyOnly: true,
   },
 
-  // My Appointments - CUSTOMER and STAFF (APPOINTMENT org member)
+   // My Appointments - CUSTOMER and STAFF/ADMIN/MANAGER (APPOINTMENT org member)
   "/dashboard/my-appointments": {
-    allowedRoles: ["SUPER_ADMIN", "CUSTOMER", "STAFF"],
+    allowedRoles: ["SUPER_ADMIN", "CUSTOMER", "STAFF", "ADMIN", "MANAGER"],
     isMyOnly: true,
   },
 
-  // My Services - STAFF (APPOINTMENT org member)
+  // My Services - STAFF/ADMIN/MANAGER (APPOINTMENT org member)
   "/dashboard/my-services": {
-    allowedRoles: ["SUPER_ADMIN", "STAFF"],
+    allowedRoles: ["SUPER_ADMIN", "STAFF", "ADMIN", "MANAGER"],
     isMyOnly: true,
     requiresOrgMembership: true,
     requiredOrgType: ["APPOINTMENT"],
@@ -417,19 +417,19 @@ export const dashboardNavItems: NavItem[] = [
     icon: "ShoppingBag",
     requiredRoles: ["CUSTOMER", "DRIVER"],
   },
-  {
+   {
     id: "my-appointments",
     labelKey: "navigation.myAppointments",
     href: "/dashboard/my-appointments",
     icon: "CalendarDays",
-    requiredRoles: ["CUSTOMER", "STAFF"],
+    requiredRoles: ["CUSTOMER", "STAFF", "ADMIN", "MANAGER"],
   },
   {
     id: "my-services",
     labelKey: "navigation.myServices",
     href: "/dashboard/my-services",
     icon: "Briefcase",
-    requiredRoles: ["STAFF"],
+    requiredRoles: ["STAFF", "ADMIN", "MANAGER"],
     requiredOrgType: ["APPOINTMENT"],
   },
   {

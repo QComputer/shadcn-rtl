@@ -32,6 +32,7 @@ import {
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatToman } from "@/lib/persian"
 import { useDashboardAccess } from "@/hooks/use-auth"
+import { useSession } from "next-auth/react"
 
 interface Service {
   id: string
@@ -60,6 +61,12 @@ interface Category {
   name: string
 }
 
+interface StaffMember {
+  id: string
+  firstName: string
+  lastName: string
+}
+
 export default function EditServicePage({ 
   params 
 }: { 
@@ -71,11 +78,13 @@ export default function EditServicePage({
   const router = useRouter()
   
   const { hasAccess, isLoading: accessLoading } = useDashboardAccess()
+  const { data: session } = useSession()
   
   const [mounted, setMounted] = useState(false)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
   const [service, setService] = useState<Service | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -90,6 +99,7 @@ export default function EditServicePage({
   const [categoryId, setCategoryId] = useState("")
   const [image, setImage] = useState("")
   const [isActive, setIsActive] = useState(true)
+  const [serviceProviderId, setServiceProviderId] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -105,35 +115,43 @@ export default function EditServicePage({
     
     setLoading(true)
     
-    // Fetch service
-    fetch(`/api/services/${serviceId}`)
-      .then(res => {
-        if (!res.ok) throw new Error("Service not found")
-        return res.json()
-      })
-      .then(data => {
-        const s = data.service || data
-        setService(s)
-        setName(s.name)
-        setDescription(s.description || "")
-        setPrice(s.price.toString())
-        setDuration(s.duration.toString())
-        setCategoryId(s.category?.id || "")
-        setImage(s.image || "")
-        setIsActive(s.isActive)
-      })
-      .catch(err => {
-        setError(err.message)
-      })
-    
-    // Fetch categories
-    fetch("/api/service-categories?pageSize=100")
-      .then(res => res.json())
-      .then(data => {
-        setCategories(data.data || [])
-      })
-      .catch(() => setCategories([]))
-      .finally(() => setLoading(false))
+    // Fetch service and categories in parallel
+    Promise.all([
+      fetch(`/api/services/${serviceId}`)
+        .then(res => {
+          if (!res.ok) throw new Error("Service not found")
+          return res.json()
+        })
+        .then(data => data.service || data),
+      fetch("/api/service-categories?pageSize=100")
+        .then(res => res.json())
+        .then(data => data.data || []),
+      fetch("/api/users/me/membership")
+        .then(res => res.json())
+        .then(data => {
+          if (data.organizationId) {
+            return fetch(`/api/organizations/${data.organizationId}/members`)
+              .then(res => res.json())
+              .then(membersData => membersData.members || [])
+          }
+          return []
+        })
+        .catch(() => [])
+    ]).then(([serviceData, categoriesData, staffData]) => {
+      setService(serviceData)
+      setName(serviceData.name)
+      setDescription(serviceData.description || "")
+      setPrice(serviceData.price.toString())
+      setDuration(serviceData.duration.toString())
+      setCategoryId(serviceData.category?.id || "")
+      setImage(serviceData.image || "")
+      setIsActive(serviceData.isActive)
+      setServiceProviderId(serviceData.serviceProvider?.id || null)
+      setCategories(categoriesData)
+      setStaffMembers(staffData)
+    }).catch(err => {
+      setError(err.message)
+    }).finally(() => setLoading(false))
   }, [hasAccess, accessLoading, serviceId])
 
   const t = (key: string): string => {
@@ -152,19 +170,20 @@ export default function EditServicePage({
     setSaving(true)
     setError(null)
     
-    try {
+     try {
       const response = await fetch(`/api/services/${serviceId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          description: description || null,
-          price: parseFloat(price),
-          duration: parseInt(duration),
-          categoryId,
-          image: image || null,
-          isActive,
-        }),
+          body: JSON.stringify({
+            name,
+            description: description || undefined,
+            price: parseFloat(price),
+            duration: parseInt(duration),
+            categoryId,
+            image: image || undefined,
+            isActive,
+            serviceProviderId: serviceProviderId //|| undefined,
+          }),
       })
       
       if (!response.ok) {
@@ -415,6 +434,30 @@ export default function EditServicePage({
                 placeholder="https://example.com/image.jpg"
               />
             </div>
+            
+            {/* Service Provider (only visible to ADMIN) */}
+            {session?.user?.role === "ADMIN" && staffMembers.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="serviceProvider">
+                  {t("appointment.provider") || "Service Provider"}
+                </Label>
+                <Select 
+                  value={serviceProviderId || ""} 
+                  onValueChange={(value) => setServiceProviderId(value || null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("service.select_provider") || "Select a service provider"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staffMembers.map(member => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.firstName} {member.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             
             {/* Active Status */}
             <div className="flex items-center justify-between">

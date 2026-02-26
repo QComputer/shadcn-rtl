@@ -255,7 +255,7 @@ export const rolePermissions: Record<UserRole, Permission[]> = {
   ],
   MANAGER: [
     "org:read",
-    "service:create", "service:read", "service:update",
+    "service:create", "service:read", "service:update", "service:delete",
     "product:create", "product:read", "product:update",
     "order:read", "order:update",
     "appointment:read", "appointment:create", "appointment:update",
@@ -263,7 +263,7 @@ export const rolePermissions: Record<UserRole, Permission[]> = {
   ],
   STAFF: [
     "org:read",
-    "service:read",
+    "service:create", "service:read", "service:update", "service:delete",
     "product:read",
     "order:read", "order:update",
     "appointment:read", "appointment:update"

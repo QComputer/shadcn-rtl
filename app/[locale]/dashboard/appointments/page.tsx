@@ -382,7 +382,7 @@ export default function AppointmentsPage({ params }: { params: Promise<{ locale:
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          onClick={() => router.push(`/${locale}/dashboard/appointments/${apt.id}`)}
+                          onClick={() => router.push(`/${locale}/dashboard/appointments/${apt.id}/edit`)}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>

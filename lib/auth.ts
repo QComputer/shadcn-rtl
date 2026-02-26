@@ -28,6 +28,7 @@ declare module "next-auth" {
     isTeamMember?: boolean;
     theme?: string;
     name?: string;
+    organizationId?: string | null;
   }
    interface Session{
     role?: UserRole;
@@ -35,6 +36,7 @@ declare module "next-auth" {
     isTeamMember?: boolean;
     theme?: string;
     name?: string;
+    organizationId?: string | null;
    }
 
   interface JWT {
@@ -43,6 +45,7 @@ declare module "next-auth" {
     isTeamMember?: boolean;
     theme?: string;
     name?: string;
+    organizationId?: string | null;
   }
 }
 
@@ -127,6 +130,16 @@ const buildProviders = (): Provider[] => {
             throw new Error("Invalid username or password");
           }
 
+          // Get user's organizationId if they are a team member
+          let organizationId: string | null = null;
+          if (user.isTeamMember) {
+            const organizationMember = await prisma.organizationMember.findFirst({
+              where: { userId: user.id },
+              select: { organizationId: true },
+            });
+            organizationId = organizationMember?.organizationId || null;
+          }
+
           // Return user object with required fields
           console.log(`[Auth] Successful sign-in for user: ${user}`);
           return {
@@ -135,6 +148,7 @@ const buildProviders = (): Provider[] => {
             name: normalizedUsername || undefined,
             role: user.role,
             isTeamMember: user.isTeamMember || false,
+            organizationId: organizationId,
           };
         } catch (error) {
           console.error("[Auth] Error during credentials validation:", error);
@@ -183,6 +197,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.isTeamMember = user.isTeamMember;
         token.locale = user.locale;
         token.theme = user.theme;
+        token.organizationId = user.organizationId;
       }
       return token;
     },
@@ -198,6 +213,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.isTeamMember = token.isTeamMember as boolean;
         session.user.locale = token.locale as string;
         session.user.theme = token.theme as string;
+        session.user.organizationId = token.organizationId as string | null;
       }
       console.log('[Auth] session.user.username:', session.user);
 

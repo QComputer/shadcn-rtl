@@ -21,10 +21,17 @@ import {
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatToman } from "@/lib/persian"
 import { useDashboardAccess } from "@/hooks/use-auth"
+import { useSession } from "next-auth/react"
 
 interface Category {
   id: string
   name: string
+}
+
+interface StaffMember {
+  id: string
+  firstName: string
+  lastName: string
 }
 
 export default function NewServicePage({ 
@@ -37,10 +44,12 @@ export default function NewServicePage({
   const router = useRouter()
   
   const { hasAccess, isLoading: accessLoading } = useDashboardAccess()
+  const { data: session } = useSession()
   
   const [mounted, setMounted] = useState(false)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,6 +62,7 @@ export default function NewServicePage({
   const [categoryId, setCategoryId] = useState("")
   const [image, setImage] = useState("")
   const [isActive, setIsActive] = useState(true)
+  const [serviceProviderId, setServiceProviderId] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -62,19 +72,34 @@ export default function NewServicePage({
     })
   }, [locale])
 
-  // Fetch categories
+  // Fetch categories and staff members
   useEffect(() => {
     if (!hasAccess || accessLoading) return
     
     setLoading(true)
     
-    fetch("/api/service-categories?pageSize=100")
-      .then(res => res.json())
-      .then(data => {
-        setCategories(data.data || [])
-      })
-      .catch(() => setCategories([]))
-      .finally(() => setLoading(false))
+    Promise.all([
+      fetch("/api/service-categories?pageSize=100")
+        .then(res => res.json())
+        .then(data => data.data || []),
+      fetch("/api/users/me/membership")
+        .then(res => res.json())
+        .then(data => {
+          if (data.organizationId) {
+            return fetch(`/api/organizations/${data.organizationId}/members`)
+              .then(res => res.json())
+              .then(membersData => membersData.members || [])
+          }
+          return []
+        })
+        .catch(() => [])
+    ]).then(([categoriesData, staffData]) => {
+      setCategories(categoriesData)
+      setStaffMembers(staffData)
+    }).catch(() => {
+      setCategories([])
+      setStaffMembers([])
+    }).finally(() => setLoading(false))
   }, [hasAccess, accessLoading])
 
   const t = (key: string): string => {
@@ -93,19 +118,20 @@ export default function NewServicePage({
     setSaving(true)
     setError(null)
     
-    try {
+     try {
       const response = await fetch("/api/services", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          description: description || null,
-          price: parseFloat(price),
-          duration: parseInt(duration),
-          categoryId,
-          image: image || null,
-          isActive,
-        }),
+          body: JSON.stringify({
+            name,
+            description: description || undefined,
+            price: parseFloat(price),
+            duration: parseInt(duration),
+            categoryId,
+            image: image || undefined,
+            isActive,
+            serviceProviderId: serviceProviderId,// || undefined,
+          }),
       })
       
       if (!response.ok) {
@@ -289,6 +315,30 @@ export default function NewServicePage({
                 placeholder="https://example.com/image.jpg"
               />
             </div>
+            
+            {/* Service Provider (only visible to ADMIN) */}
+            {session?.user?.role === "ADMIN" && staffMembers.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="serviceProvider">
+                  {t("appointment.provider") || "Service Provider"}
+                </Label>
+                <Select 
+                  value={serviceProviderId || ""} 
+                  onValueChange={(value) => setServiceProviderId(value || null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("service.select_provider") || "Select a service provider"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staffMembers.map(member => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.firstName} {member.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             
             {/* Active Status */}
             <div className="flex items-center justify-between">

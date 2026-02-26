@@ -146,9 +146,11 @@ export async function POST(request: NextRequest) {
       organizationId = membership.organizationId;
     }
 
+     // Assign current user as service provider if not specified
     const service = await serviceService.create(organizationId, {
       ...serviceData,
       ...data,
+      serviceProviderId: data.serviceProviderId || session.user.id,
     });
 
     return NextResponse.json(service, { status: 201 });

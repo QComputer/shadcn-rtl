@@ -128,29 +128,29 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
   // APPOINTMENT Organization Routes
   // ============================================
   
-  // Appointments - APPOINTMENT org admins/managers/staff
-  "/dashboard/appointments": {
-    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
-    requiresOrgMembership: true,
-    requiredOrgType: ["APPOINTMENT"],
-    requiredOrgMemberRole: ["ADMIN", "MANAGER", "STAFF"],
-  },
+   // Appointments - APPOINTMENT org admins/managers
+   "/dashboard/appointments": {
+     allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+     requiresOrgMembership: true,
+     requiredOrgType: ["APPOINTMENT"],
+     requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+   },
 
-  // Services - APPOINTMENT org admins/managers
-  "/dashboard/services": {
-    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
-    requiresOrgMembership: true,
-    requiredOrgType: ["APPOINTMENT"],
-    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
-  },
+   // Services - APPOINTMENT org admins/managers/staff
+   "/dashboard/services": {
+     allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
+     requiresOrgMembership: true,
+     requiredOrgType: ["APPOINTMENT"],
+     requiredOrgMemberRole: ["ADMIN", "MANAGER", "STAFF"],
+   },
 
-  // Service Categories - APPOINTMENT org admins/managers
-  "/dashboard/service-categories": {
-    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
-    requiresOrgMembership: true,
-    requiredOrgType: ["APPOINTMENT"],
-    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
-  },
+   // Service Categories - APPOINTMENT org admins/managers/staff
+   "/dashboard/service-categories": {
+     allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
+     requiresOrgMembership: true,
+     requiredOrgType: ["APPOINTMENT"],
+     requiredOrgMemberRole: ["ADMIN", "MANAGER", "STAFF"],
+   },
 
   // ============================================
   // STAFF with ADMIN/MANAGER role in APPOINTMENT org
@@ -379,18 +379,18 @@ export const dashboardNavItems: NavItem[] = [
     labelKey: "navigation.appointments",
     href: "/dashboard/appointments",
     icon: "Calendar",
-    requiredRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
+    requiredRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
     requiredOrgType: ["APPOINTMENT"],
-    requiredOrgMemberRole: ["ADMIN", "MANAGER", "STAFF"],
+    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
   },
   {
     id: "services",
     labelKey: "navigation.services",
     href: "/dashboard/services",
     icon: "Scissors",
-    requiredRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+    requiredRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
     requiredOrgType: ["APPOINTMENT"],
-    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+    requiredOrgMemberRole: ["ADMIN", "MANAGER", "STAFF"],
   },
   {
     id: "service-categories",
@@ -424,14 +424,7 @@ export const dashboardNavItems: NavItem[] = [
     icon: "CalendarDays",
     requiredRoles: ["CUSTOMER", "STAFF", "ADMIN", "MANAGER"],
   },
-  {
-    id: "my-services",
-    labelKey: "navigation.myServices",
-    href: "/dashboard/my-services",
-    icon: "Briefcase",
-    requiredRoles: ["STAFF", "ADMIN", "MANAGER"],
-    requiredOrgType: ["APPOINTMENT"],
-  },
+
   {
     id: "calendar",
     labelKey: "navigation.calendar",

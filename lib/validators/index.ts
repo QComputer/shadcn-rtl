@@ -105,9 +105,9 @@ export const createServiceSchema = z.object({
   description: z.string().max(5000).optional(),
   price: z.number().positive(),
   duration: z.number().int().positive().max(1440),
-  image: z.string().url().optional(),
+  image: z.string().url().nullable().optional(),
   categoryId: z.string().cuid(),
-  serviceProviderId: z.string().cuid().optional(),
+  serviceProviderId: z.string().cuid().nullable().optional(),
   sortOrder: z.number().int().default(0),
 });
 

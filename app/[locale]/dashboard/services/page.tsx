@@ -48,6 +48,7 @@ import {
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatToman, toPersianDigits } from "@/lib/persian"
 import { useDashboardAccess } from "@/hooks/use-auth"
+import { useSession } from "next-auth/react"
 
 interface Service {
   id: string
@@ -117,14 +118,21 @@ export default function ServicesDashboardPage({
     })
   }, [locale])
 
+  // Get session for role-based fetching
+  const { data: session } = useSession()
+
   // Fetch services and categories
   useEffect(() => {
     if (!hasAccess || accessLoading) return
     
     setLoading(true)
     
-    // Fetch services
-    fetch("/api/services")
+    // Fetch services - use provider=me for staff users
+    const servicesUrl = session?.user?.role === "STAFF" 
+      ? "/api/services?provider=me" 
+      : "/api/services"
+    
+    fetch(servicesUrl)
       .then(res => {
         if (!res.ok) throw new Error("Failed to fetch services")
         return res.json()
@@ -151,7 +159,7 @@ export default function ServicesDashboardPage({
         setCategories([])
       })
       .finally(() => setLoading(false))
-  }, [hasAccess, accessLoading])
+  }, [hasAccess, accessLoading, session])
 
   const t = (key: string): string => {
     if (!dict) return key

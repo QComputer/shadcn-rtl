@@ -30,8 +30,11 @@ interface Category {
 
 interface StaffMember {
   id: string
-  firstName: string
-  lastName: string
+  userId: string
+  user?: {
+    firstName: string | null
+    lastName: string | null
+  }
 }
 
 export default function NewServicePage({ 
@@ -85,10 +88,10 @@ export default function NewServicePage({
       fetch("/api/users/me/membership")
         .then(res => res.json())
         .then(data => {
-          if (data.organizationId) {
-            return fetch(`/api/organizations/${data.organizationId}/members`)
+          if (data.membership?.organizationId) {
+            return fetch(`/api/organizations/${data.membership.organizationId}/members`)
               .then(res => res.json())
-              .then(membersData => membersData.members || [])
+              .then(membersData => membersData.members || membersData || [])
           }
           return []
         })
@@ -331,8 +334,8 @@ export default function NewServicePage({
                   </SelectTrigger>
                   <SelectContent>
                     {staffMembers.map(member => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.firstName} {member.lastName}
+                      <SelectItem key={member.userId} value={member.userId}>
+                        {member.user?.firstName} {member.user?.lastName}
                       </SelectItem>
                     ))}
                   </SelectContent>

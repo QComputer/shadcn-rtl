@@ -32,7 +32,7 @@ export class ServiceService {
     if (data.serviceProviderId) {
       const member = await prisma.organizationMember.findFirst({
         where: {
-          id: data.serviceProviderId,
+          userId: data.serviceProviderId,
           organizationId,
           isActive: true,
         },
@@ -336,7 +336,7 @@ export class ServiceService {
       if (data.serviceProviderId) {
         const member = await prisma.organizationMember.findFirst({
           where: {
-            id: data.serviceProviderId,
+            userId: data.serviceProviderId,
             organizationId: service.organizationId,
             isActive: true,
           },

@@ -166,8 +166,8 @@ model User {
   emailVerified DateTime?
 
   // User Preferences
-  locale String @default("en")
-  theme  String @default("light")
+  locale String @default("fa")
+  theme  String @default("system")
 
   // Security
   lastLoginAt         DateTime?
@@ -350,10 +350,13 @@ model Appointment {
   // Booking reference for guest lookup
   bookingReference String? @unique
 
-  customerId String
+  customerId String?
+  customer User?    @relation("CustomerAppointmentRelation", fields: [customerId], references: [id])
+  guestCustomerId String?
+  guestCustomer GuestCustomer?    @relation(fields: [guestCustomerId], references: [id])
+
   serviceId  String
 
-  customer User    @relation("CustomerAppointmentRelation", fields: [customerId], references: [id])
   service  Service @relation(fields: [serviceId], references: [id])
 
   createdAt DateTime  @default(now())
@@ -361,6 +364,7 @@ model Appointment {
   deletedAt DateTime?
 
   @@index([customerId])
+  @@index([guestCustomerId])
   @@index([serviceId])
   @@index([date])
   @@index([status])
@@ -590,6 +594,8 @@ model GuestCustomer {
   address String?
 
   orders Order[]
+  appointments Appointment[]
+
 
   createdAt DateTime @default(now())
 

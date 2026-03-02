@@ -222,7 +222,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
             router.push(`/${locale}/login`)
             return
           }
-          throw new Error("Failed to fetch dashboard data")
+          //throw new Error("Failed to fetch dashboard data")
         }
         
         const data = await response.json()

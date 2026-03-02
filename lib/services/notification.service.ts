@@ -197,17 +197,20 @@ export class NotificationService {
           include: { organization: true },
         },
         customer: true,
+        guestCustomer: true,
       },
     });
 
     for (const apt of appointments) {
       await this.sendAppointmentReminder({
         appointmentId: apt.id,
-        customerName: apt.customer.firstName 
-          ? `${apt.customer.firstName} ${apt.customer.lastName || ""}`
-          : apt.customer.name,
-        customerEmail: apt.customer.email,
-        customerPhone: apt.customer.phone,
+        customerName: apt.customer
+          ? apt.customer.firstName
+            ? `${apt.customer.firstName} ${apt.customer.lastName || ""}`
+            : apt.customer.name
+          : apt.guestCustomer?.name || "no name",
+        customerEmail: apt.customer?.email,
+        customerPhone: apt.customer?.phone,
         serviceName: apt.service.name,
         organizationName: apt.service.organization.name,
         date: apt.date,

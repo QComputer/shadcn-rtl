@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     if (searchParams.page) params.page = searchParams.page;
     if (searchParams.pageSize) params.pageSize = searchParams.pageSize;
     if (searchParams.customerId) params.customerId = searchParams.customerId;
+    if (searchParams.guestCustomerId) params.guestCustomerId = searchParams.guestCustomerId;
     if (searchParams.serviceId) params.serviceId = searchParams.serviceId;
     if (searchParams.status) params.status = searchParams.status;
     if (searchParams.fromDate) params.fromDate = searchParams.fromDate;
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
         customer = await prisma.user.create({
           data: {
             name: data.customerPhone, // Use phone as username
-            password: crypto.randomUUID(), // Random password for guest
+            password: "123456",//crypto.randomUUID(), // Random password for guest
             firstName,
             lastName,
             phone: data.customerPhone,

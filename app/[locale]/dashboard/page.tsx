@@ -617,7 +617,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                   <CardContent>
                     <div className="text-2xl font-bold">{toPersianDigits(dashboardData?.stats.todayOrders?.toString() || "۰")}</div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      نوبت‌های امروز: {toPersianDigits(dashboardData?.stats.todayAppointmentsCount?.toString() || dashboardData?.stats.todayAppointments?.toString() || "۰")}
+                      نوبت‌های امروز: {toPersianDigits(dashboardData?.stats.todayAppointmentsCount?.toString() || "۰")}
                     </p>
                   </CardContent>
                 </Card>

@@ -25,8 +25,8 @@ interface Appointment {
   startTime: string
   endTime: string
   status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW"
-  notes: string | null
-  cancellationReason: string | null
+  notes?: string
+  cancellationReason?: string
   service: {
     id: string
     name: string
@@ -85,8 +85,8 @@ export default function EditAppointmentPage({
   
   // Form state
   const [status, setStatus] = useState<string>("PENDING")
-  const [notes, setNotes] = useState("")
-  const [cancellationReason, setCancellationReason] = useState("")
+  const [notes, setNotes] = useState(undefined)
+  const [cancellationReason, setCancellationReason] = useState(undefined)
 
   useEffect(() => {
     setMounted(true)
@@ -110,8 +110,8 @@ export default function EditAppointmentPage({
       .then(data => {
         setAppointment(data)
         setStatus(data.status)
-        setNotes(data.notes || "")
-        setCancellationReason(data.cancellationReason || "")
+        setNotes(data.notes)
+        setCancellationReason(data.cancellationReason)
       })
       .catch(err => {
         setError(err.message)
@@ -136,8 +136,8 @@ export default function EditAppointmentPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status,
-          notes: notes || null,
-          cancellationReason: cancellationReason || null,
+          notes: notes || undefined,
+          cancellationReason: cancellationReason || undefined,
         }),
       })
       

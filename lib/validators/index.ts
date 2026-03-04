@@ -128,7 +128,9 @@ export const createAppointmentSchema = z.object({
 });
 
 export const updateAppointmentSchema = z.object({
-  status: z.enum(["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW"]).optional(),
+  status: z
+    .enum(["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW"])
+    .optional(),
   notes: z.string().max(2000).optional(),
   cancellationReason: z.string().max(1000).optional(),
 });

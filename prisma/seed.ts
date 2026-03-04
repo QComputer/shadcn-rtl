@@ -56,37 +56,37 @@ async function main() {
       data: {
         // email is now optional
         password: hashedPassword,
-        firstName: 'سوپر',
-        lastName: 'ادمین',
-        name: 'superadmin', // unique username
-        phone: '+989100000001',
+        firstName: "احمد",
+        lastName: "جمالی",
+        name: "superadmin", // unique username
+        phone: "+989100000001",
         role: UserRole.SUPER_ADMIN,
         isActive: true,
         isTeamMember: true,
-        locale: 'fa',
-        theme: 'dark',
+        locale: "fa",
+        theme: "dark",
       },
     }),
 
     // ========================================
     // SHOP Organization Users (indices 1-5)
     // ========================================
-    
+
     // SHOP ADMIN (index 1)
     // Access: dashboard, organization details, members, orders, products, product categories
     prisma.user.create({
       data: {
-        email: 'shop-admin@shop.ir', // optional
+        email: "shop-admin@shop.ir", // optional
         password: hashedPassword,
-        firstName: 'مدیر',
-        lastName: 'فروشگاه',
-        name: 'shop-admin', // unique username
-        phone: '+989100000002',
+        firstName: "مدیر",
+        lastName: "فروشگاه",
+        name: "shop-admin", // unique username
+        phone: "+989100000002",
         role: UserRole.ADMIN,
         isActive: true,
         isTeamMember: true,
-        locale: 'fa',
-        theme: 'light',
+        locale: "fa",
+        theme: "light",
       },
     }),
 
@@ -94,17 +94,17 @@ async function main() {
     // Access: dashboard, organization details, members, orders, products, product categories
     prisma.user.create({
       data: {
-        email: 'shop-manager@shop.ir', // optional
+        email: "shop-manager@shop.ir", // optional
         password: hashedPassword,
-        firstName: 'معاون',
-        lastName: 'فروشگاه',
-        name: 'shop-manager', // unique username
-        phone: '+989100000003',
+        firstName: "معاون",
+        lastName: "فروشگاه",
+        name: "shop-manager", // unique username
+        phone: "+989100000003",
         role: UserRole.MANAGER,
         isActive: true,
         isTeamMember: true,
-        locale: 'fa',
-        theme: 'light',
+        locale: "fa",
+        theme: "light",
       },
     }),
 
@@ -113,17 +113,17 @@ async function main() {
     // Note: STAFF without ADMIN/MANAGER org role has limited access
     prisma.user.create({
       data: {
-        email: 'shop-staff@shop.ir', // optional
+        email: "shop-staff@shop.ir", // optional
         password: hashedPassword,
-        firstName: 'کارمند',
-        lastName: 'فروشگاه',
-        name: 'shop-staff', // unique username
-        phone: '+989100000004',
+        firstName: "کارمند",
+        lastName: "فروشگاه",
+        name: "shop-staff", // unique username
+        phone: "+989100000004",
         role: UserRole.STAFF,
         isActive: true,
         isTeamMember: true,
-        locale: 'fa',
-        theme: 'light',
+        locale: "fa",
+        theme: "light",
       },
     }),
 
@@ -131,331 +131,296 @@ async function main() {
     // Access: dashboard, my orders, settings, calendar
     prisma.user.create({
       data: {
-        email: 'shop-driver@shop.ir', // optional
+        email: "shop-driver@shop.ir", // optional
         password: hashedPassword,
-        firstName: 'راننده',
-        lastName: 'فروشگاه',
-        name: 'shop-driver', // unique username
-        phone: '+989100000005',
+        firstName: "راننده",
+        lastName: "فروشگاه",
+        name: "shop-driver", // unique username
+        phone: "+989100000005",
         role: UserRole.DRIVER,
         isActive: true,
         isTeamMember: true,
-        locale: 'fa',
-        theme: 'light',
+        locale: "fa",
+        theme: "light",
       },
     }),
 
     // ========================================
-    // APPOINTMENT Organization Users (indices 5-10)
+    // APPOINTMENT Organization Users (indices 5-9)
     // ========================================
 
     // APPOINTMENT ADMIN (index 5)
-    // Access: dashboard, organization details, members, appointments, services, service categories
+    // Access: dashboard, organization details, members, appointments, services, service categories, my-services/appointments
     prisma.user.create({
       data: {
-        email: 'appt-admin@clinic.ir', // optional
+        email: "fariba.farhadi@gmail.com", // optional
         password: hashedPassword,
-        firstName: 'مدیر',
-        lastName: 'کلینیک',
-        name: 'appt-admin', // unique username
-        phone: '+989100000006',
+        firstName: "فریبا",
+        lastName: "فرهادی",
+        name: "fariba", // unique username
+        phone: "+989100000006",
         role: UserRole.ADMIN,
         isActive: true,
         isTeamMember: true,
-        locale: 'fa',
-        theme: 'light',
+        locale: "fa",
+        theme: "dark",
       },
     }),
 
     // APPOINTMENT MANAGER (index 6)
-    // Access: dashboard, organization details, members, appointments, services, service categories
+    // Access: dashboard, organization details, members, appointments, services, service categories, my-services/appointments
     prisma.user.create({
       data: {
-        email: 'appt-manager@clinic.ir', // optional
+        email: "appt-manager@clinic.ir", // optional
         password: hashedPassword,
-        firstName: 'معاون',
-        lastName: 'کلینیک',
-        name: 'appt-manager', // unique username
-        phone: '+989100000007',
+        firstName: "سیمسن",
+        lastName: "سیمین نژاد",
+        name: "simin", // unique username
+        phone: "+989100000007",
         role: UserRole.MANAGER,
         isActive: true,
         isTeamMember: true,
-        locale: 'fa',
-        theme: 'light',
+        locale: "fa",
+        theme: "dark",
       },
     }),
 
-    // APPOINTMENT STAFF with STAFF org role (index 7)
-    // Access: dashboard, my appointments, my services, settings, calendar
+    // APPOINTMENT STAFF
+    // Access: dashboard, my appointments, my services
+    // Service Provider 1 - (index 7)
     prisma.user.create({
       data: {
-        email: 'appt-staff@clinic.ir', // optional
+        email: "appt-staff@clinic.ir", // optional
         password: hashedPassword,
-        firstName: 'کارمند',
-        lastName: 'کلینیک',
-        name: 'appt-staff', // unique username
-        phone: '+989100000008',
+        firstName: "نگار",
+        lastName: "ضیا",
+        name: "negar", // unique username
+        phone: "+989100000008",
         role: UserRole.STAFF,
         isActive: true,
         isTeamMember: true,
-        locale: 'fa',
-        theme: 'light',
+        locale: "fa",
+        theme: "dark",
       },
     }),
 
-    // STAFF with ADMIN org role in APPOINTMENT org (index 8)
-    // Access: dashboard, organizations, appointments, services, service categories
+    // Service Provider 2 -  (index 8)
     prisma.user.create({
       data: {
-        email: 'staff-admin-appt@clinic.ir', // optional
+        email: "dr-derma@clinic.ir", // optional
         password: hashedPassword,
-        firstName: 'کارمند',
-        lastName: 'ادمین',
-        name: 'staff-admin-appt', // unique username
-        phone: '+989100000009',
+        firstName: "طاهره",
+        lastName: "قربانی",
+        name: "tahere", // unique username
+        phone: "+989100000011",
         role: UserRole.STAFF,
         isActive: true,
         isTeamMember: true,
-        locale: 'fa',
-        theme: 'light',
+        locale: "fa",
+        theme: "dark",
       },
     }),
 
-    // STAFF with MANAGER org role in APPOINTMENT org (index 9)
-    // Access: dashboard, organizations, appointments, services, service categories
+    // Service Provider 3 - (index 9)
     prisma.user.create({
       data: {
-        email: 'staff-manager-appt@clinic.ir', // optional
+        email: "hairstylist@clinic.ir", // optional
         password: hashedPassword,
-        firstName: 'کارمند',
-        lastName: 'منیجر',
-        name: 'staff-manager-appt', // unique username
-        phone: '+989100000010',
+        firstName: "نرگس ",
+        lastName: "ضیا",
+        name: "narges", // unique username
+        phone: "+989100000012",
         role: UserRole.STAFF,
         isActive: true,
         isTeamMember: true,
-        locale: 'fa',
-        theme: 'light',
-      },
-    }),
-
-    // Service Provider 1 - Dermatologist (index 10)
-    prisma.user.create({
-      data: {
-        email: 'dr-derma@clinic.ir', // optional
-        password: hashedPassword,
-        firstName: 'دکتر',
-        lastName: 'پوست',
-        name: 'dr-derma', // unique username
-        phone: '+989100000011',
-        role: UserRole.STAFF,
-        isActive: true,
-        isTeamMember: true,
-        locale: 'fa',
-        theme: 'light',
-      },
-    }),
-
-    // Service Provider 2 - Hair Stylist (index 11)
-    prisma.user.create({
-      data: {
-        email: 'hairstylist@clinic.ir', // optional
-        password: hashedPassword,
-        firstName: 'آرایشگر',
-        lastName: 'مو',
-        name: 'hairstylist', // unique username
-        phone: '+989100000012',
-        role: UserRole.STAFF,
-        isActive: true,
-        isTeamMember: true,
-        locale: 'fa',
-        theme: 'light',
+        locale: "fa",
+        theme: "dark",
       },
     }),
 
     // ========================================
-    // CUSTOMER Users (indices 12-14)
+    // CUSTOMER Users (indices 10-12)
     // ========================================
 
-    // CUSTOMER 1 (index 12)
+    // CUSTOMER 1 (index 10)
     // Access: dashboard, my orders, my appointments, settings, calendar
     prisma.user.create({
       data: {
-        email: 'customer1@example.com', // optional
+        email: "customer1@example.com", // optional
         password: hashedPassword,
-        firstName: 'مشتری',
-        lastName: 'اول',
-        name: 'customer1', // unique username
-        phone: '+989100000013',
+        firstName: "الهه",
+        lastName: "فروغی",
+        name: "eli", // unique username
+        phone: "+989100000013",
         role: UserRole.CUSTOMER,
         isActive: true,
-        locale: 'fa',
-        theme: 'light',
+        locale: "fa",
+        theme: "dark",
       },
     }),
 
-    // CUSTOMER 2 (index 13)
+    // CUSTOMER 2 (index 11)
     prisma.user.create({
       data: {
-        email: 'customer2@example.com', // optional
+        email: "customer2@example.com", // optional
         password: hashedPassword,
-        firstName: 'مشتری',
-        lastName: 'دوم',
-        name: 'customer2', // unique username
-        phone: '+989100000014',
+        firstName: "مشتری",
+        lastName: "دوم",
+        name: "customer2", // unique username
+        phone: "+989100000014",
         role: UserRole.CUSTOMER,
         isActive: true,
-        locale: 'fa',
-        theme: 'dark',
+        locale: "fa",
+        theme: "dark",
       },
     }),
 
-    // CUSTOMER 3 (index 14)
+    // CUSTOMER 3 (index 12)
     prisma.user.create({
       data: {
         // No email - demonstrating optional email
         password: hashedPassword,
-        firstName: 'مشتری',
-        lastName: 'سوم',
-        name: 'customer3', // unique username
-        phone: '+989100000015',
+        firstName: "مشتری",
+        lastName: "سوم",
+        name: "customer3", // unique username
+        phone: "+989100000015",
         role: UserRole.CUSTOMER,
         isActive: true,
-        locale: 'fa',
-        theme: 'light',
+        locale: "fa",
+        theme: "light",
       },
     }),
 
     // ========================================
-    // DRIVER Users (indices 15-16)
+    // DRIVER Users (indices 13-14)
     // ========================================
 
-    // DRIVER 1 (index 15)
+    // DRIVER 1 (index 13)
     // Access: dashboard, my orders, settings, calendar
     prisma.user.create({
       data: {
-        email: 'driver1@shop.ir', // optional
+        email: "driver1@shop.ir", // optional
         password: hashedPassword,
-        firstName: 'راننده',
-        lastName: 'اول',
-        name: 'driver1', // unique username
-        phone: '+989100000016',
+        firstName: "راننده",
+        lastName: "اول",
+        name: "driver1", // unique username
+        phone: "+989100000016",
         role: UserRole.DRIVER,
         isActive: true,
         isTeamMember: true,
-        locale: 'fa',
-        theme: 'light',
+        locale: "fa",
+        theme: "light",
       },
     }),
 
-    // DRIVER 2 (index 16)
+    // DRIVER 2 (index 14)
     prisma.user.create({
       data: {
         // No email - demonstrating optional email
         password: hashedPassword,
-        firstName: 'راننده',
-        lastName: 'دوم',
-        name: 'driver2', // unique username
-        phone: '+989100000017',
+        firstName: "راننده",
+        lastName: "دوم",
+        name: "driver2", // unique username
+        phone: "+989100000017",
         role: UserRole.DRIVER,
         isActive: true,
         isTeamMember: true,
-        locale: 'fa',
-        theme: 'light',
+        locale: "fa",
+        theme: "light",
       },
     }),
 
     // ========================================
-    // LAW FIRM Organization Users (indices 17-21)
+    // LAW FIRM Organization Users (indices 15-19)
     // ========================================
 
-    // LAW FIRM ADMIN (index 17)
+    // LAW FIRM ADMIN (index 15)
     // Access: dashboard, organization details, members, appointments, services, service categories
     prisma.user.create({
       data: {
-        email: 'law-admin@lawfirm.ir',
+        email: "law-admin@lawfirm.ir",
         password: hashedPassword,
-        firstName: 'مدیر',
-        lastName: 'دفتر',
-        name: 'law-admin', // unique username
-        phone: '+989100000018',
+        firstName: "مدیر",
+        lastName: "دفتر",
+        name: "law-admin", // unique username
+        phone: "+989100000018",
         role: UserRole.ADMIN,
         isActive: true,
         isTeamMember: true,
-        locale: 'fa',
-        theme: 'light',
+        locale: "fa",
+        theme: "light",
       },
     }),
 
-    // LAW FIRM MANAGER (index 18)
+    // LAW FIRM MANAGER (index 16)
     // Access: dashboard, organization details, members, appointments, services, service categories
     prisma.user.create({
       data: {
-        email: 'law-manager@lawfirm.ir',
+        email: "law-manager@lawfirm.ir",
         password: hashedPassword,
-        firstName: 'معاون',
-        lastName: 'دفتر',
-        name: 'law-manager', // unique username
-        phone: '+989100000019',
+        firstName: "معاون",
+        lastName: "دفتر",
+        name: "law-manager", // unique username
+        phone: "+989100000019",
         role: UserRole.MANAGER,
         isActive: true,
         isTeamMember: true,
-        locale: 'fa',
-        theme: 'light',
+        locale: "fa",
+        theme: "light",
       },
     }),
 
-    // LAW FIRM STAFF / RECEPTIONIST (index 19)
+    // LAW FIRM STAFF / RECEPTIONIST (index 17)
     // Access: dashboard, my appointments, my services, settings, calendar
     prisma.user.create({
       data: {
-        email: 'law-staff@lawfirm.ir',
+        email: "law-staff@lawfirm.ir",
         password: hashedPassword,
-        firstName: 'منشی',
-        lastName: 'دفتر',
-        name: 'law-staff', // unique username
-        phone: '+989100000020',
+        firstName: "منشی",
+        lastName: "دفتر",
+        name: "law-staff", // unique username
+        phone: "+989100000020",
         role: UserRole.STAFF,
         isActive: true,
         isTeamMember: true,
-        locale: 'fa',
-        theme: 'light',
+        locale: "fa",
+        theme: "light",
       },
     }),
 
-    // LAWYER 1 - Senior Attorney (index 20)
+    // LAWYER 1 - Senior Attorney (index 18)
     // Service provider for legal consultations
     prisma.user.create({
       data: {
-        email: 'lawyer-senior@lawfirm.ir',
+        email: "lawyer-senior@lawfirm.ir",
         password: hashedPassword,
-        firstName: 'دکتر',
-        lastName: 'وکیل‌زاده',
-        name: 'lawyer-senior', // unique username
-        phone: '+989100000021',
+        firstName: "دکتر",
+        lastName: "وکیل‌زاده",
+        name: "lawyer-senior", // unique username
+        phone: "+989100000021",
         role: UserRole.STAFF,
         isActive: true,
         isTeamMember: true,
-        locale: 'fa',
-        theme: 'light',
+        locale: "fa",
+        theme: "light",
       },
     }),
 
-    // LAWYER 2 - Junior Attorney (index 21)
+    // LAWYER 2 - Junior Attorney (index 19)
     // Service provider for legal consultations
     prisma.user.create({
       data: {
-        email: 'lawyer-junior@lawfirm.ir',
+        email: "lawyer-junior@lawfirm.ir",
         password: hashedPassword,
-        firstName: 'سارا',
-        lastName: 'محمودی',
-        name: 'lawyer-junior', // unique username
-        phone: '+989100000022',
+        firstName: "سارا",
+        lastName: "محمودی",
+        name: "lawyer-junior", // unique username
+        phone: "+989100000022",
         role: UserRole.STAFF,
         isActive: true,
         isTeamMember: true,
-        locale: 'fa',
-        theme: 'light',
+        locale: "fa",
+        theme: "light",
       },
     }),
   ]);
@@ -508,12 +473,12 @@ async function main() {
       type: OrganizationType.APPOINTMENT,
       locale: 'fa',
       timezone: 'Asia/Tehran',
-      name: 'کلینیک زیبایی رویا',
-      slug: 'clinic-ruya',
+      name: 'کلینیک زیبایی تی کال',
+      slug: 'tikal',
       description: 'کلینیک تخصصی زیبایی و پوست با جدیدترین تکنولوژی‌های روز دنیا',
-      address: 'تهران، خیابان میرداماد، پلاک ۴۵',
-      phone: '+982188999999',
-      email: 'info@clinic-ruya.ir',
+      address: 'شهرکرد، خیابان کاشانی، کوچه 69، پلاک 3.2',
+      phone: '+983832228906',
+      email: 'fariba.farhadi@gmail.com',
       logo: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=200',
       coverImage: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=1200',
       isActive: true,
@@ -594,51 +559,43 @@ async function main() {
     data: { organizationId: healthShop.id, userId: users[4].id, role: OrgMemberRole.STAFF, isActive: true },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: healthShop.id, userId: users[15].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: { organizationId: healthShop.id, userId: users[13].id, role: OrgMemberRole.STAFF, isActive: true },
   });
 
-  // Beauty Clinic Members (APPOINTMENT type) - users[5-11]
+  // Beauty Clinic Members (APPOINTMENT type) - users[5-9]
   await prisma.organizationMember.create({
     data: { organizationId: beautyClinic.id, userId: users[5].id, role: OrgMemberRole.ADMIN, isActive: true },
   });
   await prisma.organizationMember.create({
     data: { organizationId: beautyClinic.id, userId: users[6].id, role: OrgMemberRole.MANAGER, isActive: true },
   });
+  // Service providers
   await prisma.organizationMember.create({
     data: { organizationId: beautyClinic.id, userId: users[7].id, role: OrgMemberRole.STAFF, isActive: true },
   });
-  // STAFF with ADMIN org role in APPOINTMENT org
   await prisma.organizationMember.create({
-    data: { organizationId: beautyClinic.id, userId: users[8].id, role: OrgMemberRole.ADMIN, isActive: true },
-  });
-  // STAFF with MANAGER org role in APPOINTMENT org
-  await prisma.organizationMember.create({
-    data: { organizationId: beautyClinic.id, userId: users[9].id, role: OrgMemberRole.MANAGER, isActive: true },
-  });
-  // Service providers
-  await prisma.organizationMember.create({
-    data: { organizationId: beautyClinic.id, userId: users[10].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: { organizationId: beautyClinic.id, userId: users[8].id, role: OrgMemberRole.STAFF, isActive: true },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: beautyClinic.id, userId: users[11].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: { organizationId: beautyClinic.id, userId: users[9].id, role: OrgMemberRole.STAFF, isActive: true },
   });
 
-  // Law Firm Members (APPOINTMENT type) - users[17-21]
+  // Law Firm Members (APPOINTMENT type) - users[15-19]
   await prisma.organizationMember.create({
-    data: { organizationId: lawFirm.id, userId: users[17].id, role: OrgMemberRole.ADMIN, isActive: true },
+    data: { organizationId: lawFirm.id, userId: users[15].id, role: OrgMemberRole.ADMIN, isActive: true },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: lawFirm.id, userId: users[18].id, role: OrgMemberRole.MANAGER, isActive: true },
+    data: { organizationId: lawFirm.id, userId: users[16].id, role: OrgMemberRole.MANAGER, isActive: true },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: lawFirm.id, userId: users[19].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: { organizationId: lawFirm.id, userId: users[17].id, role: OrgMemberRole.STAFF, isActive: true },
   });
   // Lawyers (Service providers)
   await prisma.organizationMember.create({
-    data: { organizationId: lawFirm.id, userId: users[20].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: { organizationId: lawFirm.id, userId: users[18].id, role: OrgMemberRole.STAFF, isActive: true },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: lawFirm.id, userId: users[21].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: { organizationId: lawFirm.id, userId: users[19].id, role: OrgMemberRole.STAFF, isActive: true },
   });
 
   // Note: users[12-14] are CUSTOMERs - no organization membership
@@ -838,16 +795,136 @@ async function main() {
 
   // Beauty Clinic Services
   const beautyCategories = await Promise.all([
-    prisma.serviceCategory.create({ data: { organizationId: beautyClinic.id, name: 'خدمات پوست', description: 'پوست و زیبایی', sortOrder: 1, isActive: true } }),
-    prisma.serviceCategory.create({ data: { organizationId: beautyClinic.id, name: 'خدمات مو', description: 'کوتاهی و رنگ', sortOrder: 2, isActive: true } }),
-    prisma.serviceCategory.create({ data: { organizationId: beautyClinic.id, name: 'آرایشی', description: 'آرایش و میکاپ', sortOrder: 3, isActive: true } }),
+    prisma.serviceCategory.create({
+      data: {
+        organizationId: beautyClinic.id,
+        name: "خدمات پوست",
+        description: "پوست و زیبایی",
+        sortOrder: 4,
+        isActive: true,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        organizationId: beautyClinic.id,
+        name: "خدمات مو",
+        description: "کوتاهی و رنگ",
+        sortOrder: 1,
+        isActive: true,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        organizationId: beautyClinic.id,
+        name: "آرایشی",
+        description: "آرایش و میکاپ",
+        sortOrder: 2,
+        isActive: true,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        organizationId: beautyClinic.id,
+        name: "اصلاح",
+        description: "اصلاح صورت و ابرو",
+        sortOrder: 3,
+        isActive: true,
+      },
+    }),
   ]);
 
   const beautyServices = await Promise.all([
-    prisma.service.create({ data: { organizationId: beautyClinic.id, categoryId: beautyCategories[0].id, serviceProviderId: users[10].id, name: 'بوتاکس', description: 'تزریق بوتاکس', price: 3500000, duration: 30, isActive: true, sortOrder: 1 } }),
-    prisma.service.create({ data: { organizationId: beautyClinic.id, categoryId: beautyCategories[0].id, serviceProviderId: users[10].id, name: 'فیلر لب', description: 'تزریق فیلر', price: 2800000, duration: 45, isActive: true, sortOrder: 2 } }),
-    prisma.service.create({ data: { organizationId: beautyClinic.id, categoryId: beautyCategories[1].id, serviceProviderId: users[11].id, name: 'کوتاهی مو', description: 'کوتاهی مو', price: 350000, duration: 30, isActive: true, sortOrder: 1 } }),
-    prisma.service.create({ data: { organizationId: beautyClinic.id, categoryId: beautyCategories[1].id, serviceProviderId: users[11].id, name: 'رنگ مو', description: 'رنگ مو', price: 800000, duration: 90, isActive: true, sortOrder: 2 } }),
+    prisma.service.create({
+      data: {
+        organizationId: beautyClinic.id,
+        categoryId: beautyCategories[0].id,
+        serviceProviderId: users[7].id,
+        name: "بوتاکس",
+        description: "تزریق بوتاکس",
+        price: 3500000,
+        duration: 30,
+        isActive: true,
+        sortOrder: 1,
+      },
+    }),
+    prisma.service.create({
+      data: {
+        organizationId: beautyClinic.id,
+        categoryId: beautyCategories[0].id,
+        serviceProviderId: users[8].id,
+        name: "فیلر لب",
+        description: "تزریق فیلر",
+        price: 2800000,
+        duration: 45,
+        isActive: true,
+        sortOrder: 2,
+      },
+    }),
+    prisma.service.create({
+      data: {
+        organizationId: beautyClinic.id,
+        categoryId: beautyCategories[1].id,
+        serviceProviderId: users[5].id,
+        name: "کوتاهی مو",
+        description: "کوتاهی مو",
+        price: 350000,
+        duration: 30,
+        isActive: true,
+        sortOrder: 1,
+      },
+    }),
+    prisma.service.create({
+      data: {
+        organizationId: beautyClinic.id,
+        categoryId: beautyCategories[1].id,
+        serviceProviderId: users[7].id,
+        name: "کوتاهی مو",
+        description: "کوتاهی مو",
+        price: 350000,
+        duration: 30,
+        isActive: true,
+        sortOrder: 1,
+      },
+    }),
+    prisma.service.create({
+      data: {
+        organizationId: beautyClinic.id,
+        categoryId: beautyCategories[1].id,
+        serviceProviderId: users[5].id,
+        name: "رنگ مو",
+        description: "رنگ مو",
+        price: 800000,
+        duration: 90,
+        isActive: true,
+        sortOrder: 2,
+      },
+    }),
+    prisma.service.create({
+      data: {
+        organizationId: beautyClinic.id,
+        categoryId: beautyCategories[1].id,
+        serviceProviderId: users[9].id,
+        name: "رنگ مو",
+        description: "رنگ مو",
+        price: 800000,
+        duration: 90,
+        isActive: true,
+        sortOrder: 3,
+      },
+    }),
+    prisma.service.create({
+      data: {
+        organizationId: beautyClinic.id,
+        categoryId: beautyCategories[3].id,
+        serviceProviderId: users[6].id,
+        name: "اصلاح ابرو",
+        description: "اصلاح ابرو",
+        price: 200000,
+        duration: 30,
+        isActive: true,
+        sortOrder: 2,
+      },
+    })
   ]);
 
   // Dental Clinic Services
@@ -884,7 +961,7 @@ async function main() {
       data: { 
         organizationId: lawFirm.id, 
         categoryId: lawCategories[0].id, 
-        serviceProviderId: users[20].id, 
+        serviceProviderId: users[18].id, 
         name: 'مشاوره حقوقی عمومی', 
         description: 'مشاوره حقوقی عمومی با وکیل ارشد', 
         price: 2000000, 
@@ -897,7 +974,7 @@ async function main() {
       data: { 
         organizationId: lawFirm.id, 
         categoryId: lawCategories[0].id, 
-        serviceProviderId: users[21].id, 
+        serviceProviderId: users[19].id, 
         name: 'مشاوره حقوقی تخصصی', 
         description: 'مشاوره تخصصی با وکیل پایه یک دادگستری', 
         price: 3500000, 
@@ -911,7 +988,7 @@ async function main() {
       data: { 
         organizationId: lawFirm.id, 
         categoryId: lawCategories[1].id, 
-        serviceProviderId: users[20].id, 
+        serviceProviderId: users[18].id, 
         name: 'مشاوره پرونده کیفری', 
         description: 'بررسی و مشاوره پرونده‌های کیفری', 
         price: 5000000, 
@@ -924,7 +1001,7 @@ async function main() {
       data: { 
         organizationId: lawFirm.id, 
         categoryId: lawCategories[1].id, 
-        serviceProviderId: users[20].id, 
+        serviceProviderId: users[19].id, 
         name: 'دفاع در دادگاه کیفری', 
         description: 'دفاع تخصصی در دادگاه‌های کیفری', 
         price: 15000000, 
@@ -938,7 +1015,7 @@ async function main() {
       data: { 
         organizationId: lawFirm.id, 
         categoryId: lawCategories[2].id, 
-        serviceProviderId: users[21].id, 
+        serviceProviderId: users[19].id, 
         name: 'تنظیم قرارداد', 
         description: 'تنظیم و بررسی قراردادهای تجاری', 
         price: 3000000, 
@@ -951,7 +1028,7 @@ async function main() {
       data: { 
         organizationId: lawFirm.id, 
         categoryId: lawCategories[2].id, 
-        serviceProviderId: users[21].id, 
+        serviceProviderId: users[19].id, 
         name: 'مشاوره حقوقی شرکت‌ها', 
         description: 'مشاوره تخصصی برای شرکت‌ها و کسب‌وکارها', 
         price: 4500000, 
@@ -965,7 +1042,7 @@ async function main() {
       data: { 
         organizationId: lawFirm.id, 
         categoryId: lawCategories[3].id, 
-        serviceProviderId: users[21].id, 
+        serviceProviderId: users[19].id, 
         name: 'مشاوره طلاق توافقی', 
         description: 'مشاوره و پیگیری طلاق توافقی', 
         price: 8000000, 
@@ -978,7 +1055,7 @@ async function main() {
       data: { 
         organizationId: lawFirm.id, 
         categoryId: lawCategories[3].id, 
-        serviceProviderId: users[20].id, 
+        serviceProviderId: users[18].id, 
         name: 'مشاوره مهریه و حضانت', 
         description: 'مشاوره تخصصی در امور مهریه و حضانت فرزند', 
         price: 4000000, 
@@ -1321,17 +1398,20 @@ async function main() {
   console.log('\n🔑 Test Credentials (all passwords: password123):');
   console.log('\n   === SUPER_ADMIN ===');
   console.log('   - Username: superadmin (Full access to all features)');
+  
   console.log('\n   === SHOP Organization ===');
   console.log('   - Username: shop-admin (ADMIN role, ADMIN org role - Access: orders, products, customers)');
   console.log('   - Username: shop-manager (MANAGER role, MANAGER org role - Access: orders, products)');
   console.log('   - Username: shop-staff (STAFF role, STAFF org role - Limited access)');
   console.log('   - Username: shop-driver (DRIVER role - Access: my-orders)');
+  
   console.log('\n   === APPOINTMENT Organization (Beauty Clinic) ===');
-  console.log('   - Username: appt-admin (ADMIN role, ADMIN org role - Access: appointments, services)');
-  console.log('   - Username: appt-manager (MANAGER role, MANAGER org role - Access: appointments, services)');
+  console.log('   - Username: appt-admin (ADMIN role, ADMIN org role - Access: Full appointment access)');
+  console.log('   - Username: appt-manager (MANAGER role, MANAGER org role - Access: appointments, services,  my-appointments, my-services)');
   console.log('   - Username: appt-staff (STAFF role, STAFF org role - Access: my-appointments, my-services)');
   console.log('   - Username: staff-admin-appt (STAFF role, ADMIN org role - Full appointment access)');
   console.log('   - Username: staff-manager-appt (STAFF role, MANAGER org role - Full appointment access)');
+  
   console.log('\n   === LAW FIRM Organization (دفتر وکالت عدالت) ===');
   console.log('   - Username: law-admin (ADMIN role, ADMIN org role - Access: appointments, services)');
   console.log('   - Username: law-manager (MANAGER role, MANAGER org role - Access: appointments, services)');

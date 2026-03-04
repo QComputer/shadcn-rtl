@@ -6,6 +6,8 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+console.log("==================== Shop ++++++++++++++++++++++");
+
     const { slug } = await params;
 
     // Get organization by slug
@@ -37,9 +39,9 @@ export async function GET(
 
     // Only allow SHOP type for public shop pages
     if (organization.type !== "SHOP") {
-      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+      return NextResponse.json({ error: "Shop not found" }, { status: 404 });
     }
-
+console.log('==================== Shop ++++++++++++++++++++++')
     // Get product categories with products
     const categories = await prisma.productCategory.findMany({
       where: {

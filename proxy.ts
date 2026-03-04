@@ -135,11 +135,11 @@ const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     isMyOnly: true,
   },
   "/dashboard/my-appointments": {
-    allowedRoles: ["SUPER_ADMIN", "CUSTOMER", "STAFF"],
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "CUSTOMER" ,"STAFF"],
     isMyOnly: true,
   },
   "/dashboard/my-services": {
-    allowedRoles: ["SUPER_ADMIN", "STAFF"],
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
     isMyOnly: true,
     requiresOrgMembership: true,
     requiredOrgType: ["APPOINTMENT"],

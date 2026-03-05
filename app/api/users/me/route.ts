@@ -51,7 +51,6 @@ export async function GET() {
         memberOf: {
           select: {
             id: true,
-            role: true,
             organization: {
               select: {
                 id: true,

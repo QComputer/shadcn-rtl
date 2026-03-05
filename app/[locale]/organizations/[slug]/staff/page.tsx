@@ -18,6 +18,7 @@ import { formatToman } from "@/lib/persian"
 interface StaffMember {
   id: string
   userId: string
+  username?: string
   role: string
   user: {
     id: string

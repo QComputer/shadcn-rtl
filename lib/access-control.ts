@@ -5,7 +5,7 @@
  * It includes route access rules, permission checking functions, and organization-based access control.
  */
 
-import type { UserRole, OrgMemberRole, OrganizationType } from "./types"
+import type { UserRole, OrganizationType } from "./types"
 
 // ============================================
 // Types and Interfaces
@@ -19,7 +19,7 @@ export interface RouteAccessConfig {
   /** Required organization types (if org membership is required) */
   requiredOrgType?: OrganizationType[]
   /** Required organization member roles (if org membership is required) */
-  requiredOrgMemberRole?: OrgMemberRole[]
+  //requiredOrgMemberRole?: OrgMemberRole[]
   /** Whether this is a "my only" route (e.g., my-orders, my-appointments) */
   isMyOnly?: boolean
   /** Routes that are universally accessible regardless of role */
@@ -31,7 +31,7 @@ export interface UserAccessContext {
   userRole: UserRole
   organizationId?: string
   organizationType?: OrganizationType
-  orgMemberRole?: OrgMemberRole
+  //orgMemberRole?: OrgMemberRole
 }
 
 export interface AccessCheckResult {
@@ -39,6 +39,7 @@ export interface AccessCheckResult {
   reason?: string
   redirectPath?: string
 }
+
 
 // ============================================
 // Dashboard Route Configuration
@@ -51,30 +52,51 @@ export interface AccessCheckResult {
 export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
   // Main dashboard - accessible by all authenticated users
   "/dashboard": {
-    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF", "DRIVER", "CUSTOMER"],
-    isUniversal: false,
+    allowedRoles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+      "STAFF",
+      "DRIVER",
+      "CUSTOMER",
+    ],
+    isUniversal: true,
   },
 
   // ============================================
   // Universal Access Routes (All Roles)
   // ============================================
-  
+
   // Settings - Universal access
   "/dashboard/settings": {
-    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF", "DRIVER", "CUSTOMER"],
+    allowedRoles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+      "STAFF",
+      "DRIVER",
+      "CUSTOMER",
+    ],
     isUniversal: true,
   },
 
   // Calendar - Universal access
   "/dashboard/calendar": {
-    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF", "DRIVER", "CUSTOMER"],
+    allowedRoles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+      "STAFF",
+      "DRIVER",
+      "CUSTOMER",
+    ],
     isUniversal: true,
   },
 
   // ============================================
   // SUPER_ADMIN Routes
   // ============================================
-  
+
   // Organizations management - SUPER_ADMIN only
   "/dashboard/organizations": {
     allowedRoles: ["SUPER_ADMIN"],
@@ -83,13 +105,13 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
   // ============================================
   // SHOP Organization Routes
   // ============================================
-  
+
   // Orders - SHOP org admins/managers
   "/dashboard/orders": {
     allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
     requiresOrgMembership: true,
     requiredOrgType: ["SHOP"],
-    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+    //requiredOrgMemberRole: ["ADMIN", "MANAGER"],
   },
 
   // Products - SHOP org admins/managers
@@ -97,7 +119,7 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
     requiresOrgMembership: true,
     requiredOrgType: ["SHOP"],
-    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+    //requiredOrgMemberRole: ["ADMIN", "MANAGER"],
   },
 
   // Product Categories - SHOP org admins/managers
@@ -105,7 +127,7 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
     requiresOrgMembership: true,
     requiredOrgType: ["SHOP"],
-    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+    //requiredOrgMemberRole: ["ADMIN", "MANAGER"],
   },
 
   // Customers - SHOP org admins/managers
@@ -113,7 +135,7 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
     requiresOrgMembership: true,
     requiredOrgType: ["SHOP"],
-    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+    //requiredOrgMemberRole: ["ADMIN", "MANAGER"],
   },
 
   // Members - SHOP org admins/managers
@@ -121,59 +143,59 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
     requiresOrgMembership: true,
     requiredOrgType: ["SHOP"],
-    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+    //requiredOrgMemberRole: ["ADMIN", "MANAGER"],
   },
 
   // ============================================
   // APPOINTMENT Organization Routes
   // ============================================
-  
-   // Appointments - APPOINTMENT org admins/managers
-   "/dashboard/appointments": {
-     allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
-     requiresOrgMembership: true,
-     requiredOrgType: ["APPOINTMENT"],
-     requiredOrgMemberRole: ["ADMIN", "MANAGER"],
-   },
 
-   // Services - APPOINTMENT org admins/managers/staff
-   "/dashboard/services": {
-     allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
-     requiresOrgMembership: true,
-     requiredOrgType: ["APPOINTMENT"],
-     requiredOrgMemberRole: ["ADMIN", "MANAGER", "STAFF"],
-   },
+  // Appointments - APPOINTMENT org admins/managers
+  "/dashboard/appointments": {
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
+    requiresOrgMembership: true,
+    requiredOrgType: ["APPOINTMENT"],
+    //requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+  },
 
-   // Service Categories - APPOINTMENT org admins/managers/staff
-   "/dashboard/service-categories": {
-     allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
-     requiresOrgMembership: true,
-     requiredOrgType: ["APPOINTMENT"],
-     requiredOrgMemberRole: ["ADMIN", "MANAGER", "STAFF"],
-   },
+  // Services - APPOINTMENT org admins/managers/staff
+  "/dashboard/services": {
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
+    requiresOrgMembership: true,
+    requiredOrgType: ["APPOINTMENT"],
+    //requiredOrgMemberRole: ["ADMIN", "MANAGER", "STAFF"],
+  },
+
+  // Service Categories - APPOINTMENT org admins/managers/staff
+  "/dashboard/service-categories": {
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
+    requiresOrgMembership: true,
+    requiredOrgType: ["APPOINTMENT"],
+    //requiredOrgMemberRole: ["ADMIN", "MANAGER", "STAFF"],
+  },
 
   // ============================================
   // STAFF with ADMIN/MANAGER role in APPOINTMENT org
   // ============================================
-  
+
   // Special access for STAFF with elevated org role
   "/dashboard/organization-details": {
     allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
     requiresOrgMembership: true,
-    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+    //requiredOrgMemberRole: ["ADMIN", "MANAGER"],
   },
 
   // ============================================
   // "My" Routes - Limited Access
   // ============================================
-  
+
   // My Orders - CUSTOMER and DRIVER
   "/dashboard/my-orders": {
     allowedRoles: ["SUPER_ADMIN", "CUSTOMER", "DRIVER"],
     isMyOnly: true,
   },
 
-   // My Appointments - CUSTOMER and STAFF/ADMIN/MANAGER (APPOINTMENT org member)
+  // My Appointments - CUSTOMER and STAFF/ADMIN/MANAGER (APPOINTMENT org member)
   "/dashboard/my-appointments": {
     allowedRoles: ["SUPER_ADMIN", "CUSTOMER", "STAFF", "ADMIN", "MANAGER"],
     isMyOnly: true,
@@ -181,12 +203,12 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
 
   // My Services - STAFF/ADMIN/MANAGER (APPOINTMENT org member)
   "/dashboard/my-services": {
-    allowedRoles: ["SUPER_ADMIN", "STAFF", "ADMIN", "MANAGER"],
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
     isMyOnly: true,
     requiresOrgMembership: true,
     requiredOrgType: ["APPOINTMENT"],
   },
-}
+};
 
 // ============================================
 // Access Check Functions
@@ -255,15 +277,15 @@ export function checkRouteAccess(
     }
 
     // Check organization member role
-    if (routeConfig.requiredOrgMemberRole && context.orgMemberRole) {
-      if (!routeConfig.requiredOrgMemberRole.includes(context.orgMemberRole)) {
-        return {
-          hasAccess: false,
-          reason: `Organization member role ${context.orgMemberRole} is not allowed`,
-          redirectPath: getRedirectPathForRole(context.userRole),
-        }
-      }
-    }
+    //if (routeConfig.requiredOrgMemberRole && context.orgMemberRole) {
+    //  if (!routeConfig.requiredOrgMemberRole.includes(context.orgMemberRole)) {
+    //    return {
+    //      hasAccess: false,
+    //      reason: `Organization member role ${context.orgMemberRole} is not allowed`,
+    //      redirectPath: getRedirectPathForRole(context.userRole),
+    //    }
+    //  }
+    //}
   }
 
   // All checks passed
@@ -342,7 +364,7 @@ export interface NavItem {
   icon: string
   requiredRoles?: UserRole[]
   requiredOrgType?: OrganizationType[]
-  requiredOrgMemberRole?: OrgMemberRole[]
+  //requiredOrgMemberRole?: OrgMemberRole[]
   isUniversal?: boolean
 }
 
@@ -363,7 +385,7 @@ export const dashboardNavItems: NavItem[] = [
     icon: "ShoppingCart",
     requiredRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
     requiredOrgType: ["SHOP"],
-    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+    //requiredOrgMemberRole: ["ADMIN", "MANAGER"],
   },
   {
     id: "products",
@@ -372,16 +394,16 @@ export const dashboardNavItems: NavItem[] = [
     icon: "Package",
     requiredRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
     requiredOrgType: ["SHOP"],
-    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+    //requiredOrgMemberRole: ["ADMIN", "MANAGER"],
   },
   {
     id: "appointments",
     labelKey: "navigation.appointments",
     href: "/dashboard/appointments",
     icon: "Calendar",
-    requiredRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+    requiredRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
     requiredOrgType: ["APPOINTMENT"],
-    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+    //requiredOrgMemberRole: ["ADMIN", "MANAGER"],
   },
   {
     id: "services",
@@ -390,7 +412,7 @@ export const dashboardNavItems: NavItem[] = [
     icon: "Scissors",
     requiredRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
     requiredOrgType: ["APPOINTMENT"],
-    requiredOrgMemberRole: ["ADMIN", "MANAGER", "STAFF"],
+    //requiredOrgMemberRole: ["ADMIN", "MANAGER", "STAFF"],
   },
   {
     id: "service-categories",
@@ -399,7 +421,7 @@ export const dashboardNavItems: NavItem[] = [
     icon: "FolderOpen",
     requiredRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
     requiredOrgType: ["APPOINTMENT"],
-    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+    //requiredOrgMemberRole: ["ADMIN", "MANAGER"],
   },
   {
     id: "customers",
@@ -408,7 +430,7 @@ export const dashboardNavItems: NavItem[] = [
     icon: "Users",
     requiredRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
     requiredOrgType: ["SHOP"],
-    requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+    //requiredOrgMemberRole: ["ADMIN", "MANAGER"],
   },
   {
     id: "my-orders",
@@ -470,14 +492,6 @@ export function filterNavItems(
         return false
       }
     }
-
-    // Check org member role requirement
-    if (item.requiredOrgMemberRole && context.orgMemberRole) {
-      if (!item.requiredOrgMemberRole.includes(context.orgMemberRole)) {
-        return false
-      }
-    }
-
     return true
   })
 }
@@ -493,8 +507,8 @@ export function canManageOrders(context: UserAccessContext): boolean {
   if (context.userRole === "SUPER_ADMIN") return true
   
   if (["ADMIN", "MANAGER"].includes(context.userRole)) {
-    if (context.organizationType === "SHOP" && context.orgMemberRole) {
-      return ["ADMIN", "MANAGER"].includes(context.orgMemberRole)
+    if (context.organizationType === "SHOP" && context.userRole) {
+      return ["ADMIN", "MANAGER"].includes(context.userRole)
     }
   }
   
@@ -508,8 +522,8 @@ export function canManageProducts(context: UserAccessContext): boolean {
   if (context.userRole === "SUPER_ADMIN") return true
   
   if (["ADMIN", "MANAGER"].includes(context.userRole)) {
-    if (context.organizationType === "SHOP" && context.orgMemberRole) {
-      return ["ADMIN", "MANAGER"].includes(context.orgMemberRole)
+    if (context.organizationType === "SHOP" && context.userRole) {
+      return ["ADMIN", "MANAGER"].includes(context.userRole)
     }
   }
   
@@ -523,8 +537,8 @@ export function canManageAppointments(context: UserAccessContext): boolean {
   if (context.userRole === "SUPER_ADMIN") return true
   
   if (["ADMIN", "MANAGER", "STAFF"].includes(context.userRole)) {
-    if (context.organizationType === "APPOINTMENT" && context.orgMemberRole) {
-      return ["ADMIN", "MANAGER", "STAFF"].includes(context.orgMemberRole)
+    if (context.organizationType === "APPOINTMENT" && context.userRole) {
+      return ["ADMIN", "MANAGER", "STAFF"].includes(context.userRole)
     }
   }
   
@@ -538,8 +552,8 @@ export function canManageServices(context: UserAccessContext): boolean {
   if (context.userRole === "SUPER_ADMIN") return true
   
   if (["ADMIN", "MANAGER"].includes(context.userRole)) {
-    if (context.organizationType === "APPOINTMENT" && context.orgMemberRole) {
-      return ["ADMIN", "MANAGER"].includes(context.orgMemberRole)
+    if (context.organizationType === "APPOINTMENT" && context.userRole) {
+      return ["ADMIN", "MANAGER"].includes(context.userRole)
     }
   }
   

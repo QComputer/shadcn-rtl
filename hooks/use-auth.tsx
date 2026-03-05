@@ -7,42 +7,77 @@ import {
   signOut as signOutAuth, 
   useSession,
 } from "next-auth/react"
-import { type UserRole, type OrgMemberRole, type OrganizationType } from "@/lib/types"
-import { checkRouteAccess, type UserAccessContext, type AccessCheckResult } from "@/lib/access-control"
+import { type UserRole, type OrganizationType } from "@/lib/types"
+import { checkRouteAccess, type UserAccessContext, type AccessCheckResult} from "@/lib/access-control"
 
-interface AuthUser {
-  id: string
-  email: string
-  name: string
-  role: UserRole
-  locale: string
-  theme: string
-  isTeamMember: boolean
-  isActive: boolean
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  locale: string;
+  theme: string;
+  isTeamMember: boolean;
+  isActive: boolean;
 }
 
-interface OrganizationMembership {
-  id: string
-  organizationId: string
-  organizationName: string
-  organizationSlug: string
-  organizationType: OrganizationType
-  role: OrgMemberRole
-  isActive: boolean
+export interface OrganizationMembership {
+  id: string;
+  role: UserRole;
+  organizationId: string;
+  organizationName: string;
+  organizationSlug: string;
+  organizationType: OrganizationType;
+  isActive: boolean;
 }
 
-interface AuthContextType {
-  user: AuthUser | null
-  isLoading: boolean
-  isAuthenticated: boolean
-  signIn: (username: string, password: string) => Promise<void>
-  signOut: () => Promise<void>
-  hasPermission: (permission: string) => boolean
+export interface AuthContextType {
+  user: AuthUser | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  signIn: (username: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  hasPermission: (permission: string) => boolean;
   // New access control methods
-  organizationMembership: OrganizationMembership | null
-  accessContext: UserAccessContext | null
-  checkAccess: (route: string) => AccessCheckResult
-  hasRouteAccess: (route: string) => boolean
+  organizationMembership: OrganizationMembership | null;
+  accessContext: UserAccessContext | null;
+  checkAccess: (route: string) => AccessCheckResult;
+  hasRouteAccess: (route: string) => boolean;
+}
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  locale: string;
+  theme: string;
+  isTeamMember: boolean;
+  isActive: boolean;
+}
+
+export interface OrganizationMembership {
+  id: string;
+  role: UserRole;
+  organizationId: string;
+  organizationName: string;
+  organizationSlug: string;
+  organizationType: OrganizationType;
+  isActive: boolean;
+}
+
+export interface AuthContextType {
+  user: AuthUser | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  signIn: (username: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  hasPermission: (permission: string) => boolean;
+  // New access control methods
+  organizationMembership: OrganizationMembership | null;
+  accessContext: UserAccessContext | null;
+  checkAccess: (route: string) => AccessCheckResult;
+  hasRouteAccess: (route: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -98,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     userRole: authUser.role,
     organizationId: organizationMembership?.organizationId,
     organizationType: organizationMembership?.organizationType,
-    orgMemberRole: organizationMembership?.role,
+    //orgMemberRole: organizationMembership?.role,
   } : null
 
   const signIn = async (username: string, password: string) => {
@@ -317,7 +352,7 @@ export function useAccessCheck(route: string) {
 }
 
 // Hook for navigation items filtering
-export function useFilteredNavItems<T extends { requiredRoles?: UserRole[]; requiredOrgType?: OrganizationType[]; requiredOrgMemberRole?: OrgMemberRole[]; isUniversal?: boolean }>(
+export function useFilteredNavItems<T extends { requiredRoles?: UserRole[]; requiredOrgType?: OrganizationType[]; isUniversal?: boolean }>(
   items: T[]
 ): T[] {
   const { accessContext, isAuthenticated } = useAuth()
@@ -350,11 +385,11 @@ export function useFilteredNavItems<T extends { requiredRoles?: UserRole[]; requ
     }
 
     // Check org member role requirement
-    if (item.requiredOrgMemberRole && accessContext.orgMemberRole) {
-      if (!item.requiredOrgMemberRole.includes(accessContext.orgMemberRole)) {
-        return false
-      }
-    }
+    //if (item.requiredOrgMemberRole && accessContext.orgMemberRole) {
+    //  if (!item.requiredOrgMemberRole.includes(accessContext.orgMemberRole)) {
+    //    return false
+    //  }
+    //}
 
     return true
   })

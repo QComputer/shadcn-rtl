@@ -85,8 +85,8 @@ export default function EditAppointmentPage({
   
   // Form state
   const [status, setStatus] = useState<string>("PENDING")
-  const [notes, setNotes] = useState(undefined)
-  const [cancellationReason, setCancellationReason] = useState(undefined)
+  const [notes, setNotes] = useState('')
+  const [cancellationReason, setCancellationReason] = useState('')
 
   useEffect(() => {
     setMounted(true)

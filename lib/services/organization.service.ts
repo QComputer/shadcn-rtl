@@ -21,7 +21,6 @@ export class OrganizationService {
         members: {
           create: {
             userId,
-            role: "ADMIN",
             isActive: true,
           },
         },
@@ -32,11 +31,11 @@ export class OrganizationService {
             user: {
               select: {
                 id: true,
-                email: true,
                 name: true,
+                role: true,
+                email: true,
                 firstName: true,
                 lastName: true,
-                role: true,
               },
             },
           },
@@ -63,6 +62,8 @@ export class OrganizationService {
             user: {
               select: {
                 id: true,
+                name: true,
+                role: true,
                 email: true,
                 firstName: true,
                 lastName: true,
@@ -182,11 +183,12 @@ export class OrganizationService {
         user: {
           select: {
             id: true,
+            name: true,
+            role: true,
             email: true,
             firstName: true,
             lastName: true,
             avatar: true,
-            role: true,
             isActive: true,
           },
         },
@@ -216,12 +218,13 @@ export class OrganizationService {
       data: {
         organizationId,
         userId,
-        role,
       },
       include: {
         user: {
           select: {
             id: true,
+            name: true,
+            role: true,
             email: true,
             firstName: true,
             lastName: true,
@@ -248,20 +251,14 @@ export class OrganizationService {
     userId: string,
     role: "ADMIN" | "MANAGER" | "STAFF"
   ) {
-    const member = await prisma.organizationMember.update({
-      where: {
-        organizationId_userId: { organizationId, userId },
-      },
-      data: { role },
-    });
     // Update user's role
-    await prisma.user.update({
+    const user = await prisma.user.update({
       where: { id: userId },
       data: { role},
     });
 
     revalidatePath(`/dashboard/organizations/${organizationId}/members`);
-    return member;
+    return user;
   }
 
   async removeMember(organizationId: string, userId: string) {
@@ -333,9 +330,16 @@ export class OrganizationService {
       where: {
         organizationId_userId: { organizationId, userId },
       },
+      include: {
+        user: {
+          select: {
+            role: true,
+          },
+        },
+      },
     });
 
-    return member?.role;
+    return member?.user?.role;
   }
 }
 

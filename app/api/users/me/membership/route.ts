@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
         organizationName: membership.organization.name,
         organizationSlug: membership.organization.slug,
         organizationType: membership.organization.type,
-        role: membership.role,
+        role: session.role,
         isActive: membership.isActive,
       },
     });

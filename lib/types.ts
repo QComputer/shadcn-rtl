@@ -66,7 +66,7 @@ export type UserRole =
   | "STAFF"
   | "DRIVER"
   | "CUSTOMER";
-export type OrgMemberRole = "ADMIN" | "MANAGER" | "STAFF";
+//export type OrgMemberRole = "ADMIN" | "MANAGER" | "STAFF";
 export type AppointmentStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
 export type CartStatus = "ACTIVE" | "CHECKED_OUT" | "ABANDONED";
 export type OrderType = "DELIVERY" | "PICK_UP";

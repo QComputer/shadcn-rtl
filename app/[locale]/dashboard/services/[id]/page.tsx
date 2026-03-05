@@ -442,7 +442,7 @@ export default function EditServicePage({
             </div>
             
             {/* Service Provider (only visible to ADMIN) */}
-            {session?.user?.role === "ADMIN" && staffMembers.length > 0 && (
+            {(session?.user?.role === "ADMIN") && staffMembers.length > 0 && (
               <div className="space-y-2">
                 <Label htmlFor="serviceProvider">
                   {t("appointment.provider") || "Service Provider"}

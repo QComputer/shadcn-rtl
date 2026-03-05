@@ -46,10 +46,9 @@ export async function GET(request: NextRequest) {
           },
         },
       });
-
+      // TODO: check user.organizationId == membership.organization.id
       if (membership) {
         organizationType = membership.organization.type;
-        orgMemberRole = membership.role;
       }
     }
 
@@ -103,7 +102,6 @@ export async function GET(request: NextRequest) {
         role: userRole,
         organizationType,
         organizationId,
-        orgMemberRole,
         isTeamMember,
       },
     });
@@ -352,14 +350,22 @@ async function getAppointmentDashboard(organizationId: string) {
     completedAppointments,
     cancelledAppointments,
   ] = await Promise.all([
-    prisma.appointment.count({ where: { organizationId } }),
+    prisma.appointment.count({ where: { service: { organizationId } } }),
     prisma.service.count({ where: { organizationId } }),
     prisma.serviceCategory.count({ where: { organizationId } }),
     prisma.organizationMember.count({ where: { organizationId } }),
-    prisma.appointment.count({ where: { organizationId, status: "PENDING" } }),
-    prisma.appointment.count({ where: { organizationId, status: "CONFIRMED" } }),
-    prisma.appointment.count({ where: { organizationId, status: "COMPLETED" } }),
-    prisma.appointment.count({ where: { organizationId, status: "CANCELLED" } }),
+    prisma.appointment.count({
+      where: { service: { organizationId }, status: "PENDING" },
+    }),
+    prisma.appointment.count({
+      where: {  service: { organizationId }, status: "CONFIRMED" },
+    }),
+    prisma.appointment.count({
+      where: {  service: { organizationId }, status: "COMPLETED" },
+    }),
+    prisma.appointment.count({
+      where: {  service: { organizationId }, status: "CANCELLED" },
+    }),
   ]);
 
   // Get today's stats
@@ -370,13 +376,12 @@ async function getAppointmentDashboard(organizationId: string) {
 
   const todayAppointments = await prisma.appointment.findMany({
     where: {
-      organizationId,
+      service: { organizationId },
       date: { gte: today, lt: tomorrow },
     },
     include: {
       customer: { select: { firstName: true, lastName: true } },
-      service: { select: { name: true, duration: true } },
-      serviceProvider: { select: { firstName: true, lastName: true } },
+      service: { select: { name: true, duration: true, serviceProvider: true } },
     },
     orderBy: { date: "asc" },
   });
@@ -387,7 +392,7 @@ async function getAppointmentDashboard(organizationId: string) {
 
   const weeklyAppointments = await prisma.appointment.findMany({
     where: {
-      organizationId,
+      service: { organizationId },
       date: { gte: weekAgo },
     },
     select: {
@@ -399,13 +404,12 @@ async function getAppointmentDashboard(organizationId: string) {
 
   // Get recent appointments
   const recentAppointments = await prisma.appointment.findMany({
-    where: { organizationId },
+    where: { service: { organizationId } },
     take: 10,
     orderBy: { createdAt: "desc" },
     include: {
       customer: { select: { firstName: true, lastName: true, phone: true } },
-      service: { select: { name: true, duration: true } },
-      serviceProvider: { select: { firstName: true, lastName: true } },
+      service: { select: { name: true, duration: true, serviceProvider: true } },
     },
   });
 
@@ -502,18 +506,23 @@ async function getAppointmentStaffDashboard(organizationId: string, userId: stri
     myTodayAppointments,
   ] = await Promise.all([
     prisma.appointment.count({
-      where: { organizationId, serviceProviderId: userId },
+      where: { service: { organizationId, serviceProviderId: userId } },
     }),
     prisma.appointment.count({
-      where: { organizationId, serviceProviderId: userId, status: "PENDING" },
+      where: {
+        service: { organizationId, serviceProviderId: userId },
+        status: "PENDING",
+      },
     }),
     prisma.appointment.count({
-      where: { organizationId, serviceProviderId: userId, status: "COMPLETED" },
+      where: {
+        service: { organizationId , serviceProviderId: userId},
+        status: "COMPLETED",
+      },
     }),
     prisma.appointment.findMany({
       where: {
-        organizationId,
-        serviceProviderId: userId,
+        service: { organizationId , serviceProviderId: userId},
         date: {
           gte: new Date(new Date().setHours(0, 0, 0, 0)),
           lt: new Date(new Date().setHours(23, 59, 59, 999)),
@@ -529,7 +538,7 @@ async function getAppointmentStaffDashboard(organizationId: string, userId: stri
 
   // Get recent appointments for this staff
   const recentAppointments = await prisma.appointment.findMany({
-    where: { organizationId, serviceProviderId: userId },
+    where: {  service: { organizationId , serviceProviderId: userId }},
     take: 10,
     orderBy: { createdAt: "desc" },
     include: {

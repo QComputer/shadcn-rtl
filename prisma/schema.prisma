@@ -26,12 +26,6 @@ enum UserRole {
   CUSTOMER
 }
 
-enum OrgMemberRole {
-  ADMIN
-  MANAGER
-  STAFF
-}
-
 enum AppointmentStatus {
   PENDING
   CONFIRMED
@@ -208,7 +202,7 @@ model OrganizationMember {
   id             String        @id @default(cuid())
   organizationId String
   userId         String        @unique
-  role           OrgMemberRole @default(STAFF)
+  //role           UserRole @default(STAFF)
   isActive       Boolean       @default(true)
   joinedAt       DateTime      @default(now())
 
@@ -219,7 +213,6 @@ model OrganizationMember {
   @@unique([organizationId, userId])
   @@index([organizationId])
   @@index([userId])
-  @@index([role])
 }
 
 model BusinessHour {

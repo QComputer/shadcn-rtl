@@ -23,12 +23,12 @@ export async function GET(
       where: {
         organizationId: organization.id,
         isActive: true,
-        role: { in: ["ADMIN", "MANAGER", "STAFF"] },
       },
       include: {
         user: {
           select: {
             id: true,
+            role:true,
             firstName: true,
             lastName: true,
             avatar: true,
@@ -64,7 +64,7 @@ export async function GET(
         return {
           id: member.id,
           userId: member.userId,
-          role: member.role,
+          role: member.user.role,
           user: member.user,
           services: services.map((s) => ({
             ...s,

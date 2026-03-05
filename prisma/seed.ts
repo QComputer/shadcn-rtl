@@ -1,4 +1,4 @@
-import { PrismaClient, OrganizationType, UserRole, OrgMemberRole, AppointmentStatus, CartStatus, OrderType, OrderStatus, PaymentStatus, PaymentMethod, DayOfWeek } from '@prisma/client';
+import { PrismaClient, OrganizationType, UserRole, AppointmentStatus, CartStatus, OrderType, OrderStatus, PaymentStatus, PaymentMethod, DayOfWeek } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -547,55 +547,80 @@ async function main() {
 
   // Health Shop Members (SHOP type) - users[1-4, 15]
   await prisma.organizationMember.create({
-    data: { organizationId: healthShop.id, userId: users[1].id, role: OrgMemberRole.ADMIN, isActive: true },
+    data: {
+      organizationId: healthShop.id,
+      userId: users[1].id,
+      //role: UserRole.ADMIN,
+      isActive: true,
+    },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: healthShop.id, userId: users[2].id, role: OrgMemberRole.MANAGER, isActive: true },
+    data: {
+      organizationId: healthShop.id,
+      userId: users[2].id,
+      //role: UserRole.MANAGER,
+      isActive: true,
+    },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: healthShop.id, userId: users[3].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: {
+      organizationId: healthShop.id,
+      userId: users[3].id,
+      //role: UserRole.STAFF,
+      isActive: true,
+    },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: healthShop.id, userId: users[4].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: {
+      organizationId: healthShop.id,
+      userId: users[4].id,
+      //role: UserRole.STAFF,
+      isActive: true,
+    },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: healthShop.id, userId: users[13].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: {
+      organizationId: healthShop.id,
+      userId: users[13].id,
+      //role: UserRole.STAFF,
+      isActive: true,
+    },
   });
 
   // Beauty Clinic Members (APPOINTMENT type) - users[5-9]
   await prisma.organizationMember.create({
-    data: { organizationId: beautyClinic.id, userId: users[5].id, role: OrgMemberRole.ADMIN, isActive: true },
+    data: { organizationId: beautyClinic.id, userId: users[5].id, isActive: true },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: beautyClinic.id, userId: users[6].id, role: OrgMemberRole.MANAGER, isActive: true },
+    data: { organizationId: beautyClinic.id, userId: users[6].id, isActive: true },
   });
   // Service providers
   await prisma.organizationMember.create({
-    data: { organizationId: beautyClinic.id, userId: users[7].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: { organizationId: beautyClinic.id, userId: users[7].id, isActive: true },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: beautyClinic.id, userId: users[8].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: { organizationId: beautyClinic.id, userId: users[8].id, isActive: true },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: beautyClinic.id, userId: users[9].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: { organizationId: beautyClinic.id, userId: users[9].id, isActive: true },
   });
 
   // Law Firm Members (APPOINTMENT type) - users[15-19]
   await prisma.organizationMember.create({
-    data: { organizationId: lawFirm.id, userId: users[15].id, role: OrgMemberRole.ADMIN, isActive: true },
+    data: { organizationId: lawFirm.id, userId: users[15].id, isActive: true },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: lawFirm.id, userId: users[16].id, role: OrgMemberRole.MANAGER, isActive: true },
+    data: { organizationId: lawFirm.id, userId: users[16].id, isActive: true },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: lawFirm.id, userId: users[17].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: { organizationId: lawFirm.id, userId: users[17].id, isActive: true },
   });
   // Lawyers (Service providers)
   await prisma.organizationMember.create({
-    data: { organizationId: lawFirm.id, userId: users[18].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: { organizationId: lawFirm.id, userId: users[18].id, isActive: true },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: lawFirm.id, userId: users[19].id, role: OrgMemberRole.STAFF, isActive: true },
+    data: { organizationId: lawFirm.id, userId: users[19].id, isActive: true },
   });
 
   // Note: users[12-14] are CUSTOMERs - no organization membership

@@ -635,7 +635,7 @@ async function main() {
 
   const allOrgs = [healthShop, foodDelivery, beautyClinic, dentalClinic, spaCenter, lawFirm];
   const days: DayOfWeek[] = [DayOfWeek.SATURDAY, DayOfWeek.SUNDAY, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY];
-  
+  // TODO: also create 'userBusinessHour' forr staff (each staff user default businessHours should be set as their org. businessHours)
   for (const org of allOrgs) {
     for (const day of days) {
       await prisma.businessHour.create({

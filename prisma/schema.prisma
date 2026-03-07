@@ -59,13 +59,13 @@ enum OrderStatus {
 }
 
 enum DayOfWeek {
+  SATURDAY
+  SUNDAY
   MONDAY
   TUESDAY
   WEDNESDAY
   THURSDAY
   FRIDAY
-  SATURDAY
-  SUNDAY
 }
 
 enum PaymentStatus {
@@ -147,14 +147,17 @@ model User {
   id           String   @id @default(cuid())
   password     String
   name         String   @unique
+  role         UserRole @default(CUSTOMER)
+  isActive     Boolean  @default(true)
+  isTeamMember Boolean  @default(false)
   email        String?  @unique
   firstName    String?
   lastName     String?
   phone        String?
   avatar       String?
-  role         UserRole @default(CUSTOMER)
-  isActive     Boolean  @default(true)
-  isTeamMember Boolean  @default(false)
+  image        String?
+  address      String?
+  status       String?
 
   // Email verification
   emailVerified DateTime?
@@ -189,6 +192,7 @@ model User {
   emailVerifications       EmailVerification[]
   auditLogs                AuditLog[]
   conversationParticipants ConversationParticipant[]
+  businessHours UserBusinessHour[]
 
   @@index([email])
   @@index([name])
@@ -227,6 +231,20 @@ model BusinessHour {
 
   @@unique([organizationId, day])
   @@index([organizationId])
+}
+
+model UserBusinessHour {
+  id             String    @id @default(cuid())
+  day            DayOfWeek
+  openTime       String // Format "HH:mm"
+  closeTime      String // Format "HH:mm"
+  isOpen         Boolean   @default(true)
+  
+  userId String
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, day])
+  @@index([userId])
 }
 
 // --- AUTHENTICATION MODELS ---

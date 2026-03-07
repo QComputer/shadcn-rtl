@@ -11,13 +11,17 @@ export async function GET(
   try {
     const session = await auth();
     const { id } = await params;
+    if (!session?.user?.id || !session?.user?.role) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!session?.user?.id) {
+    const organizationId = (session.user.role === "SUPER_ADMIN")? id : session?.user?.organizationId || null;
+    if (!organizationId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const settings = await prisma.organizationSettings.findUnique({
-      where: { organizationId: id },
+      where: { organizationId },
     });
 
     return NextResponse.json(settings || {});
@@ -37,10 +41,18 @@ export async function PUT(
   try {
     const session = await auth();
     const { id } = await params;
-
-    if (!session?.user?.id || !session.user.role) {
+    if (!session?.user?.id || !session?.user?.role) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    
+    const organizationId =
+      session.user.role === "SUPER_ADMIN"
+        ? id
+        : session?.user?.organizationId || null;
+    if (!organizationId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
 
     if (!hasPermission(session.user.role, "org:update")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

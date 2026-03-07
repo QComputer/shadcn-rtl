@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
         isActive: true,
         isTeamMember: false,
         locale: "fa",
-        theme: "light",
+        theme: "system",
       },
       select: {
         id: true,

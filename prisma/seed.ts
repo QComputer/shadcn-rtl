@@ -1,10 +1,11 @@
 import { PrismaClient, OrganizationType, UserRole, AppointmentStatus, CartStatus, OrderType, OrderStatus, PaymentStatus, PaymentMethod, DayOfWeek } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import {organizationService} from '@/lib/services/organization.service'
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting database seed...\n');
+  console.log("🌱 Starting database seed...\n");
 
   // Clean existing data (in reverse order of dependencies)
   await prisma.message.deleteMany();
@@ -38,14 +39,14 @@ async function main() {
   await prisma.organization.deleteMany();
   await prisma.user.deleteMany();
 
-  console.log('✅ Cleaned existing data\n');
+  console.log("✅ Cleaned existing data\n");
 
   // ========================================
   // 1. CREATE USERS - All Roles for Access Control Testing
   // ========================================
-  console.log('👤 Creating users with all roles for access control testing...');
+  console.log("👤 Creating users with all roles for access control testing...");
 
-  const hashedPassword = await bcrypt.hash('password123', 12);
+  const hashedPassword = await bcrypt.hash("password123", 12);
 
   const users = await Promise.all([
     // ========================================
@@ -426,26 +427,27 @@ async function main() {
   ]);
 
   console.log(`✅ Created ${users.length} users with all roles\n`);
-
   // ========================================
   // 2. CREATE ORGANIZATIONS - SHOP and APPOINTMENT Types
   // ========================================
-  console.log('🏢 Creating organizations...');
+  console.log("🏢 Creating organizations...");
 
   // === SHOP Organizations ===
   const healthShop = await prisma.organization.create({
     data: {
       type: OrganizationType.SHOP,
-      locale: 'fa',
-      timezone: 'Asia/Tehran',
-      name: 'فروشگاه اینترنتی سلامت',
-      slug: 'salamat-shop',
-      description: 'فروشگاه اینترنتی محصولات سلامتی و مکمل‌های غذایی با بهترین کیفیت و قیمت',
-      address: 'تهران، خیابان ولیعصر، پلاک ۱۲۳',
-      phone: '+982188888888',
-      email: 'info@salamat-shop.ir',
-      logo: 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=200',
-      coverImage: 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=1200',
+      locale: "fa",
+      timezone: "Asia/Tehran",
+      name: "فروشگاه اینترنتی سلامت",
+      slug: "salamat-shop",
+      description:
+        "فروشگاه اینترنتی محصولات سلامتی و مکمل‌های غذایی با بهترین کیفیت و قیمت",
+      address: "تهران، خیابان ولیعصر، پلاک ۱۲۳",
+      phone: "+982188888888",
+      email: "info@salamat-shop.ir",
+      logo: "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=200",
+      coverImage:
+        "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=1200",
       isActive: true,
     },
   });
@@ -453,16 +455,17 @@ async function main() {
   const foodDelivery = await prisma.organization.create({
     data: {
       type: OrganizationType.SHOP,
-      locale: 'fa',
-      timezone: 'Asia/Tehran',
-      name: 'سفارش غذای خونه',
-      slug: 'khoone-food',
-      description: 'بهترین غذاهای خانگی با مواد اولیه تازه و کیفیت عالی',
-      address: 'تهران، خیابان انقلاب، پلاک ۶۷',
-      phone: '+982188777777',
-      email: 'order@khoone-food.ir',
-      logo: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200',
-      coverImage: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=1200',
+      locale: "fa",
+      timezone: "Asia/Tehran",
+      name: "سفارش غذای خونه",
+      slug: "khoone-food",
+      description: "بهترین غذاهای خانگی با مواد اولیه تازه و کیفیت عالی",
+      address: "تهران، خیابان انقلاب، پلاک ۶۷",
+      phone: "+982188777777",
+      email: "order@khoone-food.ir",
+      logo: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200",
+      coverImage:
+        "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=1200",
       isActive: true,
     },
   });
@@ -471,16 +474,18 @@ async function main() {
   const beautyClinic = await prisma.organization.create({
     data: {
       type: OrganizationType.APPOINTMENT,
-      locale: 'fa',
-      timezone: 'Asia/Tehran',
-      name: 'کلینیک زیبایی تی کال',
-      slug: 'tikal',
-      description: 'کلینیک تخصصی زیبایی و پوست با جدیدترین تکنولوژی‌های روز دنیا',
-      address: 'شهرکرد، خیابان کاشانی، کوچه 69، پلاک 3.2',
-      phone: '+983832228906',
-      email: 'fariba.farhadi@gmail.com',
-      logo: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=200',
-      coverImage: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=1200',
+      locale: "fa",
+      timezone: "Asia/Tehran",
+      name: "کلینیک زیبایی تی کال",
+      slug: "tikal",
+      description:
+        "کلینیک تخصصی زیبایی و پوست با جدیدترین تکنولوژی‌های روز دنیا",
+      address: "شهرکرد، خیابان کاشانی، کوچه 69، پلاک 3.2",
+      phone: "+983832228906",
+      email: "fariba.farhadi@gmail.com",
+      logo: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=200",
+      coverImage:
+        "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=1200",
       isActive: true,
     },
   });
@@ -488,16 +493,17 @@ async function main() {
   const dentalClinic = await prisma.organization.create({
     data: {
       type: OrganizationType.APPOINTMENT,
-      locale: 'fa',
-      timezone: 'Asia/Tehran',
-      name: 'دندانپزشکی لبخند',
-      slug: 'dental-smile',
-      description: 'مرکز تخصصی دندانپزشکی با بهترین متخصصان',
-      address: 'تهران، خیابان شریعتی، پلاک ۸۸',
-      phone: '+982188991111',
-      email: 'info@dental-smile.ir',
-      logo: 'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?w=200',
-      coverImage: 'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?w=1200',
+      locale: "fa",
+      timezone: "Asia/Tehran",
+      name: "دندانپزشکی لبخند",
+      slug: "dental-smile",
+      description: "مرکز تخصصی دندانپزشکی با بهترین متخصصان",
+      address: "تهران، خیابان شریعتی، پلاک ۸۸",
+      phone: "+982188991111",
+      email: "info@dental-smile.ir",
+      logo: "https://images.unsplash.com/photo-1606811841689-23dfddce3e95?w=200",
+      coverImage:
+        "https://images.unsplash.com/photo-1606811841689-23dfddce3e95?w=1200",
       isActive: true,
     },
   });
@@ -505,16 +511,17 @@ async function main() {
   const spaCenter = await prisma.organization.create({
     data: {
       type: OrganizationType.APPOINTMENT,
-      locale: 'fa',
-      timezone: 'Asia/Tehran',
-      name: 'اسپا آرامش',
-      slug: 'spa-aramesh',
-      description: 'مرکز تخصصی ماساژ و آرامش‌بخشی',
-      address: 'تهران، خیابان جردن، پلاک ۵۵',
-      phone: '+982188992222',
-      email: 'info@spa-aramesh.ir',
-      logo: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=200',
-      coverImage: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=1200',
+      locale: "fa",
+      timezone: "Asia/Tehran",
+      name: "اسپا آرامش",
+      slug: "spa-aramesh",
+      description: "مرکز تخصصی ماساژ و آرامش‌بخشی",
+      address: "تهران، خیابان جردن، پلاک ۵۵",
+      phone: "+982188992222",
+      email: "info@spa-aramesh.ir",
+      logo: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=200",
+      coverImage:
+        "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=1200",
       isActive: true,
     },
   });
@@ -523,16 +530,18 @@ async function main() {
   const lawFirm = await prisma.organization.create({
     data: {
       type: OrganizationType.APPOINTMENT,
-      locale: 'fa',
-      timezone: 'Asia/Tehran',
-      name: 'دفتر وکالت عدالت',
-      slug: 'law-justice',
-      description: 'دفتر وکالت تخصصی با تجربه در پرونده‌های حقوقی، کیفری و تجاری. مشاوره حقوقی تخصصی با وکلای مجرب',
-      address: 'تهران، خیابان ولیعصر، بالاتر از میدان ونک، پلاک ۲۳۴، طبقه ۵',
-      phone: '+982188555555',
-      email: 'info@law-justice.ir',
-      logo: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=200',
-      coverImage: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=1200',
+      locale: "fa",
+      timezone: "Asia/Tehran",
+      name: "دفتر وکالت عدالت",
+      slug: "law-justice",
+      description:
+        "دفتر وکالت تخصصی با تجربه در پرونده‌های حقوقی، کیفری و تجاری. مشاوره حقوقی تخصصی با وکلای مجرب",
+      address: "تهران، خیابان ولیعصر، بالاتر از میدان ونک، پلاک ۲۳۴، طبقه ۵",
+      phone: "+982188555555",
+      email: "info@law-justice.ir",
+      logo: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=200",
+      coverImage:
+        "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=1200",
       isActive: true,
     },
   });
@@ -543,7 +552,7 @@ async function main() {
   // 3. CREATE ORGANIZATION MEMBERS - All Role Combinations
   // Note: Each user can only belong to ONE organization (unique userId constraint)
   // ========================================
-  console.log('👥 Creating organization members with all role combinations...');
+  console.log("👥 Creating organization members with all role combinations...");
 
   // Health Shop Members (SHOP type) - users[1-4, 15]
   await prisma.organizationMember.create({
@@ -589,20 +598,40 @@ async function main() {
 
   // Beauty Clinic Members (APPOINTMENT type) - users[5-9]
   await prisma.organizationMember.create({
-    data: { organizationId: beautyClinic.id, userId: users[5].id, isActive: true },
+    data: {
+      organizationId: beautyClinic.id,
+      userId: users[5].id,
+      isActive: true,
+    },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: beautyClinic.id, userId: users[6].id, isActive: true },
+    data: {
+      organizationId: beautyClinic.id,
+      userId: users[6].id,
+      isActive: true,
+    },
   });
   // Service providers
   await prisma.organizationMember.create({
-    data: { organizationId: beautyClinic.id, userId: users[7].id, isActive: true },
+    data: {
+      organizationId: beautyClinic.id,
+      userId: users[7].id,
+      isActive: true,
+    },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: beautyClinic.id, userId: users[8].id, isActive: true },
+    data: {
+      organizationId: beautyClinic.id,
+      userId: users[8].id,
+      isActive: true,
+    },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: beautyClinic.id, userId: users[9].id, isActive: true },
+    data: {
+      organizationId: beautyClinic.id,
+      userId: users[9].id,
+      isActive: true,
+    },
   });
 
   // Law Firm Members (APPOINTMENT type) - users[15-19]
@@ -622,58 +651,33 @@ async function main() {
   await prisma.organizationMember.create({
     data: { organizationId: lawFirm.id, userId: users[19].id, isActive: true },
   });
+  const allOrgs = [
+    healthShop,
+    foodDelivery,
+    beautyClinic,
+    dentalClinic,
+    spaCenter,
+    lawFirm,
+  ];
 
   // Note: users[12-14] are CUSTOMERs - no organization membership
   // Note: users[16] is DRIVER - no organization membership (drivers are assigned via orders)
 
-  console.log('✅ Created organization members with all role combinations\n');
-
-  // ========================================
-  // 4. CREATE BUSINESS HOURS
-  // ========================================
-  console.log('🕐 Creating business hours...');
-
-  const allOrgs = [healthShop, foodDelivery, beautyClinic, dentalClinic, spaCenter, lawFirm];
-  const days: DayOfWeek[] = [DayOfWeek.SATURDAY, DayOfWeek.SUNDAY, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY];
-  // TODO: also create 'userBusinessHour' forr staff (each staff user default businessHours should be set as their org. businessHours)
-  for (const org of allOrgs) {
-    for (const day of days) {
-      await prisma.businessHour.create({
-        data: {
-          organizationId: org.id,
-          day,
-          openTime: day === DayOfWeek.THURSDAY ? '09:00' : '08:00',
-          closeTime: day === DayOfWeek.THURSDAY ? '14:00' : '20:00',
-          isOpen: true,
-        },
-      });
-    }
-    await prisma.businessHour.create({
-      data: {
-        organizationId: org.id,
-        day: DayOfWeek.FRIDAY,
-        openTime: '00:00',
-        closeTime: '00:00',
-        isOpen: false,
-      },
-    });
-  }
-
-  console.log('✅ Created business hours\n');
+  console.log("✅ Created organization members with all role combinations\n");
 
   // ========================================
   // 5. CREATE ORGANIZATION SETTINGS
   // ========================================
-  console.log('⚙️ Creating organization settings...');
+  console.log("⚙️ Creating organization settings...");
 
   for (const org of allOrgs) {
     await prisma.organizationSettings.create({
       data: {
         organizationId: org.id,
-        settings: { theme: 'light', language: 'fa' },
-        currency: 'IRR',
-        dateFormat: 'YYYY/MM/DD',
-        timeFormat: '24h',
+        settings: { theme: "light", language: "fa" },
+        currency: "IRR",
+        dateFormat: "YYYY/MM/DD",
+        timeFormat: "24h",
         minimumOrderAmount: 100000,
         maximumOrderAmount: 50000000,
         deliveryRadius: 10,
@@ -685,12 +689,12 @@ async function main() {
     });
   }
 
-  console.log('✅ Created organization settings\n');
+  console.log("✅ Created organization settings\n");
 
   // ========================================
   // 5.5. CREATE BOOKING SETTINGS (APPOINTMENT)
   // ========================================
-  console.log('📅 Creating booking settings for appointment organizations...');
+  console.log("📅 Creating booking settings for appointment organizations...");
 
   const appointmentOrgs = [beautyClinic, dentalClinic, spaCenter, lawFirm];
 
@@ -699,11 +703,11 @@ async function main() {
       data: {
         organizationId: org.id,
         // Slot configuration
-        slotDuration: 30,        // 30-minute slots
-        bufferBefore: 5,         // 5 minutes buffer before
-        bufferAfter: 10,         // 10 minutes buffer after
+        slotDuration: 30, // 30-minute slots
+        bufferBefore: 5, // 5 minutes buffer before
+        bufferAfter: 10, // 10 minutes buffer after
         // Booking rules
-        minBookingNotice: 120,   // 2 hours minimum notice
+        minBookingNotice: 120, // 2 hours minimum notice
         maxBookingAdvance: 43200, // 30 days in advance
         maxAppointmentsPerDay: 20,
         allowCancellation: true,
@@ -718,21 +722,55 @@ async function main() {
     });
   }
 
-  console.log(`✅ Created booking settings for ${appointmentOrgs.length} appointment organizations\n`);
+  console.log(
+    `✅ Created booking settings for ${appointmentOrgs.length} appointment organizations\n`,
+  );
 
   // ========================================
   // 6. CREATE PRODUCT CATEGORIES (SHOP)
   // ========================================
-  console.log('📦 Creating product categories...');
+  console.log("📦 Creating product categories...");
 
   const healthCategories = await Promise.all([
-    prisma.productCategory.create({ data: { organizationId: healthShop.id, name: 'مکمل‌های غذایی', description: 'انواع مکمل‌ها', sortOrder: 1, isActive: true } }),
-    prisma.productCategory.create({ data: { organizationId: healthShop.id, name: 'محصولات پوستی', description: 'مراقبت پوست', sortOrder: 2, isActive: true } }),
+    prisma.productCategory.create({
+      data: {
+        organizationId: healthShop.id,
+        name: "مکمل‌های غذایی",
+        description: "انواع مکمل‌ها",
+        sortOrder: 1,
+        isActive: true,
+      },
+    }),
+    prisma.productCategory.create({
+      data: {
+        organizationId: healthShop.id,
+        name: "محصولات پوستی",
+        description: "مراقبت پوست",
+        sortOrder: 2,
+        isActive: true,
+      },
+    }),
   ]);
 
   const foodCategories = await Promise.all([
-    prisma.productCategory.create({ data: { organizationId: foodDelivery.id, name: 'غذاهای اصلی', description: 'غذاهای ایرانی', sortOrder: 1, isActive: true } }),
-    prisma.productCategory.create({ data: { organizationId: foodDelivery.id, name: 'پیش غذا', description: 'سالاد و سوپ', sortOrder: 2, isActive: true } }),
+    prisma.productCategory.create({
+      data: {
+        organizationId: foodDelivery.id,
+        name: "غذاهای اصلی",
+        description: "غذاهای ایرانی",
+        sortOrder: 1,
+        isActive: true,
+      },
+    }),
+    prisma.productCategory.create({
+      data: {
+        organizationId: foodDelivery.id,
+        name: "پیش غذا",
+        description: "سالاد و سوپ",
+        sortOrder: 2,
+        isActive: true,
+      },
+    }),
   ]);
 
   console.log(`✅ Created product categories\n`);
@@ -740,39 +778,61 @@ async function main() {
   // ========================================
   // 7. CREATE PRODUCTS & VARIANTS
   // ========================================
-  console.log('🛍️ Creating products and variants...');
+  console.log("🛍️ Creating products and variants...");
 
   const healthProducts = await Promise.all([
     prisma.product.create({
       data: {
         organizationId: healthShop.id,
         categoryId: healthCategories[0].id,
-        name: 'قرص مولتی ویتامین',
-        description: 'مولتی ویتامین مینرال',
+        name: "قرص مولتی ویتامین",
+        description: "مولتی ویتامین مینرال",
         basePrice: 450000,
-        sku: 'HEALTH-SUP-001',
-        images: ['https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400'],
+        sku: "HEALTH-SUP-001",
+        images: [
+          "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400",
+        ],
         trackInventory: true,
         lowStockThreshold: 20,
         isActive: true,
         sortOrder: 1,
-        variants: { create: [{ name: '۳۰ عددی', price: 450000, inventory: 100, sku: 'HEALTH-SUP-001-30' }] },
+        variants: {
+          create: [
+            {
+              name: "۳۰ عددی",
+              price: 450000,
+              inventory: 100,
+              sku: "HEALTH-SUP-001-30",
+            },
+          ],
+        },
       },
     }),
     prisma.product.create({
       data: {
         organizationId: healthShop.id,
         categoryId: healthCategories[1].id,
-        name: 'کرم مرطوب‌کننده',
-        description: 'کرم مرطوب‌کننده صورت',
+        name: "کرم مرطوب‌کننده",
+        description: "کرم مرطوب‌کننده صورت",
         basePrice: 280000,
-        sku: 'HEALTH-SKIN-001',
-        images: ['https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400'],
+        sku: "HEALTH-SKIN-001",
+        images: [
+          "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400",
+        ],
         trackInventory: true,
         lowStockThreshold: 15,
         isActive: true,
         sortOrder: 1,
-        variants: { create: [{ name: '۵۰ میلی', price: 280000, inventory: 50, sku: 'HEALTH-SKIN-001-50' }] },
+        variants: {
+          create: [
+            {
+              name: "۵۰ میلی",
+              price: 280000,
+              inventory: 50,
+              sku: "HEALTH-SKIN-001-50",
+            },
+          ],
+        },
       },
     }),
   ]);
@@ -782,11 +842,13 @@ async function main() {
       data: {
         organizationId: foodDelivery.id,
         categoryId: foodCategories[0].id,
-        name: 'کباب کوبیده',
-        description: 'کباب کوبیده با بهترین گوشت',
+        name: "کباب کوبیده",
+        description: "کباب کوبیده با بهترین گوشت",
         basePrice: 350000,
-        sku: 'FOOD-KB-001',
-        images: ['https://images.unsplash.com/photo-1603360946369-dc9bb6258143?w=400'],
+        sku: "FOOD-KB-001",
+        images: [
+          "https://images.unsplash.com/photo-1603360946369-dc9bb6258143?w=400",
+        ],
         trackInventory: true,
         lowStockThreshold: 10,
         isActive: true,
@@ -797,11 +859,13 @@ async function main() {
       data: {
         organizationId: foodDelivery.id,
         categoryId: foodCategories[0].id,
-        name: 'جوجه کباب',
-        description: 'جوجه کباب زعفرانی',
+        name: "جوجه کباب",
+        description: "جوجه کباب زعفرانی",
         basePrice: 320000,
-        sku: 'FOOD-JJ-001',
-        images: ['https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=400'],
+        sku: "FOOD-JJ-001",
+        images: [
+          "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=400",
+        ],
         trackInventory: true,
         lowStockThreshold: 10,
         isActive: true,
@@ -816,7 +880,7 @@ async function main() {
   // ========================================
   // 8. CREATE SERVICE CATEGORIES & SERVICES (APPOINTMENT)
   // ========================================
-  console.log('💅 Creating service categories and services...');
+  console.log("💅 Creating service categories and services...");
 
   // Beauty Clinic Services
   const beautyCategories = await Promise.all([
@@ -949,145 +1013,239 @@ async function main() {
         isActive: true,
         sortOrder: 2,
       },
-    })
+    }),
   ]);
 
   // Dental Clinic Services
   const dentalCategories = await Promise.all([
-    prisma.serviceCategory.create({ data: { organizationId: dentalClinic.id, name: 'خدمات دندان', description: 'دندانپزشکی', sortOrder: 1, isActive: true } }),
+    prisma.serviceCategory.create({
+      data: {
+        organizationId: dentalClinic.id,
+        name: "خدمات دندان",
+        description: "دندانپزشکی",
+        sortOrder: 1,
+        isActive: true,
+      },
+    }),
   ]);
 
   const dentalServices = await Promise.all([
-    prisma.service.create({ data: { organizationId: dentalClinic.id, categoryId: dentalCategories[0].id, serviceProviderId: users[10].id, name: 'جرم‌گیری', description: 'جرم‌گیری دندان', price: 500000, duration: 30, isActive: true, sortOrder: 1 } }),
-    prisma.service.create({ data: { organizationId: dentalClinic.id, categoryId: dentalCategories[0].id, serviceProviderId: users[10].id, name: 'سفیدکردن', description: 'بلیچینگ', price: 1500000, duration: 60, isActive: true, sortOrder: 2 } }),
+    prisma.service.create({
+      data: {
+        organizationId: dentalClinic.id,
+        categoryId: dentalCategories[0].id,
+        serviceProviderId: users[10].id,
+        name: "جرم‌گیری",
+        description: "جرم‌گیری دندان",
+        price: 500000,
+        duration: 30,
+        isActive: true,
+        sortOrder: 1,
+      },
+    }),
+    prisma.service.create({
+      data: {
+        organizationId: dentalClinic.id,
+        categoryId: dentalCategories[0].id,
+        serviceProviderId: users[10].id,
+        name: "سفیدکردن",
+        description: "بلیچینگ",
+        price: 1500000,
+        duration: 60,
+        isActive: true,
+        sortOrder: 2,
+      },
+    }),
   ]);
 
   // SPA Services
   const spaCategories = await Promise.all([
-    prisma.serviceCategory.create({ data: { organizationId: spaCenter.id, name: 'ماساژ', description: 'انواع ماساژ', sortOrder: 1, isActive: true } }),
+    prisma.serviceCategory.create({
+      data: {
+        organizationId: spaCenter.id,
+        name: "ماساژ",
+        description: "انواع ماساژ",
+        sortOrder: 1,
+        isActive: true,
+      },
+    }),
   ]);
 
   const spaServices = await Promise.all([
-    prisma.service.create({ data: { organizationId: spaCenter.id, categoryId: spaCategories[0].id, name: 'ماساژ سوئدی', description: 'ماساژ آرامش‌بخش', price: 1200000, duration: 60, isActive: true, sortOrder: 1 } }),
-    prisma.service.create({ data: { organizationId: spaCenter.id, categoryId: spaCategories[0].id, name: 'ماساژ تایلندی', description: 'ماساژ تایلندی', price: 1500000, duration: 90, isActive: true, sortOrder: 2 } }),
+    prisma.service.create({
+      data: {
+        organizationId: spaCenter.id,
+        categoryId: spaCategories[0].id,
+        name: "ماساژ سوئدی",
+        description: "ماساژ آرامش‌بخش",
+        price: 1200000,
+        duration: 60,
+        isActive: true,
+        sortOrder: 1,
+      },
+    }),
+    prisma.service.create({
+      data: {
+        organizationId: spaCenter.id,
+        categoryId: spaCategories[0].id,
+        name: "ماساژ تایلندی",
+        description: "ماساژ تایلندی",
+        price: 1500000,
+        duration: 90,
+        isActive: true,
+        sortOrder: 2,
+      },
+    }),
   ]);
 
   // Law Firm Services
   const lawCategories = await Promise.all([
-    prisma.serviceCategory.create({ data: { organizationId: lawFirm.id, name: 'مشاوره حقوقی', description: 'مشاوره تخصصی حقوقی', sortOrder: 1, isActive: true } }),
-    prisma.serviceCategory.create({ data: { organizationId: lawFirm.id, name: 'امور کیفری', description: 'پرونده‌های کیفری', sortOrder: 2, isActive: true } }),
-    prisma.serviceCategory.create({ data: { organizationId: lawFirm.id, name: 'امور تجاری', description: 'قراردادها و امور تجاری', sortOrder: 3, isActive: true } }),
-    prisma.serviceCategory.create({ data: { organizationId: lawFirm.id, name: 'امور خانواده', description: 'طلاق، مهریه، حضانت', sortOrder: 4, isActive: true } }),
+    prisma.serviceCategory.create({
+      data: {
+        organizationId: lawFirm.id,
+        name: "مشاوره حقوقی",
+        description: "مشاوره تخصصی حقوقی",
+        sortOrder: 1,
+        isActive: true,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        organizationId: lawFirm.id,
+        name: "امور کیفری",
+        description: "پرونده‌های کیفری",
+        sortOrder: 2,
+        isActive: true,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        organizationId: lawFirm.id,
+        name: "امور تجاری",
+        description: "قراردادها و امور تجاری",
+        sortOrder: 3,
+        isActive: true,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        organizationId: lawFirm.id,
+        name: "امور خانواده",
+        description: "طلاق، مهریه، حضانت",
+        sortOrder: 4,
+        isActive: true,
+      },
+    }),
   ]);
 
   const lawServices = await Promise.all([
     // Legal Consultation Services
-    prisma.service.create({ 
-      data: { 
-        organizationId: lawFirm.id, 
-        categoryId: lawCategories[0].id, 
-        serviceProviderId: users[18].id, 
-        name: 'مشاوره حقوقی عمومی', 
-        description: 'مشاوره حقوقی عمومی با وکیل ارشد', 
-        price: 2000000, 
-        duration: 60, 
-        isActive: true, 
-        sortOrder: 1 
-      }
+    prisma.service.create({
+      data: {
+        organizationId: lawFirm.id,
+        categoryId: lawCategories[0].id,
+        serviceProviderId: users[18].id,
+        name: "مشاوره حقوقی عمومی",
+        description: "مشاوره حقوقی عمومی با وکیل ارشد",
+        price: 2000000,
+        duration: 60,
+        isActive: true,
+        sortOrder: 1,
+      },
     }),
-    prisma.service.create({ 
-      data: { 
-        organizationId: lawFirm.id, 
-        categoryId: lawCategories[0].id, 
-        serviceProviderId: users[19].id, 
-        name: 'مشاوره حقوقی تخصصی', 
-        description: 'مشاوره تخصصی با وکیل پایه یک دادگستری', 
-        price: 3500000, 
-        duration: 90, 
-        isActive: true, 
-        sortOrder: 2 
-      }
+    prisma.service.create({
+      data: {
+        organizationId: lawFirm.id,
+        categoryId: lawCategories[0].id,
+        serviceProviderId: users[19].id,
+        name: "مشاوره حقوقی تخصصی",
+        description: "مشاوره تخصصی با وکیل پایه یک دادگستری",
+        price: 3500000,
+        duration: 90,
+        isActive: true,
+        sortOrder: 2,
+      },
     }),
     // Criminal Law Services
-    prisma.service.create({ 
-      data: { 
-        organizationId: lawFirm.id, 
-        categoryId: lawCategories[1].id, 
-        serviceProviderId: users[18].id, 
-        name: 'مشاوره پرونده کیفری', 
-        description: 'بررسی و مشاوره پرونده‌های کیفری', 
-        price: 5000000, 
-        duration: 90, 
-        isActive: true, 
-        sortOrder: 1 
-      }
+    prisma.service.create({
+      data: {
+        organizationId: lawFirm.id,
+        categoryId: lawCategories[1].id,
+        serviceProviderId: users[18].id,
+        name: "مشاوره پرونده کیفری",
+        description: "بررسی و مشاوره پرونده‌های کیفری",
+        price: 5000000,
+        duration: 90,
+        isActive: true,
+        sortOrder: 1,
+      },
     }),
-    prisma.service.create({ 
-      data: { 
-        organizationId: lawFirm.id, 
-        categoryId: lawCategories[1].id, 
-        serviceProviderId: users[19].id, 
-        name: 'دفاع در دادگاه کیفری', 
-        description: 'دفاع تخصصی در دادگاه‌های کیفری', 
-        price: 15000000, 
-        duration: 120, 
-        isActive: true, 
-        sortOrder: 2 
-      }
+    prisma.service.create({
+      data: {
+        organizationId: lawFirm.id,
+        categoryId: lawCategories[1].id,
+        serviceProviderId: users[19].id,
+        name: "دفاع در دادگاه کیفری",
+        description: "دفاع تخصصی در دادگاه‌های کیفری",
+        price: 15000000,
+        duration: 120,
+        isActive: true,
+        sortOrder: 2,
+      },
     }),
     // Commercial Law Services
-    prisma.service.create({ 
-      data: { 
-        organizationId: lawFirm.id, 
-        categoryId: lawCategories[2].id, 
-        serviceProviderId: users[19].id, 
-        name: 'تنظیم قرارداد', 
-        description: 'تنظیم و بررسی قراردادهای تجاری', 
-        price: 3000000, 
-        duration: 60, 
-        isActive: true, 
-        sortOrder: 1 
-      }
+    prisma.service.create({
+      data: {
+        organizationId: lawFirm.id,
+        categoryId: lawCategories[2].id,
+        serviceProviderId: users[19].id,
+        name: "تنظیم قرارداد",
+        description: "تنظیم و بررسی قراردادهای تجاری",
+        price: 3000000,
+        duration: 60,
+        isActive: true,
+        sortOrder: 1,
+      },
     }),
-    prisma.service.create({ 
-      data: { 
-        organizationId: lawFirm.id, 
-        categoryId: lawCategories[2].id, 
-        serviceProviderId: users[19].id, 
-        name: 'مشاوره حقوقی شرکت‌ها', 
-        description: 'مشاوره تخصصی برای شرکت‌ها و کسب‌وکارها', 
-        price: 4500000, 
-        duration: 90, 
-        isActive: true, 
-        sortOrder: 2 
-      }
+    prisma.service.create({
+      data: {
+        organizationId: lawFirm.id,
+        categoryId: lawCategories[2].id,
+        serviceProviderId: users[19].id,
+        name: "مشاوره حقوقی شرکت‌ها",
+        description: "مشاوره تخصصی برای شرکت‌ها و کسب‌وکارها",
+        price: 4500000,
+        duration: 90,
+        isActive: true,
+        sortOrder: 2,
+      },
     }),
     // Family Law Services
-    prisma.service.create({ 
-      data: { 
-        organizationId: lawFirm.id, 
-        categoryId: lawCategories[3].id, 
-        serviceProviderId: users[19].id, 
-        name: 'مشاوره طلاق توافقی', 
-        description: 'مشاوره و پیگیری طلاق توافقی', 
-        price: 8000000, 
-        duration: 60, 
-        isActive: true, 
-        sortOrder: 1 
-      }
+    prisma.service.create({
+      data: {
+        organizationId: lawFirm.id,
+        categoryId: lawCategories[3].id,
+        serviceProviderId: users[19].id,
+        name: "مشاوره طلاق توافقی",
+        description: "مشاوره و پیگیری طلاق توافقی",
+        price: 8000000,
+        duration: 60,
+        isActive: true,
+        sortOrder: 1,
+      },
     }),
-    prisma.service.create({ 
-      data: { 
-        organizationId: lawFirm.id, 
-        categoryId: lawCategories[3].id, 
-        serviceProviderId: users[18].id, 
-        name: 'مشاوره مهریه و حضانت', 
-        description: 'مشاوره تخصصی در امور مهریه و حضانت فرزند', 
-        price: 4000000, 
-        duration: 60, 
-        isActive: true, 
-        sortOrder: 2 
-      }
+    prisma.service.create({
+      data: {
+        organizationId: lawFirm.id,
+        categoryId: lawCategories[3].id,
+        serviceProviderId: users[18].id,
+        name: "مشاوره مهریه و حضانت",
+        description: "مشاوره تخصصی در امور مهریه و حضانت فرزند",
+        price: 4000000,
+        duration: 60,
+        isActive: true,
+        sortOrder: 2,
+      },
     }),
   ]);
 
@@ -1096,7 +1254,7 @@ async function main() {
   // ========================================
   // 9. CREATE APPOINTMENTS
   // ========================================
-  console.log('📅 Creating appointments...');
+  console.log("📅 Creating appointments...");
 
   // Beauty Clinic Appointments
   await prisma.appointment.create({
@@ -1104,10 +1262,17 @@ async function main() {
       customerId: users[12].id,
       serviceId: beautyServices[0].id,
       date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-      startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000),
-      endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000 + 30 * 60 * 1000),
+      startTime: new Date(
+        Date.now() + 2 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000,
+      ),
+      endTime: new Date(
+        Date.now() +
+          2 * 24 * 60 * 60 * 1000 +
+          10 * 60 * 60 * 1000 +
+          30 * 60 * 1000,
+      ),
       status: AppointmentStatus.CONFIRMED,
-      notes: 'اولین بار بوتاکس',
+      notes: "اولین بار بوتاکس",
     },
   });
 
@@ -1116,8 +1281,15 @@ async function main() {
       customerId: users[13].id,
       serviceId: beautyServices[2].id,
       date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
-      startTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000),
-      endTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000 + 30 * 60 * 1000),
+      startTime: new Date(
+        Date.now() + 1 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000,
+      ),
+      endTime: new Date(
+        Date.now() +
+          1 * 24 * 60 * 60 * 1000 +
+          14 * 60 * 60 * 1000 +
+          30 * 60 * 1000,
+      ),
       status: AppointmentStatus.PENDING,
     },
   });
@@ -1127,8 +1299,15 @@ async function main() {
       customerId: users[14].id,
       serviceId: beautyServices[3].id,
       date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-      startTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 16 * 60 * 60 * 1000),
-      endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 17 * 60 * 60 * 1000 + 30 * 60 * 1000),
+      startTime: new Date(
+        Date.now() + 5 * 24 * 60 * 60 * 1000 + 16 * 60 * 60 * 1000,
+      ),
+      endTime: new Date(
+        Date.now() +
+          5 * 24 * 60 * 60 * 1000 +
+          17 * 60 * 60 * 1000 +
+          30 * 60 * 1000,
+      ),
       status: AppointmentStatus.PENDING,
     },
   });
@@ -1139,8 +1318,15 @@ async function main() {
       customerId: users[12].id,
       serviceId: dentalServices[0].id,
       date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-      startTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 9 * 60 * 60 * 1000),
-      endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 9 * 60 * 60 * 1000 + 30 * 60 * 1000),
+      startTime: new Date(
+        Date.now() + 3 * 24 * 60 * 60 * 1000 + 9 * 60 * 60 * 1000,
+      ),
+      endTime: new Date(
+        Date.now() +
+          3 * 24 * 60 * 60 * 1000 +
+          9 * 60 * 60 * 1000 +
+          30 * 60 * 1000,
+      ),
       status: AppointmentStatus.CONFIRMED,
     },
   });
@@ -1151,10 +1337,14 @@ async function main() {
       customerId: users[13].id,
       serviceId: spaServices[0].id,
       date: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
-      startTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 15 * 60 * 60 * 1000),
-      endTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 16 * 60 * 60 * 1000),
+      startTime: new Date(
+        Date.now() + 4 * 24 * 60 * 60 * 1000 + 15 * 60 * 60 * 1000,
+      ),
+      endTime: new Date(
+        Date.now() + 4 * 24 * 60 * 60 * 1000 + 16 * 60 * 60 * 1000,
+      ),
       status: AppointmentStatus.PENDING,
-      notes: 'ماساژ آرامش‌بخش',
+      notes: "ماساژ آرامش‌بخش",
     },
   });
 
@@ -1164,10 +1354,14 @@ async function main() {
       customerId: users[12].id,
       serviceId: lawServices[0].id,
       date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
-      startTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000),
-      endTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 11 * 60 * 60 * 1000),
+      startTime: new Date(
+        Date.now() + 1 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000,
+      ),
+      endTime: new Date(
+        Date.now() + 1 * 24 * 60 * 60 * 1000 + 11 * 60 * 60 * 1000,
+      ),
       status: AppointmentStatus.CONFIRMED,
-      notes: 'مشاوره حقوقی عمومی - پرونده حقوقی',
+      notes: "مشاوره حقوقی عمومی - پرونده حقوقی",
     },
   });
 
@@ -1176,10 +1370,17 @@ async function main() {
       customerId: users[13].id,
       serviceId: lawServices[2].id,
       date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-      startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000),
-      endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 15 * 60 * 60 * 1000 + 30 * 60 * 1000),
+      startTime: new Date(
+        Date.now() + 2 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000,
+      ),
+      endTime: new Date(
+        Date.now() +
+          2 * 24 * 60 * 60 * 1000 +
+          15 * 60 * 60 * 1000 +
+          30 * 60 * 1000,
+      ),
       status: AppointmentStatus.PENDING,
-      notes: 'مشاوره پرونده کیفری',
+      notes: "مشاوره پرونده کیفری",
     },
   });
 
@@ -1188,10 +1389,14 @@ async function main() {
       customerId: users[14].id,
       serviceId: lawServices[6].id,
       date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-      startTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 16 * 60 * 60 * 1000),
-      endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 17 * 60 * 60 * 1000),
+      startTime: new Date(
+        Date.now() + 3 * 24 * 60 * 60 * 1000 + 16 * 60 * 60 * 1000,
+      ),
+      endTime: new Date(
+        Date.now() + 3 * 24 * 60 * 60 * 1000 + 17 * 60 * 60 * 1000,
+      ),
       status: AppointmentStatus.PENDING,
-      notes: 'مشاوره طلاق توافقی',
+      notes: "مشاوره طلاق توافقی",
     },
   });
 
@@ -1200,23 +1405,27 @@ async function main() {
       customerId: users[12].id,
       serviceId: lawServices[4].id,
       date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-      startTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 11 * 60 * 60 * 1000),
-      endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000),
+      startTime: new Date(
+        Date.now() + 5 * 24 * 60 * 60 * 1000 + 11 * 60 * 60 * 1000,
+      ),
+      endTime: new Date(
+        Date.now() + 5 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000,
+      ),
       status: AppointmentStatus.CONFIRMED,
-      notes: 'تنظیم قرارداد تجاری',
+      notes: "تنظیم قرارداد تجاری",
     },
   });
 
-  console.log('✅ Created appointments\n');
+  console.log("✅ Created appointments\n");
 
   // ========================================
   // 10. CREATE ORDERS
   // ========================================
-  console.log('📋 Creating orders...');
+  console.log("📋 Creating orders...");
 
   await prisma.order.create({
     data: {
-      orderNumber: 'ORD-1404-0001',
+      orderNumber: "ORD-1404-0001",
       organizationId: healthShop.id,
       customerId: users[12].id,
       driverId: users[15].id,
@@ -1226,17 +1435,27 @@ async function main() {
       deliveryFee: 50000,
       tax: 72000,
       total: 922000,
-      deliveryAddress: 'تهران، خ ولیعصر',
+      deliveryAddress: "تهران، خ ولیعصر",
       paidAt: new Date(),
       paymentMethod: PaymentMethod.CREDIT_CARD,
       deliveredAt: new Date(),
-      items: { create: [{ productId: healthProducts[0].id, variantId: allVariants[0]?.id || '', quantity: 1, price: 450000, discount: 0 }] },
+      items: {
+        create: [
+          {
+            productId: healthProducts[0].id,
+            variantId: allVariants[0]?.id || "",
+            quantity: 1,
+            price: 450000,
+            discount: 0,
+          },
+        ],
+      },
     },
   });
 
   await prisma.order.create({
     data: {
-      orderNumber: 'ORD-1404-0002',
+      orderNumber: "ORD-1404-0002",
       organizationId: foodDelivery.id,
       customerId: users[13].id,
       driverId: users[16].id,
@@ -1246,15 +1465,25 @@ async function main() {
       deliveryFee: 30000,
       tax: 31500,
       total: 411500,
-      deliveryAddress: 'تهران، خ انقلاب',
+      deliveryAddress: "تهران، خ انقلاب",
       paymentMethod: PaymentMethod.CASH,
-      items: { create: [{ productId: foodProducts[0].id, variantId: null, quantity: 1, price: 350000, discount: 0 }] },
+      items: {
+        create: [
+          {
+            productId: foodProducts[0].id,
+            variantId: null,
+            quantity: 1,
+            price: 350000,
+            discount: 0,
+          },
+        ],
+      },
     },
   });
 
   await prisma.order.create({
     data: {
-      orderNumber: 'ORD-1404-0003',
+      orderNumber: "ORD-1404-0003",
       organizationId: healthShop.id,
       customerId: users[14].id,
       type: OrderType.PICK_UP,
@@ -1264,41 +1493,51 @@ async function main() {
       tax: 50400,
       total: 610400,
       paymentMethod: PaymentMethod.CASH,
-      items: { create: [{ productId: healthProducts[1].id, variantId: allVariants[1]?.id || '', quantity: 2, price: 280000, discount: 0 }] },
+      items: {
+        create: [
+          {
+            productId: healthProducts[1].id,
+            variantId: allVariants[1]?.id || "",
+            quantity: 2,
+            price: 280000,
+            discount: 0,
+          },
+        ],
+      },
     },
   });
 
-  console.log('✅ Created orders\n');
+  console.log("✅ Created orders\n");
 
   // ========================================
   // 10.5. CREATE GUEST CUSTOMERS, GUEST CARTS & GUEST ORDERS
   // ========================================
-  console.log('🛒 Creating guest customers and guest cart data...');
+  console.log("🛒 Creating guest customers and guest cart data...");
 
   // Create Guest Customers
   const guestCustomers = await Promise.all([
     prisma.guestCustomer.create({
       data: {
-        name: 'علی محمدی',
-        phone: '+989123456789',
-        email: 'ali.mohammadi@example.com',
-        address: 'تهران، خیابان آزادی، پلاک ۴۵',
+        name: "علی محمدی",
+        phone: "+989123456789",
+        email: "ali.mohammadi@example.com",
+        address: "تهران، خیابان آزادی، پلاک ۴۵",
       },
     }),
     prisma.guestCustomer.create({
       data: {
-        name: 'مریم احمدی',
-        phone: '+989123456790',
-        email: 'maryam.ahmadi@example.com',
-        address: 'تهران، خیابان ولیعصر، کوچه ۱۲',
+        name: "مریم احمدی",
+        phone: "+989123456790",
+        email: "maryam.ahmadi@example.com",
+        address: "تهران، خیابان ولیعصر، کوچه ۱۲",
       },
     }),
     prisma.guestCustomer.create({
       data: {
-        name: 'رضا کریمی',
-        phone: '+989123456791',
+        name: "رضا کریمی",
+        phone: "+989123456791",
         // No email - demonstrating optional email
-        address: 'تهران، میدان تجریش، خیابان شریعتی',
+        address: "تهران، میدان تجریش، خیابان شریعتی",
       },
     }),
   ]);
@@ -1306,7 +1545,7 @@ async function main() {
   // Create Guest Orders (orders placed by guest customers)
   await prisma.order.create({
     data: {
-      orderNumber: 'ORD-GUEST-0001',
+      orderNumber: "ORD-GUEST-0001",
       organizationId: healthShop.id,
       guestCustomerId: guestCustomers[0].id,
       type: OrderType.DELIVERY,
@@ -1321,8 +1560,20 @@ async function main() {
       deliveredAt: new Date(),
       items: {
         create: [
-          { productId: healthProducts[0].id, variantId: allVariants[0]?.id || null, quantity: 1, price: 450000, discount: 0 },
-          { productId: healthProducts[1].id, variantId: allVariants[1]?.id || null, quantity: 1, price: 280000, discount: 0 },
+          {
+            productId: healthProducts[0].id,
+            variantId: allVariants[0]?.id || null,
+            quantity: 1,
+            price: 450000,
+            discount: 0,
+          },
+          {
+            productId: healthProducts[1].id,
+            variantId: allVariants[1]?.id || null,
+            quantity: 1,
+            price: 280000,
+            discount: 0,
+          },
         ],
       },
     },
@@ -1330,7 +1581,7 @@ async function main() {
 
   await prisma.order.create({
     data: {
-      orderNumber: 'ORD-GUEST-0002',
+      orderNumber: "ORD-GUEST-0002",
       organizationId: foodDelivery.id,
       guestCustomerId: guestCustomers[1].id,
       type: OrderType.DELIVERY,
@@ -1343,8 +1594,20 @@ async function main() {
       paymentMethod: PaymentMethod.CASH,
       items: {
         create: [
-          { productId: foodProducts[0].id, variantId: null, quantity: 1, price: 350000, discount: 0 },
-          { productId: foodProducts[1].id, variantId: null, quantity: 1, price: 320000, discount: 0 },
+          {
+            productId: foodProducts[0].id,
+            variantId: null,
+            quantity: 1,
+            price: 350000,
+            discount: 0,
+          },
+          {
+            productId: foodProducts[1].id,
+            variantId: null,
+            quantity: 1,
+            price: 320000,
+            discount: 0,
+          },
         ],
       },
     },
@@ -1353,7 +1616,7 @@ async function main() {
   // Create a Guest Cart with items (simulating an active guest shopping session)
   const guestCart = await prisma.guestCart.create({
     data: {
-      sessionId: 'guest-session-demo-' + Date.now(),
+      sessionId: "guest-session-demo-" + Date.now(),
       organizationId: healthShop.id,
       status: CartStatus.ACTIVE,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
@@ -1365,109 +1628,217 @@ async function main() {
     data: [
       {
         cartId: guestCart.id,
-        variantId: allVariants[0]?.id || '',
+        variantId: allVariants[0]?.id || "",
         quantity: 2,
       },
       {
         cartId: guestCart.id,
-        variantId: allVariants[1]?.id || '',
+        variantId: allVariants[1]?.id || "",
         quantity: 1,
       },
     ],
   });
 
-  console.log(`✅ Created ${guestCustomers.length} guest customers, guest orders, and guest cart\n`);
+  console.log(
+    `✅ Created ${guestCustomers.length} guest customers, guest orders, and guest cart\n`,
+  );
 
   // ========================================
   // 11. CREATE REVIEWS
   // ========================================
-  console.log('⭐ Creating reviews...');
+  console.log("⭐ Creating reviews...");
 
   await prisma.review.create({
-    data: { organizationId: beautyClinic.id, userId: users[12].id, rating: 5, comment: 'عالی بود', isVerifiedPurchase: true },
+    data: {
+      organizationId: beautyClinic.id,
+      userId: users[12].id,
+      rating: 5,
+      comment: "عالی بود",
+      isVerifiedPurchase: true,
+    },
   });
 
   await prisma.review.create({
-    data: { organizationId: healthShop.id, userId: users[13].id, rating: 4, comment: 'خوب بود', isVerifiedPurchase: true },
+    data: {
+      organizationId: healthShop.id,
+      userId: users[13].id,
+      rating: 4,
+      comment: "خوب بود",
+      isVerifiedPurchase: true,
+    },
   });
 
   await prisma.review.create({
-    data: { organizationId: lawFirm.id, userId: users[12].id, rating: 5, comment: 'مشاوره حقوقی عالی، وکیل بسیار حرفه‌ای', isVerifiedPurchase: true },
+    data: {
+      organizationId: lawFirm.id,
+      userId: users[12].id,
+      rating: 5,
+      comment: "مشاوره حقوقی عالی، وکیل بسیار حرفه‌ای",
+      isVerifiedPurchase: true,
+    },
   });
 
-  console.log('✅ Created reviews\n');
+  console.log("✅ Created reviews\n");
 
   // ========================================
   // 12. CREATE FOLLOWS
   // ========================================
-  console.log('❤️ Creating follows...');
+  console.log("❤️ Creating follows...");
 
-  await prisma.follow.create({ data: { organizationId: beautyClinic.id, customerId: users[12].id } });
-  await prisma.follow.create({ data: { organizationId: healthShop.id, customerId: users[13].id } });
-  await prisma.follow.create({ data: { organizationId: spaCenter.id, customerId: users[14].id } });
-  await prisma.follow.create({ data: { organizationId: lawFirm.id, customerId: users[12].id } });
-  await prisma.follow.create({ data: { organizationId: lawFirm.id, customerId: users[13].id } });
+  await prisma.follow.create({
+    data: { organizationId: beautyClinic.id, customerId: users[12].id },
+  });
+  await prisma.follow.create({
+    data: { organizationId: healthShop.id, customerId: users[13].id },
+  });
+  await prisma.follow.create({
+    data: { organizationId: spaCenter.id, customerId: users[14].id },
+  });
+  await prisma.follow.create({
+    data: { organizationId: lawFirm.id, customerId: users[12].id },
+  });
+  await prisma.follow.create({
+    data: { organizationId: lawFirm.id, customerId: users[13].id },
+  });
 
-  console.log('✅ Created follows\n');
+  console.log("✅ Created follows\n");
+
+  // ========================================
+  // 4. CREATE BUSINESS HOURS
+  // ========================================
+  console.log("🕐 Creating business hours...");
+
+  const days: DayOfWeek[] = [
+    DayOfWeek.SATURDAY,
+    DayOfWeek.SUNDAY,
+    DayOfWeek.MONDAY,
+    DayOfWeek.TUESDAY,
+    DayOfWeek.WEDNESDAY,
+    DayOfWeek.THURSDAY,
+  ];
+  // TODO: also create 'userBusinessHour' for staff (each staff user default businessHours should be set as their org. businessHours)
+  for (const org of allOrgs) {
+    for (const day of days) {
+      await prisma.businessHour.create({
+        data: {
+          organizationId: org.id,
+          day,
+          openTime: day === DayOfWeek.THURSDAY ? "09:00" : "08:00",
+          closeTime: day === DayOfWeek.THURSDAY ? "14:00" : "20:00",
+          isOpen: true,
+        },
+      });
+    }
+    await prisma.businessHour.create({
+      data: {
+        organizationId: org.id,
+        day: DayOfWeek.FRIDAY,
+        openTime: "00:00",
+        closeTime: "00:00",
+        isOpen: false,
+      },
+    });
+  }
+
+  console.log("✅ Created business hours\n");
+
+  // copy businessHours for staff members
+  [healthShop, beautyClinic, dentalClinic].map((org) => {
+    organizationService.copyBusinessHoursToAllStaff(org.id);
+  });
 
   // ========================================
   // Summary
   // ========================================
-  console.log('🎉 Database seeding completed successfully!');
-  console.log('\n📊 Summary:');
+  console.log("🎉 Database seeding completed successfully!");
+  console.log("\n📊 Summary:");
   console.log(`   - ${users.length} users with all role combinations`);
   console.log(`   - 6 organizations (2 SHOP, 4 APPOINTMENT)`);
   console.log(`   - 4 booking settings for appointment organizations`);
-  console.log(`   - ${guestCustomers.length} guest customers for guest checkout testing`);
+  console.log(
+    `   - ${guestCustomers.length} guest customers for guest checkout testing`,
+  );
   console.log(`   - All OrgMemberRole types: ADMIN, MANAGER, STAFF`);
-  console.log('\n🔑 Test Credentials (all passwords: password123):');
-  console.log('\n   === SUPER_ADMIN ===');
-  console.log('   - Username: superadmin (Full access to all features)');
-  
-  console.log('\n   === SHOP Organization ===');
-  console.log('   - Username: shop-admin (ADMIN role, ADMIN org role - Access: orders, products, customers)');
-  console.log('   - Username: shop-manager (MANAGER role, MANAGER org role - Access: orders, products)');
-  console.log('   - Username: shop-staff (STAFF role, STAFF org role - Limited access)');
-  console.log('   - Username: shop-driver (DRIVER role - Access: my-orders)');
-  
-  console.log('\n   === APPOINTMENT Organization (Beauty Clinic) ===');
-  console.log('   - Username: appt-admin (ADMIN role, ADMIN org role - Access: Full appointment access)');
-  console.log('   - Username: appt-manager (MANAGER role, MANAGER org role - Access: appointments, services,  my-appointments, my-services)');
-  console.log('   - Username: appt-staff (STAFF role, STAFF org role - Access: my-appointments, my-services)');
-  console.log('   - Username: staff-admin-appt (STAFF role, ADMIN org role - Full appointment access)');
-  console.log('   - Username: staff-manager-appt (STAFF role, MANAGER org role - Full appointment access)');
-  
-  console.log('\n   === LAW FIRM Organization (دفتر وکالت عدالت) ===');
-  console.log('   - Username: law-admin (ADMIN role, ADMIN org role - Access: appointments, services)');
-  console.log('   - Username: law-manager (MANAGER role, MANAGER org role - Access: appointments, services)');
-  console.log('   - Username: law-staff (STAFF role, STAFF org role - Access: my-appointments, my-services)');
-  console.log('   - Username: lawyer-senior (STAFF role, STAFF org role - Service provider: Legal consultations)');
-  console.log('   - Username: lawyer-junior (STAFF role, STAFF org role - Service provider: Legal consultations)');
-  console.log('\n   === CUSTOMER ===');
-  console.log('   - Username: customer1 (Access: my-orders, my-appointments)');
-  console.log('   - Username: customer2 (Access: my-orders, my-appointments)');
-  console.log('   - Username: customer3 (No email - Access: my-orders, my-appointments)');
-  console.log('\n   === DRIVER ===');
-  console.log('   - Username: driver1 (Access: my-orders)');
-  console.log('   - Username: driver2 (No email - Access: my-orders)');
-  console.log('\n   === GUEST CUSTOMERS (for guest checkout testing) ===');
-  console.log('   - Phone: +989123456789 (Ali Mohammadi - has orders)');
-  console.log('   - Phone: +989123456790 (Maryam Ahmadi - has orders)');
-  console.log('   - Phone: +989123456791 (Reza Karimi - no email)');
-  console.log('\n📍 Universal Access (All Users):');
-  console.log('   - Settings: /dashboard/settings');
-  console.log('   - Calendar: /dashboard/calendar');
-  console.log('\n🛒 Guest Shop Testing:');
-  console.log('   - Visit: /shop/salamat-shop (Health Shop)');
-  console.log('   - Visit: /shop/khoone-food (Food Delivery)');
-  console.log('   - Add products to cart as guest');
-  console.log('   - Checkout as guest without authentication');
-  console.log('\n📅 Appointment Booking Testing:');
-  console.log('   - Visit: /organizations/clinic-ruya (Beauty Clinic)');
-  console.log('   - Visit: /organizations/dental-smile (Dental Clinic)');
-  console.log('   - Visit: /organizations/spa-aramesh (SPA Center)');
-  console.log('   - Visit: /organizations/law-justice (Law Firm - دفتر وکالت عدالت)');
-  console.log('\n📝 Note: Email is now optional. Users can authenticate using their unique username.');
+  console.log("\n🔑 Test Credentials (all passwords: password123):");
+  console.log("\n   === SUPER_ADMIN ===");
+  console.log("   - Username: superadmin (Full access to all features)");
+
+  console.log("\n   === SHOP Organization ===");
+  console.log(
+    "   - Username: shop-admin (ADMIN role, ADMIN org role - Access: orders, products, customers)",
+  );
+  console.log(
+    "   - Username: shop-manager (MANAGER role, MANAGER org role - Access: orders, products)",
+  );
+  console.log(
+    "   - Username: shop-staff (STAFF role, STAFF org role - Limited access)",
+  );
+  console.log("   - Username: shop-driver (DRIVER role - Access: my-orders)");
+
+  console.log("\n   === APPOINTMENT Organization (Beauty Clinic) ===");
+  console.log(
+    "   - Username: appt-admin (ADMIN role, ADMIN org role - Access: Full appointment access)",
+  );
+  console.log(
+    "   - Username: appt-manager (MANAGER role, MANAGER org role - Access: appointments, services,  my-appointments, my-services)",
+  );
+  console.log(
+    "   - Username: appt-staff (STAFF role, STAFF org role - Access: my-appointments, my-services)",
+  );
+  console.log(
+    "   - Username: staff-admin-appt (STAFF role, ADMIN org role - Full appointment access)",
+  );
+  console.log(
+    "   - Username: staff-manager-appt (STAFF role, MANAGER org role - Full appointment access)",
+  );
+
+  console.log("\n   === LAW FIRM Organization (دفتر وکالت عدالت) ===");
+  console.log(
+    "   - Username: law-admin (ADMIN role, ADMIN org role - Access: appointments, services)",
+  );
+  console.log(
+    "   - Username: law-manager (MANAGER role, MANAGER org role - Access: appointments, services)",
+  );
+  console.log(
+    "   - Username: law-staff (STAFF role, STAFF org role - Access: my-appointments, my-services)",
+  );
+  console.log(
+    "   - Username: lawyer-senior (STAFF role, STAFF org role - Service provider: Legal consultations)",
+  );
+  console.log(
+    "   - Username: lawyer-junior (STAFF role, STAFF org role - Service provider: Legal consultations)",
+  );
+  console.log("\n   === CUSTOMER ===");
+  console.log("   - Username: customer1 (Access: my-orders, my-appointments)");
+  console.log("   - Username: customer2 (Access: my-orders, my-appointments)");
+  console.log(
+    "   - Username: customer3 (No email - Access: my-orders, my-appointments)",
+  );
+  console.log("\n   === DRIVER ===");
+  console.log("   - Username: driver1 (Access: my-orders)");
+  console.log("   - Username: driver2 (No email - Access: my-orders)");
+  console.log("\n   === GUEST CUSTOMERS (for guest checkout testing) ===");
+  console.log("   - Phone: +989123456789 (Ali Mohammadi - has orders)");
+  console.log("   - Phone: +989123456790 (Maryam Ahmadi - has orders)");
+  console.log("   - Phone: +989123456791 (Reza Karimi - no email)");
+  console.log("\n📍 Universal Access (All Users):");
+  console.log("   - Settings: /dashboard/settings");
+  console.log("   - Calendar: /dashboard/calendar");
+  console.log("\n🛒 Guest Shop Testing:");
+  console.log("   - Visit: /shop/salamat-shop (Health Shop)");
+  console.log("   - Visit: /shop/khoone-food (Food Delivery)");
+  console.log("   - Add products to cart as guest");
+  console.log("   - Checkout as guest without authentication");
+  console.log("\n📅 Appointment Booking Testing:");
+  console.log("   - Visit: /organizations/clinic-ruya (Beauty Clinic)");
+  console.log("   - Visit: /organizations/dental-smile (Dental Clinic)");
+  console.log("   - Visit: /organizations/spa-aramesh (SPA Center)");
+  console.log(
+    "   - Visit: /organizations/law-justice (Law Firm - دفتر وکالت عدالت)",
+  );
+  console.log(
+    "\n📝 Note: Email is now optional. Users can authenticate using their unique username.",
+  );
 }
 
 main()

@@ -201,7 +201,7 @@ export class OrganizationService {
     organizationId: string,
     userId: string,
     role: "ADMIN" | "MANAGER" | "STAFF",
-    addedBy: string
+    addedBy: string,
   ) {
     // Check if user is already a member
     const existingMember = await prisma.organizationMember.findUnique({
@@ -233,12 +233,14 @@ export class OrganizationService {
       },
     });
 
+    const businessHours = this.getBusinessHours(organizationId);
+
     // Update user's isTeamMember flag and role
     await prisma.user.update({
       where: { id: userId },
-      data: { 
+      data: {
         isTeamMember: true,
-        role, 
+        role,
       },
     });
 
@@ -249,12 +251,12 @@ export class OrganizationService {
   async updateMemberRole(
     organizationId: string,
     userId: string,
-    role: "ADMIN" | "MANAGER" | "STAFF"
+    role: "ADMIN" | "MANAGER" | "STAFF",
   ) {
     // Update user's role
     const user = await prisma.user.update({
       where: { id: userId },
-      data: { role},
+      data: { role },
     });
 
     revalidatePath(`/dashboard/organizations/${organizationId}/members`);
@@ -271,9 +273,9 @@ export class OrganizationService {
     // Update user's isTeamMember flag and role
     await prisma.user.update({
       where: { id: userId },
-      data: { 
+      data: {
         isTeamMember: false,
-        role: "CUSTOMER", 
+        role: "CUSTOMER",
       },
     });
 
@@ -282,7 +284,7 @@ export class OrganizationService {
 
   async getBusinessHours(organizationId: string) {
     return prisma.businessHour.findMany({
-      where: { organizationId },
+      where: { organizationId, userId: null },
       orderBy: { day: "asc" },
     });
   }
@@ -294,16 +296,23 @@ export class OrganizationService {
       openTime: string;
       closeTime: string;
       isOpen: boolean;
-    }>
+    }>,
   ) {
     // Delete existing hours and create new ones
     await prisma.businessHour.deleteMany({
-      where: { organizationId },
+      where: { organizationId, userId: null },
     });
 
     const businessHours = await prisma.businessHour.createMany({
       data: hours.map((h) => ({
-        day: h.day as "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY",
+        day: h.day as
+          | "MONDAY"
+          | "TUESDAY"
+          | "WEDNESDAY"
+          | "THURSDAY"
+          | "FRIDAY"
+          | "SATURDAY"
+          | "SUNDAY",
         openTime: h.openTime,
         closeTime: h.closeTime,
         isOpen: h.isOpen,
@@ -311,7 +320,107 @@ export class OrganizationService {
       })),
     });
 
+    // Update all staff's businessHours
+    const organizationMembers = await this.getMembers(organizationId);
+    organizationMembers.map((m) => {
+      this.updateStaffBusinessHours(m.userId, organizationId, hours);
+    });
+
     revalidatePath(`/dashboard/organizations/${organizationId}/settings`);
+    return businessHours;
+  }
+
+  async updateStaffBusinessHours(
+    userId: string,
+    organizationId: string,
+    hours: Array<{
+      day: string;
+      openTime: string;
+      closeTime: string;
+      isOpen: boolean;
+    }>,
+  ) {
+    // Delete existing hours and create new ones
+    await prisma.businessHour.deleteMany({
+      where: { userId },
+    });
+
+    const businessHours = await prisma.businessHour.createMany({
+      data: hours.map((h) => ({
+        day: h.day as
+          | "MONDAY"
+          | "TUESDAY"
+          | "WEDNESDAY"
+          | "THURSDAY"
+          | "FRIDAY"
+          | "SATURDAY"
+          | "SUNDAY",
+        openTime: h.openTime,
+        closeTime: h.closeTime,
+        isOpen: h.isOpen,
+        organizationId,
+        userId,
+      })),
+    });
+
+    revalidatePath(`/dashboard/organizations/${organizationId}/settings`);
+    return businessHours;
+  }
+
+  async copyBusinessHoursToAllStaff(organizationId: string) {
+    const hours = await this.getBusinessHours(organizationId);
+    const organizationMembers = await this.getMembers(organizationId);
+    for (let index = 0; index < organizationMembers.length; index++) {
+      await prisma.businessHour.deleteMany({
+        where: { userId: organizationMembers[index].userId },
+      });
+      await prisma.businessHour.createMany({
+        data: hours.map((h) => ({
+          day: h.day as
+            | "SATURDAY"
+            | "SUNDAY"
+            | "MONDAY"
+            | "TUESDAY"
+            | "WEDNESDAY"
+            | "THURSDAY"
+            | "FRIDAY",
+          openTime: h.openTime,
+          closeTime: h.closeTime,
+          isOpen: h.isOpen,
+          organizationId,
+          userId: organizationMembers[index].userId,
+        })),
+      });
+    }
+    return organizationMembers;
+  }
+
+  async copyBusinessHoursTo(userId: string, organizationId: string) {
+    // Delete existing hours and create new ones
+    await prisma.businessHour.deleteMany({
+      where: { userId },
+    });
+    const hours = await this.getBusinessHours(organizationId);
+
+    const businessHours = await prisma.businessHour.createMany({
+      data: hours.map((h) => ({
+        day: h.day as
+          | "SATURDAY"
+          | "SUNDAY"
+          | "MONDAY"
+          | "TUESDAY"
+          | "WEDNESDAY"
+          | "THURSDAY"
+          | "FRIDAY",
+        openTime: h.openTime,
+        closeTime: h.closeTime,
+        isOpen: h.isOpen,
+        organizationId,
+        userId,
+      })),
+    });
+
+    //revalidatePath(`/dashboard/users/${userId}/settings`);
     return businessHours;
   }
 

@@ -331,7 +331,7 @@ export class AppointmentService {
       include: { organization: true },
     });
 
-    if (!service) {
+    if (!service?.serviceProviderId) {
       throw new Error("Service not found");
     }
 
@@ -345,13 +345,21 @@ export class AppointmentService {
     const dayOfWeek = this.getDayOfWeekInTimezone(targetDate, timezone);
 
     // Get business hours for this day
-    const businessHours = await prisma.businessHour.findFirst({
+    const businessHours0 = await prisma.businessHour.findFirst({
       where: {
         organizationId: service.organizationId,
         day: dayOfWeek,
         isOpen: true,
       },
     });
+    const businessHours = await prisma.businessHour.findFirst({
+      where: {
+        userId: service.serviceProviderId,
+        day: dayOfWeek,
+        isOpen: true,
+      },
+    });
+    
 
     if (!businessHours) {
       return [];

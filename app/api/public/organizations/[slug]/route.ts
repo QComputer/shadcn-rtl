@@ -26,6 +26,7 @@ export async function GET(
 
     // Get business hours
     const businessHours = await organizationService.getBusinessHours(organization.id);
+console.log(businessHours);
 
     return NextResponse.json({
       organization,

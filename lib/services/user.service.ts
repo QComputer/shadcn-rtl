@@ -39,14 +39,15 @@ export class UserService {
   }
 
   async getBusinessHours(id: string) {
-    return prisma.userBusinessHour.findMany({
-      where: { id },
+    return prisma.businessHour.findMany({
+      where: { userId: id },
       orderBy: { day: "asc" },
     });
   }
 
   async updateBusinessHours(
     userId: string,
+    organizationId: string,
     hours: Array<{
       day: string;
       openTime: string;
@@ -55,11 +56,11 @@ export class UserService {
     }>,
   ) {
     // Delete existing hours and create new ones
-    await prisma.userBusinessHour.deleteMany({
-      where: { id: userId },
+    await prisma.businessHour.deleteMany({
+      where: { userId },
     });
 
-    const businessHours = await prisma.userBusinessHour.createMany({
+    const businessHours = await prisma.businessHour.createMany({
       data: hours.map((h) => ({
         day: h.day as
           | "SATURDAY"
@@ -72,6 +73,39 @@ export class UserService {
         openTime: h.openTime,
         closeTime: h.closeTime,
         isOpen: h.isOpen,
+        organizationId,
+        userId,
+      })),
+    });
+
+    //revalidatePath(`/dashboard/users/${userId}/settings`);
+    return businessHours;
+  }
+
+  async copyBusinessHours(
+    userId: string,
+    organizationId: string,
+  ) {
+    // Delete existing hours and create new ones
+    await prisma.businessHour.deleteMany({
+      where: { userId },
+    });
+    const hours = await this.getBusinessHours(organizationId);
+
+    const businessHours = await prisma.businessHour.createMany({
+      data: hours.map((h) => ({
+        day: h.day as
+          | "SATURDAY"
+          | "SUNDAY"
+          | "MONDAY"
+          | "TUESDAY"
+          | "WEDNESDAY"
+          | "THURSDAY"
+          | "FRIDAY",
+        openTime: h.openTime,
+        closeTime: h.closeTime,
+        isOpen: h.isOpen,
+        organizationId,
         userId,
       })),
     });
@@ -89,7 +123,6 @@ export class UserService {
 
     return member?.isActive ?? false;
   }
-
 }
 
 export const userService = new UserService();

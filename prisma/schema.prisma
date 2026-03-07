@@ -192,7 +192,7 @@ model User {
   emailVerifications       EmailVerification[]
   auditLogs                AuditLog[]
   conversationParticipants ConversationParticipant[]
-  businessHours UserBusinessHour[]
+  businessHours BusinessHour[]
 
   @@index([email])
   @@index([name])
@@ -225,27 +225,17 @@ model BusinessHour {
   openTime       String // Format "HH:mm"
   closeTime      String // Format "HH:mm"
   isOpen         Boolean   @default(true)
-  organizationId String
 
+  userId String?
+  user User? @relation(fields: [userId], references: [id])
+
+  organizationId String
   organization Organization @relation(fields: [organizationId], references: [id])
 
-  @@unique([organizationId, day])
+  @@unique([organizationId, day, userId])
   @@index([organizationId])
 }
 
-model UserBusinessHour {
-  id             String    @id @default(cuid())
-  day            DayOfWeek
-  openTime       String // Format "HH:mm"
-  closeTime      String // Format "HH:mm"
-  isOpen         Boolean   @default(true)
-  
-  userId String
-  user User @relation(fields: [userId], references: [id])
-
-  @@unique([userId, day])
-  @@index([userId])
-}
 
 // --- AUTHENTICATION MODELS ---
 
@@ -288,9 +278,10 @@ model ServiceCategory {
   image          String?
   sortOrder      Int     @default(0)
   isActive       Boolean @default(true)
-  organizationId String
 
+  organizationId String
   organization Organization @relation(fields: [organizationId], references: [id])
+  
   services     Service[]
 
   createdAt DateTime  @default(now())

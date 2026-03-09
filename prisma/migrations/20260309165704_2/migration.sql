@@ -5,9 +5,6 @@ CREATE TYPE "OrganizationType" AS ENUM ('SHOP', 'APPOINTMENT');
 CREATE TYPE "UserRole" AS ENUM ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF', 'DRIVER', 'CUSTOMER');
 
 -- CreateEnum
-CREATE TYPE "OrgMemberRole" AS ENUM ('ADMIN', 'MANAGER', 'STAFF');
-
--- CreateEnum
 CREATE TYPE "AppointmentStatus" AS ENUM ('PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW');
 
 -- CreateEnum
@@ -20,7 +17,7 @@ CREATE TYPE "OrderType" AS ENUM ('DELIVERY', 'PICK_UP');
 CREATE TYPE "OrderStatus" AS ENUM ('PENDING', 'PLACED', 'ACCEPTED', 'PREPARING', 'READY', 'PICKED_UP', 'DELIVERED', 'RECEIVED', 'CANCELLED', 'REFUNDED');
 
 -- CreateEnum
-CREATE TYPE "DayOfWeek" AS ENUM ('MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY');
+CREATE TYPE "DayOfWeek" AS ENUM ('SATURDAY', 'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY');
 
 -- CreateEnum
 CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'COMPLETED', 'FAILED', 'REFUNDED');
@@ -56,19 +53,22 @@ CREATE TABLE "Organization" (
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
-    "firstName" TEXT NOT NULL,
-    "lastName" TEXT NOT NULL,
-    "phone" TEXT,
-    "name" TEXT,
-    "avatar" TEXT,
+    "name" TEXT NOT NULL,
     "role" "UserRole" NOT NULL DEFAULT 'CUSTOMER',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "isTeamMember" BOOLEAN NOT NULL DEFAULT false,
+    "email" TEXT,
+    "firstName" TEXT,
+    "lastName" TEXT,
+    "phone" TEXT,
+    "avatar" TEXT,
+    "image" TEXT,
+    "address" TEXT,
+    "status" TEXT,
     "emailVerified" TIMESTAMP(3),
-    "locale" TEXT NOT NULL DEFAULT 'en',
-    "theme" TEXT NOT NULL DEFAULT 'light',
+    "locale" TEXT NOT NULL DEFAULT 'fa',
+    "theme" TEXT NOT NULL DEFAULT 'system',
     "lastLoginAt" TIMESTAMP(3),
     "failedLoginAttempts" INTEGER NOT NULL DEFAULT 0,
     "lockedUntil" TIMESTAMP(3),
@@ -84,7 +84,6 @@ CREATE TABLE "OrganizationMember" (
     "id" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "role" "OrgMemberRole" NOT NULL DEFAULT 'STAFF',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -98,6 +97,7 @@ CREATE TABLE "BusinessHour" (
     "openTime" TEXT NOT NULL,
     "closeTime" TEXT NOT NULL,
     "isOpen" BOOLEAN NOT NULL DEFAULT true,
+    "userId" TEXT,
     "organizationId" TEXT NOT NULL,
 
     CONSTRAINT "BusinessHour_pkey" PRIMARY KEY ("id")
@@ -175,13 +175,64 @@ CREATE TABLE "Appointment" (
     "cancelledAt" TIMESTAMP(3),
     "cancellationReason" TEXT,
     "cancelledBy" TEXT,
-    "customerId" TEXT NOT NULL,
+    "confirmedAt" TIMESTAMP(3),
+    "confirmedBy" TEXT,
+    "reminderSentAt" TIMESTAMP(3),
+    "reminderSentBy" TEXT,
+    "followUpSentAt" TIMESTAMP(3),
+    "followUpSentBy" TEXT,
+    "customerNameAtBooking" TEXT,
+    "customerPhoneAtBooking" TEXT,
+    "customerEmailAtBooking" TEXT,
+    "bookingReference" TEXT,
+    "customerId" TEXT,
+    "guestCustomerId" TEXT,
     "serviceId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "deletedAt" TIMESTAMP(3),
 
     CONSTRAINT "Appointment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StaffAvailability" (
+    "id" TEXT NOT NULL,
+    "dayOfWeek" "DayOfWeek" NOT NULL,
+    "startTime" TEXT NOT NULL,
+    "endTime" TEXT NOT NULL,
+    "isAvailable" BOOLEAN NOT NULL DEFAULT true,
+    "breakStart" TEXT,
+    "breakEnd" TEXT,
+    "specificDate" TIMESTAMP(3),
+    "isDayOff" BOOLEAN NOT NULL DEFAULT false,
+    "organizationId" TEXT NOT NULL,
+    "staffId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "StaffAvailability_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "BookingSession" (
+    "id" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "serviceId" TEXT,
+    "selectedDate" TIMESTAMP(3),
+    "selectedTime" TEXT,
+    "customerName" TEXT,
+    "customerPhone" TEXT,
+    "customerEmail" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'started',
+    "completedAt" TIMESTAMP(3),
+    "abandonedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "BookingSession_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -264,6 +315,43 @@ CREATE TABLE "ShopCartItem" (
 );
 
 -- CreateTable
+CREATE TABLE "GuestCart" (
+    "id" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
+    "status" "CartStatus" NOT NULL DEFAULT 'ACTIVE',
+    "organizationId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "GuestCart_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "GuestCartItem" (
+    "id" TEXT NOT NULL,
+    "quantity" INTEGER NOT NULL,
+    "cartId" TEXT NOT NULL,
+    "variantId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "GuestCartItem_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "GuestCustomer" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
+    "email" TEXT,
+    "address" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "GuestCustomer_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Order" (
     "id" TEXT NOT NULL,
     "orderNumber" TEXT NOT NULL,
@@ -284,7 +372,8 @@ CREATE TABLE "Order" (
     "promotionId" TEXT,
     "promotionCode" TEXT,
     "organizationId" TEXT NOT NULL,
-    "customerId" TEXT NOT NULL,
+    "customerId" TEXT,
+    "guestCustomerId" TEXT,
     "driverId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -442,6 +531,28 @@ CREATE TABLE "OrganizationSettings" (
 );
 
 -- CreateTable
+CREATE TABLE "BookingSettings" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "slotDuration" INTEGER NOT NULL DEFAULT 30,
+    "bufferBefore" INTEGER NOT NULL DEFAULT 0,
+    "bufferAfter" INTEGER NOT NULL DEFAULT 0,
+    "minBookingNotice" INTEGER NOT NULL DEFAULT 60,
+    "maxBookingAdvance" INTEGER NOT NULL DEFAULT 43200,
+    "maxAppointmentsPerDay" INTEGER,
+    "allowCancellation" BOOLEAN NOT NULL DEFAULT true,
+    "cancellationDeadline" INTEGER NOT NULL DEFAULT 1440,
+    "requirePhone" BOOLEAN NOT NULL DEFAULT true,
+    "requireEmail" BOOLEAN NOT NULL DEFAULT false,
+    "requireName" BOOLEAN NOT NULL DEFAULT true,
+    "autoConfirm" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "BookingSettings_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "AuditLog" (
     "id" TEXT NOT NULL,
     "action" "AuditAction" NOT NULL,
@@ -475,10 +586,16 @@ CREATE INDEX "Organization_isActive_idx" ON "Organization"("isActive");
 CREATE INDEX "Organization_deletedAt_idx" ON "Organization"("deletedAt");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "User_name_key" ON "User"("name");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
 CREATE INDEX "User_email_idx" ON "User"("email");
+
+-- CreateIndex
+CREATE INDEX "User_name_idx" ON "User"("name");
 
 -- CreateIndex
 CREATE INDEX "User_role_idx" ON "User"("role");
@@ -493,13 +610,13 @@ CREATE INDEX "User_deletedAt_idx" ON "User"("deletedAt");
 CREATE INDEX "User_emailVerified_idx" ON "User"("emailVerified");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "OrganizationMember_userId_key" ON "OrganizationMember"("userId");
+
+-- CreateIndex
 CREATE INDEX "OrganizationMember_organizationId_idx" ON "OrganizationMember"("organizationId");
 
 -- CreateIndex
 CREATE INDEX "OrganizationMember_userId_idx" ON "OrganizationMember"("userId");
-
--- CreateIndex
-CREATE INDEX "OrganizationMember_role_idx" ON "OrganizationMember"("role");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "OrganizationMember_organizationId_userId_key" ON "OrganizationMember"("organizationId", "userId");
@@ -508,7 +625,7 @@ CREATE UNIQUE INDEX "OrganizationMember_organizationId_userId_key" ON "Organizat
 CREATE INDEX "BusinessHour_organizationId_idx" ON "BusinessHour"("organizationId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "BusinessHour_organizationId_day_key" ON "BusinessHour"("organizationId", "day");
+CREATE UNIQUE INDEX "BusinessHour_organizationId_day_userId_key" ON "BusinessHour"("organizationId", "day", "userId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "PasswordReset_token_key" ON "PasswordReset"("token");
@@ -553,7 +670,13 @@ CREATE INDEX "Service_serviceProviderId_idx" ON "Service"("serviceProviderId");
 CREATE INDEX "Service_deletedAt_idx" ON "Service"("deletedAt");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Appointment_bookingReference_key" ON "Appointment"("bookingReference");
+
+-- CreateIndex
 CREATE INDEX "Appointment_customerId_idx" ON "Appointment"("customerId");
+
+-- CreateIndex
+CREATE INDEX "Appointment_guestCustomerId_idx" ON "Appointment"("guestCustomerId");
 
 -- CreateIndex
 CREATE INDEX "Appointment_serviceId_idx" ON "Appointment"("serviceId");
@@ -566,6 +689,36 @@ CREATE INDEX "Appointment_status_idx" ON "Appointment"("status");
 
 -- CreateIndex
 CREATE INDEX "Appointment_deletedAt_idx" ON "Appointment"("deletedAt");
+
+-- CreateIndex
+CREATE INDEX "Appointment_bookingReference_idx" ON "Appointment"("bookingReference");
+
+-- CreateIndex
+CREATE INDEX "StaffAvailability_organizationId_idx" ON "StaffAvailability"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "StaffAvailability_staffId_idx" ON "StaffAvailability"("staffId");
+
+-- CreateIndex
+CREATE INDEX "StaffAvailability_specificDate_idx" ON "StaffAvailability"("specificDate");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StaffAvailability_staffId_dayOfWeek_specificDate_key" ON "StaffAvailability"("staffId", "dayOfWeek", "specificDate");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "BookingSession_sessionId_key" ON "BookingSession"("sessionId");
+
+-- CreateIndex
+CREATE INDEX "BookingSession_organizationId_idx" ON "BookingSession"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "BookingSession_sessionId_idx" ON "BookingSession"("sessionId");
+
+-- CreateIndex
+CREATE INDEX "BookingSession_status_idx" ON "BookingSession"("status");
+
+-- CreateIndex
+CREATE INDEX "BookingSession_expiresAt_idx" ON "BookingSession"("expiresAt");
 
 -- CreateIndex
 CREATE INDEX "ProductCategory_organizationId_idx" ON "ProductCategory"("organizationId");
@@ -616,6 +769,30 @@ CREATE INDEX "ShopCartItem_cartId_idx" ON "ShopCartItem"("cartId");
 CREATE INDEX "ShopCartItem_variantId_idx" ON "ShopCartItem"("variantId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "GuestCart_sessionId_key" ON "GuestCart"("sessionId");
+
+-- CreateIndex
+CREATE INDEX "GuestCart_sessionId_idx" ON "GuestCart"("sessionId");
+
+-- CreateIndex
+CREATE INDEX "GuestCart_organizationId_idx" ON "GuestCart"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "GuestCart_status_idx" ON "GuestCart"("status");
+
+-- CreateIndex
+CREATE INDEX "GuestCart_expiresAt_idx" ON "GuestCart"("expiresAt");
+
+-- CreateIndex
+CREATE INDEX "GuestCartItem_cartId_idx" ON "GuestCartItem"("cartId");
+
+-- CreateIndex
+CREATE INDEX "GuestCartItem_variantId_idx" ON "GuestCartItem"("variantId");
+
+-- CreateIndex
+CREATE INDEX "GuestCustomer_phone_idx" ON "GuestCustomer"("phone");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Order_orderNumber_key" ON "Order"("orderNumber");
 
 -- CreateIndex
@@ -623,6 +800,9 @@ CREATE INDEX "Order_organizationId_idx" ON "Order"("organizationId");
 
 -- CreateIndex
 CREATE INDEX "Order_customerId_idx" ON "Order"("customerId");
+
+-- CreateIndex
+CREATE INDEX "Order_guestCustomerId_idx" ON "Order"("guestCustomerId");
 
 -- CreateIndex
 CREATE INDEX "Order_driverId_idx" ON "Order"("driverId");
@@ -730,6 +910,12 @@ CREATE UNIQUE INDEX "OrganizationSettings_organizationId_key" ON "OrganizationSe
 CREATE INDEX "OrganizationSettings_organizationId_idx" ON "OrganizationSettings"("organizationId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "BookingSettings_organizationId_key" ON "BookingSettings"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "BookingSettings_organizationId_idx" ON "BookingSettings"("organizationId");
+
+-- CreateIndex
 CREATE INDEX "AuditLog_entityType_entityId_idx" ON "AuditLog"("entityType", "entityId");
 
 -- CreateIndex
@@ -749,6 +935,9 @@ ALTER TABLE "OrganizationMember" ADD CONSTRAINT "OrganizationMember_organization
 
 -- AddForeignKey
 ALTER TABLE "OrganizationMember" ADD CONSTRAINT "OrganizationMember_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "BusinessHour" ADD CONSTRAINT "BusinessHour_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "BusinessHour" ADD CONSTRAINT "BusinessHour_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -772,10 +961,22 @@ ALTER TABLE "Service" ADD CONSTRAINT "Service_categoryId_fkey" FOREIGN KEY ("cat
 ALTER TABLE "Service" ADD CONSTRAINT "Service_serviceProviderId_fkey" FOREIGN KEY ("serviceProviderId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Appointment" ADD CONSTRAINT "Appointment_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Appointment" ADD CONSTRAINT "Appointment_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Appointment" ADD CONSTRAINT "Appointment_guestCustomerId_fkey" FOREIGN KEY ("guestCustomerId") REFERENCES "GuestCustomer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Appointment" ADD CONSTRAINT "Appointment_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "Service"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StaffAvailability" ADD CONSTRAINT "StaffAvailability_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StaffAvailability" ADD CONSTRAINT "StaffAvailability_staffId_fkey" FOREIGN KEY ("staffId") REFERENCES "OrganizationMember"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "BookingSession" ADD CONSTRAINT "BookingSession_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ProductCategory" ADD CONSTRAINT "ProductCategory_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -802,10 +1003,22 @@ ALTER TABLE "ShopCartItem" ADD CONSTRAINT "ShopCartItem_cartId_fkey" FOREIGN KEY
 ALTER TABLE "ShopCartItem" ADD CONSTRAINT "ShopCartItem_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "ProductVariant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "GuestCart" ADD CONSTRAINT "GuestCart_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "GuestCartItem" ADD CONSTRAINT "GuestCartItem_cartId_fkey" FOREIGN KEY ("cartId") REFERENCES "GuestCart"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "GuestCartItem" ADD CONSTRAINT "GuestCartItem_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "ProductVariant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Order" ADD CONSTRAINT "Order_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Order" ADD CONSTRAINT "Order_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Order" ADD CONSTRAINT "Order_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Order" ADD CONSTRAINT "Order_guestCustomerId_fkey" FOREIGN KEY ("guestCustomerId") REFERENCES "GuestCustomer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Order" ADD CONSTRAINT "Order_driverId_fkey" FOREIGN KEY ("driverId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -863,6 +1076,9 @@ ALTER TABLE "Location" ADD CONSTRAINT "Location_organizationId_fkey" FOREIGN KEY
 
 -- AddForeignKey
 ALTER TABLE "OrganizationSettings" ADD CONSTRAINT "OrganizationSettings_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "BookingSettings" ADD CONSTRAINT "BookingSettings_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;

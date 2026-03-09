@@ -99,8 +99,11 @@ export class AppointmentService {
         customerId,
         serviceId: data.serviceId,
         bookingReference,
-        customerNameAtBooking: data.customerName || 
-          (customer ? `${customer.firstName || ''} ${customer.lastName || ''}`.trim() : null),
+        customerNameAtBooking:
+          data.customerName ||
+          (customer
+            ? `${customer.firstName || ""} ${customer.lastName || ""}`.trim()
+            : null),
         customerPhoneAtBooking: data.customerPhone || customer?.phone || null,
         customerEmailAtBooking: data.customerEmail || customer?.email || null,
       },
@@ -108,6 +111,16 @@ export class AppointmentService {
         service: {
           include: {
             organization: true,
+            category: true,
+            serviceProvider: {
+              select: {
+                id: true,
+                name: true,
+                firstName: true,
+                lastName: true,
+                avatar: true,
+              },
+            },
           },
         },
         customer: {
@@ -345,13 +358,6 @@ export class AppointmentService {
     const dayOfWeek = this.getDayOfWeekInTimezone(targetDate, timezone);
 
     // Get business hours for this day
-    const businessHours0 = await prisma.businessHour.findFirst({
-      where: {
-        organizationId: service.organizationId,
-        day: dayOfWeek,
-        isOpen: true,
-      },
-    });
     const businessHours = await prisma.businessHour.findFirst({
       where: {
         userId: service.serviceProviderId,
@@ -432,16 +438,16 @@ export class AppointmentService {
       const dayName = formatter.format(date).toUpperCase();
       
       // Validate and return the day
-      const validDays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"] as const;
+      const validDays = [ "SATURDAY", "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY",] as const;
       if (validDays.includes(dayName as typeof validDays[number])) {
         return dayName as typeof validDays[number];
       }
       
       // Fallback to UTC day if invalid
-      return date.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase() as typeof validDays[number];
+      return date.toLocaleDateString("fa", { weekday: "long" }).toUpperCase() as typeof validDays[number];
     } catch {
       // Fallback to local day if timezone is invalid
-      const days = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"] as const;
+      const days = [ "SATURDAY", "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"] as const;
       return days[date.getDay()];
     }
   }

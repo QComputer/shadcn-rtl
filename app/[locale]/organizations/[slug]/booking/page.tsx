@@ -45,9 +45,11 @@ interface Service {
   }
   serviceProvider: {
     id: string
+    name: string
     firstName: string
     lastName: string
   } | null
+  organization: Organization
 }
 
 interface ServiceCategory {
@@ -78,13 +80,13 @@ interface OrganizationData {
 type BookingStep = "service" | "datetime" | "details" | "confirm"
 
 const dayNames: Record<string, string> = {
+  SATURDAY: "شنبه",
+  SUNDAY: "یکشنبه",
   MONDAY: "دوشنبه",
   TUESDAY: "سه‌شنبه",
   WEDNESDAY: "چهارشنبه",
   THURSDAY: "پنج‌شنبه",
   FRIDAY: "جمعه",
-  SATURDAY: "شنبه",
-  SUNDAY: "یکشنبه",
 }
 
 export default function BookingPage({ 
@@ -185,10 +187,10 @@ export default function BookingPage({
   const [weekStart, setWeekStart] = useState(() => {
     const today = new Date()
     const dayOfWeek = today.getDay()
-    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek // Adjust for Sunday start
-    const monday = new Date(today)
-    monday.setDate(today.getDate() + diff)
-    return monday
+    const diff = dayOfWeek === 0 ? -1 : 6 - dayOfWeek // Adjust for Sunday start
+    const saturday = new Date(today)
+    saturday.setDate(today.getDate() + diff)
+    return saturday
   })
 
   const weekDates = getWeekDates(weekStart)
@@ -284,7 +286,8 @@ export default function BookingPage({
               <p className="text-muted-foreground mb-6">{t("appointment.thankYou")}</p>
               
               <div className="bg-muted rounded-lg p-4 text-right mb-6">
-                <p className="font-medium">{selectedService?.name}</p>
+                <p className="font-medium">سرویس: {selectedService?.name}</p>
+                <p className="font-medium"> ارائه دهنده: {selectedService?.serviceProvider?.firstName} {selectedService?.serviceProvider?.lastName}</p>
                 <p className="text-muted-foreground">
                   {selectedDate && formatPersianDate(selectedDate, "full")}
                 </p>
@@ -316,7 +319,7 @@ export default function BookingPage({
             href={`/${locale}/organizations/${slug}`}
             className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-2"
           >
-            <ChevronRight className="h-4 w-4 rotate-180" />
+            <ChevronRight className="h-4 w-4" />
             {t("common.back")}
           </Link>
           <h1 className="text-3xl font-bold">{t("appointment.book")}</h1>
@@ -324,19 +327,19 @@ export default function BookingPage({
         </div>
 
         {/* Steps */}
-        <div className="flex items-center gap-2 mb-8 text-sm">
+        <div className="flex items-center gap-0 mb-8 text-sm">
           <Badge variant={step === "service" ? "default" : "secondary"}>
             1. {t("appointment.selectService")}
           </Badge>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <ChevronLeft className="h-3 w-3 text-muted-foreground" />
           <Badge variant={step === "datetime" ? "default" : "secondary"}>
             2. {t("appointment.selectDate")}
           </Badge>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <ChevronLeft className="h-3 w-3 text-muted-foreground" />
           <Badge variant={step === "details" ? "default" : "secondary"}>
             3. {t("appointment.yourInfo")}
           </Badge>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <ChevronLeft className="h-3 w-3 text-muted-foreground" />
           <Badge variant={step === "confirm" ? "default" : "secondary"}>
             4. {t("appointment.confirm")}
           </Badge>
@@ -460,7 +463,7 @@ export default function BookingPage({
                           <p className="text-xs mb-1">{dayName}</p>
                           <p className="text-lg font-bold">{toPersianDigits(date.getDate())}</p>
                           {isToday && (
-                            <Badge variant="secondary" className="text-xs mt-1">امروز</Badge>
+                            <Badge variant="secondary" className="text-xs -mr-2">امروز</Badge>
                           )}
                         </button>
                       )

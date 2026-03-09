@@ -70,13 +70,13 @@ interface OrganizationData {
 
 // Persian day names mapping
 const dayNames: Record<string, string> = {
+  SATURDAY: "شنبه",
+  SUNDAY: "یکشنبه",
   MONDAY: "دوشنبه",
   TUESDAY: "سه‌شنبه",
   WEDNESDAY: "چهارشنبه",
   THURSDAY: "پنج‌شنبه",
   FRIDAY: "جمعه",
-  SATURDAY: "شنبه",
-  SUNDAY: "یکشنبه",
 }
 
 export default function OrganizationPage({ 
@@ -128,13 +128,13 @@ export default function OrganizationPage({
     if (!data?.businessHours) return null
     const today = new Date().toLocaleDateString("en-US", { weekday: "long" })
     const dayMap: Record<string, string> = {
+      Saturday: "SATURDAY",
+      Sunday: "SUNDAY",
       Monday: "MONDAY",
       Tuesday: "TUESDAY",
       Wednesday: "WEDNESDAY",
       Thursday: "THURSDAY",
       Friday: "FRIDAY",
-      Saturday: "SATURDAY",
-      Sunday: "SUNDAY",
     }
     const englishDay = dayMap[today]
     return data.businessHours.find(h => h.day === englishDay)
@@ -202,17 +202,17 @@ export default function OrganizationPage({
                 {organization.description}
               </p>
             )}
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-4 mb-6">
                <Button size="lg" className="gap-2">
                  <Link href={`/${locale}/organizations/${slug}/booking`}>
-                   <Calendar className="h-5 w-5" />
+                   <Calendar className="h-4 w-4" />
                    {t("organization.bookNow")}
                  </Link>
                </Button>
-               <Button size="lg" variant="outline" className="gap-2">
+               <Button size="lg" variant="secondary" className="gap-2">
                  <Link href={`/${locale}/organizations/${slug}/my-appointments`}>
-                   <Calendar className="h-5 w-5" />
-                   {t("organization.myAppointments")}
+                   <Calendar className="h-4 w-4" />
+                   <p>{t("organization.myAppointments")}</p>
                  </Link>
                </Button>
              </div>
@@ -221,7 +221,7 @@ export default function OrganizationPage({
       </section>
 
       {/* Quick Info Bar */}
-      <section className="border-b bg-card">
+      <section className="border-b bg-card pt-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-wrap gap-6 text-sm">
             {organization.phone && (

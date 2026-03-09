@@ -15,11 +15,11 @@ export const persianMonths = [
 
 // Persian day names
 export const persianDays = [
-  'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه', 'شنبه'
+  'شنبه','یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه'
 ];
 
 // Short Persian day names
-export const persianDaysShort = ['ی', 'د', 'س', 'چ', 'پ', 'ج', 'ش'];
+export const persianDaysShort = ['ش','ی', 'د', 'س', 'چ', 'پ', 'ج'];
 
 /**
  * Convert English digits to Persian digits

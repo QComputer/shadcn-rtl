@@ -20,7 +20,6 @@ export async function GET(
       "================================= business-hours api==================================",
     );
 
-    console.log("hours:", hours);
 
     return NextResponse.json(hours);
   } catch (error) {

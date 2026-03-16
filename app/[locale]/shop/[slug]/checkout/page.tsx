@@ -64,11 +64,11 @@ export default function CheckoutPage({
   useEffect(() => {
     async function fetchOrganization() {
       try {
-        const response = await fetch(`/api/public/organizations/${slug}`);
+        const response = await fetch(`/api/public/organizations/${slug}/shop`);
         if (response.ok) {
           const data = await response.json();
-          setOrganizationId(data.id);
-          setOrganizationName(data.name);
+          setOrganizationId(data.organization.id);
+          setOrganizationName(data.organization.name);
         }
       } catch (err) {
         console.error("Failed to fetch organization:", err);
@@ -97,6 +97,20 @@ export default function CheckoutPage({
     setError(null);
 
     try {
+      if (!organizationId){
+        try {
+        const response = await fetch(`/api/public/organizations/${slug}/shop`);
+        if (response.ok) {
+          const data = await response.json();
+          setOrganizationId(data.organization.id);
+          setOrganizationName(data.organization.name);
+        } else {
+          console.error("Failed to fetch organizationId");
+        }
+        } catch (err) {
+          console.error("Failed to fetch organization:", err);
+        }
+      }
       const response = await fetch("/api/public/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

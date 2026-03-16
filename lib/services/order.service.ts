@@ -5,7 +5,7 @@ import type { CreateOrderInput, UpdateOrderStatusInput } from "@/lib/validators"
 import { hasPermission, type UserRole } from "@/lib/types";
 import { Decimal } from "@prisma/client/runtime/library";
 import { OrderStatus } from "@prisma/client";
-
+// TODO: comprehensive methods to watch/change a method by different user-roles for "/dashboard/orders" and "/dashboard/my-orders" page 
 export class OrderService {
   async create(data: CreateOrderInput & { customerId: string }) {
     const { organizationId, customerId, promotionCode, ...orderData } = data;
@@ -249,11 +249,14 @@ export class OrderService {
           customer: {
             select: {
               id: true,
+              name: true,
               firstName: true,
               lastName: true,
               email: true,
             },
           },
+
+          items: true,
           assignedDriver: {
             select: {
               id: true,

@@ -559,7 +559,6 @@ async function main() {
     data: {
       organizationId: healthShop.id,
       userId: users[1].id,
-      //role: UserRole.ADMIN,
       isActive: true,
     },
   });
@@ -567,7 +566,6 @@ async function main() {
     data: {
       organizationId: healthShop.id,
       userId: users[2].id,
-      //role: UserRole.MANAGER,
       isActive: true,
     },
   });
@@ -575,7 +573,6 @@ async function main() {
     data: {
       organizationId: healthShop.id,
       userId: users[3].id,
-      //role: UserRole.STAFF,
       isActive: true,
     },
   });
@@ -583,7 +580,6 @@ async function main() {
     data: {
       organizationId: healthShop.id,
       userId: users[4].id,
-      //role: UserRole.STAFF,
       isActive: true,
     },
   });
@@ -591,7 +587,6 @@ async function main() {
     data: {
       organizationId: healthShop.id,
       userId: users[13].id,
-      //role: UserRole.STAFF,
       isActive: true,
     },
   });

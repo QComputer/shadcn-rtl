@@ -68,7 +68,7 @@ export default async function HomePage({
     return value || key
   }
 
-  const isRTL = locale === "ar"
+  const isRTL = locale === "fa" || locale === "ar"
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -139,7 +139,7 @@ export default async function HomePage({
               {shopOrganizations.map((org: OrganizationWithDetails) => (
                 <Link
                   key={org.id}
-                  href={`/${locale}/organizations/${org.slug}`}
+                  href={`/${locale}/shop/${org.slug}`}
                   className="group"
                 >
                   <div className="bg-background rounded-xl overflow-hidden border hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
@@ -189,11 +189,11 @@ export default async function HomePage({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {appointmentOrganizations.map((org: OrganizationWithDetails) => (
-                <Link
+                  <Link
                   key={org.id}
                   href={`/${locale}/organizations/${org.slug}`}
                   className="group"
-                >
+                  >
                   <div className="bg-background rounded-xl overflow-hidden border hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
                     <div className="aspect-video bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
                       {org.coverImage ? (
@@ -223,6 +223,8 @@ export default async function HomePage({
                     </div>
                   </div>
                 </Link>
+                
+
               ))}
             </div>
           </div>

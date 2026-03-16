@@ -6,8 +6,6 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-console.log("==================== Shop ++++++++++++++++++++++");
-
     const { slug } = await params;
 
     // Get organization by slug
@@ -41,7 +39,6 @@ console.log("==================== Shop ++++++++++++++++++++++");
     if (organization.type !== "SHOP") {
       return NextResponse.json({ error: "Shop not found" }, { status: 404 });
     }
-console.log('==================== Shop ++++++++++++++++++++++')
     // Get product categories with products
     const categories = await prisma.productCategory.findMany({
       where: {
@@ -78,17 +75,16 @@ console.log('==================== Shop ++++++++++++++++++++++')
         sortOrder: "asc",
       },
     });
-
+    
     // Get business hours
     const businessHours = await prisma.businessHour.findMany({
       where: {
-        organizationId: organization.id,
+        organizationId: organization.id, userId: null
       },
       orderBy: {
         day: "asc",
       },
     });
-
     // Get organization settings
     const settings = await prisma.organizationSettings.findUnique({
       where: {
@@ -102,7 +98,7 @@ console.log('==================== Shop ++++++++++++++++++++++')
         deliveryRadius: true,
       },
     });
-
+    
     return NextResponse.json({
       organization,
       categories,

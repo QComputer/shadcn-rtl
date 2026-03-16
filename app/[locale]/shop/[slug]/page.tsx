@@ -93,13 +93,13 @@ interface ShopData {
 
 // Persian day names mapping
 const dayNames: Record<string, string> = {
+  SATURDAY: "شنبه",
+  SUNDAY: "یکشنبه",
   MONDAY: "دوشنبه",
   TUESDAY: "سه‌شنبه",
   WEDNESDAY: "چهارشنبه",
   THURSDAY: "پنج‌شنبه",
   FRIDAY: "جمعه",
-  SATURDAY: "شنبه",
-  SUNDAY: "یکشنبه",
 }
 
 export default function ShopPage({ 
@@ -120,50 +120,9 @@ export default function ShopPage({
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
 
-  useEffect(() => {
-    setMounted(true)
-    
-    // Load dictionary
-    import("@/lib/dictionary").then(({ getDictionary }) => {
-      setDict(getDictionary(locale))
-    })
-    
-    // Fetch shop data
-    fetch(`/api/public/organizations/${slug}/shop`)
-      .then(res => {
-        if (!res.ok) throw new Error("Shop not found")
-        return res.json()
-      })
-      .then(data => {
-        setData(data)
-        setLoading(false)
-      })
-      .catch(err => {
-        setError(err.message)
-        setLoading(false)
-      })
-  }, [locale, slug])
-
-  const t = (key: string): string => {
+    const t = (key: string): string => {
     if (!dict) return key
     return getDictValue(dict, key)
-  }
-
-  // Get today's hours
-  const getTodayHours = () => {
-    if (!data?.businessHours) return null
-    const today = new Date().toLocaleDateString("en-US", { weekday: "long" })
-    const dayMap: Record<string, string> = {
-      Monday: "MONDAY",
-      Tuesday: "TUESDAY",
-      Wednesday: "WEDNESDAY",
-      Thursday: "THURSDAY",
-      Friday: "FRIDAY",
-      Saturday: "SATURDAY",
-      Sunday: "SUNDAY",
-    }
-    const englishDay = dayMap[today]
-    return data.businessHours.find(h => h.day === englishDay)
   }
 
   // Filter products by search and category
@@ -196,6 +155,54 @@ export default function ShopPage({
     
     return products
   }
+
+
+  useEffect(() => {
+    setMounted(true)
+    
+    // Load dictionary
+    import("@/lib/dictionary").then(({ getDictionary }) => {
+      setDict(getDictionary(locale))
+    })
+
+        console.log("data:",data);
+    
+    // Fetch shop data
+    fetch(`/api/public/organizations/${slug}/shop`)
+      .then(res => {
+        if (!res.ok) throw new Error("Shop not found")
+        return res.json()
+      })
+      .then(data => {
+        setData(data)
+        setLoading(false)
+      })
+      .catch(err => {
+        setError(err.message)
+        setLoading(false)
+      })
+  }, [locale, slug])
+
+
+
+  // Get today's hours
+  const getTodayHours = () => {
+    if (!data?.businessHours) return null
+    const today = new Date().toLocaleDateString("en-US", { weekday: "long" })
+    const dayMap: Record<string, string> = {
+      Saturday: "SATURDAY",
+      Sunday: "SUNDAY",
+      Monday: "MONDAY",
+      Tuesday: "TUESDAY",
+      Wednesday: "WEDNESDAY",
+      Thursday: "THURSDAY",
+      Friday: "FRIDAY",
+    }
+    const englishDay = dayMap[today]
+    return data.businessHours.find(h => h.day === englishDay)
+  }
+
+  
 
   // Get display price
   const getDisplayPrice = (product: Product): number => {
@@ -248,7 +255,6 @@ export default function ShopPage({
   const { organization, categories, settings } = data
   const todayHours = getTodayHours()
   const filteredProducts = getFilteredProducts()
-
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}

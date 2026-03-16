@@ -17,7 +17,7 @@ import {
   AlertCircle,
   RefreshCw,
   MapPin,
-  User,
+  User as UserIcon,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -43,6 +43,7 @@ import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import { useDashboardAccess, useAuth } from "@/hooks/use-auth"
 import { formatToman, toPersianDigits } from "@/lib/persian"
+import { User } from "@prisma/client"
 
 interface OrderItem {
   id: string
@@ -71,15 +72,10 @@ interface Order {
   deliveryAddress: string | null
   notes: string | null
   createdAt: string
-  customer: {
-    id: string
-    firstName: string | null
-    lastName: string | null
-    email: string | null
-    phone: string | null
-  }
+  customer: User
   assignedDriver: {
     id: string
+    name: string
     firstName: string | null
     lastName: string | null
   } | null
@@ -173,6 +169,8 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
       }
       
       const data: OrdersResponse = await response.json()
+      console.log("data:", data)
+
       setOrders(data.data)
       setTotal(data.total)
       setTotalPages(data.totalPages)
@@ -379,8 +377,8 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                       <div>
                         <p className="font-bold">{order.orderNumber}</p>
                         <p className="text-sm text-muted-foreground">
-                          {order.customer.firstName} {order.customer.lastName}
-                          {order.customer.phone && ` - ${order.customer.phone}`}
+                          {(order.customer?.firstName)? `${order.customer?.firstName} ${order.customer?.lastName || null}` : `${order.customer?.name}`}
+                          {order.customer?.phone && ` - ${order.customer?.phone}`}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {formatDate(order.createdAt)}
@@ -489,7 +487,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <User className="h-4 w-4" />
+                    <UserIcon className="h-4 w-4" />
                     اطلاعات مشتری
                   </CardTitle>
                 </CardHeader>

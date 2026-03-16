@@ -126,7 +126,7 @@ export default function OrganizationPage({
   // Get today's hours
   const getTodayHours = () => {
     if (!data?.businessHours) return null
-    const today = new Date().toLocaleDateString("en-US", { weekday: "long" })
+    const today = new Date().toLocaleDateString("Asia/Tehran", { weekday: "long" })
     const dayMap: Record<string, string> = {
       Saturday: "SATURDAY",
       Sunday: "SUNDAY",

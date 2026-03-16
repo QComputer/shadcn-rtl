@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { UserRole, OrganizationType } from "@prisma/client";
+import { UserRole, OrganizationType, OrderStatus, AppointmentStatus, User } from "@prisma/client";
 
 /**
  * Dashboard Statistics API
@@ -226,7 +226,9 @@ async function getShopDashboard(organizationId: string) {
     totalCustomers,
     totalMembers,
     pendingOrders,
-    processingOrders,
+    acceptedOrders,
+    preparingOrders,
+    readyOrders,
     completedOrders,
     cancelledOrders,
   ] = await Promise.all([
@@ -238,10 +240,33 @@ async function getShopDashboard(organizationId: string) {
       _count: { customerId: true },
     }),
     prisma.organizationMember.count({ where: { organizationId } }),
-    prisma.order.count({ where: { organizationId, status: "PENDING" } }),
-    prisma.order.count({ where: { organizationId, status: "PROCESSING" } }),
-    prisma.order.count({ where: { organizationId, status: "DELIVERED" } }),
-    prisma.order.count({ where: { organizationId, status: "CANCELLED" } }),
+    prisma.order.count({
+      where: {
+        organizationId,
+        status: { in: [OrderStatus.PENDING, OrderStatus.PLACED] },
+      },
+    }),
+    prisma.order.count({
+      where: { organizationId, status: OrderStatus.ACCEPTED },
+    }),
+    prisma.order.count({
+      where: { organizationId, status: OrderStatus.PREPARING },
+    }),
+    prisma.order.count({
+      where: {
+        organizationId,
+        status: { in: [OrderStatus.READY, OrderStatus.PICKED_UP] },
+      },
+    }),
+    prisma.order.count({
+      where: {
+        organizationId,
+        status: { in: [OrderStatus.DELIVERED, OrderStatus.RECEIVED] },
+      },
+    }),
+    prisma.order.count({
+      where: { organizationId, status: OrderStatus.CANCELLED },
+    }),
   ]);
 
   // Get today's stats
@@ -258,7 +283,7 @@ async function getShopDashboard(organizationId: string) {
       where: {
         organizationId,
         createdAt: { gte: today, lt: tomorrow },
-        status: { in: ["DELIVERED", "COMPLETED"] },
+        status: { in: [OrderStatus.DELIVERED, OrderStatus.RECEIVED] },
       },
       _sum: { total: true },
     }),
@@ -287,7 +312,7 @@ async function getShopDashboard(organizationId: string) {
     take: 10,
     orderBy: { createdAt: "desc" },
     include: {
-      customer: { select: { firstName: true, lastName: true, phone: true } },
+      customer: { select: { name: true, firstName: true, lastName: true, phone: true } },
     },
   });
 
@@ -302,8 +327,11 @@ async function getShopDashboard(organizationId: string) {
       totalProducts,
       totalCustomers: totalCustomers.length,
       totalMembers,
+      totalMembers,
       pendingOrders,
-      processingOrders,
+      acceptedOrders,
+      preparingOrders,
+      readyOrders,
       completedOrders,
       cancelledOrders,
       todayOrders,
@@ -311,16 +339,48 @@ async function getShopDashboard(organizationId: string) {
     },
     salesData: salesByDay,
     ordersByStatus: [
-      { status: "PENDING", label: "جدید", count: pendingOrders, color: "#3b82f6" },
-      { status: "PROCESSING", label: "در حال آماده‌سازی", count: processingOrders, color: "#f59e0b" },
-      { status: "DELIVERED", label: "تحویل داده شده", count: completedOrders, color: "#22c55e" },
-      { status: "CANCELLED", label: "لغو شده", count: cancelledOrders, color: "#ef4444" },
+      {
+        status: "PENDING",
+        label: "جدید",
+        count: pendingOrders,
+        color: "#3b82f6",
+      },
+      {
+        status: "ACCEPTED",
+        label: "قبول شده",
+        count: acceptedOrders,
+        color: "#f5940b",
+      },
+      {
+        status: "PREPARING",
+        label: "در حال آماده‌سازی",
+        count: preparingOrders,
+        color: "#edf50b",
+      },
+      {
+        status: "DELIVERED",
+        label: "آماده شده",
+        count: completedOrders,
+        color: "#25c522",
+      },
+      {
+        status: "COMPLETED",
+        label: "کامل شده",
+        count: completedOrders,
+        color: "#2e76d4",
+      },
+      {
+        status: "CANCELLED",
+        label: "لغو شده",
+        count: cancelledOrders,
+        color: "#ef4444",
+      },
     ],
     recentOrders: recentOrders.map((order) => ({
       id: order.id,
       orderNumber: order.orderNumber,
-      customer: `${order.customer.firstName} ${order.customer.lastName}`,
-      phone: order.customer.phone,
+      customer: order.customer?.name,
+      phone: order.customer?.phone,
       items: order.items?.length || 0,
       total: order.total,
       status: order.status,
@@ -355,16 +415,16 @@ async function getAppointmentDashboard(organizationId: string) {
     prisma.serviceCategory.count({ where: { organizationId } }),
     prisma.organizationMember.count({ where: { organizationId } }),
     prisma.appointment.count({
-      where: { service: { organizationId }, status: "PENDING" },
+      where: { service: { organizationId }, status: AppointmentStatus.PENDING },
     }),
     prisma.appointment.count({
-      where: {  service: { organizationId }, status: "CONFIRMED" },
+      where: {  service: { organizationId }, status: AppointmentStatus.CONFIRMED },
     }),
     prisma.appointment.count({
-      where: {  service: { organizationId }, status: "COMPLETED" },
+      where: {  service: { organizationId }, status: AppointmentStatus.COMPLETED },
     }),
     prisma.appointment.count({
-      where: {  service: { organizationId }, status: "CANCELLED" },
+      where: {  service: { organizationId }, status: AppointmentStatus.CANCELLED },
     }),
   ]);
 

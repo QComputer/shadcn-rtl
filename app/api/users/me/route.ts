@@ -48,6 +48,19 @@ export async function GET() {
         theme: true,
         createdAt: true,
         updatedAt: true,
+        following: {
+          select: {
+            id: true,
+            organization: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                type: true,
+              },
+            },
+          },
+        },
         memberOf: {
           select: {
             id: true,

@@ -92,6 +92,7 @@ export class FollowService {
           customer: {
             select: {
               id: true,
+              name: true,
               firstName: true,
               lastName: true,
               avatar: true,

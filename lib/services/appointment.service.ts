@@ -86,7 +86,13 @@ export class AppointmentService {
     // Get customer info for snapshot
     const customer = await prisma.user.findUnique({
       where: { id: customerId },
-      select: { firstName: true, lastName: true, phone: true, email: true },
+      select: {
+        name: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        email: true,
+      },
     });
 
     const appointment = await prisma.appointment.create({
@@ -241,6 +247,7 @@ export class AppointmentService {
               serviceProvider: {
                 select: {
                   id: true,
+                  name: true,
                   firstName: true,
                   lastName: true,
                 },

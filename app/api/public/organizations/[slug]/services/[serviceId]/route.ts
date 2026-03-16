@@ -37,6 +37,7 @@ export async function GET(
         serviceProvider: {
           select: {
             id: true,
+            name: true,
             firstName: true,
             lastName: true,
             avatar: true,

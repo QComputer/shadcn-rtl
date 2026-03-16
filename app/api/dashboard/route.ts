@@ -119,7 +119,14 @@ export async function GET(request: NextRequest) {
  */
 async function getSuperAdminDashboard() {
   // Get all organizations count
-  const [totalOrganizations, totalUsers, totalOrders, totalAppointments, recentOrders, recentAppointments] = await Promise.all([
+  const [
+    totalOrganizations,
+    totalUsers,
+    totalOrders,
+    totalAppointments,
+    recentOrders,
+    recentAppointments,
+  ] = await Promise.all([
     prisma.organization.count(),
     prisma.user.count({ where: { isActive: true } }),
     prisma.order.count(),
@@ -128,7 +135,7 @@ async function getSuperAdminDashboard() {
       take: 5,
       orderBy: { createdAt: "desc" },
       include: {
-        customer: { select: { firstName: true, lastName: true } },
+        customer: { select: { name: true, firstName: true, lastName: true } },
         organization: { select: { name: true, slug: true } },
       },
     }),
@@ -136,9 +143,11 @@ async function getSuperAdminDashboard() {
       take: 5,
       orderBy: { createdAt: "desc" },
       include: {
-        customer: { select: { firstName: true, lastName: true } },
+        customer: { select: { name: true, firstName: true, lastName: true } },
         service: { select: { name: true } },
-        serviceProvider: { select: { firstName: true, lastName: true } },
+        serviceProvider: {
+          select: { name: true, firstName: true, lastName: true },
+        },
       },
     }),
   ]);
@@ -440,8 +449,10 @@ async function getAppointmentDashboard(organizationId: string) {
       date: { gte: today, lt: tomorrow },
     },
     include: {
-      customer: { select: { firstName: true, lastName: true } },
-      service: { select: { name: true, duration: true, serviceProvider: true } },
+      customer: { select: { name: true, firstName: true, lastName: true } },
+      service: {
+        select: { name: true, duration: true, serviceProvider: true },
+      },
     },
     orderBy: { date: "asc" },
   });
@@ -468,8 +479,12 @@ async function getAppointmentDashboard(organizationId: string) {
     take: 10,
     orderBy: { createdAt: "desc" },
     include: {
-      customer: { select: { firstName: true, lastName: true, phone: true } },
-      service: { select: { name: true, duration: true, serviceProvider: true } },
+      customer: {
+        select: { name: true, firstName: true, lastName: true, phone: true },
+      },
+      service: {
+        select: { name: true, duration: true, serviceProvider: true },
+      },
     },
   });
 
@@ -531,7 +546,7 @@ async function getShopStaffDashboard(organizationId: string, userId: string) {
       take: 10,
       orderBy: { createdAt: "desc" },
       include: {
-        customer: { select: { firstName: true, lastName: true } },
+        customer: { select: { name: true, firstName: true, lastName: true } },
       },
     }),
   ]);
@@ -576,20 +591,22 @@ async function getAppointmentStaffDashboard(organizationId: string, userId: stri
     }),
     prisma.appointment.count({
       where: {
-        service: { organizationId , serviceProviderId: userId},
+        service: { organizationId, serviceProviderId: userId },
         status: "COMPLETED",
       },
     }),
     prisma.appointment.findMany({
       where: {
-        service: { organizationId , serviceProviderId: userId},
+        service: { organizationId, serviceProviderId: userId },
         date: {
           gte: new Date(new Date().setHours(0, 0, 0, 0)),
           lt: new Date(new Date().setHours(23, 59, 59, 999)),
         },
       },
       include: {
-        customer: { select: { firstName: true, lastName: true, phone: true } },
+        customer: {
+          select: { name: true, firstName: true, lastName: true, phone: true },
+        },
         service: { select: { name: true, duration: true } },
       },
       orderBy: { date: "asc" },
@@ -598,11 +615,11 @@ async function getAppointmentStaffDashboard(organizationId: string, userId: stri
 
   // Get recent appointments for this staff
   const recentAppointments = await prisma.appointment.findMany({
-    where: {  service: { organizationId , serviceProviderId: userId }},
+    where: { service: { organizationId, serviceProviderId: userId } },
     take: 10,
     orderBy: { createdAt: "desc" },
     include: {
-      customer: { select: { firstName: true, lastName: true } },
+      customer: { select: { name: true, firstName: true, lastName: true } },
       service: { select: { name: true } },
     },
   });
@@ -654,7 +671,9 @@ async function getDriverDashboard(userId: string) {
       take: 10,
       orderBy: { createdAt: "desc" },
       include: {
-        customer: { select: { firstName: true, lastName: true, phone: true } },
+        customer: {
+          select: { name: true, firstName: true, lastName: true, phone: true },
+        },
         organization: { select: { name: true, phone: true } },
       },
     }),
@@ -697,11 +716,17 @@ async function getCustomerDashboard(userId: string) {
     recentAppointments,
   ] = await Promise.all([
     prisma.order.count({ where: { customerId: userId } }),
-    prisma.order.count({ where: { customerId: userId, status: { in: ["PENDING", "PROCESSING"] } } }),
+    prisma.order.count({
+      where: { customerId: userId, status: { in: ["PENDING", "PROCESSING"] } },
+    }),
     prisma.order.count({ where: { customerId: userId, status: "DELIVERED" } }),
     prisma.appointment.count({ where: { customerId: userId } }),
-    prisma.appointment.count({ where: { customerId: userId, status: { in: ["PENDING", "CONFIRMED"] } } }),
-    prisma.appointment.count({ where: { customerId: userId, status: "COMPLETED" } }),
+    prisma.appointment.count({
+      where: { customerId: userId, status: { in: ["PENDING", "CONFIRMED"] } },
+    }),
+    prisma.appointment.count({
+      where: { customerId: userId, status: "COMPLETED" },
+    }),
     prisma.order.findMany({
       where: { customerId: userId },
       take: 5,
@@ -717,7 +742,9 @@ async function getCustomerDashboard(userId: string) {
       include: {
         organization: { select: { name: true, slug: true, logo: true } },
         service: { select: { name: true, duration: true } },
-        serviceProvider: { select: { firstName: true, lastName: true } },
+        serviceProvider: {
+          select: { name: true, firstName: true, lastName: true },
+        },
       },
     }),
   ]);

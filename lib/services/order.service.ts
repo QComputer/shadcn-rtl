@@ -4,8 +4,103 @@ import { createOrderSchema, updateOrderStatusSchema } from "@/lib/validators";
 import type { CreateOrderInput, UpdateOrderStatusInput } from "@/lib/validators";
 import { hasPermission, type UserRole } from "@/lib/types";
 import { Decimal } from "@prisma/client/runtime/library";
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus, Progress } from "@prisma/client";
 // TODO: comprehensive methods to watch/change a method by different user-roles for "/dashboard/orders" and "/dashboard/my-orders" page 
+
+async function createProgress(
+  orderId: string,
+  type: "PREPARATION" | "PICK_UP" | "DELIVERY",
+  estimatedEndTime: Date|null,
+) {
+  const progress = await prisma.progress.create({
+    data: { orderId, estimatedEndTime },
+  });
+
+  switch (type) {
+    case "PREPARATION":
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { prerparationProgressId: progress.id },
+      });
+      break;
+    case "PICK_UP":
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { pickupProgressId: progress.id },
+      });
+      break;
+    case "DELIVERY":
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { deliveryProgressId: progress.id },
+      });
+      break;
+  }
+
+  return progress.id;
+}
+async function updateProgress(
+  orderId: string,
+  type: "PREPARATION" | "PICK_UP" | "DELIVERY",
+  estimatedEndTime: Date,
+) {
+  const progressId = await getProgressId(orderId, type);
+  if (!progressId) return null;
+
+  const progress = await prisma.progress.update({
+    where: { id: progressId },
+    data: { estimatedEndTime },
+  });
+  
+  return progress;
+}
+async function getProgress(
+  orderId: string,
+  type: "PREPARATION" | "PICK_UP" | "DELIVERY",
+) {
+  const progressId = await getProgressId(orderId,type)
+  if (!progressId) return null
+  const progress = await prisma.progress.findFirst({
+    where: { id: progressId },
+  });
+  return progress;
+}
+async function getProgressId(
+  orderId: string,
+  type: "PREPARATION" | "PICK_UP" | "DELIVERY",
+) {
+  let progressId: string | null = null;
+  let order;
+  switch (type) {
+    case "PREPARATION":
+      order = await prisma.order.findFirst({
+        where: { id: orderId },
+        select: { prerparationProgressId: true },
+      });
+      if (!order?.prerparationProgressId) return null;
+      progressId = await order.prerparationProgressId;
+      break;
+    case "PICK_UP":
+      order = await prisma.order.findFirst({
+        where: { id: orderId },
+        select: { pickupProgressId: true },
+      });
+      if (!order?.pickupProgressId) return null;
+      progressId = await order.pickupProgressId;
+      break;
+    case "DELIVERY":
+      order = await prisma.order.findFirst({
+        where: { id: orderId },
+        select: { deliveryProgressId: true },
+      });
+      if (!order?.deliveryProgressId) return null;
+      progressId = await order.deliveryProgressId;
+      break;
+  }
+
+  return progressId;
+}
+
 export class OrderService {
   async create(data: CreateOrderInput & { customerId: string }) {
     const { organizationId, customerId, promotionCode, ...orderData } = data;
@@ -144,6 +239,7 @@ export class OrderService {
           customer: {
             select: {
               id: true,
+              name: true,
               email: true,
               firstName: true,
               lastName: true,
@@ -180,6 +276,7 @@ export class OrderService {
         customer: {
           select: {
             id: true,
+            name: true,
             email: true,
             firstName: true,
             lastName: true,
@@ -189,6 +286,7 @@ export class OrderService {
         assignedDriver: {
           select: {
             id: true,
+            name: true,
             firstName: true,
             lastName: true,
             phone: true,
@@ -260,6 +358,7 @@ export class OrderService {
           assignedDriver: {
             select: {
               id: true,
+              name: true,
               firstName: true,
               lastName: true,
             },
@@ -335,15 +434,13 @@ export class OrderService {
   async getDriverOrders(driverId: string) {
     return prisma.order.findMany({
       where: {
-        OR: [
-          { driverId },
-          { status: { in: ["READY", "PICKED_UP"] } },
-        ],
+        OR: [{ driverId }, { status: { in: ["READY", "PICKED_UP"] } }],
       },
       include: {
         customer: {
           select: {
             id: true,
+            name: true,
             firstName: true,
             lastName: true,
             phone: true,

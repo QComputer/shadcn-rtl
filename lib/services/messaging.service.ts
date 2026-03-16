@@ -50,6 +50,7 @@ export class MessagingService {
             user: {
               select: {
                 id: true,
+                name: true,
                 firstName: true,
                 lastName: true,
                 avatar: true,
@@ -86,6 +87,7 @@ export class MessagingService {
             user: {
               select: {
                 id: true,
+                name: true,
                 firstName: true,
                 lastName: true,
                 avatar: true,
@@ -100,6 +102,7 @@ export class MessagingService {
             sender: {
               select: {
                 id: true,
+                name: true,
                 firstName: true,
                 lastName: true,
                 avatar: true,
@@ -136,6 +139,7 @@ export class MessagingService {
               user: {
                 select: {
                   id: true,
+                  name: true,
                   firstName: true,
                   lastName: true,
                   avatar: true,
@@ -203,6 +207,7 @@ export class MessagingService {
         sender: {
           select: {
             id: true,
+            name: true,
             firstName: true,
             lastName: true,
             avatar: true,

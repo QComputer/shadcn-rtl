@@ -169,7 +169,6 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
       }
       
       const data: OrdersResponse = await response.json()
-      console.log("data:", data)
 
       setOrders(data.data)
       setTotal(data.total)
@@ -492,9 +491,11 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-1 text-sm">
-                  <p>{selectedOrder.customer.firstName} {selectedOrder.customer.lastName}</p>
-                  {selectedOrder.customer.phone && <p>تلفن: {selectedOrder.customer.phone}</p>}
-                  {selectedOrder.customer.email && <p>ایمیل: {selectedOrder.customer.email}</p>}
+                  {selectedOrder.customer?.firstName && <p>نام : {selectedOrder.customer.firstName}</p>}
+                  {selectedOrder.customer?.lastName && <p>نام خانوادگی : {selectedOrder.customer.name}</p>}
+                  {selectedOrder.customer?.name && <p>نام کاربری : {selectedOrder.customer.name}</p>}
+                  {selectedOrder.customer?.phone && <p>تلفن: {selectedOrder.customer.phone}</p>}
+                  {selectedOrder.customer?.email && <p>ایمیل: {selectedOrder.customer.email}</p>}
                 </CardContent>
               </Card>
 
@@ -523,7 +524,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                     {selectedOrder.items.map((item) => (
                       <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-0">
                         <div>
-                          <p className="font-medium">{item.product.name}</p>
+                          <p className="font-medium">{item.product?.name}</p>
                           {item.variant && (
                             <p className="text-sm text-muted-foreground">{item.variant.name}</p>
                           )}

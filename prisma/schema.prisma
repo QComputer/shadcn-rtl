@@ -238,7 +238,6 @@ model BusinessHour {
 
 
 // --- AUTHENTICATION MODELS ---
-
 model PasswordReset {
   id        String    @id @default(cuid())
   userId    String
@@ -652,15 +651,45 @@ model Order {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  prerparationProgressId      String? @unique
+  prerparationProgress Progress? @relation("prerparationRelation", fields: [prerparationProgressId], references: [id])
+  
+  pickupProgressId      String? @unique
+  pickupProgress Progress? @relation("pickupProgressRelation", fields: [pickupProgressId], references: [id])
+  
+  deliveryProgressId      String? @unique
+  deliveryProgress Progress? @relation("deliveryProgressRelation", fields: [deliveryProgressId], references: [id])
+
   @@index([organizationId])
   @@index([customerId])
   @@index([guestCustomerId])
   @@index([driverId])
+  @@index([prerparationProgressId])
+  @@index([pickupProgressId])
+  @@index([deliveryProgressId])
   @@index([status])
   @@index([createdAt])
   @@index([deletedAt])
   @@index([orderNumber])
   @@index([promotionId])
+}
+
+
+model Progress{
+  id         String    @id @default(cuid())
+  orderId String
+  startTime DateTime?
+  endTime   DateTime?
+  estimatedEndTime DateTime?
+  remMinutes  Float?
+  percentage Float?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  prerparationRelation Order? @relation("prerparationRelation")
+  pickupProgress Order? @relation("pickupProgressRelation")
+  deliveryProgress Order? @relation("deliveryProgressRelation")
 }
 
 model OrderItem {

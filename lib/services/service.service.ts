@@ -66,6 +66,7 @@ export class ServiceService {
         serviceProvider: {
           select: {
             id: true,
+            name: true,
             firstName: true,
             lastName: true,
             avatar: true,
@@ -95,6 +96,7 @@ export class ServiceService {
         serviceProvider: {
           select: {
             id: true,
+            name: true,
             firstName: true,
             lastName: true,
             avatar: true,
@@ -166,6 +168,7 @@ export class ServiceService {
           serviceProvider: {
             select: {
               id: true,
+              name: true,
               firstName: true,
               lastName: true,
               avatar: true,
@@ -285,6 +288,7 @@ export class ServiceService {
           serviceProvider: {
             select: {
               id: true,
+              name: true,
               firstName: true,
               lastName: true,
               avatar: true,
@@ -385,6 +389,7 @@ export class ServiceService {
         serviceProvider: {
           select: {
             id: true,
+            name: true,
             firstName: true,
             lastName: true,
             avatar: true,
@@ -476,6 +481,7 @@ export class ServiceService {
         serviceProvider: {
           select: {
             id: true,
+            name: true,
             firstName: true,
             lastName: true,
           },

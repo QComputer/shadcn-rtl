@@ -4,7 +4,7 @@ import { Providers } from "@/components/providers";
 import { localeConfig, supportedLocales, type SupportedLocale } from "@/lib/i18n";
 
 export const metadata: Metadata = {
-  title: "پنل مدیریت - فروشگاه آنلاین",
+  title: "جامعه صفر",
   description: "پلتفرم تجارت الکترونیک و رزرو خدمات",
 };
 

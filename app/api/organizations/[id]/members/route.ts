@@ -5,7 +5,7 @@ import { hasPermission } from "@/lib/types";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string | null}> }
 ) {
   try {
     const session = await auth();
@@ -14,8 +14,7 @@ export async function GET(
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const members = await organizationService.getMembers(id);
+    const members = await organizationService.getMembers(id||session.organizationId||'id');
 
     return NextResponse.json(members);
   } catch (error) {

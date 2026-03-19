@@ -424,6 +424,100 @@ async function main() {
         theme: "light",
       },
     }),
+
+    // ========================================
+    // DENTAL CLINIC Organization Users (indices 20-24)
+    // ========================================
+
+    // DENTAL CLINIC ADMIN (index 20)
+    // Access: dashboard, organization details, members, appointments, services, service categories
+    prisma.user.create({
+      data: {
+        email: "dental-admin@dentclin.ir",
+        password: hashedPassword,
+        firstName: "علی",
+        lastName: "محمدی",
+        name: "denital-admin", // unique username
+        phone: "+989100000018",
+        role: UserRole.ADMIN,
+        isActive: true,
+        isTeamMember: true,
+        locale: "fa",
+        theme: "dark",
+      },
+    }),
+
+    // DENTAL CLINIC MANAGER (index 21)
+    // Access: dashboard, organization details, members, appointments, services, service categories
+    prisma.user.create({
+      data: {
+        email: "dental-manager@dentclin.ir",
+        password: hashedPassword,
+        firstName: "معاون",
+        lastName: "کلینیک",
+        name: "denital-manager", // unique username
+        phone: "+989100000019",
+        role: UserRole.MANAGER,
+        isActive: true,
+        isTeamMember: true,
+        locale: "fa",
+        theme: "light",
+      },
+    }),
+
+    // DENTAL CLINIC STAFF / RECEPTIONIST (index 22)
+    // Access: dashboard, my appointments, my services, settings, calendar
+    prisma.user.create({
+      data: {
+        email: "dental-staff@lawfirm.ir",
+        password: hashedPassword,
+        firstName: "آریا",
+        lastName: "جمالی",
+        name: "denital-staff", // unique username
+        phone: "+989100000020",
+        role: UserRole.STAFF,
+        isActive: true,
+        isTeamMember: true,
+        locale: "fa",
+        theme: "light",
+      },
+    }),
+
+    // DOCTOR 1 - Senior Attorney (index 23)
+    // Service provider for ...
+    prisma.user.create({
+      data: {
+        email: "dental-senior@dentclin.ir",
+        password: hashedPassword,
+        firstName: "دکتر",
+        lastName: "سید",
+        name: "denital-senior", // unique username
+        phone: "+989100000021",
+        role: UserRole.STAFF,
+        isActive: true,
+        isTeamMember: true,
+        locale: "fa",
+        theme: "light",
+      },
+    }),
+
+    // LAWYER 2 - Junior Attorney (index 24)
+    // Service provider for legal consultations
+    prisma.user.create({
+      data: {
+        email: "dental-junior@dentclin.ir",
+        password: hashedPassword,
+        firstName: "الهه",
+        lastName: "فروغی",
+        name: "denital-junior", // unique username
+        phone: "+989100000022",
+        role: UserRole.STAFF,
+        isActive: true,
+        isTeamMember: true,
+        locale: "fa",
+        theme: "light",
+      },
+    }),
   ]);
 
   console.log(`✅ Created ${users.length} users with all roles\n`);
@@ -646,6 +740,33 @@ async function main() {
   await prisma.organizationMember.create({
     data: { organizationId: lawFirm.id, userId: users[19].id, isActive: true },
   });
+
+  // Dental clinic Members (APPOINTMENT type) - users[15-19]
+  await prisma.organizationMember.create({
+    data: {
+      organizationId: dentalClinic.id,
+      userId: users[20].id,
+      isActive: true,
+    },
+  });
+  await prisma.organizationMember.create({
+    data: {
+      organizationId: dentalClinic.id,
+      userId: users[21].id,
+      isActive: true,
+    },
+  });
+  await prisma.organizationMember.create({
+    data: { organizationId: dentalClinic.id, userId: users[22].id, isActive: true },
+  });
+  // Lawyers (Service providers)
+  await prisma.organizationMember.create({
+    data: { organizationId: dentalClinic.id, userId: users[23].id, isActive: true },
+  });
+  await prisma.organizationMember.create({
+    data: { organizationId: dentalClinic.id, userId: users[24].id, isActive: true },
+  });
+
   const allOrgs = [
     healthShop,
     foodDelivery,

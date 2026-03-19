@@ -56,11 +56,11 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
       <SheetTrigger asChild>
         {children || trigger || defaultTrigger}
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-lg flex flex-col">
+      <SheetContent className="w-full sm:max-w-lg flex flex-col ">
         <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <ShoppingBag className="h-5 w-5" />
-            Shopping Cart
+          <SheetTitle className="flex items-center gap-2 mt-20">
+            <ShoppingBag className="h-5 w-5 " />
+            سبد خرید
             {summary.itemCount > 0 && (
               <span className="text-sm font-normal text-muted-foreground">
                 ({summary.itemCount} {summary.itemCount === 1 ? "item" : "items"})
@@ -77,13 +77,13 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
           <div className="flex-1 flex flex-col items-center justify-center gap-4">
             <ShoppingBag className="h-16 w-16 text-muted-foreground/50" />
             <div className="text-center">
-              <p className="text-lg font-medium">Your cart is empty</p>
+              <p className="text-lg font-medium">کارت شما خالی است</p>
               <p className="text-sm text-muted-foreground">
-                Add some products to get started
+                برای شروع چند محصول اضلافه کنید
               </p>
             </div>
             <Link href={`/shop/${organizationSlug}`}>
-              <Button>Browse Products</Button>
+              <Button>محصولات ما را ببینید</Button>
             </Link>
           </div>
         ) : (

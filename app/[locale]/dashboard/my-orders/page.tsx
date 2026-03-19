@@ -170,7 +170,7 @@ export default function MyOrdersPage() {
                       </div>
                       
                       <p className="text-muted-foreground text-sm mb-2">
-                        {order.organization.name}
+                        {order.organization?.name}
                       </p>
                       
                       <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
@@ -194,7 +194,7 @@ export default function MyOrdersPage() {
                             key={idx}
                             className="text-xs bg-muted px-2 py-1 rounded"
                           >
-                            {item.product.name} × {toPersianDigits(item.quantity)}
+                            {item.product?.name} × {toPersianDigits(item.quantity)}
                           </span>
                         ))}
                         {order.items.length > 3 && (

@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: ShopLayoutProps): Promise<Met
   const { locale, slug } = await params;
   
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/public/organizations/${slug}/shop`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/public/organizations/${slug}/shop`, {
       cache: 'no-store'
     });
     
@@ -63,8 +63,8 @@ export default async function ShopLayout({ children, params }: ShopLayoutProps) 
         {/* Shop Header */}
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container flex h-16 items-center justify-between">
-            <Link href={`/shop/${slug}`} className="flex items-center gap-2">
-              <Store className="h-6 w-6" />
+            <Link href={`/shop/${slug}`} className="flex items-center gap-2 px-2">
+              <Store className="h-6 w-6 " />
               <span className="font-semibold text-lg">{orgData.name}</span>
             </Link>
 
@@ -86,7 +86,7 @@ export default async function ShopLayout({ children, params }: ShopLayoutProps) 
         {/* Shop Footer */}
         <footer className="border-t py-6">
           <div className="container text-center text-sm text-muted-foreground">
-            <p>© {new Date().getFullYear()} {orgData.name}. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} {orgData.name}. تمامی حقوق محفوظ است.</p>
           </div>
         </footer>
       </div>

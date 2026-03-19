@@ -144,10 +144,10 @@ async function getSuperAdminDashboard() {
       orderBy: { createdAt: "desc" },
       include: {
         customer: { select: { name: true, firstName: true, lastName: true } },
-        service: { select: { name: true } },
-        serviceProvider: {
+        service: { select: { name: true, serviceProvider: {
           select: { name: true, firstName: true, lastName: true },
-        },
+        }, } },
+        
       },
     }),
   ]);
@@ -200,7 +200,7 @@ async function getSuperAdminDashboard() {
     recentOrders: recentOrders.map((order) => ({
       id: order.id,
       orderNumber: order.orderNumber,
-      customer: `${order.customer.firstName} ${order.customer.lastName}`,
+      customer: `${order.customer?.firstName} ${order.customer?.lastName}`,
       organization: order.organization.name,
       total: order.total,
       status: order.status,

@@ -202,8 +202,6 @@ export default function ShopPage({
     return data.businessHours.find(h => h.day === englishDay)
   }
 
-  
-
   // Get display price
   const getDisplayPrice = (product: Product): number => {
     if (product.variants.length > 0 && product.variants[0].price) {
@@ -292,7 +290,7 @@ export default function ShopPage({
       </section>
 
       {/* Quick Info Bar */}
-      <section className="border-b bg-card sticky top-0 z-20">
+      <section className="border-b bg-card sticky top-0 z-5">
         <div className="container mx-auto px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap gap-4 text-sm">
@@ -326,10 +324,7 @@ export default function ShopPage({
                 </div>
               )}
             </div>
-            <Button variant="outline" size="sm" className="gap-2">
-              <ShoppingCart className="h-4 w-4" />
-              سبد خرید
-            </Button>
+           
           </div>
         </div>
       </section>

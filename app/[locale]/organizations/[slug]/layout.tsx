@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: OrganizationLayoutProps): Pro
   const { locale, slug } = await params;
   
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/public/organizations/${slug}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/public/organizations/${slug}`, {
       cache: 'no-store'
     });
     
@@ -43,7 +43,7 @@ export default async function OrganizationLayout({ children, params }: Organizat
   
   // Validate organization exists and is APPOINTMENT type
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/public/organizations/${slug}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/public/organizations/${slug}`, {
       cache: 'no-store'
     });
     

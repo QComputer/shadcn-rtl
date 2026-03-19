@@ -228,7 +228,7 @@ function LoginForm({ locale }: { locale: string }) {
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                   <span className="bg-card px-2 text-muted-foreground">
-                    {t("auth.orUseDemo") || "یا استفاده از حساب دمو"}
+                    {t("auth.orUseDemo") || "پر کردن اطلاعات از حساب دمو"}
                   </span>
                 </div>
               </div>
@@ -242,7 +242,40 @@ function LoginForm({ locale }: { locale: string }) {
                   setPassword("password123")
                 }}
               >
-                {t("auth.fillDemo") || "پر کردن اطلاعات دمو"}
+                { " سوپر ادمین"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setUsername("denital-admin")
+                  setPassword("password123")
+                }}
+              >
+                { " ادمین کلینیک دندانپزشکی"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setUsername("fariba")
+                  setPassword("password123")
+                }}
+              >
+                { "  ادمین سالن زیبایی"}
+              </Button>
+               <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setUsername("shop-admin")
+                  setPassword("password123")
+                }}
+              >
+                { " ادمین فروشگاه سلامت"}
               </Button>
             </form>
           </CardContent>

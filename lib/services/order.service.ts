@@ -353,8 +353,19 @@ export class OrderService {
               email: true,
             },
           },
-
-          items: true,
+          guestCustomer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          items: {
+            include: {
+              product: true,
+              variant: true,
+            },
+          },
           assignedDriver: {
             select: {
               id: true,

@@ -1,6 +1,6 @@
 // Prisma 6+ Schema for Multi-Tenant Multi-Locale Next.js Application
 // Production-Ready version with all gaps filled
-// TODO: Users can hace several organization membership with "customer" role, but one with staff roles, e.g. "ADMIN", "MANAGER", "STAFF"
+// TODO: Users can have several organization membership with "customer" role, but one with staff roles, e.g. "ADMIN", "MANAGER", "STAFF"
 generator client {
   provider = "prisma-client-js"
 }

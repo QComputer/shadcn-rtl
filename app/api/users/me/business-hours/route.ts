@@ -16,9 +16,6 @@ export async function GET(
     }
 
     const hours = await userService.getBusinessHours(session.user.id);
-    console.log(
-      "================================= business-hours api==================================",
-    );
 
 
     return NextResponse.json(hours);

@@ -43,7 +43,7 @@ import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import { useDashboardAccess, useAuth } from "@/hooks/use-auth"
 import { formatToman, toPersianDigits } from "@/lib/persian"
-import { User } from "@prisma/client"
+import { GuestCustomer, User } from "@prisma/client"
 
 interface OrderItem {
   id: string
@@ -72,7 +72,8 @@ interface Order {
   deliveryAddress: string | null
   notes: string | null
   createdAt: string
-  customer: User
+  customer: User | null
+  guestCustomer: GuestCustomer | null
   assignedDriver: {
     id: string
     name: string
@@ -169,6 +170,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
       }
       
       const data: OrdersResponse = await response.json()
+console.log(data);
 
       setOrders(data.data)
       setTotal(data.total)
@@ -376,7 +378,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                       <div>
                         <p className="font-bold">{order.orderNumber}</p>
                         <p className="text-sm text-muted-foreground">
-                          {(order.customer?.firstName)? `${order.customer?.firstName} ${order.customer?.lastName || null}` : `${order.customer?.name}`}
+                          {(order.customer?.firstName)? `${order.customer?.firstName} ${order.customer?.lastName || null}` : (order.customer?.name)? `${order.customer?.name}` : `${order.guestCustomer?.name}`}
                           {order.customer?.phone && ` - ${order.customer?.phone}`}
                         </p>
                         <p className="text-xs text-muted-foreground">
@@ -495,7 +497,9 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                   {selectedOrder.customer?.lastName && <p>نام خانوادگی : {selectedOrder.customer.name}</p>}
                   {selectedOrder.customer?.name && <p>نام کاربری : {selectedOrder.customer.name}</p>}
                   {selectedOrder.customer?.phone && <p>تلفن: {selectedOrder.customer.phone}</p>}
-                  {selectedOrder.customer?.email && <p>ایمیل: {selectedOrder.customer.email}</p>}
+                  {selectedOrder.customer?.email && <p>ایمیل: {selectedOrder.customer.email}</p>}{selectedOrder.customer?.firstName && <p>نام : {selectedOrder.customer.firstName}</p>}
+                  {selectedOrder.guestCustomer?.name && <p>نام کاربر میهمان : {selectedOrder.guestCustomer.name}</p>}
+                  {selectedOrder.guestCustomer?.email && <p> ایمیل کاربر میهمان: {selectedOrder.guestCustomer.email}</p>}
                 </CardContent>
               </Card>
 

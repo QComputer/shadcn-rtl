@@ -202,6 +202,9 @@ export const createOrderSchema = z.object({
 export const updateOrderStatusSchema = z.object({
   status: z.enum(["PENDING", "PLACED", "ACCEPTED", "PREPARING", "READY", "PICKED_UP", "DELIVERED", "CANCELLED", "RECEIVED", "REFUNDED"]),
 });
+export const updateOrderEstimatedEndTimeSchema = z.object({
+  estimatedEndTime: z.enum(["PREPARATION", "PICK_UP", "DELIVERY"]),
+});
 
 // Review validators
 export const createReviewSchema = z.object({

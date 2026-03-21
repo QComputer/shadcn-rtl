@@ -18,11 +18,15 @@ import {
   RefreshCw,
   MapPin,
   User as UserIcon,
+  Timer,
+  Loader2,
+  Save,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Select,
@@ -45,6 +49,7 @@ import { useDashboardAccess, useAuth } from "@/hooks/use-auth"
 import { formatToman, toPersianDigits } from "@/lib/persian"
 import { GuestCustomer, User } from "@prisma/client"
 
+
 interface OrderItem {
   id: string
   quantity: number
@@ -57,6 +62,11 @@ interface OrderItem {
     id: string
     name: string
   } | null
+}
+interface Progress {
+  id: string
+  estimatedEndTime: Date | null
+  endTime: Date | null
 }
 
 interface Order {
@@ -74,6 +84,11 @@ interface Order {
   createdAt: string
   customer: User | null
   guestCustomer: GuestCustomer | null
+
+  preparationProgress: Progress | null
+  pickupProgress: Progress | null
+  deliveryProgress: Progress | null
+
   assignedDriver: {
     id: string
     name: string
@@ -93,14 +108,14 @@ interface OrdersResponse {
 
 const statusConfig: Record<string, { label: string; icon: typeof Clock; color: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   PENDING: { label: "در انتظار", icon: Clock, color: "bg-yellow-500", variant: "secondary" },
-  PLACED: { label: "ثبت شده", icon: Package, color: "bg-blue-500", variant: "default" },
-  ACCEPTED: { label: "پذیرفته شده", icon: CheckCircle, color: "bg-green-500", variant: "default" },
+  PLACED: { label: "ثبت شده", icon: Package, color: "bg-blue-200", variant: "default" },
+  ACCEPTED: { label: "پذیرفته شده", icon: CheckCircle, color: "bg-green-200", variant: "default" },
   PREPARING: { label: "در حال آماده‌سازی", icon: Package, color: "bg-purple-500", variant: "default" },
   READY: { label: "آماده", icon: CheckCircle, color: "bg-green-500", variant: "default" },
-  PICKED_UP: { label: "تحویل داده شده", icon: Truck, color: "bg-blue-500", variant: "default" },
-  DELIVERED: { label: "تحویل شده", icon: CheckCircle, color: "bg-green-500", variant: "default" },
+  PICKED_UP: { label: "پیکاپ شده", icon: Truck, color: "bg-blue-500", variant: "default" },
+  DELIVERED: { label: "تحویل داده شده", icon: CheckCircle, color: "bg-green-600", variant: "default" },
   CANCELLED: { label: "لغو شده", icon: XCircle, color: "bg-red-500", variant: "destructive" },
-  RECEIVED: { label: "دریافت شده", icon: CheckCircle, color: "bg-green-500", variant: "default" },
+  RECEIVED: { label: "دریافت شده", icon: CheckCircle, color: "bg-green-700", variant: "default" },
   REFUNDED: { label: "بازپرداخت شده", icon: XCircle, color: "bg-orange-500", variant: "destructive" },
 }
 
@@ -116,6 +131,12 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
   const [searchQuery, setSearchQuery] = useState("")
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const [preparationTime, setPreparationTime] = useState("")
+  const [savingPreparationTime, setSavingPreparationTime] = useState(false)
+  const [pickupTime, setPickupTime] = useState("")
+  const [savingPickupTime, setSavingPickupTime] = useState(false)
+  const [deliveryTime, setDeliveryTime] = useState("")
+  const [savingDeliveryTime, setSavingDeliveryTime] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
   const [page, setPage] = useState(1)
@@ -170,7 +191,6 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
       }
       
       const data: OrdersResponse = await response.json()
-console.log(data);
 
       setOrders(data.data)
       setTotal(data.total)
@@ -190,9 +210,13 @@ console.log(data);
 
   const handleViewOrder = (order: Order) => {
     setSelectedOrder(order)
+    setPreparationTime(order.preparationProgress?.estimatedEndTime?.toString()||"")
+    setPickupTime(order.pickupProgress?.estimatedEndTime?.toString()||"")
+    setDeliveryTime(order.deliveryProgress?.estimatedEndTime?.toString()||"")
     setDetailDialogOpen(true)
   }
 
+  
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     setUpdating(true)
     try {
@@ -259,6 +283,88 @@ console.log(data);
       </div>
     )
   }
+
+  const handleSavePreparationEstimatedEndTime = async (orderId: string) => {
+    console.log(preparationTime);
+    setUpdating(true)
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ estimatedEndTime: preparationTime, type: "PREPARATION" }),
+      })
+      
+      if (!response.ok) {
+        throw new Error("Failed to update order preparationProgress.estimatedEndTime")
+      }
+      
+      // Refresh orders list
+      fetchOrders()
+      
+    } catch (err) {
+      console.error("Error updating order preparationProgress.estimatedEndTime:", err)
+      setError(err instanceof Error ? err.message : "Failed to update order preparationProgress.estimatedEndTime")
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleSavePickupEstimatedEndTime = async (orderId: string) => {
+    console.log(pickupTime);
+    setUpdating(true)
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ estimatedEndTime: pickupTime, type: "PICKUP" }),
+      })
+      
+      if (!response.ok) {
+        throw new Error("Failed to update order pickupProgress.estimatedEndTime")
+      }
+      
+      // Refresh orders list
+      fetchOrders()
+      
+    } catch (err) {
+      console.error("Error updating order pickupProgress.estimatedEndTime:", err)
+      setError(err instanceof Error ? err.message : "Failed to update order pickupProgress.estimatedEndTime")
+    } finally {
+      setUpdating(false)
+    }  
+  }
+
+  const handleSaveDeliveryEstimatedEndTime = async (orderId: string) => {
+    console.log(deliveryTime);
+    setUpdating(true)
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ estimatedEndTime: deliveryTime, type: "DELIVERY" }),
+      })
+      
+      if (!response.ok) {
+        throw new Error("Failed to update order deliveryProgress.estimatedEndTime")
+      }
+      
+      // Refresh orders list
+      fetchOrders()
+      
+    } catch (err) {
+      console.error("Error updating order deliveryProgress.estimatedEndTime:", err)
+      setError(err instanceof Error ? err.message : "Failed to update order deliveryProgress.estimatedEndTime")
+    } finally {
+      setUpdating(false)
+    }  
+  }
+
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
@@ -368,7 +474,7 @@ console.log(data);
             const StatusIcon = status.icon
             
             return (
-              <Card key={order.id} className="hover:shadow-md transition-shadow">
+              <Card onClick={() => handleViewOrder(order)} key={order.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
@@ -387,10 +493,10 @@ console.log(data);
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <div className="text-left">
+                      <div className="pr-14 px-5">
                         <p className="font-bold">{formatToman(order.total)}</p>
                         <p className="text-sm text-muted-foreground">
-                          {toPersianDigits(order.items.length.toString())} {t("order.items") || "آیتم"}
+                          {toPersianDigits(order.items.length.toString())} {"آیتم"}
                         </p>
                         {order.type === "DELIVERY" && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -402,15 +508,7 @@ console.log(data);
                       <Badge variant={status.variant}>
                         {status.label}
                       </Badge>
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => handleViewOrder(order)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </div>
+
                     </div>
                   </div>
                 </CardContent>
@@ -574,6 +672,61 @@ console.log(data);
                     <span>مبلغ نهایی:</span>
                     <span>{formatToman(selectedOrder.total)}</span>
                   </div>
+                </CardContent>
+              </Card>
+              
+              {/* Progress 
+                TODO: editable ui like dashboard/settings page
+              */}
+              <Card>
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Timer className="h-4 w-4" />
+
+                    زمان های تخمین زده شده
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-2">
+
+                  {preparationTime && (
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <Label htmlFor="preparationProgress">آماده سازی:</Label>
+                      <Input id="preparationProgress" 
+                      value={preparationTime.toString()} 
+                      onChange={(e) => setPreparationTime(e.target.value)}
+                    />
+                      <Button onClick={()=> handleSavePreparationEstimatedEndTime(selectedOrder.id)} disabled={savingPreparationTime}>
+                        {savingPreparationTime ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}
+                        {"ذخیره"}
+                      </Button>
+                    </div>
+                 )}
+                 {pickupTime && (
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <Label htmlFor="pickupProgress">پیکاپ:</Label>
+                      <Input id="pickupProgress"
+                      value={pickupTime.toString()} 
+                      onChange={(e) => setPickupTime(e.target.value)}
+                    />
+                      <Button onClick={() => handleSavePickupEstimatedEndTime(selectedOrder.id)} disabled={savingPickupTime}>
+                        {savingPickupTime ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}
+                        {"ذخیره"}
+                      </Button>
+                    </div>
+                 )}
+                 {deliveryTime && (
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <Label htmlFor="deliveryProgress">تحویل دهی:</Label>
+                      <Input id="deliveryProgress" 
+                      value={deliveryTime.toString()} 
+                      onChange={(e) => setDeliveryTime(e.target.value)}
+                    />
+                      <Button onClick={() => handleSaveDeliveryEstimatedEndTime(selectedOrder.id)} disabled={savingDeliveryTime}>
+                        {savingDeliveryTime ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}
+                        {"ذخیره"}
+                      </Button>
+                    </div>
+                 )}
                 </CardContent>
               </Card>
 

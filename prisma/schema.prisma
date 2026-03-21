@@ -651,8 +651,8 @@ model Order {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  prerparationProgressId      String? @unique
-  prerparationProgress Progress? @relation("prerparationRelation", fields: [prerparationProgressId], references: [id])
+  preparationProgressId      String? @unique
+  preparationProgress Progress? @relation("preparationProgressRelation", fields: [preparationProgressId], references: [id])
   
   pickupProgressId      String? @unique
   pickupProgress Progress? @relation("pickupProgressRelation", fields: [pickupProgressId], references: [id])
@@ -664,7 +664,7 @@ model Order {
   @@index([customerId])
   @@index([guestCustomerId])
   @@index([driverId])
-  @@index([prerparationProgressId])
+  @@index([preparationProgressId])
   @@index([pickupProgressId])
   @@index([deliveryProgressId])
   @@index([status])
@@ -677,7 +677,6 @@ model Order {
 
 model Progress{
   id         String    @id @default(cuid())
-  orderId String
   startTime DateTime?
   endTime   DateTime?
   estimatedEndTime DateTime?
@@ -687,7 +686,7 @@ model Progress{
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  prerparationRelation Order? @relation("prerparationRelation")
+  preparationProgress Order? @relation("preparationProgressRelation")
   pickupProgress Order? @relation("pickupProgressRelation")
   deliveryProgress Order? @relation("deliveryProgressRelation")
 }

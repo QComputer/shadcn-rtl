@@ -1,5 +1,5 @@
 "use client"
-
+// TODO: complete the members page
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
 import {
@@ -58,20 +58,20 @@ function formatToman(amount: number): string {
   return toPersianDigits(amount.toLocaleString("fa-IR")) + " تومان";
 }
 
-// fetch org-members
-const res = fetch
+
 
 export default function OganizationMembersPage({ params }: { params: Promise<{ locale: string }> }) {
   const resolvedParams = use(params)
   const locale = resolvedParams.locale || "fa"
   
   // Access control check
-  const { hasAccess, isLoading: accessLoading } = useDashboardAccess()
   
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [members, setMembers] = useState<User[]>([])
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
+
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setMounted(true)
@@ -80,19 +80,43 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
     })
   }, [locale])
 
-  const t = (key: string): string => {
-    if (!dict) return key
-    return getDictValue(dict, key)
-  }
+  // fetch org-members
+  useEffect(() => {
+    
+    setLoading(true)
+    
+    Promise.all([
+      fetch("/api/users/me/membership")
+        .then(res => res.json())
+        .then(data => {
+          if (data.membership?.organizationId) {
+            return fetch(`/api/organizations/${data.membership.organizationId}/members`)
+              .then(res => res.json())
+              .then(membersData => membersData.members || membersData || [])
+          }
+          return []
+        })
+        .catch(() => [])
+    ]).then((members) => {      
+      setMembers(members)
+    }).catch(() => {
+      setMembers([])
+    }).finally(() => setLoading(false))
+  }, [])
+ 
+   const t = (key: string): string => {
+     if (!dict) return key
+     return getDictValue(dict, key)
+   }
 
   const filteredCustomers = members.filter(member => 
     member.firstName?.includes(searchQuery) ||
     member.lastName?.includes(searchQuery) ||
-    member.name.includes(searchQuery)
+    member.name?.includes(searchQuery)
   )
 
   // Show loading state while checking access
-  if (accessLoading || !mounted) {
+  if (!mounted) {
     return (
       <div className="p-6 space-y-4">
         <div className="h-10 bg-muted rounded w-1/4" />
@@ -106,7 +130,7 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
   }
 
   // Show access denied message if no access
-  if (!hasAccess) {
+  if (false) {
     return (
       <div className="p-6">
         <div className="text-center py-12">
@@ -122,9 +146,9 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">{t("navigation.members") || "مشتریان"}</h2>
+          <h2 className="text-2xl font-bold">{t("navigation.members") || "اعضا"}</h2>
           <p className="text-muted-foreground">
-            {toPersianDigits(members.length.toString())} {t("navigation.members") || "مشتریان"}
+            {toPersianDigits(members.length.toString())} {t("navigation.members") || "اعضا"}
           </p>
         </div>
         <Button>

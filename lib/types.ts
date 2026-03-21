@@ -235,8 +235,7 @@ export type Permission =
 
 export const rolePermissions: Record<UserRole, Permission[]> = {
   SUPER_ADMIN: [
-    "org:create", "org:read", "org:update", "org:delete",
-    "org:manage_members", "org:manage_hours",
+    "org:create", "org:read", "org:update", "org:delete", "org:manage_members", "org:manage_hours",
     "service:create", "service:read", "service:update", "service:delete",
     "product:create", "product:read", "product:update", "product:delete",
     "order:read", "order:update", "order:assign_driver", "order:manage",
@@ -245,8 +244,7 @@ export const rolePermissions: Record<UserRole, Permission[]> = {
     "settings:manage", "promotion:manage", "payment:manage"
   ],
   ADMIN: [
-    "org:read", "org:update",
-    "org:manage_members", "org:manage_hours",
+    "org:read", "org:update", "org:manage_members", "org:manage_hours",
     "service:create", "service:read", "service:update", "service:delete",
     "product:create", "product:read", "product:update", "product:delete",
     "order:read", "order:update", "order:assign_driver", "order:manage",

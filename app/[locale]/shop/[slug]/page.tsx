@@ -165,7 +165,6 @@ export default function ShopPage({
       setDict(getDictionary(locale))
     })
 
-        console.log("data:",data);
     
     // Fetch shop data
     fetch(`/api/public/organizations/${slug}/shop`)
@@ -181,6 +180,7 @@ export default function ShopPage({
         setError(err.message)
         setLoading(false)
       })
+
   }, [locale, slug])
 
 

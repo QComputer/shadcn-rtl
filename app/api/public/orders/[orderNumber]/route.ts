@@ -40,6 +40,30 @@ export async function GET(
             slug: true,
           },
         },
+        preparationProgress: {
+          select: {
+            id: true,
+            startTime: true,
+            endTime: true,
+            estimatedEndTime: true,
+          },
+        },
+        pickupProgress: {
+          select: {
+            id: true,
+            startTime: true,
+            endTime: true,
+            estimatedEndTime: true,
+          },
+        },
+        deliveryProgress: {
+          select: {
+            id: true,
+            startTime: true,
+            endTime: true,
+            estimatedEndTime: true,
+          },
+        },
       },
     });
 

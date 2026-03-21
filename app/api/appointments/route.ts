@@ -81,7 +81,6 @@ export async function POST(request: NextRequest) {
     // If user is authenticated, use their ID
     if (session?.user?.id) {
       customerId = session.user.id;
-      console.log('_--------------------------------customerId1', customerId);
     } 
     // If guest booking, find or create customer
     else if (data.customerName && data.customerPhone) {
@@ -110,7 +109,6 @@ export async function POST(request: NextRequest) {
       }
 
       customerId = customer.id;
-      console.log("_--------------------------------customerId2", customerId);
     } else {
       return NextResponse.json({ 
         error: "Authentication required or customer details (name and phone) must be provided" 

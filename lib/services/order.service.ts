@@ -1,26 +1,28 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { createOrderSchema, updateOrderStatusSchema } from "@/lib/validators";
+//import { createOrderSchema, updateOrderStatusSchema } from "@/lib/validators";
 import type { CreateOrderInput, UpdateOrderStatusInput } from "@/lib/validators";
 import { hasPermission, type UserRole } from "@/lib/types";
 import { Decimal } from "@prisma/client/runtime/library";
 import { OrderStatus, Progress } from "@prisma/client";
-// TODO: comprehensive methods to watch/change a method by different user-roles for "/dashboard/orders" and "/dashboard/my-orders" page 
+// TODO: comprehensive methods to watch/change by different user-roles for "/dashboard/orders" and "/dashboard/my-orders" page 
 
 async function createProgress(
   orderId: string,
   type: "PREPARATION" | "PICK_UP" | "DELIVERY",
-  estimatedEndTime: Date|null,
+  duration: number
 ) {
+  const now = new Date();
+  const estimatedEndTime = new Date(now.getTime() + duration * 60 * 1000);
   const progress = await prisma.progress.create({
-    data: { orderId, estimatedEndTime },
+    data: { estimatedEndTime },
   });
 
   switch (type) {
     case "PREPARATION":
       await prisma.order.update({
         where: { id: orderId },
-        data: { prerparationProgressId: progress.id },
+        data: { preparationProgressId: progress.id },
       });
       break;
     case "PICK_UP":
@@ -39,6 +41,45 @@ async function createProgress(
 
   return progress.id;
 }
+
+async function createAllProgresses(
+  orderId: string,
+  durationsInMinutes: number[],
+) {
+  // dates
+  const now = new Date();
+  
+  const preparationDuration: number = durationsInMinutes[0] | 15;
+  const preparationEstimatedEndTime = new Date(now.getTime() + preparationDuration * 60 * 1000);
+
+  const pickupDuration: number = durationsInMinutes[1] | 5;
+  const pickupEstimatedEndTime = new Date(preparationEstimatedEndTime.getTime() + pickupDuration * 60 * 1000);
+  
+  const deliveryDuration: number = durationsInMinutes[2] | 10;
+  const deliveryEstimatedEndTime = new Date(pickupEstimatedEndTime.getTime() + deliveryDuration * 60 * 1000);
+  
+
+  const preparationProgress = await prisma.progress.create({
+    data: { estimatedEndTime: preparationEstimatedEndTime},
+  });
+  const pickupProgress = await prisma.progress.create({
+    data: { estimatedEndTime: pickupEstimatedEndTime},
+  });
+  const deliveryProgress = await prisma.progress.create({
+    data: { estimatedEndTime: deliveryEstimatedEndTime},
+  });
+
+  await prisma.order.update({
+    where: { id: orderId },
+    data: {
+      preparationProgressId: preparationProgress.id,
+      pickupProgressId: pickupProgress.id,
+      deliveryProgressId: deliveryProgress.id,
+    },
+  });
+
+  return { preparationProgress, pickupProgress, deliveryProgress };
+}
 async function updateProgress(
   orderId: string,
   type: "PREPARATION" | "PICK_UP" | "DELIVERY",
@@ -54,11 +95,12 @@ async function updateProgress(
   
   return progress;
 }
+
 async function getProgress(
   orderId: string,
   type: "PREPARATION" | "PICK_UP" | "DELIVERY",
 ) {
-  const progressId = await getProgressId(orderId,type)
+  const progressId = await getProgressId(orderId, type)
   if (!progressId) return null
   const progress = await prisma.progress.findFirst({
     where: { id: progressId },
@@ -75,10 +117,10 @@ async function getProgressId(
     case "PREPARATION":
       order = await prisma.order.findFirst({
         where: { id: orderId },
-        select: { prerparationProgressId: true },
+        select: { preparationProgressId: true },
       });
-      if (!order?.prerparationProgressId) return null;
-      progressId = await order.prerparationProgressId;
+      if (!order?.preparationProgressId) return null;
+      progressId = await order.preparationProgressId;
       break;
     case "PICK_UP":
       order = await prisma.order.findFirst({
@@ -102,8 +144,19 @@ async function getProgressId(
 }
 
 export class OrderService {
-  async create(data: CreateOrderInput & { customerId: string }) {
-    const { organizationId, customerId, promotionCode, ...orderData } = data;
+  async create(
+    data: CreateOrderInput & { customerId: string; guestCustomerId?: string },
+  ) {
+console.log("=====================OrderService>create====================");
+
+    const {
+      organizationId,
+      customerId,
+      guestCustomerId,
+      promotionCode,
+      ...orderData
+    } = data;
+console.log("-------------------------------->data", data);
 
     // Get cart for user
     const cart = await prisma.shopCart.findUnique({
@@ -197,17 +250,45 @@ export class OrderService {
         where: { organizationId },
       });
       if (settings) {
-        deliveryFee = new Decimal(settings.deliveryRadius ? 5.00 : 0);
+        deliveryFee = new Decimal(settings.deliveryRadius ? 5.0 : 0);
       }
     }
 
     const total = subtotal.add(deliveryFee).sub(discount);
 
+    // dates
+    const durationsInMinutes = [15, 5, 10];
+    const now = new Date();
+    const preparationDuration: number = durationsInMinutes[0] | 15;
+    const preparationEstimatedEndTime = new Date(
+      now.getTime() + preparationDuration * 60 * 1000,
+    );
+    const pickupDuration: number = durationsInMinutes[1] | 5;
+    const pickupEstimatedEndTime = new Date(
+      preparationEstimatedEndTime.getTime() + pickupDuration * 60 * 1000,
+    );
+    const deliveryDuration: number = durationsInMinutes[2] | 10;
+    const deliveryEstimatedEndTime = new Date(
+      pickupEstimatedEndTime.getTime() + deliveryDuration * 60 * 1000,
+    );
+console.log('-------------------------------->preparationEstimatedEndTime');
+console.log(preparationEstimatedEndTime);
     // Generate order number
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
     // Create order with transaction
     const order = await prisma.$transaction(async (tx) => {
+      // Create Progresses
+      const preparationProgress = await tx.progress.create({
+        data: { estimatedEndTime: preparationEstimatedEndTime },
+      });
+      const pickupProgress = await tx.progress.create({
+        data: { estimatedEndTime: pickupEstimatedEndTime },
+      });
+      const deliveryProgress = await tx.progress.create({
+        data: { estimatedEndTime: deliveryEstimatedEndTime },
+      });
+
       // Create order
       const newOrder = await tx.order.create({
         data: {
@@ -222,6 +303,10 @@ export class OrderService {
           notes: orderData.notes,
           organizationId,
           customerId,
+          guestCustomerId,
+          preparationProgressId: preparationProgress.id,
+          pickupProgressId: pickupProgress.id,
+          deliveryProgressId: deliveryProgress.id,
           promotionId,
           promotionCode,
           paymentMethod: data.paymentMethod,
@@ -243,6 +328,13 @@ export class OrderService {
               email: true,
               firstName: true,
               lastName: true,
+            },
+          },
+          guestCustomer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
             },
           },
           organization: {
@@ -283,6 +375,35 @@ export class OrderService {
             phone: true,
           },
         },
+        guestCustomer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+        preparationProgress: {
+          select: {
+            id: true,
+            endTime: true,
+            estimatedEndTime: true,
+          },
+        },
+        pickupProgress: {
+          select: {
+            id: true,
+            endTime: true,
+            estimatedEndTime: true,
+          },
+        },
+        deliveryProgress: {
+          select: {
+            id: true,
+            endTime: true,
+            estimatedEndTime: true,
+          },
+        },
         assignedDriver: {
           select: {
             id: true,
@@ -316,25 +437,40 @@ export class OrderService {
     pageSize?: number;
     organizationId?: string;
     customerId?: string;
+    guestCustomerId?: string;
     driverId?: string;
     status?: string;
     type?: string;
     fromDate?: string;
     toDate?: string;
   }) {
-    const { page = 1, pageSize = 20, organizationId, customerId, driverId, status, type, fromDate, toDate } = params;
+    const {
+      page = 1,
+      pageSize = 20,
+      organizationId,
+      customerId,
+      guestCustomerId,
+      driverId,
+      status,
+      type,
+      fromDate,
+      toDate,
+    } = params;
 
     const where: Record<string, unknown> = {};
 
     if (organizationId) where.organizationId = organizationId;
     if (customerId) where.customerId = customerId;
+    if (guestCustomerId) where.guestCustomerId = guestCustomerId;
     if (driverId) where.driverId = driverId;
     if (status) where.status = status;
     if (type) where.type = type;
     if (fromDate || toDate) {
       where.createdAt = {};
-      if (fromDate) (where.createdAt as Record<string, Date>).gte = new Date(fromDate);
-      if (toDate) (where.createdAt as Record<string, Date>).lte = new Date(toDate);
+      if (fromDate)
+        (where.createdAt as Record<string, Date>).gte = new Date(fromDate);
+      if (toDate)
+        (where.createdAt as Record<string, Date>).lte = new Date(toDate);
     }
 
     const [data, total] = await Promise.all([
@@ -374,6 +510,30 @@ export class OrderService {
               lastName: true,
             },
           },
+          preparationProgress: {
+            select: {
+              id: true,
+              startTime: true,
+              endTime: true,
+              estimatedEndTime: true,
+            },
+          },
+          pickupProgress: {
+            select: {
+              id: true,
+              startTime: true,
+              endTime: true,
+              estimatedEndTime: true,
+            },
+          },
+          deliveryProgress: {
+            select: {
+              id: true,
+              startTime: true,
+              endTime: true,
+              estimatedEndTime: true,
+            },
+          },
         },
       }),
       prisma.order.count({ where }),
@@ -388,7 +548,12 @@ export class OrderService {
     };
   }
 
-  async updateStatus(id: string, data: UpdateOrderStatusInput, userRole: UserRole, userId: string) {
+  async updateStatus(
+    id: string,
+    data: UpdateOrderStatusInput,
+    userRole: UserRole,
+    userId: string,
+  ) {
     if (!hasPermission(userRole, "order:update")) {
       throw new Error("Unauthorized");
     }
@@ -423,6 +588,20 @@ export class OrderService {
 
     revalidatePath(`/dashboard/orders/${id}`);
     return order;
+  }
+  
+  async updateEstimatedEndTime(
+    id: string,
+    userRole: UserRole,
+    type: "PREPARATION" | "PICK_UP" | "DELIVERY",
+    estimatedEndTime: Date,
+    userId?: string,
+  ) {
+    if (!hasPermission(userRole, "order:update")) {
+      throw new Error("Unauthorized");
+    }
+    const progress = await updateProgress(id, type, estimatedEndTime)
+    return progress;
   }
 
   async assignDriver(orderId: string, driverId: string, userRole: UserRole) {

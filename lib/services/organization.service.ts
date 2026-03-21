@@ -196,6 +196,25 @@ export class OrganizationService {
       orderBy: { joinedAt: "desc" },
     });
   }
+  async getAllMembers() {
+    return prisma.organizationMember.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+            isActive: true,
+          },
+        },
+      },
+      orderBy: { joinedAt: "desc" },
+    });
+  }
 
   async addMember(
     organizationId: string,

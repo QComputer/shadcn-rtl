@@ -131,7 +131,36 @@ export async function POST(request: NextRequest) {
     const orderNumber = generateOrderNumber();
     const fullAddress = `${shippingAddress}, ${city}, ${postalCode}`;
 
+    // dates
+    const durationsInMinutes = [15, 5, 10];
+    const now = new Date();
+    const preparationDuration: number = durationsInMinutes[0] | 15;
+    const preparationEstimatedEndTime = new Date(
+      now.getTime() + preparationDuration * 60 * 1000,
+    );
+    const pickupDuration: number = durationsInMinutes[1] | 5;
+    const pickupEstimatedEndTime = new Date(
+      preparationEstimatedEndTime.getTime() + pickupDuration * 60 * 1000,
+    );
+    const deliveryDuration: number = durationsInMinutes[2] | 10;
+    const deliveryEstimatedEndTime = new Date(
+      pickupEstimatedEndTime.getTime() + deliveryDuration * 60 * 1000,
+    );
+console.log("-------------------------------->preparationEstimatedEndTime");
+console.log(preparationEstimatedEndTime);
+
     const order = await prisma.$transaction(async (tx) => {
+      // Create Progresses
+      const preparationProgress = await tx.progress.create({
+        data: { estimatedEndTime: preparationEstimatedEndTime },
+      });
+      const pickupProgress = await tx.progress.create({
+        data: { estimatedEndTime: pickupEstimatedEndTime },
+      });
+      const deliveryProgress = await tx.progress.create({
+        data: { estimatedEndTime: deliveryEstimatedEndTime },
+      });
+
       // Create the order
       const newOrder = await tx.order.create({
         data: {
@@ -143,7 +172,11 @@ export async function POST(request: NextRequest) {
           deliveryAddress: fullAddress,
           notes: notes || null,
           organizationId,
-          guestCustomerId: guestCustomer!.id,
+          guestCustomerId: guestCustomer.id,
+          preparationProgressId: preparationProgress.id,
+          pickupProgressId: pickupProgress.id,
+          deliveryProgressId: deliveryProgress.id,
+
           items: {
             create: orderItems.map((item) => ({
               quantity: item.quantity,
@@ -156,11 +189,22 @@ export async function POST(request: NextRequest) {
         include: {
           items: {
             include: {
-              variant: {
-                include: {
-                  product: true,
-                },
-              },
+              product: true,
+              variant: true,
+            },
+          },
+          guestCustomer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
             },
           },
         },

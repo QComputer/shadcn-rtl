@@ -11,10 +11,14 @@ export async function GET(
     const session = await auth();
     const { id } = await params;
 
-    if (!session?.user?.id) {
+    if (!session?.user?.id || !session.user.role) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const members = await organizationService.getMembers(id||session.organizationId||'id');
+    if (!hasPermission(session.user.role, "org:read")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const members = (session.user.role==="SUPER_ADMIN") ? id ? await organizationService.getMembers(id) : await organizationService.getAllMembers() : session.organizationId? await organizationService.getMembers(session.organizationId) : [];
 
     return NextResponse.json(members);
   } catch (error) {

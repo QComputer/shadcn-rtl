@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPrice, formatDate } from "@/lib/utils";
+import { GuestCustomer, Organization, User } from "@prisma/client";
 
 interface OrderItem {
   id: string;
@@ -34,25 +35,54 @@ interface OrderItem {
   };
 }
 
+interface OrderItem0 {
+  id: string
+  quantity: number
+  price: number
+  product: {
+    id: string
+    name: string
+  }
+  variant: {
+    id: string
+    name: string
+  } | null
+}
+interface Progress {
+  id: string
+  estimatedEndTime: Date | null
+  endTime: Date | null
+}
+
 interface Order {
-  id: string;
-  orderNumber: string;
-  status: string;
-  total: number;
-  deliveryAddress: string | null;
-  notes: string | null;
-  createdAt: string;
-  items: OrderItem[];
-  guestCustomer: {
-    name: string;
-    phone: string;
-    email: string | null;
-  };
-  organization: {
-    id: string;
-    name: string;
-    slug: string;
-  };
+  id: string
+  orderNumber: string
+  type: "DELIVERY" | "PICK_UP"
+  status: "PENDING" | "PLACED" | "ACCEPTED" | "PREPARING" | "READY" | "PICKED_UP" | "DELIVERED" | "CANCELLED" | "RECEIVED" | "REFUNDED"
+  subtotal: number
+  deliveryFee: number
+  tax: number
+  discount: number
+  total: number
+  deliveryAddress: string | null
+  notes: string | null
+  createdAt: string
+  customer: User | null
+  guestCustomer: GuestCustomer | null
+
+  organization: Organization
+
+  preparationProgress: Progress | null
+  pickupProgress: Progress | null
+  deliveryProgress: Progress | null
+
+  assignedDriver: {
+    id: string
+    name: string
+    firstName: string | null
+    lastName: string | null
+  } | null
+  items: OrderItem[]
 }
 
 interface OrderConfirmationData {
@@ -81,6 +111,8 @@ export default function OrderConfirmationPage({
           throw new Error("Order not found");
         }
         const orderData = await response.json();
+        console.log("----------------> orderData:", orderData);
+        
         setData({ order: orderData });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load order");
@@ -260,9 +292,9 @@ export default function OrderConfirmationPage({
                 <CardContent className="space-y-2">
                   <div className="flex items-center gap-2 text-sm">
                     <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{order.guestCustomer.phone}</span>
+                    <span>{order.guestCustomer?.phone}</span>
                   </div>
-                  {order.guestCustomer.email && (
+                  {order.guestCustomer?.email && (
                     <div className="flex items-center gap-2 text-sm">
                       <Mail className="h-4 w-4 text-muted-foreground" />
                       <span>{order.guestCustomer.email}</span>

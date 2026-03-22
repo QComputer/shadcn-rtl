@@ -49,6 +49,7 @@ export async function GET(
   }
 }
 
+// to update the status
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

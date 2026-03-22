@@ -553,7 +553,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
           </DialogHeader>
           
           {selectedOrder && (
-            <div className="space-y-6">
+            <div className="space-y-5">
               {/* Status */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -675,14 +675,11 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                 </CardContent>
               </Card>
               
-              {/* Progress 
-                TODO: editable ui like dashboard/settings page
-              */}
+              {/* Progress */}
               <Card>
                 <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
                       <Timer className="h-4 w-4" />
-
                     زمان های تخمین زده شده
                   </CardTitle>
                 </CardHeader>

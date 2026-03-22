@@ -5,7 +5,10 @@ import type { CreateOrderInput, UpdateOrderStatusInput } from "@/lib/validators"
 import { hasPermission, type UserRole } from "@/lib/types";
 import { Decimal } from "@prisma/client/runtime/library";
 import { OrderStatus, Progress } from "@prisma/client";
-// TODO: comprehensive methods to watch/change by different user-roles for "/dashboard/orders" and "/dashboard/my-orders" page 
+// TODO: Notifications:
+// 1.Accepting Order: setting EstEndTime for preparation by shop admin, setting EstEndTime for pickup and delivery by shop admin, 
+// 2.Changing Order Status: notify 
+// 3.Delivered
 
 async function createProgress(
   orderId: string,
@@ -147,16 +150,19 @@ export class OrderService {
   async create(
     data: CreateOrderInput & { customerId: string; guestCustomerId?: string },
   ) {
-console.log("=====================OrderService>create====================");
+
+    console.log("=====================OrderService>create====================");
 
     const {
       organizationId,
       customerId,
       guestCustomerId,
+      autoCompleteEndTimes,
       promotionCode,
       ...orderData
     } = data;
-console.log("-------------------------------->data", data);
+
+    console.log("-------------------------------->order data:", data);
 
     // Get cart for user
     const cart = await prisma.shopCart.findUnique({

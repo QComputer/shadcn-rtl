@@ -269,7 +269,6 @@ model EmailVerification {
 }
 
 // --- APPOINTMENT MODELS ---
-
 model ServiceCategory {
   id             String  @id @default(cuid())
   name           String

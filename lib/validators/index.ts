@@ -187,23 +187,30 @@ export const updateCartItemSchema = z.object({
 });
 
 // Order validators
-export const createOrderSchema = z.object({
-  organizationId: z.string().cuid(),
-  type: z.enum(["DELIVERY", "PICK_UP"]),
-  deliveryAddress: z.string().max(500).optional(),
-  notes: z.string().max(2000).optional(),
-  promotionCode: z.string().optional(),
-  paymentMethod: z.enum(["CREDIT_CARD", "DEBIT_CARD", "CASH", "WALLET", "BANK_TRANSFER"]),
-}).refine(
-  (data) => data.type === "PICK_UP" || data.deliveryAddress,
-  { message: "Delivery address is required for delivery orders", path: ["deliveryAddress"] }
-);
+export const createOrderSchema = z
+  .object({
+    organizationId: z.string().cuid(),
+    type: z.enum(["DELIVERY", "PICK_UP"]),
+    deliveryAddress: z.string().max(500).optional(),
+    notes: z.string().max(2000).optional(),
+    promotionCode: z.string().optional(),
+    autoCompleteEndTimes: z.boolean().default(true),
+    paymentMethod: z
+      .enum(["CREDIT_CARD", "DEBIT_CARD", "CASH", "WALLET", "BANK_TRANSFER"])
+      .optional(),
+  })
+  .refine((data) => data.type === "DELIVERY" || data.deliveryAddress, {
+    message: "Delivery address is required for delivery orders",
+    path: ["deliveryAddress"],
+  });
 
 export const updateOrderStatusSchema = z.object({
   status: z.enum(["PENDING", "PLACED", "ACCEPTED", "PREPARING", "READY", "PICKED_UP", "DELIVERED", "CANCELLED", "RECEIVED", "REFUNDED"]),
 });
+
 export const updateOrderEstimatedEndTimeSchema = z.object({
-  estimatedEndTime: z.enum(["PREPARATION", "PICK_UP", "DELIVERY"]),
+  type: z.enum(["PREPARATION", "PICK_UP", "DELIVERY"]),
+  estimatedEndTime: z.string().max(100).optional(),
 });
 
 // Review validators
@@ -231,7 +238,7 @@ export const updatePromotionSchema = createPromotionSchema.partial().extend({
 
 // Organization Settings validators
 export const updateOrganizationSettingsSchema = z.object({
-  currency: z.string().default("USD"),
+  currency: z.string().default("IRR"),
   dateFormat: z.string().default("YYYY-MM-DD"),
   timeFormat: z.enum(["12h", "24h"]).default("24h"),
   minimumOrderAmount: z.number().nonnegative().optional(),

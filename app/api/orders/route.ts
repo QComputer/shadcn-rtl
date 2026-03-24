@@ -66,6 +66,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    console.log(body);
+    
     const data = createOrderSchema.parse(body);
 
     const order = await orderService.create({

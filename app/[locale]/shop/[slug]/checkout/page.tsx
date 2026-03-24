@@ -10,55 +10,104 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { 
   ChevronRight, 
   ShoppingBag, 
   CreditCard, 
   MapPin, 
-  User, 
+  User as UserIcon, 
   Phone, 
   Mail,
   Loader2,
   ArrowRight,
   Package,
+  Van,
+  ArrowBigLeft,
+  ArrowLeft,
+  Clock,
+  CheckCircle,
+  Wallet,
 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
+import { useSession } from "next-auth/react"
+import { OrderType, User } from "@prisma/client";
+import { Switch } from "@/components/ui/switch";
+import { getDictionary } from "@/lib/dictionary";
+import prisma from "@/lib/db";
 
 interface CheckoutFormData {
-  customerName: string;
-  customerPhone: string;
-  customerEmail: string;
-  shippingAddress: string;
-  city: string;
-  postalCode: string;
-  notes: string;
+  customerName?: string;
+  customerFirstName?: string;
+  customerLastName?: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  shippingAddress?: string;
+  city?: string;
+  postalCode?: string;
+  notes?: string;
+  paymentMethod?: "CREDIT_CARD"| "DEBIT_CARD"| "CASH"| "WALLET"| "BANK_TRANSFER"
 }
-
+const paymentMethodConfig: Record<string, { label: string; icon: typeof Clock; color: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  CASH: { label: "نقد", icon: Clock, color: "bg-orange-500", variant: "secondary" },
+  CREDIT_CARD: { label: "پرداخت آنلاین", icon: CreditCard, color: "bg-blue-500", variant: "default" },
+  WALLET: { label: "کیف پول", icon: Wallet, color: "bg-green-500", variant: "default" },
+}
 export default function CheckoutPage({ 
   params 
 }: { 
   params: Promise<{ locale: string; slug: string }>
 }) {
+
   const resolvedParams = use(params);
   const locale = resolvedParams.locale;
+  const isRTL = locale === "fa" || locale === "ar"
+  const dict = getDictionary(locale)
   const slug = resolvedParams.slug;
   const router = useRouter();
 
+  const { data: session } = useSession()
+  const [user, setUser] = useState<User|null>(null);
+  const [loading, setLoading] = useState(true)
+
   const { cart, summary, isLoading: cartLoading, clearCart } = useGuestCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGuest, setIsGuest] = useState(true);
+  const [isDelivery, setIsDelivery] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"CREDIT_CARD"| "DEBIT_CARD"| "CASH"| "WALLET"| "BANK_TRANSFER">("CASH");
   const [error, setError] = useState<string | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [organizationName, setOrganizationName] = useState<string>("");
 
-  const [formData, setFormData] = useState<CheckoutFormData>({
-    customerName: "",
-    customerPhone: "",
-    customerEmail: "",
-    shippingAddress: "",
-    city: "",
-    postalCode: "",
-    notes: "",
-  });
+  // Helper to get translations based on locale
+  const t = (key: string): string => {
+    const keys = key.split(".")
+    let value: any = dict
+    for (const k of keys) {
+      value = value?.[k]
+    }
+    return value || key
+  }
+
+
+  const [formData, setFormData] = useState<any>({
+      customerName: "",
+      customerPhone: "",  
+      customerFirstName: "",
+      customerLastName: "",
+      customerEmail: "",
+      shippingAddress: undefined,
+      city: "",
+      postalCode: "",
+      notes: "",
+    });
+
 
   // Fetch organization info
   useEffect(() => {
@@ -74,15 +123,46 @@ export default function CheckoutPage({
         console.error("Failed to fetch organization:", err);
       }
     }
-
     if (slug) {
       fetchOrganization();
     }
   }, [slug]);
 
+  // Fetch User info
+  useEffect(() => {
+    if (session?.user){
+      setIsGuest(false),
+      // Fetch user profile
+      fetch("/api/users/me")
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to fetch profile")
+        return res.json()
+      })
+      .then(data => {
+        setUser(data as User)
+        setIsGuest(!data.id)
+        setFormData(
+          (prev: any) => ({ ...prev,
+            customerName: data.lastName || data.name,
+            customerPhone: data.phone || "",
+            customerFirstName: data.firstName || "",
+            customerLastName: data.lastName || "",
+            shippingAddress: data.address || "",
+          })
+        )
+        setLoading(false)
+      })
+      .catch(err => {
+        setError(err.message)
+        setLoading(false)
+      })
+    }
+  }, [session]);
+
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev: any) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -111,19 +191,25 @@ export default function CheckoutPage({
           console.error("Failed to fetch organization:", err);
         }
       }
-      const response = await fetch("/api/public/checkout", {
+
+      // get the order created
+      const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           organizationId,
-          ...formData,
+          paymentMethod,
+          deliveryAddress: formData.shippingAddress,
+          type: isDelivery? "DELIVERY" : "PICK_UP",
+          customerName: formData.customerName,
+          customerPhone: formData.customerPhone,
           items: cart.items.map(item => ({
             variantId: item.variant.id,
             quantity: item.quantity,
             price: item.variant.price,
           })),
         }),
-      });
+      }) 
 
       if (!response.ok) {
         const data = await response.json();
@@ -200,44 +286,62 @@ export default function CheckoutPage({
         <div className="container mx-auto px-4 py-3">
           <nav className="flex items-center gap-2 text-sm text-muted-foreground">
             <Link href={`/${locale}`} className="hover:text-foreground">
-              Home
+              خانه
             </Link>
             <ChevronRight className="h-4 w-4" />
             <Link href={`/${locale}/shop/${slug}`} className="hover:text-foreground">
               {organizationName}
             </Link>
             <ChevronRight className="h-4 w-4" />
-            <span className="text-foreground font-medium">Checkout</span>
+            <span className="text-foreground font-medium">بررسی و تایید</span>
           </nav>
         </div>
       </div>
 
       <section className="py-8">
         <div className="container mx-auto px-4">
-          <h1 className="text-2xl font-bold mb-8">Checkout</h1>
+          <h1 className="text-2xl font-bold mb-8">بررسی و تایید</h1>
 
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Checkout Form */}
               <div className="lg:col-span-2 space-y-6">
+                {/* order type */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-1 px-2">
+                <Label htmlFor="delivery">
+                  <Van/>{"ارسال شود؟"}
+                </Label>
+                <p className="text-sm text-muted-foreground flex ">
+                  {" برای ارسال سفارش این سویچ روبرو را فعال کنید" }<ArrowLeft className=" w-5 h-5"/>
+                </p>
+              </div>
+              <Switch
+                id="delivery"
+                checked={isDelivery}
+                onCheckedChange={setIsDelivery}
+              />
+            </div>
                 {/* Contact Information */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <User className="h-5 w-5" />
-                      Contact Information
+                      <UserIcon className="h-5 w-5" />
+                      اطلاعات مشتری
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+
                       <div className="space-y-2">
-                        <Label htmlFor="customerName">Full Name *</Label>
+                        <Label htmlFor="customerName"> نام *</Label>
                         <div className="relative">
-                          <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <UserIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input
                             id="customerName"
                             name="customerName"
-                            placeholder="John Doe"
+                            placeholder="نام ثبت کننده سفارش"
                             value={formData.customerName}
                             onChange={handleInputChange}
                             className="pl-10"
@@ -245,8 +349,8 @@ export default function CheckoutPage({
                           />
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="customerPhone">Phone Number *</Label>
+                      {isDelivery && <div className="space-y-2">
+                        <Label htmlFor="customerPhone">شماره تماس (اختیاری)</Label>
                         <div className="relative">
                           <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input
@@ -259,10 +363,10 @@ export default function CheckoutPage({
                             required
                           />
                         </div>
-                      </div>
+                      </div>}
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="customerEmail">Email (Optional)</Label>
+                    {isDelivery && <div className="space-y-2">
+                      <Label htmlFor="customerEmail">ایمیل (اختیاری)</Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -275,68 +379,66 @@ export default function CheckoutPage({
                           className="pl-10"
                         />
                       </div>
-                    </div>
+                    </div>}
                   </CardContent>
                 </Card>
-
                 {/* Shipping Address */}
+                {isDelivery &&
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <MapPin className="h-5 w-5" />
-                      Shipping Address
+                      محل تحویل
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="shippingAddress">Street Address *</Label>
+                      <Label htmlFor="shippingAddress">آدرس *</Label>
                       <Input
                         id="shippingAddress"
                         name="shippingAddress"
-                        placeholder="123 Main Street"
+                        placeholder="آدرس کامل محل تحویل"
                         value={formData.shippingAddress}
                         onChange={handleInputChange}
-                        required
+                        required={isDelivery}
                       />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="city">City *</Label>
+                        <Label htmlFor="city">شهر (اختیاری)</Label>
                         <Input
                           id="city"
                           name="city"
-                          placeholder="New York"
+                          placeholder="شهرکرد"
                           value={formData.city}
                           onChange={handleInputChange}
-                          required
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="postalCode">Postal Code *</Label>
+                        <Label htmlFor="postalCode">کد پستی (اختیاری)</Label>
                         <Input
                           id="postalCode"
                           name="postalCode"
                           placeholder="10001"
                           value={formData.postalCode}
                           onChange={handleInputChange}
-                          required
                         />
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-
+                }
                 {/* Order Notes */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Order Notes (Optional)</CardTitle>
+                    <CardTitle>{t("order.notes")} ({t("common.optional")})</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <textarea
                       id="notes"
                       name="notes"
-                      placeholder="Any special instructions for your order..."
-                      value={formData.notes}
+                      placeholder="اگر دستورالعمل خاصی برای سفارش در نظر دارید ذکر فرمایید ..."
+                      value={formData.notes || ""}
                       onChange={handleInputChange}
                       className="w-full min-h-[100px] p-3 rounded-md border border-input bg-background resize-none"
                     />
@@ -350,7 +452,7 @@ export default function CheckoutPage({
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Package className="h-5 w-5" />
-                      Order Summary
+                        {t("order.summary")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -391,19 +493,42 @@ export default function CheckoutPage({
                     {/* Totals */}
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Subtotal</span>
+                        <span className="text-muted-foreground">جمع جزئی</span>
                         <span>{formatPrice(summary.subtotal)}</span>
                       </div>
+                      {isDelivery && <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">پیک</span>
+                        <span>...</span>
+                      </div>}
+                    </div>
+
+                    {/**Payment Method */}
+                    <div className="space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Shipping</span>
-                        <span>Calculated at next step</span>
+                        <span className="text-muted-foreground">روش پرداخت</span>
+                          <Select value={paymentMethod} onValueChange={(value) => {
+                            setPaymentMethod(value as "CREDIT_CARD"| "DEBIT_CARD"| "CASH"| "WALLET"| "BANK_TRANSFER")}}>
+                            <SelectTrigger className="w-full sm:w-48">
+                              <SelectValue placeholder="همه وضعیت‌ها" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(paymentMethodConfig).map(([key, config]) => (
+                                <SelectItem key={key} value={key}>
+                                  {config.label}
+                                </SelectItem>
+                                ))
+                              }
+                            </SelectContent>
+                          </Select>                     
                       </div>
                     </div>
 
                     <Separator />
 
                     <div className="flex justify-between font-medium text-lg">
-                      <span>Total</span>
+                      <span>
+                        {t("order.total") || "مجموع"}
+                      </span>
                       <span>{formatPrice(summary.subtotal)}</span>
                     </div>
 
@@ -422,18 +547,18 @@ export default function CheckoutPage({
                       {isSubmitting ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          Processing...
+                          {t("common.processing")}...
                         </>
                       ) : (
                         <>
                           <CreditCard className="h-4 w-4 mr-2" />
-                          Place Order
+                          {t("order.place")}
                         </>
                       )}
                     </Button>
 
                     <p className="text-xs text-center text-muted-foreground">
-                      By placing this order, you agree to the terms and conditions.
+                      ثبت سفارش نشان دهنده ی موافقت با شرایط  تیم ما می باشد 
                     </p>
                   </CardContent>
                 </Card>

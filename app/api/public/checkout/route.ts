@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       organizationId,
+      isGuest,
       customerName,
       customerPhone,
       customerEmail,
@@ -126,7 +127,6 @@ export async function POST(request: NextRequest) {
         },
       });
     }
-
     // Create order with items in a transaction
     const orderNumber = generateOrderNumber();
     const fullAddress = `${shippingAddress}, ${city}, ${postalCode}`;
@@ -146,8 +146,8 @@ export async function POST(request: NextRequest) {
     const deliveryEstimatedEndTime = new Date(
       pickupEstimatedEndTime.getTime() + deliveryDuration * 60 * 1000,
     );
-console.log("-------------------------------->preparationEstimatedEndTime");
-console.log(preparationEstimatedEndTime);
+      console.log("-------------------------------->preparationEstimatedEndTime");
+      console.log(preparationEstimatedEndTime);
 
     const order = await prisma.$transaction(async (tx) => {
       // Create Progresses
@@ -165,7 +165,7 @@ console.log(preparationEstimatedEndTime);
       const newOrder = await tx.order.create({
         data: {
           orderNumber,
-          type: "DELIVERY", // Default to delivery
+          type: "PICK_UP", // Default to delivery
           status: "PENDING",
           subtotal,
           total: subtotal, // For now, total = subtotal (no tax/delivery fee calculation)
@@ -173,6 +173,7 @@ console.log(preparationEstimatedEndTime);
           notes: notes || null,
           organizationId,
           guestCustomerId: guestCustomer.id,
+          userId,
           preparationProgressId: preparationProgress.id,
           pickupProgressId: pickupProgress.id,
           deliveryProgressId: deliveryProgress.id,

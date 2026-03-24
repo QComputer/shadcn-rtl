@@ -198,11 +198,7 @@ export const createOrderSchema = z
     paymentMethod: z
       .enum(["CREDIT_CARD", "DEBIT_CARD", "CASH", "WALLET", "BANK_TRANSFER"])
       .optional(),
-  })
-  .refine((data) => data.type === "DELIVERY" || data.deliveryAddress, {
-    message: "Delivery address is required for delivery orders",
-    path: ["deliveryAddress"],
-  });
+})
 
 export const updateOrderStatusSchema = z.object({
   status: z.enum(["PENDING", "PLACED", "ACCEPTED", "PREPARING", "READY", "PICKED_UP", "DELIVERED", "CANCELLED", "RECEIVED", "REFUNDED"]),

@@ -48,7 +48,7 @@
     "password": "رمز عبور",
     "passwordPlaceholder": "رمز عبور را وارد کنید",
     "confirmPassword": "تکرار رمز عبور",
-    "confirmPasswordPlaceholder": "رمز عبور را再次 وارد کنید",
+    "confirmPasswordPlaceholder": "رمز عبور را دوباره وارد کنید",
     "forgotPassword": "فراموشی رمز عبور؟",
     "resetPassword": "بازیابی رمز عبور",
     "noAccount": "حساب کاربری ندارید؟",
@@ -97,7 +97,8 @@
     "myOrders": "سفارشات من",
     "myAppointments": "نوبت‌های من",
     "myServices": "خدمات من",
-    "calendar": "تقویم"
+    "calendar": "تقویم",
+    "checkout": "بررسی و تایید"
   },
   "organization": {
     "title": "سازمان",
@@ -171,6 +172,8 @@
     "title": "سفارش",
     "orders": "سفارشات",
     "create": "ایجاد سفارش",
+    "place": "ثبت سفارش",
+    "summary": "خلاصه سفارش",
     "status": "وضعیت",
     "type": "نوع",
     "delivery": "تحویل",
@@ -257,7 +260,7 @@
     "total": "مجموع",
     "shipping": "ارسال",
     "freeShipping": "ارسال رایگان",
-    "proceedToCheckout": "ادامه به پرداخت"
+    "proceedToCheckout": "ادامه برای بررسی و تایید"
   },
   "appointment": {
     "title": "وقت ملاقات",

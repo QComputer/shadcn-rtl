@@ -235,7 +235,7 @@ function RegisterForm({ locale }: { locale: string }) {
                 <Input
                   id="confirmPassword"
                   type={showPassword ? "text" : "password"}
-                  placeholder={t("auth.confirmPasswordPlaceholder") || "رمز عبور را再次 وارد کنید"}
+                  placeholder={t("auth.confirmPasswordPlaceholder") || "رمز عبور را دوباره وارد کنید"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required

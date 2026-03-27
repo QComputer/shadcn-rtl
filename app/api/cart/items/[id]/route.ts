@@ -2,7 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { cartService } from "@/lib/services/cart.service";
 import { updateCartItemSchema } from "@/lib/validators";
+import { randomUUID } from "crypto";
 
+const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || "guest_session_id";
+
+// Get or create session ID from cookies
+function getSessionId(request: NextRequest): string {
+  const existingSessionId = request.cookies.get(SESSION_COOKIE_NAME);
+  if (existingSessionId) {
+    return existingSessionId.value;
+  }
+  return randomUUID();
+}
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -10,13 +21,17 @@ export async function PATCH(
   try {
     const session = await auth();
     const { id } = await params;
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await request.json();
     const data = updateCartItemSchema.parse(body);
+
+    if (!session?.user?.id) {
+      const sessionId = getSessionId(request);
+          const item = await cartService.updateItemQuantity(id, sessionId, data);
+      
+          return NextResponse.json(item);
+    
+    
+    }
 
     const item = await cartService.updateItemQuantity(id, session.user.id, data);
 

@@ -1,9 +1,9 @@
 "use client";
-
+// It should not communicate with /api/chechout/ route anymore
 import React, { useState, useEffect, use } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useGuestCart } from "@/lib/contexts/guest-cart-context";
+import { useCart } from "@/lib/contexts/cart-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -76,7 +76,7 @@ export default function CheckoutPage({
   const [user, setUser] = useState<User|null>(null);
   const [loading, setLoading] = useState(true)
 
-  const { cart, summary, isLoading: cartLoading, clearCart } = useGuestCart();
+  const { cart, summary, isLoading: cartLoading, clearCart } = useCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGuest, setIsGuest] = useState(true);
   const [isDelivery, setIsDelivery] = useState(false);
@@ -102,7 +102,7 @@ export default function CheckoutPage({
       customerFirstName: "",
       customerLastName: "",
       customerEmail: "",
-      shippingAddress: undefined,
+      shippingAddress: "",
       city: "",
       postalCode: "",
       notes: "",
@@ -202,7 +202,7 @@ export default function CheckoutPage({
           deliveryAddress: formData.shippingAddress,
           type: isDelivery? "DELIVERY" : "PICK_UP",
           customerName: formData.customerName,
-          customerPhone: formData.customerPhone,
+          customerPhone: formData.customerPhone || "0000",
           items: cart.items.map(item => ({
             variantId: item.variant.id,
             quantity: item.quantity,
@@ -261,16 +261,16 @@ export default function CheckoutPage({
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <ShoppingBag className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-            <CardTitle>Your cart is empty</CardTitle>
+            <CardTitle>سبد خرید شما خالی است!</CardTitle>
           </CardHeader>
           <CardContent className="text-center text-muted-foreground">
-            <p>Add some products to your cart before checking out.</p>
+            <p>برای ادامه بررسی و تایید چند محصول اضافه کنید </p>
           </CardContent>
           <CardFooter className="justify-center">
             <Link href={`/${locale}/shop/${slug}`}>
               <Button>
-                Browse Products
-                <ArrowRight className="ml-2 h-4 w-4" />
+                محصولات ما را ببینید
+                <ArrowLeft className="ml-2 h-4 w-4" />
               </Button>
             </Link>
           </CardFooter>
@@ -313,7 +313,7 @@ export default function CheckoutPage({
                   <Van/>{"ارسال شود؟"}
                 </Label>
                 <p className="text-sm text-muted-foreground flex ">
-                  {" برای ارسال سفارش این سویچ روبرو را فعال کنید" }<ArrowLeft className=" w-5 h-5"/>
+                  {" برای ارسال سفارش سویچ روبرو را فعال کنید" }<ArrowLeft className=" w-5 h-5"/>
                 </p>
               </div>
               <Switch

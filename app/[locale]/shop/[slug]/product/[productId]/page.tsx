@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatToman, toPersianDigits } from "@/lib/persian"
-import { useGuestCart } from "@/lib/contexts/guest-cart-context"
+import { useCart } from "@/lib/contexts/cart-context"
 
 interface ProductVariant {
   id: string
@@ -86,7 +86,7 @@ export default function ProductDetailPage({
   const [selectedImage, setSelectedImage] = useState(0)
   
   // Get cart functions from context
-  const { addToCart } = useGuestCart()
+  const { addToCart } = useCart()
 
   useEffect(() => {
     setMounted(true)

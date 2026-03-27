@@ -514,20 +514,33 @@ model ShopCart {
   status CartStatus @default(ACTIVE)
 
   organizationId String
-  customerId     String
-
   organization Organization   @relation(fields: [organizationId], references: [id])
-  customer     User           @relation(fields: [customerId], references: [id])
+  
+  customerId     String?
+  customer     User?           @relation(fields: [customerId], references: [id])
+  
+  guestCustomerId     String?
+  guestCustomer     GuestCustomer?           @relation(fields: [guestCustomerId], references: [id])
+  
+  expiresAt DateTime? // Cart expiration (e.g., 7 days)
+
   items        ShopCartItem[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  expiresAt DateTime? // Cart expiration for abandoned carts
+  
+  sessionId   String?  
 
+  @@index([status])
+  @@index([customerId])
   @@unique([organizationId, customerId])
   @@index([organizationId, customerId])
-  @@index([customerId])
-  @@index([status])
+  @@index([guestCustomerId])
+  @@unique([organizationId, guestCustomerId])
+  @@index([organizationId, guestCustomerId])
+  @@index([sessionId])
+  @@unique([organizationId, sessionId])
+  @@index([organizationId, sessionId])
 }
 
 model ShopCartItem {
@@ -547,7 +560,7 @@ model ShopCartItem {
   @@index([variantId])
 }
 
-// Guest Cart for non-authenticated users
+// Cart for checkout without account <------- TODO: Is going to get removed. I am going to use ShopCart as uniqu for both guest and registered users
 model GuestCart {
   id        String     @id @default(cuid())
   sessionId String     @unique
@@ -585,21 +598,24 @@ model GuestCartItem {
   @@index([variantId])
 }
 
-// Guest Customer for checkout without account
+// Guest Customer 
 model GuestCustomer {
   id      String  @id @default(cuid())
   name    String
-  phone   String
+  sessionId   String  @unique
+  phone   String?
   email   String?
   address String?
 
   orders Order[]
   appointments Appointment[]
-
+  shopCarts ShopCart[]
 
   createdAt DateTime @default(now())
 
   @@index([phone])
+  @@index([name])
+  @@index([sessionId])
 }
 
 model Order {

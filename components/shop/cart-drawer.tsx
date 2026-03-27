@@ -2,11 +2,11 @@
 
 import React from "react";
 import Link from "next/link";
-import { useGuestCart } from "@/lib/contexts/guest-cart-context";
+import { useCart } from "@/lib/contexts/cart-context";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Minus, Plus, Trash2, ShoppingBag, Loader2 } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingBag, Loader2, ShoppingCart, ShoppingBasket } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 
 interface CartDrawerProps {
@@ -18,7 +18,7 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, children }: CartDrawerProps) {
-  const { cart, isLoading, summary, updateQuantity, removeItem } = useGuestCart();
+  const { cart, isLoading, summary, updateQuantity, removeItem } = useCart();
   const [updatingId, setUpdatingId] = React.useState<string | null>(null);
 
   const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
@@ -42,9 +42,9 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
 
   const defaultTrigger = (
     <Button variant="outline" size="icon" className="relative">
-      <ShoppingBag className="h-5 w-5" />
+      <ShoppingCart className="h-5 w-5" />
       {summary.itemCount > 0 && (
-        <span className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+        <span className="absolute top-2 left-2 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
           {summary.itemCount}
         </span>
       )}
@@ -59,7 +59,7 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
       <SheetContent className="w-full sm:max-w-lg flex flex-col ">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2 mt-20">
-            <ShoppingBag className="h-5 w-5 " />
+            <ShoppingCart className="h-5 w-5 " />
             سبد خرید
             {summary.itemCount > 0 && (
               <span className="text-sm font-normal text-muted-foreground">
@@ -73,11 +73,11 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
           <div className="flex-1 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-        ) : !cart || cart.items.length === 0 ? (
+        ) : cart?.items?.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4">
-            <ShoppingBag className="h-16 w-16 text-muted-foreground/50" />
+            <ShoppingBasket className="h-16 w-16 text-muted-foreground/50" />
             <div className="text-center">
-              <p className="text-lg font-medium">کارت شما خالی است</p>
+              <p className="text-lg font-medium">سبد خرید شما خالی است</p>
               <p className="text-sm text-muted-foreground">
                 برای شروع چند محصول اضلافه کنید
               </p>
@@ -90,7 +90,7 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
           <>
             <ScrollArea className="flex-1 -mx-6 px-6">
               <div className="space-y-4 py-4">
-                {cart.items.map((item) => (
+                {cart?.items.map((item) => (
                   <div
                     key={item.id}
                     className="flex gap-4 p-3 rounded-lg border bg-card"
@@ -179,21 +179,18 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
             {/* Cart Footer */}
             <div className="border-t pt-4 space-y-4">
               <div className="flex items-center justify-between text-lg font-medium">
-                <span>Subtotal</span>
+                <span>جمع جزئی</span>
                 <span>{formatPrice(summary.subtotal)}</span>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Shipping and taxes calculated at checkout
-              </p>
               <div className="grid gap-2">
                 <Link href={`/shop/${organizationSlug}/checkout`}>
                   <Button className="w-full" size="lg">
-                    Proceed to Checkout
+                    ادامه برای بررسی و تایید
                   </Button>
                 </Link>
                 <Link href={`/shop/${organizationSlug}`}>
                   <Button variant="outline" className="w-full">
-                    Continue Shopping
+                    ادامه خرید 
                   </Button>
                 </Link>
               </div>

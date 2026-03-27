@@ -1,4 +1,4 @@
-import { GuestCartProvider } from "@/lib/contexts/guest-cart-context";
+import { CartProvider } from "@/lib/contexts/cart-context";
 import { CartDrawer } from "@/components/shop/cart-drawer";
 import { CartBadge } from "@/components/shop/cart-badge";
 import { Button } from "@/components/ui/button";
@@ -43,11 +43,11 @@ export async function generateMetadata({ params }: ShopLayoutProps): Promise<Met
 }
 
 async function getOrganization(slug: string){
-  const org = await prisma.organization.findUnique({
+  const shop = await prisma.organization.findUnique({
     where: { slug },
   });
-  const id = await org?.id as string
-  const name = await org?.name as string
+  const id = await shop?.id as string
+  const name = await shop?.name as string
   return {id, name}
 }
 
@@ -55,17 +55,17 @@ export default async function ShopLayout({ children, params }: ShopLayoutProps) 
   const { locale, slug } = await params;
 
   // Fetch organization ID from slug
-  const orgData = await getOrganization(slug)
+  const shopData = await getOrganization(slug)
 
   return (
-    <GuestCartProvider organizationId={orgData.id}>
+    <CartProvider organizationId={shopData.id}>
       <div className="min-h-screen flex flex-col">
         {/* Shop Header */}
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container flex h-16 items-center justify-between">
             <Link href={`/shop/${slug}`} className="flex items-center gap-2 px-2">
               <Store className="h-6 w-6 " />
-              <span className="font-semibold text-lg">{orgData.name}</span>
+              <span className="font-semibold text-lg">{shopData.name}</span>
             </Link>
 
             <div className="flex items-center gap-4">
@@ -86,10 +86,10 @@ export default async function ShopLayout({ children, params }: ShopLayoutProps) 
         {/* Shop Footer */}
         <footer className="border-t py-6">
           <div className="container text-center text-sm text-muted-foreground">
-            <p>© {new Date().getFullYear()} {orgData.name}. تمامی حقوق محفوظ است.</p>
+            <p>© {new Date().getFullYear()} {shopData.name}. تمامی حقوق محفوظ است.</p>
           </div>
         </footer>
       </div>
-    </GuestCartProvider>
+    </CartProvider>
   );
 }

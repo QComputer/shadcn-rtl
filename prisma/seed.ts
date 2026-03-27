@@ -2,6 +2,11 @@ import { PrismaClient, OrganizationType, UserRole, AppointmentStatus, CartStatus
 import bcrypt from 'bcryptjs';
 import {organizationService} from '@/lib/services/organization.service'
 
+// Generate a unique sessionId
+function generateSessionId(name: string): string {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  return `SESSION-${timestamp}-${name}`;
+}
 const prisma = new PrismaClient();
 
 async function main() {
@@ -1634,6 +1639,7 @@ async function main() {
   const guestCustomers = await Promise.all([
     prisma.guestCustomer.create({
       data: {
+        sessionId: generateSessionId("random1"),
         name: "علی محمدی",
         phone: "+989123456789",
         email: "ali.mohammadi@example.com",
@@ -1642,6 +1648,7 @@ async function main() {
     }),
     prisma.guestCustomer.create({
       data: {
+        sessionId: generateSessionId("random2"),
         name: "مریم احمدی",
         phone: "+989123456790",
         email: "maryam.ahmadi@example.com",
@@ -1650,6 +1657,7 @@ async function main() {
     }),
     prisma.guestCustomer.create({
       data: {
+        sessionId: generateSessionId("random3"),
         name: "رضا کریمی",
         phone: "+989123456791",
         // No email - demonstrating optional email

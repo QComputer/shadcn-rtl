@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useGuestCart } from "@/lib/contexts/guest-cart-context";
+import { useCart } from "@/lib/contexts/cart-context";
 import { ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +12,7 @@ interface CartBadgeProps {
 }
 
 export function CartBadge({ className, iconClassName, badgeClassName }: CartBadgeProps) {
-  const { summary, isLoading } = useGuestCart();
+  const { summary, isLoading } = useCart();
 
   if (isLoading) {
     return (

@@ -1,6 +1,5 @@
 "use client";
-// TODO: Should be replaced by /cart-context.tsx
-
+// TODO: Make it the unified cart-context for both registered and guest users
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
@@ -21,10 +20,13 @@ export interface CartItem {
   };
 }
 
-export interface Cart {
+export interface ShopCart {
   id: string;
+  customerId?: string
+  guestCustomerId?: string
+  sessionId?: string
   items: CartItem[];
-  expiresAt: string;
+  expiresAt?: string;
 }
 
 export interface CartSummary {
@@ -32,8 +34,8 @@ export interface CartSummary {
   subtotal: number;
 }
 
-interface GuestCartContextType {
-  cart: Cart | null;
+interface CartContextType {
+  cart: ShopCart | null;
   isLoading: boolean;
   error: string | null;
   summary: CartSummary;
@@ -44,15 +46,15 @@ interface GuestCartContextType {
   refreshCart: () => Promise<void>;
 }
 
-const GuestCartContext = createContext<GuestCartContextType | undefined>(undefined);
+const CartContext = createContext<CartContextType | undefined>(undefined);
 
-interface GuestCartProviderProps {
+interface CartProviderProps {
   children: React.ReactNode;
   organizationId: string;
 }
 
-export function GuestCartProvider({ children, organizationId }: GuestCartProviderProps) {
-  const [cart, setCart] = useState<Cart | null>(null);
+export function CartProvider({ children, organizationId }: CartProviderProps) {
+  const [cart, setCart] = useState<ShopCart | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -208,7 +210,7 @@ export function GuestCartProvider({ children, organizationId }: GuestCartProvide
   }, [organizationId, router]);
 
   return (
-    <GuestCartContext.Provider
+    <CartContext.Provider
       value={{
         cart,
         isLoading,
@@ -222,14 +224,14 @@ export function GuestCartProvider({ children, organizationId }: GuestCartProvide
       }}
     >
       {children}
-    </GuestCartContext.Provider>
+    </CartContext.Provider>
   );
 }
 
-export function useGuestCart() {
-  const context = useContext(GuestCartContext);
+export function useCart() {
+  const context = useContext(CartContext);
   if (context === undefined) {
-    throw new Error("useGuestCart must be used within a GuestCartProvider");
+    throw new Error("useCart must be used within a CartProvider");
   }
   return context;
 }

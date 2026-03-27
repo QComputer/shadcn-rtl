@@ -221,6 +221,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         "order:read", "order:create",
         "appointment:read", "appointment:create", "appointment:cancel",
         "review:create"
+      ],
+      GUEST: [
+        "org:read",
+        "service:read",
+        "product:read",
+        "order:read", "order:create",
+        "appointment:read", "appointment:create", "appointment:cancel",
+        "review:create"
       ]
     }
 

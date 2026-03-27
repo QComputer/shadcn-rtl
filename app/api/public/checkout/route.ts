@@ -1,8 +1,21 @@
+// TODO: Should be removed, since the checkout page won't communicate with this route anymore
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { randomUUID } from "crypto";
 import { Decimal } from "@prisma/client/runtime/library";
+import { randomUUID } from "crypto";
 
+const SESSION_COOKIE_NAME =
+  process.env.SESSION_COOKIE_NAME || "guest_session_id";
+
+// Get or create session ID from cookies
+function getSessionId(request: NextRequest): string {
+  const existingSessionId = request.cookies.get(SESSION_COOKIE_NAME);
+  if (existingSessionId) {
+    return existingSessionId.value;
+  }
+  return randomUUID();
+}
 // Generate a unique order number
 function generateOrderNumber(): string {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -28,15 +41,24 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!organizationId) {
-      return NextResponse.json({ error: "Organization ID is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Organization ID is required" },
+        { status: 400 },
+      );
     }
 
-    if (!customerName || !customerPhone || !shippingAddress || !city || !postalCode) {
-      return NextResponse.json({ error: "Missing required customer information" }, { status: 400 });
+    if (!customerName) {
+      return NextResponse.json(
+        { error: "Missing required customer information" },
+        { status: 400 },
+      );
     }
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: "Order must contain at least one item" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Order must contain at least one item" },
+        { status: 400 },
+      );
     }
 
     // Verify organization exists
@@ -45,7 +67,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (!organization) {
-      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Organization not found" },
+        { status: 404 },
+      );
     }
 
     // Validate items and calculate total
@@ -70,26 +95,32 @@ export async function POST(request: NextRequest) {
       if (!variant) {
         return NextResponse.json(
           { error: `Product variant ${item.variantId} not found` },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
       if (variant.product.organizationId !== organizationId) {
         return NextResponse.json(
-          { error: `Product ${variant.product.name} does not belong to this organization` },
-          { status: 400 }
+          {
+            error: `Product ${variant.product.name} does not belong to this organization`,
+          },
+          { status: 400 },
         );
       }
 
       // Check inventory if tracked
       if (variant.product.trackInventory && variant.inventory < item.quantity) {
         return NextResponse.json(
-          { error: `Insufficient inventory for ${variant.product.name} - ${variant.name}` },
-          { status: 400 }
+          {
+            error: `Insufficient inventory for ${variant.product.name} - ${variant.name}`,
+          },
+          { status: 400 },
         );
       }
 
-      const price = new Decimal(item.price || variant.price || variant.product.basePrice);
+      const price = new Decimal(
+        item.price || variant.price || variant.product.basePrice,
+      );
       subtotal = subtotal.add(price.mul(item.quantity));
 
       orderItems.push({
@@ -108,8 +139,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (!guestCustomer) {
+        const sessionId = getSessionId(request);
+
       guestCustomer = await prisma.guestCustomer.create({
         data: {
+          sessionId,
           name: customerName,
           phone: customerPhone,
           email: customerEmail || null,
@@ -127,7 +161,6 @@ export async function POST(request: NextRequest) {
         },
       });
     }
-    // Create order with items in a transaction
     const orderNumber = generateOrderNumber();
     const fullAddress = `${shippingAddress}, ${city}, ${postalCode}`;
 
@@ -146,9 +179,10 @@ export async function POST(request: NextRequest) {
     const deliveryEstimatedEndTime = new Date(
       pickupEstimatedEndTime.getTime() + deliveryDuration * 60 * 1000,
     );
-      console.log("-------------------------------->preparationEstimatedEndTime");
-      console.log(preparationEstimatedEndTime);
-
+    console.log("-------------------------------->preparationEstimatedEndTime");
+    console.log(preparationEstimatedEndTime);
+    
+    // Create order with items in a transaction
     const order = await prisma.$transaction(async (tx) => {
       // Create Progresses
       const preparationProgress = await tx.progress.create({
@@ -173,7 +207,6 @@ export async function POST(request: NextRequest) {
           notes: notes || null,
           organizationId,
           guestCustomerId: guestCustomer.id,
-          userId,
           preparationProgressId: preparationProgress.id,
           pickupProgressId: pickupProgress.id,
           deliveryProgressId: deliveryProgress.id,

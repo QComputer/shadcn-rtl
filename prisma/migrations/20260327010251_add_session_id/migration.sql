@@ -294,10 +294,12 @@ CREATE TABLE "ShopCart" (
     "id" TEXT NOT NULL,
     "status" "CartStatus" NOT NULL DEFAULT 'ACTIVE',
     "organizationId" TEXT NOT NULL,
-    "customerId" TEXT NOT NULL,
+    "customerId" TEXT,
+    "guestCustomerId" TEXT,
+    "expiresAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "expiresAt" TIMESTAMP(3),
+    "sessionId" TEXT,
 
     CONSTRAINT "ShopCart_pkey" PRIMARY KEY ("id")
 );
@@ -343,7 +345,8 @@ CREATE TABLE "GuestCartItem" (
 CREATE TABLE "GuestCustomer" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "phone" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
+    "phone" TEXT,
     "email" TEXT,
     "address" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -378,8 +381,25 @@ CREATE TABLE "Order" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "deletedAt" TIMESTAMP(3),
+    "preparationProgressId" TEXT,
+    "pickupProgressId" TEXT,
+    "deliveryProgressId" TEXT,
 
     CONSTRAINT "Order_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Progress" (
+    "id" TEXT NOT NULL,
+    "startTime" TIMESTAMP(3),
+    "endTime" TIMESTAMP(3),
+    "estimatedEndTime" TIMESTAMP(3),
+    "remMinutes" DOUBLE PRECISION,
+    "percentage" DOUBLE PRECISION,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Progress_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -751,16 +771,31 @@ CREATE INDEX "ProductVariant_productId_idx" ON "ProductVariant"("productId");
 CREATE INDEX "ProductVariant_deletedAt_idx" ON "ProductVariant"("deletedAt");
 
 -- CreateIndex
-CREATE INDEX "ShopCart_organizationId_customerId_idx" ON "ShopCart"("organizationId", "customerId");
+CREATE UNIQUE INDEX "ShopCart_sessionId_key" ON "ShopCart"("sessionId");
 
 -- CreateIndex
-CREATE INDEX "ShopCart_customerId_idx" ON "ShopCart"("customerId");
+CREATE INDEX "ShopCart_sessionId_idx" ON "ShopCart"("sessionId");
 
 -- CreateIndex
 CREATE INDEX "ShopCart_status_idx" ON "ShopCart"("status");
 
 -- CreateIndex
+CREATE INDEX "ShopCart_customerId_idx" ON "ShopCart"("customerId");
+
+-- CreateIndex
+CREATE INDEX "ShopCart_organizationId_customerId_idx" ON "ShopCart"("organizationId", "customerId");
+
+-- CreateIndex
+CREATE INDEX "ShopCart_guestCustomerId_idx" ON "ShopCart"("guestCustomerId");
+
+-- CreateIndex
+CREATE INDEX "ShopCart_organizationId_guestCustomerId_idx" ON "ShopCart"("organizationId", "guestCustomerId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "ShopCart_organizationId_customerId_key" ON "ShopCart"("organizationId", "customerId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ShopCart_organizationId_guestCustomerId_key" ON "ShopCart"("organizationId", "guestCustomerId");
 
 -- CreateIndex
 CREATE INDEX "ShopCartItem_cartId_idx" ON "ShopCartItem"("cartId");
@@ -790,10 +825,28 @@ CREATE INDEX "GuestCartItem_cartId_idx" ON "GuestCartItem"("cartId");
 CREATE INDEX "GuestCartItem_variantId_idx" ON "GuestCartItem"("variantId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "GuestCustomer_sessionId_key" ON "GuestCustomer"("sessionId");
+
+-- CreateIndex
 CREATE INDEX "GuestCustomer_phone_idx" ON "GuestCustomer"("phone");
 
 -- CreateIndex
+CREATE INDEX "GuestCustomer_name_idx" ON "GuestCustomer"("name");
+
+-- CreateIndex
+CREATE INDEX "GuestCustomer_sessionId_idx" ON "GuestCustomer"("sessionId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Order_orderNumber_key" ON "Order"("orderNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Order_preparationProgressId_key" ON "Order"("preparationProgressId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Order_pickupProgressId_key" ON "Order"("pickupProgressId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Order_deliveryProgressId_key" ON "Order"("deliveryProgressId");
 
 -- CreateIndex
 CREATE INDEX "Order_organizationId_idx" ON "Order"("organizationId");
@@ -806,6 +859,15 @@ CREATE INDEX "Order_guestCustomerId_idx" ON "Order"("guestCustomerId");
 
 -- CreateIndex
 CREATE INDEX "Order_driverId_idx" ON "Order"("driverId");
+
+-- CreateIndex
+CREATE INDEX "Order_preparationProgressId_idx" ON "Order"("preparationProgressId");
+
+-- CreateIndex
+CREATE INDEX "Order_pickupProgressId_idx" ON "Order"("pickupProgressId");
+
+-- CreateIndex
+CREATE INDEX "Order_deliveryProgressId_idx" ON "Order"("deliveryProgressId");
 
 -- CreateIndex
 CREATE INDEX "Order_status_idx" ON "Order"("status");
@@ -994,7 +1056,10 @@ ALTER TABLE "ProductVariant" ADD CONSTRAINT "ProductVariant_productId_fkey" FORE
 ALTER TABLE "ShopCart" ADD CONSTRAINT "ShopCart_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ShopCart" ADD CONSTRAINT "ShopCart_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "ShopCart" ADD CONSTRAINT "ShopCart_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ShopCart" ADD CONSTRAINT "ShopCart_guestCustomerId_fkey" FOREIGN KEY ("guestCustomerId") REFERENCES "GuestCustomer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ShopCartItem" ADD CONSTRAINT "ShopCartItem_cartId_fkey" FOREIGN KEY ("cartId") REFERENCES "ShopCart"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -1025,6 +1090,15 @@ ALTER TABLE "Order" ADD CONSTRAINT "Order_driverId_fkey" FOREIGN KEY ("driverId"
 
 -- AddForeignKey
 ALTER TABLE "Order" ADD CONSTRAINT "Order_promotionId_fkey" FOREIGN KEY ("promotionId") REFERENCES "Promotion"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Order" ADD CONSTRAINT "Order_preparationProgressId_fkey" FOREIGN KEY ("preparationProgressId") REFERENCES "Progress"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Order" ADD CONSTRAINT "Order_pickupProgressId_fkey" FOREIGN KEY ("pickupProgressId") REFERENCES "Progress"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Order" ADD CONSTRAINT "Order_deliveryProgressId_fkey" FOREIGN KEY ("deliveryProgressId") REFERENCES "Progress"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -6,83 +6,10 @@ import { hasPermission, type UserRole } from "@/lib/types";
 import { Decimal } from "@prisma/client/runtime/library";
 import { OrderStatus, Progress } from "@prisma/client";
 // TODO: Notifications:
-// 1.Accepting Order: setting EstEndTime for preparation by shop admin, setting EstEndTime for pickup and delivery by shop admin, 
-// 2.Changing Order Status: notify 
-// 3.Delivered
+//        1.Accepting Order: setting EstEndTime for preparation by shop admin, setting EstEndTime for pickup and delivery by shop admin, 
+//        2.Changing Order Status: notify 
+//        3.Delivered
 
-async function createProgress(
-  orderId: string,
-  type: "PREPARATION" | "PICK_UP" | "DELIVERY",
-  duration: number
-) {
-  const now = new Date();
-  const estimatedEndTime = new Date(now.getTime() + duration * 60 * 1000);
-  const progress = await prisma.progress.create({
-    data: { estimatedEndTime },
-  });
-
-  switch (type) {
-    case "PREPARATION":
-      await prisma.order.update({
-        where: { id: orderId },
-        data: { preparationProgressId: progress.id },
-      });
-      break;
-    case "PICK_UP":
-      await prisma.order.update({
-        where: { id: orderId },
-        data: { pickupProgressId: progress.id },
-      });
-      break;
-    case "DELIVERY":
-      await prisma.order.update({
-        where: { id: orderId },
-        data: { deliveryProgressId: progress.id },
-      });
-      break;
-  }
-
-  return progress.id;
-}
-
-async function createAllProgresses(
-  orderId: string,
-  durationsInMinutes: number[],
-) {
-  // dates
-  const now = new Date();
-  
-  const preparationDuration: number = durationsInMinutes[0] | 15;
-  const preparationEstimatedEndTime = new Date(now.getTime() + preparationDuration * 60 * 1000);
-
-  const pickupDuration: number = durationsInMinutes[1] | 5;
-  const pickupEstimatedEndTime = new Date(preparationEstimatedEndTime.getTime() + pickupDuration * 60 * 1000);
-  
-  const deliveryDuration: number = durationsInMinutes[2] | 10;
-  const deliveryEstimatedEndTime = new Date(pickupEstimatedEndTime.getTime() + deliveryDuration * 60 * 1000);
-  
-
-  const preparationProgress = await prisma.progress.create({
-    data: { estimatedEndTime: preparationEstimatedEndTime},
-  });
-  const pickupProgress = await prisma.progress.create({
-    data: { estimatedEndTime: pickupEstimatedEndTime},
-  });
-  const deliveryProgress = await prisma.progress.create({
-    data: { estimatedEndTime: deliveryEstimatedEndTime},
-  });
-
-  await prisma.order.update({
-    where: { id: orderId },
-    data: {
-      preparationProgressId: preparationProgress.id,
-      pickupProgressId: pickupProgress.id,
-      deliveryProgressId: deliveryProgress.id,
-    },
-  });
-
-  return { preparationProgress, pickupProgress, deliveryProgress };
-}
 async function updateProgress(
   orderId: string,
   type: "PREPARATION" | "PICK_UP" | "DELIVERY",
@@ -152,7 +79,6 @@ export class OrderService {
   ) {
 
     console.log("=====================OrderService>create====================");
-
     const {
       organizationId,
       customerId,
@@ -161,26 +87,42 @@ export class OrderService {
       promotionCode,
       ...orderData
     } = data;
-
     console.log("-------------------------------->order data:", data);
 
     // Get cart for user
-    const cart = await prisma.shopCart.findUnique({
-      where: {
-        organizationId_customerId: { organizationId, customerId },
-      },
-      include: {
-        items: {
+    const cart = guestCustomerId
+      ? await prisma.shopCart.findFirst({
+          where: {
+            organizationId, guestCustomerId
+          },
           include: {
-            variant: {
+            items: {
               include: {
-                product: true,
+                variant: {
+                  include: {
+                    product: true,
+                  },
+                },
               },
             },
           },
-        },
-      },
-    });
+        })
+      : await prisma.shopCart.findUnique({
+          where: {
+            organizationId_customerId: { organizationId, customerId },
+          },
+          include: {
+            items: {
+              include: {
+                variant: {
+                  include: {
+                    product: true,
+                  },
+                },
+              },
+            },
+          },
+        });
 
     if (!cart || cart.items.length === 0) {
       throw new Error("Cart is empty");

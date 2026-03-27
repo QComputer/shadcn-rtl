@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useGuestCart } from "@/lib/contexts/guest-cart-context";
+import { useCart } from "@/lib/contexts/cart-context";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Loader2, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,7 +27,7 @@ export function AddToCartButton({
   children,
   onSuccess,
 }: AddToCartButtonProps) {
-  const { addToCart, isLoading } = useGuestCart();
+  const { addToCart, isLoading } = useCart();
   const [isAdding, setIsAdding] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 

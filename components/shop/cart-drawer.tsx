@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCart } from "@/lib/contexts/cart-context";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { Minus, Plus, Trash2, ShoppingBag, Loader2, ShoppingCart, ShoppingBasket } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 
@@ -83,7 +83,7 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
               </p>
             </div>
             <Link href={`/shop/${organizationSlug}`}>
-              <Button>محصولات ما را ببینید</Button>
+              <SheetClose className="bg-primary text-primary-foreground [a]:hover:bg-primary/80 h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pe-2 has-data-[icon=inline-start]:ps-2 focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 rounded-lg border border-transparent bg-clip-padding text-sm font-medium focus-visible:ring-3 aria-invalid:ring-3 [&_svg:not([class*='size-'])]:size-4 inline-flex items-center justify-center whitespace-nowrap transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none shrink-0 [&_svg]:shrink-0 outline-none group/button select-none">محصولات ما را ببینید</SheetClose>
             </Link>
           </div>
         ) : (
@@ -184,14 +184,14 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
               </div>
               <div className="grid gap-2">
                 <Link href={`/shop/${organizationSlug}/checkout`}>
-                  <Button className="w-full" size="lg">
+                <SheetClose className="w-full bg-primary text-primary-foreground [a]:hover:bg-primary/80 h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pe-2 has-data-[icon=inline-start]:ps-2 focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 rounded-lg border border-transparent bg-clip-padding text-sm font-medium focus-visible:ring-3 aria-invalid:ring-3 [&_svg:not([class*='size-'])]:size-4 inline-flex items-center justify-center whitespace-nowrap transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none shrink-0 [&_svg]:shrink-0 outline-none group/button select-none">
                     ادامه برای بررسی و تایید
-                  </Button>
+              </SheetClose>
                 </Link>
                 <Link href={`/shop/${organizationSlug}`}>
-                  <Button variant="outline" className="w-full">
-                    ادامه خرید 
-                  </Button>
+                 <SheetClose className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pe-2 has-data-[icon=inline-start]:ps-2 focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 rounded-lg border border-transparent bg-clip-padding text-sm font-medium focus-visible:ring-3 aria-invalid:ring-3 [&_svg:not([class*='size-'])]:size-4 inline-flex items-center justify-center whitespace-nowrap transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none shrink-0 [&_svg]:shrink-0 outline-none group/button select-none">
+                  بازگشت به منوی محصولات
+                 </SheetClose>
                 </Link>
               </div>
             </div>

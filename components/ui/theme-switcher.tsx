@@ -21,7 +21,7 @@ interface ThemeSwitcherProps {
   sideOffset?: number
 }
 
-export function ThemeSwitcher({ align = "end", sideOffset = 4 }: ThemeSwitcherProps) {
+export function ThemeSwitcher({ align = "start", sideOffset = 4 }: ThemeSwitcherProps) {
   const { theme, setTheme } = useTheme()
 
   const themeOptions: { value: Theme; label: string; icon: React.ReactNode }[] = [

@@ -6,6 +6,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+console.log("---------------------------------------GET");
+
   try {
     const { slug } = await params;
 

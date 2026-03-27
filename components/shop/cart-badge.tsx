@@ -4,6 +4,7 @@ import React from "react";
 import { useCart } from "@/lib/contexts/cart-context";
 import { ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toPersianDigits } from "@/lib/persian"
 
 interface CartBadgeProps {
   className?: string;
@@ -28,11 +29,11 @@ export function CartBadge({ className, iconClassName, badgeClassName }: CartBadg
       {summary.itemCount > 0 && (
         <span
           className={cn(
-            "absolute -top-2 -right-2 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium",
+            "absolute -top-3 -right-3 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium",
             badgeClassName
           )}
         >
-          {summary.itemCount > 99 ? "99+" : summary.itemCount}
+          {summary.itemCount > 99 ? toPersianDigits("99")+"+" : toPersianDigits(summary.itemCount)}
         </span>
       )}
     </div>

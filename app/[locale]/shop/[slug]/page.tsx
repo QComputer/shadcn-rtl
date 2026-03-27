@@ -5,7 +5,6 @@ import Link from "next/link"
 import Image from "next/image"
 import { 
   Search, 
-  ShoppingCart,
   MapPin, 
   Phone, 
   Mail,
@@ -15,6 +14,9 @@ import {
   Filter,
   Grid,
   List,
+  Calendar,
+  Van,
+  LocateFixedIcon,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -188,7 +190,7 @@ export default function ShopPage({
   // Get today's hours
   const getTodayHours = () => {
     if (!data?.businessHours) return null
-    const today = new Date().toLocaleDateString("en-US", { weekday: "long" })
+    const today = new Date().toLocaleDateString("fa", { weekday: "long" })
     const dayMap: Record<string, string> = {
       Saturday: "SATURDAY",
       Sunday: "SUNDAY",
@@ -269,20 +271,27 @@ export default function ShopPage({
                 />
               </div>
             )}
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">
+            <h1 className="text-2xl md:text-3xl font-bold mb-2">
               {organization.name}
             </h1>
             {organization.description && (
-              <p className="text-lg text-muted-foreground mb-4">
+              <p className="text-muted-foreground mb-4">
                 {organization.description}
               </p>
             )}
             <div className="flex flex-wrap gap-3">
               {settings?.enableDelivery && (
-                <Badge variant="secondary">ارسال دارد</Badge>
+                <Badge variant="secondary">
+                <Van className="h-3 w-3" />
+                  
+                  ارسال دارد
+                  </Badge>
               )}
               {settings?.enablePickup && (
-                <Badge variant="secondary">تحویل حضوری</Badge>
+
+                <Badge variant="secondary">
+                <MapPin className="h-4 w-4" />
+                  تحویل حضوری</Badge>
               )}
             </div>
           </div>
@@ -293,7 +302,7 @@ export default function ShopPage({
       <section className="border-b bg-card sticky top-0 z-5">
         <div className="container mx-auto px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap gap-4 text-sm">
+            <div className="flex flex-wrap gap-3 text-sm">
               {organization.phone && (
                 <a 
                   href={`tel:${organization.phone}`} 
@@ -539,12 +548,12 @@ export default function ShopPage({
           <h2 className="text-2xl font-bold mb-6">{t("organization.businessHours")}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
             {data.businessHours.map((hours) => (
-              <Card key={hours.day} className={hours.isOpen ? "" : "opacity-50"}>
+              <Card key={hours.day} className={hours.isOpen ? "" : "opacity-40"}>
                 <CardContent className="py-3 px-3 text-center">
                   <p className="font-medium text-sm">{dayNames[hours.day]}</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {hours.isOpen 
-                      ? `${hours.openTime} - ${hours.closeTime}`
+                      ? `${toPersianDigits(hours.openTime)} - ${toPersianDigits(hours.closeTime)}`
                       : "تعطیل"
                     }
                   </p>

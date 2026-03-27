@@ -14,8 +14,8 @@ export function cn(...inputs: ClassValue[]) {
  */
 export function formatPrice(
   price: number,
-  currency: string = "USD",
-  locale: string = "en-US",
+  currency: string = "IRR",
+  locale: string = "fa",
   fromSmallestUnit: boolean = false
 ): string {
   const amount = fromSmallestUnit ? price / 100 : price;
@@ -33,7 +33,7 @@ export function formatPrice(
  */
 export function formatNumber(
   value: number,
-  locale: string = "en-US",
+  locale: string = "fa",
   options?: Intl.NumberFormatOptions
 ): string {
   return new Intl.NumberFormat(locale, options).format(value);
@@ -44,7 +44,7 @@ export function formatNumber(
  */
 export function formatDate(
   date: Date | string,
-  locale: string = "en-US",
+  locale: string = "fa",
   options: Intl.DateTimeFormatOptions = { 
     year: "numeric", 
     month: "long", 

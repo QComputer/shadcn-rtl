@@ -22,6 +22,7 @@ export async function generateMetadata({ params }: ShopLayoutProps): Promise<Met
     const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/public/organizations/${slug}/shop`, {
       cache: 'no-store'
     });
+    console.log("------------------shop response:", response);
     
     if (!response.ok) {
       return {
@@ -64,13 +65,13 @@ export default async function ShopLayout({ children, params }: ShopLayoutProps) 
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container flex h-16 items-center justify-between">
             <Link href={`/shop/${slug}`} className="flex items-center gap-2 px-2">
-              <Store className="h-6 w-6 " />
-              <span className="font-semibold text-lg">{shopData.name}</span>
+              <Store className="h-5 w-5 " />
+              <span className="font-semibold">{shopData.name}</span>
             </Link>
 
             <div className="flex items-center gap-4">
               <CartDrawer organizationSlug={slug}>
-                <Button variant="ghost" size="icon" className="relative">
+                <Button variant="ghost" size="icon" className="relative ">
                   <CartBadge />
                 </Button>
               </CartDrawer>

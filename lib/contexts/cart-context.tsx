@@ -139,7 +139,7 @@ export function CartProvider({ children, organizationId }: CartProviderProps) {
     
     try {
       const response = await fetch(`/api/cart/items/${itemId}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quantity }),
       });

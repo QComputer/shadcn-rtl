@@ -81,18 +81,13 @@ export default async function HomePage({
                 href={`/${locale}/dashboard`}
                 className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
               >
-                <Building2 className="h-6 w-6" />
-                <span className="font-bold text-xl">{t("home.platformName") || "پلتفرم تجارت"}</span>
+                <Building2 className="h-5 w-5" />
+                <span className="font-bold text-lg">{t("home.platformName") || "پلتفرم تجارت"}</span>
               </Link>
             </div>
             <div className="flex items-center gap-4">
               <LocaleSwitcher />
               <ThemeSwitcher />
-              <Link href={`/${locale}/register`}>
-                <Button variant="outline" size="sm">
-                  {t("auth.register") || "ثبت نام"}
-                </Button>
-              </Link>
               <Link href={`/${locale}/login`}>
                 <Button variant="default" size="sm">
                   {t("auth.login") || "ورود"}
@@ -106,8 +101,8 @@ export default async function HomePage({
       {/* Hero Section */}
       <section className="relative py-20 lg:py-32 overflow-hidden">
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-4xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+          <div className="max-w-3xl mx-auto text-center">
+            <h1 className="text-3xl lg:text-5xl font-bold mb-6 pb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
               {t("home.hero.title") || "بهترین پلتفرم تجارت الکترونیک"}
             </h1>
             <p className="text-xl text-muted-foreground mb-8">

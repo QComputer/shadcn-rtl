@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { organizationService } from "@/lib/services/organization.service";
 
 export async function GET(
   request: NextRequest,
@@ -9,27 +10,9 @@ export async function GET(
     const { slug } = await params;
 
     // Get organization by slug
-    const organization = await prisma.organization.findUnique({
-      where: { 
-        slug,
-        isActive: true,
-        deletedAt: null,
-      },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        description: true,
-        address: true,
-        phone: true,
-        email: true,
-        logo: true,
-        coverImage: true,
-        type: true,
-        locale: true,
-        timezone: true,
-      },
-    });
+        const organization = await organizationService.getBySlugPublic(slug);
+      console.log("---------------organization/slug/shop Layout");
+
 
     if (!organization) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 });

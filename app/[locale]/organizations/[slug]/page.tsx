@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
-import { formatToman } from "@/lib/persian"
+import { formatToman, toPersianDigits } from "@/lib/persian"
 
 interface ServiceCategory {
   id: string
@@ -181,12 +181,12 @@ export default function OrganizationPage({
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="relative h-96 bg-gradient-to-br from-primary/20 via-primary/10 to-background">
+      <section className="relative h-80 bg-gradient-to-br from-primary/20 via-primary/10 to-background">
         <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
-        <div className="container mx-auto px-4 pt-32 relative z-10">
+        <div className="container mx-auto px-4 pt-24 relative z-10">
           <div className="max-w-3xl">
             {organization.logo && (
-              <div className="w-24 h-24 rounded-lg overflow-hidden mb-6 bg-card">
+              <div className="w-20 h-20 rounded-lg overflow-hidden mb-4 bg-card">
                 <img 
                   src={organization.logo} 
                   alt={organization.name}
@@ -194,25 +194,25 @@ export default function OrganizationPage({
                 />
               </div>
             )}
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">
+            <h1 className="text-3xl md:text-4xl font-bold mb-2">
               {organization.name}
             </h1>
             {organization.description && (
-              <p className="text-xl text-muted-foreground mb-6">
+              <p className=" text-muted-foreground mb-4">
                 {organization.description}
               </p>
             )}
-            <div className="flex flex-wrap gap-4 mb-6">
-               <Button size="lg" className="gap-2">
+            <div className="flex flex-wrap gap-3">
+               <Button  className="gap-2">
                  <Link href={`/${locale}/organizations/${slug}/booking`}>
-                   <Calendar className="h-4 w-4" />
-                   {t("organization.bookNow")}
+                   <Calendar className="h-3 w-3" />
+                    <p className="text-xs">{t("organization.bookNow")}</p>
                  </Link>
                </Button>
-               <Button size="lg" variant="secondary" className="gap-2">
+               <Button variant="secondary" className="gap-2">
                  <Link href={`/${locale}/organizations/${slug}/my-appointments`}>
-                   <Calendar className="h-4 w-4" />
-                   <p>{t("organization.myAppointments")}</p>
+                   <Calendar className="h-3 w-3" />
+                   <p className="text-xs">{t("organization.myAppointments")}</p>
                  </Link>
                </Button>
              </div>
@@ -221,9 +221,9 @@ export default function OrganizationPage({
       </section>
 
       {/* Quick Info Bar */}
-      <section className="border-b bg-card pt-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex flex-wrap gap-6 text-sm">
+      <section className="border-b bg-card top-0 z-5">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex flex-wrap gap-3 text-sm">
             {organization.phone && (
               <a 
                 href={`tel:${organization.phone}`} 
@@ -363,7 +363,7 @@ export default function OrganizationPage({
                   </div>
                   <p className="text-muted-foreground mt-2">
                     {hours.isOpen 
-                      ? `${hours.openTime} - ${hours.closeTime}`
+                      ? `${toPersianDigits(hours.openTime)} -  ${toPersianDigits(hours.closeTime)}`
                       : "-"
                     }
                   </p>

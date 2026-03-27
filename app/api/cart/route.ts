@@ -33,7 +33,6 @@ export async function GET(request: NextRequest) {
 
     if (session?.user?.id) {
       // --------------------------------- Registered user
-      console.log("--------------------------------- Registered user:", session?.user);
       
       const cart = existingSessionId
         ? // --------------------Marge to user cart

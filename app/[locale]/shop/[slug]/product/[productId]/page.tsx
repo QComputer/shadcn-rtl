@@ -40,8 +40,10 @@ interface Product {
   name: string
   description: string | null
   basePrice: number
+  image: string | null
   images: string[]
-  sku: string | null
+  sku: string | null  
+
   trackInventory: boolean
   lowStockThreshold: number
   category: {

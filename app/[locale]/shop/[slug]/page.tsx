@@ -46,6 +46,7 @@ interface Product {
   name: string
   description: string | null
   basePrice: number
+  image: string | null
   images: string[]
   variants: ProductVariant[]
 }
@@ -434,9 +435,9 @@ export default function ShopPage({
                   >
                     <Card className="hover:shadow-md transition-shadow overflow-hidden h-full">
                       <div className="aspect-square bg-muted relative">
-                        {product.images.length > 0 ? (
+                        {product.image ? (
                           <img 
-                            src={product.images[0]} 
+                            src={product.image} 
                             alt={product.name}
                             className="w-full h-full object-cover"
                           />

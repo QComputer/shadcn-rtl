@@ -176,6 +176,27 @@ export class OrganizationService {
     return organization;
   }
 
+  async getMember(userId: string) {
+    return prisma.organizationMember.findMany({
+      where: { userId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+            isActive: true,
+            businessHours: true,
+          },
+        },
+      },
+      orderBy: { joinedAt: "desc" },
+    });
+  }
   async getMembers(organizationId: string) {
     return prisma.organizationMember.findMany({
       where: { organizationId },
@@ -190,6 +211,7 @@ export class OrganizationService {
             lastName: true,
             avatar: true,
             isActive: true,
+            businessHours: true,
           },
         },
       },

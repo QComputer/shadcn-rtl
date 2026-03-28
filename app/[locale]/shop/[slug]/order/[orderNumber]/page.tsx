@@ -30,7 +30,8 @@ interface OrderItem {
     product: {
       id: string;
       name: string;
-      images: string[];
+      image: string | null;
+      images: string[]
     };
   };
 }

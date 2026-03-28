@@ -78,7 +78,7 @@ export async function GET(
         name: product.name,
         description: product.description,
         basePrice: product.basePrice,
-        images: product.images,
+        image: product.image,
         sku: product.sku,
         trackInventory: product.trackInventory,
         lowStockThreshold: product.lowStockThreshold,

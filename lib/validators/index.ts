@@ -153,6 +153,7 @@ export const createProductSchema = z.object({
   description: z.string().max(5000).optional(),
   basePrice: z.number().nonnegative(),
   images: z.array(z.string().url()).default([]),
+  image: z.string().url().optional(),
   sku: z.string().max(100).optional(),
   categoryId: z.string().cuid(),
   trackInventory: z.boolean().default(true),

@@ -18,7 +18,15 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const members = (session.user.role==="SUPER_ADMIN") ? id ? await organizationService.getMembers(id) : await organizationService.getAllMembers() : session.organizationId? await organizationService.getMembers(session.organizationId) : [];
+    const members = (session.user.role==="SUPER_ADMIN") 
+    ? id 
+        ? await organizationService.getMembers(id) 
+        : await organizationService.getAllMembers() 
+    : session?.organizationId 
+      ? await organizationService.getMembers(session.organizationId) 
+      : session?.user?.id 
+        ? [await organizationService.getMember(session.user?.id)]
+        : [];
 
     return NextResponse.json(members);
   } catch (error) {

@@ -13,6 +13,15 @@ import {
   XCircle,
   Filter
 } from "lucide-react"
+
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import faLocale from "@fullcalendar/core/locales/fa";
+import dayjs from "dayjs";
+import jalaliday from "jalaliday";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -34,6 +43,14 @@ import {
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatPersianDate, formatToman, toPersianDigits } from "@/lib/persian"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
+import { BusinessHour } from "@prisma/client";
+
+
+interface TimeInterval {
+  index: number
+  duration: number
+  appointment: Appointment | null
+}
 
 interface Appointment {
   id: string
@@ -77,6 +94,9 @@ const statusConfig: Record<string, {
   NO_SHOW: { label: "عدم حضور", icon: XCircle, color: "bg-gray-500", variant: "secondary" },
 }
 
+
+dayjs.extend(jalaliday);
+
 export default function StaffCalendarPage({ 
   params 
 }: { 
@@ -88,11 +108,15 @@ export default function StaffCalendarPage({
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [businessHourss, setBusinessHourss] = useState<BusinessHour|null>(null)
+  const [timeIntervals, setTimeIntervals] = useState<Appointment[]>([])
   const [error, setError] = useState<string | null>(null)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
   const [view, setView] = useState<"day" | "week">("day")
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
+  const [selectedTime, setSelectedTime] = useState<Appointment | null>(null)
+  const [timeScale, setTimeScales] = useState<number>(2)
 
   useEffect(() => {
     setMounted(true)
@@ -109,12 +133,21 @@ export default function StaffCalendarPage({
       })
       .then(data => {
         setAppointments(data.data || [])
+        getDayTimeIntervals()
         setLoading(false)
       })
       .catch(err => {
         setError(err.message)
-        setLoading(false)
+        setLoading(false) 
+    })
+    fetch("/api/users/me/business-hours")
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to fetch buisiness hours")
+        return res.json()
       })
+      .then(data => {
+        setBusinessHourss(data)
+    })
   }, [])
 
   const t = (key: string): string => {
@@ -128,6 +161,11 @@ export default function StaffCalendarPage({
     const selected = selectedDate.toDateString()
     return aptDate === selected
   })
+
+  const getDayTimeIntervals = () => {
+    console.log(dayAppointments);
+    
+  }
 
   // Update appointment status
   const updateStatus = async (id: string, status: string) => {
@@ -245,6 +283,32 @@ export default function StaffCalendarPage({
           </Card>
         </div>
 
+        <div className="grid grid-cols-4 md:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold">{dayAppointments.length}</div>
+              <p className="text-sm text-muted-foreground">مجموع نوبت‌ها</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold text-yellow-600">
+                {dayAppointments.filter(a => a.status === "PENDING").length}
+              </div>
+              <p className="text-sm text-muted-foreground">در انتظار</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold text-green-600 col-4">
+                {dayAppointments.filter(a => a.status === "CONFIRMED").length}
+              </div>
+              <p className="text-sm text-muted-foreground">تأیید شده</p>
+            </CardContent>
+          </Card>
+         
+        </div>
+
         {/* Appointments Timeline */}
         {loading ? (
           <div className="space-y-4">
@@ -268,12 +332,13 @@ export default function StaffCalendarPage({
                 const StatusIcon = status?.icon || AlertCircle
                 
                 return (
+                  <>
                   <Card 
                     key={apt.id} 
-                    className="hover:shadow-md transition-shadow cursor-pointer"
+                    className="hover:shadow-md transition-shadow cursor-pointer max-h-150"
                     onClick={() => setSelectedAppointment(apt)}
                   >
-                    <CardContent className="p-4">
+                    <CardContent className="">
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         {/* Time */}
                         <div className="flex items-center gap-4 min-w-[150px]">
@@ -325,6 +390,24 @@ export default function StaffCalendarPage({
                       )}
                     </CardContent>
                   </Card>
+                  <Card 
+                    key={apt.id+"2"} 
+                    className="hover:shadow-md transition-shadow cursor-pointer max-h-150"
+                    onClick={() => setSelectedTime(apt)}
+                  >
+                    <CardContent className="">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        {/* Time */}
+                        <div className="flex items-center gap-4 min-w-[150px]">
+                        {new Date(apt.startTime).toLocaleTimeString("fa-IR", { 
+                                hour: "2-digit", 
+                                minute: "2-digit" 
+                              })}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  </>
                 )
               })}
           </div>

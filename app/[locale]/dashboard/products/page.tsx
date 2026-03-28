@@ -52,6 +52,7 @@ interface Product {
   description: string | null
   basePrice: number
   images: string[]
+  image: string | null
   sku: string | null
   isActive: boolean
   trackInventory: boolean
@@ -318,9 +319,9 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
             return (
               <Card key={product.id} className="hover:shadow-md transition-shadow overflow-hidden">
                 <div className="aspect-square bg-muted relative">
-                  {product.images.length > 0 ? (
+                  {product.image ? (
                     <img 
-                      src={product.images[0]} 
+                      src={product.image} 
                       alt={product.name}
                       className="w-full h-full object-cover"
                     />

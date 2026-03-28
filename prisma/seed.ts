@@ -910,9 +910,7 @@ async function main() {
         description: "مولتی ویتامین مینرال",
         basePrice: 450000,
         sku: "HEALTH-SUP-001",
-        images: [
-          "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400",
-        ],
+        image: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400",
         trackInventory: true,
         lowStockThreshold: 20,
         isActive: true,
@@ -937,9 +935,7 @@ async function main() {
         description: "کرم مرطوب‌کننده صورت",
         basePrice: 280000,
         sku: "HEALTH-SKIN-001",
-        images: [
-          "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400",
-        ],
+        image:"https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400",
         trackInventory: true,
         lowStockThreshold: 15,
         isActive: true,
@@ -967,9 +963,7 @@ async function main() {
         description: "کباب کوبیده با بهترین گوشت",
         basePrice: 350000,
         sku: "FOOD-KB-001",
-        images: [
-          "https://images.unsplash.com/photo-1603360946369-dc9bb6258143?w=400",
-        ],
+        image:"https://images.unsplash.com/photo-1603360946369-dc9bb6258143?w=400",
         trackInventory: true,
         lowStockThreshold: 10,
         isActive: true,
@@ -984,9 +978,8 @@ async function main() {
         description: "جوجه کباب زعفرانی",
         basePrice: 320000,
         sku: "FOOD-JJ-001",
-        images: [
+        image: 
           "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=400",
-        ],
         trackInventory: true,
         lowStockThreshold: 10,
         isActive: true,

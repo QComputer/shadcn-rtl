@@ -45,16 +45,6 @@ export interface AuthContextType {
   checkAccess: (route: string) => AccessCheckResult;
   hasRouteAccess: (route: string) => boolean;
 }
-export interface AuthUser {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
-  locale: string;
-  theme: string;
-  isTeamMember: boolean;
-  isActive: boolean;
-}
 
 export interface OrganizationMembership {
   id: string;

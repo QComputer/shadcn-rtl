@@ -243,9 +243,9 @@ export default function ProductDetailPage({
             <div className="space-y-4">
               {/* Main Image */}
               <div className="aspect-square bg-muted rounded-lg overflow-hidden relative">
-                {product.images.length > 0 ? (
+                {product.images ? (
                   <img 
-                    src={product.images[selectedImage]} 
+                    src={product.image || undefined} 
                     alt={product.name}
                     className="w-full h-full object-cover"
                   />
@@ -264,7 +264,7 @@ export default function ProductDetailPage({
               </div>
               
               {/* Thumbnail Gallery */}
-              {product.images.length > 1 && (
+              {product.images?.length > 1 && (
                 <div className="flex gap-2 overflow-x-auto pb-2">
                   {product.images.map((image, index) => (
                     <button

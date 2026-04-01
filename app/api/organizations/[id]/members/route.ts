@@ -5,7 +5,7 @@ import { hasPermission } from "@/lib/types";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string | null}> }
+  { params }: { params: Promise<{ id: string}> }
 ) {
   try {
     const session = await auth();
@@ -17,16 +17,15 @@ export async function GET(
     if (!hasPermission(session.user.role, "org:read")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-
-    const members = (session.user.role==="SUPER_ADMIN") 
-    ? id 
-        ? await organizationService.getMembers(id) 
-        : await organizationService.getAllMembers() 
-    : session?.organizationId 
-      ? await organizationService.getMembers(session.organizationId) 
-      : session?.user?.id 
-        ? [await organizationService.getMember(session.user?.id)]
-        : [];
+    
+    const members =
+      session.user.role === "SUPER_ADMIN"
+      ? await organizationService.getAllMembers()
+      : (session?.user?.organizationId)
+        ? (session.user.role == "ADMIN" || session.user.role == "MANAGER")
+          ? await organizationService.getMembers(session.user.organizationId)
+          : [await organizationService.getMemberByUserId(session.user.id)]
+        : []
 
     return NextResponse.json(members);
   } catch (error) {

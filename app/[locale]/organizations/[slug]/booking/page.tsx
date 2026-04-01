@@ -97,7 +97,6 @@ export default function BookingPage({
   const resolvedParams = use(params)
   const locale = resolvedParams.locale
   const slug = resolvedParams.slug
-  const router = useRouter()
   
   const [mounted, setMounted] = useState(false)
   const [data, setData] = useState<OrganizationData | null>(null)

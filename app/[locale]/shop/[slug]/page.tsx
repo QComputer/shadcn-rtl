@@ -283,16 +283,16 @@ export default function ShopPage({
             <div className="flex flex-wrap gap-3">
               {settings?.enableDelivery && (
                 <Badge variant="secondary">
-                <Van className="h-3 w-3" />
-                  
+                  <Van className="h-3 w-3" />
                   ارسال دارد
-                  </Badge>
+                </Badge>
               )}
               {settings?.enablePickup && (
 
                 <Badge variant="secondary">
-                <MapPin className="h-4 w-4" />
-                  تحویل حضوری</Badge>
+                  <MapPin className="h-4 w-4" />
+                  تحویل حضوری
+                </Badge>
               )}
             </div>
           </div>
@@ -490,9 +490,9 @@ export default function ShopPage({
                       <CardContent className="p-4">
                         <div className="flex gap-4">
                           <div className="w-24 h-24 bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                            {product.images.length > 0 ? (
+                            {product.image ? (
                               <img 
-                                src={product.images[0]} 
+                                src={product.image} 
                                 alt={product.name}
                                 className="w-full h-full object-cover"
                               />

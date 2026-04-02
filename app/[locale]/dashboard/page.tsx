@@ -420,7 +420,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                   <CardContent>
                     <div className="text-2xl font-bold">{toPersianDigits(dashboardData?.stats.todayAppointmentsCount?.toString() || "۰")}</div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {t("dashboard.pendingAppointments") || "در انتظار"}: {toPersianDigits(dashboardData?.stats.pendingAppointments?.toString() || "۰")}
+                      {t("appointment.pending") || "در انتظار"}: {toPersianDigits(dashboardData?.stats.pendingAppointments?.toString() || "۰")}
                     </p>
                   </CardContent>
                 </Card>
@@ -435,7 +435,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                   <CardContent>
                     <div className="text-2xl font-bold">{toPersianDigits(dashboardData?.stats.totalAppointments?.toString() || "۰")}</div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {t("dashboard.completedAppointments") || "تکمیل شده"}: {toPersianDigits(dashboardData?.stats.completedAppointments?.toString() || "۰")}
+                      {t("appointment.completed") || "تکمیل شده"}: {toPersianDigits(dashboardData?.stats.completedAppointments?.toString() || "۰")}
                     </p>
                   </CardContent>
                 </Card>
@@ -465,7 +465,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                   <CardContent>
                     <div className="text-2xl font-bold">{toPersianDigits(dashboardData?.stats.totalMembers?.toString() || "۰")}</div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {t("dashboard.confirmedAppointments") || "تأیید شده"}: {toPersianDigits(dashboardData?.stats.confirmedAppointments?.toString() || "۰")}
+                      {t("appointment.confirmed") || "تأیید شده"}: {toPersianDigits(dashboardData?.stats.confirmedAppointments?.toString() || "۰")}
                     </p>
                   </CardContent>
                 </Card>
@@ -525,7 +525,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
-                      {t("dashboard.completedAppointments") || "نوبت‌های تکمیل شده"}
+                      {t("appointment.completed") || "نوبت‌های تکمیل شده"}
                     </CardTitle>
                     <UserCheck className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>

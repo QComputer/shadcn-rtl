@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, use } from "react"
+import dayjs, { Dayjs } from "dayjs";
+
 import Link from "next/link"
 import {
   Search,
@@ -46,7 +48,7 @@ import {
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import { useDashboardAccess, useAuth } from "@/hooks/use-auth"
-import { formatToman, toPersianDigits } from "@/lib/persian"
+import { formatPersianDate, formatRelativePersianDate, formatRelativePersianTime, formatToman, toPersianDigits } from "@/lib/persian"
 import { GuestCustomer, User } from "@prisma/client"
 
 
@@ -131,11 +133,11 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
   const [searchQuery, setSearchQuery] = useState("")
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
-  const [preparationTime, setPreparationTime] = useState("")
+  const [preparationTime, setPreparationTime] = useState<Dayjs | null>(null)
   const [savingPreparationTime, setSavingPreparationTime] = useState(false)
-  const [pickupTime, setPickupTime] = useState("")
+  const [pickupTime, setPickupTime] = useState<Dayjs | null>(null)
   const [savingPickupTime, setSavingPickupTime] = useState(false)
-  const [deliveryTime, setDeliveryTime] = useState("")
+  const [deliveryTime, setDeliveryTime] = useState<Dayjs | null>(null)
   const [savingDeliveryTime, setSavingDeliveryTime] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
@@ -210,9 +212,9 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
 
   const handleViewOrder = (order: Order) => {
     setSelectedOrder(order)
-    setPreparationTime(order.preparationProgress?.estimatedEndTime?.toString()||"")
-    setPickupTime(order.pickupProgress?.estimatedEndTime?.toString()||"")
-    setDeliveryTime(order.deliveryProgress?.estimatedEndTime?.toString()||"")
+    setPreparationTime(dayjs(order.preparationProgress?.estimatedEndTime) || null)
+    setPickupTime(dayjs(order.pickupProgress?.estimatedEndTime)|| null)
+    setDeliveryTime(dayjs(order.deliveryProgress?.estimatedEndTime)|| null)
     setDetailDialogOpen(true)
   }
 
@@ -285,7 +287,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
   }
 
   const handleSavePreparationEstimatedEndTime = async (orderId: string) => {
-    console.log(preparationTime);
+    console.log("setting preparationTime ", preparationTime);
     setUpdating(true)
     try {
       const response = await fetch(`/api/orders/${orderId}`, {
@@ -310,9 +312,23 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
       setUpdating(false)
     }
   }
+  
+  const addToPreparationEstimatedEndTime = async (minutes: number) => {
+    console.log(`add ${minutes} minutes to preparationTime `, preparationTime);
+    setPreparationTime(preparationTime?.add(minutes, 'minute') || null)
+  }
+
+   const addToPickupEstimatedEndTime = async (minutes: number) => {
+    console.log(`add ${minutes} minutes to pick-up `, pickupTime);
+    setPickupTime(pickupTime?.add(minutes, 'minute') || null)
+  }
+     const addToDeliveryEstimatedEndTime = async (minutes: number) => {
+    console.log(`add ${minutes} minutes to pick-up `, deliveryTime);
+    setDeliveryTime(deliveryTime?.add(minutes, 'minute') || null)
+  }
 
   const handleSavePickupEstimatedEndTime = async (orderId: string) => {
-    console.log(pickupTime);
+    console.log("saving pickupTime---",pickupTime);
     setUpdating(true)
     try {
       const response = await fetch(`/api/orders/${orderId}`, {
@@ -593,11 +609,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                 <CardContent className="space-y-1 text-sm">
                   {selectedOrder.customer?.firstName && <p>نام : {selectedOrder.customer.firstName}</p>}
                   {selectedOrder.customer?.lastName && <p>نام خانوادگی : {selectedOrder.customer.name}</p>}
-                  {selectedOrder.customer?.name && <p>نام کاربری : {selectedOrder.customer.name}</p>}
-                  {selectedOrder.customer?.phone && <p>تلفن: {selectedOrder.customer.phone}</p>}
-                  {selectedOrder.customer?.email && <p>ایمیل: {selectedOrder.customer.email}</p>}{selectedOrder.customer?.firstName && <p>نام : {selectedOrder.customer.firstName}</p>}
                   {selectedOrder.guestCustomer?.name && <p>نام کاربر میهمان : {selectedOrder.guestCustomer.name}</p>}
-                  {selectedOrder.guestCustomer?.email && <p> ایمیل کاربر میهمان: {selectedOrder.guestCustomer.email}</p>}
                 </CardContent>
               </Card>
 
@@ -612,6 +624,9 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                   </CardHeader>
                   <CardContent className="text-sm">
                     <p>{selectedOrder.deliveryAddress}</p>
+                  {selectedOrder.customer?.phone && 
+                  <p>تلفن: {selectedOrder.customer.phone}</p>}
+
                   </CardContent>
                 </Card>
               )}
@@ -678,52 +693,139 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
               {/* Progress */}
               <Card>
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
                       <Timer className="h-4 w-4" />
-                    زمان های تخمین زده شده
+                      زمان های تخمیی
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-4 space-y-2">
+                <CardContent className="pt-1 space-y-2">
+                <div className=" space-y-20">
 
-                  {preparationTime && (
-                    <div className="grid gap-4 md:grid-cols-3">
+                {preparationTime && (
+                    <div className="grid gap-0 grid-cols-2 grid-rows-2 ">
+                      <div className="row-1">
+
                       <Label htmlFor="preparationProgress">آماده سازی:</Label>
-                      <Input id="preparationProgress" 
-                      value={preparationTime.toString()} 
-                      onChange={(e) => setPreparationTime(e.target.value)}
-                    />
-                      <Button onClick={()=> handleSavePreparationEstimatedEndTime(selectedOrder.id)} disabled={savingPreparationTime}>
-                        {savingPreparationTime ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}
-                        {"ذخیره"}
+                      </div>
+                      <div className="row-2">
+                      
+                      {formatRelativePersianTime(preparationTime)} 
+                      </div>
+                      <div className="row-2">
+                    <div className="grid gap-0 grid-cols-3">
+                      <div className="grid gap-1 grid-rows-2">
+                        <Button size={"icon"} className={"bg-green-500 rounded-xs"} onClick={()=> addToPreparationEstimatedEndTime(1)}>
+                          {toPersianDigits(1)}
+                        </Button>
+                        <Button size={"icon"} className={"rounded-xs"} variant={"destructive"} onClick={()=> addToPreparationEstimatedEndTime(-1)}>
+                          {toPersianDigits(1)}
+                        </Button>
+                      </div>
+                      <div className="grid gap-1 grid-rows-2">
+                      
+                      <Button size={"icon"} className={"bg-green-500 rounded-xs "} variant={"secondary"} onClick={()=> addToPreparationEstimatedEndTime(5)}>
+                       {toPersianDigits(5)}
                       </Button>
+                      <Button size={"icon"} className={"rounded-xs"} variant={"destructive"} onClick={()=> addToPreparationEstimatedEndTime(-5)}>
+                         {toPersianDigits(5)}
+                        </Button>
+                      </div>
+                      <div className="grid gap-1 grid-rows-2">
+                      <Button size={"icon"} className={"bg-green-500 rounded-xs"} variant={"secondary"} onClick={()=> addToPreparationEstimatedEndTime(10)}>
+                      {toPersianDigits(10)}
+                      </Button>
+                      <Button size={"icon"} className={"rounded-xs"} variant={"destructive"} onClick={()=> addToPreparationEstimatedEndTime(-10)}>
+                          {toPersianDigits(10)}
+                        </Button>
+                      </div>
+                    </div>
+                    </div>
                     </div>
                  )}
-                 {pickupTime && (
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <Label htmlFor="pickupProgress">پیکاپ:</Label>
-                      <Input id="pickupProgress"
-                      value={pickupTime.toString()} 
-                      onChange={(e) => setPickupTime(e.target.value)}
-                    />
-                      <Button onClick={() => handleSavePickupEstimatedEndTime(selectedOrder.id)} disabled={savingPickupTime}>
-                        {savingPickupTime ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}
-                        {"ذخیره"}
+                {pickupTime && (
+                    <div className="grid gap-0 grid-cols-2 grid-rows-2 ">
+                      <div className="row-1">
+
+                      <Label htmlFor="picklupProgress">پیکاپ:</Label>
+                      </div>
+                      <div className="row-2">
+                      
+                      {formatRelativePersianTime(pickupTime)} 
+                      </div>
+                      <div className="row-2">
+                    <div className="grid gap-0 grid-cols-3">
+                      <div className="grid gap-1 grid-rows-2">
+                        <Button size={"icon"} className={"bg-green-500 rounded-xs"} onClick={()=> addToPickupEstimatedEndTime(1)}>
+                          {toPersianDigits(1)}
+                        </Button>
+                        <Button size={"icon"} className={"rounded-xs"} variant={"destructive"} onClick={()=> addToPickupEstimatedEndTime(-1)}>
+                          {toPersianDigits(1)}
+                        </Button>
+                      </div>
+                      <div className="grid gap-1 grid-rows-2">
+                      
+                      <Button size={"icon"} className={"bg-green-500 rounded-xs "} variant={"secondary"} onClick={()=> addToPickupEstimatedEndTime(5)}>
+                       {toPersianDigits(5)}
                       </Button>
+                      <Button size={"icon"} className={"rounded-xs"} variant={"destructive"} onClick={()=> addToPickupEstimatedEndTime(-5)}>
+                         {toPersianDigits(5)}
+                        </Button>
+                      </div>
+                      <div className="grid gap-1 grid-rows-2">
+                      <Button size={"icon"} className={"bg-green-500 rounded-xs"} variant={"secondary"} onClick={()=> addToPickupEstimatedEndTime(10)}>
+                      {toPersianDigits(10)}
+                      </Button>
+                      <Button size={"icon"} className={"rounded-xs"} variant={"destructive"} onClick={()=> addToPickupEstimatedEndTime(-10)}>
+                          {toPersianDigits(10)}
+                        </Button>
+                      </div>
+                    </div>
+                    </div>
                     </div>
                  )}
-                 {deliveryTime && (
-                    <div className="grid gap-4 md:grid-cols-3">
+                {deliveryTime && (
+                    <div className="grid gap-0 grid-cols-2 grid-rows-2 ">
+                      <div className="row-1">
+
                       <Label htmlFor="deliveryProgress">تحویل دهی:</Label>
-                      <Input id="deliveryProgress" 
-                      value={deliveryTime.toString()} 
-                      onChange={(e) => setDeliveryTime(e.target.value)}
-                    />
-                      <Button onClick={() => handleSaveDeliveryEstimatedEndTime(selectedOrder.id)} disabled={savingDeliveryTime}>
-                        {savingDeliveryTime ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}
-                        {"ذخیره"}
+                      </div>
+                      <div className="row-2">
+                      
+                      {formatRelativePersianTime(deliveryTime)} 
+                      </div>
+                      <div className="row-2">
+                    <div className="grid gap-0 grid-cols-3">
+                      <div className="grid gap-1 grid-rows-2">
+                        <Button size={"icon"} className={"bg-green-500 rounded-xs"} onClick={()=> addToDeliveryEstimatedEndTime(1)}>
+                          {toPersianDigits(1)}
+                        </Button>
+                        <Button size={"icon"} className={"rounded-xs"} variant={"destructive"} onClick={()=> addToDeliveryEstimatedEndTime(-1)}>
+                          {toPersianDigits(1)}
+                        </Button>
+                      </div>
+                      <div className="grid gap-1 grid-rows-2">
+                      
+                      <Button size={"icon"} className={"bg-green-500 rounded-xs "} variant={"secondary"} onClick={()=> addToDeliveryEstimatedEndTime(5)}>
+                       {toPersianDigits(5)}
                       </Button>
+                      <Button size={"icon"} className={"rounded-xs"} variant={"destructive"} onClick={()=> addToDeliveryEstimatedEndTime(-5)}>
+                         {toPersianDigits(5)}
+                        </Button>
+                      </div>
+                      <div className="grid gap-1 grid-rows-2">
+                      <Button size={"icon"} className={"bg-green-500 rounded-xs"} variant={"secondary"} onClick={()=> addToDeliveryEstimatedEndTime(10)}>
+                      {toPersianDigits(10)}
+                      </Button>
+                      <Button size={"icon"} className={"rounded-xs"} variant={"destructive"} onClick={()=> addToDeliveryEstimatedEndTime(-10)}>
+                          {toPersianDigits(10)}
+                        </Button>
+                      </div>
+                    </div>
+                    </div>
                     </div>
                  )}
+            </div>
+
                 </CardContent>
               </Card>
 

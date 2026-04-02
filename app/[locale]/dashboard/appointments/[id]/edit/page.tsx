@@ -284,7 +284,7 @@ export default function EditAppointmentPage({
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">{t("customer.title") || "Customer"}</h3>
+                  <h3 className="text-lg font-semibold mb-2">{t("appointment.customer") || "Customer"}</h3>
                   <div className="space-y-1 text-sm">
                     <p className="font-medium">{customerName}</p>
                     {appointment.customer.phone && (

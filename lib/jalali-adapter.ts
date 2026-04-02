@@ -3,4 +3,5 @@ import jalaliday from "jalaliday";
 
 dayjs.extend(jalaliday);
 
-export const toJalali = (date: Date) => dayjs(date).calendar("jalali");
+export const toJalali = (date: Date | string | number) =>
+  dayjs(date).calendar("jalali");

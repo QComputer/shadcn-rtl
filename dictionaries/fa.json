@@ -173,6 +173,7 @@
     "orders": "سفارشات",
     "create": "ایجاد سفارش",
     "place": "ثبت سفارش",
+    "placed": "ثبت شده",
     "summary": "خلاصه سفارش",
     "status": "وضعیت",
     "type": "نوع",
@@ -217,7 +218,8 @@
     "comparedToLastWeek": "نسبت به هفته قبل",
     "comparedToLastMonth": "نسبت به ماه قبل",
     "menu": "منو",
-    "viewAll": "مشاهده همه"
+    "viewAll": "مشاهده همه",
+    "recentAppointments": "قرار ملاقات های اخیر"
   },
   "user": {
     "title": "کاربر",
@@ -263,8 +265,11 @@
     "proceedToCheckout": "ادامه برای بررسی و تایید"
   },
   "appointment": {
+    "information": "اطلاعات وقت ملاقات",
+    "date": "تاریخ",
     "title": "وقت ملاقات",
     "book": "رزرو وقت",
+    "details": "جزئیات سفارش",
     "selectService": "انتخاب خدمات",
     "selectDate": "انتخاب تاریخ",
     "selectTime": "انتخاب زمان",
@@ -275,6 +280,7 @@
     "past": "گذشته",
     "completed": "تکمیل شده",
     "cancelled": "لغو شده",
+    "pending": "در انتظار",
     "noShow": "عدم حضور",
     "duration": "مدت زمان",
     "notes": "یادداشت‌ها",
@@ -282,6 +288,8 @@
     "selectProvider": "انتخاب ارائه‌دهنده",
     "yourInfo": "اطلاعات شما",
     "customerInfo": "اطلاعات مشتری",
+    "confirmed": "تائید شده",
+    "price": "قیمت",
     "success": "رزرو با موفقیت انجام شد",
     "availableSlots": "زمان‌های خالی",
     "noSlots": "متأسفانه زمان خالی وجود ندارد",

@@ -338,8 +338,9 @@ export class CartService {
 
   async updateItemQuantity(
     cartItemId: string,
-    customerId: string,
     data: UpdateCartItemInput,
+    customerId?: string,
+    sessionId?: string
   ) {
     // Find the cart item and verify ownership
     const cartItem = await prisma.shopCartItem.findUnique({
@@ -357,9 +358,19 @@ export class CartService {
     if (!cartItem) {
       throw new Error("Cart item not found");
     }
+    console.log("--------------updateItemQuantity> sessionId:", sessionId);
 
-    if (cartItem.cart.customerId !== customerId) {
-      throw new Error("Unauthorized");
+    console.log("--------------updateItemQuantity> cartItem:", cartItem);
+
+
+    if (!cartItem.cart.customerId) {
+      if (!sessionId || sessionId!==cartItem.cart.sessionId) {
+        throw new Error("Unauthorized");
+      }
+    } else {
+      if (customerId !== cartItem.cart.customerId) {
+        throw new Error("Unauthorized");
+      }
     }
 
     // Check inventory

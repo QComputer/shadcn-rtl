@@ -11,7 +11,6 @@ export async function GET(
 
     // Get organization by slug
         const organization = await organizationService.getBySlugPublic(slug);
-      console.log("---------------organization/slug/shop Layout");
 
 
     if (!organization) {

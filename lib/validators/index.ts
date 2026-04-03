@@ -188,18 +188,17 @@ export const updateCartItemSchema = z.object({
 });
 
 // Order validators
-export const createOrderSchema = z
-  .object({
-    organizationId: z.string().cuid(),
-    type: z.enum(["DELIVERY", "PICK_UP"]),
-    deliveryAddress: z.string().max(500).optional(),
-    notes: z.string().max(2000).optional(),
-    promotionCode: z.string().optional(),
-    autoCompleteEndTimes: z.boolean().default(true),
-    paymentMethod: z
-      .enum(["CREDIT_CARD", "DEBIT_CARD", "CASH", "WALLET", "BANK_TRANSFER"])
-      .optional(),
-})
+export const createOrderSchema = z.object({
+  organizationId: z.string().cuid(),
+  type: z.enum(["DELIVERY", "PICK_UP"]),
+  deliveryAddress: z.string().max(500).optional(),
+  notes: z.string().max(2000).optional(),
+  promotionCode: z.string().optional(),
+  autoCompleteEndTimes: z.boolean().default(true),
+  paymentMethod: z
+    .enum(["CREDIT_CARD", "DEBIT_CARD", "CASH", "WALLET", "BANK_TRANSFER"])
+    .optional(),
+});
 
 export const updateOrderStatusSchema = z.object({
   status: z.enum(["PENDING", "PLACED", "ACCEPTED", "PREPARING", "READY", "PICKED_UP", "DELIVERED", "CANCELLED", "RECEIVED", "REFUNDED"]),

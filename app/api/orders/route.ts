@@ -91,58 +91,16 @@ export async function POST(request: NextRequest) {
     } = body;
 
     const session = await auth();
-    let customerId = session?.user?.id;
-    let guestCustomerId = null;
-    let guestCustomer;
+    const customerId = session?.user?.id;
+    const sessionId = getSessionId(request);
+
     const data = createOrderSchema.parse(body);
 
-    if (!customerId) {
-      // Create or find guest customer
-      if (customerPhone) {
-        guestCustomer = await prisma.guestCustomer.findFirst({
-          where: {
-            phone: customerPhone,
-          },
-        });
-      } else if (customerEmail){
-        guestCustomer = await prisma.guestCustomer.findFirst({
-          where: {
-            email: customerEmail,
-          },
-        });
-      }
-      if (!guestCustomer) {
-        const name = generateGuestUserName(customerName);
-        const sessionId = getSessionId(request);
-        guestCustomer = await prisma.guestCustomer.create({
-          data: {
-            name,
-            sessionId,
-            phone: customerPhone || null,
-            email: customerEmail || null,
-            address: shippingAddress || null,
-          },
-        });
-        guestCustomerId = guestCustomer.id
-      console.log("-------------------------->guestCustomerId:",guestCustomerId);
+    const order = await orderService.create(data, customerId, sessionId);
 
-      }
-      
-      const order = await orderService.create({
-        ...data,
-        customerId: guestCustomer.name,
-        guestCustomerId: guestCustomer.id,
-      });
-      console.log("-------------------------->order:", order);
+          console.log("-------------------------->order:", order);
 
-      return NextResponse.json(order, { status: 201 });
-    } else {
-      const order = await orderService.create({
-        ...data,
-        customerId,
-      });
-    return NextResponse.json(order, { status: 201 });
-    }  
+          return NextResponse.json(order, { status: 201 });
   } catch (error) {
     console.error("Error creating order:", error);
     return NextResponse.json(

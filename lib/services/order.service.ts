@@ -74,15 +74,10 @@ async function getProgressId(
 }
 
 export class OrderService {
-  async create(
-    data: CreateOrderInput & { customerId: string; guestCustomerId?: string },
-  ) {
-
+  async create(data: CreateOrderInput, customerId?: string, sessionId?: string) {
     console.log("=====================OrderService>create====================");
     const {
       organizationId,
-      customerId,
-      guestCustomerId,
       autoCompleteEndTimes,
       promotionCode,
       ...orderData
@@ -90,24 +85,8 @@ export class OrderService {
     console.log("-------------------------------->order data:", data);
 
     // Get cart for user
-    const cart = guestCustomerId
-      ? await prisma.shopCart.findFirst({
-          where: {
-            organizationId, guestCustomerId
-          },
-          include: {
-            items: {
-              include: {
-                variant: {
-                  include: {
-                    product: true,
-                  },
-                },
-              },
-            },
-          },
-        })
-      : await prisma.shopCart.findUnique({
+    const cart = customerId
+      ? await prisma.shopCart.findUnique({
           where: {
             organizationId_customerId: { organizationId, customerId },
           },
@@ -122,9 +101,30 @@ export class OrderService {
               },
             },
           },
-        });
+        })
+      : sessionId
+        ? await prisma.shopCart.findFirst({
+            where: {
+              organizationId,
+              sessionId,
+            },
+            include: {
+              items: {
+                include: {
+                  variant: {
+                    include: {
+                      product: true,
+                    },
+                  },
+                },
+              },
+            },
+          })
+        : null;
 
-    if (!cart || cart.items.length === 0) {
+    console.log("---------------------CART: ", cart);
+
+    if (!cart || cart.items?.length === 0) {
       throw new Error("Cart is empty");
     }
 
@@ -219,8 +219,8 @@ export class OrderService {
     const deliveryEstimatedEndTime = new Date(
       pickupEstimatedEndTime.getTime() + deliveryDuration * 60 * 1000,
     );
-console.log('-------------------------------->preparationEstimatedEndTime');
-console.log(preparationEstimatedEndTime);
+    console.log("-------------------------------->preparationEstimatedEndTime");
+    console.log(preparationEstimatedEndTime);
     // Generate order number
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
@@ -251,7 +251,7 @@ console.log(preparationEstimatedEndTime);
           notes: orderData.notes,
           organizationId,
           customerId,
-          guestCustomerId,
+          sessionId,
           preparationProgressId: preparationProgress.id,
           pickupProgressId: pickupProgress.id,
           deliveryProgressId: deliveryProgress.id,
@@ -276,13 +276,6 @@ console.log(preparationEstimatedEndTime);
               email: true,
               firstName: true,
               lastName: true,
-            },
-          },
-          guestCustomer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
             },
           },
           organization: {
@@ -320,14 +313,6 @@ console.log(preparationEstimatedEndTime);
             email: true,
             firstName: true,
             lastName: true,
-            phone: true,
-          },
-        },
-        guestCustomer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
             phone: true,
           },
         },
@@ -437,13 +422,6 @@ console.log(preparationEstimatedEndTime);
               email: true,
             },
           },
-          guestCustomer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
           items: {
             include: {
               product: true,
@@ -537,7 +515,7 @@ console.log(preparationEstimatedEndTime);
     revalidatePath(`/dashboard/orders/${id}`);
     return order;
   }
-  
+
   async updateEstimatedEndTime(
     id: string,
     userRole: UserRole,
@@ -548,7 +526,7 @@ console.log(preparationEstimatedEndTime);
     if (!hasPermission(userRole, "order:update")) {
       throw new Error("Unauthorized");
     }
-    const progress = await updateProgress(id, type, estimatedEndTime)
+    const progress = await updateProgress(id, type, estimatedEndTime);
     return progress;
   }
 

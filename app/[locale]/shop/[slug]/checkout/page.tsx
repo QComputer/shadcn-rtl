@@ -203,6 +203,7 @@ export default function CheckoutPage({
           type: isDelivery? "DELIVERY" : "PICK_UP",
           customerName: formData.customerName,
           customerPhone: formData.customerPhone || "0000",
+          cart,
           items: cart.items.map(item => ({
             variantId: item.variant.id,
             quantity: item.quantity,

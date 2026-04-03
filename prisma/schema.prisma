@@ -542,9 +542,8 @@ model ShopCart {
   customerId     String?
   customer     User?           @relation(fields: [customerId], references: [id])
   
-  guestCustomerId     String?
-  guestCustomer     GuestCustomer?           @relation(fields: [guestCustomerId], references: [id])
-  
+  sessionId   String?  
+
   expiresAt DateTime? // Cart expiration (e.g., 7 days)
 
   items        ShopCartItem[]
@@ -552,15 +551,10 @@ model ShopCart {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   
-  sessionId   String?  
-
   @@index([status])
   @@index([customerId])
   @@unique([organizationId, customerId])
   @@index([organizationId, customerId])
-  @@index([guestCustomerId])
-  @@unique([organizationId, guestCustomerId])
-  @@index([organizationId, guestCustomerId])
   @@index([sessionId])
   @@unique([organizationId, sessionId])
   @@index([organizationId, sessionId])
@@ -586,7 +580,7 @@ model ShopCartItem {
 // Cart for checkout without account <------- TODO: Is going to get removed. I am going to use ShopCart as uniqu for both guest and registered users
 model GuestCart {
   id        String     @id @default(cuid())
-  sessionId String     @unique
+  sessionId String     
   status    CartStatus @default(ACTIVE)
 
   organizationId String
@@ -630,9 +624,7 @@ model GuestCustomer {
   email   String?
   address String?
 
-  orders Order[]
   appointments Appointment[]
-  shopCarts ShopCart[]
 
   createdAt DateTime @default(now())
 
@@ -674,12 +666,11 @@ model Order {
   // Metadata
   organizationId  String
   customerId      String?
-  guestCustomerId String?
+  sessionId      String?
   driverId        String?
 
   organization   Organization   @relation(fields: [organizationId], references: [id])
   customer       User?          @relation("CustomerOrderRelation", fields: [customerId], references: [id])
-  guestCustomer  GuestCustomer? @relation(fields: [guestCustomerId], references: [id])
   assignedDriver User?          @relation("DriverOrderRelation", fields: [driverId], references: [id])
   items          OrderItem[]
   payment        Payment?
@@ -700,7 +691,7 @@ model Order {
 
   @@index([organizationId])
   @@index([customerId])
-  @@index([guestCustomerId])
+  @@index([sessionId])
   @@index([driverId])
   @@index([preparationProgressId])
   @@index([pickupProgressId])

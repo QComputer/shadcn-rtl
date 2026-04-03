@@ -206,7 +206,6 @@ export async function POST(request: NextRequest) {
           deliveryAddress: fullAddress,
           notes: notes || null,
           organizationId,
-          guestCustomerId: guestCustomer.id,
           preparationProgressId: preparationProgress.id,
           pickupProgressId: pickupProgress.id,
           deliveryProgressId: deliveryProgress.id,
@@ -225,13 +224,6 @@ export async function POST(request: NextRequest) {
             include: {
               product: true,
               variant: true,
-            },
-          },
-          guestCustomer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
             },
           },
           organization: {

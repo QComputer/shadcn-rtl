@@ -23,19 +23,15 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     const data = updateCartItemSchema.parse(body);
-
-    if (!session?.user?.id) {
-      const sessionId = getSessionId(request);
-          const item = await cartService.updateItemQuantity(id, sessionId, data);
-      
-          return NextResponse.json(item);
-    
-    
-    }
-
-    const item = await cartService.updateItemQuantity(id, session.user.id, data);
-
-    return NextResponse.json(item);
+    const sessionId = session?.user?.id ? undefined : getSessionId(request)    
+    const item = await cartService.updateItemQuantity(
+        id,
+        data,
+        session?.user?.id,
+        sessionId,
+      );
+  
+      return NextResponse.json(item);
   } catch (error) {
     console.error("Error updating cart item:", error);
     return NextResponse.json(

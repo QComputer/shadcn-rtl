@@ -26,13 +26,6 @@ export async function GET(
             },
           },
         },
-        guestCustomer: {
-          select: {
-            name: true,
-            phone: true,
-            email: true,
-          },
-        },
         organization: {
           select: {
             id: true,

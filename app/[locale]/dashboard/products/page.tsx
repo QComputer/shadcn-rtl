@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -32,6 +33,7 @@ import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import { useDashboardAccess, useAuth } from "@/hooks/use-auth"
 import { formatToman, toPersianDigits } from "@/lib/persian"
+import Image from "next/image"
 
 interface ProductVariant {
   id: string
@@ -91,12 +93,24 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
   const [productToDelete, setProductToDelete] = useState<Product | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [viewDialogOpen, setViewDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
+
   useEffect(() => {
     setMounted(true)
     import("@/lib/dictionary").then(({ getDictionary }) => {
       setDict(getDictionary(locale))
     })
   }, [locale])
+
+  // Fetch product from API
+  useEffect(() => {
+    if (selectedProduct?.id) {
+      fetchProduct(selectedProduct.id)
+    }
+  }, [selectedProduct])
 
   // Fetch products from API
   useEffect(() => {
@@ -120,7 +134,7 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
         params.set("search", searchQuery)
       }
       
-      // Filter by organization if user is a member
+      // Filter by organization if user is a member. just SUPER_ADMIN can fetch producrs without organizationId 
       if (organizationMembership?.organizationId) {
         params.set("organizationId", organizationMembership.organizationId)
       }
@@ -132,6 +146,8 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
       }
       
       const data: ProductsResponse = await response.json()
+      console.log("----------> products data:", data);
+      
       setProducts(data.data)
       setTotal(data.total)
       setTotalPages(data.totalPages)
@@ -143,39 +159,32 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
     }
   }
 
+  const fetchProduct = async (id: string) => {
+      if (!selectedProduct) return
+    setLoading(true)
+    setError(null)
+    
+    try {
+      const response = await fetch(`/api/products/${id}`)
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch product")
+      }
+      
+      const data: Product = await response.json()
+      console.log("-------------> data:", data);
+      
+    } catch (err) {
+      console.error("Error fetching product:", err)
+      setError(err instanceof Error ? err.message : "An error occurred")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const t = (key: string): string => {
     if (!dict) return key
     return getDictValue(dict, key)
-  }
-
-  const handleDeleteClick = (product: Product) => {
-    setProductToDelete(product)
-    setDeleteDialogOpen(true)
-  }
-
-  const handleDeleteConfirm = async () => {
-    if (!productToDelete) return
-    
-    setDeleting(true)
-    try {
-      const response = await fetch(`/api/products/${productToDelete.id}`, {
-        method: "DELETE",
-      })
-      
-      if (!response.ok) {
-        throw new Error("Failed to delete product")
-      }
-      
-      // Refresh products list
-      fetchProducts()
-      setDeleteDialogOpen(false)
-      setProductToDelete(null)
-    } catch (err) {
-      console.error("Error deleting product:", err)
-      setError(err instanceof Error ? err.message : "Failed to delete product")
-    } finally {
-      setDeleting(false)
-    }
   }
 
   // Calculate total inventory from variants
@@ -231,10 +240,12 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
           <Button variant="outline" size="icon" onClick={() => fetchProducts()}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
-          <Button>
-            <Plus className="h-4 w-4 ml-2" />
-            {t("common.add") || "افزودن"}
-          </Button>
+          <Link href={`/${locale}/dashboard/products/new`}>
+            <Button>
+              <Plus className="h-4 w-4 ml-2" />
+              {t("common.add") || "Add Product"}
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -299,10 +310,12 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
               }
             </p>
             {!searchQuery && (
-              <Button>
-                <Plus className="h-4 w-4 ml-2" />
-                {t("common.add") || "افزودن محصول"}
-              </Button>
+            <Link href={`/${locale}/dashboard/products/new`}>
+            <Button>
+              <Plus className="h-4 w-4 ml-2" />
+              {t("common.add") || "Add Product"}
+            </Button>
+          </Link>
             )}
           </CardContent>
         </Card>
@@ -317,7 +330,8 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
             const isLowStock = product.trackInventory && totalInventory <= product.lowStockThreshold
             
             return (
-              <Card key={product.id} className="hover:shadow-md transition-shadow overflow-hidden">
+            <Link key={product.id} href={`/${locale}/dashboard/products/${product.id}`}>
+              <Card key={"card"+product.id} className="hover:shadow-md transition-shadow overflow-hidden">
                 <div className="aspect-square bg-muted relative">
                   {product.image ? (
                     <img 
@@ -358,27 +372,11 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
                     <div className="flex items-center gap-2">
                       <span className="text-lg font-bold">{formatToman(displayPrice)}</span>
                     </div>
-                    <div className="flex gap-2 pt-2">
-                      <Button variant="outline" size="sm" className="flex-1">
-                        <Eye className="h-4 w-4 ml-1" />
-                        {t("common.view") || "مشاهده"}
-                      </Button>
-                      <Button variant="outline" size="sm" className="flex-1">
-                        <Edit className="h-4 w-4 ml-1" />
-                        {t("common.edit") || "ویرایش"}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                        onClick={() => handleDeleteClick(product)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+
                   </div>
                 </CardContent>
               </Card>
+            </Link>
             )
           })}
         </div>
@@ -410,35 +408,6 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
           </div>
         </div>
       )}
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>حذف محصول</DialogTitle>
-            <DialogDescription>
-              آیا از حذف محصول "{productToDelete?.name}" اطمینان دارید؟
-              این عملیات قابل بازگشت نیست.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setDeleteDialogOpen(false)}
-              disabled={deleting}
-            >
-              انصراف
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleDeleteConfirm}
-              disabled={deleting}
-            >
-              {deleting ? "در حال حذف..." : "حذف"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

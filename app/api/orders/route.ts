@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     } else if (session.user?.role === "DRIVER") {
       orders = await orderService.list({
         ...params,
-        driverId: session.user!.id,
+        type: "DELIVERY",
       });
     } else {
       // Admin, Manager, Staff can see all orders for their organizations

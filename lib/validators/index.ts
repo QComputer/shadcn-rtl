@@ -134,7 +134,6 @@ export const updateAppointmentSchema = z.object({
   notes: z.string().max(2000).optional(),
   cancellationReason: z.string().max(1000).optional(),
 });
-
 // Product Category validators
 export const createProductCategorySchema = z.object({
   name: z.string().min(2).max(200),
@@ -147,15 +146,19 @@ export const updateProductCategorySchema = createProductCategorySchema.partial()
   isActive: z.boolean().optional(),
 });
 
+const image = z.object({
+  url: z.string().url(),
+  description: z.string().max(5000).optional(),
+});
 // Product validators
 export const createProductSchema = z.object({
   name: z.string().min(2).max(200),
   description: z.string().max(5000).optional(),
   basePrice: z.number().nonnegative(),
-  images: z.array(z.string().url()).default([]),
   image: z.string().url().optional(),
   sku: z.string().max(100).optional(),
   categoryId: z.string().cuid(),
+  organizationId: z.string().cuid(),
   trackInventory: z.boolean().default(true),
   lowStockThreshold: z.number().int().nonnegative().default(10),
   sortOrder: z.number().int().default(0),
@@ -169,14 +172,15 @@ export const updateProductSchema = createProductSchema.partial().extend({
 export const createProductVariantSchema = z.object({
   name: z.string().min(1).max(200),
   sku: z.string().max(100).optional(),
+  //image: z.string().max(500).optional(),
   price: z.number().nonnegative().optional(),
   inventory: z.number().int().nonnegative().default(0),
   allowBackOrder: z.boolean().default(false),
-  productId: z.string().cuid(),
 });
 
-export const updateProductVariantSchema = createProductVariantSchema.partial();
-
+export const updateProductVariantSchema = createProductVariantSchema.partial().extend({
+  id: z.string().cuid(),
+});
 // Cart validators
 export const addToCartSchema = z.object({
   variantId: z.string().cuid(),

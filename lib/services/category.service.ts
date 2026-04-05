@@ -39,12 +39,15 @@ export class ProductCategoryService {
     });
   }
 
-  async list(organizationId: string, params: {
-    page?: number;
-    pageSize?: number;
-    isActive?: boolean;
-    search?: string;
-  }) {
+  async list(
+    organizationId: string,
+    params: {
+      page?: number;
+      pageSize?: number;
+      isActive?: boolean;
+      search?: string;
+    },
+  ) {
     const { page = 1, pageSize = 20, isActive, search } = params;
 
     const where: Record<string, unknown> = {
@@ -73,6 +76,67 @@ export class ProductCategoryService {
         },
       }),
       prisma.productCategory.count({ where }),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
+  /**
+   * List all service categories across all organizations (SUPER_ADMIN only)
+   */
+  async listAll(params: {
+    page?: number;
+    pageSize?: number;
+    isActive?: boolean;
+    search?: string;
+    organizationId?: string;
+  }) {
+    const {
+      page = 1,
+      pageSize = 20,
+      isActive,
+      search,
+      organizationId,
+    } = params;
+
+    const where: Record<string, unknown> = {
+      deletedAt: null,
+    };
+
+    if (organizationId) where.organizationId = organizationId;
+    if (isActive !== undefined) where.isActive = isActive;
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.serviceCategory.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { sortOrder: "asc" },
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
+          _count: {
+            select: { services: { where: { deletedAt: null } } },
+          },
+        },
+      }),
+      prisma.serviceCategory.count({ where }),
     ]);
 
     return {

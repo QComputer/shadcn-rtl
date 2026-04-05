@@ -9,18 +9,14 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { searchParams } = request.nextUrl;
-    const organizationSlug = searchParams.get("organizationSlug");
-
-    let product;
-
-    if (organizationSlug) {
-      // Get product by slug for public access
-      product = await productService.getBySlug(id, organizationSlug);
-    } else {
-      // Get product by ID (internal use)
-      product = await productService.getById(id);
+    const session = await auth();
+    
+        if (!session?.user?.id || !session.user.role) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Get product by ID (internal use)
+    const product = await productService.getById(id);
 
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
@@ -36,14 +32,13 @@ export async function GET(
   }
 }
 
+// update product
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
-    const { id } = await params;
-
     if (!session?.user?.id || !session.user.role) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -52,6 +47,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const { id } = await params;
     const body = await request.json();
     const data = updateProductSchema.parse(body);
 

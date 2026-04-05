@@ -3,7 +3,6 @@
 import { use, useState } from "react"
 import { DashboardSidebarWithDict } from "@/components/dashboard/dashboard-sidebar"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
-import { useAuth } from "@/hooks/use-auth"
 
 export default function DashboardLayout({
   children,

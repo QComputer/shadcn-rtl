@@ -78,7 +78,6 @@ export default function CheckoutPage({
 
   const { cart, summary, isLoading: cartLoading, clearCart } = useCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGuest, setIsGuest] = useState(true);
   const [isDelivery, setIsDelivery] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"CREDIT_CARD"| "DEBIT_CARD"| "CASH"| "WALLET"| "BANK_TRANSFER">("CASH");
   const [error, setError] = useState<string | null>(null);
@@ -131,7 +130,6 @@ export default function CheckoutPage({
   // Fetch User info
   useEffect(() => {
     if (session?.user){
-      setIsGuest(false),
       // Fetch user profile
       fetch("/api/users/me")
       .then(res => {
@@ -140,7 +138,6 @@ export default function CheckoutPage({
       })
       .then(data => {
         setUser(data as User)
-        setIsGuest(!data.id)
         setFormData(
           (prev: any) => ({ ...prev,
             customerName: data.lastName || data.name,

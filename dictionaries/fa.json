@@ -36,7 +36,8 @@
     "showing": "نمایش",
     "of": "از",
     "all": "همه",
-    "viewAll": "مشاهده همه"
+    "viewAll": "مشاهده همه",
+    "deactivate": "غیرفعال کردن"
   },
   "auth": {
     "login": "ورود",
@@ -174,6 +175,10 @@
     "create": "ایجاد سفارش",
     "place": "ثبت سفارش",
     "placed": "ثبت شده",
+    "active": "فعال",
+    "completed": "کامل شده",
+    "noOrders": "سفارشی وجود ندارد",
+    "placedAt": "ثبت شده در",
     "summary": "خلاصه سفارش",
     "status": "وضعیت",
     "type": "نوع",
@@ -205,7 +210,16 @@
     "delivered": "تحویل داده شده",
     "cancelled": "لغو شده",
     "refunded": "بازگشت داده شده",
-    "newOrder": "سفارش جدید"
+    "newOrder": "سفارش جدید",
+    "notFound": "سفارش یافت نشد",
+    "successfullyPlaced": "سفارش با موفقیت ثبت شد",
+    "thankYou": "سپاس از ثبت سفارش. تاییدیه سفارش به زودی برای شما فرستاده خواهد شد",
+    "each": "هر کدام",
+    "customerInfo": "اطلاعات مشتری",
+    "address": "آدرس ارسال",
+    "noAddress": "آدرسی داده نشده",
+    "READY": "آماده",
+    "continueShopping": "ادامه خرید"
   },
   "dashboard": {
     "title": "داشبورد",
@@ -302,6 +316,11 @@
   },
   "service": {
     "title": "خدمات",
+    "details": "جزئیات سرویس",
+    "edit": "ویرایش سرویس",
+    "create_description":"یک سرویس جدید اضافه کنید",
+    "new": " سرویس جدید",
+    "active_description":" فعال/غیرفعال کردن سرویس ",
     "create": "ایجاد خدمات",
     "name": "نام",
     "description": "توضیحات",

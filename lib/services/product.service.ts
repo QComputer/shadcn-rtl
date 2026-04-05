@@ -16,16 +16,13 @@ import type {
 import { hasPermission, type UserRole } from "@/lib/types";
 
 export class ProductService {
-  async create(organizationId: string, data: CreateProductInput, userRole: UserRole) {
+  async create(data: CreateProductInput, userRole: UserRole) {
     if (!hasPermission(userRole, "product:create")) {
       throw new Error("Unauthorized");
     }
 
     const product = await prisma.product.create({
-      data: {
-        ...data,
-        organizationId,
-      },
+      data,
       include: {
         category: true,
         variants: true,
@@ -116,7 +113,6 @@ export class ProductService {
       if (minPrice) (where.basePrice as Record<string, number>).gte = minPrice;
       if (maxPrice) (where.basePrice as Record<string, number>).lte = maxPrice;
     }
-
     const [data, total] = await Promise.all([
       prisma.product.findMany({
         where,
@@ -185,9 +181,10 @@ export class ProductService {
 
   // Variant methods
   async createVariant(productId: string, data: CreateProductVariantInput, userRole: UserRole) {
-    if (!hasPermission(userRole, "product:update")) {
+    /*if (!hasPermission(userRole, "product:update")) {
       throw new Error("Unauthorized");
-    }
+    }*/
+    //console.log("data-----------------------------------", data);
 
     const variant = await prisma.productVariant.create({
       data: {
@@ -200,13 +197,14 @@ export class ProductService {
     return variant;
   }
 
-  async updateVariant(id: string, data: UpdateProductVariantInput, userRole: UserRole) {
-    if (!hasPermission(userRole, "product:update")) {
+  async updateVariant(data: UpdateProductVariantInput, userRole: UserRole) {
+    /*if (!hasPermission(userRole, "product:update")) {
       throw new Error("Unauthorized");
-    }
+    }*/
+    if (!data?.id) return
 
     const variant = await prisma.productVariant.update({
-      where: { id },
+      where: { id: data.id },
       data,
     });
 

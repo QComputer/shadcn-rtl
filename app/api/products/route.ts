@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { productService } from "@/lib/services/product.service";
 import { createProductSchema, productFilterSchema } from "@/lib/validators";
 import { prisma } from "@/lib/db";
+import { log } from "console";
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,30 +50,36 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// creating product
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const session = await auth();
+    
+
+    
 
     // Only admins, managers can create products
     if (!session?.user?.role || !["SUPER_ADMIN", "ADMIN", "MANAGER"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-
     const body = await request.json();
-    const data = createProductSchema.parse(body);
 
     // Get organization from user session or body
-    const organizationId = body.organizationId;
-
+    const organizationId = session.user.role === "SUPER_ADMIN" ? body.organizationId : session.user.organizationId;
     if (!organizationId) {
-      return NextResponse.json({ error: "Organization ID is required" }, { status: 400 });
-    }
+      return NextResponse.json(
+        { error: "Organization ID is required" },
+        { status: 400 },
+      );
+    } 
 
-    const product = await productService.create(organizationId, data, session.user!.role);
+    const data = createProductSchema.parse({ ...body, organizationId });
+
+    const product = await productService.create(
+      data,
+      session.user!.role,
+    );
 
     return NextResponse.json(product, { status: 201 });
   } catch (error) {

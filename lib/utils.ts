@@ -8,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * Format a price in the organization's currency
  * @param price - The price in smallest currency unit (e.g., cents) or as a decimal
- * @param currency - The currency code (default: USD)
+ * @param currency - The currency code (default: IRR)
  * @param locale - The locale for formatting (default: en-US)
  * @param fromSmallestUnit - Whether the price is in smallest unit (default: false)
  */

@@ -137,7 +137,6 @@ model Organization {
   productCategories ProductCategory[]
   products          Product[]
   carts             ShopCart[]
-  guestCarts        GuestCart[]
   orders            Order[]
   followers         Follow[]
   locations         Location[]
@@ -484,6 +483,7 @@ model Product {
   sortOrder   Int      @default(0)
 
   // Inventory management
+  
   trackInventory    Boolean @default(true)
   lowStockThreshold Int     @default(10)
 
@@ -510,6 +510,7 @@ model ProductVariant {
   id        String   @id @default(cuid())
   sku       String?  @unique
   name      String // e.g., "Large / Red"
+  image     String?
   price     Decimal? //@db.Decimal(12, 2) // Override basePrice if set
   inventory Int      @default(0)
 
@@ -521,7 +522,6 @@ model ProductVariant {
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   cartItems      ShopCartItem[]
-  guestCartItems GuestCartItem[]
   orderItems     OrderItem[]
 
   createdAt DateTime  @default(now())
@@ -577,43 +577,6 @@ model ShopCartItem {
   @@index([variantId])
 }
 
-// Cart for checkout without account <------- TODO: Is going to get removed. I am going to use ShopCart as uniqu for both guest and registered users
-model GuestCart {
-  id        String     @id @default(cuid())
-  sessionId String     
-  status    CartStatus @default(ACTIVE)
-
-  organizationId String
-
-  organization Organization    @relation(fields: [organizationId], references: [id])
-  items        GuestCartItem[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  expiresAt DateTime // Cart expiration (e.g., 7 days)
-
-  @@index([sessionId])
-  @@index([organizationId])
-  @@index([status])
-  @@index([expiresAt])
-}
-
-model GuestCartItem {
-  id       String @id @default(cuid())
-  quantity Int
-
-  cartId    String
-  variantId String
-
-  cart    GuestCart      @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  variant ProductVariant @relation(fields: [variantId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([cartId])
-  @@index([variantId])
-}
 
 // Guest Customer 
 model GuestCustomer {

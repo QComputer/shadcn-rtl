@@ -43,6 +43,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { useAuth } from "@/hooks/use-auth"
+import { formatPersianDate, formatToman, toPersianDigits } from "@/lib/persian"
 
 // Types for dashboard data
 interface DashboardStats {
@@ -116,28 +117,10 @@ interface RecentAppointment {
   createdAt: string
 }
 
-// Persian number helper
-function toPersianDigits(str: string | number): string {
-  const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
-  return String(str)
-    .split("")
-    .map((char) => (/\d/.test(char) ? persianDigits[parseInt(char)] : char))
-    .join("");
-}
 
-function formatToman(amount: number | undefined): string {
-  if (amount === undefined || amount === null) return "۰ تومان";
-  return toPersianDigits(amount.toLocaleString("fa-IR")) + " تومان";
-}
 
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("fa-IR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
+
+
 
 function formatTime(dateString: string): string {
   const date = new Date(dateString);
@@ -913,7 +896,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                             </p>
                           </div>
                           <div className="text-left">
-                            <p className="text-sm">{formatDate(apt.date)}</p>
+                            <p className="text-sm">{formatPersianDate(apt.date)}</p>
                             <Badge variant={apt.status === "CONFIRMED" ? "default" : "secondary"} className="mt-1">
                               {getStatusLabel(apt.status)}
                             </Badge>
@@ -986,7 +969,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                             </p>
                           </div>
                           <div className="text-left">
-                            <p className="text-sm">{formatDate(apt.date)}</p>
+                            <p className="text-sm">{formatPersianDate(apt.date)}</p>
                             <Badge variant={apt.status === "CONFIRMED" ? "default" : "secondary"} className="mt-1">
                               {getStatusLabel(apt.status)}
                             </Badge>
@@ -1113,7 +1096,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                             </p>
                           </div>
                           <div className="text-left">
-                            <p className="text-sm">{formatDate(apt.date)}</p>
+                            <p className="text-sm">{formatPersianDate(apt.date)}</p>
                             <Badge variant="secondary" className="mt-1">
                               {apt.status}
                             </Badge>

@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { Minus, Plus, Trash2, ShoppingBag, Loader2, ShoppingCart, ShoppingBasket } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
+import { toPersianDigits } from "@/lib/persian";
 
 interface CartDrawerProps {
   organizationSlug: string;
@@ -63,7 +64,7 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
             سبد خرید
             {summary.itemCount > 0 && (
               <span className="text-sm font-normal text-muted-foreground">
-                ({summary.itemCount} {summary.itemCount === 1 ? "item" : "items"})
+                ({toPersianDigits(summary.itemCount)} {summary.itemCount === 1 ? "آیتم" : "آیتم"})
               </span>
             )}
           </SheetTitle>
@@ -139,7 +140,7 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
                             {updatingId === item.id ? (
                               <Loader2 className="h-3 w-3 animate-spin mx-auto" />
                             ) : (
-                              item.quantity
+                              toPersianDigits(item.quantity)
                             )}
                           </span>
                           <Button

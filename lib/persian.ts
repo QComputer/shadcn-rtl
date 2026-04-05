@@ -5,6 +5,7 @@
 
 import dayjs, { Dayjs } from "dayjs";
 import { toJalali } from "./jalali-adapter";
+import { number } from "framer-motion";
 
 // Persian digits mapping
 const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -256,8 +257,8 @@ export function formatRelativePersianTime(
   const d = dayjs(date);
 
   let diffMs = d.diff();
-  const isPassed: boolean = diffMs > 0;
-  if (!isPassed) {
+  const isPassed: boolean = diffMs < 0;
+  if (isPassed) {
     diffMs = -1 * diffMs;
   }
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -276,7 +277,7 @@ export function formatRelativePersianTime(
     formatted += `${toPersianDigits(diffHours)} ساعت `;
   }
   if (diffMinutes > 0) {
-    formatted += " و ";
+    if (diffHours > 0) formatted += " و ";
     formatted += `${toPersianDigits(diffMinutes)} دقیقه `;
   }
   formatted += isPassed ? "پیش" : "دیگر";
@@ -309,31 +310,34 @@ export interface CurrencyOptions {
  * @param options - Formatting options
  */
 export function formatToman(
-  amount: number | string,
-  options: CurrencyOptions = {}
+  amount: number | string | null | undefined,
+  options: CurrencyOptions = {},
 ): string {
   const {
     decimals = 0,
     showCurrency = true,
     usePersianDigits = true,
-    useSeparators = true
+    useSeparators = true,
   } = options;
-  
+
+  if (amount === undefined || amount === null)
+    return toPersianDigits(0) + " تومان";
+
   // Convert to number if string
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-  
+  const num = typeof amount === "string" ? parseFloat(amount) : amount;
+
   if (isNaN(num)) {
-    return '';
+    return "";
   }
-  
+
   // Format the number
   let formatted: string;
-  
+
   if (useSeparators) {
     // Add thousand separators
-    formatted = num.toLocaleString('fa-IR', {
+    formatted = num.toLocaleString("fa-IR", {
       minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals
+      maximumFractionDigits: decimals,
     });
   } else {
     formatted = num.toFixed(decimals);
@@ -341,19 +345,19 @@ export function formatToman(
       formatted = toPersianDigits(formatted);
     }
   }
-  
+
   // If not using separators with Persian digits, convert manually
   if (usePersianDigits && useSeparators) {
     // The locale string already handles it
   } else if (usePersianDigits) {
     formatted = toPersianDigits(formatted);
   }
-  
+
   // Add currency suffix
   if (showCurrency) {
-    formatted += ' تومان';
+    formatted += " تومان";
   }
-  
+
   return formatted;
 }
 

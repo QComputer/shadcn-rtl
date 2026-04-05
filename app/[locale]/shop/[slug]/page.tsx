@@ -123,7 +123,7 @@ export default function ShopPage({
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
 
-    const t = (key: string): string => {
+  const t = (key: string): string => {
     if (!dict) return key
     return getDictValue(dict, key)
   }

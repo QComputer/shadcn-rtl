@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowRight, Save, Loader2, Trash2, ArrowLeft, Plus, ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
+import { ArrowRight, Save, Loader2, Trash2, ArrowLeft, Plus, ChevronLeftIcon, ChevronRightIcon, X } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -75,6 +75,11 @@ interface Product {
   variants: ProductVariant[]
   createdAt: string
 }
+interface ImageRecord {
+  id: number;
+  url: string;
+  filename: string;
+}
 
 export default function EditProductPage({ 
   params 
@@ -128,7 +133,56 @@ export default function EditProductPage({
   const [variants, setVariants] = useState<ProductVariant[]>([])
   const [sortOrder, setSortOrder] = useState(0)
   const [lowStockThreshold, setLowStockThreshold] = useState(20)
-  
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [imageFile, setImageFile] = useState<File | null>(null);
+        const [progress, setProgress] = useState<number>(0);
+    
+    
+    
+    // Upload function
+      
+  async function uploadFile(file: File) {
+    const form = new FormData();
+    form.append("file", file);
+
+    return new Promise<ImageRecord>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/upload");
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
+      };
+
+      xhr.onload = () => {
+        setProgress(0);
+        resolve(JSON.parse(xhr.responseText));
+      };
+
+      xhr.onerror = reject;
+      xhr.send(form);
+    });
+  }
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const imageFile = e.target.files[0];
+      setImageFile(imageFile);
+      try {
+        const img = await uploadFile(imageFile);
+        setImage(img.url);
+        console.log('-----------img:',img);
+        
+        // Create a preview URL
+        const reader = new FileReader();
+        reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(imageFile);
+      } catch (error) {
+        console.error("Upload failed:", error);
+        alert("Upload failed. Please try again.");
+      }
+    }
+  };
 
   useEffect(() => {
     setMounted(true)
@@ -407,6 +461,52 @@ export default function EditProductPage({
               </div>
             )}
             
+             {/* Upload Area */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="image">
+                  {t("product.image") || "Product image"}
+                </Label>
+              </div>
+              <div className="mt-1  flex items-center">
+                            
+                <input
+                  type="file"
+                  accept="image/*" // Only accept image files
+                  onChange={handleImageChange}
+                  className="sr-only" // Hide the default file input
+                  id="imageUpload"
+                />
+              
+                <label
+                  htmlFor="imageUpload"
+                >
+      
+                {imagePreview && (
+                  <img
+                  src={imagePreview}
+                  alt="Image Preview"
+                  className=" items-center mr-2 h-20 w-20 object-cover rounded-md"
+                  />
+                              
+                )}
+    
+              {!imagePreview && (
+                <div className=" items-center mr-2 text-xs border-1 p-2 rounded-md w-20 h-20">هیچ تصویری انتخاب نشده</div>
+              )}
+                </label>
+                  <Button
+                    onClick={() => {
+                      setImagePreview("")
+                    }}
+                    size={"icon"}
+                    variant={"ghost"}
+                    className={" -mt-16 mr-1"}
+                  >
+                    <X/>
+                  </Button>
+              </div>
+            </div>
             {/* Name */}
             <div className="space-y-2 pt-4">
               <Label htmlFor="name">
@@ -485,20 +585,6 @@ export default function EditProductPage({
                   </SelectContent>
                 </Select>
               )}
-            </div>
-            
-            {/* Image URL */}
-            <div className="space-y-2">
-              <Label htmlFor="image">
-                {t("product.image") || "Image URL"}
-              </Label>
-              <Input
-                id="image"
-                type="url"
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                placeholder="https://example.com/image.jpg"
-              />
             </div>
             
             <div className="space-y-2">
@@ -667,8 +753,8 @@ export default function EditProductPage({
               <Label htmlFor="varianySku">{t("product.varianySku") || "SKU"}</Label>
               <Input
                 id="varianySku"
-                value={selectedVariant?.sku as string}
-                onChange={(e) => setSelectedVariant(prev => ({ ...prev, description: e.target.value }))}
+                value={selectedVariant?.sku as string || ""}
+                onChange={(e) => setSelectedVariant(prev => ({ ...prev, sku: e.target.value }))}
                 placeholder={t("product.sku_placeholder") || "Variant sku"}
               />
             </div>

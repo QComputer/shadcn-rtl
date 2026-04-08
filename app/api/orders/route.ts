@@ -16,6 +16,7 @@ function getSessionId(request: NextRequest): string {
   }
   return randomUUID();
 }
+
 // Generate a unique order name
 function generateGuestUserName(name: string): string {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -33,16 +34,14 @@ export async function GET(request: NextRequest) {
     const searchParams = Object.fromEntries(request.nextUrl.searchParams);
     const params = orderFilterSchema.parse(searchParams);
 
-    // Auto-filter by organization for staff users (not SUPER_ADMIN)
-    if (session.user?.role && 
-        !["SUPER_ADMIN", "CUSTOMER", "DRIVER"].includes(session.user.role) && 
-        !params.organizationId) {
-      // Get user's organization membership
+    // Auto-filter by organization for staff users (not SUPER_ADMIN  "CUSTOMER" and "DRIVER")
+    if (session.user?.role && !["SUPER_ADMIN", "CUSTOMER", "DRIVER"].includes(session.user.role) && !params.organizationId) {
+      // Get staff's organization membership
       const membership = await prisma.organizationMember.findFirst({
         where: { userId: session.user.id },
         select: { organizationId: true },
       });
-      
+
       if (membership) {
         params.organizationId = membership.organizationId;
       }
@@ -61,7 +60,7 @@ export async function GET(request: NextRequest) {
         type: "DELIVERY",
       });
     } else {
-      // Admin, Manager, Staff can see all orders for their organizations
+      // Super-Admin, Admin, Manager, Staff can see all orders for their organizations
       orders = await orderService.list(params);
     }
 

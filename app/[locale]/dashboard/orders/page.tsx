@@ -222,7 +222,6 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
     setDeliveryTime(dayjs(order.deliveryProgress?.estimatedEndTime)|| null)
     setDetailDialogOpen(true)
   }
-
   
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     setUpdating(true)
@@ -321,11 +320,12 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
     setPreparationTime(preparationTime?.add(minutes, 'minute') || null)
   }
 
-   const addToPickupEstimatedEndTime = async (minutes: number) => {
+  const addToPickupEstimatedEndTime = async (minutes: number) => {
     console.log(`add ${minutes} minutes to pick-up `, pickupTime);
     setPickupTime(pickupTime?.add(minutes, 'minute') || null)
   }
-     const addToDeliveryEstimatedEndTime = async (minutes: number) => {
+
+  const addToDeliveryEstimatedEndTime = async (minutes: number) => {
     console.log(`add ${minutes} minutes to pick-up `, deliveryTime);
     setDeliveryTime(deliveryTime?.add(minutes, 'minute') || null)
   }
@@ -383,7 +383,6 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
       setUpdating(false)
     }  
   }
-
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
@@ -702,7 +701,6 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-1 space-y-2">
-                <div className=" space-y-20">
 
                 {((user?.role=="ADMIN"|| user?.role=="MANAGER"||user?.role=="SUPER_ADMIN") && (preparationTime && !savingPreparationTime)) && (
                     <div className="grid gap-0 grid-cols-2 grid-rows-2 ">
@@ -711,7 +709,6 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                       <Label htmlFor="preparationProgress">آماده سازی:</Label>
                       </div>
                       <div className="row-2 col-1 text-xs">
-                      
                       {formatRelativePersianTime(preparationTime)} 
                       </div>
                       <div className="row-span-2">
@@ -745,95 +742,11 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                     </div>
                     </div>
                  )}
-                {((user?.role=="DRIVER"||user?.role=="SUPER_ADMIN") && (pickupTime && !savingPickupTime)) && (
-                    <div className="grid gap-0 grid-cols-2 grid-rows-2 ">
-                      <div className="row-1">
-
-                      <Label htmlFor="picklupProgress">پیکاپ:</Label>
-                      </div>
-                      <div className="row-2">
-                      
-                      {formatRelativePersianTime(pickupTime)} 
-                      </div>
-                      <div className="row-2">
-                    <div className="grid gap-0 grid-cols-3">
-                      <div className="grid gap-1 grid-rows-2">
-                        <Button size={"icon"} className={"bg-green-500 rounded-xs"} onClick={()=> addToPickupEstimatedEndTime(1)}>
-                          {toPersianDigits(1)}
-                        </Button>
-                        <Button size={"icon"} className={"rounded-xs"} variant={"destructive"} onClick={()=> addToPickupEstimatedEndTime(-1)}>
-                          {toPersianDigits(1)}
-                        </Button>
-                      </div>
-                      <div className="grid gap-1 grid-rows-2">
-                      
-                      <Button size={"icon"} className={"bg-green-500 rounded-xs "} variant={"secondary"} onClick={()=> addToPickupEstimatedEndTime(5)}>
-                       {toPersianDigits(5)}
-                      </Button>
-                      <Button size={"icon"} className={"rounded-xs"} variant={"destructive"} onClick={()=> addToPickupEstimatedEndTime(-5)}>
-                         {toPersianDigits(5)}
-                        </Button>
-                      </div>
-                      <div className="grid gap-1 grid-rows-2">
-                      <Button size={"icon"} className={"bg-green-500 rounded-xs"} variant={"secondary"} onClick={()=> addToPickupEstimatedEndTime(10)}>
-                      {toPersianDigits(10)}
-                      </Button>
-                      <Button size={"icon"} className={"rounded-xs"} variant={"destructive"} onClick={()=> addToPickupEstimatedEndTime(-10)}>
-                          {toPersianDigits(10)}
-                        </Button>
-                      </div>
-                    </div>
-                    </div>
-                    </div>
-                 )}
-                {((user?.role=="DRIVER"||user?.role=="SUPER_ADMIN") && (deliveryTime && !savingDeliveryTime)) && (
-                    <div className="grid gap-0 grid-cols-2 grid-rows-2 ">
-                      <div className="row-1">
-
-                      <Label htmlFor="deliveryProgress">تحویل دهی:</Label>
-                      </div>
-                      <div className="row-2">
-                      
-                      {formatRelativePersianTime(deliveryTime)} 
-                      </div>
-                      <div className="row-2">
-                    <div className="grid gap-0 grid-cols-3">
-                      <div className="grid gap-1 grid-rows-2">
-                        <Button size={"icon"} className={"bg-green-500 rounded-xs"} onClick={()=> addToDeliveryEstimatedEndTime(1)}>
-                          {toPersianDigits(1)}
-                        </Button>
-                        <Button size={"icon"} className={"rounded-xs"} variant={"destructive"} onClick={()=> addToDeliveryEstimatedEndTime(-1)}>
-                          {toPersianDigits(1)}
-                        </Button>
-                      </div>
-                      <div className="grid gap-1 grid-rows-2">
-                      
-                      <Button size={"icon"} className={"bg-green-500 rounded-xs "} variant={"secondary"} onClick={()=> addToDeliveryEstimatedEndTime(5)}>
-                       {toPersianDigits(5)}
-                      </Button>
-                      <Button size={"icon"} className={"rounded-xs"} variant={"destructive"} onClick={()=> addToDeliveryEstimatedEndTime(-5)}>
-                         {toPersianDigits(5)}
-                        </Button>
-                      </div>
-                      <div className="grid gap-1 grid-rows-2">
-                      <Button size={"icon"} className={"bg-green-500 rounded-xs"} variant={"secondary"} onClick={()=> addToDeliveryEstimatedEndTime(10)}>
-                      {toPersianDigits(10)}
-                      </Button>
-                      <Button size={"icon"} className={"rounded-xs"} variant={"destructive"} onClick={()=> addToDeliveryEstimatedEndTime(-10)}>
-                          {toPersianDigits(10)}
-                        </Button>
-                      </div>
-                    </div>
-                    </div>
-                    </div>
-                 )}
-            </div>
-
                 </CardContent>
                       
               </Card>
                     {(selectedOrder.status==="PENDING" || selectedOrder.status==="PLACED") && 
-            <div className="grid gap-1 grid-cols-3">
+                    <div className="grid gap-1 grid-cols-3">
                     <Button className={"col-span-2 bg-green-400 text-green-800"} onClick={() => {
                       handleSaveAllEstimatedEndTimes()
                       handleUpdateStatus(selectedOrder.id, "ACCEPTED")
@@ -844,10 +757,10 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                   <Button variant={"destructive"} className={"col-3"} onClick={() => handleUpdateStatus(selectedOrder.id, "ACCEPTED")}>
                    <X/> رد
                   </Button>
-                  </div>
+                    </div>
                   }
                   {(selectedOrder.status==="ACCEPTED") && 
-            <div className="grid gap-1 grid-cols-3">
+                    <div className="grid gap-1 grid-cols-3">
                   <Button  className={"col-span-2 bg-green-400 text-green-800"}  onClick={() => {
                       handleSaveAllEstimatedEndTimes()
                       handleUpdateStatus(selectedOrder.id, "PREPARING")}
@@ -857,10 +770,10 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                   <Button className={"col-3"} variant={"destructive"} onClick={() => handleUpdateStatus(selectedOrder.id, "CANCELLED")}>
                    <X/> رد
                   </Button>
-                  </div>
+                    </div>
                   }
                   {(selectedOrder.status==="PREPARING") && 
-            <div className="grid gap-1 grid-cols-3 ">
+                    <div className="grid gap-1 grid-cols-3 ">
                     <Button className={"col-span-2 "} onClick={() => {
                       handleSaveAllEstimatedEndTimes()
                       handleUpdateStatus(selectedOrder.id, "ACCEPTED")}}>

@@ -464,10 +464,11 @@ model ProductCategory {
   @@index([deletedAt])
 }
 
-model Image{
-  id          String   @id @default(cuid())
-  url   String
-
+model Image {
+  id        Int      @id @default(autoincrement())
+  url       String
+  filename  String
+  createdAt DateTime @default(now())
   products Product[]
 }
 

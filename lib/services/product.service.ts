@@ -21,8 +21,20 @@ export class ProductService {
       throw new Error("Unauthorized");
     }
 
-    const product = await prisma.product.create({
-      data,
+    const _product = await prisma.product.create({data});
+
+    // Creating default variant with default inventory 1000
+    const variant = await prisma.productVariant.create({
+      data: {
+        productId: _product.id,
+        name: _product.name + "_0",
+        price: _product.basePrice,
+        sku: _product.sku ? _product.sku + "_0" : undefined,
+        inventory: 1000,
+      },
+    });
+    const product = await prisma.product.findUnique({
+      where: { id: _product.id },
       include: {
         category: true,
         variants: true,

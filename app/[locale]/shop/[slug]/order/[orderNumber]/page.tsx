@@ -325,25 +325,27 @@ export default function OrderConfirmationPage({
             {/* Customer & Shipping Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Customer Info */}
-              <Card>
+              {(order.guestCustomer || order.customer) &&
+                <Card>
                 <CardHeader>
                   <CardTitle className="text-base">{t("order.customerInfo")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
+                  <div>
+                    <span>{order.guestCustomer?.name}</span>
+                    <span>{order.customer?.name}</span>
+                  </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Phone className="h-4 w-4 text-muted-foreground" />
                     <span>{order.guestCustomer?.phone}</span>
+                    <span>{order.customer?.phone}</span>
                   </div>
-                  {order.guestCustomer?.email && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span>{order.guestCustomer.email}</span>
-                    </div>
-                  )}
+
                 </CardContent>
-              </Card>
+              </Card>}
 
               {/* Shipping Address */}
+              {(order.type ==="DELIVERY") &&
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
@@ -354,7 +356,7 @@ export default function OrderConfirmationPage({
                 <CardContent>
                   <p className="text-xs">{order.deliveryAddress || t("order.noAddress")}</p>
                 </CardContent>
-              </Card>
+              </Card>}
             </div>
 
             {/* Order Notes */}

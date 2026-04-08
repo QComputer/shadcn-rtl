@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowRight, Save, Loader2, Plus, ArrowLeft, ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
+import { ArrowRight, Save, Loader2, Plus, ArrowLeft, ChevronLeftIcon, ChevronRightIcon, X } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -32,6 +32,7 @@ import { formatToman, toPersianDigits } from "@/lib/persian"
 import { useDashboardAccess } from "@/hooks/use-auth"
 import { useSession } from "next-auth/react"
 import { isRTL } from "@/lib/i18n"
+import { FieldLabel } from "@/components/ui/field"
 
 interface ProductVariant {
   id?: string
@@ -71,6 +72,12 @@ interface ProductsResponse {
   totalPages: number
 }
 
+interface ImageRecord {
+  id: number;
+  url: string;
+  filename: string;
+}
+
 export default function NewProductPage({ 
   params 
 }: { 
@@ -95,22 +102,56 @@ export default function NewProductPage({
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [basePrice, setBasePrice] = useState("")
-  const [variantPrice, setVariantPrice] = useState("")
   const [categoryId, setCategoryId] = useState("")
   const [sku, setSku] = useState("")
   const [organizationId, setOrganizationId] = useState("")
   const [lowStockThreshold, setLowStockThreshold] = useState("20")
   const [sortOrder, setSortOrder] = useState("0")
-  const [image, setImage] = useState("")
+  const [image, setImage] = useState<ImageRecord|null>(null)
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [isActive, setIsActive] = useState(true)
 
-  const [trackInventory, setTrackInventory] = useState(false)                     
-  const [inventory, setInventory] = useState("100") 
-  const [showVariants, setShowVariants] = useState(false) 
-  const [addVariantDialogOpen, setAddVariantDialogOpen] = useState(false) 
-  const [editVariantDialogOpen, setEditAddVariantDialogOpen] = useState(false) 
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null) 
-  const [variantFormData, setVariantFormData] = useState<ProductVariant | null>(null)
+   const [images, setImages] = useState<ImageRecord[]>([]);
+    const [isDragging, setIsDragging] = useState(false);
+    const [progress, setProgress] = useState<number>(0);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+    // Upload function
+  async function uploadFile(file: File) {
+    const form = new FormData();
+    form.append("file", file);
+
+    return new Promise<ImageRecord>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/upload");
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
+      };
+
+      xhr.onload = () => {
+        setProgress(0);
+        resolve(JSON.parse(xhr.responseText));
+      };
+
+      xhr.onerror = reject;
+      xhr.send(form);
+    });
+  }
+  // Handle file selection 
+  const handleSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const img = await uploadFile(file);
+      setImage(img);
+    } catch (error) {
+      console.error("Upload failed:", error);
+      alert("Upload failed. Please try again.");
+    }
+    e.target.value = ""; // Reset file input to allow uploading the same file again
+  };
 
   useEffect(() => {
     setMounted(true)
@@ -142,6 +183,28 @@ export default function NewProductPage({
     return getDictValue(dict, key)
   }
 
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const imageFile = e.target.files[0];
+      setImageFile(imageFile);
+      try {
+        const img = await uploadFile(imageFile);
+        setImage(img);
+        console.log('-----------img:',img);
+        
+        // Create a preview URL
+        const reader = new FileReader();
+        reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(imageFile);
+      } catch (error) {
+        console.error("Upload failed:", error);
+        alert("Upload failed. Please try again.");
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -154,6 +217,11 @@ export default function NewProductPage({
     setError(null)
     
      try {
+      let imageUrl;
+      if (imageFile) {
+        const img = await uploadFile(imageFile)
+        imageUrl = img.url
+      }
       const response = await fetch("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -161,11 +229,10 @@ export default function NewProductPage({
             name,
             description: description || undefined,
             basePrice: parseFloat(basePrice),
-            image: image || undefined,
+            image: imageUrl || undefined,
             sku,
             categoryId,
             organizationId,
-            trackInventory,
             lowStockThreshold: Number(lowStockThreshold),
             sortOrder: Number(sortOrder),
           }),
@@ -184,6 +251,49 @@ export default function NewProductPage({
       setSaving(false)
     }
   }
+  
+    // Handle file drop (remains mostly the same, but gets ImageRecord)
+    const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setIsDragging(false);
+      const file = e.dataTransfer.files?.[0];
+      if (!file) return;
+  
+      try {
+        const img = await uploadFile(file);
+        setImage(img);
+      } catch (error) {
+        console.error("Upload failed:", error);
+        alert("Upload failed. Please try again.");
+      }
+    };
+  
+  
+  // Delete Image function
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete this image?")) return;
+    const id = image?.id 
+    if(!id) return
+    try {
+      const response = await fetch(`/api/images/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete image");
+      }
+
+      // Remove image from state
+      setImages((prev) => prev.filter((img) => img.id !== id));
+      alert("Image deleted successfully!");
+    } catch (error: any) {
+      console.error("Deletion failed:", error);
+      alert(`Deletion failed: ${error.message}`);
+    }
+  };
+
+  const prevent = (e: React.DragEvent) => e.preventDefault();
 
 
   if (accessLoading || !mounted) {
@@ -236,6 +346,98 @@ export default function NewProductPage({
                 {error}
               </div>
             )}
+              {/* Upload Area */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="image">
+                    {t("product.image") || "Product image"}
+                  </Label>
+                </div>
+                <div className="mt-1 flex items-center">
+                
+            <input
+              type="file"
+              accept="image/*" // Only accept image files
+              onChange={handleImageChange}
+              className="sr-only" // Hide the default file input
+              id="imageUpload"
+            />
+         
+            <label
+              htmlFor="imageUpload"
+            >
+ 
+            {imagePreview && (
+              <img
+              src={imagePreview}
+              alt="Image Preview"
+              className=" items-center mr-2 h-20 w-20 object-cover rounded-md"
+              />
+                          
+            )}
+
+          {!image && (
+            <div className=" items-center mr-2 text-xs border-1 p-2 rounded-md w-20 h-20">هیچ تصویری انتخاب نشده</div>
+          )}
+              
+            </label>
+                <Button
+                  onClick={() => {
+                    setImage(null);
+                    setImagePreview("")
+                  }}
+                  size={"icon"}
+                  variant={"ghost"}
+                  className={" -mt-16 mr-1"}
+                >
+                  <X/>
+                </Button>
+            
+          </div>
+          </div>
+           {/* --------------- Name */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+    
+              <div className="space-y-2">
+                <Label htmlFor="name">
+                  {t("product.name") || "Product Name"} *
+                </Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t("product.name_placeholder") || "Enter product name"}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="sku">
+                  {t("product.sku") || "Product sku"}
+                </Label>
+                <Input
+                  id="sku"
+                  value={sku}
+                  onChange={(e) => setSku(e.target.value)}
+                  placeholder={t("product.sku_placeholder") || "Enter product sku"}
+                />
+              </div>
+            </div>
+            
+            {/* Description */} 
+            <div className="space-y-2">
+              <Label htmlFor="description">
+                {t("product.description") || "Description"}
+              </Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={t("product.description_placeholder") || "Describe your product"}
+                rows={3}
+              />
+            </div>
 
             {/* Category */}
             <div className="space-y-2 pt-4">
@@ -268,49 +470,6 @@ export default function NewProductPage({
                 </Select>
               )}
             </div>
-            
-            {/* --------------- Name */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-              <div className="space-y-2">
-                <Label htmlFor="name">
-                  {t("product.name") || "Product Name"} *
-                </Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t("product.name_placeholder") || "Enter product name"}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="sku">
-                  {t("product.sku") || "Product sku"}
-                </Label>
-                <Input
-                  id="sku"
-                  value={sku}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t("product.sku_placeholder") || "Enter product sku"}
-                />
-              </div>
-            </div>
-            
-            {/* Description */}
-            <div className="space-y-2">
-              <Label htmlFor="description">
-                {t("product.description") || "Description"}
-              </Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder={t("product.description_placeholder") || "Describe your product"}
-                rows={3}
-              />
-            </div>
 
 
             {/* Price */}
@@ -332,21 +491,6 @@ export default function NewProductPage({
                   required
                 />
               </div>
-
-            {/* ----------- Image URL */}
-            <div className="space-y-2">
-              <Label htmlFor="image">
-                {t("product.image") || "Image URL"}
-              </Label>
-              <Input
-                id="image"
-                type="url"
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                placeholder="https://example.com/image.jpg"
-              />
-            </div>
-
 
             {/* ------------- Active Status */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

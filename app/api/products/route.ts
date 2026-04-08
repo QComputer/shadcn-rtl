@@ -3,7 +3,6 @@ import { auth } from "@/lib/auth";
 import { productService } from "@/lib/services/product.service";
 import { createProductSchema, productFilterSchema } from "@/lib/validators";
 import { prisma } from "@/lib/db";
-import { log } from "console";
 
 export async function GET(request: NextRequest) {
   try {
@@ -55,9 +54,6 @@ export async function POST(request: NextRequest) {
   try {
 
     const session = await auth();
-    
-
-    
 
     // Only admins, managers can create products
     if (!session?.user?.role || !["SUPER_ADMIN", "ADMIN", "MANAGER"].includes(session.user.role)) {

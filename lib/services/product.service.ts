@@ -196,7 +196,7 @@ export class ProductService {
     /*if (!hasPermission(userRole, "product:update")) {
       throw new Error("Unauthorized");
     }*/
-    //console.log("data-----------------------------------", data);
+    ////console.log("data-----------------------------------", data);
 
     const variant = await prisma.productVariant.create({
       data: {

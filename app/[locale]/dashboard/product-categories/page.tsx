@@ -60,7 +60,7 @@ interface Category {
   }
 }
 
-export default function ServiceCategoriesPage({ 
+export default function ProductCategoriesPage({ 
   params 
 }: { 
   params: Promise<{ locale: string }> 
@@ -109,7 +109,7 @@ export default function ServiceCategoriesPage({
     if (!hasAccess || accessLoading) return
     
     setLoading(true)
-    fetch("/api/service-categories?pageSize=100")
+    fetch("/api/product-categories?pageSize=100")
       .then(res => {
         if (!res.ok) throw new Error("Failed to fetch categories")
         return res.json()

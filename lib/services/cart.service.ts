@@ -7,7 +7,7 @@ import { Decimal } from "@prisma/client/runtime/library";
 export class CartService {
   // Get or create a shop-cart for a guest with sessionId
   async getOrCreateCartBySession(sessionId: string, organizationId: string) {
-    console.log("------------------------------>sessionId", sessionId);
+    //console.log("------------------------------>sessionId", sessionId);
     // Try to find existing cart
     let cart = await prisma.shopCart.findUnique({
       where: { organizationId_sessionId: { organizationId, sessionId } },
@@ -24,7 +24,7 @@ export class CartService {
       },
     });
 
-    console.log("----------------cart:", cart);
+    //console.log("----------------cart:", cart);
     // If no cart exists, create one
     if (!cart) {
       // Set expiration to 7 days from now
@@ -85,16 +85,16 @@ export class CartService {
       },
     });
 
-    console.log("----------------cart:", cart);
+    //console.log("----------------cart:", cart);
 
     // If no cart exists, return null
     if (!cart) {
       return null;
     }
 
-      // Set expiration to 7 days from now
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
+    // Set expiration to 7 days from now
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
     // Calculate totals
     let subtotal = new Decimal(0);
     for (const item of cart.items) {
@@ -119,30 +119,29 @@ export class CartService {
         "customerId or/and sessionId needed to get/create a shop-cart",
       );
     }
-    console.log("--------------getCatrt> customerId:", customerId);
-    console.log("--------------getCatrt> organizationId:", organizationId);
-    console.log("--------------getCatrt> sessionId:", sessionId);
+    //console.log("--------------getCatrt> customerId:", customerId);
+    //console.log("--------------getCatrt> organizationId:", organizationId);
+    //console.log("--------------getCatrt> sessionId:", sessionId);
     const cart = sessionId
       ? await this.getCartBySession(sessionId, organizationId)
-      : customerId 
+      : customerId
         ? await prisma.shopCart.findUnique({
-          where: {
-            organizationId_customerId: { organizationId, customerId },
-          },
-          include: {
-            items: {
-              include: {
-                variant: {
-                  include: {
-                    product: true,
+            where: {
+              organizationId_customerId: { organizationId, customerId },
+            },
+            include: {
+              items: {
+                include: {
+                  variant: {
+                    include: {
+                      product: true,
+                    },
                   },
                 },
               },
             },
-          },
-        })
-        : 
-        null;
+          })
+        : null;
 
     // If no cart exists, return null
     if (!cart) return null;
@@ -166,17 +165,14 @@ export class CartService {
     organizationId: string,
     sessionId: string | null,
   ) {
-    console.log("--------------getOrCreateCart> customerId:", customerId);
-    console.log(
-      "--------------getOrCreateCart> organizationId:",
-      organizationId,
-    );
-    console.log("--------------getOrCreateCart> sessionId:", sessionId);
-        if (!customerId && !sessionId) {
-          throw new Error(
-            "customerId or/and sessionId needed to get/create a shop-cart",
-          );
-        }
+    //console.log("--------------getOrCreateCart> customerId:", customerId);
+    //console.log(  "--------------getOrCreateCart> organizationId:",  organizationId,);
+    //console.log("--------------getOrCreateCart> sessionId:", sessionId);
+    if (!customerId && !sessionId) {
+      throw new Error(
+        "customerId or/and sessionId needed to get/create a shop-cart",
+      );
+    }
     let cart = sessionId
       ? await this.getOrCreateCartBySession(sessionId, organizationId)
       : await prisma.shopCart.findUnique({
@@ -200,7 +196,7 @@ export class CartService {
         });
 
     if (!cart) {
-      console.log("------------------------ no Cart found");
+      //console.log("------------------------ no Cart found");
 
       cart = sessionId
         ? await prisma.shopCart.create({
@@ -240,7 +236,7 @@ export class CartService {
             },
           });
     }
-    
+
     return cart;
   }
 
@@ -250,9 +246,9 @@ export class CartService {
     sessionId: string | null,
     data: AddToCartInput,
   ) {
-    console.log("--------------addItem> organizationId:", organizationId);
-    console.log("--------------addItem> customerId:", customerId);
-    console.log("--------------addItem> sessionId:", sessionId);
+    //console.log("--------------addItem> organizationId:", organizationId);
+    //console.log("--------------addItem> customerId:", customerId);
+    //console.log("--------------addItem> sessionId:", sessionId);
     if (!customerId && !sessionId) {
       throw new Error(
         "customerId or/and sessionId needed to get/create a shop-cart",
@@ -264,7 +260,7 @@ export class CartService {
       organizationId,
       sessionId,
     );
-    console.log("--------------addItem> cart:", cart);
+    //console.log("--------------addItem> cart:", cart);
 
     // Check if variant exists and has inventory
     const variant = await prisma.productVariant.findUnique({
@@ -340,7 +336,7 @@ export class CartService {
     cartItemId: string,
     data: UpdateCartItemInput,
     customerId?: string,
-    sessionId?: string
+    sessionId?: string,
   ) {
     // Find the cart item and verify ownership
     const cartItem = await prisma.shopCartItem.findUnique({
@@ -358,13 +354,12 @@ export class CartService {
     if (!cartItem) {
       throw new Error("Cart item not found");
     }
-    console.log("--------------updateItemQuantity> sessionId:", sessionId);
+    //console.log("--------------updateItemQuantity> sessionId:", sessionId);
 
-    console.log("--------------updateItemQuantity> cartItem:", cartItem);
-
+    //console.log("--------------updateItemQuantity> cartItem:", cartItem);
 
     if (!cartItem.cart.customerId) {
-      if (!sessionId || sessionId!==cartItem.cart.sessionId) {
+      if (!sessionId || sessionId !== cartItem.cart.sessionId) {
         throw new Error("Unauthorized");
       }
     } else {
@@ -391,7 +386,7 @@ export class CartService {
     return updatedItem;
   }
 
-  async removeItem(cartItemId: string, customerId: string) {
+  async removeItem(cartItemId: string, customerId?: string, sessionId?: string) {
     // Find the cart item and verify ownership
     const cartItem = await prisma.shopCartItem.findUnique({
       where: { id: cartItemId },
@@ -409,8 +404,14 @@ export class CartService {
       throw new Error("Cart item not found");
     }
 
-    if (cartItem.cart.customerId !== customerId) {
-      throw new Error("Unauthorized");
+    if (!cartItem.cart.customerId) {
+      if (!sessionId || sessionId !== cartItem.cart.sessionId) {
+        throw new Error("Unauthorized");
+      }
+    } else {
+      if (customerId !== cartItem.cart.customerId) {
+        throw new Error("Unauthorized");
+      }
     }
 
     await prisma.shopCartItem.delete({
@@ -420,7 +421,11 @@ export class CartService {
     revalidatePath(`/organization/${cartItem.variant.product.organizationId}`);
   }
 
-  async clearCart(customerId: string | null, organizationId: string, sessionId: string | null) {
+  async clearCart(
+    customerId: string | null,
+    organizationId: string,
+    sessionId: string | null,
+  ) {
     if (!customerId && !sessionId) {
       throw new Error(
         "customerId or/and sessionId needed to get/create a shop-cart",
@@ -457,7 +462,7 @@ export class CartService {
     sessionId: string | null,
   ) {
     const cart = await this.getCart(customerId, organizationId, sessionId);
-console.log("------------getCartSummary> cart:", cart);
+    //console.log("------------getCartSummary> cart:", cart);
 
     if (!cart || cart.items.length === 0) {
       return {
@@ -500,16 +505,16 @@ console.log("------------getCartSummary> cart:", cart);
     userId: string,
     organizationId: string,
   ) {
-    console.log("--------------mergeToUserCart> organizationId:", organizationId);
-    console.log("--------------mergeToUserCart> customerId=userId:", userId);
-    console.log("--------------mergeToUserCart> sessionId:", sessionId);
+    //console.log("--------------mergeToUserCart> organizationId:", organizationId);
+    //console.log("--------------mergeToUserCart> customerId=userId:", userId);
+    //console.log("--------------mergeToUserCart> sessionId:", sessionId);
     const guestCart = await prisma.shopCart.findUnique({
       where: { organizationId_sessionId: { organizationId, sessionId } },
       include: {
         items: true,
       },
     });
-    console.log("--------------mergeToUserCart> guestCart:", guestCart);
+    //console.log("--------------mergeToUserCart> guestCart:", guestCart);
 
     // Get or create user cart
     const userCart = await this.getOrCreateCart(userId, organizationId, null);
@@ -546,7 +551,7 @@ console.log("------------getCartSummary> cart:", cart);
       (await prisma.shopCart.delete({
         where: { id: guestCart.id },
       }));
-    
+
     return userCart;
   }
 

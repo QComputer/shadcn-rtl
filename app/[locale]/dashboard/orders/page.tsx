@@ -282,10 +282,10 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
   const handleSaveAllEstimatedEndTimes = async ()=>{
     if (!selectedOrder) return
     handleSavePreparationEstimatedEndTime(selectedOrder.id, preparationTime?.toString())
+    setDetailDialogOpen(false)
   }
 
   const handleSavePreparationEstimatedEndTime = async (orderId: string, preparationTime?: string) => {
-    if (!preparationTime) return
     console.log("setting preparationTime as--->", preparationTime);
     setUpdating(true)    
     setSavingPreparationTime(true)
@@ -318,70 +318,6 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
   const addToPreparationEstimatedEndTime = async (minutes: number) => {
     console.log(`add ${minutes} minutes to preparationTime `, preparationTime);
     setPreparationTime(preparationTime?.add(minutes, 'minute') || null)
-  }
-
-  const addToPickupEstimatedEndTime = async (minutes: number) => {
-    console.log(`add ${minutes} minutes to pick-up `, pickupTime);
-    setPickupTime(pickupTime?.add(minutes, 'minute') || null)
-  }
-
-  const addToDeliveryEstimatedEndTime = async (minutes: number) => {
-    console.log(`add ${minutes} minutes to pick-up `, deliveryTime);
-    setDeliveryTime(deliveryTime?.add(minutes, 'minute') || null)
-  }
-
-  const handleSavePickupEstimatedEndTime = async (orderId: string , pickupTime?: string) => {
-    console.log("saving pickupTime---",pickupTime);
-    setUpdating(true)
-    try {
-      const response = await fetch(`/api/orders/${orderId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ estimatedEndTime: pickupTime, type: "PICKUP" }),
-      })
-      
-      if (!response.ok) {
-        throw new Error("Failed to update order pickupProgress.estimatedEndTime")
-      }
-      
-      // Refresh orders list
-      fetchOrders()
-      
-    } catch (err) {
-      console.error("Error updating order pickupProgress.estimatedEndTime:", err)
-      setError(err instanceof Error ? err.message : "Failed to update order pickupProgress.estimatedEndTime")
-    } finally {
-      setUpdating(false)
-    }  
-  }
-
-  const handleSaveDeliveryEstimatedEndTime = async (orderId: string, deliveryTime?: string) => {
-    console.log(deliveryTime);
-    setUpdating(true)
-    try {
-      const response = await fetch(`/api/orders/${orderId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ estimatedEndTime: deliveryTime, type: "DELIVERY" }),
-      })
-      
-      if (!response.ok) {
-        throw new Error("Failed to update order deliveryProgress.estimatedEndTime")
-      }
-      
-      // Refresh orders list
-      fetchOrders()
-      
-    } catch (err) {
-      console.error("Error updating order deliveryProgress.estimatedEndTime:", err)
-      setError(err instanceof Error ? err.message : "Failed to update order deliveryProgress.estimatedEndTime")
-    } finally {
-      setUpdating(false)
-    }  
   }
 
   return (

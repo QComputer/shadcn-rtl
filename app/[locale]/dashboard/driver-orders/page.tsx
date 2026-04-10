@@ -89,16 +89,13 @@ interface OrdersResponse {
 }
 
 const statusConfig: Record<string, { label: string; icon: typeof Clock; color: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  PENDING: { label: "در انتظار", icon: Clock, color: "bg-yellow-500", variant: "secondary" },
-  PLACED: { label: "ثبت شده", icon: Package, color: "bg-blue-200", variant: "default" },
-  ACCEPTED: { label: "پذیرفته شده", icon: CheckCircle, color: "bg-green-200", variant: "default" },
-  PREPARING: { label: "در حال آماده‌سازی", icon: Package, color: "bg-purple-500", variant: "default" },
-  READY: { label: "آماده", icon: CheckCircle, color: "bg-green-500", variant: "default" },
+  ACCEPTED: { label: "پذیرفته شده", icon: CheckCircle, color: "bg-yellow-600", variant: "destructive" },
+  PREPARING: { label: "در حال آماده‌سازی", icon: Package, color: "bg-orange-400", variant: "destructive" },
+  READY: { label: "آماده", icon: CheckCircle, color: "bg-red-500", variant: "default" },
   PICKED_UP: { label: "پیکاپ شده", icon: Truck, color: "bg-blue-500", variant: "default" },
-  DELIVERED: { label: "تحویل داده شده", icon: CheckCircle, color: "bg-green-600", variant: "default" },
-  CANCELLED: { label: "لغو شده", icon: XCircle, color: "bg-red-500", variant: "destructive" },
-  RECEIVED: { label: "دریافت شده", icon: CheckCircle, color: "bg-green-700", variant: "default" },
-  REFUNDED: { label: "بازپرداخت شده", icon: XCircle, color: "bg-orange-500", variant: "destructive" },
+  DELIVERED: { label: "تحویل داده شده", icon: CheckCircle, color: "bg-green-400", variant: "default" },
+  CANCELLED: { label: "لغو شده", icon: XCircle, color: "bg-purple-500", variant: "default" },
+  RECEIVED: { label: "دریافت شده", icon: CheckCircle, color: "bg-green-600", variant: "default" },
 }
 export default function DriverOrdersPage({ params }: { params: Promise<{ locale: string }> }) {
   const resolvedParams = use(params)
@@ -128,32 +125,45 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
   const [total, setTotal] = useState(0)
 
   const addToPickupEstimatedEndTime = async (minutes: number) => {
-    console.log(`add ${minutes} minutes to pick-up `, pickupTime);
+        if (!selectedOrder?.id || !pickupTime) {
+    //console.log("saving pickupTime---", "no Order selected");
+      return
+    }
+    ////console.log(`add ${minutes} minutes to pick-up `, pickupTime);
     setPickupTime(pickupTime?.add(minutes, 'minute') || null)
+    //console.log(`added ${minutes} minutes to pick-up `, pickupTime?.add(minutes, 'minute') || null);
+
   }
   const addToDeliveryEstimatedEndTime = async (minutes: number) => {
-    console.log(`add ${minutes} minutes to pick-up `, deliveryTime);
+        if (!selectedOrder?.id || !deliveryTime) {
+    //console.log("saving pickupTime---", "no Order selected");
+      return
+    }
+    ////console.log(`add ${minutes} minutes to delivery `, deliveryTime);
     setDeliveryTime(deliveryTime?.add(minutes, 'minute') || null)
+    //console.log(`added ${minutes} minutes to delivery `, deliveryTime?.add(minutes, 'minute') || null);
   }
   
-  const handleSavePickupEstimatedEndTime = async (orderId: string , pickupTime?: string) => {
-    console.log("saving pickupTime---",pickupTime);
+  const handleSavePickupEstimatedEndTime = async () => {
+    if (!selectedOrder?.id || !pickupTime) {
+    //console.log("saving pickupTime---", "no Order selected");
+      return
+    }
+    //console.log("saving pickupTime---", pickupTime.toString());
     setUpdating(true)
     try {
-      const response = await fetch(`/api/orders/${orderId}`, {
+      const response = await fetch(`/api/orders/${selectedOrder.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ estimatedEndTime: pickupTime, type: "PICKUP" }),
+        body: JSON.stringify({ estimatedEndTime: pickupTime, type: "PICK_UP" }),
       })
       
       if (!response.ok) {
         throw new Error("Failed to update order pickupProgress.estimatedEndTime")
       }
-      
-      // Refresh orders list
-      //fetchOrders()
+      const data = await response.json()
       
     } catch (err) {
       console.error("Error updating order pickupProgress.estimatedEndTime:", err)
@@ -163,11 +173,15 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
     }  
   }
 
-  const handleSaveDeliveryEstimatedEndTime = async (orderId: string, deliveryTime?: string) => {
-    console.log(deliveryTime);
+  const handleSaveDeliveryEstimatedEndTime = async () => {
+    if (!selectedOrder?.id || !deliveryTime) {
+      //console.log("saving deliveryTime---", "no Order selected");
+      return
+    }
+    //console.log("saving deliveryTime---", deliveryTime.toString());
     setUpdating(true)
     try {
-      const response = await fetch(`/api/orders/${orderId}`, {
+      const response = await fetch(`/api/orders/${selectedOrder.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -178,9 +192,10 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
       if (!response.ok) {
         throw new Error("Failed to update order deliveryProgress.estimatedEndTime")
       }
-      
-      // Refresh orders list
-     // fetchOrders()
+      const data = await response.json()
+
+      //console.log("---------handleSaveDeliveryEstimatedEndTime>response",data);
+
       
     } catch (err) {
       console.error("Error updating order deliveryProgress.estimatedEndTime:", err)
@@ -191,18 +206,51 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
   }
 
   const handleSaveAllEstimatedEndTimes = async ()=>{
-    if (!selectedOrder) return
-    handleSavePickupEstimatedEndTime(selectedOrder.id, pickupTime?.toString())
-    handleSaveDeliveryEstimatedEndTime(selectedOrder.id, deliveryTime?.toString())
+    setUpdating(true)
+    await handleSavePickupEstimatedEndTime()
+    await handleSaveDeliveryEstimatedEndTime()
+    setUpdating(false)
+    fetchOrders()
   }
   
   const handleViewOrder = (order: Order) => {
+    //fetchOrders()
     setSelectedOrder(order)
     setPreparationTime(dayjs(order.preparationProgress?.estimatedEndTime) || null)
     setPickupTime(dayjs(order.pickupProgress?.estimatedEndTime)|| null)
     setDeliveryTime(dayjs(order.deliveryProgress?.estimatedEndTime)|| null)
     setDetailDialogOpen(true)
   }
+
+  
+  const acceptOrder = async (id: string) => {
+    const response = await fetch(`/api/orders/${id}/driver`)
+      
+      if (!response.ok) {
+        throw new Error("Failed to accept order")
+      }
+      
+      const order: Order = await response.json()
+      //console.log("-----------------------order:", order);
+      fetchOrders()
+  }
+
+  const denyOrder = async(id: string) => {
+    const response = await fetch(`/api/orders/${id}/driver`, {
+        method: "DELETE",
+      })
+      
+    if (!response.ok) {
+      throw new Error("Failed to deny order")
+    }
+
+    fetchOrders()
+  }
+
+  const pickupOrder = async(id: string) => {
+    fetchOrders()
+  }
+
     
 
   useEffect(() => {
@@ -220,13 +268,15 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
   }, [mounted, page, searchQuery])
 
   const fetchOrders = async () => {
+    setDetailDialogOpen(false)
+    setSelectedOrder(null)
     setLoading(true)
     setError(null)
     
     try {
       const params = new URLSearchParams({
         page: page.toString(),
-        pageSize: "10",
+        pageSize: "100",
       })
       
       if (searchQuery) {
@@ -244,7 +294,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
       }
       
       const data: OrdersResponse = await response.json()
-      console.log("-----------------------OrdersResponse:", data);
+      //console.log("-----------------------OrdersResponse:", data);
       
       setOrders(data.data)
       setTotal(data.total)
@@ -274,7 +324,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
     return b1 || b2
   })
 
-  if (!mounted) {
+  if (!mounted || updating) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
@@ -287,15 +337,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
     )
   }
 
-  function acceptOrder(id: string) {
-    throw new Error("Function not implemented.")
-  }
-
-  function denyOrder(id: string): void {
-    throw new Error("Function not implemented.")
-  }
-
-  function pickupOrder(id: string): void {
+  function deliveryOrder(id: string): void {
     throw new Error("Function not implemented.")
   }
 
@@ -304,7 +346,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">{t("navigation.orders")}</h1>
-        <p className="text-muted-foreground">مشاهده و پیگیری سفارش‌های شما</p>
+        <p className="text-muted-foreground">مشاهده و پیگیری سفارش‌ها</p>
       </div>
 
       {/* Tabs */}
@@ -345,18 +387,20 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
             const status = statusConfig[order.status]
             const StatusIcon = status?.icon || AlertCircle
             const orderDate = new Date(order.createdAt)
+            const isAccepted = !!user && !!order.driverId && order.driverId === user.id
+            const className = isAccepted ? "overflow-hidden bg-green-500/10" : "overflow-hidden bg-red-500/10"
+            //console.log("className", className);
             
             return (
-              <Card key={order.id} className="overflow-hidden" onClick={() => handleViewOrder(order)}>
-                <CardContent className="p-4">
+              <Card key={order.id} className={className} onClick={() => handleViewOrder(order)}>
+                <CardContent className="">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-semibold">
                           سفارش #{toPersianDigits(order.id.slice(-6).toUpperCase())}
                         </h3>
-                        <Badge variant={status?.variant || "secondary"}>
-                          <StatusIcon className="h-3 w-3 ml-1" />
+                        <Badge className={statusConfig[order.status].color} variant={status?.variant || "secondary"}>
+                          <StatusIcon className={"h-3 w-3 ml-1"} />
                           {status?.label || order.status}
                         </Badge>
                       </div>
@@ -378,35 +422,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
                           {formatToman(order.total)}
                         </span>
                       </div>
-                      
-                      {/* Order Items Preview */}
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {order.items.slice(0, 3).map((item, idx) => (
-                          <span 
-                            key={idx}
-                            className="text-xs bg-muted px-2 py-1 rounded"
-                          >
-                            {item.product?.name} × {toPersianDigits(item.quantity)}
-                          </span>
-                        ))}
-                        {order.items.length > 3 && (
-                          <span className="text-xs text-muted-foreground">
-                            +{toPersianDigits(order.items.length - 3)} مورد دیگر
-                          </span>
-                        )}
-                      </div>
-                    </div>
 
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        جزئیات سفارش
-                      </Button>
-                      {order.status === "DELIVERED" && (
-                        <Button variant="default" size="sm">
-                          ثبت نظر
-                        </Button>
-                      )}
-                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -423,50 +439,173 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
           </DialogHeader>
           
           {selectedOrder && (
-            <div className="space-y-5">
+          <div className="space-y-5">
               {/* Status */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">وضعیت:</span>
-                  <Badge variant={statusConfig[selectedOrder.status].variant}>
+                  <Badge variant={statusConfig[selectedOrder.status].variant} className={statusConfig[selectedOrder.status].color}>
                     {statusConfig[selectedOrder.status].label}
                   </Badge>
                 </div>
               </div>
 
-              {/* Customer Info */}
-              <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm flex items-center gap-2">
-                          <UserIcon className="h-4 w-4" />
-                          اطلاعات مشتری
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-1 text-sm">
-                        {selectedOrder.customer?.firstName && <p>نام : {selectedOrder.customer.firstName}</p>}
-                        {selectedOrder.customer?.lastName && <p>نام خانوادگی : {selectedOrder.customer.name}</p>}
-                        {selectedOrder.guestCustomer?.name && <p>نام کاربر میهمان : {selectedOrder.guestCustomer.name}</p>}
-                      </CardContent>
-              </Card>
 
               {/* Delivery Info */}
-              {selectedOrder.type === "DELIVERY" && selectedOrder.deliveryAddress && (
                       <Card>
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm flex items-center gap-2">
+                          <CardTitle className="text-xs flex items-center gap-2">
                             <MapPin className="h-4 w-4" />
                             آدرس تحویل
                           </CardTitle>
                         </CardHeader>
-                        <CardContent className="text-sm">
+                        <CardContent className="text-xs">
                           <p>{selectedOrder.deliveryAddress}</p>
                         {selectedOrder.customer?.phone && 
                         <p>تلفن: {selectedOrder.customer.phone}</p>}
       
                         </CardContent>
                       </Card>
-              )}
 
+              {/* Progress */}
+              <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-xs flex items-center gap-2">
+                            <Timer className="h-4 w-4" />
+                            زمان های تخمیی
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="text-xs pt-1 space-y-2 ">
+                      {((pickupTime && !savingPickupTime)) && (
+                          <div className=" grid gap-0 grid-cols-2 grid-rows-2 ">
+                            <div className="row-1 pt-2">
+      
+                            <Label htmlFor="picklupProgress">پیکاپ:</Label>
+                            </div>
+                           <div className="row-2 col-1">
+                            {formatRelativePersianTime(pickupTime)} 
+                            </div>
+                          <div className="row-span-2">
+                      <div className="grid gap-1 grid-cols-3 ">
+                      <div className="grid gap-1 grid-rows-2 ">
+                        <Button variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(1)}>
+                          {toPersianDigits(1)} +
+                        </Button>
+                        <Button  variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(-1)}>
+                          {toPersianDigits(1)} -
+                        </Button>
+                      </div>
+                      <div className="grid gap-1 grid-rows-2">
+                      
+                      <Button variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(5)}>
+                       {toPersianDigits(5)}+
+                      </Button>
+                      <Button  variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(-5)}>
+                         {toPersianDigits(5)}-
+                        </Button>
+                      </div>
+                      <div className="grid gap-1 grid-rows-2 col-3">
+                      <Button  variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(10)}>
+                      {toPersianDigits(10)}+
+                      </Button>
+                      <Button  variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(-10)}>
+                          {toPersianDigits(10)}-
+                        </Button>
+                      </div>
+                    </div>
+                    </div>
+                    </div>
+                       )}
+                      {(deliveryTime && !savingDeliveryTime) && (
+                    <div className="grid gap-0 grid-cols-2 grid-rows-2 pt-2">
+                      <div className="row-1 pt-2">
+
+                      <Label htmlFor="deliveryProgress">تحویل دهی:</Label>
+                      </div>
+                      <div className="row-2">
+                      
+                      {formatRelativePersianTime(deliveryTime)} 
+                      </div>
+                      <div className="row-span-2">
+                        <div className="grid gap-1 grid-cols-3 ">
+                          <div className="grid gap-1 grid-rows-2">
+                            <Button variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(1)}>
+                              {toPersianDigits(1)} +
+                            </Button>
+                            <Button  variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(-1)}>
+                              {toPersianDigits(1)} -
+                            </Button>
+                          </div>
+                        <div className="grid gap-1 grid-rows-2">
+                      <Button variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(5)}>
+                       {toPersianDigits(5)}+
+                      </Button>
+                      <Button  variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(-5)}>
+                         {toPersianDigits(5)}-
+                        </Button>
+                      </div>
+                      <div className="grid gap-1 grid-rows-2">
+                      <Button  variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(10)}>
+                      {toPersianDigits(10)}+
+                      </Button>
+                      <Button  variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(-10)}>
+                          {toPersianDigits(10)}-
+                        </Button>
+                      </div>
+                        </div>
+                      </div>
+                    </div>
+                       )}
+      
+                      <div className="pt-5">
+                        {((selectedOrder.status==="ACCEPTED" || selectedOrder.status==="PREPARING" || selectedOrder.status==="READY") && !selectedOrder.assignedDriver) && 
+                        <div className="grid gap-1 grid-cols-3">
+                          <Button  className={"col-span-2 bg-green-400 text-green-800"} onClick={() => {
+                            acceptOrder(selectedOrder.id)
+                            }}>
+                           <CheckCircle/> قبول
+                          </Button>
+                          <Button className={"col-3"} variant={"destructive"} onClick={() => denyOrder(selectedOrder.id)}>
+                           <X/> رد
+                          </Button>
+                        </div>
+                        }
+                        {((selectedOrder.status==="ACCEPTED" || selectedOrder.status==="PREPARING" || selectedOrder.status==="READY") && (!!selectedOrder.assignedDriver && selectedOrder.assignedDriver.id === user?.id)) && 
+                        <div className="grid gap-1 grid-cols-3 ">
+                          <Button className={"col-span-2"} onClick={handleSaveAllEstimatedEndTimes}>
+                            <Save/>  ذخیره 
+                          </Button>
+                          <Button className={"col-3 bg-green-400 text-green-800"} onClick={() => pickupOrder(selectedOrder.id)}>
+                           <CheckCircle/> پیکاپ
+                          </Button>
+                        </div>}
+                        {((selectedOrder.status==="PICKED_UP") && (!!selectedOrder.assignedDriver && selectedOrder.assignedDriver.id === user?.id)) &&
+                        <div className="grid gap-1 grid-cols-3 ">
+                          <Button className={"col-span-2"} onClick={handleSaveAllEstimatedEndTimes}>
+                            <Save/>  ذخیره 
+                          </Button>
+                          <Button className={"col-span-1 bg-green-400 text-green-800"} onClick={() => deliveryOrder(selectedOrder.id)}>
+                            <CheckCircle/>  تحویل 
+                          </Button>
+                        </div>}
+                      </div>      
+                      </CardContent>
+              </Card>
+
+              {/* Customer Info */}
+              <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-xs flex items-center gap-2">
+                          <UserIcon className="h-4 w-4" />
+                          اطلاعات مشتری
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-1 text-xs">
+                        {selectedOrder.customer?.firstName && <p>نام : {selectedOrder.customer.firstName}</p>}
+                        {selectedOrder.customer?.lastName && <p>نام خانوادگی : {selectedOrder.customer.name}</p>}
+                        {selectedOrder.guestCustomer?.name && <p>نام کاربر میهمان : {selectedOrder.guestCustomer.name}</p>}
+                      </CardContent>
+              </Card>
               {/* Order Items */}
               <Card>
                       <CardHeader className="pb-2">
@@ -526,137 +665,13 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
                       </CardContent>
               </Card>
               
-              {/* Progress */}
-              <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm flex items-center gap-2">
-                            <Timer className="h-4 w-4" />
-                            زمان های تخمیی
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="pt-1 space-y-2 ">
-                      {((pickupTime && !savingPickupTime)) && (
-                          <div className="grid gap-0 grid-cols-2 grid-rows-2 ">
-                            <div className="row-1 pt-2">
-      
-                            <Label htmlFor="picklupProgress">پیکاپ:</Label>
-                            </div>
-                           <div className="row-2 col-1 text-xs">
-                            {formatRelativePersianTime(pickupTime)} 
-                            </div>
-                          <div className="row-span-2">
-                      <div className="grid gap-1 grid-cols-3 ">
-                      <div className="grid gap-1 grid-rows-2 ">
-                        <Button variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(1)}>
-                          {toPersianDigits(1)} +
-                        </Button>
-                        <Button  variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(-1)}>
-                          {toPersianDigits(1)} -
-                        </Button>
-                      </div>
-                      <div className="grid gap-1 grid-rows-2">
-                      
-                      <Button variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(5)}>
-                       {toPersianDigits(5)}+
-                      </Button>
-                      <Button  variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(-5)}>
-                         {toPersianDigits(5)}-
-                        </Button>
-                      </div>
-                      <div className="grid gap-1 grid-rows-2 col-3">
-                      <Button  variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(10)}>
-                      {toPersianDigits(10)}+
-                      </Button>
-                      <Button  variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(-10)}>
-                          {toPersianDigits(10)}-
-                        </Button>
-                      </div>
-                    </div>
-                    </div>
-                    </div>
-                       )}
-                      {((user?.role=="DRIVER" || user?.role=="SUPER_ADMIN") && (deliveryTime && !savingDeliveryTime)) && (
-                    <div className="grid gap-0 grid-cols-2 grid-rows-2 pt-2">
-                      <div className="row-1 pt-2">
 
-                      <Label htmlFor="deliveryProgress">تحویل دهی:</Label>
-                      </div>
-                      <div className="row-2">
-                      
-                      {formatRelativePersianTime(deliveryTime)} 
-                      </div>
-                      <div className="row-span-2">
-                        <div className="grid gap-1 grid-cols-3 ">
-                          <div className="grid gap-1 grid-rows-2">
-                            <Button variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(1)}>
-                              {toPersianDigits(1)} +
-                            </Button>
-                            <Button  variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(-1)}>
-                              {toPersianDigits(1)} -
-                            </Button>
-                          </div>
-                        <div className="grid gap-1 grid-rows-2">
-                      <Button variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(5)}>
-                       {toPersianDigits(5)}+
-                      </Button>
-                      <Button  variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(-5)}>
-                         {toPersianDigits(5)}-
-                        </Button>
-                      </div>
-                      <div className="grid gap-1 grid-rows-2">
-                      <Button  variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(10)}>
-                      {toPersianDigits(10)}+
-                      </Button>
-                      <Button  variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(-10)}>
-                          {toPersianDigits(10)}-
-                        </Button>
-                      </div>
-                        </div>
-                      </div>
-                    </div>
-                       )}
-      
-                      </CardContent>
-                      <div className="pt-5 px-2">
-                        {((selectedOrder.status==="ACCEPTED" || selectedOrder.status==="PREPARING" || selectedOrder.status==="READY") && !selectedOrder.assignedDriver) && 
-                        <div className="grid gap-1 grid-cols-3">
-                          <Button  className={"col-span-2 bg-green-400 text-green-800"} onClick={() => {
-                            acceptOrder(selectedOrder.id)
-                            handleSaveAllEstimatedEndTimes()
-                            }}>
-                           <CheckCircle/> قبول
-                          </Button>
-                          <Button className={"col-3"} variant={"destructive"} onClick={() => denyOrder(selectedOrder.id)}>
-                           <X/> رد
-                          </Button>
-                        </div>
-                        }
-                        {((selectedOrder.status==="ACCEPTED" || selectedOrder.status==="PREPARING" || selectedOrder.status==="READY") && (!!selectedOrder.assignedDriver && selectedOrder.assignedDriver.id === user?.id)) && 
-                        <div className="grid gap-1 grid-cols-3 ">
-                          <Button className={"col-span-2"} onClick={() => {handleSaveAllEstimatedEndTimes()}}>
-                            <Save/>  ذخیره 
-                          </Button>
-                          <Button className={"col-3 bg-green-400 text-green-800"} onClick={() => pickupOrder(selectedOrder.id)}>
-                           <CheckCircle/> پیکاپ
-                          </Button>
-                        </div>}
-                        {((selectedOrder.status==="PICKED_UP") && (!!selectedOrder.assignedDriver && selectedOrder.assignedDriver.id === user?.id)) &&
-                        <div className="grid gap-1 grid-cols-3 ">
-                          <Button className={"col-span-2"} onClick={() => {handleSaveAllEstimatedEndTimes()}}>
-                            <Save/>  ذخیره 
-                          </Button>
-                          <Button className={"col-span-1 bg-green-400 text-green-800"} onClick={() => {handleSaveAllEstimatedEndTimes()}}>
-                            <CheckCircle/>  تحویل 
-                          </Button>
-                        </div>}
-                      </div>      
-              </Card>
               
-            </div>)}
+          </div>)}
           <DialogFooter>
-                  <Button variant="outline" onClick={() => setDetailDialogOpen(false)}>
-                   <X/> بستن
-                  </Button>
+            <Button variant="outline" onClick={() => setDetailDialogOpen(false)}>
+              <X/> بستن
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

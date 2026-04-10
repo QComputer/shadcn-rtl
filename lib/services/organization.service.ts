@@ -44,10 +44,15 @@ export class OrganizationService {
     });
 
     // Update user's isTeamMember flag
-    await prisma.user.update({
+    // TODO: Filter SUPER_ADMIN
+    {await prisma.user.update({
       where: { id: userId },
       data: { isTeamMember: true, role: "ADMIN" },
     });
+
+    await prisma.organizationMember.create({
+      data: { userId, organizationId: organization.id},
+    });}
 
     revalidatePath("/dashboard");
     return organization;
@@ -460,35 +465,6 @@ export class OrganizationService {
       });
     }
     return organizationMembers;
-  }
-
-  async copyBusinessHoursTo(userId: string, organizationId: string) {
-    // Delete existing hours and create new ones
-    await prisma.businessHour.deleteMany({
-      where: { userId },
-    });
-    const hours = await this.getBusinessHours(organizationId);
-
-    const businessHours = await prisma.businessHour.createMany({
-      data: hours.map((h) => ({
-        day: h.day as
-          | "SATURDAY"
-          | "SUNDAY"
-          | "MONDAY"
-          | "TUESDAY"
-          | "WEDNESDAY"
-          | "THURSDAY"
-          | "FRIDAY",
-        openTime: h.openTime,
-        closeTime: h.closeTime,
-        isOpen: h.isOpen,
-        organizationId,
-        userId,
-      })),
-    });
-
-    //revalidatePath(`/dashboard/users/${userId}/settings`);
-    return businessHours;
   }
 
   async isMember(userId: string, organizationId: string) {

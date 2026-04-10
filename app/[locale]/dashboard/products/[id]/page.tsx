@@ -107,7 +107,6 @@ export default function EditProductPage({
   // Form state
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
-  const [price, setPrice] = useState("")
   const [categoryId, setCategoryId] = useState("")
   const [image, setImage] = useState("")
   const [isActive, setIsActive] = useState(true)
@@ -115,7 +114,6 @@ export default function EditProductPage({
 
   const [inventory, setInventory] = useState(100)
   const [trackInventory, setTrackInventory] = useState(false)                     
-  const [showVariants, setShowVariants] = useState(false)
   const [addVariantDialogOpen, setAddVariantDialogOpen] = useState(false)
   const [editVariantDialogOpen, setEditVariantDialogOpen] = useState(false)
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant>({
@@ -155,6 +153,9 @@ export default function EditProductPage({
 
       xhr.onload = () => {
         setProgress(0);
+        const res = xhr.responseText
+        console.log("----------------xhr.responseText:",xhr.responseText);
+        
         resolve(JSON.parse(xhr.responseText));
       };
 
@@ -169,7 +170,7 @@ export default function EditProductPage({
       try {
         const img = await uploadFile(imageFile);
         setImage(img.url);
-        console.log('-----------img:',img);
+        //console.log('-----------img:',img);
         
         // Create a preview URL
         const reader = new FileReader();
@@ -193,12 +194,12 @@ export default function EditProductPage({
   }, [locale])
   
   useEffect(()=>{
-  console.log(selectedVariant);
+  //console.log(selectedVariant);
 
   },[selectedVariant])
   
   useEffect(()=>{
-  console.log(newVariant);
+  //console.log(newVariant);
 
   },[newVariant])
   // Fetch product and categories
@@ -220,7 +221,7 @@ export default function EditProductPage({
         .then(data => data.data || [])
 
     ]).then(([productData, categoriesData]) => {
-    console.log("-------------productData:",productData);
+    //console.log("-------------productData:",productData);
 
       setProduct(productData)
       setName(productData.name)
@@ -482,16 +483,20 @@ export default function EditProductPage({
                   htmlFor="imageUpload"
                 >
       
-                {imagePreview && (
+                {imagePreview ? 
                   <img
                   src={imagePreview}
                   alt="Image Preview"
                   className=" items-center mr-2 h-20 w-20 object-cover rounded-md"
                   />
-                              
-                )}
-    
-              {!imagePreview && (
+                : product?.image 
+                  ? <img
+                    src={product.image}
+                    alt="Original Image Preview"
+                    className=" items-center mr-2 h-20 w-20 object-cover rounded-md"
+                    />
+                  :
+               (
                 <div className=" items-center mr-2 text-xs border-1 p-2 rounded-md w-20 h-20">هیچ تصویری انتخاب نشده</div>
               )}
                 </label>

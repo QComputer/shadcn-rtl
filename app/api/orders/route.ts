@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth();
 
-    if (!session?.user) {
+    if (!session || !session?.user || !session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -52,14 +52,13 @@ export async function GET(request: NextRequest) {
     if (session.user?.role === "CUSTOMER") {
       orders = await orderService.list({
         ...params,
-        customerId: session.user!.id,
+        customerId: session.user.id,
       });
-    } else if (session.user?.role === "DRIVER") {
-      orders = await orderService.list({
-        ...params,
-        type: "DELIVERY",
-      });
-    } else {
+    } else if (session.user.role === "DRIVER") {
+orders = await orderService.list({
+  ...params,
+  type: "DELIVERY",
+});    } else {
       // Super-Admin, Admin, Manager, Staff can see all orders for their organizations
       orders = await orderService.list(params);
     }
@@ -97,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     const order = await orderService.create(data, customerId, sessionId);
 
-          console.log("-------------------------->order:", order);
+          //console.log("-------------------------->order:", order);
 
           return NextResponse.json(order, { status: 201 });
   } catch (error) {

@@ -17,8 +17,10 @@ import {
   Calendar,
   Van,
   LocateFixedIcon,
+  ShoppingCart,
+  Check,
 } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -32,6 +34,7 @@ import {
 } from "@/components/ui/select"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatToman, toPersianDigits } from "@/lib/persian"
+import { useCart } from "@/lib/contexts/cart-context"
 
 interface ProductVariant {
   id: string
@@ -94,16 +97,6 @@ interface ShopData {
   settings: OrganizationSettings | null
 }
 
-// Persian day names mapping
-const dayNames: Record<string, string> = {
-  SATURDAY: "شنبه",
-  SUNDAY: "یکشنبه",
-  MONDAY: "دوشنبه",
-  TUESDAY: "سه‌شنبه",
-  WEDNESDAY: "چهارشنبه",
-  THURSDAY: "پنج‌شنبه",
-  FRIDAY: "جمعه",
-}
 
 export default function ShopPage({ 
   params 
@@ -121,7 +114,34 @@ export default function ShopPage({
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list")
+
+    const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null)
+    const [quantity, setQuantity] = useState(1)
+    const [addingToCart_VariantId, setAddingToCart_VariantId] = useState<string | null>(null)
+    const [addedToCart, setAddedToCart] = useState(false)
+    const [addedToCart_VariantId, setAddedToCart_VariantId] = useState<string | null>(null)
+    // Get cart functions from context
+      const { addToCart } = useCart()
+      
+  const handleAddToCart = async (variantId: string) => {
+    if (!variantId) return
+    
+    setAddingToCart_VariantId(variantId)
+    try {
+      await addToCart(variantId, quantity)
+      
+      setAddedToCart_VariantId(variantId)
+      setTimeout(() => setAddedToCart_VariantId(null), 3000)
+    } catch (err) {
+      console.error("Error adding to cart:", err)
+    } finally {
+      setAddingToCart_VariantId(null)
+    }
+  }
+
+  
+ 
 
   const t = (key: string): string => {
     if (!dict) return key
@@ -188,23 +208,6 @@ export default function ShopPage({
 
 
 
-  // Get today's hours
-  const getTodayHours = () => {
-    if (!data?.businessHours) return null
-    const today = new Date().toLocaleDateString("fa", { weekday: "long" })
-    const dayMap: Record<string, string> = {
-      Saturday: "SATURDAY",
-      Sunday: "SUNDAY",
-      Monday: "MONDAY",
-      Tuesday: "TUESDAY",
-      Wednesday: "WEDNESDAY",
-      Thursday: "THURSDAY",
-      Friday: "FRIDAY",
-    }
-    const englishDay = dayMap[today]
-    return data.businessHours.find(h => h.day === englishDay)
-  }
-
   // Get display price
   const getDisplayPrice = (product: Product): number => {
     if (product.variants.length > 0 && product.variants[0].price) {
@@ -254,7 +257,6 @@ export default function ShopPage({
   }
 
   const { organization, categories, settings } = data
-  const todayHours = getTodayHours()
   const filteredProducts = getFilteredProducts()
   return (
     <div className="min-h-screen bg-background">
@@ -284,7 +286,7 @@ export default function ShopPage({
               {settings?.enableDelivery && (
                 <Badge variant="secondary">
                   <Van className="h-3 w-3" />
-                  ارسال دارد
+                  ارسال 
                 </Badge>
               )}
               {settings?.enablePickup && (
@@ -317,20 +319,6 @@ export default function ShopPage({
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <MapPin className="h-4 w-4" />
                   <span>{organization.address}</span>
-                </div>
-              )}
-              {todayHours && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Clock className="h-4 w-4" />
-                  <span>
-                    {todayHours.isOpen 
-                      ? `${todayHours.openTime} - ${todayHours.closeTime}`
-                      : t("organization.closed")
-                    }
-                  </span>
-                  <Badge variant={todayHours.isOpen ? "default" : "secondary"} className="text-xs">
-                    {todayHours.isOpen ? t("organization.open") : t("organization.closed")}
-                  </Badge>
                 </div>
               )}
             </div>
@@ -385,8 +373,17 @@ export default function ShopPage({
           </div>
 
           {/* Categories Quick Links */}
-          {categories.length > 0 && selectedCategory === "all" && (
+          {categories.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-6">
+              <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedCategory("all")}
+                >
+                  {"همه"}
+                  <Badge variant="secondary" className="mr-2">
+                  </Badge>
+                </Button>
               {categories.map((category) => (
                 <Button
                   key={category.id}
@@ -429,13 +426,10 @@ export default function ShopPage({
                 const price = getDisplayPrice(product)
                 
                 return (
-                  <Link 
-                    key={product.id} 
-                    href={`/${locale}/shop/${slug}/product/${product.id}`}
-                  >
-                    <Card className="hover:shadow-md transition-shadow overflow-hidden h-full">
+                    <Card key={product.id} className="hover:shadow-md transition-shadow overflow-hidden h-full">
                       <div className="aspect-square bg-muted relative">
-                        {product.image ? (
+                  <Link   href={`/${locale}/shop/${slug}/product/${product.id}`}>
+                      {product.image ? (
                           <img 
                             src={product.image} 
                             alt={product.name}
@@ -446,6 +440,7 @@ export default function ShopPage({
                             <Package className="h-12 w-12 text-muted-foreground" />
                           </div>
                         )}
+                        </Link>
                         {inventory === 0 && (
                           <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
                             <Badge variant="secondary">ناموجود</Badge>
@@ -470,8 +465,27 @@ export default function ShopPage({
                           )}
                         </div>
                       </CardContent>
+                      <CardFooter>
+                  <Button 
+                  size="default" 
+                  className={"flex-1 gap-2"}
+                  disabled={addingToCart_VariantId == product.variants[0]?.id}
+                  onClick={() => handleAddToCart(product.variants[0].id)}
+                >
+                  {addedToCart_VariantId == product.variants[0]?.id ? (
+                    <>
+                      <Check className="h-5 w-5" />
+                      اضافه شد
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="h-5 w-5" />
+                      {addingToCart_VariantId == product.variants[0]?.id ? "در حال افزودن..." : "افزودن به سبد"}
+                    </>
+                  )}
+                </Button>
+                      </CardFooter>
                     </Card>
-                  </Link>
                 )
               })}
             </div>
@@ -482,27 +496,28 @@ export default function ShopPage({
                 const price = getDisplayPrice(product)
                 
                 return (
-                  <Link 
-                    key={product.id} 
-                    href={`/${locale}/shop/${slug}/product/${product.id}`}
-                  >
-                    <Card className="hover:shadow-md transition-shadow">
+                    <Card key={product.id} className="hover:shadow-md transition-shadow">
                       <CardContent className="p-4">
                         <div className="flex gap-4">
+                          
                           <div className="w-24 h-24 bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                            {product.image ? (
-                              <img 
-                                src={product.image} 
-                                alt={product.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
+                          <Link   href={`/${locale}/shop/${slug}/product/${product.id}`}>                        
+                              {product.image ? (
+                                <img 
+                                  src={product.image} 
+                                  alt={product.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
                                 <Package className="h-8 w-8 text-muted-foreground" />
-                              </div>
-                            )}
+                                </div>
+                              )}
+                            </Link>
                           </div>
+                          
                           <div className="flex-1 min-w-0">
+                            
                             <p className="text-xs text-muted-foreground mb-1">
                               {product.categoryName}
                             </p>
@@ -513,55 +528,43 @@ export default function ShopPage({
                               </p>
                             )}
                             <div className="flex items-center justify-between">
+
                               <span className="font-bold text-primary">
                                 {formatToman(price)}
                               </span>
                               <div className="flex items-center gap-2">
-                                {inventory === 0 ? (
-                                  <Badge variant="secondary">ناموجود</Badge>
+                                <Button 
+                                size="default" 
+                                className={"flex-1 gap-2 h-10"}
+                                disabled={addingToCart_VariantId == product.variants[0]?.id}
+                                onClick={() => handleAddToCart(product.variants[0].id)}
+                              >
+                                {addedToCart_VariantId == product.variants[0]?.id ? (
+                                  <>
+                                    <Check className="h-5 w-5 " />
+                                    اضافه شد
+                                  </>
                                 ) : (
-                                  <span className="text-xs text-muted-foreground">
-                                    موجودی: {toPersianDigits(inventory.toString())}
-                                  </span>
+                                  <>
+                                    <ShoppingCart className="h-5 w-5" />
+                                    {addingToCart_VariantId == product.variants[0].id ? "در حال افزودن..." : "افزودن به سبد"}
+                                  </>
                                 )}
-                                {product.variants.length > 1 && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {toPersianDigits(product.variants.length.toString())} نوع
-                                  </Badge>
-                                )}
+                                </Button>
                               </div>
+                              
                             </div>
+                            
                           </div>
+
                         </div>
+                      
                       </CardContent>
                     </Card>
-                  </Link>
                 )
               })}
             </div>
           )}
-        </div>
-      </section>
-
-      {/* Business Hours */}
-      <section className="py-8 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <h2 className="text-2xl font-bold mb-6">{t("organization.businessHours")}</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-            {data.businessHours.map((hours) => (
-              <Card key={hours.day} className={hours.isOpen ? "" : "opacity-40"}>
-                <CardContent className="py-3 px-3 text-center">
-                  <p className="font-medium text-sm">{dayNames[hours.day]}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {hours.isOpen 
-                      ? `${toPersianDigits(hours.openTime)} - ${toPersianDigits(hours.closeTime)}`
-                      : "تعطیل"
-                    }
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
         </div>
       </section>
     </div>

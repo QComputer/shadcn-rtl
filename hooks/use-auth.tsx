@@ -152,7 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true)
     try {
       await signOutAuth({ redirect: false })
-      console.log('session.user:', session?.user)
+      //console.log('session.user:', session?.user)
       router.push("/")
     } catch (error) {
       console.error("Sign out error:", error)

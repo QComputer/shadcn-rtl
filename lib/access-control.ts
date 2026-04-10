@@ -397,6 +397,15 @@ export const dashboardNavItems: NavItem[] = [
     //requiredOrgMemberRole: ["ADMIN", "MANAGER"],
   },
   {
+    id: "product-categories",
+    labelKey: "navigation.product-categories",
+    href: "/dashboard/product-categories",
+    icon: "FolderOpen",
+    requiredRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+    requiredOrgType: ["SHOP"],
+    //requiredOrgMemberRole: ["ADMIN", "MANAGER"],
+  },
+  {
     id: "appointments",
     labelKey: "navigation.appointments",
     href: "/dashboard/appointments",
@@ -439,7 +448,7 @@ export const dashboardNavItems: NavItem[] = [
     icon: "ShoppingBag",
     requiredRoles: ["CUSTOMER", "DRIVER"],
   },
-   {
+  {
     id: "my-appointments",
     labelKey: "navigation.myAppointments",
     href: "/dashboard/my-appointments",
@@ -461,7 +470,7 @@ export const dashboardNavItems: NavItem[] = [
     icon: "Settings",
     isUniversal: true,
   },
-]
+];
 
 /**
  * Filter navigation items based on user context

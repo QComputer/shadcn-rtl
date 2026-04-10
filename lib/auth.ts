@@ -141,7 +141,7 @@ const buildProviders = (): Provider[] => {
           }
 
           // Return user object with required fields
-          console.log(`[Auth] Successful sign-in for user: ${user}`);
+          //console.log(`[Auth] Successful sign-in for user: ${user}`);
           return {
             id: user.id,
             email: user.email,
@@ -215,7 +215,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.theme = token.theme as string;
         session.user.organizationId = token.organizationId as string | null;
       }
-      console.log("[Auth] session.user.name:", session.user.name);
+      //console.log("[Auth] session.user.name:", session.user.name);
 
       return session;
     },
@@ -246,13 +246,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * Called when a new user is created (e.g., via OAuth signup)
      */
     async createUser({ user }) {
-      console.log("[Auth] New user created via OAuth:", user);
+      //console.log("[Auth] New user created via OAuth:", user);
     },
      /**
      * Called when a user signed in  (e.g., via OAuth signin)
      */
     async signIn({ user }) {
-      console.log("[Auth][Event] A user signed in via OAuth:", user);
+      //console.log("[Auth][Event] A user signed in via OAuth:", user);
     },
   },
   

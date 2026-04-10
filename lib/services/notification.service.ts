@@ -144,9 +144,9 @@ export class NotificationService {
     organizationId: string
   ): Promise<void> {
     // Log the notification for now
-    console.log(`[Notification] ${payload.type}: ${payload.title}`);
-    console.log(`  To: ${payload.email || payload.phone || "Unknown"}`);
-    console.log(`  Message: ${payload.message}`);
+    //console.log(`[Notification] ${payload.type}: ${payload.title}`);
+    //console.log(`  To: ${payload.email || payload.phone || "Unknown"}`);
+    //console.log(`  Message: ${payload.message}`);
 
     // Store notification in database for tracking
     // This could be a separate Notification model in the future
@@ -159,18 +159,18 @@ export class NotificationService {
     if (settings?.emailNotifications && payload.email) {
       // TODO: Send email
       // await this.sendEmail(payload.email, payload.title, payload.message);
-      console.log(`  [Would send email to: ${payload.email}]`);
+      //console.log(`  [Would send email to: ${payload.email}]`);
     }
 
     if (settings?.smsNotifications && payload.phone) {
       // TODO: Send SMS
       // await this.sendSMS(payload.phone, payload.message);
-      console.log(`  [Would send SMS to: ${payload.phone}]`);
+      //console.log(`  [Would send SMS to: ${payload.phone}]`);
     }
 
     // For development, just log
     if (process.env.NODE_ENV === "development") {
-      console.log(`  [Development mode - notification logged only]`);
+      //console.log(`  [Development mode - notification logged only]`);
     }
   }
 
@@ -220,7 +220,7 @@ export class NotificationService {
       });
     }
 
-    console.log(`[NotificationService] Sent ${appointments.length} reminders`);
+    //console.log(`[NotificationService] Sent ${appointments.length} reminders`);
   }
 }
 

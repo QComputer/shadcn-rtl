@@ -34,43 +34,6 @@ import { useSession } from "next-auth/react"
 import { isRTL } from "@/lib/i18n"
 import { FieldLabel } from "@/components/ui/field"
 
-interface ProductVariant {
-  id?: string
-  name: string
-  sku?: string 
-  image?: string 
-  price?: number
-  inventory?: number
-}
-
-interface ProductCategory {
-  id: string
-  name: string
-}
-
-interface Product {
-  id: string
-  name: string
-  description: string | null
-  basePrice: number
-  images: string[]
-  image: string | null
-  sku: string | null
-  isActive: boolean
-  trackInventory: boolean
-  lowStockThreshold: number
-  category: ProductCategory
-  variants: ProductVariant[]
-  createdAt: string
-}
-
-interface ProductsResponse {
-  data: Product[]
-  total: number
-  page: number
-  pageSize: number
-  totalPages: number
-}
 
 interface ImageRecord {
   id: number;
@@ -78,7 +41,7 @@ interface ImageRecord {
   filename: string;
 }
 
-export default function NewProductPage({ 
+export default function NewOrganizationPage({ 
   params 
 }: { 
   params: Promise<{ locale: string }> 
@@ -93,7 +56,6 @@ export default function NewProductPage({
   
   const [mounted, setMounted] = useState(false)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
-  const [categories, setCategories] = useState<ProductCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -101,17 +63,12 @@ export default function NewProductPage({
   // Form state
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
-  const [basePrice, setBasePrice] = useState("")
-  const [categoryId, setCategoryId] = useState("")
-  const [sku, setSku] = useState("")
-  const [organizationId, setOrganizationId] = useState("")
-  const [lowStockThreshold, setLowStockThreshold] = useState("20")
-  const [sortOrder, setSortOrder] = useState("0")
+  const [slug, setSlug] = useState("")
+  const [type, setType] = useState<"SHOP"|"APPOINTMENT">("SHOP")
   const [image, setImage] = useState<ImageRecord|null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [isActive, setIsActive] = useState(true)
 
-   const [images, setImages] = useState<ImageRecord[]>([]);
+  const [images, setImages] = useState<ImageRecord[]>([]);
     const [isDragging, setIsDragging] = useState(false);
     const [progress, setProgress] = useState<number>(0);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -161,23 +118,6 @@ export default function NewProductPage({
     })
   }, [locale])
 
-  // Fetch categories and staff members
-  useEffect(() => {
-    if (!hasAccess || accessLoading) return
-    
-    setLoading(true)
-    
-    Promise.all([
-      fetch(`/api/product-categories`)
-        .then(res => res.json())
-        .then(data => data.data || [])
-    ]).then(([categoriesData]) => {
-      setCategories(categoriesData)
-    }).catch(() => {
-      setCategories([])
-    }).finally(() => setLoading(false))
-  }, [hasAccess, accessLoading])
-
   const t = (key: string): string => {
     if (!dict) return key
     return getDictValue(dict, key)
@@ -208,7 +148,7 @@ export default function NewProductPage({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!name || !basePrice || !categoryId) {
+    if (!name) {
       setError(t("errors.required_fields") || "Please fill in all required fields")
       return
     }
@@ -222,31 +162,27 @@ export default function NewProductPage({
         const img = await uploadFile(imageFile)
         imageUrl = img.url
       }
-      const response = await fetch("/api/products", {
+      const response = await fetch("/api/organizations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name,
             description: description || undefined,
-            basePrice: parseFloat(basePrice),
             image: imageUrl || undefined,
-            sku,
-            categoryId,
-            organizationId,
-            lowStockThreshold: Number(lowStockThreshold),
-            sortOrder: Number(sortOrder),
+            slug,
+            type,
           }),
       })
         const data = await response.json()
       
       if (!response.ok) {
-        throw new Error(data.error || "Failed to create product")
+        throw new Error(data.error || "Failed to create organization")
       }
       
       // Redirect to products page
       router.push(`/${locale}/dashboard/products/${data.id}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create product")
+      setError(err instanceof Error ? err.message : "Failed to create organization")
     } finally {
       setSaving(false)
     }
@@ -327,9 +263,9 @@ export default function NewProductPage({
             {<ArrowLeft className={"h-5 w-5" + isRTL(locale) && "rotate-180"} />}
         </Link>
         <div>
-          <h2 className="text-2xl font-bold">{t("product.new") || "New Product"}</h2>
+          <h2 className="text-2xl font-bold">{t("organization.new") || "New Organization"}</h2>
           <p className="text-muted-foreground">
-            {t("product.create_description") || "Create a new product for your organization"}
+            {t("organization.create_description") || "Create a new organization for your organization"}
           </p>
         </div>
       </div>
@@ -337,7 +273,7 @@ export default function NewProductPage({
       {/* Form */}
       <Card className="max-w-2xl">
         <CardHeader>
-          <CardTitle>{t("product.details") || "Product Details"}</CardTitle>
+          <CardTitle>{t("organization.details") || "Organization Details"}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -350,7 +286,7 @@ export default function NewProductPage({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="image">
-                    {t("product.image") || "Product image"}
+                    {t("organization.image") || "Organization image"}
                   </Label>
                 </div>
                 <div className="mt-1 flex items-center">
@@ -401,26 +337,26 @@ export default function NewProductPage({
     
               <div className="space-y-2">
                 <Label htmlFor="name">
-                  {t("product.name") || "Product Name"} *
+                  {t("organization.name") || "Organization Name"} *
                 </Label>
                 <Input
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder={t("product.name_placeholder") || "Enter product name"}
+                  placeholder={t("organization.name_placeholder") || "Enter organization name"}
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="sku">
-                  {t("product.sku") || "Product sku"}
+                <Label htmlFor="slug">
+                  {t("organization.slug") || "Organization slug"}
                 </Label>
                 <Input
-                  id="sku"
-                  value={sku}
-                  onChange={(e) => setSku(e.target.value)}
-                  placeholder={t("product.sku_placeholder") || "Enter product sku"}
+                  id="slug"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  placeholder={t("organization.sku_placeholder") || "Enter organization slug"}
                 />
               </div>
             </div>
@@ -428,87 +364,15 @@ export default function NewProductPage({
             {/* Description */} 
             <div className="space-y-2">
               <Label htmlFor="description">
-                {t("product.description") || "Description"}
+                {t("organization.description") || "Description"}
               </Label>
               <Textarea
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder={t("product.description_placeholder") || "Describe your product"}
+                placeholder={t("organization.description_placeholder") || "Describe your organization"}
                 rows={3}
               />
-            </div>
-
-            {/* Category */}
-            <div className="space-y-2 pt-4">
-              <Label htmlFor="category">
-                {t("product.category") || "Category"} *
-              </Label>
-              {loading ? (
-                <Skeleton className="h-10 w-full" />
-              ) : categories.length === 0 ? (
-                <div className="flex items-center gap-2">
-                  <Input disabled placeholder={t("product.no_categories") || "No categories available"} />
-                  <Link href={`/${locale}/dashboard/product-categories`}>
-                    <Button type="button" variant="outline">
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                </div>
-              ) : (
-                <Select value={categoryId} onValueChange={setCategoryId} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("product.select_category") || "Select a category"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map(category => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-
-            {/* Price */}
-              <div className="space-y-2">
-                <Label htmlFor="price">
-                  {t("product.price") || "Price"}
-                  <p className="text-sm text-muted-foreground">
-                  : {basePrice ? formatToman(parseFloat(basePrice)) : formatToman(parseFloat("0"))}
-                </p>
-                </Label>
-                <Input
-                  id="price"
-                  type="number"
-                  min="0"
-                  step="1000"
-                  value={basePrice}
-                  onChange={(e) => setBasePrice(e.target.value)}
-                  placeholder="0 "
-                  required
-                />
-              </div>
-
-            {/* ------------- Active Status */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="active">
-                    {isActive ? (t("common.active") || "Active") : (t("common.inactive") || "Inactive")}
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    {t("product.active_description") || "This product will be available for booking"}
-                  </p>
-                </div>
-                <Switch
-                  id="active"
-                  checked={isActive}
-                  onCheckedChange={setIsActive}
-                />
-              </div>
             </div>
 
             {/* ======================================== Actions */}

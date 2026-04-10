@@ -138,7 +138,7 @@ export default function OrderConfirmationPage({
           throw new Error("Order not found");
         }
         const orderData = await response.json();
-        console.log("----------------> orderData:", orderData);
+        //console.log("----------------> orderData:", orderData);
         
         setData({ order: orderData });
       } catch (err) {

@@ -57,16 +57,7 @@ export async function GET(
         sortOrder: "asc",
       },
     });
-    
-    // Get business hours
-    const businessHours = await prisma.businessHour.findMany({
-      where: {
-        organizationId: organization.id, userId: null
-      },
-      orderBy: {
-        day: "asc",
-      },
-    });
+
     // Get organization settings
     const settings = await prisma.organizationSettings.findUnique({
       where: {
@@ -84,7 +75,6 @@ export async function GET(
     return NextResponse.json({
       organization,
       categories,
-      businessHours,
       settings,
     });
   } catch (error) {

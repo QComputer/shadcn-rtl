@@ -54,15 +54,17 @@ export const loginSchema = z.object({
 export const createOrganizationSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(200),
   slug: slugSchema,
-  type: z.enum(["SHOP", "APPOINTMENT"]),
+  type: z.enum(["SHOP", "APPOINTMENT"]).default("SHOP"),
+  userId: z.string().cuid().optional(),
   description: z.string().max(5000).optional(),
   address: z.string().max(500).optional(),
-  phone: phoneSchema,
+  phone: phoneSchema.optional(),
   email: emailSchema.optional(),
   logo: z.string().url().optional(),
   coverImage: z.string().url().optional(),
-  locale: z.string().default("en"),
-  timezone: z.string().default("UTC"),
+  image: z.string().url().optional(),
+  locale: z.string().default("fa"),
+  timezone: z.string().default("Asia/Tehran"),
 });
 
 export const updateOrganizationSchema = z.object({

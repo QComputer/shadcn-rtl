@@ -465,9 +465,9 @@ model ProductCategory {
 }
 
 model Image {
-  id        Int      @id @default(autoincrement())
+  id          String   @id @default(cuid())
   url       String
-  filename  String
+  filename  String?
   createdAt DateTime @default(now())
   products Product[]
 }

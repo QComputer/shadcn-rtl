@@ -71,7 +71,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    console.log("-----------[id]/variamts:body:", body);
+    //console.log("-----------[id]/variamts:body:", body);
     
     const data = updateProductVariantSchema.parse(body);
 

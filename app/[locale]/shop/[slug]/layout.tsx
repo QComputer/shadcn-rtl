@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: ShopLayoutProps): Promise<Met
     const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/public/organizations/${slug}/shop`, {
       cache: 'no-store'
     });
-    console.log("------------------shop response:", response);
+    //console.log("------------------shop response:", response);
     
     if (!response.ok) {
       return {

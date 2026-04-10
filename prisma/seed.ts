@@ -21,8 +21,6 @@ async function main() {
   await prisma.payment.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
-  await prisma.guestCartItem.deleteMany();
-  await prisma.guestCart.deleteMany();
   await prisma.guestCustomer.deleteMany();
   await prisma.shopCartItem.deleteMany();
   await prisma.shopCart.deleteMany();
@@ -137,7 +135,6 @@ async function main() {
     // Access: dashboard, my orders, settings, calendar
     prisma.user.create({
       data: {
-        email: "shop-driver@shop.ir", // optional
         password: hashedPassword,
         firstName: "راننده",
         lastName: "فروشگاه",
@@ -305,7 +302,6 @@ async function main() {
     // Access: dashboard, my orders, settings, calendar
     prisma.user.create({
       data: {
-        email: "driver1@shop.ir", // optional
         password: hashedPassword,
         firstName: "راننده",
         lastName: "اول",
@@ -523,6 +519,81 @@ async function main() {
         theme: "light",
       },
     }),
+    // ========================================
+    // Sicily SHOP Organization Users (indices 25-28)
+    // ========================================
+
+    // Sicily ADMIN (index 25)
+    // Access: dashboard, organization details, members, orders, products, product categories
+    prisma.user.create({
+      data: {
+        //email: "shop-admin@shop.ir", // optional
+        password: hashedPassword,
+        firstName: "حسین",
+        lastName: "سیسیلی",
+        name: "hosein", // unique username
+        phone: "+989100000002",
+        role: UserRole.ADMIN,
+        isActive: true,
+        isTeamMember: true,
+        locale: "fa",
+        theme: "dark",
+      },
+    }),
+
+    // SHOP MANAGER (index 26)
+    // Access: dashboard, organization details, members, orders, products, product categories
+    prisma.user.create({
+      data: {
+        //email: "shop-manager@shop.ir", // optional
+        password: hashedPassword,
+        firstName: "معاون",
+        lastName: "فروشگاه",
+        name: "manager1", // unique username
+        phone: "+989100000003",
+        role: UserRole.MANAGER,
+        isActive: true,
+        isTeamMember: true,
+        locale: "fa",
+        theme: "light",
+      },
+    }),
+
+    // SHOP STAFF (index 27)
+    // Access: dashboard, my orders (if also CUSTOMER), settings, calendar
+    // Note: STAFF without ADMIN/MANAGER org role has limited access
+    prisma.user.create({
+      data: {
+        //email: "shop-staff@shop.ir", // optional
+        password: hashedPassword,
+        firstName: "کارمند",
+        lastName: "فروشگاه",
+        name: "sstaff1", // unique username
+        phone: "+989100000004",
+        role: UserRole.STAFF,
+        isActive: true,
+        isTeamMember: true,
+        locale: "fa",
+        theme: "light",
+      },
+    }),
+
+    // SHOP DRIVER (index 28)
+    // Access: dashboard, my orders, settings, calendar
+    prisma.user.create({
+      data: {
+        password: hashedPassword,
+        firstName: "راننده",
+        lastName: "فروشگاه",
+        name: "driver", // unique username
+        phone: "+989100000005",
+        role: UserRole.DRIVER,
+        isActive: true,
+        isTeamMember: true,
+        locale: "fa",
+        theme: "dark",
+      },
+    }),
   ]);
 
   console.log(`✅ Created ${users.length} users with all roles\n`);
@@ -568,6 +639,25 @@ async function main() {
       isActive: true,
     },
   });
+
+  const sicily = await prisma.organization.create({
+    data: {
+      type: OrganizationType.SHOP,
+      locale: "fa",
+      timezone: "Asia/Tehran",
+      name: "رستوران سیسیلی",
+      slug: "sicily",
+      description:"",
+      address: "شهرکرد، خیابان کاشانی، ...",
+      phone: "+982188555555",
+      email: "info@sicily.ir",
+      logo: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=200",
+      coverImage:
+        "/public/uploads/sicily-cover.jpg",
+      isActive: true,
+    },
+  });
+
 
   // === APPOINTMENT Organizations ===
   const beautyClinic = await prisma.organization.create({
@@ -762,14 +852,56 @@ async function main() {
     },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: dentalClinic.id, userId: users[22].id, isActive: true },
+    data: {
+      organizationId: dentalClinic.id,
+      userId: users[22].id,
+      isActive: true,
+    },
   });
   // Lawyers (Service providers)
   await prisma.organizationMember.create({
-    data: { organizationId: dentalClinic.id, userId: users[23].id, isActive: true },
+    data: {
+      organizationId: dentalClinic.id,
+      userId: users[23].id,
+      isActive: true,
+    },
   });
   await prisma.organizationMember.create({
-    data: { organizationId: dentalClinic.id, userId: users[24].id, isActive: true },
+    data: {
+      organizationId: dentalClinic.id,
+      userId: users[24].id,
+      isActive: true,
+    },
+  });
+
+  // Sicily Shop Members (SHOP type) - users[1-4, 15]
+  await prisma.organizationMember.create({
+    data: {
+      organizationId: sicily.id,
+      userId: users[25].id,
+      isActive: true,
+    },
+  });
+  await prisma.organizationMember.create({
+    data: {
+      organizationId: sicily.id,
+      userId: users[26].id,
+      isActive: true,
+    },
+  });
+  await prisma.organizationMember.create({
+    data: {
+      organizationId: sicily.id,
+      userId: users[27].id,
+      isActive: true,
+    },
+  });
+  await prisma.organizationMember.create({
+    data: {
+      organizationId: sicily.id,
+      userId: users[28].id,
+      isActive: true,
+    },
   });
 
   const allOrgs = [
@@ -779,11 +911,11 @@ async function main() {
     dentalClinic,
     spaCenter,
     lawFirm,
+    sicily
   ];
 
   // Note: users[12-14] are CUSTOMERs - no organization membership
-  // Note: users[16] is DRIVER - no organization membership (drivers are assigned via orders)
-
+  
   console.log("✅ Created organization members with all role combinations\n");
 
   // ========================================
@@ -894,6 +1026,26 @@ async function main() {
     }),
   ]);
 
+    const sicilyCategories = await Promise.all([
+      prisma.productCategory.create({
+        data: {
+          organizationId: sicily.id,
+          name: "برگر",
+          sortOrder: 1,
+          isActive: true,
+        },
+      }),
+      prisma.productCategory.create({
+        data: {
+          organizationId: sicily.id,
+          name: "پیتزا دیتروت",
+          sortOrder: 2,
+          isActive: true,
+        },
+      }),
+    ]);
+
+
   console.log(`✅ Created product categories\n`);
 
   // ========================================
@@ -910,7 +1062,8 @@ async function main() {
         description: "مولتی ویتامین مینرال",
         basePrice: 450000,
         sku: "HEALTH-SUP-001",
-        image: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400",
+        image:
+          "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400",
         trackInventory: true,
         lowStockThreshold: 20,
         isActive: true,
@@ -935,7 +1088,8 @@ async function main() {
         description: "کرم مرطوب‌کننده صورت",
         basePrice: 280000,
         sku: "HEALTH-SKIN-001",
-        image:"https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400",
+        image:
+          "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400",
         trackInventory: true,
         lowStockThreshold: 15,
         isActive: true,
@@ -963,7 +1117,8 @@ async function main() {
         description: "کباب کوبیده با بهترین گوشت",
         basePrice: 350000,
         sku: "FOOD-KB-001",
-        image:"https://images.unsplash.com/photo-1603360946369-dc9bb6258143?w=400",
+        image:
+          "https://images.unsplash.com/photo-1603360946369-dc9bb6258143?w=400",
         trackInventory: true,
         lowStockThreshold: 10,
         isActive: true,
@@ -978,7 +1133,7 @@ async function main() {
         description: "جوجه کباب زعفرانی",
         basePrice: 320000,
         sku: "FOOD-JJ-001",
-        image: 
+        image:
           "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=400",
         trackInventory: true,
         lowStockThreshold: 10,
@@ -991,6 +1146,40 @@ async function main() {
   const allVariants = await prisma.productVariant.findMany();
   console.log(`✅ Created products with variants\n`);
 
+  const sicilyProducts = await Promise.all([
+    prisma.product.create({
+      data: {
+        organizationId: sicily.id,
+        categoryId: sicilyCategories[0].id,
+        name: "",
+        description: "مولتی ویتامین مینرال",
+        basePrice: 450000,
+        sku: "SICILY-BURGER",
+        image:
+          "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400",
+        trackInventory: true,
+        lowStockThreshold: 20,
+        isActive: true,
+        sortOrder: 1,
+      },
+    }),
+    prisma.product.create({
+      data: {
+        organizationId: sicily.id,
+        categoryId: sicilyCategories[1].id,
+        name: "پیتزا پپرونی",
+        description: "",
+        basePrice: 280000,
+        sku: "PEPERONNi",
+        image:
+          "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400",
+        trackInventory: true,
+        lowStockThreshold: 15,
+        isActive: true,
+        sortOrder: 2,
+      },
+    }),
+  ]);
   // ========================================
   // 8. CREATE SERVICE CATEGORIES & SERVICES (APPOINTMENT)
   // ========================================
@@ -1623,6 +1812,7 @@ async function main() {
 
   console.log("✅ Created orders\n");
 
+  /*
   // ========================================
   // 10.5. CREATE GUEST CUSTOMERS, GUEST CARTS & GUEST ORDERS
   // ========================================
@@ -1700,7 +1890,7 @@ async function main() {
     data: {
       orderNumber: "ORD-GUEST-0002",
       organizationId: foodDelivery.id,
-      guestCustomerId: guestCustomers[1].id,
+      //guestCustomerId: guestCustomers[1].id,
       type: OrderType.DELIVERY,
       status: OrderStatus.PREPARING,
       subtotal: 670000,
@@ -1759,7 +1949,7 @@ async function main() {
   console.log(
     `✅ Created ${guestCustomers.length} guest customers, guest orders, and guest cart\n`,
   );
-
+*/
   // ========================================
   // 11. CREATE REVIEWS
   // ========================================
@@ -1872,9 +2062,9 @@ async function main() {
   console.log(`   - ${users.length} users with all role combinations`);
   console.log(`   - 6 organizations (2 SHOP, 4 APPOINTMENT)`);
   console.log(`   - 4 booking settings for appointment organizations`);
-  console.log(
+ /* console.log(
     `   - ${guestCustomers.length} guest customers for guest checkout testing`,
-  );
+  );*/
   console.log(`   - All OrgMemberRole types: ADMIN, MANAGER, STAFF`);
   console.log("\n🔑 Test Credentials (all passwords: password123):");
   console.log("\n   === SUPER_ADMIN ===");

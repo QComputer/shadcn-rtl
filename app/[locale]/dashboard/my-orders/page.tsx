@@ -128,16 +128,16 @@ export default function MyOrdersPage() {
   const { user } = useAuth()
 
    const addToPickupEstimatedEndTime = async (minutes: number) => {
-    console.log(`add ${minutes} minutes to pick-up `, pickupTime);
+    //console.log(`add ${minutes} minutes to pick-up `, pickupTime);
     setPickupTime(pickupTime?.add(minutes, 'minute') || null)
   }
      const addToDeliveryEstimatedEndTime = async (minutes: number) => {
-    console.log(`add ${minutes} minutes to pick-up `, deliveryTime);
+    //console.log(`add ${minutes} minutes to pick-up `, deliveryTime);
     setDeliveryTime(deliveryTime?.add(minutes, 'minute') || null)
   }
   
   const handleSavePickupEstimatedEndTime = async (orderId: string , pickupTime?: string) => {
-    console.log("saving pickupTime---",pickupTime);
+    //console.log("saving pickupTime---",pickupTime);
     setUpdating(true)
     try {
       const response = await fetch(`/api/orders/${orderId}`, {
@@ -145,7 +145,7 @@ export default function MyOrdersPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ estimatedEndTime: pickupTime, type: "PICKUP" }),
+        body: JSON.stringify({ estimatedEndTime: pickupTime, type: "PICK_UP" }),
       })
       
       if (!response.ok) {
@@ -164,7 +164,7 @@ export default function MyOrdersPage() {
   }
 
   const handleSaveDeliveryEstimatedEndTime = async (orderId: string, deliveryTime?: string) => {
-    console.log(deliveryTime);
+    //console.log(deliveryTime);
     setUpdating(true)
     try {
       const response = await fetch(`/api/orders/${orderId}`, {
@@ -579,57 +579,7 @@ export default function MyOrdersPage() {
                       </CardContent>
                             
                     </Card>
-                          {(selectedOrder.status==="PENDING" || selectedOrder.status==="PLACED") && 
-                  <div className="grid gap-1 grid-cols-3">
-                          <Button className={"col-span-2 bg-green-400 text-green-800"} onClick={() => {
-                            handleSaveAllEstimatedEndTimes()
-                          }
-                          }>
-                         <Check/>  پذیرش
-                        </Button>
-                        <Button variant={"destructive"} className={"col-3"} onClick={() => handleUpdateStatus(selectedOrder.id, "ACCEPTED")}>
-                         <X/> رد
-                        </Button>
-                        </div>
-                        }
-                        {(selectedOrder.status==="ACCEPTED") && 
-                  <div className="grid gap-1 grid-cols-3">
-                        <Button  className={"col-span-2 bg-green-400 text-green-800"}  onClick={() => {
-                            handleSaveAllEstimatedEndTimes()
-                          }
-                            }>
-                         <Clock/> شروع آماده سازی 
-                        </Button>
-                        <Button className={"col-3"} variant={"destructive"} onClick={() => handleUpdateStatus(selectedOrder.id, "CANCELLED")}>
-                         <X/> رد
-                        </Button>
-                        </div>
-                        }
-                        {(selectedOrder.status==="PREPARING") && 
-                  <div className="grid gap-1 grid-cols-3 ">
-                          <Button className={"col-span-2 "} onClick={() => {
-                            handleSaveAllEstimatedEndTimes()
-                            }}>
-                         <Save/>  ذخیره زمان های تخمینی
-                        </Button>
-                        <Button className={"col-3 bg-green-400 text-green-800"} onClick={() => handleUpdateStatus(selectedOrder.id, "READY")}>
-                         <CheckCircle/> آماده
-                        </Button>
-                        </div>
-                        }
-                        {(selectedOrder.status==="READY") && 
-                        <div className="grid gap-1 grid-cols-3 ">
-                          <Button className={"col-span-3 bg-green-400 text-green-800"} onClick={() => {
-                            handleSaveAllEstimatedEndTimes()
-                            }}>
-                            <CheckCircle/>
-                            {selectedOrder.type == "PICK_UP" 
-                            ?<>   تحویل به مشتری </>
-                            :<>   تحویل به پیک </>
-                            }
-                          </Button>
-                        </div>
-                        }
+                          
       
                     {/* Notes */}
                     {selectedOrder.notes && (

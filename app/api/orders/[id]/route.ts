@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { orderService } from "@/lib/services/order.service";
 import { updateOrderStatusSchema } from "@/lib/validators";
+import prisma from "@/lib/db";
 
 export async function GET(
   request: NextRequest,
@@ -34,7 +35,7 @@ export async function GET(
     // Check access - driver can only see their assigned orders
     if (
       session.user.role === "DRIVER" &&
-      order.driverId !== session.user.id
+      (!!order.driverId && order.driverId !== session.user.id)
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -95,16 +96,32 @@ export async function PATCH(
     const session = await auth();
     const { id } = await params;
 
-    if (!session?.user?.id || !session.user.role) {
+    if (!session?.user || !session?.user?.id || !session.user.role) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!["SUPER_ADMIN", "ADMIN", "MANAGER"].includes(session.user.role)) {
+    if (!["SUPER_ADMIN", "ADMIN", "MANAGER", "DRIVER"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await request.json();
-    const {estimatedEndTime, type} = body;
+    const { estimatedEndTime, type } = body;
+
+    const order = await prisma.order.findUnique({where:{ id }});
+    if(!order){
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    // Filter access
+    if (session.user.role=="DRIVER" && (type=="PREPARING" || order.driverId !== session.user.id)){
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    } else if (
+      (session.user.role == "ADMIN" || session.user.role == "MANAGER") &&
+      ((type == "PICK_UP" || type == "DELIVERY") || order.organizationId !== session.user.organizationId)
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+console.log("--------------->api/orders/[id]/route>PATCH:", order);
 
     const product = await orderService.updateEstimatedEndTime(id, session.user.role, type, new Date(estimatedEndTime), session.user.id);
 

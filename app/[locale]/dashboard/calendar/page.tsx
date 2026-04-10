@@ -195,7 +195,7 @@ export default function StaffCalendarPage({
 
 
   useEffect(() => {
-    console.log("-------->organizationMembership:", organizationMembership);
+    //console.log("-------->organizationMembership:", organizationMembership);
 
     // fetch members
     organizationMembership &&
@@ -265,7 +265,7 @@ export default function StaffCalendarPage({
       if (apt.service.serviceProvider?.id) { 
         if (selectedProviderUserId && selectedProviderUserId!='all') { 
           _return = _return && (selectedProviderUserId == apt.service.serviceProvider.id)
-          _return && console.log(`~~~~~~~~~~~Filter appointment for today and selectedProviderUserId=${selectedProviderUserId}~~~~~~~`, apt);
+          _return //&& console.log(`~~~~~~~~~~~Filter appointment for today and selectedProviderUserId=${selectedProviderUserId}~~~~~~~`, apt);
         }
       } else {
         _return = false
@@ -304,7 +304,7 @@ export default function StaffCalendarPage({
     const _dayAppointments = dayAppointments.filter(apt => {
       return apt.service.serviceProvider?.id === userId
     });
-    console.log(`dayAppointments for userId=${userId} : `, _dayAppointments);
+    //console.log(`dayAppointments for userId=${userId} : `, _dayAppointments);
     
     const arr: TimeInterval[] = []
     for (let index = 0; index < 12 * 24; index++) {
@@ -314,7 +314,7 @@ export default function StaffCalendarPage({
       let timeInterval: TimeInterval = {index, hour, minute,  providerUserId: userId}
       timeInterval.appointment = getTimeIntervalAppointment(timeInterval, _dayAppointments)
       
-      timeInterval.appointment && console.log("timeInterval:" , timeInterval);
+      timeInterval.appointment && //console.log("timeInterval:" , timeInterval);
       arr.push(timeInterval);
     }
 
@@ -324,7 +324,7 @@ export default function StaffCalendarPage({
   
   function setDayTimeIntervalsForAllProviders(providers: any[]) {
     const _dayAppointments = dayAppointments;
-    console.log("dayAppointments", _dayAppointments);
+    //console.log("dayAppointments", _dayAppointments);
     
     const arrs: TimeInterval[][] = []
     providers.map((p)=>{

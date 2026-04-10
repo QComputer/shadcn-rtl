@@ -20,15 +20,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import { useDashboardAccess, useAuth } from "@/hooks/use-auth"
@@ -89,14 +80,9 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [productToDelete, setProductToDelete] = useState<Product | null>(null)
-  const [deleting, setDeleting] = useState(false)
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [viewDialogOpen, setViewDialogOpen] = useState(false)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [addDialogOpen, setAddDialogOpen] = useState(false)
+  
 
   useEffect(() => {
     setMounted(true)
@@ -146,7 +132,7 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
       }
       
       const data: ProductsResponse = await response.json()
-      console.log("----------> products data:", data);
+      //console.log("----------> products data:", data);
       
       setProducts(data.data)
       setTotal(data.total)
@@ -172,7 +158,7 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
       }
       
       const data: Product = await response.json()
-      console.log("-------------> data:", data);
+      //console.log("-------------> data:", data);
       
     } catch (err) {
       console.error("Error fetching product:", err)

@@ -48,12 +48,9 @@ export async function DELETE(
   try {
     const session = await auth();
     const { id } = await params;
+    const sessionId = session?.user?.id ? undefined : getSessionId(request);    
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    await cartService.removeItem(id, session.user.id);
+    await cartService.removeItem(id, session?.user?.id, sessionId );
 
     return NextResponse.json({ success: true });
   } catch (error) {

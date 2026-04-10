@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import React, { useEffect, useState } from "react";
 
 interface ImageRecord {
-  id: number;
+  id: string;
   url: string;
   filename: string;
 }
@@ -76,7 +76,7 @@ export default function Home() {
 
 
   // Delete Image function
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this image?")) return;
 
     try {

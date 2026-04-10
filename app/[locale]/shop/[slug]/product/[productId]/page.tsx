@@ -11,6 +11,7 @@ import {
   Check,
   AlertCircle,
   ArrowRight,
+  ArrowLeft,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -243,7 +244,7 @@ export default function ProductDetailPage({
             <div className="space-y-4">
               {/* Main Image */}
               <div className="aspect-square bg-muted rounded-lg overflow-hidden relative">
-                {product.images ? (
+                {product.image ? (
                   <img 
                     src={product.image || undefined} 
                     alt={product.name}
@@ -441,8 +442,8 @@ export default function ProductDetailPage({
                     </div>
                     <Link href={`/${locale}/shop/${slug}`}>
                       <Button variant="outline" size="sm">
-                        مشاهده فروشگاه
-                        <ArrowRight className="h-4 w-4 mr-1" />
+                        مشاهده منو
+                        <ArrowLeft className="h-4 w-4 mr-1" />
                       </Button>
                     </Link>
                   </div>

@@ -30,7 +30,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
-import { useDashboardAccess } from "@/hooks/use-auth"
+import { useAuth, useDashboardAccess } from "@/hooks/use-auth"
 import { OrganizationMember, User } from "@prisma/client"
 
 interface Member {
@@ -45,11 +45,11 @@ interface Member {
   status: "active" | "inactive"
 }
 
-
 interface Organization {
   id: string
   name: string
   slug: string
+  type: "SHOP" | "APPOINTMENT"
   description: string | null
   address: string | null
   phone: string | null
@@ -73,15 +73,17 @@ function formatToman(amount: number): string {
 
 
 
-export default function OganizationMembersPage({ params }: { params: Promise<{ locale: string }> }) {
+export default function OganizationsPage({ params }: { params: Promise<{ locale: string }> }) {
   const resolvedParams = use(params)
   const locale = resolvedParams.locale || "fa"
   
   // Access control check
+    const { user } = useAuth()
   
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [members, setMembers] = useState<User[]>([])
+  //const [members, setMembers] = useState<User[]>([])
+  const [organizations, setOrganizations] = useState<Organization[]>([])
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
 
   const [loading, setLoading] = useState(true)
@@ -93,27 +95,19 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
     })
   }, [locale])
 
-  // fetch org-members
+  // fetch orgs
   useEffect(() => {
     
     setLoading(true)
     
-    Promise.all([
-      fetch("/api/users/me/membership")
-        .then(res => res.json())
-        .then(data => {
-          if (data.membership?.organizationId) {
-            return fetch(`/api/organizations/${data.membership.organizationId}/members`)
-              .then(res => res.json())
-              .then(membersData => membersData.members || membersData || [])
-          }
-          return []
-        })
-        .catch(() => [])
-    ]).then((members) => {      
-      setMembers(members)
+    fetch("/api/organizations")
+      .then(res => res.json())
+      .then((orgs) => {    
+        //console.log("-----------------------------orgs",orgs.data);
+          
+      setOrganizations(orgs.data)
     }).catch(() => {
-      setMembers([])
+      setOrganizations([])
     }).finally(() => setLoading(false))
   }, [])
  
@@ -122,11 +116,15 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
      return getDictValue(dict, key)
    }
 
-  const filteredCustomers = members.filter(member => 
-    member.firstName?.includes(searchQuery) ||
-    member.lastName?.includes(searchQuery) ||
-    member.name?.includes(searchQuery)
-  )
+  const filteredOrganizations = searchQuery?.length<1 
+  ? organizations
+  : organizations?.length>0 
+    ? organizations.filter(org => 
+      org.name?.includes(searchQuery) ||
+      org.slug?.includes(searchQuery) ||
+      org.description?.includes(searchQuery)
+    )
+    : []
 
   // Show loading state while checking access
   if (!mounted) {
@@ -143,7 +141,7 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
   }
 
   // Show access denied message if no access
-  if (false) {
+  if (user?.role !== "SUPER_ADMIN") {
     return (
       <div className="p-6">
         <div className="text-center py-12">
@@ -159,15 +157,20 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">{t("navigation.members") || "اعضا"}</h2>
+          <h2 className="text-2xl font-bold">{t("navigation.organizations") || "اعضا"}</h2>
           <p className="text-muted-foreground">
-            {toPersianDigits(members.length.toString())} {t("navigation.members") || "اعضا"}
+            {toPersianDigits(organizations.length?.toString())} {t("navigation.organizations") || "اعضا"}
           </p>
         </div>
+        <Link 
+          href={`/${locale}/dashboard/organizations/new`}
+          className="text-muted-foreground hover:text-foreground"
+        >
         <Button>
           <Plus className="h-4 w-4 ml-2" />
-          {t("common.add") || "افزودن"}
+          {t("organization.create") || "افزودن"}
         </Button>
+        </Link>
       </div>
 
       {/* Search */}
@@ -181,21 +184,21 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
         />
       </div>
 
-      {/* Customers Grid */}
+      {/* Organizations Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredCustomers.map((member) => (
-          <Card key={member.id} className="hover:shadow-md transition-shadow">
+        {filteredOrganizations.length > 0 && filteredOrganizations.map((org) => (
+          <Card key={org.id} className="hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-start justify-between pb-2">
               <div className="flex items-center gap-3">
                 <Avatar>
-                  <AvatarImage src={member.email || undefined} />
+                  <AvatarImage src={org.email || undefined} />
                   <AvatarFallback>
-                    {member.name[0]}
+                    {org.name[0]}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <CardTitle className="text-lg">
-                    {member.name} {member.firstName} {member.lastName}
+                    {org.name}
                   </CardTitle>
                 
                 </div>
@@ -224,19 +227,19 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Mail className="h-4 w-4" />
-                  <span className="ltr">{member.email}</span>
+                  <span className="ltr">{org.email}</span>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Phone className="h-4 w-4" />
-                  <span>{member.phone}</span>
+                  <span>{org.phone}</span>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <ShoppingBag className="h-4 w-4" />
                 </div>
               </div>
               <div className="mt-4 flex items-center justify-between">
-                <Badge variant={member.status === "active" ? "default" : "secondary"}>
-                  {member.status === "active" ? (t("common.active") || "فعال") : (t("common.inactive") || "غیرفعال")}
+                <Badge variant={org.type === "APPOINTMENT" ? "default" : "default"}>
+                  {org.type === "APPOINTMENT" ? (t("organization.appointmentType") || "نوبت دهی") : (t("organization.shopType") || "فروشگاه")}
                 </Badge>
               </div>
             </CardContent>
@@ -247,7 +250,7 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
       {/* Pagination */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {t("common.showing") || "نمایش"} {toPersianDigits("1")} - {toPersianDigits(filteredCustomers.length.toString())} {t("common.of") || "از"} {toPersianDigits(members.length.toString())}
+          {t("common.showing") || "نمایش"} {toPersianDigits("1")} - {toPersianDigits(filteredOrganizations.length?.toString()||"1")} {t("common.of") || "از"} {toPersianDigits(filteredOrganizations.length?.toString()||"1")}
         </p>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" disabled>
@@ -261,3 +264,5 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
     </div>
   )
 }
+
+

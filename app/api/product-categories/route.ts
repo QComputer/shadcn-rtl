@@ -39,28 +39,29 @@ export async function GET(request: NextRequest) {
               organizationId = membership.organizationId;
             }
           }
-        }
+    }
+
+    if (!organizationId) {
+      return NextResponse.json({ error: "Organization ID is required" }, { status: 400 });
+    }
+
+    const params: Record<string, string | boolean | number | undefined> = {};
+    params.page = parseInt(searchParams.get("page") || "1");
+    params.pageSize = parseInt(searchParams.get("pageSize") || "20");
+    params.isActive = searchParams.get("isActive") === "true" ? true : searchParams.get("isActive") === "false" ? false : undefined;
+    params.search = searchParams.get("search") || undefined;
+
+    const categories = await productCategoryService.list(organizationId, params);
+    //console.log("---------------------------------p categories", categories);
     
-        if (!organizationId) {
-          return NextResponse.json({ error: "Organization ID is required" }, { status: 400 });
-        }
-    
-        const params: Record<string, string | boolean | number | undefined> = {};
-        params.page = parseInt(searchParams.get("page") || "1");
-        params.pageSize = parseInt(searchParams.get("pageSize") || "20");
-        params.isActive = searchParams.get("isActive") === "true" ? true : searchParams.get("isActive") === "false" ? false : undefined;
-        params.search = searchParams.get("search") || undefined;
-    
-        const categories = await productCategoryService.list(organizationId, params);
-    
-        return NextResponse.json(categories);
-      } catch (error) {
-        console.error("Error listing service categories:", error);
-        return NextResponse.json(
-          { error: error instanceof Error ? error.message : "Internal server error" },
-          { status: 500 }
-        );
-      }
+    return NextResponse.json(categories);
+  } catch (error) {
+    console.error("Error listing service categories:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {

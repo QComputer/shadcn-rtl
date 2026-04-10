@@ -1,20 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import fs from "fs/promises";
 import path from "path";
 import { prisma } from "@/lib/db"; 
 // DELETE /api/images/[id]
 export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string } }, // This is the correct way to access params
-) {
-    const { id: idString } = await params;
+  request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+  ) {
+  const { id } = await params;
 
   // Ensure params.id is correctly passed and parsed
-  if (!idString || isNaN(parseInt(idString, 10))) {
+  if (!id) {
     return NextResponse.json({ error: "Invalid ID provided" }, { status: 400 });
   }
-  const id = parseInt(idString, 10);
-
   // 1. Find the image in the database
   const image = await prisma.image.findUnique({ where: { id } });
 

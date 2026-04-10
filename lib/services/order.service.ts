@@ -16,6 +16,8 @@ async function updateProgress(
   estimatedEndTime: Date,
 ) {
   const progressId = await getProgressId(orderId, type);
+  console.log("---------------------------------progressId", progressId);
+  
   if (!progressId) return null;
 
   const progress = await prisma.progress.update({
@@ -74,15 +76,19 @@ async function getProgressId(
 }
 
 export class OrderService {
-  async create(data: CreateOrderInput, customerId?: string, sessionId?: string) {
-    console.log("=====================OrderService>create====================");
+  async create(
+    data: CreateOrderInput,
+    customerId?: string,
+    sessionId?: string,
+  ) {
+    //console.log("=====================OrderService>create====================");
     const {
       organizationId,
       autoCompleteEndTimes,
       promotionCode,
       ...orderData
     } = data;
-    console.log("-------------------------------->order data:", data);
+    //console.log("-------------------------------->order data:", data);
 
     // Get cart for user
     const cart = customerId
@@ -122,7 +128,7 @@ export class OrderService {
           })
         : null;
 
-    console.log("---------------------CART: ", cart);
+    //console.log("---------------------CART: ", cart);
 
     if (!cart || cart.items?.length === 0) {
       throw new Error("Cart is empty");
@@ -219,8 +225,8 @@ export class OrderService {
     const deliveryEstimatedEndTime = new Date(
       pickupEstimatedEndTime.getTime() + deliveryDuration * 60 * 1000,
     );
-    console.log("-------------------------------->preparationEstimatedEndTime");
-    console.log(preparationEstimatedEndTime);
+    //console.log("-------------------------------->preparationEstimatedEndTime");
+    //console.log(preparationEstimatedEndTime);
     // Generate order number
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
@@ -526,7 +532,10 @@ export class OrderService {
     if (!hasPermission(userRole, "order:update")) {
       throw new Error("Unauthorized");
     }
+console.log("----------------------estimatedEndTime:", estimatedEndTime);
+
     const progress = await updateProgress(id, type, estimatedEndTime);
+    
     return progress;
   }
 
@@ -537,10 +546,7 @@ export class OrderService {
 
     const order = await prisma.order.update({
       where: { id: orderId },
-      data: {
-        driverId,
-        status: "ACCEPTED",
-      },
+      data: { driverId },
     });
 
     revalidatePath(`/dashboard/orders/${orderId}`);
@@ -572,6 +578,27 @@ export class OrderService {
         },
       },
       orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async acceptOrderByDriver(orderId: string, driverId: string) {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId }
+    });
+    if (!order?.driverId){
+      return prisma.order.update({
+        where: { id: orderId },
+        data:{ driverId}
+      });
+    } else if(order?.driverId === driverId){
+      return order
+    }
+  }
+
+  async denyOrderByDriver(orderId: string, driverId: string) {
+    return prisma.order.update({
+      where: { id: orderId, driverId },
+      data: { driverId: null },
     });
   }
 }

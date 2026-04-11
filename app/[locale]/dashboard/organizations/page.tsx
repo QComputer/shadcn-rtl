@@ -133,7 +133,7 @@ export default function OganizationsPage({ params }: { params: Promise<{ locale:
         <div className="h-10 bg-muted rounded w-1/4" />
         <div className="grid gap-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-24 bg-muted rounded" />
+            <div key={locale+i} className="h-24 bg-muted rounded" />
           ))}
         </div>
       </div>
@@ -187,7 +187,7 @@ export default function OganizationsPage({ params }: { params: Promise<{ locale:
       {/* Organizations Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredOrganizations.length > 0 && filteredOrganizations.map((org) => (
-          <Card key={org.id} className="hover:shadow-md transition-shadow">
+          <Card key={locale+org.id} className="hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-start justify-between pb-2">
               <div className="flex items-center gap-3">
                 <Avatar>

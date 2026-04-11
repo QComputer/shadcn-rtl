@@ -40,10 +40,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { useAuth } from "@/hooks/use-auth"
 import { formatPersianDate, formatToman, toPersianDigits } from "@/lib/persian"
+import { toJalali } from "@/lib/jalali-adapter"
 
 // Types for dashboard data
 interface DashboardStats {
@@ -117,18 +117,6 @@ interface RecentAppointment {
   createdAt: string
 }
 
-
-
-
-
-
-function formatTime(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleTimeString("fa-IR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function getStatusColor(status: string): string {
   const statusColors: Record<string, string> = {
@@ -690,7 +678,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                             dataKey="count"
                           >
                             {dashboardData.ordersByStatus.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
+                              <Cell key={locale+`cell-${index}`} fill={entry.color} />
                             ))}
                           </Pie>
                           <Tooltip />
@@ -699,7 +687,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                     </div>
                     <div className="grid grid-cols-2 gap-2 mt-4">
                       {dashboardData.ordersByStatus.map((status) => (
-                        <div key={status.status} className="flex items-center gap-2">
+                        <div key={locale+status.status} className="flex items-center gap-2">
                           <div
                             className="h-3 w-3 rounded-full"
                             style={{ backgroundColor: status.color }}
@@ -728,7 +716,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                   <CardContent>
                     <div className="space-y-4">
                       {dashboardData.recentOrders.slice(0, 5).map((order) => (
-                        <div key={order.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                        <div key={locale+order.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">{order.customer}</p>
                             <p className="text-xs text-muted-foreground">
@@ -817,7 +805,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                             dataKey="count"
                           >
                             {dashboardData.appointmentsByStatus.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
+                              <Cell key={locale+`cell-${index}`} fill={entry.color} />
                             ))}
                           </Pie>
                           <Tooltip />
@@ -826,7 +814,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                     </div>
                     <div className="grid grid-cols-2 gap-2 mt-4">
                       {dashboardData.appointmentsByStatus.map((status) => (
-                        <div key={status.status} className="flex items-center gap-2">
+                        <div key={locale+status.status} className="flex items-center gap-2">
                           <div
                             className="h-3 w-3 rounded-full"
                             style={{ backgroundColor: status.color }}
@@ -855,11 +843,11 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                   <CardContent>
                     <div className="space-y-4">
                       {dashboardData.todayAppointments.slice(0, 5).map((apt) => (
-                        <div key={apt.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                        <div key={locale+apt.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">{apt.customer}</p>
                             <p className="text-xs text-muted-foreground">
-                              {apt.service} {apt.time && `- ${formatTime(apt.time)}`}
+                              {apt.service} {apt.time && `- ${toJalali(apt.time)}`}
                             </p>
                           </div>
                           <div className="text-left">
@@ -888,7 +876,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                   <CardContent>
                     <div className="space-y-4">
                       {dashboardData.recentAppointments.slice(0, 5).map((apt) => (
-                        <div key={apt.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                        <div key={locale+apt.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">{apt.customer}</p>
                             <p className="text-xs text-muted-foreground">
@@ -927,7 +915,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                   <CardContent>
                     <div className="space-y-4">
                       {dashboardData.recentOrders.slice(0, 5).map((order) => (
-                        <div key={order.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                        <div key={locale+order.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">{order.organization}</p>
                             <p className="text-xs text-muted-foreground">
@@ -961,7 +949,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                   <CardContent>
                     <div className="space-y-4">
                       {dashboardData.recentAppointments.slice(0, 5).map((apt) => (
-                        <div key={apt.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                        <div key={locale+apt.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">{apt.organization}</p>
                             <p className="text-xs text-muted-foreground">
@@ -1015,7 +1003,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                   <CardContent>
                     <div className="space-y-4">
                       {dashboardData.recentOrders.slice(0, 5).map((order) => (
-                        <div key={order.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                        <div key={locale+order.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">{order.customer}</p>
                             <p className="text-xs text-muted-foreground">
@@ -1059,7 +1047,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                   <CardContent>
                     <div className="space-y-4">
                       {dashboardData.recentOrders.slice(0, 5).map((order) => (
-                        <div key={order.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                        <div key={locale+order.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">{order.customer}</p>
                             <p className="text-xs text-muted-foreground">
@@ -1088,7 +1076,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                   <CardContent>
                     <div className="space-y-4">
                       {dashboardData.recentAppointments.slice(0, 5).map((apt) => (
-                        <div key={apt.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                        <div key={locale+apt.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">{apt.customer}</p>
                             <p className="text-xs text-muted-foreground">

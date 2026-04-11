@@ -241,7 +241,7 @@ export default function ProductCategoriesPage({
         <div className="h-10 bg-muted rounded w-1/4 animate-pulse" />
         <div className="grid gap-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-24 bg-muted rounded animate-pulse" />
+            <div key={locale+i} className="h-24 bg-muted rounded animate-pulse" />
           ))}
         </div>
       </div>
@@ -299,7 +299,7 @@ export default function ProductCategoriesPage({
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4].map(i => (
-            <Skeleton key={i} className="h-20" />
+            <Skeleton key={locale+i} className="h-20" />
           ))}
         </div>
       ) : error ? (
@@ -329,7 +329,7 @@ export default function ProductCategoriesPage({
       ) : (
         <div className="space-y-3">
           {filteredCategories.map((category, index) => (
-            <Card key={category.id || `category-${index}`} className={!category.isActive ? "opacity-60" : ""}>
+            <Card key={locale+category.id || `category-${index}`} className={!category.isActive ? "opacity-60" : ""}>
               <CardContent className="py-4">
                 <div className="flex items-center gap-4">
                   <div className="flex-shrink-0">

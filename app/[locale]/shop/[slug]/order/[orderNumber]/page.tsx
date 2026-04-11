@@ -298,7 +298,7 @@ export default function OrderConfirmationPage({
               </CardHeader>
               <CardContent className="space-y-4">
                 {order.items.map((item) => (
-                  <div key={item.id} className="flex gap-4">
+                  <div key={locale+item.id} className="flex gap-4">
                     <div className="h-16 w-16 rounded-md overflow-hidden bg-muted flex-shrink-0">
                       {item.variant.product.image? (
                         <img

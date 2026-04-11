@@ -392,7 +392,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
             //console.log("className", className);
             
             return (
-              <Card key={order.id} className={className} onClick={() => handleViewOrder(order)}>
+              <Card key={locale+order.id} className={className} onClick={() => handleViewOrder(order)}>
                 <CardContent className="">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="flex items-center gap-3 mb-2">
@@ -614,7 +614,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
                       <CardContent>
                         <div className="space-y-2">
                           {selectedOrder.items.map((item) => (
-                            <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                            <div key={locale+item.id} className="flex items-center justify-between py-2 border-b last:border-0">
                               <div>
                                 <p className="font-medium">{item.product?.name}</p>
                                 {item.variant && (

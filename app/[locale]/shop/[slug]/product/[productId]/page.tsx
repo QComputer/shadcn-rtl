@@ -269,7 +269,7 @@ export default function ProductDetailPage({
                 <div className="flex gap-2 overflow-x-auto pb-2">
                   {product.images.map((image, index) => (
                     <button
-                      key={index}
+                      key={locale+index}
                       onClick={() => setSelectedImage(index)}
                       className={`w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-colors ${
                         selectedImage === index ? "border-primary" : "border-transparent"
@@ -363,7 +363,7 @@ export default function ProductDetailPage({
                     <SelectContent>
                       {product.variants.map((variant) => (
                         <SelectItem 
-                          key={variant.id} 
+                          key={locale+variant.id} 
                           value={variant.id}
                           disabled={product.trackInventory && variant.inventory === 0}
                         >

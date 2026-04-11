@@ -105,7 +105,7 @@ export default function CustomersPage({ params }: { params: Promise<{ locale: st
         <div className="h-10 bg-muted rounded w-1/4" />
         <div className="grid gap-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-24 bg-muted rounded" />
+            <div key={locale+i} className="h-24 bg-muted rounded" />
           ))}
         </div>
       </div>
@@ -154,7 +154,7 @@ export default function CustomersPage({ params }: { params: Promise<{ locale: st
       {/* Customers Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredCustomers.map((customer) => (
-          <Card key={customer.id} className="hover:shadow-md transition-shadow">
+          <Card key={locale+customer.id} className="hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-start justify-between pb-2">
               <div className="flex items-center gap-3">
                 <Avatar>

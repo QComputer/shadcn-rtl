@@ -331,7 +331,7 @@ export default function EditAppointmentPage({
                 </SelectTrigger>
                 <SelectContent>
                   {statusOptions.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
+                    <SelectItem key={locale+option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
                   ))}

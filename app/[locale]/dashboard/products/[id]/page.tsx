@@ -583,7 +583,7 @@ export default function EditProductPage({
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map(category => (
-                      <SelectItem key={category.id} value={category.id}>
+                      <SelectItem key={locale+category.id} value={category.id}>
                         {category.name}
                       </SelectItem>
                     ))}
@@ -688,7 +688,7 @@ export default function EditProductPage({
                     <Button 
                     variant={"outline"}
                     className={"h-20 border-3 text-sm"}
-                    key={v.id}
+                    key={locale+v.id}
                       onClick={()=>{
                         v.price = Number(v.price)
                         setSelectedVariant(v);

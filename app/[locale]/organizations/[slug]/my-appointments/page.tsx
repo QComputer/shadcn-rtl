@@ -178,7 +178,7 @@ export default function MyAppointmentsPage({
           <Skeleton className="h-8 w-48 mb-8" />
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-32" />
+              <Skeleton key={locale+i} className="h-32" />
             ))}
           </div>
         </div>
@@ -319,7 +319,7 @@ export default function MyAppointmentsPage({
                 <h2 className="text-xl font-semibold mb-4">{t("appointment.upcoming")}</h2>
                 <div className="space-y-4">
                   {upcomingAppointments.map(appointment => (
-                    <Card key={appointment.id}>
+                    <Card key={locale+appointment.id}>
                       <CardContent className="py-4">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
@@ -370,7 +370,7 @@ export default function MyAppointmentsPage({
                 <h2 className="text-xl font-semibold mb-4">{t("appointment.past")}</h2>
                 <div className="space-y-4">
                   {pastAppointments.map(appointment => (
-                    <Card key={appointment.id} className="opacity-75">
+                    <Card key={locale+appointment.id} className="opacity-75">
                       <CardContent className="py-4">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">

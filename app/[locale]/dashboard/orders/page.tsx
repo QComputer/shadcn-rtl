@@ -260,7 +260,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
         <div className="h-10 bg-muted rounded w-1/4" />
         <div className="grid gap-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-24 bg-muted rounded" />
+            <div key={locale+i} className="h-24 bg-muted rounded" />
           ))}
         </div>
       </div>
@@ -361,7 +361,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
           <SelectContent>
             <SelectItem value="all">همه وضعیت‌ها</SelectItem>
             {Object.entries(statusConfig).map(([key, config]) => (
-              <SelectItem key={key} value={key}>
+              <SelectItem key={locale+key} value={key}>
                 {config.label}
               </SelectItem>
             ))}
@@ -386,7 +386,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
       {loading && (
         <div className="space-y-4">
           {[1, 2, 3, 4, 5].map(i => (
-            <Card key={i}>
+            <Card key={locale+i}>
               <CardContent className="p-4">
                 <div className="flex items-center gap-4">
                   <Skeleton className="h-12 w-12 rounded-full" />
@@ -428,7 +428,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
             const StatusIcon = status.icon
             
             return (
-              <Card onClick={() => handleViewOrder(order)} key={order.id} className="hover:shadow-md transition-shadow">
+              <Card onClick={() => handleViewOrder(order)} key={locale+order.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
@@ -528,7 +528,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(statusConfig).map(([key, config]) => (
-                      <SelectItem key={key} value={key}>
+                      <SelectItem key={locale+key} value={key}>
                         {config.label}
                       </SelectItem>
                     ))}
@@ -577,7 +577,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                 <CardContent>
                   <div className="space-y-2">
                     {selectedOrder.items.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                      <div key={locale+item.id} className="flex items-center justify-between py-2 border-b last:border-0">
                         <div>
                           <p className="font-medium">{item.product?.name}</p>
                           {item.variant && (

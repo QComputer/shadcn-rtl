@@ -293,7 +293,7 @@ export default function OrganizationPage({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {categories.slice(0, 6).map((category) => (
-                <Card key={category.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                <Card key={locale+category.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                   {category.image && (
                     <div className="h-48 overflow-hidden">
                       <img 
@@ -315,7 +315,7 @@ export default function OrganizationPage({
                     <div className="space-y-3">
                       {category.services.slice(0, 3).map((service) => (
                         <div 
-                          key={service.id}
+                          key={locale+service.id}
                           className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
                         >
                           <div className="flex-1 min-w-0">
@@ -353,7 +353,7 @@ export default function OrganizationPage({
           <h2 className="text-3xl font-bold mb-8">{t("organization.businessHours")}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {businessHours.map((hours) => (
-              <Card key={hours.day}>
+              <Card key={locale+hours.day}>
                 <CardContent className="py-4">
                   <div className="flex items-center justify-between">
                     <span className="font-medium">{dayNames[hours.day]}</span>

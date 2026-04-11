@@ -119,7 +119,7 @@ export function DashboardSidebar({
           
           return (
             <Link
-              key={item.id}
+              key={locale+item.id}
               href={`/${locale}${item.href}`}
               onClick={() => isMobile && onOpenChange?.(false)}
               className={cn(

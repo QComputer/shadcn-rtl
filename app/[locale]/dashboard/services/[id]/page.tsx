@@ -419,7 +419,7 @@ export default function EditServicePage({
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map(category => (
-                    <SelectItem key={category.id} value={category.id}>
+                    <SelectItem key={locale+category.id} value={category.id}>
                       {category.name}
                     </SelectItem>
                   ))}
@@ -456,7 +456,7 @@ export default function EditServicePage({
                   </SelectTrigger>
                   <SelectContent>
                     {staffMembers.map(member => (
-                      <SelectItem key={member.userId} value={member.userId}>
+                      <SelectItem key={locale+member.userId} value={member.userId}>
                         {member.user?.firstName} {member.user?.lastName}
                       </SelectItem>
                     ))}

@@ -26,8 +26,8 @@ export default async function HomePage({
   params: Promise<{ locale: string }>
 }) {
   const resolvedParams = await params
-  const locale = resolvedParams.locale as "fa" | "en" | "ar"
-  const dict = await getDictionary(locale)
+  const locale = resolvedParams.locale || "fa" as "fa" | "en" | "ar"
+  const dict = getDictionary("fa")
 
   // Fetch organizations directly from Prisma
   const organizations = await prisma.organization.findMany({
@@ -133,7 +133,7 @@ export default async function HomePage({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {shopOrganizations.map((org: OrganizationWithDetails) => (
                 <Link
-                  key={org.id}
+                  key={locale+org.id}
                   href={`/${locale}/shop/${org.slug}`}
                   className="group"
                 >
@@ -185,7 +185,7 @@ export default async function HomePage({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {appointmentOrganizations.map((org: OrganizationWithDetails) => (
                   <Link
-                  key={org.id}
+                  key={locale+org.id}
                   href={`/${locale}/organizations/${org.slug}`}
                   className="group"
                   >

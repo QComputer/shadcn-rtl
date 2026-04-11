@@ -18,7 +18,7 @@ function validateLocale(locale: string): SupportedLocale {
   if (supportedLocales.includes(locale as SupportedLocale)) {
     return locale as SupportedLocale;
   }
-  return "fa"; // Default to Persian
+  return "fa" as SupportedLocale; // Default to Persian
 }
 
 export default async function LocaleLayout({
@@ -29,8 +29,8 @@ export default async function LocaleLayout({
   params: Promise<{ locale: string }>;
 }) {
   // Next.js 16 - params is a Promise
-  const resolvedParams = await params;
-  const locale = validateLocale(resolvedParams.locale);
+  //const resolvedParams = await params;
+  const locale = "fa" as SupportedLocale //validateLocale(resolvedParams.locale);
   const config = localeConfig[locale];
 
   return (

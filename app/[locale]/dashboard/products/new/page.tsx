@@ -462,7 +462,7 @@ export default function NewProductPage({
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map(category => (
-                      <SelectItem key={category.id} value={category.id}>
+                      <SelectItem key={locale+category.id} value={category.id}>
                         {category.name}
                       </SelectItem>
                     ))}

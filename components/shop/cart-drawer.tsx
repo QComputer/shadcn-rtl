@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import { useState, useEffect } from "react"
 import Link from "next/link";
 import { useCart } from "@/lib/contexts/cart-context";
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,9 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, children }: CartDrawerProps) {
+  
   const { cart, isLoading, summary, updateQuantity, removeItem } = useCart();
-  const [updatingId, setUpdatingId] = React.useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
     if (newQuantity < 1) return;

@@ -90,7 +90,7 @@ export default function StaffPage({
           <Skeleton className="h-8 w-48 mb-8" />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-64" />
+              <Skeleton key={locale+i} className="h-64" />
             ))}
           </div>
         </div>
@@ -143,7 +143,7 @@ export default function StaffPage({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {data.staff.map(member => (
-              <Card key={member.id} className="overflow-hidden">
+              <Card key={locale+member.id} className="overflow-hidden">
                 <CardHeader>
                   <div className="flex items-center gap-4">
                     {member.user.avatar ? (
@@ -174,7 +174,7 @@ export default function StaffPage({
                     <div className="space-y-2">
                       {member.services.slice(0, 3).map(service => (
                         <div 
-                          key={service.id}
+                          key={locale+service.id}
                           className="flex items-center justify-between text-sm p-2 bg-muted rounded"
                         >
                           <span>{service.name}</span>

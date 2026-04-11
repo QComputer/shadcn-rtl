@@ -6,11 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  // For a local file-based DB, specify the file path.
-  // './dev.db' will create a file named 'dev.db' in the root of your project.
-  // You can also use an absolute path.
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // --- ENUMS ---

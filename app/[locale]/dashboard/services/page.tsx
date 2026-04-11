@@ -236,7 +236,7 @@ export default function ServicesDashboardPage({
         <div className="h-10 bg-muted rounded w-1/4 animate-pulse" />
         <div className="grid gap-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-32 bg-muted rounded animate-pulse" />
+            <div key={locale+i} className="h-32 bg-muted rounded animate-pulse" />
           ))}
         </div>
       </div>
@@ -299,7 +299,7 @@ export default function ServicesDashboardPage({
           <SelectContent>
             <SelectItem value="all">{t("common.all") || "All"}</SelectItem>
             {categories.map(category => (
-              <SelectItem key={category.id} value={category.id}>
+              <SelectItem key={locale+category.id} value={category.id}>
                 {category.name}
               </SelectItem>
             ))}
@@ -321,7 +321,7 @@ export default function ServicesDashboardPage({
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map(i => (
-            <Skeleton key={i} className="h-48" />
+            <Skeleton key={locale+i} className="h-48" />
           ))}
         </div>
       ) : error ? (
@@ -353,7 +353,7 @@ export default function ServicesDashboardPage({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredServices.map((service, index) => (
-            <Card key={service.id || `service-${index}`} className={!service.isActive ? "opacity-60" : ""}>
+            <Card key={locale+service.id || `service-${index}`} className={!service.isActive ? "opacity-60" : ""}>
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">

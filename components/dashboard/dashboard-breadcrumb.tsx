@@ -158,7 +158,7 @@ export function DashboardBreadcrumb({ locale, customLabels }: DashboardBreadcrum
             const isLast = index === segments.length - 2
             
             return (
-              <div key={segment.href} className="flex items-center gap-1.5">
+              <div key={locale+segment.href} className="flex items-center gap-1.5">
                 <BreadcrumbSeparator dir={dir} />
                 <BreadcrumbItem>
                   {isLast ? (
@@ -249,7 +249,7 @@ export function SimpleBreadcrumb({ locale, customLabels }: DashboardBreadcrumbPr
           const isLast = index === segments.length - 2
           
           return (
-            <div key={segment.href} className="flex items-center gap-1.5">
+            <div key={locale+segment.href} className="flex items-center gap-1.5">
               <BreadcrumbSeparator dir={dir} />
               <BreadcrumbItem>
                 {isLast ? (

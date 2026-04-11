@@ -360,12 +360,12 @@ export default function BookingPage({
                     </p>
                   ) : (
                     categories.map(category => (
-                      <div key={category.id} className="space-y-3">
+                      <div key={locale+category.id} className="space-y-3">
                         <h3 className="font-semibold text-lg">{category.name}</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {category.services.map(service => (
                             <div
-                              key={service.id}
+                              key={locale+service.id}
                               onClick={() => setSelectedService(service)}
                               className={`p-4 border rounded-lg cursor-pointer transition-all ${
                                 selectedService?.id === service.id
@@ -445,7 +445,7 @@ export default function BookingPage({
 
                       return (
                         <button
-                          key={index}
+                          key={locale+index}
                           disabled={isPast}
                           onClick={() => {
                             setSelectedDate(date)
@@ -476,7 +476,7 @@ export default function BookingPage({
                       {loadingSlots ? (
                         <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
                           {[...Array(12)].map((_, i) => (
-                            <Skeleton key={i} className="h-10" />
+                            <Skeleton key={locale+i} className="h-10" />
                           ))}
                         </div>
                       ) : availableSlots.length === 0 ? (
@@ -487,7 +487,7 @@ export default function BookingPage({
                         <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
                           {availableSlots.map((slot) => (
                             <button
-                              key={slot}
+                              key={locale+slot}
                               onClick={() => setSelectedTime(slot)}
                               className={`p-2 rounded-lg text-sm transition-all ${
                                 selectedTime === slot

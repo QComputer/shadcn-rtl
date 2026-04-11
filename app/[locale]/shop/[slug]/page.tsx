@@ -348,7 +348,7 @@ export default function ShopPage({
               <SelectContent>
                 <SelectItem value="all">همه دسته‌ها</SelectItem>
                 {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
+                  <SelectItem key={locale+category.id} value={category.id}>
                     {category.name}
                   </SelectItem>
                 ))}
@@ -386,7 +386,7 @@ export default function ShopPage({
                 </Button>
               {categories.map((category) => (
                 <Button
-                  key={category.id}
+                  key={locale+category.id}
                   variant="outline"
                   size="sm"
                   onClick={() => setSelectedCategory(category.id)}
@@ -426,7 +426,7 @@ export default function ShopPage({
                 const price = getDisplayPrice(product)
                 
                 return (
-                    <Card key={product.id} className="hover:shadow-md transition-shadow overflow-hidden h-full">
+                    <Card key={locale+product.id} className="hover:shadow-md transition-shadow overflow-hidden h-full">
                       <div className="aspect-square bg-muted relative">
                   <Link   href={`/${locale}/shop/${slug}/product/${product.id}`}>
                       {product.image ? (
@@ -496,7 +496,7 @@ export default function ShopPage({
                 const price = getDisplayPrice(product)
                 
                 return (
-                    <Card key={product.id} className="hover:shadow-md transition-shadow">
+                    <Card key={locale+product.id} className="hover:shadow-md transition-shadow">
                       <CardContent className="p-4">
                         <div className="flex gap-4">
                           

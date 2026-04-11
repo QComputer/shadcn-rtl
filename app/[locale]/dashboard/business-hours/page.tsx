@@ -144,7 +144,7 @@ export default function BusinessHoursPage({
           <h2 className="text-3xl font-bold mb-8">{t("organization.businessHours")}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {data?.map((hours) => (
-              <Card key={hours.day}>
+              <Card key={locale+hours.day}>
                 <CardContent className="py-4">
                   <div className="flex items-center justify-between">
                     <span className="font-medium">{dayNames[hours.day]}</span>

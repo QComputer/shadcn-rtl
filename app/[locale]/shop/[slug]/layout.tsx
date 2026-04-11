@@ -7,6 +7,7 @@ import { ArrowRight, Store } from "lucide-react";
 import { Metadata } from "next";
 import prisma from "@/lib/db";
 
+
 interface ShopLayoutProps {
   children: React.ReactNode;
    params: Promise<{

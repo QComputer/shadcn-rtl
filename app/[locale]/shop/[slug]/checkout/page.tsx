@@ -458,7 +458,7 @@ export default function CheckoutPage({
                     {/* Cart Items */}
                     <div className="space-y-3">
                       {cart.items.map((item) => (
-                        <div key={item.id} className="flex gap-3">
+                        <div key={locale+item.id} className="flex gap-3">
                           <div className="h-16 w-16 rounded-md overflow-hidden bg-muted flex-shrink-0">
                             {item.variant.product.image ? (
                               <img
@@ -510,7 +510,7 @@ export default function CheckoutPage({
                             </SelectTrigger>
                             <SelectContent>
                               {Object.entries(paymentMethodConfig).map(([key, config]) => (
-                                <SelectItem key={key} value={key}>
+                                <SelectItem key={locale+key} value={key}>
                                   {config.label}
                                 </SelectItem>
                                 ))

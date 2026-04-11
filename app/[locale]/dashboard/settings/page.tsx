@@ -189,7 +189,7 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
         <div className="h-10 bg-muted rounded w-1/4 animate-pulse" />
         <div className="space-y-4">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-32 bg-muted rounded animate-pulse" />
+            <div key={locale+i} className="h-32 bg-muted rounded animate-pulse" />
           ))}
         </div>
       </div>

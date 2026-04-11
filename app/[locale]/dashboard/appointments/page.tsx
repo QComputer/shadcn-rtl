@@ -35,6 +35,7 @@ import {
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import { useDashboardAccess } from "@/hooks/use-auth"
+import { toPersianDigits } from "@/lib/persian"
 
 interface Appointment {
   id: string
@@ -70,15 +71,6 @@ interface Appointment {
     email: string | null
     phone: string | null
   }
-}
-
-// Persian number helper
-function toPersianDigits(str: string | number): string {
-  const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
-  return String(str)
-    .split("")
-    .map((char) => (/\d/.test(char) ? persianDigits[parseInt(char)] : char))
-    .join("");
 }
 
 const statusConfig: Record<string, { label: string; icon: any; color: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {

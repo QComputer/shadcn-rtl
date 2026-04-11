@@ -97,7 +97,7 @@ function RegisterForm({ locale }: { locale: string }) {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div key={locale+"register-mounted"} className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="w-full max-w-md">
           <Card className="animate-pulse">
             <CardHeader>
@@ -119,7 +119,7 @@ function RegisterForm({ locale }: { locale: string }) {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div key={locale+"register"} className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="text-center">

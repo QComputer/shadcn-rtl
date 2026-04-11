@@ -365,7 +365,7 @@ export default function StaffCalendarPage({
           <Skeleton className="h-8 w-48 mb-6" />
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             {[...Array(8)].map((_, i) => (
-              <Skeleton key={i} className="h-32" />
+              <Skeleton key={locale+i} className="h-32" />
             ))}
           </div>
         </div>
@@ -423,11 +423,11 @@ export default function StaffCalendarPage({
               <SelectValue placeholder={"انتخاب سرویس دهنده"} />
             </SelectTrigger>
             <SelectContent>
-                <SelectItem key={"all"} value={"all"}>
+                <SelectItem key={locale+"all"} value={"all"}>
                   {"همه سرویس دهندگان"}
                 </SelectItem>
               {providers.map(member => (
-                <SelectItem key={member.id} value={member.id}>
+                <SelectItem key={locale+member.id} value={member.id}>
                   {member.firstName} {member.lastName}
                 </SelectItem>
               ))}
@@ -491,7 +491,7 @@ export default function StaffCalendarPage({
         {loading ? (
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-24" />
+              <Skeleton key={locale+i} className="h-24" />
             ))}
           </div>
         ) : (
@@ -506,7 +506,7 @@ export default function StaffCalendarPage({
                   const StatusIcon = status?.icon || AlertCircle
                   return (
                     <Card 
-                    key={apt.id} 
+                    key={locale+apt.id} 
                     className={viewCalendar=='list'
                       ? "hover:shadow-md transition-shadow cursor-pointer rounded-none"
                       : `${status.color} hover:shadow-md transition-shadow cursor-pointer`
@@ -584,7 +584,7 @@ export default function StaffCalendarPage({
                 } else if ((timeInterval.minute == 0 || timeInterval.minute==30) && timeInterval.hour>=0 && timeInterval.hour<=15 ) {
                   return (
                     <Card
-                      key={`${timeInterval.hour}:${timeInterval.minute}`}
+                      key={locale+`${timeInterval.hour}:${timeInterval.minute}`}
                       className={viewCalendar=='list'
                       ? "hover:shadow-md transition-shadow cursor-pointer rounded-none bg-bg h-5 pb-10 pt-2"
                       : `hover:shadow-md transition-shadow cursor-pointer h-20 items-center grid grid-cols-2`
@@ -706,7 +706,7 @@ export default function StaffCalendarPage({
                 </SelectTrigger>
                 <SelectContent>
                   {selectedProvider?.providedServices?.map(service => (
-                    <SelectItem key={service.name} value={service.id}>
+                    <SelectItem key={locale+service.name} value={service.id}>
                       {service.name}
                     </SelectItem>
                   ))}

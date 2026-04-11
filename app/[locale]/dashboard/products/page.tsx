@@ -193,7 +193,7 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
         <div className="h-10 bg-muted rounded w-1/4" />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-64 bg-muted rounded" />
+            <div key={locale+i} className="h-64 bg-muted rounded" />
           ))}
         </div>
       </div>
@@ -266,7 +266,7 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
       {loading && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map(i => (
-            <Card key={i}>
+            <Card key={locale+i}>
               <div className="aspect-square bg-muted relative">
                 <Skeleton className="w-full h-full" />
               </div>
@@ -316,8 +316,8 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
             const isLowStock = product.trackInventory && totalInventory <= product.lowStockThreshold
             
             return (
-            <Link key={product.id} href={`/${locale}/dashboard/products/${product.id}`}>
-              <Card key={"card"+product.id} className="hover:shadow-md transition-shadow overflow-hidden">
+            <Link key={locale+product.id} href={`/${locale}/dashboard/products/${product.id}`}>
+              <Card key={locale+"card"+product.id} className="hover:shadow-md transition-shadow overflow-hidden">
                 <div className="aspect-square bg-muted relative">
                   {product.image ? (
                     <img 

@@ -59,6 +59,7 @@ export default function MyAppointmentsPage() {
   const [error, setError] = useState<string | null>(null)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
   const [filter, setFilter] = useState<"upcoming" | "past" | "all">("upcoming")
+  
 
   useEffect(() => {
     setMounted(true)

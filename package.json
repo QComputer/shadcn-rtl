@@ -37,6 +37,7 @@
     "framer-motion": "^12.34.2",
     "jalaliday": "^3.1.1",
     "lucide-react": "^0.563.0",
+    "mime": "^4.1.0",
     "next": "^16.1.6",
     "next-auth": "^5.0.0-beta.30",
     "react": "19.2.3",

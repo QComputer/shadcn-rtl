@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(bytes);
 
     // Define the upload directory relative to the project root
-    const uploadDir = path.join(process.cwd(), "uploads"); // Changed from "/uploads" to "uploads" for consistency, though both work.
+    const uploadDir = path.join(process.cwd(), "uploads");
 
     // Ensure the directory exists
     await fs.mkdir(uploadDir, { recursive: true });

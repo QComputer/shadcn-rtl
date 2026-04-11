@@ -35,12 +35,13 @@ import {
   CheckCircle,
   Wallet,
 } from "lucide-react";
-import { formatPrice } from "@/lib/utils";
+import { formatNumber, formatPrice } from "@/lib/utils";
 import { useSession } from "next-auth/react"
 import { OrderType, User } from "@prisma/client";
 import { Switch } from "@/components/ui/switch";
 import { getDictionary } from "@/lib/dictionary";
 import prisma from "@/lib/db";
+import { formatToman } from "@/lib/persian";
 
 interface CheckoutFormData {
   customerName?: string;
@@ -471,15 +472,13 @@ export default function CheckoutPage({
                               </div>
                             )}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">
+                          <div className="flex-1 min-w-0 mt-1">
+                            <p className=" text-sm truncate">
+                               {formatNumber(item.quantity)} x
                               {item.variant.product.name}
                             </p>
-                            <p className="text-xs text-muted-foreground">
-                              {item.variant.name} × {item.quantity}
-                            </p>
-                            <p className="text-sm font-medium mt-1">
-                              {formatPrice(item.variant.price * item.quantity)}
+                            <p className="text-sm mt-2">
+                              {formatToman(item.variant.price * item.quantity)}
                             </p>
                           </div>
                         </div>
@@ -492,7 +491,7 @@ export default function CheckoutPage({
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">جمع جزئی</span>
-                        <span>{formatPrice(summary.subtotal)}</span>
+                        <span>{formatToman(summary.subtotal)}</span>
                       </div>
                       {isDelivery && <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">پیک</span>
@@ -527,7 +526,7 @@ export default function CheckoutPage({
                       <span>
                         {t("order.total") || "مجموع"}
                       </span>
-                      <span>{formatPrice(summary.subtotal)}</span>
+                      <span>{formatToman(summary.subtotal)}</span>
                     </div>
 
                     {error && (

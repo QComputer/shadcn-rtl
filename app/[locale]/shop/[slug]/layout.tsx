@@ -55,7 +55,7 @@ async function getOrganization(slug: string){
 export default async function ShopLayout({ children, params }: ShopLayoutProps) {
   const { locale, slug } = await params;
 
-  // Fetch organization ID from slug
+  // Get organization ID from slug
   const shopData = await getOrganization(slug)
 
   return (

@@ -16,6 +16,7 @@ import {
   XCircle,
   AlertCircle,
   ArrowLeft,
+  Timer,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatPrice, formatDate } from "@/lib/utils";
 import { GuestCustomer, Organization, User } from "@prisma/client";
 import { getDictionary, getDictValue } from "@/lib/dictionary"
-import { toPersianDigits } from "@/lib/persian";
+import { formatPersianDate, formatRelativePersianTime, formatToman, toPersianDigits } from "@/lib/persian";
+import { Label } from "@/components/ui/label";
 
 interface OrderItem {
   id: string;
@@ -43,19 +45,6 @@ interface OrderItem {
   };
 }
 
-interface OrderItem0 {
-  id: string
-  quantity: number
-  price: number
-  product: {
-    id: string
-    name: string
-  }
-  variant: {
-    id: string
-    name: string
-  } | null
-}
 interface Progress {
   id: string
   estimatedEndTime: Date | null
@@ -108,6 +97,7 @@ export default function OrderConfirmationPage({
   const orderNumber = resolvedParams.orderNumber;
 
   const [mounted, setMounted] = useState(false)
+  const [refetching, setRefetching] = useState(true)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<OrderConfirmationData | null>(null);
@@ -119,16 +109,27 @@ export default function OrderConfirmationPage({
     if (!dict) return key
     return getDictValue(dict, key)
   }
+  useEffect(()=>{
+
+    
+    if (refetching) {
+      if (orderNumber) { fetchOrder() }
+      setRefetching(false)
+      setTimeout(() => setRefetching(true), 5000)
+    }
+    //console.log("in refetching use effect");
+    
+
+  }, [refetching])
 
   useEffect(() => {
     setMounted(true)
     import("@/lib/dictionary").then(({ getDictionary }) => {
       setDict(getDictionary(locale))
     })
+
   }, [locale])
 
-
-  useEffect(() => {
     async function fetchOrder() {
       try {
         setLoading(false);
@@ -147,7 +148,7 @@ export default function OrderConfirmationPage({
         setLoading(false);
       }
     }
-
+  useEffect(() => {
     if (orderNumber) {
       fetchOrder();
     }
@@ -155,28 +156,16 @@ export default function OrderConfirmationPage({
 
   const statusConfig: Record<string, {  icon: typeof Clock; color: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   PENDING: {  icon: Clock, color: "bg-orange-500", variant: "secondary" },
-  PLACED: {  icon: Package, color: "bg-yellow-200", variant: "default" },
-  ACCEPTED: { icon: CheckCircle, color: "bg-blue-300", variant: "default" },
-  PREPARING: {  icon: Package, color: "bg-blue-500", variant: "default" },
-  READY: {  icon: CheckCircle, color: "bg-green-500", variant: "default" },
+  PLACED: {  icon: Package, color: "bg-yellow-500", variant: "default" },
+  ACCEPTED: { icon: CheckCircle, color: "bg-blue-500", variant: "default" },
+  PREPARING: {  icon: Package, color: "bg-green-400", variant: "default" },
+  READY: {  icon: CheckCircle, color: "bg-green-600", variant: "default" },
   PICKED_UP: {  icon: Truck, color: "bg-blue-500", variant: "default" },
   DELIVERED: {  icon: CheckCircle, color: "bg-green-600", variant: "default" },
   CANCELLED: { icon: XCircle, color: "bg-red-500", variant: "destructive" },
   RECEIVED: {  icon: CheckCircle, color: "bg-green-700", variant: "default" },
   REFUNDED: { icon: XCircle, color: "bg-orange-500", variant: "destructive" },
 }
-  const getStatusColor = (status: string): string => {
-    const colors: Record<string, string> = {
-      PENDING: "bg-yellow-100 text-orange-800",
-      PLACED: "bg-yellow-100 text-yellow-800",
-      CONFIRMED: "bg-blue-100 text-blue-800",
-      PROCESSING: "bg-purple-100 text-purple-800",
-      SHIPPED: "bg-indigo-100 text-indigo-800",
-      DELIVERED: "bg-green-100 text-green-800",
-      CANCELLED: "bg-red-100 text-red-800",
-    };
-    return colors[status] || "bg-gray-100 text-gray-800";
-  };
 
   if (loading) {
     return (
@@ -201,7 +190,7 @@ export default function OrderConfirmationPage({
             <CardTitle>{t("order.notFound")}</CardTitle>
           </CardHeader>
           <CardContent className="text-center text-muted-foreground">
-            <p>{error || "We couldn't find the order you're looking for."}</p>
+            <p>{error || "سفارش پیدا نشد"}</p>
           </CardContent>
           <div className="p-6 pt-0 flex justify-center">
             <Link href={`/${locale}/shop/${slug}`}>
@@ -269,9 +258,34 @@ export default function OrderConfirmationPage({
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  {t("order.placedAt")} {formatDate(order.createdAt)}
+                  {t("order.placedAt")} {formatPersianDate(order.createdAt)}
+                  {"  -   ساعت" + formatPersianDate(order.createdAt, "time")}
                 </p>
               </CardContent>
+            </Card>
+            {/* Progress */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                    <Timer className="h-4 w-4" />
+                    زمان های تخمیی
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-1 space-y-2">
+                  <div className="grid gap-3 grid-cols-2 ">
+                    <Label htmlFor="preparationProgress">آماده سازی:</Label>
+                    {order.preparationProgress?.estimatedEndTime && formatRelativePersianTime(order.preparationProgress.estimatedEndTime)} 
+                  
+                    {order.type==="DELIVERY" && <>
+                      <Label htmlFor="preparationProgress">پیکاپ:</Label>
+                      {order.pickupProgress?.estimatedEndTime && formatRelativePersianTime(order.pickupProgress.estimatedEndTime)}
+                    
+                      <Label htmlFor="preparationProgress">تحویل دهی:</Label>
+                      {order.pickupProgress?.estimatedEndTime && formatRelativePersianTime(order.pickupProgress.estimatedEndTime)}
+                    </>}
+                  </div>
+              </CardContent>
+                    
             </Card>
 
             {/* Order Items */}
@@ -301,13 +315,13 @@ export default function OrderConfirmationPage({
                     <div className="flex-1">
                       <p className="font-medium">{item.variant.product.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {item.variant.name} × {locale==="fa" ? toPersianDigits(item.quantity) : item.quantity}
+                         × {locale==="fa" ? toPersianDigits(item.quantity) : item.quantity}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium">{formatPrice(item.price * item.quantity)}</p>
+                      <p className="font-medium">{formatToman(item.price * item.quantity)}</p>
                       <p className="text-xs text-muted-foreground">
-                        {formatPrice(item.price)} {t("order.each")}
+                        {t("order.each")} {formatToman(item.price)} 
                       </p>
                     </div>
                   </div>

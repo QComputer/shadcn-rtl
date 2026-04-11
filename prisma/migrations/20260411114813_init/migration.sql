@@ -1,4 +1,12 @@
 -- CreateTable
+CREATE TABLE "TimeInterval" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "start" DATETIME,
+    "end" DATETIME,
+    "note" TEXT
+);
+
+-- CreateTable
 CREATE TABLE "Organization" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "type" TEXT NOT NULL,
@@ -136,6 +144,7 @@ CREATE TABLE "Appointment" (
     "endTime" DATETIME NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'PENDING',
     "notes" TEXT,
+    "timeIntervalid" TEXT,
     "cancelledAt" DATETIME,
     "cancellationReason" TEXT,
     "cancelledBy" TEXT,
@@ -155,6 +164,7 @@ CREATE TABLE "Appointment" (
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     "deletedAt" DATETIME,
+    CONSTRAINT "Appointment_timeIntervalid_fkey" FOREIGN KEY ("timeIntervalid") REFERENCES "TimeInterval" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "Appointment_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "Appointment_guestCustomerId_fkey" FOREIGN KEY ("guestCustomerId") REFERENCES "GuestCustomer" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "Appointment_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "Service" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
@@ -217,7 +227,9 @@ CREATE TABLE "ProductCategory" (
 -- CreateTable
 CREATE TABLE "Image" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "url" TEXT NOT NULL
+    "url" TEXT NOT NULL,
+    "filename" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
@@ -226,6 +238,7 @@ CREATE TABLE "Product" (
     "name" TEXT NOT NULL,
     "description" TEXT,
     "basePrice" DECIMAL NOT NULL,
+    "image" TEXT,
     "sku" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
@@ -245,6 +258,7 @@ CREATE TABLE "ProductVariant" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "sku" TEXT,
     "name" TEXT NOT NULL,
+    "image" TEXT,
     "price" DECIMAL,
     "inventory" INTEGER NOT NULL DEFAULT 0,
     "reservedQuantity" INTEGER NOT NULL DEFAULT 0,
@@ -262,14 +276,12 @@ CREATE TABLE "ShopCart" (
     "status" TEXT NOT NULL DEFAULT 'ACTIVE',
     "organizationId" TEXT NOT NULL,
     "customerId" TEXT,
-    "guestCustomerId" TEXT,
+    "sessionId" TEXT,
     "expiresAt" DATETIME,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
-    "sessionId" TEXT,
     CONSTRAINT "ShopCart_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "ShopCart_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT "ShopCart_guestCustomerId_fkey" FOREIGN KEY ("guestCustomerId") REFERENCES "GuestCustomer" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+    CONSTRAINT "ShopCart_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -282,30 +294,6 @@ CREATE TABLE "ShopCartItem" (
     "updatedAt" DATETIME NOT NULL,
     CONSTRAINT "ShopCartItem_cartId_fkey" FOREIGN KEY ("cartId") REFERENCES "ShopCart" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "ShopCartItem_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "ProductVariant" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "GuestCart" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "sessionId" TEXT NOT NULL,
-    "status" TEXT NOT NULL DEFAULT 'ACTIVE',
-    "organizationId" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "expiresAt" DATETIME NOT NULL,
-    CONSTRAINT "GuestCart_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "GuestCartItem" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "quantity" INTEGER NOT NULL,
-    "cartId" TEXT NOT NULL,
-    "variantId" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "GuestCartItem_cartId_fkey" FOREIGN KEY ("cartId") REFERENCES "GuestCart" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "GuestCartItem_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "ProductVariant" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -341,7 +329,7 @@ CREATE TABLE "Order" (
     "promotionCode" TEXT,
     "organizationId" TEXT NOT NULL,
     "customerId" TEXT,
-    "guestCustomerId" TEXT,
+    "sessionId" TEXT,
     "driverId" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
@@ -351,7 +339,6 @@ CREATE TABLE "Order" (
     "deliveryProgressId" TEXT,
     CONSTRAINT "Order_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "Order_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT "Order_guestCustomerId_fkey" FOREIGN KEY ("guestCustomerId") REFERENCES "GuestCustomer" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "Order_driverId_fkey" FOREIGN KEY ("driverId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "Order_promotionId_fkey" FOREIGN KEY ("promotionId") REFERENCES "Promotion" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "Order_preparationProgressId_fkey" FOREIGN KEY ("preparationProgressId") REFERENCES "Progress" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
@@ -753,12 +740,6 @@ CREATE INDEX "ShopCart_customerId_idx" ON "ShopCart"("customerId");
 CREATE INDEX "ShopCart_organizationId_customerId_idx" ON "ShopCart"("organizationId", "customerId");
 
 -- CreateIndex
-CREATE INDEX "ShopCart_guestCustomerId_idx" ON "ShopCart"("guestCustomerId");
-
--- CreateIndex
-CREATE INDEX "ShopCart_organizationId_guestCustomerId_idx" ON "ShopCart"("organizationId", "guestCustomerId");
-
--- CreateIndex
 CREATE INDEX "ShopCart_sessionId_idx" ON "ShopCart"("sessionId");
 
 -- CreateIndex
@@ -768,9 +749,6 @@ CREATE INDEX "ShopCart_organizationId_sessionId_idx" ON "ShopCart"("organization
 CREATE UNIQUE INDEX "ShopCart_organizationId_customerId_key" ON "ShopCart"("organizationId", "customerId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "ShopCart_organizationId_guestCustomerId_key" ON "ShopCart"("organizationId", "guestCustomerId");
-
--- CreateIndex
 CREATE UNIQUE INDEX "ShopCart_organizationId_sessionId_key" ON "ShopCart"("organizationId", "sessionId");
 
 -- CreateIndex
@@ -778,27 +756,6 @@ CREATE INDEX "ShopCartItem_cartId_idx" ON "ShopCartItem"("cartId");
 
 -- CreateIndex
 CREATE INDEX "ShopCartItem_variantId_idx" ON "ShopCartItem"("variantId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "GuestCart_sessionId_key" ON "GuestCart"("sessionId");
-
--- CreateIndex
-CREATE INDEX "GuestCart_sessionId_idx" ON "GuestCart"("sessionId");
-
--- CreateIndex
-CREATE INDEX "GuestCart_organizationId_idx" ON "GuestCart"("organizationId");
-
--- CreateIndex
-CREATE INDEX "GuestCart_status_idx" ON "GuestCart"("status");
-
--- CreateIndex
-CREATE INDEX "GuestCart_expiresAt_idx" ON "GuestCart"("expiresAt");
-
--- CreateIndex
-CREATE INDEX "GuestCartItem_cartId_idx" ON "GuestCartItem"("cartId");
-
--- CreateIndex
-CREATE INDEX "GuestCartItem_variantId_idx" ON "GuestCartItem"("variantId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "GuestCustomer_sessionId_key" ON "GuestCustomer"("sessionId");
@@ -831,7 +788,7 @@ CREATE INDEX "Order_organizationId_idx" ON "Order"("organizationId");
 CREATE INDEX "Order_customerId_idx" ON "Order"("customerId");
 
 -- CreateIndex
-CREATE INDEX "Order_guestCustomerId_idx" ON "Order"("guestCustomerId");
+CREATE INDEX "Order_sessionId_idx" ON "Order"("sessionId");
 
 -- CreateIndex
 CREATE INDEX "Order_driverId_idx" ON "Order"("driverId");

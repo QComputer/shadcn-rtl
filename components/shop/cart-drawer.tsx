@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { Minus, Plus, Trash2, ShoppingBag, Loader2, ShoppingCart, ShoppingBasket } from "lucide-react";
-import { formatPrice } from "@/lib/utils";
-import { toPersianDigits } from "@/lib/persian";
+import { formatToman, toPersianDigits } from "@/lib/persian";
 
 interface CartDrawerProps {
   organizationSlug: string;
@@ -89,7 +88,7 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
           </div>
         ) : (
           <>
-            <ScrollArea className="flex-1 -mx-6 px-6">
+            <ScrollArea className="flex-1 ">{/*-mx-6 px-6*/}
               <div className="space-y-4 py-4">
                 {cart?.items.map((item) => (
                   <div
@@ -112,16 +111,13 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
                     </div>
 
                     {/* Product Details */}
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 px-3">
                       <h4 className="font-medium truncate">
                         {item.variant.product.name}
                       </h4>
-                      <p className="text-sm text-muted-foreground">
-                        {item.variant.name}
-                        {item.variant.sku && ` • ${item.variant.sku}`}
-                      </p>
+                      
                       <p className="text-sm font-medium mt-1">
-                        {formatPrice(item.variant.price)}
+                        {formatToman(item.variant.price)}
                       </p>
 
                       {/* Quantity Controls */}
@@ -136,7 +132,7 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
                           >
                             <Minus className="h-3 w-3" />
                           </Button>
-                          <span className="w-8 text-center text-sm">
+                          <span className="w-8 text-center text-xs">
                             {updatingId === item.id ? (
                               <Loader2 className="h-3 w-3 animate-spin mx-auto" />
                             ) : (
@@ -169,7 +165,7 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
                     {/* Item Total */}
                     <div className="text-right">
                       <p className="font-medium">
-                        {formatPrice(item.variant.price * item.quantity)}
+                        {formatToman(item.variant.price * item.quantity)}
                       </p>
                     </div>
                   </div>
@@ -181,7 +177,7 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
             <div className="border-t pt-4 space-y-4">
               <div className="flex items-center justify-between text-lg font-medium">
                 <span>جمع جزئی</span>
-                <span>{formatPrice(summary.subtotal)}</span>
+                <span>{formatToman(summary.subtotal)}</span>
               </div>
               <div className="grid gap-2">
                 <Link href={`/shop/${organizationSlug}/checkout`}>

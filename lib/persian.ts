@@ -279,8 +279,8 @@ export function formatRelativePersianTime(
   if (diffMinutes > 0) {
     if (diffHours > 0) formatted += " و ";
     formatted += `${toPersianDigits(diffMinutes)} دقیقه `;
+    formatted += isPassed ? "پیش" : "دیگر";
   }
-  formatted += isPassed ? "پیش" : "دیگر";
 
   return formatted;
 }

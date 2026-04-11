@@ -197,8 +197,9 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
 
   // My Appointments - CUSTOMER and STAFF/ADMIN/MANAGER (APPOINTMENT org member)
   "/dashboard/my-appointments": {
-    allowedRoles: ["SUPER_ADMIN", "CUSTOMER", "STAFF", "ADMIN", "MANAGER"],
+    allowedRoles: ["CUSTOMER", "STAFF"],
     isMyOnly: true,
+    requiredOrgType: ["APPOINTMENT"],
   },
 
   // My Services - STAFF/ADMIN/MANAGER (APPOINTMENT org member)
@@ -437,7 +438,7 @@ export const dashboardNavItems: NavItem[] = [
     labelKey: "navigation.customers",
     href: "/dashboard/customers",
     icon: "Users",
-    requiredRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+    requiredRoles: ["SUPER_ADMIN"],
     requiredOrgType: ["SHOP"],
     //requiredOrgMemberRole: ["ADMIN", "MANAGER"],
   },
@@ -453,7 +454,7 @@ export const dashboardNavItems: NavItem[] = [
     labelKey: "navigation.myAppointments",
     href: "/dashboard/my-appointments",
     icon: "CalendarDays",
-    requiredRoles: ["CUSTOMER", "STAFF", "ADMIN", "MANAGER"],
+    requiredRoles: ["CUSTOMER"],
   },
 
   {

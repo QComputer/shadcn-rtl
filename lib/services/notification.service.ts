@@ -170,7 +170,7 @@ export class NotificationService {
 
     // For development, just log
     if (process.env.NODE_ENV === "development") {
-      //console.log(`  [Development mode - notification logged only]`);
+      console.log(`  [Development mode - notification logged only]`);
     }
   }
 

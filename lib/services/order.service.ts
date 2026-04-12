@@ -532,7 +532,7 @@ export class OrderService {
     if (!hasPermission(userRole, "order:update")) {
       throw new Error("Unauthorized");
     }
-console.log("----------------------estimatedEndTime:", estimatedEndTime);
+    //console.log("----------------------estimatedEndTime:", estimatedEndTime);
 
     const progress = await updateProgress(id, type, estimatedEndTime);
     

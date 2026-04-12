@@ -268,7 +268,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                 {dashboardData?.title || t("auth.welcomeBack") || "خوش آمدید"}
               </h2>
               <p className="text-muted-foreground">
-                {new Date().toLocaleDateString("fa-IR", { 
+                {new Date().toLocaleDateString("fa", { 
                   year: "numeric", 
                   month: "long", 
                   day: "numeric",
@@ -330,6 +330,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                   </CardContent>
                 </Card>
 
+                <Link href={`/${locale}/dashboard/orders`}>
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -345,7 +346,9 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                     </p>
                   </CardContent>
                 </Card>
+                </Link>
 
+                <Link href={`/${locale}/dashboard/products`}>
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -354,12 +357,14 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                     <Package className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
+
                     <div className="text-2xl font-bold">{toPersianDigits(dashboardData?.stats.totalProducts?.toString() || "۰")}</div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {t("navigation.customers") || "مشتریان"}: {toPersianDigits(dashboardData?.stats.totalCustomers?.toString() || "۰")}
+                      {t("navigation.products") || "محصولات"}: {toPersianDigits(dashboardData?.stats.totalProducts?.toString() || "۰")}
                     </p>
                   </CardContent>
                 </Card>
+                </Link>
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -371,7 +376,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                   <CardContent>
                     <div className="text-2xl font-bold">{toPersianDigits(dashboardData?.stats.totalMembers?.toString() || "۰")}</div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {t("dashboard.completedOrders") || "تکمیل شده"}: {toPersianDigits(dashboardData?.stats.completedOrders?.toString() || "۰")}
+                      {t("organization.activeMembers") || "فعال"}: {toPersianDigits(dashboardData?.stats.totalMembers?.toString() || "۰")}
                     </p>
                   </CardContent>
                 </Card>
@@ -660,6 +665,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
 
               {/* Orders by Status */}
               {dashboardData.ordersByStatus && dashboardData.ordersByStatus.length > 0 && (
+               <Link href={`/${locale}/dashboard/orders`}>
                 <Card>
                   <CardHeader>
                     <CardTitle>{t("dashboard.ordersByStatus") || "سفارش‌ها بر اساس وضعیت"}</CardTitle>
@@ -700,6 +706,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                     </div>
                   </CardContent>
                 </Card>
+                </Link>
               )}
 
               {/* Recent Orders */}

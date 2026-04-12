@@ -95,10 +95,10 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
 
   // Fetch products from API
   useEffect(() => {
-    if (mounted && hasAccess) {
+    if (mounted) {
       fetchProducts()
     }
-  }, [mounted, hasAccess, page, searchQuery, organizationMembership])
+  }, [mounted,  accessLoading, page, searchQuery, organizationMembership])
 
   const fetchProducts = async () => {
     setLoading(true)

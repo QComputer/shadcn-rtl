@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
 
-    if (!session?.user?.id || !session.user.role) {
+    if (!session?.user?.id || !session.user.role || !session?.user?.organizationId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -77,9 +77,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const data = createProductCategorySchema.parse(body);
-
-    const { organizationId, ...categoryData } = body;
+    const categoryData = createProductCategorySchema.parse(body);
+    const organizationId = session?.user?.organizationId;
     
     if (!organizationId) {
       return NextResponse.json({ error: "Organization ID is required" }, { status: 400 });

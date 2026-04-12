@@ -30,7 +30,7 @@ export function ThemeProvider({
     return (localStorage.getItem(storageKey) as Theme) || defaultTheme
   })
 
-  const [resolvedTheme, setResolvedTheme] = React.useState<"light" | "dark">("light")
+  const [resolvedTheme, setResolvedTheme] = React.useState<"light" | "dark">("dark")
 
   React.useEffect(() => {
     const root = window.document.documentElement

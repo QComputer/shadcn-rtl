@@ -51,7 +51,7 @@ import {
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import { useDashboardAccess, useAuth } from "@/hooks/use-auth"
-import { formatPersianDate, formatRelativePersianDate, formatRelativePersianTime, formatToman, toPersianDigits } from "@/lib/persian"
+import { formatPersianDate, formatRelativePersianTime, formatToman, toPersianDigits } from "@/lib/persian"
 import { GuestCustomer, User } from "@prisma/client"
 
 
@@ -163,10 +163,10 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
 
   // Fetch orders from API
   useEffect(() => {
-    if (mounted && hasAccess) {
+    if (mounted ) {
       fetchOrders()
     }
-  }, [mounted, hasAccess, page, searchQuery, statusFilter, organizationMembership])
+  }, [mounted, user, page, searchQuery, statusFilter, organizationMembership])
 
   const fetchOrders = async () => {
     setLoading(true)

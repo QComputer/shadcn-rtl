@@ -12,6 +12,8 @@ import {
   Tag,
   FolderOpen,
   GripVertical,
+  Box,
+  Package,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -52,11 +54,10 @@ interface Category {
   id: string
   name: string
   description: string | null
-  image: string | null
   isActive: boolean
   sortOrder: number
   _count?: {
-    services: number
+    products: number
   }
 }
 
@@ -87,7 +88,6 @@ export default function ProductCategoriesPage({
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    image: "",
     isActive: true,
   })
   
@@ -144,7 +144,6 @@ export default function ProductCategoriesPage({
     setFormData({
       name: "",
       description: "",
-      image: "",
       isActive: true,
     })
     setDialogOpen(true)
@@ -156,7 +155,6 @@ export default function ProductCategoriesPage({
     setFormData({
       name: category.name,
       description: category.description || "",
-      image: category.image || "",
       isActive: category.isActive,
     })
     setDialogOpen(true)
@@ -176,8 +174,8 @@ export default function ProductCategoriesPage({
     
     try {
       const url = editingCategory 
-        ? `/api/service-categories/${editingCategory.id}`
-        : "/api/service-categories"
+        ? `/api/product-categories/${editingCategory.id}`
+        : "/api/product-categories"
       const method = editingCategory ? "PATCH" : "POST"
       
       const response = await fetch(url, {
@@ -215,7 +213,7 @@ export default function ProductCategoriesPage({
     
     setDeleting(true)
     try {
-      const response = await fetch(`/api/service-categories/${categoryToDelete.id}`, {
+      const response = await fetch(`/api/product-categories/${categoryToDelete.id}`, {
         method: "DELETE",
       })
       
@@ -265,16 +263,16 @@ export default function ProductCategoriesPage({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">{t("service.categories") || "Service Categories"}</h2>
+          <h2 className="text-2xl font-bold">{t("product.categories") || "Service Categories"}</h2>
           <p className="text-muted-foreground">
-            {toPersianDigits(filteredCategories.length)} {t("service.category") || "category"}
+            {toPersianDigits(filteredCategories.length)} {t("product.category") || "category"}
           </p>
         </div>
         <div className="flex gap-2">
-          <Link href={`/${locale}/dashboard/services`}>
+          <Link href={`/${locale}/dashboard/products`}>
             <Button variant="outline">
-              <Tag className="h-4 w-4 ml-2" />
-              {t("navigation.services") || "Services"}
+              <Package className="h-4 w-4 ml-2" />
+              {t("navigation.products") || "Services"}
             </Button>
           </Link>
           <Button onClick={openCreateDialog}>
@@ -354,7 +352,7 @@ export default function ProductCategoriesPage({
                   
                   <div className="flex items-center gap-4">
                     <div className="text-sm text-muted-foreground">
-                      {toPersianDigits(category._count?.services || 0)} {t("navigation.services") || "services"}
+                      {toPersianDigits(category._count?.products || 0)} {t("navigation.products") || "products"}
                     </div>
                     
                     <DropdownMenu>
@@ -392,50 +390,39 @@ export default function ProductCategoriesPage({
           <DialogHeader>
             <DialogTitle>
               {editingCategory 
-                ? (t("service.edit_category") || "Edit Category")
-                : (t("service.new_category") || "New Category")}
+                ? (t("product.edit_category") || "Edit Category")
+                : (t("product.new_category") || "New Category")}
             </DialogTitle>
             <DialogDescription>
               {editingCategory
                 ? "Update the category details below"
-                : "Create a new category to organize your services"}
+                : "Create a new category to organize your products"}
             </DialogDescription>
           </DialogHeader>
           
           <form onSubmit={handleFormSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">{t("service.name") || "Name"} *</Label>
+              <Label htmlFor="name">{t("product.name") || "Name"} *</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder={t("service.name_placeholder") || "Category name"}
+                placeholder={t("product.name_placeholder") || "Category name"}
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="description">{t("service.description") || "Description"}</Label>
+              <Label htmlFor="description">{t("product.description") || "Description"}</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder={t("service.description_placeholder") || "Category description"}
+                placeholder={t("product.description_placeholder") || "Category description"}
                 rows={3}
               />
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="image">{t("service.image") || "Image URL"}</Label>
-              <Input
-                id="image"
-                type="url"
-                value={formData.image}
-                onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.value }))}
-                placeholder="https://example.com/image.jpg"
-              />
-            </div>
-            
+
             <DialogFooter>
               <Button 
                 type="button" 
@@ -460,9 +447,9 @@ export default function ProductCategoriesPage({
             <AlertDialogTitle>{t("common.delete") || "Delete Category"}</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete "{categoryToDelete?.name}"? This action cannot be undone.
-              {categoryToDelete?._count?.services ? (
+              {categoryToDelete?._count?.products ? (
                 <span className="block mt-2 text-destructive">
-                  This category has {categoryToDelete._count.services} services. Please move or delete them first.
+                  This category has {categoryToDelete._count.products} products. Please move or delete them first.
                 </span>
               ) : null}
             </AlertDialogDescription>
@@ -473,7 +460,7 @@ export default function ProductCategoriesPage({
             </AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDelete}
-              disabled={deleting || (categoryToDelete?._count?.services || 0) > 0}
+              disabled={deleting || (categoryToDelete?._count?.products || 0) > 0}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleting ? t("common.loading") || "Deleting..." : t("common.delete") || "Delete"}

@@ -18,10 +18,10 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(bytes);
 
     // Define the upload directory relative to the project root
-    const uploadDir = path.join(process.cwd(), "uploads");
+    const uploadDir = path.join(process.cwd(), "../uploads");
 
     // Ensure the directory exists
-    await fs.mkdir(uploadDir, { recursive: true });
+    //await fs.mkdir(uploadDir, { recursive: true });
 
     // Generate a unique filename
     const filename = `${Date.now()}-${file.name}`;

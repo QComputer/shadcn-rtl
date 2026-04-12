@@ -132,7 +132,7 @@ export default function EditProductPage({
   const [sortOrder, setSortOrder] = useState(0)
   const [lowStockThreshold, setLowStockThreshold] = useState(20)
     const [imagePreview, setImagePreview] = useState<string | null>(null);
-    const [imageFile, setImageFile] = useState<File | null>(null);
+    //const [imageFile, setImageFile] = useState<File | null>(null);
         const [progress, setProgress] = useState<number>(0);
     
     
@@ -154,7 +154,7 @@ export default function EditProductPage({
       xhr.onload = () => {
         setProgress(0);
         const res = xhr.responseText
-        console.log("----------------xhr.responseText:",xhr.responseText);
+        //console.log("----------------xhr.responseText:",xhr.responseText);
         
         resolve(JSON.parse(xhr.responseText));
       };
@@ -166,7 +166,7 @@ export default function EditProductPage({
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const imageFile = e.target.files[0];
-      setImageFile(imageFile);
+      //setImageFile(imageFile);
       try {
         const img = await uploadFile(imageFile);
         setImage(img.url);

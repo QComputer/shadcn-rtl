@@ -20,7 +20,7 @@ request: NextRequest,
     return new NextResponse("Bad Request: Missing filename", { status: 400 });
   }
 
-  const filePath = path.join(process.cwd(), "uploads", filename);
+  const filePath = path.join(process.cwd(), "../uploads", filename);
   console.log(`Attempting to serve file: ${filePath}`);
 
   try {

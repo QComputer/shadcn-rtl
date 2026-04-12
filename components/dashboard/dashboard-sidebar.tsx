@@ -64,7 +64,6 @@ export function DashboardSidebar({
   onOpenChange
 }: DashboardSidebarProps) {
   const pathname = usePathname()
-  const router = useRouter()
   const { user, organizationMembership, isLoading, signOut } = useAuth()
   const [filteredItems, setFilteredItems] = useState<NavItem[]>([])
   const [mounted, setMounted] = useState(false)

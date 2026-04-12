@@ -7,7 +7,7 @@ import Link from "next/link"
 import { Building2, ShoppingBag, Calendar, ArrowLeft, ArrowRight } from "lucide-react"
 
 // Make this page dynamic to avoid build-time database calls
-export const dynamic = 'force-dynamic'
+//export const dynamic = 'force-dynamic'
 
 interface OrganizationWithDetails {
   id: string

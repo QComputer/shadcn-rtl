@@ -29,8 +29,8 @@ export default async function LocaleLayout({
   params: Promise<{ locale: string }>;
 }) {
   // Next.js 16 - params is a Promise
-  //const resolvedParams = await params;
-  const locale = "fa" as SupportedLocale //validateLocale(resolvedParams.locale);
+  const resolvedParams = await params;
+  const locale = validateLocale(resolvedParams.locale);
   const config = localeConfig[locale];
 
   return (

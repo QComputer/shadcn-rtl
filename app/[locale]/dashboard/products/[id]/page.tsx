@@ -469,49 +469,48 @@ export default function EditProductPage({
                   {t("product.image") || "Product image"}
                 </Label>
               </div>
-              <div className="mt-1  flex items-center">
-                            
-                <input
+              <div className="mt-1 mx-5 flex items-center">
+                <Input
                   type="file"
                   accept="image/*" // Only accept image files
                   onChange={handleImageChange}
                   className="sr-only" // Hide the default file input
                   id="imageUpload"
                 />
-              
-                <label
+                <Label
                   htmlFor="imageUpload"
                 >
-      
+                <div className="items-center rounded-lg border-3">
                 {imagePreview ? 
                   <img
                   src={imagePreview}
                   alt="Image Preview"
-                  className=" items-center mr-2 h-20 w-20 object-cover rounded-md"
+                  className="items-center h-20 w-20 object-cover rounded-md"
                   />
                 : product?.image 
                   ? <img
                     src={product.image}
                     alt="Original Image Preview"
-                    className=" items-center mr-2 h-20 w-20 object-cover rounded-md"
+                    className=" items-center h-20 w-20 object-cover rounded-md"
                     />
                   :
                (
-                <div className=" items-center mr-2 text-xs border-1 p-2 rounded-md w-20 h-20">هیچ تصویری انتخاب نشده</div>
+                <div className=" items-center text-sm border-1 p-2 rounded-md w-20 h-20">هیچ تصویری انتخاب نشده</div>
               )}
-                </label>
+              </div>
+                </Label>
                   <Button
-                    onClick={() => {
-                      setImagePreview("")
+                    onClick={() => {setImagePreview("")
                     }}
                     size={"icon"}
-                    variant={"ghost"}
-                    className={" -mt-16 mr-1"}
+                    variant={"outline"}
+                    className={"border-2 -mt-16 mr-1"}
                   >
                     <X/>
                   </Button>
               </div>
             </div>
+            
             {/* Name */}
             <div className="space-y-2 pt-4">
               <Label htmlFor="name">

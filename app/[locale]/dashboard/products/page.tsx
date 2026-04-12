@@ -1,5 +1,7 @@
 "use client"
-
+// TODO:  0. Add `delete` button on edit variant dialog
+//        1. Add `+` button to link to creating new category
+//        2. traslate 
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
 import {
@@ -14,6 +16,7 @@ import {
   Star,
   AlertCircle,
   RefreshCw,
+  FolderOpen,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -81,7 +84,6 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
 
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   
 
   useEffect(() => {
@@ -90,13 +92,6 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
       setDict(getDictionary(locale))
     })
   }, [locale])
-
-  // Fetch product from API
-  useEffect(() => {
-    if (selectedProduct?.id) {
-      fetchProduct(selectedProduct.id)
-    }
-  }, [selectedProduct])
 
   // Fetch products from API
   useEffect(() => {
@@ -139,29 +134,6 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
       setTotalPages(data.totalPages)
     } catch (err) {
       console.error("Error fetching products:", err)
-      setError(err instanceof Error ? err.message : "An error occurred")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchProduct = async (id: string) => {
-      if (!selectedProduct) return
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const response = await fetch(`/api/products/${id}`)
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch product")
-      }
-      
-      const data: Product = await response.json()
-      //console.log("-------------> data:", data);
-      
-    } catch (err) {
-      console.error("Error fetching product:", err)
       setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
       setLoading(false)
@@ -223,6 +195,12 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
           </p>
         </div>
         <div className="flex gap-2">
+          <Link href={`/${locale}/dashboard/product-categories`}>
+            <Button variant="outline">
+              <FolderOpen className="h-4 w-4 ml-2" />
+              {t("navigation.product-categories") || "Services"}
+            </Button>
+          </Link>
           <Button variant="outline" size="icon" onClick={() => fetchProducts()}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
@@ -232,6 +210,7 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
               {t("common.add") || "Add Product"}
             </Button>
           </Link>
+          
         </div>
       </div>
 

@@ -415,13 +415,13 @@ export default function ProductDetailPage({
                 >
                   {addedToCart ? (
                     <>
-                      <Check className="h-5 w-5" />
                       اضافه شد
+                      <Check className="h-5 w-5" />
                     </>
                   ) : (
                     <>
-                      <ShoppingCart className="h-5 w-5" />
                       {addingToCart ? "در حال افزودن..." : "افزودن به سبد"}
+                      <ShoppingCart className="h-5 w-5" />
                     </>
                   )}
                 </Button>

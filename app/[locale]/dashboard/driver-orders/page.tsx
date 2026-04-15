@@ -14,7 +14,11 @@ import {
   MapPin,
   Check,
   X,
-  Save
+  Save,
+  Search,
+  RefreshCw,
+  ChevronRight,
+  ChevronLeft
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -22,14 +26,18 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
-import { formatRelativePersianTime, formatToman, toPersianDigits } from "@/lib/persian"
+import { formatPersianDate, formatRelativePersianTime, formatToman, toPersianDigits } from "@/lib/persian"
 import { useAuth } from "@/hooks/use-auth"
 import dayjs, { Dayjs } from "dayjs"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Select } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { GuestCustomer, Organization, User } from "@prisma/client"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 
+interface Deny{
+  userId: string
+}
 
 interface OrderItem {
   id: string
@@ -78,7 +86,9 @@ interface Order {
     lastName: string | null
   } | null
   items: OrderItem[]
+  denies: Deny[]
 }
+
 
 interface OrdersResponse {
   data: Order[]
@@ -89,6 +99,8 @@ interface OrdersResponse {
 }
 
 const statusConfig: Record<string, { label: string; icon: typeof Clock; color: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+    PENDING: { label: "در انتظار", icon: Clock, color: "bg-yellow-500", variant: "secondary" },
+  PLACED: { label: "ثبت شده", icon: Package, color: "bg-blue-200", variant: "default" },
   ACCEPTED: { label: "پذیرفته شده", icon: CheckCircle, color: "bg-yellow-600", variant: "destructive" },
   PREPARING: { label: "در حال آماده‌سازی", icon: Package, color: "bg-orange-400", variant: "destructive" },
   READY: { label: "آماده", icon: CheckCircle, color: "bg-red-500", variant: "default" },
@@ -222,6 +234,35 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
     setDetailDialogOpen(true)
   }
 
+  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+    setUpdating(true)
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      
+      if (!response.ok) {
+        throw new Error("Failed to update order status")
+      }
+      
+      // Refresh orders list
+      fetchOrders()
+      
+      // Update selected order if dialog is open
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder(prev => prev ? { ...prev, status: newStatus as Order["status"] } : null)
+      }
+    } catch (err) {
+      console.error("Error updating order status:", err)
+      setError(err instanceof Error ? err.message : "Failed to update order status")
+    } finally {
+      setUpdating(false)
+    }
+  }
   
   const acceptOrder = async (id: string) => {
     const response = await fetch(`/api/orders/${id}/driver`)
@@ -231,7 +272,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
       }
       
       const order: Order = await response.json()
-      //console.log("-----------------------order:", order);
+      console.log("-----------------------Driver-Order> Accepted order:", order);
       fetchOrders()
   }
 
@@ -248,10 +289,25 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
   }
 
   const pickupOrder = async(id: string) => {
-    fetchOrders()
+    handleUpdateStatus(id, "PICKED_UP")
   }
 
+    const deliveryOrder = async(id: string) => {
+    handleUpdateStatus(id, "DELIVERED")
+  }
+
+  function isDenied (orderDenies: Deny[] | undefined){
+    if (!!orderDenies && orderDenies?.length > 0) {
+      orderDenies.map((d)=>{
+        if (d.userId === user?.id) return true
+      })
+    }
+    return false
+  }
     
+useEffect(()=>{
+      console.log("-----------------------orders:", orders);
+},[orders])
 
   useEffect(() => {
       setMounted(true)
@@ -265,7 +321,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
     if (mounted) {
       fetchOrders()
     }
-  }, [mounted, page, searchQuery])
+  }, [mounted, user, page, searchQuery, statusFilter])
 
   const fetchOrders = async () => {
     setDetailDialogOpen(false)
@@ -276,7 +332,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
     try {
       const params = new URLSearchParams({
         page: page.toString(),
-        pageSize: "100",
+        pageSize: "10",
       })
       
       if (searchQuery) {
@@ -286,6 +342,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
       if (statusFilter && statusFilter !== "all") {
         params.set("status", statusFilter)
       }
+      console.log("-----------------------params:", params.toString());
       
       const response = await fetch(`/api/orders?${params.toString()}`)
       
@@ -294,7 +351,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
       }
       
       const data: OrdersResponse = await response.json()
-      //console.log("-----------------------OrdersResponse:", data);
+      console.log("-----------------------OrdersResponse:", orders);
       
       setOrders(data.data)
       setTotal(data.total)
@@ -313,16 +370,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
   }
 
   // Filter orders
-  const filteredOrders = orders.filter(order => {
-      const b1 = (!order.driverId) && ["ACCEPTED", "PREPARING", "READY"].includes(order.status)
-      const b2 = (order.driverId === user?.id)
-    if (filter === "active") {
-      return (b1 || b2) && ["ACCEPTED", "PREPARING", "READY"].includes(order.status)
-    } else if (filter === "completed") {
-      return b2 && ["DELIVERED", "CANCELLED"].includes(order.status)
-    }
-    return b1 || b2
-  })
+  const filteredOrders = (!!orders && orders.length>0) ? orders : []
 
   if (!mounted || updating) {
     return (
@@ -337,90 +385,147 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
     )
   }
 
-  function deliveryOrder(id: string): void {
-    throw new Error("Function not implemented.")
-  }
-
   return (
-    <div className="space-y-6">
+    <div className="p-4 lg:p-6 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">{t("navigation.orders")}</h1>
-        <p className="text-muted-foreground">مشاهده و پیگیری سفارش‌ها</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">{t("navigation.orders") || "سفارشات"}</h2>
+          <p className="text-muted-foreground">
+            {toPersianDigits(total.toString())} {t("navigation.orders") || "سفارش"}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="icon" onClick={() => fetchOrders()}>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as any)} className="w-full">
-        <TabsList>
-          <TabsTrigger value="active">{t("order.active")}</TabsTrigger>
-          <TabsTrigger value="completed">{t("order.completed")}</TabsTrigger>
-          <TabsTrigger value="all">{t("common.all")}</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      {/* Orders List */}
-      {loading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={t("common.search") || "جستجو..."}
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              setPage(1)
+            }}
+            className="pr-10"
+          />
         </div>
-      ) : error ? (
-        <Card>
-          <CardContent className="py-8 text-center text-destructive">
-            <p>{error}</p>
+        <Select value={statusFilter} onValueChange={(value) => {
+          setStatusFilter(value)
+          setPage(1)
+        }}>
+          <SelectTrigger className="w-full sm:w-48">
+            <SelectValue placeholder="همه وضعیت‌ها" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">همه وضعیت‌ها</SelectItem>
+            {Object.entries(statusConfig).map(([key, config]) => (
+              <SelectItem key={locale+key} value={key}>
+                {config.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Error State */}
+      {error && (
+        <Card className="border-destructive">
+          <CardContent className="py-4 flex items-center gap-2 text-destructive">
+            <AlertCircle className="h-5 w-5" />
+            <span>{error}</span>
+            <Button variant="ghost" size="sm" onClick={() => setError(null)}>
+              {t("common.close") || "بستن"}
+            </Button>
           </CardContent>
         </Card>
-      ) : filteredOrders.length === 0 ? (
+      )}
+
+      {/* Loading State */}
+      {loading && (
+        <div className="space-y-4">
+          {[1, 2, 3, 4, 5].map(i => (
+            <Card key={locale+i}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                  <Skeleton className="h-8 w-24" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && orders.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center">
-            <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-lg font-medium">{t("order.noOrders")}</p>
-            {(user?.role === "CUSTOMER") && <Button className="mt-4">
-              <Link href="/">شروع خرید</Link>
-            </Button>}
-            
+            <Package className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">
+              {searchQuery || statusFilter !== "all" ? "سفارشی یافت نشد" : "سفارشی وجود ندارد"}
+            </h3>
+            <p className="text-muted-foreground">
+              {searchQuery || statusFilter !== "all" 
+                ? "لطفاً فیلترها را تغییر دهید" 
+                : "سفارشات در اینجا نمایش داده می‌شوند"
+              }
+            </p>
           </CardContent>
         </Card>
-      ) : (
+      )}
+
+      {/* Orders List */}
+      {!loading && orders.length > 0 && (
+
         <div className="space-y-4">
-          {filteredOrders.map((order) => {
+          {(!!orders && orders.length>0) && orders.map((order) => {
             const status = statusConfig[order.status]
             const StatusIcon = status?.icon || AlertCircle
             const orderDate = new Date(order.createdAt)
             const isAccepted = !!user && !!order.driverId && order.driverId === user.id
             const className = isAccepted ? "overflow-hidden bg-green-500/10" : "overflow-hidden bg-red-500/10"
-            //console.log("className", className);
+            //const _isDenied = !isAccepted ? isDenied(order.denies || []) : false
             
             return (
               <Card key={locale+order.id} className={className} onClick={() => handleViewOrder(order)}>
-                <CardContent className="">
+                <CardContent className="px-4">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold">
-                          سفارش #{toPersianDigits(order.id.slice(-6).toUpperCase())}
-                        </h3>
-                        <Badge className={statusConfig[order.status].color} variant={status?.variant || "secondary"}>
+                        <div className={`p-2 rounded-full ${status.color}`}>
+                          <StatusIcon className="h-5 w-5 text-white" />
+                        </div>
+                        
+                        <div>
+                          <Badge className={statusConfig[order.status].color} variant={status?.variant || "secondary"}>
                           <StatusIcon className={"h-3 w-3 ml-1"} />
-                          {status?.label || order.status}
-                        </Badge>
+                            {status?.label || order.status}
+                          </Badge>  
+                        </div>
                       </div>
                       
-                      <p className="text-muted-foreground text-sm mb-2">
+                      <p className="text-xm text-muted-foreground mb-2">
                         {order.organization?.name}
+                                              <span> {" - "} </span>
+                          <span>{order.deliveryAddress}</span>
+                        {order.customer && `${order.customer.firstName} ${order.customer.lastName}` }
+                        {order.guestCustomer && `${order.guestCustomer.name}`}
                       </p>
-                      
                       <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                        <span>
-                          {order.items.length} محصول
-                        </span>
-                        <span>•</span>
-                        <span>
-                          {orderDate.toLocaleDateString("fa-IR")}
-                        </span>
-                        <span>•</span>
-                        <span className="font-medium text-primary">
-                          {formatToman(order.total)}
-                        </span>
+                          <p className="text-sm text-muted-foreground">
+                            {formatRelativePersianTime(order.createdAt)}
+                          </p>
+                       
                       </div>
 
                   </div>
@@ -430,12 +535,40 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
           })}
         </div>
       )}
+
+            {/* Pagination */}
+            {!loading && orders.length > 0 && totalPages > 1 && (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {t("common.showing") || "نمایش"} {toPersianDigits(((page - 1) * 10 + 1).toString())} - {toPersianDigits(Math.min(page * 10, total).toString())} {t("common.of") || "از"} {toPersianDigits(total.toString())}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    disabled={page >= totalPages}
+                    onClick={() => setPage(p => p + 1)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    disabled={page <= 1}
+                    onClick={() => setPage(p => p - 1)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+      
       
       {/* Order Detail Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>جزئیات سفارش {selectedOrder?.orderNumber}</DialogTitle>
+            <DialogTitle>جزئیات سفارش</DialogTitle>
           </DialogHeader>
           
           {selectedOrder && (
@@ -450,7 +583,20 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
                 </div>
               </div>
 
-
+              {/* Customer Info */}
+              <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-xs flex items-center gap-2">
+                          <UserIcon className="h-4 w-4" />
+                          اطلاعات مشتری
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-1 text-xs">
+                        {selectedOrder.customer?.firstName && <p>نام : {selectedOrder.customer.firstName}</p>}
+                        {selectedOrder.customer?.lastName && <p>نام خانوادگی : {selectedOrder.customer.name}</p>}
+                        {selectedOrder.guestCustomer?.name && <p>نام کاربر میهمان : {selectedOrder.guestCustomer.name}</p>}
+                      </CardContent>
+              </Card>
               {/* Delivery Info */}
                       <Card>
                         <CardHeader className="pb-2">
@@ -467,6 +613,65 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
                         </CardContent>
                       </Card>
 
+
+
+
+
+              {/* Order Items */}
+              <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">اقلام سفارش</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          {selectedOrder.items.map((item) => (
+                            <div key={locale+item.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                              <div>
+                                <p className="font-medium">{item.product?.name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {toPersianDigits(item.quantity.toString())} × {formatToman(item.price)}
+                                </p>
+                              </div>
+                              <p className="font-bold">
+                                {formatToman(item.price * item.quantity)}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+              </Card>
+              {/* Pricing Summary */}
+              <Card>
+                      <CardContent className="pt-4 space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">جمع کل:</span>
+                          <span>{formatToman(selectedOrder.subtotal)}</span>
+                        </div>
+                        {selectedOrder.deliveryFee > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">هزینه ارسال:</span>
+                            <span>{formatToman(selectedOrder.deliveryFee)}</span>
+                          </div>
+                        )}
+                        {selectedOrder.tax > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">مالیات:</span>
+                            <span>{formatToman(selectedOrder.tax)}</span>
+                          </div>
+                        )}
+                        {selectedOrder.discount > 0 && (
+                          <div className="flex justify-between text-sm text-green-600">
+                            <span>تخفیف:</span>
+                            <span>-{formatToman(selectedOrder.discount)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                          <span>مبلغ نهایی:</span>
+                          <span>{formatToman(selectedOrder.total)}</span>
+                        </div>
+                      </CardContent>
+              </Card>
+              
               {/* Progress */}
               <Card>
                       <CardHeader className="pb-2">
@@ -476,7 +681,20 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="text-xs pt-1 space-y-2 ">
-                      {((pickupTime && !savingPickupTime)) && (
+                       {preparationTime  && (
+                    <div className="grid gap-0 grid-cols-2 grid-rows-2 pt-2">
+                      <div className="row-1 pt-2 pb-2">
+
+                      <Label htmlFor="deliveryProgress">آماده‌سازی:</Label>
+                      </div>
+                      <div className="col-2">
+                      
+                      {formatRelativePersianTime(preparationTime)} 
+                      </div>
+
+                    </div>
+                       )}
+                      {(pickupTime && !savingPickupTime) && (
                           <div className=" grid gap-0 grid-cols-2 grid-rows-2 ">
                             <div className="row-1 pt-2">
       
@@ -575,7 +793,8 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
                           <Button className={"col-span-2"} onClick={handleSaveAllEstimatedEndTimes}>
                             <Save/>  ذخیره 
                           </Button>
-                          <Button className={"col-3 bg-green-400 text-green-800"} onClick={() => pickupOrder(selectedOrder.id)}>
+                          <Button className={"col-3 bg-green-400 text-green-800"} 
+                          onClick={() => pickupOrder(selectedOrder.id)}>
                            <CheckCircle/> پیکاپ
                           </Button>
                         </div>}
@@ -591,81 +810,6 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
                       </div>      
                       </CardContent>
               </Card>
-
-              {/* Customer Info */}
-              <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-xs flex items-center gap-2">
-                          <UserIcon className="h-4 w-4" />
-                          اطلاعات مشتری
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-1 text-xs">
-                        {selectedOrder.customer?.firstName && <p>نام : {selectedOrder.customer.firstName}</p>}
-                        {selectedOrder.customer?.lastName && <p>نام خانوادگی : {selectedOrder.customer.name}</p>}
-                        {selectedOrder.guestCustomer?.name && <p>نام کاربر میهمان : {selectedOrder.guestCustomer.name}</p>}
-                      </CardContent>
-              </Card>
-              {/* Order Items */}
-              <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">اقلام سفارش</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          {selectedOrder.items.map((item) => (
-                            <div key={locale+item.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                              <div>
-                                <p className="font-medium">{item.product?.name}</p>
-                                {item.variant && (
-                                  <p className="text-sm text-muted-foreground">{item.variant.name}</p>
-                                )}
-                                <p className="text-sm text-muted-foreground">
-                                  {toPersianDigits(item.quantity.toString())} × {formatToman(item.price)}
-                                </p>
-                              </div>
-                              <p className="font-bold">
-                                {formatToman(item.price * item.quantity)}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-              </Card>
-
-              {/* Pricing Summary */}
-              <Card>
-                      <CardContent className="pt-4 space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">جمع کل:</span>
-                          <span>{formatToman(selectedOrder.subtotal)}</span>
-                        </div>
-                        {selectedOrder.deliveryFee > 0 && (
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">هزینه ارسال:</span>
-                            <span>{formatToman(selectedOrder.deliveryFee)}</span>
-                          </div>
-                        )}
-                        {selectedOrder.tax > 0 && (
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">مالیات:</span>
-                            <span>{formatToman(selectedOrder.tax)}</span>
-                          </div>
-                        )}
-                        {selectedOrder.discount > 0 && (
-                          <div className="flex justify-between text-sm text-green-600">
-                            <span>تخفیف:</span>
-                            <span>-{formatToman(selectedOrder.discount)}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between font-bold text-lg pt-2 border-t">
-                          <span>مبلغ نهایی:</span>
-                          <span>{formatToman(selectedOrder.total)}</span>
-                        </div>
-                      </CardContent>
-              </Card>
-              
-
               
           </div>)}
           <DialogFooter>

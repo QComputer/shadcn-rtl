@@ -44,7 +44,7 @@
     "register": "تسجيل",
     "registerDesc": "إنشاء حساب جديد",
     "username": "اسم المستخدم",
-    "usernamePlaceholder": "أدخل اسم المستخدم",
+    "username_placeholder": "أدخل اسم المستخدم",
     "password": "كلمة المرور",
     "passwordPlaceholder": "أدخل كلمة المرور",
     "confirmPassword": "تأكيد كلمة المرور",

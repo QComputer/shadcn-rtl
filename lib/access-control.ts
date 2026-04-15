@@ -191,8 +191,14 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
 
   // My Orders - CUSTOMER and DRIVER
   "/dashboard/my-orders": {
-    allowedRoles: ["SUPER_ADMIN", "CUSTOMER", "DRIVER"],
+    allowedRoles: ["SUPER_ADMIN", "CUSTOMER"],
     isMyOnly: true,
+  },
+
+  // Driver Orders -  DRIVER
+  "/dashboard/driver-orders": {
+    allowedRoles: ["DRIVER"],
+    //isMyOnly: true,
   },
 
   // My Appointments - CUSTOMER and STAFF/ADMIN/MANAGER (APPOINTMENT org member)
@@ -346,7 +352,7 @@ function getRedirectPathForRole(role: UserRole): string {
     case "STAFF":
       return "/dashboard/my-appointments"
     case "DRIVER":
-      return "/dashboard/my-orders"
+      return "/dashboard/driver-orders"
     case "CUSTOMER":
       return "/dashboard/my-orders"
     default:
@@ -443,11 +449,19 @@ export const dashboardNavItems: NavItem[] = [
     //requiredOrgMemberRole: ["ADMIN", "MANAGER"],
   },
   {
+    id: "driver-orders",
+    labelKey: "navigation.orders",
+    href: "/dashboard/driver-orders",
+    icon: "ShoppingBag",
+    requiredRoles: ["CUSTOMER", "DRIVER"],
+  },
+
+  {
     id: "my-orders",
     labelKey: "navigation.myOrders",
     href: "/dashboard/my-orders",
     icon: "ShoppingBag",
-    requiredRoles: ["CUSTOMER", "DRIVER"],
+    requiredRoles: ["CUSTOMER", "SUPER_ADMIN"],
   },
   {
     id: "my-appointments",
@@ -462,7 +476,7 @@ export const dashboardNavItems: NavItem[] = [
     labelKey: "navigation.calendar",
     href: "/dashboard/calendar",
     icon: "Calendar",
-    isUniversal: true,
+    requiredRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
   },
   {
     id: "settings",
@@ -575,6 +589,13 @@ export function canManageServices(context: UserAccessContext): boolean {
  */
 export function canViewMyOrders(context: UserAccessContext): boolean {
   return ["SUPER_ADMIN", "CUSTOMER", "DRIVER"].includes(context.userRole)
+}
+
+/**
+ * Check if user can view driver orders
+ */
+export function canViewDriverOrders(context: UserAccessContext): boolean {
+  return [ "DRIVER"].includes(context.userRole)
 }
 
 /**

@@ -65,14 +65,14 @@ export default async function ShopLayout({ children, params }: ShopLayoutProps) 
         {/* Shop Header */}
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container flex h-16 items-center justify-between">
-            <Link href={`/shop/${slug}`} className="flex items-center gap-2 px-3">
+            <Link href={`/shop/${slug}`} className="flex items-center gap-2 mr-5">
               <Store className="h-5 w-5 " />
               <span className="font-semibold">{shopData.name}</span>
             </Link>
 
             <div className="flex items-center gap-4">
               <CartDrawer organizationSlug={slug}>
-                <Button variant="ghost" size="icon" className="relative px-5">
+                <Button variant="ghost" size="icon" className="relative">
                   <CartBadge />
                 </Button>
               </CartDrawer>

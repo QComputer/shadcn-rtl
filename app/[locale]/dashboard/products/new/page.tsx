@@ -190,7 +190,6 @@ export default function NewProductPage({
       try {
         const img = await uploadFile(imageFile);
         setImage(img);
-        //console.log('-----------img:',img);
         
         // Create a preview URL
         const reader = new FileReader();
@@ -329,7 +328,7 @@ export default function NewProductPage({
         <div>
           <h2 className="text-2xl font-bold">{t("product.new") || "New Product"}</h2>
           <p className="text-muted-foreground">
-            {t("product.create_description") || "Create a new product for your organization"}
+            {t("product.createDescription") || "Create a new product for your organization"}
           </p>
         </div>
       </div>
@@ -434,7 +433,7 @@ export default function NewProductPage({
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder={t("product.description_placeholder") || "Describe your product"}
+                placeholder={t("product.descriptionPlaceholder") || "Describe your product"}
                 rows={3}
               />
             </div>
@@ -458,7 +457,7 @@ export default function NewProductPage({
               ) : (
                 <Select value={categoryId} onValueChange={setCategoryId} required>
                   <SelectTrigger>
-                    <SelectValue placeholder={t("product.select_category") || "Select a category"} />
+                    <SelectValue placeholder={t("product.selectCategory") || "Select a category"} />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map(category => (
@@ -500,7 +499,7 @@ export default function NewProductPage({
                     {isActive ? (t("common.active") || "Active") : (t("common.inactive") || "Inactive")}
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    {t("product.active_description") || "This product will be available for booking"}
+                    {t("product.activeDescription") || "This product will be available for booking"}
                   </p>
                 </div>
                 <Switch

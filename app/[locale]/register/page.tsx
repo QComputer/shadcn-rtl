@@ -188,7 +188,7 @@ function RegisterForm({ locale }: { locale: string }) {
                 <Input
                   id="username"
                   type="text"
-                  placeholder={t("auth.usernamePlaceholder") || "نام کاربری خود را وارد کنید"}
+                  placeholder={t("auth.username_placeholder") || "نام کاربری خود را وارد کنید"}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required

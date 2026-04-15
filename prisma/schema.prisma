@@ -151,6 +151,16 @@ model Organization {
   @@index([deletedAt])
 }
 
+model Deny {
+  id           String   @id @default(cuid())
+  orderId      String
+  userId       String
+
+  order   Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user     User    @relation(fields: [userId], references: [id])
+
+  @@unique([orderId, userId])
+}
 model User {
   id           String   @id @default(cuid())
   password     String
@@ -201,6 +211,9 @@ model User {
   auditLogs                AuditLog[]
   conversationParticipants ConversationParticipant[]
   businessHours BusinessHour[]
+  
+  denies Deny[]
+
 
   @@index([email])
   @@index([name])
@@ -580,12 +593,15 @@ model ShopCartItem {
 model GuestCustomer {
   id      String  @id @default(cuid())
   name    String
+  firstName    String?
+  lastName     String?
   sessionId   String  @unique
   phone   String?
   email   String?
   address String?
 
   appointments Appointment[]
+  orders Order[]
 
   createdAt DateTime @default(now())
 
@@ -627,11 +643,12 @@ model Order {
   // Metadata
   organizationId  String
   customerId      String?
-  sessionId      String?
+  guestCustomerId String?
   driverId        String?
 
   organization   Organization   @relation(fields: [organizationId], references: [id])
   customer       User?          @relation("CustomerOrderRelation", fields: [customerId], references: [id])
+  guestCustomer GuestCustomer?    @relation(fields: [guestCustomerId], references: [id])
   assignedDriver User?          @relation("DriverOrderRelation", fields: [driverId], references: [id])
   items          OrderItem[]
   payment        Payment?
@@ -650,9 +667,10 @@ model Order {
   deliveryProgressId      String? @unique
   deliveryProgress Progress? @relation("deliveryProgressRelation", fields: [deliveryProgressId], references: [id])
 
+  denies Deny[]
+
   @@index([organizationId])
   @@index([customerId])
-  @@index([sessionId])
   @@index([driverId])
   @@index([preparationProgressId])
   @@index([pickupProgressId])
@@ -791,7 +809,7 @@ model Conversation {
   id            String    @id @default(cuid())
   type          String    @default("direct") // "direct" | "group"
   name          String? // For group chats
-  lastMessage   String?   //@db.Text
+  lastMessage   String?   @db.Text
   lastMessageAt DateTime?
 
   createdAt DateTime @default(now())
@@ -819,7 +837,7 @@ model ConversationParticipant {
 
 model Message {
   id      String    @id @default(cuid())
-  content String    //@db.Text
+  content String    @db.Text
   isRead  Boolean   @default(false)
   readAt  DateTime?
 

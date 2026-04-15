@@ -350,7 +350,7 @@ export default function NewServicePage({
                   {t("common.active") || "Active"}
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  {t("service.active_description") || "This service will be available for booking"}
+                  {t("service.activeDescription") || "This service will be available for booking"}
                 </p>
               </div>
               <Switch

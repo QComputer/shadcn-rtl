@@ -390,13 +390,13 @@ export default function ProductCategoriesPage({
           <DialogHeader>
             <DialogTitle>
               {editingCategory 
-                ? (t("product.edit_category") || "Edit Category")
-                : (t("product.new_category") || "New Category")}
+                ? (t("product.editCategory") || "Edit Category")
+                : (t("product.newCategory") || "New Category")}
             </DialogTitle>
             <DialogDescription>
               {editingCategory
-                ? "Update the category details below"
-                : "Create a new category to organize your products"}
+                ? (t("product.editCategoryDescription") || "Update the category details below")
+                : (t("product.newCategoryDescription") || "Create a new category to organize your products")}
             </DialogDescription>
           </DialogHeader>
           
@@ -407,18 +407,18 @@ export default function ProductCategoriesPage({
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder={t("product.name_placeholder") || "Category name"}
+                placeholder={t("product.categoryNamePlaceholder") || "Category name"}
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="description">{t("product.description") || "Description"}</Label>
+              <Label htmlFor="description">{t("product.categoryDescription") || "Description"}</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder={t("product.description_placeholder") || "Category description"}
+                placeholder={t("product.categoryDescriptionPlaceholder") || "Category description"}
                 rows={3}
               />
             </div>

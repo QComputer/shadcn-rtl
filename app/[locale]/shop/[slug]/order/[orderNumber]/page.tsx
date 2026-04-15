@@ -23,7 +23,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatPrice, formatDate } from "@/lib/utils";
 import { GuestCustomer, Organization, User } from "@prisma/client";
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatPersianDate, formatRelativePersianTime, formatToman, toPersianDigits } from "@/lib/persian";
@@ -247,6 +246,7 @@ export default function OrderConfirmationPage({
             </Card>
 
             {/* Order Status */}
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
@@ -259,10 +259,11 @@ export default function OrderConfirmationPage({
               <CardContent>
                 <p className="text-sm text-muted-foreground">
                   {t("order.placedAt")} {formatPersianDate(order.createdAt)}
-                  {"  -   ساعت" + formatPersianDate(order.createdAt, "time")}
+                  {"  -   ساعت " + formatPersianDate(order.createdAt, "time")}
                 </p>
               </CardContent>
             </Card>
+
             {/* Progress */}
             <Card>
               <CardHeader className="pb-2">
@@ -274,20 +275,27 @@ export default function OrderConfirmationPage({
               <CardContent className="pt-1 space-y-2">
                   <div className="grid gap-3 grid-cols-2 ">
                     <Label htmlFor="preparationProgress">آماده سازی:</Label>
+                    <div className="col-2">
                     {order.preparationProgress?.estimatedEndTime && formatRelativePersianTime(order.preparationProgress.estimatedEndTime)} 
+                    </div>
                   
                     {order.type==="DELIVERY" && <>
+
                       <Label htmlFor="preparationProgress">پیکاپ:</Label>
+                    <div className="col-2">
                       {order.pickupProgress?.estimatedEndTime && formatRelativePersianTime(order.pickupProgress.estimatedEndTime)}
+                    </div>
                     
                       <Label htmlFor="preparationProgress">تحویل دهی:</Label>
-                      {order.pickupProgress?.estimatedEndTime && formatRelativePersianTime(order.pickupProgress.estimatedEndTime)}
+                    <div className="col-2">
+                      {order.deliveryProgress?.estimatedEndTime && formatRelativePersianTime(order.deliveryProgress.estimatedEndTime)}
+                    </div>
                     </>}
                   </div>
               </CardContent>
                     
             </Card>
-
+            
             {/* Order Items */}
             <Card>
               <CardHeader>
@@ -331,7 +339,7 @@ export default function OrderConfirmationPage({
 
                 <div className="flex justify-between text-lg font-medium">
                   <span>{t('cart.total')}</span>
-                  <span>{formatPrice(order.total)}</span>
+                  <span>{formatToman(order.total)}</span>
                 </div>
               </CardContent>
             </Card>

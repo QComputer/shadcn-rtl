@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { CreateOrderInput, UpdateOrderStatusInput } from "@/lib/validators";
 import { hasPermission, type UserRole } from "@/lib/types";
 import { Decimal } from "@prisma/client/runtime/library";
-import { OrderStatus, Progress } from "@prisma/client";
+import { Order, OrderStatus, Progress, User } from "@prisma/client";
 // TODO: Notifications:
 //        1.Accepting Order: setting EstEndTime for preparation by shop admin, setting EstEndTime for pickup and delivery by shop admin, 
 //        2.Changing Order Status: notify 
@@ -78,8 +78,7 @@ async function getProgressId(
 export class OrderService {
   async create(
     data: CreateOrderInput,
-    customerId?: string,
-    sessionId?: string,
+    customerId: string,
   ) {
     //console.log("=====================OrderService>create====================");
     const {
@@ -91,42 +90,22 @@ export class OrderService {
     //console.log("-------------------------------->order data:", data);
 
     // Get cart for user
-    const cart = customerId
-      ? await prisma.shopCart.findUnique({
-          where: {
-            organizationId_customerId: { organizationId, customerId },
-          },
+    const cart = await prisma.shopCart.findUnique({
+      where: {
+        organizationId_customerId: { organizationId, customerId },
+      },
+      include: {
+        items: {
           include: {
-            items: {
+            variant: {
               include: {
-                variant: {
-                  include: {
-                    product: true,
-                  },
-                },
+                product: true,
               },
             },
           },
-        })
-      : sessionId
-        ? await prisma.shopCart.findFirst({
-            where: {
-              organizationId,
-              sessionId,
-            },
-            include: {
-              items: {
-                include: {
-                  variant: {
-                    include: {
-                      product: true,
-                    },
-                  },
-                },
-              },
-            },
-          })
-        : null;
+        },
+      },
+    })
 
     //console.log("---------------------CART: ", cart);
 
@@ -257,7 +236,6 @@ export class OrderService {
           notes: orderData.notes,
           organizationId,
           customerId,
-          sessionId,
           preparationProgressId: preparationProgress.id,
           pickupProgressId: pickupProgress.id,
           deliveryProgressId: deliveryProgress.id,
@@ -308,6 +286,231 @@ export class OrderService {
     return order;
   }
 
+  async createForGuest(
+    data: CreateOrderInput,
+    sessionId: string,
+  ) {
+    //console.log("=====================OrderService>create====================");
+    const {
+      organizationId,
+      autoCompleteEndTimes,
+      promotionCode,
+      customerName,
+      customerPhone,
+      ...orderData
+    } = data;
+    //console.log("-------------------------------->order data:", data);
+
+    // Get cart for guest user
+    const cart = await prisma.shopCart.findFirst({
+            where: {
+              organizationId,
+              sessionId,
+            },
+            include: {
+              items: {
+                include: {
+                  variant: {
+                    include: {
+                      product: true,
+                    },
+                  },
+                },
+              },
+            },
+          })
+
+    //console.log("---------------------CART: ", cart);
+
+    if (!cart || cart.items?.length === 0) {
+      throw new Error("Cart is empty");
+    }
+
+    // Calculate totals
+    let subtotal = new Decimal(0);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const orderItems: any[] = [];
+
+    for (const item of cart.items) {
+      const price = item.variant.price ?? item.variant.product.basePrice;
+      const itemTotal = price.mul(item.quantity);
+      subtotal = subtotal.add(itemTotal);
+
+      orderItems.push({
+        quantity: item.quantity,
+        price,
+        productId: item.variant.productId,
+        variantId: item.variantId,
+      });
+
+      // Reserve inventory
+      await prisma.productVariant.update({
+        where: { id: item.variantId },
+        data: {
+          inventory: {
+            decrement: item.quantity,
+          },
+        },
+      });
+    }
+
+    // Apply promotion if provided
+    let discount = new Decimal(0);
+    let promotionId: string | undefined;
+
+    if (promotionCode) {
+      const promotion = await prisma.promotion.findFirst({
+        where: {
+          code: promotionCode,
+          organizationId,
+          isActive: true,
+          startsAt: { lte: new Date() },
+          expiresAt: { gte: new Date() },
+          OR: [
+            { maxUses: null },
+            { usedCount: { lt: prisma.promotion.fields.maxUses } },
+          ],
+        },
+      });
+
+      if (promotion) {
+        promotionId = promotion.id;
+        if (promotion.discountType === "percentage") {
+          discount = subtotal.mul(promotion.discountValue).div(100);
+        } else {
+          discount = promotion.discountValue;
+        }
+
+        // Increment promotion usage
+        await prisma.promotion.update({
+          where: { id: promotion.id },
+          data: { usedCount: { increment: 1 } },
+        });
+      }
+    }
+
+    // Get delivery fee from settings if delivery
+    let deliveryFee = new Decimal(0);
+    if (data.type === "DELIVERY") {
+      const settings = await prisma.organizationSettings.findUnique({
+        where: { organizationId },
+      });
+      if (settings) {
+        deliveryFee = new Decimal(settings.deliveryRadius ? 20000 : 0);
+      }
+    }
+
+    const total = subtotal.add(deliveryFee).sub(discount);
+
+    // dates
+    const durationsInMinutes = [15, 5, 10];
+    const now = new Date();
+    const preparationDuration: number = durationsInMinutes[0] | 15;
+    const preparationEstimatedEndTime = new Date(
+      now.getTime() + preparationDuration * 60 * 1000,
+    );
+    const pickupDuration: number = durationsInMinutes[1] | 5;
+    const pickupEstimatedEndTime = new Date(
+      preparationEstimatedEndTime.getTime() + pickupDuration * 60 * 1000,
+    );
+    const deliveryDuration: number = durationsInMinutes[2] | 10;
+    const deliveryEstimatedEndTime = new Date(
+      pickupEstimatedEndTime.getTime() + deliveryDuration * 60 * 1000,
+    );
+    //console.log("-------------------------------->preparationEstimatedEndTime");
+    //console.log(preparationEstimatedEndTime);
+    // Generate order number
+    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+    // find or create guest user
+    let guestCustomer = await prisma.guestCustomer.findUnique({
+      where: {sessionId}
+    });
+    if (!guestCustomer){
+      guestCustomer = await prisma.guestCustomer.create({
+        data: {
+          sessionId,
+          name: customerName || "مهمان",
+          phone: customerPhone
+        }
+      })
+    }
+
+    // Create order with transaction
+    const order = await prisma.$transaction(async (tx) => {
+      // Create Progresses
+      const preparationProgress = await tx.progress.create({
+        data: { estimatedEndTime: preparationEstimatedEndTime },
+      });
+      const pickupProgress = await tx.progress.create({
+        data: { estimatedEndTime: pickupEstimatedEndTime },
+      });
+      const deliveryProgress = await tx.progress.create({
+        data: { estimatedEndTime: deliveryEstimatedEndTime },
+      });
+
+      // Create order
+      const newOrder = await tx.order.create({
+        data: {
+          orderNumber,
+          type: orderData.type,
+          status: "PENDING",
+          subtotal,
+          deliveryFee,
+          discount,
+          total,
+          deliveryAddress: orderData.deliveryAddress,
+          notes: orderData.notes,
+          organizationId,
+          guestCustomerId: guestCustomer.id,
+          preparationProgressId: preparationProgress.id,
+          pickupProgressId: pickupProgress.id,
+          deliveryProgressId: deliveryProgress.id,
+          promotionId,
+          promotionCode,
+          paymentMethod: data.paymentMethod,
+          items: {
+            create: orderItems,
+          },
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+              variant: true,
+            },
+          },
+          guestCustomer: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+            },
+          },
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
+        },
+      });
+
+      // Update cart status
+      await tx.shopCart.update({
+        where: { id: cart.id },
+        data: { status: "CHECKED_OUT" },
+      });
+
+      return newOrder;
+    });
+
+    revalidatePath(`/dashboard/orders`);
+    revalidatePath(`/organization/${order.organization.slug}/orders`);
+    return order;
+  }
+
   async getById(id: string) {
     return prisma.order.findUnique({
       where: { id },
@@ -319,6 +522,13 @@ export class OrderService {
             email: true,
             firstName: true,
             lastName: true,
+            phone: true,
+          },
+        },
+        guestCustomer: {
+          select: {
+            id: true,
+            name: true,
             phone: true,
           },
         },
@@ -428,6 +638,15 @@ export class OrderService {
               email: true,
             },
           },
+          guestCustomer: {
+            select: {
+              id: true,
+              name: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
           items: {
             include: {
               product: true,
@@ -469,6 +688,148 @@ export class OrderService {
         },
       }),
       prisma.order.count({ where }),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
+
+  async listForDriver(
+    params: {
+      page?: number;
+      pageSize?: number;
+      organizationId?: string;
+      customerId?: string;
+      guestCustomerId?: string;
+      status?: string;
+      type?: string;
+      fromDate?: string;
+      toDate?: string;
+    },
+    driverId: string,
+  ) {
+    const {
+      page = 1,
+      pageSize = 20,
+      organizationId,
+      customerId,
+      guestCustomerId,
+      status,
+      type,
+      fromDate,
+      toDate,
+    } = params;
+
+    const whereDriver: Record<string, unknown> = {};
+
+    if (organizationId) {
+      whereDriver.organizationId = organizationId;
+    }
+    if (customerId) whereDriver.customerId = customerId;
+    if (guestCustomerId) whereDriver.guestCustomerId = guestCustomerId;
+    if (status) whereDriver.status = status;
+    if (type) whereDriver.type = type;
+    if (fromDate || toDate) {
+      whereDriver.createdAt = {};
+      if (fromDate)
+        (whereDriver.createdAt as Record<string, Date>).gte = new Date(
+          fromDate,
+        );
+      if (toDate)
+        (whereDriver.createdAt as Record<string, Date>).lte = new Date(toDate);
+    }
+
+    const whereNull = whereDriver;
+    if (status && ["PENDING", "PLACED", "DENIED"].includes(status))
+      whereNull.status = { in: [] }; // aborting the whereNull query
+    else {
+      whereNull.status = { in: ["ACCEPTED", "PREPARING", "READY"] };
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.order.findMany({
+        where: {
+          OR: [{ ...whereDriver }, { ...whereNull, driverId: null }],
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { createdAt: "desc" },
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              logo: true,
+            },
+          },
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+          guestCustomer: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          items: {
+            include: {
+              product: true,
+              variant: true,
+            },
+          },
+          assignedDriver: {
+            select: {
+              id: true,
+              name: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+          preparationProgress: {
+            select: {
+              id: true,
+              startTime: true,
+              endTime: true,
+              estimatedEndTime: true,
+            },
+          },
+          pickupProgress: {
+            select: {
+              id: true,
+              startTime: true,
+              endTime: true,
+              estimatedEndTime: true,
+            },
+          },
+          deliveryProgress: {
+            select: {
+              id: true,
+              startTime: true,
+              endTime: true,
+              estimatedEndTime: true,
+            },
+          },
+          denies: true,
+        },
+      }),
+      prisma.order.count({
+        where: {
+          OR: [
+            { ...whereDriver, driverId },
+            { ...whereNull, driverId: null },
+          ],
+        },
+      }),
     ]);
 
     return {
@@ -535,7 +896,7 @@ export class OrderService {
     //console.log("----------------------estimatedEndTime:", estimatedEndTime);
 
     const progress = await updateProgress(id, type, estimatedEndTime);
-    
+
     return progress;
   }
 
@@ -556,10 +917,25 @@ export class OrderService {
   async getDriverOrders(driverId: string) {
     return prisma.order.findMany({
       where: {
-        OR: [{ driverId }, { status: { in: ["READY", "PICKED_UP"] } }],
+        OR: [
+          { driverId },
+          {
+            status: { in: ["ACCEPTED", "PREPARING", "READY"] },
+            driverId: null,
+          },
+        ],
       },
       include: {
         customer: {
+          select: {
+            id: true,
+            name: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+          },
+        },
+        guestCustomer: {
           select: {
             id: true,
             name: true,
@@ -576,6 +952,8 @@ export class OrderService {
             phone: true,
           },
         },
+        denies: true,
+        items: true,
       },
       orderBy: { createdAt: "desc" },
     });
@@ -583,24 +961,33 @@ export class OrderService {
 
   async acceptOrderByDriver(orderId: string, driverId: string) {
     const order = await prisma.order.findUnique({
-      where: { id: orderId }
+      where: { id: orderId },
     });
-    if (!order?.driverId){
+    if (!order?.driverId) {
       return prisma.order.update({
         where: { id: orderId },
-        data:{ driverId}
+        data: { driverId },
       });
-    } else if(order?.driverId === driverId){
-      return order
+    } else if (order?.driverId === driverId) {
+      return order;
     }
   }
 
   async denyOrderByDriver(orderId: string, driverId: string) {
-    return prisma.order.update({
-      where: { id: orderId, driverId },
-      data: { driverId: null },
+    const deny = await prisma.deny.findUnique({
+      where: { orderId_userId: { orderId, userId: driverId } },
+    });
+    return deny
+      ? deny
+      : prisma.deny.create({ data: { orderId, userId: driverId } });
+  }
+
+  async unDenyOrderByDriver(orderId: string, driverId: string) {
+    return prisma.deny.delete({
+      where: { orderId_userId: { orderId, userId: driverId } },
     });
   }
 }
 
 export const orderService = new OrderService();
+

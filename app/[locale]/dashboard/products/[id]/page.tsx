@@ -39,7 +39,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
-import { formatToman } from "@/lib/persian"
+import { formatToman, toPersianDigits } from "@/lib/persian"
 import { useDashboardAccess } from "@/hooks/use-auth"
 import { useSession } from "next-auth/react"
 import { isRTL } from "@/lib/i18n"
@@ -92,7 +92,6 @@ export default function EditProductPage({
   const router = useRouter()
   
   const { hasAccess, isLoading: accessLoading } = useDashboardAccess()
-  const { data: session } = useSession()
   
   const [mounted, setMounted] = useState(false)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
@@ -109,6 +108,7 @@ export default function EditProductPage({
   const [description, setDescription] = useState("")
   const [categoryId, setCategoryId] = useState("")
   const [image, setImage] = useState("")
+  const [progress, setProgress] = useState(0)
   const [isActive, setIsActive] = useState(true)
   const [basePrice, setBasePrice] = useState("")
 
@@ -126,19 +126,14 @@ export default function EditProductPage({
     productId:'id',
     name:"var",
     price:Number(1000),
-    inventory:Number(100),
+    inventory:Number(1000),
   })
   const [variants, setVariants] = useState<ProductVariant[]>([])
   const [sortOrder, setSortOrder] = useState(0)
   const [lowStockThreshold, setLowStockThreshold] = useState(20)
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
-    //const [imageFile, setImageFile] = useState<File | null>(null);
-        const [progress, setProgress] = useState<number>(0);
-    
-    
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
     
     // Upload function
-      
   async function uploadFile(file: File) {
     const form = new FormData();
     form.append("file", file);
@@ -193,11 +188,7 @@ export default function EditProductPage({
     })
   }, [locale])
   
-  useEffect(()=>{
-  //console.log(selectedVariant);
 
-  },[selectedVariant])
-  
   useEffect(()=>{
   //console.log(newVariant);
 
@@ -221,7 +212,6 @@ export default function EditProductPage({
         .then(data => data.data || [])
 
     ]).then(([productData, categoriesData]) => {
-    //console.log("-------------productData:",productData);
 
       setProduct(productData)
       setName(productData.name)
@@ -322,7 +312,6 @@ export default function EditProductPage({
     setError(null)
     
      try {
-      //if (!selectedVariant.image)  selectedVariant.image = 
       const response = await fetch(`/api/products/${productId}/variants`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -509,6 +498,9 @@ export default function EditProductPage({
                     <X/>
                   </Button>
               </div>
+            <div className="row-2">
+              {toPersianDigits(progress)} / {toPersianDigits(100)} 
+            </div>
             </div>
             
             {/* Name */}
@@ -613,7 +605,7 @@ export default function EditProductPage({
                   {t("common.active") || "Active"}
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  {t("product.active_description") || "This product will be available for booking"}
+                  {t("product.activeDescription") || "This product will be available for booking"}
                 </p>
               </div>
               <Switch
@@ -660,7 +652,7 @@ export default function EditProductPage({
               <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="trackInventory">
-                  {(t("common.addVariant") || "addVariant")}
+                  {(t("product.addVariant") || "addVariant")}
                 </Label>
                 <p className="text-sm text-muted-foreground">
                   {t("product.addVariant_description") || "..."}
@@ -728,15 +720,15 @@ export default function EditProductPage({
         </CardContent>
       </Card>
 
-      {/* Edit Dialog */}
+      {/* Edit Variant Dialog */}
       <Dialog open={(editVariantDialogOpen && !!selectedVariant)} onOpenChange={setEditVariantDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {t("product.edit_variant") || "Edit Product Variant"}
+              {t("product.editVariant") || "Edit Product Variant"}
             </DialogTitle>
             <DialogDescription>
-                {t("Edit product variant")}
+              {t("product.editVariant_description") || "Edit Product Variant"}
             </DialogDescription>
           </DialogHeader>
           
@@ -754,7 +746,7 @@ export default function EditProductPage({
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="varianySku">{t("product.varianySku") || "SKU"}</Label>
+              <Label htmlFor="variantSku">{t("product.variantSku") || "SKU"}</Label>
               <Input
                 id="varianySku"
                 value={selectedVariant?.sku as string || ""}
@@ -812,7 +804,7 @@ export default function EditProductPage({
         </DialogContent>
       </Dialog>
 
-      {/* Add Dialog */}
+      {/* Add Variant Dialog */}
       <Dialog open={(addVariantDialogOpen && !!newVariant)} onOpenChange={setAddVariantDialogOpen}>
         <DialogContent>
           <DialogHeader>

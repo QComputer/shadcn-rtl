@@ -64,14 +64,7 @@ export async function GET() {
         memberOf: {
           select: {
             id: true,
-            organization: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-                type: true,
-              },
-            },
+            organization: true
           },
         },
       },

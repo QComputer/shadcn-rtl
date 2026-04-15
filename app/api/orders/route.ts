@@ -17,7 +17,7 @@ function getSessionId(request: NextRequest): string {
   return randomUUID();
 }
 
-// Generate a unique order name
+// Generate a unique guest name
 function generateGuestUserName(name: string): string {
   const timestamp = Date.now().toString(36).toUpperCase();
   return `GUEST-${timestamp}-${name}`;
@@ -55,10 +55,10 @@ export async function GET(request: NextRequest) {
         customerId: session.user.id,
       });
     } else if (session.user.role === "DRIVER") {
-orders = await orderService.list({
-  ...params,
-  type: "DELIVERY",
-});    } else {
+      orders = await orderService.listForDriver(params, session.user.id);
+      //console.log("---------------------orders", orders);
+      
+    } else {
       // Super-Admin, Admin, Manager, Staff can see all orders for their organizations
       orders = await orderService.list(params);
     }
@@ -90,15 +90,21 @@ export async function POST(request: NextRequest) {
 
     const session = await auth();
     const customerId = session?.user?.id;
-    const sessionId = getSessionId(request);
-
     const data = createOrderSchema.parse(body);
+    console.log("------------------data:", data);
+    
+    if (customerId) {
+      const order = await orderService.create(data, customerId);
+    console.log("-------------------------->order:", order);
+    return NextResponse.json(order, { status: 201 });
+    } else {
+      const sessionId = getSessionId(request);
+      const order = await orderService.createForGuest(data, sessionId);
+    console.log("-------------------------->order:", order);
+    
+    return NextResponse.json(order, { status: 201 });
+    }
 
-    const order = await orderService.create(data, customerId, sessionId);
-
-          //console.log("-------------------------->order:", order);
-
-          return NextResponse.json(order, { status: 201 });
   } catch (error) {
     console.error("Error creating order:", error);
     return NextResponse.json(

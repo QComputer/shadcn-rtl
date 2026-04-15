@@ -501,4 +501,4 @@ export class ServiceService {
 
 export const productCategoryService = new ProductCategoryService();
 export const serviceCategoryService = new ServiceCategoryService();
-export const serviceService = new ServiceService();
+//export const serviceService = new ServiceService();

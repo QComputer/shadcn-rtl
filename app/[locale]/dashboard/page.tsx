@@ -1001,7 +1001,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle>سفارش‌های اخیر</CardTitle>
-                    <Link href={`/${locale}/dashboard/my-orders`}>
+                    <Link href={`/${locale}/dashboard/driver-orders`}>
                       <Button variant="ghost" size="sm">
                         {t("common.viewAll") || "مشاهده همه"}
                       </Button>

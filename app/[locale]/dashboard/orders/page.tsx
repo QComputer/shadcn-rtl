@@ -200,6 +200,8 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
       const data: OrdersResponse = await response.json()
 
       setOrders(data.data)
+      console.log(data.data);
+      
       setTotal(data.total)
       setTotalPages(data.totalPages)
     } catch (err) {
@@ -282,6 +284,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
   const handleSaveAllEstimatedEndTimes = async ()=>{
     if (!selectedOrder) return
     handleSavePreparationEstimatedEndTime(selectedOrder.id, preparationTime?.toString())
+    fetchOrders()
     setDetailDialogOpen(false)
   }
 
@@ -304,8 +307,6 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
       }
       
       // Refresh orders list
-      fetchOrders()
-      
     } catch (err) {
       console.error("Error updating order preparationProgress.estimatedEndTime:", err)
       setError(err instanceof Error ? err.message : "Failed to update order preparationProgress.estimatedEndTime")
@@ -313,6 +314,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
       setSavingPreparationTime(false)
       setUpdating(false)
     }
+
   }
   
   const addToPreparationEstimatedEndTime = async (minutes: number) => {
@@ -638,7 +640,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                 </CardHeader>
                 <CardContent className="pt-1 space-y-2">
 
-                {((user?.role=="ADMIN"|| user?.role=="MANAGER"||user?.role=="SUPER_ADMIN") && (preparationTime && !savingPreparationTime)) && (
+                { (preparationTime && !savingPreparationTime) && (
                     <div className="grid gap-0 grid-cols-2 grid-rows-2 ">
                       <div className="row-1">
 
@@ -651,10 +653,10 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                     <div className="grid gap-1 grid-cols-3 ">
                       <div className="grid gap-1 grid-rows-2">
                         <Button variant={"outline"} onClick={()=> addToPreparationEstimatedEndTime(1)}>
-                          {toPersianDigits(1)}+
+                          {toPersianDigits(1)} +
                         </Button>
                         <Button  variant={"outline"} onClick={()=> addToPreparationEstimatedEndTime(-1)}>
-                          {toPersianDigits(1)}-
+                          {toPersianDigits(1)} -
                         </Button>
                       </div>
                       <div className="grid gap-1 grid-rows-2">
@@ -678,6 +680,29 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                     </div>
                     </div>
                  )}
+
+                {pickupTime  && (
+                 <div className="grid gap-0 mt-8 grid-cols-2 grid-rows-2">
+                   <div className="row-1">
+                   <Label htmlFor="deliveryProgress">پیکاپ:</Label>
+                   </div>
+                   <div className="col-2 pr-10">
+                   
+                   {formatRelativePersianTime(pickupTime)} 
+                   </div>
+                 </div>
+                )}
+                {deliveryTime  && (
+                 <div className="grid -mt-5 gap-0 grid-cols-2 grid-rows-2">
+                   <div className="row-1 ">
+                   <Label htmlFor="deliveryProgress">تحویل دهی:</Label>
+                   </div>
+                   <div className="col-2 pr-10">
+                   
+                   {formatRelativePersianTime(deliveryTime)} 
+                   </div>
+                 </div>
+                )}
                 </CardContent>
                       
               </Card>
@@ -686,8 +711,8 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                     <Button className={"col-span-2 bg-green-400 text-green-800"} onClick={() => {
                       handleSaveAllEstimatedEndTimes()
                       handleUpdateStatus(selectedOrder.id, "ACCEPTED")
-                      handleUpdateStatus(selectedOrder.id, "PREPARING")}
-                      }>
+                      //handleUpdateStatus(selectedOrder.id, "PREPARING")
+                    }}>
                    <Check/>  پذیرش
                   </Button>
                   <Button variant={"destructive"} className={"col-3"} onClick={() => handleUpdateStatus(selectedOrder.id, "ACCEPTED")}>
@@ -697,10 +722,12 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                   }
                   {(selectedOrder.status==="ACCEPTED") && 
                     <div className="grid gap-1 grid-cols-3">
-                  <Button  className={"col-span-2 bg-green-400 text-green-800"}  onClick={() => {
+                  <Button  className={"col-span-2 bg-green-400 text-green-800"}  
+                    onClick={() => {
                       handleSaveAllEstimatedEndTimes()
-                      handleUpdateStatus(selectedOrder.id, "PREPARING")}
-                      }>
+                      handleUpdateStatus(selectedOrder.id, "PREPARING")
+                      setDetailDialogOpen(false)
+                    }}>
                    <Clock/> شروع آماده سازی 
                   </Button>
                   <Button className={"col-3"} variant={"destructive"} onClick={() => handleUpdateStatus(selectedOrder.id, "CANCELLED")}>
@@ -710,9 +737,11 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                   }
                   {(selectedOrder.status==="PREPARING") && 
                     <div className="grid gap-1 grid-cols-3 ">
-                    <Button className={"col-span-2 "} onClick={() => {
+                    <Button className={"col-span-2 "} 
+                    onClick={() => {
                       handleSaveAllEstimatedEndTimes()
-                      handleUpdateStatus(selectedOrder.id, "ACCEPTED")}}>
+                      setDetailDialogOpen(false)
+                      }}>
                    <Save/>  ذخیره زمان های تخمینی
                   </Button>
                   <Button className={"col-3 bg-green-400 text-green-800"} onClick={() => handleUpdateStatus(selectedOrder.id, "READY")}>

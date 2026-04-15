@@ -1,3 +1,5 @@
+@import 'react-toastify/dist/ReactToastify.css';
+
 /* Vazirmatn-like Persian font using system fonts fallback */
 html[dir="rtl"] {
   --font-vazirmatn: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;

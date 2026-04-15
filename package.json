@@ -44,6 +44,7 @@
     "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-toastify": "^11.0.5",
     "recharts": "^3.7.0",
     "shadcn": "^3.8.4",
     "tailwind-merge": "^3.4.0",

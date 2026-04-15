@@ -41,6 +41,7 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
 
   // Form state
   const [name, setName] = useState("")
+  const [userId, setUserId] = useState("")
   const [description, setDescription] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
@@ -54,7 +55,7 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
     import("@/lib/dictionary").then(({ getDictionary }) => {
       setDict(getDictionary(locale))
     })
-    
+    fetchAllUsers();
     // Fetch user profile
     fetch("/api/users/me")
       .then(res => {
@@ -118,9 +119,9 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
     }
   };
     <div className="space-y-2">
-                  <Label htmlFor="username">{t("auth.username")}</Label>
-                  <Input id="username" value={organization?.name || ""} disabled />
-                </div>
+      <Label htmlFor="name">{t("organization.name")}</Label>
+      <Input id="name" value={organization?.name || ""} disabled />
+    </div>
   // Upload function
   async function uploadFile(file: File) {
     const form = new FormData();
@@ -146,6 +147,7 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
       xhr.send(form);
     });
   }
+
   const handleSave = async () => {
     if (!organization) return
     setSaving(true)
@@ -184,7 +186,59 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
     }
   }
 
+  const fetchAllUsers = async () => {
+    try {
+      const response = await fetch(`/api/users?pageSize=50`)
+      
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to save")
+      }
+      
+      const usersData = await response.json()
+      console.log("--------------------->usersData:", usersData.data);
+      setSuccess("usersData")
+      
+      // If locale changed, redirect to new locale
+      if (selectedLocale !== locale) {
+        router.push(`/${selectedLocale}/dashboard/settings`)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save")
+    } finally {
+      setSaving(false)
+    }  
+  }
 
+
+  const handleRoleChange = async () => {
+    if (!organization?.id) return
+    try {
+      const response = await fetch(`/api/organizations/${organization.id}/members`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          userRole: "ADMIN",
+          prevUserRole: "SUPER_ADMIN"
+        }),
+    })
+      
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to save")
+      }
+      
+      const res = await response.json()
+      console.log("--------------------->handleRoleChange>res:", res.data);
+      setSuccess("handleRoleChange")
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save")
+    } finally {
+      setSaving(false)
+    }  
+  }
   const handleThemeChange = (newTheme: string) => {
     setSelectedTheme(newTheme)
     setTheme(newTheme as "light" | "dark" | "system")
@@ -339,6 +393,17 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
        <Button onClick={handleSave}
        >Save</Button>
       </div>
+
+
+        <Input
+          id="userId"
+          name="userId"
+          value={userId}
+          onChange={(e) => setUserId(e.target.value)}
+          placeholder="userId"
+        />
+      <Button onClick={handleRoleChange}
+       >Make it ADMIN</Button>
 
     </div>
   )

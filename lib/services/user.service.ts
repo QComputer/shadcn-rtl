@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { hasPermission, type UserRole, type Permission } from "@/lib/types";
 
 export class UserService {
+
   async getById(id: string) {
     return prisma.user.findUnique({
       where: { id },
@@ -82,10 +83,35 @@ export class UserService {
     return businessHours;
   }
 
-  async copyBusinessHours(
-    userId: string,
-    organizationId: string,
-  ) {
+  async updateRole(id: string, role: UserRole) {
+    return prisma.user.update({
+      where: { id },
+      data: { role },
+    });
+  }
+
+  async updateMembershipIsActive(id: string, isActive: boolean) {
+    return prisma.organizationMember.update({
+      where: { userId: id },
+      data: { isActive },
+    });
+  }
+
+  async updateUserIsActive(id: string, isActive: boolean) {
+    return prisma.user.update({
+      where: { id },
+      data: { isActive },
+    });
+  }
+
+  async update(id: string, data: any) {
+    return prisma.user.update({
+      where: { id },
+      data,
+    });
+  }
+
+  async copyBusinessHours(userId: string, organizationId: string) {
     // Delete existing hours and create new ones
     await prisma.businessHour.deleteMany({
       where: { userId },

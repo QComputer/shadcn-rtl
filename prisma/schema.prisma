@@ -24,6 +24,7 @@ enum UserRole {
   STAFF
   DRIVER
   CUSTOMER
+  GUEST
 }
 
 enum AppointmentStatus {

@@ -130,7 +130,7 @@ export async function proxy(request: NextRequest) {
 
   // If no locale in path, redirect to locale-prefixed path
   if (!hasLocale) {
-    const locale = getLocale(request);
+    const locale = 'fa'//getLocale(request);
     
     // Build new URL with locale prefix
     const newPath = pathname === "/" 

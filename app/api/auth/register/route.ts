@@ -3,11 +3,13 @@ import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { signIn } from "@/lib/auth";
+import { organizationService } from "@/lib/services/organization.service";
 
 // Validation schema for registration - only username and password required
 const registerSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters").max(50, "Username must be less than 50 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  orgSlug: z.string().optional()
 });
 
 export async function POST(request: NextRequest) {
@@ -24,7 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { username, password } = validation.data;
+    const { username, password, orgSlug } = validation.data;
 
     // Check if username already exists
     const existingUser = await prisma.user.findUnique({
@@ -60,6 +62,8 @@ export async function POST(request: NextRequest) {
         createdAt: true,
       },
     });
+
+    if (orgSlug && user) organizationService.applyAsMember(orgSlug, user.id);
 
     // Auto-login by calling NextAuth signIn with credentials
     // This will create a session for the user

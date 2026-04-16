@@ -45,14 +45,16 @@ export class OrganizationService {
 
     // Update user's isTeamMember flag
     // TODO: Filter SUPER_ADMIN
-    {await prisma.user.update({
-      where: { id: userId },
-      data: { isTeamMember: true, role: "ADMIN" },
-    });
+    {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { isTeamMember: true, role: "ADMIN" },
+      });
 
-    await prisma.organizationMember.create({
-      data: { userId, organizationId: organization.id},
-    });}
+      await prisma.organizationMember.create({
+        data: { userId, organizationId: organization.id },
+      });
+    }
 
     revalidatePath("/dashboard");
     return organization;
@@ -181,8 +183,8 @@ export class OrganizationService {
     return organization;
   }
 
-  async getMemberByUserId(userId: string) {
-    return prisma.organizationMember.findMany({
+  async getAMemberByUserId(userId: string) {
+    return prisma.organizationMember.findUnique({
       where: { userId },
       include: {
         user: {
@@ -199,7 +201,6 @@ export class OrganizationService {
           },
         },
       },
-      orderBy: { joinedAt: "desc" },
     });
   }
 
@@ -225,6 +226,7 @@ export class OrganizationService {
       orderBy: { joinedAt: "desc" },
     });
   }
+
   async getMembers(organizationId: string) {
     return prisma.organizationMember.findMany({
       where: { organizationId },
@@ -247,6 +249,7 @@ export class OrganizationService {
       orderBy: { joinedAt: "desc" },
     });
   }
+
   async getAllMembers() {
     return prisma.organizationMember.findMany({
       include: {
@@ -317,6 +320,52 @@ export class OrganizationService {
     });
 
     revalidatePath(`/dashboard/organizations/${organizationId}/members`);
+    return member;
+  }
+
+  async applyAsMember(
+    organizationSlug: string,
+    userId: string,
+  ) {
+    const organization = await prisma.organization.findUnique({
+      where: { slug: organizationSlug },
+    });
+
+    if (!organization) {
+      throw new Error("organization not found");
+    }
+    // Check if user is already a member
+    const existingMember = await prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: { organizationId: organization.id, userId },
+      },
+    });
+
+    if (existingMember) {
+      throw new Error("User is already a member");
+    }
+
+    // create an inactive staff
+    const member = await prisma.organizationMember.create({
+      data: {
+        organizationId: organization.id,
+        userId,
+        isActive: false,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
     return member;
   }
 

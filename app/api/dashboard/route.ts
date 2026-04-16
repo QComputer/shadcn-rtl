@@ -24,6 +24,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    console.log("----------------dashboard route session:", session);
+    
     const user = session.user;
     const userRole = user.role as UserRole;
     const isTeamMember = user.isTeamMember ?? false;
@@ -31,11 +33,10 @@ export async function GET(request: NextRequest) {
 
     // Get organization membership details
     let organizationType: OrganizationType | null = null;
-    let orgMemberRole: string | null = null;
 
     if (organizationId) {
       const membership = await prisma.organizationMember.findFirst({
-        where: { userId: user.id },
+        where: { userId: user.id, organizationId },
         include: {
           organization: {
             select: {
@@ -46,6 +47,8 @@ export async function GET(request: NextRequest) {
           },
         },
       });
+      console.log("------------------------------>membership", membership);
+      
       // TODO: check user.organizationId == membership.organization.id
       if (membership) {
         organizationType = membership.organization.type;

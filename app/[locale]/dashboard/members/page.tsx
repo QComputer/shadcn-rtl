@@ -1,7 +1,6 @@
 "use client"
 // TODO: complete the members page
 import { useState, useEffect, use } from "react"
-import Link from "next/link"
 import {
   Users,
   Search,
@@ -16,8 +15,14 @@ import {
   ChevronRight,
   ShoppingBag,
   MoreVertical,
+  Clock,
+  Package,
+  ChessKing,
+  ChessQueen,
+  ChessPawnIcon,
+  ChessKnight,
 } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -31,11 +36,28 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import { useDashboardAccess } from "@/hooks/use-auth"
-import { OrganizationMember, User } from "@prisma/client"
+import { toPersianDigits } from "@/lib/persian"
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-interface Member {
+interface Me {
+  user: User
+  memberOf: {
+    id: string,
+    organization: Organization
+  }
+}
+
+interface User {
   id: string
   name: string
+  role: string
   firstName?: string
   lastName?: string
   email?: string
@@ -43,6 +65,12 @@ interface Member {
   address?: string
   joinDate: Date
   status: "active" | "inactive"
+}
+
+interface Member {
+  isActive: boolean,
+  joinedAt: Date,
+  user: User
 }
 
 
@@ -58,19 +86,12 @@ interface Organization {
   coverImage: string | null
 }
 
-// Persian number helper
-function toPersianDigits(str: string | number): string {
-  const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
-  return String(str)
-    .split("")
-    .map((char) => (/\d/.test(char) ? persianDigits[parseInt(char)] : char))
-    .join("");
+const roleConfig: Record<string, { label: string; icon: typeof Clock; color: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  ADMIN: { label: "ادمین", icon: ChessKing, color: "bg-yellow-500", variant: "secondary" },
+  MANAGER: { label: "مدیر", icon: ChessQueen, color: "bg-blue-200", variant: "default" },
+  STAFF: { label: "کارمند", icon: ChessPawnIcon, color: "bg-green-200", variant: "default" },
+  DRIVER: { label: "پیک", icon: ChessKnight, color: "bg-purple-500", variant: "default" },
 }
-
-function formatToman(amount: number): string {
-  return toPersianDigits(amount.toLocaleString("fa-IR")) + " تومان";
-}
-
 
 
 export default function OganizationMembersPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -78,13 +99,14 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
   const locale = resolvedParams.locale || "fa"
   
   // Access control check
-  
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [members, setMembers] = useState<User[]>([])
+  const [members, setMembers] = useState<Member[]>([])
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
-
+  const [error, setError] = useState<string | null>(null)
+  const [selectedMember,setSelectedMember] = useState<Member | null>(null)
   const [loading, setLoading] = useState(true)
+  const [updating, setUpdating] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -95,26 +117,19 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
 
   // fetch org-members
   useEffect(() => {
-    
     setLoading(true)
-    
-    Promise.all([
-      fetch("/api/users/me/membership")
-        .then(res => res.json())
-        .then(data => {
-          if (data.membership?.organizationId) {
-            return fetch(`/api/organizations/${data.membership.organizationId}/members`)
-              .then(res => res.json())
-              .then(membersData => membersData.members || membersData || [])
-          }
-          return []
-        })
-        .catch(() => [])
-    ]).then((members) => {      
-      setMembers(members)
-    }).catch(() => {
-      setMembers([])
-    }).finally(() => setLoading(false))
+      fetch(`/api/organizations/noId/members`)
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to fetch appointments")
+        return res.json()
+      })
+      .then(members => {
+        setMembers(members)
+      })
+      .catch(err => {
+        setError(err.message)
+      })
+      .finally(() => setLoading(false))
   }, [])
  
    const t = (key: string): string => {
@@ -122,14 +137,98 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
      return getDictValue(dict, key)
    }
 
-  const filteredCustomers = members.filter(member => 
-    member.firstName?.includes(searchQuery) ||
-    member.lastName?.includes(searchQuery) ||
-    member.name?.includes(searchQuery)
-  )
+  const filteredMembers = members
+  /*.filter(member => 
+    member.user?.firstName?.includes(searchQuery) ||
+    member.user?.lastName?.includes(searchQuery) ||
+    member.user?.name?.includes(searchQuery)
+  )*/
+
+    
+  const handleUpdateRole = async (userId: string, newRole: string) => {
+    setUpdating(true)
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ role: newRole }),
+      })
+      
+      if (!response.ok) {
+        throw new Error("Failed to update order status")
+      }
+      
+      setLoading(true)
+      fetch(`/api/organizations/noId/members`)
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to fetch members")
+        return res.json()
+      })
+      .then(members => {
+        setMembers(members)
+      })
+      .catch(err => {
+        setError(err.message)
+      })
+      .finally(() => setLoading(false))
+      
+      // Update selected member if dialog is open
+      if (selectedMember?.user?.id === userId) {
+        setSelectedMember(null)
+      }
+    } catch (err) {
+      console.error("Error updating user avtivation status:", err)
+      setError(err instanceof Error ? err.message : "Failed to update user avtivation status")
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleUpdateIsActive = async (userId: string, isActive: string) => {
+    setUpdating(true)
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ isActive: isActive == "active" ? true : false }),
+      })
+      
+      if (!response.ok) {
+        throw new Error("Failed to update user activation status")
+      }
+      
+      setLoading(true)
+      fetch(`/api/organizations/noId/members`)
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to fetch appointments")
+        return res.json()
+      })
+      .then(members => {
+        setMembers(members)
+      })
+      .catch(err => {
+        setError(err.message)
+      })
+      .finally(() => setLoading(false))
+      
+      // Update selected member if dialog is open
+      if (selectedMember?.user?.id === userId) {
+        setSelectedMember(null)
+      }
+    } catch (err) {
+      console.error("Error updating order status:", err)
+      setError(err instanceof Error ? err.message : "Failed to update order status")
+    } finally {
+      setUpdating(false)
+    }
+  }
 
   // Show loading state while checking access
-  if (!mounted) {
+  if (!mounted || loading) {
     return (
       <div className="p-6 space-y-4">
         <div className="h-10 bg-muted rounded w-1/4" />
@@ -152,6 +251,10 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
         </div>
       </div>
     )
+  }
+
+  function geIsActive(isActive: boolean): string | undefined {
+    return isActive? "active" : "inactive"
   }
 
   return (
@@ -181,62 +284,37 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
         />
       </div>
 
-      {/* Customers Grid */}
+      {/* Members Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredCustomers.map((member) => (
-          <Card key={locale+member.id} className="hover:shadow-md transition-shadow">
+        {filteredMembers.map((member) => (
+          <Card key={locale+member.user.id} 
+          className="hover:shadow-md transition-shadow"
+          onClick={()=>setSelectedMember(member)}>
             <CardHeader className="flex flex-row items-start justify-between pb-2">
               <div className="flex items-center gap-3">
                 <Avatar>
-                  <AvatarImage src={member.email || undefined} />
+                  <AvatarImage src={member.user.name || undefined} />
                   <AvatarFallback>
-                    {member.name[0]}
+                    {member.user.name[0]}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <CardTitle className="text-lg">
-                    {member.name} {member.firstName} {member.lastName}
+                    {member.user.name} {member.user.firstName} {member.user.lastName}
                   </CardTitle>
                 
                 </div>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 w-9 p-0">
-                  <MoreVertical className="h-4 w-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
-                    <Eye className="h-4 w-4 ml-2" />
-                    {t("common.view") || "مشاهده"}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Edit className="h-4 w-4 ml-2" />
-                    {t("common.edit") || "ویرایش"}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="text-destructive">
-                    <Trash2 className="h-4 w-4 ml-2" />
-                    {t("common.delete") || "حذف"}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+
             </CardHeader>
             <CardContent>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Mail className="h-4 w-4" />
-                  <span className="ltr">{member.email}</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Phone className="h-4 w-4" />
-                  <span>{member.phone}</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <ShoppingBag className="h-4 w-4" />
-                </div>
-              </div>
+              
               <div className="mt-4 flex items-center justify-between">
-                <Badge variant={member.status === "active" ? "default" : "secondary"}>
-                  {member.status === "active" ? (t("common.active") || "فعال") : (t("common.inactive") || "غیرفعال")}
+                <Badge variant='outline'>
+                  {member.user.role}
+                </Badge>
+                <Badge variant={member.isActive ? "default" : "destructive"}>
+                  {member.isActive ? (t("common.active") || "فعال") : (t("common.inactive") || "غیرفعال")}
                 </Badge>
               </div>
             </CardContent>
@@ -247,7 +325,7 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
       {/* Pagination */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {t("common.showing") || "نمایش"} {toPersianDigits("1")} - {toPersianDigits(filteredCustomers.length.toString())} {t("common.of") || "از"} {toPersianDigits(members.length.toString())}
+          {t("common.showing") || "نمایش"} {toPersianDigits("1")} - {toPersianDigits(filteredMembers.length.toString())} {t("common.of") || "از"} {toPersianDigits(members.length.toString())}
         </p>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" disabled>
@@ -258,6 +336,92 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
           </Button>
         </div>
       </div>
+        <Dialog open={!!selectedMember} onOpenChange={() => setSelectedMember(null)}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>جزئیات کارمند</DialogTitle>
+                </DialogHeader>
+                {selectedMember && (
+                <Card key={locale+selectedMember.user.id} 
+                className="hover:shadow-md transition-shadow"
+                onClick={()=>setSelectedMember(selectedMember)}>
+                  <CardHeader className="flex flex-row items-start justify-between pb-2">
+              <div className="flex items-center gap-3">
+                <Avatar>
+                  <AvatarImage src={selectedMember.user.email || undefined} />
+                  <AvatarFallback>
+                    {selectedMember.user.name[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <CardTitle className="text-lg">
+                    {selectedMember.user.name} {selectedMember.user.firstName} {selectedMember.user.lastName}
+                  </CardTitle>
+                
+                </div>
+              </div>
+
+                  </CardHeader>
+                  <CardContent>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Mail className="h-4 w-4" />
+                  <span className="ltr">{selectedMember.user.email}</span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Phone className="h-4 w-4" />
+                  <span>{selectedMember.user.phone}</span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <ShoppingBag className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-4 flex items-center justify-between">
+                <Badge variant={selectedMember.isActive ? "default" : "destructive"}>
+                  {selectedMember.isActive ? (t("common.active") || "فعال") : (t("common.inactive") || "غیرفعال")}
+                </Badge>
+              </div>
+                  </CardContent>
+                  <CardFooter className="gap-5">
+              <Select 
+                value={selectedMember.user.role} 
+                onValueChange={(value) => handleUpdateRole(selectedMember.user.id, value)}
+                disabled={updating}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(roleConfig).map(([key, config]) => (
+                    <SelectItem key={locale+key} value={key}>
+                      {config.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select 
+                value={geIsActive(selectedMember.isActive)} 
+                onValueChange={(value) => handleUpdateIsActive(selectedMember.user.id, value)}
+                disabled={updating}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem key={locale+'active'} value={'active'}>
+                      {'فعال'}
+                    </SelectItem>
+                    <SelectItem key={locale+'inactive'} value={'inactive'}>
+                      {'غیر فعال'}
+                    </SelectItem>
+                </SelectContent>
+              </Select>
+                  </CardFooter>
+                </Card>)}
+            </DialogContent>
+            </Dialog>
     </div>
+
+
   )
 }

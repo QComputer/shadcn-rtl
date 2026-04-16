@@ -8,7 +8,7 @@ const updateProfileSchema = z.object({
   firstName: z.string().min(1).max(100).optional(),
   lastName: z.string().min(1).max(100).optional(),
   phone: z.string().max(20).optional(),
-  email: z.string().email().optional().or(z.literal("")),
+  //email: z.string().optional(),
   locale: z.enum(["fa", "en", "ar"]).optional(),
   theme: z.string().max(50).optional(),
 });
@@ -36,12 +36,12 @@ export async function GET() {
       select: {
         id: true,
         name: true,
+        role: true,
         email: true,
         firstName: true,
         lastName: true,
         phone: true,
         avatar: true,
-        role: true,
         isActive: true,
         isTeamMember: true,
         locale: true,
@@ -96,22 +96,6 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const data = updateProfileSchema.parse(body);
 
-    // Check if email is being changed and if it's already taken
-    if (data.email) {
-      const existingUser = await prisma.user.findFirst({
-        where: {
-          email: data.email,
-          NOT: { id: session.user.id },
-        },
-      });
-
-      if (existingUser) {
-        return NextResponse.json(
-          { error: "Email is already in use" },
-          { status: 400 }
-        );
-      }
-    }
 
     const user = await prisma.user.update({
       where: { id: session.user.id },
@@ -119,14 +103,12 @@ export async function PATCH(request: NextRequest) {
         ...(data.firstName !== undefined && { firstName: data.firstName }),
         ...(data.lastName !== undefined && { lastName: data.lastName }),
         ...(data.phone !== undefined && { phone: data.phone }),
-        ...(data.email !== undefined && { email: data.email || null }),
         ...(data.locale !== undefined && { locale: data.locale }),
         ...(data.theme !== undefined && { theme: data.theme }),
       },
       select: {
         id: true,
         name: true,
-        email: true,
         firstName: true,
         lastName: true,
         phone: true,

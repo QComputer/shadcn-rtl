@@ -6,8 +6,6 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-//console.log("---------------------------------------GET");
-
   try {
     const { slug } = await params;
 
@@ -15,11 +13,6 @@ export async function GET(
     const organization = await organizationService.getBySlugPublic(slug);
 
     if (!organization) {
-      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
-    }
-
-    // Only allow APPOINTMENT type for public booking pages
-    if (organization.type !== "APPOINTMENT") {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 });
     }
 

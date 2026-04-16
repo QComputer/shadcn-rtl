@@ -11,7 +11,6 @@ export async function GET(
   try {
     const session = await auth();
     const { id } = await params;
-
     if (!session?.user?.id || !session.user.role) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -21,11 +20,11 @@ export async function GET(
 
     const members =
       session.user.role === "SUPER_ADMIN"
-        ? await organizationService.getAllMembers()
+        ? await organizationService.getMembers(id)
         : session?.user?.organizationId
           ? session.user.role == "ADMIN" || session.user.role == "MANAGER"
             ? await organizationService.getMembers(session.user.organizationId)
-            : [await organizationService.getMemberByUserId(session.user.id)]
+            : [await organizationService.getAMemberByUserId(session.user.id)]
           : [];
 
     return NextResponse.json(members);
@@ -92,33 +91,26 @@ export async function PUT(
   try {
     const session = await auth();
     const { id } = await params;
-
+    if (!session?.user?.id || !session.user.role) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const body = await request.json();
-    const {userId, userRole, prevUserRole} = body
-
-    const user = prisma.user.update({
-      where: {id: userId},
-      data: { role: userRole}
-    });
+    const {userId, role} = body
 
     const memberShip = await prisma.organizationMember.upsert({
       where: { userId: userId },
-      update: { organizationId: id },
-      create: { organizationId: id, userId: userId },
+      update: { organizationId: id, isActive: true },
+      create: { organizationId: id, userId: userId, isActive: true },
     });
 
-    let prevUser;
-    if (session?.user?.id) {
-      prevUser = await prisma.user.update({
-        where: { id: session.user.id },
-        data: {
-          role: prevUserRole,
-        },
-      });
-    }
-    return NextResponse.json({ user, memberShip, prevUser});
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { role, isTeamMember: true },
+    });
+
+    return NextResponse.json({ user, memberShip});
   } catch (error) {
-    console.error("Error updating settings:", error);
+    console.error("Error updating user organization-membership:", error);
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Internal server error",

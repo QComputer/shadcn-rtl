@@ -81,7 +81,6 @@ export function DashboardSidebar({
       userRole: user?.role || "CUSTOMER",
       organizationId: organizationMembership?.organizationId,
       organizationType: organizationMembership?.organizationType,
-      orgMemberRole: organizationMembership?.role,
     }
 
     // Filter navigation items based on user access

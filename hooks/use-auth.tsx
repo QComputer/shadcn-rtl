@@ -48,7 +48,6 @@ export interface AuthContextType {
 
 export interface OrganizationMembership {
   id: string;
-  role: UserRole;
   organizationId: string;
   organizationName: string;
   organizationSlug: string;
@@ -98,6 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch("/api/users/me/membership")
       if (response.ok) {
         const data = await response.json()
+        console.log("---------------------->data.membership", data.membership);
+        
         setOrganizationMembership(data.membership)
       }
     } catch (error) {

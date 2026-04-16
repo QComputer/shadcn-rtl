@@ -102,7 +102,9 @@
     "myAppointments": "نوبت‌های من",
     "myServices": "خدمات من",
     "calendar": "تقویم",
-    "checkout": "بررسی و تایید"
+    "checkout": "بررسی و تایید",
+    "settingsOrganization": "تنظیمات سازمان",
+    "members": "اعضا"
   },
   "organization": {
     "title": "سازمان",
@@ -110,6 +112,8 @@
     "name": "نام",
     "slug": "اسلاگ",
     "type": "نوع",
+    "logo": "لوگو",
+    "coverImage": "کاور",
     "shopType": "فروشگاه",
     "appointmentType": "نوبت دهی",
     "description": "توضیحات",

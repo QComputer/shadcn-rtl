@@ -138,14 +138,18 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     //requiredOrgMemberRole: ["ADMIN", "MANAGER"],
   },
 
-  // Members - SHOP org admins/managers
+  // Members -  org admins/managers
   "/dashboard/members": {
     allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
     requiresOrgMembership: true,
-    requiredOrgType: ["SHOP"],
+    //requiredOrgType: ["SHOP"],
     //requiredOrgMemberRole: ["ADMIN", "MANAGER"],
   },
 
+  "/dashboard/settings/organization": {
+    allowedRoles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+    requiresOrgMembership: true,
+  },
   // ============================================
   // APPOINTMENT Organization Routes
   // ============================================
@@ -482,6 +486,13 @@ export const dashboardNavItems: NavItem[] = [
     id: "settings",
     labelKey: "navigation.settings",
     href: "/dashboard/settings",
+    icon: "Settings",
+    isUniversal: true,
+  },
+  {
+    id: "settings-organization",
+    labelKey: "navigation.settingsOrganization",
+    href: "/dashboard/settings/organization",
     icon: "Settings",
     isUniversal: true,
   },

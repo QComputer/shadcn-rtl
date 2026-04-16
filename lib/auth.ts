@@ -215,7 +215,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.theme = token.theme as string;
         session.user.organizationId = token.organizationId as string | null;
       }
-      //console.log("[Auth] session.user.name:", session.user.name);
+      console.log("[Auth] session.user.name:", session.user.name);
 
       return session;
     },

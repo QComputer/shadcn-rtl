@@ -52,7 +52,6 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
   // Form state
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
-  const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [selectedLocale, setSelectedLocale] = useState(locale)
   const [selectedTheme, setSelectedTheme] = useState("system")
@@ -80,7 +79,6 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
         setUser(data)
         setFirstName(data.firstName || "")
         setLastName(data.lastName || "")
-        setEmail(data.email || "")
         setPhone(data.phone || "")
         setSelectedLocale(data.locale || locale)
         setSelectedTheme(data.theme || "system")
@@ -109,7 +107,6 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
         body: JSON.stringify({
           firstName,
           lastName,
-          email: email || null,
           phone: phone || null,
           locale: selectedLocale,
           theme: selectedTheme,
@@ -256,7 +253,7 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
 
         {/* Profile Tab */}
         <TabsContent value="profile">
-          <Card>
+          <Card className="dir-rtl">
             <CardHeader>
               <CardTitle>{t("user.profile")}</CardTitle>
               <CardDescription>
@@ -290,16 +287,7 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">{t("user.email")}</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  dir="ltr" 
-                />
-              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="phone">{t("user.phone")}</Label>
                 <Input 

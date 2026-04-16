@@ -5,7 +5,7 @@ import { localeConfig, supportedLocales, type SupportedLocale } from "@/lib/i18n
 
 export const metadata: Metadata = {
   title: "جامعه صفر",
-  description: "پلتفرم تجارت الکترونیک و رزرو خدمات",
+  description: "پلتفرم تجارت الکترونیک و رزرو نوبت",
 };
 
 // Generate static params for all supported locales - required for static export

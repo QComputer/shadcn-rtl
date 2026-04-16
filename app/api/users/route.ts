@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
           isTeamMember: true,
           locale: true,
           createdAt: true,
+          memberOf: true
         },
       }),
       prisma.user.count({ where }),

@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import { Save, User, Bell, Lock, Palette, Globe, Loader2, X } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -55,11 +55,10 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
     import("@/lib/dictionary").then(({ getDictionary }) => {
       setDict(getDictionary(locale))
     })
-    fetchAllUsers();
     // Fetch user profile
     fetch("/api/users/me")
       .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch orgabization")
+        if (!res.ok) throw new Error("Failed to fetch user profile")
         return res.json()
       })
       .then(data => {
@@ -118,10 +117,7 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
       }
     }
   };
-    <div className="space-y-2">
-      <Label htmlFor="name">{t("organization.name")}</Label>
-      <Input id="name" value={organization?.name || ""} disabled />
-    </div>
+  
   // Upload function
   async function uploadFile(file: File) {
     const form = new FormData();
@@ -186,59 +182,6 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
     }
   }
 
-  const fetchAllUsers = async () => {
-    try {
-      const response = await fetch(`/api/users?pageSize=50`)
-      
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to save")
-      }
-      
-      const usersData = await response.json()
-      console.log("--------------------->usersData:", usersData.data);
-      setSuccess("usersData")
-      
-      // If locale changed, redirect to new locale
-      if (selectedLocale !== locale) {
-        router.push(`/${selectedLocale}/dashboard/settings`)
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save")
-    } finally {
-      setSaving(false)
-    }  
-  }
-
-
-  const handleRoleChange = async () => {
-    if (!organization?.id) return
-    try {
-      const response = await fetch(`/api/organizations/${organization.id}/members`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          userRole: "ADMIN",
-          prevUserRole: "SUPER_ADMIN"
-        }),
-    })
-      
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to save")
-      }
-      
-      const res = await response.json()
-      console.log("--------------------->handleRoleChange>res:", res.data);
-      setSuccess("handleRoleChange")
-      
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save")
-    } finally {
-      setSaving(false)
-    }  
-  }
   const handleThemeChange = (newTheme: string) => {
     setSelectedTheme(newTheme)
     setTheme(newTheme as "light" | "dark" | "system")
@@ -276,32 +219,30 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
     <div className="p-4 lg:p-6 space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold">{t("navigation.settings")}</h2>
+        <h2 className="text-2xl font-bold">{t("navigation.settingsOrganization")}</h2>
         <p className="text-muted-foreground">
-          {t("user.settings")}
+          {t("organization.settings")}
         </p>
       </div>
-
-      {/* Success/Error Messages */}
-      {success && (
-        <div className="p-4 bg-green-100 dark:bg-green-900/20 border border-green-500 text-green-700 dark:text-green-400 rounded-lg">
-          {success}
-        </div>
-      )}
       {error && (
         <div className="p-4 bg-destructive/10 border border-destructive text-destructive rounded-lg">
           {error}
         </div>
       )}
        
+      <Card>
+
+         <CardContent>
+      
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      
       {/* Upload Logo */}
-     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
        <div className="space-y-2">
          <Label htmlFor="logo">
            {t("organization.logo") || "Organization logo"}
          </Label>
        </div>
-       <div className="mt-1 flex items-center">
+      <div className="mt-1 mb-10 flex items-center">
          <Input
            type="file"
            accept="image/*" // Only accept image files
@@ -312,7 +253,7 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
          <Label
            htmlFor="logoUpload"
          >
-         <div className="items-center rounded-lg border-3">
+      <div className="items-center rounded-lg border-3">
          {logoPreview ? 
            <img
            src={logoPreview}
@@ -329,28 +270,27 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
         (
          <div className=" items-center text-sm border-1 p-2 rounded-md w-20 h-20">هیچ تصویری انتخاب نشده</div>
        )}
-       </div>
+      </div>
          </Label>
            <Button
              onClick={() => {setLogoPreview("")
              }}
              size={"icon"}
              variant={"outline"}
-             className={"border-2 -mt-16 mr-1"}
+             className={"m-2 "}
            >
              <X/>
            </Button>
        </div>
-     </div>
+
 
       {/* Upload Cover Image */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
        <div className="space-y-2">
          <Label htmlFor="coverImage">
            {t("organization.coverImage") || "Organization coverImage"}
          </Label>
        </div>
-       <div className="mt-1 mx-5 flex items-center">
+      <div className="mt-1 mb-10 flex items-center">
          <Input
            type="file"
            accept="image/*" // Only accept image files
@@ -385,26 +325,27 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
              }}
              size={"icon"}
              variant={"outline"}
-             className={"border-2 -mt-16 mr-1"}
+             className={"m-2"}
            >
              <X/>
            </Button>
        </div>
-       <Button onClick={handleSave}
-       >Save</Button>
+
       </div>
+        </CardContent>
+        
 
-
-        <Input
-          id="userId"
-          name="userId"
-          value={userId}
-          onChange={(e) => setUserId(e.target.value)}
-          placeholder="userId"
-        />
-      <Button onClick={handleRoleChange}
-       >Make it ADMIN</Button>
-
+      <CardFooter>
+        <div className="flex items-center">
+        <Button 
+        onClick={handleSave}
+        disabled={saving}
+        >
+          {saving ? "ذخیره کردن..." : " ذخیره" }
+        </Button>
+        </div>
+        </CardFooter>
+      </Card>
     </div>
   )
 }

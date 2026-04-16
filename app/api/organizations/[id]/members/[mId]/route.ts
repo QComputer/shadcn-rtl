@@ -22,7 +22,7 @@ export async function GET(
       (session.user.role === "SUPER_ADMIN" || session.user.role === "ADMIN"|| session.user.role === "MANAGER")
         ? await organizationService.getMember(mId)
         : session?.user?.id
-          ? [await organizationService.getMemberByUserId(session.user?.id)]
+          ? [await organizationService.getAMemberByUserId(session.user?.id)]
           : null;
 
     return NextResponse.json(members);

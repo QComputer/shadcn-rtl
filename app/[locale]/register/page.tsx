@@ -13,11 +13,22 @@ import { Label } from "@/components/ui/label"
 import { ThemeSwitcher } from "@/components/ui/theme-switcher"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import prisma from "@/lib/db"
+
 function RegisterForm({ locale }: { locale: string }) {
   const router = useRouter()
-  const params = useParams()
+    
+  
   
   const [username, setUsername] = useState("")
+  const [orgSlug, setOrgSlug] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -32,6 +43,7 @@ function RegisterForm({ locale }: { locale: string }) {
     import("@/lib/dictionary").then(({ getDictionary }) => {
       setDict(getDictionary(locale))
     })
+
   }, [locale])
 
   const t = (key: string): string => {
@@ -65,6 +77,7 @@ function RegisterForm({ locale }: { locale: string }) {
         body: JSON.stringify({
           username,
           password,
+          orgSlug,
         }),
       })
 
@@ -197,6 +210,23 @@ function RegisterForm({ locale }: { locale: string }) {
                   dir="ltr"
                 />
               </div>
+   <div className="space-y-2">
+                <Label htmlFor="orgSlug">
+                  {t("auth.orgSlug") || "اسلاگ سازمان (اختیاری)"}
+                </Label>
+              <Input
+                  id="orgSlug"
+                  type="text"
+                  placeholder={t("auth.orgSlug_placeHolder") || "اسلاگ سازمان مورد نظر خودرا وارد کنید"}
+                  value={orgSlug}
+                  onChange={(e) => setOrgSlug(e.target.value)}
+                  required
+                  minLength={3}
+                  className="h-10"
+                  dir="ltr"
+                />
+              </div>
+
 
               <div className="space-y-2">
                 <Label htmlFor="password">
@@ -244,6 +274,8 @@ function RegisterForm({ locale }: { locale: string }) {
                   dir="ltr"
                 />
               </div>
+
+              
 
               <Button
                 type="submit"

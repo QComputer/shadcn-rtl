@@ -70,6 +70,9 @@ export function DashboardSidebar({
 
   useEffect(() => {
     setMounted(true)
+    console.log("-----------------------user",user);
+    console.log("-----------------------organizationMembership",organizationMembership);
+    
   }, [])
 
   useEffect(() => {

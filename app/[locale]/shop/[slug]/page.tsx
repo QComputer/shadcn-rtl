@@ -94,7 +94,7 @@ interface ShopData {
   organization: Organization
   categories: ProductCategory[]
   businessHours: BusinessHour[]
-  settings: OrganizationSettings | null
+  settings: OrganizationSettings
 }
 
 
@@ -240,7 +240,7 @@ export default function ShopPage({
     )
   }
 
-  if (error || !data) {
+  if (error) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="w-full max-w-md">
@@ -258,7 +258,8 @@ export default function ShopPage({
     )
   }
 
-  const { organization, categories, settings } = data
+  if (data) {
+    const { organization, categories, settings } = data
   const filteredProducts = getFilteredProducts()
   return (
     <div className="min-h-screen bg-background">
@@ -274,7 +275,7 @@ export default function ShopPage({
             )}
         <div className="container mx-auto px-2 relative z-10">
          
-              <div className="w-20 h-20 rounded-full  overflow-hidden -mt-35  mr-3 bg-card ">
+              <div className="w-20 h-20 rounded-full  overflow-hidden -mt-35 mr-3 bg-card ">
                 <img 
                   src={organization?.logo || "logo"} 
                   alt={organization.name+"logo"}
@@ -328,7 +329,6 @@ export default function ShopPage({
                 </div>
               )}
             </div>
-           
           </div>
         </div>
       </section>
@@ -369,24 +369,27 @@ export default function ShopPage({
           {categories.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-6">
               <Button
-                  variant="outline"
+                  variant={"all" == selectedCategory ? "default" : "outline"} 
                   size="sm"
                   onClick={() => setSelectedCategory("all")}
                 >
                   {"همه"}
-                  <Badge variant="secondary" className="mr-2">
+                  <Badge 
+                  variant={"all" == selectedCategory ? "default" : "secondary"} 
+                   className="mr-2">
                     {toPersianDigits(getTotalProducts())}
                   </Badge>
                 </Button>
               {categories.map((category) => (
                 <Button
                   key={locale+category.id}
-                  variant="outline"
+                  variant={category.id == selectedCategory ? "default" : "outline"} 
                   size="sm"
                   onClick={() => setSelectedCategory(category.id)}
                 >
                   {category.name}
-                  <Badge variant="secondary" className="mr-2">
+                  <Badge variant={category.id == selectedCategory ? "default" : "secondary"} 
+                  className="mr-2">
                     {toPersianDigits(category.products.length.toString())}
                   </Badge>
                 </Button>
@@ -563,7 +566,7 @@ export default function ShopPage({
         </div>
       </section>
     </div>
-  )
+  )}
 }
 
 

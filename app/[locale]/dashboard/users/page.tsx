@@ -371,7 +371,6 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
             <CardTitle className="text-lg">
               {selectedUser.name} {selectedUser.firstName} {selectedUser.lastName}
             </CardTitle>
-          
           </div>
         </div>
             </CardHeader>

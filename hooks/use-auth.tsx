@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch("/api/users/me/membership")
       if (response.ok) {
         const data = await response.json()
-        console.log("---------------------->data.membership", data.membership);
+        console.log("-------------use-auth--------->data.membership", data.membership);
         
         setOrganizationMembership(data.membership)
       }

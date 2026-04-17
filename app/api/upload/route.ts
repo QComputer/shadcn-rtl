@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     // The URL to access the image will be handled by your separate route handler
     const url = `/uploads/${filename}`;
 
-    // Save record in DB (assuming prisma.image.create is correctly implemented)
+    // Save record in DB 
     const image = await prisma.image.create({
       data: { url, filename },
     });

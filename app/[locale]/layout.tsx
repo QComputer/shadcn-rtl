@@ -35,7 +35,7 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} dir={config.dir}>
-      <head>
+      <head key={locale}>
         <link
           href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap"
           rel="stylesheet"

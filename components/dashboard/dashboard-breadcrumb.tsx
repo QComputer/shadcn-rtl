@@ -32,11 +32,11 @@ const defaultRouteLabels: Record<string, string> = {
   orders: "سفارش‌ها",
   products: "محصولات",
   appointments: "نوبت‌ها",
+  "my-appointments": "نوبت‌ها من",
   customers: "مشتریان",
   settings: "تنظیمات",
   calendar: "تقویم",
-  "my-orders": "سفارش‌های من",
-  "my-appointments": "نوبت‌های من",
+  "driver-orders": "سفارش‌های من",
   "my-services": "خدمات من",
   organizations: "سازمان‌ها",
   members: "اعضا",
@@ -117,7 +117,7 @@ export function DashboardBreadcrumb({ locale, customLabels }: DashboardBreadcrum
   const segments = parsePathname()
 
   // Don't render breadcrumb on main dashboard page (only one segment)
-  if (segments.length <= 1) {
+  if (segments.length < 1) {
     return null
   }
 

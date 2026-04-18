@@ -1,9 +1,10 @@
 "use client"
 
-import { use, useState } from "react"
+import { use, useEffect, useState } from "react"
 import { DashboardSidebarWithDict } from "@/components/dashboard/dashboard-sidebar"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
-import ToastProvider from '@/components/ToastProvider'; // Assuming ToastProvider is in the same directory or adjust the path
+import ToastProvider from '@/components/ToastProvider'; 
+import { toast } from 'react-toastify';
 
 export default function DashboardLayout({
   children,
@@ -15,6 +16,52 @@ export default function DashboardLayout({
   const resolvedParams = use(params)
   const locale = resolvedParams.locale
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [loading, setLoading]=useState(false)
+  // Fetch dashboard data
+      const fetchDashboardData = async () => {
+        setLoading(true)
+
+      try {
+        const response = await fetch("/api/dashboard/notifications")
+        
+        if (!response.ok) {
+          //throw new Error("Failed to fetch dashboard data")
+        }
+        
+        const data = await response.json()
+        if (data.trigger && data.notifications?.length>0){
+          const notifications: any[] = data.notifications 
+          
+        const audio = new Audio('/uploads/Alarm10.wav'); // Path relative to the public folder
+ 
+          notifications.map((n)=>{
+          audio.play()
+          .then(() => console.log('Success sound played'))
+          .catch(error => console.error('Error playing sound:', error));
+
+          n.context && toast.success(n.context,{
+            position: 'top-center', // Position of the toast
+            autoClose: 5000, // Close after 5 seconds
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+          });
+          })
+        }
+      } catch (err) {
+        console.error("Error fetching dashboard:", err)
+        setLoading(false)
+
+      } finally {
+        setLoading(false)
+      }
+    }
+  useEffect(() => {
+    // set Update Freequency
+    !loading && setTimeout(fetchDashboardData,500000)
+  }, [loading])
 
   return (
     <ToastProvider> {/* Wrap everything with ToastProvider */}

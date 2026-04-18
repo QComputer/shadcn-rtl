@@ -121,6 +121,7 @@ model Organization {
   logo        String?
   coverImage  String?
   isActive    Boolean          @default(true)
+  isOpen      Boolean          @default(true)
 
   // Timestamps & Soft Delete
   createdAt DateTime  @default(now())
@@ -162,6 +163,17 @@ model Deny {
 
   @@unique([orderId, userId])
 }
+model Notification {
+  id           String   @id @default(cuid())
+  targetUserId  String
+  context   String
+  targetUser   User @relation(fields: [targetUserId], references: [id])
+  seen Boolean @default(false)
+  type  String?
+  @@index([targetUserId])
+}
+
+
 model User {
   id           String   @id @default(cuid())
   password     String
@@ -207,6 +219,7 @@ model User {
   receivedMessages         Message[]                 @relation("ReceivedMessages")
   locations                Location[]
   reviewsWritten           Review[]                  @relation("UserReviews")
+  notifications           Notification[]             
   passwordResets           PasswordReset[]
   emailVerifications       EmailVerification[]
   auditLogs                AuditLog[]

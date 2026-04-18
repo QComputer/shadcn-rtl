@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { useTheme } from "@/hooks/use-theme"
+        import { toast } from 'react-toastify';
 
 interface UserProfile {
   id: string
@@ -120,6 +121,16 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
       
       const updatedUser = await response.json()
       setUser(prev => prev ? { ...prev, ...updatedUser } : null)
+       toast.success('تغییرات شما با موفقیت ثبت شد!', {
+            position: 'top-center', // Position of the toast
+            autoClose: 5000, // Close after 5 seconds
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            // You might need to handle custom sounds separately if the library doesn't directly support them
+          });
       setSuccess(t("common.success"))
       
       // If locale changed, redirect to new locale

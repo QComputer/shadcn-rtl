@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { useTheme } from "@/hooks/use-theme"
 import { Organization } from "@prisma/client"
@@ -27,7 +26,7 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   const [mounted, setMounted] = useState(false)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [saving, setSaving] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   
@@ -41,20 +40,27 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
 
   // Form state
   const [name, setName] = useState("")
-  const [userId, setUserId] = useState("")
   const [description, setDescription] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [selectedLocale, setSelectedLocale] = useState(locale)
   const [selectedTheme, setSelectedTheme] = useState("system")
 
+  const [isOpen, setIsOpen] = useState(true)
+
+    useEffect(() => {
+      setMounted(true)
+      
+      import("@/lib/dictionary").then(({ getDictionary }) => {
+        setDict(getDictionary(locale))
+      })
+    }, [locale])
   
   useEffect(() => {
-    setMounted(true)
+    if (!saving) return
     
-    import("@/lib/dictionary").then(({ getDictionary }) => {
-      setDict(getDictionary(locale))
-    })
+    setLoading(true)
+
     // Fetch user profile
     fetch("/api/users/me")
       .then(res => {
@@ -62,15 +68,20 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
         return res.json()
       })
       .then(data => {
+        console.log("prev isOpen:", isOpen);
+        console.log(data.memberOf.organization.isOpen);
+        
       setOrganization(data.memberOf.organization)
-      //console.log(data.memberOf.organization);
+      setIsOpen(data.memberOf.organization.isOpen)
         setLoading(false)
+        setSaving(false)
       })
       .catch(err => {
         setError(err.message)
         setLoading(false)
+        setSaving(false)
       })
-  }, [locale])
+  }, [saving])
 
   const t = (key: string): string => {
     if (!dict) return key
@@ -97,6 +108,49 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
     }
   };
     
+const handleClose = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    setError(null)
+    
+    try {
+      const response = await fetch(`/api/organizations/open`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          isOpen: false
+        }),
+      })
+      
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to update ")
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update ")
+    } finally {
+      setSaving(true)
+    }
+  }
+
+    
+const handleOpen = async (e: React.FormEvent) => {
+    setError(null)
+    
+    try {
+      const response = await fetch(`/api/organizations/open`)
+      
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to open")
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to close")
+    } finally {
+      setSaving(true)
+    }
+  }
+
   const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const imageFile = e.target.files[0];
@@ -217,6 +271,7 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
+
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold">{t("navigation.settingsOrganization")}</h2>
@@ -229,12 +284,33 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
           {error}
         </div>
       )}
-       
       <Card>
-
-         <CardContent>
+        <CardHeader>
+          وضعیت:
+        </CardHeader>
+        <CardContent className="">
+                    <Label>
+        {!!isOpen ? 'باز' : 'بسته'}
+      </Label>
+        </CardContent>
+        <CardFooter className="flex p-4 gap-4">
+          <Button onClick={handleOpen} className={"bg-green-500"}>
+        باز
+       </Button>
+        <Button onClick={handleClose} variant='destructive'>
+        بسته
+       </Button>
+        </CardFooter>
+      </Card>
       
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <Card>
+        <CardHeader>
+          تصاویر:
+        </CardHeader>
+
+      <CardContent>
+      
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
       
       {/* Upload Logo */}
        <div className="space-y-2">
@@ -242,12 +318,12 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
            {t("organization.logo") || "Organization logo"}
          </Label>
        </div>
-      <div className="mt-1 mb-10 flex items-center">
+      <div className="mt-1 mb-10 flex items-center ">
          <Input
            type="file"
            accept="image/*" // Only accept image files
            onChange={handleLogoChange}
-           className="sr-only" // Hide the default file input
+           className="sr-only w-20" // Hide the default file input
            id="logoUpload"
          />
          <Label
@@ -295,7 +371,7 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
            type="file"
            accept="image/*" // Only accept image files
            onChange={handleCoverImageChange}
-           className="sr-only" // Hide the default file input
+           className="sr-only w-20" // Hide the default file input
            id="coverImageUpload"
          />
          <Label

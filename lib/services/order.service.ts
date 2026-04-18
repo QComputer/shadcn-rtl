@@ -5,6 +5,7 @@ import type { CreateOrderInput, UpdateOrderStatusInput } from "@/lib/validators"
 import { hasPermission, type UserRole } from "@/lib/types";
 import { Decimal } from "@prisma/client/runtime/library";
 import { Order, OrderStatus, Progress, User } from "@prisma/client";
+import { m } from "framer-motion";
 // TODO: Notifications:
 //        1.Accepting Order: setting EstEndTime for preparation by shop admin, setting EstEndTime for pickup and delivery by shop admin, 
 //        2.Changing Order Status: notify 
@@ -105,7 +106,7 @@ export class OrderService {
           },
         },
       },
-    })
+    });
 
     //console.log("---------------------CART: ", cart);
 
@@ -267,6 +268,7 @@ export class OrderService {
               id: true,
               name: true,
               slug: true,
+              members: true,
             },
           },
         },
@@ -279,6 +281,19 @@ export class OrderService {
       });
 
       return newOrder;
+    });
+    
+    await order.organization.members.map(async (m) => {
+      console.log("----------member:", m);
+
+      const notification = await prisma.notification.create({
+        data: {
+          targetUserId: m.userId,
+          context: "سفارش جدید ثبت شد",
+          seen: false,
+        },
+      });
+      console.log("-------notification:", notification);
     });
 
     revalidatePath(`/dashboard/orders`);
@@ -492,6 +507,7 @@ export class OrderService {
               id: true,
               name: true,
               slug: true,
+              members: true
             },
           },
         },
@@ -503,9 +519,33 @@ export class OrderService {
         data: { status: "CHECKED_OUT" },
       });
 
+      newOrder.organization.members.map(async (m) => {
+        console.log("----------member:", m);
+        const notification = await tx.notification.create({
+          data: {
+            targetUserId: m.userId,
+            context: "سفارش جدید ثبت شد",
+            seen: false,
+          },
+        });
+        console.log("-------notification:", notification);
+        });
+     
+
       return newOrder;
     });
+await order.organization.members.map(async (m) => {
+  console.log("----------member:", m);
 
+  const notification = await prisma.notification.create({
+    data: {
+      targetUserId: m.userId,
+      context: "سفارش جدید ثبت شد",
+      seen: false,
+    },
+  });
+  console.log("-------notification:", notification);
+});
     revalidatePath(`/dashboard/orders`);
     revalidatePath(`/organization/${order.organization.slug}/orders`);
     return order;

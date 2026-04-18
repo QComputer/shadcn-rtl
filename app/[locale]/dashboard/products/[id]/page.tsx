@@ -74,6 +74,7 @@ interface Product {
   category: ProductCategory
   variants: ProductVariant[]
   createdAt: string
+  sortOrder: number
 }
 interface ImageRecord {
   id: number;
@@ -220,15 +221,17 @@ export default function EditProductPage({
       setCategoryId(productData.category?.id || "")
       setImage(productData.image || "")
       setIsActive(productData.isActive)
+      
       setCategories(categoriesData)
       setVariants(productData.variants)
       setInventory(Number(productData.lowStockThreshold))
+      setSortOrder(Number(productData.sortOrder))
       setNewVariant({
         productId: productData.id,
         inventory: productData.lowStockThreshold? Number(productData.lowStockThreshold) : 100,
         name: productData.name+"_",
         price: Number(productData.basePrice),
-        sku: productData.sku && productData.sku+"-"
+        sku: productData.sku
       })
     }).catch(err => {
       setError(err.message)
@@ -262,6 +265,7 @@ export default function EditProductPage({
             categoryId,
             image: image || undefined,
             isActive,
+            sortOrder,
           }),
       })
       

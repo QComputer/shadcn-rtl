@@ -18,9 +18,8 @@ interface ShopLayoutProps {
 
 export async function generateMetadata({ params }: ShopLayoutProps): Promise<Metadata> {
   const { locale, slug } = await params;
-  
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/public/organizations/${slug}/shop`, {
+    const response = await fetch(`/api/public/organizations/${slug}/shop`, {
       cache: 'no-store'
     });
     //console.log("------------------shop response:", response);
@@ -32,7 +31,6 @@ export async function generateMetadata({ params }: ShopLayoutProps): Promise<Met
     }
     
     const data = await response.json();
-    
     return {
       title: data.organization?.name || "Shop",
       description: data.organization?.description || "Shop online",
@@ -50,7 +48,8 @@ async function getOrganization(slug: string){
   });
   const id = await shop?.id as string
   const name = await shop?.name as string
-  return {id, name}
+  const isOpen = shop?.isOpen || false 
+  return {id, name, isOpen}
 }
 
 export default async function ShopLayout({ children, params }: ShopLayoutProps) {

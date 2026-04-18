@@ -111,6 +111,7 @@ export class OrganizationService {
         coverImage: true,
         locale: true,
         timezone: true,
+        isOpen:true,
       },
     });
   }

@@ -174,8 +174,6 @@ export const updateProductSchema = createProductSchema.partial().extend({
 // Product Variant validators
 export const createProductVariantSchema = z.object({
   name: z.string().min(1).max(200),
-  sku: z.string().max(100).optional(),
-  image: z.string().max(500).optional(),
   price: z.number().nonnegative().optional(),
   inventory: z.number().int().nonnegative().default(0),
   allowBackOrder: z.boolean().default(false),

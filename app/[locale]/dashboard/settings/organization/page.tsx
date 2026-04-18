@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { useTheme } from "@/hooks/use-theme"
 import { Organization } from "@prisma/client"
+import { ShopStatusBadge } from "@/components/ShopStatusBadge"
 
 interface ImageRecord {
   id: number;
@@ -289,9 +290,7 @@ const handleOpen = async (e: React.FormEvent) => {
           وضعیت:
         </CardHeader>
         <CardContent className="">
-                    <Label>
-        {!!isOpen ? 'باز' : 'بسته'}
-      </Label>
+<ShopStatusBadge isOpen={isOpen}/>
         </CardContent>
         <CardFooter className="flex p-4 gap-4">
           <Button onClick={handleOpen} className={"bg-green-500"}>

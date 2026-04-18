@@ -50,7 +50,6 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     const data = updateProductSchema.parse(body);
-
     const product = await productService.update(id, data, session.user.role);
 
     return NextResponse.json(product);

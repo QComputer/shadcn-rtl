@@ -2,7 +2,6 @@
 
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import { 
   Search, 
   MapPin, 
@@ -35,6 +34,9 @@ import {
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatToman, toPersianDigits } from "@/lib/persian"
 import { useCart } from "@/lib/contexts/cart-context"
+import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog"
+import { DialogTitle } from "@radix-ui/react-dialog"
+import { ShopStatusBadge } from "@/components/ShopStatusBadge"
 
 interface ProductVariant {
   id: string
@@ -42,6 +44,7 @@ interface ProductVariant {
   sku: string | null
   price: number | null
   inventory: number
+  description: string | null
 }
 
 interface Product {
@@ -52,6 +55,7 @@ interface Product {
   image: string | null
   images: string[]
   variants: ProductVariant[]
+  sortOrder: number
 }
 
 interface ProductCategory {
@@ -80,6 +84,7 @@ interface Organization {
   logo: string | null
   coverImage: string | null
   type: string
+  isOpen: boolean
 }
 
 interface OrganizationSettings {
@@ -110,29 +115,57 @@ export default function ShopPage({
   const [mounted, setMounted] = useState(false)
   const [data, setData] = useState<ShopData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [loadingSilently, setLoadingSilently] = useState(true)
+  const [isOpen, setIsOpen] = useState(true)
+  const [error, setError] = useState<string | null>(null)  
+
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [viewMode, setViewMode] = useState<"grid" | "list">("list")
 
+    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
     const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null)
     const [quantity, setQuantity] = useState(1)
     const [addingToCart_VariantId, setAddingToCart_VariantId] = useState<string | null>(null)
-    const [addedToCart, setAddedToCart] = useState(false)
+    const [addingToCart, setAddingToCart] = useState<string | null>(null)
+    const [addedToCart, setAddedToCart] = useState<string | null>(null)
     const [addedToCart_VariantId, setAddedToCart_VariantId] = useState<string | null>(null)
     // Get cart functions from context
       const { addToCart } = useCart()
       
-  const handleAddToCart = async (variantId: string) => {
-    if (!variantId) return
+  const handleAddToCart = async (product: Product | null) => {
+    if (!product) return
     
-    setAddingToCart_VariantId(variantId)
+    if (product.variants.length > 1){
+      setSelectedProduct(product)
+      return
+    }
+    
+    const variantId = product.variants[0]?.id 
+    
+    if (!variantId) return
+
+    setAddingToCart(product.id)
     try {
-      await addToCart(variantId, quantity)
-      
+      await addToCart(variantId, 1)
       setAddedToCart_VariantId(variantId)
       setTimeout(() => setAddedToCart_VariantId(null), 3000)
+    } catch (err) {
+      console.error("Error adding to cart:", err)
+    } finally {
+      setAddingToCart(null)
+    }
+  }
+
+  const handleAddVariantToCart = async (variantId: string) => {
+      setAddingToCart_VariantId(variantId)
+    
+try {
+      await addToCart(variantId, 1)
+      setAddedToCart_VariantId(variantId)
+      setTimeout(() => setAddedToCart_VariantId(null), 3000)
+      setTimeout(() => setSelectedProduct(null), 1000)
     } catch (err) {
       console.error("Error adding to cart:", err)
     } finally {
@@ -170,10 +203,10 @@ export default function ShopPage({
         p.name.includes(searchQuery) ||
         p.description?.includes(searchQuery) ||
         p.categoryName.includes(searchQuery)
-      )
+      ).sort((a, b) => b.sortOrder - a.sortOrder)
     }
-    
-    return products
+
+    return products.sort((a, b) => b.sortOrder - a.sortOrder)
   }
 
   function getTotalProducts() {
@@ -184,7 +217,33 @@ export default function ShopPage({
   })}
   return total
 }
+    const fetchDataSilently = async () => {
+        setLoadingSilently(true)
 
+      try {
+   
+      const response = await fetch(`/api/public/organizations/${slug}/shop`)
+              if (!response.ok) {
+          throw new Error("Failed to fetch dashboard data")
+        }
+        const data = await response.json()
+        setData(data)
+        /*
+        if (isOpen !== data?.organization.isOpen){
+        }
+*/
+        setIsOpen(data?.organization.isOpen || false)
+    } catch (err) {
+        console.error("Error fetching shop public:", err)
+        setLoadingSilently(false)
+
+      } finally {
+        setLoadingSilently(false)
+        
+      }  
+    }
+
+      
   useEffect(() => {
     setMounted(true)
     
@@ -200,6 +259,8 @@ export default function ShopPage({
         return res.json()
       })
       .then(data => {
+        console.log(data);
+        
         setData(data)
         setLoading(false)
       })
@@ -207,8 +268,14 @@ export default function ShopPage({
         setError(err.message)
         setLoading(false)
       })
+      setTimeout(fetchDataSilently,10000)
 
   }, [locale, slug])
+
+    useEffect(() => {
+    // set Update Freequency
+    !loadingSilently && setTimeout(fetchDataSilently,5000)
+  }, [loadingSilently])
 
   // Get display price
   const getDisplayPrice = (product: Product): number => {
@@ -259,45 +326,49 @@ export default function ShopPage({
   }
 
   if (data) {
-    const { organization, categories, settings } = data
+  //const { organization, categories, settings } = data
   const filteredProducts = getFilteredProducts()
   return (
     <div className="min-h-screen bg-background">
+      <div className="mx-auto">
+
       {/* Hero Section */}
       <section className="relative h-80 ">
         <div className="absolute inset-0 " />
-        {organization.coverImage && (
+        {data.organization.coverImage && (
             <img
-              src={organization.coverImage}
-              alt={organization.name+"cover image"}
-              className="w-full h-full object-cover opacity-35"
+              src={data.organization.coverImage}
+              alt={data.organization.name+"cover image"}
+              className="w-full h-full object-cover opacity-45"
             />
             )}
         <div className="container mx-auto px-2 relative z-10">
          
               <div className="w-20 h-20 rounded-full  overflow-hidden -mt-35 mr-3 bg-card ">
                 <img 
-                  src={organization?.logo || "logo"} 
-                  alt={organization.name+"logo"}
+                  src={data.organization?.logo || "logo"} 
+                  alt={data.organization.name+"logo"}
                   className="w-full h-full object-cover"
                 />
               </div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-3 mx-3">
-              {organization.name}
+            <h1 className="text-2xl md:text-3xl font-bold mb-3 mx-3 flex gap-4">
+              {data.organization.name}
+              <ShopStatusBadge isOpen={data.organization.isOpen}/>
+              
             </h1>
-            {organization.description && (
+            {data.organization.description && (
               <p className="text-muted-foreground mb-4">
-                {organization.description}
+                {data.organization.description}
               </p>
             )}
             <div className="flex flex-wrap gap-3 px-3">
-              {settings?.enableDelivery && (
+              {data.settings?.enableDelivery && (
                 <Badge variant="secondary">
                   <Van className="h-3 w-3" />
                   ارسال 
                 </Badge>
               )}
-              {settings?.enablePickup && (
+              {data.settings?.enablePickup && (
 
                 <Badge variant="secondary">
                   <MapPin className="h-4 w-4" />
@@ -313,19 +384,19 @@ export default function ShopPage({
         <div className="container mx-auto px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap gap-3 text-sm">
-              {organization.phone && (
+              {data.organization.phone && (
                 <a 
-                  href={`tel:${organization.phone}`} 
+                  href={`tel:${data.organization.phone}`} 
                   className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Phone className="h-4 w-4" />
-                  <span>{organization.phone}</span>
+                  <span>{data.organization.phone}</span>
                 </a>
               )}
-              {organization.address && (
+              {data.organization.address && (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <MapPin className="h-4 w-4" />
-                  <span>{organization.address}</span>
+                  <span>{data.organization.address}</span>
                 </div>
               )}
             </div>
@@ -366,7 +437,7 @@ export default function ShopPage({
           </div>
 
           {/* Categories Quick Links */}
-          {categories.length > 0 && (
+          {data.categories.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-6">
               <Button
                   variant={"all" == selectedCategory ? "default" : "outline"} 
@@ -380,7 +451,7 @@ export default function ShopPage({
                     {toPersianDigits(getTotalProducts())}
                   </Badge>
                 </Button>
-              {categories.map((category) => (
+              {data.categories.map((category) => (
                 <Button
                   key={locale+category.id}
                   variant={category.id == selectedCategory ? "default" : "outline"} 
@@ -468,8 +539,8 @@ export default function ShopPage({
                   <Button 
                   size="default" 
                   className={"flex-1 gap-2"}
-                  disabled={addingToCart_VariantId == product.variants[0]?.id}
-                  onClick={() => handleAddToCart(product.variants[0].id)}
+                  disabled={addingToCart == product.id}
+                  onClick={() => handleAddToCart(product)}
                 >
                   {addedToCart_VariantId == product.variants[0]?.id ? (
                     <>
@@ -479,7 +550,7 @@ export default function ShopPage({
                   ) : (
                     <>
                       <ShoppingCart className="h-5 w-5 " />
-                      {addingToCart_VariantId == product.variants[0]?.id ? "در حال افزودن..." : "افزودن به سبد"}
+                      {addingToCart == product.id ? "در حال افزودن..." : "افزودن به سبد"}
                     </>
                   )}
                 </Button>
@@ -497,9 +568,9 @@ export default function ShopPage({
                 return (
                     <Card key={locale+product.id} className="hover:shadow-md transition-shadow">
                       <CardContent className="px-4 py-1">
+                      
                         <div className="flex gap-4">
-                          
-                          <div className="w-24 h-24 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+                               <div className="w-24 h-24 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                           <Link   href={`/${locale}/shop/${slug}/product/${product.id}`}>                        
                               {product.image ? (
                                 <img 
@@ -520,6 +591,7 @@ export default function ShopPage({
                             <p className="text-xs text-muted-foreground mb-1">
                               {product.categoryName}
                             </p>
+                            
                             <h3 className="font-medium mb-1">{product.name}</h3>
                             {product.description && (
                               <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
@@ -532,10 +604,11 @@ export default function ShopPage({
                                 {formatToman(price)}
                               </span>
                               <div className="flex items-center gap-2">
+                                
                                 <Button 
                                 className={"flex-1 gap-2 w-28"}
-                                disabled={addingToCart_VariantId == product.variants[0]?.id}
-                                onClick={() => handleAddToCart(product.variants[0].id)}
+                                disabled={addingToCart == product.id}
+                                onClick={() => handleAddToCart(product)}
                               >
                                 {addedToCart_VariantId == product.variants[0]?.id ? (
                                   <>
@@ -544,8 +617,8 @@ export default function ShopPage({
                                   </>
                                 ) : (
                                   <>
-                                    <p className="text-xs">{addingToCart_VariantId == product.variants[0].id ? "در حال افزودن  ..." : "افزودن به سبد"}</p>
-                                    {addingToCart_VariantId !== product.variants[0].id && <ShoppingCart className="h-5 w-5 -mx-1" />}
+                                    <p className="text-xs">{addingToCart == product.id ? "در حال افزودن  ..." : "افزودن به سبد"}</p>
+                                    {addingToCart !== product.id && <ShoppingCart className="h-5 w-5 -mx-1" />}
                                   </>
                                 )}
                                 </Button>
@@ -565,6 +638,83 @@ export default function ShopPage({
           )}
         </div>
       </section>
+    </div>
+              <Dialog open={!!selectedProduct} onOpenChange={() => setSelectedProduct(null)}>
+              <DialogContent>
+                  <DialogHeader>
+                               
+                <DialogTitle>{selectedProduct?.name || "انتخاب کنید"}</DialogTitle>
+              </DialogHeader><div className="w-full h-50 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+
+                    {selectedProduct?.image ? (
+                          <img 
+                            src={selectedProduct.image} 
+                            alt={selectedProduct.name}
+                            className="w-full h-full object-cover "
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Package className="h-12 w-12 text-muted-foreground" />
+                          </div>
+                        )}
+                        </div>
+              <div className="grid grid-cols-1 gap-5">
+               {selectedProduct && 
+               selectedProduct.variants.map((v)=><div key={v.id+"0"}>{
+                  <Card key={v.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="grid grid-cols-2 gap-20">
+                        <div className="flex gap-4">
+     
+                          <div className="flex-1 min-w-0">
+                            
+  
+                            <h3 className="font-medium mb-1">{v.name}</h3>
+                            {v.description && (
+                              <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                                {v.description}
+                              </p>
+                            )}
+                            <div className="flex items-center justify-between pt-2">
+
+                              <span className="font-bold text-primary">
+                                {formatToman(v.price)}
+                              </span>
+                              <div className="flex items-center gap-2">
+
+                              </div>
+                              
+                            </div>
+                            
+                          </div>
+
+                        </div>
+                      
+                                      <Button 
+                                className={"flex-1 gap-2 w-28"}
+                                disabled={addingToCart_VariantId == v.id}
+               onClick={()=>handleAddVariantToCart(v.id)}
+                              >
+                                {addedToCart_VariantId == v.id ? (
+                                  <>
+                                    اضافه شد
+                                    <Check className="h-5 w-5" />
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="text-xs">{addingToCart_VariantId == v.id ? "در حال افزودن  ..." : "افزودن به سبد"}</p>
+                                    {addingToCart_VariantId !== v.id && <ShoppingCart className="h-5 w-5 -mx-1" />}
+                                  </>
+                                )}
+              </Button>
+                                </CardContent>
+                    </Card>
+
+              }</div>)
+                }
+              </div>
+              </DialogContent>
+              </Dialog>
+      
     </div>
   )}
 }

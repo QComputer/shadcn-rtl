@@ -125,6 +125,7 @@ export class ProductService {
       if (minPrice) (where.basePrice as Record<string, number>).gte = minPrice;
       if (maxPrice) (where.basePrice as Record<string, number>).lte = maxPrice;
     }
+    
     const [data, total] = await Promise.all([
       prisma.product.findMany({
         where,

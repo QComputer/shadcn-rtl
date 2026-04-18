@@ -17,22 +17,23 @@ export default function DashboardLayout({
   const locale = resolvedParams.locale
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [loading, setLoading]=useState(false)
+
   // Fetch dashboard data
       const fetchDashboardData = async () => {
         setLoading(true)
+        const audio = new Audio('/Alarm10.wav'); // Path relative to the public folder
 
       try {
         const response = await fetch("/api/dashboard/notifications")
         
         if (!response.ok) {
-          //throw new Error("Failed to fetch dashboard data")
+          throw new Error("Failed to fetch dashboard data")
         }
         
         const data = await response.json()
         if (data.trigger && data.notifications?.length>0){
           const notifications: any[] = data.notifications 
           
-        const audio = new Audio('/uploads/Alarm10.wav'); // Path relative to the public folder
  
           notifications.map((n)=>{
           audio.play()

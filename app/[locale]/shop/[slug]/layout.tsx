@@ -2,10 +2,8 @@ import { CartProvider } from "@/lib/contexts/cart-context";
 import { CartDrawer } from "@/components/shop/cart-drawer";
 import { CartBadge } from "@/components/shop/cart-badge";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import { ArrowRight, Store } from "lucide-react";
 import { Metadata } from "next";
-import prisma from "@/lib/db";
 
 
 interface ShopLayoutProps {
@@ -20,7 +18,7 @@ export async function generateMetadata({ params }: ShopLayoutProps): Promise<Met
   const { locale, slug } = await params;
   try {
     const response = await fetch(`/api/public/organizations/${slug}/shop`, {
-      cache: 'no-store'
+      //cache: 'no-store'
     });
     //console.log("------------------shop response:", response);
     
@@ -42,32 +40,21 @@ export async function generateMetadata({ params }: ShopLayoutProps): Promise<Met
   }
 }
 
-async function getOrganization(slug: string){
-  const shop = await prisma.organization.findUnique({
-    where: { slug },
-  });
-  const id = await shop?.id as string
-  const name = await shop?.name as string
-  const isOpen = shop?.isOpen || false 
-  return {id, name, isOpen}
-}
 
 export default async function ShopLayout({ children, params }: ShopLayoutProps) {
   const { locale, slug } = await params;
 
   // Get organization ID from slug
-  const shopData = await getOrganization(slug)
 
   return (
-    <CartProvider organizationId={shopData.id}>
+    <CartProvider locale={locale} slug={slug} >
       <div className="min-h-screen flex flex-col">
         {/* Shop Header */}
-        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header className="sticky top-2 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container flex h-16 items-center justify-between">
-            <Link href={`/shop/${slug}`} className="flex items-center gap-2 mr-5">
+              <span className="flex gap-3 mx-10 font-semibold ">
               <Store className="h-5 w-5 " />
-              <span className="font-semibold">{shopData.name}</span>
-            </Link>
+              </span>
 
             <div className="flex items-center gap-4">
               <CartDrawer organizationSlug={slug}>
@@ -87,7 +74,7 @@ export default async function ShopLayout({ children, params }: ShopLayoutProps) 
         {/* Shop Footer */}
         <footer className="border-t py-6">
           <div className="container text-center text-sm text-muted-foreground">
-            <p>© {new Date().getFullYear()} {shopData.name}. تمامی حقوق محفوظ است.</p>
+            <p>© {new Date().getFullYear()}. تمامی حقوق محفوظ است.</p>
           </div>
         </footer>
       </div>

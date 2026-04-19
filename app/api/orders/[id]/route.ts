@@ -117,7 +117,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     } else if (
       (session.user.role == "ADMIN" || session.user.role == "MANAGER") &&
-      ((type == "PICK_UP" || type == "DELIVERY") || order.organizationId !== session.user.organizationId)
+      ((type == "PICK_UP" || type == "DELIVERY"))
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

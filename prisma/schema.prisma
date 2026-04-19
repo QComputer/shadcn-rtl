@@ -151,6 +151,7 @@ model Organization {
   @@index([slug])
   @@index([isActive])
   @@index([deletedAt])
+  @@unique([id, slug])
 }
 
 model Deny {
@@ -476,8 +477,9 @@ model ProductCategory {
   sortOrder      Int     @default(0)
   isActive       Boolean @default(true)
   organizationId String
+  organizationSlug String
 
-  organization Organization @relation(fields: [organizationId], references: [id])
+  organization Organization @relation(fields: [organizationId, organizationSlug], references: [id,slug])
   products     Product[]
 
   createdAt DateTime  @default(now())
@@ -485,6 +487,7 @@ model ProductCategory {
   deletedAt DateTime?
 
   @@index([organizationId])
+  @@index([organizationSlug])
   @@index([deletedAt])
 }
 
@@ -561,8 +564,8 @@ model ShopCart {
   id     String     @id @default(cuid())
   status CartStatus @default(ACTIVE)
 
-  organizationId String
-  organization Organization   @relation(fields: [organizationId], references: [id])
+  organizationSlug String
+  organization Organization   @relation(fields: [organizationSlug], references: [slug])
   
   customerId     String?
   customer     User?           @relation(fields: [customerId], references: [id])
@@ -578,11 +581,12 @@ model ShopCart {
   
   @@index([status])
   @@index([customerId])
-  @@unique([organizationId, customerId])
-  @@index([organizationId, customerId])
+  @@unique([organizationSlug, customerId])
+  @@index([organizationSlug, customerId])
   @@index([sessionId])
-  @@unique([organizationId, sessionId])
-  @@index([organizationId, sessionId])
+
+    @@unique([organizationSlug, sessionId])
+  @@index([organizationSlug, sessionId])
 }
 
 model ShopCartItem {
@@ -655,14 +659,14 @@ model Order {
   promotionCode String?
 
   // Metadata
-  organizationId  String
+  organizationSlug  String
   customerId      String?
   guestCustomerId String?
   driverId        String?
 
-  organization   Organization   @relation(fields: [organizationId], references: [id])
+  organization   Organization   @relation(fields: [ organizationSlug], references: [slug])
   customer       User?          @relation("CustomerOrderRelation", fields: [customerId], references: [id])
-  guestCustomer GuestCustomer?    @relation(fields: [guestCustomerId], references: [id])
+  guestCustomer  GuestCustomer?    @relation(fields: [guestCustomerId], references: [id])
   assignedDriver User?          @relation("DriverOrderRelation", fields: [driverId], references: [id])
   items          OrderItem[]
   payment        Payment?
@@ -683,7 +687,7 @@ model Order {
 
   denies Deny[]
 
-  @@index([organizationId])
+  @@index([organizationSlug])
   @@index([customerId])
   @@index([driverId])
   @@index([preparationProgressId])
@@ -768,15 +772,15 @@ model Promotion {
   expiresAt      DateTime
   isActive       Boolean  @default(true)
 
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationSlug String
+  organization   Organization @relation(fields: [organizationSlug], references: [slug])
 
   orders Order[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([organizationId])
+  @@index([organizationSlug])
   @@index([code])
   @@index([expiresAt])
   @@index([isActive])
@@ -793,16 +797,16 @@ model Review {
   isVerifiedPurchase Boolean @default(false)
 
   userId         String
-  organizationId String
+  organizationSlug String
 
   user         User         @relation("UserReviews", fields: [userId], references: [id])
-  organization Organization @relation("OrgReviews", fields: [organizationId], references: [id])
+  organization Organization @relation("OrgReviews", fields: [organizationSlug], references: [slug])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, organizationId]) // One review per user per org
-  @@index([organizationId])
+  @@unique([userId, organizationSlug]) // One review per user per org
+  @@index([organizationSlug])
   @@index([rating])
 }
 
@@ -895,7 +899,7 @@ model Location {
 
 model OrganizationSettings {
   id             String @id @default(cuid())
-  organizationId String @unique
+  organizationSlug String @unique
 
   // General settings
   settings   Json? // Flexible configuration store
@@ -917,15 +921,15 @@ model OrganizationSettings {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id])
+  organization Organization @relation(fields: [organizationSlug], references: [slug])
 
-  @@index([organizationId])
+  @@index([organizationSlug])
 }
 
 // Booking Settings for appointment-based organizations
 model BookingSettings {
   id             String @id @default(cuid())
-  organizationId String @unique
+  organizationSlug String @unique
 
   // Slot configuration
   slotDuration Int @default(30) // minutes
@@ -950,9 +954,9 @@ model BookingSettings {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id])
+  organization Organization @relation(fields: [organizationSlug], references: [slug])
 
-  @@index([organizationId])
+  @@index([organizationSlug])
 }
 
 // --- AUDIT & LOGGING ---
@@ -975,15 +979,17 @@ model AuditLog {
   // User info
   userId         String?
   organizationId String?
+  organizationSlug String?
 
   user         User?         @relation(fields: [userId], references: [id])
-  organization Organization? @relation(fields: [organizationId], references: [id])
+  organization Organization? @relation(fields: [organizationId, organizationSlug], references: [id, slug])
 
   createdAt DateTime @default(now())
 
   @@index([entityType, entityId])
   @@index([userId])
   @@index([organizationId])
+  @@index([organizationSlug])
   @@index([action])
   @@index([createdAt])
 }

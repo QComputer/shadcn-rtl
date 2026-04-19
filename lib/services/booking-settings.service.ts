@@ -21,15 +21,15 @@ export class BookingSettingsService {
    * Get booking settings for an organization
    * Creates default settings if none exist
    */
-  async getForOrganization(organizationId: string) {
+  async getForOrganization(organizationSlug: string) {
     let settings = await prisma.bookingSettings.findUnique({
-      where: { organizationId },
+      where: { organizationSlug },
     });
 
     if (!settings) {
       // Create default settings
       settings = await prisma.bookingSettings.create({
-        data: { organizationId },
+        data: { organizationSlug },
       });
     }
 
@@ -39,11 +39,11 @@ export class BookingSettingsService {
   /**
    * Update booking settings for an organization
    */
-  async update(organizationId: string, data: BookingSettingsInput) {
+  async update(organizationSlug: string, data: BookingSettingsInput) {
     const settings = await prisma.bookingSettings.upsert({
-      where: { organizationId },
+      where: { organizationSlug },
       create: {
-        organizationId,
+        organizationSlug,
         ...data,
       },
       update: data,
@@ -60,7 +60,7 @@ export class BookingSettingsService {
   async validateBooking(
     organizationId: string,
     appointmentTime: Date,
-    existingAppointmentsCount: number
+    existingAppointmentsCount: number,
   ): Promise<{ valid: boolean; error?: string }> {
     const settings = await this.getForOrganization(organizationId);
     const now = new Date();
@@ -102,7 +102,7 @@ export class BookingSettingsService {
    */
   async canCancel(
     organizationId: string,
-    appointmentTime: Date
+    appointmentTime: Date,
   ): Promise<{ canCancel: boolean; error?: string }> {
     const settings = await this.getForOrganization(organizationId);
 
@@ -115,7 +115,7 @@ export class BookingSettingsService {
 
     const now = new Date();
     const deadlineMs = settings.cancellationDeadline * 60 * 1000;
-    
+
     if (appointmentTime.getTime() - now.getTime() < deadlineMs) {
       return {
         canCancel: false,
@@ -129,12 +129,15 @@ export class BookingSettingsService {
   /**
    * Get effective slot duration (considering buffer times)
    */
-  async getEffectiveSlotDuration(organizationId: string, serviceDuration: number): Promise<number> {
+  async getEffectiveSlotDuration(
+    organizationId: string,
+    serviceDuration: number,
+  ): Promise<number> {
     const settings = await this.getForOrganization(organizationId);
-    
+
     // Use the larger of: service duration, or configured slot duration
     const baseDuration = Math.max(serviceDuration, settings.slotDuration);
-    
+
     // Add buffer times
     return baseDuration + settings.bufferBefore + settings.bufferAfter;
   }

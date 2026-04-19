@@ -15,7 +15,6 @@ interface ProvidersProps {
 export function Providers({ children, locale = "fa" }: ProvidersProps) {
   return (
     <SessionProvider>
-      <ThemeProvider defaultTheme="dark" storageKey="shadcn-rtl-theme">
         <LocaleProvider defaultLocale={locale}>
           <AuthProvider>
             <ErrorBoundary>
@@ -23,7 +22,6 @@ export function Providers({ children, locale = "fa" }: ProvidersProps) {
             </ErrorBoundary>
           </AuthProvider>
         </LocaleProvider>
-      </ThemeProvider>
     </SessionProvider>
   )
 }

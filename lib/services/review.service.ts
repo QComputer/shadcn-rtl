@@ -1,3 +1,4 @@
+/*
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { createReviewSchema } from "@/lib/validators";
@@ -199,3 +200,4 @@ export class ReviewService {
 }
 
 export const reviewService = new ReviewService();
+*/

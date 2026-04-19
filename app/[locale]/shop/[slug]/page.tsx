@@ -339,7 +339,7 @@ try {
             <img
               src={data.organization.coverImage}
               alt={data.organization.name+"cover image"}
-              className="w-full h-full object-cover opacity-45"
+              className="w-full h-full object-cover opacity-40 blure"
             />
             )}
         <div className="container mx-auto px-2 relative z-10">

@@ -5,6 +5,7 @@ import { DashboardSidebarWithDict } from "@/components/dashboard/dashboard-sideb
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import ToastProvider from '@/components/ToastProvider'; 
 import { toast } from 'react-toastify';
+import { Providers } from "@/components/providers";
 
 export default function DashboardLayout({
   children,
@@ -60,7 +61,7 @@ export default function DashboardLayout({
         setLoading(false)
       }
       setTriggerNotification(false)
-      setTimeout(fetchDashboardData,500000)
+      setTimeout(fetchDashboardData,3000)
     }
     useEffect(() => {
     // set Update Freequency
@@ -105,7 +106,10 @@ export default function DashboardLayout({
 
           {/* Page Content */}
           <div className="flex-1 p-4 lg:p-6">
-            {children}
+            <Providers>
+              {children}
+              </Providers>
+
           </div>
         </div>
       </div>

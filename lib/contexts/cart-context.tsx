@@ -52,10 +52,11 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 interface CartProviderProps {
   children: React.ReactNode;
-  organizationId: string;
+  locale?: string;
+  slug?: string;
 }
 
-export function CartProvider({ children, organizationId }: CartProviderProps) {
+export function CartProvider({ children, slug, locale }: CartProviderProps) {
   const [cart, setCart] = useState<ShopCart | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,13 +79,13 @@ export function CartProvider({ children, organizationId }: CartProviderProps) {
 
   // Fetch cart
   const refreshCart = useCallback(async () => {
-    if (!organizationId) return;
+    if (!slug) return;
     
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await fetch(`/api/cart?organizationId=${organizationId}`);
+      const response = await fetch(`/api/cart?organizationSlug=${slug}`);
       if (!response.ok) {
         throw new Error("Failed to fetch cart");
       }
@@ -95,7 +96,7 @@ export function CartProvider({ children, organizationId }: CartProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [organizationId]);
+  }, [slug]);
 
   // Load cart on mount
   useEffect(() => {
@@ -112,7 +113,7 @@ export function CartProvider({ children, organizationId }: CartProviderProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          organizationId,
+          organizationSlug: slug,
           variantId,
           quantity,
         }),
@@ -132,7 +133,7 @@ export function CartProvider({ children, organizationId }: CartProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [organizationId, refreshCart, router]);
+  }, [slug, refreshCart, router]);
 
   // Update quantity
   const updateQuantity = useCallback(async (itemId: string, quantity: number) => {
@@ -192,7 +193,7 @@ export function CartProvider({ children, organizationId }: CartProviderProps) {
     setError(null);
     
     try {
-      const response = await fetch(`/api/cart?organizationId=${organizationId}`, {
+      const response = await fetch(`/api/cart?organizationId=${slug}`, {
         method: "DELETE",
       });
       
@@ -209,7 +210,7 @@ export function CartProvider({ children, organizationId }: CartProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [organizationId, router]);
+  }, [slug, router]);
 
   return (
     <CartContext.Provider

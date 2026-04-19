@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "@/app/globals.css"
-import { Providers } from "@/components/providers";
 import { localeConfig, supportedLocales, type SupportedLocale } from "@/lib/i18n";
+import { ThemeProvider } from "@/hooks/use-theme";
 
 export const metadata: Metadata = {
   title: "جامعه صفر",
@@ -36,15 +36,11 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} dir={config.dir}>
       <head key={locale}>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap"
-          rel="stylesheet"
-        />
       </head>
       <body className="antialiased">
-        <Providers locale={locale}>
+      <ThemeProvider defaultTheme="dark" storageKey="shadcn-rtl-theme">
           {children}
-        </Providers>
+      </ThemeProvider>
       </body>
     </html>
   );

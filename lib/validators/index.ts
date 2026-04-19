@@ -194,7 +194,7 @@ export const updateCartItemSchema = z.object({
 
 // Order validators
 export const createOrderSchema = z.object({
-  organizationId: z.string().cuid(),
+  organizationSlug: z.string().cuid(),
   type: z.enum(["DELIVERY", "PICK_UP"]),
   customerName: z.string().max(100).optional(),
   customerPhone: z.string().max(100).optional(),

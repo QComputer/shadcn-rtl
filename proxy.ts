@@ -115,6 +115,8 @@ export async function proxy(request: NextRequest) {
   // Skip API routes, static files, and Next.js internals
   if (
     pathname.startsWith("/api") ||
+    pathname.startsWith("/fa/shop") ||
+    pathname.startsWith("/fa") ||
     pathname.startsWith("/uploads") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/static") ||

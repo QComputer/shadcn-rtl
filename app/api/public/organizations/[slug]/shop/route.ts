@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { organizationService } from "@/lib/services/organization.service";
 
 export async function GET(
   request: NextRequest,
@@ -8,60 +7,19 @@ export async function GET(
 ) {
   try {
     const { slug } = await params;
-
-    // Get organization by slug
-        const organization = await organizationService.getBySlugPublic(slug);
-
-
-    if (!organization) {
-      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
-    }
-
-    // Only allow SHOP type for public shop pages
-    if (organization.type !== "SHOP") {
-      return NextResponse.json({ error: "Shop not found" }, { status: 404 });
-    }
-    // Get product categories with products
-    const categories = await prisma.productCategory.findMany({
-      where: {
-        organizationId: organization.id,
-        isActive: true,
-        deletedAt: null,
-      },
-      include: {
-        products: {
-          where: {
-            isActive: true,
-            deletedAt: null,
-          },
-          include: {
-            variants: {
-              where: {
-                deletedAt: null,
-              },
-              select: {
-                id: true,
-                name: true,
-                sku: true,
-                price: true,
-                inventory: true,
-              },
-            },
-          },
-          orderBy: {
-            sortOrder: "asc",
-          },
-        },
-      },
-      orderBy: {
-        sortOrder: "asc",
-      },
+    const organizationCategories = await prisma.productCategory.findMany({
+      where: { organizationSlug: slug },
+      include: { products: true , organization:{ select: {name: true, settings: true}}},
     });
+    // Get product categories with products
+    const categories = organizationCategories.filter(
+      (cat) => cat.isActive && !cat.deletedAt && cat.products.length > 0
+    );
 
     // Get organization settings
     const settings = await prisma.organizationSettings.findUnique({
       where: {
-        organizationId: organization.id,
+         organizationSlug: slug,
       },
       select: {
         currency: true,
@@ -73,7 +31,7 @@ export async function GET(
     });
     
     return NextResponse.json({
-      organization,
+      organization: categories[0].organization,
       categories,
       settings,
     });

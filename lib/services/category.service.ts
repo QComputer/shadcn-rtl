@@ -16,7 +16,7 @@ import { hasPermission, type UserRole } from "@/lib/types";
 
 // Product Category Service
 export class ProductCategoryService {
-  async create(organizationId: string, data: CreateProductCategoryInput) {
+  async create(organizationId: string, data: any) {
     const category = await prisma.productCategory.create({
       data: {
         ...data,

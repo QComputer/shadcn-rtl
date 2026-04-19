@@ -153,7 +153,7 @@ export class NotificationService {
     
     // Check organization notification settings
     const settings = await prisma.organizationSettings.findUnique({
-      where: { organizationId },
+      where: { organizationSlug: organizationId },
     });
 
     if (settings?.emailNotifications && payload.email) {

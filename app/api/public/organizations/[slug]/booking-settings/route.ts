@@ -10,7 +10,7 @@ export async function GET(
 
     // Get organization by slug
     const organization = await prisma.organization.findUnique({
-      where: { slug, type: "APPOINTMENT", isActive: true },
+      where: { slug, isActive: true },
       select: { id: true, timezone: true },
     });
 
@@ -20,14 +20,14 @@ export async function GET(
 
     // Get or create booking settings
     let settings = await prisma.bookingSettings.findUnique({
-      where: { organizationId: organization.id },
+      where: { organizationSlug: slug },
     });
 
     if (!settings) {
       // Return default settings
       settings = {
         id: "default",
-        organizationId: organization.id,
+        organizationSlug: slug,
         slotDuration: 30,
         bufferBefore: 0,
         bufferAfter: 0,

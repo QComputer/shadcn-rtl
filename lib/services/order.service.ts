@@ -83,7 +83,7 @@ export class OrderService {
   ) {
     //console.log("=====================OrderService>create====================");
     const {
-      organizationId,
+      organizationSlug,
       autoCompleteEndTimes,
       promotionCode,
       ...orderData
@@ -93,7 +93,7 @@ export class OrderService {
     // Get cart for user
     const cart = await prisma.shopCart.findUnique({
       where: {
-        organizationId_customerId: { organizationId, customerId },
+        organizationSlug_customerId: { organizationSlug, customerId },
       },
       include: {
         items: {
@@ -150,7 +150,7 @@ export class OrderService {
       const promotion = await prisma.promotion.findFirst({
         where: {
           code: promotionCode,
-          organizationId,
+          organizationSlug,
           isActive: true,
           startsAt: { lte: new Date() },
           expiresAt: { gte: new Date() },
@@ -181,7 +181,7 @@ export class OrderService {
     let deliveryFee = new Decimal(0);
     if (data.type === "DELIVERY") {
       const settings = await prisma.organizationSettings.findUnique({
-        where: { organizationId },
+        where: { organizationSlug },
       });
       if (settings) {
         deliveryFee = new Decimal(settings.deliveryRadius ? 5.0 : 0);
@@ -235,7 +235,7 @@ export class OrderService {
           total,
           deliveryAddress: orderData.deliveryAddress,
           notes: orderData.notes,
-          organizationId,
+          organizationSlug,
           customerId,
           preparationProgressId: preparationProgress.id,
           pickupProgressId: pickupProgress.id,
@@ -307,7 +307,7 @@ export class OrderService {
   ) {
     //console.log("=====================OrderService>create====================");
     const {
-      organizationId,
+      organizationSlug,
       autoCompleteEndTimes,
       promotionCode,
       customerName,
@@ -319,7 +319,7 @@ export class OrderService {
     // Get cart for guest user
     const cart = await prisma.shopCart.findFirst({
             where: {
-              organizationId,
+              organizationSlug,
               sessionId,
             },
             include: {
@@ -377,7 +377,7 @@ export class OrderService {
       const promotion = await prisma.promotion.findFirst({
         where: {
           code: promotionCode,
-          organizationId,
+          organizationSlug,
           isActive: true,
           startsAt: { lte: new Date() },
           expiresAt: { gte: new Date() },
@@ -408,7 +408,7 @@ export class OrderService {
     let deliveryFee = new Decimal(0);
     if (data.type === "DELIVERY") {
       const settings = await prisma.organizationSettings.findUnique({
-        where: { organizationId },
+        where: { organizationSlug },
       });
       if (settings) {
         deliveryFee = new Decimal(settings.deliveryRadius ? 20000 : 0);
@@ -476,7 +476,7 @@ export class OrderService {
           total,
           deliveryAddress: orderData.deliveryAddress,
           notes: orderData.notes,
-          organizationId,
+          organizationSlug,
           guestCustomerId: guestCustomer.id,
           preparationProgressId: preparationProgress.id,
           pickupProgressId: pickupProgress.id,
@@ -624,7 +624,7 @@ await order.organization.members.map(async (m) => {
   async list(params: {
     page?: number;
     pageSize?: number;
-    organizationId?: string;
+    organizationSlug?: string;
     customerId?: string;
     guestCustomerId?: string;
     driverId?: string;
@@ -636,7 +636,7 @@ await order.organization.members.map(async (m) => {
     const {
       page = 1,
       pageSize = 20,
-      organizationId,
+      organizationSlug,
       customerId,
       guestCustomerId,
       driverId,
@@ -648,7 +648,7 @@ await order.organization.members.map(async (m) => {
 
     const where: Record<string, unknown> = {};
 
-    if (organizationId) where.organizationId = organizationId;
+    if (organizationSlug) where.organizationSlug = organizationSlug;
     if (customerId) where.customerId = customerId;
     if (guestCustomerId) where.guestCustomerId = guestCustomerId;
     if (driverId) where.driverId = driverId;
@@ -743,7 +743,7 @@ await order.organization.members.map(async (m) => {
     params: {
       page?: number;
       pageSize?: number;
-      organizationId?: string;
+      organizationSlug?: string;
       customerId?: string;
       guestCustomerId?: string;
       status?: string;
@@ -756,7 +756,7 @@ await order.organization.members.map(async (m) => {
     const {
       page = 1,
       pageSize = 20,
-      organizationId,
+      organizationSlug,
       customerId,
       guestCustomerId,
       status,
@@ -767,8 +767,8 @@ await order.organization.members.map(async (m) => {
 
     const whereDriver: Record<string, unknown> = {};
 
-    if (organizationId) {
-      whereDriver.organizationId = organizationId;
+    if (organizationSlug) {
+      whereDriver.organizationSlug = organizationSlug;
     }
     if (customerId) whereDriver.customerId = customerId;
     if (guestCustomerId) whereDriver.guestCustomerId = guestCustomerId;

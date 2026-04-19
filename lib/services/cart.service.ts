@@ -6,11 +6,11 @@ import { Decimal } from "@prisma/client/runtime/library";
 // TODO: Make the service working for both registered and guest customers
 export class CartService {
   // Get or create a shop-cart for a guest with sessionId
-  async getOrCreateCartBySession(sessionId: string, organizationId: string) {
+  async getOrCreateCartBySession(organizationSlug: string, sessionId: string) {
     //console.log("------------------------------>sessionId", sessionId);
     // Try to find existing cart
     let cart = await prisma.shopCart.findUnique({
-      where: { organizationId_sessionId: { organizationId, sessionId } },
+      where: { organizationSlug_sessionId: { organizationSlug, sessionId } },
       include: {
         items: {
           include: {
@@ -33,7 +33,7 @@ export class CartService {
 
       cart = await prisma.shopCart.create({
         data: {
-          organizationId,
+          organizationSlug,
           sessionId,
           status: "ACTIVE",
           expiresAt,
@@ -66,11 +66,11 @@ export class CartService {
     };
   }
 
-  async getCartBySession(sessionId: string, organizationId: string) {
+  async getCartBySession(organizationSlug: string, sessionId: string) {
     // Try to find existing cart
     const cart = await prisma.shopCart.findUnique({
       where: {
-        organizationId_sessionId: { organizationId, sessionId },
+        organizationSlug_sessionId: { organizationSlug, sessionId },
       },
       include: {
         items: {
@@ -110,8 +110,8 @@ export class CartService {
   }
 
   async getCart(
+    organizationSlug: string,
     customerId: string | null,
-    organizationId: string,
     sessionId: string | null,
   ) {
     if (!customerId && !sessionId) {
@@ -123,11 +123,11 @@ export class CartService {
     //console.log("--------------getCatrt> organizationId:", organizationId);
     //console.log("--------------getCatrt> sessionId:", sessionId);
     const cart = sessionId
-      ? await this.getCartBySession(sessionId, organizationId)
+      ? await this.getCartBySession(sessionId, organizationSlug)
       : customerId
         ? await prisma.shopCart.findUnique({
             where: {
-              organizationId_customerId: { organizationId, customerId },
+              organizationSlug_customerId: { organizationSlug, customerId },
             },
             include: {
               items: {
@@ -162,7 +162,7 @@ export class CartService {
 
   async getOrCreateCart(
     customerId: string | null,
-    organizationId: string,
+    organizationSlug: string,
     sessionId: string | null,
   ) {
     //console.log("--------------getOrCreateCart> customerId:", customerId);
@@ -174,26 +174,28 @@ export class CartService {
       );
     }
     let cart = sessionId
-      ? await this.getOrCreateCartBySession(sessionId, organizationId)
-      : await prisma.shopCart.findUnique({
-          where: {
-            organizationId_customerId: {
-              organizationId,
-              customerId: customerId || "guest-user",
+      ? await this.getOrCreateCartBySession(organizationSlug, sessionId)
+      : customerId
+        ? await prisma.shopCart.findUnique({
+            where: {
+              organizationSlug_customerId: {
+                organizationSlug,
+                customerId,
+              },
             },
-          },
-          include: {
-            items: {
-              include: {
-                variant: {
-                  include: {
-                    product: true,
+            include: {
+              items: {
+                include: {
+                  variant: {
+                    include: {
+                      product: true,
+                    },
                   },
                 },
               },
             },
-          },
-        });
+          })
+        : null;
 
     if (!cart) {
       //console.log("------------------------ no Cart found");
@@ -201,7 +203,7 @@ export class CartService {
       cart = sessionId
         ? await prisma.shopCart.create({
             data: {
-              organizationId,
+              organizationSlug,
               sessionId,
               status: "ACTIVE",
             },
@@ -219,7 +221,7 @@ export class CartService {
           })
         : await prisma.shopCart.create({
             data: {
-              organizationId,
+              organizationSlug,
               customerId: customerId || "guest-ueser",
               status: "ACTIVE",
             },
@@ -241,8 +243,8 @@ export class CartService {
   }
 
   async addItem(
+    organizationSlug: string,
     customerId: string | null,
-    organizationId: string,
     sessionId: string | null,
     data: AddToCartInput,
   ) {
@@ -257,7 +259,7 @@ export class CartService {
     // Get or create cart
     const cart = await this.getOrCreateCart(
       customerId,
-      organizationId,
+      organizationSlug,
       sessionId,
     );
     //console.log("--------------addItem> cart:", cart);
@@ -276,10 +278,6 @@ export class CartService {
 
     if (!variant) {
       throw new Error("Product variant not found");
-    }
-
-    if (variant.product.organizationId !== organizationId) {
-      throw new Error("Product does not belong to this organization");
     }
 
     if (
@@ -386,7 +384,11 @@ export class CartService {
     return updatedItem;
   }
 
-  async removeItem(cartItemId: string, customerId?: string, sessionId?: string) {
+  async removeItem(
+    cartItemId: string,
+    customerId?: string,
+    sessionId?: string,
+  ) {
     // Find the cart item and verify ownership
     const cartItem = await prisma.shopCartItem.findUnique({
       where: { id: cartItemId },
@@ -422,8 +424,8 @@ export class CartService {
   }
 
   async clearCart(
+    organizationSlug: string,
     customerId: string | null,
-    organizationId: string,
     sessionId: string | null,
   ) {
     if (!customerId && !sessionId) {
@@ -434,13 +436,13 @@ export class CartService {
     const cart = sessionId
       ? await prisma.shopCart.findUnique({
           where: {
-            organizationId_sessionId: { organizationId, sessionId },
+            organizationSlug_sessionId: { organizationSlug, sessionId },
           },
         })
       : customerId
         ? await prisma.shopCart.findUnique({
             where: {
-              organizationId_customerId: { organizationId, customerId },
+              organizationSlug_customerId: { organizationSlug, customerId },
             },
           })
         : null;
@@ -457,11 +459,11 @@ export class CartService {
   }
 
   async getCartSummary(
+    organizationSlug: string,
     customerId: string | null,
-    organizationId: string,
     sessionId: string | null,
   ) {
-    const cart = await this.getCart(customerId, organizationId, sessionId);
+  const cart = await this.getCart(organizationSlug, customerId, sessionId);
     //console.log("------------getCartSummary> cart:", cart);
 
     if (!cart || cart.items.length === 0) {
@@ -476,7 +478,7 @@ export class CartService {
 
     // Get organization settings for delivery fee
     const settings = await prisma.organizationSettings.findUnique({
-      where: { organizationId },
+      where: { organizationSlug },
     });
 
     const deliveryFee = settings?.deliveryRadius ? 5.0 : 0;
@@ -503,13 +505,13 @@ export class CartService {
   async mergeToUserCart(
     sessionId: string,
     userId: string,
-    organizationId: string,
+    organizationSlug: string,
   ) {
     //console.log("--------------mergeToUserCart> organizationId:", organizationId);
     //console.log("--------------mergeToUserCart> customerId=userId:", userId);
     //console.log("--------------mergeToUserCart> sessionId:", sessionId);
     const guestCart = await prisma.shopCart.findUnique({
-      where: { organizationId_sessionId: { organizationId, sessionId } },
+      where: { organizationSlug_sessionId: { organizationSlug, sessionId } },
       include: {
         items: true,
       },
@@ -517,7 +519,7 @@ export class CartService {
     //console.log("--------------mergeToUserCart> guestCart:", guestCart);
 
     // Get or create user cart
-    const userCart = await this.getOrCreateCart(userId, organizationId, null);
+    const userCart = await this.getOrCreateCart(userId, organizationSlug, null);
 
     // Merge items
     if (guestCart && guestCart?.items?.length > 0) {

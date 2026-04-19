@@ -4,6 +4,11 @@ import { prisma } from "@/lib/db";
 import { updateOrganizationSettingsSchema } from "@/lib/validators";
 import { hasPermission } from "@/lib/types";
 
+
+const getSlug = async (organizationId:string) =>{
+const org = await prisma.organization.findUnique({ where: { id: organizationId } });
+return org?.slug
+}
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -31,32 +36,28 @@ export async function GET(
         });}
       return 
     }
-
-    const organizationId = (session.user.role === "SUPER_ADMIN")? id : session?.user?.organizationId || null;
-    if (!organizationId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const organizationSlug = await getSlug(id);
+    if (!organizationSlug) return;
     let settings = await prisma.organizationSettings.findUnique({
-      where: { organizationId },
+      where: { organizationSlug },
       include: {
-        organization:{
+        organization: {
           include: { businessHours: true },
-        }
+        },
       },
     });
 
     if (!settings){
   settings = await prisma.organizationSettings.create({
-   data: { organizationId },
-   include: {
-     organization: {
-       include: {
+    data: { organizationSlug },
+    include: {
+      organization: {
+        include: {
           businessHours: true,
-       },
-     },
-   },
- });
+        },
+      },
+    },
+  });
     }
 
     return NextResponse.json(settings || {});
@@ -95,11 +96,13 @@ export async function PUT(
 
     const body = await request.json();
     const data = updateOrganizationSettingsSchema.parse(body) as any;
-
+const organizationSlug = await getSlug(id);
+if (!organizationSlug) return;
     const settings = await prisma.organizationSettings.upsert({
-      where: { organizationId: id },
+      where: { organizationSlug },
       update: data,
       create: {
+        organizationSlug,
         organizationId: id,
         ...data,
       },

@@ -5,7 +5,7 @@ import type { CreateOrganizationInput, UpdateOrganizationInput } from "@/lib/val
 import { hasPermission, type UserRole, type Permission } from "@/lib/types";
 
 export class OrganizationService {
-  async create(data: CreateOrganizationInput, userId: string) {
+  async create(data: CreateOrganizationInput, userId?: string) {
     // Check if slug is already taken
     const existingSlug = await prisma.organization.findUnique({
       where: { slug: data.slug },
@@ -17,35 +17,13 @@ export class OrganizationService {
 
     const organization = await prisma.organization.create({
       data: {
-        ...data,
-        members: {
-          create: {
-            userId,
-            isActive: true,
-          },
-        },
-      },
-      include: {
-        members: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                role: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-              },
-            },
-          },
-        },
-      },
+        ...data
+      }
     });
 
     // Update user's isTeamMember flag
     // TODO: Filter SUPER_ADMIN
-    {
+    if(userId){
       await prisma.user.update({
         where: { id: userId },
         data: { isTeamMember: true, role: "ADMIN" },
@@ -124,6 +102,7 @@ export class OrganizationService {
     search?: string;
   }) {
     const { page = 1, pageSize = 20, type, isActive, search } = params;
+//console.log("----------------list organizations----------params", params);
 
     const where: Record<string, unknown> = {};
 

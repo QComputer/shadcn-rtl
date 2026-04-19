@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("----------------dashboard route session:", session);
+    //console.log("----------------dashboard route session:", session);
     
     const user = session.user;
     const userRole = user.role as UserRole;
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
           },
         },
       });
-      console.log("------------------------------>membership", membership);
+      //console.log("------------------------------>membership", membership);
       
       // TODO: check user.organizationId == membership.organization.id
       if (membership) {

@@ -458,11 +458,17 @@ export const dashboardNavItems: NavItem[] = [
     icon: "Settings",
     requiredRoles: ["ADMIN", "MANAGER"],
   },
-
   {
     id: "users",
     labelKey: "navigation.users",
     href: "/dashboard/users",
+    icon: "Users",
+    requiredRoles: ["SUPER_ADMIN"],
+  },
+  {
+    id: "users",
+    labelKey: "navigation.users",
+    href: "/dashboard/organizations",
     icon: "Users",
     requiredRoles: ["SUPER_ADMIN"],
   },
@@ -480,12 +486,12 @@ export function filterNavItems(
     if (item.isUniversal) {
       return true
     }
-/*
+
     // SUPER_ADMIN sees everything
     if (context.userRole === "SUPER_ADMIN") {
       return true
     }
-*/
+
     // Check role requirement
     if (item.requiredRoles && !item.requiredRoles.includes(context.userRole)) {
       return false

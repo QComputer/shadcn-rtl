@@ -898,8 +898,8 @@ model OrganizationSettings {
   organizationId String @unique
 
   // General settings
-  settings   Json // Flexible configuration store
-  currency   String @default("USD")
+  settings   Json? // Flexible configuration store
+  currency   String? @default("IRR")
   dateFormat String @default("YYYY-MM-DD")
   timeFormat String @default("24h")
 
@@ -911,7 +911,7 @@ model OrganizationSettings {
   enableDelivery     Boolean  @default(true)
 
   // Notification settings
-  emailNotifications Boolean @default(true)
+  emailNotifications Boolean @default(false)
   smsNotifications   Boolean @default(false)
 
   createdAt DateTime @default(now())

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("----------------notification route session:", session);
+    //console.log("----------------notification route session:", session);
     
     const user = session.user;
 
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       where: {targetUserId: user.id, seen: false},
       data: {seen: true}
     })
-console.log("----------notifications:", notifications);
+//console.log("----------notifications:", notifications);
 
 
     // Add user context to response

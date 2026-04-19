@@ -113,13 +113,13 @@ interface OrdersResponse {
 const statusConfig: Record<string, { label: string; icon: typeof Clock; color: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   PENDING: { label: "در انتظار", icon: Clock, color: "bg-yellow-500", variant: "secondary" },
   PLACED: { label: "ثبت شده", icon: Package, color: "bg-blue-200", variant: "default" },
-  ACCEPTED: { label: "پذیرفته شده", icon: CheckCircle, color: "bg-green-200", variant: "default" },
-  PREPARING: { label: "در حال آماده‌سازی", icon: Package, color: "bg-purple-500", variant: "default" },
-  READY: { label: "آماده", icon: CheckCircle, color: "bg-green-500", variant: "default" },
-  PICKED_UP: { label: "پیکاپ شده", icon: Truck, color: "bg-blue-500", variant: "default" },
-  DELIVERED: { label: "تحویل داده شده", icon: CheckCircle, color: "bg-green-600", variant: "default" },
+  ACCEPTED: { label: "پذیرفته شده", icon: CheckCircle, color: "bg-green-400 text-green-800", variant: "outline" },
+  PREPARING: { label: "در حال آماده‌سازی", icon: Package, color: "bg-purple-500", variant: "outline" },
+  READY: { label: "آماده", icon: CheckCircle, color: "bg-green-600", variant: "outline" },
+  PICKED_UP: { label: "پیکاپ شده", icon: Truck, color: "bg-blue-500", variant: "outline" },
+  DELIVERED: { label: "تحویل داده شده", icon: CheckCircle, color: "bg-green-700", variant: "outline" },
   CANCELLED: { label: "لغو شده", icon: XCircle, color: "bg-red-500", variant: "destructive" },
-  RECEIVED: { label: "دریافت شده", icon: CheckCircle, color: "bg-green-700", variant: "default" },
+  RECEIVED: { label: "دریافت شده", icon: CheckCircle, color: "bg-green-800", variant: "outline" },
   REFUNDED: { label: "بازپرداخت شده", icon: XCircle, color: "bg-orange-500", variant: "destructive" },
 }
 
@@ -199,7 +199,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
       const data: OrdersResponse = await response.json()
 
       setOrders(data.data)
-      console.log(data.data);
+      //console.log(data.data);
       
       setTotal(data.total)
       setTotalPages(data.totalPages)
@@ -288,7 +288,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
   }
 
   const handleSavePreparationEstimatedEndTime = async (orderId: string, preparationTime?: string) => {
-    console.log("setting preparationTime as--->", preparationTime);
+    //console.log("setting preparationTime as--->", preparationTime);
     setUpdating(true)    
     setSavingPreparationTime(true)
 
@@ -317,7 +317,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
   }
   
   const addToPreparationEstimatedEndTime = async (minutes: number) => {
-    console.log(`add ${minutes} minutes to preparationTime `, preparationTime);
+    //console.log(`add ${minutes} minutes to preparationTime `, preparationTime);
     setPreparationTime(preparationTime?.add(minutes, 'minute') || null)
   }
 
@@ -427,6 +427,9 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
           {orders.map((order) => {
             const status = statusConfig[order.status]
             const StatusIcon = status.icon
+            const statusColor = status.color
+            const StatusLabel = status.label
+
             
             return (
               <Card onClick={() => handleViewOrder(order)} key={locale+order.id} className="hover:shadow-md transition-shadow">
@@ -434,7 +437,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                       <div className={`p-2 rounded-full ${status.color}`}>
-                        <StatusIcon className="h-5 w-5 text-white" />
+                        <StatusIcon className={"h-5 w-5" + status.color} />
                       </div>
                       <div>
                         <p className="font-bold">{order.orderNumber}</p>
@@ -460,7 +463,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                           </div>
                         )}
                       </div>
-                      <Badge variant={status.variant}>
+                      <Badge variant={status.variant} className={status.color}>
                         {status.label}
                       </Badge>
 

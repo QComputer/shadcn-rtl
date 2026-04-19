@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { useTheme } from "@/hooks/use-theme"
-import { Organization } from "@prisma/client"
+import { BusinessHour, Organization, OrganizationSettings } from "@prisma/client"
 import { ShopStatusBadge } from "@/components/ShopStatusBadge"
+import { useAuth } from "@/hooks/use-auth"
 
 interface ImageRecord {
   id: number;
@@ -28,8 +29,10 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(true)
+  const [savingSettings, setSavingSettings] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [businessHours, setBusinessHours] = useState<BusinessHour|null>()
   
   const [coverImage, setCoverImage] = useState("")
   const [logo, setLogo] = useState("")
@@ -38,8 +41,10 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   const [progress, setProgress] = useState<number>(0);
   
   const [organization, setOrganization ] = useState<Organization|null>(null)
+  const [settings, setSettings ] = useState<OrganizationSettings|null>(null)
 
   // Form state
+  const { user, organizationMembership, isLoading: authLoading } = useAuth()
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [email, setEmail] = useState("")
@@ -48,7 +53,6 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   const [selectedTheme, setSelectedTheme] = useState("system")
 
   const [isOpen, setIsOpen] = useState(true)
-
     useEffect(() => {
       setMounted(true)
       
@@ -63,17 +67,16 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
     setLoading(true)
 
     // Fetch user profile
-    fetch("/api/users/me")
+    fetch(`/api/organizations/${organizationMembership?.id}/settings`)
       .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch user profile")
+        if (!res.ok) throw new Error("Failed to fetch organization settings")
         return res.json()
       })
-      .then(data => {
-        console.log("prev isOpen:", isOpen);
-        console.log(data.memberOf.organization.isOpen);
-        
-      setOrganization(data.memberOf.organization)
-      setIsOpen(data.memberOf.organization.isOpen)
+      .then(settings => {
+      setSettings(settings)
+      setOrganization(settings.organization)
+      setBusinessHours(settings.organization.businessHours)
+      setIsOpen(settings.organization?.isOpen || false)
         setLoading(false)
         setSaving(false)
       })
@@ -270,6 +273,10 @@ const handleOpen = async (e: React.FormEvent) => {
     )
   }
 
+  const handleSaveSettings = async()=> {
+    return
+  }
+
   return (
     <div className="p-4 lg:p-6 space-y-6">
 
@@ -301,7 +308,31 @@ const handleOpen = async (e: React.FormEvent) => {
        </Button>
         </CardFooter>
       </Card>
+      <Card>
+        <CardHeader>
+          تنظیمات:
+        </CardHeader>
+
+      <CardContent>
       
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+      
+       {organization && <p>{organization?.name || "noname"}</p>}
+      </div>
+        </CardContent>
+        
+
+      <CardFooter>
+        <div className="flex items-center">
+        <Button 
+        onClick={handleSaveSettings}
+        disabled={savingSettings}
+        >
+          {savingSettings ? "ذخیره کردن..." : " ذخیره" }
+        </Button>
+        </div>
+        </CardFooter>
+      </Card>
       <Card>
         <CardHeader>
           تصاویر:

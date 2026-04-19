@@ -91,16 +91,16 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     const customerId = session?.user?.id;
     const data = createOrderSchema.parse(body);
-    console.log("------------------data:", data);
+    //console.log("------------------data:", data);
     
     if (customerId) {
       const order = await orderService.create(data, customerId);
-    console.log("-------------------------->order:", order);
+    //console.log("-------------------------->order:", order);
     return NextResponse.json(order, { status: 201 });
     } else {
       const sessionId = getSessionId(request);
       const order = await orderService.createForGuest(data, sessionId);
-    console.log("-------------------------->order:", order);
+    //console.log("-------------------------->order:", order);
     
     return NextResponse.json(order, { status: 201 });
     }

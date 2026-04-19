@@ -22,7 +22,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    console.log("----------------------body", body);
+    //console.log("----------------------body", body);
     
     const data = updateOrganizationSchema.parse(body);
 

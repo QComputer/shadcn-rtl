@@ -70,8 +70,6 @@ export function DashboardSidebar({
 
   useEffect(() => {
     setMounted(true)
-    console.log("-----------------------user",user);
-    console.log("-----------------------organizationMembership",organizationMembership);
     
   }, [])
 
@@ -120,7 +118,7 @@ export function DashboardSidebar({
           
           return (
             <Link
-              key={locale+item.id}
+              key={item.id+"ashboard-sidebar"}
               href={`/${locale}${item.href}`}
               onClick={() => isMobile && onOpenChange?.(false)}
               className={cn(

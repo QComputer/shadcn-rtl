@@ -121,7 +121,7 @@ export async function PATCH(
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-console.log("--------------->api/orders/[id]/route>PATCH:", order);
+//console.log("--------------->api/orders/[id]/route>PATCH:", order);
 
     const product = await orderService.updateEstimatedEndTime(id, session.user.role, type, new Date(estimatedEndTime), session.user.id);
 

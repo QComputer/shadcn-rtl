@@ -104,7 +104,7 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
         const data = await response.json()
   
         setUsers(data.data)
-        console.log("------------------------>Users",data.data);
+        //console.log("------------------------>Users",data.data);
         
       } catch (err) {
         console.error("Error fetching orders:", err)
@@ -127,7 +127,7 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
         const data = await response.json()
   
         setOrganizations(data.data)
-        console.log("------------------------>organizations",data.data);
+        //console.log("------------------------>organizations",data.data);
         
       } catch (err) {
         console.error("Error fetching organizations:", err)
@@ -192,7 +192,7 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
         throw new Error("Failed to update user organization membership")
       }
       const data = await response.json()
-      console.log("-------------------------->response:",data);
+      //console.log("-------------------------->response:",data);
       
       setLoading(true)
       fetchUsers()

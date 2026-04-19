@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { useTheme } from "@/hooks/use-theme"
-        import { toast } from 'react-toastify';
+import { toast } from 'react-toastify';
 
 interface UserProfile {
   id: string
@@ -52,6 +52,8 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
   
   // Form state
   const [firstName, setFirstName] = useState("")
+  const [orgName, setOrgName] = useState("")
+  const [orgSlug, setOrgSlug] = useState("")
   const [lastName, setLastName] = useState("")
   const [phone, setPhone] = useState("")
   const [selectedLocale, setSelectedLocale] = useState(locale)
@@ -96,6 +98,16 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
     return getDictValue(dict, key)
   }
 
+  const handleCreateOrg = async () => {
+    await fetch('api/organizations/create',{
+      method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: orgName,
+          slug: orgSlug
+        }),
+    })
+  }
   const handleSaveProfile = async () => {
     setSaving(true)
     setError(null)
@@ -240,7 +252,23 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
           {error}
         </div>
       )}
-
+{!user?.memberOf && <div>
+  <div>فروشگاه خود را بسازید</div>
+  <div className="flex gap-4">
+  <Input
+  value={orgName}
+  onChange={(e) => setOrgName(e.target.value)}
+  placeholder="نام"
+  />
+  <Input
+  value={orgSlug}
+  onChange={(e) => setOrgSlug(e.target.value)}
+  placeholder="اسلاگ"
+  />
+  <Button onClick={handleCreateOrg}>
+ سازمان خود را بسازید
+  </Button>
+  </div></div>}
       {/* Settings Tabs */}
       <Tabs defaultValue="profile" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">

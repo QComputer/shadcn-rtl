@@ -40,7 +40,7 @@ export async function DELETE(
     await fs.access(filepath, fs.constants.F_OK); // Throws if file doesn't exist
     await fs.unlink(filepath); // Delete the file
 
-    console.log(`Successfully deleted file: ${filepath}`);
+    //console.log(`Successfully deleted file: ${filepath}`);
   } catch (error: any) {
     console.error(`Error deleting file ${image.url}:`, error);
 

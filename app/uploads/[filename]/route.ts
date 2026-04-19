@@ -21,7 +21,7 @@ request: NextRequest,
   }
 
   const filePath = path.join(process.cwd(), "../uploads", filename);
-  console.log(`Attempting to serve file: ${filePath}`);
+  //console.log(`Attempting to serve file: ${filePath}`);
 
   try {
     if (!fs.existsSync(filePath)) {

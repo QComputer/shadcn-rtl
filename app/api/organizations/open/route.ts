@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
         where: {id: session.user?.organizationId},
         data: {isOpen: true}
     })
-    console.log("-----api/rganization.GET----------organization", organization);
+    //console.log("-----api/rganization.GET----------organization", organization);
     
     return NextResponse.json(organization);
 }
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
          data: { isOpen:  body.isOpen},
        });
 
-    console.log("------api/rganization.POST---------organization", organization);
+    //console.log("------api/rganization.POST---------organization", organization);
 
        return NextResponse.json(organization);
 }

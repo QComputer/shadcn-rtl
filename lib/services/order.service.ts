@@ -284,7 +284,7 @@ export class OrderService {
     });
     
     await order.organization.members.map(async (m) => {
-      console.log("----------member:", m);
+      //console.log("----------member:", m);
 
       const notification = await prisma.notification.create({
         data: {
@@ -293,7 +293,7 @@ export class OrderService {
           seen: false,
         },
       });
-      console.log("-------notification:", notification);
+      //console.log("-------notification:", notification);
     });
 
     revalidatePath(`/dashboard/orders`);
@@ -520,7 +520,7 @@ export class OrderService {
       });
 
       newOrder.organization.members.map(async (m) => {
-        console.log("----------member:", m);
+        //console.log("----------member:", m);
         const notification = await tx.notification.create({
           data: {
             targetUserId: m.userId,
@@ -528,14 +528,14 @@ export class OrderService {
             seen: false,
           },
         });
-        console.log("-------notification:", notification);
+        //console.log("-------notification:", notification);
         });
      
 
       return newOrder;
     });
 await order.organization.members.map(async (m) => {
-  console.log("----------member:", m);
+  //console.log("----------member:", m);
 
   const notification = await prisma.notification.create({
     data: {
@@ -544,7 +544,7 @@ await order.organization.members.map(async (m) => {
       seen: false,
     },
   });
-  console.log("-------notification:", notification);
+  //console.log("-------notification:", notification);
 });
     revalidatePath(`/dashboard/orders`);
     revalidatePath(`/organization/${order.organization.slug}/orders`);

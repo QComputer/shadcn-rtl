@@ -272,7 +272,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
       }
       
       const order: Order = await response.json()
-      console.log("-----------------------Driver-Order> Accepted order:", order);
+      //console.log("-----------------------Driver-Order> Accepted order:", order);
       fetchOrders()
   }
 
@@ -306,7 +306,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
   }
     
 useEffect(()=>{
-      console.log("-----------------------orders:", orders);
+      //console.log("-----------------------orders:", orders);
 },[orders])
 
   useEffect(() => {
@@ -342,7 +342,7 @@ useEffect(()=>{
       if (statusFilter && statusFilter !== "all") {
         params.set("status", statusFilter)
       }
-      console.log("-----------------------params:", params.toString());
+      //console.log("-----------------------params:", params.toString());
       
       const response = await fetch(`/api/orders?${params.toString()}`)
       
@@ -351,7 +351,7 @@ useEffect(()=>{
       }
       
       const data: OrdersResponse = await response.json()
-      console.log("-----------------------OrdersResponse:", orders);
+      //console.log("-----------------------OrdersResponse:", orders);
       
       setOrders(data.data)
       setTotal(data.total)

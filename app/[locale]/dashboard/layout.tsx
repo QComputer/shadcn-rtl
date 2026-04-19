@@ -16,12 +16,13 @@ export default function DashboardLayout({
   const resolvedParams = use(params)
   const locale = resolvedParams.locale
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [loading, setLoading]=useState(false)
+  const [loading, setLoading] = useState(false)
+  const [triggerNotification, setTriggerNotification] = useState(true)
 
   // Fetch dashboard data
-      const fetchDashboardData = async () => {
-        setLoading(true)
-        const audio = new Audio('/Alarm10.wav'); // Path relative to the public folder
+    const fetchDashboardData = async () => {
+      setLoading(true)
+      const audio = new Audio('/Alarm10.wav'); // Path relative to the public folder
 
       try {
         const response = await fetch("/api/dashboard/notifications")
@@ -58,11 +59,13 @@ export default function DashboardLayout({
       } finally {
         setLoading(false)
       }
+      setTriggerNotification(false)
+      setTimeout(fetchDashboardData,500000)
     }
-  useEffect(() => {
+    useEffect(() => {
     // set Update Freequency
-    !loading && setTimeout(fetchDashboardData,500000)
-  }, [loading])
+    triggerNotification == true && fetchDashboardData()
+  }, [])
 
   return (
     <ToastProvider> {/* Wrap everything with ToastProvider */}

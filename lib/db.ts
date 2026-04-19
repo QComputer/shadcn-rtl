@@ -10,7 +10,7 @@ export const prisma =
     log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
   });
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+//if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
 // Soft delete helper functions
 // Note: Prisma 6.x removed the $use middleware. Soft delete must be handled at the service layer.

@@ -49,3 +49,5 @@ next-env.d.ts
 /public/uploads
 /uploads
 /plans
+/*.zip
+/*.rar

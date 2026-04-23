@@ -36,7 +36,8 @@ export async function GET(
         });}
       return 
     }
-    const organizationSlug = await getSlug(id);
+    const organizationSlug = (session.user.role == "SUPER_ADMIN") ?  await getSlug(id) : (session.user.organizationId) ? await getSlug(session.user.organizationId) : null ;
+
     if (!organizationSlug) return;
     let settings = await prisma.organizationSettings.findUnique({
       where: { organizationSlug },
@@ -48,7 +49,7 @@ export async function GET(
     });
 
     if (!settings){
-  settings = await prisma.organizationSettings.create({
+    settings = await prisma.organizationSettings.create({
     data: { organizationSlug },
     include: {
       organization: {
@@ -80,7 +81,7 @@ export async function PUT(
     if (!session?.user?.id || !session?.user?.role) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    
+
     const organizationId =
       session.user.role === "SUPER_ADMIN"
         ? id
@@ -88,7 +89,6 @@ export async function PUT(
     if (!organizationId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    
 
     if (!hasPermission(session.user.role, "org:update")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -96,14 +96,18 @@ export async function PUT(
 
     const body = await request.json();
     const data = updateOrganizationSettingsSchema.parse(body) as any;
-const organizationSlug = await getSlug(id);
-if (!organizationSlug) return;
+    const organizationSlug =
+      session.user.role == "SUPER_ADMIN"
+        ? await getSlug(id)
+        : session.user.organizationId
+          ? await getSlug(session.user.organizationId)
+          : null;
+    if (!organizationSlug) return;
     const settings = await prisma.organizationSettings.upsert({
       where: { organizationSlug },
       update: data,
       create: {
         organizationSlug,
-        organizationId: id,
         ...data,
       },
     });

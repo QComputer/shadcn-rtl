@@ -99,14 +99,46 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
   }
 
   const handleCreateOrg = async () => {
-    await fetch('api/organizations/create',{
+        setSaving(true)
+    setError(null)
+    setSuccess(null)
+    try{
+      const response = await fetch(`/api/organizations/`,{
       method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: orgName,
-          slug: orgSlug
+          slug: orgSlug,
+          type: "SHOP"
         }),
     })
+    if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to save")
+      }
+      
+      const updatedUser = await response.json()
+      setUser(prev => prev ? { ...prev, ...updatedUser } : null)
+       toast.success('فروشگاه شما با موفقیت ثبت شد!', {
+            position: 'top-center', // Position of the toast
+            autoClose: 5000, // Close after 5 seconds
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+          });
+      setSuccess('فروشگاه شما با موفقیت ثبت شد! لطفا خارج شده و دوباره وارد پنل مدیریت شوید')
+      
+      // If locale changed, redirect to new locale
+      if (selectedLocale !== locale) {
+        router.push(`/${selectedLocale}/dashboard/settings`)
+      }
+  } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save")
+    } finally {
+      setSaving(false)
+    }
   }
   const handleSaveProfile = async () => {
     setSaving(true)
@@ -223,7 +255,7 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
           <CardContent className="py-8 text-center">
             <p className="text-destructive">{error}</p>
             <Button className="mt-4" onClick={() => window.location.reload()}>
-              Retry
+              تلاش دوباره
             </Button>
           </CardContent>
         </Card>
@@ -253,7 +285,7 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
         </div>
       )}
 {!user?.memberOf && <div>
-  <div>فروشگاه خود را بسازید</div>
+  <div className="p-2">فروشگاه خود را بسازید</div>
   <div className="flex gap-4">
   <Input
   value={orgName}

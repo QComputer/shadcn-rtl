@@ -32,6 +32,7 @@ import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import { useAuth, useDashboardAccess } from "@/hooks/use-auth"
 import { OrganizationMember, User } from "@prisma/client"
+import { toPersianDigits } from "@/lib/persian"
 
 interface Member {
   id: string
@@ -58,21 +59,6 @@ interface Organization {
   coverImage: string | null
 }
 
-// Persian number helper
-function toPersianDigits(str: string | number): string {
-  const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
-  return String(str)
-    .split("")
-    .map((char) => (/\d/.test(char) ? persianDigits[parseInt(char)] : char))
-    .join("");
-}
-
-function formatToman(amount: number): string {
-  return toPersianDigits(amount.toLocaleString("fa-IR")) + " تومان";
-}
-
-
-
 export default function OganizationsPage({ params }: { params: Promise<{ locale: string }> }) {
   const resolvedParams = use(params)
   const locale = resolvedParams.locale || "fa"
@@ -82,11 +68,30 @@ export default function OganizationsPage({ params }: { params: Promise<{ locale:
   
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [error, setError] = useState("")
   //const [members, setMembers] = useState<User[]>([])
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
 
   const [loading, setLoading] = useState(true)
+
+  const handleDelete = async (organizationId: string) =>{
+    setLoading(true);
+    try{
+    const response = await fetch(`/api/organizations/${organizationId}`,{
+      method: "DELETE"
+    });
+       if (!response.ok) {
+          throw new Error("Failed to delete organization "+organizationId)
+        }
+    } catch(err) {
+        console.error("Error fetching dashboard:", err)
+        setError(err instanceof Error ? err.message: "خطا در حذف سازمان")
+    } finally{
+    setLoading(false);
+    }
+
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -127,7 +132,7 @@ export default function OganizationsPage({ params }: { params: Promise<{ locale:
     : []
 
   // Show loading state while checking access
-  if (!mounted) {
+  if (!mounted || loading) {
     return (
       <div className="p-6 space-y-4">
         <div className="h-10 bg-muted rounded w-1/4" />
@@ -216,7 +221,7 @@ export default function OganizationsPage({ params }: { params: Promise<{ locale:
                     <Edit className="h-4 w-4 ml-2" />
                     {t("common.edit") || "ویرایش"}
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="text-destructive">
+                  <DropdownMenuItem className="text-destructive" onClick={()=>handleDelete(org.id)}>
                     <Trash2 className="h-4 w-4 ml-2" />
                     {t("common.delete") || "حذف"}
                   </DropdownMenuItem>

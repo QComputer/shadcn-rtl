@@ -116,6 +116,7 @@ export default function ShopPage({
   const [data, setData] = useState<ShopData | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadingSilently, setLoadingSilently] = useState(true)
+  const [trigger, setTrigger] = useState(false)
   const [isOpen, setIsOpen] = useState(true)
   const [error, setError] = useState<string | null>(null)  
 
@@ -137,35 +138,30 @@ export default function ShopPage({
   const handleAddToCart = async (product: Product | null) => {
     if (!product) return
     
-    if (product.variants.length > 1){
+    if (product.variants?.length > 1){
+    //console.log('-------product:',product);
+
+      setAddingToCart(product.id)
       setSelectedProduct(product)
       return
     }
     
+    //console.log('-------product:',product);
     const variantId = product.variants[0]?.id 
-    
     if (!variantId) return
 
     setAddingToCart(product.id)
-    try {
-      await addToCart(variantId, 1)
-      setAddedToCart_VariantId(variantId)
-      setTimeout(() => setAddedToCart_VariantId(null), 3000)
-    } catch (err) {
-      console.error("Error adding to cart:", err)
-    } finally {
-      setAddingToCart(null)
-    }
+    handleAddVariantToCart(variantId)
+    setAddingToCart(null)
   }
 
   const handleAddVariantToCart = async (variantId: string) => {
       setAddingToCart_VariantId(variantId)
-    
-try {
+      try {
       await addToCart(variantId, 1)
       setAddedToCart_VariantId(variantId)
       setTimeout(() => setAddedToCart_VariantId(null), 3000)
-      setTimeout(() => setSelectedProduct(null), 1000)
+      setTimeout(() => setSelectedProduct(null), 600)
     } catch (err) {
       console.error("Error adding to cart:", err)
     } finally {
@@ -223,24 +219,26 @@ try {
       try {
    
       const response = await fetch(`/api/public/organizations/${slug}/shop`)
-              if (!response.ok) {
-          throw new Error("Failed to fetch dashboard data")
-        }
-        const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch shop data")
+      }
+      const data = await response.json()
+      if (!data.organization) {
+        throw new Error("Failed to fetch shop data")
+      }
+      //console.log("------------------------shop data response", data);
         setData(data)
-        /*
-        if (isOpen !== data?.organization.isOpen){
-        }
-*/
-        setIsOpen(data?.organization.isOpen || false)
+
+      setIsOpen(data?.organization?.isOpen || false)
     } catch (err) {
         console.error("Error fetching shop public:", err)
         setLoadingSilently(false)
-
       } finally {
         setLoadingSilently(false)
-        
-      }  
+      }
+      setTrigger(false)
+      setTimeout(fetchDataSilently,10000)
     }
 
       
@@ -268,18 +266,13 @@ try {
         setError(err.message)
         setLoading(false)
       })
-      setTimeout(fetchDataSilently,10000)
+      trigger && fetchDataSilently()
 
   }, [locale, slug])
 
-    useEffect(() => {
-    // set Update Freequency
-    !loadingSilently && setTimeout(fetchDataSilently,5000)
-  }, [loadingSilently])
-
   // Get display price
   const getDisplayPrice = (product: Product): number => {
-    if (product.variants.length > 0 && product.variants[0].price) {
+    if (product.variants?.length > 0 && product.variants[0].price) {
       return product.variants[0].price
     }
     return product.basePrice
@@ -287,10 +280,10 @@ try {
 
   // Get total inventory
   const getTotalInventory = (product: Product): number => {
-    return product.variants.reduce((sum, v) => sum + v.inventory, 0)
+    return product.variants?.length>0 ? product.variants.reduce((sum, v) => sum + v.inventory, 0) : 0
   }
 
-  if (!mounted || loading) {
+  if (!mounted || loading || !data) {
     return (
       <div className="min-h-screen bg-background">
         <Skeleton className="h-96 w-full" />
@@ -335,7 +328,7 @@ try {
       {/* Hero Section */}
       <section className="relative h-80 ">
         <div className="absolute inset-0 " />
-        {data.organization.coverImage && (
+        {data?.organization?.coverImage && (
             <img
               src={data.organization.coverImage}
               alt={data.organization.name+"cover image"}
@@ -344,20 +337,23 @@ try {
             )}
         <div className="container mx-auto px-2 relative z-10">
          
-              <div className="w-20 h-20 rounded-full  overflow-hidden -mt-35 mr-3 bg-card ">
+              <div 
+              className={isOpen ? "w-25 h-25 rounded-full border-2  overflow-hidden -mt-58 mx-5 bg-card mb-5 border-green-500": "w-25 h-25 rounded-full border-2  overflow-hidden -mt-58 mx-5 bg-card mb-5 border-destructive"}>
                 <img 
                   src={data.organization?.logo || "logo"} 
-                  alt={data.organization.name+"logo"}
+                  alt={data.organization?.name+"logo"}
                   className="w-full h-full object-cover"
                 />
               </div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-3 mx-3 flex gap-4">
-              {data.organization.name}
-              <ShopStatusBadge isOpen={data.organization.isOpen}/>
+            <h1 className="text-2xl md:text-3xl font-bold mb-3 flex gap-4">
+              {data.organization?.name}
+              <p className="px-3">
+              <ShopStatusBadge isOpen={data.organization?.isOpen}/>
+              </p>
               
             </h1>
-            {data.organization.description && (
-              <p className="text-muted-foreground mb-4">
+            {data.organization?.description && (
+              <p className="text-muted-foreground text-sm mb-3 px-1">
                 {data.organization.description}
               </p>
             )}
@@ -384,7 +380,7 @@ try {
         <div className="container mx-auto px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap gap-3 text-sm">
-              {data.organization.phone && (
+              {data.organization?.phone && (
                 <a 
                   href={`tel:${data.organization.phone}`} 
                   className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -393,7 +389,7 @@ try {
                   <span>{data.organization.phone}</span>
                 </a>
               )}
-              {data.organization.address && (
+              {data.organization?.address && (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <MapPin className="h-4 w-4" />
                   <span>{data.organization.address}</span>
@@ -437,7 +433,7 @@ try {
           </div>
 
           {/* Categories Quick Links */}
-          {data.categories.length > 0 && (
+          {data.categories.length > 1 && (
             <div className="flex flex-wrap gap-2 mb-6">
               <Button
                   variant={"all" == selectedCategory ? "default" : "outline"} 
@@ -610,7 +606,7 @@ try {
                                 disabled={addingToCart == product.id}
                                 onClick={() => handleAddToCart(product)}
                               >
-                                {addedToCart_VariantId == product.variants[0]?.id ? (
+                                {(product.variants?.length>0 && addedToCart_VariantId == product.variants[0]?.id) ? (
                                   <>
                                     اضافه شد
                                     <Check className="h-5 w-5" />

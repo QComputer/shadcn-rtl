@@ -83,7 +83,7 @@ export async function POST(
     );
   }
 }
-
+/*
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -100,7 +100,7 @@ export async function PUT(
     const memberShip = await prisma.organizationMember.upsert({
       where: { userId: userId },
       update: { organizationId: id, isActive: true },
-      create: { organizationId: id, userId: userId, isActive: true },
+      create: { organizationId: id, organizationSlug, userId: userId, isActive: true },
     });
 
     const user = await prisma.user.update({
@@ -119,3 +119,4 @@ export async function PUT(
     );
   }
 }
+*/

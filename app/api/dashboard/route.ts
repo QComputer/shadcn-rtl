@@ -29,14 +29,20 @@ export async function GET(request: NextRequest) {
     const user = session.user;
     const userRole = user.role as UserRole;
     const isTeamMember = user.isTeamMember ?? false;
-    const organizationId = user.organizationId as string | null;
+    const organizationId = user.organizationId ?? null;
 
     // Get organization membership details
     let organizationType: OrganizationType | null = null;
+      const org = organizationId ? await prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: {
+          slug: true,
+        }
+      }) : null;
 
-    if (organizationId) {
+    if (org) {
       const membership = await prisma.organizationMember.findFirst({
-        where: { userId: user.id, organizationId },
+        where: { userId: user.id, organizationId: org.id, organizationSlug: org.slug },
         include: {
           organization: {
             select: {
@@ -47,8 +53,8 @@ export async function GET(request: NextRequest) {
           },
         },
       });
-      //console.log("------------------------------>membership", membership);
-      
+      console.log("------------------------------>membership", membership);
+
       // TODO: check user.organizationId == membership.organization.id
       if (membership) {
         organizationType = membership.organization.type;
@@ -244,40 +250,51 @@ async function getShopDashboard(organizationId: string) {
     completedOrders,
     cancelledOrders,
   ] = await Promise.all([
-    prisma.order.count({ where: { organizationId } }),
-    prisma.product.count({ where: { organizationId } }),
+    prisma.order.count({ where: { organizationSlug: organization.slug } }),
+    prisma.product.count({ where: { organizationSlug: organization.slug } }),
     prisma.order.groupBy({
       by: ["customerId"],
-      where: { organizationId },
+      where: { organizationSlug: organization.slug },
       _count: { customerId: true },
     }),
-    prisma.organizationMember.count({ where: { organizationId } }),
+    prisma.organizationMember.count({
+      where: { organizationId, organizationSlug: organization.slug },
+    }),
     prisma.order.count({
       where: {
-        organizationId,
+        organizationSlug: organization.slug,
         status: { in: [OrderStatus.PENDING, OrderStatus.PLACED] },
       },
     }),
     prisma.order.count({
-      where: { organizationId, status: OrderStatus.ACCEPTED },
-    }),
-    prisma.order.count({
-      where: { organizationId, status: OrderStatus.PREPARING },
+      where: {
+        organizationSlug: organization.slug,
+        status: OrderStatus.ACCEPTED,
+      },
     }),
     prisma.order.count({
       where: {
-        organizationId,
+        organizationSlug: organization.slug,
+        status: OrderStatus.PREPARING,
+      },
+    }),
+    prisma.order.count({
+      where: {
+        organizationSlug: organization.slug,
         status: { in: [OrderStatus.READY, OrderStatus.PICKED_UP] },
       },
     }),
     prisma.order.count({
       where: {
-        organizationId,
+        organizationSlug: organization.slug,
         status: { in: [OrderStatus.DELIVERED, OrderStatus.RECEIVED] },
       },
     }),
     prisma.order.count({
-      where: { organizationId, status: OrderStatus.CANCELLED },
+      where: {
+        organizationSlug: organization.slug,
+        status: OrderStatus.CANCELLED,
+      },
     }),
   ]);
 
@@ -289,11 +306,14 @@ async function getShopDashboard(organizationId: string) {
 
   const [todayOrders, todayRevenue] = await Promise.all([
     prisma.order.count({
-      where: { organizationId, createdAt: { gte: today, lt: tomorrow } },
+      where: {
+        organizationSlug: organization.slug,
+        createdAt: { gte: today, lt: tomorrow },
+      },
     }),
     prisma.order.aggregate({
       where: {
-        organizationId,
+        organizationSlug: organization.slug,
         createdAt: { gte: today, lt: tomorrow },
         status: { in: [OrderStatus.DELIVERED, OrderStatus.RECEIVED] },
       },
@@ -307,7 +327,7 @@ async function getShopDashboard(organizationId: string) {
 
   const weeklyOrders = await prisma.order.findMany({
     where: {
-      organizationId,
+      organizationSlug: organization.slug,
       createdAt: { gte: weekAgo },
     },
     select: {
@@ -320,11 +340,13 @@ async function getShopDashboard(organizationId: string) {
 
   // Get recent orders
   const recentOrders = await prisma.order.findMany({
-    where: { organizationId },
+    where: { organizationSlug: organization.slug },
     take: 10,
     orderBy: { createdAt: "desc" },
     include: {
-      customer: { select: { name: true, firstName: true, lastName: true, phone: true } },
+      customer: {
+        select: { name: true, firstName: true, lastName: true, phone: true },
+      },
     },
   });
 
@@ -425,18 +447,29 @@ async function getAppointmentDashboard(organizationId: string) {
     prisma.appointment.count({ where: { service: { organizationId } } }),
     prisma.service.count({ where: { organizationId } }),
     prisma.serviceCategory.count({ where: { organizationId } }),
-    prisma.organizationMember.count({ where: { organizationId } }),
+    prisma.organizationMember.count({
+      where: { organizationId, organizationSlug: organization.slug },
+    }),
     prisma.appointment.count({
       where: { service: { organizationId }, status: AppointmentStatus.PENDING },
     }),
     prisma.appointment.count({
-      where: {  service: { organizationId }, status: AppointmentStatus.CONFIRMED },
+      where: {
+        service: { organizationId },
+        status: AppointmentStatus.CONFIRMED,
+      },
     }),
     prisma.appointment.count({
-      where: {  service: { organizationId }, status: AppointmentStatus.COMPLETED },
+      where: {
+        service: { organizationId },
+        status: AppointmentStatus.COMPLETED,
+      },
     }),
     prisma.appointment.count({
-      where: {  service: { organizationId }, status: AppointmentStatus.CANCELLED },
+      where: {
+        service: { organizationId },
+        status: AppointmentStatus.CANCELLED,
+      },
     }),
   ]);
 

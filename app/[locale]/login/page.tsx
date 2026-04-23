@@ -178,7 +178,7 @@ function LoginForm({ locale }: { locale: string }) {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label={showPassword ? "مخفف کردن رمز عبور" : "نمایش رمز عبور"}
+                    aria-label={showPassword ? "مخفی کردن رمز عبور" : "نمایش رمز عبور"}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -233,46 +233,13 @@ function LoginForm({ locale }: { locale: string }) {
                 </div>
               </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  setUsername("superadmin")
-                  setPassword("password123")
-                }}
-              >
-                { " سوپر ادمین"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  setUsername("denital-admin")
-                  setPassword("password123")
-                }}
-              >
-                { " ادمین کلینیک دندانپزشکی"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  setUsername("fariba")
-                  setPassword("password123")
-                }}
-              >
-                { "  ادمین سالن زیبایی"}
-              </Button>
                <Button
                 type="button"
                 variant="outline"
                 className="w-full"
                 onClick={() => {
                   setUsername("shop-admin")
-                  setPassword("password123")
+                  setPassword("123456")
                 }}
               >
                 { " ادمین فروشگاه سلامت"}

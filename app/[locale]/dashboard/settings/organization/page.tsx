@@ -1,5 +1,5 @@
 "use client"
-
+//TODO: complete the organization settings control
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import { Save, User, Bell, Lock, Palette, Globe, Loader2, X } from "lucide-react"
@@ -12,7 +12,6 @@ import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { useTheme } from "@/hooks/use-theme"
 import { BusinessHour, Organization, OrganizationSettings } from "@prisma/client"
 import { ShopStatusBadge } from "@/components/ShopStatusBadge"
-import { useAuth } from "@/hooks/use-auth"
 
 interface ImageRecord {
   id: number;
@@ -29,7 +28,9 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(true)
-  const [savingSettings, setSavingSettings] = useState(true)
+  const [savingSettings, setSavingSettings] = useState(false)
+  const [savingOrganization, setSavingOrganization] = useState(false)
+  const [savingImages, setSavingImages] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [businessHours, setBusinessHours] = useState<BusinessHour|null>()
@@ -44,10 +45,9 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   const [settings, setSettings ] = useState<OrganizationSettings|null>(null)
 
   // Form state
-  const { user, organizationMembership, isLoading: authLoading } = useAuth()
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
-  const [email, setEmail] = useState("")
+  const [address, setAddress] = useState("")
   const [phone, setPhone] = useState("")
   const [selectedLocale, setSelectedLocale] = useState(locale)
   const [selectedTheme, setSelectedTheme] = useState("system")
@@ -67,7 +67,7 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
     setLoading(true)
 
     // Fetch user profile
-    fetch(`/api/organizations/${organizationMembership?.id}/settings`)
+    fetch(`/api/organizations/noId/settings`)
       .then(res => {
         if (!res.ok) throw new Error("Failed to fetch organization settings")
         return res.json()
@@ -75,6 +75,10 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
       .then(settings => {
       setSettings(settings)
       setOrganization(settings.organization)
+      setName(settings.organization.name)
+      setAddress(settings.organization.address)
+      setPhone(settings.organization.phone)
+      setDescription(settings.organization.description)
       setBusinessHours(settings.organization.businessHours)
       setIsOpen(settings.organization?.isOpen || false)
         setLoading(false)
@@ -202,9 +206,10 @@ const handleOpen = async (e: React.FormEvent) => {
     });
   }
 
-  const handleSave = async () => {
+  
+  const handleSaveOrganization = async () => {
     if (!organization) return
-    setSaving(true)
+    setSavingOrganization(true)
     setError(null)
     setSuccess(null)
     try {
@@ -214,8 +219,45 @@ const handleOpen = async (e: React.FormEvent) => {
         body: JSON.stringify({
           name: name || undefined,
           description: description || undefined,
-          email: email || undefined,
+          address: address || undefined,
           phone: phone || undefined,
+        }),
+      })
+      
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to save")
+      }
+      
+      const updatedOrganization = await response.json()
+      setOrganization(updatedOrganization)
+      setName(updatedOrganization.name)
+      setAddress(updatedOrganization.address)
+      setPhone(updatedOrganization.phone)
+      setDescription(updatedOrganization.description)
+      setSuccess(t("common.success"))
+      
+      // If locale changed, redirect to new locale
+      if (selectedLocale !== locale) {
+        router.push(`/${selectedLocale}/dashboard/settings/organization`)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save updates")
+    } finally {
+      setSavingOrganization(false)
+    }
+  }
+
+  const handleSaveImages = async () => {
+    if (!organization) return
+    setSaving(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const response = await fetch(`/api/organizations/${organization.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           logo: logo || undefined,
           coverImage: coverImage || undefined
         }),
@@ -231,7 +273,7 @@ const handleOpen = async (e: React.FormEvent) => {
       
       // If locale changed, redirect to new locale
       if (selectedLocale !== locale) {
-        router.push(`/${selectedLocale}/dashboard/settings`)
+        router.push(`/${selectedLocale}/dashboard/settings/organization`)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save")
@@ -274,7 +316,35 @@ const handleOpen = async (e: React.FormEvent) => {
   }
 
   const handleSaveSettings = async()=> {
-    return
+    if (!organization) return
+    setSaving(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const response = await fetch(`/api/organizations/${organization.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+        }),
+      })
+      
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to save")
+      }
+      
+      const updatedUser = await response.json()
+      setSuccess(t("common.success"))
+      
+      // If locale changed, redirect to new locale
+      if (selectedLocale !== locale) {
+        router.push(`/${selectedLocale}/dashboard/settings/organization`)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save")
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -297,7 +367,7 @@ const handleOpen = async (e: React.FormEvent) => {
           وضعیت:
         </CardHeader>
         <CardContent className="">
-<ShopStatusBadge isOpen={isOpen}/>
+          <ShopStatusBadge isOpen={isOpen}/>
         </CardContent>
         <CardFooter className="flex p-4 gap-4">
           <Button onClick={handleOpen} className={"bg-green-500"}>
@@ -312,23 +382,52 @@ const handleOpen = async (e: React.FormEvent) => {
         <CardHeader>
           تنظیمات:
         </CardHeader>
-
-      <CardContent>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
-      
-       {organization && <p>{organization?.name || "noname"}</p>}
-      </div>
-        </CardContent>
-        
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="slug">{t("organization.slug")}</Label>
+                  <Input id="username" value={organization?.slug || ""} disabled />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="username">{t("organization.name")}</Label>
+                  <Input id="username" value={organization?.name || ""} 
+                  onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">{t("organization.description")} </Label>
+                  <Input id="description" value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address">{t("organization.address")}</Label>
+                  <Input 
+                    id="address" 
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">{t("user.phone")}</Label>
+                <Input 
+                  id="phone" 
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  dir="ltr"
+                />
+              </div>
+            </CardContent>
 
       <CardFooter>
         <div className="flex items-center">
         <Button 
-        onClick={handleSaveSettings}
-        disabled={savingSettings}
+        onClick={handleSaveOrganization}
+        disabled={savingOrganization}
         >
-          {savingSettings ? "ذخیره کردن..." : " ذخیره" }
+        {savingOrganization ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}
+            {savingOrganization ? "ذخیره کردن..." : " ذخیره" }
         </Button>
         </div>
         </CardFooter>
@@ -444,8 +543,8 @@ const handleOpen = async (e: React.FormEvent) => {
       <CardFooter>
         <div className="flex items-center">
         <Button 
-        onClick={handleSave}
-        disabled={saving}
+        onClick={handleSaveImages}
+        disabled={savingImages}
         >
           {saving ? "ذخیره کردن..." : " ذخیره" }
         </Button>

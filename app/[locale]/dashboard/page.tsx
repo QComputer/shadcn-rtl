@@ -207,7 +207,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
     }
 
     fetchDashboardData()
-  }, [mounted, authLoading, locale, router, user])
+  }, [mounted, authLoading, locale, router])
 
   const t = (key: string): string => {
     if (!dict) return key

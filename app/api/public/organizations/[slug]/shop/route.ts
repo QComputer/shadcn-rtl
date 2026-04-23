@@ -9,8 +9,9 @@ export async function GET(
     const { slug } = await params;
     const organizationCategories = await prisma.productCategory.findMany({
       where: { organizationSlug: slug },
-      include: { products: true , organization:{ select: {name: true, settings: true}}},
+      select: { id: true, name: true, products: {select: {id: true, name: true, variants: true, image: true}}, isActive: true, deletedAt: true}
     });
+    
     // Get product categories with products
     const categories = organizationCategories.filter(
       (cat) => cat.isActive && !cat.deletedAt && cat.products.length > 0
@@ -27,11 +28,12 @@ export async function GET(
         enableDelivery: true,
         minimumOrderAmount: true,
         deliveryRadius: true,
+        organization: true
       },
     });
     
     return NextResponse.json({
-      organization: categories[0].organization,
+      organization: settings?.organization,
       categories,
       settings,
     });

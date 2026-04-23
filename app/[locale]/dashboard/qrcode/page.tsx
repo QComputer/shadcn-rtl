@@ -31,7 +31,7 @@ return (
     <div key={"qrcode-page"}>
 <div className="flex gap-5 p-5">
     <Input
-        placeholder={"insert the url"}
+        placeholder={"آدرس موردنظر را وارد کنید"}
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             className="pr-10"

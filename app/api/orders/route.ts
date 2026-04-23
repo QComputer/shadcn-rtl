@@ -76,34 +76,17 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const {
-      organizationId,
-      customerName,
-      customerPhone,
-      customerEmail,
-      shippingAddress,
-      city,
-      postalCode,
-      notes,
-      items,
-    } = body;
-
     const session = await auth();
-    const customerId = session?.user?.id;
+    //const customerId = session?.user?.id;
     const data = createOrderSchema.parse(body);
-    //console.log("------------------data:", data);
+    console.log("------------------data:", data);
     
-    if (customerId) {
-      const order = await orderService.create(data, customerId);
-    //console.log("-------------------------->order:", order);
-    return NextResponse.json(order, { status: 201 });
-    } else {
+
       const sessionId = getSessionId(request);
       const order = await orderService.createForGuest(data, sessionId);
     //console.log("-------------------------->order:", order);
     
     return NextResponse.json(order, { status: 201 });
-    }
 
   } catch (error) {
     console.error("Error creating order:", error);

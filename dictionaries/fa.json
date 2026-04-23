@@ -75,7 +75,13 @@
     "passwordMismatch": "رمزهای عبور مطابقت ندارند",
     "passwordTooShort": "رمز عبور باید حداقل ۶ کاراکتر باشد",
     "registrationFailed": "ثبت نام ناموفق بود",
-    "alreadyHaveAccount": "حساب کاربری دارید؟"
+    "alreadyHaveAccount": "حساب کاربری دارید؟",
+    "orgSlug_placeHolder": "یک اسلاگ برای سازمان خود انتخاب کنید",
+    "orgSlug": "اسلاگ سازمان",
+    "orgName": "نام سازمان",
+    "orgName_placeHolder": "یک نام برای سازمان خود انتخاب کنید",
+    "register_withOrganization": "ثبت نام کاربر و سازمان",
+    "registerDesc_withOrganization": "ایجاد حساب کاربری و سازمان جدید"
   },
   "navigation": {
     "home": "خانه",
@@ -106,10 +112,13 @@
     "calendar": "تقویم",
     "checkout": "بررسی و تایید",
     "settingsOrganization": "تنظیمات سازمان",
-    "members": "اعضا"
+    "members": "اعضا",
+    "users": "کاربرها",
+    "qrcode": "کد QR"
   },
   "organization": {
     "title": "سازمان",
+    "settings":"تنظیمات",
     "create": "ایجاد سازمان",
     "name": "نام",
     "slug": "اسلاگ",
@@ -459,13 +468,14 @@
     "appointmentHistory": "تاریخچه نوبت‌ها"
   },
   "home": {
-    "platformName": "جامعه صفر",
+    "platformName": "خلاء",
     "title": " فروشگاه اینترنتی",
     "subtitle": "بهترین محصولات با بهترین قیمت‌ها",
     "hero": {
-      "title": "به جامعه صفر خوش آمدید",
-      "subtitle": "رزرو خدمات و خرید آنلاین",
-      "dashboard": "پنل مدیریت"
+      "title": "در خلاء رها شوید ...!",
+      "subtitle": "رزرو نوبت و خرید آنلاین",
+      "dashboard": "پنل مدیریت",
+      "help": "راهنما"
     },
     "shops": "فروشگاه‌ها",
     "footer": "تمامی حقوق محفوظ است",

@@ -36,11 +36,9 @@ import {
   Wallet,
 } from "lucide-react";
 import { formatNumber, formatPrice } from "@/lib/utils";
-import { useSession } from "next-auth/react"
 import { OrderType, User } from "@prisma/client";
 import { Switch } from "@/components/ui/switch";
 import { getDictionary } from "@/lib/dictionary";
-import prisma from "@/lib/db";
 import { formatToman } from "@/lib/persian";
 
 interface CheckoutFormData {
@@ -73,7 +71,6 @@ export default function CheckoutPage({
   const slug = resolvedParams.slug;
   const router = useRouter();
 
-  const { data: session } = useSession()
   const [user, setUser] = useState<User|null>(null);
   const [loading, setLoading] = useState(true)
 
@@ -84,6 +81,7 @@ export default function CheckoutPage({
   const [error, setError] = useState<string | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [organizationName, setOrganizationName] = useState<string>("");
+  const [deliveryFee, setDeliveryFee] = useState<number>(30000);
 
   // Helper to get translations based on locale
   const t = (key: string): string => {
@@ -115,9 +113,11 @@ export default function CheckoutPage({
       try {
         const response = await fetch(`/api/public/organizations/${slug}/shop`);
         if (response.ok) {
+          
           const data = await response.json();
           setOrganizationId(data.organization.id);
           setOrganizationName(data.organization.name);
+          data.settings.deliveryFee && setDeliveryFee(data.settings.deliveryFee);
         }
       } catch (err) {
         console.error("Failed to fetch organization:", err);
@@ -127,36 +127,6 @@ export default function CheckoutPage({
       fetchOrganization();
     }
   }, [slug]);
-
-  // Fetch User info
-  useEffect(() => {
-    if (session?.user){
-      // Fetch user profile
-      fetch("/api/users/me")
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch profile")
-        return res.json()
-      })
-      .then(data => {
-        setUser(data as User)
-        setFormData(
-          (prev: any) => ({ ...prev,
-            customerName: data.lastName || data.name,
-            customerPhone: data.phone || "",
-            customerFirstName: data.firstName || "",
-            customerLastName: data.lastName || "",
-            shippingAddress: data.address || "",
-          })
-        )
-        setLoading(false)
-      })
-      .catch(err => {
-        setError(err.message)
-        setLoading(false)
-      })
-    }
-  }, [session]);
-
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -175,33 +145,19 @@ export default function CheckoutPage({
     setError(null);
 
     try {
-      if (!organizationId){
-        try {
-        const response = await fetch(`/api/public/organizations/${slug}/shop`);
-        if (response.ok) {
-          const data = await response.json();
-          setOrganizationId(data.organization.id);
-          setOrganizationName(data.organization.name);
-        } else {
-          console.error("Failed to fetch organizationId");
-        }
-        } catch (err) {
-          console.error("Failed to fetch organization:", err);
-        }
-      }
-
       // get the order created
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          organizationId,
+          organizationSlug: slug,
           paymentMethod,
           deliveryAddress: formData.shippingAddress,
           type: isDelivery? "DELIVERY" : "PICK_UP",
           customerName: formData.customerName,
           customerPhone: formData.customerPhone || "0000",
           cart,
+          deliveryFee: isDelivery && deliveryFee,
           items: cart.items.map(item => ({
             variantId: item.variant.id,
             quantity: item.quantity,
@@ -495,7 +451,7 @@ export default function CheckoutPage({
                       </div>
                       {isDelivery && <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">پیک</span>
-                        <span>...</span>
+                        <span>{formatToman(deliveryFee)}</span>
                       </div>}
                     </div>
 
@@ -526,7 +482,7 @@ export default function CheckoutPage({
                       <span>
                         {t("order.total") || "مجموع"}
                       </span>
-                      <span>{formatToman(summary.subtotal)}</span>
+                      <span>{formatToman(summary.subtotal+ (isDelivery ? deliveryFee : 0))}</span>
                     </div>
 
                     {error && (

@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
 
     const product = await productService.create(
       data,
+      organizationId,
       session.user!.role,
     );
 

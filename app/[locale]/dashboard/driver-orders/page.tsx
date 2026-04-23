@@ -141,7 +141,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
     //console.log("saving pickupTime---", "no Order selected");
       return
     }
-    ////console.log(`add ${minutes} minutes to pick-up `, pickupTime);
+    //console.log(`add ${minutes} minutes to pick-up `, pickupTime);
     setPickupTime(pickupTime?.add(minutes, 'minute') || null)
     //console.log(`added ${minutes} minutes to pick-up `, pickupTime?.add(minutes, 'minute') || null);
 
@@ -151,7 +151,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
     //console.log("saving pickupTime---", "no Order selected");
       return
     }
-    ////console.log(`add ${minutes} minutes to delivery `, deliveryTime);
+    //console.log(`add ${minutes} minutes to delivery `, deliveryTime);
     setDeliveryTime(deliveryTime?.add(minutes, 'minute') || null)
     //console.log(`added ${minutes} minutes to delivery `, deliveryTime?.add(minutes, 'minute') || null);
   }
@@ -324,8 +324,8 @@ useEffect(()=>{
   }, [mounted, user, page, searchQuery, statusFilter])
 
   const fetchOrders = async () => {
-    setDetailDialogOpen(false)
-    setSelectedOrder(null)
+    //setDetailDialogOpen(false)
+    //setSelectedOrder(null)
     setLoading(true)
     setError(null)
     
@@ -447,8 +447,8 @@ useEffect(()=>{
         </Card>
       )}
 
-      {/* Loading State */}
-      {loading && (
+      {/* Loading State: silent mode */}
+      {false && (
         <div className="space-y-4">
           {[1, 2, 3, 4, 5].map(i => (
             <Card key={locale+i}>
@@ -486,8 +486,7 @@ useEffect(()=>{
       )}
 
       {/* Orders List */}
-      {!loading && orders.length > 0 && (
-
+      {orders.length > 0 && (
         <div className="space-y-4">
           {(!!orders && orders.length>0) && orders.map((order) => {
             const status = statusConfig[order.status]

@@ -18,18 +18,19 @@ export default function DashboardLayout({
   const locale = resolvedParams.locale
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [loadingSilently, setLoadingSilently] = useState(true)
   const [triggerNotification, setTriggerNotification] = useState(true)
 
   // Fetch dashboard data
     const fetchDashboardData = async () => {
-      setLoading(true)
+      setLoadingSilently(true)
       const audio = new Audio('/Alarm10.wav'); // Path relative to the public folder
 
       try {
         const response = await fetch("/api/dashboard/notifications")
         
         if (!response.ok) {
-          throw new Error("Failed to fetch dashboard data")
+          throw new Error("Failed to fetch notifications data")
         }
         
         const data = await response.json()
@@ -55,21 +56,21 @@ export default function DashboardLayout({
         }
       } catch (err) {
         console.error("Error fetching dashboard:", err)
-        setLoading(false)
+        setLoadingSilently(false)
 
       } finally {
-        setLoading(false)
+        setLoadingSilently(false)
       }
       setTriggerNotification(false)
-      setTimeout(fetchDashboardData,3000)
+      setTimeout(fetchDashboardData,5000)
     }
     useEffect(() => {
-    // set Update Freequency
-    triggerNotification == true && fetchDashboardData()
-  }, [])
+    triggerNotification && fetchDashboardData()
+  }, [loadingSilently])
 
   return (
     <ToastProvider> {/* Wrap everything with ToastProvider */}
+      <Providers>
       <div className="flex min-h-screen bg-background">
         
         {/* Desktop Sidebar */}
@@ -102,17 +103,13 @@ export default function DashboardLayout({
           <div className={"lg:block border-b px-6 py-2"}>
             <DashboardBreadcrumb locale={locale} />
           </div>
-          
-
           {/* Page Content */}
           <div className="flex-1 p-4 lg:p-6">
-            <Providers>
               {children}
-              </Providers>
-
           </div>
         </div>
       </div>
+              </Providers>
     </ToastProvider>
   )
 }

@@ -67,7 +67,6 @@ interface OrganizationData {
   categories: ServiceCategory[]
   businessHours: BusinessHour[]
 }
-
 // Persian day names mapping
 const dayNames: Record<string, string> = {
   SATURDAY: "شنبه",

@@ -88,8 +88,20 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
       "CUSTOMER",
     ],
     isUniversal: true,
+
   },
 
+    "/dashboard/qrcode": {
+      allowedRoles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+      "STAFF",
+      "DRIVER",
+      "CUSTOMER",
+    ],
+    isUniversal: true,
+  },
   // ============================================
   // SUPER_ADMIN Routes
   // ============================================
@@ -188,7 +200,6 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
   // My Appointments - CUSTOMER and STAFF/ADMIN/MANAGER (APPOINTMENT org member)
   "/dashboard/my-appointments": {
     allowedRoles: ["CUSTOMER"],
-    requiredOrgType: ["APPOINTMENT"],
   },
 
   // My Services - STAFF/ADMIN/MANAGER (APPOINTMENT org member)
@@ -336,9 +347,9 @@ function getRedirectPathForRole(role: UserRole): string {
     case "DRIVER":
       return "/dashboard/driver-orders"
     case "CUSTOMER":
-      return "/dashboard/my-orders"
+      return "/dashboard/settings"
     default:
-      return "/dashboard"
+      return "/dashboard/settings";
   }
 }
 
@@ -423,13 +434,6 @@ export const dashboardNavItems: NavItem[] = [
     requiredRoles: ["DRIVER"],
   },
   {
-    id: "my-appointments",
-    labelKey: "navigation.myAppointments",
-    href: "/dashboard/my-appointments",
-    icon: "CalendarDays",
-    requiredRoles: ["CUSTOMER"],
-  },
-  {
     id: "calendar",
     labelKey: "navigation.calendar",
     href: "/dashboard/calendar",
@@ -466,11 +470,18 @@ export const dashboardNavItems: NavItem[] = [
     requiredRoles: ["SUPER_ADMIN"],
   },
   {
-    id: "users",
-    labelKey: "navigation.users",
+    id: "organizations",
+    labelKey: "navigation.organizations",
     href: "/dashboard/organizations",
-    icon: "Users",
+    icon: "Building",
     requiredRoles: ["SUPER_ADMIN"],
+  },
+
+  {
+    id: "qrcode",
+    labelKey: "navigation.qrcode",
+    href: "/dashboard/qrcode",
+    icon: "Qrcode",
   },
 ];
 

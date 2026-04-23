@@ -193,7 +193,7 @@ export function CartProvider({ children, slug, locale }: CartProviderProps) {
     setError(null);
     
     try {
-      const response = await fetch(`/api/cart?organizationId=${slug}`, {
+      const response = await fetch(`/api/cart?organizationSlug=${slug}`, {
         method: "DELETE",
       });
       

@@ -4,6 +4,7 @@ import { CartBadge } from "@/components/shop/cart-badge";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Store } from "lucide-react";
 import { Metadata } from "next";
+import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 
 
 interface ShopLayoutProps {
@@ -50,19 +51,21 @@ export default async function ShopLayout({ children, params }: ShopLayoutProps) 
     <CartProvider locale={locale} slug={slug} >
       <div className="min-h-screen flex flex-col">
         {/* Shop Header */}
-        <header className="sticky top-2 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container flex h-16 items-center justify-between">
               <span className="flex gap-3 mx-10 font-semibold ">
               <Store className="h-5 w-5 " />
               </span>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 ml-5">
               <CartDrawer organizationSlug={slug}>
                 <Button variant="ghost" size="icon" className="relative">
                   <CartBadge />
                 </Button>
               </CartDrawer>
+              <ThemeSwitcher />
             </div>
+
           </div>
         </header>
 

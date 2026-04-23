@@ -114,7 +114,7 @@ export default function OrderConfirmationPage({
     if (refetching) {
       if (orderNumber) { fetchOrder() }
       setRefetching(false)
-      setTimeout(() => setRefetching(true), 5000)
+      setTimeout(() => setRefetching(true), 3000)
     }
     //console.log("in refetching use effect");
     

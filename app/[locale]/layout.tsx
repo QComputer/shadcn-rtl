@@ -4,7 +4,7 @@ import { localeConfig, supportedLocales, type SupportedLocale } from "@/lib/i18n
 import { ThemeProvider } from "@/hooks/use-theme";
 
 export const metadata: Metadata = {
-  title: "جامعه صفر",
+  title: "خلاء",
   description: "پلتفرم تجارت الکترونیک و رزرو نوبت",
 };
 

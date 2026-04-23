@@ -104,7 +104,6 @@ export default function NewProductPage({
   const [basePrice, setBasePrice] = useState("")
   const [categoryId, setCategoryId] = useState("")
   const [sku, setSku] = useState("")
-  const [organizationId, setOrganizationId] = useState("")
   const [lowStockThreshold, setLowStockThreshold] = useState("20")
   const [sortOrder, setSortOrder] = useState("0")
   const [image, setImage] = useState<ImageRecord|null>(null)
@@ -231,7 +230,6 @@ export default function NewProductPage({
             image: imageUrl || undefined,
             sku,
             categoryId,
-            organizationId,
             lowStockThreshold: Number(lowStockThreshold),
             sortOrder: Number(sortOrder),
           }),

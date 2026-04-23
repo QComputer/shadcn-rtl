@@ -16,20 +16,24 @@ import type {
 import { hasPermission, type UserRole } from "@/lib/types";
 
 export class ProductService {
-  async create(data: CreateProductInput, userRole: UserRole) {
+  async create(data: any, organizationId: string, userRole: UserRole) {
     if (!hasPermission(userRole, "product:create")) {
       throw new Error("Unauthorized");
     }
 
-    const _product = await prisma.product.create({data});
+    const organization = await prisma.organization.findUnique({
+      where: {id: organizationId},
+    });
+    if(!organization) return
+     const _product = await prisma.product.create({ data: {...data, organizationId, organizationSlug: organization.slug} });
 
     // Creating default variant with default inventory 1000
     const variant = await prisma.productVariant.create({
       data: {
         productId: _product.id,
-        name: _product.name + "_0",
+        name: _product.name,
         price: _product.basePrice,
-        sku: _product.sku ? _product.sku + "_0" : undefined,
+        sku: _product.sku ? _product.sku+"_0" : undefined,
         inventory: 1000,
       },
     });

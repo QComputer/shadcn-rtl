@@ -787,8 +787,8 @@ await order.organization.members.map(async (m) => {
     const whereNull = whereDriver;
     if (status && ["PENDING", "PLACED", "DENIED"].includes(status))
       whereNull.status = { in: [] }; // aborting the whereNull query
-    else {
-      whereNull.status = { in: ["ACCEPTED", "PREPARING", "READY"] };
+    else if(!status) {
+      whereNull.status = { in: ["ACCEPTED", "PREPARING", "READY", "PICKED_UP"] };
     }
 
     const [data, total] = await Promise.all([
@@ -803,6 +803,7 @@ await order.organization.members.map(async (m) => {
           organization: {
             select: {
               id: true,
+              slug: true,
               name: true,
               logo: true,
             },

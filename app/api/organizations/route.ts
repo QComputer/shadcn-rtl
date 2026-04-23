@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
 
-    if (!session?.user?.id || session?.user?.role !== "SUPER_ADMIN") {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const organization =
       session.user.role == "SUPER_ADMIN"
         ? await organizationService.create(data)
-        : await organizationService.create(data);
+        : await organizationService.createByUser(data, session?.user?.id);
 
     return NextResponse.json(organization, { status: 201 });
   } catch (error) {

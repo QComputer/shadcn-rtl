@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { Eye, EyeOff, UserPlus, Loader2, AlertCircle, CheckCircle } from "lucide-react"
+import { Eye, EyeOff, UserPlus, Loader2, AlertCircle, CheckCircle, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -24,11 +24,10 @@ import prisma from "@/lib/db"
 
 function RegisterForm({ locale }: { locale: string }) {
   const router = useRouter()
-    
-  
   
   const [username, setUsername] = useState("")
   const [orgSlug, setOrgSlug] = useState("")
+  const [orgName, setOrgName] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -69,7 +68,7 @@ function RegisterForm({ locale }: { locale: string }) {
     setIsLoading(true)
 
     try {
-      const response = await fetch("/api/auth/register", {
+      const response = await fetch("/api/auth/register/organization", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -77,6 +76,7 @@ function RegisterForm({ locale }: { locale: string }) {
         body: JSON.stringify({
           username,
           password,
+          orgName,
           orgSlug,
         }),
       })
@@ -147,7 +147,7 @@ function RegisterForm({ locale }: { locale: string }) {
                 {t("auth.registrationSuccess") || "ثبت نام موفق"}
               </h2>
               <p className="text-muted-foreground mb-4">
-                {t("auth.registrationSuccessDesc") || "حساب کاربری شما با موفقیت ایجاد شد"}
+                {t("auth.registrationSuccessDesc") || "حساب کاربری و سازمان شما با موفقیت ایجاد شدند"}
               </p>
               <p className="text-sm text-muted-foreground">
                 {t("auth.redirectingHome") || "در حال انتقال به صفحه اصلی..."}
@@ -171,14 +171,14 @@ function RegisterForm({ locale }: { locale: string }) {
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-2">
               <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center">
-                <UserPlus className="h-6 w-6 text-primary-foreground" />
+                <Plus className="h-6 w-6 text-primary-foreground" />
               </div>
             </div>
             <CardTitle className="text-2xl font-bold">
-              {t("auth.register") || "ثبت نام"}
+              {t("auth.register_withOrganization") || "ثبت نام کاربر و سازمان"}
             </CardTitle>
             <CardDescription>
-              {t("auth.registerDesc") || "ایجاد حساب کاربری جدید"}
+              {t("auth.registerDesc_withOrganization") || "ایجاد حساب کاربری و سازمان جدید"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -210,9 +210,25 @@ function RegisterForm({ locale }: { locale: string }) {
                   dir="ltr"
                 />
               </div>
-   <div className="space-y-2">
+              <div className="space-y-2">
                 <Label htmlFor="orgSlug">
-                  {t("auth.orgSlug") || "اسلاگ سازمان (اختیاری)"}
+                  {t("auth.orgName") || "نام سازمان"}
+                </Label>
+              <Input
+                  id="orgName"
+                  type="text"
+                  placeholder={t("auth.orgName_placeHolder") || "نام سازمان مورد نظر خودرا وارد کنید"}
+                  value={orgName}
+                  onChange={(e) => setOrgName(e.target.value)}
+                  required
+                  minLength={3}
+                  className="h-10"
+                  dir="rtl"
+                />
+              </div>
+            <div className="space-y-2">
+                <Label htmlFor="orgSlug">
+                  {t("auth.orgSlug") || "اسلاگ سازمان"}
                 </Label>
               <Input
                   id="orgSlug"
@@ -220,11 +236,13 @@ function RegisterForm({ locale }: { locale: string }) {
                   placeholder={t("auth.orgSlug_placeHolder") || "اسلاگ سازمان مورد نظر خودرا وارد کنید"}
                   value={orgSlug}
                   onChange={(e) => setOrgSlug(e.target.value)}
+                  required
                   minLength={3}
                   className="h-10"
                   dir="ltr"
                 />
               </div>
+
 
 
               <div className="space-y-2">

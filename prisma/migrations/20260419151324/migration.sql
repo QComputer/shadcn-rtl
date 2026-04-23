@@ -2,7 +2,7 @@
 CREATE TYPE "OrganizationType" AS ENUM ('SHOP', 'APPOINTMENT');
 
 -- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF', 'DRIVER', 'CUSTOMER');
+CREATE TYPE "UserRole" AS ENUM ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF', 'DRIVER', 'CUSTOMER', 'GUEST');
 
 -- CreateEnum
 CREATE TYPE "AppointmentStatus" AS ENUM ('PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW');
@@ -53,11 +53,32 @@ CREATE TABLE "Organization" (
     "logo" TEXT,
     "coverImage" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "isOpen" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "deletedAt" TIMESTAMP(3),
 
     CONSTRAINT "Organization_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Deny" (
+    "id" TEXT NOT NULL,
+    "orderId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+
+    CONSTRAINT "Deny_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Notification" (
+    "id" TEXT NOT NULL,
+    "targetUserId" TEXT NOT NULL,
+    "context" TEXT NOT NULL,
+    "seen" BOOLEAN NOT NULL DEFAULT false,
+    "type" TEXT,
+
+    CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -96,6 +117,7 @@ CREATE TABLE "OrganizationMember" (
     "userId" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "organizationSlug" TEXT NOT NULL,
 
     CONSTRAINT "OrganizationMember_pkey" PRIMARY KEY ("id")
 );
@@ -255,6 +277,7 @@ CREATE TABLE "ProductCategory" (
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "organizationId" TEXT NOT NULL,
+    "organizationSlug" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "deletedAt" TIMESTAMP(3),
@@ -285,6 +308,7 @@ CREATE TABLE "Product" (
     "trackInventory" BOOLEAN NOT NULL DEFAULT true,
     "lowStockThreshold" INTEGER NOT NULL DEFAULT 10,
     "organizationId" TEXT NOT NULL,
+    "organizationSlug" TEXT NOT NULL,
     "categoryId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -315,7 +339,7 @@ CREATE TABLE "ProductVariant" (
 CREATE TABLE "ShopCart" (
     "id" TEXT NOT NULL,
     "status" "CartStatus" NOT NULL DEFAULT 'ACTIVE',
-    "organizationId" TEXT NOT NULL,
+    "organizationSlug" TEXT NOT NULL,
     "customerId" TEXT,
     "sessionId" TEXT,
     "expiresAt" TIMESTAMP(3),
@@ -341,6 +365,8 @@ CREATE TABLE "ShopCartItem" (
 CREATE TABLE "GuestCustomer" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "firstName" TEXT,
+    "lastName" TEXT,
     "sessionId" TEXT NOT NULL,
     "phone" TEXT,
     "email" TEXT,
@@ -370,9 +396,9 @@ CREATE TABLE "Order" (
     "paymentId" TEXT,
     "promotionId" TEXT,
     "promotionCode" TEXT,
-    "organizationId" TEXT NOT NULL,
+    "organizationSlug" TEXT NOT NULL,
     "customerId" TEXT,
-    "sessionId" TEXT,
+    "guestCustomerId" TEXT,
     "driverId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -440,7 +466,7 @@ CREATE TABLE "Promotion" (
     "startsAt" TIMESTAMP(3) NOT NULL,
     "expiresAt" TIMESTAMP(3) NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "organizationId" TEXT NOT NULL,
+    "organizationSlug" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -454,7 +480,7 @@ CREATE TABLE "Review" (
     "comment" TEXT,
     "isVerifiedPurchase" BOOLEAN NOT NULL DEFAULT false,
     "userId" TEXT NOT NULL,
-    "organizationId" TEXT NOT NULL,
+    "organizationSlug" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -528,9 +554,9 @@ CREATE TABLE "Location" (
 -- CreateTable
 CREATE TABLE "OrganizationSettings" (
     "id" TEXT NOT NULL,
-    "organizationId" TEXT NOT NULL,
-    "settings" JSONB NOT NULL,
-    "currency" TEXT NOT NULL DEFAULT 'USD',
+    "organizationSlug" TEXT NOT NULL,
+    "settings" JSONB,
+    "currency" TEXT DEFAULT 'IRR',
     "dateFormat" TEXT NOT NULL DEFAULT 'YYYY-MM-DD',
     "timeFormat" TEXT NOT NULL DEFAULT '24h',
     "minimumOrderAmount" DECIMAL(65,30),
@@ -538,7 +564,7 @@ CREATE TABLE "OrganizationSettings" (
     "deliveryRadius" DOUBLE PRECISION,
     "enablePickup" BOOLEAN NOT NULL DEFAULT true,
     "enableDelivery" BOOLEAN NOT NULL DEFAULT true,
-    "emailNotifications" BOOLEAN NOT NULL DEFAULT true,
+    "emailNotifications" BOOLEAN NOT NULL DEFAULT false,
     "smsNotifications" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -549,7 +575,7 @@ CREATE TABLE "OrganizationSettings" (
 -- CreateTable
 CREATE TABLE "BookingSettings" (
     "id" TEXT NOT NULL,
-    "organizationId" TEXT NOT NULL,
+    "organizationSlug" TEXT NOT NULL,
     "slotDuration" INTEGER NOT NULL DEFAULT 30,
     "bufferBefore" INTEGER NOT NULL DEFAULT 0,
     "bufferAfter" INTEGER NOT NULL DEFAULT 0,
@@ -581,6 +607,7 @@ CREATE TABLE "AuditLog" (
     "userAgent" TEXT,
     "userId" TEXT,
     "organizationId" TEXT,
+    "organizationSlug" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "AuditLog_pkey" PRIMARY KEY ("id")
@@ -610,6 +637,24 @@ CREATE INDEX "Organization_isActive_idx" ON "Organization"("isActive");
 CREATE INDEX "Organization_deletedAt_idx" ON "Organization"("deletedAt");
 
 -- CreateIndex
+CREATE INDEX "Organization_id_slug_idx" ON "Organization"("id", "slug");
+
+-- CreateIndex
+CREATE INDEX "Organization_id_idx" ON "Organization"("id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Organization_id_slug_key" ON "Organization"("id", "slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Organization_id_key" ON "Organization"("id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Deny_orderId_userId_key" ON "Deny"("orderId", "userId");
+
+-- CreateIndex
+CREATE INDEX "Notification_targetUserId_idx" ON "Notification"("targetUserId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "User_name_key" ON "User"("name");
 
 -- CreateIndex
@@ -637,6 +682,9 @@ CREATE INDEX "User_emailVerified_idx" ON "User"("emailVerified");
 CREATE UNIQUE INDEX "OrganizationMember_userId_key" ON "OrganizationMember"("userId");
 
 -- CreateIndex
+CREATE INDEX "OrganizationMember_organizationSlug_idx" ON "OrganizationMember"("organizationSlug");
+
+-- CreateIndex
 CREATE INDEX "OrganizationMember_organizationId_idx" ON "OrganizationMember"("organizationId");
 
 -- CreateIndex
@@ -644,6 +692,9 @@ CREATE INDEX "OrganizationMember_userId_idx" ON "OrganizationMember"("userId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "OrganizationMember_organizationId_userId_key" ON "OrganizationMember"("organizationId", "userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "OrganizationMember_organizationSlug_userId_key" ON "OrganizationMember"("organizationSlug", "userId");
 
 -- CreateIndex
 CREATE INDEX "BusinessHour_organizationId_idx" ON "BusinessHour"("organizationId");
@@ -748,10 +799,16 @@ CREATE INDEX "BookingSession_expiresAt_idx" ON "BookingSession"("expiresAt");
 CREATE INDEX "ProductCategory_organizationId_idx" ON "ProductCategory"("organizationId");
 
 -- CreateIndex
+CREATE INDEX "ProductCategory_organizationSlug_idx" ON "ProductCategory"("organizationSlug");
+
+-- CreateIndex
 CREATE INDEX "ProductCategory_deletedAt_idx" ON "ProductCategory"("deletedAt");
 
 -- CreateIndex
 CREATE INDEX "Product_organizationId_idx" ON "Product"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "Product_organizationSlug_idx" ON "Product"("organizationSlug");
 
 -- CreateIndex
 CREATE INDEX "Product_categoryId_idx" ON "Product"("categoryId");
@@ -781,19 +838,19 @@ CREATE INDEX "ShopCart_status_idx" ON "ShopCart"("status");
 CREATE INDEX "ShopCart_customerId_idx" ON "ShopCart"("customerId");
 
 -- CreateIndex
-CREATE INDEX "ShopCart_organizationId_customerId_idx" ON "ShopCart"("organizationId", "customerId");
+CREATE INDEX "ShopCart_organizationSlug_customerId_idx" ON "ShopCart"("organizationSlug", "customerId");
 
 -- CreateIndex
 CREATE INDEX "ShopCart_sessionId_idx" ON "ShopCart"("sessionId");
 
 -- CreateIndex
-CREATE INDEX "ShopCart_organizationId_sessionId_idx" ON "ShopCart"("organizationId", "sessionId");
+CREATE INDEX "ShopCart_organizationSlug_sessionId_idx" ON "ShopCart"("organizationSlug", "sessionId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "ShopCart_organizationId_customerId_key" ON "ShopCart"("organizationId", "customerId");
+CREATE UNIQUE INDEX "ShopCart_organizationSlug_customerId_key" ON "ShopCart"("organizationSlug", "customerId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "ShopCart_organizationId_sessionId_key" ON "ShopCart"("organizationId", "sessionId");
+CREATE UNIQUE INDEX "ShopCart_organizationSlug_sessionId_key" ON "ShopCart"("organizationSlug", "sessionId");
 
 -- CreateIndex
 CREATE INDEX "ShopCartItem_cartId_idx" ON "ShopCartItem"("cartId");
@@ -826,13 +883,10 @@ CREATE UNIQUE INDEX "Order_pickupProgressId_key" ON "Order"("pickupProgressId");
 CREATE UNIQUE INDEX "Order_deliveryProgressId_key" ON "Order"("deliveryProgressId");
 
 -- CreateIndex
-CREATE INDEX "Order_organizationId_idx" ON "Order"("organizationId");
+CREATE INDEX "Order_organizationSlug_idx" ON "Order"("organizationSlug");
 
 -- CreateIndex
 CREATE INDEX "Order_customerId_idx" ON "Order"("customerId");
-
--- CreateIndex
-CREATE INDEX "Order_sessionId_idx" ON "Order"("sessionId");
 
 -- CreateIndex
 CREATE INDEX "Order_driverId_idx" ON "Order"("driverId");
@@ -886,7 +940,7 @@ CREATE INDEX "Payment_transactionId_idx" ON "Payment"("transactionId");
 CREATE UNIQUE INDEX "Promotion_code_key" ON "Promotion"("code");
 
 -- CreateIndex
-CREATE INDEX "Promotion_organizationId_idx" ON "Promotion"("organizationId");
+CREATE INDEX "Promotion_organizationSlug_idx" ON "Promotion"("organizationSlug");
 
 -- CreateIndex
 CREATE INDEX "Promotion_code_idx" ON "Promotion"("code");
@@ -898,13 +952,13 @@ CREATE INDEX "Promotion_expiresAt_idx" ON "Promotion"("expiresAt");
 CREATE INDEX "Promotion_isActive_idx" ON "Promotion"("isActive");
 
 -- CreateIndex
-CREATE INDEX "Review_organizationId_idx" ON "Review"("organizationId");
+CREATE INDEX "Review_organizationSlug_idx" ON "Review"("organizationSlug");
 
 -- CreateIndex
 CREATE INDEX "Review_rating_idx" ON "Review"("rating");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Review_userId_organizationId_key" ON "Review"("userId", "organizationId");
+CREATE UNIQUE INDEX "Review_userId_organizationSlug_key" ON "Review"("userId", "organizationSlug");
 
 -- CreateIndex
 CREATE INDEX "Follow_organizationId_idx" ON "Follow"("organizationId");
@@ -943,16 +997,16 @@ CREATE INDEX "Location_organizationId_idx" ON "Location"("organizationId");
 CREATE INDEX "Location_timestamp_idx" ON "Location"("timestamp");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "OrganizationSettings_organizationId_key" ON "OrganizationSettings"("organizationId");
+CREATE UNIQUE INDEX "OrganizationSettings_organizationSlug_key" ON "OrganizationSettings"("organizationSlug");
 
 -- CreateIndex
-CREATE INDEX "OrganizationSettings_organizationId_idx" ON "OrganizationSettings"("organizationId");
+CREATE INDEX "OrganizationSettings_organizationSlug_idx" ON "OrganizationSettings"("organizationSlug");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "BookingSettings_organizationId_key" ON "BookingSettings"("organizationId");
+CREATE UNIQUE INDEX "BookingSettings_organizationSlug_key" ON "BookingSettings"("organizationSlug");
 
 -- CreateIndex
-CREATE INDEX "BookingSettings_organizationId_idx" ON "BookingSettings"("organizationId");
+CREATE INDEX "BookingSettings_organizationSlug_idx" ON "BookingSettings"("organizationSlug");
 
 -- CreateIndex
 CREATE INDEX "AuditLog_entityType_entityId_idx" ON "AuditLog"("entityType", "entityId");
@@ -964,6 +1018,9 @@ CREATE INDEX "AuditLog_userId_idx" ON "AuditLog"("userId");
 CREATE INDEX "AuditLog_organizationId_idx" ON "AuditLog"("organizationId");
 
 -- CreateIndex
+CREATE INDEX "AuditLog_organizationSlug_idx" ON "AuditLog"("organizationSlug");
+
+-- CreateIndex
 CREATE INDEX "AuditLog_action_idx" ON "AuditLog"("action");
 
 -- CreateIndex
@@ -973,7 +1030,16 @@ CREATE INDEX "AuditLog_createdAt_idx" ON "AuditLog"("createdAt");
 CREATE INDEX "_ImageToProduct_B_index" ON "_ImageToProduct"("B");
 
 -- AddForeignKey
-ALTER TABLE "OrganizationMember" ADD CONSTRAINT "OrganizationMember_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Deny" ADD CONSTRAINT "Deny_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Deny" ADD CONSTRAINT "Deny_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Notification" ADD CONSTRAINT "Notification_targetUserId_fkey" FOREIGN KEY ("targetUserId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "OrganizationMember" ADD CONSTRAINT "OrganizationMember_organizationId_organizationSlug_fkey" FOREIGN KEY ("organizationId", "organizationSlug") REFERENCES "Organization"("id", "slug") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "OrganizationMember" ADD CONSTRAINT "OrganizationMember_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -1024,10 +1090,10 @@ ALTER TABLE "StaffAvailability" ADD CONSTRAINT "StaffAvailability_staffId_fkey" 
 ALTER TABLE "BookingSession" ADD CONSTRAINT "BookingSession_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ProductCategory" ADD CONSTRAINT "ProductCategory_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "ProductCategory" ADD CONSTRAINT "ProductCategory_organizationId_organizationSlug_fkey" FOREIGN KEY ("organizationId", "organizationSlug") REFERENCES "Organization"("id", "slug") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Product" ADD CONSTRAINT "Product_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Product" ADD CONSTRAINT "Product_organizationId_organizationSlug_fkey" FOREIGN KEY ("organizationId", "organizationSlug") REFERENCES "Organization"("id", "slug") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Product" ADD CONSTRAINT "Product_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "ProductCategory"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -1036,7 +1102,7 @@ ALTER TABLE "Product" ADD CONSTRAINT "Product_categoryId_fkey" FOREIGN KEY ("cat
 ALTER TABLE "ProductVariant" ADD CONSTRAINT "ProductVariant_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ShopCart" ADD CONSTRAINT "ShopCart_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "ShopCart" ADD CONSTRAINT "ShopCart_organizationSlug_fkey" FOREIGN KEY ("organizationSlug") REFERENCES "Organization"("slug") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ShopCart" ADD CONSTRAINT "ShopCart_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -1048,10 +1114,13 @@ ALTER TABLE "ShopCartItem" ADD CONSTRAINT "ShopCartItem_cartId_fkey" FOREIGN KEY
 ALTER TABLE "ShopCartItem" ADD CONSTRAINT "ShopCartItem_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "ProductVariant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Order" ADD CONSTRAINT "Order_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Order" ADD CONSTRAINT "Order_organizationSlug_fkey" FOREIGN KEY ("organizationSlug") REFERENCES "Organization"("slug") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Order" ADD CONSTRAINT "Order_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Order" ADD CONSTRAINT "Order_guestCustomerId_fkey" FOREIGN KEY ("guestCustomerId") REFERENCES "GuestCustomer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Order" ADD CONSTRAINT "Order_driverId_fkey" FOREIGN KEY ("driverId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -1081,13 +1150,13 @@ ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_variantId_fkey" FOREIGN KEY ("
 ALTER TABLE "Payment" ADD CONSTRAINT "Payment_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Promotion" ADD CONSTRAINT "Promotion_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Promotion" ADD CONSTRAINT "Promotion_organizationSlug_fkey" FOREIGN KEY ("organizationSlug") REFERENCES "Organization"("slug") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Review" ADD CONSTRAINT "Review_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Review" ADD CONSTRAINT "Review_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Review" ADD CONSTRAINT "Review_organizationSlug_fkey" FOREIGN KEY ("organizationSlug") REFERENCES "Organization"("slug") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Follow" ADD CONSTRAINT "Follow_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -1117,16 +1186,16 @@ ALTER TABLE "Location" ADD CONSTRAINT "Location_userId_fkey" FOREIGN KEY ("userI
 ALTER TABLE "Location" ADD CONSTRAINT "Location_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "OrganizationSettings" ADD CONSTRAINT "OrganizationSettings_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "OrganizationSettings" ADD CONSTRAINT "OrganizationSettings_organizationSlug_fkey" FOREIGN KEY ("organizationSlug") REFERENCES "Organization"("slug") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "BookingSettings" ADD CONSTRAINT "BookingSettings_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "BookingSettings" ADD CONSTRAINT "BookingSettings_organizationSlug_fkey" FOREIGN KEY ("organizationSlug") REFERENCES "Organization"("slug") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_organizationId_organizationSlug_fkey" FOREIGN KEY ("organizationId", "organizationSlug") REFERENCES "Organization"("id", "slug") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "_ImageToProduct" ADD CONSTRAINT "_ImageToProduct_A_fkey" FOREIGN KEY ("A") REFERENCES "Image"("id") ON DELETE CASCADE ON UPDATE CASCADE;

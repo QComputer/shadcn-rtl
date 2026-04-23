@@ -2,7 +2,6 @@
 
 import { useState, useEffect, use } from "react"
 import Link from "next/link";
-import { TimeInterval } from "@/app/[locale]/dashboard/calendar/page";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@base-ui/react";
@@ -10,6 +9,53 @@ import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { Textarea } from "../ui/textarea";
 import { Service } from "@/lib/contexts/booking-context";
 
+export interface TimeInterval {
+  index: number
+  providerUserId: string
+  hour: number
+  minute: number
+  startTime?: string | null
+  appointment?: Appointment|null
+}
+
+interface Appointment {
+  id: string
+  date: string
+  startTime: string
+  endTime: string
+  status: string
+  notes: string | null
+  startIndex: number | null
+  endIndex: number | null
+  service: {
+    id: string
+    name: string
+    price: number
+    duration: number
+    category: {
+      name: string
+    }
+    serviceProvider: {
+      id: string
+      firstName: string
+      lastName: string
+    } | null
+  }
+  
+  customer: {
+    id: string
+    firstName: string
+    lastName: string
+    phone: string
+  }
+}
+
+interface Provider{
+  id: string
+  firstName: string
+  lastName: string
+  providedServices: Service[]
+}
 interface AppointmentBookerProps{
     timeInterval: TimeInterval
     serviceId?: string

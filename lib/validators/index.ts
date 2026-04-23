@@ -19,7 +19,7 @@ export const emailSchema = z
 export const slugSchema = z
   .string()
   .min(3, "Slug must be at least 3 characters")
-  .max(60, "Slug must be less than 60 characters")
+  .max(10, "Slug must be less than 10 characters")
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase alphanumeric with hyphens");
 
 export const pageSchema = z.coerce.number().int().positive().default(1);
@@ -56,16 +56,15 @@ export const createOrganizationSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(200),
   slug: slugSchema,
   type: z.enum(["SHOP", "APPOINTMENT"]).default("SHOP"),
-  userId: z.string().cuid().optional(),
   description: z.string().max(5000).optional(),
   address: z.string().max(500).optional(),
   phone: phoneSchema.optional(),
   email: emailSchema.optional(),
-  logo: z.string().url().optional(),
-  coverImage: z.string().url().optional(),
-  image: z.string().url().optional(),
-  locale: z.string().default("fa"),
-  timezone: z.string().default("Asia/Tehran"),
+  logo: z.string().optional(),
+  coverImage: z.string().optional(),
+  image: z.string().optional(),
+  locale: z.string().default("fa").optional(),
+  timezone: z.string().default("Asia/Tehran").optional(),
 });
 
 export const updateOrganizationSchema = z.object({
@@ -161,7 +160,8 @@ export const createProductSchema = z.object({
   image: z.string().max(500).optional(),
   sku: z.string().max(100).optional(),
   categoryId: z.string().cuid(),
-  organizationId: z.string().cuid(),
+  organizationId: z.string().cuid().optional(),
+  organizationSlug: z.string().optional(),
   trackInventory: z.boolean().default(true),
   lowStockThreshold: z.number().int().nonnegative().default(10),
   sortOrder: z.number().int().default(0),
@@ -194,11 +194,11 @@ export const updateCartItemSchema = z.object({
 
 // Order validators
 export const createOrderSchema = z.object({
-  organizationSlug: z.string().cuid(),
+  organizationSlug: z.string(),
   type: z.enum(["DELIVERY", "PICK_UP"]),
   customerName: z.string().max(100).optional(),
-  customerPhone: z.string().max(100).optional(),
-  //customerPhone: phoneSchema.optional(),
+  //customerPhone: z.string().max(100).optional(),
+  customerPhone: phoneSchema.optional(),
   deliveryAddress: z.string().max(500).optional(),
   notes: z.string().max(2000).optional(),
   promotionCode: z.string().optional(),

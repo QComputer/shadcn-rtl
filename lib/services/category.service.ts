@@ -16,11 +16,17 @@ import { hasPermission, type UserRole } from "@/lib/types";
 
 // Product Category Service
 export class ProductCategoryService {
-  async create(organizationId: string, data: any) {
+  async create(organizationId: string, data: CreateProductCategoryInput) {
+    const org = await prisma.organization.findUnique({where: {id: organizationId},
+    select:{
+      slug:true,
+    }})
+    if (!org) return
     const category = await prisma.productCategory.create({
       data: {
         ...data,
         organizationId,
+        organizationSlug: org?.slug,
       },
     });
 

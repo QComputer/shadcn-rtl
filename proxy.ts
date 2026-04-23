@@ -116,7 +116,6 @@ export async function proxy(request: NextRequest) {
   if (
     pathname.startsWith("/api") ||
     pathname.startsWith("/fa/shop") ||
-    pathname.startsWith("/fa") ||
     pathname.startsWith("/uploads") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/static") ||

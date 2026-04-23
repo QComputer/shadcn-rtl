@@ -151,7 +151,10 @@ model Organization {
   @@index([slug])
   @@index([isActive])
   @@index([deletedAt])
+  @@index([id, slug])
   @@unique([id, slug])
+  @@unique([id])
+  @@index([id])
 }
 
 model Deny {
@@ -246,11 +249,17 @@ model OrganizationMember {
   isActive       Boolean       @default(true)
   joinedAt       DateTime      @default(now())
 
-  organization Organization        @relation(fields: [organizationId], references: [id])
+  organizationSlug String
+
+  organization Organization @relation(fields: [organizationId, organizationSlug], references: [id, slug])
+
+
   user         User                @relation(fields: [userId], references: [id])
   availability StaffAvailability[]
 
   @@unique([organizationId, userId])
+  //@@index([organizationSlug, userId])
+  @@index([organizationSlug])
   @@index([organizationId])
   @@index([userId])
 }
@@ -516,9 +525,10 @@ model Product {
   lowStockThreshold Int     @default(10)
 
   organizationId String
+  organizationSlug String
   categoryId     String
 
-  organization Organization     @relation(fields: [organizationId], references: [id])
+  organization Organization     @relation(fields: [organizationId, organizationSlug], references: [id,slug])
   category     ProductCategory  @relation(fields: [categoryId], references: [id])
   variants     ProductVariant[]
   orderItems   OrderItem[]
@@ -528,6 +538,7 @@ model Product {
   deletedAt DateTime?
 
   @@index([organizationId])
+  @@index([organizationSlug])
   @@index([categoryId])
   @@index([isActive])
   @@index([deletedAt])
@@ -585,7 +596,7 @@ model ShopCart {
   @@index([organizationSlug, customerId])
   @@index([sessionId])
 
-    @@unique([organizationSlug, sessionId])
+  @@unique([organizationSlug, sessionId])
   @@index([organizationSlug, sessionId])
 }
 
@@ -911,6 +922,7 @@ model OrganizationSettings {
   minimumOrderAmount Decimal? //@db.Decimal(12, 2)
   maximumOrderAmount Decimal? //@db.Decimal(12, 2)
   deliveryRadius     Float?
+  deliveryFee        Float? @default(30000)
   enablePickup       Boolean  @default(true)
   enableDelivery     Boolean  @default(true)
 

@@ -59,7 +59,7 @@ interface Product {
   variants: ProductVariant[]
   sortOrder: number
   isActive: boolean
-  isDeleted: boolean
+  deletedAt: boolean
 }
 
 interface ProductCategory {
@@ -69,7 +69,7 @@ interface ProductCategory {
   image: string | null
   products: Product[]
   isActive: boolean
-  isDeleted: boolean
+  deletedAt: boolean
 }
 
 interface BusinessHour {
@@ -167,7 +167,9 @@ export default function ShopPage({
       await addToCart(variantId, 1)
       setAddedToCart_VariantId(variantId)
       setTimeout(() => setAddedToCart_VariantId(null), 3000)
-      setTimeout(() => setSelectedProduct(null), 600)
+      setTimeout(() => setSelectedVariant(null), 600)
+      setTimeout(() => setAddingToCart(null), 600)
+      setSelectedProduct(null)
     } catch (err) {
       console.error("Error adding to cart:", err)
     } finally {
@@ -208,7 +210,7 @@ export default function ShopPage({
       ).sort((a, b) => b.sortOrder - a.sortOrder)
     }
     
-    return products.sort((a, b) => b.sortOrder - a.sortOrder).filter(p=>p.isActive)
+    return products.sort((a, b) => b.sortOrder - a.sortOrder)
   }
 
   function getTotalProducts() {
@@ -643,26 +645,26 @@ export default function ShopPage({
     </div>
       <Dialog open={!!selectedProduct} onOpenChange={() => setSelectedProduct(null)}>
               <DialogContent>
-                  <DialogHeader>
+              <DialogHeader>
                                
                 <DialogTitle>{selectedProduct?.name || "انتخاب کنید"}</DialogTitle>
               </DialogHeader><div className="w-full h-50 bg-muted rounded-lg overflow-hidden flex-shrink-0">
 
-                    {selectedProduct?.image ? (
-                          <img 
-                            src={selectedProduct.image} 
-                            alt={selectedProduct.name}
-                            className="w-full h-full object-cover "
-                          />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Package className="h-12 w-12 text-muted-foreground" />
-                          </div>
-                        )}
-                        </div>
+                {selectedProduct?.image ? (
+                  <img 
+                    src={selectedProduct.image} 
+                    alt={selectedProduct.name}
+                    className="w-full h-full object-cover "
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Package className="h-12 w-12 text-muted-foreground" />
+                  </div>
+                )}
+                </div>
               <div className="grid grid-cols-1 gap-5">
                {selectedProduct && 
-               selectedProduct.variants.map((v)=><div key={v.id+"0"}>{
+               selectedProduct.variants.map((v)=><div key={v.id}>{
                   <Card key={v.id} className="hover:shadow-md transition-shadow">
                       <CardContent className="grid grid-cols-2 gap-20">
                         <div className="flex gap-4">

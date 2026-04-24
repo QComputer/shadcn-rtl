@@ -78,7 +78,9 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    await productService.delete(id, session.user.role);
+    session.user.role === "SUPER_ADMIN"
+      ? await productService.hardDelete(id, session.user.role)
+      : await productService.delete(id, session.user.role);
 
     return NextResponse.json({ success: true });
   } catch (error) {

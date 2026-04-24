@@ -253,7 +253,11 @@ function LoginForm({ locale }: { locale: string }) {
           <p className="text-sm text-muted-foreground">
             {t("auth.noAccount") || "حساب کاربری ندارید؟"}{" "}
             <Link href={`/${locale}/register`} className="text-primary hover:underline font-medium">
-              {t("auth.register") || "ثبت نام"}
+              {t("auth.register") || "ثبت نام کاربر"}
+            </Link>
+
+            <Link href={`/${locale}/register/organization`} className="text-primary hover:underline font-medium">
+              { "ثبت نام کاربر و فروشگاه"}
             </Link>
           </p>
         </div>

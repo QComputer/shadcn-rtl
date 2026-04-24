@@ -37,7 +37,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const products = await productService.list(params);
+    const products =
+      session?.user?.role == "SUPER_ADMIN"
+        ? await productService.listAll(params)
+        : await productService.list(params);
 
     return NextResponse.json(products);
   } catch (error) {

@@ -5,7 +5,6 @@ import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { Eye, EyeOff, UserPlus, Loader2, AlertCircle, CheckCircle } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,19 +12,8 @@ import { Label } from "@/components/ui/label"
 import { ThemeSwitcher } from "@/components/ui/theme-switcher"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import prisma from "@/lib/db"
-
 function RegisterForm({ locale }: { locale: string }) {
   const router = useRouter()
-    
-  
   
   const [username, setUsername] = useState("")
   const [orgSlug, setOrgSlug] = useState("")
@@ -94,7 +82,7 @@ function RegisterForm({ locale }: { locale: string }) {
       // Otherwise redirect to login page
       if (data.autoLogin) {
         setTimeout(() => {
-          router.push(`/${locale}`)
+          router.push(`/${locale}/dashboard`)
         }, 1500)
       } else {
         setTimeout(() => {

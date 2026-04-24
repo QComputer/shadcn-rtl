@@ -34,9 +34,12 @@ export async function GET(
       (cat) => cat.isActive && !cat.deletedAt && cat.products.length > 0
     );
 
-    const activeCategories = categories.filter(category =>
-      category.products.some(product => product.isActive)
-    );
+    const activeCategories = categories
+      .map((category) => ({
+        ...category,
+        products: category.products.filter((p) => !p.deletedAt),
+      }))
+      .filter((category) => category.products.length > 0);
 
     // Get organization settings
     const settings = await prisma.organizationSettings.findUnique({

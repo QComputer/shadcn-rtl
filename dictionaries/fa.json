@@ -76,10 +76,11 @@
     "passwordTooShort": "رمز عبور باید حداقل ۶ کاراکتر باشد",
     "registrationFailed": "ثبت نام ناموفق بود",
     "alreadyHaveAccount": "حساب کاربری دارید؟",
-    "orgSlug_placeHolder": "یک اسلاگ برای سازمان خود انتخاب کنید",
+    "orgSlug_placeHolder": "اسلاگ سازمان مورد نظر خودرا وارد کنید",
+    "newOrgSlug_placeHolder": "یک اسلاگ برای سازمان خود انتخاب کنید",
     "orgSlug": "اسلاگ سازمان",
     "orgName": "نام سازمان",
-    "orgName_placeHolder": "یک نام برای سازمان خود انتخاب کنید",
+    "newOrgName_placeHolder": "یک نام برای سازمان خود انتخاب کنید",
     "register_withOrganization": "ثبت نام کاربر و سازمان",
     "registerDesc_withOrganization": "ایجاد حساب کاربری و سازمان جدید"
   },

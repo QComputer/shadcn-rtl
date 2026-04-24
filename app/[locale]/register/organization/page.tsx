@@ -94,7 +94,7 @@ function RegisterForm({ locale }: { locale: string }) {
       // Otherwise redirect to login page
       if (data.autoLogin) {
         setTimeout(() => {
-          router.push(`/${locale}`)
+          router.push(`/${locale}/dashboard`)
         }, 1500)
       } else {
         setTimeout(() => {
@@ -217,7 +217,7 @@ function RegisterForm({ locale }: { locale: string }) {
               <Input
                   id="orgName"
                   type="text"
-                  placeholder={t("auth.orgName_placeHolder") || "نام سازمان مورد نظر خودرا وارد کنید"}
+                  placeholder={t("auth.newOrgName_placeHolder") || "نام سازمان مورد نظر خودرا وارد کنید"}
                   value={orgName}
                   onChange={(e) => setOrgName(e.target.value)}
                   required
@@ -233,7 +233,7 @@ function RegisterForm({ locale }: { locale: string }) {
               <Input
                   id="orgSlug"
                   type="text"
-                  placeholder={t("auth.orgSlug_placeHolder") || "اسلاگ سازمان مورد نظر خودرا وارد کنید"}
+                  placeholder={t("auth.newOrgSlug_placeHolder") || "اسلاگ سازمان مورد نظر خودرا وارد کنید"}
                   value={orgSlug}
                   onChange={(e) => setOrgSlug(e.target.value)}
                   required

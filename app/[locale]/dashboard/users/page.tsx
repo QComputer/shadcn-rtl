@@ -173,7 +173,7 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
     }
   }
 
-  function geIsActive(isActive?: boolean): string {
+  function seIsActive(isActive?: boolean): string {
     return isActive? "active" : "inactive"
   }
 
@@ -234,7 +234,7 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
   }
 
   // Show loading state while checking access
-  if (accessLoading || !mounted || loading) {
+  if (accessLoading || !mounted) {
     return (
       <div className="p-6 space-y-4">
         <div className="h-10 bg-muted rounded w-1/4" />
@@ -326,8 +326,8 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
                   {(user.role == "ADMIN")? <ChessKing/> : (user.role == "MANAGER") ? <ChessQueen/> : <ChessPawnIcon/>}
                   {user.role}
                 </Badge>
-                <Badge variant={user.memberOf?.isActive ? "default" : "destructive"}>
-                  {user.memberOf?.isActive ? (t("common.active") || "فعال") : (t("common.inactive") || "غیرفعال")}
+                <Badge variant={user.isActive ? "default" : "destructive"}>
+                  {user.isActive ? (t("common.active") || "فعال") : (t("common.inactive") || "غیرفعال")}
                 </Badge>
               </div>
             </CardContent>
@@ -389,12 +389,15 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
           </div>
         </div>
         <div className="mt-4 flex items-center justify-between">
-          <Badge variant={selectedUser.memberOf?.isActive ? "default" : "destructive"}>
-            {selectedUser.memberOf?.isActive ? (t("common.active") || "فعال") : (t("common.inactive") || "غیرفعال")}
+          <Badge variant={selectedUser.isActive ? "default" : "destructive"}>
+            {selectedUser.isActive ? (t("common.active") || "فعال") : (t("common.inactive") || "غیرفعال")}
           </Badge>
         </div>
             </CardContent>
-            <CardFooter className="gap-5">
+            <CardFooter className="gap-5 ">
+              <div 
+          className="grid grid-cols-2"
+              >
         <Select 
               value={selectedUser.role} 
               onValueChange={(value) => handleUpdateRole(selectedUser.id, value)}
@@ -429,7 +432,7 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
           </SelectContent>
         </Select>
         <Select 
-          value={geIsActive(selectedUser.memberOf?.isActive)} 
+          value={seIsActive(selectedUser.isActive)} 
           onValueChange={(value) => handleUpdateIsActive(selectedUser.id, value)}
           disabled={updating}
         >
@@ -437,15 +440,33 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-              <SelectItem key={locale+'active'} value={'active'}>
+              <SelectItem key={'active user'} value={'active'}>
                 {'فعال'}
               </SelectItem>
-              <SelectItem key={locale+'inactive'} value={'inactive'}>
+              <SelectItem key={'inactive user'} value={'inactive'}>
+                {'غیر فعال'}
+              </SelectItem>
+          </SelectContent>
+        </Select>
+        <Select 
+          value={seIsActive(selectedUser.memberOf?.isActive)} 
+          onValueChange={(value) => handleUpdateIsActive(selectedUser.id, value)}
+          disabled={updating || !selectedUser.memberOf}
+        >
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+              <SelectItem key={'active member'} value={'active'}>
+                {'فعال'}
+              </SelectItem>
+              <SelectItem key={'inactive member'} value={'inactive'}>
                 {'غیر فعال'}
               </SelectItem>
           </SelectContent>
         </Select>
         
+            </div>
             </CardFooter>
           </Card>)}
         </DialogContent>

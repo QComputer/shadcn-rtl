@@ -22,10 +22,12 @@ export class ProductService {
     }
 
     const organization = await prisma.organization.findUnique({
-      where: {id: organizationId},
+      where: { id: organizationId },
     });
-    if(!organization) return
-     const _product = await prisma.product.create({ data: {...data, organizationId, organizationSlug: organization.slug} });
+    if (!organization) return;
+    const _product = await prisma.product.create({
+      data: { ...data, organizationId, organizationSlug: organization.slug },
+    });
 
     // Creating default variant with default inventory 1000
     const variant = await prisma.productVariant.create({
@@ -33,7 +35,7 @@ export class ProductService {
         productId: _product.id,
         name: _product.name,
         price: _product.basePrice,
-        sku: _product.sku ? _product.sku+"_0" : undefined,
+        sku: _product.sku ? _product.sku + "_0" : undefined,
         inventory: 1000,
       },
     });
@@ -71,7 +73,7 @@ export class ProductService {
     }
 
     return prisma.product.findFirst({
-      where: { 
+      where: {
         id: slug,
         organizationId: organization.id,
         isActive: true,
@@ -97,16 +99,16 @@ export class ProductService {
     maxPrice?: number;
     inStock?: boolean;
   }) {
-    const { 
-      page = 1, 
-      pageSize = 20, 
-      organizationId, 
-      categoryId, 
-      isActive, 
+    const {
+      page = 1,
+      pageSize = 20,
+      organizationId,
+      categoryId,
+      isActive,
       search,
       minPrice,
       maxPrice,
-      inStock 
+      inStock,
     } = params;
 
     const where: Record<string, unknown> = {
@@ -116,7 +118,7 @@ export class ProductService {
     if (organizationId) where.organizationId = organizationId;
     if (categoryId) where.categoryId = categoryId;
     if (isActive !== undefined) where.isActive = isActive;
-    
+
     if (search) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
@@ -129,7 +131,7 @@ export class ProductService {
       if (minPrice) (where.basePrice as Record<string, number>).gte = minPrice;
       if (maxPrice) (where.basePrice as Record<string, number>).lte = maxPrice;
     }
-    
+
     const [data, total] = await Promise.all([
       prisma.product.findMany({
         where,
@@ -149,8 +151,85 @@ export class ProductService {
     // Filter inStock if needed
     let filteredData = data;
     if (inStock) {
-      filteredData = data.filter(product => 
-        product.variants.some(v => v.inventory > 0) || !product.trackInventory
+      filteredData = data.filter(
+        (product) =>
+          product.variants.some((v) => v.inventory > 0) ||
+          !product.trackInventory,
+      );
+    }
+
+    return {
+      data: filteredData,
+      total: inStock ? filteredData.length : total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
+
+  async listAll(params: {
+    page?: number;
+    pageSize?: number;
+    organizationId?: string;
+    categoryId?: string;
+    isActive?: boolean;
+    search?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    inStock?: boolean;
+  }) {
+    const {
+      page = 1,
+      pageSize = 20,
+      organizationId,
+      categoryId,
+      isActive,
+      search,
+      minPrice,
+      maxPrice,
+      inStock,
+    } = params;
+
+    const where: Record<string, unknown> = {};
+
+    if (organizationId) where.organizationId = organizationId;
+    if (categoryId) where.categoryId = categoryId;
+    if (isActive !== undefined) where.isActive = isActive;
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    if (minPrice || maxPrice) {
+      where.basePrice = {};
+      if (minPrice) (where.basePrice as Record<string, number>).gte = minPrice;
+      if (maxPrice) (where.basePrice as Record<string, number>).lte = maxPrice;
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { sortOrder: "asc" },
+        include: {
+          category: true,
+          variants: true,
+        },
+      }),
+      prisma.product.count({ where }),
+    ]);
+
+    // Filter inStock if needed
+    let filteredData = data;
+    if (inStock) {
+      filteredData = data.filter(
+        (product) =>
+          product.variants.some((v) => v.inventory > 0) ||
+          !product.trackInventory,
       );
     }
 
@@ -196,8 +275,30 @@ export class ProductService {
     return product;
   }
 
+  async hardDelete(id: string, userRole: UserRole) {
+    if (userRole !== "SUPER_ADMIN") {
+      throw new Error("Unauthorized");
+    }
+
+    // hard delete
+    await prisma.productVariant.deleteMany({
+      where: { productId: id },
+    });
+
+    await prisma.product.delete({
+      where: { id },
+    });
+
+    revalidatePath(`/dashboard/products`);
+    return null;
+  }
+
   // Variant methods
-  async createVariant(productId: string, data: CreateProductVariantInput, userRole: UserRole) {
+  async createVariant(
+    productId: string,
+    data: CreateProductVariantInput,
+    userRole: UserRole,
+  ) {
     /*if (!hasPermission(userRole, "product:update")) {
       throw new Error("Unauthorized");
     }*/
@@ -217,7 +318,7 @@ export class ProductService {
     /*if (!hasPermission(userRole, "product:update")) {
       throw new Error("Unauthorized");
     }*/
-    if (!data?.id) return
+    if (!data?.id) return;
 
     const variant = await prisma.productVariant.update({
       where: { id: data.id },
@@ -245,7 +346,7 @@ export class ProductService {
 
   async getVariants(productId: string) {
     return prisma.productVariant.findMany({
-      where: { 
+      where: {
         productId,
         deletedAt: null,
       },

@@ -8,13 +8,34 @@ export async function GET(
   try {
     const { slug } = await params;
     const organizationCategories = await prisma.productCategory.findMany({
-      where: { organizationSlug: slug },
-      select: { id: true, name: true, products: {select: {id: true, name: true, variants: true, image: true}}, isActive: true, deletedAt: true}
+      where: {
+        organizationSlug: slug,
+      },
+      select: {
+        id: true,
+        name: true,
+        products: {
+          select: {
+            id: true,
+            name: true,
+            variants: true,
+            image: true,
+            isActive: true,
+            deletedAt: true,
+          },
+        },
+        isActive: true,
+        deletedAt: true,
+      },
     });
     
     // Get product categories with products
     const categories = organizationCategories.filter(
       (cat) => cat.isActive && !cat.deletedAt && cat.products.length > 0
+    );
+
+    const activeCategories = categories.filter(category =>
+      category.products.some(product => product.isActive)
     );
 
     // Get organization settings
@@ -34,7 +55,7 @@ export async function GET(
     
     return NextResponse.json({
       organization: settings?.organization,
-      categories,
+      categories: activeCategories,
       settings,
     });
   } catch (error) {

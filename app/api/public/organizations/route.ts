@@ -4,7 +4,6 @@ import { organizationFilterSchema } from "@/lib/validators";
 
 export async function GET(request: NextRequest) {
   try {
-
     const searchParams = Object.fromEntries(request.nextUrl.searchParams);
     const params = organizationFilterSchema.parse(searchParams);
 

@@ -45,6 +45,8 @@ interface ProductVariant {
   price: number | null
   inventory: number
   description: string | null
+  isActive: boolean
+  isDeleted: boolean
 }
 
 interface Product {
@@ -56,6 +58,8 @@ interface Product {
   images: string[]
   variants: ProductVariant[]
   sortOrder: number
+  isActive: boolean
+  isDeleted: boolean
 }
 
 interface ProductCategory {
@@ -64,6 +68,8 @@ interface ProductCategory {
   description: string | null
   image: string | null
   products: Product[]
+  isActive: boolean
+  isDeleted: boolean
 }
 
 interface BusinessHour {
@@ -98,7 +104,7 @@ interface OrganizationSettings {
 interface ShopData {
   organization: Organization
   categories: ProductCategory[]
-  businessHours: BusinessHour[]
+  //businessHours: BusinessHour[]
   settings: OrganizationSettings
 }
 
@@ -125,15 +131,15 @@ export default function ShopPage({
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [viewMode, setViewMode] = useState<"grid" | "list">("list")
 
-    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-    const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null)
-    const [quantity, setQuantity] = useState(1)
-    const [addingToCart_VariantId, setAddingToCart_VariantId] = useState<string | null>(null)
-    const [addingToCart, setAddingToCart] = useState<string | null>(null)
-    const [addedToCart, setAddedToCart] = useState<string | null>(null)
-    const [addedToCart_VariantId, setAddedToCart_VariantId] = useState<string | null>(null)
-    // Get cart functions from context
-      const { addToCart } = useCart()
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null)
+  const [quantity, setQuantity] = useState(1)
+  const [addingToCart_VariantId, setAddingToCart_VariantId] = useState<string | null>(null)
+  const [addingToCart, setAddingToCart] = useState<string | null>(null)
+  const [addedToCart, setAddedToCart] = useState<string | null>(null)
+  const [addedToCart_VariantId, setAddedToCart_VariantId] = useState<string | null>(null)
+  // Get cart functions from context
+   const { addToCart } = useCart()
       
   const handleAddToCart = async (product: Product | null) => {
     if (!product) return
@@ -201,8 +207,8 @@ export default function ShopPage({
         p.categoryName.includes(searchQuery)
       ).sort((a, b) => b.sortOrder - a.sortOrder)
     }
-
-    return products.sort((a, b) => b.sortOrder - a.sortOrder)
+    
+    return products.sort((a, b) => b.sortOrder - a.sortOrder).filter(p=>p.isActive)
   }
 
   function getTotalProducts() {
@@ -238,7 +244,7 @@ export default function ShopPage({
         setLoadingSilently(false)
       }
       setTrigger(false)
-      setTimeout(fetchDataSilently,10000)
+      setTimeout(fetchDataSilently, 5000)
     }
 
       
@@ -347,13 +353,13 @@ export default function ShopPage({
               </div>
             <h1 className="text-2xl md:text-3xl font-bold mb-3 flex gap-4">
               {data.organization?.name}
-              <p className="px-3">
+              <div className="px-3">
               <ShopStatusBadge isOpen={data.organization?.isOpen}/>
-              </p>
+              </div>
               
             </h1>
             {data.organization?.description && (
-              <p className="text-muted-foreground text-sm mb-3 px-1">
+              <p className="text-sm mb-3 px-1">
                 {data.organization.description}
               </p>
             )}
@@ -635,7 +641,7 @@ export default function ShopPage({
         </div>
       </section>
     </div>
-              <Dialog open={!!selectedProduct} onOpenChange={() => setSelectedProduct(null)}>
+      <Dialog open={!!selectedProduct} onOpenChange={() => setSelectedProduct(null)}>
               <DialogContent>
                   <DialogHeader>
                                
@@ -709,7 +715,7 @@ export default function ShopPage({
                 }
               </div>
               </DialogContent>
-              </Dialog>
+      </Dialog>
       
     </div>
   )}

@@ -742,7 +742,7 @@ export default function EditProductPage({
               <Input
                 id="name"
                 type="string"
-                value={selectedVariant ? selectedVariant.name : "-"}
+                value={selectedVariant.name}
                 onChange={(e) => {selectedVariant && setSelectedVariant(prev => ({ ...prev, name: e.target.value }))}}
                 placeholder={t("product.name_placeholder") || "Category name"}
                 required
@@ -753,7 +753,7 @@ export default function EditProductPage({
               <Label htmlFor="variantSku">{t("product.variantSku") || "SKU"}</Label>
               <Input
                 id="varianySku"
-                value={selectedVariant?.sku as string || ""}
+                value={selectedVariant?.sku}
                 onChange={(e) => setSelectedVariant(prev => ({ ...prev, sku: e.target.value }))}
                 placeholder={t("product.sku_placeholder") || "Variant sku"}
               />
@@ -768,7 +768,7 @@ export default function EditProductPage({
                   step="1000"
                   value={selectedVariant? Number(selectedVariant.price) : basePrice}
                   onChange={(e) => {selectedVariant && setSelectedVariant(prev => ({ ...prev, price: Number(e.target.value)}))}}
-                  placeholder="0 "
+                  placeholder="0"
                   required
                 />
             </div>
@@ -783,7 +783,7 @@ export default function EditProductPage({
                   step="10"
                   value={selectedVariant? Number(selectedVariant.inventory) : 0}
                   onChange={(e) => setSelectedVariant(prev => ({ ...prev, inventory: Number(e.target.value) as number}))}
-                  placeholder="0"
+                  placeholder=""
                   required
                 />
             </div>

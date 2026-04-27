@@ -49,7 +49,7 @@ function LoginForm({ locale }: { locale: string }) {
 
     try {
       const result = await signIn("credentials", {
-        username,
+        username: username.trim().toLowerCase(),
         password,
         redirect: false,
       })
@@ -251,11 +251,12 @@ function LoginForm({ locale }: { locale: string }) {
         {/* Footer */}
         <div className="mt-6 text-center">
           <p className="text-sm text-muted-foreground">
-            {t("auth.noAccount") || "حساب کاربری ندارید؟"}{" "}
-            <Link href={`/${locale}/register`} className="text-primary hover:underline font-medium">
+            {t("auth.noAccount") || "حساب کاربری ندارید؟"}
+            <Link href={`/${locale}/register`} className="text-primary hover:underline font-medium p-1">
               {t("auth.register") || "ثبت نام کاربر"}
             </Link>
-
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
             <Link href={`/${locale}/register/organization`} className="text-primary hover:underline font-medium">
               { "ثبت نام کاربر و فروشگاه"}
             </Link>

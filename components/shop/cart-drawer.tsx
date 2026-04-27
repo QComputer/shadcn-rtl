@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link";
 import { useCart } from "@/lib/contexts/cart-context";
 import { Button } from "@/components/ui/button";
@@ -89,7 +89,7 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
           </div>
         ) : (
           <>
-            <ScrollArea className="flex-1 ">{/*-mx-6 px-6*/}
+            <ScrollArea dir="rtl" className="flex-1 ">{/*-mx-6 px-6*/}
               <div className="space-y-4 py-4">
                 {cart?.items.map((item) => (
                   <div
@@ -112,12 +112,12 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
                     </div>
 
                     {/* Product Details */}
-                    <div className="flex-1 min-w-0 px-3">
-                      <h4 className="font-medium truncate">
-                        {item.variant.product.name}
+                    <div className="flex-1 min-w-0 px-2">
+                      <h4 className="font-small truncate">
+                        {item.variant.product.name}  {item.variant.name ? (" - " + item.variant.name) : ""}
                       </h4>
                       
-                      <p className="text-sm font-medium mt-1">
+                      <p className="text-xs font-medium mt-1">
                         {formatToman(item.variant.price)}
                       </p>
 
@@ -164,7 +164,7 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
                     </div>
 
                     {/* Item Total */}
-                    <div className="text-right">
+                    <div className="text-left">
                       <p className="font-medium">
                         {formatToman(item.variant.price * item.quantity)}
                       </p>

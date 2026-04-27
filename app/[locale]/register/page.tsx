@@ -63,7 +63,7 @@ function RegisterForm({ locale }: { locale: string }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username,
+          username: username.trim().toLowerCase(),
           password,
           orgSlug,
         }),

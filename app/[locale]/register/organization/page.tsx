@@ -5,22 +5,12 @@ import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { Eye, EyeOff, UserPlus, Loader2, AlertCircle, CheckCircle, Plus } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ThemeSwitcher } from "@/components/ui/theme-switcher"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import prisma from "@/lib/db"
 
 function RegisterForm({ locale }: { locale: string }) {
   const router = useRouter()
@@ -74,7 +64,7 @@ function RegisterForm({ locale }: { locale: string }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username,
+          username: username.trim().toLowerCase(),
           password,
           orgName,
           orgSlug,
@@ -202,7 +192,7 @@ function RegisterForm({ locale }: { locale: string }) {
                   id="username"
                   type="text"
                   placeholder={t("auth.username_placeholder") || "نام کاربری خود را وارد کنید"}
-                  value={username}
+                  value={username.trim().toLowerCase()}
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   minLength={3}

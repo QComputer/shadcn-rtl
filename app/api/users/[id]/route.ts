@@ -4,7 +4,7 @@ import { userService } from "@/lib/services/user.service";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
@@ -22,7 +22,7 @@ export async function GET(
 
     // Check access - customer can only see their own users
     if (
-      !["SUPER_ADMIN","ADMIN","MANAGER"].includes(session.user.role) &&
+      !["SUPER_ADMIN", "ADMIN", "MANAGER"].includes(session.user.role) &&
       id !== session.user.id
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -32,8 +32,10 @@ export async function GET(
   } catch (error) {
     console.error("Error getting user:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
+      {
+        error: error instanceof Error ? error.message : "Internal server error",
+      },
+      { status: 500 },
     );
   }
 }
@@ -41,7 +43,7 @@ export async function GET(
 // to update the status
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
@@ -59,16 +61,59 @@ export async function PUT(
     const user = body.role
       ? await userService.updateRole(id, body.role)
       : body.isActive
-        ? session.user.role == "SUPER_ADMIN" ? await userService.updateUserIsActive(id, body.isActive)
-        : session.user.role == "ADMIN" ? await userService.updateMembershipIsActive(id, body.isActive)
-        : null : null 
+        ? session.user.role == "SUPER_ADMIN"
+          ? await userService.updateUserIsActive(id, body.isActive)
+          : session.user.role == "ADMIN"
+            ? await userService.updateMembershipIsActive(id, body.isActive)
+            : null
+        : null;
 
     return NextResponse.json(user);
   } catch (error) {
     console.error("Error updating user:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
+      {
+        error: error instanceof Error ? error.message : "Internal server error",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const session = await auth();
+    const { id } = await params;
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userRole = session.user.role;
+    if (!userRole) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (userRole === "SUPER_ADMIN") {
+      await userService.delete(id);
+    } else {
+      await userService.update(
+        id,
+      { deletedAt: new Date(), isActive: false },
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error cancelling appointment:", error);
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Internal server error",
+      },
+      { status: 500 },
     );
   }
 }

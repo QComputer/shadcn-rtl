@@ -1,5 +1,5 @@
 "use client"
-
+// TOODO: add deleting a Variant 
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -101,13 +101,16 @@ export default function EditProductPage({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [deletingVariant, setDeletingVariant] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteVariantDialogOpen, setDeleteVariantDialogOpen] = useState(false)
   
   // Form state
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [categoryId, setCategoryId] = useState("")
+  const [variantId, setVariantId] = useState("")
   const [image, setImage] = useState("")
   const [progress, setProgress] = useState(0)
   const [isActive, setIsActive] = useState(true)
@@ -118,7 +121,8 @@ export default function EditProductPage({
   const [addVariantDialogOpen, setAddVariantDialogOpen] = useState(false)
   const [editVariantDialogOpen, setEditVariantDialogOpen] = useState(false)
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant>({
-    productId:'id',
+    id: 'varId',
+    productId:'productId',
     name:"var",
     price:Number(1000),
     inventory:Number(100),
@@ -229,7 +233,7 @@ export default function EditProductPage({
       setNewVariant({
         productId: productData.id,
         inventory: productData.lowStockThreshold? Number(productData.lowStockThreshold) : 100,
-        name: productData.name+"_",
+        name: productData.name,
         price: Number(productData.basePrice),
         sku: productData.sku
       })
@@ -300,6 +304,27 @@ export default function EditProductPage({
       alert(err instanceof Error ? err.message : "Failed to delete product")
     } finally {
       setDeleting(false)
+    }
+  }
+
+  const handleDeleteVariant = async () => {
+    setDeletingVariant(true)
+    try {
+      const response = await fetch(`/api/products/${productId}/variants/${selectedVariant.id}`, {
+        method: "DELETE",
+      })
+      
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to delete product variant")
+      }
+
+      setEditVariantDialogOpen(false)
+      router.push(`/${locale}/dashboard/products`)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete product variant")
+    } finally {
+      setDeletingVariant(false)
     }
   }
 
@@ -462,12 +487,12 @@ export default function EditProductPage({
                   {t("product.image") || "Product image"}
                 </Label>
               </div>
-              <div className="mt-1 mx-5 flex items-center">
+              <div className="mt-1 px-5 flex items-center">
                 <Input
                   type="file"
                   accept="image/*" // Only accept image files
                   onChange={handleImageChange}
-                  className="sr-only" // Hide the default file input
+                  className="sr-only w-10" // Hide the default file input
                   id="imageUpload"
                 />
                 <Label
@@ -502,9 +527,11 @@ export default function EditProductPage({
                     <X/>
                   </Button>
               </div>
+            
             <div className="row-2">
               {toPersianDigits(progress)} / {toPersianDigits(100)} 
             </div>
+            
             </div>
             
             {/* Name */}
@@ -550,7 +577,7 @@ export default function EditProductPage({
                   step="1000"
                   value={basePrice}
                   onChange={(e) => setBasePrice(e.target.value)}
-                  placeholder="0"
+                  placeholder=""
                   required
                 />
               </div>
@@ -734,30 +761,28 @@ export default function EditProductPage({
             <DialogDescription>
               {t("product.editVariant_description") || "Edit Product Variant"}
             </DialogDescription>
+            <Button 
+          variant="destructive" 
+          onClick={handleDeleteVariant}
+          className={"h-8 w-18"}
+        >
+          <Trash2 className={"h-4 w-4" + isRTL(locale) ? "mr-2" : "ml-2"} />
+          {t("common.delete") || "Delete"}
+        </Button>
           </DialogHeader>
-          
+
           <form onSubmit={handleEditVariantFormSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">{t("product.name") || "Name"} *</Label>
+              <Label htmlFor="name">{t("product.name") || "Name"} </Label>
               <Input
                 id="name"
                 type="string"
-                value={selectedVariant.name}
+                value={selectedVariant.name || ""}
                 onChange={(e) => {selectedVariant && setSelectedVariant(prev => ({ ...prev, name: e.target.value }))}}
-                placeholder={t("product.name_placeholder") || "Category name"}
-                required
+                placeholder={t("product.name_placeholder") || "variant name"}
               />
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="variantSku">{t("product.variantSku") || "SKU"}</Label>
-              <Input
-                id="varianySku"
-                value={selectedVariant?.sku}
-                onChange={(e) => setSelectedVariant(prev => ({ ...prev, sku: e.target.value }))}
-                placeholder={t("product.sku_placeholder") || "Variant sku"}
-              />
-            </div>
+
             <div className="space-y-2">
               <Label htmlFor="variantPrice">{t("product.variantPrice") || "variant Price"}</Label>
 
@@ -768,7 +793,7 @@ export default function EditProductPage({
                   step="1000"
                   value={selectedVariant? Number(selectedVariant.price) : basePrice}
                   onChange={(e) => {selectedVariant && setSelectedVariant(prev => ({ ...prev, price: Number(e.target.value)}))}}
-                  placeholder="0"
+                  placeholder=""
                   required
                 />
             </div>
@@ -784,7 +809,6 @@ export default function EditProductPage({
                   value={selectedVariant? Number(selectedVariant.inventory) : 0}
                   onChange={(e) => setSelectedVariant(prev => ({ ...prev, inventory: Number(e.target.value) as number}))}
                   placeholder=""
-                  required
                 />
             </div>
             
@@ -825,20 +849,20 @@ export default function EditProductPage({
               <Label htmlFor="name">{t("product.name") || "Name"} *</Label>
               <Input
                 id="name"
-                value={newVariant?.name || product?.name || ""}
+                value={newVariant?.name || ""}
                 onChange={(e) => setNewVariant(prev => ({ ...prev, name: e.target.value }))}
-                placeholder={t("product.name_placeholder") || "Category name"}
+                placeholder={t("product.variantName_placeholder") || "Variant name"}
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="varianySku">{t("product.varianySku") || "SKU"}</Label>
+              <Label htmlFor="variantSku">{t("product.variantSku") || "SKU"}</Label>
               <Input
-                id="varianySku"
-                value={newVariant.sku?.toString()|| product?.sku+"-" || ""}
+                id="variantSku"
+                value={newVariant.sku?.toString() || ""}
                 onChange={(e) => setNewVariant(prev => ({ ...prev, sku: e.target.value }))}
-                placeholder={t("product.sku_placeholder") || "Variant sku"}
+                placeholder={t("product.variantSku_placeholder") || "Variant sku"}
               />
             </div>
             <div className="space-y-2">
@@ -852,7 +876,6 @@ export default function EditProductPage({
                   value={Number(newVariant.price)}
                   onChange={(e) => setNewVariant(prev => ({ ...prev, price: Number(e.target.value) }))}
                   placeholder="0"
-                  required
                 />
             </div>
 
@@ -913,6 +936,8 @@ export default function EditProductPage({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+
     </div>
   )
 }

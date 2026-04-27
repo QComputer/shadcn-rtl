@@ -323,7 +323,7 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
         </TabsList>
 
         {/* Profile Tab */}
-        <TabsContent value="profile">
+        <TabsContent dir="rtl" value="profile">
           <Card className="dir-rtl">
             <CardHeader>
               <CardTitle>{t("user.profile")}</CardTitle>
@@ -376,7 +376,7 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
         </TabsContent>
 
         {/* Notifications Tab */}
-        <TabsContent value="notifications">
+        <TabsContent dir="rtl" value="notifications">
           <Card>
             <CardHeader>
               <CardTitle>{t("user.notifications")}</CardTitle>
@@ -415,7 +415,7 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
         </TabsContent>
 
         {/* Security Tab */}
-        <TabsContent value="security">
+        <TabsContent dir="rtl"  value="security">
           <Card>
             <CardHeader>
               <CardTitle>امنیت</CardTitle>
@@ -465,7 +465,7 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
         </TabsContent>
 
         {/* Appearance Tab */}
-        <TabsContent value="appearance">
+        <TabsContent dir="rtl"  value="appearance">
           <Card>
             <CardHeader>
               <CardTitle>{t("theme.appearance")}</CardTitle>

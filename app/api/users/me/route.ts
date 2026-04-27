@@ -208,3 +208,31 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+
+export async function DELETE(
+  request: NextRequest,
+) {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { deletedAt: new Date(), isActive: false },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Internal server error",
+      },
+      { status: 500 },
+    );
+  }
+}

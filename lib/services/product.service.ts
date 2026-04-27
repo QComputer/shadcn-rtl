@@ -233,6 +233,8 @@ export class ProductService {
       );
     }
 
+    //await this.deleteSingletVariants();
+
     return {
       data: filteredData,
       total: inStock ? filteredData.length : total,
@@ -290,6 +292,20 @@ export class ProductService {
     });
 
     revalidatePath(`/dashboard/products`);
+    return null;
+  }
+
+  async hardDeleteVariant(id: string, userRole: UserRole) {
+    if (userRole !== "SUPER_ADMIN") {
+      throw new Error("Unauthorized");
+    }
+
+    // hard delete variant
+    await prisma.productVariant.delete({
+      where: { id },
+    });
+
+    //revalidatePath(`/dashboard/products`);
     return null;
   }
 
@@ -352,6 +368,32 @@ export class ProductService {
       },
       orderBy: { name: "asc" },
     });
+  }
+
+  async getVariant(id: string) {
+    return prisma.productVariant.findUnique({
+      where: {
+        id,
+        deletedAt: null,
+      },
+    });
+  }
+
+  async deleteSingletVariants() {
+  const variants = await prisma.productVariant.findMany({
+    select: { id: true,  name: true, product: { select: { variants: true } } },
+  });
+  variants.forEach((v) => {
+    if (v.product.variants?.length < 2) setTimeout(async ()=> {
+       await prisma.productVariant.update({
+        where: {id: v.id},
+        data: {name: null}
+       })
+       console.log(v.name);
+       
+    }, 100)
+  });
+
   }
 }
 

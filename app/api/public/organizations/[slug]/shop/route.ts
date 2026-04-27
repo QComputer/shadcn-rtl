@@ -30,17 +30,19 @@ export async function GET(
     });
     
     // Get product categories with products
-    const categories = organizationCategories.filter(
-      (cat) => cat.isActive && !cat.deletedAt && cat.products.length > 0
-    );
-
-    const activeCategories = categories
+    const activeCategories = organizationCategories
       .map((category) => ({
         ...category,
-        products: category.products.filter((p) => !p.deletedAt),
+        products: category.products.filter((p) => p.isActive && !p.deletedAt),
       }))
-      .filter((category) => category.products.length > 0);
+      .filter(
+        (category) =>
+          category.isActive &&
+          !category.deletedAt &&
+          category.products.length > 0,
+      );
 
+    const categories = activeCategories
     // Get organization settings
     const settings = await prisma.organizationSettings.findUnique({
       where: {
@@ -58,7 +60,7 @@ export async function GET(
     
     return NextResponse.json({
       organization: settings?.organization,
-      categories: activeCategories,
+      categories: categories,
       settings,
     });
   } catch (error) {

@@ -142,7 +142,37 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
     return getDictValue(dict, key)
   }
 
-  const handleUpdateIsActive = async (userId: string, isActive: string) => {
+ const handleDeleteUser = async ()=>{
+  try {
+      setUpdating(true)
+      const response = await fetch(`/api/users/${selectedUser.id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+      
+      if (!response.ok) {
+        throw new Error("Failed to delete user ")
+      }
+      
+      setLoading(true)
+      fetchUsers()
+
+      // Update selected user if dialog is open
+      if (selectedUser?.id === selectedUser.id) {
+        setSelectedUser(null)
+      }
+
+    } catch (err) {
+      console.error("Error deleting user:", err)
+      setError(err instanceof Error ? err.message : "Failed to delete user")
+    } finally {
+      setUpdating(false)
+    }
+ }
+
+  const handleUpdateIsActive = async (userId: string, isActive: boolean) => {
     try {
       setUpdating(true)
       const response = await fetch(`/api/users/${userId}`, {
@@ -150,7 +180,7 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ isActive: isActive == "active" ? true : false }),
+        body: JSON.stringify({ isActive}),
       })
       
       if (!response.ok) {
@@ -168,6 +198,47 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
     } catch (err) {
       console.error("Error updating order status:", err)
       setError(err instanceof Error ? err.message : "Failed to update order status")
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleUpdateMemberIsActive = async (userId: string, isActive: boolean) => {
+    try {
+      setUpdating(true)
+      const userResponse = await fetch(`/api/users/${selectedUser.id}`)
+      
+      if (!userResponse.ok) {
+        throw new Error("Failed to find user")
+      }
+      const user = (await userResponse.json())
+      console.log(user);
+      
+      const response = await fetch(`/api/organization/${user.memberOf.organizationId}/members/${user.memberOf.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ isActive }),
+      })
+
+      const res =  await response.json()
+      console.log(res);
+      
+      if (!response.ok) {
+        throw new Error("Failed to update user activation")
+      }
+      setLoading(true)
+      fetchUsers()
+
+      // Update selected member if dialog is open
+      if (selectedUser?.id === userId) {
+        setSelectedUser(null)
+      }
+
+    } catch (err) {
+      console.error("Error updating user activation:", err)
+      setError(err instanceof Error ? err.message : "Failed to update user activation")
     } finally {
       setUpdating(false)
     }
@@ -395,6 +466,9 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
         </div>
             </CardContent>
             <CardFooter className="gap-5 ">
+              <Button variant="destructive" onClick={handleDeleteUser}>
+
+              </Button>
               <div 
           className="grid grid-cols-2"
               >
@@ -431,40 +505,17 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
             ))}
           </SelectContent>
         </Select>
-        <Select 
-          value={seIsActive(selectedUser.isActive)} 
-          onValueChange={(value) => handleUpdateIsActive(selectedUser.id, value)}
-          disabled={updating}
-        >
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-              <SelectItem key={'active user'} value={'active'}>
-                {'فعال'}
-              </SelectItem>
-              <SelectItem key={'inactive user'} value={'inactive'}>
-                {'غیر فعال'}
-              </SelectItem>
-          </SelectContent>
-        </Select>
-        <Select 
-          value={seIsActive(selectedUser.memberOf?.isActive)} 
-          onValueChange={(value) => handleUpdateIsActive(selectedUser.id, value)}
-          disabled={updating || !selectedUser.memberOf}
-        >
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-              <SelectItem key={'active member'} value={'active'}>
-                {'فعال'}
-              </SelectItem>
-              <SelectItem key={'inactive member'} value={'inactive'}>
-                {'غیر فعال'}
-              </SelectItem>
-          </SelectContent>
-        </Select>
+
+<Button 
+       variant={!selectedUser.isActive ? "default" : "destructive"}
+        onClick={()=>handleUpdateIsActive(selectedUser?.id, !selectedUser.isActive)}>
+          {!selectedUser.isActive ? "فعال کردن" : "غیرفعال کردن"}
+        </Button>
+        <Button 
+       variant={!selectedUser.memberOf.isActive ? "default" : "destructive"}
+        onClick={()=>handleUpdateMemberIsActive(selectedUser?.id, !selectedUser.memberOf.isActive)}>
+          {!selectedUser.memberOf.isActive ? "فعال کردن" : "غیرفعال کردن"}
+        </Button>
         
             </div>
             </CardFooter>

@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { useTheme } from "@/hooks/use-theme"
-import { BusinessHour, Organization, OrganizationSettings } from "@prisma/client"
+import { BusinessHour, Organization, OrganizationSettings, PaymentSettings } from "@prisma/client"
 import { ShopStatusBadge } from "@/components/ShopStatusBadge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface ImageRecord {
   id: number;
@@ -43,6 +44,7 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   
   const [organization, setOrganization ] = useState<Organization|null>(null)
   const [settings, setSettings ] = useState<OrganizationSettings|null>(null)
+  //const [paymentSettings, setPaymentSettings ] = useState<PaymentSettings|null>(null)
 
   // Form state
   const [name, setName] = useState("")
@@ -51,6 +53,17 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   const [phone, setPhone] = useState("")
   const [selectedLocale, setSelectedLocale] = useState(locale)
   const [selectedTheme, setSelectedTheme] = useState("system")
+
+  const [cardNumber, setCardNumber] = useState<string>("")
+  const [cardOwnerName, setCardOwnerName] = useState<string>("")
+  const [paymentMethodInt, setPaymentMethodInt] = useState<string>("0")
+  const [paymentCondition, setPaymenCondition] = useState(false)
+  function paymentMethodDict (int: string) {
+    if (int=="0") return "پرداخت نقدی و انتقال"
+    else if (int=="1") return "فقط پرداخت از طریق انتقال"
+    else if (int=="2") return "فقط پرداخت نقدی"
+  }
+  const [savingPayment, setSavingPayment] = useState(false)
 
   const [isOpen, setIsOpen] = useState(true)
     useEffect(() => {
@@ -80,6 +93,9 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
       setPhone(settings.organization.phone)
       setDescription(settings.organization.description)
       setBusinessHours(settings.organization.businessHours)
+      //setPaymentSettings(settings.organization.paymentSettings)
+      settings.organization?.paymentSettings?.paymentMethodInt && setPaymentMethodInt(settings.organization.paymentSettings.paymentMethodInt)
+      settings.organization?.paymentSettings?.paymentCondition && setPaymenCondition(settings.organization.paymentSettings.paymentCondition)
       setIsOpen(settings.organization?.isOpen || false)
         setLoading(false)
         setSaving(false)
@@ -205,7 +221,6 @@ const handleOpen = async (e: React.FormEvent) => {
       xhr.send(form);
     });
   }
-
   
   const handleSaveOrganization = async () => {
     if (!organization) return
@@ -245,6 +260,71 @@ const handleOpen = async (e: React.FormEvent) => {
       setError(err instanceof Error ? err.message : "Failed to save updates")
     } finally {
       setSavingOrganization(false)
+    }
+  }
+  
+  const handleSavePayment = async () => {
+    if (!organization) return
+    setSavingPayment(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const response = await fetch(`/api/organizations/${organization.id}/payment`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentCondition,
+          paymentMethodInt
+        }),
+      })
+      
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to save")
+      }
+      
+      const updatedPaymentSettings = await response.json()
+      setPaymentMethodInt(updatedPaymentSettings.paymentMethodInt)
+      setPaymenCondition(updatedPaymentSettings.paymentCondition)
+      setCardNumber(updatedPaymentSettings.cardNumber)
+      setSuccess(t("common.success"))
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save updates")
+    } finally {
+      setSavingOrganization(false)
+    }
+  }
+  
+  const handleSaveSettings = async()=> {
+    if (!organization) return
+    setSaving(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const response = await fetch(`/api/organizations/${organization.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+        }),
+      })
+      
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to save")
+      }
+      
+      const updatedUser = await response.json()
+      setSuccess(t("common.success"))
+      
+      // If locale changed, redirect to new locale
+      if (selectedLocale !== locale) {
+        router.push(`/${selectedLocale}/dashboard/settings/organization`)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save")
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -315,38 +395,6 @@ const handleOpen = async (e: React.FormEvent) => {
     )
   }
 
-  const handleSaveSettings = async()=> {
-    if (!organization) return
-    setSaving(true)
-    setError(null)
-    setSuccess(null)
-    try {
-      const response = await fetch(`/api/organizations/${organization.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-        }),
-      })
-      
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to save")
-      }
-      
-      const updatedUser = await response.json()
-      setSuccess(t("common.success"))
-      
-      // If locale changed, redirect to new locale
-      if (selectedLocale !== locale) {
-        router.push(`/${selectedLocale}/dashboard/settings/organization`)
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save")
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
     <div className="p-4 lg:p-6 space-y-6">
 
@@ -380,17 +428,17 @@ const handleOpen = async (e: React.FormEvent) => {
       </Card>
       <Card>
         <CardHeader>
-          تنظیمات:
+          تنظیمات عمومی:
         </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="slug">{t("organization.slug")}</Label>
-                  <Input id="username" value={organization?.slug || ""} disabled />
+                  <Input id="name" value={organization?.slug || ""} disabled />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="username">{t("organization.name")}</Label>
-                  <Input id="username" value={organization?.name || ""} 
+                  <Label htmlFor="name">{t("organization.name")}</Label>
+                  <Input id="name" value={organization?.name || ""} 
                   onChange={(e) => setName(e.target.value)}
                   />
                 </div>
@@ -428,6 +476,54 @@ const handleOpen = async (e: React.FormEvent) => {
         >
         {savingOrganization ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}
             {savingOrganization ? "ذخیره کردن..." : " ذخیره" }
+        </Button>
+        </div>
+        </CardFooter>
+      </Card>
+            <Card>
+        <CardHeader>
+          تنظیمات پرداخت:
+        </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="card-number">{t("organization.cardNumber")}</Label>
+                  <Input id="card-number" value={cardNumber} 
+                  onChange={(e) => setCardNumber(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                <Label htmlFor="card-cardOwnerName">{t("organization.cardOwnerName")}</Label>
+                  <Input id="card-cardOwnerName" value={cardNumber} 
+                  onChange={(e) => setCardOwnerName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="paymentMethod">{t("organization.paymentMethod")}</Label>
+
+                   <Select value={paymentMethodInt} onValueChange={setPaymentMethodInt}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t("common.paymentMethod_select") || "Select payment method"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {["0","1","2"].map(int => (
+                    <SelectItem key={"paymentMethod_"+int} value={int}>
+                      {paymentMethodDict(int)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+                </div>
+              </div>
+            </CardContent>
+      <CardFooter>
+        <div className="flex items-center">
+        <Button 
+        onClick={handleSavePayment}
+        disabled={savingPayment}
+        >
+        {savingPayment ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}
+            {savingPayment ? "ذخیره کردن..." : " ذخیره" }
         </Button>
         </div>
         </CardFooter>

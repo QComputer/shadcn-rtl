@@ -37,6 +37,8 @@ import { useCart } from "@/lib/contexts/cart-context"
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog"
 import { DialogTitle } from "@radix-ui/react-dialog"
 import { ShopStatusBadge } from "@/components/ShopStatusBadge"
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
+import { cn } from "@/lib/utils"
 
 interface ProductVariant {
   id: string
@@ -223,11 +225,8 @@ export default function ShopPage({
 }
     const fetchDataSilently = async () => {
         setLoadingSilently(true)
-
       try {
-   
       const response = await fetch(`/api/public/organizations/${slug}/shop`)
-      
       if (!response.ok) {
         throw new Error("Failed to fetch shop data")
       }
@@ -344,42 +343,40 @@ export default function ShopPage({
             />
             )}
         <div className="container mx-auto px-2 relative z-10">
-         
-              <div 
-              className={isOpen ? "w-25 h-25 rounded-full border-2  overflow-hidden -mt-58 mx-5 bg-card mb-5 border-green-500": "w-25 h-25 rounded-full border-2  overflow-hidden -mt-58 mx-5 bg-card mb-5 border-destructive"}>
-                <img 
-                  src={data.organization?.logo || "logo"} 
-                  alt={data.organization?.name+"logo"}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-3 flex gap-4">
-              {data.organization?.name}
-              <div className="px-3">
-              <ShopStatusBadge isOpen={data.organization?.isOpen}/>
-              </div>
-              
-            </h1>
-            {data.organization?.description && (
-              <p className="text-sm mb-3 px-1">
-                {data.organization.description}
-              </p>
-            )}
-            <div className="flex flex-wrap gap-3 px-3">
-              {data.settings?.enableDelivery && (
-                <Badge variant="secondary">
-                  <Van className="h-3 w-3" />
-                  ارسال 
-                </Badge>
-              )}
-              {data.settings?.enablePickup && (
-
-                <Badge variant="secondary">
-                  <MapPin className="h-4 w-4" />
-                  تحویل حضوری
-                </Badge>
-              )}
+            <div 
+            className={"w-25 h-25 rounded-full border-2  overflow-hidden -mt-58 mx-5 bg-card mb-5"}>
+              <img 
+                src={data.organization?.logo || "logo"} 
+                alt={data.organization?.name+"logo"}
+                className="w-full h-full object-cover"
+              />
             </div>
+          <h1 className="text-2xl md:text-3xl font-bold mb-3 flex gap-4">
+            {data.organization?.name}
+            <div className="px-3">
+            <ShopStatusBadge isOpen={data.organization?.isOpen}/>
+            </div>
+            
+          </h1>
+          {data.organization?.description && (
+            <p className="text-sm mb-3 px-1">
+              {data.organization.description}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-3 px-3">
+            {data.settings?.enableDelivery && (
+              <Badge variant="secondary">
+                <Van className="h-3 w-3" />
+                ارسال 
+              </Badge>
+            )}
+            {data.settings?.enablePickup && (
+              <Badge variant="secondary">
+                <MapPin className="h-4 w-4" />
+                تحویل حضوری
+              </Badge>
+            )}
+          </div>
         </div>
       </section>
 
@@ -394,7 +391,7 @@ export default function ShopPage({
                   className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Phone className="h-4 w-4" />
-                  <span>{data.organization.phone}</span>
+                  <span>{toPersianDigits(data.organization.phone)}</span>
                 </a>
               )}
               {data.organization?.address && (
@@ -643,42 +640,45 @@ export default function ShopPage({
         </div>
       </section>
     </div>
-      <Dialog open={!!selectedProduct} onOpenChange={() => setSelectedProduct(null)}>
+      <Dialog open={selectedProduct!=null} onOpenChange={() => {
+        setSelectedProduct(null)
+        setAddingToCart(null)
+      }} 
+        >
               <DialogContent>
               <DialogHeader>
                                
                 <DialogTitle>{selectedProduct?.name || "انتخاب کنید"}</DialogTitle>
-              </DialogHeader><div className="w-full h-50 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+              </DialogHeader><div className="w-full max-h-35  bg-muted rounded-lg overflow-hidden flex-shrink-0">
 
-                {selectedProduct?.image ? (
+
+
+                {selectedProduct?.image && (
                   <img 
                     src={selectedProduct.image} 
                     alt={selectedProduct.name}
                     className="w-full h-full object-cover "
                   />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Package className="h-12 w-12 text-muted-foreground" />
-                  </div>
                 )}
                 </div>
+                    <ScrollArea className={cn(" py-2 max-h-100")} dir="rtl">
               <div className="grid grid-cols-1 gap-5">
                {selectedProduct && 
                selectedProduct.variants.map((v)=><div key={v.id}>{
                   <Card key={v.id} className="hover:shadow-md transition-shadow">
-                      <CardContent className="grid grid-cols-2 gap-20">
+                      <CardContent className="grid grid-cols-2 gap-10">
                         <div className="flex gap-4">
      
                           <div className="flex-1 min-w-0">
                             
   
-                            <h3 className="font-medium mb-1">{v.name}</h3>
+                            <h3 className="font-medium">{v.name}</h3>
                             {v.description && (
-                              <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                              <p className="text-xs text-muted-foreground line-clamp-2 mb-1">
                                 {v.description}
                               </p>
                             )}
-                            <div className="flex items-center justify-between pt-2">
+                            <div className="flex items-center justify-between pt-1">
 
                               <span className="font-bold text-primary">
                                 {formatToman(v.price)}
@@ -696,7 +696,7 @@ export default function ShopPage({
                                       <Button 
                                 className={"flex-1 gap-2 w-28"}
                                 disabled={addingToCart_VariantId == v.id}
-               onClick={()=>handleAddVariantToCart(v.id)}
+                            onClick={()=>handleAddVariantToCart(v.id)}
                               >
                                 {addedToCart_VariantId == v.id ? (
                                   <>
@@ -716,9 +716,10 @@ export default function ShopPage({
               }</div>)
                 }
               </div>
+      </ScrollArea>
+
               </DialogContent>
       </Dialog>
-      
     </div>
   )}
 }

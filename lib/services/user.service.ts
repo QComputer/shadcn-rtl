@@ -24,19 +24,14 @@ export class UserService {
     });
   }
 
-  async delete(id: string, userRole: UserRole) {
-    if (!hasPermission(userRole, "org:delete")) {
-      throw new Error("Unauthorized");
-    }
+  async delete(id: string) {
+    await prisma.organizationMember.delete({
+      where: {userId: id}
+    })
 
-    // Soft delete
-    const organization = await prisma.organization.update({
+    return prisma.user.delete({
       where: { id },
-      data: { deletedAt: new Date(), isActive: false },
     });
-
-    revalidatePath("/dashboard/organizations");
-    return organization;
   }
 
   async getBusinessHours(id: string) {
@@ -92,7 +87,7 @@ export class UserService {
 
   async updateMembershipIsActive(id: string, isActive: boolean) {
     return prisma.organizationMember.update({
-      where: { userId: id },
+      where: { id },
       data: { isActive },
     });
   }

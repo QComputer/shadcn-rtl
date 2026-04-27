@@ -17,8 +17,14 @@ export class OrganizationService {
     }
 
     const organization = await prisma.organization.create({ data });
-    // creating org settings
+ // creating org settings
     await prisma.organizationSettings.upsert({
+      where: { organizationSlug: data.slug },
+      update: {},
+      create: { organizationSlug: data.slug },
+    });
+    
+    await prisma.paymentSettings.upsert({
       where: { organizationSlug: data.slug },
       update: {},
       create: { organizationSlug: data.slug },
@@ -41,6 +47,12 @@ export class OrganizationService {
     const organization = await prisma.organization.create({ data });
     // creating org settings
     await prisma.organizationSettings.upsert({
+      where: { organizationSlug: data.slug },
+      update: {},
+      create: { organizationSlug: data.slug },
+    });
+    
+    await prisma.paymentSettings.upsert({
       where: { organizationSlug: data.slug },
       update: {},
       create: { organizationSlug: data.slug },
@@ -77,6 +89,7 @@ export class OrganizationService {
         },
         businessHours: true,
         settings: true,
+        paymentSettings: true,
       },
     });
   }
@@ -87,6 +100,7 @@ export class OrganizationService {
       include: {
         businessHours: true,
         settings: true,
+        paymentSettings: true,
       },
     });
   }
@@ -108,6 +122,8 @@ export class OrganizationService {
         locale: true,
         timezone: true,
         isOpen: true,
+        settings: true,
+        paymentSettings: true,
       },
     });
   }
@@ -195,6 +211,11 @@ export class OrganizationService {
         organizationSlug: _organization.slug,
       },
     });
+        await prisma.paymentSettings.deleteMany({
+          where: {
+            organizationSlug: _organization.slug,
+          },
+        });
     await prisma.organization.delete({
       where: { id: _organization.id, slug: _organization.slug },
       //data: { deletedAt: new Date(), isActive: false },

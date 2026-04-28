@@ -278,7 +278,12 @@
     "noAddress": "آدرسی داده نشده",
     "READY": "آماده",
     "ready": "آماده",
-    "continueShopping": "منو"
+    "continueShopping": "منو",
+    "paymentStatus_badge":
+      {
+        "false": "پرداخت نشده",
+        "true": "پرداخت شده"
+      }
   },
   "dashboard": {
     "title": "داشبورد",

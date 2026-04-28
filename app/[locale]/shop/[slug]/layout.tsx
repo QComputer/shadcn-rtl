@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Store } from "lucide-react";
 import { Metadata } from "next";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher";
+import prisma from "@/lib/db";
+import Link from "next/link";
 
 
 interface ShopLayoutProps {
@@ -18,25 +20,30 @@ interface ShopLayoutProps {
 export async function generateMetadata({ params }: ShopLayoutProps): Promise<Metadata> {
   const { locale, slug } = await params;
   try {
-    const response = await fetch(`/api/public/organizations/${slug}/shop`, {
-      //cache: 'no-store'
-    });
-    //console.log("------------------shop response:", response);
+const organization = await prisma.organization.findUnique({
+  where: { slug, type: "SHOP"},
+  select: {name: true, slug: true, description: true}
+})
+    //console.log("------------------shop organization:", organization);
     
-    if (!response.ok) {
+    if (!organization) {
       return {
         title: "Shop Not Found",
       };
     }
     
-    const data = await response.json();
     return {
-      title: data.organization?.name || "Shop",
-      description: data.organization?.description || "Shop online",
+      title: organization?.name || "بازارباز",
+      description: organization.description || "خرید آنلاین",
+      icons:{
+         icon: [
+        { url: '/globe.svg', type: 'image/svg', sizes: '192x192' },
+      ],
+    }
     };
   } catch {
     return {
-      title: "Shop",
+      title: "بازارباز",
     };
   }
 }
@@ -45,6 +52,11 @@ export async function generateMetadata({ params }: ShopLayoutProps): Promise<Met
 export default async function ShopLayout({ children, params }: ShopLayoutProps) {
   const { locale, slug } = await params;
 
+const organization = await prisma.organization.findUnique({
+  where: { slug},
+  select: {name: true, slug: true}
+})
+
   // Get organization ID from slug
 
   return (
@@ -52,12 +64,14 @@ export default async function ShopLayout({ children, params }: ShopLayoutProps) 
       <div className="min-h-screen flex flex-col">
         {/* Shop Header */}
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="container flex h-16 items-center justify-between">
-              <span className="flex gap-3 mx-10 font-semibold ">
-              <Store className="h-5 w-5 " />
+          <div className="container flex h-16 pr-5 pl-2 justify-between ">
+            <span className="flex items-center text-lg md:text-xl">
+              <Link href={`/${locale}/shop/${organization?.slug}`}>              
+              {organization?.name}
+              </Link>
               </span>
 
-            <div className="flex items-center gap-4 ml-5">
+            <div className="flex items-center gap-2 ">
               <CartDrawer organizationSlug={slug}>
                 <Button variant="ghost" size="icon" className="relative">
                   <CartBadge />
@@ -75,7 +89,7 @@ export default async function ShopLayout({ children, params }: ShopLayoutProps) 
         </main>
 
         {/* Shop Footer */}
-        <footer className="border-t py-6">
+        <footer className="border-t py-6 hidden">
           <div className="container text-center text-sm text-muted-foreground">
             <p>© {new Date().getFullYear()}. تمامی حقوق محفوظ است.</p>
           </div>

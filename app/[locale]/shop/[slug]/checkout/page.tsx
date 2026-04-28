@@ -36,7 +36,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { formatNumber, formatPrice } from "@/lib/utils";
-import { OrderType, User } from "@prisma/client";
+import { OrderType, PaymentSettings, User } from "@prisma/client";
 import { Switch } from "@/components/ui/switch";
 import { getDictionary } from "@/lib/dictionary";
 import { formatToman } from "@/lib/persian";
@@ -55,7 +55,7 @@ interface CheckoutFormData {
 }
 const paymentMethodConfig: Record<string, { label: string; icon: typeof Clock; color: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   CASH: { label: "نقد", icon: Clock, color: "bg-orange-500", variant: "secondary" },
-  CREDIT_CARD: { label: "پرداخت آنلاین", icon: CreditCard, color: "bg-blue-500", variant: "default" },
+  CREDIT_CARD: { label: "پرداخت آنلاین/انتقال", icon: CreditCard, color: "bg-blue-500", variant: "default" },
   WALLET: { label: "کیف پول", icon: Wallet, color: "bg-green-500", variant: "default" },
 }
 export default function CheckoutPage({ 
@@ -115,6 +115,7 @@ export default function CheckoutPage({
         if (response.ok) {
           
           const data = await response.json();
+          
           setOrganizationId(data.organization.id);
           setOrganizationName(data.organization.name);
           data.settings.deliveryFee && setDeliveryFee(data.settings.deliveryFee);
@@ -137,7 +138,7 @@ export default function CheckoutPage({
     e.preventDefault();
     
     if (!cart || cart.items.length === 0) {
-      setError("Your cart is empty");
+      setError("سبد خرید شما خالی است");
       return;
     }
 
@@ -240,10 +241,6 @@ export default function CheckoutPage({
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-3">
           <nav className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Link href={`/${locale}`} className="hover:text-foreground">
-              خانه
-            </Link>
-            <ChevronRight className="h-4 w-4" />
             <Link href={`/${locale}/shop/${slug}`} className="hover:text-foreground">
               {organizationName}
             </Link>
@@ -462,7 +459,7 @@ export default function CheckoutPage({
                           <Select value={paymentMethod} onValueChange={(value) => {
                             setPaymentMethod(value as "CREDIT_CARD"| "DEBIT_CARD"| "CASH"| "WALLET"| "BANK_TRANSFER")}}>
                             <SelectTrigger className="w-full sm:w-48">
-                              <SelectValue placeholder="همه وضعیت‌ها" />
+                              <SelectValue placeholder="روش پرداخت را مشخص کنید" />
                             </SelectTrigger>
                             <SelectContent>
                               {Object.entries(paymentMethodConfig).map(([key, config]) => (

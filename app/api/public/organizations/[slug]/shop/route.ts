@@ -44,7 +44,7 @@ export async function GET(
 
     const categories = activeCategories
     // Get organization settings
-    const settings = await prisma.organizationSettings.findUnique({
+    let settings = await prisma.organizationSettings.findUnique({
       where: {
          organizationSlug: slug,
       },
@@ -54,15 +54,45 @@ export async function GET(
         enableDelivery: true,
         minimumOrderAmount: true,
         deliveryRadius: true,
-        organization: true
+        organization: {include: {paymentSettings: true}}
       },
     });
-    
-    return NextResponse.json({
-      organization: settings?.organization,
-      categories: categories,
-      settings,
-    });
+    if (!settings){
+      settings = await prisma.organizationSettings.create({
+        data: { organizationSlug: slug },
+        select: {
+          currency: true,
+          enablePickup: true,
+          enableDelivery: true,
+          minimumOrderAmount: true,
+          deliveryRadius: true,
+          organization: { include: { paymentSettings: true } },
+        },
+      });
+    } else if (!settings.organization.paymentSettings) {
+      const paymentSettings = await prisma.paymentSettings.upsert({
+        where: { organizationSlug: slug},
+        update:{},
+        create: { organizationSlug: slug },
+      });
+      settings = await prisma.organizationSettings.create({
+        data: { organizationSlug: slug },
+        select: {
+          currency: true,
+          enablePickup: true,
+          enableDelivery: true,
+          minimumOrderAmount: true,
+          deliveryRadius: true,
+          organization: { include: { paymentSettings: true } },
+        },
+      });
+    }
+      return NextResponse.json({
+        organization: settings?.organization,
+        categories: categories,
+        settings,
+        paymentSettings: settings?.organization?.paymentSettings,
+      });
   } catch (error) {
     console.error("Error getting shop organization:", error);
     return NextResponse.json(

@@ -26,7 +26,7 @@ import {
   Delete,
   Check,
 } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -687,9 +687,9 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                  </div>
                 )}
                 </CardContent>
-                      
-              </Card>
-                    {(selectedOrder.status==="PENDING" || selectedOrder.status==="PLACED") && 
+
+                <CardFooter>
+                  {(selectedOrder.status==="PENDING" || selectedOrder.status==="PLACED") && 
                     <div className="grid gap-1 grid-cols-3">
                     <Button className={"col-span-2 bg-green-400 text-green-800"} onClick={() => {
                       handleSaveAllEstimatedEndTimes()
@@ -745,6 +745,10 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                     </Button>
                   </div>
                   }
+                </CardFooter>
+                      
+              </Card>
+                    
 
               {/* Notes */}
               {selectedOrder.notes && (

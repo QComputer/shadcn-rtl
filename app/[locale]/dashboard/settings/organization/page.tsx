@@ -387,7 +387,7 @@ const handleOpen = async (e: React.FormEvent) => {
           <CardContent className="py-8 text-center">
             <p className="text-destructive">{error}</p>
             <Button className="mt-4" onClick={() => window.location.reload()}>
-              Retry
+              {t("comon.retry")}
             </Button>
           </CardContent>
         </Card>
@@ -426,11 +426,13 @@ const handleOpen = async (e: React.FormEvent) => {
        </Button>
         </CardFooter>
       </Card>
+
+
       <Card>
-        <CardHeader>
-          تنظیمات عمومی:
-        </CardHeader>
-            <CardContent className="space-y-4">
+      <CardHeader>
+        تنظیمات عمومی:
+      </CardHeader>
+      <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="slug">{t("organization.slug")}</Label>
@@ -466,8 +468,7 @@ const handleOpen = async (e: React.FormEvent) => {
                   dir="ltr"
                 />
               </div>
-            </CardContent>
-
+      </CardContent>
       <CardFooter>
         <div className="flex items-center">
         <Button 
@@ -479,8 +480,9 @@ const handleOpen = async (e: React.FormEvent) => {
         </Button>
         </div>
         </CardFooter>
-      </Card>
-            <Card>
+        </Card>
+
+        <Card>
         <CardHeader>
           تنظیمات پرداخت:
         </CardHeader>
@@ -494,13 +496,12 @@ const handleOpen = async (e: React.FormEvent) => {
                 </div>
                 <div className="space-y-2">
                 <Label htmlFor="card-cardOwnerName">{t("organization.cardOwnerName")}</Label>
-                  <Input id="card-cardOwnerName" value={cardNumber} 
+                  <Input id="card-cardOwnerName" value={cardOwnerName} 
                   onChange={(e) => setCardOwnerName(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="paymentMethod">{t("organization.paymentMethod")}</Label>
-
                    <Select value={paymentMethodInt} onValueChange={setPaymentMethodInt}>
                 <SelectTrigger>
                   <SelectValue placeholder={t("common.paymentMethod_select") || "Select payment method"} />
@@ -514,6 +515,7 @@ const handleOpen = async (e: React.FormEvent) => {
                 </SelectContent>
               </Select>
                 </div>
+                
               </div>
             </CardContent>
       <CardFooter>
@@ -528,6 +530,7 @@ const handleOpen = async (e: React.FormEvent) => {
         </div>
         </CardFooter>
       </Card>
+
       <Card>
         <CardHeader>
           تصاویر:

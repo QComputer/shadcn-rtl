@@ -27,6 +27,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { useAuth } from "@/hooks/use-auth"
 import { filterNavItems, dashboardNavItems, type NavItem } from "@/lib/access-control"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
+import { isRTL } from "@/lib/i18n"
 
 interface DashboardSidebarProps {
   locale: string
@@ -102,9 +103,9 @@ export function DashboardSidebar({
     return (
       <div className={cn("space-y-2 p-4", isMobile ? "" : "w-64")}>
         <div className="h-10 bg-muted animate-pulse rounded-lg" />
+        {/*<div className="h-10 bg-muted animate-pulse rounded-lg" />
         <div className="h-10 bg-muted animate-pulse rounded-lg" />
-        <div className="h-10 bg-muted animate-pulse rounded-lg" />
-        <div className="h-10 bg-muted animate-pulse rounded-lg" />
+        <div className="h-10 bg-muted animate-pulse rounded-lg" /> */}
       </div>
     )
   }
@@ -149,7 +150,9 @@ export function DashboardSidebar({
               <Menu className="h-6 w-6" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-72">
+          <SheetContent side="right" className="w-72"
+          dir={isRTL(locale) ? "rtl" : "ltr"}
+          >
             <SheetHeader>
               <SheetTitle>{t("navigation.menu") || "منو"}</SheetTitle>
             </SheetHeader>
@@ -186,7 +189,7 @@ export function DashboardSidebar({
       </div>
       {content}
       {/* Logout Button */}
-      <div className="p-4 border-t">
+      <div className="p-4 border-t mb-15">
         <Button
           variant="ghost"
           className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
@@ -194,7 +197,7 @@ export function DashboardSidebar({
             signOut()
           }}
         >
-          <LogOut className="h-5 w-5 ml-2" />
+          <LogOut className="h-5 w-5 ml-2 " />
           {t("auth.logout") || "خروج"}
         </Button>
       </div>

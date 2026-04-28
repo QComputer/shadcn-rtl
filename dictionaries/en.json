@@ -425,12 +425,12 @@
     "free": "Free"
   },
   "home": {
-    "platformName": "Zero Community",
+    "platformName": "Bazarbaz",
     "title": "Online Store",
     "subtitle": "Best products with best prices",
     "hero": {
-      "title": "The Best E-Commerce Platform",
-      "subtitle": "Online shopping and service booking in one modern platform",
+      "title": "Welcome to the Bazarbaz platform",
+      "subtitle": "Modern E-Commerce Platform. Online shopping and service booking in one modern platform",
       "dashboard": "Go to Dashboard"
     },
     "shops": "Shops",

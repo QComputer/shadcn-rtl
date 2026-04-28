@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { orderService } from "@/lib/services/order.service";
 
 export async function GET(
   request: NextRequest,
@@ -56,7 +57,7 @@ export async function GET(
             endTime: true,
             estimatedEndTime: true,
           },
-        },
+        }
       },
     });
 
@@ -70,6 +71,34 @@ export async function GET(
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
       { status: 500 }
+    );
+  }
+}
+
+// to update the peymentId
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ orderNumber: string }> },
+) {
+  try {
+    const { orderNumber } = await params;
+
+    const body = await request.json();
+    const { paymentId } = body;
+
+    const order = await prisma.order.update({
+      where: { orderNumber },
+      data: { paymentId },
+    });
+
+    return NextResponse.json(order);
+  } catch (error) {
+    console.error("Error updating order peymentId:", error);
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Internal server error",
+      },
+      { status: 500 },
     );
   }
 }

@@ -155,7 +155,7 @@ model Organization {
   @@unique([id, slug])
   @@unique([id])
   @@index([id])
-  paymentSettings PaymentSettings[]
+  paymentSettings PaymentSettings?
 }
 
 model Deny {
@@ -665,6 +665,7 @@ model Order {
   // Payment
   paidAt        DateTime?
   paymentMethod PaymentMethod?
+  paymentStatus Boolean @default(false)
   paymentId     String?
 
   // Promotion
@@ -951,7 +952,7 @@ model OrganizationSettings {
   minimumOrderAmount Decimal? //@db.Decimal(12, 2)
   maximumOrderAmount Decimal? //@db.Decimal(12, 2)
   deliveryRadius     Float?
-  deliveryFee        Float? @default(30000)
+  deliveryFee        Float? @default(50000)
   enablePickup       Boolean  @default(true)
   enableDelivery     Boolean  @default(true)
 
@@ -970,6 +971,7 @@ model OrganizationSettings {
 model PaymentSettings {
   id             String @id @default(cuid())
   organizationSlug String @unique
+  cardOwnerName String?
 
   // General settings
   settings   Json? // Flexible configuration store

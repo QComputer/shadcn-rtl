@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     // Filter by user role
     let orders;
     if (session.user?.role === "CUSTOMER") {
-      orders = await orderService.list({
+      orders = await orderService.listAll({
         ...params,
         customerId: session.user.id,
       });
@@ -58,9 +58,11 @@ export async function GET(request: NextRequest) {
       orders = await orderService.listForDriver(params, session.user.id);
       //console.log("---------------------orders", orders);
       
-    } else {
+    } else if (session.user.role=='SUPER_ADMIN'){
       // Super-Admin, Admin, Manager, Staff can see all orders for their organizations
-      orders = await orderService.list(params);
+      orders = await orderService.listAll(params);
+    } else if (session.user.organizationId){
+      orders = await orderService.list(params, session.user.organizationId)
     }
 
     return NextResponse.json(orders);

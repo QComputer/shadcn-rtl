@@ -12,6 +12,7 @@ import {
   AlertCircle,
   ArrowRight,
   ArrowLeft,
+  ChevronLeft,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -216,21 +217,10 @@ export default function ProductDetailPage({
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-3">
           <nav className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Link href={`/${locale}`} className="hover:text-foreground">
-              خانه
-            </Link>
-            <ChevronRight className="h-4 w-4" />
             <Link href={`/${locale}/shop/${slug}`} className="hover:text-foreground">
               {organization.name}
             </Link>
-            <ChevronRight className="h-4 w-4" />
-            <Link 
-              href={`/${locale}/shop/${slug}?category=${product.category.id}`} 
-              className="hover:text-foreground"
-            >
-              {product.category.name}
-            </Link>
-            <ChevronRight className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4" />
             <span className="text-foreground font-medium">{product.name}</span>
           </nav>
         </div>

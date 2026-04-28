@@ -77,10 +77,7 @@ async function getProgressId(
 }
 
 export class OrderService {
-  async create(
-    data: CreateOrderInput,
-    customerId: string,
-  ) {
+  async create(data: CreateOrderInput, customerId: string) {
     //console.log("=====================OrderService>create====================");
     const {
       organizationSlug,
@@ -282,7 +279,7 @@ export class OrderService {
 
       return newOrder;
     });
-    
+
     await order.organization.members.map(async (m) => {
       //console.log("----------member:", m);
 
@@ -301,10 +298,7 @@ export class OrderService {
     return order;
   }
 
-  async createForGuest(
-    data: CreateOrderInput,
-    sessionId: string,
-  ) {
+  async createForGuest(data: CreateOrderInput, sessionId: string) {
     //console.log("=====================OrderService>create====================");
     const {
       organizationSlug,
@@ -318,22 +312,22 @@ export class OrderService {
 
     // Get cart for guest user
     const cart = await prisma.shopCart.findFirst({
-            where: {
-              organizationSlug,
-              sessionId,
-            },
-            include: {
-              items: {
-                include: {
-                  variant: {
-                    include: {
-                      product: true,
-                    },
-                  },
-                },
+      where: {
+        organizationSlug,
+        sessionId,
+      },
+      include: {
+        items: {
+          include: {
+            variant: {
+              include: {
+                product: true,
               },
             },
-          })
+          },
+        },
+      },
+    });
 
     //console.log("---------------------CART: ", cart);
 
@@ -439,16 +433,16 @@ export class OrderService {
 
     // find or create guest user
     let guestCustomer = await prisma.guestCustomer.findUnique({
-      where: {sessionId}
+      where: { sessionId },
     });
-    if (!guestCustomer){
+    if (!guestCustomer) {
       guestCustomer = await prisma.guestCustomer.create({
         data: {
           sessionId,
           name: customerName || "مهمان",
-          phone: customerPhone
-        }
-      })
+          phone: customerPhone,
+        },
+      });
     }
 
     // Create order with transaction
@@ -507,7 +501,7 @@ export class OrderService {
               id: true,
               name: true,
               slug: true,
-              members: true
+              members: true,
             },
           },
         },
@@ -529,23 +523,22 @@ export class OrderService {
           },
         });
         //console.log("-------notification:", notification);
-        });
-     
+      });
 
       return newOrder;
     });
-await order.organization.members.map(async (m) => {
-  //console.log("----------member:", m);
+    await order.organization.members.map(async (m) => {
+      //console.log("----------member:", m);
 
-  const notification = await prisma.notification.create({
-    data: {
-      targetUserId: m.userId,
-      context: "سفارش جدید ثبت شد",
-      seen: false,
-    },
-  });
-  //console.log("-------notification:", notification);
-});
+      const notification = await prisma.notification.create({
+        data: {
+          targetUserId: m.userId,
+          context: "سفارش جدید ثبت شد",
+          seen: false,
+        },
+      });
+      //console.log("-------notification:", notification);
+    });
     revalidatePath(`/dashboard/orders`);
     revalidatePath(`/organization/${order.organization.slug}/orders`);
     return order;
@@ -621,7 +614,7 @@ await order.organization.members.map(async (m) => {
     });
   }
 
-  async list(params: {
+  async listAll(params: {
     page?: number;
     pageSize?: number;
     organizationSlug?: string;
@@ -649,6 +642,128 @@ await order.organization.members.map(async (m) => {
     const where: Record<string, unknown> = {};
 
     if (organizationSlug) where.organizationSlug = organizationSlug;
+    if (customerId) where.customerId = customerId;
+    if (guestCustomerId) where.guestCustomerId = guestCustomerId;
+    if (driverId) where.driverId = driverId;
+    if (status) where.status = status;
+    if (type) where.type = type;
+    if (fromDate || toDate) {
+      where.createdAt = {};
+      if (fromDate)
+        (where.createdAt as Record<string, Date>).gte = new Date(fromDate);
+      if (toDate)
+        (where.createdAt as Record<string, Date>).lte = new Date(toDate);
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.order.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { createdAt: "desc" },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+          guestCustomer: {
+            select: {
+              id: true,
+              name: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+          items: {
+            include: {
+              product: true,
+              variant: true,
+            },
+          },
+          assignedDriver: {
+            select: {
+              id: true,
+              name: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+          preparationProgress: {
+            select: {
+              id: true,
+              startTime: true,
+              endTime: true,
+              estimatedEndTime: true,
+            },
+          },
+          pickupProgress: {
+            select: {
+              id: true,
+              startTime: true,
+              endTime: true,
+              estimatedEndTime: true,
+            },
+          },
+          deliveryProgress: {
+            select: {
+              id: true,
+              startTime: true,
+              endTime: true,
+              estimatedEndTime: true,
+            },
+          },
+        },
+      }),
+      prisma.order.count({ where }),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
+
+  async list(params: {
+    page?: number;
+    pageSize?: number;
+    organizationSlug?: string;
+    customerId?: string;
+    guestCustomerId?: string;
+    driverId?: string;
+    status?: string;
+    type?: string;
+    fromDate?: string;
+    toDate?: string;
+  }, organizationId: string) {
+    const {
+      page = 1,
+      pageSize = 20,
+      organizationSlug,
+      customerId,
+      guestCustomerId,
+      driverId,
+      status,
+      type,
+      fromDate,
+      toDate,
+    } = params;
+const org = await prisma.organization.findUnique({
+  where: {id: organizationId},
+  select: {slug: true}
+})
+if (!org?.slug) return
+    const where: Record<string, unknown> = {};
+
+    where.organizationSlug = org.slug;
     if (customerId) where.customerId = customerId;
     if (guestCustomerId) where.guestCustomerId = guestCustomerId;
     if (driverId) where.driverId = driverId;
@@ -787,8 +902,10 @@ await order.organization.members.map(async (m) => {
     const whereNull = whereDriver;
     if (status && ["PENDING", "PLACED", "DENIED"].includes(status))
       whereNull.status = { in: [] }; // aborting the whereNull query
-    else if(!status) {
-      whereNull.status = { in: ["ACCEPTED", "PREPARING", "READY", "PICKED_UP"] };
+    else if (!status) {
+      whereNull.status = {
+        in: ["ACCEPTED", "PREPARING", "READY", "PICKED_UP"],
+      };
     }
 
     const [data, total] = await Promise.all([

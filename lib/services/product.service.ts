@@ -33,9 +33,9 @@ export class ProductService {
     const variant = await prisma.productVariant.create({
       data: {
         productId: _product.id,
-        name: _product.name,
+        name: "",
         price: _product.basePrice,
-        sku: _product.sku ? _product.sku + "_0" : undefined,
+        sku: undefined,
         inventory: 1000,
       },
     });

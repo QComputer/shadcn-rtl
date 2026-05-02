@@ -43,22 +43,20 @@ export async function GET(
       where: { organizationSlug },
       include: {
         organization: {
-          include: { businessHours: true },
+          include: { businessHours: true , paymentSettings: true},
         },
       },
     });
 
     if (!settings){
     settings = await prisma.organizationSettings.create({
-    data: { organizationSlug },
-    include: {
-      organization: {
-        include: {
-          businessHours: true,
+      data: { organizationSlug },
+      include: {
+        organization: {
+          include: { businessHours: true, paymentSettings: true },
         },
       },
-    },
-  });
+    });
     }
 
     return NextResponse.json(settings || {});

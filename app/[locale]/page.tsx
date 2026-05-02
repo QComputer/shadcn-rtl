@@ -80,9 +80,7 @@ export default async function HomePage({
                               <div
                 className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
                               >
-        <a referrerPolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=6010025&Code=PIS9oHglTwxwasymJaZx3w3cO1wbPvA7'>
-        <img referrerPolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=6010025&Code=PIS9oHglTwxwasymJaZx3w3cO1wbPvA7' alt='' className='cursor:pointer' slot='PIS9oHglTwxwasymJaZx3w3cO1wbPvA7'/>
-        </a>
+    
                               <Link
                 href={`/${locale}`}
                 className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
@@ -121,8 +119,8 @@ export default async function HomePage({
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href={`/${locale}/dashboard`}>
                 <Button size="lg" className="w-full sm:w-auto">
-                  {t("home.hero.dashboard") || "ورود به پنل مدیریت"}
-                  {isRTL ? <ArrowLeft className="mr-2 h-4 w-4" /> : <ArrowRight className="ml-2 h-4 w-4" />}
+                  {t("home.hero.dashboard") || "پنل مدیریت"}
+                  {isRTL ? <ArrowLeft className="mr-1 h-4 w-4" /> : <ArrowRight className="ml-1 h-4 w-4" />}
                 </Button>
               </Link>
             </div>

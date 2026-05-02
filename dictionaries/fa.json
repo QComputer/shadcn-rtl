@@ -119,7 +119,7 @@
   },
   "organization": {
     "title": "سازمان",
-    "settings":"تنظیمات",
+    "settings": "تنظیمات",
     "create": "ایجاد سازمان",
     "name": "نام",
     "slug": "اسلاگ",
@@ -158,7 +158,10 @@
     "today": "امروز",
     "viewAllServices": "مشاهده همه خدمات",
     "viewStaff": "مشاهده تیم ما",
-    "myAppointments": "نوبت‌های من"
+    "myAppointments": "نوبت‌های من",
+    "cardNumber": "شماره کارت بانکی",
+    "cardOwnerName": "نام صاحب حساب",
+    "paymentMethod": "روش پرداخت"
   },
   "product": {
     "title": "محصول",

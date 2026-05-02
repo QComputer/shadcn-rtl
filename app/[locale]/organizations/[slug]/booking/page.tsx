@@ -194,11 +194,6 @@ export default function BookingPage({
 
   const weekDates = getWeekDates(weekStart)
 
-  const formatTime = (isoString: string) => {
-    const date = new Date(isoString)
-    return date.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" })
-  }
-
   const handleSubmitBooking = async () => {
     if (!selectedService || !selectedDate || !selectedTime) return
 
@@ -291,7 +286,7 @@ export default function BookingPage({
                   {selectedDate && formatPersianDate(selectedDate, "full")}
                 </p>
                 <p className="text-muted-foreground">
-                  {selectedTime && formatTime(selectedTime)}
+                  {selectedTime && formatPersianDate(selectedTime)}
                 </p>
               </div>
 
@@ -460,7 +455,7 @@ export default function BookingPage({
                           }`}
                         >
                           <p className="text-xs mb-1">{dayName}</p>
-                          <p className="text-lg font-bold">{toPersianDigits(date.getDate())}</p>
+                          <p className="text-lg font-bold">{formatPersianDate(date,'daydate')}</p>
                           {isToday && (
                             <Badge variant="secondary" className="text-xs -mr-2">امروز</Badge>
                           )}
@@ -495,7 +490,7 @@ export default function BookingPage({
                                   : "hover:bg-primary/10 bg-muted/50"
                               }`}
                             >
-                              {formatTime(slot)}
+                              {formatPersianDate(slot, 'time')}
                             </button>
                           ))}
                         </div>
@@ -591,7 +586,7 @@ export default function BookingPage({
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">{t("appointment.selectTime")}:</span>
                       <span className="font-medium">
-                        {selectedTime && formatTime(selectedTime)}
+                        {selectedTime && formatPersianDate(selectedTime, 'time')}
                       </span>
                     </div>
                     <div className="flex justify-between border-t pt-3">
@@ -692,7 +687,7 @@ export default function BookingPage({
                     {selectedTime && (
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>{formatTime(selectedTime)}</span>
+                        <span>{formatPersianDate(selectedTime, 'time')}</span>
                       </div>
                     )}
                     <div className="border-t pt-4">

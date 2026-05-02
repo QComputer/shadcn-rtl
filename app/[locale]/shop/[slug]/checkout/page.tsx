@@ -35,11 +35,10 @@ import {
   CheckCircle,
   Wallet,
 } from "lucide-react";
-import { formatNumber, formatPrice } from "@/lib/utils";
 import { OrderType, PaymentSettings, User } from "@prisma/client";
 import { Switch } from "@/components/ui/switch";
 import { getDictionary } from "@/lib/dictionary";
-import { formatToman } from "@/lib/persian";
+import { formatToman, toPersianDigits } from "@/lib/persian";
 
 interface CheckoutFormData {
   customerName?: string;
@@ -427,7 +426,7 @@ export default function CheckoutPage({
                           </div>
                           <div className="flex-1 min-w-0 mt-1">
                             <p className=" text-sm truncate">
-                               {formatNumber(item.quantity)} x
+                               {toPersianDigits(item.quantity)} x
                               {item.variant.product.name}
                             </p>
                             <p className="text-sm mt-2">

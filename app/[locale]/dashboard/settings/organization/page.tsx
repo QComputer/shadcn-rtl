@@ -94,8 +94,10 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
       setDescription(settings.organization.description)
       setBusinessHours(settings.organization.businessHours)
       //setPaymentSettings(settings.organization.paymentSettings)
-      settings.organization?.paymentSettings?.paymentMethodInt && setPaymentMethodInt(settings.organization.paymentSettings.paymentMethodInt)
+      settings.organization?.paymentSettings?.paymentMethodInt && setPaymentMethodInt(settings.organization.paymentSettings.paymentMethodInt.toString())
       settings.organization?.paymentSettings?.paymentCondition && setPaymenCondition(settings.organization.paymentSettings.paymentCondition)
+      settings.organization?.paymentSettings?.cardNumber && setCardNumber(settings.organization.paymentSettings.cardNumber)
+      settings.organization?.paymentSettings?.cardOwnerName && setCardOwnerName(settings.organization.paymentSettings.cardOwnerName)
       setIsOpen(settings.organization?.isOpen || false)
         setLoading(false)
         setSaving(false)
@@ -273,8 +275,10 @@ const handleOpen = async (e: React.FormEvent) => {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          paymentCondition,
-          paymentMethodInt
+          paymentCondition: false,
+          paymentMethodInt: Number(paymentMethodInt),
+          cardOwnerName,
+          cardNumber,
         }),
       })
       
@@ -287,12 +291,13 @@ const handleOpen = async (e: React.FormEvent) => {
       setPaymentMethodInt(updatedPaymentSettings.paymentMethodInt)
       setPaymenCondition(updatedPaymentSettings.paymentCondition)
       setCardNumber(updatedPaymentSettings.cardNumber)
+      setCardOwnerName(updatedPaymentSettings.cardOwnerName)
       setSuccess(t("common.success"))
 
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save updates")
     } finally {
-      setSavingOrganization(false)
+      setSavingPayment(false)
     }
   }
   

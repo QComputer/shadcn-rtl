@@ -328,7 +328,7 @@ const paymentStatusConfig: Record<string, {  icon: typeof Clock; color: string; 
                 </CardTitle>
               </CardHeader>
               <CardContent>
-              {(!paymentSettings?.paymentCondition) ? 
+              {(paymentSettings && paymentSettings.cardNumber) && <>{ (!paymentSettings?.paymentCondition) ? 
               <div className="text-sm text-muted-foreground">
                 لطفا هزینه سفارش را پرداخت کنید تا سفارش شما توسط فروشگاه پذیرفته شود
               </div>
@@ -343,7 +343,7 @@ const paymentStatusConfig: Record<string, {  icon: typeof Clock; color: string; 
                   { "هزینه ی سفارش را به کارت "}
                 </div>
                 <div className="text-lg  py-2">
-                  {paymentSettings?.cardNumber || "0000"}
+                  {paymentSettings.cardNumber}
                   {" به نام " + paymentSettings?.cardOwnerName}
                 </div>
                 <div className="text-sm">
@@ -362,7 +362,7 @@ const paymentStatusConfig: Record<string, {  icon: typeof Clock; color: string; 
                   onClick={handleSendPaymantId}>
                  ارسال 
                 </Button>
-                </div></>}
+                </div></>}</>}
               </CardContent>
           </Card>
           

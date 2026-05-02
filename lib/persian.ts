@@ -13,17 +13,33 @@ const englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
 // Persian month names
 export const persianMonths = [
-  'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
-  'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+  "فروردین",
+  "اردیبهشت",
+  "خرداد",
+  "تیر",
+  "مرداد",
+  "شهریور",
+  "مهر",
+  "آبان",
+  "آذر",
+  "دی",
+  "بهمن",
+  "اسفند"
 ];
 
 // Persian day names
 export const persianDays = [
-  'شنبه','یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه'
+  "یکشنبه",
+  "دوشنبه",
+  "سه‌شنبه",
+  "چهارشنبه",
+  "پنج‌شنبه",
+  "جمعه",
+  "شنبه"
 ];
 
 // Short Persian day names
-export const persianDaysShort = ['ش','ی', 'د', 'س', 'چ', 'پ', 'ج'];
+export const persianDaysShort = ["ی", "د", "س", "چ", "پ", "ج", "ش"];
 
 /**
  * Convert English digits to Persian digits
@@ -73,7 +89,7 @@ export interface JalaliDateTime {
 export interface JalaliTime {
   hour: number; // 0-23
   minute: number; // 0-59
-  sec: number; // 0-59
+  //sec: number; // 0-59
 }
 
 // Calculate Gregorian date from Julian Day Number
@@ -121,7 +137,7 @@ export function gregorianToJalaliTime(gregorianDate: Date): JalaliTime {
   return {
     hour: jalaliDate.hour(),
     minute: jalaliDate.minute(),
-    sec: jalaliDate.second(),
+    //sec: jalaliDate.second(),
   };
 }
 /**
@@ -154,55 +170,63 @@ export function jalaliToGregorian(jalaliDate: JalaliDate): Date {
  */
 export function formatPersianDate(
   date: Date | string | number,
-  format: 'full' | 'short' | 'date' | 'time' | 'datetime' = 'full',
-  usePersianDigits: boolean = true
+  format: "full" | "short" | "date" | "time" | "datetime" | "day" | "daydate" = "full",
+  usePersianDigits: boolean = true,
 ): string {
-  const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
-  
+  const d =
+    typeof date === "string" || typeof date === "number"
+      ? new Date(date)
+      : date;
+
   if (isNaN(d.getTime())) {
-    return '';
+    return "";
   }
-  
+
   const jDateTime = gregorianToJalaliDateTime(d);
-  
+
+  if (format == "daydate")
+    return `${toPersianDigits(String(jDateTime.day).padStart(2, "0"))}`;
+
   const formatDate = (): string => {
     if (usePersianDigits) {
-      return `${toPersianDigits(jDateTime.year)}/${toPersianDigits(String(jDateTime.month).padStart(2, '0'))}/${toPersianDigits(String(jDateTime.day).padStart(2, '0'))}`;
+      return `${toPersianDigits(jDateTime.year)}/${toPersianDigits(String(jDateTime.month).padStart(2, "0"))}/${toPersianDigits(String(jDateTime.day).padStart(2, "0"))}`;
     }
-    return `${jDateTime.year}/${String(jDateTime.month).padStart(2, '0')}/${String(jDateTime.day).padStart(2, '0')}`;
+    return `${jDateTime.year}/${String(jDateTime.month).padStart(2, "0")}/${String(jDateTime.day).padStart(2, "0")}`;
   };
-  
+
   const formatTime = (): string => {
-    const hours = jDateTime.hour.toString().padStart(2, '0');
+    const hours = jDateTime.hour.toString().padStart(2, "0");
     const minutes = jDateTime.minute.toString().padStart(2, "0");
-    const seconds = jDateTime.sec.toString().padStart(2, "0");
-    
+    //    const seconds = jDateTime.sec.toString().padStart(2, "0");
+
     if (usePersianDigits) {
-      return `${toPersianDigits(hours)}:${toPersianDigits(minutes)}:${toPersianDigits(seconds)}`;
+      return `${toPersianDigits(hours)}:${toPersianDigits(minutes)}`; //:${toPersianDigits(seconds)}`;
     }
-    return `${hours}:${minutes}:${seconds}`;
+    return `${hours}:${minutes}`; //:${seconds}`;
   };
-  
+
   const getDayName = (): string => {
     const dayIndex = d.getDay();
     return persianDays[dayIndex];
   };
-  
+
   const getMonthName = (): string => {
     return persianMonths[jDateTime.month - 1];
   };
-  
+
   switch (format) {
-    case 'full':
+    case "full":
       return `${getDayName()} ${toPersianDigits(jDateTime.day)} ${getMonthName()} ${toPersianDigits(jDateTime.year)}`;
-    case 'short':
+    case "short":
       return formatDate();
-    case 'date':
+    case "date":
       return formatDate();
-    case 'time':
+    case "time":
       return formatTime();
-    case 'datetime':
+    case "datetime":
       return `${formatDate()} - ${formatTime()}`;
+    case "day":
+      return `${getDayName()}`;
     default:
       return formatDate();
   }

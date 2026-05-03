@@ -1,3 +1,4 @@
+/*
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { createReviewSchema } from "@/lib/validators";
@@ -31,6 +32,7 @@ export class ReviewService {
         user: {
           select: {
             id: true,
+            name: true,
             firstName: true,
             lastName: true,
             avatar: true,
@@ -57,6 +59,7 @@ export class ReviewService {
         user: {
           select: {
             id: true,
+            name: true,
             firstName: true,
             lastName: true,
             avatar: true,
@@ -104,6 +107,7 @@ export class ReviewService {
           user: {
             select: {
               id: true,
+              name: true,
               firstName: true,
               lastName: true,
               avatar: true,
@@ -150,6 +154,7 @@ export class ReviewService {
         user: {
           select: {
             id: true,
+            name: true,
             firstName: true,
             lastName: true,
           },
@@ -195,3 +200,4 @@ export class ReviewService {
 }
 
 export const reviewService = new ReviewService();
+*/

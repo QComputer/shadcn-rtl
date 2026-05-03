@@ -19,7 +19,7 @@ export const emailSchema = z
 export const slugSchema = z
   .string()
   .min(3, "Slug must be at least 3 characters")
-  .max(60, "Slug must be less than 60 characters")
+  .max(10, "Slug must be less than 10 characters")
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase alphanumeric with hyphens");
 
 export const pageSchema = z.coerce.number().int().positive().default(1);
@@ -29,6 +29,7 @@ export const pageSizeSchema = z.coerce.number().int().positive().max(100).defaul
 export const createUserSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
+  name: z.string().min(1, "First name is required").max(100),
   firstName: z.string().min(1, "First name is required").max(100),
   lastName: z.string().min(1, "Last name is required").max(100),
   phone: phoneSchema,
@@ -54,25 +55,26 @@ export const loginSchema = z.object({
 export const createOrganizationSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(200),
   slug: slugSchema,
-  type: z.enum(["SHOP", "APPOINTMENT"]),
+  type: z.enum(["SHOP", "APPOINTMENT"]).default("SHOP"),
   description: z.string().max(5000).optional(),
   address: z.string().max(500).optional(),
-  phone: phoneSchema,
+  phone: phoneSchema.optional(),
   email: emailSchema.optional(),
-  logo: z.string().url().optional(),
-  coverImage: z.string().url().optional(),
-  locale: z.string().default("en"),
-  timezone: z.string().default("UTC"),
+  logo: z.string().optional(),
+  coverImage: z.string().optional(),
+  image: z.string().optional(),
+  locale: z.string().default("fa").optional(),
+  timezone: z.string().default("Asia/Tehran").optional(),
 });
 
 export const updateOrganizationSchema = z.object({
   name: z.string().min(2).max(200).optional(),
   description: z.string().max(5000).optional(),
   address: z.string().max(500).optional(),
-  phone: phoneSchema,
+  phone: phoneSchema.optional(),
   email: emailSchema.optional(),
-  logo: z.string().url().optional(),
-  coverImage: z.string().url().optional(),
+  logo: z.string().max(500).optional(),
+  coverImage: z.string().max(500).optional(),
   timezone: z.string().optional(),
   isActive: z.boolean().optional(),
 });
@@ -105,9 +107,9 @@ export const createServiceSchema = z.object({
   description: z.string().max(5000).optional(),
   price: z.number().positive(),
   duration: z.number().int().positive().max(1440),
-  image: z.string().url().optional(),
+  image: z.string().max(500).optional(),
   categoryId: z.string().cuid(),
-  serviceProviderId: z.string().cuid().optional(),
+  serviceProviderId: z.string().cuid().nullable().optional(),
   sortOrder: z.number().int().default(0),
 });
 
@@ -121,14 +123,19 @@ export const createAppointmentSchema = z.object({
   date: z.string().datetime(),
   startTime: z.string().datetime(),
   notes: z.string().max(2000).optional(),
+  // Customer details for guest booking
+  customerName: z.string().min(2, "Name is required").max(200).optional(),
+  customerPhone: z.string().min(10, "Phone number is required").max(20).optional(),
+  customerEmail: z.string().email("Invalid email").optional().or(z.literal("")),
 });
 
 export const updateAppointmentSchema = z.object({
-  status: z.enum(["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW"]).optional(),
+  status: z
+    .enum(["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW"])
+    .optional(),
   notes: z.string().max(2000).optional(),
   cancellationReason: z.string().max(1000).optional(),
 });
-
 // Product Category validators
 export const createProductCategorySchema = z.object({
   name: z.string().min(2).max(200),
@@ -141,14 +148,20 @@ export const updateProductCategorySchema = createProductCategorySchema.partial()
   isActive: z.boolean().optional(),
 });
 
+const image = z.object({
+  url: z.string().url(),
+  description: z.string().max(5000).optional(),
+});
 // Product validators
 export const createProductSchema = z.object({
   name: z.string().min(2).max(200),
   description: z.string().max(5000).optional(),
   basePrice: z.number().nonnegative(),
-  images: z.array(z.string().url()).default([]),
+  image: z.string().max(500).optional(),
   sku: z.string().max(100).optional(),
   categoryId: z.string().cuid(),
+  organizationId: z.string().cuid().optional(),
+  organizationSlug: z.string().optional(),
   trackInventory: z.boolean().default(true),
   lowStockThreshold: z.number().int().nonnegative().default(10),
   sortOrder: z.number().int().default(0),
@@ -161,15 +174,14 @@ export const updateProductSchema = createProductSchema.partial().extend({
 // Product Variant validators
 export const createProductVariantSchema = z.object({
   name: z.string().min(1).max(200),
-  sku: z.string().max(100).optional(),
   price: z.number().nonnegative().optional(),
   inventory: z.number().int().nonnegative().default(0),
   allowBackOrder: z.boolean().default(false),
-  productId: z.string().cuid(),
 });
 
-export const updateProductVariantSchema = createProductVariantSchema.partial();
-
+export const updateProductVariantSchema = createProductVariantSchema.partial().extend({
+  id: z.string().cuid(),
+});
 // Cart validators
 export const addToCartSchema = z.object({
   variantId: z.string().cuid(),
@@ -182,19 +194,27 @@ export const updateCartItemSchema = z.object({
 
 // Order validators
 export const createOrderSchema = z.object({
-  organizationId: z.string().cuid(),
+  organizationSlug: z.string(),
   type: z.enum(["DELIVERY", "PICK_UP"]),
+  customerName: z.string().max(100).optional(),
+  //customerPhone: z.string().max(100).optional(),
+  customerPhone: phoneSchema.optional(),
   deliveryAddress: z.string().max(500).optional(),
   notes: z.string().max(2000).optional(),
   promotionCode: z.string().optional(),
-  paymentMethod: z.enum(["CREDIT_CARD", "DEBIT_CARD", "CASH", "WALLET", "BANK_TRANSFER"]),
-}).refine(
-  (data) => data.type === "PICK_UP" || data.deliveryAddress,
-  { message: "Delivery address is required for delivery orders", path: ["deliveryAddress"] }
-);
+  autoCompleteEndTimes: z.boolean().default(true),
+  paymentMethod: z
+    .enum(["CREDIT_CARD", "DEBIT_CARD", "CASH", "WALLET", "BANK_TRANSFER"])
+    .optional(),
+});
 
 export const updateOrderStatusSchema = z.object({
   status: z.enum(["PENDING", "PLACED", "ACCEPTED", "PREPARING", "READY", "PICKED_UP", "DELIVERED", "CANCELLED", "RECEIVED", "REFUNDED"]),
+});
+
+export const updateOrderEstimatedEndTimeSchema = z.object({
+  type: z.enum(["PREPARATION", "PICK_UP", "DELIVERY"]),
+  estimatedEndTime: z.string().max(100).optional(),
 });
 
 // Review validators
@@ -222,7 +242,7 @@ export const updatePromotionSchema = createPromotionSchema.partial().extend({
 
 // Organization Settings validators
 export const updateOrganizationSettingsSchema = z.object({
-  currency: z.string().default("USD"),
+  currency: z.string().default("IRR"),
   dateFormat: z.string().default("YYYY-MM-DD"),
   timeFormat: z.enum(["12h", "24h"]).default("24h"),
   minimumOrderAmount: z.number().nonnegative().optional(),
@@ -232,7 +252,7 @@ export const updateOrganizationSettingsSchema = z.object({
   enableDelivery: z.boolean().default(true),
   emailNotifications: z.boolean().default(true),
   smsNotifications: z.boolean().default(false),
-  settings: z.record(z.string(), z.unknown()).optional(),
+  settings: z.any().optional(),
 });
 
 // Pagination and filtering
@@ -251,6 +271,7 @@ export const organizationFilterSchema = z.object({
 
 export const productFilterSchema = z.object({
   categoryId: z.string().cuid().optional(),
+  organizationId: z.string().cuid().optional(),
   isActive: z.boolean().optional(),
   search: z.string().optional(),
   minPrice: z.number().nonnegative().optional(),
@@ -261,6 +282,7 @@ export const productFilterSchema = z.object({
 export const orderFilterSchema = z.object({
   status: z.enum(["PENDING", "PLACED", "ACCEPTED", "PREPARING", "READY", "PICKED_UP", "DELIVERED", "RECEIVED", "REFUNDED"]).optional(),
   type: z.enum(["DELIVERY", "PICK_UP"]).optional(),
+  organizationId: z.string().cuid().optional(),
   driverId: z.string().cuid().optional(),
   customerId: z.string().cuid().optional(),
   fromDate: z.string().datetime().optional(),

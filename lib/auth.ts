@@ -28,6 +28,7 @@ declare module "next-auth" {
     isTeamMember?: boolean;
     theme?: string;
     name?: string;
+    organizationId?: string | null;
   }
    interface Session{
     role?: UserRole;
@@ -35,6 +36,7 @@ declare module "next-auth" {
     isTeamMember?: boolean;
     theme?: string;
     name?: string;
+    organizationId?: string | null;
    }
 
   interface JWT {
@@ -43,6 +45,7 @@ declare module "next-auth" {
     isTeamMember?: boolean;
     theme?: string;
     name?: string;
+    organizationId?: string | null;
   }
 }
 
@@ -73,10 +76,10 @@ const buildProviders = (): Provider[] => {
     CredentialsProvider({
       name: "credentials",
       credentials: {
-        email: {
-           label: "Email",
-           type: "email",
-            placeholder: "Enter your email"
+        username: {
+           label: "username",
+           type: "text",
+            placeholder: "Enter your username or email"
           },
         password: { 
           label: "Password", 
@@ -86,49 +89,66 @@ const buildProviders = (): Provider[] => {
       },
       async authorize(credentials) {
         // Validate that credentials are provided
-        if (!credentials?.email || !credentials?.password) {
+        if (!credentials?.username || !credentials?.password) {
           console.warn("[Auth] Missing credentials during sign-in attempt");
           throw new Error("Username and password are required");
         }
 
-        const email = credentials.email as string;
+        //const email = credentials.email as string;
         const password = credentials.password as string;
+        const username = credentials.username as string;
         
         // Normalize username to lowercase for consistent lookup
-        //const normalizedUsername = username.trim().toLowerCase();
+        const normalizedUsername = username.trim().toLowerCase();
 
         try {
           // Find user by username
           const user = await prisma.user.findFirst({
-            where: { email },
+            where: { name: normalizedUsername },
           });
 
           // User not found
           if (!user) {
-            console.warn(`[Auth] User not found: ${email}`);
+            console.warn(`[Auth] User not found: ${normalizedUsername}`);
             throw new Error("Invalid username or password");
           }
 
           // User has no password set (OAuth user trying to use credentials)
           if (!user.password) {
-            console.warn(`[Auth] OAuth user attempted credentials login: ${email}`);
+            console.warn(
+              `[Auth] OAuth user attempted credentials login: ${normalizedUsername}`,
+            );
             return null;
           }
 
           // Verify password
           const validPassword = await bcrypt.compare(password, user.password);
           if (!validPassword) {
-            console.warn(`[Auth] Invalid password for user: ${email}`);
+            console.warn(
+              `[Auth] Invalid password for user: ${normalizedUsername}`,
+            );
             throw new Error("Invalid username or password");
           }
 
+          // Get user's organizationId if they are a team member
+          let organizationId: string | null = null;
+          if (user.isTeamMember) {
+            const organizationMember = await prisma.organizationMember.findFirst({
+              where: { userId: user.id },
+              select: { organizationId: true },
+            });
+            organizationId = organizationMember?.organizationId || null;
+          }
+
           // Return user object with required fields
-          console.log(`[Auth] Successful sign-in for user: ${user}`);
+          //console.log(`[Auth] Successful sign-in for user: ${user}`);
           return {
             id: user.id,
             email: user.email,
-            //name: normalizedUsername || undefined,
+            name: normalizedUsername || undefined,
             role: user.role,
+            isTeamMember: user.isTeamMember || false,
+            organizationId: organizationId,
           };
         } catch (error) {
           console.error("[Auth] Error during credentials validation:", error);
@@ -153,7 +173,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   jwt: {
     maxAge: 30 * 24 * 60 * 60,
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || "development-secret-change-in-production",
   
   // Custom pages for authentication flows
   pages: {
@@ -177,6 +197,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.isTeamMember = user.isTeamMember;
         token.locale = user.locale;
         token.theme = user.theme;
+        token.organizationId = user.organizationId;
       }
       return token;
     },
@@ -192,8 +213,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.isTeamMember = token.isTeamMember as boolean;
         session.user.locale = token.locale as string;
         session.user.theme = token.theme as string;
+        session.user.organizationId = token.organizationId as string | null;
       }
-      console.log('[Auth] session.user.username:', session.user);
+      //console.log("[Auth] session.user.name:", session.user.name);
 
       return session;
     },
@@ -224,13 +246,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * Called when a new user is created (e.g., via OAuth signup)
      */
     async createUser({ user }) {
-      console.log("[Auth] New user created via OAuth:", user);
+      //console.log("[Auth] New user created via OAuth:", user);
     },
      /**
      * Called when a user signed in  (e.g., via OAuth signin)
      */
     async signIn({ user }) {
-      console.log("[Auth][Event] A user signed in via OAuth:", user);
+      //console.log("[Auth][Event] A user signed in via OAuth:", user);
     },
   },
   

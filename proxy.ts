@@ -1,83 +1,187 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { supportedLocales } from "@/lib/i18n";
 
-const locales = supportedLocales;
-const defaultLocale = "fa";
+// Supported locales - Persian is the default (primary native language)
+export const locales = ["fa", "en", "ar"] as const;
+export type Locale = (typeof locales)[number];
 
-function getLocale(request: NextRequest) {
+// Default locale is Persian (RTL)
+export const defaultLocale: Locale = "fa";
+
+// Locale configurations for RTL/LTR and other settings
+export const localeConfig: Record<Locale, {
+  dir: "rtl" | "ltr";
+  name: string;
+  nativeName: string;
+}> = {
+  fa: {
+    dir: "rtl",
+    name: "fa",
+    nativeName: "فارسی"
+  },
+  en: {
+    dir: "ltr",
+    name: "en",
+    nativeName: "English"
+  },
+  ar: {
+    dir: "rtl",
+    name: "ar",
+    nativeName: "العربية"
+  }
+};
+
+
+// ============================================
+// Helper Functions
+// ============================================
+
+/**
+ * Check if pathname has a locale prefix
+ */
+function pathnameHasLocale(pathname: string): boolean {
+  return locales.some(
+    (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
+  );
+}
+
+/**
+ * Get locale from request
+ */
+function getLocale(request: NextRequest): Locale {
   const pathname = request.nextUrl.pathname;
 
   // Check if pathname already has a locale
-  const pathnameIsMissingLocale = locales.every(
-    (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
-  );
-
-  if (pathnameIsMissingLocale) {
-    // Try to get locale from cookie or accept-language header
-    const cookieLocale = request.cookies.get("locale")?.value;
-    if (cookieLocale && locales.includes(cookieLocale as typeof locales[number])) {
-      return cookieLocale;
+  if (pathnameHasLocale(pathname)) {
+    const pathnameLocale = pathname.split("/")[1];
+    if (locales.includes(pathnameLocale as Locale)) {
+      return pathnameLocale as Locale;
     }
-
-    const acceptLanguage = request.headers.get("Accept-Language");
-    if (acceptLanguage) {
-      const preferredLocale = acceptLanguage.split(",")[0]?.split("-")[0];
-      if (preferredLocale && locales.includes(preferredLocale as typeof locales[number])) {
-        return preferredLocale;
-      }
-    }
-
-    return defaultLocale;
   }
 
-  return undefined;
+  // Try to get locale from cookie or accept-language header
+  const cookieLocale = request.cookies.get("locale")?.value;
+  if (cookieLocale && locales.includes(cookieLocale as Locale)) {
+    return cookieLocale as Locale;
+  }
+
+  const acceptLanguage = request.headers.get("Accept-Language");
+  if (acceptLanguage) {
+    const preferredLocales = acceptLanguage.split(",").map((lang) => {
+      const [locale, quality] = lang.trim().split(";q=");
+      return {
+        locale: locale.split("-")[0],
+        quality: quality ? parseFloat(quality) : 1.0
+      };
+    });
+
+    preferredLocales.sort((a, b) => b.quality - a.quality);
+
+    for (const { locale } of preferredLocales) {
+      if (locales.includes(locale as Locale)) {
+        return locale as Locale;
+      }
+    }
+  }
+
+  return defaultLocale;
 }
 
-export function proxy(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
+/**
+ * Get the direction (RTL/LTR) for a given locale
+ */
+export function getDirection(locale: Locale): "rtl" | "ltr" {
+  return localeConfig[locale].dir;
+}
+
+/**
+ * Check if a locale is RTL
+ */
+export function isRTL(locale: Locale): boolean {
+  return localeConfig[locale].dir === "rtl";
+}
+
+// ============================================
+// Main Middleware Function
+// ============================================
+
+/**
+ * Main proxy/middleware function for Next.js 16
+ * Handles locale detection, routing, authentication, and access control
+ */
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
 
   // Skip API routes, static files, and Next.js internals
   if (
     pathname.startsWith("/api") ||
+    pathname.startsWith("/fa/shop") ||
+    pathname.startsWith("/uploads") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/static") ||
     pathname.includes(".") ||
-    pathname.startsWith("/auth")
+    pathname.startsWith("/auth") ||
+    pathname === "/favicon.ico"
   ) {
     return NextResponse.next();
   }
 
-  // Handle root path - no locale prefix needed
-  if (pathname === "/") {
-    return NextResponse.next();
-  }
+  // Check if pathname already has locale
+  const hasLocale = pathnameHasLocale(pathname);
 
-  const pathnameHasLocale = locales.some(
-    (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
-  );
-
-  // If pathname has a locale, check if the route exists
-  if (pathnameHasLocale) {
-    // Extract the path without locale
-    const locale = pathname.split("/")[1];
-    const pathWithoutLocale = "/" + pathname.split("/").slice(2).join("/");
+  // If no locale in path, redirect to locale-prefixed path
+  if (!hasLocale) {
+    const locale = 'fa'//getLocale(request);
     
-    // Check if the route exists by trying to access without locale
-    // For now, just pass through - Next.js will handle 404 if route doesn't exist
-    return NextResponse.next();
+    // Build new URL with locale prefix
+    const newPath = pathname === "/" 
+      ? `/${locale}` 
+      : `/${locale}${pathname}`;
+    
+    const newUrl = new URL(newPath, request.url);
+    const response = NextResponse.redirect(newUrl);
+    
+    // Set locale cookie
+    response.cookies.set("locale", locale, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365, // 1 year
+      httpOnly: false,
+    });
+    
+    return response;
   }
 
-  // For now, we don't redirect to locale-prefixed URLs
-  // The app handles Persian as the default language
-  // This can be enhanced later with proper locale-based routing
+  // Path already has locale - extract it
+  const locale = pathname.split("/")[1] as Locale;
   
-  return NextResponse.next();
+  // Validate locale
+  if (!locales.includes(locale)) {
+    const newUrl = new URL(`/${defaultLocale}${pathname}`, request.url);
+    return NextResponse.redirect(newUrl);
+  }
+
+  // Non-dashboard routes - just set locale headers
+  const response = NextResponse.next();
+  
+  // Set headers for downstream use
+  response.headers.set("x-locale", locale);
+  response.headers.set("x-direction", localeConfig[locale].dir);
+  
+  // Set locale cookie if not already set
+  if (!request.cookies.has("locale")) {
+    response.cookies.set("locale", locale, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      httpOnly: false,
+    });
+  }
+
+  return response;
 }
 
+// Export config for Next.js 16 matcher
 export const config = {
   matcher: [
-    // Match all paths except API routes, static files, and Next.js internals
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
   ],
 };

@@ -17,10 +17,16 @@ import { hasPermission, type UserRole } from "@/lib/types";
 // Product Category Service
 export class ProductCategoryService {
   async create(organizationId: string, data: CreateProductCategoryInput) {
+    const org = await prisma.organization.findUnique({where: {id: organizationId},
+    select:{
+      slug:true,
+    }})
+    if (!org) return
     const category = await prisma.productCategory.create({
       data: {
         ...data,
         organizationId,
+        organizationSlug: org?.slug,
       },
     });
 
@@ -39,12 +45,15 @@ export class ProductCategoryService {
     });
   }
 
-  async list(organizationId: string, params: {
-    page?: number;
-    pageSize?: number;
-    isActive?: boolean;
-    search?: string;
-  }) {
+  async list(
+    organizationId: string,
+    params: {
+      page?: number;
+      pageSize?: number;
+      isActive?: boolean;
+      search?: string;
+    },
+  ) {
     const { page = 1, pageSize = 20, isActive, search } = params;
 
     const where: Record<string, unknown> = {
@@ -73,6 +82,67 @@ export class ProductCategoryService {
         },
       }),
       prisma.productCategory.count({ where }),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
+  /**
+   * List all service categories across all organizations (SUPER_ADMIN only)
+   */
+  async listAll(params: {
+    page?: number;
+    pageSize?: number;
+    isActive?: boolean;
+    search?: string;
+    organizationId?: string;
+  }) {
+    const {
+      page = 1,
+      pageSize = 20,
+      isActive,
+      search,
+      organizationId,
+    } = params;
+
+    const where: Record<string, unknown> = {
+      deletedAt: null,
+    };
+
+    if (organizationId) where.organizationId = organizationId;
+    if (isActive !== undefined) where.isActive = isActive;
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.serviceCategory.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { sortOrder: "asc" },
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
+          _count: {
+            select: { services: { where: { deletedAt: null } } },
+          },
+        },
+      }),
+      prisma.serviceCategory.count({ where }),
     ]);
 
     return {
@@ -176,6 +246,90 @@ export class ServiceCategoryService {
     };
   }
 
+  /**
+   * List all service categories across all organizations (SUPER_ADMIN only)
+   */
+  async listAll(params: {
+    page?: number;
+    pageSize?: number;
+    isActive?: boolean;
+    search?: string;
+    organizationId?: string;
+  }) {
+    const { page = 1, pageSize = 20, isActive, search, organizationId } = params;
+
+    const where: Record<string, unknown> = {
+      deletedAt: null,
+    };
+
+    if (organizationId) where.organizationId = organizationId;
+    if (isActive !== undefined) where.isActive = isActive;
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.serviceCategory.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { sortOrder: "asc" },
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
+          _count: {
+            select: { services: { where: { deletedAt: null } } },
+          },
+        },
+      }),
+      prisma.serviceCategory.count({ where }),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
+
+  async listPublic(organizationId: string) {
+    return prisma.serviceCategory.findMany({
+      where: {
+        organizationId,
+        deletedAt: null,
+        isActive: true,
+      },
+      orderBy: { sortOrder: "asc" },
+      include: {
+        services: {
+          where: { deletedAt: null, isActive: true },
+          orderBy: { sortOrder: "asc" },
+          include: {
+            serviceProvider: {
+              select: {
+                id: true,
+                name: true,
+                firstName: true,
+                lastName: true,
+                avatar: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
   async update(id: string, data: UpdateServiceCategoryInput) {
     const category = await prisma.serviceCategory.update({
       where: { id },
@@ -204,7 +358,7 @@ export class ServiceService {
     price: number;
     duration: number;
     categoryId: string;
-    serviceProviderId?: string;
+    serviceProviderId?: string | null;
   }) {
     const { price, duration, categoryId, serviceProviderId, ...categoryData } = data;
     
@@ -230,13 +384,14 @@ export class ServiceService {
         duration,
         categoryId: category.id,
         organizationId,
-        serviceProviderId,
+        ...(serviceProviderId ? { serviceProviderId } : {}),
       },
       include: {
         category: true,
         serviceProvider: {
           select: {
             id: true,
+            name: true,
             firstName: true,
             lastName: true,
           },
@@ -256,6 +411,7 @@ export class ServiceService {
         serviceProvider: {
           select: {
             id: true,
+            name: true,
             firstName: true,
             lastName: true,
             avatar: true,
@@ -299,6 +455,7 @@ export class ServiceService {
           serviceProvider: {
             select: {
               id: true,
+              name: true,
               firstName: true,
               lastName: true,
             },
@@ -350,4 +507,4 @@ export class ServiceService {
 
 export const productCategoryService = new ProductCategoryService();
 export const serviceCategoryService = new ServiceCategoryService();
-export const serviceService = new ServiceService();
+//export const serviceService = new ServiceService();

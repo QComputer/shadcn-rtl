@@ -1,0 +1,149 @@
+import { prisma } from "@/lib/db";
+import { revalidatePath } from "next/cache";
+import { hasPermission, type UserRole, type Permission } from "@/lib/types";
+
+export class UserService {
+
+  async getById(id: string) {
+    return prisma.user.findUnique({
+      where: { id },
+      include: {
+        memberOf: true,
+        businessHours: true,
+      },
+    });
+  }
+
+  async getByName(name: string) {
+    return prisma.user.findUnique({
+      where: { name },
+      include: {
+        memberOf: true,
+        businessHours: true,
+      },
+    });
+  }
+
+  async delete(id: string) {
+    await prisma.organizationMember.delete({
+      where: {userId: id}
+    })
+
+    return prisma.user.delete({
+      where: { id },
+    });
+  }
+
+  async getBusinessHours(id: string) {
+    return prisma.businessHour.findMany({
+      where: { userId: id },
+      orderBy: { day: "asc" },
+    });
+  }
+
+  async updateBusinessHours(
+    userId: string,
+    organizationId: string,
+    hours: Array<{
+      day: string;
+      openTime: string;
+      closeTime: string;
+      isOpen: boolean;
+    }>,
+  ) {
+    // Delete existing hours and create new ones
+    await prisma.businessHour.deleteMany({
+      where: { userId },
+    });
+
+    const businessHours = await prisma.businessHour.createMany({
+      data: hours.map((h) => ({
+        day: h.day as
+          | "SATURDAY"
+          | "SUNDAY"
+          | "MONDAY"
+          | "TUESDAY"
+          | "WEDNESDAY"
+          | "THURSDAY"
+          | "FRIDAY",
+        openTime: h.openTime,
+        closeTime: h.closeTime,
+        isOpen: h.isOpen,
+        organizationId,
+        userId,
+      })),
+    });
+
+    //revalidatePath(`/dashboard/users/${userId}/settings`);
+    return businessHours;
+  }
+
+  async updateRole(id: string, role: UserRole) {
+    return prisma.user.update({
+      where: { id },
+      data: { role },
+    });
+  }
+
+  async updateMembershipIsActive(id: string, isActive: boolean) {
+    return prisma.organizationMember.update({
+      where: { id },
+      data: { isActive },
+    });
+  }
+
+  async updateUserIsActive(id: string, isActive: boolean) {
+    return prisma.user.update({
+      where: { id },
+      data: { isActive },
+    });
+  }
+
+  async update(id: string, data: any) {
+    return prisma.user.update({
+      where: { id },
+      data,
+    });
+  }
+
+  async copyBusinessHours(userId: string, organizationId: string) {
+    // Delete existing hours and create new ones
+    await prisma.businessHour.deleteMany({
+      where: { userId },
+    });
+    const hours = await this.getBusinessHours(organizationId);
+
+    const businessHours = await prisma.businessHour.createMany({
+      data: hours.map((h) => ({
+        day: h.day as
+          | "SATURDAY"
+          | "SUNDAY"
+          | "MONDAY"
+          | "TUESDAY"
+          | "WEDNESDAY"
+          | "THURSDAY"
+          | "FRIDAY",
+        openTime: h.openTime,
+        closeTime: h.closeTime,
+        isOpen: h.isOpen,
+        organizationId,
+        userId,
+      })),
+    });
+
+    //revalidatePath(`/dashboard/users/${userId}/settings`);
+    return businessHours;
+  }
+
+  async isMember(userId: string, organizationId: string) {
+    const member = await prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: { organizationId, userId },
+      },
+    });
+
+    return member?.isActive ?? false;
+  }
+}
+
+export const userService = new UserService();

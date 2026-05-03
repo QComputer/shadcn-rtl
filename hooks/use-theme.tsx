@@ -30,7 +30,7 @@ export function ThemeProvider({
     return (localStorage.getItem(storageKey) as Theme) || defaultTheme
   })
 
-  const [resolvedTheme, setResolvedTheme] = React.useState<"light" | "dark">("light")
+  const [resolvedTheme, setResolvedTheme] = React.useState<"light" | "dark">("dark")
 
   React.useEffect(() => {
     const root = window.document.documentElement
@@ -120,7 +120,7 @@ export function useThemeEffect(callback: (theme: "light" | "dark") => void) {
 // Theme display names for UI (in Persian)
 export const themeNames: Record<Theme, string> = {
   light: "سفید",
-  dark: "آبی تیره",
+  dark: "تیره",
   "warm-cream": "کرم گرم",
   "charcoal-gray": "خاکستری",
   system: "سیستم",
@@ -129,7 +129,7 @@ export const themeNames: Record<Theme, string> = {
 // Theme descriptions (in Persian)
 export const themeDescriptions: Record<Theme, string> = {
   light: "تم روشن و سفید",
-  dark: "تم تیره با رنگ آبی 深",
+  dark: "تم تیره با رنگ آبی",
   "warm-cream": "تم روشن با رنگ کرم گرم",
   "charcoal-gray": "تم تیره با رنگ خاکستری تیره",
   system: "پیروی از تنظیمات سیستم",

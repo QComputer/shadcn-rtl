@@ -1,54 +1,70 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { createOrganizationSchema, updateOrganizationSchema } from "@/lib/validators";
+import { createOrganizationSchema, pageSizeSchema, updateOrganizationSchema } from "@/lib/validators";
 import type { CreateOrganizationInput, UpdateOrganizationInput } from "@/lib/validators";
 import { hasPermission, type UserRole, type Permission } from "@/lib/types";
 
 export class OrganizationService {
-  async create(data: CreateOrganizationInput, userId: string) {
+  async create(data: CreateOrganizationInput) {
     // Check if slug is already taken
     const existingSlug = await prisma.organization.findUnique({
       where: { slug: data.slug },
+      select: { settings: true },
     });
 
     if (existingSlug) {
       throw new Error("Slug already exists");
     }
 
-    const organization = await prisma.organization.create({
-      data: {
-        ...data,
-        members: {
-          create: {
-            userId,
-            role: "ADMIN",
-            isActive: true,
-          },
-        },
-      },
-      include: {
-        members: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-              },
-            },
-          },
-        },
-      },
+    const organization = await prisma.organization.create({ data });
+ // creating org settings
+    await prisma.organizationSettings.upsert({
+      where: { organizationSlug: data.slug },
+      update: {},
+      create: { organizationSlug: data.slug },
+    });
+    
+    await prisma.paymentSettings.upsert({
+      where: { organizationSlug: data.slug },
+      update: {},
+      create: { organizationSlug: data.slug },
     });
 
-    // Update user's isTeamMember flag
-    await prisma.user.update({
-      where: { id: userId },
-      data: { isTeamMember: true },
+    return organization;
+  }
+
+  async createByUser(data: CreateOrganizationInput, userId: string) {
+    // Check if slug is already taken
+    const existingSlug = await prisma.organization.findUnique({
+      where: { slug: data.slug },
+      select: { settings: true },
     });
 
-    revalidatePath("/dashboard");
+    if (existingSlug) {
+      throw new Error("Slug already exists");
+    }
+
+    const organization = await prisma.organization.create({ data });
+    // creating org settings
+    await prisma.organizationSettings.upsert({
+      where: { organizationSlug: data.slug },
+      update: {},
+      create: { organizationSlug: data.slug },
+    });
+    
+    await prisma.paymentSettings.upsert({
+      where: { organizationSlug: data.slug },
+      update: {},
+      create: { organizationSlug: data.slug },
+    });
+
+    await organizationService.addMember(
+      organization.id,
+      userId,
+      "ADMIN",
+      userId,
+    );
+
     return organization;
   }
 
@@ -61,6 +77,8 @@ export class OrganizationService {
             user: {
               select: {
                 id: true,
+                name: true,
+                role: true,
                 email: true,
                 firstName: true,
                 lastName: true,
@@ -71,6 +89,7 @@ export class OrganizationService {
         },
         businessHours: true,
         settings: true,
+        paymentSettings: true,
       },
     });
   }
@@ -81,6 +100,30 @@ export class OrganizationService {
       include: {
         businessHours: true,
         settings: true,
+        paymentSettings: true,
+      },
+    });
+  }
+
+  async getBySlugPublic(slug: string) {
+    return prisma.organization.findUnique({
+      where: { slug, isActive: true },
+      select: {
+        id: true,
+        type: true,
+        name: true,
+        slug: true,
+        description: true,
+        address: true,
+        phone: true,
+        email: true,
+        logo: true,
+        coverImage: true,
+        locale: true,
+        timezone: true,
+        isOpen: true,
+        settings: true,
+        paymentSettings: true,
       },
     });
   }
@@ -93,6 +136,7 @@ export class OrganizationService {
     search?: string;
   }) {
     const { page = 1, pageSize = 20, type, isActive, search } = params;
+    //console.log("----------------list organizations----------params", params);
 
     const where: Record<string, unknown> = {};
 
@@ -134,7 +178,7 @@ export class OrganizationService {
       data,
     });
 
-    revalidatePath(`/dashboard/organizations/${id}`);
+    revalidatePath(`/dashboard/settings/organization`);
     return organization;
   }
 
@@ -142,15 +186,124 @@ export class OrganizationService {
     if (!hasPermission(userRole, "org:delete")) {
       throw new Error("Unauthorized");
     }
+    console.log(
+      "------------------------->organizationService.delete:",
+      id,
+      "with role:",
+      userRole,
+    );
 
-    // Soft delete
-    const organization = await prisma.organization.update({
+    //  delete
+    const _organization = await prisma.organization.findUnique({
       where: { id },
-      data: { deletedAt: new Date(), isActive: false },
+      select: { slug: true, id: true },
+    });
+    if (!_organization) return;
+
+    await prisma.organizationMember.deleteMany({
+      where: {
+        organizationSlug: _organization.slug,
+        organizationId: _organization.id,
+      },
+    });
+    await prisma.organizationSettings.deleteMany({
+      where: {
+        organizationSlug: _organization.slug,
+      },
+    });
+        await prisma.paymentSettings.deleteMany({
+          where: {
+            organizationSlug: _organization.slug,
+          },
+        });
+    await prisma.organization.delete({
+      where: { id: _organization.id, slug: _organization.slug },
+      //data: { deletedAt: new Date(), isActive: false },
     });
 
     revalidatePath("/dashboard/organizations");
-    return organization;
+    return;
+  }
+
+  async softDelete(id: string, userRole: UserRole) {
+    if (!hasPermission(userRole, "org:delete")) {
+      throw new Error("Unauthorized");
+    }
+    console.log(
+      "------------------------->organizationService.softDelete:",
+      id,
+      "with role:",
+      userRole,
+    );
+
+    //  delete
+    const _organization = await prisma.organization.findUnique({
+      where: { id },
+      select: { slug: true, id: true },
+    });
+    if (!_organization) return;
+    await prisma.organizationMember.deleteMany({
+      where: {
+        organizationSlug: _organization.slug,
+        organizationId: _organization.id,
+      },
+    });
+    await prisma.organizationSettings.deleteMany({
+      where: {
+        organizationSlug: _organization.slug,
+      },
+    });
+    await prisma.organization.update({
+      where: { id: _organization.id, slug: _organization.slug },
+      data: { deletedAt: new Date(), isActive: false },
+    });
+
+    revalidatePath("/dashboard/settings");
+    return;
+  }
+
+  async getAMemberByUserId(userId: string) {
+    return prisma.organizationMember.findUnique({
+      where: { userId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+            isActive: true,
+            businessHours: true,
+          },
+        },
+      },
+    });
+  }
+
+  async getMember(id: string) {
+    return prisma.organizationMember.findMany({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+            isActive: true,
+            businessHours: true,
+            providedServices: true,
+          },
+        },
+      },
+      orderBy: { joinedAt: "desc" },
+    });
   }
 
   async getMembers(organizationId: string) {
@@ -160,12 +313,37 @@ export class OrganizationService {
         user: {
           select: {
             id: true,
+            name: true,
+            role: true,
             email: true,
             firstName: true,
             lastName: true,
             avatar: true,
-            role: true,
             isActive: true,
+            businessHours: true,
+            providedServices: true,
+          },
+        },
+      },
+      orderBy: { joinedAt: "desc" },
+    });
+  }
+
+  async getAllMembers() {
+    return prisma.organizationMember.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+            isActive: true,
+            businessHours: true,
+            providedServices: true,
           },
         },
       },
@@ -177,7 +355,7 @@ export class OrganizationService {
     organizationId: string,
     userId: string,
     role: "ADMIN" | "MANAGER" | "STAFF",
-    addedBy: string
+    addedBy: string,
   ) {
     // Check if user is already a member
     const existingMember = await prisma.organizationMember.findUnique({
@@ -190,16 +368,24 @@ export class OrganizationService {
       throw new Error("User is already a member");
     }
 
+    const org = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { slug: true },
+    });
+
     const member = await prisma.organizationMember.create({
       data: {
         organizationId,
+        organizationSlug: org?.slug || "slug",
         userId,
-        role,
+        isActive: true,
       },
       include: {
         user: {
           select: {
             id: true,
+            name: true,
+            role: true,
             email: true,
             firstName: true,
             lastName: true,
@@ -208,30 +394,78 @@ export class OrganizationService {
       },
     });
 
-    // Update user's isTeamMember flag
+    const businessHours = this.getBusinessHours(organizationId);
+
+    // Update user's isTeamMember flag and role
     await prisma.user.update({
       where: { id: userId },
-      data: { isTeamMember: true },
+      data: {
+        isTeamMember: true,
+        role,
+      },
     });
 
     revalidatePath(`/dashboard/organizations/${organizationId}/members`);
     return member;
   }
 
+  async applyAsMember(organizationSlug: string, userId: string) {
+    const organization = await prisma.organization.findUnique({
+      where: { slug: organizationSlug },
+    });
+
+    if (!organization) {
+      throw new Error("organization not found");
+    }
+    // Check if user is already a member
+    const existingMember = await prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: { organizationId: organization.id, userId },
+      },
+    });
+
+    if (existingMember) {
+      throw new Error("User is already a member");
+    }
+
+    // create an inactive staff
+    const member = await prisma.organizationMember.create({
+      data: {
+        organizationId: organization.id,
+        organizationSlug,
+        userId,
+        isActive: false,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    return member;
+  }
+
   async updateMemberRole(
     organizationId: string,
     userId: string,
-    role: "ADMIN" | "MANAGER" | "STAFF"
+    role: "ADMIN" | "MANAGER" | "STAFF",
   ) {
-    const member = await prisma.organizationMember.update({
-      where: {
-        organizationId_userId: { organizationId, userId },
-      },
+    // Update user's role
+    const user = await prisma.user.update({
+      where: { id: userId },
       data: { role },
     });
 
     revalidatePath(`/dashboard/organizations/${organizationId}/members`);
-    return member;
+    return user;
   }
 
   async removeMember(organizationId: string, userId: string) {
@@ -241,12 +475,21 @@ export class OrganizationService {
       },
     });
 
+    // Update user's isTeamMember flag and role
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        isTeamMember: false,
+        role: "CUSTOMER",
+      },
+    });
+
     revalidatePath(`/dashboard/organizations/${organizationId}/members`);
   }
 
   async getBusinessHours(organizationId: string) {
     return prisma.businessHour.findMany({
-      where: { organizationId },
+      where: { organizationId, userId: null },
       orderBy: { day: "asc" },
     });
   }
@@ -258,16 +501,23 @@ export class OrganizationService {
       openTime: string;
       closeTime: string;
       isOpen: boolean;
-    }>
+    }>,
   ) {
     // Delete existing hours and create new ones
     await prisma.businessHour.deleteMany({
-      where: { organizationId },
+      where: { organizationId, userId: null },
     });
 
     const businessHours = await prisma.businessHour.createMany({
       data: hours.map((h) => ({
-        day: h.day as "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY",
+        day: h.day as
+          | "MONDAY"
+          | "TUESDAY"
+          | "WEDNESDAY"
+          | "THURSDAY"
+          | "FRIDAY"
+          | "SATURDAY"
+          | "SUNDAY",
         openTime: h.openTime,
         closeTime: h.closeTime,
         isOpen: h.isOpen,
@@ -275,8 +525,79 @@ export class OrganizationService {
       })),
     });
 
-    revalidatePath(`/dashboard/organizations/${organizationId}/settings`);
+    // Update all staff's businessHours
+    const organizationMembers = await this.getMembers(organizationId);
+    organizationMembers.map((m) => {
+      this.updateStaffBusinessHours(m.userId, organizationId, hours);
+    });
+
+    revalidatePath(`/dashboard/settings`);
     return businessHours;
+  }
+
+  async updateStaffBusinessHours(
+    userId: string,
+    organizationId: string,
+    hours: Array<{
+      day: string;
+      openTime: string;
+      closeTime: string;
+      isOpen: boolean;
+    }>,
+  ) {
+    // Delete existing hours and create new ones
+    await prisma.businessHour.deleteMany({
+      where: { userId },
+    });
+
+    const businessHours = await prisma.businessHour.createMany({
+      data: hours.map((h) => ({
+        day: h.day as
+          | "MONDAY"
+          | "TUESDAY"
+          | "WEDNESDAY"
+          | "THURSDAY"
+          | "FRIDAY"
+          | "SATURDAY"
+          | "SUNDAY",
+        openTime: h.openTime,
+        closeTime: h.closeTime,
+        isOpen: h.isOpen,
+        organizationId,
+        userId,
+      })),
+    });
+
+    revalidatePath(`/dashboard/settings`);
+    return businessHours;
+  }
+
+  async copyBusinessHoursToAllStaff(organizationId: string) {
+    const hours = await this.getBusinessHours(organizationId);
+    const organizationMembers = await this.getMembers(organizationId);
+    for (let index = 0; index < organizationMembers.length; index++) {
+      await prisma.businessHour.deleteMany({
+        where: { userId: organizationMembers[index].userId },
+      });
+      await prisma.businessHour.createMany({
+        data: hours.map((h) => ({
+          day: h.day as
+            | "SATURDAY"
+            | "SUNDAY"
+            | "MONDAY"
+            | "TUESDAY"
+            | "WEDNESDAY"
+            | "THURSDAY"
+            | "FRIDAY",
+          openTime: h.openTime,
+          closeTime: h.closeTime,
+          isOpen: h.isOpen,
+          organizationId,
+          userId: organizationMembers[index].userId,
+        })),
+      });
+    }
+    return organizationMembers;
   }
 
   async isMember(userId: string, organizationId: string) {
@@ -294,9 +615,16 @@ export class OrganizationService {
       where: {
         organizationId_userId: { organizationId, userId },
       },
+      include: {
+        user: {
+          select: {
+            role: true,
+          },
+        },
+      },
     });
 
-    return member?.role;
+    return member?.user?.role;
   }
 }
 

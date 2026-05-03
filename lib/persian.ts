@@ -3,23 +3,43 @@
  * Includes Jalali calendar date formatting and Iranian Toman currency formatting
  */
 
+import dayjs, { Dayjs } from "dayjs";
+import { toJalali } from "./jalali-adapter";
+import { number } from "framer-motion";
+
 // Persian digits mapping
 const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
 const englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
 // Persian month names
 export const persianMonths = [
-  'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
-  'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+  "فروردین",
+  "اردیبهشت",
+  "خرداد",
+  "تیر",
+  "مرداد",
+  "شهریور",
+  "مهر",
+  "آبان",
+  "آذر",
+  "دی",
+  "بهمن",
+  "اسفند"
 ];
 
 // Persian day names
 export const persianDays = [
-  'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه', 'شنبه'
+  "یکشنبه",
+  "دوشنبه",
+  "سه‌شنبه",
+  "چهارشنبه",
+  "پنج‌شنبه",
+  "جمعه",
+  "شنبه"
 ];
 
 // Short Persian day names
-export const persianDaysShort = ['ی', 'د', 'س', 'چ', 'پ', 'ج', 'ش'];
+export const persianDaysShort = ["ی", "د", "س", "چ", "پ", "ج", "ش"];
 
 /**
  * Convert English digits to Persian digits
@@ -58,20 +78,18 @@ export interface JalaliDate {
   month: number; // 1-12
   day: number;   // 1-31
 }
-
-// Calculate Julian Day Number from a Gregorian date
-function gregorianToJDN(year: number, month: number, day: number): number {
-  const a = Math.floor((14 - month) / 12);
-  const y = year + 4800 - a;
-  const m = month + 12 * a - 3;
-  
-  return day + 
-    Math.floor((153 * m + 2) / 5) + 
-    365 * y + 
-    Math.floor(y / 4) - 
-    Math.floor(y / 100) + 
-    Math.floor(y / 400) - 
-    32045;
+export interface JalaliDateTime {
+  year: number;
+  month: number; // 1-12
+  day: number; // 1-31
+  hour: number; // 0-23
+  minute: number; // 0-59
+  sec: number; // 0-59
+}
+export interface JalaliTime {
+  hour: number; // 0-23
+  minute: number; // 0-59
+  //sec: number; // 0-59
 }
 
 // Calculate Gregorian date from Julian Day Number
@@ -93,67 +111,35 @@ function jdnToGregorian(jdn: number): { year: number; month: number; day: number
 /**
  * Convert Gregorian date to Jalali date
  */
-export function gregorianToJalali(gregorianDate: Date): JalaliDate {
-  const year = gregorianDate.getFullYear();
-  const month = gregorianDate.getMonth() + 1;
-  const day = gregorianDate.getDate();
-  
-  const jdn = gregorianToJDN(year, month, day);
-  
-  // Jalali epoch (March 19, 622 CE) in JDN
-  const jalaliEpoch = 1948320.5;
-  
-  // Calculate days since Jalali epoch
-  const depoch = jdn - jalaliEpoch;
-  
-  // Calculate the year
-  const cycle = Math.floor(depoch / 146097);
-  const cyear = Math.floor((depoch % 146097) / 36524);
-  const ycycle = Math.floor(((depoch % 146097) % 36524) / 365);
-  
-  let yearNum = 286038;
-  if (cycle === 21) {
-    yearNum = cyear === 0 ? 286038 : 286039;
-  } else {
-    yearNum = cycle * 146097 + cyear * 36524 + ycycle;
-  }
-  
-  const jYear = yearNum - Math.floor((yearNum - 1) / 33) * 33 - 1;
-  const jDay = Math.floor((yearNum % 1461) / 365) + 1;
-  
-  // Calculate month and day
-  let jMonth = 1;
-  let jDayOfYear = jDay;
-  
-  // Days in each month for Jalali calendar
-  const jalaliMonthDays = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29];
-  
-  // Leap year calculation for Jalali
-  const isLeap = ((jYear + 1) % 33) % 12 === 0 || ((jYear + 1) % 33) % 12 === 4 || ((jYear + 1) % 33) % 12 === 8 || 
-                  ((jYear + 1) % 33) % 12 === 12 || ((jYear + 1) % 33) % 12 === 16 || ((jYear + 1) % 33) % 12 === 20 || 
-                  ((jYear + 1) % 33) % 12 === 24 || ((jYear + 1) % 33) % 12 === 28;
-  
-  if (isLeap) {
-    jalaliMonthDays[11] = 30;
-  }
-  
-  for (let i = 0; i < 12; i++) {
-    if (jDayOfYear <= jalaliMonthDays[i]) {
-      jMonth = i + 1;
-      break;
-    }
-    jDayOfYear -= jalaliMonthDays[i];
-  }
-  
-  const jDayFinal = Math.floor(jDayOfYear);
-  
+export function gregorianToJalaliDateTime(gregorianDate: Date): JalaliDateTime {
+  const jalaliDate = toJalali(gregorianDate);
   return {
-    year: jYear,
-    month: jMonth,
-    day: jDayFinal
+    year: jalaliDate.year(),
+    month: jalaliDate.month() + 1,
+    day: jalaliDate.date(),
+    hour: jalaliDate.hour(),
+    minute: jalaliDate.minute(),
+    sec: jalaliDate.second(),
   };
 }
 
+export function gregorianToJalaliDate(gregorianDate: Date): JalaliDate {
+    const jalaliDate = toJalali(gregorianDate);
+    return {
+      year: jalaliDate.year(),
+      month: jalaliDate.month() + 1,
+      day: jalaliDate.date(),
+    };
+}
+
+export function gregorianToJalaliTime(gregorianDate: Date): JalaliTime {
+  const jalaliDate = toJalali(gregorianDate);
+  return {
+    hour: jalaliDate.hour(),
+    minute: jalaliDate.minute(),
+    //sec: jalaliDate.second(),
+  };
+}
 /**
  * Convert Jalali date to Gregorian date
  */
@@ -184,55 +170,63 @@ export function jalaliToGregorian(jalaliDate: JalaliDate): Date {
  */
 export function formatPersianDate(
   date: Date | string | number,
-  format: 'full' | 'short' | 'date' | 'time' | 'datetime' = 'full',
-  usePersianDigits: boolean = true
+  format: "full" | "short" | "date" | "time" | "datetime" | "day" | "daydate" = "full",
+  usePersianDigits: boolean = true,
 ): string {
-  const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
-  
+  const d =
+    typeof date === "string" || typeof date === "number"
+      ? new Date(date)
+      : date;
+
   if (isNaN(d.getTime())) {
-    return '';
+    return "";
   }
-  
-  const jDate = gregorianToJalali(d);
-  
+
+  const jDateTime = gregorianToJalaliDateTime(d);
+
+  if (format == "daydate")
+    return `${toPersianDigits(String(jDateTime.day).padStart(2, "0"))}`;
+
   const formatDate = (): string => {
     if (usePersianDigits) {
-      return `${toPersianDigits(jDate.year)}/${toPersianDigits(String(jDate.month).padStart(2, '0'))}/${toPersianDigits(String(jDate.day).padStart(2, '0'))}`;
+      return `${toPersianDigits(jDateTime.year)}/${toPersianDigits(String(jDateTime.month).padStart(2, "0"))}/${toPersianDigits(String(jDateTime.day).padStart(2, "0"))}`;
     }
-    return `${jDate.year}/${String(jDate.month).padStart(2, '0')}/${String(jDate.day).padStart(2, '0')}`;
+    return `${jDateTime.year}/${String(jDateTime.month).padStart(2, "0")}/${String(jDateTime.day).padStart(2, "0")}`;
   };
-  
+
   const formatTime = (): string => {
-    const hours = d.getHours().toString().padStart(2, '0');
-    const minutes = d.getMinutes().toString().padStart(2, '0');
-    const seconds = d.getSeconds().toString().padStart(2, '0');
-    
+    const hours = jDateTime.hour.toString().padStart(2, "0");
+    const minutes = jDateTime.minute.toString().padStart(2, "0");
+    //    const seconds = jDateTime.sec.toString().padStart(2, "0");
+
     if (usePersianDigits) {
-      return `${toPersianDigits(hours)}:${toPersianDigits(minutes)}:${toPersianDigits(seconds)}`;
+      return `${toPersianDigits(hours)}:${toPersianDigits(minutes)}`; //:${toPersianDigits(seconds)}`;
     }
-    return `${hours}:${minutes}:${seconds}`;
+    return `${hours}:${minutes}`; //:${seconds}`;
   };
-  
+
   const getDayName = (): string => {
     const dayIndex = d.getDay();
     return persianDays[dayIndex];
   };
-  
+
   const getMonthName = (): string => {
-    return persianMonths[jDate.month - 1];
+    return persianMonths[jDateTime.month - 1];
   };
-  
+
   switch (format) {
-    case 'full':
-      return `${getDayName()} ${toPersianDigits(jDate.day)} ${getMonthName()} ${toPersianDigits(jDate.year)}`;
-    case 'short':
+    case "full":
+      return `${getDayName()} ${toPersianDigits(jDateTime.day)} ${getMonthName()} ${toPersianDigits(jDateTime.year)}`;
+    case "short":
       return formatDate();
-    case 'date':
+    case "date":
       return formatDate();
-    case 'time':
+    case "time":
       return formatTime();
-    case 'datetime':
+    case "datetime":
       return `${formatDate()} - ${formatTime()}`;
+    case "day":
+      return `${getDayName()}`;
     default:
       return formatDate();
   }
@@ -281,6 +275,44 @@ export function formatRelativePersianDate(date: Date | string | number): string 
   }
 }
 
+export function formatRelativePersianTime(
+  date: Dayjs | Date | string | number,
+): string {
+  const d = dayjs(date);
+
+  let diffMs = d.diff();
+  const isPassed: boolean = diffMs < 0;
+  if (isPassed) {
+    diffMs = -1 * diffMs;
+  }
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const intraDayDiffMs = diffMs % (1000 * 60 * 60 * 24);
+  const diffHours = Math.floor(intraDayDiffMs / (1000 * 60 * 60));
+  const intraHourDiffMs = diffMs % (1000 * 60 * 60);
+  const diffMinutes = Math.floor(intraHourDiffMs / (1000 * 60));
+  let formatted = "";
+
+  if (diffDays > 0) {
+    if (diffDays === 1) formatted + "دیروز، ";
+    else if (diffDays === 2) formatted + "پریروز، ";
+    else formatted += `${toPersianDigits(diffDays)} روز و`;
+  }
+  if (diffHours > 0) {
+    formatted += `${toPersianDigits(diffHours)} ساعت `;
+  }
+  if (diffMinutes > 0) {
+    if (diffHours > 0) formatted += " و ";
+    formatted += `${toPersianDigits(diffMinutes)} دقیقه `;
+    formatted += isPassed ? "پیش" : "دیگر";
+  }
+
+  return formatted;
+}
+/*
+export function addMinutes(date: Date , minutes: number): {gdate: Date, jDate:string} {
+  const gdate = date.
+}
+*/
 /**
  * Iranian Toman currency formatting
  * Uses Persian numerals and appropriate formatting
@@ -302,31 +334,34 @@ export interface CurrencyOptions {
  * @param options - Formatting options
  */
 export function formatToman(
-  amount: number | string,
-  options: CurrencyOptions = {}
+  amount: number | string | null | undefined,
+  options: CurrencyOptions = {},
 ): string {
   const {
     decimals = 0,
     showCurrency = true,
     usePersianDigits = true,
-    useSeparators = true
+    useSeparators = true,
   } = options;
-  
+
+  if (amount === undefined || amount === null)
+    return toPersianDigits(0) + " تومان";
+
   // Convert to number if string
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-  
+  const num = typeof amount === "string" ? parseFloat(amount) : amount;
+
   if (isNaN(num)) {
-    return '';
+    return "";
   }
-  
+
   // Format the number
   let formatted: string;
-  
+
   if (useSeparators) {
     // Add thousand separators
-    formatted = num.toLocaleString('fa-IR', {
+    formatted = num.toLocaleString("fa-IR", {
       minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals
+      maximumFractionDigits: decimals,
     });
   } else {
     formatted = num.toFixed(decimals);
@@ -334,19 +369,19 @@ export function formatToman(
       formatted = toPersianDigits(formatted);
     }
   }
-  
+
   // If not using separators with Persian digits, convert manually
   if (usePersianDigits && useSeparators) {
     // The locale string already handles it
   } else if (usePersianDigits) {
     formatted = toPersianDigits(formatted);
   }
-  
+
   // Add currency suffix
   if (showCurrency) {
-    formatted += ' تومان';
+    formatted += " تومان";
   }
-  
+
   return formatted;
 }
 

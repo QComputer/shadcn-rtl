@@ -29,8 +29,8 @@ import type {
 
 // Re-export all Prisma types
 export type {
-  Organization,
   User,
+  Organization,
   OrganizationMember,
   BusinessHour,
   ServiceCategory,
@@ -59,8 +59,15 @@ export type {
 
 // Enums
 export type OrganizationType = "SHOP" | "APPOINTMENT";
-export type UserRole = "SUPER_ADMIN" | "ADMIN" | "MANAGER" | "STAFF" | "DRIVER" | "CUSTOMER";
-export type OrgMemberRole = "ADMIN" | "MANAGER" | "STAFF";
+export type UserRole =
+  | "SUPER_ADMIN"
+  | "ADMIN"
+  | "MANAGER"
+  | "STAFF"
+  | "DRIVER"
+  | "CUSTOMER"
+  | "GUEST";
+//export type OrgMemberRole = "ADMIN" | "MANAGER" | "STAFF";
 export type AppointmentStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
 export type CartStatus = "ACTIVE" | "CHECKED_OUT" | "ABANDONED";
 export type OrderType = "DELIVERY" | "PICK_UP";
@@ -162,9 +169,10 @@ export interface SearchParams {
 // Session types
 export interface SessionUser {
   id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
+  username: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
   role: UserRole;
   locale: string;
   theme: string;
@@ -175,7 +183,8 @@ export interface SessionUser {
 // Auth types
 export interface JWTPayload {
   sub: string;
-  email: string;
+  username: string;
+  email?: string;
   role: UserRole;
   isTeamMember: boolean;
   locale: string;
@@ -227,51 +236,112 @@ export type Permission =
 
 export const rolePermissions: Record<UserRole, Permission[]> = {
   SUPER_ADMIN: [
-    "org:create", "org:read", "org:update", "org:delete",
-    "org:manage_members", "org:manage_hours",
-    "service:create", "service:read", "service:update", "service:delete",
-    "product:create", "product:read", "product:update", "product:delete",
-    "order:read", "order:update", "order:assign_driver", "order:manage",
-    "appointment:read", "appointment:create", "appointment:update", "appointment:cancel",
-    "review:create", "review:manage", "user:manage",
-    "settings:manage", "promotion:manage", "payment:manage"
+    "org:create",
+    "org:read",
+    "org:update",
+    "org:delete",
+    "org:manage_members",
+    "org:manage_hours",
+    "service:create",
+    "service:read",
+    "service:update",
+    "service:delete",
+    "product:create",
+    "product:read",
+    "product:update",
+    "product:delete",
+    "order:read",
+    "order:update",
+    "order:assign_driver",
+    "order:manage",
+    "appointment:read",
+    "appointment:create",
+    "appointment:update",
+    "appointment:cancel",
+    "review:create",
+    "review:manage",
+    "user:manage",
+    "settings:manage",
+    "promotion:manage",
+    "payment:manage",
   ],
   ADMIN: [
-    "org:read", "org:update",
-    "org:manage_members", "org:manage_hours",
-    "service:create", "service:read", "service:update", "service:delete",
-    "product:create", "product:read", "product:update", "product:delete",
-    "order:read", "order:update", "order:assign_driver", "order:manage",
-    "appointment:read", "appointment:create", "appointment:update", "appointment:cancel",
-    "review:manage", "settings:manage", "promotion:manage", "payment:manage"
+    "org:read",
+    "org:update",
+    "org:manage_members",
+    "org:manage_hours",
+    "service:create",
+    "service:read",
+    "service:update",
+    "service:delete",
+    "product:create",
+    "product:read",
+    "product:update",
+    "product:delete",
+    "order:read",
+    "order:update",
+    "order:assign_driver",
+    "order:manage",
+    "appointment:read",
+    "appointment:create",
+    "appointment:update",
+    "appointment:cancel",
+    "review:manage",
+    "settings:manage",
+    "promotion:manage",
+    "payment:manage",
   ],
   MANAGER: [
     "org:read",
-    "service:create", "service:read", "service:update",
-    "product:create", "product:read", "product:update",
-    "order:read", "order:update",
-    "appointment:read", "appointment:create", "appointment:update",
-    "settings:manage"
+    "service:create",
+    "service:read",
+    "service:update",
+    "service:delete",
+    "product:create",
+    "product:read",
+    "product:update",
+    "order:read",
+    "order:update",
+    "appointment:read",
+    "appointment:create",
+    "appointment:update",
+    "settings:manage",
   ],
   STAFF: [
     "org:read",
+    "service:create",
     "service:read",
+    "service:update",
+    "service:delete",
     "product:read",
-    "order:read", "order:update",
-    "appointment:read", "appointment:update"
+    "order:read",
+    "order:update",
+    "appointment:read",
+    "appointment:update",
   ],
-  DRIVER: [
-    "org:read",
-    "order:read", "order:update"
-  ],
+  DRIVER: ["org:read", "order:read", "order:update"],
   CUSTOMER: [
     "org:read",
     "service:read",
     "product:read",
-    "order:read", "order:create",
-    "appointment:read", "appointment:create", "appointment:cancel",
-    "review:create"
-  ]
+    "order:read",
+    "order:create",
+    "appointment:read",
+    "appointment:create",
+    "appointment:cancel",
+    "review:create",
+  ],
+  GUEST: [
+    "org:read",
+    "service:read",
+    "product:read",
+    "order:read",
+    "order:create",
+    "appointment:read",
+    "appointment:create",
+    "appointment:cancel",
+    "review:create",
+  ],
 };
 
 export function hasPermission(role: UserRole, permission: Permission): boolean {

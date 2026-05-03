@@ -1,0 +1,41 @@
+"use client";
+
+import React from "react";
+import { useCart } from "@/lib/contexts/cart-context";
+import { ShoppingCart } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { toPersianDigits } from "@/lib/persian"
+
+interface CartBadgeProps {
+  className?: string;
+  iconClassName?: string;
+  badgeClassName?: string;
+}
+
+export function CartBadge({ className, iconClassName, badgeClassName }: CartBadgeProps) {
+  const { summary, isLoading } = useCart();
+
+  if (isLoading) {
+    return (
+      <div className={cn("relative", className)}>
+        <ShoppingCart className={cn("h-5 w-5", iconClassName)} />
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("relative", className)}>
+      <ShoppingCart className={cn("h-5 w-5", iconClassName)} />
+      {summary.itemCount > 0 && (
+        <span
+          className={cn(
+            "absolute -top-3 -right-3 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium",
+            badgeClassName
+          )}
+        >
+          {summary.itemCount > 99 ? toPersianDigits("99")+"+" : toPersianDigits(summary.itemCount)}
+        </span>
+      )}
+    </div>
+  );
+}

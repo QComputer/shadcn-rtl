@@ -41,3 +41,17 @@ yarn-error.log*
 next-env.d.ts
 
 /lib/generated/prisma
+<<<<<<< Updated upstream
+=======
+<<<<<<< Updated upstream
+/prisma/dev.db
+/prisma/seed.ts
+=======
+>>>>>>> Stashed changes
+
+/public/uploads
+/uploads
+/plans
+/*.zip
+/*.rar
+>>>>>>> Stashed changes

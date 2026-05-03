@@ -43,26 +43,15 @@ yarn-error.log*
 next-env.d.ts
 
 /lib/generated/prisma
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
-<<<<<<< Updated upstream
 /prisma/dev.db
 /prisma/seed.ts
-=======
->>>>>>> Stashed changes
-=======
 /prisma/dev.db
 /prisma/seed.ts
->>>>>>> bazarbaz_0
 
 /public/uploads
 /uploads
 /plans
 /*.zip
-<<<<<<< HEAD
 /*.rar
->>>>>>> Stashed changes
-=======
-/*.rar
->>>>>>> bazarbaz_0
+/New Folder
+/signaling-server

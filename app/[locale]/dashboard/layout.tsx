@@ -5,20 +5,13 @@ import { DashboardSidebarWithDict } from "@/components/dashboard/dashboard-sideb
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import ToastProvider from '@/components/ToastProvider'; 
 import { toast } from 'react-toastify';
-import { Providers } from "@/components/providers";
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
 import { SocketProvider } from '@/context/SocketContext'; // Adjust path as needed
+import { Providers } from "@/New folder/components/providers";
 
 
 // Note: For App Router, you pass props like this for page session data
 // If you are not using the pages router, you might need to fetch session in the client component.
 // Here, we assume SessionProvider handles it.
->>>>>>> Stashed changes
-=======
->>>>>>> bazarbaz_0
-
 export default function DashboardLayout({
   children,
   params,
@@ -82,19 +75,9 @@ export default function DashboardLayout({
 
   return (
     <ToastProvider> {/* Wrap everything with ToastProvider */}
-<<<<<<< HEAD
-<<<<<<< Updated upstream
       <Providers>
-=======
       <SocketProvider> {/* Our socket provider */}
       
-      
-      <Providers>
-
->>>>>>> Stashed changes
-=======
-      <Providers>
->>>>>>> bazarbaz_0
       <div className="flex min-h-screen bg-background">
         
         {/* Desktop Sidebar */}
@@ -129,28 +112,13 @@ export default function DashboardLayout({
           </div>
           {/* Page Content */}
           <div className="flex-1 p-4 lg:p-6">
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
-=======
->>>>>>> bazarbaz_0
               {children}
           </div>
         </div>
       </div>
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-              </Providers>
-=======
 
-              </Providers>
                 </SocketProvider> 
->>>>>>> Stashed changes
-=======
               </Providers>
->>>>>>> bazarbaz_0
     </ToastProvider>
   )
 }

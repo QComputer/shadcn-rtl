@@ -23,11 +23,11 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     const data = updateCartItemSchema.parse(body);
-    const sessionId = session?.user?.id ? undefined : getSessionId(request)    
+    const customerId = session?.user?.id;
+    const sessionId = customerId || getSessionId(request);    
     const item = await cartService.updateItemQuantity(
         id,
         data,
-        session?.user?.id,
         sessionId,
       );
   
@@ -48,9 +48,8 @@ export async function DELETE(
   try {
     const session = await auth();
     const { id } = await params;
-    const sessionId = session?.user?.id ? undefined : getSessionId(request);    
-
-    await cartService.removeItem(id, session?.user?.id, sessionId );
+    const sessionId = session?.user?.id || getSessionId(request);    
+    await cartService.removeItem(id, sessionId );
 
     return NextResponse.json({ success: true });
   } catch (error) {

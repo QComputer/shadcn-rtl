@@ -161,9 +161,9 @@ export class CartService {
   }
 
   async getOrCreateCart(
-    customerId: string | null,
     organizationSlug: string,
     sessionId: string | null,
+    customerId: string | null,
   ) {
     //console.log("--------------getOrCreateCart> customerId:", customerId);
     //console.log(  "--------------getOrCreateCart> organizationId:",  organizationId,);
@@ -173,38 +173,39 @@ export class CartService {
         "customerId or/and sessionId needed to get/create a shop-cart",
       );
     }
-    let cart = sessionId
-      ? await this.getOrCreateCartBySession(organizationSlug, sessionId)
-      : customerId
-        ? await prisma.shopCart.findUnique({
-            where: {
-              organizationSlug_customerId: {
-                organizationSlug,
-                customerId,
+    let cart =
+      sessionId && !customerId
+        ? await this.getOrCreateCartBySession(organizationSlug, sessionId)
+        : customerId
+          ? await prisma.shopCart.findUnique({
+              where: {
+                organizationSlug_customerId: {
+                  organizationSlug,
+                  customerId,
+                },
               },
-            },
-            include: {
-              items: {
-                include: {
-                  variant: {
-                    include: {
-                      product: true,
+              include: {
+                items: {
+                  include: {
+                    variant: {
+                      include: {
+                        product: true,
+                      },
                     },
                   },
                 },
               },
-            },
-          })
-        : null;
+            })
+          : null;
 
     if (!cart) {
       //console.log("------------------------ no Cart found");
-
       cart = sessionId
         ? await prisma.shopCart.create({
             data: {
               organizationSlug,
               sessionId,
+              customerId,
               status: "ACTIVE",
             },
             include: {
@@ -223,6 +224,7 @@ export class CartService {
             data: {
               organizationSlug,
               customerId: customerId || "guest-ueser",
+              sessionId: customerId,
               status: "ACTIVE",
             },
             include: {
@@ -258,8 +260,8 @@ export class CartService {
     }
     // Get or create cart
     const cart = await this.getOrCreateCart(
-      customerId,
       organizationSlug,
+      customerId,
       sessionId,
     );
     //console.log("--------------addItem> cart:", cart);
@@ -333,7 +335,6 @@ export class CartService {
   async updateItemQuantity(
     cartItemId: string,
     data: UpdateCartItemInput,
-    customerId?: string,
     sessionId?: string,
   ) {
     // Find the cart item and verify ownership
@@ -360,10 +361,6 @@ export class CartService {
       if (!sessionId || sessionId !== cartItem.cart.sessionId) {
         throw new Error("Unauthorized");
       }
-    } else {
-      if (customerId !== cartItem.cart.customerId) {
-        throw new Error("Unauthorized");
-      }
     }
 
     // Check inventory
@@ -386,7 +383,6 @@ export class CartService {
 
   async removeItem(
     cartItemId: string,
-    customerId?: string,
     sessionId?: string,
   ) {
     // Find the cart item and verify ownership
@@ -410,11 +406,7 @@ export class CartService {
       if (!sessionId || sessionId !== cartItem.cart.sessionId) {
         throw new Error("Unauthorized");
       }
-    } else {
-      if (customerId !== cartItem.cart.customerId) {
-        throw new Error("Unauthorized");
-      }
-    }
+    } 
 
     await prisma.shopCartItem.delete({
       where: { id: cartItemId },
@@ -519,7 +511,11 @@ export class CartService {
     //console.log("--------------mergeToUserCart> guestCart:", guestCart);
 
     // Get or create user cart
-    const userCart = await this.getOrCreateCart(userId, organizationSlug, null);
+    const userCart = await this.getOrCreateCart(
+      userId,
+      organizationSlug,
+      userId,
+    );
 
     // Merge items
     if (guestCart && guestCart?.items?.length > 0) {

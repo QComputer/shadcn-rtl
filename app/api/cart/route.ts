@@ -28,29 +28,29 @@ export async function GET(request: NextRequest) {
       );
     }
 
-      // --------------------Use sessionId for Guest users
-      const session = await auth();
-      const sessionId = session?.user?.id || getSessionId(request);
-      const cart = await cartService.getCartBySession(
-        organizationSlug,
-        sessionId,
-      );
+    // --------------------Use user sessionId for Guest sessionId
+    const session = await auth();
+    const sessionId = session?.user?.id || getSessionId(request);
+    const cart = await cartService.getCartBySession(
+      organizationSlug,
+      sessionId,
+    );
 
-      // Create response with session cookie
-      const response = NextResponse.json(cart);
+    // Create response with session cookie
+    const response = NextResponse.json(cart);
 
-      // Set session cookie if it doesn't exist
-      if (!request.cookies.get(SESSION_COOKIE_NAME)) {
-        response.cookies.set(SESSION_COOKIE_NAME, sessionId, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          maxAge: 60 * 60 * 24 * 7, // 7 days
-          path: "/",
-        });
-      }
+    // Set session cookie if it doesn't exist
+    if (!request.cookies.get(SESSION_COOKIE_NAME)) {
+      response.cookies.set(SESSION_COOKIE_NAME, sessionId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+        path: "/",
+      });
+    }
 
-      return response;
+    return response;
   } catch (error) {
     console.error("Error getting cart:", error);
     return NextResponse.json(

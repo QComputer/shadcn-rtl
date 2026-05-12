@@ -6,7 +6,7 @@ import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb
 import ToastProvider from '@/components/ToastProvider'; 
 import { toast } from 'react-toastify';
 import { SocketProvider } from '@/context/SocketContext'; // Adjust path as needed
-import { Providers } from "@/New folder/components/providers";
+import { Providers } from "@/components/providers";
 
 
 // Note: For App Router, you pass props like this for page session data

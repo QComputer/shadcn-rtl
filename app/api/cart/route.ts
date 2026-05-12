@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
     }
 
       // --------------------Use sessionId for Guest users
-      const sessionId = getSessionId(request);
+      const session = await auth();
+      const sessionId = session?.user?.id || getSessionId(request);
       const cart = await cartService.getCartBySession(
         organizationSlug,
         sessionId,

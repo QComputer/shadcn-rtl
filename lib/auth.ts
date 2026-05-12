@@ -246,13 +246,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * Called when a new user is created (e.g., via OAuth signup)
      */
     async createUser({ user }) {
-      //console.log("[Auth] New user created via OAuth:", user);
+      console.log("[Auth] New user created via OAuth:", user);
     },
      /**
      * Called when a user signed in  (e.g., via OAuth signin)
      */
     async signIn({ user }) {
-      //console.log("[Auth][Event] A user signed in via OAuth:", user);
+      console.log("[Auth][Event] A user signed in via OAuth:", user);
     },
   },
   

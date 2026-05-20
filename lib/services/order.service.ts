@@ -1,15 +1,35 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-//import { createOrderSchema, updateOrderStatusSchema } from "@/lib/validators";
 import type { CreateOrderInput, UpdateOrderStatusInput } from "@/lib/validators";
 import { hasPermission, type UserRole } from "@/lib/types";
 import { Decimal } from "@prisma/client/runtime/library";
-import { Order, OrderStatus, Progress, User } from "@prisma/client";
-import { m } from "framer-motion";
+import { OrderStatus } from "@prisma/client";
 // TODO: Notifications:
 //        1.Accepting Order: setting EstEndTime for preparation by shop admin, setting EstEndTime for pickup and delivery by shop admin, 
 //        2.Changing Order Status: notify 
 //        3.Delivered
+
+const ALLOWED_ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  PENDING: ["PLACED", "ACCEPTED", "CANCELLED"],
+  PLACED: ["ACCEPTED", "CANCELLED"],
+  ACCEPTED: ["PREPARING", "READY", "CANCELLED"],
+  PREPARING: ["READY", "CANCELLED"],
+  READY: ["PICKED_UP", "DELIVERED", "CANCELLED"],
+  PICKED_UP: ["DELIVERED", "CANCELLED"],
+  DELIVERED: ["REFUNDED"],
+  RECEIVED: ["REFUNDED"],
+  CANCELLED: [],
+  REFUNDED: [],
+};
+
+function assertAllowedStatusTransition(currentStatus: OrderStatus, nextStatus: OrderStatus) {
+  if (currentStatus === nextStatus) return;
+
+  const allowed = ALLOWED_ORDER_STATUS_TRANSITIONS[currentStatus] ?? [];
+  if (!allowed.includes(nextStatus)) {
+    throw new Error(`Invalid order status transition: ${currentStatus} -> ${nextStatus}`);
+  }
+}
 
 async function updateProgress(
   orderId: string,
@@ -17,8 +37,6 @@ async function updateProgress(
   estimatedEndTime: Date,
 ) {
   const progressId = await getProgressId(orderId, type);
-  console.log("---------------------------------progressId", progressId);
-  
   if (!progressId) return null;
 
   const progress = await prisma.progress.update({
@@ -1026,15 +1044,18 @@ if (!org?.slug) return
         throw new Error("Order not found");
       }
 
+      const nextStatus = data.status as OrderStatus;
+      assertAllowedStatusTransition(existingOrder.status, nextStatus);
+
       const shouldRestoreInventory =
-        ["REFUNDED", "CANCELLED"].includes(data.status) &&
+        ["REFUNDED", "CANCELLED"].includes(nextStatus) &&
         !["REFUNDED", "CANCELLED"].includes(existingOrder.status);
 
       const updatedOrder = await tx.order.update({
         where: { id },
         data: {
-          status: data.status as OrderStatus,
-          ...(data.status === "DELIVERED" && { deliveredAt: new Date() }),
+          status: nextStatus,
+          ...(nextStatus === "DELIVERED" && { deliveredAt: new Date() }),
         },
       });
 
@@ -1139,15 +1160,56 @@ if (!org?.slug) return
   async acceptOrderByDriver(orderId: string, driverId: string) {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
+      include: { denies: true },
     });
-    if (!order?.driverId) {
-      return prisma.order.update({
-        where: { id: orderId },
-        data: { driverId },
-      });
-    } else if (order?.driverId === driverId) {
+
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    if (order.driverId === driverId) {
       return order;
     }
+
+    if (order.driverId) {
+      throw new Error("Order is already assigned");
+    }
+
+    if (!["ACCEPTED", "PREPARING", "READY"].includes(order.status)) {
+      throw new Error("Order is not available for driver acceptance");
+    }
+
+    if (order.denies.some((deny) => deny.userId === driverId)) {
+      throw new Error("Driver has denied this order");
+    }
+
+    const membership = await prisma.organizationMember.findFirst({
+      where: {
+        userId: driverId,
+        organizationSlug: order.organizationSlug,
+        isActive: true,
+      },
+    });
+
+    if (!membership) {
+      throw new Error("Driver does not belong to this organization");
+    }
+
+    const updated = await prisma.order.updateMany({
+      where: {
+        id: orderId,
+        driverId: null,
+        status: { in: ["ACCEPTED", "PREPARING", "READY"] },
+      },
+      data: { driverId },
+    });
+
+    if (updated.count !== 1) {
+      throw new Error("Order is no longer available");
+    }
+
+    revalidatePath(`/dashboard/driver-orders`);
+    return prisma.order.findUnique({ where: { id: orderId } });
   }
 
   async denyOrderByDriver(orderId: string, driverId: string) {

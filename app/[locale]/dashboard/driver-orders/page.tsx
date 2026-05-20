@@ -265,7 +265,9 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
   }
   
   const acceptOrder = async (id: string) => {
-    const response = await fetch(`/api/orders/${id}/driver`)
+    const response = await fetch(`/api/orders/${id}/driver`, {
+      method: "POST",
+    })
       
       if (!response.ok) {
         throw new Error("Failed to accept order")

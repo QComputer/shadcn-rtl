@@ -3,7 +3,7 @@
 import React, { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useCart } from "@/lib/contexts/cart-context";
+import { getCartItemUnitPrice, useCart } from "@/lib/contexts/cart-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -128,6 +128,41 @@ export default function CheckoutPage({
     }
   }, [slug]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchCurrentUser() {
+      try {
+        const response = await fetch("/api/users/me");
+        if (!response.ok) return;
+        const currentUser = await response.json();
+        if (cancelled) return;
+
+        setUser(currentUser);
+        const displayName =
+          [currentUser.firstName, currentUser.lastName].filter(Boolean).join(" ") ||
+          currentUser.name ||
+          "";
+
+        setFormData((prev: any) => ({
+          ...prev,
+          customerName: prev.customerName || displayName,
+          customerPhone: prev.customerPhone || currentUser.phone || "",
+          customerEmail: prev.customerEmail || currentUser.email || "",
+        }));
+      } catch {
+        // Guests are expected to receive 401 from /api/users/me.
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    fetchCurrentUser();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev: any) => ({ ...prev, [name]: value }));
@@ -161,7 +196,7 @@ export default function CheckoutPage({
           items: cart.items.map(item => ({
             variantId: item.variant.id,
             quantity: item.quantity,
-            price: item.variant.price,
+            price: getCartItemUnitPrice(item),
           })),
         }),
       }) 
@@ -285,7 +320,7 @@ export default function CheckoutPage({
             
 
                       <div className="space-y-2">
-                        <Label htmlFor="customerName"> نام *</Label>
+                        <Label htmlFor="customerName">{user ? "نام سفارش‌دهنده" : "نام سفارش‌دهنده (اختیاری)"}</Label>
                         <div className="relative">
                           <UserIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input
@@ -310,7 +345,7 @@ export default function CheckoutPage({
                             value={formData.customerPhone}
                             onChange={handleInputChange}
                             className="pl-10"
-                            required
+                            required={false}
                           />
                         </div>
                       </div>}
@@ -429,7 +464,7 @@ export default function CheckoutPage({
                               {item.variant.product.name}
                             </p>
                             <p className="text-sm mt-2">
-                              {formatToman(item.variant.price * item.quantity)}
+                              {formatToman(getCartItemUnitPrice(item) * item.quantity)}
                             </p>
                           </div>
                         </div>

@@ -185,9 +185,8 @@ export class CartService {
     }
 
     const canonicalOrganizationSlug = variant.product.organization.slug;
-    if (organizationSlug && organizationSlug !== canonicalOrganizationSlug) {
-      // The client may still send an ID or stale slug. Trust the selected variant's organization.
-      organizationSlug = canonicalOrganizationSlug;
+    if (organizationSlug !== canonicalOrganizationSlug) {
+      throw new Error("Product does not belong to this organization");
     }
 
     const cart = await this._getOrCreateCart(
@@ -413,6 +412,27 @@ export class CartService {
 
     if (guestCart?.items?.length) {
       for (const item of guestCart.items) {
+        const variant = await prisma.productVariant.findFirst({
+          where: {
+            id: item.variantId,
+            deletedAt: null,
+            product: {
+              deletedAt: null,
+              isActive: true,
+              organization: {
+                slug: organizationSlug,
+                isActive: true,
+                type: "SHOP",
+              },
+            },
+          },
+          include: { product: true },
+        });
+
+        if (!variant) {
+          continue;
+        }
+
         const existingItem = await prisma.shopCartItem.findFirst({
           where: {
             cartId: userCart.id,
@@ -420,17 +440,27 @@ export class CartService {
           },
         });
 
+        const mergedQuantity = (existingItem?.quantity ?? 0) + item.quantity;
+        const quantity =
+          variant.product.trackInventory && !variant.allowBackOrder
+            ? Math.min(mergedQuantity, Math.max(variant.inventory, 0))
+            : mergedQuantity;
+
+        if (quantity <= 0) {
+          continue;
+        }
+
         if (existingItem) {
           await prisma.shopCartItem.update({
             where: { id: existingItem.id },
-            data: { quantity: existingItem.quantity + item.quantity },
+            data: { quantity },
           });
         } else {
           await prisma.shopCartItem.create({
             data: {
               cartId: userCart.id,
               variantId: item.variantId,
-              quantity: item.quantity,
+              quantity,
             },
           });
         }

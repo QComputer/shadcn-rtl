@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link";
-import { useCart } from "@/lib/contexts/cart-context";
+import { getCartItemUnitPrice, useCart } from "@/lib/contexts/cart-context";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -119,7 +119,7 @@ export function CartDrawer({ organizationSlug, locale = "fa", trigger, open, onO
                       </h4>
                       
                       <p className="text-xs font-medium mt-1">
-                        {formatToman(item.variant.price)}
+                        {formatToman(getCartItemUnitPrice(item))}
                       </p>
 
                       {/* Quantity Controls */}
@@ -167,7 +167,7 @@ export function CartDrawer({ organizationSlug, locale = "fa", trigger, open, onO
                     {/* Item Total */}
                     <div className="text-left">
                       <p className="font-medium">
-                        {formatToman(item.variant.price * item.quantity)}
+                        {formatToman(getCartItemUnitPrice(item) * item.quantity)}
                       </p>
                     </div>
                   </div>

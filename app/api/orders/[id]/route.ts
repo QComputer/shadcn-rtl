@@ -6,6 +6,14 @@ import { orderService } from "@/lib/services/order.service";
 import { updateOrderStatusSchema } from "@/lib/validators";
 import prisma from "@/lib/db";
 
+function statusForError(error: unknown) {
+  if (!(error instanceof Error)) return 500;
+  if (error.message === "Unauthorized") return 401;
+  if (error.message.includes("not found")) return 404;
+  if (error.message.includes("Invalid order status transition")) return 409;
+  return 500;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -45,7 +53,7 @@ export async function GET(
     console.error("Error getting order:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
+      { status: statusForError(error) }
     );
   }
 }
@@ -82,7 +90,7 @@ export async function PUT(
     console.error("Error updating order:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
+      { status: statusForError(error) }
     );
   }
 }
@@ -130,7 +138,7 @@ export async function PATCH(
     console.error("Error updating progress:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
+      { status: statusForError(error) }
     );
   }
 }
@@ -164,7 +172,7 @@ export async function DELETE(
     console.error("Error cancelling order:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
+      { status: statusForError(error) }
     );
   }
 }

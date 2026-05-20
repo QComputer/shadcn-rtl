@@ -2,8 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { orderService } from "@/lib/services/order.service";
 
+function statusForDriverError(error: unknown) {
+  if (!(error instanceof Error)) return 500;
+  if (error.message.includes("not found")) return 404;
+  if (error.message.includes("does not belong") || error.message.includes("denied")) return 403;
+  if (error.message.includes("already assigned") || error.message.includes("not available") || error.message.includes("no longer available")) return 409;
+  return 500;
+}
+
 // accepting order
-export async function GET(
+export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -29,9 +37,17 @@ export async function GET(
     console.error("Error accepting order:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
+      { status: statusForDriverError(error) }
     );
   }
+}
+
+// Backward-compatible alias for older deployed UI versions. New clients should use POST.
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  return POST(request, context);
 }
 
 // to deny order
@@ -59,7 +75,7 @@ export async function DELETE(
     console.error("Error cancelling order:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
+      { status: statusForDriverError(error) }
     );
   }
 }
@@ -89,7 +105,7 @@ export async function PATCH(
     console.error("Error cancelling order:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
+      { status: statusForDriverError(error) }
     );
   }
 }

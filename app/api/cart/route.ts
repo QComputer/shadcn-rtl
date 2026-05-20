@@ -40,6 +40,7 @@ function statusForError(error: unknown) {
   if (error.message === "Unauthorized") return 401;
   if (error.message.includes("not found")) return 404;
   if (error.message.includes("Insufficient inventory")) return 409;
+  if (error.message.includes("does not belong")) return 400;
   if (error.message.includes("required")) return 400;
   return 500;
 }

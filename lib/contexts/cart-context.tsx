@@ -10,13 +10,14 @@ export interface CartItem {
   variant: {
     id: string;
     name: string;
-    price: number;
+    price: number | string | null;
     sku: string | null;
     product: {
       id: string;
       name: string;
       image: string | null;  
-      images: string[]
+      images: string[];
+      basePrice: number | string;
 
     };
   };
@@ -48,6 +49,17 @@ interface CartContextType {
   refreshCart: () => Promise<void>;
 }
 
+
+function toMoneyNumber(value: number | string | null | undefined): number {
+  if (value === null || value === undefined) return 0;
+  const parsed = typeof value === "string" ? Number(value) : value;
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function getCartItemUnitPrice(item: CartItem): number {
+  return toMoneyNumber(item.variant.price ?? item.variant.product.basePrice);
+}
+
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 interface CartProviderProps {
@@ -70,7 +82,7 @@ export function CartProvider({ children, slug, locale }: CartProviderProps) {
     
     const itemCount = cart.items.reduce((sum, item) => sum + item.quantity, 0);
     const subtotal = cart.items.reduce(
-      (sum, item) => sum + item.variant.price * item.quantity,
+      (sum, item) => sum + getCartItemUnitPrice(item) * item.quantity,
       0
     );
     

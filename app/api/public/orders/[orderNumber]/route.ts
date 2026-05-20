@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { orderService } from "@/lib/services/order.service";
+import { auth } from "@/lib/auth";
+
+const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || "guest_session_id";
 
 export async function GET(
   request: NextRequest,
@@ -8,6 +10,8 @@ export async function GET(
 ) {
   try {
     const { orderNumber } = await params;
+    const session = await auth();
+    const guestSessionId = request.cookies.get(SESSION_COOKIE_NAME)?.value ?? null;
 
     const order = await prisma.order.findUnique({
       where: { orderNumber },
@@ -25,6 +29,23 @@ export async function GET(
                 },
               },
             },
+          },
+        },
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+          },
+        },
+        guestCustomer: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            sessionId: true,
           },
         },
         organization: {
@@ -65,7 +86,44 @@ export async function GET(
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    return NextResponse.json(order);
+    const isOwner = Boolean(session?.user?.id && order.customerId === session.user.id);
+    const isSameGuestSession = Boolean(
+      order.guestCustomer?.sessionId &&
+      guestSessionId &&
+      order.guestCustomer.sessionId === guestSessionId,
+    );
+    const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
+    const hasOrganizationAccess = Boolean(
+      session?.user?.id &&
+      (await prisma.organizationMember.findFirst({
+        where: {
+          userId: session.user.id,
+          organizationSlug: order.organizationSlug,
+          isActive: true,
+        },
+        select: { id: true },
+      })),
+    );
+
+    if (!isOwner && !isSameGuestSession && !isSuperAdmin && !hasOrganizationAccess) {
+      return NextResponse.json(
+        { error: "Order access requires the original browser session or account" },
+        { status: 403 },
+      );
+    }
+
+    const { guestCustomer, ...safeOrder } = order;
+
+    return NextResponse.json({
+      ...safeOrder,
+      guestCustomer: guestCustomer
+        ? {
+            id: guestCustomer.id,
+            name: guestCustomer.name,
+            phone: guestCustomer.phone,
+          }
+        : null,
+    });
   } catch (error) {
     console.error("Error fetching order:", error);
     return NextResponse.json(

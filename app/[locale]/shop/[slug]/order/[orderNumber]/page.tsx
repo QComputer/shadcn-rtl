@@ -165,7 +165,9 @@ export default function OrderConfirmationPage({
   async function fetchOrder() {
     try {
       setLoading(true);
-      const response = await fetch(`/api/public/orders/${orderNumber}`);
+      const response = await fetch(`/api/public/orders/${orderNumber}`, {
+        credentials: "same-origin",
+      });
       if (!response.ok) {
         throw new Error("Order not found");
       }
@@ -178,19 +180,8 @@ export default function OrderConfirmationPage({
     }
   }
 
-  async function handleSendPaymantId(){
-    setLoading(true);
-    const response = await fetch(`/api/public/orders/${orderNumber}`, {
-      method: "PUT",
-      headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({paymentId}),
-    });
-    if (!response?.ok) {
-      throw new Error("Payment Id not updated");
-    }
-    fetchPaymentSettings()
+  function handleSendPaymantId(){
+    setError("ثبت کد رهگیری پرداخت از مسیر عمومی غیرفعال است. لطفا کد رهگیری را از طریق تماس یا پیام برای فروشگاه ارسال کنید.");
   }
 
   async function fetchPaymentSettings() {

@@ -1,49 +1,55 @@
 import { NextResponse, NextRequest } from "next/server";
 import fs from "fs/promises";
 import path from "path";
-import { prisma } from "@/lib/db"; // Assuming prisma is correctly set up
+import { prisma } from "@/lib/db";
+import { ApiError, jsonError, requireAuthSession, requireRole, safeUploadFilename } from "@/lib/api-guards";
 
-export const runtime = "nodejs"; // Recommended for file uploads
+export const runtime = "nodejs";
+
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
+function getUploadDir() {
+  return path.join(process.cwd(), "../uploads");
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const file = formData.get("file") as File;
+    const session = await requireAuthSession();
+    requireRole(session, ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"]);
 
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    const formData = await req.formData();
+    const file = formData.get("file");
+
+    if (!(file instanceof File)) {
+      throw new ApiError(400, "No file provided");
+    }
+
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      throw new ApiError(415, "Only jpeg, png, webp, and gif images are allowed");
+    }
+
+    if (file.size <= 0 || file.size > MAX_UPLOAD_BYTES) {
+      throw new ApiError(413, "File size must be between 1 byte and 5 MB");
     }
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const uploadDir = getUploadDir();
+    await fs.mkdir(uploadDir, { recursive: true });
 
-    // Define the upload directory relative to the project root
-    const uploadDir = path.join(process.cwd(), "../uploads");
-
-    // Ensure the directory exists
-    //await fs.mkdir(uploadDir, { recursive: true });
-
-    // Generate a unique filename
-    const filename = `${Date.now()}-${file.name}`;
+    const filename = safeUploadFilename(file.name, "jpg");
     const filepath = path.join(uploadDir, filename);
+    await fs.writeFile(filepath, buffer, { flag: "wx" });
 
-    // Write the file to the specified directory
-    await fs.writeFile(filepath, buffer);
-
-    // The URL to access the image will be handled by your separate route handler
     const url = `/uploads/${filename}`;
-
-    // Save record in DB 
     const image = await prisma.image.create({
       data: { url, filename },
     });
 
-    return NextResponse.json(image, { status: 201 }); // Use 201 for created resources
+    return NextResponse.json(image, { status: 201 });
   } catch (error) {
     console.error("File upload failed:", error);
-    return NextResponse.json(
-      { error: "Failed to upload file" },
-      { status: 500 },
-    );
+    return jsonError(error, "Failed to upload file");
   }
 }

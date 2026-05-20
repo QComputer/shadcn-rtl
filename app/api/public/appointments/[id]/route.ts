@@ -11,17 +11,23 @@ export async function GET(
     const phone = searchParams.get("phone");
     const bookingRef = searchParams.get("ref");
 
-    // Build where clause
+    if (!phone && !bookingRef) {
+      return NextResponse.json(
+        { error: "Phone number or booking reference is required" },
+        { status: 400 },
+      );
+    }
+
     const where: Record<string, unknown> = {
       id,
       deletedAt: null,
     };
 
-    // If phone or booking ref provided, verify access
     if (phone) {
       where.OR = [
         { customerPhoneAtBooking: phone },
         { customer: { phone } },
+        { guestCustomer: { phone } },
       ];
     } else if (bookingRef) {
       where.bookingReference = bookingRef;
@@ -67,6 +73,16 @@ export async function GET(
           },
         },
         customer: {
+          select: {
+            id: true,
+            name: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            email: true,
+          },
+        },
+        guestCustomer: {
           select: {
             id: true,
             name: true,

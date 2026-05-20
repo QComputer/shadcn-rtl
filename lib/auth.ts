@@ -53,26 +53,25 @@ declare module "next-auth" {
  * Build the authentication providers array
  */
 const buildProviders = (): Provider[] => {
-  const providers: Provider[] = [
-    /**
-     * Google OAuth Provider
-     * Requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables
-     */
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      authorization: {
-        params: {
-          prompt: "consent",
-          access_type: "offline",
-          response_type: "code",
+  const providers: Provider[] = [];
+
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    providers.push(
+      GoogleProvider({
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        authorization: {
+          params: {
+            prompt: "consent",
+            access_type: "offline",
+            response_type: "code",
+          },
         },
-      },
-    }),
-    
-    /**
-     * Credentials Provider for username/password authentication
-     */
+      }),
+    );
+  }
+
+  providers.push(
     CredentialsProvider({
       name: "credentials",
       credentials: {
@@ -156,10 +155,22 @@ const buildProviders = (): Provider[] => {
         }
       },
     }),
-  ];
+  );
 
   return providers;
 };
+
+const isProductionRuntime =
+  process.env.NODE_ENV === "production" &&
+  process.env.NEXT_PHASE !== "phase-production-build";
+
+if (isProductionRuntime && !process.env.NEXTAUTH_SECRET) {
+  throw new Error("NEXTAUTH_SECRET is required in production runtime");
+}
+
+const nextAuthSecret =
+  process.env.NEXTAUTH_SECRET ||
+  (process.env.NODE_ENV === "production" ? undefined : "development-secret-change-in-development-only");
 
 /**
  * NextAuth Configuration
@@ -173,7 +184,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   jwt: {
     maxAge: 30 * 24 * 60 * 60,
   },
-  secret: process.env.NEXTAUTH_SECRET || "development-secret-change-in-production",
+  secret: nextAuthSecret,
   
   // Custom pages for authentication flows
   pages: {

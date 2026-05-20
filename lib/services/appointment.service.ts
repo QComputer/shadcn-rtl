@@ -20,8 +20,18 @@ function generateBookingReference(): string {
   return result;
 }
 
+type BookingOwner =
+  | { kind: "user"; customerId: string }
+  | {
+      kind: "guest";
+      guestCustomerId: string;
+      customerName: string;
+      customerPhone?: string | null;
+      customerEmail?: string | null;
+    };
+
 export class AppointmentService {
-  async create(customerId: string, data: CreateAppointmentInput) {
+  private async createWithOwner(owner: BookingOwner, data: CreateAppointmentInput) {
     // Verify service exists
     const service = await prisma.service.findUnique({
       where: { id: data.serviceId },
@@ -83,17 +93,26 @@ export class AppointmentService {
       attempts++;
     }
 
-    // Get customer info for snapshot
-    const customer = await prisma.user.findUnique({
-      where: { id: customerId },
-      select: {
-        name: true,
-        firstName: true,
-        lastName: true,
-        phone: true,
-        email: true,
-      },
-    });
+    let customer:
+      | { name: string | null; firstName: string | null; lastName: string | null; phone: string | null; email: string | null }
+      | null = null;
+
+    if (owner.kind === "user") {
+      customer = await prisma.user.findUnique({
+        where: { id: owner.customerId },
+        select: {
+          name: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          email: true,
+        },
+      });
+    }
+
+    const guestName = owner.kind === "guest" ? owner.customerName : null;
+    const guestPhone = owner.kind === "guest" ? owner.customerPhone || null : null;
+    const guestEmail = owner.kind === "guest" ? owner.customerEmail || null : null;
 
     const appointment = await prisma.appointment.create({
       data: {
@@ -102,16 +121,18 @@ export class AppointmentService {
         endTime,
         status: "PENDING",
         notes: data.notes,
-        customerId,
+        customerId: owner.kind === "user" ? owner.customerId : null,
+        guestCustomerId: owner.kind === "guest" ? owner.guestCustomerId : null,
         serviceId: data.serviceId,
         bookingReference,
         customerNameAtBooking:
           data.customerName ||
+          guestName ||
           (customer
             ? `${customer.firstName || ""} ${customer.lastName || ""}`.trim()
             : null),
-        customerPhoneAtBooking: data.customerPhone || customer?.phone || null,
-        customerEmailAtBooking: data.customerEmail || customer?.email || null,
+        customerPhoneAtBooking: data.customerPhone || guestPhone || customer?.phone || null,
+        customerEmailAtBooking: data.customerEmail || guestEmail || customer?.email || null,
       },
       include: {
         service: {
@@ -139,11 +160,38 @@ export class AppointmentService {
             phone: true,
           },
         },
+        guestCustomer: {
+          select: {
+            id: true,
+            name: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            email: true,
+          },
+        },
       },
     });
 
     revalidatePath(`/dashboard/appointments`);
     return appointment;
+  }
+
+  async create(customerId: string, data: CreateAppointmentInput) {
+    return this.createWithOwner({ kind: "user", customerId }, data);
+  }
+
+  async createForGuest(guestCustomerId: string, data: CreateAppointmentInput & { customerName: string }) {
+    return this.createWithOwner(
+      {
+        kind: "guest",
+        guestCustomerId,
+        customerName: data.customerName,
+        customerPhone: data.customerPhone || null,
+        customerEmail: data.customerEmail || null,
+      },
+      data,
+    );
   }
 
   async getById(id: string) {
@@ -174,6 +222,16 @@ export class AppointmentService {
             phone: true,
           },
         },
+        guestCustomer: {
+          select: {
+            id: true,
+            name: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            email: true,
+          },
+        },
       },
     });
   }
@@ -182,6 +240,7 @@ export class AppointmentService {
     page?: number;
     pageSize?: number;
     customerId?: string;
+    guestCustomerId?: string;
     serviceId?: string;
     status?: string;
     fromDate?: string;
@@ -192,7 +251,8 @@ export class AppointmentService {
     const { 
       page = 1, 
       pageSize = 20, 
-      customerId, 
+      customerId,
+      guestCustomerId,
       serviceId, 
       status,
       fromDate,
@@ -206,6 +266,7 @@ export class AppointmentService {
     };
 
     if (customerId) where.customerId = customerId;
+    if (guestCustomerId) where.guestCustomerId = guestCustomerId;
     if (serviceId) where.serviceId = serviceId;
     if (status) where.status = status;
     
@@ -261,6 +322,17 @@ export class AppointmentService {
               firstName: true,
               lastName: true,
               email: true,
+              phone: true,
+            },
+          },
+          guestCustomer: {
+            select: {
+              id: true,
+              name: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
             },
           },
         },

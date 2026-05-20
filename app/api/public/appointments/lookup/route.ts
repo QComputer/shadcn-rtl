@@ -57,6 +57,15 @@ export async function POST(request: NextRequest) {
               email: true,
             },
           },
+          guestCustomer: {
+            select: {
+              name: true,
+              firstName: true,
+              lastName: true,
+              phone: true,
+              email: true,
+            },
+          },
         },
         orderBy: { startTime: "asc" },
       });
@@ -64,7 +73,11 @@ export async function POST(request: NextRequest) {
       // Lookup by phone number
       appointments = await prisma.appointment.findMany({
         where: {
-          OR: [{ customerPhoneAtBooking: phone }, { customer: { phone } }],
+          OR: [
+            { customerPhoneAtBooking: phone },
+            { customer: { phone } },
+            { guestCustomer: { phone } },
+          ],
           deletedAt: null,
           service: {
             organizationId: organization.id,
@@ -86,6 +99,15 @@ export async function POST(request: NextRequest) {
             },
           },
           customer: {
+            select: {
+              name: true,
+              firstName: true,
+              lastName: true,
+              phone: true,
+              email: true,
+            },
+          },
+          guestCustomer: {
             select: {
               name: true,
               firstName: true,

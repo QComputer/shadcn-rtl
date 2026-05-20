@@ -3,18 +3,26 @@ import { auth } from "@/lib/auth";
 import { appointmentService } from "@/lib/services/appointment.service";
 import { createAppointmentSchema } from "@/lib/validators";
 import { prisma } from "@/lib/db";
+import { ApiError, jsonError } from "@/lib/api-guards";
+
+function splitName(fullName: string) {
+  const nameParts = fullName.trim().split(/\s+/);
+  return {
+    firstName: nameParts[0] || fullName,
+    lastName: nameParts.slice(1).join(" ") || "",
+  };
+}
 
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
 
     if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      throw new ApiError(401, "Unauthorized");
     }
 
     const searchParams = Object.fromEntries(request.nextUrl.searchParams);
-    
-    // Build filter params
+
     const params: Record<string, string | undefined> = {};
     if (searchParams.page) params.page = searchParams.page;
     if (searchParams.pageSize) params.pageSize = searchParams.pageSize;
@@ -26,7 +34,6 @@ export async function GET(request: NextRequest) {
     if (searchParams.toDate) params.toDate = searchParams.toDate;
     if (searchParams.organizationId) params.organizationId = searchParams.organizationId;
 
-    // Filter by user role
     let appointments;
     if (session.user.role === "CUSTOMER") {
       appointments = await appointmentService.list({
@@ -34,23 +41,20 @@ export async function GET(request: NextRequest) {
         customerId: session.user.id,
       });
     } else if (session.user.role === "STAFF") {
-      // Staff members see appointments where they are the service provider
-      // First get their membership to find the organization
       const membership = await prisma.organizationMember.findFirst({
-        where: { userId: session.user.id },
+        where: { userId: session.user.id, isActive: true },
         select: { organizationId: true },
       });
-      
+
       appointments = await appointmentService.list({
         ...params,
         organizationId: membership?.organizationId,
         serviceProviderId: session.user.id,
       });
     } else {
-      // For admin/manager, auto-filter by their organization if not specified
       if (!params.organizationId && session.user.isTeamMember) {
         const membership = await prisma.organizationMember.findFirst({
-          where: { userId: session.user.id },
+          where: { userId: session.user.id, isActive: true },
           select: { organizationId: true },
         });
         if (membership) {
@@ -63,10 +67,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(appointments);
   } catch (error) {
     console.error("Error listing appointments:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return jsonError(error, "Internal server error");
   }
 }
 
@@ -76,53 +77,61 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = createAppointmentSchema.parse(body);
 
-    let customerId: string;
-
-    // If user is authenticated, use their ID
     if (session?.user?.id) {
-      customerId = session.user.id;
-    } 
-    // If guest booking, find or create customer
-    else if (data.customerName && data.customerPhone) {
-      // Check if customer exists with this phone
-      let customer = await prisma.user.findFirst({
-        where: { phone: data.customerPhone },
-      });
-
-      if (!customer) {
-        // Create new customer
-        const nameParts = data.customerName.split(" ");
-        const firstName = nameParts[0] || data.customerName;
-        const lastName = nameParts.slice(1).join(" ") || "";
-        
-        customer = await prisma.user.create({
-          data: {
-            name: data.customerPhone, // Use phone as username
-            password: "123456",//crypto.randomUUID(), // Random password for guest
-            firstName,
-            lastName,
-            phone: data.customerPhone,
-            email: data.customerEmail || null,
-            role: "CUSTOMER",
-          },
-        });
-      }
-
-      customerId = customer.id;
-    } else {
-      return NextResponse.json({ 
-        error: "Authentication required or customer details (name and phone) must be provided" 
-      }, { status: 400 });
+      const appointment = await appointmentService.create(session.user.id, data);
+      return NextResponse.json(appointment, { status: 201 });
     }
 
-    const appointment = await appointmentService.create(customerId, data);
+    if (!data.customerName || !data.customerPhone) {
+      throw new ApiError(
+        400,
+        "Authentication required or guest customer details (name and phone) must be provided",
+      );
+    }
 
-    return NextResponse.json(appointment, { status: 201 });
+    const { firstName, lastName } = splitName(data.customerName);
+    const sessionId =
+      request.cookies.get(process.env.SESSION_COOKIE_NAME || "guest_session_id_local")?.value ||
+      `appointment-${crypto.randomUUID()}`;
+
+    const guestCustomer = await prisma.guestCustomer.upsert({
+      where: { sessionId },
+      update: {
+        name: data.customerName,
+        firstName,
+        lastName,
+        phone: data.customerPhone,
+        email: data.customerEmail || null,
+      },
+      create: {
+        sessionId,
+        name: data.customerName,
+        firstName,
+        lastName,
+        phone: data.customerPhone,
+        email: data.customerEmail || null,
+      },
+    });
+
+    const appointment = await appointmentService.createForGuest(guestCustomer.id, {
+      ...data,
+      customerName: data.customerName,
+    });
+
+    const response = NextResponse.json(appointment, { status: 201 });
+    if (!request.cookies.get(process.env.SESSION_COOKIE_NAME || "guest_session_id_local")?.value) {
+      response.cookies.set(process.env.SESSION_COOKIE_NAME || "guest_session_id_local", sessionId, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30,
+      });
+    }
+
+    return response;
   } catch (error) {
     console.error("Error creating appointment:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return jsonError(error, "Internal server error");
   }
 }

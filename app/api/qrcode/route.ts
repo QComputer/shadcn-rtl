@@ -3,34 +3,29 @@ import path from "path";
 import QRCode from "qrcode";
 import fs from "fs/promises";
 import prisma from "@/lib/db";
-// Import Buffer from 'buffer' if you are in a Node.js environment
-// In Next.js app router, this is usually implicitly available, but explicit import can help.
+import { ApiError, jsonError, requireAuthSession, requireRole } from "@/lib/api-guards";
 
-// This API route will generate a QR code image for a given URL
-export async function GET(req: NextRequest) {
-  const shopUrl = req.nextUrl.searchParams.get("url");
-
-  if (!shopUrl) {
-    return new NextResponse(
-      JSON.stringify({ error: "URL parameter is required" }),
-      {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
-  }
-
+function validateHttpUrl(value: string) {
   try {
-    // Generate QR code as a PNG buffer
-    const qrCodeImageBuffer = await QRCode.toBuffer(shopUrl, {
-      type: "png", // Specify image type as PNG
-      errorCorrectionLevel: "H", // High error correction
+    const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      throw new Error("Only http and https URLs are allowed");
+    }
+    return url.toString();
+  } catch {
+    throw new ApiError(400, "A valid http(s) URL is required");
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const url = validateHttpUrl(req.nextUrl.searchParams.get("url") || "");
+    const qrCodeImageBuffer = await QRCode.toBuffer(url, {
+      type: "png",
+      errorCorrectionLevel: "H",
       margin: 2,
     });
 
-    // NextResponse can accept a Buffer directly in modern Next.js versions
-    // If you encounter issues, explicitly convert to ArrayBuffer or Uint8Array
-    // Example:
     const arrayBuffer = qrCodeImageBuffer.buffer.slice(
       qrCodeImageBuffer.byteOffset,
       qrCodeImageBuffer.byteOffset + qrCodeImageBuffer.byteLength,
@@ -38,63 +33,43 @@ export async function GET(req: NextRequest) {
 
     return new NextResponse(arrayBuffer, {
       status: 200,
-      headers: {
-        "Content-Type": "image/png", // Set content type to PNG
-      },
+      headers: { "Content-Type": "image/png" },
     });
   } catch (error) {
     console.error("Error generating QR code:", error);
-    return new NextResponse(
-      JSON.stringify({ error: "Failed to generate QR code" }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+    return jsonError(error, "Failed to generate QR code");
   }
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-
-  const {url} = body;
-
-  if (!url) {
-    return new NextResponse(
-      JSON.stringify({ error: "URL parameter is required" }),
-      {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
-  }
-
   try {
-    // Generate QR code as a PNG buffer
+    const session = await requireAuthSession();
+    requireRole(session, ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"]);
+
+    const body = await request.json();
+    const url = validateHttpUrl(body?.url || "");
+
     const qrCodeImageBuffer = await QRCode.toBuffer(url, {
-      type: "png", // Specify image type as PNG
-      errorCorrectionLevel: "H", // High error correction
+      type: "png",
+      errorCorrectionLevel: "H",
       margin: 2,
     });
 
-    const buffer = Buffer.from(qrCodeImageBuffer);
-    // Define the upload directory relative to the project root
     const uploadDir = path.join(process.cwd(), "../uploads");
+    await fs.mkdir(uploadDir, { recursive: true });
 
-    // Generate a unique filename
-    const filename = `${Date.now()}-qrcode`;
+    const filename = `${Date.now()}-${crypto.randomUUID()}-qrcode.png`;
     const filepath = path.join(uploadDir, filename);
-    await fs.writeFile(filepath, buffer);
-    const imageUrl = `/uploads/${filename}`;
+    await fs.writeFile(filepath, Buffer.from(qrCodeImageBuffer), { flag: "wx" });
 
-    // Save record in DB
+    const imageUrl = `/uploads/${filename}`;
     const image = await prisma.image.create({
       data: { url: imageUrl, filename },
     });
 
-    return NextResponse.json(image, { status: 201 }); // Use 201 for created resources
+    return NextResponse.json(image, { status: 201 });
   } catch (error) {
-    console.error("Error generating QR code:", error);
-return NextResponse.json({ error: "Failed to create qrcode" }, { status: 500 });
+    console.error("Error creating QR code:", error);
+    return jsonError(error, "Failed to create qrcode");
   }
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { organizationService } from "@/lib/services/organization.service";
 import { hasPermission } from "@/lib/types";
-import prisma from "@/lib/db";
+import { ApiError, jsonError, requireOrgAccess } from "@/lib/api-guards";
 
 export async function GET(
   request: NextRequest,
@@ -30,12 +30,7 @@ export async function GET(
     return NextResponse.json(members);
   } catch (error) {
     console.error("Error getting members:", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
-      { status: 500 },
-    );
+    return jsonError(error, "Internal server error");
   }
 }
 
@@ -55,6 +50,9 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const organizationId = session.user.role === "SUPER_ADMIN" ? id : session.user.organizationId || id;
+    await requireOrgAccess(session, organizationId, ["ADMIN", "MANAGER"]);
+
     const body = await request.json();
     const { userId, role } = body;
 
@@ -66,7 +64,7 @@ export async function POST(
     }
 
     const member = await organizationService.addMember(
-      id,
+      organizationId,
       userId,
       role || "STAFF",
       session.user.id,
@@ -75,12 +73,7 @@ export async function POST(
     return NextResponse.json(member, { status: 201 });
   } catch (error) {
     console.error("Error adding member:", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
-      { status: 500 },
-    );
+    return jsonError(error, "Internal server error");
   }
 }
 /*

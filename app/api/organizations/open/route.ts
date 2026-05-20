@@ -1,35 +1,51 @@
-import { auth } from "@/lib/auth";
 import prisma from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import { ApiError, jsonError, requireAuthSession, requireCurrentOrgAdminOrManager } from "@/lib/api-guards";
 
+async function resolveWritableOrganizationId() {
+  const session = await requireAuthSession();
+  const membership = await requireCurrentOrgAdminOrManager(session);
+  const organizationId = session.user.role === "SUPER_ADMIN" ? session.user.organizationId : membership?.organizationId;
+
+  if (!organizationId) {
+    throw new ApiError(400, "Organization context is required");
+  }
+
+  return organizationId;
+}
 
 export async function GET(request: NextRequest) {
-    const session = await auth();
-    if (!session || !session.user?.organizationId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  try {
+    const organizationId = await resolveWritableOrganizationId();
     const organization = await prisma.organization.update({
-        where: {id: session.user?.organizationId},
-        data: {isOpen: true}
-    })
-    //console.log("-----api/rganization.GET----------organization", organization);
-    
+      where: { id: organizationId },
+      data: { isOpen: true },
+    });
+
     return NextResponse.json(organization);
+  } catch (error) {
+    console.error("Error opening organization:", error);
+    return jsonError(error, "Internal server error");
+  }
 }
 
 export async function POST(request: NextRequest) {
-       const session = await auth();
-       if (!session || !session.user?.organizationId) {
-         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-       }
-       const body = await request.json();
+  try {
+    const organizationId = await resolveWritableOrganizationId();
+    const body = await request.json();
 
-       const organization = await prisma.organization.update({
-         where: { id: session.user?.organizationId },
-         data: { isOpen:  body.isOpen},
-       });
+    if (typeof body.isOpen !== "boolean") {
+      throw new ApiError(400, "isOpen boolean is required");
+    }
 
-    //console.log("------api/rganization.POST---------organization", organization);
+    const organization = await prisma.organization.update({
+      where: { id: organizationId },
+      data: { isOpen: body.isOpen },
+    });
 
-       return NextResponse.json(organization);
+    return NextResponse.json(organization);
+  } catch (error) {
+    console.error("Error updating organization open state:", error);
+    return jsonError(error, "Internal server error");
+  }
 }

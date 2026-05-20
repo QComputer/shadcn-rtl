@@ -1,23 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { jsonError, requireAuthSession, requireCurrentOrgAdminOrManager } from "@/lib/api-guards";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id || !session.user.role) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-/*
-    if (!hasPermission(session.user.role, "user:manage")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-*/
+    const session = await requireAuthSession();
     const { searchParams } = request.nextUrl;
-    const page = parseInt(searchParams.get("page") || "1");
-    const pageSize = parseInt(searchParams.get("pageSize") || "20");
-    const search = searchParams.get("search");
+    const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(searchParams.get("pageSize") || "20", 10), 1), 100);
+    const search = searchParams.get("search")?.trim();
     const role = searchParams.get("role");
     const isActive = searchParams.get("isActive");
 
@@ -25,12 +16,21 @@ export async function GET(request: NextRequest) {
       deletedAt: null,
     };
 
+    if (session.user.role !== "SUPER_ADMIN") {
+      const membership = await requireCurrentOrgAdminOrManager(session);
+      where.memberOf = {
+        organizationId: membership?.organizationId,
+        isActive: true,
+      };
+    }
+
     if (search) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
         { firstName: { contains: search, mode: "insensitive" } },
         { lastName: { contains: search, mode: "insensitive" } },
         { email: { contains: search, mode: "insensitive" } },
+        { phone: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -55,7 +55,13 @@ export async function GET(request: NextRequest) {
           isTeamMember: true,
           locale: true,
           createdAt: true,
-          memberOf: true
+          memberOf: {
+            include: {
+              organization: {
+                select: { id: true, name: true, slug: true, type: true },
+              },
+            },
+          },
         },
       }),
       prisma.user.count({ where }),
@@ -70,9 +76,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error listing users:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return jsonError(error, "Internal server error");
   }
 }

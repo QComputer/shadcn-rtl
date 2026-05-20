@@ -1,82 +1,103 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { userService } from "@/lib/services/user.service";
+import { ApiError, jsonError, requireAuthSession, requireCurrentOrgAdminOrManager } from "@/lib/api-guards";
+import type { UserRole } from "@/lib/types";
+
+async function canManageTargetUser(session: Awaited<ReturnType<typeof auth>>, targetUserId: string) {
+  if (!session?.user?.id || !session.user.role) {
+    throw new ApiError(401, "Unauthorized");
+  }
+
+  if (session.user.role === "SUPER_ADMIN") {
+    return true;
+  }
+
+  const managerMembership = await requireCurrentOrgAdminOrManager(session);
+  const targetMembership = await prisma.organizationMember.findFirst({
+    where: {
+      userId: targetUserId,
+      organizationId: managerMembership?.organizationId,
+    },
+  });
+
+  if (!targetMembership) {
+    throw new ApiError(403, "Forbidden");
+  }
+
+  return true;
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession();
     const { id } = await params;
 
-    if (!session?.user || !session?.user?.role) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (id !== session.user.id) {
+      await canManageTargetUser(session, id);
     }
 
     const user = await userService.getById(id);
-
-    if (!user) {
-      return NextResponse.json({ error: "user not found" }, { status: 404 });
-    }
-
-    // Check access - customer can only see their own users
-    if (
-      !["SUPER_ADMIN", "ADMIN", "MANAGER"].includes(session.user.role) &&
-      id !== session.user.id
-    ) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!user || user.deletedAt) {
+      throw new ApiError(404, "User not found");
     }
 
     return NextResponse.json(user);
   } catch (error) {
     console.error("Error getting user:", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
-      { status: 500 },
-    );
+    return jsonError(error, "Internal server error");
   }
 }
 
-// to update the status
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession();
     const { id } = await params;
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!session.user.role) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const body = await request.json();
-    const user = body.role
-      ? await userService.updateRole(id, body.role)
-      : body.isActive
-        ? session.user.role == "SUPER_ADMIN"
-          ? await userService.updateUserIsActive(id, body.isActive)
-          : session.user.role == "ADMIN"
-            ? await userService.updateMembershipIsActive(id, body.isActive)
-            : null
-        : null;
 
-    return NextResponse.json(user);
+    if (body.role) {
+      if (session.user.role !== "SUPER_ADMIN") {
+        throw new ApiError(403, "Only SUPER_ADMIN can change global roles");
+      }
+      const user = await userService.updateRole(id, body.role as UserRole);
+      return NextResponse.json(user);
+    }
+
+    await canManageTargetUser(session, id);
+
+    if (typeof body.isActive === "boolean") {
+      if (session.user.role === "SUPER_ADMIN") {
+        const user = await userService.updateUserIsActive(id, body.isActive);
+        return NextResponse.json(user);
+      }
+
+      const managerMembership = await requireCurrentOrgAdminOrManager(session);
+      const targetMembership = await prisma.organizationMember.findFirst({
+        where: {
+          userId: id,
+          organizationId: managerMembership?.organizationId,
+        },
+      });
+
+      if (!targetMembership) {
+        throw new ApiError(403, "Forbidden");
+      }
+
+      const membership = await userService.updateMembershipIsActive(targetMembership.id, body.isActive);
+      return NextResponse.json(membership);
+    }
+
+    throw new ApiError(400, "No supported update fields provided");
   } catch (error) {
     console.error("Error updating user:", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
-      { status: 500 },
-    );
+    return jsonError(error, "Internal server error");
   }
 }
 
@@ -85,35 +106,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession();
     const { id } = await params;
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (session.user.role !== "SUPER_ADMIN") {
+      throw new ApiError(403, "Only SUPER_ADMIN can delete users");
     }
 
-    const userRole = session.user.role;
-    if (!userRole) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (userRole === "SUPER_ADMIN") {
-      await userService.delete(id);
-    } else {
-      await userService.update(
-        id,
-      { deletedAt: new Date(), isActive: false },
-      );
-    }
-
+    await userService.update(id, { deletedAt: new Date(), isActive: false });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error cancelling appointment:", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
-      { status: 500 },
-    );
+    console.error("Error deleting user:", error);
+    return jsonError(error, "Internal server error");
   }
 }

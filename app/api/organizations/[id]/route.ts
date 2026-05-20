@@ -1,67 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { updateOrganizationSchema } from "@/lib/validators";
 import { organizationService } from "@/lib/services/organization.service";
+import { ApiError, jsonError, requireAuthSession, resolveManageableOrganizationId } from "@/lib/api-guards";
 
-
-
-// update organization
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id || !session.user.role) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!["SUPER_ADMIN", "ADMIN", "MANAGER"].includes(session.user.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
+    const session = await requireAuthSession();
     const { id } = await params;
-    const body = await request.json();
-    //console.log("----------------------body", body);
-    
-    const data = updateOrganizationSchema.parse(body);
+    const organizationId = await resolveManageableOrganizationId(session, id);
 
-    const organization = await organizationService.update(id, data, session.user.role);
+    if (session.user.role !== "SUPER_ADMIN" && organizationId !== session.user.organizationId) {
+      throw new ApiError(403, "Forbidden");
+    }
+
+    const body = await request.json();
+    const data = updateOrganizationSchema.parse(body);
+    const organization = await organizationService.update(organizationId, data, session.user.role);
 
     return NextResponse.json(organization);
   } catch (error) {
     console.error("Error updating organization:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return jsonError(error, "Internal server error");
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession();
     const { id } = await params;
+    const organizationId = await resolveManageableOrganizationId(session, id);
 
-    if (!session?.user?.id || !session.user.role) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!["SUPER_ADMIN", "ADMIN", "MANAGER"].includes(session.user.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    await organizationService.delete(id, session.user.role);
-
+    await organizationService.delete(organizationId, session.user.role);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting organization:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return jsonError(error, "Internal server error");
   }
 }

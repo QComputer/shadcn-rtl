@@ -1,104 +1,227 @@
-import { prisma } from "@/lib/db"
-import { getDictionary } from "@/lib/dictionary"
-import { LocaleSwitcher } from "@/components/ui/locale-switcher"
-import { ThemeSwitcher } from "@/components/ui/theme-switcher"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { Building2, ShoppingBag, Calendar, ArrowLeft, ArrowRight } from "lucide-react"
+import Link from "next/link";
+import { unstable_cache } from "next/cache";
+import { ArrowLeft, ArrowRight, Building2, Calendar, MapPin, ShoppingBag, Store } from "lucide-react";
+import { prisma } from "@/lib/db";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { LocaleSwitcher } from "@/components/ui/locale-switcher";
+import { ThemeSwitcher } from "@/components/ui/theme-switcher";
+import { HomeHero } from "@/components/home/home-hero";
 
-// Make this page dynamic to avoid build-time database calls
-//export const dynamic = 'force-dynamic'
+export const revalidate = 60;
 
-interface OrganizationWithDetails {
-  id: string
-  name: string
-  slug: string
-  type: "SHOP" | "APPOINTMENT"
-  description: string | null
-  logo: string | null
-  coverImage: string | null
-  address: string | null
+type Locale = "fa" | "en" | "ar";
+
+type OrganizationCard = {
+  id: string;
+  name: string;
+  slug: string;
+  type: "SHOP" | "APPOINTMENT";
+  description: string | null;
+  logo: string | null;
+  coverImage: string | null;
+  address: string | null;
+  isOpen: boolean;
+  _count: {
+    products: number;
+    services: number;
+  };
+};
+
+type HomeData = {
+  organizations: OrganizationCard[];
+  stats: {
+    organizations: number;
+    products: number;
+    services: number;
+  };
+};
+
+const copy = {
+  fa: {
+    platformName: "بازار باز",
+    login: "ورود",
+    shops: "فروشگاه‌های منتخب",
+    appointments: "مراکز و خدمات قابل رزرو",
+    allBusinesses: "مشاهده کسب‌وکارها",
+    noOrganizations: "هنوز کسب‌وکار فعالی ثبت نشده است",
+    noOrganizationsDesc: "بعد از ثبت اولین فروشگاه یا مرکز نوبت‌دهی، صفحه اصلی به‌صورت خودکار با داده‌های زنده تکمیل می‌شود.",
+    createFirst: "ثبت اولین کسب‌وکار",
+    open: "باز است",
+    closed: "بسته است",
+    products: "محصول",
+    services: "خدمت",
+  },
+  en: {
+    platformName: "Bazar Baz",
+    login: "Login",
+    shops: "Featured shops",
+    appointments: "Bookable services",
+    allBusinesses: "Browse businesses",
+    noOrganizations: "No active business is registered yet",
+    noOrganizationsDesc: "Once the first shop or appointment business is registered, the home page will fill itself with live data.",
+    createFirst: "Register first business",
+    open: "Open",
+    closed: "Closed",
+    products: "products",
+    services: "services",
+  },
+  ar: {
+    platformName: "بازار باز",
+    login: "تسجيل الدخول",
+    shops: "متاجر مميزة",
+    appointments: "خدمات قابلة للحجز",
+    allBusinesses: "استعراض الأنشطة",
+    noOrganizations: "لا يوجد نشاط فعال بعد",
+    noOrganizationsDesc: "بعد تسجيل أول متجر أو مركز حجز، ستُملأ الصفحة الرئيسية تلقائياً بالبيانات الحية.",
+    createFirst: "تسجيل أول نشاط",
+    open: "مفتوح",
+    closed: "مغلق",
+    products: "منتج",
+    services: "خدمة",
+  },
+} satisfies Record<Locale, Record<string, string>>;
+
+const getHomeData = unstable_cache(
+  async (): Promise<HomeData> => {
+    try {
+      const [organizations, organizationCount, productCount, serviceCount] = await Promise.all([
+        prisma.organization.findMany({
+          where: {
+            isActive: true,
+            deletedAt: null,
+          },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            type: true,
+            description: true,
+            logo: true,
+            coverImage: true,
+            address: true,
+            isOpen: true,
+            _count: {
+              select: {
+                products: {
+                  where: {
+                    isActive: true,
+                    deletedAt: null,
+                  },
+                },
+                services: {
+                  where: {
+                    isActive: true,
+                    deletedAt: null,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: [{ isOpen: "desc" }, { createdAt: "desc" }],
+          take: 16,
+        }),
+        prisma.organization.count({
+          where: {
+            isActive: true,
+            deletedAt: null,
+          },
+        }),
+        prisma.product.count({
+          where: {
+            isActive: true,
+            deletedAt: null,
+            organization: {
+              isActive: true,
+              deletedAt: null,
+            },
+          },
+        }),
+        prisma.service.count({
+          where: {
+            isActive: true,
+            deletedAt: null,
+            organization: {
+              isActive: true,
+              deletedAt: null,
+            },
+          },
+        }),
+      ]);
+
+      return {
+        organizations,
+        stats: {
+          organizations: organizationCount,
+          products: productCount,
+          services: serviceCount,
+        },
+      };
+    } catch (error) {
+      console.error("Home page data load failed:", error);
+      return {
+        organizations: [],
+        stats: {
+          organizations: 0,
+          products: 0,
+          services: 0,
+        },
+      };
+    }
+  },
+  ["home-page-v2"],
+  {
+    revalidate: 60,
+    tags: ["home-page"],
+  },
+);
+
+function normalizeLocale(locale: string | undefined): Locale {
+  if (locale === "en" || locale === "ar" || locale === "fa") return locale;
+  return "fa";
 }
 
 export default async function HomePage({
   params,
 }: {
-  params: Promise<{ locale: string }>
+  params: Promise<{ locale: string }>;
 }) {
-  const resolvedParams = await params
-  const locale = resolvedParams.locale || "fa" as "fa" | "en" | "ar"
-  const dict = getDictionary(locale)
+  const resolvedParams = await params;
+  const locale = normalizeLocale(resolvedParams.locale);
+  const text = copy[locale];
+  const isRTL = locale === "fa" || locale === "ar";
+  const { organizations, stats } = await getHomeData();
 
-  // Fetch organizations directly from Prisma
-  const organizations = await prisma.organization.findMany({
-    where: {
-      isActive: true,
-    },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      type: true,
-      description: true,
-      logo: true,
-      coverImage: true,
-      address: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: 20,
-  })
-
-  // Group organizations by type
-  const shopOrganizations = organizations.filter(
-    (org: { type: string }) => org.type === "SHOP"
-  )
-  const appointmentOrganizations = organizations.filter(
-    (org: { type: string }) => org.type === "APPOINTMENT"
-  )
-
-  // Helper to get translations based on locale
-  const t = (key: string): string => {
-    const keys = key.split(".")
-    let value: any = dict
-    for (const k of keys) {
-      value = value?.[k]
-    }
-    return value || key
-  }
-
-  const isRTL = locale === "fa" || locale === "ar"
+  const shopOrganizations = organizations.filter((org) => org.type === "SHOP").slice(0, 8);
+  const appointmentOrganizations = organizations.filter((org) => org.type === "APPOINTMENT").slice(0, 8);
+  const heroSlides = organizations.slice(0, 5).map((organization) => ({
+    id: organization.id,
+    title: organization.name,
+    subtitle: organization.description || organization.address,
+    href:
+      organization.type === "SHOP"
+        ? `/${locale}/shop/${organization.slug}`
+        : `/${locale}/organizations/${organization.slug}`,
+    image: organization.coverImage || organization.logo,
+    type: organization.type,
+    badge: organization.type === "SHOP" ? text.shops : text.appointments,
+  }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b">
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-50 border-b bg-background/85 backdrop-blur-xl">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-                              <div
-                className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
-                              >
-    
-                              <Link
-                href={`/${locale}`}
-                className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
-
-              >
-              <Building2 className="h-6 w-6 text-primary" />
-
-                <span className="font-bold text-lg">{t("home.platformName") || "پلتفرم تجارت"}</span>
-              </Link>
-              
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between gap-4">
+            <Link href={`/${locale}`} className="flex items-center gap-2 text-primary transition-colors hover:text-primary/80">
+              <Building2 className="h-6 w-6" />
+              <span className="text-lg font-bold">{text.platformName}</span>
+            </Link>
+            <div className="flex items-center gap-2 sm:gap-4">
               <LocaleSwitcher />
               <ThemeSwitcher />
-              <Link href={`/${locale}`}>
+              <Link href={`/${locale}/login`}>
                 <Button variant="default" size="sm">
-                  {t("auth.login") || "ورود"}
+                  {text.login}
                 </Button>
               </Link>
             </div>
@@ -106,155 +229,158 @@ export default async function HomePage({
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative py-20 lg:py-32 overflow-hidden">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-3xl lg:text-5xl font-bold mb-6 pb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              {t("home.hero.title") || "بهترین پلتفرم تجارت الکترونیک"}
-            </h1>
-            <p className="text-xl text-muted-foreground mb-8">
-              {t("home.hero.subtitle") || "خرید آنلاین و رزرو خدمات در یک پلتفرم مدرن"}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href={`/${locale}/dashboard`}>
-                <Button size="lg" className="w-full sm:w-auto">
-                  {t("home.hero.dashboard") || "پنل مدیریت"}
-                  {isRTL ? <ArrowLeft className="mr-1 h-4 w-4" /> : <ArrowRight className="ml-1 h-4 w-4" />}
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      <HomeHero locale={locale} slides={heroSlides} stats={stats} />
 
-      {/* Shop Organizations */}
-      {shopOrganizations.length > 0 && (
-        <section className="py-16 bg-muted/30">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center gap-3 mb-8">
-              <ShoppingBag className="h-8 w-8 text-primary" />
-              <h2 className="text-3xl font-bold">
-                {t("home.shops") || "فروشگاه‌ها"}
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {shopOrganizations.map((org: OrganizationWithDetails) => (
-                <Link
-                  key={locale+org.id}
-                  href={`/${locale}/shop/${org.slug}`}
-                  className="group"
-                >
-                  <div className="bg-background rounded-xl overflow-hidden border hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-                    <div className="aspect-video bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
-                      {org.coverImage ? (
-                        <img
-                          src={org.coverImage}
-                          alt={org.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <ShoppingBag className="h-16 w-16 text-primary/30" />
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
-                        {org.name}
-                      </h3>
-                      {org.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {org.description}
-                        </p>
-                      )}
-                      {org.address && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          📍 {org.address}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      {organizations.length > 0 ? (
+        <main className="space-y-16 py-16">
+          {shopOrganizations.length > 0 && (
+            <OrganizationSection
+              locale={locale}
+              title={text.shops}
+              organizations={shopOrganizations}
+              icon="shop"
+              isRTL={isRTL}
+              text={text}
+            />
+          )}
 
-      {/* Appointment Organizations */}
-      {appointmentOrganizations.length > 0 && (
-        <section className="py-16">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center gap-3 mb-8">
-              <Calendar className="h-8 w-8 text-primary" />
-              <h2 className="text-3xl font-bold">
-                {t("home.services") || "خدمات"}
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {appointmentOrganizations.map((org: OrganizationWithDetails) => (
-                  <Link
-                  key={locale+org.id}
-                  href={`/${locale}/organizations/${org.slug}`}
-                  className="group"
-                  >
-                  <div className="bg-background rounded-xl overflow-hidden border hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-                    <div className="aspect-video bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
-                      {org.coverImage ? (
-                        <img
-                          src={org.coverImage}
-                          alt={org.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <Calendar className="h-16 w-16 text-primary/30" />
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
-                        {org.name}
-                      </h3>
-                      {org.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {org.description}
-                        </p>
-                      )}
-                      {org.address && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          📍 {org.address}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-                
-
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Empty State */}
-      {organizations.length === 0 && (
-        <section className="py-20">
+          {appointmentOrganizations.length > 0 && (
+            <OrganizationSection
+              locale={locale}
+              title={text.appointments}
+              organizations={appointmentOrganizations}
+              icon="appointment"
+              isRTL={isRTL}
+              text={text}
+            />
+          )}
+        </main>
+      ) : (
+        <section className="py-24">
           <div className="container mx-auto px-4 text-center">
-            <Building2 className="h-20 w-20 mx-auto text-muted-foreground/30 mb-6" />
-            <h2 className="text-2xl font-bold mb-4">
-              {t("home.noOrganizations") || "سازمانی یافت نشد"}
-            </h2>
-            <p className="text-muted-foreground mb-8">
-              {t("home.noOrganizationsDesc") || "در حال حاضر هیچ سازمانی در پلتفرم فعال نیست"}
-            </p>
-            <Link href={`/${locale}/login`}>
-              <Button>
-                {t("home.createFirst") || "ایجاد اولین سازمان"}
-              </Button>
+            <Building2 className="mx-auto mb-6 h-20 w-20 text-muted-foreground/30" />
+            <h2 className="mb-4 text-2xl font-bold">{text.noOrganizations}</h2>
+            <p className="mx-auto mb-8 max-w-xl text-muted-foreground">{text.noOrganizationsDesc}</p>
+            <Link href={`/${locale}/register/organization`}>
+              <Button>{text.createFirst}</Button>
             </Link>
           </div>
         </section>
       )}
-
-
     </div>
-  )
+  );
+}
+
+function OrganizationSection({
+  locale,
+  title,
+  organizations,
+  icon,
+  isRTL,
+  text,
+}: {
+  locale: Locale;
+  title: string;
+  organizations: OrganizationCard[];
+  icon: "shop" | "appointment";
+  isRTL: boolean;
+  text: Record<string, string>;
+}) {
+  const Icon = icon === "shop" ? ShoppingBag : Calendar;
+
+  return (
+    <section>
+      <div className="container mx-auto px-4">
+        <div className="mb-8 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <Icon className="h-6 w-6" />
+            </div>
+            <h2 className="text-2xl font-black sm:text-3xl">{title}</h2>
+          </div>
+          <Link href={`/${locale}`} className="hidden text-sm font-medium text-primary sm:inline-flex">
+            {text.allBusinesses}
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {organizations.map((organization) => (
+            <OrganizationCardItem
+              key={organization.id}
+              organization={organization}
+              locale={locale}
+              isRTL={isRTL}
+              text={text}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OrganizationCardItem({
+  organization,
+  locale,
+  isRTL,
+  text,
+}: {
+  organization: OrganizationCard;
+  locale: Locale;
+  isRTL: boolean;
+  text: Record<string, string>;
+}) {
+  const href = organization.type === "SHOP" ? `/${locale}/shop/${organization.slug}` : `/${locale}/organizations/${organization.slug}`;
+  const count = organization.type === "SHOP" ? organization._count.products : organization._count.services;
+  const countLabel = organization.type === "SHOP" ? text.products : text.services;
+
+  return (
+    <Link href={href} className="group block overflow-hidden rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl">
+      <div className="aspect-video overflow-hidden bg-muted">
+        {organization.coverImage || organization.logo ? (
+          <img
+            src={organization.coverImage || organization.logo || ""}
+            alt={organization.name}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/15 to-muted">
+            {organization.type === "SHOP" ? (
+              <Store className="h-14 w-14 text-primary/40" />
+            ) : (
+              <Calendar className="h-14 w-14 text-primary/40" />
+            )}
+          </div>
+        )}
+      </div>
+      <div className="space-y-3 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="line-clamp-1 text-lg font-bold transition-colors group-hover:text-primary">{organization.name}</h3>
+          <Badge variant={organization.isOpen ? "default" : "outline"}>{organization.isOpen ? text.open : text.closed}</Badge>
+        </div>
+        {organization.description && <p className="line-clamp-2 min-h-[40px] text-sm text-muted-foreground">{organization.description}</p>}
+        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <IconByType type={organization.type} />
+            {count} {countLabel}
+          </span>
+          {organization.address && (
+            <span className="inline-flex min-w-0 items-center gap-1">
+              <MapPin className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{organization.address}</span>
+            </span>
+          )}
+        </div>
+        <div className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
+          {text.allBusinesses}
+          {isRTL ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function IconByType({ type }: { type: "SHOP" | "APPOINTMENT" }) {
+  return type === "SHOP" ? <ShoppingBag className="h-3.5 w-3.5" /> : <Calendar className="h-3.5 w-3.5" />;
 }

@@ -124,7 +124,7 @@ export class ProductCategoryService {
     }
 
     const [data, total] = await Promise.all([
-      prisma.serviceCategory.findMany({
+      prisma.productCategory.findMany({
         where,
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -138,11 +138,11 @@ export class ProductCategoryService {
             },
           },
           _count: {
-            select: { services: { where: { deletedAt: null } } },
+            select: { products: { where: { deletedAt: null } } },
           },
         },
       }),
-      prisma.serviceCategory.count({ where }),
+      prisma.productCategory.count({ where }),
     ]);
 
     return {

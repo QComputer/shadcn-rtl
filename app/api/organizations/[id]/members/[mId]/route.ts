@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { organizationService } from "@/lib/services/organization.service";
 import { userService } from "@/lib/services/user.service";
 import { ApiError, jsonError, requireAuthSession, requireOrgAccess } from "@/lib/api-guards";
+import type { SessionWithUser } from "@/lib/api-guards";
 
-async function resolveOrganizationId(session: Awaited<ReturnType<typeof auth>>, routeId: string) {
+async function resolveOrganizationId(session: SessionWithUser, routeId: string) {
   if (session?.user?.role === "SUPER_ADMIN") {
     return routeId;
   }

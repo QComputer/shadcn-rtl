@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { userService } from "@/lib/services/user.service";
 import { ApiError, jsonError, requireAuthSession, requireCurrentOrgAdminOrManager } from "@/lib/api-guards";
+import type { SessionWithUser } from "@/lib/api-guards";
 import type { UserRole } from "@/lib/types";
 
-async function canManageTargetUser(session: Awaited<ReturnType<typeof auth>>, targetUserId: string) {
+async function canManageTargetUser(session: SessionWithUser, targetUserId: string) {
   if (!session?.user?.id || !session.user.role) {
     throw new ApiError(401, "Unauthorized");
   }

@@ -1,71 +1,59 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { productService } from "@/lib/services/product.service";
-import { updateProductSchema } from "@/lib/validators";
+import { updateProductVariantSchema } from "@/lib/validators";
+import {
+  ApiError,
+  jsonError,
+  requireAuthSession,
+  requireProductAccess,
+} from "@/lib/api-guards";
+
+async function requireVariantProductAccess(
+  session: Awaited<ReturnType<typeof requireAuthSession>>,
+  productId: string,
+  variantId: string,
+  write = false,
+) {
+  const variant = await productService.getVariant(variantId);
+  if (!variant || variant.productId !== productId) {
+    throw new ApiError(404, "Product variant not found");
+  }
+  await requireProductAccess(session, productId, write ? ["ADMIN", "MANAGER"] : ["ADMIN", "MANAGER", "STAFF"]);
+  return variant;
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; varId: string }> },
 ) {
   try {
+    const session = await requireAuthSession();
     const { id, varId } = await params;
-    const session = await auth();
-
-    if (!session?.user?.id || !session.user.role) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get product variant by ID (internal use)
-    const variant = await productService.getVariants(varId);
-
-    if (!variant) {
-      return NextResponse.json(
-        { error: "Product variant not found" },
-        { status: 404 },
-      );
-    }
-
+    const variant = await requireVariantProductAccess(session, id, varId);
     return NextResponse.json(variant);
   } catch (error) {
     console.error("Error getting product variant:", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
-      { status: 500 },
-    );
+    return jsonError(error, "Internal server error");
   }
 }
 
-// update product
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; varId: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id || !session.user.role) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!["SUPER_ADMIN", "ADMIN", "MANAGER"].includes(session.user.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
+    const session = await requireAuthSession();
     const { id, varId } = await params;
+    await requireVariantProductAccess(session, id, varId, true);
+
     const body = await request.json();
-    const data = updateProductSchema.parse(body);
-    const variant = await productService.updateVariant({...data, id: varId}, session.user.role);
+    const data = updateProductVariantSchema.parse({ ...body, id: varId });
+    const variant = await productService.updateVariant(data, session.user.role);
 
     return NextResponse.json(variant);
   } catch (error) {
-    console.error("Error updating product:", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
-      { status: 500 },
-    );
+    console.error("Error updating product variant:", error);
+    return jsonError(error, "Internal server error");
   }
 }
 
@@ -74,16 +62,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; varId: string }> },
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession();
     const { id, varId } = await params;
-
-    if (!session?.user?.id || !session.user.role) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!["SUPER_ADMIN", "ADMIN", "MANAGER"].includes(session.user.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    await requireVariantProductAccess(session, id, varId, true);
 
     session.user.role === "SUPER_ADMIN"
       ? await productService.hardDeleteVariant(varId, session.user.role)
@@ -92,11 +73,6 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting product variant:", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
-      { status: 500 },
-    );
+    return jsonError(error, "Internal server error");
   }
 }

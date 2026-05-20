@@ -1,97 +1,65 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { productCategoryService } from "@/lib/services/category.service";
 import { createProductCategorySchema } from "@/lib/validators";
-import { hasPermission } from "@/lib/types";
 import { prisma } from "@/lib/db";
+import {
+  ApiError,
+  jsonError,
+  requireAuthSession,
+  requireCurrentOrganizationId,
+} from "@/lib/api-guards";
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await requireAuthSession();
     const { searchParams } = request.nextUrl;
-    const session = await auth();
-    
-    // Get organizationId from query or from user's membership
     let organizationId = searchParams.get("organizationId");
 
-    if (!organizationId && session?.user?.id) {
-          // Check if user is SUPER_ADMIN - they can access any organization
-          if (session.user.role === "SUPER_ADMIN") {
-            // For SUPER_ADMIN, if no org specified, return all categories across all organizations
-            if (!organizationId) {
-              const params: Record<string, string | boolean | number | undefined> = {};
-              params.page = parseInt(searchParams.get("page") || "1");
-              params.pageSize = parseInt(searchParams.get("pageSize") || "20");
-              params.isActive = searchParams.get("isActive") === "true" ? true : searchParams.get("isActive") === "false" ? false : undefined;
-              params.search = searchParams.get("search") || undefined;
-    
-              // Get all categories without organization filter for SUPER_ADMIN
-              const categories = await productCategoryService.listAll(params);
-    
-              return NextResponse.json(categories);
-            }
-          } else {
-            // Regular user - get from membership
-            const membership = await prisma.organizationMember.findFirst({
-              where: { userId: session.user.id },
-              select: { organizationId: true },
-            });
-            if (membership) {
-              organizationId = membership.organizationId;
-            }
-          }
-    }
-
-    if (!organizationId) {
-      return NextResponse.json({ error: "Organization ID is required" }, { status: 400 });
-    }
-
     const params: Record<string, string | boolean | number | undefined> = {};
-    params.page = parseInt(searchParams.get("page") || "1");
-    params.pageSize = parseInt(searchParams.get("pageSize") || "20");
+    params.page = parseInt(searchParams.get("page") || "1", 10);
+    params.pageSize = parseInt(searchParams.get("pageSize") || "20", 10);
     params.isActive = searchParams.get("isActive") === "true" ? true : searchParams.get("isActive") === "false" ? false : undefined;
     params.search = searchParams.get("search") || undefined;
 
+    if (session.user.role === "SUPER_ADMIN" && !organizationId) {
+      const categories = await productCategoryService.listAll(params);
+      return NextResponse.json(categories);
+    }
+
+    if (session.user.role !== "SUPER_ADMIN") {
+      const membership = await prisma.organizationMember.findFirst({
+        where: { userId: session.user.id, isActive: true },
+        select: { organizationId: true },
+      });
+      if (!membership) throw new ApiError(403, "Forbidden");
+      if (organizationId && organizationId !== membership.organizationId) {
+        throw new ApiError(403, "Forbidden");
+      }
+      organizationId = membership.organizationId;
+    }
+
+    if (!organizationId) throw new ApiError(400, "Organization ID is required");
     const categories = await productCategoryService.list(organizationId, params);
-    //console.log("---------------------------------p categories", categories);
-    
     return NextResponse.json(categories);
   } catch (error) {
-    console.error("Error listing service categories:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    console.error("Error listing product categories:", error);
+    return jsonError(error, "Internal server error");
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id || !session.user.role || !session?.user?.organizationId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!hasPermission(session.user.role, "product:create")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
+    const session = await requireAuthSession();
     const body = await request.json();
+    const organizationId = await requireCurrentOrganizationId(
+      session,
+      body.organizationId ?? session.user.organizationId,
+    );
     const categoryData = createProductCategorySchema.parse(body);
-    const organizationId = session?.user?.organizationId;
-    
-    if (!organizationId) {
-      return NextResponse.json({ error: "Organization ID is required" }, { status: 400 });
-    }
-
     const category = await productCategoryService.create(organizationId, categoryData);
-
     return NextResponse.json(category, { status: 201 });
   } catch (error) {
     console.error("Error creating product category:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return jsonError(error, "Internal server error");
   }
 }

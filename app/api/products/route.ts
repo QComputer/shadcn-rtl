@@ -3,90 +3,73 @@ import { auth } from "@/lib/auth";
 import { productService } from "@/lib/services/product.service";
 import { createProductSchema, productFilterSchema } from "@/lib/validators";
 import { prisma } from "@/lib/db";
+import {
+  ApiError,
+  jsonError,
+  requireAuthSession,
+  requireCurrentOrganizationId,
+} from "@/lib/api-guards";
 
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     const searchParams = Object.fromEntries(request.nextUrl.searchParams);
-    
-    // Convert string booleans to actual booleans
+
     const sanitizedParams: Record<string, unknown> = { ...searchParams };
     if (sanitizedParams.isActive === "true") sanitizedParams.isActive = true;
     if (sanitizedParams.isActive === "false") sanitizedParams.isActive = false;
     if (sanitizedParams.isActive === "") sanitizedParams.isActive = undefined;
-    
+
     const params = productFilterSchema.parse(sanitizedParams);
 
-    // For customers, only show active products
     if (!session || session.user?.role === "CUSTOMER") {
       params.isActive = true;
     }
 
-    // Auto-filter by organization for staff users (not SUPER_ADMIN)
-    if (session?.user?.role && 
-        !["SUPER_ADMIN"].includes(session.user.role) && 
-        !params.organizationId) {
-      // Get user's organization membership
+    if (session?.user?.role && session.user.role !== "SUPER_ADMIN") {
       const membership = await prisma.organizationMember.findFirst({
-        where: { userId: session.user.id },
+        where: { userId: session.user.id, isActive: true },
         select: { organizationId: true },
       });
-      
-      if (membership) {
-        params.organizationId = membership.organizationId;
+
+      if (!membership) {
+        return NextResponse.json({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 });
       }
+
+      if (params.organizationId && params.organizationId !== membership.organizationId) {
+        throw new ApiError(403, "Forbidden");
+      }
+
+      params.organizationId = membership.organizationId;
     }
 
     const products =
-      session?.user?.role == "SUPER_ADMIN"
+      session?.user?.role === "SUPER_ADMIN"
         ? await productService.listAll(params)
         : await productService.list(params);
 
     return NextResponse.json(products);
   } catch (error) {
     console.error("Error listing products:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return jsonError(error, "Internal server error");
   }
 }
 
-// creating product
 export async function POST(request: NextRequest) {
   try {
-
-    const session = await auth();
-
-    // Only admins, managers can create products
-    if (!session?.user?.role || !["SUPER_ADMIN", "ADMIN", "MANAGER"].includes(session.user.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const session = await requireAuthSession();
     const body = await request.json();
-
-    // Get organization from user session or body
-    const organizationId = session.user.role === "SUPER_ADMIN" ? body.organizationId : session.user.organizationId;
-    if (!organizationId) {
-      return NextResponse.json(
-        { error: "Organization ID is required" },
-        { status: 400 },
-      );
-    } 
+    const organizationId = await requireCurrentOrganizationId(
+      session,
+      body.organizationId ?? session.user.organizationId,
+    );
 
     const data = createProductSchema.parse({ ...body, organizationId });
-
-    const product = await productService.create(
-      data,
-      organizationId,
-      session.user!.role,
-    );
+    const product = await productService.create(data, organizationId, session.user.role);
 
     return NextResponse.json(product, { status: 201 });
   } catch (error) {
     console.error("Error creating product:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return jsonError(error, "Internal server error");
   }
 }

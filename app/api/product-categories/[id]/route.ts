@@ -1,92 +1,73 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { updateProductCategorySchema } from "@/lib/validators";
 import { productCategoryService } from "@/lib/services/category.service";
+import { updateProductCategorySchema } from "@/lib/validators";
+import { prisma } from "@/lib/db";
+import {
+  ApiError,
+  jsonError,
+  requireAuthSession,
+  requireProductCategoryAccess,
+} from "@/lib/api-guards";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const session = await requireAuthSession();
     const { id } = await params;
-    const session = await auth();
-    
-        if (!session?.user?.id || !session.user.role) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get category by ID (internal use)
+    await requireProductCategoryAccess(session, id, ["ADMIN", "MANAGER", "STAFF"]);
     const category = await productCategoryService.getById(id);
-
-    if (!category) {
-      return NextResponse.json({ error: "category not found" }, { status: 404 });
-    }
-
-    return NextResponse.json(category);
+    return NextResponse.json({ category });
   } catch (error) {
-    console.error("Error getting category:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    console.error("Error getting product category:", error);
+    return jsonError(error, "Internal server error");
   }
 }
 
-// update category
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id || !session.user.role) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!["SUPER_ADMIN", "ADMIN", "MANAGER"].includes(session.user.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
+    const session = await requireAuthSession();
     const { id } = await params;
+    await requireProductCategoryAccess(session, id, ["ADMIN", "MANAGER"]);
+
     const body = await request.json();
-    const data = updateProductCategorySchema.parse(body);
+    const sanitizedBody = { ...body };
+    if (sanitizedBody.image === null || sanitizedBody.image === "") sanitizedBody.image = undefined;
+    if (sanitizedBody.description === null || sanitizedBody.description === "") sanitizedBody.description = undefined;
 
+    const data = updateProductCategorySchema.parse(sanitizedBody);
     const category = await productCategoryService.update(id, data);
-
-    return NextResponse.json(category);
+    return NextResponse.json({ category });
   } catch (error) {
-    console.error("Error updating category:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    console.error("Error updating product category:", error);
+    return jsonError(error, "Internal server error");
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession();
     const { id } = await params;
+    await requireProductCategoryAccess(session, id, ["ADMIN", "MANAGER"]);
 
-    if (!session?.user?.id || !session.user.role) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!["SUPER_ADMIN", "ADMIN", "MANAGER"].includes(session.user.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const productsCount = await prisma.product.count({
+      where: { categoryId: id, deletedAt: null },
+    });
+    if (productsCount > 0) {
+      throw new ApiError(400, "Cannot delete category with existing products. Please move or delete products first.");
     }
 
     await productCategoryService.delete(id);
-
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting category:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    console.error("Error deleting product category:", error);
+    return jsonError(error, "Internal server error");
   }
 }

@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { appointmentService } from "@/lib/services/appointment.service";
 import { createAppointmentSchema } from "@/lib/validators";
 import { prisma } from "@/lib/db";
-import { ApiError, jsonError } from "@/lib/api-guards";
+import { ApiError, jsonError, getActiveMembership } from "@/lib/api-guards";
 
 function splitName(fullName: string) {
   const nameParts = fullName.trim().split(/\s+/);
@@ -39,29 +39,33 @@ export async function GET(request: NextRequest) {
       appointments = await appointmentService.list({
         ...params,
         customerId: session.user.id,
+        guestCustomerId: undefined,
       });
     } else if (session.user.role === "STAFF") {
-      const membership = await prisma.organizationMember.findFirst({
-        where: { userId: session.user.id, isActive: true },
-        select: { organizationId: true },
-      });
+      const membership = await getActiveMembership(session.user.id);
+      if (!membership) {
+        throw new ApiError(403, "Forbidden");
+      }
 
       appointments = await appointmentService.list({
         ...params,
-        organizationId: membership?.organizationId,
+        organizationId: membership.organizationId,
         serviceProviderId: session.user.id,
       });
-    } else {
-      if (!params.organizationId && session.user.isTeamMember) {
-        const membership = await prisma.organizationMember.findFirst({
-          where: { userId: session.user.id, isActive: true },
-          select: { organizationId: true },
-        });
-        if (membership) {
-          params.organizationId = membership.organizationId;
-        }
-      }
+    } else if (session.user.role === "SUPER_ADMIN") {
       appointments = await appointmentService.list(params);
+    } else {
+      const membership = await getActiveMembership(session.user.id);
+      if (!membership) {
+        throw new ApiError(403, "Forbidden");
+      }
+      if (params.organizationId && params.organizationId !== membership.organizationId) {
+        throw new ApiError(403, "Forbidden");
+      }
+      appointments = await appointmentService.list({
+        ...params,
+        organizationId: membership.organizationId,
+      });
     }
 
     return NextResponse.json(appointments);

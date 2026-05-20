@@ -1,178 +1,124 @@
-// TODO: check the progress updating communication with frontend
-
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { orderService } from "@/lib/services/order.service";
 import { updateOrderStatusSchema } from "@/lib/validators";
 import prisma from "@/lib/db";
+import {
+  ApiError,
+  jsonError,
+  requireAuthSession,
+  requireOrderAccess,
+} from "@/lib/api-guards";
 
 function statusForError(error: unknown) {
+  if (error instanceof ApiError) return error.status;
   if (!(error instanceof Error)) return 500;
   if (error.message === "Unauthorized") return 401;
   if (error.message.includes("not found")) return 404;
   if (error.message.includes("Invalid order status transition")) return 409;
+  if (error.message.includes("Forbidden")) return 403;
   return 500;
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession();
     const { id } = await params;
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    await requireOrderAccess(session, id, ["ADMIN", "MANAGER", "STAFF", "DRIVER", "CUSTOMER"]);
 
     const order = await orderService.getById(id);
-
-    if (!order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
-
-    // Check access - customer can only see their own orders
-    if (
-      session.user.role === "CUSTOMER" &&
-      order.customerId !== session.user.id
-    ) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // Check access - driver can only see their assigned orders
-    if (
-      session.user.role === "DRIVER" &&
-      (!!order.driverId && order.driverId !== session.user.id)
-    ) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
+    if (!order) throw new ApiError(404, "Order not found");
     return NextResponse.json(order);
   } catch (error) {
     console.error("Error getting order:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: statusForError(error) }
+      { status: statusForError(error) },
     );
   }
 }
 
-// to update the status
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession();
     const { id } = await params;
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!session.user.role) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    await requireOrderAccess(session, id, ["ADMIN", "MANAGER", "STAFF"]);
 
     const body = await request.json();
     const data = updateOrderStatusSchema.parse(body);
-
-    const order = await orderService.updateStatus(
-      id,
-      data,
-      session.user.role,
-      session.user.id
-    );
+    const order = await orderService.updateStatus(id, data, session.user.role, session.user.id);
 
     return NextResponse.json(order);
   } catch (error) {
     console.error("Error updating order:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: statusForError(error) }
+      { status: statusForError(error) },
     );
   }
 }
 
-// to update the progresses
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession();
     const { id } = await params;
-
-    if (!session?.user || !session?.user?.id || !session.user.role) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!["SUPER_ADMIN", "ADMIN", "MANAGER", "DRIVER"].includes(session.user.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const body = await request.json();
     const { estimatedEndTime, type } = body;
 
-    const order = await prisma.order.findUnique({where:{ id }});
-    if(!order){
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    const order = await prisma.order.findFirst({ where: { id, deletedAt: null } });
+    if (!order) throw new ApiError(404, "Order not found");
+
+    await requireOrderAccess(session, id, ["ADMIN", "MANAGER", "DRIVER"]);
+
+    if (session.user.role === "DRIVER" && (type === "PREPARATION" || order.driverId !== session.user.id)) {
+      throw new ApiError(403, "Forbidden");
+    }
+    if ((session.user.role === "ADMIN" || session.user.role === "MANAGER") && (type === "PICK_UP" || type === "DELIVERY")) {
+      throw new ApiError(403, "Forbidden");
     }
 
-    // Filter access
-    if (session.user.role=="DRIVER" && (type=="PREPARING" || order.driverId !== session.user.id)){
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    } else if (
-      (session.user.role == "ADMIN" || session.user.role == "MANAGER") &&
-      ((type == "PICK_UP" || type == "DELIVERY"))
-    ) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-//console.log("--------------->api/orders/[id]/route>PATCH:", order);
+    const updated = await orderService.updateEstimatedEndTime(
+      id,
+      session.user.role,
+      type,
+      new Date(estimatedEndTime),
+      session.user.id,
+    );
 
-    const product = await orderService.updateEstimatedEndTime(id, session.user.role, type, new Date(estimatedEndTime), session.user.id);
-
-    return NextResponse.json(product);
+    return NextResponse.json(updated);
   } catch (error) {
     console.error("Error updating progress:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: statusForError(error) }
+      { status: statusForError(error) },
     );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession();
     const { id } = await params;
+    await requireOrderAccess(session, id, ["ADMIN", "MANAGER"]);
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Only admins can cancel orders
-    if (!session.user.role || !["SUPER_ADMIN", "ADMIN"].includes(session.user.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    await orderService.updateStatus(
-      id,
-      { status: "CANCELLED" },
-      session.user.role,
-      session.user.id
-    );
-
+    await orderService.updateStatus(id, { status: "CANCELLED" }, session.user.role, session.user.id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error cancelling order:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: statusForError(error) }
+      { status: statusForError(error) },
     );
   }
 }

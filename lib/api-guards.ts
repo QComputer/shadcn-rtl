@@ -73,6 +73,10 @@ export function isPrivilegedOrgRole(role?: string | null) {
   return role === "SUPER_ADMIN" || role === "ADMIN" || role === "MANAGER";
 }
 
+export function getMembershipRole(membership: { role?: UserRole | null; user?: { role?: UserRole | null } } | null | undefined): UserRole | undefined {
+  return (membership?.role || membership?.user?.role || undefined) as UserRole | undefined;
+}
+
 export async function getActiveMembership(
   userId: string,
   organizationId?: string | null,
@@ -121,12 +125,13 @@ export async function requireOrgAccess(
     return null;
   }
 
-  if (!allowedRoles.includes(role)) {
+  const membership = await getActiveMembership(userId, organizationId);
+  const membershipRole = getMembershipRole(membership);
+  if (!membership || !membership.organization?.isActive || !membershipRole) {
     throw new ApiError(403, "Forbidden");
   }
 
-  const membership = await getActiveMembership(userId, organizationId);
-  if (!membership || !membership.organization?.isActive) {
+  if (!allowedRoles.includes(membershipRole)) {
     throw new ApiError(403, "Forbidden");
   }
 
@@ -147,15 +152,16 @@ export async function requireCurrentOrgAdminOrManager(
     return null;
   }
 
-  if (role !== "ADMIN" && role !== "MANAGER") {
-    throw new ApiError(403, "Forbidden");
-  }
-
   const membership = await getActiveMembership(
     userId,
     session.user.organizationId ?? undefined,
   );
-  if (!membership || !membership.organization?.isActive) {
+  const membershipRole = getMembershipRole(membership);
+  if (!membership || !membership.organization?.isActive || !membershipRole) {
+    throw new ApiError(403, "Forbidden");
+  }
+
+  if (membershipRole !== "ADMIN" && membershipRole !== "MANAGER") {
     throw new ApiError(403, "Forbidden");
   }
 

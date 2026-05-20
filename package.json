@@ -12,7 +12,9 @@
     "e2e:deployed:phase1": "node scripts/e2e/deployed-phase1-security.mjs",
     "smoke:deployed:security": "node scripts/e2e/deployed-phase1-security.mjs",
     "e2e:deployed:phase2": "node scripts/e2e/deployed-phase2-resource-ownership.mjs",
-    "smoke:deployed:resources": "node scripts/e2e/deployed-phase2-resource-ownership.mjs"
+    "smoke:deployed:resources": "node scripts/e2e/deployed-phase2-resource-ownership.mjs",
+    "e2e:deployed:phase3": "node scripts/e2e/deployed-phase3-membership-rbac.mjs",
+    "smoke:deployed:membership": "node scripts/e2e/deployed-phase3-membership-rbac.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

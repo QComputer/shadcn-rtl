@@ -19,8 +19,10 @@ export async function GET(request: NextRequest) {
     if (session.user.role !== "SUPER_ADMIN") {
       const membership = await requireCurrentOrgAdminOrManager(session);
       where.memberOf = {
-        organizationId: membership?.organizationId,
-        isActive: true,
+        some: {
+          organizationId: membership?.organizationId,
+          isActive: true,
+        },
       };
     }
 
@@ -56,6 +58,8 @@ export async function GET(request: NextRequest) {
           locale: true,
           createdAt: true,
           memberOf: {
+            where: session.user.role === "SUPER_ADMIN" ? undefined : { isActive: true },
+            orderBy: { joinedAt: "desc" },
             include: {
               organization: {
                 select: { id: true, name: true, slug: true, type: true },
@@ -67,8 +71,14 @@ export async function GET(request: NextRequest) {
       prisma.user.count({ where }),
     ]);
 
+    const normalizedData = data.map((user) => ({
+      ...user,
+      memberships: user.memberOf,
+      memberOf: user.memberOf[0] ?? null,
+    }));
+
     return NextResponse.json({
-      data,
+      data: normalizedData,
       total,
       page,
       pageSize,

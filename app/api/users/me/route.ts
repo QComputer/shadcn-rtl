@@ -63,8 +63,14 @@ export async function GET() {
           },
         },
         memberOf: {
+          where: { isActive: true },
+          orderBy: { joinedAt: "desc" },
           select: {
             id: true,
+            role: true,
+            isActive: true,
+            organizationId: true,
+            organizationSlug: true,
             organization: {
               select: {
                 id: true,
@@ -83,7 +89,11 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json(user);
+    return NextResponse.json({
+      ...user,
+      memberships: user.memberOf,
+      memberOf: user.memberOf[0] ?? null,
+    });
   } catch (error) {
     console.error("Error getting user profile:", error);
     return NextResponse.json(

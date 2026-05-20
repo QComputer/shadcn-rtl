@@ -213,7 +213,7 @@ model User {
   deletedAt DateTime?
 
   // Relations
-  memberOf                 OrganizationMember?
+  memberOf                 OrganizationMember[]
   providedServices         Service[]                 @relation("ServiceProviderRelation")
   appointments             Appointment[]             @relation("CustomerAppointmentRelation")
   carts                    ShopCart[]
@@ -246,8 +246,8 @@ model User {
 model OrganizationMember {
   id             String        @id @default(cuid())
   organizationId String
-  userId         String        @unique
-  //role           UserRole @default(STAFF)
+  userId         String
+  role           UserRole @default(STAFF)
   isActive       Boolean       @default(true)
   joinedAt       DateTime      @default(now())
 

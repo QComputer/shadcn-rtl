@@ -212,9 +212,11 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
         throw new Error("Failed to find user")
       }
       const user = (await userResponse.json())
-      console.log(user);
-      
-      const response = await fetch(`/api/organization/${user.memberOf.organizationId}/members/${user.memberOf.id}`, {
+      if (!user.memberOf?.organizationId || !user.memberOf?.id) {
+        throw new Error("User has no organization membership to update")
+      }
+
+      const response = await fetch(`/api/organizations/${user.memberOf.organizationId}/members/${user.memberOf.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -512,9 +514,9 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
           {!selectedUser.isActive ? "فعال کردن" : "غیرفعال کردن"}
         </Button>
         <Button 
-       variant={!selectedUser.memberOf.isActive ? "default" : "destructive"}
-        onClick={()=>handleUpdateMemberIsActive(selectedUser?.id, !selectedUser.memberOf.isActive)}>
-          {!selectedUser.memberOf.isActive ? "فعال کردن" : "غیرفعال کردن"}
+       variant={!selectedUser.memberOf?.isActive ? "default" : "destructive"}
+        onClick={()=>handleUpdateMemberIsActive(selectedUser?.id, !selectedUser.memberOf?.isActive)}>
+          {!selectedUser.memberOf?.isActive ? "فعال کردن" : "غیرفعال کردن"}
         </Button>
         
             </div>

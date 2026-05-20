@@ -36,7 +36,28 @@ Run Phase 2 deployed smoke tests:
 
 ```bash
 DEPLOYED_URL=https://your-domain.example npm run e2e:deployed:phase2
+DEPLOYED_URL=https://your-domain.example npm run e2e:deployed:phase3
 ```
+
+
+### Phase 3 — membership roles and multi-organization groundwork
+
+Implemented:
+
+- Added `OrganizationMember.role` for organization-scoped roles.
+- Removed the Prisma `OrganizationMember.userId @unique` restriction so multi-organization membership is possible.
+- Updated API guards to prefer membership roles over global user roles for organization access checks.
+- Kept backward-compatible `memberOf` API response fields while adding `memberships` for future multi-org UI.
+- Fixed dashboard user/member endpoint handling for organization member activation.
+- Added a deployed smoke test without Playwright.
+
+Run Phase 3 deployed smoke tests:
+
+```bash
+DEPLOYED_URL=https://your-domain.example npm run e2e:deployed:phase3
+```
+
+See `docs/PHASE_3_MEMBERSHIP_RBAC.md`.
 
 ## Development
 
@@ -96,6 +117,7 @@ This project includes lightweight deployed smoke tests that use Node's built-in 
 ```bash
 DEPLOYED_URL=https://your-domain.example npm run e2e:deployed:phase1
 DEPLOYED_URL=https://your-domain.example npm run e2e:deployed:phase2
+DEPLOYED_URL=https://your-domain.example npm run e2e:deployed:phase3
 ```
 
 These tests are not a replacement for browser E2E coverage, but they catch important deployed API security regressions.
@@ -104,9 +126,9 @@ These tests are not a replacement for browser E2E coverage, but they catch impor
 
 Remaining major areas:
 
-1. Membership-role schema migration: move organization-specific roles from global `User.role` into `OrganizationMember.role`.
-2. Remove `OrganizationMember.userId @unique` to support multi-organization membership.
-3. Add transaction-safe appointment booking locks.
+1. Migrate all dashboard UI role assumptions from global `User.role` to `OrganizationMember.role`.
+2. Add transaction-safe appointment booking locks.
+3. Fix appointment timezone handling.
 4. Fix appointment timezone handling.
 5. Convert order payment status from Boolean to a proper enum/state machine.
 6. Add audit logs for critical mutations.

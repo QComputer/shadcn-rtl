@@ -262,9 +262,12 @@ export class OrganizationService {
     return;
   }
 
-  async getAMemberByUserId(userId: string) {
-    return prisma.organizationMember.findUnique({
-      where: { userId },
+  async getAMemberByUserId(userId: string, organizationId?: string) {
+    return prisma.organizationMember.findFirst({
+      where: {
+        userId,
+        ...(organizationId ? { organizationId } : {}),
+      },
       include: {
         user: {
           select: {
@@ -378,6 +381,7 @@ export class OrganizationService {
         organizationId,
         organizationSlug: org?.slug || "slug",
         userId,
+        role,
         isActive: true,
       },
       include: {
@@ -434,6 +438,7 @@ export class OrganizationService {
         organizationId: organization.id,
         organizationSlug,
         userId,
+        role: "STAFF",
         isActive: false,
       },
       include: {
@@ -456,16 +461,24 @@ export class OrganizationService {
   async updateMemberRole(
     organizationId: string,
     userId: string,
-    role: "ADMIN" | "MANAGER" | "STAFF",
+    role: "ADMIN" | "MANAGER" | "STAFF" | "DRIVER" | "CUSTOMER",
   ) {
-    // Update user's role
-    const user = await prisma.user.update({
-      where: { id: userId },
+    const member = await prisma.organizationMember.update({
+      where: { organizationId_userId: { organizationId, userId } },
       data: { role },
+      include: { user: true, organization: true },
+    });
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        isTeamMember: role !== "CUSTOMER",
+        role,
+      },
     });
 
     revalidatePath(`/dashboard/organizations/${organizationId}/members`);
-    return user;
+    return member;
   }
 
   async removeMember(organizationId: string, userId: string) {
@@ -475,14 +488,19 @@ export class OrganizationService {
       },
     });
 
-    // Update user's isTeamMember flag and role
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        isTeamMember: false,
-        role: "CUSTOMER",
-      },
+    const remainingMembership = await prisma.organizationMember.findFirst({
+      where: { userId, isActive: true },
     });
+
+    if (!remainingMembership) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          isTeamMember: false,
+          role: "CUSTOMER",
+        },
+      });
+    }
 
     revalidatePath(`/dashboard/organizations/${organizationId}/members`);
   }
@@ -624,7 +642,7 @@ export class OrganizationService {
       },
     });
 
-    return member?.user?.role;
+    return member?.role ?? member?.user?.role;
   }
 }
 

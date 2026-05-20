@@ -46,7 +46,11 @@ export async function GET(
       throw new ApiError(404, "User not found");
     }
 
-    return NextResponse.json(user);
+    return NextResponse.json({
+      ...user,
+      memberships: user.memberOf,
+      memberOf: Array.isArray(user.memberOf) ? user.memberOf[0] ?? null : user.memberOf,
+    });
   } catch (error) {
     console.error("Error getting user:", error);
     return jsonError(error, "Internal server error");

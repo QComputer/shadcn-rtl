@@ -25,8 +25,8 @@ export class UserService {
   }
 
   async delete(id: string) {
-    await prisma.organizationMember.delete({
-      where: {userId: id}
+    await prisma.organizationMember.deleteMany({
+      where: { userId: id }
     })
 
     return prisma.user.delete({

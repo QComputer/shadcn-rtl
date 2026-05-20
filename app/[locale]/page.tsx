@@ -22,9 +22,16 @@ type OrganizationCard = {
   coverImage: string | null;
   address: string | null;
   isOpen: boolean;
+  rankScore: number;
+  orderCount: number;
+  appointmentCount: number;
+  engagementCount: number;
   _count: {
     products: number;
     services: number;
+    orders: number;
+    followers: number;
+    reviews: number;
   };
 };
 
@@ -51,6 +58,9 @@ const copy = {
     closed: "بسته است",
     products: "محصول",
     services: "خدمت",
+    orders: "سفارش",
+    appointmentsCount: "نوبت",
+    activity: "فعالیت",
   },
   en: {
     platformName: "Bazar Baz",
@@ -65,6 +75,9 @@ const copy = {
     closed: "Closed",
     products: "products",
     services: "services",
+    orders: "orders",
+    appointmentsCount: "appointments",
+    activity: "activity",
   },
   ar: {
     platformName: "بازار باز",
@@ -79,13 +92,27 @@ const copy = {
     closed: "مغلق",
     products: "منتج",
     services: "خدمة",
+    orders: "طلب",
+    appointmentsCount: "حجز",
+    activity: "نشاط",
   },
 } satisfies Record<Locale, Record<string, string>>;
+
+function getImageUrl(organization: { coverImage: string | null; logo: string | null }) {
+  const image = organization.coverImage || organization.logo;
+  return image && image.trim().length > 0 ? image : null;
+}
+
+function compareOrganizations(a: OrganizationCard, b: OrganizationCard) {
+  if (b.rankScore !== a.rankScore) return b.rankScore - a.rankScore;
+  if (Number(b.isOpen) !== Number(a.isOpen)) return Number(b.isOpen) - Number(a.isOpen);
+  return a.name.localeCompare(b.name);
+}
 
 const getHomeData = unstable_cache(
   async (): Promise<HomeData> => {
     try {
-      const [organizations, organizationCount, productCount, serviceCount] = await Promise.all([
+      const [organizations, appointmentServices, organizationCount, productCount, serviceCount] = await Promise.all([
         prisma.organization.findMany({
           where: {
             isActive: true,
@@ -115,11 +142,42 @@ const getHomeData = unstable_cache(
                     deletedAt: null,
                   },
                 },
+                orders: {
+                  where: {
+                    deletedAt: null,
+                  },
+                },
+                followers: true,
+                reviews: true,
               },
             },
           },
           orderBy: [{ isOpen: "desc" }, { createdAt: "desc" }],
-          take: 16,
+          take: 80,
+        }),
+        prisma.service.findMany({
+          where: {
+            isActive: true,
+            deletedAt: null,
+            organization: {
+              isActive: true,
+              deletedAt: null,
+              type: "APPOINTMENT",
+            },
+          },
+          select: {
+            organizationId: true,
+            _count: {
+              select: {
+                appointments: {
+                  where: {
+                    deletedAt: null,
+                  },
+                },
+              },
+            },
+          },
+          take: 1000,
         }),
         prisma.organization.count({
           where: {
@@ -149,8 +207,36 @@ const getHomeData = unstable_cache(
         }),
       ]);
 
+      const appointmentCountByOrganization = new Map<string, number>();
+      for (const service of appointmentServices) {
+        appointmentCountByOrganization.set(
+          service.organizationId,
+          (appointmentCountByOrganization.get(service.organizationId) ?? 0) + service._count.appointments,
+        );
+      }
+
+      const rankedOrganizations: OrganizationCard[] = organizations
+        .map((organization) => {
+          const appointmentCount = appointmentCountByOrganization.get(organization.id) ?? 0;
+          const engagementCount = organization._count.followers + organization._count.reviews;
+          const orderCount = organization._count.orders;
+          const rankScore =
+            organization.type === "SHOP"
+              ? organization._count.products * 6 + orderCount * 8 + engagementCount * 3 + Number(organization.isOpen)
+              : organization._count.services * 6 + appointmentCount * 8 + engagementCount * 3 + Number(organization.isOpen);
+
+          return {
+            ...organization,
+            appointmentCount,
+            orderCount,
+            engagementCount,
+            rankScore,
+          };
+        })
+        .sort(compareOrganizations);
+
       return {
-        organizations,
+        organizations: rankedOrganizations,
         stats: {
           organizations: organizationCount,
           products: productCount,
@@ -169,7 +255,7 @@ const getHomeData = unstable_cache(
       };
     }
   },
-  ["home-page-v2"],
+  ["home-page-ranked-v3"],
   {
     revalidate: 60,
     tags: ["home-page"],
@@ -194,18 +280,21 @@ export default async function HomePage({
 
   const shopOrganizations = organizations.filter((org) => org.type === "SHOP").slice(0, 8);
   const appointmentOrganizations = organizations.filter((org) => org.type === "APPOINTMENT").slice(0, 8);
-  const heroSlides = organizations.slice(0, 5).map((organization) => ({
-    id: organization.id,
-    title: organization.name,
-    subtitle: organization.description || organization.address,
-    href:
-      organization.type === "SHOP"
-        ? `/${locale}/shop/${organization.slug}`
-        : `/${locale}/organizations/${organization.slug}`,
-    image: organization.coverImage || organization.logo,
-    type: organization.type,
-    badge: organization.type === "SHOP" ? text.shops : text.appointments,
-  }));
+  const heroSlides = organizations
+    .filter((organization) => getImageUrl(organization) !== null)
+    .slice(0, 5)
+    .map((organization) => ({
+      id: organization.id,
+      title: organization.name,
+      subtitle: organization.description || organization.address,
+      href:
+        organization.type === "SHOP"
+          ? `/${locale}/shop/${organization.slug}`
+          : `/${locale}/organizations/${organization.slug}`,
+      image: getImageUrl(organization),
+      type: organization.type,
+      badge: organization.type === "SHOP" ? text.shops : text.appointments,
+    }));
 
   return (
     <div className="min-h-screen bg-background">
@@ -331,8 +420,10 @@ function OrganizationCardItem({
   text: Record<string, string>;
 }) {
   const href = organization.type === "SHOP" ? `/${locale}/shop/${organization.slug}` : `/${locale}/organizations/${organization.slug}`;
-  const count = organization.type === "SHOP" ? organization._count.products : organization._count.services;
-  const countLabel = organization.type === "SHOP" ? text.products : text.services;
+  const primaryCount = organization.type === "SHOP" ? organization._count.products : organization._count.services;
+  const primaryCountLabel = organization.type === "SHOP" ? text.products : text.services;
+  const secondaryCount = organization.type === "SHOP" ? organization.orderCount : organization.appointmentCount;
+  const secondaryCountLabel = organization.type === "SHOP" ? text.orders : text.appointmentsCount;
 
   return (
     <Link href={href} className="group block overflow-hidden rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl">
@@ -360,11 +451,21 @@ function OrganizationCardItem({
           <Badge variant={organization.isOpen ? "default" : "outline"}>{organization.isOpen ? text.open : text.closed}</Badge>
         </div>
         {organization.description && <p className="line-clamp-2 min-h-[40px] text-sm text-muted-foreground">{organization.description}</p>}
-        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <IconByType type={organization.type} />
-            {count} {countLabel}
+            {primaryCount} {primaryCountLabel}
           </span>
+          <span className="inline-flex items-center gap-1">
+            <ShoppingBag className="h-3.5 w-3.5" />
+            {secondaryCount} {secondaryCountLabel}
+          </span>
+          {organization.engagementCount > 0 && (
+            <span className="inline-flex items-center gap-1">
+              <Store className="h-3.5 w-3.5" />
+              {organization.engagementCount} {text.activity}
+            </span>
+          )}
           {organization.address && (
             <span className="inline-flex min-w-0 items-center gap-1">
               <MapPin className="h-3.5 w-3.5 shrink-0" />

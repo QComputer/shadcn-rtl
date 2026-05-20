@@ -85,7 +85,9 @@ export async function GET(request: NextRequest) {
             { description: contains },
             { sku: contains },
             { category: { name: contains } },
+            { category: { description: contains } },
             { organization: { name: contains } },
+            { organization: { description: contains } },
           ],
         },
         select: {
@@ -117,7 +119,9 @@ export async function GET(request: NextRequest) {
             { name: contains },
             { description: contains },
             { category: { name: contains } },
+            { category: { description: contains } },
             { organization: { name: contains } },
+            { organization: { description: contains } },
           ],
         },
         select: {
@@ -143,12 +147,12 @@ export async function GET(request: NextRequest) {
       id: organization.id,
       type: "ORGANIZATION",
       title: organization.name,
-      subtitle: organization.address || organization.description,
+      subtitle: organization.description || organization.address,
       href:
         organization.type === "SHOP"
           ? `/${locale}/shop/${organization.slug}`
           : `/${locale}/organizations/${organization.slug}`,
-      image: organization.logo || organization.coverImage,
+      image: organization.coverImage || organization.logo,
       organizationName: organization.type === "SHOP" ? "Shop" : "Appointment",
     }));
 

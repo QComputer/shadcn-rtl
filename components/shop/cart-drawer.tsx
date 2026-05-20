@@ -11,13 +11,14 @@ import { formatToman, toPersianDigits } from "@/lib/persian";
 
 interface CartDrawerProps {
   organizationSlug: string;
+  locale?: string;
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   children?: React.ReactNode;
 }
 
-export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, children }: CartDrawerProps) {
+export function CartDrawer({ organizationSlug, locale = "fa", trigger, open, onOpenChange, children }: CartDrawerProps) {
   
   const { cart, isLoading, summary, updateQuantity, removeItem } = useCart();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -83,7 +84,7 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
                 برای شروع چند محصول اضلافه کنید
               </p>
             </div>
-            <Link href={`/fa/shop/${organizationSlug}`}>
+            <Link href={`/${locale}/shop/${organizationSlug}`}>
               <SheetClose className="bg-primary text-primary-foreground [a]:hover:bg-primary/80 h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pe-2 has-data-[icon=inline-start]:ps-2 focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 rounded-lg border border-transparent bg-clip-padding text-sm font-medium focus-visible:ring-3 aria-invalid:ring-3 [&_svg:not([class*='size-'])]:size-4 inline-flex items-center justify-center whitespace-nowrap transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none shrink-0 [&_svg]:shrink-0 outline-none group/button select-none">محصولات ما را ببینید</SheetClose>
             </Link>
           </div>
@@ -181,12 +182,12 @@ export function CartDrawer({ organizationSlug, trigger, open, onOpenChange, chil
                 <span>{formatToman(summary.subtotal)}</span>
               </div>
               <div className="grid gap-2">
-                <Link href={`/shop/${organizationSlug}/checkout`}>
+                <Link href={`/${locale}/shop/${organizationSlug}/checkout`}>
                   <SheetClose className="w-full bg-primary text-primary-foreground [a]:hover:bg-primary/80 h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pe-2 has-data-[icon=inline-start]:ps-2 focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 rounded-lg border border-transparent bg-clip-padding text-sm font-medium focus-visible:ring-3 aria-invalid:ring-3 [&_svg:not([class*='size-'])]:size-4 inline-flex items-center justify-center whitespace-nowrap transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none shrink-0 [&_svg]:shrink-0 outline-none group/button select-none">
                     ادامه برای بررسی و تایید
                   </SheetClose>
                 </Link>
-                <Link href={`/shop/${organizationSlug}`}>
+                <Link href={`/${locale}/shop/${organizationSlug}`}>
                   <SheetClose className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pe-2 has-data-[icon=inline-start]:ps-2 focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 rounded-lg border border-transparent bg-clip-padding text-sm font-medium focus-visible:ring-3 aria-invalid:ring-3 [&_svg:not([class*='size-'])]:size-4 inline-flex items-center justify-center whitespace-nowrap transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none shrink-0 [&_svg]:shrink-0 outline-none group/button select-none">
                   بازگشت به منوی محصولات
                  </SheetClose>

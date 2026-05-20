@@ -72,7 +72,7 @@ const organization = await prisma.organization.findUnique({
               </span>
 
             <div className="flex items-center gap-2 ">
-              <CartDrawer organizationSlug={slug}>
+              <CartDrawer organizationSlug={slug} locale={locale}>
                 <Button variant="ghost" size="icon" className="relative">
                   <CartBadge />
                 </Button>

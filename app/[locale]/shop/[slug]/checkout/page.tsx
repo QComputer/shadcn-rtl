@@ -73,7 +73,7 @@ export default function CheckoutPage({
   const [user, setUser] = useState<User|null>(null);
   const [loading, setLoading] = useState(true)
 
-  const { cart, summary, isLoading: cartLoading, clearCart } = useCart();
+  const { cart, summary, isLoading: cartLoading, refreshCart } = useCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDelivery, setIsDelivery] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"CREDIT_CARD"| "DEBIT_CARD"| "CASH"| "WALLET"| "BANK_TRANSFER">("CASH");
@@ -155,7 +155,7 @@ export default function CheckoutPage({
           deliveryAddress: formData.shippingAddress,
           type: isDelivery? "DELIVERY" : "PICK_UP",
           customerName: formData.customerName,
-          customerPhone: formData.customerPhone || "0000",
+          customerPhone: formData.customerPhone || undefined,
           cart,
           deliveryFee: isDelivery && deliveryFee,
           items: cart.items.map(item => ({
@@ -173,8 +173,7 @@ export default function CheckoutPage({
 
       const order = await response.json();
       
-      // Clear the cart after successful order
-      await clearCart();
+      await refreshCart();
       
       // Redirect to order confirmation page
       router.push(`/${locale}/shop/${slug}/order/${order.orderNumber}`);
@@ -296,7 +295,7 @@ export default function CheckoutPage({
                             value={formData.customerName}
                             onChange={handleInputChange}
                             className="pl-10"
-                            required
+                            required={false}
                           />
                         </div>
                       </div>

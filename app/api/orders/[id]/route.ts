@@ -68,7 +68,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const data = body //updateOrderStatusSchema.parse(body);
+    const data = updateOrderStatusSchema.parse(body);
 
     const order = await orderService.updateStatus(
       id,

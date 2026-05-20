@@ -7,7 +7,9 @@ import { ShoppingCart, Loader2, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AddProductToCartButtonProps {
-  productId: string;
+  /** Deprecated: add-to-cart requires a product variant id, not a product id. */
+  productId?: string;
+  variantId?: string;
   productName?: string;
   quantity?: number;
   className?: string;
@@ -19,6 +21,7 @@ interface AddProductToCartButtonProps {
 
 export function AddProductToCartButton({
   productId,
+  variantId,
   productName,
   quantity = 1,
   className,
@@ -34,7 +37,11 @@ export function AddProductToCartButton({
   const handleAddToCart = async () => {
     setIsAdding(true);
     try {
-      await addToCart(productId, quantity);
+      const idToAdd = variantId || productId;
+      if (!idToAdd) {
+        throw new Error("variantId is required to add a product to cart");
+      }
+      await addToCart(idToAdd, quantity);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
       onSuccess?.();

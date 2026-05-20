@@ -77,17 +77,50 @@ async function getProgressId(
 }
 
 export class OrderService {
-  async create(data: CreateOrderInput, customerId: string) {
-    //console.log("=====================OrderService>create====================");
-    const {
-      organizationSlug,
-      autoCompleteEndTimes,
-      promotionCode,
-      ...orderData
-    } = data;
-    //console.log("-------------------------------->order data:", data);
+  private async getDeliveryFee(organizationSlug: string, type: string) {
+    if (type !== "DELIVERY") return new Decimal(0);
 
-    // Get cart for user
+    const settings = await prisma.organizationSettings.findUnique({
+      where: { organizationSlug },
+    });
+
+    return new Decimal(settings?.deliveryRadius ? 20000 : 0);
+  }
+
+  private buildProgressEstimates() {
+    const now = new Date();
+    const preparationDuration = 15;
+    const pickupDuration = 5;
+    const deliveryDuration = 10;
+
+    const preparationEstimatedEndTime = new Date(
+      now.getTime() + preparationDuration * 60 * 1000,
+    );
+    const pickupEstimatedEndTime = new Date(
+      preparationEstimatedEndTime.getTime() + pickupDuration * 60 * 1000,
+    );
+    const deliveryEstimatedEndTime = new Date(
+      pickupEstimatedEndTime.getTime() + deliveryDuration * 60 * 1000,
+    );
+
+    return {
+      preparationEstimatedEndTime,
+      pickupEstimatedEndTime,
+      deliveryEstimatedEndTime,
+    };
+  }
+
+  private calculateDiscount(subtotal: Decimal, promotion: { discountType: string; discountValue: Decimal }) {
+    const discount = promotion.discountType === "percentage"
+      ? subtotal.mul(promotion.discountValue).div(100)
+      : promotion.discountValue;
+
+    return discount.gt(subtotal) ? subtotal : discount;
+  }
+
+  async create(data: CreateOrderInput, customerId: string) {
+    const { organizationSlug, promotionCode, ...orderData } = data;
+
     const cart = await prisma.shopCart.findUnique({
       where: {
         organizationSlug_customerId: { organizationSlug, customerId },
@@ -105,111 +138,102 @@ export class OrderService {
       },
     });
 
-    //console.log("---------------------CART: ", cart);
-
-    if (!cart || cart.items?.length === 0) {
+    if (!cart || cart.items.length === 0) {
       throw new Error("Cart is empty");
     }
 
-    // Calculate totals
-    let subtotal = new Decimal(0);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const orderItems: any[] = [];
+    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const {
+      preparationEstimatedEndTime,
+      pickupEstimatedEndTime,
+      deliveryEstimatedEndTime,
+    } = this.buildProgressEstimates();
 
-    for (const item of cart.items) {
-      const price = item.variant.price ?? item.variant.product.basePrice;
-      const itemTotal = price.mul(item.quantity);
-      subtotal = subtotal.add(itemTotal);
+    const order = await prisma.$transaction(async (tx) => {
+      let subtotal = new Decimal(0);
+      const orderItems = [];
 
-      orderItems.push({
-        quantity: item.quantity,
-        price,
-        productId: item.variant.productId,
-        variantId: item.variantId,
-      });
+      for (const item of cart.items) {
+        const price = item.variant.price ?? item.variant.product.basePrice;
+        const itemTotal = price.mul(item.quantity);
+        subtotal = subtotal.add(itemTotal);
 
-      // Reserve inventory
-      await prisma.productVariant.update({
-        where: { id: item.variantId },
-        data: {
-          inventory: {
-            decrement: item.quantity,
+        orderItems.push({
+          quantity: item.quantity,
+          price,
+          productId: item.variant.productId,
+          variantId: item.variantId,
+        });
+
+        if (item.variant.product.trackInventory) {
+          const inventoryUpdate = await tx.productVariant.updateMany({
+            where: {
+              id: item.variantId,
+              deletedAt: null,
+              ...(item.variant.allowBackOrder
+                ? {}
+                : { inventory: { gte: item.quantity } }),
+            },
+            data: {
+              inventory: {
+                decrement: item.quantity,
+              },
+            },
+          });
+
+          if (inventoryUpdate.count !== 1) {
+            throw new Error("Insufficient inventory");
+          }
+        }
+      }
+
+      let discount = new Decimal(0);
+      let promotionId: string | undefined;
+
+      if (promotionCode) {
+        const promotion = await tx.promotion.findFirst({
+          where: {
+            code: promotionCode,
+            organizationSlug,
+            isActive: true,
+            startsAt: { lte: new Date() },
+            expiresAt: { gte: new Date() },
           },
-        },
-      });
-    }
+        });
 
-    // Apply promotion if provided
-    let discount = new Decimal(0);
-    let promotionId: string | undefined;
-
-    if (promotionCode) {
-      const promotion = await prisma.promotion.findFirst({
-        where: {
-          code: promotionCode,
-          organizationSlug,
-          isActive: true,
-          startsAt: { lte: new Date() },
-          expiresAt: { gte: new Date() },
-          OR: [
-            { maxUses: null },
-            { usedCount: { lt: prisma.promotion.fields.maxUses } },
-          ],
-        },
-      });
-
-      if (promotion) {
-        promotionId = promotion.id;
-        if (promotion.discountType === "percentage") {
-          discount = subtotal.mul(promotion.discountValue).div(100);
-        } else {
-          discount = promotion.discountValue;
+        if (!promotion) {
+          throw new Error("Promotion not found or expired");
         }
 
-        // Increment promotion usage
-        await prisma.promotion.update({
-          where: { id: promotion.id },
+        if (promotion.minOrderAmount && subtotal.lt(promotion.minOrderAmount)) {
+          throw new Error("Order subtotal is below promotion minimum amount");
+        }
+
+        if (promotion.maxUses !== null && promotion.usedCount >= promotion.maxUses) {
+          throw new Error("Promotion usage limit reached");
+        }
+
+        const promotionUpdate = await tx.promotion.updateMany({
+          where: {
+            id: promotion.id,
+            ...(promotion.maxUses === null
+              ? {}
+              : { usedCount: { lt: promotion.maxUses } }),
+          },
           data: { usedCount: { increment: 1 } },
         });
+
+        if (promotionUpdate.count !== 1) {
+          throw new Error("Promotion usage limit reached");
+        }
+
+        promotionId = promotion.id;
+        discount = this.calculateDiscount(subtotal, promotion);
       }
-    }
 
-    // Get delivery fee from settings if delivery
-    let deliveryFee = new Decimal(0);
-    if (data.type === "DELIVERY") {
-      const settings = await prisma.organizationSettings.findUnique({
-        where: { organizationSlug },
-      });
-      if (settings) {
-        deliveryFee = new Decimal(settings.deliveryRadius ? 5.0 : 0);
-      }
-    }
+      const deliveryFee = await this.getDeliveryFee(organizationSlug, data.type);
+      const total = subtotal.add(deliveryFee).sub(discount);
 
-    const total = subtotal.add(deliveryFee).sub(discount);
-
-    // dates
-    const durationsInMinutes = [15, 5, 10];
-    const now = new Date();
-    const preparationDuration: number = durationsInMinutes[0] | 15;
-    const preparationEstimatedEndTime = new Date(
-      now.getTime() + preparationDuration * 60 * 1000,
-    );
-    const pickupDuration: number = durationsInMinutes[1] | 5;
-    const pickupEstimatedEndTime = new Date(
-      preparationEstimatedEndTime.getTime() + pickupDuration * 60 * 1000,
-    );
-    const deliveryDuration: number = durationsInMinutes[2] | 10;
-    const deliveryEstimatedEndTime = new Date(
-      pickupEstimatedEndTime.getTime() + deliveryDuration * 60 * 1000,
-    );
-    //console.log("-------------------------------->preparationEstimatedEndTime");
-    //console.log(preparationEstimatedEndTime);
-    // Generate order number
-    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-
-    // Create order with transaction
-    const order = await prisma.$transaction(async (tx) => {
-      // Create Progresses
       const preparationProgress = await tx.progress.create({
         data: { estimatedEndTime: preparationEstimatedEndTime },
       });
@@ -220,7 +244,6 @@ export class OrderService {
         data: { estimatedEndTime: deliveryEstimatedEndTime },
       });
 
-      // Create order
       const newOrder = await tx.order.create({
         data: {
           orderNumber,
@@ -271,50 +294,51 @@ export class OrderService {
         },
       });
 
-      // Update cart status
+      await tx.shopCartItem.deleteMany({
+        where: { cartId: cart.id },
+      });
+
       await tx.shopCart.update({
         where: { id: cart.id },
-        data: { status: "CHECKED_OUT" },
+        data: { status: "ACTIVE" },
       });
+
+      await Promise.all(
+        newOrder.organization.members.map((member) =>
+          tx.notification.create({
+            data: {
+              targetUserId: member.userId,
+              context: "سفارش جدید ثبت شد",
+              seen: false,
+            },
+          }),
+        ),
+      );
 
       return newOrder;
     });
 
-    await order.organization.members.map(async (m) => {
-      //console.log("----------member:", m);
-
-      const notification = await prisma.notification.create({
-        data: {
-          targetUserId: m.userId,
-          context: "سفارش جدید ثبت شد",
-          seen: false,
-        },
-      });
-      //console.log("-------notification:", notification);
-    });
-
     revalidatePath(`/dashboard/orders`);
-    revalidatePath(`/organization/${order.organization.slug}/orders`);
+    revalidatePath(`/shop/${order.organization.slug}/order/${order.orderNumber}`);
     return order;
   }
 
   async createForGuest(data: CreateOrderInput, sessionId: string) {
-    //console.log("=====================OrderService>create====================");
     const {
       organizationSlug,
-      autoCompleteEndTimes,
       promotionCode,
       customerName,
       customerPhone,
       ...orderData
     } = data;
-    //console.log("-------------------------------->order data:", data);
 
-    // Get cart for guest user
-    const cart = await prisma.shopCart.findFirst({
+    if (!sessionId) {
+      throw new Error("Guest session is required");
+    }
+
+    const cart = await prisma.shopCart.findUnique({
       where: {
-        organizationSlug,
-        sessionId,
+        organizationSlug_sessionId: { organizationSlug, sessionId },
       },
       include: {
         items: {
@@ -329,125 +353,117 @@ export class OrderService {
       },
     });
 
-    //console.log("---------------------CART: ", cart);
-
-    if (!cart || cart.items?.length === 0) {
+    if (!cart || cart.items.length === 0) {
       throw new Error("Cart is empty");
     }
 
-    // Calculate totals
-    let subtotal = new Decimal(0);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const orderItems: any[] = [];
+    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const {
+      preparationEstimatedEndTime,
+      pickupEstimatedEndTime,
+      deliveryEstimatedEndTime,
+    } = this.buildProgressEstimates();
 
-    for (const item of cart.items) {
-      const price = item.variant.price ?? item.variant.product.basePrice;
-      const itemTotal = price.mul(item.quantity);
-      subtotal = subtotal.add(itemTotal);
+    const order = await prisma.$transaction(async (tx) => {
+      let subtotal = new Decimal(0);
+      const orderItems = [];
 
-      orderItems.push({
-        quantity: item.quantity,
-        price,
-        productId: item.variant.productId,
-        variantId: item.variantId,
-      });
+      for (const item of cart.items) {
+        const price = item.variant.price ?? item.variant.product.basePrice;
+        const itemTotal = price.mul(item.quantity);
+        subtotal = subtotal.add(itemTotal);
 
-      // Reserve inventory
-      await prisma.productVariant.update({
-        where: { id: item.variantId },
-        data: {
-          inventory: {
-            decrement: item.quantity,
+        orderItems.push({
+          quantity: item.quantity,
+          price,
+          productId: item.variant.productId,
+          variantId: item.variantId,
+        });
+
+        if (item.variant.product.trackInventory) {
+          const inventoryUpdate = await tx.productVariant.updateMany({
+            where: {
+              id: item.variantId,
+              deletedAt: null,
+              ...(item.variant.allowBackOrder
+                ? {}
+                : { inventory: { gte: item.quantity } }),
+            },
+            data: {
+              inventory: {
+                decrement: item.quantity,
+              },
+            },
+          });
+
+          if (inventoryUpdate.count !== 1) {
+            throw new Error("Insufficient inventory");
+          }
+        }
+      }
+
+      let discount = new Decimal(0);
+      let promotionId: string | undefined;
+
+      if (promotionCode) {
+        const promotion = await tx.promotion.findFirst({
+          where: {
+            code: promotionCode,
+            organizationSlug,
+            isActive: true,
+            startsAt: { lte: new Date() },
+            expiresAt: { gte: new Date() },
           },
-        },
-      });
-    }
+        });
 
-    // Apply promotion if provided
-    let discount = new Decimal(0);
-    let promotionId: string | undefined;
-
-    if (promotionCode) {
-      const promotion = await prisma.promotion.findFirst({
-        where: {
-          code: promotionCode,
-          organizationSlug,
-          isActive: true,
-          startsAt: { lte: new Date() },
-          expiresAt: { gte: new Date() },
-          OR: [
-            { maxUses: null },
-            { usedCount: { lt: prisma.promotion.fields.maxUses } },
-          ],
-        },
-      });
-
-      if (promotion) {
-        promotionId = promotion.id;
-        if (promotion.discountType === "percentage") {
-          discount = subtotal.mul(promotion.discountValue).div(100);
-        } else {
-          discount = promotion.discountValue;
+        if (!promotion) {
+          throw new Error("Promotion not found or expired");
         }
 
-        // Increment promotion usage
-        await prisma.promotion.update({
-          where: { id: promotion.id },
+        if (promotion.minOrderAmount && subtotal.lt(promotion.minOrderAmount)) {
+          throw new Error("Order subtotal is below promotion minimum amount");
+        }
+
+        if (promotion.maxUses !== null && promotion.usedCount >= promotion.maxUses) {
+          throw new Error("Promotion usage limit reached");
+        }
+
+        const promotionUpdate = await tx.promotion.updateMany({
+          where: {
+            id: promotion.id,
+            ...(promotion.maxUses === null
+              ? {}
+              : { usedCount: { lt: promotion.maxUses } }),
+          },
           data: { usedCount: { increment: 1 } },
         });
+
+        if (promotionUpdate.count !== 1) {
+          throw new Error("Promotion usage limit reached");
+        }
+
+        promotionId = promotion.id;
+        discount = this.calculateDiscount(subtotal, promotion);
       }
-    }
 
-    // Get delivery fee from settings if delivery
-    let deliveryFee = new Decimal(0);
-    if (data.type === "DELIVERY") {
-      const settings = await prisma.organizationSettings.findUnique({
-        where: { organizationSlug },
-      });
-      if (settings) {
-        deliveryFee = new Decimal(settings.deliveryRadius ? 20000 : 0);
-      }
-    }
+      const deliveryFee = await this.getDeliveryFee(organizationSlug, data.type);
+      const total = subtotal.add(deliveryFee).sub(discount);
 
-    const total = subtotal.add(deliveryFee).sub(discount);
-
-    // dates
-    const durationsInMinutes = [15, 5, 10];
-    const now = new Date();
-    const preparationDuration: number = durationsInMinutes[0] | 15;
-    const preparationEstimatedEndTime = new Date(
-      now.getTime() + preparationDuration * 60 * 1000,
-    );
-    const pickupDuration: number = durationsInMinutes[1] | 5;
-    const pickupEstimatedEndTime = new Date(
-      preparationEstimatedEndTime.getTime() + pickupDuration * 60 * 1000,
-    );
-    const deliveryDuration: number = durationsInMinutes[2] | 10;
-    const deliveryEstimatedEndTime = new Date(
-      pickupEstimatedEndTime.getTime() + deliveryDuration * 60 * 1000,
-    );
-    //console.log("-------------------------------->preparationEstimatedEndTime");
-    //console.log(preparationEstimatedEndTime);
-    // Generate order number
-    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-
-    // find or create guest user
-    let guestCustomer = await prisma.guestCustomer.findUnique({
-      where: { sessionId },
-    });
-    if (!guestCustomer) {
-      guestCustomer = await prisma.guestCustomer.create({
-        data: {
+      const guestCustomer = await tx.guestCustomer.upsert({
+        where: { sessionId },
+        update: {
+          name: customerName || "مهمان",
+          phone: customerPhone,
+          address: orderData.deliveryAddress,
+        },
+        create: {
           sessionId,
           name: customerName || "مهمان",
           phone: customerPhone,
+          address: orderData.deliveryAddress,
         },
       });
-    }
 
-    // Create order with transaction
-    const order = await prisma.$transaction(async (tx) => {
-      // Create Progresses
       const preparationProgress = await tx.progress.create({
         data: { estimatedEndTime: preparationEstimatedEndTime },
       });
@@ -458,7 +474,6 @@ export class OrderService {
         data: { estimatedEndTime: deliveryEstimatedEndTime },
       });
 
-      // Create order
       const newOrder = await tx.order.create({
         data: {
           orderNumber,
@@ -507,40 +522,32 @@ export class OrderService {
         },
       });
 
-      // Update cart status
-      await tx.shopCart.update({
-        where: { id: cart.id },
-        data: { status: "CHECKED_OUT" },
+      await tx.shopCartItem.deleteMany({
+        where: { cartId: cart.id },
       });
 
-      newOrder.organization.members.map(async (m) => {
-        //console.log("----------member:", m);
-        const notification = await tx.notification.create({
-          data: {
-            targetUserId: m.userId,
-            context: "سفارش جدید ثبت شد",
-            seen: false,
-          },
-        });
-        //console.log("-------notification:", notification);
+      await tx.shopCart.update({
+        where: { id: cart.id },
+        data: { status: "ACTIVE" },
       });
+
+      await Promise.all(
+        newOrder.organization.members.map((member) =>
+          tx.notification.create({
+            data: {
+              targetUserId: member.userId,
+              context: "سفارش جدید ثبت شد",
+              seen: false,
+            },
+          }),
+        ),
+      );
 
       return newOrder;
     });
-    await order.organization.members.map(async (m) => {
-      //console.log("----------member:", m);
 
-      const notification = await prisma.notification.create({
-        data: {
-          targetUserId: m.userId,
-          context: "سفارش جدید ثبت شد",
-          seen: false,
-        },
-      });
-      //console.log("-------notification:", notification);
-    });
     revalidatePath(`/dashboard/orders`);
-    revalidatePath(`/organization/${order.organization.slug}/orders`);
+    revalidatePath(`/shop/${order.organization.slug}/order/${order.orderNumber}`);
     return order;
   }
 
@@ -1009,33 +1016,45 @@ if (!org?.slug) return
       throw new Error("Unauthorized");
     }
 
-    const order = await prisma.order.update({
-      where: { id },
-      data: {
-        status: data.status as OrderStatus,
-        ...(data.status === "DELIVERED" && { deliveredAt: new Date() }),
-      },
-    });
-
-    // If order is cancelled, restore inventory
-    if (data.status === "REFUNDED" || data.status === "CANCELLED") {
-      const orderItems = await prisma.orderItem.findMany({
-        where: { orderId: id },
+    const order = await prisma.$transaction(async (tx) => {
+      const existingOrder = await tx.order.findUnique({
+        where: { id },
+        include: { items: true },
       });
 
-      for (const item of orderItems) {
-        if (item.variantId) {
-          await prisma.productVariant.update({
-            where: { id: item.variantId },
-            data: {
-              inventory: {
-                increment: item.quantity,
+      if (!existingOrder) {
+        throw new Error("Order not found");
+      }
+
+      const shouldRestoreInventory =
+        ["REFUNDED", "CANCELLED"].includes(data.status) &&
+        !["REFUNDED", "CANCELLED"].includes(existingOrder.status);
+
+      const updatedOrder = await tx.order.update({
+        where: { id },
+        data: {
+          status: data.status as OrderStatus,
+          ...(data.status === "DELIVERED" && { deliveredAt: new Date() }),
+        },
+      });
+
+      if (shouldRestoreInventory) {
+        for (const item of existingOrder.items) {
+          if (item.variantId) {
+            await tx.productVariant.update({
+              where: { id: item.variantId },
+              data: {
+                inventory: {
+                  increment: item.quantity,
+                },
               },
-            },
-          });
+            });
+          }
         }
       }
-    }
+
+      return updatedOrder;
+    });
 
     revalidatePath(`/dashboard/orders/${id}`);
     return order;

@@ -7,8 +7,24 @@ import Link from "next/link";
 import { Building2, ShoppingBag, Calendar, ArrowLeft, ArrowRight, Phone } from "lucide-react"
 import { toPersianDigits } from "@/lib/persian";
 
+function resolveMetadataBase() {
+  const rawUrl =
+    process.env.NEXT_PUBLIC_DEPLOYED_APP_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "https://bazar-baz.ir";
+
+  const normalizedUrl = /^https?:\/\//i.test(rawUrl)
+    ? rawUrl
+    : rawUrl.startsWith("localhost") || rawUrl.startsWith("127.0.0.1")
+      ? `http://${rawUrl}`
+      : `https://${rawUrl}`;
+
+  return new URL(normalizedUrl);
+}
+
 
 export const metadata: Metadata = {
+  metadataBase: resolveMetadataBase(),
   title: {
     default: "بازارباز - پلتفرم تجارت الکترونیک و رزو آنلاین نوبت",
     template: "%s | بازارباز"

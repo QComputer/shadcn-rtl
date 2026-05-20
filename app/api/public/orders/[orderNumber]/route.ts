@@ -75,30 +75,11 @@ export async function GET(
   }
 }
 
-// to update the peymentId
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ orderNumber: string }> },
-) {
-  try {
-    const { orderNumber } = await params;
-
-    const body = await request.json();
-    const { paymentId } = body;
-
-    const order = await prisma.order.update({
-      where: { orderNumber },
-      data: { paymentId },
-    });
-
-    return NextResponse.json(order);
-  } catch (error) {
-    console.error("Error updating order peymentId:", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
-      { status: 500 },
-    );
-  }
+// Public payment updates are intentionally disabled. Payment state must be changed
+// only by authenticated dashboard actions or verified payment-provider webhooks.
+export async function PUT() {
+  return NextResponse.json(
+    { error: "Public payment updates are not allowed" },
+    { status: 405 },
+  );
 }

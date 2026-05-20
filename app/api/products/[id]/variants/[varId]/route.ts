@@ -7,9 +7,10 @@ import {
   requireAuthSession,
   requireProductAccess,
 } from "@/lib/api-guards";
+import type { SessionWithUser } from "@/lib/api-guards";
 
 async function requireVariantProductAccess(
-  session: Awaited<ReturnType<typeof requireAuthSession>>,
+  session: SessionWithUser,
   productId: string,
   variantId: string,
   write = false,

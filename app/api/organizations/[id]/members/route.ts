@@ -1,19 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { organizationService } from "@/lib/services/organization.service";
 import { hasPermission } from "@/lib/types";
-import { ApiError, jsonError, requireOrgAccess } from "@/lib/api-guards";
+import { ApiError, jsonError, requireAuthSession, requireOrgAccess } from "@/lib/api-guards";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession();
     const { id } = await params;
-    if (!session?.user?.id || !session.user.role) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     if (!hasPermission(session.user.role, "org:read")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -39,12 +35,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession();
     const { id } = await params;
 
-    if (!session?.user?.id || !session.user.role) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     if (!hasPermission(session.user.role, "org:manage_members")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -82,11 +75,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession();
     const { id } = await params;
-    if (!session?.user?.id || !session.user.role) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     const body = await request.json();
     const {userId, role} = body
 

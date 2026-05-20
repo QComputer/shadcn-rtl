@@ -115,3 +115,25 @@ The hotfix replaces that inferred helper with an explicit session shape and make
 
 Fixed remaining NextAuth `auth()` overload typing issues by replacing `Awaited<ReturnType<typeof auth>>` route helper signatures with the explicit `SessionWithUser` type from `lib/api-guards.ts`. This resolves TypeScript build failures in organization-member and user-management API routes.
 
+
+## Phase 2 Build Hotfix 3 — Session type consistency
+
+Fixed the remaining TypeScript build error in `app/api/organizations/[id]/members/route.ts` by replacing raw `auth()` session usage with `requireAuthSession()`. This prevents NextAuth v5's overloaded `auth()` type from being treated as middleware or as a partially optional `Session` when passed to Phase 2 API guard helpers.
+
+Validation performed before packaging:
+
+- Searched the API tree for remaining `Awaited<ReturnType<typeof auth>>` usages: none remain in source code.
+- Searched all Phase 2 guard call sites for raw `auth()` sessions being passed into `SessionWithUser` guard helpers.
+- Confirmed the organization-members route now uses `requireAuthSession()` for both GET and POST.
+
+
+## Build hotfix 4 — NextAuth session typing
+
+The Phase 2 API guards now avoid casting a raw NextAuth `Session` directly to the internal `SessionWithUser` type. `requireAuthSession()` validates the required session fields and returns a normalized session object. This prevents TypeScript build failures caused by NextAuth v5's overloaded `auth()` helper and strict object-cast checks.
+
+Validation performed before packaging:
+
+- Removed remaining `ReturnType<typeof auth>` / direct `SessionWithUser` cast patterns from source files.
+- Replaced the product-variant helper's inferred `requireAuthSession()` return type with explicit `SessionWithUser`.
+- Transpiled/parsing-checked all TypeScript and TSX files under `app`, `lib`, `components`, `hooks`, and `scripts` with the TypeScript compiler API.
+

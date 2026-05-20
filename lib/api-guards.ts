@@ -14,7 +14,7 @@ export type SessionWithUser = {
     theme?: string | null;
     organizationId?: string | null;
   };
-} & Record<string, unknown>;
+};
 
 export class ApiError extends Error {
   status: number;
@@ -41,12 +41,24 @@ export function jsonError(error: unknown, fallback = "Internal server error") {
 
 export async function requireAuthSession(): Promise<SessionWithUser> {
   const session = await auth();
+  const user = session?.user;
 
-  if (!session?.user?.id || !session.user.role) {
+  if (!user?.id || !user.role) {
     throw new ApiError(401, "Unauthorized");
   }
 
-  return session as SessionWithUser;
+  return {
+    user: {
+      id: user.id,
+      role: user.role as UserRole,
+      name: user.name ?? null,
+      email: user.email ?? null,
+      locale: user.locale ?? null,
+      isTeamMember: user.isTeamMember ?? null,
+      theme: user.theme ?? null,
+      organizationId: user.organizationId ?? null,
+    },
+  };
 }
 
 export function requireRole(session: SessionWithUser, roles: UserRole[]) {

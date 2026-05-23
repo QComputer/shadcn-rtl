@@ -217,6 +217,12 @@ export const updateOrderEstimatedEndTimeSchema = z.object({
   estimatedEndTime: z.string().max(100).optional(),
 });
 
+export const updateOrderPaymentSchema = z.object({
+  status: z.enum(["PENDING", "COMPLETED", "FAILED", "REFUNDED"]),
+  paymentId: z.string().trim().max(200).optional().nullable(),
+  note: z.string().trim().max(1000).optional().nullable(),
+});
+
 // Review validators
 export const createReviewSchema = z.object({
   rating: z.number().int().min(1).max(5),
@@ -311,6 +317,7 @@ export type AddToCartInput = z.infer<typeof addToCartSchema>;
 export type UpdateCartItemInput = z.infer<typeof updateCartItemSchema>;
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
+export type UpdateOrderPaymentInput = z.infer<typeof updateOrderPaymentSchema>;
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;
 export type CreatePromotionInput = z.infer<typeof createPromotionSchema>;
 export type UpdatePromotionInput = z.infer<typeof updatePromotionSchema>;

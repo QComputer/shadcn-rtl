@@ -82,7 +82,7 @@ interface Order {
   } | null
   items: OrderItem[]
 
-  paymentStatus: boolean
+  paymentStatus: "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED"
   paymentMethod: string
   paymentId: string
 }
@@ -213,9 +213,11 @@ export default function OrderConfirmationPage({
   REFUNDED: { icon: XCircle, color: "bg-orange-500", variant: "destructive" },
 }
 
-const paymentStatusConfig: Record<string, {  icon: typeof Clock; color: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  false: {  icon: Clock, color: "bg-red-500 text-red-10", variant: "destructive" },
-  true: {  icon: Package, color: "bg-green-500 text-green-900", variant: "secondary" }
+const paymentStatusConfig: Record<Order["paymentStatus"], { label: string; icon: typeof Clock; color: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  PENDING: { label: "در انتظار پرداخت", icon: Clock, color: "bg-yellow-500 text-yellow-950", variant: "secondary" },
+  COMPLETED: { label: "پرداخت شده", icon: CheckCircle, color: "bg-green-500 text-green-950", variant: "secondary" },
+  FAILED: { label: "پرداخت ناموفق", icon: XCircle, color: "bg-red-500 text-red-50", variant: "destructive" },
+  REFUNDED: { label: "بازپرداخت شده", icon: Package, color: "bg-orange-500 text-orange-950", variant: "outline" },
 }
 
   if (loading && !data) {
@@ -313,8 +315,8 @@ const paymentStatusConfig: Record<string, {  icon: typeof Clock; color: string; 
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>{t("order.paymentStatus")}</span>
-                  <Badge className={paymentStatusConfig[data.order.paymentStatus ? "true" : "false"].color}>
-                    {t("order.paymentStatus_badge."+data.order.paymentStatus)}
+                  <Badge className={paymentStatusConfig[data.order.paymentStatus].color}>
+                    {paymentStatusConfig[data.order.paymentStatus].label}
                   </Badge>
                 </CardTitle>
               </CardHeader>

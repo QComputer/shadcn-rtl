@@ -1,63 +1,18 @@
 # Bazar Baz
 
-Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking web application built with Next.js 16, TypeScript, Prisma 6, PostgreSQL, Tailwind CSS, and NextAuth.
+Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking application built with Next.js 16, TypeScript, Prisma 6, PostgreSQL, Tailwind CSS, and NextAuth.
 
-## Current hardening status
+## Current production-hardening status
 
-The project is being production-hardened phase by phase.
+The project is being hardened in phases. Each phase includes code changes, documentation, and deployed smoke tests that use Node's built-in `fetch` instead of Playwright.
 
-### Phase 1 — security/dashboard API baseline
-
-Implemented:
-
-- Server-side API guard utilities.
-- Hardened user/member/organization settings APIs.
-- Protected upload/image/QR write endpoints.
-- Removed guest appointment user creation with the hardcoded password.
-- Added deployed smoke tests without Playwright.
-
-Run Phase 1 deployed smoke tests:
-
-```bash
-DEPLOYED_URL=https://your-domain.example npm run e2e:deployed:phase1
-```
-
-### Phase 2 — resource ownership and dashboard API scoping
-
-Implemented:
-
-- Product, product category, product variant, service, service category, order, and appointment dashboard APIs now enforce server-side organization/resource ownership.
-- Dashboard list APIs no longer trust arbitrary `organizationId` values from non-super-admin users.
-- Service provider and category assignments are validated against the same organization.
-- Product category super-admin listing bug was fixed.
-- Added deployed resource-ownership smoke tests without Playwright.
-
-Run Phase 2 deployed smoke tests:
-
-```bash
-DEPLOYED_URL=https://your-domain.example npm run e2e:deployed:phase2
-DEPLOYED_URL=https://your-domain.example npm run e2e:deployed:phase3
-```
-
-
-### Phase 3 — membership roles and multi-organization groundwork
-
-Implemented:
-
-- Added `OrganizationMember.role` for organization-scoped roles.
-- Removed the Prisma `OrganizationMember.userId @unique` restriction so multi-organization membership is possible.
-- Updated API guards to prefer membership roles over global user roles for organization access checks.
-- Kept backward-compatible `memberOf` API response fields while adding `memberships` for future multi-org UI.
-- Fixed dashboard user/member endpoint handling for organization member activation.
-- Added a deployed smoke test without Playwright.
-
-Run Phase 3 deployed smoke tests:
-
-```bash
-DEPLOYED_URL=https://your-domain.example npm run e2e:deployed:phase3
-```
-
-See `docs/PHASE_3_MEMBERSHIP_RBAC.md`.
+| Phase | Area | Status | Docs | Deployed smoke test |
+| --- | --- | --- | --- | --- |
+| 1 | Security/dashboard API baseline | Done | `docs/PHASE_1_SECURITY_BASELINE.md` if present in your tree, plus this README | `npm run e2e:deployed:phase1` |
+| 2 | Resource ownership and dashboard API scoping | Done | `docs/PHASE_2_RESOURCE_OWNERSHIP.md` | `npm run e2e:deployed:phase2` |
+| 3 | Membership roles and multi-organization groundwork | Done | `docs/PHASE_3_MEMBERSHIP_RBAC.md` | `npm run e2e:deployed:phase3` |
+| 4 | Appointment production correctness | Done | `docs/PHASE_4_APPOINTMENT_CORRECTNESS.md` | `npm run e2e:deployed:phase4` |
+| 5 | Order/payment production hardening | Done | `docs/PHASE_5_ORDER_PAYMENT_HARDENING.md` | `npm run e2e:deployed:phase5` |
 
 ## Development
 
@@ -91,6 +46,16 @@ Seed database:
 npm run db:seed
 ```
 
+## Database migrations
+
+Apply migrations in deployment with your normal Prisma deployment flow, for example:
+
+```bash
+npx prisma migrate deploy
+```
+
+Phase 5 includes a migration that converts `Order.paymentStatus` from Boolean to the existing `PaymentStatus` enum and adds append-only order/payment history tables.
+
 ## Required environment variables
 
 Create a local `.env` based on `.env.example`.
@@ -106,55 +71,38 @@ AUTH_TRUST_HOST=true
 
 Do not commit `.env` or production secrets.
 
-## Phase 2 build note
-
-Phase 2 includes an API guard typing hotfix for NextAuth v5. The guard session type is explicit instead of using `ReturnType<typeof auth>`, because the overloaded `auth` helper can otherwise be inferred as a middleware type during `next build`.
-
 ## No-Playwright deployed tests
 
-This project includes lightweight deployed smoke tests that use Node's built-in `fetch` and do not require Playwright.
+PowerShell:
+
+```powershell
+$env:DEPLOYED_URL="https://your-domain.example"; npm run e2e:deployed:phase1
+$env:DEPLOYED_URL="https://your-domain.example"; npm run e2e:deployed:phase2
+$env:DEPLOYED_URL="https://your-domain.example"; npm run e2e:deployed:phase3
+$env:DEPLOYED_URL="https://your-domain.example"; npm run e2e:deployed:phase4
+$env:DEPLOYED_URL="https://your-domain.example"; npm run e2e:deployed:phase5
+```
+
+Linux/macOS/Git Bash:
 
 ```bash
 DEPLOYED_URL=https://your-domain.example npm run e2e:deployed:phase1
 DEPLOYED_URL=https://your-domain.example npm run e2e:deployed:phase2
 DEPLOYED_URL=https://your-domain.example npm run e2e:deployed:phase3
+DEPLOYED_URL=https://your-domain.example npm run e2e:deployed:phase4
+DEPLOYED_URL=https://your-domain.example npm run e2e:deployed:phase5
 ```
 
-These tests are not a replacement for browser E2E coverage, but they catch important deployed API security regressions.
+These tests are smoke tests. They are not a replacement for full browser automation, but they catch important deployed API security and routing regressions without requiring Playwright.
 
-## Production hardening roadmap
+## Remaining production-hardening roadmap
 
-Remaining major areas:
-
-1. Migrate all dashboard UI role assumptions from global `User.role` to `OrganizationMember.role`.
-2. Add transaction-safe appointment booking locks.
-3. Fix appointment timezone handling.
-4. Fix appointment timezone handling.
-5. Convert order payment status from Boolean to a proper enum/state machine.
-6. Add audit logs for critical mutations.
-7. Add inventory movement and order status history tables.
-8. Add stronger public order tracking tokens.
-9. Add non-Playwright authenticated smoke tests using seeded test credentials.
-
-### Phase 2 build hotfix 2
-
-Fixed remaining NextAuth `auth()` overload typing issues by replacing `Awaited<ReturnType<typeof auth>>` route helper signatures with the explicit `SessionWithUser` type from `lib/api-guards.ts`. This resolves TypeScript build failures in organization-member and user-management API routes.
-
-
-## Phase 2 Build Hotfix 3 — Session type consistency
-
-Fixed the remaining TypeScript build error in `app/api/organizations/[id]/members/route.ts` by replacing raw `auth()` session usage with `requireAuthSession()`. This prevents NextAuth v5's overloaded `auth()` type from being treated as middleware or as a partially optional `Session` when passed to Phase 2 API guard helpers.
-
-Validation performed before packaging:
-
-- Searched the API tree for remaining `Awaited<ReturnType<typeof auth>>` usages: none remain in source code.
-- Searched all Phase 2 guard call sites for raw `auth()` sessions being passed into `SessionWithUser` guard helpers.
-- Confirmed the organization-members route now uses `requireAuthSession()` for both GET and POST.
-
-
-### Phase 2 build hotfix 4
-
-This update fixes remaining TypeScript issues around NextAuth session typing in the Phase 2 API guard layer. The guard now returns a normalized `SessionWithUser` object after runtime validation instead of directly casting the raw NextAuth session.
-
-Before packaging this hotfix, the source was scanned for stale `ReturnType<typeof auth>`/direct session-cast patterns and all project TypeScript/TSX source files were parsed/transpiled with the TypeScript compiler API.
-
+1. Finish migrating dashboard UI assumptions from global `User.role` to `OrganizationMember.role`.
+2. Add authenticated deployed smoke tests using seeded test credentials.
+3. Add public order tracking tokens instead of relying on order number and contextual access only.
+4. Add inventory movement records for order creation/cancellation/refund.
+5. Add audit logs for user/member/product/service/settings mutations.
+6. Improve payment gateway integration with signed webhooks, idempotency keys, and amount verification.
+7. Add search rate limiting and search indexes.
+8. Add stricter TypeScript settings gradually.
+9. Fix ESLint configuration to match Next.js 16.

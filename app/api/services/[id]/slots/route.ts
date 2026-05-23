@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { appointmentService } from "@/lib/services/appointment.service";
+import { jsonError } from "@/lib/api-guards";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -19,9 +20,6 @@ export async function GET(
     return NextResponse.json({ data: slots });
   } catch (error) {
     console.error("Error getting slots:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return jsonError(error, "Internal server error");
   }
 }

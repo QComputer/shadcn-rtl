@@ -101,7 +101,7 @@ interface Order {
   } | null
   items: OrderItem[]
   
-  paymentStatus: "true"|"false"
+  paymentStatus: "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED"
   paymentId: string
 }
 
@@ -127,9 +127,11 @@ const statusConfig: Record<string, { label: string; icon: typeof Clock; color: s
 }
 
 
-const paymentStatusConfig: Record<string, {  icon: typeof Clock; color: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  false: {  icon: Clock, color: "bg-red-500 text-red-10", variant: "destructive" },
-  true: {  icon: Package, color: "bg-green-500 text-green-900", variant: "secondary" }
+const paymentStatusConfig: Record<Order["paymentStatus"], { label: string; icon: typeof Clock; color: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  PENDING: { label: "در انتظار پرداخت", icon: Clock, color: "bg-yellow-500 text-yellow-950", variant: "secondary" },
+  COMPLETED: { label: "پرداخت شده", icon: CheckCircle, color: "bg-green-500 text-green-950", variant: "secondary" },
+  FAILED: { label: "پرداخت ناموفق", icon: XCircle, color: "bg-red-500 text-red-50", variant: "destructive" },
+  REFUNDED: { label: "بازپرداخت شده", icon: RefreshCw, color: "bg-orange-500 text-orange-950", variant: "outline" },
 }
 
 export default function OrdersPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -242,7 +244,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
     return getDictValue(dict, key)
   }
 
-  const handleUpdatePaymentStatus = async (orderId: string, newPaymentStatus: boolean) => {
+  const handleUpdatePaymentStatus = async (orderId: string, newPaymentStatus: Order["paymentStatus"]) => {
     setUpdating(true)
     
     try {
@@ -251,7 +253,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ paymentStatus: newPaymentStatus }),
+      body: JSON.stringify({ status: newPaymentStatus }),
     })
       
       if (!response.ok) {
@@ -596,8 +598,8 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                       <Label htmlFor="preparationProgress">وضعیت پرداخت:</Label>
 
 
-                   <Badge className={selectedOrder.paymentStatus ? "bg-green-500 text-green-900":"bg-red-500"}>
-                        {selectedOrder.paymentStatus ? "پرداخت شده" : "پرداخت نشده"}
+                   <Badge className={paymentStatusConfig[selectedOrder.paymentStatus].color}>
+                        {paymentStatusConfig[selectedOrder.paymentStatus].label}
                       </Badge>
 
                       <Label htmlFor="preparationProgress">کد رهگیری انتقال:</Label>
@@ -615,11 +617,11 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                 </CardContent>
 
                 <CardFooter>
-                    {!selectedOrder.paymentStatus ? <Button  variant={'default'} className='bg-green-500 text-green-900' onClick={()=>handleUpdatePaymentStatus(selectedOrder.id, true)}>
+                    {selectedOrder.paymentStatus !== "COMPLETED" ? <Button  variant={'default'} className='bg-green-500 text-green-900' onClick={()=>handleUpdatePaymentStatus(selectedOrder.id, "COMPLETED")}>
                     تایید پرداخت
                   </Button>
                   : 
-                  <Button  variant={'destructive'} onClick={()=>handleUpdatePaymentStatus(selectedOrder.id, false)}>
+                  <Button  variant={'destructive'} onClick={()=>handleUpdatePaymentStatus(selectedOrder.id, "FAILED")}>
                     عدم تایید پرداخت
                   </Button>
                     }

@@ -1,57 +1,49 @@
-// TODO: check the progress updating communication with frontend
-
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import prisma from "@/lib/db";
+import { updateOrderPaymentSchema } from "@/lib/validators";
+import { orderService } from "@/lib/services/order.service";
+import {
+  ApiError,
+  requireAuthSession,
+  requireOrderAccess,
+} from "@/lib/api-guards";
 
+function statusForError(error: unknown) {
+  if (error instanceof ApiError) return error.status;
+  if (!(error instanceof Error)) return 500;
+  if (error.message === "Unauthorized") return 401;
+  if (error.message.includes("not found")) return 404;
+  if (error.message.includes("Forbidden")) return 403;
+  return 500;
+}
 
-// to update the payment status
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession();
     const { id } = await params;
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!session.user.role ) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    await requireOrderAccess(session, id, ["ADMIN", "MANAGER"]);
 
     const body = await request.json();
-    const {paymentStatus} = body 
-    console.log("-------------------->paymentStatus", paymentStatus);
-    
+    const data = updateOrderPaymentSchema.parse(body);
 
-    let order = await prisma.order.findUnique({
-      where: {id},
-      select:{organization: {select: {id: true}}}
-    });
-
-    if (!order || session.user.organizationId != order.organization.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    order = await prisma.order.update({
-      where: { id },
-      data: { paymentStatus: paymentStatus as boolean },
-      select: { organization: { select: { id: true } } },
-    });
-
-    console.log("-------------------->order", order);
-
+    const order = await orderService.updatePaymentStatus(
+      id,
+      {
+        status: data.status,
+        paymentId: data.paymentId,
+        note: data.note,
+      },
+      session.user.id,
+    );
 
     return NextResponse.json(order);
   } catch (error) {
-    console.error("Error updating order:", error);
+    console.error("Error updating order payment:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
+      { status: statusForError(error) },
     );
   }
 }
-

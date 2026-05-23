@@ -1,19 +1,26 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { 
-  createAppointmentSchema, 
-  updateAppointmentSchema 
-} from "@/lib/validators";
-import type { 
-  CreateAppointmentInput, 
-  UpdateAppointmentInput 
+import type {
+  CreateAppointmentInput,
+  UpdateAppointmentInput,
 } from "@/lib/validators";
 import { hasPermission, type UserRole } from "@/lib/types";
 
-// Generate a unique booking reference
+const ACTIVE_APPOINTMENT_STATUSES = ["PENDING", "CONFIRMED"] as const;
+const TERMINAL_APPOINTMENT_STATUSES = ["COMPLETED", "CANCELLED", "NO_SHOW"] as const;
+
+const APPOINTMENT_STATUS_TRANSITIONS: Record<string, string[]> = {
+  PENDING: ["CONFIRMED", "CANCELLED", "NO_SHOW"],
+  CONFIRMED: ["COMPLETED", "CANCELLED", "NO_SHOW"],
+  COMPLETED: [],
+  CANCELLED: [],
+  NO_SHOW: [],
+};
+
 function generateBookingReference(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let result = "";
   for (let i = 0; i < 8; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
@@ -30,150 +37,345 @@ type BookingOwner =
       customerEmail?: string | null;
     };
 
+type TimeParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+};
+
+type AppointmentConflictScope =
+  | { serviceProviderId: string }
+  | { serviceId: string };
+
+function parseDateOnly(input: string) {
+  const datePart = input.split("T")[0];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+    throw new Error("Invalid appointment date");
+  }
+  return datePart;
+}
+
+function parseTime(value: string) {
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  if (!match) throw new Error("Invalid time format");
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    throw new Error("Invalid time format");
+  }
+
+  return { hour, minute };
+}
+
+function addDaysToDateOnly(dateOnly: string, days: number) {
+  const [year, month, day] = dateOnly.split("-").map(Number);
+  const utc = new Date(Date.UTC(year, month - 1, day + days, 0, 0, 0, 0));
+  return utc.toISOString().slice(0, 10);
+}
+
+function getTimeZoneParts(date: Date, timeZone: string): TimeParts {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+
+  const values = Object.fromEntries(
+    parts
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  );
+
+  let hour = Number(values.hour || 0);
+  if (hour === 24) hour = 0;
+
+  return {
+    year: Number(values.year),
+    month: Number(values.month),
+    day: Number(values.day),
+    hour,
+    minute: Number(values.minute || 0),
+    second: Number(values.second || 0),
+  };
+}
+
+function getTimeZoneOffsetMs(date: Date, timeZone: string) {
+  const parts = getTimeZoneParts(date, timeZone);
+  const asUtc = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+  );
+  return asUtc - date.getTime();
+}
+
+function localDateTimeToUtc(
+  dateOnly: string,
+  hour: number,
+  minute: number,
+  timeZone: string,
+) {
+  const [year, month, day] = dateOnly.split("-").map(Number);
+  let utcMs = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
+
+  for (let i = 0; i < 3; i++) {
+    const offset = getTimeZoneOffsetMs(new Date(utcMs), timeZone);
+    const nextUtcMs = Date.UTC(year, month - 1, day, hour, minute, 0, 0) - offset;
+    if (Math.abs(nextUtcMs - utcMs) < 1000) break;
+    utcMs = nextUtcMs;
+  }
+
+  return new Date(utcMs);
+}
+
+function getLocalDateString(date: Date, timeZone: string) {
+  const parts = getTimeZoneParts(date, timeZone);
+  return `${String(parts.year).padStart(4, "0")}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
+}
+
+function getDayOfWeekInTimezone(date: Date, timeZone: string): "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY" {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "long",
+  });
+  const dayName = formatter.format(date).toUpperCase();
+  const validDays = ["SATURDAY", "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"] as const;
+  if (validDays.includes(dayName as (typeof validDays)[number])) {
+    return dayName as (typeof validDays)[number];
+  }
+  throw new Error(`Unable to resolve day of week for timezone ${timeZone}`);
+}
+
+function dateRangeOverlaps(startA: Date, endA: Date, startB: Date, endB: Date) {
+  return startA < endB && endA > startB;
+}
+
+function buildConflictWhere(scope: AppointmentConflictScope, startTime: Date, endTime: Date) {
+  return {
+    deletedAt: null,
+    status: { in: [...ACTIVE_APPOINTMENT_STATUSES] },
+    ...("serviceProviderId" in scope
+      ? { service: { serviceProviderId: scope.serviceProviderId } }
+      : { serviceId: scope.serviceId }),
+    startTime: { lt: endTime },
+    endTime: { gt: startTime },
+  };
+}
+
+function assertAppointmentTransition(currentStatus: string, nextStatus?: string) {
+  if (!nextStatus || nextStatus === currentStatus) return;
+
+  const allowed = APPOINTMENT_STATUS_TRANSITIONS[currentStatus] ?? [];
+  if (!allowed.includes(nextStatus)) {
+    throw new Error(`Invalid appointment status transition from ${currentStatus} to ${nextStatus}`);
+  }
+}
+
 export class AppointmentService {
   private async createWithOwner(owner: BookingOwner, data: CreateAppointmentInput) {
-    // Verify service exists
-    const service = await prisma.service.findUnique({
-      where: { id: data.serviceId },
-      include: {
-        organization: true,
-      },
-    });
-
-    if (!service || !service.isActive) {
-      throw new Error("Service not found or not available");
-    }
-
-    // Parse dates
-    const appointmentDate = new Date(data.date);
-    const startTime = new Date(data.startTime);
-    const endTime = new Date(startTime.getTime() + service.duration * 60 * 1000);
-
-    // Check for conflicting appointments
-    const conflicting = await prisma.appointment.findFirst({
-      where: {
-        serviceId: data.serviceId,
-        status: { notIn: ["CANCELLED", "NO_SHOW"] },
-        OR: [
-          {
-            AND: [
-              { startTime: { lte: startTime } },
-              { endTime: { gt: startTime } },
-            ],
+    const appointment = await prisma.$transaction(
+      async (tx) => {
+        const service = await tx.service.findFirst({
+          where: {
+            id: data.serviceId,
+            isActive: true,
+            deletedAt: null,
+            organization: {
+              isActive: true,
+              deletedAt: null,
+              type: "APPOINTMENT",
+            },
           },
-          {
-            AND: [
-              { startTime: { lt: endTime } },
-              { endTime: { gte: endTime } },
-            ],
-          },
-          {
-            AND: [
-              { startTime: { gte: startTime } },
-              { endTime: { lte: endTime } },
-            ],
-          },
-        ],
-      },
-    });
-
-    if (conflicting) {
-      throw new Error("Time slot is not available");
-    }
-
-    // Generate unique booking reference
-    let bookingReference = generateBookingReference();
-    let attempts = 0;
-    while (attempts < 10) {
-      const existing = await prisma.appointment.findUnique({
-        where: { bookingReference },
-      });
-      if (!existing) break;
-      bookingReference = generateBookingReference();
-      attempts++;
-    }
-
-    let customer:
-      | { name: string | null; firstName: string | null; lastName: string | null; phone: string | null; email: string | null }
-      | null = null;
-
-    if (owner.kind === "user") {
-      customer = await prisma.user.findUnique({
-        where: { id: owner.customerId },
-        select: {
-          name: true,
-          firstName: true,
-          lastName: true,
-          phone: true,
-          email: true,
-        },
-      });
-    }
-
-    const guestName = owner.kind === "guest" ? owner.customerName : null;
-    const guestPhone = owner.kind === "guest" ? owner.customerPhone || null : null;
-    const guestEmail = owner.kind === "guest" ? owner.customerEmail || null : null;
-
-    const appointment = await prisma.appointment.create({
-      data: {
-        date: appointmentDate,
-        startTime,
-        endTime,
-        status: "PENDING",
-        notes: data.notes,
-        customerId: owner.kind === "user" ? owner.customerId : null,
-        guestCustomerId: owner.kind === "guest" ? owner.guestCustomerId : null,
-        serviceId: data.serviceId,
-        bookingReference,
-        customerNameAtBooking:
-          data.customerName ||
-          guestName ||
-          (customer
-            ? `${customer.firstName || ""} ${customer.lastName || ""}`.trim()
-            : null),
-        customerPhoneAtBooking: data.customerPhone || guestPhone || customer?.phone || null,
-        customerEmailAtBooking: data.customerEmail || guestEmail || customer?.email || null,
-      },
-      include: {
-        service: {
           include: {
             organization: true,
-            category: true,
-            serviceProvider: {
+          },
+        });
+
+        if (!service) {
+          throw new Error("Service not found or not available");
+        }
+
+        const timezone = service.organization.timezone || "UTC";
+        const appointmentDateOnly = parseDateOnly(data.date);
+        const requestedStart = new Date(data.startTime);
+        if (Number.isNaN(requestedStart.getTime())) {
+          throw new Error("Invalid appointment start time");
+        }
+
+        const localStartDate = getLocalDateString(requestedStart, timezone);
+        if (localStartDate !== appointmentDateOnly) {
+          throw new Error("Appointment date does not match the selected start time in organization timezone");
+        }
+
+        const startTime = requestedStart;
+        const endTime = new Date(startTime.getTime() + service.duration * 60 * 1000);
+        const appointmentDate = localDateTimeToUtc(appointmentDateOnly, 0, 0, timezone);
+        const scope: AppointmentConflictScope = service.serviceProviderId
+          ? { serviceProviderId: service.serviceProviderId }
+          : { serviceId: service.id };
+
+        const bookingSettings = await tx.bookingSettings.findUnique({
+          where: { organizationSlug: service.organization.slug },
+        });
+
+        const now = new Date();
+        const minBookingNotice = bookingSettings?.minBookingNotice ?? 60;
+        if (startTime.getTime() - now.getTime() < minBookingNotice * 60 * 1000) {
+          throw new Error("Appointment is too soon to book");
+        }
+
+        const maxBookingAdvance = bookingSettings?.maxBookingAdvance ?? 43200;
+        if (startTime.getTime() - now.getTime() > maxBookingAdvance * 60 * 1000) {
+          throw new Error("Appointment is too far in the future");
+        }
+
+        if (bookingSettings?.maxAppointmentsPerDay) {
+          const dayStart = localDateTimeToUtc(appointmentDateOnly, 0, 0, timezone);
+          const nextDay = addDaysToDateOnly(appointmentDateOnly, 1);
+          const dayEnd = localDateTimeToUtc(nextDay, 0, 0, timezone);
+          const dailyCount = await tx.appointment.count({
+            where: {
+              deletedAt: null,
+              status: { in: [...ACTIVE_APPOINTMENT_STATUSES] },
+              service: { organizationId: service.organizationId },
+              startTime: { gte: dayStart, lt: dayEnd },
+            },
+          });
+
+          if (dailyCount >= bookingSettings.maxAppointmentsPerDay) {
+            throw new Error("Daily appointment limit reached");
+          }
+        }
+
+        const conflicting = await tx.appointment.findFirst({
+          where: buildConflictWhere(scope, startTime, endTime),
+          select: { id: true },
+        });
+
+        if (conflicting) {
+          throw new Error("Time slot is not available");
+        }
+
+        let bookingReference = generateBookingReference();
+        let attempts = 0;
+        while (attempts < 10) {
+          const existing = await tx.appointment.findUnique({
+            where: { bookingReference },
+            select: { id: true },
+          });
+          if (!existing) break;
+          bookingReference = generateBookingReference();
+          attempts++;
+        }
+
+        if (attempts >= 10) {
+          throw new Error("Could not generate a unique booking reference");
+        }
+
+        let customer:
+          | {
+              name: string | null;
+              firstName: string | null;
+              lastName: string | null;
+              phone: string | null;
+              email: string | null;
+            }
+          | null = null;
+
+        if (owner.kind === "user") {
+          customer = await tx.user.findUnique({
+            where: { id: owner.customerId },
+            select: {
+              name: true,
+              firstName: true,
+              lastName: true,
+              phone: true,
+              email: true,
+            },
+          });
+        }
+
+        const guestName = owner.kind === "guest" ? owner.customerName : null;
+        const guestPhone = owner.kind === "guest" ? owner.customerPhone || null : null;
+        const guestEmail = owner.kind === "guest" ? owner.customerEmail || null : null;
+        const initialStatus = bookingSettings?.autoConfirm ? "CONFIRMED" : "PENDING";
+
+        return tx.appointment.create({
+          data: {
+            date: appointmentDate,
+            startTime,
+            endTime,
+            status: initialStatus,
+            confirmedAt: initialStatus === "CONFIRMED" ? new Date() : null,
+            notes: data.notes,
+            customerId: owner.kind === "user" ? owner.customerId : null,
+            guestCustomerId: owner.kind === "guest" ? owner.guestCustomerId : null,
+            serviceId: data.serviceId,
+            bookingReference,
+            customerNameAtBooking:
+              data.customerName ||
+              guestName ||
+              (customer
+                ? `${customer.firstName || ""} ${customer.lastName || ""}`.trim() || customer.name
+                : null),
+            customerPhoneAtBooking: data.customerPhone || guestPhone || customer?.phone || null,
+            customerEmailAtBooking: data.customerEmail || guestEmail || customer?.email || null,
+          },
+          include: {
+            service: {
+              include: {
+                organization: true,
+                category: true,
+                serviceProvider: {
+                  select: {
+                    id: true,
+                    name: true,
+                    firstName: true,
+                    lastName: true,
+                    avatar: true,
+                  },
+                },
+              },
+            },
+            customer: {
               select: {
                 id: true,
                 name: true,
                 firstName: true,
                 lastName: true,
-                avatar: true,
+                email: true,
+                phone: true,
+              },
+            },
+            guestCustomer: {
+              select: {
+                id: true,
+                name: true,
+                firstName: true,
+                lastName: true,
+                phone: true,
+                email: true,
               },
             },
           },
-        },
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
-          },
-        },
-        guestCustomer: {
-          select: {
-            id: true,
-            name: true,
-            firstName: true,
-            lastName: true,
-            phone: true,
-            email: true,
-          },
-        },
+        });
       },
-    });
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
 
-    revalidatePath(`/dashboard/appointments`);
+    revalidatePath("/dashboard/appointments");
     return appointment;
   }
 
@@ -248,18 +450,22 @@ export class AppointmentService {
     organizationId?: string;
     serviceProviderId?: string;
   }) {
-    const { 
-      page = 1, 
-      pageSize = 20, 
+    const {
+      page = 1,
+      pageSize = 20,
       customerId,
       guestCustomerId,
-      serviceId, 
+      serviceId,
       status,
       fromDate,
       toDate,
       organizationId,
-      serviceProviderId
+      serviceProviderId,
     } = params;
+
+    const serviceWhere: Record<string, string> = {};
+    if (organizationId) serviceWhere.organizationId = organizationId;
+    if (serviceProviderId) serviceWhere.serviceProviderId = serviceProviderId;
 
     const where: Record<string, unknown> = {
       deletedAt: null,
@@ -269,20 +475,8 @@ export class AppointmentService {
     if (guestCustomerId) where.guestCustomerId = guestCustomerId;
     if (serviceId) where.serviceId = serviceId;
     if (status) where.status = status;
-    
-    // Filter by organization through Service relation
-    if (organizationId) {
-      where.service = { organizationId };
-    }
-    
-    // Filter by service provider (staff member)
-    if (serviceProviderId) {
-      where.service = { 
-        ...(where.service as object),
-        serviceProviderId 
-      };
-    }
-    
+    if (Object.keys(serviceWhere).length > 0) where.service = serviceWhere;
+
     if (fromDate || toDate) {
       where.date = {};
       if (fromDate) (where.date as Record<string, Date>).gte = new Date(fromDate);
@@ -356,33 +550,39 @@ export class AppointmentService {
 
     const appointment = await prisma.appointment.findUnique({
       where: { id },
+      include: {
+        service: true,
+      },
     });
 
     if (!appointment) {
       throw new Error("Appointment not found");
     }
 
-    // Handle cancellation
-    if (data.status === "CANCELLED" && !appointment.cancelledAt) {
-      data.cancellationReason = data.cancellationReason;
-    }
+    assertAppointmentTransition(appointment.status, data.status);
 
+    const now = new Date();
     const updated = await prisma.appointment.update({
       where: { id },
       data: {
         ...data,
-        ...(data.status === "CANCELLED" && { 
-          cancelledAt: new Date(),
-          cancelledBy: userId,
+        ...(data.status === "CANCELLED" && {
+          cancelledAt: appointment.cancelledAt || now,
+          cancelledBy: appointment.cancelledBy || userId,
+        }),
+        ...(data.status === "CONFIRMED" && {
+          confirmedAt: appointment.confirmedAt || now,
+          confirmedBy: appointment.confirmedBy || userId,
         }),
       },
       include: {
         service: true,
         customer: true,
+        guestCustomer: true,
       },
     });
 
-    revalidatePath(`/dashboard/appointments`);
+    revalidatePath("/dashboard/appointments");
     return updated;
   }
 
@@ -399,9 +599,7 @@ export class AppointmentService {
       throw new Error("Unauthorized");
     }
 
-    if (["COMPLETED", "CANCELLED"].includes(appointment.status)) {
-      throw new Error("Cannot cancel this appointment");
-    }
+    assertAppointmentTransition(appointment.status, "CANCELLED");
 
     const updated = await prisma.appointment.update({
       where: { id },
@@ -413,122 +611,112 @@ export class AppointmentService {
       },
     });
 
-    revalidatePath(`/dashboard/appointments`);
+    revalidatePath("/dashboard/appointments");
     return updated;
   }
 
   async getAvailableSlots(serviceId: string, date: string) {
-    const service = await prisma.service.findUnique({
-      where: { id: serviceId },
+    const service = await prisma.service.findFirst({
+      where: {
+        id: serviceId,
+        isActive: true,
+        deletedAt: null,
+        organization: {
+          isActive: true,
+          deletedAt: null,
+          type: "APPOINTMENT",
+        },
+      },
       include: { organization: true },
     });
 
-    if (!service?.serviceProviderId) {
+    if (!service) {
       throw new Error("Service not found");
     }
 
-    // Get organization timezone (default to UTC if not set)
+    if (!service.serviceProviderId) {
+      throw new Error("Service provider is not configured");
+    }
+
     const timezone = service.organization.timezone || "UTC";
+    const dateOnly = parseDateOnly(date);
+    const noonUtc = localDateTimeToUtc(dateOnly, 12, 0, timezone);
+    const dayOfWeek = getDayOfWeekInTimezone(noonUtc, timezone);
 
-    // Parse the date and create a date object in the organization's timezone
-    const targetDate = new Date(date);
-    
-    // Get day of week in organization's timezone
-    const dayOfWeek = this.getDayOfWeekInTimezone(targetDate, timezone);
-
-    // Get business hours for this day
     const businessHours = await prisma.businessHour.findFirst({
       where: {
+        organizationId: service.organizationId,
         userId: service.serviceProviderId,
         day: dayOfWeek,
         isOpen: true,
       },
+    }) || await prisma.businessHour.findFirst({
+      where: {
+        organizationId: service.organizationId,
+        userId: null,
+        day: dayOfWeek,
+        isOpen: true,
+      },
     });
-    
 
     if (!businessHours) {
       return [];
     }
 
-    // Create start and end of day in organization's timezone, then convert to UTC for DB query
-    const startOfDay = new Date(date + "T00:00:00.000Z");
-    const endOfDay = new Date(date + "T23:59:59.999Z");
+    const bookingSettings = await prisma.bookingSettings.findUnique({
+      where: { organizationSlug: service.organization.slug },
+    });
+
+    const { hour: openHour, minute: openMinute } = parseTime(businessHours.openTime);
+    const { hour: closeHour, minute: closeMinute } = parseTime(businessHours.closeTime);
+    const openUtc = localDateTimeToUtc(dateOnly, openHour, openMinute, timezone);
+    const closeUtc = localDateTimeToUtc(dateOnly, closeHour, closeMinute, timezone);
+
+    if (closeUtc <= openUtc) {
+      return [];
+    }
+
+    const scope: AppointmentConflictScope = service.serviceProviderId
+      ? { serviceProviderId: service.serviceProviderId }
+      : { serviceId: service.id };
 
     const existingAppointments = await prisma.appointment.findMany({
-      where: {
-        serviceId,
-        status: { notIn: ["CANCELLED", "NO_SHOW"] },
-        startTime: { gte: startOfDay },
-        endTime: { lte: endOfDay },
-      },
+      where: buildConflictWhere(scope, openUtc, closeUtc),
       select: {
         startTime: true,
         endTime: true,
       },
     });
 
-    // Generate available slots
-    const slots: string[] = [];
-    const [openHour, openMinute] = businessHours.openTime.split(":").map(Number);
-    const [closeHour, closeMinute] = businessHours.closeTime.split(":").map(Number);
-
-    // Create slot times in the organization's timezone context
-    // We work with the date string directly to avoid timezone conversion issues
-    const baseDateStr = date.split("T")[0]; // Get YYYY-MM-DD part
-    
-    let currentSlot = new Date(`${baseDateStr}T${String(openHour).padStart(2, "0")}:${String(openMinute).padStart(2, "0")}:00.000Z`);
-    const closeSlot = new Date(`${baseDateStr}T${String(closeHour).padStart(2, "0")}:${String(closeMinute).padStart(2, "0")}:00.000Z`);
-
-    const slotDuration = service.duration;
+    const slotStepMinutes = bookingSettings?.slotDuration ?? 30;
+    const bufferBefore = bookingSettings?.bufferBefore ?? 0;
+    const bufferAfter = bookingSettings?.bufferAfter ?? 0;
+    const minBookingNotice = bookingSettings?.minBookingNotice ?? 60;
+    const maxBookingAdvance = bookingSettings?.maxBookingAdvance ?? 43200;
     const now = new Date();
+    const earliest = new Date(now.getTime() + minBookingNotice * 60 * 1000);
+    const latest = new Date(now.getTime() + maxBookingAdvance * 60 * 1000);
 
-    while (currentSlot.getTime() + slotDuration * 60 * 1000 <= closeSlot.getTime()) {
-      const slotEnd = new Date(currentSlot.getTime() + slotDuration * 60 * 1000);
-      
-      // Check if slot conflicts with existing appointments
-      const isAvailable = !existingAppointments.some(apt => {
-        return (
-          (currentSlot >= apt.startTime && currentSlot < apt.endTime) ||
-          (slotEnd > apt.startTime && slotEnd <= apt.endTime) ||
-          (currentSlot <= apt.startTime && slotEnd >= apt.endTime)
-        );
-      });
+    const slots: string[] = [];
+    let currentSlot = openUtc;
 
-      // Only include slots that are in the future
-      if (isAvailable && currentSlot > now) {
+    while (currentSlot.getTime() + service.duration * 60 * 1000 <= closeUtc.getTime()) {
+      const slotEnd = new Date(currentSlot.getTime() + service.duration * 60 * 1000);
+      const guardedStart = new Date(currentSlot.getTime() - bufferBefore * 60 * 1000);
+      const guardedEnd = new Date(slotEnd.getTime() + bufferAfter * 60 * 1000);
+
+      const isAvailable = !existingAppointments.some((appointment) =>
+        dateRangeOverlaps(guardedStart, guardedEnd, appointment.startTime, appointment.endTime),
+      );
+
+      if (isAvailable && currentSlot >= earliest && currentSlot <= latest) {
         slots.push(currentSlot.toISOString());
       }
 
-      // Move to next slot (30 minute intervals)
-      currentSlot = new Date(currentSlot.getTime() + 30 * 60 * 1000);
+      currentSlot = new Date(currentSlot.getTime() + slotStepMinutes * 60 * 1000);
     }
 
     return slots;
-  }
-
-  // Helper method to get day of week in a specific timezone
-  private getDayOfWeekInTimezone(date: Date, timezone: string): "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY" {
-    try {
-      // Use Intl.DateTimeFormat to get day in specific timezone
-      const formatter = new Intl.DateTimeFormat("en-US", {
-        timeZone: timezone,
-        weekday: "long",
-      });
-      const dayName = formatter.format(date).toUpperCase();
-      
-      // Validate and return the day
-      const validDays = [ "SATURDAY", "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY",] as const;
-      if (validDays.includes(dayName as typeof validDays[number])) {
-        return dayName as typeof validDays[number];
-      }
-      
-      // Fallback to UTC day if invalid
-      return date.toLocaleDateString("fa", { weekday: "long" }).toUpperCase() as typeof validDays[number];
-    } catch {
-      // Fallback to local day if timezone is invalid
-      const days = [ "SATURDAY", "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"] as const;
-      return days[date.getDay()];
-    }
   }
 }
 

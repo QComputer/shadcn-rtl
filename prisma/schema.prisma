@@ -665,7 +665,7 @@ model Order {
   // Payment
   paidAt        DateTime?
   paymentMethod PaymentMethod?
-  paymentStatus Boolean @default(false)
+  paymentStatus PaymentStatus @default(PENDING)
   paymentId     String?
 
   // Promotion
@@ -684,6 +684,8 @@ model Order {
   assignedDriver User?          @relation("DriverOrderRelation", fields: [driverId], references: [id])
   items          OrderItem[]
   payment        Payment?
+  paymentEvents  PaymentEvent[]
+  statusHistory  OrderStatusHistory[]
   promotion      Promotion?     @relation(fields: [promotionId], references: [id])
 
   createdAt DateTime  @default(now())
@@ -773,6 +775,46 @@ model Payment {
   @@index([orderId])
   @@index([status])
   @@index([transactionId])
+}
+
+
+model PaymentEvent {
+  id             String         @id @default(cuid())
+  orderId        String
+  previousStatus PaymentStatus?
+  newStatus      PaymentStatus
+  method         PaymentMethod?
+  amount         Decimal?
+  transactionId  String?
+  note           String?
+  createdById    String?
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([newStatus])
+  @@index([createdAt])
+  @@index([createdById])
+}
+
+model OrderStatusHistory {
+  id             String       @id @default(cuid())
+  orderId        String
+  previousStatus OrderStatus?
+  newStatus      OrderStatus
+  note           String?
+  changedById    String?
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([newStatus])
+  @@index([createdAt])
+  @@index([changedById])
 }
 
 model Promotion {

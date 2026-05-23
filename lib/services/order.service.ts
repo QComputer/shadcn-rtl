@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import type { CreateOrderInput, UpdateOrderStatusInput } from "@/lib/validators";
 import { hasPermission, type UserRole } from "@/lib/types";
 import { Decimal } from "@prisma/client/runtime/library";
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus, PaymentMethod, PaymentStatus, type Prisma } from "@prisma/client";
 // TODO: Notifications:
 //        1.Accepting Order: setting EstEndTime for preparation by shop admin, setting EstEndTime for pickup and delivery by shop admin, 
 //        2.Changing Order Status: notify 
@@ -134,6 +134,54 @@ export class OrderService {
       : promotion.discountValue;
 
     return discount.gt(subtotal) ? subtotal : discount;
+  }
+
+  private async createOrderStatusHistory(
+    tx: Prisma.TransactionClient,
+    input: {
+      orderId: string;
+      previousStatus?: OrderStatus | null;
+      newStatus: OrderStatus;
+      changedById?: string | null;
+      note?: string | null;
+    },
+  ) {
+    return tx.orderStatusHistory.create({
+      data: {
+        orderId: input.orderId,
+        previousStatus: input.previousStatus ?? null,
+        newStatus: input.newStatus,
+        changedById: input.changedById ?? null,
+        note: input.note ?? null,
+      },
+    });
+  }
+
+  private async createPaymentEvent(
+    tx: Prisma.TransactionClient,
+    input: {
+      orderId: string;
+      previousStatus?: PaymentStatus | null;
+      newStatus: PaymentStatus;
+      method?: PaymentMethod | null;
+      amount?: Decimal | null;
+      transactionId?: string | null;
+      note?: string | null;
+      createdById?: string | null;
+    },
+  ) {
+    return tx.paymentEvent.create({
+      data: {
+        orderId: input.orderId,
+        previousStatus: input.previousStatus ?? null,
+        newStatus: input.newStatus,
+        method: input.method ?? null,
+        amount: input.amount ?? null,
+        transactionId: input.transactionId ?? null,
+        note: input.note ?? null,
+        createdById: input.createdById ?? null,
+      },
+    });
   }
 
   async create(data: CreateOrderInput, customerId: string) {
@@ -310,6 +358,24 @@ export class OrderService {
             },
           },
         },
+      });
+
+      await this.createOrderStatusHistory(tx, {
+        orderId: newOrder.id,
+        previousStatus: null,
+        newStatus: newOrder.status,
+        changedById: customerId,
+        note: "Order created",
+      });
+
+      await this.createPaymentEvent(tx, {
+        orderId: newOrder.id,
+        previousStatus: null,
+        newStatus: newOrder.paymentStatus,
+        method: newOrder.paymentMethod,
+        amount: newOrder.total,
+        createdById: customerId,
+        note: "Payment initialized during order creation",
       });
 
       await tx.shopCartItem.deleteMany({
@@ -540,6 +606,24 @@ export class OrderService {
         },
       });
 
+
+      await this.createOrderStatusHistory(tx, {
+        orderId: newOrder.id,
+        previousStatus: null,
+        newStatus: newOrder.status,
+        changedById: null,
+        note: "Guest order created",
+      });
+
+      await this.createPaymentEvent(tx, {
+        orderId: newOrder.id,
+        previousStatus: null,
+        newStatus: newOrder.paymentStatus,
+        method: newOrder.paymentMethod,
+        amount: newOrder.total,
+        createdById: null,
+        note: "Payment initialized during guest order creation",
+      });
       await tx.shopCartItem.deleteMany({
         where: { cartId: cart.id },
       });
@@ -634,6 +718,8 @@ export class OrderService {
           },
         },
         payment: true,
+        paymentEvents: { orderBy: { createdAt: "desc" } },
+        statusHistory: { orderBy: { createdAt: "desc" } },
         promotion: true,
       },
     });
@@ -924,7 +1010,7 @@ if (!org?.slug) return
         (whereDriver.createdAt as Record<string, Date>).lte = new Date(toDate);
     }
 
-    const whereNull = whereDriver;
+    const whereNull: Record<string, unknown> = { ...whereDriver };
     if (status && ["PENDING", "PLACED", "DENIED"].includes(status))
       whereNull.status = { in: [] }; // aborting the whereNull query
     else if (!status) {
@@ -1059,6 +1145,14 @@ if (!org?.slug) return
         },
       });
 
+      await this.createOrderStatusHistory(tx, {
+        orderId: id,
+        previousStatus: existingOrder.status,
+        newStatus: nextStatus,
+        changedById: userId,
+        note: data.status === "CANCELLED" ? "Order cancelled" : "Order status updated",
+      });
+
       if (shouldRestoreInventory) {
         for (const item of existingOrder.items) {
           if (item.variantId) {
@@ -1096,6 +1190,78 @@ if (!org?.slug) return
     const progress = await updateProgress(id, type, estimatedEndTime);
 
     return progress;
+  }
+
+  async updatePaymentStatus(
+    orderId: string,
+    input: {
+      status: PaymentStatus;
+      paymentId?: string | null;
+      note?: string | null;
+    },
+    actorUserId: string,
+  ) {
+    const order = await prisma.$transaction(async (tx) => {
+      const existingOrder = await tx.order.findUnique({
+        where: { id: orderId },
+        select: {
+          id: true,
+          total: true,
+          paymentStatus: true,
+          paymentMethod: true,
+          paymentId: true,
+        },
+      });
+
+      if (!existingOrder) {
+        throw new Error("Order not found");
+      }
+
+      const nextStatus = input.status;
+      const paidAt = nextStatus === "COMPLETED" ? new Date() : null;
+
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          paymentStatus: nextStatus,
+          paymentId: input.paymentId ?? existingOrder.paymentId,
+          paidAt,
+          payment: {
+            upsert: {
+              create: {
+                amount: existingOrder.total,
+                method: existingOrder.paymentMethod ?? "CASH",
+                status: nextStatus,
+                transactionId: input.paymentId ?? undefined,
+                metadata: input.note ? { note: input.note } : undefined,
+              },
+              update: {
+                status: nextStatus,
+                transactionId: input.paymentId ?? undefined,
+                metadata: input.note ? { note: input.note } : undefined,
+              },
+            },
+          },
+        },
+        include: { payment: true },
+      });
+
+      await this.createPaymentEvent(tx, {
+        orderId,
+        previousStatus: existingOrder.paymentStatus,
+        newStatus: nextStatus,
+        method: existingOrder.paymentMethod,
+        amount: existingOrder.total,
+        transactionId: input.paymentId ?? existingOrder.paymentId,
+        note: input.note ?? "Payment status updated",
+        createdById: actorUserId,
+      });
+
+      return updatedOrder;
+    });
+
+    revalidatePath(`/dashboard/orders/${orderId}`);
+    return order;
   }
 
   async assignDriver(orderId: string, driverId: string, userRole: UserRole) {

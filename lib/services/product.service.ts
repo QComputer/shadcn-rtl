@@ -9,6 +9,7 @@ import type {
 import { hasPermission, type UserRole } from "@/lib/types";
 import { ApiError } from "@/lib/api-guards";
 import { normalizePagination } from "@/lib/pagination";
+import { InventoryMovementReason } from "@prisma/client";
 
 type ProductListParams = {
   page?: number | string;

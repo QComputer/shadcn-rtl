@@ -71,3 +71,8 @@ This phase does not yet add a dashboard UI for inventory movement history. It cr
 ### Phase 14 build hotfix
 
 Fixed the TypeScript type annotation for inventory restore movement reasons by using the generated Prisma `InventoryMovementReason` type alias instead of treating the runtime enum object as a namespace in type position.
+
+
+## Build hotfix 2
+
+Fixed the missing `InventoryMovementReason` import in `lib/services/product.service.ts`. The product service uses the Prisma runtime enum when writing `INITIAL_STOCK` and `MANUAL_ADJUSTMENT` inventory movements.

@@ -307,3 +307,8 @@ $env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:all
 ### Phase 14 build hotfix
 
 Fixed the TypeScript type annotation for inventory restore movement reasons by using the generated Prisma `InventoryMovementReason` type alias instead of treating the runtime enum object as a namespace in type position.
+
+
+#### Phase 14 build hotfix 2
+
+Fixed the missing `InventoryMovementReason` runtime enum import in `lib/services/product.service.ts` so inventory movement creation for initial stock and manual adjustments compiles during `next build`.

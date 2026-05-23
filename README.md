@@ -272,3 +272,38 @@ $env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:all
 ### Phase 13 hotfix — product pagination
 
 `/api/products` now normalizes and caps query-string pagination before validation so oversized `pageSize` values cannot trigger a server error.
+
+## Phase 14 — Inventory operations and movement history
+
+Phase 14 adds append-only inventory movement records for stock-changing operations.
+
+Important changes:
+
+- Order checkout decrements product variant inventory inside the order transaction and records `InventoryMovement` rows.
+- Order cancellation/refund restores inventory only once per order and records restoration movements.
+- Product variant creation records initial stock movements.
+- Product variant inventory edits record manual adjustment movements.
+- Deployed no-Playwright Phase 14 smoke test was added.
+
+Run the migration:
+
+```powershell
+npx prisma migrate deploy
+```
+
+Run the deployed Phase 14 smoke test:
+
+```powershell
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase14
+```
+
+Run all deployed smoke tests:
+
+```powershell
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:all
+```
+
+
+### Phase 14 build hotfix
+
+Fixed the TypeScript type annotation for inventory restore movement reasons by using the generated Prisma `InventoryMovementReason` type alias instead of treating the runtime enum object as a namespace in type position.

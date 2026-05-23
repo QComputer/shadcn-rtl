@@ -308,6 +308,7 @@ export class ProductService {
     productId: string,
     data: CreateProductVariantInput,
     userRole: UserRole,
+    actorUserId?: string,
   ) {
     if (!hasPermission(userRole, "product:update")) {
       throw new ApiError(403, "Forbidden");
@@ -319,26 +320,70 @@ export class ProductService {
     });
     if (!product) throw new ApiError(404, "Product not found");
 
-    const variant = await prisma.productVariant.create({
-      data: {
-        ...data,
-        productId,
-        inventory: product.trackInventory ? data.inventory ?? 0 : data.inventory ?? 1000,
-      },
+    const initialInventory = product.trackInventory ? data.inventory ?? 0 : data.inventory ?? 1000;
+
+    const variant = await prisma.$transaction(async (tx) => {
+      const created = await tx.productVariant.create({
+        data: {
+          ...data,
+          productId,
+          inventory: initialInventory,
+        },
+      });
+
+      if (initialInventory !== 0) {
+        await tx.inventoryMovement.create({
+          data: {
+            variantId: created.id,
+            quantityDelta: initialInventory,
+            quantityBefore: 0,
+            quantityAfter: initialInventory,
+            reason: InventoryMovementReason.INITIAL_STOCK,
+            note: "Initial stock recorded when product variant was created",
+            createdById: actorUserId ?? null,
+          },
+        });
+      }
+
+      return created;
     });
 
     revalidatePath(`/dashboard/products`);
     return variant;
   }
 
-  async updateVariant(data: UpdateProductVariantInput, userRole: UserRole) {
+  async updateVariant(data: UpdateProductVariantInput, userRole: UserRole, actorUserId?: string) {
     if (!hasPermission(userRole, "product:update")) {
       throw new ApiError(403, "Forbidden");
     }
 
-    const variant = await prisma.productVariant.update({
-      where: { id: data.id },
-      data,
+    const existing = await prisma.productVariant.findFirst({
+      where: { id: data.id, deletedAt: null },
+      select: { id: true, inventory: true },
+    });
+    if (!existing) throw new ApiError(404, "Product variant not found");
+
+    const variant = await prisma.$transaction(async (tx) => {
+      const updated = await tx.productVariant.update({
+        where: { id: data.id },
+        data,
+      });
+
+      if (typeof data.inventory === "number" && data.inventory !== existing.inventory) {
+        await tx.inventoryMovement.create({
+          data: {
+            variantId: updated.id,
+            quantityDelta: data.inventory - existing.inventory,
+            quantityBefore: existing.inventory,
+            quantityAfter: data.inventory,
+            reason: InventoryMovementReason.MANUAL_ADJUSTMENT,
+            note: "Manual inventory adjustment from dashboard product variant update",
+            createdById: actorUserId ?? null,
+          },
+        });
+      }
+
+      return updated;
     });
 
     revalidatePath(`/dashboard/products`);

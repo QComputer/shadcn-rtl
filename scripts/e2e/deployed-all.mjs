@@ -15,6 +15,7 @@ const phases = [
   ["Phase 11", "scripts/e2e/deployed-phase11-health.mjs"],
   ["Phase 12", "scripts/e2e/deployed-phase12-messaging.mjs"],
   ["Phase 13", "scripts/e2e/deployed-phase13-catalog-hardening.mjs"],
+  ["Phase 14", "scripts/e2e/deployed-phase14-inventory-operations.mjs"],
 ];
 
 if (!process.env.DEPLOYED_URL) {

@@ -35,7 +35,7 @@ export async function POST(
 
     const body = await request.json();
     const data = createProductVariantSchema.parse(body);
-    const variant = await productService.createVariant(id, data, session.user.role);
+    const variant = await productService.createVariant(id, data, session.user.role, session.user.id);
 
     return NextResponse.json(variant, { status: 201 });
   } catch (error) {
@@ -54,7 +54,7 @@ export async function PATCH(request: NextRequest) {
     if (!variant) throw new Error("Product variant not found");
     await requireProductAccess(session, variant.productId, ["ADMIN", "MANAGER"]);
 
-    const product = await productService.updateVariant(data, session.user.role);
+    const product = await productService.updateVariant(data, session.user.role, session.user.id);
     return NextResponse.json(product);
   } catch (error) {
     console.error("Error updating product variant:", error);

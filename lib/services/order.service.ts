@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import type { CreateOrderInput, UpdateOrderStatusInput } from "@/lib/validators";
 import { hasPermission, type UserRole } from "@/lib/types";
 import { Decimal } from "@prisma/client/runtime/library";
-import { OrderStatus, PaymentMethod, PaymentStatus, type Prisma } from "@prisma/client";
+import { InventoryMovementReason, OrderStatus, PaymentMethod, PaymentStatus, type InventoryMovementReason as InventoryMovementReasonType, type Prisma } from "@prisma/client";
 // TODO: Notifications:
 //        1.Accepting Order: setting EstEndTime for preparation by shop admin, setting EstEndTime for pickup and delivery by shop admin, 
 //        2.Changing Order Status: notify 
@@ -157,6 +157,128 @@ export class OrderService {
     });
   }
 
+
+  private async createInventoryMovement(
+    tx: Prisma.TransactionClient,
+    input: {
+      variantId: string;
+      orderId?: string | null;
+      quantityDelta: number;
+      quantityBefore?: number | null;
+      quantityAfter?: number | null;
+      reason: InventoryMovementReason;
+      note?: string | null;
+      createdById?: string | null;
+    },
+  ) {
+    return tx.inventoryMovement.create({
+      data: {
+        variantId: input.variantId,
+        orderId: input.orderId ?? null,
+        quantityDelta: input.quantityDelta,
+        quantityBefore: input.quantityBefore ?? null,
+        quantityAfter: input.quantityAfter ?? null,
+        reason: input.reason,
+        note: input.note ?? null,
+        createdById: input.createdById ?? null,
+      },
+    });
+  }
+
+  private async decrementOrderInventory(
+    tx: Prisma.TransactionClient,
+    input: {
+      orderId: string;
+      items: Array<{ variantId: string; quantity: number; variant: { allowBackOrder: boolean; product: { trackInventory: boolean } } }>;
+      actorUserId?: string | null;
+      note: string;
+    },
+  ) {
+    for (const item of input.items) {
+      if (!item.variant.product.trackInventory) continue;
+
+      const inventoryUpdate = await tx.productVariant.updateMany({
+        where: {
+          id: item.variantId,
+          deletedAt: null,
+          ...(item.variant.allowBackOrder ? {} : { inventory: { gte: item.quantity } }),
+        },
+        data: {
+          inventory: {
+            decrement: item.quantity,
+          },
+        },
+      });
+
+      if (inventoryUpdate.count !== 1) {
+        throw new Error("Insufficient inventory");
+      }
+
+      const updatedVariant = await tx.productVariant.findUnique({
+        where: { id: item.variantId },
+        select: { inventory: true },
+      });
+
+      await this.createInventoryMovement(tx, {
+        variantId: item.variantId,
+        orderId: input.orderId,
+        quantityDelta: -item.quantity,
+        quantityBefore: updatedVariant ? updatedVariant.inventory + item.quantity : null,
+        quantityAfter: updatedVariant?.inventory ?? null,
+        reason: InventoryMovementReason.ORDER_CREATED,
+        note: input.note,
+        createdById: input.actorUserId ?? null,
+      });
+    }
+  }
+
+  private async restoreOrderInventory(
+    tx: Prisma.TransactionClient,
+    input: {
+      orderId: string;
+      items: Array<{ variantId: string | null; quantity: number }>;
+      reason: Extract<InventoryMovementReasonType, "ORDER_CANCELLED" | "ORDER_REFUNDED">;
+      actorUserId?: string | null;
+      note: string;
+    },
+  ) {
+    const existingRestore = await tx.inventoryMovement.count({
+      where: {
+        orderId: input.orderId,
+        reason: { in: [InventoryMovementReason.ORDER_CANCELLED, InventoryMovementReason.ORDER_REFUNDED] },
+      },
+    });
+
+    if (existingRestore > 0) {
+      return;
+    }
+
+    for (const item of input.items) {
+      if (!item.variantId) continue;
+
+      const updatedVariant = await tx.productVariant.update({
+        where: { id: item.variantId },
+        data: {
+          inventory: {
+            increment: item.quantity,
+          },
+        },
+        select: { inventory: true },
+      });
+
+      await this.createInventoryMovement(tx, {
+        variantId: item.variantId,
+        orderId: input.orderId,
+        quantityDelta: item.quantity,
+        quantityBefore: updatedVariant.inventory - item.quantity,
+        quantityAfter: updatedVariant.inventory,
+        reason: input.reason,
+        note: input.note,
+        createdById: input.actorUserId ?? null,
+      });
+    }
+  }
+
   private async createPaymentEvent(
     tx: Prisma.TransactionClient,
     input: {
@@ -230,27 +352,6 @@ export class OrderService {
           productId: item.variant.productId,
           variantId: item.variantId,
         });
-
-        if (item.variant.product.trackInventory) {
-          const inventoryUpdate = await tx.productVariant.updateMany({
-            where: {
-              id: item.variantId,
-              deletedAt: null,
-              ...(item.variant.allowBackOrder
-                ? {}
-                : { inventory: { gte: item.quantity } }),
-            },
-            data: {
-              inventory: {
-                decrement: item.quantity,
-              },
-            },
-          });
-
-          if (inventoryUpdate.count !== 1) {
-            throw new Error("Insufficient inventory");
-          }
-        }
       }
 
       let discount = new Decimal(0);
@@ -360,6 +461,13 @@ export class OrderService {
         },
       });
 
+      await this.decrementOrderInventory(tx, {
+        orderId: newOrder.id,
+        items: cart.items,
+        actorUserId: customerId,
+        note: "Inventory decremented during registered order checkout",
+      });
+
       await this.createOrderStatusHistory(tx, {
         orderId: newOrder.id,
         previousStatus: null,
@@ -463,27 +571,6 @@ export class OrderService {
           productId: item.variant.productId,
           variantId: item.variantId,
         });
-
-        if (item.variant.product.trackInventory) {
-          const inventoryUpdate = await tx.productVariant.updateMany({
-            where: {
-              id: item.variantId,
-              deletedAt: null,
-              ...(item.variant.allowBackOrder
-                ? {}
-                : { inventory: { gte: item.quantity } }),
-            },
-            data: {
-              inventory: {
-                decrement: item.quantity,
-              },
-            },
-          });
-
-          if (inventoryUpdate.count !== 1) {
-            throw new Error("Insufficient inventory");
-          }
-        }
       }
 
       let discount = new Decimal(0);
@@ -606,6 +693,13 @@ export class OrderService {
         },
       });
 
+
+      await this.decrementOrderInventory(tx, {
+        orderId: newOrder.id,
+        items: cart.items,
+        actorUserId: null,
+        note: "Inventory decremented during guest order checkout",
+      });
 
       await this.createOrderStatusHistory(tx, {
         orderId: newOrder.id,
@@ -1154,18 +1248,17 @@ if (!org?.slug) return
       });
 
       if (shouldRestoreInventory) {
-        for (const item of existingOrder.items) {
-          if (item.variantId) {
-            await tx.productVariant.update({
-              where: { id: item.variantId },
-              data: {
-                inventory: {
-                  increment: item.quantity,
-                },
-              },
-            });
-          }
-        }
+        await this.restoreOrderInventory(tx, {
+          orderId: existingOrder.id,
+          items: existingOrder.items,
+          reason: nextStatus === "REFUNDED"
+            ? InventoryMovementReason.ORDER_REFUNDED
+            : InventoryMovementReason.ORDER_CANCELLED,
+          actorUserId: userId,
+          note: nextStatus === "REFUNDED"
+            ? "Inventory restored after order refund"
+            : "Inventory restored after order cancellation",
+        });
       }
 
       return updatedOrder;

@@ -42,7 +42,9 @@
     "e2e:deployed:phase12": "node scripts/e2e/deployed-phase12-messaging.mjs",
     "smoke:deployed:messaging": "node scripts/e2e/deployed-phase12-messaging.mjs",
     "e2e:deployed:phase13": "node scripts/e2e/deployed-phase13-catalog-hardening.mjs",
-    "smoke:deployed:catalog": "node scripts/e2e/deployed-phase13-catalog-hardening.mjs"
+    "smoke:deployed:catalog": "node scripts/e2e/deployed-phase13-catalog-hardening.mjs",
+    "e2e:deployed:phase14": "node scripts/e2e/deployed-phase14-inventory-operations.mjs",
+    "smoke:deployed:inventory": "node scripts/e2e/deployed-phase14-inventory-operations.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

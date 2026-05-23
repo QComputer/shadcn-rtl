@@ -84,6 +84,14 @@ enum PaymentMethod {
   BANK_TRANSFER
 }
 
+enum InventoryMovementReason {
+  INITIAL_STOCK
+  MANUAL_ADJUSTMENT
+  ORDER_CREATED
+  ORDER_CANCELLED
+  ORDER_REFUNDED
+}
+
 enum AuditAction {
   CREATE
   UPDATE
@@ -586,6 +594,7 @@ model ProductVariant {
 
   cartItems      ShopCartItem[]
   orderItems     OrderItem[]
+  inventoryMovements InventoryMovement[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -708,6 +717,7 @@ model Order {
   payment        Payment?
   paymentEvents  PaymentEvent[]
   statusHistory  OrderStatusHistory[]
+  inventoryMovements InventoryMovement[]
   promotion      Promotion?     @relation(fields: [promotionId], references: [id])
 
   createdAt DateTime  @default(now())
@@ -778,6 +788,29 @@ model OrderItem {
   @@index([orderId])
   @@index([productId])
   @@index([variantId])
+}
+
+model InventoryMovement {
+  id             String                  @id @default(cuid())
+  variantId      String
+  orderId        String?
+  quantityDelta  Int
+  quantityBefore Int?
+  quantityAfter  Int?
+  reason         InventoryMovementReason
+  note           String?
+  createdById    String?
+
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  order   Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([variantId])
+  @@index([orderId])
+  @@index([reason])
+  @@index([createdAt])
+  @@index([createdById])
 }
 
 model Payment {

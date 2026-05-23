@@ -49,7 +49,7 @@ export async function PATCH(
 
     const body = await request.json();
     const data = updateProductVariantSchema.parse({ ...body, id: varId });
-    const variant = await productService.updateVariant(data, session.user.role);
+    const variant = await productService.updateVariant(data, session.user.role, session.user.id);
 
     return NextResponse.json(variant);
   } catch (error) {

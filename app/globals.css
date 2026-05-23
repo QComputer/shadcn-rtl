@@ -444,3 +444,47 @@ html[dir="rtl"] .font-persian {
 .no-transition * {
   transition: none !important;
 }
+
+/* Phase 6 dashboard calendar: FullCalendar + shadcn integration */
+.bazar-fullcalendar .fc {
+  --fc-border-color: hsl(var(--border));
+  --fc-page-bg-color: hsl(var(--background));
+  --fc-neutral-bg-color: hsl(var(--muted));
+  --fc-list-event-hover-bg-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  font-family: inherit;
+}
+
+.bazar-fullcalendar .fc-theme-standard td,
+.bazar-fullcalendar .fc-theme-standard th,
+.bazar-fullcalendar .fc-scrollgrid {
+  border-color: hsl(var(--border));
+}
+
+.bazar-fullcalendar .fc-col-header-cell,
+.bazar-fullcalendar .fc-timegrid-axis,
+.bazar-fullcalendar .fc-timegrid-slot-label {
+  background: hsl(var(--muted) / 0.35);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+}
+
+.bazar-fullcalendar .fc-daygrid-day-number,
+.bazar-fullcalendar .fc-timegrid-slot-label-cushion {
+  color: hsl(var(--foreground));
+  text-decoration: none;
+}
+
+.bazar-fullcalendar .fc-day-today {
+  background: hsl(var(--primary) / 0.08) !important;
+}
+
+.bazar-fullcalendar .fc-event {
+  border: 0;
+  background: transparent;
+}
+
+.bazar-fullcalendar .fc-timegrid-event-harness,
+.bazar-fullcalendar .fc-daygrid-event-harness {
+  margin-inline: 2px;
+}

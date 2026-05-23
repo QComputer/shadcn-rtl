@@ -140,6 +140,7 @@ model Organization {
   followers         Follow[]
   locations         Location[]
   reviews           Review[]              @relation("OrgReviews")
+  images            Image[]               @relation("OrganizationImages")
   settings          OrganizationSettings?
   bookingSettings   BookingSettings?
   promotions        Promotion[]
@@ -170,12 +171,17 @@ model Deny {
 }
 model Notification {
   id           String   @id @default(cuid())
-  targetUserId  String
-  context   String
-  targetUser   User @relation(fields: [targetUserId], references: [id])
-  seen Boolean @default(false)
-  type  String?
+  targetUserId String
+  context      String
+  targetUser   User     @relation(fields: [targetUserId], references: [id])
+  seen         Boolean  @default(false)
+  type         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  readAt       DateTime?
+
   @@index([targetUserId])
+  @@index([targetUserId, seen, createdAt])
 }
 
 
@@ -230,6 +236,7 @@ model User {
   auditLogs                AuditLog[]
   conversationParticipants ConversationParticipant[]
   businessHours BusinessHour[]
+  uploadedImages Image[]                  @relation("UploadedImages")
   
   denies Deny[]
 
@@ -504,10 +511,25 @@ model ProductCategory {
 
 model Image {
   id          String   @id @default(cuid())
-  url       String
-  filename  String?
+  url         String
+  filename    String?
+  mimeType    String?
+  sizeBytes   Int?
+  purpose     String   @default("upload")
+
+  uploadedByUserId String?
+  organizationId   String?
+
   createdAt DateTime @default(now())
-  products Product[]
+
+  uploadedBy   User?         @relation("UploadedImages", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  organization Organization? @relation("OrganizationImages", fields: [organizationId], references: [id], onDelete: SetNull)
+  products     Product[]
+
+  @@index([uploadedByUserId])
+  @@index([organizationId])
+  @@index([purpose])
+  @@index([createdAt])
 }
 
 model Product {

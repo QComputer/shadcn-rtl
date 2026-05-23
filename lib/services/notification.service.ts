@@ -168,10 +168,6 @@ export class NotificationService {
       //console.log(`  [Would send SMS to: ${payload.phone}]`);
     }
 
-    // For development, just log
-    if (process.env.NODE_ENV === "development") {
-      console.log(`  [Development mode - notification logged only]`);
-    }
   }
 
   /**

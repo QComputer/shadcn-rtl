@@ -1,19 +1,23 @@
 import { NextResponse, NextRequest } from "next/server";
-import fs from "fs/promises";
-import path from "path";
 import { prisma } from "@/lib/db";
-import { ApiError, jsonError, requireAuthSession, requireRole, safeUploadFilename } from "@/lib/api-guards";
+import {
+  ApiError,
+  jsonError,
+  requireAuthSession,
+  requireRole,
+  resolveOptionalUploadOrganizationId,
+} from "@/lib/api-guards";
+import {
+  createStoredImageFilename,
+  validateImageBuffer,
+  writeStoredImage,
+} from "@/lib/media-storage";
 
 export const runtime = "nodejs";
 
-const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
-
-function getUploadDir() {
-  return path.join(process.cwd(), "../uploads");
-}
-
 export async function POST(req: NextRequest) {
+  let filename: string | null = null;
+
   try {
     const session = await requireAuthSession();
     requireRole(session, ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"]);
@@ -25,26 +29,51 @@ export async function POST(req: NextRequest) {
       throw new ApiError(400, "No file provided");
     }
 
-    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
-      throw new ApiError(415, "Only jpeg, png, webp, and gif images are allowed");
-    }
+    const purpose = String(formData.get("purpose") || "upload").slice(0, 64);
+    const organizationId = await resolveOptionalUploadOrganizationId(
+      session,
+      typeof formData.get("organizationId") === "string"
+        ? String(formData.get("organizationId"))
+        : null,
+      typeof formData.get("organizationSlug") === "string"
+        ? String(formData.get("organizationSlug"))
+        : null,
+    );
 
-    if (file.size <= 0 || file.size > MAX_UPLOAD_BYTES) {
-      throw new ApiError(413, "File size must be between 1 byte and 5 MB");
-    }
+    const buffer = Buffer.from(await file.arrayBuffer());
+    validateImageBuffer(buffer, file.type, file.size);
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const uploadDir = getUploadDir();
-    await fs.mkdir(uploadDir, { recursive: true });
-
-    const filename = safeUploadFilename(file.name, "jpg");
-    const filepath = path.join(uploadDir, filename);
-    await fs.writeFile(filepath, buffer, { flag: "wx" });
+    filename = createStoredImageFilename(file.type, purpose);
+    await writeStoredImage(filename, buffer);
 
     const url = `/uploads/${filename}`;
     const image = await prisma.image.create({
-      data: { url, filename },
+      data: {
+        url,
+        filename,
+        mimeType: file.type,
+        sizeBytes: file.size,
+        purpose,
+        uploadedByUserId: session.user.id,
+        organizationId,
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        action: "CREATE",
+        entityType: "Image",
+        entityId: image.id,
+        description: `Uploaded image for ${purpose}`,
+        userId: session.user.id,
+        organizationId: organizationId || undefined,
+        newValue: {
+          filename: image.filename,
+          mimeType: image.mimeType,
+          sizeBytes: image.sizeBytes,
+          purpose: image.purpose,
+        },
+      },
     });
 
     return NextResponse.json(image, { status: 201 });

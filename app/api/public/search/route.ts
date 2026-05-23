@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 const MAX_QUERY_LENGTH = 80;
 const MAX_RESULTS_PER_GROUP = 6;
@@ -39,6 +40,22 @@ export async function GET(request: NextRequest) {
   try {
     const query = normalizeQuery(request.nextUrl.searchParams.get("q"));
     const locale = normalizeLocale(request.nextUrl.searchParams.get("locale"));
+    const ip = getClientIp(request.headers);
+    const limited = checkRateLimit({
+      key: `public-search:${ip}`,
+      limit: 120,
+      windowMs: 60_000,
+    });
+
+    if (!limited.allowed) {
+      return NextResponse.json(
+        { error: "Too many search requests" },
+        {
+          status: 429,
+          headers: { "Retry-After": String(limited.retryAfterSeconds) },
+        },
+      );
+    }
 
     if (query.length < 2) {
       return NextResponse.json({ query, results: [], total: 0 });

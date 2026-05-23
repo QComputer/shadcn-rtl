@@ -1,48 +1,38 @@
-// app/uploads/[filename]/route.ts
 import { NextResponse, NextRequest } from "next/server";
-import path from "path";
-import fs from "fs";
-import fsp from "fs/promises";
+import fs from "fs/promises";
+import { ApiError, jsonError } from "@/lib/api-guards";
+import { getMimeTypeFromFilename, getStoredFilePath } from "@/lib/media-storage";
 
 export const runtime = "nodejs";
 
 export async function GET(
-request: NextRequest,
-  { params }: { params: Promise<{ filename: string }> }
+  request: NextRequest,
+  { params }: { params: Promise<{ filename: string }> },
 ) {
+  try {
     const { filename } = await params;
 
-
-  // NOW try to access params.filename
-  // We need to ensure params and params.filename are actually there
-  if (!filename) {
-    console.error("Missing filename in params");
-    return new NextResponse("Bad Request: Missing filename", { status: 400 });
-  }
-
-  const filePath = path.join(process.cwd(), "../uploads", filename);
-  //console.log(`Attempting to serve file: ${filePath}`);
-
-  try {
-    if (!fs.existsSync(filePath)) {
-      console.error(`File not found at: ${filePath}`);
-      return new NextResponse("File not found", { status: 404 });
+    if (!filename) {
+      throw new ApiError(400, "Missing filename");
     }
 
-    const fileContent = await fsp.readFile(filePath);
-    let mimeType = "application/octet-stream";
-    const ext = path.extname(filename).toLowerCase(); // Use params.filename here too
-    // ... (rest of your MIME type logic) ...
+    const filepath = getStoredFilePath(filename);
+    const fileContent = await fs.readFile(filepath);
+    const mimeType = getMimeTypeFromFilename(filename);
 
     return new NextResponse(fileContent, {
       status: 200,
-      headers: { "Content-Type": mimeType },
+      headers: {
+        "Content-Type": mimeType,
+        "Cache-Control": "public, max-age=86400, immutable",
+        "X-Content-Type-Options": "nosniff",
+      },
     });
-  } catch (error) {
-    console.error(
-      `Error serving file ${filename} at ${filePath}:`,
-      error,
-    );
-    return new NextResponse("Internal Server Error", { status: 500 });
+  } catch (error: any) {
+    if (error?.code === "ENOENT") {
+      return new NextResponse("File not found", { status: 404 });
+    }
+
+    return jsonError(error, "Failed to serve file");
   }
 }

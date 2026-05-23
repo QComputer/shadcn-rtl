@@ -389,8 +389,6 @@ export class ProductService {
         where: {id: v.id},
         data: {name: null}
        })
-       console.log(v.name);
-       
     }, 100)
   });
 

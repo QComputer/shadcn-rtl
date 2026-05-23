@@ -273,6 +273,86 @@ export async function requireCurrentOrganizationId(
   return membership.organizationId;
 }
 
+
+export async function resolveOptionalUploadOrganizationId(
+  session: SessionWithUser,
+  requestedOrganizationId?: string | null,
+  requestedOrganizationSlug?: string | null,
+) {
+  if (session.user.role === "SUPER_ADMIN") {
+    if (requestedOrganizationId) {
+      const organization = await prisma.organization.findFirst({
+        where: { id: requestedOrganizationId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!organization) throw new ApiError(404, "Organization not found");
+      return organization.id;
+    }
+
+    if (requestedOrganizationSlug) {
+      const organization = await prisma.organization.findFirst({
+        where: { slug: requestedOrganizationSlug, deletedAt: null },
+        select: { id: true },
+      });
+      if (!organization) throw new ApiError(404, "Organization not found");
+      return organization.id;
+    }
+
+    return null;
+  }
+
+  if (requestedOrganizationSlug) {
+    const organization = await prisma.organization.findFirst({
+      where: { slug: requestedOrganizationSlug, deletedAt: null, isActive: true },
+      select: { id: true },
+    });
+    if (!organization) throw new ApiError(404, "Organization not found");
+    await requireOrgAccess(session, organization.id, ["ADMIN", "MANAGER", "STAFF"]);
+    return organization.id;
+  }
+
+  const organizationId = await requireCurrentOrganizationId(
+    session,
+    requestedOrganizationId || session.user.organizationId || undefined,
+  );
+  await requireOrgAccess(session, organizationId, ["ADMIN", "MANAGER", "STAFF"]);
+  return organizationId;
+}
+
+export async function requireImageManageAccess(
+  session: SessionWithUser,
+  imageId: string,
+) {
+  const image = await prisma.image.findUnique({
+    where: { id: imageId },
+    select: {
+      id: true,
+      filename: true,
+      url: true,
+      uploadedByUserId: true,
+      organizationId: true,
+    },
+  });
+
+  if (!image) throw new ApiError(404, "Image not found");
+
+  if (session.user.role === "SUPER_ADMIN") {
+    return image;
+  }
+
+  if (image.organizationId) {
+    await requireOrgAccess(session, image.organizationId, ["ADMIN", "MANAGER"]);
+    return image;
+  }
+
+  if (image.uploadedByUserId && image.uploadedByUserId === session.user.id) {
+    requireRole(session, ["ADMIN", "MANAGER", "STAFF"]);
+    return image;
+  }
+
+  throw new ApiError(403, "Forbidden");
+}
+
 export async function requireProductAccess(
   session: SessionWithUser,
   productId: string,

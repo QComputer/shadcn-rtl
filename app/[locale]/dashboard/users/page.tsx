@@ -225,7 +225,6 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
       })
 
       const res =  await response.json()
-      console.log(res);
       
       if (!response.ok) {
         throw new Error("Failed to update user activation")

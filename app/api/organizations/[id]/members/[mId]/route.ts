@@ -4,6 +4,7 @@ import { organizationService } from "@/lib/services/organization.service";
 import { userService } from "@/lib/services/user.service";
 import { ApiError, jsonError, requireAuthSession, requireOrgAccess } from "@/lib/api-guards";
 import type { SessionWithUser } from "@/lib/api-guards";
+import { writeAuditLog } from "@/lib/audit-log";
 
 async function resolveOrganizationId(session: SessionWithUser, routeId: string) {
   if (session?.user?.role === "SUPER_ADMIN") {
@@ -94,6 +95,16 @@ export async function PUT(
     }
 
     const organizationMember = await userService.updateMembershipIsActive(mId, body.isActive);
+    await writeAuditLog({
+      action: "CHANGE_STATUS",
+      entityType: "OrganizationMember",
+      entityId: mId,
+      description: "Changed organization member active status",
+      userId: session.user.id,
+      organizationId,
+      organizationSlug: organizationMember.organizationSlug,
+      newValue: { isActive: body.isActive },
+    });
     return NextResponse.json(organizationMember);
   } catch (error) {
     console.error("Error updating organization member:", error);

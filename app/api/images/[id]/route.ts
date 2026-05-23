@@ -1,12 +1,9 @@
 import { NextResponse, NextRequest } from "next/server";
-import fs from "fs/promises";
-import path from "path";
 import { prisma } from "@/lib/db";
-import { ApiError, jsonError, requireAuthSession, requireRole } from "@/lib/api-guards";
+import { jsonError, requireAuthSession, requireImageManageAccess } from "@/lib/api-guards";
+import { deleteStoredImage } from "@/lib/media-storage";
 
-function getUploadDir() {
-  return path.join(process.cwd(), "../uploads");
-}
+export const runtime = "nodejs";
 
 export async function DELETE(
   request: NextRequest,
@@ -14,31 +11,30 @@ export async function DELETE(
 ) {
   try {
     const session = await requireAuthSession();
-    requireRole(session, ["SUPER_ADMIN", "ADMIN", "MANAGER"]);
-
     const { id } = await params;
-    if (!id) {
-      throw new ApiError(400, "Invalid ID provided");
-    }
-
-    const image = await prisma.image.findUnique({ where: { id } });
-    if (!image) {
-      throw new ApiError(404, "Image not found");
-    }
+    const image = await requireImageManageAccess(session, id);
 
     const filename = image.filename || image.url.split("/").pop();
-    if (filename) {
-      const filepath = path.join(getUploadDir(), path.basename(filename));
-      try {
-        await fs.unlink(filepath);
-      } catch (error: any) {
-        if (error?.code !== "ENOENT") {
-          console.error(`Error deleting file ${image.url}:`, error);
-        }
-      }
-    }
+    await deleteStoredImage(filename);
 
-    await prisma.image.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.image.delete({ where: { id } });
+      await tx.auditLog.create({
+        data: {
+          action: "DELETE",
+          entityType: "Image",
+          entityId: id,
+          description: "Deleted uploaded image",
+          userId: session.user.id,
+          organizationId: image.organizationId || undefined,
+          previousValue: {
+            filename: image.filename,
+            url: image.url,
+          },
+        },
+      });
+    });
+
     return NextResponse.json({ message: "Image deleted successfully" });
   } catch (error) {
     console.error("Error deleting image:", error);

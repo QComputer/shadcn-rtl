@@ -183,6 +183,14 @@ function assertAppointmentTransition(currentStatus: string, nextStatus?: string)
   }
 }
 
+function normalizePositiveInt(value: number | string | undefined, fallback: number, max: number) {
+  const parsed = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return fallback;
+  }
+  return Math.min(Math.floor(parsed), max);
+}
+
 export class AppointmentService {
   private async createWithOwner(owner: BookingOwner, data: CreateAppointmentInput) {
     const appointment = await prisma.$transaction(
@@ -439,8 +447,8 @@ export class AppointmentService {
   }
 
   async list(params: {
-    page?: number;
-    pageSize?: number;
+    page?: number | string;
+    pageSize?: number | string;
     customerId?: string;
     guestCustomerId?: string;
     serviceId?: string;
@@ -451,8 +459,8 @@ export class AppointmentService {
     serviceProviderId?: string;
   }) {
     const {
-      page = 1,
-      pageSize = 20,
+      page: rawPage = 1,
+      pageSize: rawPageSize = 20,
       customerId,
       guestCustomerId,
       serviceId,
@@ -462,6 +470,9 @@ export class AppointmentService {
       organizationId,
       serviceProviderId,
     } = params;
+
+    const page = normalizePositiveInt(rawPage, 1, 10000);
+    const pageSize = normalizePositiveInt(rawPageSize, 20, 500);
 
     const serviceWhere: Record<string, string> = {};
     if (organizationId) serviceWhere.organizationId = organizationId;

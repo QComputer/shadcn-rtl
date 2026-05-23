@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { updateOrganizationSettingsSchema } from "@/lib/validators";
 import { ApiError, jsonError, requireAuthSession, resolveManageableOrganizationId } from "@/lib/api-guards";
+import { writeAuditLog } from "@/lib/audit-log";
 
 async function getOrganizationSlug(organizationId: string) {
   const org = await prisma.organization.findUnique({
@@ -61,6 +62,17 @@ export async function PUT(
       where: { organizationSlug },
       update: data,
       create: { organizationSlug, ...data },
+    });
+
+    await writeAuditLog({
+      action: "UPDATE",
+      entityType: "OrganizationSettings",
+      entityId: settings.id,
+      description: "Updated organization settings",
+      userId: session.user.id,
+      organizationId,
+      organizationSlug,
+      newValue: data,
     });
 
     return NextResponse.json(settings);

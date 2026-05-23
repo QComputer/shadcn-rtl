@@ -23,12 +23,24 @@ export async function GET(request: NextRequest) {
 
     const searchParams = Object.fromEntries(request.nextUrl.searchParams);
 
-    const params: Record<string, string | undefined> = {};
-    if (searchParams.page) params.page = searchParams.page;
-    if (searchParams.pageSize) params.pageSize = searchParams.pageSize;
+    const params: {
+      page?: number;
+      pageSize?: number;
+      customerId?: string;
+      guestCustomerId?: string;
+      serviceId?: string;
+      serviceProviderId?: string;
+      status?: string;
+      fromDate?: string;
+      toDate?: string;
+      organizationId?: string;
+    } = {};
+    if (searchParams.page) params.page = Math.max(Number.parseInt(searchParams.page, 10) || 1, 1);
+    if (searchParams.pageSize) params.pageSize = Math.min(Math.max(Number.parseInt(searchParams.pageSize, 10) || 20, 1), 500);
     if (searchParams.customerId) params.customerId = searchParams.customerId;
     if (searchParams.guestCustomerId) params.guestCustomerId = searchParams.guestCustomerId;
     if (searchParams.serviceId) params.serviceId = searchParams.serviceId;
+    if (searchParams.serviceProviderId) params.serviceProviderId = searchParams.serviceProviderId;
     if (searchParams.status) params.status = searchParams.status;
     if (searchParams.fromDate) params.fromDate = searchParams.fromDate;
     if (searchParams.toDate) params.toDate = searchParams.toDate;

@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import path from "path";
 import QRCode from "qrcode";
-import fs from "fs/promises";
 import prisma from "@/lib/db";
-import { ApiError, jsonError, requireAuthSession, requireRole } from "@/lib/api-guards";
+import {
+  ApiError,
+  jsonError,
+  requireAuthSession,
+  requireRole,
+  resolveOptionalUploadOrganizationId,
+} from "@/lib/api-guards";
+import { createStoredImageFilename, writeStoredImage } from "@/lib/media-storage";
+
+export const runtime = "nodejs";
 
 function validateHttpUrl(value: string) {
   try {
@@ -17,14 +24,18 @@ function validateHttpUrl(value: string) {
   }
 }
 
+async function renderQrCode(url: string) {
+  return QRCode.toBuffer(url, {
+    type: "png",
+    errorCorrectionLevel: "H",
+    margin: 2,
+  });
+}
+
 export async function GET(req: NextRequest) {
   try {
     const url = validateHttpUrl(req.nextUrl.searchParams.get("url") || "");
-    const qrCodeImageBuffer = await QRCode.toBuffer(url, {
-      type: "png",
-      errorCorrectionLevel: "H",
-      margin: 2,
-    });
+    const qrCodeImageBuffer = await renderQrCode(url);
 
     const arrayBuffer = qrCodeImageBuffer.buffer.slice(
       qrCodeImageBuffer.byteOffset,
@@ -33,7 +44,10 @@ export async function GET(req: NextRequest) {
 
     return new NextResponse(arrayBuffer, {
       status: 200,
-      headers: { "Content-Type": "image/png" },
+      headers: {
+        "Content-Type": "image/png",
+        "Cache-Control": "public, max-age=300",
+      },
     });
   } catch (error) {
     console.error("Error generating QR code:", error);
@@ -48,23 +62,39 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const url = validateHttpUrl(body?.url || "");
+    const organizationId = await resolveOptionalUploadOrganizationId(
+      session,
+      typeof body?.organizationId === "string" ? body.organizationId : null,
+      typeof body?.organizationSlug === "string" ? body.organizationSlug : null,
+    );
 
-    const qrCodeImageBuffer = await QRCode.toBuffer(url, {
-      type: "png",
-      errorCorrectionLevel: "H",
-      margin: 2,
-    });
-
-    const uploadDir = path.join(process.cwd(), "../uploads");
-    await fs.mkdir(uploadDir, { recursive: true });
-
-    const filename = `${Date.now()}-${crypto.randomUUID()}-qrcode.png`;
-    const filepath = path.join(uploadDir, filename);
-    await fs.writeFile(filepath, Buffer.from(qrCodeImageBuffer), { flag: "wx" });
+    const qrCodeImageBuffer = await renderQrCode(url);
+    const filename = createStoredImageFilename("image/png", "qrcode");
+    await writeStoredImage(filename, Buffer.from(qrCodeImageBuffer));
 
     const imageUrl = `/uploads/${filename}`;
     const image = await prisma.image.create({
-      data: { url: imageUrl, filename },
+      data: {
+        url: imageUrl,
+        filename,
+        mimeType: "image/png",
+        sizeBytes: qrCodeImageBuffer.byteLength,
+        purpose: "qrcode",
+        uploadedByUserId: session.user.id,
+        organizationId,
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        action: "CREATE",
+        entityType: "Image",
+        entityId: image.id,
+        description: "Generated and saved QR code image",
+        userId: session.user.id,
+        organizationId: organizationId || undefined,
+        newValue: { url, imageUrl },
+      },
     });
 
     return NextResponse.json(image, { status: 201 });

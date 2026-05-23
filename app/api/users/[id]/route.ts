@@ -4,6 +4,7 @@ import { userService } from "@/lib/services/user.service";
 import { ApiError, jsonError, requireAuthSession, requireCurrentOrgAdminOrManager } from "@/lib/api-guards";
 import type { SessionWithUser } from "@/lib/api-guards";
 import type { UserRole } from "@/lib/types";
+import { writeAuditLog } from "@/lib/audit-log";
 
 async function canManageTargetUser(session: SessionWithUser, targetUserId: string) {
   if (!session?.user?.id || !session.user.role) {
@@ -71,6 +72,14 @@ export async function PUT(
         throw new ApiError(403, "Only SUPER_ADMIN can change global roles");
       }
       const user = await userService.updateRole(id, body.role as UserRole);
+      await writeAuditLog({
+        action: "ASSIGN_ROLE",
+        entityType: "User",
+        entityId: id,
+        description: "Changed user global role",
+        userId: session.user.id,
+        newValue: { role: body.role },
+      });
       return NextResponse.json(user);
     }
 
@@ -79,6 +88,14 @@ export async function PUT(
     if (typeof body.isActive === "boolean") {
       if (session.user.role === "SUPER_ADMIN") {
         const user = await userService.updateUserIsActive(id, body.isActive);
+        await writeAuditLog({
+          action: "CHANGE_STATUS",
+          entityType: "User",
+          entityId: id,
+          description: "Changed user active status",
+          userId: session.user.id,
+          newValue: { isActive: body.isActive },
+        });
         return NextResponse.json(user);
       }
 
@@ -95,6 +112,16 @@ export async function PUT(
       }
 
       const membership = await userService.updateMembershipIsActive(targetMembership.id, body.isActive);
+      await writeAuditLog({
+        action: "CHANGE_STATUS",
+        entityType: "OrganizationMember",
+        entityId: targetMembership.id,
+        description: "Changed organization member active status through user endpoint",
+        userId: session.user.id,
+        organizationId: managerMembership?.organizationId,
+        organizationSlug: managerMembership?.organizationSlug,
+        newValue: { userId: id, isActive: body.isActive },
+      });
       return NextResponse.json(membership);
     }
 
@@ -118,6 +145,13 @@ export async function DELETE(
     }
 
     await userService.update(id, { deletedAt: new Date(), isActive: false });
+    await writeAuditLog({
+      action: "DELETE",
+      entityType: "User",
+      entityId: id,
+      description: "Soft-deleted user",
+      userId: session.user.id,
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting user:", error);

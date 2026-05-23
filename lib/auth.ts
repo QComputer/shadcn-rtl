@@ -87,73 +87,99 @@ const buildProviders = (): Provider[] => {
         }
       },
       async authorize(credentials) {
-        // Validate that credentials are provided
         if (!credentials?.username || !credentials?.password) {
-          console.warn("[Auth] Missing credentials during sign-in attempt");
-          throw new Error("Username and password are required");
+          throw new Error("Invalid username or password");
         }
 
-        //const email = credentials.email as string;
-        const password = credentials.password as string;
-        const username = credentials.username as string;
-        
-        // Normalize username to lowercase for consistent lookup
-        const normalizedUsername = username.trim().toLowerCase();
+        const password = String(credentials.password);
+        const identifier = String(credentials.username).trim().toLowerCase();
 
-        try {
-          // Find user by username
-          const user = await prisma.user.findFirst({
-            where: { name: normalizedUsername },
+        if (!identifier || !password) {
+          throw new Error("Invalid username or password");
+        }
+
+        const now = new Date();
+        const lockDurationMs = 15 * 60 * 1000;
+        const maxFailedAttempts = 5;
+
+        const user = await prisma.user.findFirst({
+          where: {
+            deletedAt: null,
+            OR: [
+              { name: identifier },
+              { email: identifier },
+              { phone: identifier },
+            ],
+          },
+        });
+
+        if (!user || !user.password) {
+          throw new Error("Invalid username or password");
+        }
+
+        if (!user.isActive) {
+          throw new Error("Account is disabled");
+        }
+
+        if (user.lockedUntil && user.lockedUntil > now) {
+          throw new Error("Account is temporarily locked. Please try again later.");
+        }
+
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) {
+          const failedLoginAttempts = user.failedLoginAttempts + 1;
+          const shouldLock = failedLoginAttempts >= maxFailedAttempts;
+
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              failedLoginAttempts,
+              lockedUntil: shouldLock ? new Date(now.getTime() + lockDurationMs) : null,
+            },
           });
 
-          // User not found
-          if (!user) {
-            console.warn(`[Auth] User not found: ${normalizedUsername}`);
-            throw new Error("Invalid username or password");
-          }
-
-          // User has no password set (OAuth user trying to use credentials)
-          if (!user.password) {
-            console.warn(
-              `[Auth] OAuth user attempted credentials login: ${normalizedUsername}`,
-            );
-            return null;
-          }
-
-          // Verify password
-          const validPassword = await bcrypt.compare(password, user.password);
-          if (!validPassword) {
-            console.warn(
-              `[Auth] Invalid password for user: ${normalizedUsername}`,
-            );
-            throw new Error("Invalid username or password");
-          }
-
-          // Get user's organizationId if they are a team member
-          let organizationId: string | null = null;
-          if (user.isTeamMember) {
-            const organizationMember = await prisma.organizationMember.findFirst({
-              where: { userId: user.id },
-              select: { organizationId: true },
-            });
-            organizationId = organizationMember?.organizationId || null;
-          }
-
-          // Return user object with required fields
-          //console.log(`[Auth] Successful sign-in for user: ${user}`);
-          return {
-            id: user.id,
-            email: user.email,
-            name: normalizedUsername || undefined,
-            role: user.role,
-            isTeamMember: user.isTeamMember || false,
-            organizationId: organizationId,
-          };
-        } catch (error) {
-          console.error("[Auth] Error during credentials validation:", error);
-          throw error;
+          throw new Error(
+            shouldLock
+              ? "Account is temporarily locked. Please try again later."
+              : "Invalid username or password",
+          );
         }
-      },
+
+        const organizationMember = user.isTeamMember
+          ? await prisma.organizationMember.findFirst({
+              where: {
+                userId: user.id,
+                isActive: true,
+                organization: {
+                  isActive: true,
+                  deletedAt: null,
+                },
+              },
+              orderBy: { joinedAt: "asc" },
+              select: { organizationId: true },
+            })
+          : null;
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            failedLoginAttempts: 0,
+            lockedUntil: null,
+            lastLoginAt: now,
+          },
+        });
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name || undefined,
+          role: user.role,
+          locale: user.locale,
+          theme: user.theme,
+          isTeamMember: user.isTeamMember || false,
+          organizationId: organizationMember?.organizationId || null,
+        };
+      }
     }),
   );
 
@@ -236,18 +262,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * Can be used to prevent sign-ins based on user status
      */
     async signIn({ user, account }) {
-      // Allow OAuth sign-ins
       if (account?.provider === "google") {
-        return true;
+        if (!user.email) return false;
+
+        const existingUser = await prisma.user.findUnique({
+          where: { email: user.email.toLowerCase() },
+          select: {
+            id: true,
+            isActive: true,
+            deletedAt: true,
+            lockedUntil: true,
+          },
+        });
+
+        const now = new Date();
+        return Boolean(
+          existingUser &&
+            existingUser.isActive &&
+            !existingUser.deletedAt &&
+            (!existingUser.lockedUntil || existingUser.lockedUntil <= now),
+        );
       }
-      
-      // Allow credentials sign-ins (already validated in authorize)
+
       if (account?.provider === "credentials") {
         return true;
       }
-      
-      // Default: allow sign-in
-      return true;
+
+      return false;
     },
   },
   
@@ -256,14 +297,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     /**
      * Called when a new user is created (e.g., via OAuth signup)
      */
-    async createUser({ user }) {
-      console.log("[Auth] New user created via OAuth:", user);
+    async createUser() {
+      // User creation audit is intentionally handled in application routes.
     },
-     /**
-     * Called when a user signed in  (e.g., via OAuth signin)
-     */
-    async signIn({ user }) {
-      console.log("[Auth][Event] A user signed in via OAuth:", user);
+    async signIn() {
+      // Avoid logging full user/session payloads in production.
     },
   },
   

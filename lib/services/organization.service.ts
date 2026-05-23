@@ -186,13 +186,6 @@ export class OrganizationService {
     if (!hasPermission(userRole, "org:delete")) {
       throw new Error("Unauthorized");
     }
-    console.log(
-      "------------------------->organizationService.delete:",
-      id,
-      "with role:",
-      userRole,
-    );
-
     //  delete
     const _organization = await prisma.organization.findUnique({
       where: { id },

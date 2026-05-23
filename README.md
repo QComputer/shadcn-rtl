@@ -189,3 +189,17 @@ Run all deployed smoke tests:
 ```powershell
 $env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:all
 ```
+
+## Phase 10 header hotfix
+
+The deployed Phase 10 smoke test showed that platform-level `next.config.ts` headers were not visible on the public response. Security headers are now also applied from `proxy.ts` using `NextResponse` so locale redirects and normal localized pages receive:
+
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: SAMEORIGIN`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+
+Re-run after deployment:
+
+```powershell
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase10
+```

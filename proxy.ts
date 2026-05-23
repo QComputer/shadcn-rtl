@@ -31,6 +31,20 @@ export const localeConfig: Record<Locale, {
   }
 };
 
+const securityHeaders = [
+  ["X-Content-Type-Options", "nosniff"],
+  ["X-Frame-Options", "SAMEORIGIN"],
+  ["Referrer-Policy", "strict-origin-when-cross-origin"],
+  ["Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()"],
+  ["Cross-Origin-Opener-Policy", "same-origin"],
+] as const;
+
+function withSecurityHeaders(response: NextResponse): NextResponse {
+  for (const [key, value] of securityHeaders) {
+    response.headers.set(key, value);
+  }
+  return response;
+}
 
 // ============================================
 // Helper Functions
@@ -123,7 +137,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/auth") ||
     pathname === "/favicon.ico"
   ) {
-    return NextResponse.next();
+    return withSecurityHeaders(NextResponse.next());
   }
 
   // Check if pathname already has locale
@@ -148,7 +162,7 @@ export async function proxy(request: NextRequest) {
       httpOnly: false,
     });
     
-    return response;
+    return withSecurityHeaders(response);
   }
 
   // Path already has locale - extract it
@@ -157,7 +171,7 @@ export async function proxy(request: NextRequest) {
   // Validate locale
   if (!locales.includes(locale)) {
     const newUrl = new URL(`/${defaultLocale}${pathname}`, request.url);
-    return NextResponse.redirect(newUrl);
+    return withSecurityHeaders(NextResponse.redirect(newUrl));
   }
 
   // Non-dashboard routes - just set locale headers
@@ -176,7 +190,7 @@ export async function proxy(request: NextRequest) {
     });
   }
 
-  return response;
+  return withSecurityHeaders(response);
 }
 
 // Export config for Next.js 16 matcher

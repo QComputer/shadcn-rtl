@@ -312,3 +312,8 @@ Fixed the TypeScript type annotation for inventory restore movement reasons by u
 #### Phase 14 build hotfix 2
 
 Fixed the missing `InventoryMovementReason` runtime enum import in `lib/services/product.service.ts` so inventory movement creation for initial stock and manual adjustments compiles during `next build`.
+
+
+### Phase 14 inventory smoke-test hotfix
+
+The Phase 14 deployed smoke test accepts `401`, `403`, or `405` for unauthenticated payment mutation probes. `405` is safe when the route rejects the probed method before mutation.

@@ -76,3 +76,8 @@ Fixed the TypeScript type annotation for inventory restore movement reasons by u
 ## Build hotfix 2
 
 Fixed the missing `InventoryMovementReason` import in `lib/services/product.service.ts`. The product service uses the Prisma runtime enum when writing `INITIAL_STOCK` and `MANUAL_ADJUSTMENT` inventory movements.
+
+
+## Phase 14 smoke-test hotfix
+
+The deployed Phase 14 smoke test now treats `405 Method Not Allowed` as an acceptable safe response for unauthenticated payment mutation probes. The payment endpoint may reject unsupported methods before auth, which is still a non-mutating blocked state.

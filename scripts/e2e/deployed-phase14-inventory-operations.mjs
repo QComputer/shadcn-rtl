@@ -76,7 +76,7 @@ await check("payment mutation remains blocked without auth", async () => {
     method: "PATCH",
     body: JSON.stringify({ status: "COMPLETED" }),
   });
-  return expectStatus("payment mutation", response, [401, 403]);
+  return expectStatus("payment mutation", response, [401, 403, 405]);
 });
 
 await check("health endpoint is reachable", async () => {

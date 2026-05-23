@@ -44,7 +44,9 @@
     "e2e:deployed:phase13": "node scripts/e2e/deployed-phase13-catalog-hardening.mjs",
     "smoke:deployed:catalog": "node scripts/e2e/deployed-phase13-catalog-hardening.mjs",
     "e2e:deployed:phase14": "node scripts/e2e/deployed-phase14-inventory-operations.mjs",
-    "smoke:deployed:inventory": "node scripts/e2e/deployed-phase14-inventory-operations.mjs"
+    "smoke:deployed:inventory": "node scripts/e2e/deployed-phase14-inventory-operations.mjs",
+    "e2e:deployed:phase15": "node scripts/e2e/deployed-phase15-public-order-tracking.mjs",
+    "smoke:deployed:tracking": "node scripts/e2e/deployed-phase15-public-order-tracking.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

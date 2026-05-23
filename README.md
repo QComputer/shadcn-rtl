@@ -317,3 +317,13 @@ Fixed the missing `InventoryMovementReason` runtime enum import in `lib/services
 ### Phase 14 inventory smoke-test hotfix
 
 The Phase 14 deployed smoke test accepts `401`, `403`, or `405` for unauthenticated payment mutation probes. `405` is safe when the route rejects the probed method before mutation.
+
+### Phase 15 — Public order tracking privacy
+
+Phase 15 hardens public order tracking links. Public order details are available only to the original guest browser session, the owning account, an authorized organization member, or a request that includes the generated `publicTrackingToken` as `?token=...`. Public order lookup is also rate-limited and soft-deleted orders are hidden.
+
+Run the deployed smoke test:
+
+```powershell
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase15
+```

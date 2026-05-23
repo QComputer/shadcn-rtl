@@ -699,6 +699,9 @@ model Order {
   paymentStatus PaymentStatus @default(PENDING)
   paymentId     String?
 
+  // Public tracking
+  publicTrackingToken String? @unique
+
   // Promotion
   promotionId   String?
   promotionCode String?
@@ -747,6 +750,7 @@ model Order {
   @@index([createdAt])
   @@index([deletedAt])
   @@index([orderNumber])
+  @@index([publicTrackingToken])
   @@index([promotionId])
 }
 

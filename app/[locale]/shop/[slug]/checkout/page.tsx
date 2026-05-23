@@ -210,8 +210,13 @@ export default function CheckoutPage({
       
       await refreshCart();
       
-      // Redirect to order confirmation page
-      router.push(`/${locale}/shop/${slug}/order/${order.orderNumber}`);
+      // Redirect to order confirmation page. Include the one-time public tracking token
+      // when the API returns it so shared/order status links do not rely only on
+      // the original browser session.
+      const trackingSuffix = order.publicTrackingToken
+        ? `?token=${encodeURIComponent(order.publicTrackingToken)}`
+        : "";
+      router.push(`/${locale}/shop/${slug}/order/${order.orderNumber}${trackingSuffix}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to place order");
     } finally {

@@ -57,6 +57,7 @@ for (const rel of [
   "docs/PHASE_12_MESSAGING_HARDENING.md",
   "docs/PHASE_13_CATALOG_HARDENING.md",
   "docs/PHASE_14_INVENTORY_OPERATIONS.md",
+  "docs/PHASE_15_PUBLIC_ORDER_TRACKING.md",
 ]) {
   exists(rel) ? ok(`${rel} exists`) : fail(`${rel} exists`);
 }
@@ -99,6 +100,7 @@ const expectedE2E = [
   "scripts/e2e/deployed-phase12-messaging.mjs",
   "scripts/e2e/deployed-phase13-catalog-hardening.mjs",
   "scripts/e2e/deployed-phase14-inventory-operations.mjs",
+  "scripts/e2e/deployed-phase15-public-order-tracking.mjs",
   "scripts/e2e/deployed-all.mjs",
 ];
 for (const rel of expectedE2E) {
@@ -109,7 +111,7 @@ for (const rel of ["app/api/health/route.ts", "lib/runtime-env.ts", "scripts/qua
   exists(rel) ? ok(`${rel} exists`) : fail(`${rel} exists`);
 }
 
-for (const rel of ["scripts/e2e/deployed-phase9-quality-gates.mjs", "scripts/e2e/deployed-phase10-auth-security.mjs", "scripts/e2e/deployed-phase11-health.mjs", "scripts/e2e/deployed-phase12-messaging.mjs", "scripts/e2e/deployed-phase13-catalog-hardening.mjs", "scripts/e2e/deployed-phase14-inventory-operations.mjs", "scripts/e2e/deployed-all.mjs", "scripts/quality/validate-env.mjs"]) {
+for (const rel of ["scripts/e2e/deployed-phase9-quality-gates.mjs", "scripts/e2e/deployed-phase10-auth-security.mjs", "scripts/e2e/deployed-phase11-health.mjs", "scripts/e2e/deployed-phase12-messaging.mjs", "scripts/e2e/deployed-phase13-catalog-hardening.mjs", "scripts/e2e/deployed-phase14-inventory-operations.mjs", "scripts/e2e/deployed-phase15-public-order-tracking.mjs", "scripts/e2e/deployed-all.mjs", "scripts/quality/validate-env.mjs"]) {
   if (!exists(rel)) continue;
   const result = spawnSync(process.execPath, ["--check", rel], { cwd: root, encoding: "utf8" });
   result.status === 0 ? ok(`${rel} syntax`) : fail(`${rel} syntax`, result.stderr || result.stdout);

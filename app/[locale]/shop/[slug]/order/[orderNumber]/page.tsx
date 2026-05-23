@@ -103,14 +103,18 @@ const PaymentCard =  async (paymentSettings: PaymentSettings|null) => {
 }
 
 export default function OrderConfirmationPage({ 
-  params 
+  params,
+  searchParams,
 }: { 
   params: Promise<{ locale: string; slug: string; orderNumber: string }>
+  searchParams?: Promise<{ token?: string }>
 }) {
   const resolvedParams = use(params);
+  const resolvedSearchParams = searchParams ? use(searchParams) : undefined;
   const locale = resolvedParams.locale;
   const slug = resolvedParams.slug;
   const orderNumber = resolvedParams.orderNumber;
+  const trackingToken = resolvedSearchParams?.token || "";
 
   const [mounted, setMounted] = useState(false)
   const [refetching, setRefetching] = useState(true)
@@ -160,12 +164,13 @@ export default function OrderConfirmationPage({
     if (orderNumber) {
       fetchOrder();
     }
-  }, [orderNumber]);
+  }, [orderNumber, trackingToken]);
 
   async function fetchOrder() {
     try {
       setLoading(true);
-      const response = await fetch(`/api/public/orders/${orderNumber}`, {
+      const tokenSuffix = trackingToken ? `?token=${encodeURIComponent(trackingToken)}` : "";
+      const response = await fetch(`/api/public/orders/${orderNumber}${tokenSuffix}`, {
         credentials: "same-origin",
       });
       if (!response.ok) {

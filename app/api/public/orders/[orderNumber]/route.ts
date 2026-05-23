@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || "guest_session_id";
 
@@ -12,9 +13,26 @@ export async function GET(
     const { orderNumber } = await params;
     const session = await auth();
     const guestSessionId = request.cookies.get(SESSION_COOKIE_NAME)?.value ?? null;
+    const trackingToken = request.nextUrl.searchParams.get("token")?.trim() || null;
+    const clientIp = getClientIp(request.headers);
+    const rateLimit = checkRateLimit({
+      key: `public-order:${clientIp}:${orderNumber}`,
+      limit: session?.user?.id ? 120 : 30,
+      windowMs: 60_000,
+    });
 
-    const order = await prisma.order.findUnique({
-      where: { orderNumber },
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many order tracking requests" },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rateLimit.retryAfterSeconds) },
+        },
+      );
+    }
+
+    const order = await prisma.order.findFirst({
+      where: { orderNumber, deletedAt: null },
       include: {
         items: {
           include: {
@@ -92,6 +110,11 @@ export async function GET(
       guestSessionId &&
       order.guestCustomer.sessionId === guestSessionId,
     );
+    const isTrackingTokenMatch = Boolean(
+      trackingToken &&
+      order.publicTrackingToken &&
+      trackingToken === order.publicTrackingToken,
+    );
     const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
     const hasOrganizationAccess = Boolean(
       session?.user?.id &&
@@ -105,14 +128,14 @@ export async function GET(
       })),
     );
 
-    if (!isOwner && !isSameGuestSession && !isSuperAdmin && !hasOrganizationAccess) {
+    if (!isOwner && !isSameGuestSession && !isTrackingTokenMatch && !isSuperAdmin && !hasOrganizationAccess) {
       return NextResponse.json(
-        { error: "Order access requires the original browser session or account" },
+        { error: "Order access requires the original browser session, account, or tracking token" },
         { status: 403 },
       );
     }
 
-    const { guestCustomer, ...safeOrder } = order;
+    const { guestCustomer, publicTrackingToken: _publicTrackingToken, ...safeOrder } = order;
 
     return NextResponse.json({
       ...safeOrder,

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import type { CreateOrderInput, UpdateOrderStatusInput } from "@/lib/validators";
 import { hasPermission, type UserRole } from "@/lib/types";
@@ -21,6 +22,11 @@ const ALLOWED_ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   CANCELLED: [],
   REFUNDED: [],
 };
+
+
+function generatePublicTrackingToken() {
+  return randomBytes(24).toString("base64url");
+}
 
 function assertAllowedStatusTransition(currentStatus: OrderStatus, nextStatus: OrderStatus) {
   if (currentStatus === nextStatus) return;
@@ -331,6 +337,7 @@ export class OrderService {
     }
 
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const publicTrackingToken = generatePublicTrackingToken();
     const {
       preparationEstimatedEndTime,
       pickupEstimatedEndTime,
@@ -423,6 +430,7 @@ export class OrderService {
           deliveryAddress: orderData.deliveryAddress,
           notes: orderData.notes,
           organizationSlug,
+          publicTrackingToken,
           customerId,
           preparationProgressId: preparationProgress.id,
           pickupProgressId: pickupProgress.id,
@@ -550,6 +558,7 @@ export class OrderService {
     }
 
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const publicTrackingToken = generatePublicTrackingToken();
     const {
       preparationEstimatedEndTime,
       pickupEstimatedEndTime,
@@ -657,6 +666,7 @@ export class OrderService {
           deliveryAddress: orderData.deliveryAddress,
           notes: orderData.notes,
           organizationSlug,
+          publicTrackingToken,
           guestCustomerId: guestCustomer.id,
           preparationProgressId: preparationProgress.id,
           pickupProgressId: pickupProgress.id,

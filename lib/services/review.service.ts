@@ -1,32 +1,77 @@
-/*
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { createReviewSchema } from "@/lib/validators";
-import type { CreateReviewInput } from "@/lib/validators";
-import { hasPermission, type UserRole } from "@/lib/types";
+import { ApiError } from "@/lib/api-guards";
+import { normalizePagination } from "@/lib/pagination";
+import type { UserRole } from "@/lib/types";
+
+export type CreateReviewData = {
+  organizationSlug?: string | null;
+  organizationId?: string | null;
+  rating: number;
+  comment?: string | null;
+};
+
+export type UpdateReviewData = {
+  rating?: number;
+  comment?: string | null;
+};
+
+function cleanComment(comment?: string | null) {
+  const value = typeof comment === "string" ? comment.trim() : "";
+  return value.length > 0 ? value.slice(0, 2000) : null;
+}
 
 export class ReviewService {
-  async create(userId: string, data: CreateReviewInput) {
-    // Check if user already reviewed this organization
+  async resolveActiveOrganization(data: { organizationSlug?: string | null; organizationId?: string | null }) {
+    if (!data.organizationSlug && !data.organizationId) {
+      throw new ApiError(400, "organizationSlug or organizationId is required");
+    }
+
+    const organization = await prisma.organization.findFirst({
+      where: {
+        deletedAt: null,
+        isActive: true,
+        ...(data.organizationId ? { id: data.organizationId } : {}),
+        ...(data.organizationSlug ? { slug: data.organizationSlug } : {}),
+      },
+      select: { id: true, slug: true, name: true, type: true },
+    });
+
+    if (!organization) {
+      throw new ApiError(404, "Organization not found");
+    }
+
+    return organization;
+  }
+
+  async create(userId: string, data: CreateReviewData) {
+    const organization = await this.resolveActiveOrganization(data);
+    const rating = Number(data.rating);
+
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      throw new ApiError(400, "Rating must be an integer between 1 and 5");
+    }
+
     const existingReview = await prisma.review.findUnique({
       where: {
-        userId_organizationId: {
+        userId_organizationSlug: {
           userId,
-          organizationId: data.organizationId,
+          organizationSlug: organization.slug,
         },
       },
+      select: { id: true },
     });
 
     if (existingReview) {
-      throw new Error("You have already reviewed this organization");
+      throw new ApiError(409, "You have already reviewed this organization");
     }
 
     const review = await prisma.review.create({
       data: {
-        rating: data.rating,
-        comment: data.comment,
+        rating,
+        comment: cleanComment(data.comment),
         userId,
-        organizationId: data.organizationId,
+        organizationSlug: organization.slug,
       },
       include: {
         user: {
@@ -43,17 +88,19 @@ export class ReviewService {
             id: true,
             name: true,
             slug: true,
+            type: true,
           },
         },
       },
     });
 
-    revalidatePath(`/organization/${review.organization.slug}`);
+    revalidatePath(`/fa/organizations/${organization.slug}`);
+    revalidatePath(`/fa/shop/${organization.slug}`);
     return review;
   }
 
   async getById(id: string) {
-    return prisma.review.findUnique({
+    const review = await prisma.review.findUnique({
       where: { id },
       include: {
         user: {
@@ -70,38 +117,50 @@ export class ReviewService {
             id: true,
             name: true,
             slug: true,
+            type: true,
           },
         },
       },
     });
+
+    if (!review) throw new ApiError(404, "Review not found");
+    return review;
   }
 
   async list(params: {
-    page?: number;
-    pageSize?: number;
-    organizationId?: string;
-    minRating?: number;
-    maxRating?: number;
+    page?: number | string | null;
+    pageSize?: number | string | null;
+    organizationSlug?: string | null;
+    organizationId?: string | null;
+    minRating?: number | string | null;
+    maxRating?: number | string | null;
   }) {
-    const { 
-      page = 1, 
-      pageSize = 20, 
-      organizationId,
-      minRating,
-      maxRating,
-    } = params;
-
+    const pagination = normalizePagination(params, { defaultPageSize: 20, maxPageSize: 50 });
     const where: Record<string, unknown> = {};
 
-    if (organizationId) where.organizationId = organizationId;
-    if (minRating) where.rating = { ...where.rating as object, gte: minRating };
-    if (maxRating) where.rating = { ...where.rating as object, lte: maxRating };
+    if (params.organizationSlug || params.organizationId) {
+      const organization = await this.resolveActiveOrganization({
+        organizationSlug: params.organizationSlug,
+        organizationId: params.organizationId,
+      });
+      where.organizationSlug = organization.slug;
+    }
 
-    const [data, total] = await Promise.all([
+    const minRating = params.minRating == null || params.minRating === "" ? undefined : Number(params.minRating);
+    const maxRating = params.maxRating == null || params.maxRating === "" ? undefined : Number(params.maxRating);
+
+    if (Number.isFinite(minRating) || Number.isFinite(maxRating)) {
+      where.rating = {
+        ...(Number.isFinite(minRating) ? { gte: minRating } : {}),
+        ...(Number.isFinite(maxRating) ? { lte: maxRating } : {}),
+      };
+    }
+
+    const [data, total, average] = await Promise.all([
       prisma.review.findMany({
         where,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        skip: (pagination.page - 1) * pagination.pageSize,
+        take: pagination.pageSize,
         orderBy: { createdAt: "desc" },
         include: {
           user: {
@@ -113,43 +172,55 @@ export class ReviewService {
               avatar: true,
             },
           },
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              type: true,
+            },
+          },
         },
       }),
       prisma.review.count({ where }),
+      prisma.review.aggregate({ where, _avg: { rating: true } }),
     ]);
-
-    // Calculate average rating
-    const avgRating = await prisma.review.aggregate({
-      where: { organizationId },
-      _avg: { rating: true },
-    });
 
     return {
       data,
       total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
-      averageRating: avgRating._avg.rating ?? 0,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      totalPages: Math.ceil(total / pagination.pageSize),
+      averageRating: average._avg.rating ?? 0,
     };
   }
 
-  async update(id: string, userId: string, data: { rating?: number; comment?: string }) {
+  async update(id: string, userId: string, data: UpdateReviewData) {
     const review = await prisma.review.findUnique({
       where: { id },
+      select: { id: true, userId: true, organizationSlug: true },
     });
 
-    if (!review) {
-      throw new Error("Review not found");
+    if (!review) throw new ApiError(404, "Review not found");
+    if (review.userId !== userId) throw new ApiError(403, "Forbidden");
+
+    const updateData: UpdateReviewData = {};
+    if (data.rating !== undefined) {
+      const rating = Number(data.rating);
+      if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+        throw new ApiError(400, "Rating must be an integer between 1 and 5");
+      }
+      updateData.rating = rating;
     }
 
-    if (review.userId !== userId) {
-      throw new Error("Unauthorized");
+    if (data.comment !== undefined) {
+      updateData.comment = cleanComment(data.comment);
     }
 
     const updated = await prisma.review.update({
       where: { id },
-      data,
+      data: updateData,
       include: {
         user: {
           select: {
@@ -157,42 +228,47 @@ export class ReviewService {
             name: true,
             firstName: true,
             lastName: true,
+            avatar: true,
+          },
+        },
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            type: true,
           },
         },
       },
     });
 
-    revalidatePath(`/organization`);
+    revalidatePath(`/fa/organizations/${review.organizationSlug}`);
+    revalidatePath(`/fa/shop/${review.organizationSlug}`);
     return updated;
   }
 
   async delete(id: string, userId: string, userRole: UserRole) {
     const review = await prisma.review.findUnique({
       where: { id },
+      select: { id: true, userId: true, organizationSlug: true },
     });
 
-    if (!review) {
-      throw new Error("Review not found");
+    if (!review) throw new ApiError(404, "Review not found");
+    if (review.userId !== userId && userRole !== "SUPER_ADMIN") {
+      throw new ApiError(403, "Forbidden");
     }
 
-    // Allow delete if user owns review or has review:manage permission
-    if (review.userId !== userId && !hasPermission(userRole, "review:manage")) {
-      throw new Error("Unauthorized");
-    }
-
-    await prisma.review.delete({
-      where: { id },
-    });
-
-    revalidatePath(`/organization`);
+    await prisma.review.delete({ where: { id } });
+    revalidatePath(`/fa/organizations/${review.organizationSlug}`);
+    revalidatePath(`/fa/shop/${review.organizationSlug}`);
   }
 
-  async getUserReview(userId: string, organizationId: string) {
+  async getUserReview(userId: string, organizationSlug: string) {
     return prisma.review.findUnique({
       where: {
-        userId_organizationId: {
+        userId_organizationSlug: {
           userId,
-          organizationId,
+          organizationSlug,
         },
       },
     });
@@ -200,4 +276,3 @@ export class ReviewService {
 }
 
 export const reviewService = new ReviewService();
-*/

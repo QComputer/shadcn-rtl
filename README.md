@@ -327,3 +327,16 @@ Run the deployed smoke test:
 ```powershell
 $env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase15
 ```
+
+
+## Phase 16 — Public Engagement Hardening
+
+Phase 16 hardens organization reviews and follows. It adds public review listing, authenticated review create/update/delete with ownership checks, authenticated follow/unfollow with active-organization validation, pagination normalization, and rate limiting.
+
+Run after deployment:
+
+```powershell
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase16
+```
+
+Docs: `docs/PHASE_16_PUBLIC_ENGAGEMENT.md`.

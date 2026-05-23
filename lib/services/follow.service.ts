@@ -1,26 +1,31 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { ApiError } from "@/lib/api-guards";
+import { normalizePagination } from "@/lib/pagination";
 
 export class FollowService {
+  async requireActiveOrganization(organizationId: string) {
+    const organization = await prisma.organization.findFirst({
+      where: { id: organizationId, isActive: true, deletedAt: null },
+      select: { id: true, name: true, slug: true, type: true },
+    });
+
+    if (!organization) {
+      throw new ApiError(404, "Organization not found");
+    }
+
+    return organization;
+  }
+
   async follow(customerId: string, organizationId: string) {
-    // Check if already following
+    const organization = await this.requireActiveOrganization(organizationId);
+
     const existing = await prisma.follow.findUnique({
       where: {
         customerId_organizationId: {
           customerId,
-          organizationId,
+          organizationId: organization.id,
         },
-      },
-    });
-
-    if (existing) {
-      throw new Error("Already following this organization");
-    }
-
-    const follow = await prisma.follow.create({
-      data: {
-        customerId,
-        organizationId,
       },
       include: {
         organization: {
@@ -28,39 +33,65 @@ export class FollowService {
             id: true,
             name: true,
             slug: true,
+            type: true,
           },
         },
       },
     });
 
-    revalidatePath(`/organization/${follow.organization.slug}`);
-    return follow;
+    if (existing) {
+      return { ...existing, alreadyFollowing: true };
+    }
+
+    const follow = await prisma.follow.create({
+      data: {
+        customerId,
+        organizationId: organization.id,
+      },
+      include: {
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            type: true,
+          },
+        },
+      },
+    });
+
+    revalidatePath(`/fa/organizations/${follow.organization.slug}`);
+    revalidatePath(`/fa/shop/${follow.organization.slug}`);
+    return { ...follow, alreadyFollowing: false };
   }
 
   async unfollow(customerId: string, organizationId: string) {
+    const organization = await this.requireActiveOrganization(organizationId);
     const existing = await prisma.follow.findUnique({
       where: {
         customerId_organizationId: {
           customerId,
-          organizationId,
+          organizationId: organization.id,
         },
       },
     });
 
     if (!existing) {
-      throw new Error("Not following this organization");
+      return { success: true, removed: false };
     }
 
     await prisma.follow.delete({
       where: {
         customerId_organizationId: {
           customerId,
-          organizationId,
+          organizationId: organization.id,
         },
       },
     });
 
-    revalidatePath(`/organization`);
+    revalidatePath(`/fa/organizations/${organization.slug}`);
+    revalidatePath(`/fa/shop/${organization.slug}`);
+    return { success: true, removed: true };
   }
 
   async isFollowing(customerId: string, organizationId: string) {
@@ -71,22 +102,24 @@ export class FollowService {
           organizationId,
         },
       },
+      select: { id: true },
     });
 
     return !!follow;
   }
 
   async getFollowers(organizationId: string, params: {
-    page?: number;
-    pageSize?: number;
+    page?: number | string | null;
+    pageSize?: number | string | null;
   }) {
-    const { page = 1, pageSize = 20 } = params;
+    await this.requireActiveOrganization(organizationId);
+    const pagination = normalizePagination(params, { defaultPageSize: 20, maxPageSize: 50 });
 
     const [data, total] = await Promise.all([
       prisma.follow.findMany({
         where: { organizationId },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        skip: (pagination.page - 1) * pagination.pageSize,
+        take: pagination.pageSize,
         orderBy: { createdAt: "desc" },
         include: {
           customer: {
@@ -96,7 +129,6 @@ export class FollowService {
               firstName: true,
               lastName: true,
               avatar: true,
-              email: true,
             },
           },
         },
@@ -107,23 +139,23 @@ export class FollowService {
     return {
       data,
       total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      totalPages: Math.ceil(total / pagination.pageSize),
     };
   }
 
   async getFollowing(customerId: string, params: {
-    page?: number;
-    pageSize?: number;
+    page?: number | string | null;
+    pageSize?: number | string | null;
   }) {
-    const { page = 1, pageSize = 20 } = params;
+    const pagination = normalizePagination(params, { defaultPageSize: 20, maxPageSize: 50 });
 
     const [data, total] = await Promise.all([
       prisma.follow.findMany({
-        where: { customerId },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        where: { customerId, organization: { isActive: true, deletedAt: null } },
+        skip: (pagination.page - 1) * pagination.pageSize,
+        take: pagination.pageSize,
         orderBy: { createdAt: "desc" },
         include: {
           organization: {
@@ -133,24 +165,30 @@ export class FollowService {
               slug: true,
               logo: true,
               coverImage: true,
+              type: true,
             },
           },
         },
       }),
-      prisma.follow.count({ where: { customerId } }),
+      prisma.follow.count({ where: { customerId, organization: { isActive: true, deletedAt: null } } }),
     ]);
 
     return {
       data,
       total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      totalPages: Math.ceil(total / pagination.pageSize),
     };
   }
 
   async getFollowerCount(organizationId: string) {
-    return prisma.follow.count({ where: { organizationId } });
+    return prisma.follow.count({
+      where: {
+        organizationId,
+        organization: { isActive: true, deletedAt: null },
+      },
+    });
   }
 }
 

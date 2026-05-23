@@ -1,51 +1,59 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { followService } from "@/lib/services/follow.service";
+import { jsonError, requireAuthSession } from "@/lib/api-guards";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+
+function followRateLimit(request: NextRequest, userId: string, organizationId: string) {
+  const clientIp = getClientIp(request.headers);
+  const result = checkRateLimit({
+    key: `follow:${userId}:${organizationId}:${clientIp}`,
+    limit: 30,
+    windowMs: 60_000,
+  });
+
+  if (!result.allowed) {
+    return NextResponse.json(
+      { error: "Too many follow requests" },
+      {
+        status: 429,
+        headers: { "Retry-After": String(result.retryAfterSeconds) },
+      },
+    );
+  }
+
+  return null;
+}
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession();
     const { id } = await params;
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const limited = followRateLimit(request, session.user.id, id);
+    if (limited) return limited;
 
     const follow = await followService.follow(session.user.id, id);
-
-    return NextResponse.json(follow, { status: 201 });
+    return NextResponse.json(follow, { status: follow.alreadyFollowing ? 200 : 201 });
   } catch (error) {
-    console.error("Error following organization:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return jsonError(error, "Error following organization");
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession();
     const { id } = await params;
+    const limited = followRateLimit(request, session.user.id, id);
+    if (limited) return limited;
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    await followService.unfollow(session.user.id, id);
-
-    return NextResponse.json({ success: true });
+    const result = await followService.unfollow(session.user.id, id);
+    return NextResponse.json(result);
   } catch (error) {
-    console.error("Error unfollowing organization:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return jsonError(error, "Error unfollowing organization");
   }
 }

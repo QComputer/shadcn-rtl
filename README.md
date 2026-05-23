@@ -17,6 +17,8 @@ The project is being hardened in phases. Each phase includes code changes, docum
 | 7 | Uploads/images/QR media hardening | Done | `docs/PHASE_7_MEDIA_HARDENING.md` | `npm run e2e:deployed:phase7` |
 | 8 | Audit, soft-delete, and notifications cleanup | Done | `docs/PHASE_8_AUDIT_SOFTDELETE_NOTIFICATIONS.md` | `npm run e2e:deployed:phase8` |
 | 9 | Quality gates, smoke aggregation, and docs cleanup | Done | `docs/PHASE_9_QUALITY_GATES.md` | `npm run e2e:deployed:phase9` |
+| 10 | Auth hardening, security headers, and search rate limiting | Done | `docs/PHASE_10_AUTH_SECURITY.md` | `npm run e2e:deployed:phase10` |
+| 11 | Deployment health and environment validation | Done | `docs/PHASE_11_HEALTH_ENVIRONMENT.md` | `npm run e2e:deployed:phase11` |
 
 ## Development
 
@@ -59,6 +61,7 @@ npm run db:generate
 npm run db:validate
 npm run typecheck
 npm run quality:local
+npm run health:env
 npm run build
 ```
 
@@ -114,6 +117,8 @@ $env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase6
 $env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase7
 $env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase8
 $env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase9
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase10
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase11
 ```
 
 Run all deployed smoke tests:
@@ -149,6 +154,24 @@ Dashboard notification polling uses a single cleaned-up interval and stops on au
 ### Phase 9 quality gates
 
 Phase 9 adds local validation and aggregate deployed smoke testing. Use `npm run quality:local` before packaging future changes and `npm run e2e:deployed:all` after deployment.
+
+## Phase 11 — Deployment health and environment validation
+
+Phase 11 adds `/api/health`, sanitized runtime environment checks, and an optional deep database connectivity check via `/api/health?deep=1`.
+
+Local environment check:
+
+```bash
+npm run health:env
+```
+
+Deployed Phase 11 smoke test:
+
+```powershell
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase11
+```
+
+The health endpoint is public but does not expose secrets, connection strings, stack traces, or raw environment values.
 
 ## Remaining production-hardening roadmap
 
@@ -203,3 +226,49 @@ Re-run after deployment:
 ```powershell
 $env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase10
 ```
+
+## Phase 12 — Messaging and conversation hardening
+
+Phase 12 hardens the messaging APIs with typed auth guards, participant validation, pagination normalization, conservative rate limits, direct-conversation correctness, and consistent API error responses.
+
+Run the deployed Phase 12 smoke test:
+
+```powershell
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase12
+```
+
+Run all deployed smoke tests:
+
+```powershell
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:all
+```
+
+## Phase 13 — Catalog and service data integrity
+
+Phase 13 hardens product, product-category, service, and service-category workflows.
+
+Important changes:
+
+- Catalog pagination is normalized before reaching Prisma.
+- Product creation validates active SHOP organization and category ownership.
+- Service creation validates active APPOINTMENT organization and service-category/provider ownership.
+- Product/service category duplicate names are rejected per organization.
+- Non-empty product/service categories cannot be deleted.
+- Products must keep at least one active variant.
+- Deployed no-Playwright Phase 13 smoke test was added.
+
+Run the deployed Phase 13 smoke test:
+
+```powershell
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase13
+```
+
+Run all deployed smoke tests:
+
+```powershell
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:all
+```
+
+### Phase 13 hotfix — product pagination
+
+`/api/products` now normalizes and caps query-string pagination before validation so oversized `pageSize` values cannot trigger a server error.

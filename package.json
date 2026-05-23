@@ -35,7 +35,14 @@
     "smoke:deployed:quality": "node scripts/e2e/deployed-phase9-quality-gates.mjs",
     "e2e:deployed:all": "node scripts/e2e/deployed-all.mjs",
     "e2e:deployed:phase10": "node scripts/e2e/deployed-phase10-auth-security.mjs",
-    "smoke:deployed:auth": "node scripts/e2e/deployed-phase10-auth-security.mjs"
+    "smoke:deployed:auth": "node scripts/e2e/deployed-phase10-auth-security.mjs",
+    "health:env": "node scripts/quality/validate-env.mjs",
+    "e2e:deployed:phase11": "node scripts/e2e/deployed-phase11-health.mjs",
+    "smoke:deployed:health": "node scripts/e2e/deployed-phase11-health.mjs",
+    "e2e:deployed:phase12": "node scripts/e2e/deployed-phase12-messaging.mjs",
+    "smoke:deployed:messaging": "node scripts/e2e/deployed-phase12-messaging.mjs",
+    "e2e:deployed:phase13": "node scripts/e2e/deployed-phase13-catalog-hardening.mjs",
+    "smoke:deployed:catalog": "node scripts/e2e/deployed-phase13-catalog-hardening.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

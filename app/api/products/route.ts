@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { productService } from "@/lib/services/product.service";
 import { createProductSchema, productFilterSchema } from "@/lib/validators";
 import { prisma } from "@/lib/db";
+import { normalizePagination } from "@/lib/pagination";
 import {
   ApiError,
   jsonError,
@@ -14,11 +15,27 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     const searchParams = Object.fromEntries(request.nextUrl.searchParams);
+    const pagination = normalizePagination(searchParams, { maxPageSize: 100 });
 
-    const sanitizedParams: Record<string, unknown> = { ...searchParams };
-    if (sanitizedParams.isActive === "true") sanitizedParams.isActive = true;
-    if (sanitizedParams.isActive === "false") sanitizedParams.isActive = false;
-    if (sanitizedParams.isActive === "") sanitizedParams.isActive = undefined;
+    const sanitizedParams: Record<string, unknown> = {
+      ...searchParams,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+    };
+
+    for (const key of ["isActive", "inStock"] as const) {
+      if (sanitizedParams[key] === "true") sanitizedParams[key] = true;
+      if (sanitizedParams[key] === "false") sanitizedParams[key] = false;
+      if (sanitizedParams[key] === "") sanitizedParams[key] = undefined;
+    }
+
+    for (const key of ["minPrice", "maxPrice"] as const) {
+      const value = sanitizedParams[key];
+      if (typeof value === "string") {
+        const numericValue = Number(value);
+        sanitizedParams[key] = Number.isFinite(numericValue) ? numericValue : undefined;
+      }
+    }
 
     const params = productFilterSchema.parse(sanitizedParams);
 

@@ -9,6 +9,8 @@ import type {
   UpdateServiceInput 
 } from "@/lib/validators";
 import { hasPermission, type UserRole } from "@/lib/types";
+import { ApiError } from "@/lib/api-guards";
+import { normalizePagination } from "@/lib/pagination";
 
 export class ServiceService {
   /**
@@ -25,7 +27,7 @@ export class ServiceService {
     });
 
     if (!category) {
-      throw new Error("Category not found or does not belong to this organization");
+      throw new ApiError(400, "Category not found or does not belong to this organization");
     }
 
     // If serviceProviderId provided, verify they are a member
@@ -39,9 +41,15 @@ export class ServiceService {
       });
 
       if (!member) {
-        throw new Error("Service provider not found in this organization");
+        throw new ApiError(400, "Service provider not found in this organization");
       }
     }
+
+    const organization = await prisma.organization.findFirst({
+      where: { id: organizationId, deletedAt: null, isActive: true, type: "APPOINTMENT" },
+      select: { id: true },
+    });
+    if (!organization) throw new ApiError(404, "Appointment organization not found");
 
     const service = await prisma.service.create({
       data: {
@@ -83,8 +91,8 @@ export class ServiceService {
    * Get service by ID
    */
   async getById(id: string) {
-    return prisma.service.findUnique({
-      where: { id },
+    return prisma.service.findFirst({
+      where: { id, deletedAt: null },
       include: {
         category: {
           select: {
@@ -128,14 +136,15 @@ export class ServiceService {
    * List services with pagination and filtering
    */
   async list(organizationId: string, params: {
-    page?: number;
-    pageSize?: number;
+    page?: number | string;
+    pageSize?: number | string;
     categoryId?: string;
     isActive?: boolean;
     search?: string;
     providerId?: string;
   }) {
-    const { page = 1, pageSize = 20, categoryId, isActive, search, providerId } = params;
+    const { categoryId, isActive, search, providerId } = params;
+    const pagination = normalizePagination(params, { maxPageSize: 100 });
 
     const where: Record<string, unknown> = {
       organizationId,
@@ -155,8 +164,8 @@ export class ServiceService {
     const [data, total] = await Promise.all([
       prisma.service.findMany({
         where,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
         include: {
           category: {
@@ -189,9 +198,9 @@ export class ServiceService {
     return {
       data,
       total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      totalPages: Math.ceil(total / pagination.pageSize),
     };
   }
 
@@ -242,14 +251,15 @@ export class ServiceService {
    * List all services across all organizations (SUPER_ADMIN only)
    */
   async listAll(params: {
-    page?: number;
-    pageSize?: number;
+    page?: number | string;
+    pageSize?: number | string;
     categoryId?: string;
     isActive?: boolean;
     search?: string;
     organizationId?: string;
   }) {
-    const { page = 1, pageSize = 20, categoryId, isActive, search, organizationId } = params;
+    const { categoryId, isActive, search, organizationId } = params;
+    const pagination = normalizePagination(params, { maxPageSize: 100 });
 
     const where: Record<string, unknown> = {
       deletedAt: null,
@@ -268,8 +278,8 @@ export class ServiceService {
     const [data, total] = await Promise.all([
       prisma.service.findMany({
         where,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
         include: {
           category: {
@@ -309,9 +319,9 @@ export class ServiceService {
     return {
       data,
       total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      totalPages: Math.ceil(total / pagination.pageSize),
     };
   }
 
@@ -322,19 +332,19 @@ export class ServiceService {
     // If user info provided, check permissions
     if (userId && userRole) {
       if (!hasPermission(userRole, "service:update")) {
-        throw new Error("Unauthorized");
+        throw new ApiError(403, "Forbidden");
       }
     }
 
     // If serviceProviderId provided, verify it's valid
     if (data.serviceProviderId !== undefined) {
-      const service = await prisma.service.findUnique({
-        where: { id },
+      const service = await prisma.service.findFirst({
+        where: { id, deletedAt: null },
         select: { organizationId: true },
       });
 
       if (!service) {
-        throw new Error("Service not found");
+        throw new ApiError(404, "Service not found");
       }
 
       if (data.serviceProviderId) {
@@ -347,20 +357,20 @@ export class ServiceService {
         });
 
         if (!member) {
-          throw new Error("Service provider not found in this organization");
+          throw new ApiError(400, "Service provider not found in this organization");
         }
       }
     }
 
     // If categoryId provided, verify it belongs to same organization
     if (data.categoryId) {
-      const service = await prisma.service.findUnique({
-        where: { id },
+      const service = await prisma.service.findFirst({
+        where: { id, deletedAt: null },
         select: { organizationId: true },
       });
 
       if (!service) {
-        throw new Error("Service not found");
+        throw new ApiError(404, "Service not found");
       }
 
       const category = await prisma.serviceCategory.findFirst({
@@ -372,7 +382,7 @@ export class ServiceService {
       });
 
       if (!category) {
-        throw new Error("Category not found or does not belong to this organization");
+        throw new ApiError(400, "Category not found or does not belong to this organization");
       }
     }
 
@@ -416,7 +426,7 @@ export class ServiceService {
     });
 
     if (upcomingAppointments > 0) {
-      throw new Error(`Cannot delete service with ${upcomingAppointments} upcoming appointments. Please cancel or reschedule them first.`);
+      throw new ApiError(400, `Cannot delete service with ${upcomingAppointments} upcoming appointments. Please cancel or reschedule them first.`);
     }
 
     const service = await prisma.service.update({
@@ -435,13 +445,13 @@ export class ServiceService {
    * Toggle service active status
    */
   async toggleActive(id: string) {
-    const service = await prisma.service.findUnique({
-      where: { id },
+    const service = await prisma.service.findFirst({
+      where: { id, deletedAt: null },
       select: { isActive: true },
     });
 
     if (!service) {
-      throw new Error("Service not found");
+      throw new ApiError(404, "Service not found");
     }
 
     const updated = await prisma.service.update({

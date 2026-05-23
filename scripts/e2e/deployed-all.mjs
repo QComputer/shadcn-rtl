@@ -12,6 +12,9 @@ const phases = [
   ["Phase 8", "scripts/e2e/deployed-phase8-audit-softdelete-notifications.mjs"],
   ["Phase 9", "scripts/e2e/deployed-phase9-quality-gates.mjs"],
   ["Phase 10", "scripts/e2e/deployed-phase10-auth-security.mjs"],
+  ["Phase 11", "scripts/e2e/deployed-phase11-health.mjs"],
+  ["Phase 12", "scripts/e2e/deployed-phase12-messaging.mjs"],
+  ["Phase 13", "scripts/e2e/deployed-phase13-catalog-hardening.mjs"],
 ];
 
 if (!process.env.DEPLOYED_URL) {

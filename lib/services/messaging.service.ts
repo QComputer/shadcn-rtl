@@ -1,46 +1,98 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { ApiError } from "@/lib/api-guards";
+
+const MAX_CONVERSATION_PARTICIPANTS = 20;
+const MAX_MESSAGE_LENGTH = 5000;
+const MAX_PAGE_SIZE = 50;
+
+type PaginationInput = {
+  page?: number | string | null;
+  pageSize?: number | string | null;
+};
+
+function normalizePositiveInt(value: number | string | null | undefined, fallback: number, max: number) {
+  const parsed = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.min(Math.floor(parsed), max);
+}
+
+function normalizeMessageContent(content: unknown) {
+  if (typeof content !== "string") {
+    throw new ApiError(400, "Message content is required");
+  }
+
+  const trimmed = content.trim();
+  if (!trimmed) {
+    throw new ApiError(400, "Message content is required");
+  }
+
+  if (trimmed.length > MAX_MESSAGE_LENGTH) {
+    throw new ApiError(400, `Message is too long (max ${MAX_MESSAGE_LENGTH} characters)`);
+  }
+
+  return trimmed;
+}
 
 export class MessagingService {
   async createConversation(userId: string, participantIds: string[]) {
-    // Add current user to participants
-    const allParticipants = [...new Set([userId, ...participantIds])];
+    const uniqueParticipants = [...new Set([userId, ...participantIds].filter(Boolean))];
 
-    // Check if direct conversation already exists
-    if (allParticipants.length === 2) {
-      const existing = await prisma.conversationParticipant.findMany({
+    if (uniqueParticipants.length < 2) {
+      throw new ApiError(400, "At least one other participant is required");
+    }
+
+    if (uniqueParticipants.length > MAX_CONVERSATION_PARTICIPANTS) {
+      throw new ApiError(400, `Conversations can include at most ${MAX_CONVERSATION_PARTICIPANTS} participants`);
+    }
+
+    const activeUsers = await prisma.user.findMany({
+      where: {
+        id: { in: uniqueParticipants },
+        isActive: true,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+    const activeUserIds = new Set(activeUsers.map((user) => user.id));
+    const missingParticipants = uniqueParticipants.filter((id) => !activeUserIds.has(id));
+
+    if (missingParticipants.length > 0) {
+      throw new ApiError(400, "One or more participants are invalid or inactive");
+    }
+
+    // Return an existing direct conversation only when exactly both users are participants.
+    if (uniqueParticipants.length === 2) {
+      const directConversations = await prisma.conversation.findMany({
         where: {
-          userId: { in: allParticipants },
+          type: "direct",
+          participants: {
+            every: { userId: { in: uniqueParticipants } },
+            some: { userId: uniqueParticipants[0] },
+          },
         },
         include: {
-          conversation: {
-            include: {
-              participants: true,
-            },
-          },
+          participants: true,
         },
       });
 
-      // Find conversation where both users are participants
-      const conversationMap = new Map();
-      for (const participant of existing) {
-        const existingConv = conversationMap.get(participant.conversationId);
-        if (existingConv) {
-          // Direct conversation already exists
-          return participant.conversation;
-        }
-        conversationMap.set(participant.conversationId, participant);
+      const existing = directConversations.find((conversation) => {
+        const ids = conversation.participants.map((participant) => participant.userId).sort();
+        return ids.length === 2 && ids.join(":") === [...uniqueParticipants].sort().join(":");
+      });
+
+      if (existing) {
+        return this.getConversation(existing.id, userId);
       }
     }
 
-    // Create new conversation
     const conversation = await prisma.conversation.create({
       data: {
-        type: allParticipants.length > 2 ? "group" : "direct",
+        type: uniqueParticipants.length > 2 ? "group" : "direct",
         participants: {
-          create: allParticipants.map((uid) => ({
+          create: uniqueParticipants.map((uid) => ({
             userId: uid,
-            role: uid === allParticipants[0] ? "admin" : "member",
+            role: uid === userId ? "admin" : "member",
           })),
         },
       },
@@ -76,7 +128,7 @@ export class MessagingService {
     });
 
     if (!participant) {
-      throw new Error("Conversation not found");
+      throw new ApiError(404, "Conversation not found");
     }
 
     return prisma.conversation.findUnique({
@@ -114,18 +166,16 @@ export class MessagingService {
     });
   }
 
-  async getConversations(userId: string, params: {
-    page?: number;
-    pageSize?: number;
-  }) {
-    const { page = 1, pageSize = 20 } = params;
+  async getConversations(userId: string, params: PaginationInput) {
+    const page = normalizePositiveInt(params.page, 1, 100000);
+    const pageSize = normalizePositiveInt(params.pageSize, 20, MAX_PAGE_SIZE);
 
     const participantConversations = await prisma.conversationParticipant.findMany({
       where: { userId },
       select: { conversationId: true },
     });
 
-    const conversationIds = participantConversations.map(p => p.conversationId);
+    const conversationIds = participantConversations.map((p) => p.conversationId);
 
     const [data, total] = await Promise.all([
       prisma.conversation.findMany({
@@ -167,8 +217,9 @@ export class MessagingService {
     };
   }
 
-  async sendMessage(conversationId: string, senderId: string, content: string) {
-    // Verify sender is participant
+  async sendMessage(conversationId: string, senderId: string, rawContent: unknown) {
+    const content = normalizeMessageContent(rawContent);
+
     const participant = await prisma.conversationParticipant.findUnique({
       where: {
         conversationId_userId: {
@@ -179,10 +230,9 @@ export class MessagingService {
     });
 
     if (!participant) {
-      throw new Error("Not a participant in this conversation");
+      throw new ApiError(403, "Not a participant in this conversation");
     }
 
-    // Get receiver(s)
     const conversation = await prisma.conversation.findUnique({
       where: { id: conversationId },
       include: {
@@ -191,38 +241,41 @@ export class MessagingService {
     });
 
     if (!conversation) {
-      throw new Error("Conversation not found");
+      throw new ApiError(404, "Conversation not found");
     }
 
-    const receiver = conversation.participants.find(p => p.userId !== senderId);
+    const receiver = conversation.participants.find((p) => p.userId !== senderId);
 
-    const message = await prisma.message.create({
-      data: {
-        content,
-        senderId,
-        receiverId: receiver?.userId ?? senderId,
-        conversationId,
-      },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            name: true,
-            firstName: true,
-            lastName: true,
-            avatar: true,
+    const message = await prisma.$transaction(async (tx) => {
+      const createdMessage = await tx.message.create({
+        data: {
+          content,
+          senderId,
+          receiverId: receiver?.userId ?? senderId,
+          conversationId,
+        },
+        include: {
+          sender: {
+            select: {
+              id: true,
+              name: true,
+              firstName: true,
+              lastName: true,
+              avatar: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    // Update conversation's last message
-    await prisma.conversation.update({
-      where: { id: conversationId },
-      data: {
-        lastMessage: content.substring(0, 100),
-        lastMessageAt: new Date(),
-      },
+      await tx.conversation.update({
+        where: { id: conversationId },
+        data: {
+          lastMessage: content.substring(0, 100),
+          lastMessageAt: new Date(),
+        },
+      });
+
+      return createdMessage;
     });
 
     revalidatePath(`/messages/${conversationId}`);
@@ -235,11 +288,11 @@ export class MessagingService {
     });
 
     if (!message) {
-      throw new Error("Message not found");
+      throw new ApiError(404, "Message not found");
     }
 
     if (message.receiverId !== userId) {
-      throw new Error("Unauthorized");
+      throw new ApiError(403, "Unauthorized");
     }
 
     return prisma.message.update({

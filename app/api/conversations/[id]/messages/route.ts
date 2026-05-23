@@ -1,38 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { ApiError, jsonError, requireAuthSession } from "@/lib/api-guards";
+import { getClientIp, checkRateLimit } from "@/lib/rate-limit";
 import { messagingService } from "@/lib/services/messaging.service";
+
+function checkMessageWriteLimit(request: NextRequest, userId: string) {
+  const ip = getClientIp(request.headers);
+  const result = checkRateLimit({
+    key: `message:send:${userId}:${ip}`,
+    limit: 60,
+    windowMs: 60_000,
+  });
+
+  if (!result.allowed) {
+    throw new ApiError(429, `Too many messages. Try again in ${result.retryAfterSeconds}s.`);
+  }
+}
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession();
+    checkMessageWriteLimit(request, session.user.id);
+
     const { id } = await params;
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await request.json();
-    const { content } = body;
-
-    if (!content || typeof content !== "string") {
-      return NextResponse.json({ error: "Message content is required" }, { status: 400 });
-    }
-
-    if (content.length > 10000) {
-      return NextResponse.json({ error: "Message is too long (max 10000 characters)" }, { status: 400 });
-    }
-
-    const message = await messagingService.sendMessage(id, session.user.id, content);
+    const message = await messagingService.sendMessage(id, session.user.id, body?.content);
 
     return NextResponse.json(message, { status: 201 });
   } catch (error) {
-    console.error("Error sending message:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return jsonError(error, "Failed to send message");
   }
 }

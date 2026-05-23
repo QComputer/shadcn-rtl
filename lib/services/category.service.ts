@@ -1,42 +1,86 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { 
-  createProductCategorySchema, 
-  updateProductCategorySchema,
-  createServiceCategorySchema,
-  updateServiceCategorySchema
-} from "@/lib/validators";
-import type { 
-  CreateProductCategoryInput, 
+import type {
+  CreateProductCategoryInput,
   UpdateProductCategoryInput,
   CreateServiceCategoryInput,
-  UpdateServiceCategoryInput
+  UpdateServiceCategoryInput,
 } from "@/lib/validators";
-import { hasPermission, type UserRole } from "@/lib/types";
+import { ApiError } from "@/lib/api-guards";
+import { normalizePagination } from "@/lib/pagination";
+
+type CategoryListParams = {
+  page?: number | string;
+  pageSize?: number | string;
+  isActive?: boolean;
+  search?: string;
+  organizationId?: string;
+};
+
+async function requireOrganization(organizationId: string, type?: "SHOP" | "APPOINTMENT") {
+  const organization = await prisma.organization.findFirst({
+    where: {
+      id: organizationId,
+      deletedAt: null,
+      isActive: true,
+      ...(type ? { type } : {}),
+    },
+    select: { id: true, slug: true, type: true },
+  });
+
+  if (!organization) {
+    throw new ApiError(404, type ? `${type} organization not found` : "Organization not found");
+  }
+
+  return organization;
+}
+
+function buildCategoryWhere(params: CategoryListParams, organizationId?: string) {
+  const where: Record<string, unknown> = { deletedAt: null };
+  if (organizationId) where.organizationId = organizationId;
+  else if (params.organizationId) where.organizationId = params.organizationId;
+  if (params.isActive !== undefined) where.isActive = params.isActive;
+  if (params.search) {
+    where.OR = [
+      { name: { contains: params.search, mode: "insensitive" } },
+      { description: { contains: params.search, mode: "insensitive" } },
+    ];
+  }
+  return where;
+}
 
 // Product Category Service
 export class ProductCategoryService {
   async create(organizationId: string, data: CreateProductCategoryInput) {
-    const org = await prisma.organization.findUnique({where: {id: organizationId},
-    select:{
-      slug:true,
-    }})
-    if (!org) return
+    const org = await requireOrganization(organizationId, "SHOP");
+
+    const duplicate = await prisma.productCategory.findFirst({
+      where: {
+        organizationId,
+        deletedAt: null,
+        name: { equals: data.name, mode: "insensitive" },
+      },
+      select: { id: true },
+    });
+    if (duplicate) {
+      throw new ApiError(409, "A product category with this name already exists");
+    }
+
     const category = await prisma.productCategory.create({
       data: {
         ...data,
         organizationId,
-        organizationSlug: org?.slug,
+        organizationSlug: org.slug,
       },
     });
 
-    revalidatePath(`/dashboard/products/categories`);
+    revalidatePath(`/dashboard/product-categories`);
     return category;
   }
 
   async getById(id: string) {
-    return prisma.productCategory.findUnique({
-      where: { id },
+    return prisma.productCategory.findFirst({
+      where: { id, deletedAt: null },
       include: {
         products: {
           where: { deletedAt: null },
@@ -45,36 +89,16 @@ export class ProductCategoryService {
     });
   }
 
-  async list(
-    organizationId: string,
-    params: {
-      page?: number;
-      pageSize?: number;
-      isActive?: boolean;
-      search?: string;
-    },
-  ) {
-    const { page = 1, pageSize = 20, isActive, search } = params;
-
-    const where: Record<string, unknown> = {
-      organizationId,
-      deletedAt: null,
-    };
-
-    if (isActive !== undefined) where.isActive = isActive;
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-      ];
-    }
+  async list(organizationId: string, params: CategoryListParams) {
+    const pagination = normalizePagination(params, { maxPageSize: 100 });
+    const where = buildCategoryWhere(params, organizationId);
 
     const [data, total] = await Promise.all([
       prisma.productCategory.findMany({
         where,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        orderBy: { sortOrder: "asc" },
+        skip: pagination.skip,
+        take: pagination.take,
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
         include: {
           _count: {
             select: { products: { where: { deletedAt: null } } },
@@ -87,48 +111,22 @@ export class ProductCategoryService {
     return {
       data,
       total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      totalPages: Math.ceil(total / pagination.pageSize),
     };
   }
-  /**
-   * List all service categories across all organizations (SUPER_ADMIN only)
-   */
-  async listAll(params: {
-    page?: number;
-    pageSize?: number;
-    isActive?: boolean;
-    search?: string;
-    organizationId?: string;
-  }) {
-    const {
-      page = 1,
-      pageSize = 20,
-      isActive,
-      search,
-      organizationId,
-    } = params;
 
-    const where: Record<string, unknown> = {
-      deletedAt: null,
-    };
-
-    if (organizationId) where.organizationId = organizationId;
-    if (isActive !== undefined) where.isActive = isActive;
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-      ];
-    }
+  async listAll(params: CategoryListParams) {
+    const pagination = normalizePagination(params, { maxPageSize: 100 });
+    const where = buildCategoryWhere(params);
 
     const [data, total] = await Promise.all([
       prisma.productCategory.findMany({
         where,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        orderBy: { sortOrder: "asc" },
+        skip: pagination.skip,
+        take: pagination.take,
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
         include: {
           organization: {
             select: {
@@ -148,30 +146,57 @@ export class ProductCategoryService {
     return {
       data,
       total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      totalPages: Math.ceil(total / pagination.pageSize),
     };
   }
 
   async update(id: string, data: UpdateProductCategoryInput) {
+    const existing = await prisma.productCategory.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true, organizationId: true },
+    });
+    if (!existing) throw new ApiError(404, "Product category not found");
+
+    if (data.name) {
+      const duplicate = await prisma.productCategory.findFirst({
+        where: {
+          organizationId: existing.organizationId,
+          deletedAt: null,
+          id: { not: id },
+          name: { equals: data.name, mode: "insensitive" },
+        },
+        select: { id: true },
+      });
+      if (duplicate) {
+        throw new ApiError(409, "A product category with this name already exists");
+      }
+    }
+
     const category = await prisma.productCategory.update({
       where: { id },
       data,
     });
 
-    revalidatePath(`/dashboard/products/categories`);
+    revalidatePath(`/dashboard/product-categories`);
     return category;
   }
 
   async delete(id: string) {
-    // Soft delete
+    const activeProductCount = await prisma.product.count({
+      where: { categoryId: id, deletedAt: null },
+    });
+    if (activeProductCount > 0) {
+      throw new ApiError(400, "Cannot delete a category that still has products");
+    }
+
     const category = await prisma.productCategory.update({
       where: { id },
       data: { deletedAt: new Date(), isActive: false },
     });
 
-    revalidatePath(`/dashboard/products/categories`);
+    revalidatePath(`/dashboard/product-categories`);
     return category;
   }
 }
@@ -179,6 +204,20 @@ export class ProductCategoryService {
 // Service Category Service
 export class ServiceCategoryService {
   async create(organizationId: string, data: CreateServiceCategoryInput) {
+    await requireOrganization(organizationId, "APPOINTMENT");
+
+    const duplicate = await prisma.serviceCategory.findFirst({
+      where: {
+        organizationId,
+        deletedAt: null,
+        name: { equals: data.name, mode: "insensitive" },
+      },
+      select: { id: true },
+    });
+    if (duplicate) {
+      throw new ApiError(409, "A service category with this name already exists");
+    }
+
     const category = await prisma.serviceCategory.create({
       data: {
         ...data,
@@ -186,13 +225,13 @@ export class ServiceCategoryService {
       },
     });
 
-    revalidatePath(`/dashboard/services/categories`);
+    revalidatePath(`/dashboard/service-categories`);
     return category;
   }
 
   async getById(id: string) {
-    return prisma.serviceCategory.findUnique({
-      where: { id },
+    return prisma.serviceCategory.findFirst({
+      where: { id, deletedAt: null },
       include: {
         services: {
           where: { deletedAt: null },
@@ -201,33 +240,16 @@ export class ServiceCategoryService {
     });
   }
 
-  async list(organizationId: string, params: {
-    page?: number;
-    pageSize?: number;
-    isActive?: boolean;
-    search?: string;
-  }) {
-    const { page = 1, pageSize = 20, isActive, search } = params;
-
-    const where: Record<string, unknown> = {
-      organizationId,
-      deletedAt: null,
-    };
-
-    if (isActive !== undefined) where.isActive = isActive;
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-      ];
-    }
+  async list(organizationId: string, params: CategoryListParams) {
+    const pagination = normalizePagination(params, { maxPageSize: 100 });
+    const where = buildCategoryWhere(params, organizationId);
 
     const [data, total] = await Promise.all([
       prisma.serviceCategory.findMany({
         where,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        orderBy: { sortOrder: "asc" },
+        skip: pagination.skip,
+        take: pagination.take,
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
         include: {
           _count: {
             select: { services: { where: { deletedAt: null } } },
@@ -240,43 +262,22 @@ export class ServiceCategoryService {
     return {
       data,
       total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      totalPages: Math.ceil(total / pagination.pageSize),
     };
   }
 
-  /**
-   * List all service categories across all organizations (SUPER_ADMIN only)
-   */
-  async listAll(params: {
-    page?: number;
-    pageSize?: number;
-    isActive?: boolean;
-    search?: string;
-    organizationId?: string;
-  }) {
-    const { page = 1, pageSize = 20, isActive, search, organizationId } = params;
-
-    const where: Record<string, unknown> = {
-      deletedAt: null,
-    };
-
-    if (organizationId) where.organizationId = organizationId;
-    if (isActive !== undefined) where.isActive = isActive;
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-      ];
-    }
+  async listAll(params: CategoryListParams) {
+    const pagination = normalizePagination(params, { maxPageSize: 100 });
+    const where = buildCategoryWhere(params);
 
     const [data, total] = await Promise.all([
       prisma.serviceCategory.findMany({
         where,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        orderBy: { sortOrder: "asc" },
+        skip: pagination.skip,
+        take: pagination.take,
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
         include: {
           organization: {
             select: {
@@ -296,9 +297,9 @@ export class ServiceCategoryService {
     return {
       data,
       total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      totalPages: Math.ceil(total / pagination.pageSize),
     };
   }
 
@@ -309,11 +310,11 @@ export class ServiceCategoryService {
         deletedAt: null,
         isActive: true,
       },
-      orderBy: { sortOrder: "asc" },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       include: {
         services: {
           where: { deletedAt: null, isActive: true },
-          orderBy: { sortOrder: "asc" },
+          orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
           include: {
             serviceProvider: {
               select: {
@@ -331,180 +332,53 @@ export class ServiceCategoryService {
   }
 
   async update(id: string, data: UpdateServiceCategoryInput) {
-    const category = await prisma.serviceCategory.update({
-      where: { id },
-      data,
+    const existing = await prisma.serviceCategory.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true, organizationId: true },
     });
+    if (!existing) throw new ApiError(404, "Service category not found");
 
-    revalidatePath(`/dashboard/services/categories`);
-    return category;
-  }
-
-  async delete(id: string) {
-    // Soft delete
-    const category = await prisma.serviceCategory.update({
-      where: { id },
-      data: { deletedAt: new Date(), isActive: false },
-    });
-
-    revalidatePath(`/dashboard/services/categories`);
-    return category;
-  }
-}
-
-// Service Service (for individual services)
-export class ServiceService {
-  async create(organizationId: string, data: CreateServiceCategoryInput & { 
-    price: number;
-    duration: number;
-    categoryId: string;
-    serviceProviderId?: string | null;
-  }) {
-    const { price, duration, categoryId, serviceProviderId, ...categoryData } = data;
-    
-    // Create category if not exists, or use existing
-    let category = await prisma.serviceCategory.findFirst({
-      where: { organizationId, name: categoryData.name },
-    });
-
-    if (!category) {
-      category = await prisma.serviceCategory.create({
-        data: {
-          ...categoryData,
-          organizationId,
+    if (data.name) {
+      const duplicate = await prisma.serviceCategory.findFirst({
+        where: {
+          organizationId: existing.organizationId,
+          deletedAt: null,
+          id: { not: id },
+          name: { equals: data.name, mode: "insensitive" },
         },
+        select: { id: true },
       });
+      if (duplicate) {
+        throw new ApiError(409, "A service category with this name already exists");
+      }
     }
 
-    const service = await prisma.service.create({
-      data: {
-        name: data.name || categoryData.name,
-        description: categoryData.description,
-        price,
-        duration,
-        categoryId: category.id,
-        organizationId,
-        ...(serviceProviderId ? { serviceProviderId } : {}),
-      },
-      include: {
-        category: true,
-        serviceProvider: {
-          select: {
-            id: true,
-            name: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
-    });
-
-    revalidatePath(`/dashboard/services`);
-    return service;
-  }
-
-  async getById(id: string) {
-    return prisma.service.findUnique({
-      where: { id },
-      include: {
-        category: true,
-        serviceProvider: {
-          select: {
-            id: true,
-            name: true,
-            firstName: true,
-            lastName: true,
-            avatar: true,
-          },
-        },
-      },
-    });
-  }
-
-  async list(organizationId: string, params: {
-    page?: number;
-    pageSize?: number;
-    categoryId?: string;
-    isActive?: boolean;
-    search?: string;
-  }) {
-    const { page = 1, pageSize = 20, categoryId, isActive, search } = params;
-
-    const where: Record<string, unknown> = {
-      organizationId,
-      deletedAt: null,
-    };
-
-    if (categoryId) where.categoryId = categoryId;
-    if (isActive !== undefined) where.isActive = isActive;
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-      ];
-    }
-
-    const [data, total] = await Promise.all([
-      prisma.service.findMany({
-        where,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        orderBy: { sortOrder: "asc" },
-        include: {
-          category: true,
-          serviceProvider: {
-            select: {
-              id: true,
-              name: true,
-              firstName: true,
-              lastName: true,
-            },
-          },
-        },
-      }),
-      prisma.service.count({ where }),
-    ]);
-
-    return {
-      data,
-      total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
-    };
-  }
-
-  async update(id: string, data: Partial<{
-    name: string;
-    description: string | null;
-    price: number;
-    duration: number;
-    image: string | null;
-    isActive: boolean;
-    categoryId: string;
-    serviceProviderId: string | null;
-  }>) {
-    const service = await prisma.service.update({
+    const category = await prisma.serviceCategory.update({
       where: { id },
       data,
     });
 
-    revalidatePath(`/dashboard/services`);
-    return service;
+    revalidatePath(`/dashboard/service-categories`);
+    return category;
   }
 
   async delete(id: string) {
-    // Soft delete
-    const service = await prisma.service.update({
+    const activeServiceCount = await prisma.service.count({
+      where: { categoryId: id, deletedAt: null },
+    });
+    if (activeServiceCount > 0) {
+      throw new ApiError(400, "Cannot delete a category that still has services");
+    }
+
+    const category = await prisma.serviceCategory.update({
       where: { id },
       data: { deletedAt: new Date(), isActive: false },
     });
 
-    revalidatePath(`/dashboard/services`);
-    return service;
+    revalidatePath(`/dashboard/service-categories`);
+    return category;
   }
 }
 
 export const productCategoryService = new ProductCategoryService();
 export const serviceCategoryService = new ServiceCategoryService();
-//export const serviceService = new ServiceService();

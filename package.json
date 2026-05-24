@@ -48,7 +48,9 @@
     "e2e:deployed:phase15": "node scripts/e2e/deployed-phase15-public-order-tracking.mjs",
     "smoke:deployed:tracking": "node scripts/e2e/deployed-phase15-public-order-tracking.mjs",
     "e2e:deployed:phase16": "node scripts/e2e/deployed-phase16-engagement.mjs",
-    "smoke:deployed:engagement": "node scripts/e2e/deployed-phase16-engagement.mjs"
+    "smoke:deployed:engagement": "node scripts/e2e/deployed-phase16-engagement.mjs",
+    "e2e:deployed:phase17": "node scripts/e2e/deployed-phase17-account-settings.mjs",
+    "smoke:deployed:account-settings": "node scripts/e2e/deployed-phase17-account-settings.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

@@ -1,251 +1,245 @@
-"use client"
+"use client";
 
-import { useState, useEffect, use } from "react"
-import { useRouter } from "next/navigation"
-import { Save, User, Bell, Lock, Palette, Globe, Loader2 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { getDictionary, getDictValue } from "@/lib/dictionary"
-import { useTheme } from "@/hooks/use-theme"
-import { toast } from 'react-toastify';
+import { use, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Bell, Clock, Globe, Loader2, Lock, Palette, Save, User } from "lucide-react";
+import { toast } from "react-toastify";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getDictionary, getDictValue } from "@/lib/dictionary";
+import { useTheme } from "@/hooks/use-theme";
 
-interface UserProfile {
-  id: string
-  name: string
-  email: string | null
-  firstName: string | null
-  lastName: string | null
-  phone: string | null
-  avatar: string | null
-  role: string
-  locale: string
-  theme: string
-  memberOf: {
-    id: string
-    role: string
-    organization: {
-      id: string
-      name: string
-      slug: string
-      type: string
-    }
-  } | null
-}
+type Membership = {
+  id: string;
+  role: string;
+  organizationId: string;
+  organizationSlug: string;
+  organization: {
+    id: string;
+    name: string;
+    slug: string;
+    type: string;
+    isOpen?: boolean;
+  };
+};
+
+type UserProfile = {
+  id: string;
+  name: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  phone: string | null;
+  avatar: string | null;
+  role: string;
+  locale: "fa" | "en" | "ar";
+  theme: "light" | "dark" | "system";
+  memberOf: Membership | null;
+  memberships?: Membership[];
+};
+
+type BusinessHour = {
+  id?: string;
+  day: DayKey;
+  openTime: string;
+  closeTime: string;
+  isOpen: boolean;
+};
+
+type DayKey = "SATURDAY" | "SUNDAY" | "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY";
+
+const defaultBusinessHours: BusinessHour[] = [
+  "SATURDAY",
+  "SUNDAY",
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+].map((day) => ({ day: day as DayKey, openTime: "09:00", closeTime: "17:00", isOpen: !["FRIDAY"].includes(day) }));
+
+const dayLabels: Record<DayKey, string> = {
+  SATURDAY: "شنبه",
+  SUNDAY: "یکشنبه",
+  MONDAY: "دوشنبه",
+  TUESDAY: "سه‌شنبه",
+  WEDNESDAY: "چهارشنبه",
+  THURSDAY: "پنجشنبه",
+  FRIDAY: "جمعه",
+};
 
 export default function SettingsPage({ params }: { params: Promise<{ locale: string }> }) {
-  const resolvedParams = use(params)
-  const locale = resolvedParams.locale || "fa"
-  const router = useRouter()
-  const { theme: currentTheme, setTheme } = useTheme()
-  
-  const [mounted, setMounted] = useState(false)
-  const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
-  const [user, setUser] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
-  
-  // Form state
-  const [firstName, setFirstName] = useState("")
-  const [orgName, setOrgName] = useState("")
-  const [orgSlug, setOrgSlug] = useState("")
-  const [lastName, setLastName] = useState("")
-  const [phone, setPhone] = useState("")
-  const [selectedLocale, setSelectedLocale] = useState(locale)
-  const [selectedTheme, setSelectedTheme] = useState("system")
-  
-  // Password state
-  const [currentPassword, setCurrentPassword] = useState("")
-  const [newPassword, setNewPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const resolvedParams = use(params);
+  const locale = (resolvedParams.locale || "fa") as "fa" | "en" | "ar";
+  const router = useRouter();
+  const { setTheme } = useTheme();
+
+  const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [selectedLocale, setSelectedLocale] = useState<"fa" | "en" | "ar">(locale);
+  const [selectedTheme, setSelectedTheme] = useState<"light" | "dark" | "system">("system");
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  const [businessHours, setBusinessHours] = useState<BusinessHour[]>(defaultBusinessHours);
+
+  const memberships = useMemo(() => user?.memberships || (user?.memberOf ? [user.memberOf] : []), [user]);
 
   useEffect(() => {
-    setMounted(true)
-    
-    import("@/lib/dictionary").then(({ getDictionary }) => {
-      setDict(getDictionary(locale))
-    })
-    
-    // Fetch user profile
-    fetch("/api/users/me")
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch profile")
-        return res.json()
-      })
-      .then(data => {
-        setUser(data)
-        setFirstName(data.firstName || "")
-        setLastName(data.lastName || "")
-        setPhone(data.phone || "")
-        setSelectedLocale(data.locale || locale)
-        setSelectedTheme(data.theme || "system")
-        setLoading(false)
-      })
-      .catch(err => {
-        setError(err.message)
-        setLoading(false)
-      })
-  }, [locale])
+    setDict(getDictionary(locale));
 
-  const t = (key: string): string => {
-    if (!dict) return key
-    return getDictValue(dict, key)
-  }
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch("/api/users/me", { cache: "no-store" });
+        if (!response.ok) throw new Error("Failed to fetch profile");
+        const data = (await response.json()) as UserProfile;
+        setUser(data);
+        setFirstName(data.firstName || "");
+        setLastName(data.lastName || "");
+        setPhone(data.phone || "");
+        setSelectedLocale(data.locale || locale);
+        setSelectedTheme(data.theme || "system");
 
-  const handleCreateOrg = async () => {
-        setSaving(true)
-    setError(null)
-    setSuccess(null)
-    try{
-      const response = await fetch(`/api/organizations/`,{
-      method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: orgName,
-          slug: orgSlug,
-          type: "SHOP"
-        }),
-    })
-    if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to save")
+        if (data.memberOf?.organizationId) {
+          const hoursResponse = await fetch(`/api/users/me/business-hours?organizationId=${encodeURIComponent(data.memberOf.organizationId)}`, { cache: "no-store" });
+          if (hoursResponse.ok) {
+            const hoursData = await hoursResponse.json();
+            if (Array.isArray(hoursData.hours) && hoursData.hours.length > 0) {
+              setBusinessHours(hoursData.hours);
+            }
+          }
+        }
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Failed to load settings");
+      } finally {
+        setLoading(false);
       }
-      
-      const updatedUser = await response.json()
-      setUser(prev => prev ? { ...prev, ...updatedUser } : null)
-       toast.success('فروشگاه شما با موفقیت ثبت شد!', {
-            position: 'top-center', // Position of the toast
-            autoClose: 5000, // Close after 5 seconds
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-          });
-      setSuccess('فروشگاه شما با موفقیت ثبت شد! لطفا خارج شده و دوباره وارد پنل مدیریت شوید')
-      
-      // If locale changed, redirect to new locale
-      if (selectedLocale !== locale) {
-        router.push(`/${selectedLocale}/dashboard/settings`)
-      }
-  } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save")
-    } finally {
-      setSaving(false)
     }
-  }
-  const handleSaveProfile = async () => {
-    setSaving(true)
-    setError(null)
-    setSuccess(null)
-    
+
+    void load();
+  }, [locale]);
+
+  const t = (key: string) => (dict ? getDictValue(dict, key) : key);
+
+  async function handleSaveProfile() {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
     try {
       const response = await fetch("/api/users/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          firstName,
-          lastName,
+          firstName: firstName || null,
+          lastName: lastName || null,
           phone: phone || null,
           locale: selectedLocale,
           theme: selectedTheme,
         }),
-      })
-      
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to save")
-      }
-      
-      const updatedUser = await response.json()
-      setUser(prev => prev ? { ...prev, ...updatedUser } : null)
-       toast.success('تغییرات شما با موفقیت ثبت شد!', {
-            position: 'top-center', // Position of the toast
-            autoClose: 5000, // Close after 5 seconds
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-            // You might need to handle custom sounds separately if the library doesn't directly support them
-          });
-      setSuccess(t("common.success"))
-      
-      // If locale changed, redirect to new locale
-      if (selectedLocale !== locale) {
-        router.push(`/${selectedLocale}/dashboard/settings`)
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save")
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Failed to save profile");
+
+      setUser((prev) => (prev ? { ...prev, ...payload } : prev));
+      setTheme(selectedTheme);
+      setMessage("تغییرات پروفایل ذخیره شد");
+      toast.success("تغییرات پروفایل ذخیره شد", { position: "top-center" });
+      if (selectedLocale !== locale) router.push(`/${selectedLocale}/dashboard/settings`);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Failed to save profile");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
-  const handleChangePassword = async () => {
-    setPasswordError(null)
-    
+  async function handleChangePassword() {
+    setPasswordError(null);
+    setMessage(null);
+
     if (newPassword !== confirmPassword) {
-      setPasswordError("Passwords do not match")
-      return
+      setPasswordError("Passwords do not match");
+      return;
     }
-    
-    if (newPassword.length < 6) {
-      setPasswordError("Password must be at least 6 characters")
-      return
+    if (newPassword.length < 8) {
+      setPasswordError("Password must be at least 8 characters");
+      return;
     }
-    
-    setSaving(true)
-    
+
+    setSaving(true);
     try {
       const response = await fetch("/api/users/me", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currentPassword,
-          newPassword,
-          confirmPassword,
-        }),
-      })
-      
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to change password")
-      }
-      
-      setCurrentPassword("")
-      setNewPassword("")
-      setConfirmPassword("")
-      setSuccess("Password changed successfully")
-    } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : "Failed to change password")
+        body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Failed to change password");
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setMessage("رمز عبور با موفقیت تغییر کرد");
+      toast.success("رمز عبور با موفقیت تغییر کرد", { position: "top-center" });
+    } catch (passwordChangeError) {
+      setPasswordError(passwordChangeError instanceof Error ? passwordChangeError.message : "Failed to change password");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
-  const handleThemeChange = (newTheme: string) => {
-    setSelectedTheme(newTheme)
-    setTheme(newTheme as "light" | "dark" | "system")
+  async function handleSaveBusinessHours() {
+    if (!user?.memberOf?.organizationId) return;
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await fetch(`/api/users/me/business-hours?organizationId=${encodeURIComponent(user.memberOf.organizationId)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(businessHours.map(({ day, openTime, closeTime, isOpen }) => ({ day, openTime, closeTime, isOpen }))),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Failed to save business hours");
+      if (Array.isArray(payload.hours)) setBusinessHours(payload.hours);
+      setMessage("ساعات کاری ذخیره شد");
+      toast.success("ساعات کاری ذخیره شد", { position: "top-center" });
+    } catch (hoursError) {
+      setError(hoursError instanceof Error ? hoursError.message : "Failed to save business hours");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  if (!mounted || loading) {
+  function updateBusinessHour(day: DayKey, patch: Partial<BusinessHour>) {
+    setBusinessHours((current) =>
+      current.map((item) => (item.day === day ? { ...item, ...patch } : item)),
+    );
+  }
+
+  if (loading) {
     return (
       <div className="p-6 space-y-4">
         <div className="h-10 bg-muted rounded w-1/4 animate-pulse" />
-        <div className="space-y-4">
-          {[1, 2, 3, 4].map(i => (
-            <div key={locale+i} className="h-32 bg-muted rounded animate-pulse" />
-          ))}
-        </div>
+        <div className="h-96 bg-muted rounded animate-pulse" />
       </div>
-    )
+    );
   }
 
   if (error && !user) {
@@ -260,201 +254,101 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
-      {/* Header */}
+    <div className="p-4 lg:p-6 space-y-6" dir={locale === "en" ? "ltr" : "rtl"}>
       <div>
         <h2 className="text-2xl font-bold">{t("navigation.settings")}</h2>
-        <p className="text-muted-foreground">
-          {t("user.settings")}
-        </p>
+        <p className="text-muted-foreground">مدیریت پروفایل، امنیت حساب و تنظیمات کاری</p>
       </div>
 
-      {/* Success/Error Messages */}
-      {success && (
-        <div className="p-4 bg-green-100 dark:bg-green-900/20 border border-green-500 text-green-700 dark:text-green-400 rounded-lg">
-          {success}
-        </div>
-      )}
-      {error && (
-        <div className="p-4 bg-destructive/10 border border-destructive text-destructive rounded-lg">
-          {error}
-        </div>
-      )}
-{!user?.memberOf && <div>
-  <div className="p-2">فروشگاه خود را بسازید</div>
-  <div className="flex gap-4">
-  <Input
-  value={orgName}
-  onChange={(e) => setOrgName(e.target.value)}
-  placeholder="نام"
-  />
-  <Input
-  value={orgSlug}
-  onChange={(e) => setOrgSlug(e.target.value)}
-  placeholder="اسلاگ"
-  />
-  <Button onClick={handleCreateOrg}>
- سازمان خود را بسازید
-  </Button>
-  </div></div>}
-      {/* Settings Tabs */}
+      {message && <div className="p-4 bg-green-100 dark:bg-green-900/20 border border-green-500 text-green-700 dark:text-green-400 rounded-lg">{message}</div>}
+      {error && <div className="p-4 bg-destructive/10 border border-destructive text-destructive rounded-lg">{error}</div>}
+
       <Tabs defaultValue="profile" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="profile" className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("user.profile")}</span>
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center gap-2">
-            <Bell className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("user.notifications")}</span>
-          </TabsTrigger>
-          <TabsTrigger value="security" className="flex items-center gap-2">
-            <Lock className="h-4 w-4" />
-            <span className="hidden sm:inline">امنیت</span>
-          </TabsTrigger>
-          <TabsTrigger value="appearance" className="flex items-center gap-2">
-            <Palette className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("theme.appearance")}</span>
-          </TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
+          <TabsTrigger value="profile" className="gap-2"><User className="h-4 w-4" />پروفایل</TabsTrigger>
+          <TabsTrigger value="security" className="gap-2"><Lock className="h-4 w-4" />امنیت</TabsTrigger>
+          <TabsTrigger value="appearance" className="gap-2"><Palette className="h-4 w-4" />ظاهر</TabsTrigger>
+          <TabsTrigger value="business-hours" className="gap-2"><Clock className="h-4 w-4" />ساعات کاری</TabsTrigger>
+          <TabsTrigger value="notifications" className="gap-2"><Bell className="h-4 w-4" />اعلان‌ها</TabsTrigger>
         </TabsList>
 
-        {/* Profile Tab */}
-        <TabsContent dir="rtl" value="profile">
-          <Card className="dir-rtl">
+        <TabsContent value="profile">
+          <Card>
             <CardHeader>
-              <CardTitle>{t("user.profile")}</CardTitle>
-              <CardDescription>
-                {t("user.settings")}
-              </CardDescription>
+              <CardTitle>پروفایل کاربر</CardTitle>
+              <CardDescription>اطلاعات قابل ویرایش حساب کاربری شما</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="username">{t("auth.username")}</Label>
+                  <Label htmlFor="username">نام کاربری</Label>
                   <Input id="username" value={user?.name || ""} disabled />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="role">{t("user.title")} {t("service.category")}</Label>
-                  <Input id="role" value={user?.role || ""} disabled />
+                  <Label htmlFor="email">ایمیل</Label>
+                  <Input id="email" value={user?.email || ""} disabled />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">{t("user.firstName")}</Label>
-                  <Input 
-                    id="firstName" 
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                  />
+                  <Label htmlFor="firstName">نام</Label>
+                  <Input id="firstName" value={firstName} onChange={(event) => setFirstName(event.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">{t("user.lastName")}</Label>
-                  <Input 
-                    id="lastName" 
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                  />
+                  <Label htmlFor="lastName">نام خانوادگی</Label>
+                  <Input id="lastName" value={lastName} onChange={(event) => setLastName(event.target.value)} />
                 </div>
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="phone">{t("user.phone")}</Label>
-                <Input 
-                  id="phone" 
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
+                <Label htmlFor="phone">شماره تماس</Label>
+                <Input id="phone" value={phone} onChange={(event) => setPhone(event.target.value)} />
+              </div>
+              <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground mb-2">عضویت‌های فعال</p>
+                {memberships.length === 0 ? (
+                  <p>عضویت سازمانی فعالی برای این حساب ثبت نشده است.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {memberships.map((membership) => (
+                      <div key={membership.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted/40 p-2">
+                        <span>{membership.organization.name}</span>
+                        <span>{membership.role}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <Button onClick={handleSaveProfile} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}
-                {t("common.save")}
+                ذخیره پروفایل
               </Button>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Notifications Tab */}
-        <TabsContent dir="rtl" value="notifications">
+        <TabsContent value="security">
           <Card>
             <CardHeader>
-              <CardTitle>{t("user.notifications")}</CardTitle>
-              <CardDescription>
-                {t("user.preferences")}
-              </CardDescription>
+              <CardTitle>امنیت حساب</CardTitle>
+              <CardDescription>رمز عبور جدید باید حداقل ۸ کاراکتر باشد.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">اعلانات ایمیلی</p>
-                  <p className="text-sm text-muted-foreground">دریافت اعلانات مهم از طریق ایمیل</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">اعلانات پیامکی</p>
-                  <p className="text-sm text-muted-foreground">دریافت پیامک برای سفارشات جدید</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">اعلانات مرورگر</p>
-                  <p className="text-sm text-muted-foreground">نمایش اعلانات در مرورگر</p>
-                </div>
-                <Switch />
-              </div>
-              <Button>
-                <Save className="h-4 w-4 ml-2" />
-                {t("common.save")}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Security Tab */}
-        <TabsContent dir="rtl"  value="security">
-          <Card>
-            <CardHeader>
-              <CardTitle>امنیت</CardTitle>
-              <CardDescription>
-                تنظیمات امنیتی حساب کاربری
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {passwordError && (
-                <div className="p-3 bg-destructive/10 border border-destructive text-destructive rounded-lg text-sm">
-                  {passwordError}
-                </div>
-              )}
+              {passwordError && <div className="p-3 bg-destructive/10 border border-destructive text-destructive rounded-lg text-sm">{passwordError}</div>}
               <div className="space-y-2">
                 <Label htmlFor="currentPassword">رمز عبور فعلی</Label>
-                <Input 
-                  id="currentPassword" 
-                  type="password" 
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                />
+                <Input id="currentPassword" type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">رمز عبور جدید</Label>
-                <Input 
-                  id="newPassword" 
-                  type="password" 
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">تأیید رمز عبور جدید</Label>
-                <Input 
-                  id="confirmPassword" 
-                  type="password" 
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">رمز عبور جدید</Label>
+                  <Input id="newPassword" type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">تأیید رمز عبور جدید</Label>
+                  <Input id="confirmPassword" type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+                </div>
               </div>
               <Button onClick={handleChangePassword} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}
@@ -464,85 +358,89 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
           </Card>
         </TabsContent>
 
-        {/* Appearance Tab */}
-        <TabsContent dir="rtl"  value="appearance">
+        <TabsContent value="appearance">
           <Card>
             <CardHeader>
-              <CardTitle>{t("theme.appearance")}</CardTitle>
-              <CardDescription>
-                شخصی‌سازی ظاهر برنامه
-              </CardDescription>
+              <CardTitle>ظاهر و زبان</CardTitle>
+              <CardDescription>انتخاب زبان رابط کاربری و تم شخصی حساب</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               <div className="space-y-2">
                 <Label>زبان رابط کاربری</Label>
-                <div className="flex gap-2">
-                  <Button 
-                    variant={selectedLocale === "fa" ? "default" : "outline"} 
-                    size="sm"
-                    onClick={() => setSelectedLocale("fa")}
-                  >
-                    <Globe className="h-4 w-4 ml-1" />
-                    فارسی
-                  </Button>
-                  <Button 
-                    variant={selectedLocale === "en" ? "default" : "outline"} 
-                    size="sm"
-                    onClick={() => setSelectedLocale("en")}
-                  >
-                    <Globe className="h-4 w-4 ml-1" />
-                    English
-                  </Button>
-                  <Button 
-                    variant={selectedLocale === "ar" ? "default" : "outline"} 
-                    size="sm"
-                    onClick={() => setSelectedLocale("ar")}
-                  >
-                    <Globe className="h-4 w-4 ml-1" />
-                    العربية
-                  </Button>
+                <div className="flex flex-wrap gap-2">
+                  {(["fa", "en", "ar"] as const).map((item) => (
+                    <Button key={item} variant={selectedLocale === item ? "default" : "outline"} size="sm" onClick={() => setSelectedLocale(item)}>
+                      <Globe className="h-4 w-4 ml-1" />{item === "fa" ? "فارسی" : item === "en" ? "English" : "العربية"}
+                    </Button>
+                  ))}
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>{t("theme.selectTheme")}</Label>
-                <div className="flex gap-2">
-                  <Button 
-                    variant={selectedTheme === "light" ? "default" : "outline"} 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => handleThemeChange("light")}
-                  >
-                    <Palette className="h-4 w-4 ml-1" />
-                    {t("theme.light")}
-                  </Button>
-                  <Button 
-                    variant={selectedTheme === "dark" ? "default" : "outline"} 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => handleThemeChange("dark")}
-                  >
-                    <Palette className="h-4 w-4 ml-1" />
-                    {t("theme.dark")}
-                  </Button>
-                  <Button 
-                    variant={selectedTheme === "system" ? "default" : "outline"} 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => handleThemeChange("system")}
-                  >
-                    <Palette className="h-4 w-4 ml-1" />
-                    {t("theme.system")}
-                  </Button>
+                <Label>تم</Label>
+                <div className="flex flex-wrap gap-2">
+                  {(["light", "dark", "system"] as const).map((item) => (
+                    <Button key={item} variant={selectedTheme === item ? "default" : "outline"} size="sm" onClick={() => { setSelectedTheme(item); setTheme(item); }}>
+                      <Palette className="h-4 w-4 ml-1" />{item}
+                    </Button>
+                  ))}
                 </div>
               </div>
               <Button onClick={handleSaveProfile} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}
-                {t("common.save")}
+                ذخیره ظاهر و زبان
               </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="business-hours">
+          <Card>
+            <CardHeader>
+              <CardTitle>ساعات کاری من</CardTitle>
+              <CardDescription>این تنظیمات فقط برای عضویت فعال فعلی شما در سازمان اعمال می‌شود.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!user?.memberOf ? (
+                <p className="text-sm text-muted-foreground">برای تنظیم ساعات کاری باید عضو فعال یک سازمان باشید.</p>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    {businessHours.map((item) => (
+                      <div key={item.day} className="grid gap-3 rounded-lg border p-3 md:grid-cols-[1fr_1fr_1fr_auto] md:items-center">
+                        <div className="font-medium">{dayLabels[item.day]}</div>
+                        <Input type="time" value={item.openTime} disabled={!item.isOpen} onChange={(event) => updateBusinessHour(item.day, { openTime: event.target.value })} />
+                        <Input type="time" value={item.closeTime} disabled={!item.isOpen} onChange={(event) => updateBusinessHour(item.day, { closeTime: event.target.value })} />
+                        <div className="flex items-center gap-2">
+                          <Switch checked={item.isOpen} onCheckedChange={(checked) => updateBusinessHour(item.day, { isOpen: checked })} />
+                          <span className="text-sm text-muted-foreground">باز</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <Button onClick={handleSaveBusinessHours} disabled={saving}>
+                    {saving ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Save className="h-4 w-4 ml-2" />}
+                    ذخیره ساعات کاری
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="notifications">
+          <Card>
+            <CardHeader>
+              <CardTitle>اعلان‌ها</CardTitle>
+              <CardDescription>تنظیمات اعلان‌ها در حال حاضر نمایشی است و به تنظیمات پایدار متصل نشده است.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-4"><span>اعلان‌های مرورگر</span><Switch disabled /></div>
+              <div className="flex items-center justify-between gap-4"><span>اعلان‌های ایمیلی</span><Switch disabled /></div>
+              <div className="flex items-center justify-between gap-4"><span>اعلان‌های پیامکی</span><Switch disabled /></div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

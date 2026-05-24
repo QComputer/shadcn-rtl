@@ -19,6 +19,12 @@ The project is being hardened in phases. Each phase includes code changes, docum
 | 9 | Quality gates, smoke aggregation, and docs cleanup | Done | `docs/PHASE_9_QUALITY_GATES.md` | `npm run e2e:deployed:phase9` |
 | 10 | Auth hardening, security headers, and search rate limiting | Done | `docs/PHASE_10_AUTH_SECURITY.md` | `npm run e2e:deployed:phase10` |
 | 11 | Deployment health and environment validation | Done | `docs/PHASE_11_HEALTH_ENVIRONMENT.md` | `npm run e2e:deployed:phase11` |
+| 12 | Messaging and conversation API hardening | Done | `docs/PHASE_12_MESSAGING_HARDENING.md` | `npm run e2e:deployed:phase12` |
+| 13 | Catalog and service data integrity | Done | `docs/PHASE_13_CATALOG_HARDENING.md` | `npm run e2e:deployed:phase13` |
+| 14 | Inventory operations and movement history | Done | `docs/PHASE_14_INVENTORY_OPERATIONS.md` | `npm run e2e:deployed:phase14` |
+| 15 | Public order tracking privacy | Done | `docs/PHASE_15_PUBLIC_ORDER_TRACKING.md` | `npm run e2e:deployed:phase15` |
+| 16 | Public reviews/follows engagement hardening | Done | `docs/PHASE_16_PUBLIC_ENGAGEMENT.md` | `npm run e2e:deployed:phase16` |
+| 17 | Profile/settings/account self-service hardening | Done | `docs/PHASE_17_ACCOUNT_SETTINGS.md` | `npm run e2e:deployed:phase17` |
 
 ## Development
 
@@ -119,6 +125,12 @@ $env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase8
 $env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase9
 $env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase10
 $env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase11
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase12
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase13
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase14
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase15
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase16
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase17
 ```
 
 Run all deployed smoke tests:
@@ -169,9 +181,20 @@ Deployed Phase 11 smoke test:
 
 ```powershell
 $env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase11
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase12
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase13
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase14
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase15
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase16
+$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase17
 ```
 
 The health endpoint is public but does not expose secrets, connection strings, stack traces, or raw environment values.
+
+
+### Phase 17 account settings
+
+Phase 17 hardens `/api/users/me`, password changes, and `/api/users/me/business-hours`. The dashboard settings page now uses the hardened self-service APIs, separates profile/security/appearance/business-hour concerns, and no longer mixes organization creation into general account settings.
 
 ## Remaining production-hardening roadmap
 

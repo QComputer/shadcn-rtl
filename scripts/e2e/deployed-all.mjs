@@ -18,6 +18,7 @@ const phases = [
   ["Phase 14", "scripts/e2e/deployed-phase14-inventory-operations.mjs"],
   ["Phase 15", "scripts/e2e/deployed-phase15-public-order-tracking.mjs"],
   ["Phase 16", "scripts/e2e/deployed-phase16-engagement.mjs"],
+  ["Phase 17", "scripts/e2e/deployed-phase17-account-settings.mjs"],
 ];
 
 if (!process.env.DEPLOYED_URL) {

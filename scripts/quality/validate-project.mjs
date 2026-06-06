@@ -60,6 +60,9 @@ for (const rel of [
   "docs/PHASE_15_PUBLIC_ORDER_TRACKING.md",
   "docs/PHASE_16_PUBLIC_ENGAGEMENT.md",
   "docs/PHASE_17_ACCOUNT_SETTINGS.md",
+  "docs/PHASE_18_PRODUCTION_INTEGRITY_SMS_READINESS.md",
+  "docs/PHASE_19_RBAC_AUTH_DASHBOARD_ACCESS.md",
+  "docs/PHASE_20_API_SERVICE_CONSISTENCY.md",
 ]) {
   exists(rel) ? ok(`${rel} exists`) : fail(`${rel} exists`);
 }
@@ -115,10 +118,16 @@ for (const rel of ["app/api/health/route.ts", "lib/runtime-env.ts", "scripts/qua
   exists(rel) ? ok(`${rel} exists`) : fail(`${rel} exists`);
 }
 
-for (const rel of ["scripts/e2e/deployed-phase9-quality-gates.mjs", "scripts/e2e/deployed-phase10-auth-security.mjs", "scripts/e2e/deployed-phase11-health.mjs", "scripts/e2e/deployed-phase12-messaging.mjs", "scripts/e2e/deployed-phase13-catalog-hardening.mjs", "scripts/e2e/deployed-phase14-inventory-operations.mjs", "scripts/e2e/deployed-phase15-public-order-tracking.mjs", "scripts/e2e/deployed-phase16-engagement.mjs", "scripts/e2e/deployed-phase17-account-settings.mjs", "scripts/e2e/deployed-all.mjs", "scripts/quality/validate-env.mjs"]) {
+for (const rel of ["scripts/e2e/deployed-phase9-quality-gates.mjs", "scripts/e2e/deployed-phase10-auth-security.mjs", "scripts/e2e/deployed-phase11-health.mjs", "scripts/e2e/deployed-phase12-messaging.mjs", "scripts/e2e/deployed-phase13-catalog-hardening.mjs", "scripts/e2e/deployed-phase14-inventory-operations.mjs", "scripts/e2e/deployed-phase15-public-order-tracking.mjs", "scripts/e2e/deployed-phase16-engagement.mjs", "scripts/e2e/deployed-phase17-account-settings.mjs", "scripts/e2e/deployed-all.mjs", "scripts/quality/validate-env.mjs", "scripts/quality/validate-dashboard-access.mjs", "scripts/quality/validate-api-service-safety.mjs"]) {
   if (!exists(rel)) continue;
   const result = spawnSync(process.execPath, ["--check", rel], { cwd: root, encoding: "utf8" });
   result.status === 0 ? ok(`${rel} syntax`) : fail(`${rel} syntax`, result.stderr || result.stdout);
+}
+
+
+if (exists("scripts/quality/validate-api-service-safety.mjs")) {
+  const result = spawnSync(process.execPath, ["scripts/quality/validate-api-service-safety.mjs"], { cwd: root, encoding: "utf8" });
+  result.status === 0 ? ok("P20 API/service safety validator passes") : fail("P20 API/service safety validator passes", result.stderr || result.stdout);
 }
 
 console.table(results);

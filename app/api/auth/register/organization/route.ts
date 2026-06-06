@@ -3,86 +3,114 @@ import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { signIn } from "@/lib/auth";
-import { organizationService } from "@/lib/services/organization.service";
+import { ApiError, jsonError } from "@/lib/api-guards";
 
-// Validation schema for registration - only username and password required
-const OrganizationRegisterSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters").max(50, "Username must be less than 50 characters"),
+const organizationRegisterSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .min(3, "Username must be at least 3 characters")
+    .max(50, "Username must be less than 50 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  orgSlug: z.string().min(3, "Organization slug must be at least 3 characters").max(10, "Organization slug must be less than 10 characters"),
-  orgName: z.string().min(3, "Organization slug must be at least 3 characters").max(10, "Organization slug must be less than 30 characters").optional(),
+  orgSlug: z
+    .string()
+    .trim()
+    .min(3, "Organization slug must be at least 3 characters")
+    .max(10, "Organization slug must be less than 10 characters")
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Organization slug must be lowercase alphanumeric with hyphens"),
+  orgName: z
+    .string()
+    .trim()
+    .min(3, "Organization name must be at least 3 characters")
+    .max(30, "Organization name must be less than 30 characters")
+    .optional(),
 });
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const validation = organizationRegisterSchema.safeParse(body);
 
-    // Validate input
-    const validation = OrganizationRegisterSchema.safeParse(body);
     if (!validation.success) {
-      const errorMessage =
-        validation.error.issues[0]?.message || "Validation failed";
-      return NextResponse.json({ error: errorMessage }, { status: 400 });
+      const errorMessage = validation.error.issues[0]?.message || "Validation failed";
+      throw new ApiError(400, errorMessage);
     }
 
     const { username, password, orgSlug, orgName } = validation.data;
-
-    // Check if username already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { name: username },
-    });
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: "Username already taken" },
-        { status: 409 },
-      );
-    }
-
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
-    // Create user with ADMIN role
-    const user = await prisma.user.create({
-      data: {
-        name: username,
-        password: hashedPassword,
-        role: "ADMIN",
-        isActive: true,
-        isTeamMember: true,
-        locale: "fa",
-        theme: "system",
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-      },
-    });
 
-    // Auto-login by calling NextAuth signIn with credentials
-    // This will create a session for the user
-    try {
-      const organization = await organizationService.create({
-        slug: orgSlug,
-        name: orgName || orgSlug,
-        type: "SHOP",
+    const { user, organization, member } = await prisma.$transaction(async (tx) => {
+      const existingUser = await tx.user.findUnique({
+        where: { name: username },
+        select: { id: true },
       });
 
-      if (!organization) {
-        console.error("Error creation organization");
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 },
-        );
+      if (existingUser) {
+        throw new ApiError(409, "Username already taken");
       }
-      const memeber = await organizationService.addMember(
-        organization.id,
-        user.id,
-        "ADMIN",
-        user.id,
-      );
+
+      const existingOrganization = await tx.organization.findUnique({
+        where: { slug: orgSlug },
+        select: { id: true },
+      });
+
+      if (existingOrganization) {
+        throw new ApiError(409, "Organization slug already taken");
+      }
+
+      const createdUser = await tx.user.create({
+        data: {
+          name: username,
+          password: hashedPassword,
+          role: "ADMIN",
+          isActive: true,
+          isTeamMember: true,
+          locale: "fa",
+          theme: "system",
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true,
+        },
+      });
+
+      const createdOrganization = await tx.organization.create({
+        data: {
+          slug: orgSlug,
+          name: orgName || orgSlug,
+          type: "SHOP",
+        },
+      });
+
+      await tx.organizationSettings.create({
+        data: { organizationSlug: createdOrganization.slug },
+      });
+
+      await tx.paymentSettings.create({
+        data: { organizationSlug: createdOrganization.slug },
+      });
+
+      const createdMember = await tx.organizationMember.create({
+        data: {
+          organizationId: createdOrganization.id,
+          organizationSlug: createdOrganization.slug,
+          userId: createdUser.id,
+          role: "ADMIN",
+          isActive: true,
+        },
+      });
+
+      return {
+        user: createdUser,
+        organization: createdOrganization,
+        member: createdMember,
+      };
+    });
+
+    try {
       const signInResult = await signIn("credentials", {
         username,
         password,
@@ -90,11 +118,14 @@ export async function POST(request: NextRequest) {
       });
 
       if (signInResult?.error) {
-        // Even if signIn fails, user was created
         return NextResponse.json(
           {
-            message: "User created successfully, but auto-login failed",
+            message: "Organization and user created successfully, but auto-login failed",
             user,
+            organization,
+            member,
+            // Backward compatibility for existing clients with the old misspelled key.
+            memeber: member,
             autoLogin: false,
           },
           { status: 201 },
@@ -103,10 +134,12 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(
         {
-          message: "Organization and User created and logged in successfully",
+          message: "Organization and user created and logged in successfully",
           user,
           organization,
-          memeber,
+          member,
+          // Backward compatibility for existing clients with the old misspelled key.
+          memeber: member,
           autoLogin: true,
         },
         { status: 201 },
@@ -115,8 +148,12 @@ export async function POST(request: NextRequest) {
       console.error("Auto-login error:", signInError);
       return NextResponse.json(
         {
-          message: "User created successfully",
+          message: "Organization and user created successfully",
           user,
+          organization,
+          member,
+          // Backward compatibility for existing clients with the old misspelled key.
+          memeber: member,
           autoLogin: false,
         },
         { status: 201 },
@@ -124,9 +161,6 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error("Error registering user with organization:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return jsonError(error, "Internal server error");
   }
 }

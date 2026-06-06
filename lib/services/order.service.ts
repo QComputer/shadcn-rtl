@@ -108,7 +108,7 @@ export class OrderService {
       where: { organizationSlug },
     });
 
-    return new Decimal(settings?.deliveryRadius ? 20000 : 0);
+    return new Decimal(settings?.deliveryFee ?? 0);
   }
 
   private buildProgressEstimates() {
@@ -1095,39 +1095,55 @@ if (!org?.slug) return
       toDate,
     } = params;
 
-    const whereDriver: Record<string, unknown> = {};
+    const baseWhere: Prisma.OrderWhereInput = {};
 
     if (organizationSlug) {
-      whereDriver.organizationSlug = organizationSlug;
+      baseWhere.organizationSlug = organizationSlug;
     }
-    if (customerId) whereDriver.customerId = customerId;
-    if (guestCustomerId) whereDriver.guestCustomerId = guestCustomerId;
-    if (status) whereDriver.status = status;
-    if (type) whereDriver.type = type;
+    if (customerId) baseWhere.customerId = customerId;
+    if (guestCustomerId) baseWhere.guestCustomerId = guestCustomerId;
+    if (type) baseWhere.type = type as "DELIVERY" | "PICK_UP";
     if (fromDate || toDate) {
-      whereDriver.createdAt = {};
-      if (fromDate)
-        (whereDriver.createdAt as Record<string, Date>).gte = new Date(
-          fromDate,
-        );
-      if (toDate)
-        (whereDriver.createdAt as Record<string, Date>).lte = new Date(toDate);
+      const createdAt: Prisma.DateTimeFilter = {};
+      if (fromDate) createdAt.gte = new Date(fromDate);
+      if (toDate) createdAt.lte = new Date(toDate);
+      baseWhere.createdAt = createdAt;
     }
 
-    const whereNull: Record<string, unknown> = { ...whereDriver };
-    if (status && ["PENDING", "PLACED", "DENIED"].includes(status))
-      whereNull.status = { in: [] }; // aborting the whereNull query
-    else if (!status) {
-      whereNull.status = {
-        in: ["ACCEPTED", "PREPARING", "READY", "PICKED_UP"],
-      };
+    const validStatuses = Object.values(OrderStatus);
+    if (status && !validStatuses.includes(status as OrderStatus)) {
+      throw new Error("Invalid order status filter");
     }
+
+    const assignedWhere: Prisma.OrderWhereInput = {
+      ...baseWhere,
+      driverId,
+      ...(status ? { status: status as OrderStatus } : {}),
+    };
+
+    const driverAvailableStatuses: OrderStatus[] = [
+      "ACCEPTED",
+      "PREPARING",
+      "READY",
+      "PICKED_UP",
+    ];
+    const includeAvailable = !status || driverAvailableStatuses.includes(status as OrderStatus);
+    const availableWhere: Prisma.OrderWhereInput | null = includeAvailable
+      ? {
+          ...baseWhere,
+          driverId: null,
+          status: status ? (status as OrderStatus) : { in: driverAvailableStatuses },
+          denies: { none: { userId: driverId } },
+        }
+      : null;
+
+    const orderWhere: Prisma.OrderWhereInput = {
+      OR: availableWhere ? [assignedWhere, availableWhere] : [assignedWhere],
+    };
 
     const [data, total] = await Promise.all([
       prisma.order.findMany({
-        where: {
-          OR: [{ ...whereDriver }, { ...whereNull, driverId: null }],
-        },
+        where: orderWhere,
         skip: (page - 1) * pageSize,
         take: pageSize,
         orderBy: { createdAt: "desc" },
@@ -1195,14 +1211,7 @@ if (!org?.slug) return
           denies: true,
         },
       }),
-      prisma.order.count({
-        where: {
-          OR: [
-            { ...whereDriver, driverId },
-            { ...whereNull, driverId: null },
-          ],
-        },
-      }),
+      prisma.order.count({ where: orderWhere }),
     ]);
 
     return {

@@ -214,7 +214,7 @@ export const updateOrderStatusSchema = z.object({
 
 export const updateOrderEstimatedEndTimeSchema = z.object({
   type: z.enum(["PREPARATION", "PICK_UP", "DELIVERY"]),
-  estimatedEndTime: z.string().max(100).optional(),
+  estimatedEndTime: z.string().datetime("estimatedEndTime must be an ISO datetime"),
 });
 
 export const updateOrderPaymentSchema = z.object({
@@ -254,6 +254,7 @@ export const updateOrganizationSettingsSchema = z.object({
   minimumOrderAmount: z.number().nonnegative().optional(),
   maximumOrderAmount: z.number().nonnegative().optional(),
   deliveryRadius: z.number().positive().optional(),
+  deliveryFee: z.number().nonnegative().optional(),
   enablePickup: z.boolean().default(true),
   enableDelivery: z.boolean().default(true),
   emailNotifications: z.boolean().default(true),
@@ -286,7 +287,7 @@ export const productFilterSchema = z.object({
 }).merge(paginationSchema);
 
 export const orderFilterSchema = z.object({
-  status: z.enum(["PENDING", "PLACED", "ACCEPTED", "PREPARING", "READY", "PICKED_UP", "DELIVERED", "RECEIVED", "REFUNDED"]).optional(),
+  status: z.enum(["PENDING", "PLACED", "ACCEPTED", "PREPARING", "READY", "PICKED_UP", "DELIVERED", "RECEIVED", "CANCELLED", "REFUNDED"]).optional(),
   type: z.enum(["DELIVERY", "PICK_UP"]).optional(),
   organizationId: z.string().cuid().optional(),
   driverId: z.string().cuid().optional(),

@@ -6,66 +6,68 @@ import { hasPermission, type UserRole, type Permission } from "@/lib/types";
 
 export class OrganizationService {
   async create(data: CreateOrganizationInput) {
-    // Check if slug is already taken
-    const existingSlug = await prisma.organization.findUnique({
-      where: { slug: data.slug },
-      select: { settings: true },
-    });
+    return prisma.$transaction(async (tx) => {
+      const existingSlug = await tx.organization.findUnique({
+        where: { slug: data.slug },
+        select: { id: true },
+      });
 
-    if (existingSlug) {
-      throw new Error("Slug already exists");
-    }
+      if (existingSlug) {
+        throw new Error("Slug already exists");
+      }
 
-    const organization = await prisma.organization.create({ data });
- // creating org settings
-    await prisma.organizationSettings.upsert({
-      where: { organizationSlug: data.slug },
-      update: {},
-      create: { organizationSlug: data.slug },
-    });
-    
-    await prisma.paymentSettings.upsert({
-      where: { organizationSlug: data.slug },
-      update: {},
-      create: { organizationSlug: data.slug },
-    });
+      const organization = await tx.organization.create({ data });
 
-    return organization;
+      await tx.organizationSettings.create({
+        data: { organizationSlug: organization.slug },
+      });
+
+      await tx.paymentSettings.create({
+        data: { organizationSlug: organization.slug },
+      });
+
+      return organization;
+    });
   }
 
   async createByUser(data: CreateOrganizationInput, userId: string) {
-    // Check if slug is already taken
-    const existingSlug = await prisma.organization.findUnique({
-      where: { slug: data.slug },
-      select: { settings: true },
+    return prisma.$transaction(async (tx) => {
+      const existingSlug = await tx.organization.findUnique({
+        where: { slug: data.slug },
+        select: { id: true },
+      });
+
+      if (existingSlug) {
+        throw new Error("Slug already exists");
+      }
+
+      const organization = await tx.organization.create({ data });
+
+      await tx.organizationSettings.create({
+        data: { organizationSlug: organization.slug },
+      });
+
+      await tx.paymentSettings.create({
+        data: { organizationSlug: organization.slug },
+      });
+
+      await tx.organizationMember.create({
+        data: {
+          organizationId: organization.id,
+          organizationSlug: organization.slug,
+          userId,
+          role: "ADMIN",
+          isActive: true,
+        },
+      });
+
+      await tx.user.update({
+        where: { id: userId },
+        data: { isTeamMember: true, role: "ADMIN" },
+      });
+
+      return organization;
     });
-
-    if (existingSlug) {
-      throw new Error("Slug already exists");
-    }
-
-    const organization = await prisma.organization.create({ data });
-    // creating org settings
-    await prisma.organizationSettings.upsert({
-      where: { organizationSlug: data.slug },
-      update: {},
-      create: { organizationSlug: data.slug },
-    });
-    
-    await prisma.paymentSettings.upsert({
-      where: { organizationSlug: data.slug },
-      update: {},
-      create: { organizationSlug: data.slug },
-    });
-
-    await organizationService.addMember(
-      organization.id,
-      userId,
-      "ADMIN",
-      userId,
-    );
-
-    return organization;
   }
 
   async getById(id: string) {
@@ -369,10 +371,14 @@ export class OrganizationService {
       select: { slug: true },
     });
 
+    if (!org) {
+      throw new Error("Organization not found");
+    }
+
     const member = await prisma.organizationMember.create({
       data: {
         organizationId,
-        organizationSlug: org?.slug || "slug",
+        organizationSlug: org.slug,
         userId,
         role,
         isActive: true,
@@ -390,8 +396,6 @@ export class OrganizationService {
         },
       },
     });
-
-    const businessHours = this.getBusinessHours(organizationId);
 
     // Update user's isTeamMember flag and role
     await prisma.user.update({
@@ -536,11 +540,13 @@ export class OrganizationService {
       })),
     });
 
-    // Update all staff's businessHours
+    // Update all staff business hours and wait for every write to finish.
     const organizationMembers = await this.getMembers(organizationId);
-    organizationMembers.map((m) => {
-      this.updateStaffBusinessHours(m.userId, organizationId, hours);
-    });
+    await Promise.all(
+      organizationMembers.map((m) =>
+        this.updateStaffBusinessHours(m.userId, organizationId, hours),
+      ),
+    );
 
     revalidatePath(`/dashboard/settings`);
     return businessHours;
@@ -558,7 +564,7 @@ export class OrganizationService {
   ) {
     // Delete existing hours and create new ones
     await prisma.businessHour.deleteMany({
-      where: { userId },
+      where: { organizationId, userId },
     });
 
     const businessHours = await prisma.businessHour.createMany({
@@ -588,7 +594,7 @@ export class OrganizationService {
     const organizationMembers = await this.getMembers(organizationId);
     for (let index = 0; index < organizationMembers.length; index++) {
       await prisma.businessHour.deleteMany({
-        where: { userId: organizationMembers[index].userId },
+        where: { organizationId, userId: organizationMembers[index].userId },
       });
       await prisma.businessHour.createMany({
         data: hours.map((h) => ({

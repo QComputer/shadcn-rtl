@@ -63,7 +63,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (orgSlug && user) organizationService.applyAsMember(orgSlug, user.id);
+    if (orgSlug && user) {
+      await organizationService.applyAsMember(orgSlug, user.id);
+    }
 
     // Auto-login by calling NextAuth signIn with credentials
     // This will create a session for the user

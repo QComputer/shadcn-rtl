@@ -1,7 +1,7 @@
 "use client"
 
 import { SessionProvider } from "next-auth/react"
-import { ThemeProvider } from "@/hooks/use-theme"
+import type { Session } from "next-auth"
 import { AuthProvider } from "@/hooks/use-auth"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { LocaleProvider } from "@/components/locale-provider"
@@ -10,20 +10,17 @@ import type { SupportedLocale } from "@/lib/i18n"
 interface ProvidersProps {
   children: React.ReactNode
   locale?: SupportedLocale
+  session?: Session | null
 }
 
-export function Providers({ children, locale = "fa" }: ProvidersProps) {
+export function Providers({ children, locale = "fa", session }: ProvidersProps) {
   return (
-    <SessionProvider>
-        <LocaleProvider defaultLocale={locale}>
-          <SessionProvider> {/* next-auth session provider */}
-          <AuthProvider>
-            <ErrorBoundary>
-              {children}
-            </ErrorBoundary>
-          </AuthProvider>
-            </SessionProvider> 
-        </LocaleProvider>
+    <SessionProvider session={session}>
+      <LocaleProvider defaultLocale={locale}>
+        <AuthProvider>
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </AuthProvider>
+      </LocaleProvider>
     </SessionProvider>
   )
 }

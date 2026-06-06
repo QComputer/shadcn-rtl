@@ -25,6 +25,7 @@ The project is being hardened in phases. Each phase includes code changes, docum
 | 15 | Public order tracking privacy | Done | `docs/PHASE_15_PUBLIC_ORDER_TRACKING.md` | `npm run e2e:deployed:phase15` |
 | 16 | Public reviews/follows engagement hardening | Done | `docs/PHASE_16_PUBLIC_ENGAGEMENT.md` | `npm run e2e:deployed:phase16` |
 | 17 | Profile/settings/account self-service hardening | Done | `docs/PHASE_17_ACCOUNT_SETTINGS.md` | `npm run e2e:deployed:phase17` |
+| 18 | Production integrity and SMS readiness | Planned/overlay | `docs/PHASE_18_PRODUCTION_INTEGRITY_SMS_READINESS.md` | Pending |
 
 ## Development
 
@@ -108,6 +109,18 @@ AUTH_TRUST_HOST=true
 ```
 
 Do not commit `.env` or production secrets.
+
+SMS provider planning variables:
+
+```env
+SMS_PROVIDER=dry_run
+SMS_DRY_RUN=true
+SMS_IR_API_KEY=
+SMS_IR_LINE_NUMBER=
+SMS_IR_VERIFY_TEMPLATE_ID=
+```
+
+Keep `SMS_DRY_RUN=true` for local/dev/test/CI and deployed smoke tests. Real SMS sending must only be enabled explicitly in production secret storage after the `sms-ir-api` provider abstraction is implemented. Never commit real SMS.ir API keys. If an API key is exposed, rotate it in the sms.ir panel and restrict the replacement key to the production server IP.
 
 ## No-Playwright deployed tests
 
@@ -208,6 +221,7 @@ Phase 17 hardens `/api/users/me`, password changes, and `/api/users/me/business-
 8. Add search rate limiting and search indexes.
 9. Add stricter TypeScript settings gradually.
 10. Fix ESLint configuration to match Next.js 16.
+11. Add SMS provider abstraction with `sms-ir-api` and dry-run-safe tests before connecting auth/order/appointment workflows.
 
 
 ## Phase 10 — Authentication and security headers
@@ -363,3 +377,71 @@ $env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase16
 ```
 
 Docs: `docs/PHASE_16_PUBLIC_ENGAGEMENT.md`.
+
+## Phase 19 — RBAC/Auth/Dashboard Access Hardening
+
+Phase 19 adds a safer dashboard access boundary:
+
+- server-side authentication gate in `app/[locale]/dashboard/layout.tsx`;
+- client-side dashboard RBAC boundary around all dashboard pages;
+- explicit dashboard route policies for every real dashboard `page.tsx`;
+- deny-by-default behavior for unknown `/dashboard/*` children;
+- locale-aware login/logout/access redirects;
+- cleanup of duplicate `SessionProvider` usage and duplicated auth interfaces;
+- dashboard navigation icon/policy alignment.
+
+Run the Phase 19 access validation with:
+
+```bash
+node scripts/quality/validate-dashboard-access.mjs
+```
+
+Then run the normal project gates:
+
+```bash
+node scripts/quality/validate-project.mjs
+npm ci
+npm run db:generate
+npm run db:validate
+npm run typecheck
+npm run lint
+npm run build
+```
+
+
+---
+
+## Phase 20 — API Safety and Service Consistency
+
+Phase 20 hardens backend/service behavior after the production integrity, SMS readiness, and dashboard RBAC phases.
+
+Key changes:
+
+- Driver order acceptance is now `POST` only; `GET /api/orders/[id]/driver` returns `405` and no longer mutates state.
+- `GET /api/organizations/open` is read-only; open/close mutation remains `POST`.
+- Organization registration now creates the user, organization, settings, payment settings, and admin membership in one transaction.
+- Membership application during user registration is awaited.
+- Organization service creation paths are transactional.
+- Staff business-hour updates are scoped to `organizationId + userId` and fanout writes are awaited.
+- Delivery fee calculations now use `OrganizationSettings.deliveryFee` instead of a hard-coded `deliveryRadius` check.
+- Organization settings validation now accepts `deliveryFee`, keeping settings input aligned with checkout/cart calculations.
+- Driver order listing is scoped to the current driver and no longer treats `DENIED` as a real `OrderStatus`.
+- API 500 responses are sanitized through the shared `jsonError()` helper.
+- `CANCELLED` is aligned across Prisma, public order status types, and validators.
+
+Validation:
+
+```bash
+node scripts/quality/validate-api-service-safety.mjs
+node scripts/quality/validate-project.mjs
+npm run typecheck
+npm run lint
+npm run build
+```
+
+See:
+
+```txt
+docs/PHASE_20_API_SERVICE_CONSISTENCY.md
+docs/PHASE_20_OVERLAY_MANIFEST.md
+```

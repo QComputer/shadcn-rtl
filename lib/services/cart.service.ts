@@ -372,7 +372,7 @@ export class CartService {
       where: { organizationSlug },
     });
 
-    const deliveryFee = settings?.deliveryRadius ? 20000 : 0;
+    const deliveryFee = settings?.deliveryFee ?? 0;
     const taxRate = 0;
 
     const subtotal = cart.items.reduce((sum, item) => {

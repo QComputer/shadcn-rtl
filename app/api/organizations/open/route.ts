@@ -17,14 +17,18 @@ async function resolveWritableOrganizationId() {
 export async function GET(request: NextRequest) {
   try {
     const organizationId = await resolveWritableOrganizationId();
-    const organization = await prisma.organization.update({
+    const organization = await prisma.organization.findUnique({
       where: { id: organizationId },
-      data: { isOpen: true },
+      select: { id: true, slug: true, name: true, isOpen: true },
     });
+
+    if (!organization) {
+      throw new ApiError(404, "Organization not found");
+    }
 
     return NextResponse.json(organization);
   } catch (error) {
-    console.error("Error opening organization:", error);
+    console.error("Error reading organization open state:", error);
     return jsonError(error, "Internal server error");
   }
 }

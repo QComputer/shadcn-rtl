@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { orderService } from "@/lib/services/order.service";
-import { updateOrderStatusSchema } from "@/lib/validators";
+import {
+  updateOrderEstimatedEndTimeSchema,
+  updateOrderStatusSchema,
+} from "@/lib/validators";
 import prisma from "@/lib/db";
 import {
   ApiError,
@@ -9,14 +12,8 @@ import {
   requireOrderAccess,
 } from "@/lib/api-guards";
 
-function statusForError(error: unknown) {
-  if (error instanceof ApiError) return error.status;
-  if (!(error instanceof Error)) return 500;
-  if (error.message === "Unauthorized") return 401;
-  if (error.message.includes("not found")) return 404;
-  if (error.message.includes("Invalid order status transition")) return 409;
-  if (error.message.includes("Forbidden")) return 403;
-  return 500;
+function firstValidationMessage(error: { issues: Array<{ message?: string }> }) {
+  return error.issues[0]?.message || "Validation failed";
 }
 
 export async function GET(
@@ -33,10 +30,7 @@ export async function GET(
     return NextResponse.json(order);
   } catch (error) {
     console.error("Error getting order:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: statusForError(error) },
-    );
+    return jsonError(error, "Internal server error");
   }
 }
 
@@ -50,16 +44,17 @@ export async function PUT(
     await requireOrderAccess(session, id, ["ADMIN", "MANAGER", "STAFF"]);
 
     const body = await request.json();
-    const data = updateOrderStatusSchema.parse(body);
-    const order = await orderService.updateStatus(id, data, session.user.role, session.user.id);
+    const validation = updateOrderStatusSchema.safeParse(body);
+    if (validation.success === false) {
+      throw new ApiError(400, firstValidationMessage(validation.error));
+    }
+
+    const order = await orderService.updateStatus(id, validation.data, session.user.role, session.user.id);
 
     return NextResponse.json(order);
   } catch (error) {
     console.error("Error updating order:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: statusForError(error) },
-    );
+    return jsonError(error, "Internal server error");
   }
 }
 
@@ -71,8 +66,13 @@ export async function PATCH(
     const session = await requireAuthSession();
     const { id } = await params;
     const body = await request.json();
-    const { estimatedEndTime, type } = body;
+    const validation = updateOrderEstimatedEndTimeSchema.safeParse(body);
 
+    if (validation.success === false) {
+      throw new ApiError(400, firstValidationMessage(validation.error));
+    }
+
+    const { estimatedEndTime, type } = validation.data;
     const order = await prisma.order.findFirst({ where: { id, deletedAt: null } });
     if (!order) throw new ApiError(404, "Order not found");
 
@@ -96,10 +96,7 @@ export async function PATCH(
     return NextResponse.json(updated);
   } catch (error) {
     console.error("Error updating progress:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: statusForError(error) },
-    );
+    return jsonError(error, "Internal server error");
   }
 }
 
@@ -116,9 +113,6 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error cancelling order:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: statusForError(error) },
-    );
+    return jsonError(error, "Internal server error");
   }
 }

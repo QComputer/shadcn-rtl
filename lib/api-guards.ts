@@ -33,10 +33,15 @@ export function jsonError(error: unknown, fallback = "Internal server error") {
     );
   }
 
-  return NextResponse.json(
-    { error: error instanceof Error ? error.message || fallback : fallback },
-    { status: 500 },
-  );
+  const status = statusForApiError(error);
+  const safeMessage =
+    status >= 500
+      ? fallback
+      : error instanceof Error && error.message
+        ? error.message
+        : fallback;
+
+  return NextResponse.json({ error: safeMessage }, { status });
 }
 
 export async function requireAuthSession(): Promise<SessionWithUser> {
@@ -209,10 +214,14 @@ export function statusForApiError(error: unknown) {
     if (message.includes("not found")) return 404;
     if (message.includes("unauthorized")) return 401;
     if (message.includes("forbidden")) return 403;
+    if (message.includes("already exists") || message.includes("already a member")) return 409;
+    if (message.includes("not available") || message.includes("no longer available")) return 409;
     if (
       message.includes("insufficient") ||
       message.includes("cannot") ||
-      message.includes("invalid")
+      message.includes("invalid") ||
+      message.includes("validation") ||
+      message.includes("required")
     )
       return 400;
   }

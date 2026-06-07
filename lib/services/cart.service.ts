@@ -8,12 +8,27 @@ const cartInclude = {
     include: {
       variant: {
         include: {
-          product: true,
+          product: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+              basePrice: true,
+              discountType: true,
+              discountValue: true,
+            },
+          },
         },
       },
     },
   },
 } as const;
+
+function toMoneyNumber(value: number | string | null | undefined): number {
+  if (value === null || value === undefined) return 0;
+  const parsed = typeof value === "string" ? Number(value) : value;
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 
 function ensureCartOwner(
   cart: { customerId: string | null; sessionId: string | null },
@@ -37,7 +52,18 @@ function normalizeCart(cart: any | null) {
 
   let subtotal = new Decimal(0);
   for (const item of cart.items) {
-    const price = item.variant.price ?? item.variant.product.basePrice;
+    const basePrice = new Decimal(toMoneyNumber(item.variant.price ?? item.variant.product.basePrice));
+    const discountType = item.variant.product.discountType;
+    const discountValue = toMoneyNumber(item.variant.product.discountValue);
+    
+    // Apply product discount
+    let price = basePrice;
+    if (discountType === "percentage" && discountValue > 0) {
+      price = basePrice.mul(1 - discountValue / 100);
+    } else if (discountType === "fixed" && discountValue > 0) {
+      price = Decimal.max(new Decimal(0), basePrice.sub(discountValue));
+    }
+    
     subtotal = subtotal.add(price.mul(item.quantity));
   }
 

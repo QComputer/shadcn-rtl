@@ -18,7 +18,8 @@ export interface CartItem {
       image: string | null;  
       images: string[];
       basePrice: number | string;
-
+      discountType: "none" | "percentage" | "fixed" | string | null;
+      discountValue: number | string | null;
     };
   };
 }
@@ -57,7 +58,25 @@ function toMoneyNumber(value: number | string | null | undefined): number {
 }
 
 export function getCartItemUnitPrice(item: CartItem): number {
-  return toMoneyNumber(item.variant.price ?? item.variant.product.basePrice);
+  const basePrice = toMoneyNumber(item.variant.price ?? item.variant.product.basePrice);
+  
+  // Apply product discount if present
+  const product = item.variant.product;
+  const productDiscountType = product.discountType;
+  const productDiscountValue = toMoneyNumber(product.discountValue);
+  
+  if (productDiscountType === "percentage" && productDiscountValue > 0) {
+    // For percentage discount, discountValue is the percentage to subtract
+    // e.g., 20 means 20% off, so price = basePrice * 0.8
+    return basePrice * (1 - productDiscountValue / 100);
+  }
+  
+  if (productDiscountType === "fixed" && productDiscountValue > 0) {
+    // For fixed discount, discountValue is subtracted from basePrice
+    return Math.max(0, basePrice - productDiscountValue);
+  }
+  
+  return basePrice;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);

@@ -283,9 +283,10 @@ export function useDashboardAccess() {
   const router = useRouter()
   const pathname = usePathname()
 
+  const accessCheck = checkAccess(pathname)
+
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      const accessCheck = checkAccess(pathname)
       if (!accessCheck.hasAccess && accessCheck.redirectPath) {
         router.push(accessCheck.redirectPath)
       }
@@ -296,7 +297,9 @@ export function useDashboardAccess() {
     isLoading,
     isAuthenticated,
     accessContext,
-    hasAccess: isAuthenticated ? checkAccess(pathname).hasAccess : false,
+    hasAccess: isAuthenticated ? accessCheck.hasAccess : false,
+    reason: accessCheck.reason,
+    redirectPath: accessCheck.redirectPath,
   }
 }
 

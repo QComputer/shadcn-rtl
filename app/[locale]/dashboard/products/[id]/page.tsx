@@ -137,6 +137,8 @@ export default function EditProductPage({
   const [sortOrder, setSortOrder] = useState(0)
   const [lowStockThreshold, setLowStockThreshold] = useState(20)
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [discountType, setDiscountType] = useState<"none" | "percentage" | "fixed">("none")
+  const [discountValue, setDiscountValue] = useState<number>(0)
     
     // Upload function
   async function uploadFile(file: File) {
@@ -230,6 +232,8 @@ export default function EditProductPage({
       setVariants(productData.variants)
       setInventory(Number(productData.lowStockThreshold))
       setSortOrder(Number(productData.sortOrder))
+      setDiscountType((productData.discountType as "none" | "percentage" | "fixed") || "none")
+      setDiscountValue(Number(productData.discountValue || 0))
       setNewVariant({
         productId: productData.id,
         inventory: productData.lowStockThreshold? Number(productData.lowStockThreshold) : 100,
@@ -262,15 +266,17 @@ export default function EditProductPage({
       const response = await fetch(`/api/products/${productId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name,
-            description: description || undefined,
-            basePrice: parseFloat(basePrice),
-            categoryId,
-            image: image || undefined,
-            isActive,
-            sortOrder,
-          }),
+        body: JSON.stringify({
+          name,
+          description: description || undefined,
+          basePrice: parseFloat(basePrice),
+          categoryId,
+          image: image || undefined,
+          isActive,
+          sortOrder,
+          discountType: discountType || "none",
+          discountValue: discountType === "none" ? 0 : discountValue,
+        }),
       })
       
       if (!response.ok) {
@@ -678,6 +684,37 @@ export default function EditProductPage({
                   disabled = {!trackInventory}
                 />
               </div>
+
+            {/* Discount */}
+            <div className="space-y-2">
+              <Label htmlFor="discountType">نوع تخفیف</Label>
+              <select
+                id="discountType"
+                value={discountType}
+                onChange={(e) => setDiscountType(e.target.value as "none" | "percentage" | "fixed")}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="none">بدون تخفیف</option>
+                <option value="percentage">درصدی</option>
+                <option value="fixed">مبلغ ثابت</option>
+              </select>
+            </div>
+            {discountType !== "none" && (
+              <div className="space-y-2">
+                <Label htmlFor="discountValue">
+                  {discountType === "percentage" ? "درصد تخفیف" : "مبلغ تخفیف (تومان)"}
+                </Label>
+                <Input
+                  id="discountValue"
+                  type="number"
+                  min="0"
+                  step={discountType === "percentage" ? "1" : "1000"}
+                  value={discountValue}
+                  onChange={(e) => setDiscountValue(Number(e.target.value))}
+                  placeholder="0"
+                />
+              </div>
+            )}
             
             {/* ------------- variants and  */}
               <div className="flex items-center justify-between">

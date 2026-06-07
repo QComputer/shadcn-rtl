@@ -10,31 +10,43 @@ function statusForDriverError(error: unknown) {
   return 500;
 }
 
-// accepting order
+async function requireDriverSession() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+  if (session.user.role !== "DRIVER") {
+    throw new Error("Forbidden");
+  }
+  return session;
+}
+
+// POST /api/orders/[id]/driver
+// body: { action?: "accept" | "undeny" }
+// - no body / action="accept" => accept order
+// - action="undeny"        => remove driver deny
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await requireDriverSession();
     const { id } = await params;
+    const body = await request.json().catch(() => ({}));
+    const action = (body as { action?: string })?.action;
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (action === "undeny") {
+      await orderService.unDenyOrderByDriver(id, session.user.id);
+      return NextResponse.json({ success: true });
     }
 
-    if (session.user.role !== "DRIVER") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
     const order = await orderService.acceptOrderByDriver(id, session.user.id);
-
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
-
     return NextResponse.json(order);
   } catch (error) {
-    console.error("Error accepting order:", error);
+    console.error("Error in driver order action:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
       { status: statusForDriverError(error) }
@@ -42,7 +54,7 @@ export async function POST(
   }
 }
 
-// Backward-compatible alias for older deployed UI versions. New clients should use POST.
+// Backward-compatible alias for older deployed UI versions that used GET for accept.
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> },
@@ -50,59 +62,20 @@ export async function GET(
   return POST(request, context);
 }
 
-// to deny order
+// DELETE /api/orders/[id]/driver => deny order
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await requireDriverSession();
     const { id } = await params;
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Only driver can deny orders
-    if (!session.user.role || !["DRIVER"].includes(session.user.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     await orderService.denyOrderByDriver(id, session.user.id);
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error cancelling order:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: statusForDriverError(error) }
-    );
-  }
-}
-
-// to undeny order
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const session = await auth();
-    const { id } = await params;
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Only admins can cancel orders
-    if (!session.user.role || !["DRIVER"].includes(session.user.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    await orderService.unDenyOrderByDriver(id, session.user.id);
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error cancelling order:", error);
+    console.error("Error denying order:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
       { status: statusForDriverError(error) }

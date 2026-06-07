@@ -626,6 +626,93 @@ export class AppointmentService {
     return updated;
   }
 
+  async reschedule(
+    id: string,
+    data: { startTime: Date; endTime: Date; date: string },
+    actor: { userId: string; organizationId: string; role: UserRole },
+  ) {
+    if (!hasPermission(actor.role, "appointment:update")) {
+      throw new Error("Unauthorized");
+    }
+
+    const appointment = await prisma.appointment.findUnique({
+      where: { id },
+      include: {
+        service: {
+          include: {
+            organization: true,
+          },
+        },
+      },
+    });
+
+    if (!appointment) {
+      throw new Error("Appointment not found");
+    }
+
+    if (!appointment.service?.organizationId) {
+      throw new Error("Appointment service organization not found");
+    }
+
+    if (
+      actor.role !== "SUPER_ADMIN" &&
+      appointment.service.organizationId !== actor.organizationId
+    ) {
+      throw new Error("Forbidden");
+    }
+
+    if (TERMINAL_APPOINTMENT_STATUSES.includes(appointment.status as (typeof TERMINAL_APPOINTMENT_STATUSES)[number])) {
+      throw new Error("Cannot reschedule a completed, cancelled, or no-show appointment");
+    }
+
+    const timezone = appointment.service.organization.timezone || "UTC";
+    const duration = appointment.service.duration * 60 * 1000;
+    const newStart = data.startTime;
+    const requestedEnd = data.endTime;
+    const newEnd = new Date(newStart.getTime() + duration);
+    const clampedEnd =
+      requestedEnd.getTime() - newStart.getTime() >= duration / 2 ? requestedEnd : newEnd;
+
+    const newStartDateOnly = getLocalDateString(newStart, timezone);
+    const requestedDateOnly = parseDateOnly(data.date);
+    if (newStartDateOnly !== requestedDateOnly) {
+      throw new Error("Appointment date does not match the selected start time in organization timezone");
+    }
+
+    const scope: AppointmentConflictScope = appointment.service.serviceProviderId
+      ? { serviceProviderId: appointment.service.serviceProviderId }
+      : { serviceId: appointment.service.id };
+
+    const conflicting = await prisma.appointment.findFirst({
+      where: {
+        ...buildConflictWhere(scope, newStart, clampedEnd),
+        id: { not: id },
+      },
+      select: { id: true },
+    });
+
+    if (conflicting) {
+      throw new Error("Time slot is not available — conflict detected");
+    }
+
+    const updated = await prisma.appointment.update({
+      where: { id },
+      data: {
+        date: data.date,
+        startTime: newStart,
+        endTime: clampedEnd,
+      },
+      include: {
+        service: true,
+        customer: true,
+        guestCustomer: true,
+      },
+    });
+
+    revalidatePath("/dashboard/appointments");
+    return updated;
+  }
+
   async getAvailableSlots(serviceId: string, date: string) {
     const service = await prisma.service.findFirst({
       where: {

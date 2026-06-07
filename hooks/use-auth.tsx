@@ -39,31 +39,8 @@ export interface AuthContextType {
   signIn: (username: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   hasPermission: (permission: string) => boolean;
-  // New access control methods
   organizationMembership: OrganizationMembership | null;
-  accessContext: UserAccessContext | null;
-  checkAccess: (route: string) => AccessCheckResult;
-  hasRouteAccess: (route: string) => boolean;
-}
-
-export interface OrganizationMembership {
-  id: string;
-  organizationId: string;
-  organizationName: string;
-  organizationSlug: string;
-  organizationType: OrganizationType;
-  isActive: boolean;
-}
-
-export interface AuthContextType {
-  user: AuthUser | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  signIn: (username: string, password: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  hasPermission: (permission: string) => boolean;
-  // New access control methods
-  organizationMembership: OrganizationMembership | null;
+  membershipRole: UserRole | null;
   accessContext: UserAccessContext | null;
   checkAccess: (route: string) => AccessCheckResult;
   hasRouteAccess: (route: string) => boolean;
@@ -119,12 +96,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   } : null
 
   // Build access context for permission checks
+  const membershipRole = (organizationMembership?.role || session?.user?.role || null) as UserRole | null
+  const effectiveRole = membershipRole || authUser?.role || null
+
   const accessContext: UserAccessContext | null = authUser ? {
     userId: authUser.id,
-    userRole: authUser.role,
+    userRole: effectiveRole,
     organizationId: organizationMembership?.organizationId,
     organizationType: organizationMembership?.organizationType,
-    //orgMemberRole: organizationMembership?.role,
   } : null
 
   const signIn = async (username: string, password: string) => {
@@ -253,6 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signOut,
         hasPermission,
         organizationMembership,
+        membershipRole,
         accessContext,
         checkAccess,
         hasRouteAccess,
@@ -273,12 +253,13 @@ export function useAuth() {
 
 // Hook for checking if user has specific role
 export function useHasRole(roles: UserRole | UserRole[]) {
-  const { user } = useAuth()
-  
-  if (!user) return false
-  
+  const { membershipRole, user } = useAuth()
+
+  if (!membershipRole && !user) return false
+
+  const effectiveRole = membershipRole || user?.role
   const roleArray = Array.isArray(roles) ? roles : [roles]
-  return roleArray.includes(user.role)
+  return roleArray.includes(effectiveRole)
 }
 
 // Hook for protected routes

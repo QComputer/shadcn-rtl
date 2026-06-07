@@ -228,6 +228,7 @@ export function AppointmentFullCalendar({
     const today = new Date();
     return { start: addDays(today, -14), end: addDays(today, 45) };
   });
+  const [rescheduling, setRescheduling] = useState(false);
 
   const direction = locale === "fa" || locale === "ar" ? "rtl" : "ltr";
 
@@ -349,6 +350,32 @@ export function AppointmentFullCalendar({
     confirmed: filteredAppointments.filter((a) => a.status === "CONFIRMED").length,
     completed: filteredAppointments.filter((a) => a.status === "COMPLETED").length,
   }), [filteredAppointments]);
+
+  async function rescheduleAppointment(appointment: Appointment, newStart: Date, newEnd: Date) {
+    setRescheduling(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/appointments/${appointment.id}/reschedule`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          startTime: newStart.toISOString(),
+          endTime: newEnd.toISOString(),
+          date: newStart.toISOString().slice(0, 10),
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const message = body?.error || "تغییر زمان ناموفق بود";
+        throw new Error(message);
+      }
+      await loadAppointments(currentRange);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "خطای تغییر زمان");
+    } finally {
+      setRescheduling(false);
+    }
+  }
 
   async function updateAppointmentStatus(appointment: Appointment, status: AppointmentStatus) {
     try {
@@ -497,6 +524,8 @@ export function AppointmentFullCalendar({
               height="auto"
               nowIndicator
               selectable
+              editable
+              eventResizableFromStart={false}
               allDaySlot={false}
               slotMinTime="07:00:00"
               slotMaxTime="23:00:00"
@@ -511,6 +540,26 @@ export function AppointmentFullCalendar({
               eventClick={(arg) => {
                 const appointment = appointments.find((item) => item.id === arg.event.id);
                 if (appointment) setSelectedAppointment(appointment);
+              }}
+              eventDrop={async (arg) => {
+                const appointment = appointments.find((item) => item.id === arg.event.id);
+                if (!appointment || !arg.event.start || !arg.event.end) return;
+                try {
+                  await rescheduleAppointment(appointment, arg.event.start, arg.event.end);
+                  await loadAppointments(currentRange);
+                } catch {
+                  arg.revert();
+                }
+              }}
+              eventResize={async (arg) => {
+                const appointment = appointments.find((item) => item.id === arg.event.id);
+                if (!appointment || !arg.event.start || !arg.event.end) return;
+                try {
+                  await rescheduleAppointment(appointment, arg.event.start, arg.event.end);
+                  await loadAppointments(currentRange);
+                } catch {
+                  arg.revert();
+                }
               }}
               eventContent={(arg) => {
                 const status = getStatusFromEvent(arg.event);

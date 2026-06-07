@@ -165,6 +165,8 @@ export const createProductSchema = z.object({
   trackInventory: z.boolean().default(true),
   lowStockThreshold: z.number().int().nonnegative().default(10),
   sortOrder: z.number().int().default(0),
+  discountType: z.enum(["none", "percentage", "fixed"]).default("none"),
+  discountValue: z.number().nonnegative().default(0),
 });
 
 export const updateProductSchema = createProductSchema.partial().extend({

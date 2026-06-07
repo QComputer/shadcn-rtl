@@ -112,19 +112,36 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
 
   // fetch org-members
   useEffect(() => {
-    setLoading(true)
-      fetch(`/api/organizations/noId/members`)
+    let cancelled = false;
+    setLoading(true);
+    fetch("/api/users/me/membership")
       .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch appointments")
-        return res.json()
+        if (!res.ok) throw new Error("Failed to fetch membership");
+        return res.json();
+      })
+      .then(data => {
+        if (cancelled) return;
+        const orgId = data?.membership?.organizationId;
+        if (!orgId) throw new Error("No active organization membership");
+        return fetch(`/api/organizations/${orgId}/members`);
+      })
+      .then(res => {
+        if (!res) return;
+        if (!res.ok) throw new Error("Failed to fetch members");
+        return res.json();
       })
       .then(members => {
-        setMembers(members)
+        if (cancelled) return;
+        setMembers(members || []);
       })
       .catch(err => {
-        setError(err.message)
+        if (cancelled) return;
+        setError(err.message);
       })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true };
   }, [])
  
    const t = (key: string): string => {

@@ -158,6 +158,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [orderDriverFilter, setOrderDriverFilter] = useState<string>("all")
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [updating, setUpdating] = useState(false)
@@ -271,6 +272,46 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
     }
 
   }
+
+  const [drivers, setDrivers] = useState<{ id: string; name: string; firstName: string | null; lastName: string | null }[]>([])
+  const [assigningDriver, setAssigningDriver] = useState(false)
+
+  const fetchDrivers = async () => {
+    try {
+      const res = await fetch("/api/users")
+      if (!res.ok) return
+      const data = await res.json()
+      const driverUsers = (data.data || []).filter((u: Order["customer"] & { role: string }) => u.role === "DRIVER")
+      setDrivers(driverUsers)
+    } catch { /* ignore */ }
+  }
+
+  useEffect(() => {
+    fetchDrivers()
+  }, [])
+
+  const assignDriver = async (orderId: string, driverId: string) => {
+    setAssigningDriver(true)
+    try {
+      const response = await fetch(`/api/orders/${orderId}/assign-driver`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ driverId }),
+      })
+      if (!response.ok) throw new Error("Failed to assign driver")
+      fetchOrders()
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder(prev => prev && driverId
+          ? { ...prev, driverId, assignedDriver: drivers.find(d => d.id === driverId) || null }
+          : prev
+        )
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to assign driver")
+    } finally {
+      setAssigningDriver(false)
+    }
+  }
   
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     setUpdating(true)
@@ -326,9 +367,8 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
 
   const handleSaveAllEstimatedEndTimes = async ()=>{
     if (!selectedOrder) return
-    handleSavePreparationEstimatedEndTime(selectedOrder.id, preparationTime?.toString())
+    await handleSavePreparationEstimatedEndTime(selectedOrder.id, preparationTime?.toString())
     fetchOrders()
-    //setDetailDialogOpen(false)
   }
 
   const handleSavePreparationEstimatedEndTime = async (orderId: string, preparationTime?: string) => {
@@ -424,6 +464,30 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
         </Select>
       </div>
 
+      {/* Driver Filter */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <Select
+          value={orderDriverFilter}
+          onValueChange={(value) => {
+            setOrderDriverFilter(value)
+            setPage(1)
+          }}
+        >
+          <SelectTrigger className="w-full sm:w-48">
+            <SelectValue placeholder="همه رانندگان" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">همه رانندگان</SelectItem>
+            <SelectItem value="unassigned">بدون پیک</SelectItem>
+            {drivers.map((driver) => (
+              <SelectItem key={driver.id} value={driver.id}>
+                {driver.firstName || driver.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Error State */}
       {error && (
         <Card className="border-destructive">
@@ -485,24 +549,33 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="pr-14 px-5">
-                        <p className="font-bold">{formatToman(order.total)}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {toPersianDigits(order.items.length.toString())} {"آیتم"}
-                        </p>
-                        {order.type === "DELIVERY" && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Truck className="h-3 w-3" />
-                            <span>ارسال</span>
-                          </div>
-                        )}
+                      <div className="flex items-center gap-4">
+                        <div className="pr-14 px-5">
+                          <p className="font-bold">{formatToman(order.total)}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {toPersianDigits(order.items.length.toString())} {"آیتم"}
+                          </p>
+                          {order.type === "DELIVERY" && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Truck className="h-3 w-3" />
+                              <span>ارسال</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <Badge variant={status.variant} className={status.color}>
+                            {status.label}
+                          </Badge>
+                          {order.assignedDriver && (
+                            <Badge variant="outline" className="text-xs">
+                              پیک: {order.assignedDriver.firstName || order.assignedDriver.name}
+                            </Badge>
+                          )}
+                          {!order.assignedDriver && ["ACCEPTED", "PREPARING", "READY", "PICKED_UP"].includes(order.status) && (
+                            <Badge variant="secondary" className="text-xs">بدون پیک</Badge>
+                          )}
+                        </div>
                       </div>
-                      <Badge variant={status.variant} className={status.color}>
-                        {status.label}
-                      </Badge>
-
-                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -627,227 +700,66 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                     }
                 </CardFooter>
               </Card>
-              {/* Progress */}
+
+              {/* Driver Assignment */}
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
-                      <Timer className="h-4 w-4" />
-                    کنترل سفارش
+                    <Truck className="h-4 w-4" />
+                    choosing a driver
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-1 space-y-5">
+                <CardContent className="space-y-3">
+                  {selectedOrder.assignedDriver ? (
+                    <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                      <div>
+                        <p className="text-sm font-medium">
+                          {selectedOrder.assignedDriver.firstName || selectedOrder.assignedDriver.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">driver assigned</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={assigningDriver}
+                        onClick={() => assignDriver(selectedOrder.id, "")}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No driver assigned yet</p>
+                  )}
 
-                { (preparationTime && !savingPreparationTime) && (
-                    <div className="grid gap-0 grid-cols-2 grid-rows-2 ">
-                      <div className="row-1">
-
-                      <Label htmlFor="preparationProgress">زمان آماده سازی:</Label>
-                      </div>
-                      <div className="row-2 col-1 text-xs">
-                      {formatRelativePersianTime(preparationTime)} 
-                      </div>
-                      <div className="row-span-2">
-                    <div className="grid gap-1 grid-cols-3 ">
-                      <div className="grid gap-1 grid-rows-2">
-                        <Button variant={"outline"} onClick={()=> addToPreparationEstimatedEndTime(1)}>
-                          {toPersianDigits(1)} +
-                        </Button>
-                        <Button  variant={"outline"} onClick={()=> addToPreparationEstimatedEndTime(-1)}>
-                          {toPersianDigits(1)} -
-                        </Button>
-                      </div>
-                      <div className="grid gap-1 grid-rows-2">
-                      
-                      <Button variant={"outline"} onClick={()=> addToPreparationEstimatedEndTime(5)}>
-                       {toPersianDigits(5)}+
-                      </Button>
-                      <Button  variant={"outline"} onClick={()=> addToPreparationEstimatedEndTime(-5)}>
-                         {toPersianDigits(5)}-
-                        </Button>
-                      </div>
-                      <div className="grid gap-1 grid-rows-2">
-                      <Button  variant={"outline"} onClick={()=> addToPreparationEstimatedEndTime(10)}>
-                      {toPersianDigits(10)}+
-                      </Button>
-                      <Button  variant={"outline"} onClick={()=> addToPreparationEstimatedEndTime(-10)}>
-                          {toPersianDigits(10)}-
-                        </Button>
-                      </div>
-                    </div>
-                    </div>
-                    </div>
-                 )}
-                { selectedOrder.type=="DELIVERY" && <>
-                {pickupTime  && (
-                 <div className="grid gap-0 grid-cols-2 grid-rows-2">
-                   <div className="row-1">
-                   <Label htmlFor="pickupProgress">زمان پیکاپ:</Label>
-                   </div>
-                   <div className="row-2 col-1 text-xs">
-                   
-                   {formatRelativePersianTime(pickupTime)} 
-                   </div>
-                    <div className="row-span-2">
-                    <div className="grid gap-1 grid-cols-3 ">
-                      <div className="grid gap-1 grid-rows-2">
-                        <Button variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(1)}>
-                          {toPersianDigits(1)} +
-                        </Button>
-                        <Button  variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(-1)}>
-                          {toPersianDigits(1)} -
-                        </Button>
-                      </div>
-                      <div className="grid gap-1 grid-rows-2">
-                      
-                      <Button variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(5)}>
-                       {toPersianDigits(5)}+
-                      </Button>
-                      <Button  variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(-5)}>
-                         {toPersianDigits(5)}-
-                        </Button>
-                      </div>
-                      <div className="grid gap-1 grid-rows-2">
-                      <Button  variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(10)}>
-                      {toPersianDigits(10)}+
-                      </Button>
-                      <Button  variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(-10)}>
-                          {toPersianDigits(10)}-
-                        </Button>
-                      </div>
-                    </div>
-                    </div>
-                 </div>
-                )}
-                {deliveryTime  && (
-                 <div className="grid gap-0 grid-cols-2 grid-rows-2">
-                   <div className="row-1 ">
-                   <Label htmlFor="deliveryProgress">زمان تحویل دهی:</Label>
-                   </div>
-                   <div className="row-2 col-1 text-xs">
-                   
-                   {formatRelativePersianTime(deliveryTime)} 
-                   </div>
-                      <div className="row-span-2">
-                    <div className="grid gap-1 grid-cols-3 ">
-                      <div className="grid gap-1 grid-rows-2">
-                        <Button variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(1)}>
-                          {toPersianDigits(1)} +
-                        </Button>
-                        <Button  variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(-1)}>
-                          {toPersianDigits(1)} -
-                        </Button>
-                      </div>
-                      <div className="grid gap-1 grid-rows-2">
-                      
-                      <Button variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(5)}>
-                       {toPersianDigits(5)}+
-                      </Button>
-                      <Button  variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(-5)}>
-                         {toPersianDigits(5)}-
-                        </Button>
-                      </div>
-                      <div className="grid gap-1 grid-rows-2">
-                      <Button  variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(10)}>
-                      {toPersianDigits(10)}+
-                      </Button>
-                      <Button  variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(-10)}>
-                          {toPersianDigits(10)}-
-                        </Button>
-                      </div>
-                    </div>
-                    </div>
-                 </div>
-                )}
-                </>}
+                  <div className="flex gap-2">
+                    <Select
+                      disabled={assigningDriver}
+                      onValueChange={(value) => {
+                        if (!selectedOrder) return
+                        assignDriver(selectedOrder.id, value)
+                      }}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="assign driver" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {drivers.length === 0 && (
+                          <SelectItem value="none" disabled>
+                            No registered Driver
+                          </SelectItem>
+                        )}
+                        {drivers.map((driver) => (
+                          <SelectItem key={driver.id} value={driver.id}>
+                            {driver.firstName || driver.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </CardContent>
-
-                <CardFooter>
-                  {(selectedOrder.status==="PENDING" || selectedOrder.status==="PLACED") && 
-                    <div className="grid gap-1 grid-cols-3">
-                    <Button className={"col-span-2 bg-green-400 text-green-800"} onClick={() => {
-                      handleSaveAllEstimatedEndTimes()
-                      handleUpdateStatus(selectedOrder.id, "ACCEPTED")
-                      //handleUpdateStatus(selectedOrder.id, "PREPARING")
-                    }}>
-                   <Check/>  پذیرش
-                  </Button>
-                  <Button variant={"destructive"} className={"col-3"} onClick={() => handleUpdateStatus(selectedOrder.id, "ACCEPTED")}>
-                   <X/> رد
-                  </Button>
-                    </div>
-                  }
-                  {(selectedOrder.status==="ACCEPTED") && 
-                    <div className="grid gap-1 grid-cols-3">
-                  <Button  className={"col-span-2 bg-green-400 text-green-800"}  
-                    onClick={() => {
-                      handleSaveAllEstimatedEndTimes()
-                      handleUpdateStatus(selectedOrder.id, "PREPARING")
-                      setDetailDialogOpen(false)
-                    }}>
-                   <Clock/> شروع آماده سازی 
-                  </Button>
-                  <Button className={"col-3"} variant={"destructive"} onClick={() => handleUpdateStatus(selectedOrder.id, "CANCELLED")}>
-                   <X/> رد
-                  </Button>
-                    </div>
-                  }
-                  {(selectedOrder.status==="PREPARING") && 
-                    <div className="grid gap-1 grid-cols-3 ">
-                    <Button className={"col-span-2 "} 
-                    onClick={() => {
-                      handleSaveAllEstimatedEndTimes()
-                      setDetailDialogOpen(false)
-                      }}>
-                   <Save/>  ذخیره زمان های تخمینی
-                  </Button>
-                  <Button className={"col-3 bg-green-400 text-green-800"} onClick={() => handleUpdateStatus(selectedOrder.id, "READY")}>
-                   <CheckCircle/> آماده
-                  </Button>
-                  </div>
-                  }
-                  {(selectedOrder.status==="READY") && 
-                  <div className="grid gap-1 grid-cols-3 ">
-                    <Button className={"col-span-3 bg-green-400 text-green-800"} 
-                    onClick={() => {
-                      //handleSaveAllEstimatedEndTimes()
-                      handleUpdateStatus(selectedOrder.id, "PICKED_UP")
-                      setDetailDialogOpen(false)
-                      }}>
-                      <CheckCircle/>
-                      {selectedOrder.type == "PICK_UP" 
-                      ?<>   تحویل به مشتری </>
-                      :<>   تحویل به پیک </>
-                      }
-                    </Button>
-                  </div>
-                  }
-                </CardFooter>
-                      
               </Card>
-            
-              {/* Delivery Info */}
-              {selectedOrder.type === "DELIVERY" && selectedOrder.deliveryAddress && (
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      آدرس تحویل
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm">
-                    <p>{selectedOrder.deliveryAddress}</p>
-                  {selectedOrder.customer?.phone && 
-                  <p>تلفن: {selectedOrder.customer.phone}</p>}
 
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Order Items */}
               <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">اقلام سفارش</CardTitle>
-                </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     {selectedOrder.items.map((item) => (

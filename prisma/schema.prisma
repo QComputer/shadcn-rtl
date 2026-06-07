@@ -545,6 +545,7 @@ model Product {
   name        String
   description String?  //@db.Text
   basePrice   Decimal  //@db.Decimal(12, 2)
+
   image       String?
   images      Image[]
   sku         String?
@@ -555,6 +556,11 @@ model Product {
   
   trackInventory    Boolean @default(true)
   lowStockThreshold Int     @default(10)
+
+  // Pricing / discount
+  
+  discountType    String?  @default("none") // "none" | "percentage" | "fixed"
+  discountValue   Decimal? @default(0) //@db.Decimal(12, 2)
 
   organizationId String
   organizationSlug String

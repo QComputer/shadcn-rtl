@@ -108,7 +108,7 @@ export class OrderService {
       where: { organizationSlug },
     });
 
-    return new Decimal(settings?.deliveryFee ?? 0);
+    return new Decimal(settings?.deliveryRadius ? 20000 : 0);
   }
 
   private buildProgressEstimates() {
@@ -1095,55 +1095,38 @@ if (!org?.slug) return
       toDate,
     } = params;
 
-    const baseWhere: Prisma.OrderWhereInput = {};
+    const whereDriver: Record<string, unknown> = {};
 
     if (organizationSlug) {
-      baseWhere.organizationSlug = organizationSlug;
+      whereDriver.organizationSlug = organizationSlug;
     }
-    if (customerId) baseWhere.customerId = customerId;
-    if (guestCustomerId) baseWhere.guestCustomerId = guestCustomerId;
-    if (type) baseWhere.type = type as "DELIVERY" | "PICK_UP";
+    if (customerId) whereDriver.customerId = customerId;
+    if (guestCustomerId) whereDriver.guestCustomerId = guestCustomerId;
+    if (status) whereDriver.status = status;
+    if (type) whereDriver.type = type;
     if (fromDate || toDate) {
-      const createdAt: Prisma.DateTimeFilter = {};
-      if (fromDate) createdAt.gte = new Date(fromDate);
-      if (toDate) createdAt.lte = new Date(toDate);
-      baseWhere.createdAt = createdAt;
+      whereDriver.createdAt = {};
+      if (fromDate)
+        (whereDriver.createdAt as Record<string, Date>).gte = new Date(
+          fromDate,
+        );
+      if (toDate)
+        (whereDriver.createdAt as Record<string, Date>).lte = new Date(toDate);
     }
 
-    const validStatuses = Object.values(OrderStatus);
-    if (status && !validStatuses.includes(status as OrderStatus)) {
-      throw new Error("Invalid order status filter");
+    const whereNull: Record<string, unknown> = { ...whereDriver };
+    if (status && ["PENDING", "PLACED", "DENIED"].includes(status)) {
+      whereNull.status = { in: [] };
+    } else if (!status) {
+      whereNull.status = { in: ["ACCEPTED", "PREPARING", "READY", "PICKED_UP"] };
     }
 
-    const assignedWhere: Prisma.OrderWhereInput = {
-      ...baseWhere,
-      driverId,
-      ...(status ? { status: status as OrderStatus } : {}),
-    };
-
-    const driverAvailableStatuses: OrderStatus[] = [
-      "ACCEPTED",
-      "PREPARING",
-      "READY",
-      "PICKED_UP",
-    ];
-    const includeAvailable = !status || driverAvailableStatuses.includes(status as OrderStatus);
-    const availableWhere: Prisma.OrderWhereInput | null = includeAvailable
-      ? {
-          ...baseWhere,
-          driverId: null,
-          status: status ? (status as OrderStatus) : { in: driverAvailableStatuses },
-          denies: { none: { userId: driverId } },
-        }
-      : null;
-
-    const orderWhere: Prisma.OrderWhereInput = {
-      OR: availableWhere ? [assignedWhere, availableWhere] : [assignedWhere],
-    };
+    const assignedWhere = { ...whereDriver, driverId };
+    const unassignedWhere = { ...whereNull, driverId: null };
 
     const [data, total] = await Promise.all([
       prisma.order.findMany({
-        where: orderWhere,
+        where: { OR: [assignedWhere, unassignedWhere] },
         skip: (page - 1) * pageSize,
         take: pageSize,
         orderBy: { createdAt: "desc" },
@@ -1211,7 +1194,11 @@ if (!org?.slug) return
           denies: true,
         },
       }),
-      prisma.order.count({ where: orderWhere }),
+      prisma.order.count({
+        where: {
+          OR: [assignedWhere, unassignedWhere],
+        },
+      }),
     ]);
 
     return {
@@ -1231,6 +1218,18 @@ if (!org?.slug) return
   ) {
     if (!hasPermission(userRole, "order:update")) {
       throw new Error("Unauthorized");
+    }
+
+    if (userRole === "DRIVER") {
+      const order = await prisma.order.findUnique({
+        where: { id },
+        select: { status: true },
+      });
+      if (!order) throw new Error("Order not found");
+      const next = data.status as OrderStatus;
+      if (!(order.status === "PICKED_UP" && next === "DELIVERED")) {
+        throw new Error("Drivers can only mark PICKED_UP orders as DELIVERED");
+      }
     }
 
     const order = await prisma.$transaction(async (tx) => {
@@ -1461,16 +1460,26 @@ if (!org?.slug) return
       throw new Error("Driver has denied this order");
     }
 
-    const membership = await prisma.organizationMember.findFirst({
-      where: {
-        userId: driverId,
-        organizationSlug: order.organizationSlug,
-        isActive: true,
-      },
-    });
+    const [membership, follow] = await Promise.all([
+      prisma.organizationMember.findFirst({
+        where: {
+          userId: driverId,
+          organizationSlug: order.organizationSlug,
+          isActive: true,
+        },
+      }),
+      prisma.follow.findUnique({
+        where: {
+          customerId_organizationId: {
+            customerId: driverId,
+            organizationId: order.organizationSlug,
+          },
+        },
+      }),
+    ]);
 
-    if (!membership) {
-      throw new Error("Driver does not belong to this organization");
+    if (!membership && !follow) {
+      throw new Error("Driver does not have access to this organization");
     }
 
     const updated = await prisma.order.updateMany({

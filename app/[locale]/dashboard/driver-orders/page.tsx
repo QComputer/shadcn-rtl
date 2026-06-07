@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect, use } from "react"
-import Link from "next/link"
-import { 
-  Package, 
+import { useState, useEffect, use, useMemo } from "react"
+import dynamic from "next/dynamic"
+import {
+  Package,
   Truck,
   CheckCircle,
   AlertCircle,
@@ -35,7 +35,10 @@ import { GuestCustomer, Organization, User } from "@prisma/client"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 
-interface Deny{
+const MapView = dynamic(() => import("./map-view"), { ssr: false })
+import { fetchOsrmRoute } from "@/lib/osrm"
+
+interface Deny {
   userId: string
 }
 
@@ -52,6 +55,7 @@ interface OrderItem {
     name: string
   } | null
 }
+
 interface Progress {
   id: string
   estimatedEndTime: Date | null
@@ -89,7 +93,6 @@ interface Order {
   denies: Deny[]
 }
 
-
 interface OrdersResponse {
   data: Order[]
   total: number
@@ -99,7 +102,7 @@ interface OrdersResponse {
 }
 
 const statusConfig: Record<string, { label: string; icon: typeof Clock; color: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-    PENDING: { label: "در انتظار", icon: Clock, color: "bg-yellow-500", variant: "secondary" },
+  PENDING: { label: "در انتظار", icon: Clock, color: "bg-yellow-500", variant: "secondary" },
   PLACED: { label: "ثبت شده", icon: Package, color: "bg-blue-200", variant: "default" },
   ACCEPTED: { label: "پذیرفته شده", icon: CheckCircle, color: "bg-yellow-600", variant: "destructive" },
   PREPARING: { label: "در حال آماده‌سازی", icon: Package, color: "bg-orange-400", variant: "destructive" },
@@ -109,255 +112,94 @@ const statusConfig: Record<string, { label: string; icon: typeof Clock; color: s
   CANCELLED: { label: "لغو شده", icon: XCircle, color: "bg-purple-500", variant: "default" },
   RECEIVED: { label: "دریافت شده", icon: CheckCircle, color: "bg-green-600", variant: "default" },
 }
+
+const DRIVER_ACTIONABLE_STATUSES = ["ACCEPTED", "PREPARING", "READY"] as const
+const PAGE_SIZE = 10
+
 export default function DriverOrdersPage({ params }: { params: Promise<{ locale: string }> }) {
   const resolvedParams = use(params)
   const locale = resolvedParams.locale || "fa"
+  const { user } = useAuth()
 
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [orders, setOrders] = useState<Order[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
+
   const [preparationTime, setPreparationTime] = useState<Dayjs | null>(null)
   const [pickupTime, setPickupTime] = useState<Dayjs | null>(null)
   const [savingPickupTime, setSavingPickupTime] = useState(false)
   const [deliveryTime, setDeliveryTime] = useState<Dayjs | null>(null)
   const [savingDeliveryTime, setSavingDeliveryTime] = useState(false)
-  const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
+
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
-
   const [updating, setUpdating] = useState(false)
-  const [filter, setFilter] = useState<"active" | "completed" | "all"> ("active")
-  const { user } = useAuth()
+
   const [page, setPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
-  
+  const [driverTab, setDriverTab] = useState<"assigned" | "available">("assigned")
+  const [routeData, setRouteData] = useState<{ distance: number; duration: number } | null>(null)
+
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
 
-  const addToPickupEstimatedEndTime = async (minutes: number) => {
-        if (!selectedOrder?.id || !pickupTime) {
-    //console.log("saving pickupTime---", "no Order selected");
-      return
-    }
-    //console.log(`add ${minutes} minutes to pick-up `, pickupTime);
-    setPickupTime(pickupTime?.add(minutes, 'minute') || null)
-    //console.log(`added ${minutes} minutes to pick-up `, pickupTime?.add(minutes, 'minute') || null);
-
-  }
-  const addToDeliveryEstimatedEndTime = async (minutes: number) => {
-        if (!selectedOrder?.id || !deliveryTime) {
-    //console.log("saving pickupTime---", "no Order selected");
-      return
-    }
-    //console.log(`add ${minutes} minutes to delivery `, deliveryTime);
-    setDeliveryTime(deliveryTime?.add(minutes, 'minute') || null)
-    //console.log(`added ${minutes} minutes to delivery `, deliveryTime?.add(minutes, 'minute') || null);
-  }
-  
-  const handleSavePickupEstimatedEndTime = async () => {
-    if (!selectedOrder?.id || !pickupTime) {
-    //console.log("saving pickupTime---", "no Order selected");
-      return
-    }
-    //console.log("saving pickupTime---", pickupTime.toString());
-    setUpdating(true)
-    try {
-      const response = await fetch(`/api/orders/${selectedOrder.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ estimatedEndTime: pickupTime, type: "PICK_UP" }),
-      })
-      
-      if (!response.ok) {
-        throw new Error("Failed to update order pickupProgress.estimatedEndTime")
-      }
-      const data = await response.json()
-      
-    } catch (err) {
-      console.error("Error updating order pickupProgress.estimatedEndTime:", err)
-      setError(err instanceof Error ? err.message : "Failed to update order pickupProgress.estimatedEndTime")
-    } finally {
-      setUpdating(false)
-    }  
-  }
-
-  const handleSaveDeliveryEstimatedEndTime = async () => {
-    if (!selectedOrder?.id || !deliveryTime) {
-      //console.log("saving deliveryTime---", "no Order selected");
-      return
-    }
-    //console.log("saving deliveryTime---", deliveryTime.toString());
-    setUpdating(true)
-    try {
-      const response = await fetch(`/api/orders/${selectedOrder.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ estimatedEndTime: deliveryTime, type: "DELIVERY" }),
-      })
-      
-      if (!response.ok) {
-        throw new Error("Failed to update order deliveryProgress.estimatedEndTime")
-      }
-      const data = await response.json()
-
-      //console.log("---------handleSaveDeliveryEstimatedEndTime>response",data);
-
-      
-    } catch (err) {
-      console.error("Error updating order deliveryProgress.estimatedEndTime:", err)
-      setError(err instanceof Error ? err.message : "Failed to update order deliveryProgress.estimatedEndTime")
-    } finally {
-      setUpdating(false)
-    }  
-  }
-
-  const handleSaveAllEstimatedEndTimes = async ()=>{
-    setUpdating(true)
-    await handleSavePickupEstimatedEndTime()
-    await handleSaveDeliveryEstimatedEndTime()
-    setUpdating(false)
-    fetchOrders()
-  }
-  
-  const handleViewOrder = (order: Order) => {
-    //fetchOrders()
-    setSelectedOrder(order)
-    setPreparationTime(dayjs(order.preparationProgress?.estimatedEndTime) || null)
-    setPickupTime(dayjs(order.pickupProgress?.estimatedEndTime)|| null)
-    setDeliveryTime(dayjs(order.deliveryProgress?.estimatedEndTime)|| null)
-    setDetailDialogOpen(true)
-  }
-
-  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
-    setUpdating(true)
-    try {
-      const response = await fetch(`/api/orders/${orderId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status: newStatus }),
-      })
-      
-      if (!response.ok) {
-        throw new Error("Failed to update order status")
-      }
-      
-      // Refresh orders list
-      fetchOrders()
-      
-      // Update selected order if dialog is open
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder(prev => prev ? { ...prev, status: newStatus as Order["status"] } : null)
-      }
-    } catch (err) {
-      console.error("Error updating order status:", err)
-      setError(err instanceof Error ? err.message : "Failed to update order status")
-    } finally {
-      setUpdating(false)
-    }
-  }
-  
-  const acceptOrder = async (id: string) => {
-    const response = await fetch(`/api/orders/${id}/driver`, {
-      method: "POST",
+  useEffect(() => {
+    setMounted(true)
+    import("@/lib/dictionary").then(({ getDictionary }) => {
+      setDict(getDictionary(locale))
     })
-      
-      if (!response.ok) {
-        throw new Error("Failed to accept order")
-      }
-      
-      const order: Order = await response.json()
-      //console.log("-----------------------Driver-Order> Accepted order:", order);
-      fetchOrders()
-  }
+  }, [locale])
 
-  const denyOrder = async(id: string) => {
-    const response = await fetch(`/api/orders/${id}/driver`, {
-        method: "DELETE",
-      })
-      
-    if (!response.ok) {
-      throw new Error("Failed to deny order")
+  const hasUser = !!user?.id
+
+  const isDenied = useMemo(() => {
+    const map = new Map<string, boolean>()
+    for (const order of orders) {
+      map.set(order.id, order.denies.some((d) => d.userId === user?.id))
     }
+    return map
+  }, [orders, user?.id])
 
-    fetchOrders()
-  }
-
-  const pickupOrder = async(id: string) => {
-    handleUpdateStatus(id, "PICKED_UP")
-  }
-
-    const deliveryOrder = async(id: string) => {
-    handleUpdateStatus(id, "DELIVERED")
-  }
-
-  function isDenied (orderDenies: Deny[] | undefined){
-    if (!!orderDenies && orderDenies?.length > 0) {
-      orderDenies.map((d)=>{
-        if (d.userId === user?.id) return true
-      })
+  const displayedOrders = useMemo(() => {
+    const base = orders
+    if (driverTab === "assigned") {
+      return base.filter((o) => o.driverId === user?.id)
     }
-    return false
-  }
-    
-useEffect(()=>{
-      //console.log("-----------------------orders:", orders);
-},[orders])
+    return base.filter(
+      (o) =>
+        o.driverId === null &&
+        DRIVER_ACTIONABLE_STATUSES.includes(o.status as typeof DRIVER_ACTIONABLE_STATUSES[number]) &&
+        !isDenied.get(o.id),
+    )
+  }, [orders, driverTab, user?.id, isDenied])
 
   useEffect(() => {
-      setMounted(true)
-      import("@/lib/dictionary").then(({ getDictionary }) => {
-        setDict(getDictionary(locale))
-      })
-    }, [locale])
-  
-  // Fetch orders from API
-  useEffect(() => {
-    if (mounted) {
-      fetchOrders()
-    }
-  }, [mounted, user, page, searchQuery, statusFilter])
+    setPage(1)
+  }, [driverTab, searchQuery, statusFilter])
 
   const fetchOrders = async () => {
-    //setDetailDialogOpen(false)
-    //setSelectedOrder(null)
     setLoading(true)
     setError(null)
-    
     try {
       const params = new URLSearchParams({
         page: page.toString(),
-        pageSize: "10",
+        pageSize: PAGE_SIZE.toString(),
       })
-      
-      if (searchQuery) {
-        params.set("search", searchQuery)
-      }
-      
-      if (statusFilter && statusFilter !== "all") {
-        params.set("status", statusFilter)
-      }
-      //console.log("-----------------------params:", params.toString());
-      
+      if (searchQuery) params.set("search", searchQuery)
+      if (statusFilter && statusFilter !== "all") params.set("status", statusFilter)
+
       const response = await fetch(`/api/orders?${params.toString()}`)
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch orders")
-      }
-      
+      if (!response.ok) throw new Error("Failed to fetch orders")
+
       const data: OrdersResponse = await response.json()
-      //console.log("-----------------------OrdersResponse:", orders);
-      
       setOrders(data.data)
-      setTotal(data.total)
-      setTotalPages(data.totalPages)
+
+      const count = displayedOrders.length
+      setTotal(count)
+      setTotalPages(Math.max(1, Math.ceil(count / PAGE_SIZE)))
     } catch (err) {
       console.error("Error fetching orders:", err)
       setError(err instanceof Error ? err.message : "An error occurred")
@@ -366,26 +208,140 @@ useEffect(()=>{
     }
   }
 
+  useEffect(() => {
+    if (mounted && hasUser) {
+      fetchOrders()
+    }
+  }, [mounted, hasUser, page, searchQuery, statusFilter])
+
+  const adjustTime = (setter: (d: Dayjs | null) => void, current: Dayjs | null, minutes: number) => {
+    setter(current ? current.add(minutes, "minute") : null)
+  }
+
+  const handleSavePickupEstimatedEndTime = async () => {
+    if (!selectedOrder?.id || !pickupTime) return
+    setSavingPickupTime(true)
+    try {
+      await fetch(`/api/orders/${selectedOrder.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estimatedEndTime: pickupTime.toString(), type: "PICK_UP" }),
+      })
+    } catch (err) {
+      console.error("Error updating pickup progress:", err)
+      setError(err instanceof Error ? err.message : "Failed to update pickup progress")
+    } finally {
+      setSavingPickupTime(false)
+    }
+  }
+
+  const handleSaveDeliveryEstimatedEndTime = async () => {
+    if (!selectedOrder?.id || !deliveryTime) return
+    setSavingDeliveryTime(true)
+    try {
+      await fetch(`/api/orders/${selectedOrder.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estimatedEndTime: deliveryTime.toString(), type: "DELIVERY" }),
+      })
+    } catch (err) {
+      console.error("Error updating delivery progress:", err)
+      setError(err instanceof Error ? err.message : "Failed to update delivery progress")
+    } finally {
+      setSavingDeliveryTime(false)
+    }
+  }
+
+  const handleSaveAllEstimatedEndTimes = async () => {
+    setUpdating(true)
+    await handleSavePickupEstimatedEndTime()
+    await handleSaveDeliveryEstimatedEndTime()
+    setUpdating(false)
+    fetchOrders()
+  }
+
+  const handleViewOrder = (order: Order) => {
+    setSelectedOrder(order)
+    setPreparationTime(dayjs(order.preparationProgress?.estimatedEndTime) || null)
+    setPickupTime(dayjs(order.pickupProgress?.estimatedEndTime) || null)
+    setDeliveryTime(dayjs(order.deliveryProgress?.estimatedEndTime) || null)
+    setRouteData(null)
+    if (order.type === "DELIVERY") {
+      fetchOsrmRoute(51.389, 35.6892, 51.3347, 35.7219).then((data) => {
+        if (data) setRouteData({ distance: data.distance, duration: data.duration })
+      })
+    }
+    setDetailDialogOpen(true)
+  }
+
+  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+    setUpdating(true)
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (!response.ok) throw new Error("Failed to update order status")
+
+      fetchOrders()
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder((prev) => (prev ? { ...prev, status: newStatus as Order["status"] } : null))
+      }
+    } catch (err) {
+      console.error("Error updating order status:", err)
+      setError(err instanceof Error ? err.message : "Failed to update order status")
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const acceptOrder = async (id: string) => {
+    const response = await fetch(`/api/orders/${id}/driver`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    })
+    if (!response.ok) throw new Error("Failed to accept order")
+    fetchOrders()
+  }
+
+  const denyOrder = async (id: string) => {
+    const response = await fetch(`/api/orders/${id}/driver`, {
+      method: "DELETE",
+    })
+    if (!response.ok) throw new Error("Failed to deny order")
+    fetchOrders()
+  }
+
+  const unDenyOrder = async (id: string) => {
+    const response = await fetch(`/api/orders/${id}/driver`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "undeny" }),
+    })
+    if (!response.ok) throw new Error("Failed to undo deny")
+    fetchOrders()
+  }
+
   const t = (key: string): string => {
     if (!dict) return key
     return getDictValue(dict, key)
   }
 
-  // Filter orders
-  const filteredOrders = (!!orders && orders.length>0) ? orders : []
-
-  if (!mounted || updating) {
+  if (!mounted || !hasUser) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <div className="space-y-4">
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
+      <div className="p-6 space-y-4">
+        <div className="h-10 bg-muted rounded w-1/4" />
+        <div className="grid gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-24 bg-muted rounded" />
+          ))}
         </div>
       </div>
     )
   }
+
+  const pagedOrders = displayedOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
@@ -394,15 +350,23 @@ useEffect(()=>{
         <div>
           <h2 className="text-2xl font-bold">{t("navigation.orders") || "سفارشات"}</h2>
           <p className="text-muted-foreground">
-            {toPersianDigits(total.toString())} {t("navigation.orders") || "سفارش"}
+            {toPersianDigits(total.toString())} سفارش
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={() => fetchOrders()}>
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          <Button variant="outline" size="icon" onClick={fetchOrders} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
       </div>
+
+      {/* Driver Tabs */}
+      <Tabs value={driverTab} onValueChange={(v) => { setDriverTab(v as "assigned" | "available"); setPage(1) }}>
+        <TabsList>
+          <TabsTrigger value="assigned">سفارشات من</TabsTrigger>
+          <TabsTrigger value="available">درخواست‌های قابل قبول</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -418,17 +382,14 @@ useEffect(()=>{
             className="pr-10"
           />
         </div>
-        <Select value={statusFilter} onValueChange={(value) => {
-          setStatusFilter(value)
-          setPage(1)
-        }}>
+        <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setPage(1) }}>
           <SelectTrigger className="w-full sm:w-48">
             <SelectValue placeholder="همه وضعیت‌ها" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">همه وضعیت‌ها</SelectItem>
             {Object.entries(statusConfig).map(([key, config]) => (
-              <SelectItem key={locale+key} value={key}>
+              <SelectItem key={`${locale}-${key}`} value={key}>
                 {config.label}
               </SelectItem>
             ))}
@@ -449,28 +410,8 @@ useEffect(()=>{
         </Card>
       )}
 
-      {/* Loading State: silent mode */}
-      {false && (
-        <div className="space-y-4">
-          {[1, 2, 3, 4, 5].map(i => (
-            <Card key={locale+i}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  <Skeleton className="h-12 w-12 rounded-full" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-1/3" />
-                    <Skeleton className="h-4 w-1/2" />
-                  </div>
-                  <Skeleton className="h-8 w-24" />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
       {/* Empty State */}
-      {!loading && orders.length === 0 && (
+      {!loading && pagedOrders.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center">
             <Package className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
@@ -478,57 +419,63 @@ useEffect(()=>{
               {searchQuery || statusFilter !== "all" ? "سفارشی یافت نشد" : "سفارشی وجود ندارد"}
             </h3>
             <p className="text-muted-foreground">
-              {searchQuery || statusFilter !== "all" 
-                ? "لطفاً فیلترها را تغییر دهید" 
-                : "سفارشات در اینجا نمایش داده می‌شوند"
-              }
+              {searchQuery || statusFilter !== "all"
+                ? "لطفاً فیلترها را تغییر دهید"
+                : "سفارشات در اینجا نمایش داده می‌شوند"}
             </p>
           </CardContent>
         </Card>
       )}
 
       {/* Orders List */}
-      {orders.length > 0 && (
+      {pagedOrders.length > 0 && (
         <div className="space-y-4">
-          {(!!orders && orders.length>0) && orders.map((order) => {
+          {pagedOrders.map((order) => {
             const status = statusConfig[order.status]
             const StatusIcon = status?.icon || AlertCircle
-            const orderDate = new Date(order.createdAt)
-            const isAccepted = !!user && !!order.driverId && order.driverId === user.id
-            const className = isAccepted ? "overflow-hidden bg-green-500/10" : "overflow-hidden bg-red-500/10"
-            //const _isDenied = !isAccepted ? isDenied(order.denies || []) : false
-            
+            const denied = isDenied.get(order.id)
+
             return (
-              <Card key={locale+order.id} className={className} onClick={() => handleViewOrder(order)}>
+              <Card
+                key={order.id}
+                className={
+                  order.driverId === user?.id
+                    ? "overflow-hidden bg-green-500/10"
+                    : denied
+                      ? "overflow-hidden bg-orange-500/10"
+                      : "overflow-hidden bg-red-500/10"
+                }
+                onClick={() => handleViewOrder(order)}
+              >
                 <CardContent className="px-4">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className={`p-2 rounded-full ${status.color}`}>
-                          <StatusIcon className="h-5 w-5 text-white" />
-                        </div>
-                        
-                        <div>
-                          <Badge className={statusConfig[order.status].color} variant={status?.variant || "secondary"}>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`p-2 rounded-full ${status.color}`}>
+                        <StatusIcon className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <Badge className={statusConfig[order.status].color} variant={status?.variant || "secondary"}>
                           <StatusIcon className={"h-3 w-3 ml-1"} />
-                            {status?.label || order.status}
-                          </Badge>  
-                        </div>
+                          {status?.label || order.status}
+                        </Badge>
+                        {denied && (
+                          <Badge variant="secondary" className="mr-2 text-xs">
+                            رد شده توسط شما
+                          </Badge>
+                        )}
                       </div>
-                      
-                      <p className="text-xm text-muted-foreground mb-2">
-                        {order.organization?.name}
-                                              <span> {" - "} </span>
-                          <span>{order.deliveryAddress}</span>
-                        {order.customer && `${order.customer.firstName} ${order.customer.lastName}` }
-                        {order.guestCustomer && `${order.guestCustomer.name}`}
-                      </p>
-                      <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                          <p className="text-sm text-muted-foreground">
-                            {formatRelativePersianTime(order.createdAt)}
-                          </p>
-                       
-                      </div>
+                    </div>
 
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {order.organization?.name}
+                      <span> {" - "} </span>
+                      <span>{order.deliveryAddress || order.organization?.address || ""}</span>
+                    </p>
+                    <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground">
+                        {formatRelativePersianTime(order.createdAt)}
+                      </p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -537,43 +484,34 @@ useEffect(()=>{
         </div>
       )}
 
-            {/* Pagination */}
-            {!loading && orders.length > 0 && totalPages > 1 && (
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  {t("common.showing") || "نمایش"} {toPersianDigits(((page - 1) * 10 + 1).toString())} - {toPersianDigits(Math.min(page * 10, total).toString())} {t("common.of") || "از"} {toPersianDigits(total.toString())}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    disabled={page >= totalPages}
-                    onClick={() => setPage(p => p + 1)}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    disabled={page <= 1}
-                    onClick={() => setPage(p => p - 1)}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-      
-      
+      {/* Pagination */}
+      {!loading && displayedOrders.length > 0 && totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {t("common.showing") || "نمایش"} {toPersianDigits(((page - 1) * PAGE_SIZE + 1).toString())} -{" "}
+            {toPersianDigits(Math.min(page * PAGE_SIZE, total).toString())} {t("common.of") || "از"}{" "}
+            {toPersianDigits(total.toString())}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Order Detail Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>جزئیات سفارش</DialogTitle>
           </DialogHeader>
-          
+
           {selectedOrder && (
-          <div className="space-y-5">
+            <div className="space-y-5">
               {/* Status */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -586,236 +524,264 @@ useEffect(()=>{
 
               {/* Customer Info */}
               <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-xs flex items-center gap-2">
-                          <UserIcon className="h-4 w-4" />
-                          اطلاعات مشتری
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-1 text-xs">
-                        {selectedOrder.customer?.firstName && <p>نام : {selectedOrder.customer.firstName}</p>}
-                        {selectedOrder.customer?.lastName && <p>نام خانوادگی : {selectedOrder.customer.name}</p>}
-                        {selectedOrder.guestCustomer?.name && <p>نام کاربر میهمان : {selectedOrder.guestCustomer.name}</p>}
-                      </CardContent>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs flex items-center gap-2">
+                    <UserIcon className="h-4 w-4" />
+                    اطلاعات مشتری
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1 text-xs">
+                  {selectedOrder.customer?.firstName && <p>نام : {selectedOrder.customer.firstName}</p>}
+                  {selectedOrder.customer?.lastName && <p>نام خانوادگی : {selectedOrder.customer.name}</p>}
+                  {selectedOrder.guestCustomer?.name && <p>نام کاربر میهمان : {selectedOrder.guestCustomer.name}</p>}
+                </CardContent>
               </Card>
+
               {/* Delivery Info */}
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-xs flex items-center gap-2">
-                            <MapPin className="h-4 w-4" />
-                            آدرس تحویل
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-xs">
-                          <p>{selectedOrder.deliveryAddress}</p>
-                        {selectedOrder.customer?.phone && 
-                        <p>تلفن: {selectedOrder.customer.phone}</p>}
-      
-                        </CardContent>
-                      </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    آدرس تحویل
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-xs">
+                  <p>{selectedOrder.deliveryAddress}</p>
+                  {selectedOrder.customer?.phone && <p>تلفن: {selectedOrder.customer.phone}</p>}
+                </CardContent>
+              </Card>
 
-
-
-
+              {selectedOrder.type === "DELIVERY" && (
+                <>
+                  <MapView
+                    shopLat={35.6892}
+                    shopLng={51.389}
+                    deliveryLat={35.7219}
+                    deliveryLng={51.3347}
+                  />
+                  {routeData && (
+                    <Card>
+                      <CardContent className="pt-4 space-y-2 text-sm">
+                        <p>
+                          <span className="text-muted-foreground">مسافت تقریبی:</span>{" "}
+                          {toPersianDigits((routeData.distance / 1000).toFixed(1))} کیلومتر
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">زمان تقریبی:</span>{" "}
+                          {toPersianDigits(Math.round(routeData.duration / 60))} دقیقه
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
+              )}
 
               {/* Order Items */}
               <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">اقلام سفارش</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          {selectedOrder.items.map((item) => (
-                            <div key={locale+item.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                              <div>
-                                <p className="font-medium">{item.product?.name}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {toPersianDigits(item.quantity.toString())} × {formatToman(item.price)}
-                                </p>
-                              </div>
-                              <p className="font-bold">
-                                {formatToman(item.price * item.quantity)}
-                              </p>
-                            </div>
-                          ))}
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">اقلام سفارش</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {selectedOrder.items.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                        <div>
+                          <p className="font-medium">{item.product?.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {toPersianDigits(item.quantity.toString())} × {formatToman(item.price)}
+                          </p>
                         </div>
-                      </CardContent>
+                        <p className="font-bold">{formatToman(item.price * item.quantity)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
               </Card>
+
               {/* Pricing Summary */}
               <Card>
-                      <CardContent className="pt-4 space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">جمع کل:</span>
-                          <span>{formatToman(selectedOrder.subtotal)}</span>
-                        </div>
-                        {selectedOrder.deliveryFee > 0 && (
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">هزینه ارسال:</span>
-                            <span>{formatToman(selectedOrder.deliveryFee)}</span>
-                          </div>
-                        )}
-                        {selectedOrder.tax > 0 && (
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">مالیات:</span>
-                            <span>{formatToman(selectedOrder.tax)}</span>
-                          </div>
-                        )}
-                        {selectedOrder.discount > 0 && (
-                          <div className="flex justify-between text-sm text-green-600">
-                            <span>تخفیف:</span>
-                            <span>-{formatToman(selectedOrder.discount)}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between font-bold text-lg pt-2 border-t">
-                          <span>مبلغ نهایی:</span>
-                          <span>{formatToman(selectedOrder.total)}</span>
-                        </div>
-                      </CardContent>
+                <CardContent className="pt-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">جمع کل:</span>
+                    <span>{formatToman(selectedOrder.subtotal)}</span>
+                  </div>
+                  {selectedOrder.deliveryFee > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">هزینه ارسال:</span>
+                      <span>{formatToman(selectedOrder.deliveryFee)}</span>
+                    </div>
+                  )}
+                  {selectedOrder.tax > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">مالیات:</span>
+                      <span>{formatToman(selectedOrder.tax)}</span>
+                    </div>
+                  )}
+                  {selectedOrder.discount > 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>تخفیف:</span>
+                      <span>-{formatToman(selectedOrder.discount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                    <span>مبلغ نهایی:</span>
+                    <span>{formatToman(selectedOrder.total)}</span>
+                  </div>
+                </CardContent>
               </Card>
-              
+
               {/* Progress */}
               <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-xs flex items-center gap-2">
-                            <Timer className="h-4 w-4" />
-                            زمان های تخمیی
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="text-xs pt-1 space-y-2 ">
-                       {preparationTime  && (
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs flex items-center gap-2">
+                    <Timer className="h-4 w-4" />
+                    زمان‌های تخمینی
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-xs pt-1 space-y-2">
+                  {preparationTime && (
                     <div className="grid gap-0 grid-cols-2 grid-rows-2 pt-2">
                       <div className="row-1 pt-2 pb-2">
-
-                      <Label htmlFor="deliveryProgress">آماده‌سازی:</Label>
+                        <Label htmlFor="preparationProgress">آماده‌سازی:</Label>
                       </div>
-                      <div className="col-2">
-                      
-                      {formatRelativePersianTime(preparationTime)} 
-                      </div>
-
+                      <div className="col-2">{formatRelativePersianTime(preparationTime)}</div>
                     </div>
-                       )}
-                      {(pickupTime && !savingPickupTime) && (
-                          <div className=" grid gap-0 grid-cols-2 grid-rows-2 ">
-                            <div className="row-1 pt-2">
-      
-                            <Label htmlFor="picklupProgress">پیکاپ:</Label>
-                            </div>
-                           <div className="row-2 col-1">
-                            {formatRelativePersianTime(pickupTime)} 
-                            </div>
-                          <div className="row-span-2">
-                      <div className="grid gap-1 grid-cols-3 ">
-                      <div className="grid gap-1 grid-rows-2 ">
-                        <Button variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(1)}>
-                          {toPersianDigits(1)} +
-                        </Button>
-                        <Button  variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(-1)}>
-                          {toPersianDigits(1)} -
-                        </Button>
-                      </div>
-                      <div className="grid gap-1 grid-rows-2">
-                      
-                      <Button variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(5)}>
-                       {toPersianDigits(5)}+
-                      </Button>
-                      <Button  variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(-5)}>
-                         {toPersianDigits(5)}-
-                        </Button>
-                      </div>
-                      <div className="grid gap-1 grid-rows-2 col-3">
-                      <Button  variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(10)}>
-                      {toPersianDigits(10)}+
-                      </Button>
-                      <Button  variant={"outline"} onClick={()=> addToPickupEstimatedEndTime(-10)}>
-                          {toPersianDigits(10)}-
-                        </Button>
-                      </div>
-                    </div>
-                    </div>
-                    </div>
-                       )}
-                      {(deliveryTime && !savingDeliveryTime) && (
-                    <div className="grid gap-0 grid-cols-2 grid-rows-2 pt-2">
+                  )}
+                  {(pickupTime && !savingPickupTime) && (
+                    <div className="grid gap-0 grid-cols-2 grid-rows-2">
                       <div className="row-1 pt-2">
-
-                      <Label htmlFor="deliveryProgress">تحویل دهی:</Label>
+                        <Label htmlFor="pickupProgress">پیکاپ:</Label>
                       </div>
-                      <div className="row-2">
-                      
-                      {formatRelativePersianTime(deliveryTime)} 
-                      </div>
+                      <div className="row-2 col-1">{formatRelativePersianTime(pickupTime)}</div>
                       <div className="row-span-2">
-                        <div className="grid gap-1 grid-cols-3 ">
+                        <div className="grid gap-1 grid-cols-3">
                           <div className="grid gap-1 grid-rows-2">
-                            <Button variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(1)}>
+                            <Button variant="outline" onClick={() => adjustTime(setPickupTime, pickupTime, 1)}>
                               {toPersianDigits(1)} +
                             </Button>
-                            <Button  variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(-1)}>
+                            <Button variant="outline" onClick={() => adjustTime(setPickupTime, pickupTime, -1)}>
                               {toPersianDigits(1)} -
                             </Button>
                           </div>
-                        <div className="grid gap-1 grid-rows-2">
-                      <Button variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(5)}>
-                       {toPersianDigits(5)}+
-                      </Button>
-                      <Button  variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(-5)}>
-                         {toPersianDigits(5)}-
-                        </Button>
-                      </div>
-                      <div className="grid gap-1 grid-rows-2">
-                      <Button  variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(10)}>
-                      {toPersianDigits(10)}+
-                      </Button>
-                      <Button  variant={"outline"} onClick={()=> addToDeliveryEstimatedEndTime(-10)}>
-                          {toPersianDigits(10)}-
-                        </Button>
-                      </div>
+                          <div className="grid gap-1 grid-rows-2">
+                            <Button variant="outline" onClick={() => adjustTime(setPickupTime, pickupTime, 5)}>
+                              {toPersianDigits(5)}+
+                            </Button>
+                            <Button variant="outline" onClick={() => adjustTime(setPickupTime, pickupTime, -5)}>
+                              {toPersianDigits(5)}-
+                            </Button>
+                          </div>
+                          <div className="grid gap-1 grid-rows-2 col-3">
+                            <Button variant="outline" onClick={() => adjustTime(setPickupTime, pickupTime, 10)}>
+                              {toPersianDigits(10)}+
+                            </Button>
+                            <Button variant="outline" onClick={() => adjustTime(setPickupTime, pickupTime, -10)}>
+                              {toPersianDigits(10)}-
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                       )}
-      
-                      <div className="pt-5">
-                        {((selectedOrder.status==="ACCEPTED" || selectedOrder.status==="PREPARING" || selectedOrder.status==="READY") && !selectedOrder.assignedDriver) && 
+                  )}
+                  {(deliveryTime && !savingDeliveryTime) && (
+                    <div className="grid gap-0 grid-cols-2 grid-rows-2 pt-2">
+                      <div className="row-1 pt-2">
+                        <Label htmlFor="deliveryProgress">تحویل دهی:</Label>
+                      </div>
+                      <div className="row-2">{formatRelativePersianTime(deliveryTime)}</div>
+                      <div className="row-span-2">
                         <div className="grid gap-1 grid-cols-3">
-                          <Button  className={"col-span-2 bg-green-400 text-green-800"} onClick={() => {
-                            acceptOrder(selectedOrder.id)
-                            }}>
-                           <CheckCircle/> قبول
-                          </Button>
-                          <Button className={"col-3"} variant={"destructive"} onClick={() => denyOrder(selectedOrder.id)}>
-                           <X/> رد
-                          </Button>
+                          <div className="grid gap-1 grid-rows-2">
+                            <Button variant="outline" onClick={() => adjustTime(setDeliveryTime, deliveryTime, 1)}>
+                              {toPersianDigits(1)} +
+                            </Button>
+                            <Button variant="outline" onClick={() => adjustTime(setDeliveryTime, deliveryTime, -1)}>
+                              {toPersianDigits(1)} -
+                            </Button>
+                          </div>
+                          <div className="grid gap-1 grid-rows-2">
+                            <Button variant="outline" onClick={() => adjustTime(setDeliveryTime, deliveryTime, 5)}>
+                              {toPersianDigits(5)}+
+                            </Button>
+                            <Button variant="outline" onClick={() => adjustTime(setDeliveryTime, deliveryTime, -5)}>
+                              {toPersianDigits(5)}-
+                            </Button>
+                          </div>
+                          <div className="grid gap-1 grid-rows-2">
+                            <Button variant="outline" onClick={() => adjustTime(setDeliveryTime, deliveryTime, 10)}>
+                              {toPersianDigits(10)}+
+                            </Button>
+                            <Button variant="outline" onClick={() => adjustTime(setDeliveryTime, deliveryTime, -10)}>
+                              {toPersianDigits(10)}-
+                            </Button>
+                          </div>
                         </div>
-                        }
-                        {((selectedOrder.status==="ACCEPTED" || selectedOrder.status==="PREPARING" || selectedOrder.status==="READY") && (!!selectedOrder.assignedDriver && selectedOrder.assignedDriver.id === user?.id)) && 
-                        <div className="grid gap-1 grid-cols-3 ">
-                          <Button className={"col-span-2"} onClick={handleSaveAllEstimatedEndTimes}>
-                            <Save/>  ذخیره 
-                          </Button>
-                          <Button className={"col-3 bg-green-400 text-green-800"} 
-                          onClick={() => pickupOrder(selectedOrder.id)}>
-                           <CheckCircle/> پیکاپ
-                          </Button>
-                        </div>}
-                        {((selectedOrder.status==="PICKED_UP") && (!!selectedOrder.assignedDriver && selectedOrder.assignedDriver.id === user?.id)) &&
-                        <div className="grid gap-1 grid-cols-3 ">
-                          <Button className={"col-span-2"} onClick={handleSaveAllEstimatedEndTimes}>
-                            <Save/>  ذخیره 
-                          </Button>
-                          <Button className={"col-span-1 bg-green-400 text-green-800"} onClick={() => deliveryOrder(selectedOrder.id)}>
-                            <CheckCircle/>  تحویل 
-                          </Button>
-                        </div>}
-                      </div>      
-                      </CardContent>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
               </Card>
-              
-          </div>)}
+
+              {/* Action Buttons */}
+              <Card>
+                <CardContent>
+                  <div className="pt-5">
+                    {DRIVER_ACTIONABLE_STATUSES.includes(selectedOrder.status as typeof DRIVER_ACTIONABLE_STATUSES[number]) &&
+                     !selectedOrder.assignedDriver && (
+                      <div className="grid gap-1 grid-cols-3">
+                        <Button
+                          className="col-span-2 bg-green-400 text-green-800"
+                          onClick={() => acceptOrder(selectedOrder.id)}
+                        >
+                          <CheckCircle /> قبول
+                        </Button>
+                        <Button variant="destructive" className="col-3" onClick={() => denyOrder(selectedOrder.id)}>
+                          <X /> رد
+                        </Button>
+                      </div>
+                    )}
+
+                    {DRIVER_ACTIONABLE_STATUSES.includes(selectedOrder.status as typeof DRIVER_ACTIONABLE_STATUSES[number]) &&
+                     isDenied.get(selectedOrder.id) && (
+                      <div className="grid gap-1 grid-cols-3">
+                        <Button className="col-span-3" variant="outline" onClick={() => unDenyOrder(selectedOrder.id)}>
+                          <RefreshCw /> نظر خود را عوض کنید (قبول سفارش)
+                        </Button>
+                      </div>
+                    )}
+
+                    {DRIVER_ACTIONABLE_STATUSES.includes(selectedOrder.status as typeof DRIVER_ACTIONABLE_STATUSES[number]) &&
+                     selectedOrder.assignedDriver?.id === user?.id && (
+                      <div className="grid gap-1 grid-cols-3">
+                        <Button className="col-span-2" onClick={handleSaveAllEstimatedEndTimes}>
+                          <Save /> ذخیره
+                        </Button>
+                        {selectedOrder.status === "PICKED_UP" ? (
+                          <Button
+                            className="col-span-1 bg-green-400 text-green-800"
+                            onClick={() => handleUpdateStatus(selectedOrder.id, "DELIVERED")}
+                          >
+                            <CheckCircle /> تحویل
+                          </Button>
+                        ) : (
+                          <Button
+                            className="col-span-1 bg-green-400 text-green-800"
+                            onClick={() => handleUpdateStatus(selectedOrder.id, "PICKED_UP")}
+                          >
+                            <CheckCircle /> پیکاپ
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setDetailDialogOpen(false)}>
-              <X/> بستن
+              <X /> بستن
             </Button>
           </DialogFooter>
         </DialogContent>

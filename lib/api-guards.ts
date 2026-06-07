@@ -119,14 +119,13 @@ export async function requireOrgAccess(
   organizationId: string,
   allowedRoles: UserRole[] = ["ADMIN", "MANAGER"],
 ) {
-  const role = session?.user?.role as UserRole | undefined;
   const userId = session?.user?.id;
 
-  if (!role || !userId) {
+  if (!userId) {
     throw new ApiError(401, "Unauthorized");
   }
 
-  if (role === "SUPER_ADMIN") {
+  if (session.user.role === "SUPER_ADMIN") {
     return null;
   }
 
@@ -146,14 +145,13 @@ export async function requireOrgAccess(
 export async function requireCurrentOrgAdminOrManager(
   session: SessionWithUser,
 ) {
-  const role = session?.user?.role as UserRole | undefined;
   const userId = session?.user?.id;
 
-  if (!role || !userId) {
+  if (!userId) {
     throw new ApiError(401, "Unauthorized");
   }
 
-  if (role === "SUPER_ADMIN") {
+  if (session.user.role === "SUPER_ADMIN") {
     return null;
   }
 

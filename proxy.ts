@@ -145,23 +145,23 @@ export async function proxy(request: NextRequest) {
 
   // If no locale in path, redirect to locale-prefixed path
   if (!hasLocale) {
-    const locale = 'fa'//getLocale(request);
-    
+    const locale = getLocale(request);
+
     // Build new URL with locale prefix
-    const newPath = pathname === "/" 
-      ? `/${locale}` 
+    const newPath = pathname === "/"
+      ? `/${locale}`
       : `/${locale}${pathname}`;
-    
+
     const newUrl = new URL(newPath, request.url);
     const response = NextResponse.redirect(newUrl);
-    
+
     // Set locale cookie
     response.cookies.set("locale", locale, {
       path: "/",
-      maxAge: 60 * 60 * 24 * 365, // 1 year
+      maxAge: 60 * 60 * 24 * 365,
       httpOnly: false,
     });
-    
+
     return withSecurityHeaders(response);
   }
 

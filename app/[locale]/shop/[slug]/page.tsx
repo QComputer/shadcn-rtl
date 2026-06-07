@@ -58,6 +58,9 @@ interface Product {
   basePrice: number
   image: string | null
   images: string[]
+  trackInventory: boolean
+  discountType: "none" | "percentage" | "fixed" | string | null
+  discountValue: number | string | null
   variants: ProductVariant[]
   sortOrder: number
   isActive: boolean
@@ -187,11 +190,13 @@ export default function ShopPage({
   // Filter products by search and category
   const getFilteredProducts = () => {
     if (!data?.categories) return []
-    
+
     let products: (Product & { categoryId: string; categoryName: string })[] = []
-    
+
     data.categories.forEach(category => {
       category.products.forEach(product => {
+        if (product.trackInventory && getTotalInventory(product) === 0) return
+
         products.push({
           ...product,
           categoryId: category.id,
@@ -199,19 +204,19 @@ export default function ShopPage({
         })
       })
     })
-    
+
     if (selectedCategory && selectedCategory !== "all") {
       products = products.filter(p => p.categoryId === selectedCategory)
     }
-    
+
     if (searchQuery) {
-      products = products.filter(p => 
+      products = products.filter(p =>
         p.name.includes(searchQuery) ||
         p.description?.includes(searchQuery) ||
         p.categoryName.includes(searchQuery)
       ).sort((a, b) => b.sortOrder - a.sortOrder)
     }
-    
+
     return products.sort((a, b) => b.sortOrder - a.sortOrder)
   }
 
@@ -277,17 +282,50 @@ export default function ShopPage({
 
   }, [locale, slug])
 
-  // Get display price
-  const getDisplayPrice = (product: Product): number => {
-    if (product.variants?.length > 0 && product.variants[0].price) {
-      return product.variants[0].price
-    }
-    return product.basePrice
+type PriceInfo = {
+  display: number | string
+  original: number | null
+  isDiscounted: boolean
+}
+
+const getDisplayPrice = (product: Product): PriceInfo => {
+  const toNumber = (value: number | string | null | undefined): number | null => {
+    if (value == null) return null
+    return typeof value === "number" ? value : Number(value)
   }
 
-  // Get total inventory
+  const rawOriginal = toNumber(product.discountValue)
+  const validVarPrices = product.variants
+    .filter(v => v.isActive && !v.isDeleted && v.price != null)
+    .map(v => toNumber(v.price))
+    .filter((p): p is number => p != null)
+
+  const hasDiscount = (product.discountType === "percentage" || product.discountType === "fixed") && rawOriginal != null && rawOriginal > 0
+
+  const baseFrom = (): number | null => {
+    if (validVarPrices.length > 0) return Math.min(...validVarPrices)
+    return toNumber(product.basePrice)
+  }
+
+  const base = baseFrom()
+  if (base == null) return { display: 0, original: null, isDiscounted: false }
+
+  const original = hasDiscount ? (product.discountType === "percentage" ? +(base / (1 - rawOriginal / 100)).toFixed(2) : +(base + rawOriginal).toFixed(2)) : null
+  const display = original != null ? base : (validVarPrices.length > 0 ? validVarPrices[0] : base)
+
+  return {
+    display,
+    original,
+    isDiscounted: original != null && original > display,
+  }
+}
+
+  // Get total inventory (Infinity = unlimited if trackInventory is false)
   const getTotalInventory = (product: Product): number => {
-    return product.variants?.length>0 ? product.variants.reduce((sum, v) => sum + v.inventory, 0) : 0
+    if (!product.trackInventory) return Infinity
+    return product.variants?.length > 0
+      ? product.variants.reduce((sum, v) => sum + (v.inventory || 0), 0)
+      : 0
   }
 
   if (!mounted || loading || !data) {
@@ -492,7 +530,10 @@ export default function ShopPage({
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {filteredProducts.map((product) => {
                 const inventory = getTotalInventory(product)
-                const price = getDisplayPrice(product)
+                const priceInfo = getDisplayPrice(product)
+                const isDiscounted = priceInfo.isDiscounted
+                const displayPrice = typeof priceInfo.display === "number" ? priceInfo.display : 0
+                const originalPrice = priceInfo.original
                 
                 return (
                     <Card key={locale+product.id} className="hover:shadow-md transition-shadow overflow-hidden h-full">
@@ -511,9 +552,16 @@ export default function ShopPage({
                           </div>
                         )}
                         </Link>
-                        {inventory === 0 && (
+                        {product.trackInventory && inventory === 0 && (
                           <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
                             <Badge variant="secondary">ناموجود</Badge>
+                          </div>
+                        )}
+                        {isDiscounted && product.trackInventory && inventory > 0 && (
+                          <div className="absolute top-2 right-2">
+                            <Badge variant="destructive" className="text-xs">
+                              {toPersianDigits(Math.round(((originalPrice || displayPrice) - displayPrice) / (originalPrice || displayPrice) * 100))}% تخفیف
+                            </Badge>
                           </div>
                         )}
                       </div>
@@ -526,10 +574,23 @@ export default function ShopPage({
                           {product.name}
                         </h3>
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-primary">
-                            {formatToman(price)}
-                          </span>
-                          {product.variants.length > 1 && (
+                          <div className="flex flex-col">
+                            {isDiscounted && originalPrice ? (
+                              <>
+                                <span className="font-bold text-primary">
+                                  {formatToman(displayPrice)}
+                                </span>
+                                <span className="text-xs text-muted-foreground line-through">
+                                  {formatToman(originalPrice)}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="font-bold text-primary">
+                                {formatToman(displayPrice)}
+                              </span>
+                            )}
+                          </div>
+                          {product.trackInventory && product.variants.length > 1 && (
                             <Badge variant="outline" className="text-xs">
                               {toPersianDigits(product.variants.length.toString())} نوع
                             </Badge>
@@ -564,7 +625,10 @@ export default function ShopPage({
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               {filteredProducts.map((product) => {
                 const inventory = getTotalInventory(product)
-                const price = getDisplayPrice(product)
+                const priceInfo = getDisplayPrice(product)
+                const displayPrice = typeof priceInfo.display === "number" ? priceInfo.display : 0
+                const isDiscounted = priceInfo.isDiscounted
+                const originalPrice = priceInfo.original
                 
                 return (
                     <Card key={locale+product.id} className="hover:shadow-md transition-shadow">
@@ -600,11 +664,28 @@ export default function ShopPage({
                               </p>
                             )}
                             <div className="flex items-center justify-between pt-2">
-
-                              <span className="font-bold text-primary">
-                                {formatToman(price)}
-                              </span>
+                              <div className="flex flex-col">
+                                {isDiscounted && originalPrice ? (
+                                  <>
+                                    <span className="font-bold text-primary">
+                                      {formatToman(displayPrice)}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground line-through">
+                                      {formatToman(originalPrice)}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="font-bold text-primary">
+                                    {formatToman(displayPrice)}
+                                  </span>
+                                )}
+                              </div>
                               <div className="flex items-center gap-2">
+                                {product.trackInventory && product.variants.length > 1 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {toPersianDigits(product.variants.length.toString())} نوع
+                                  </Badge>
+                                )}
                                 
                                 <Button 
                                 className={"flex-1 gap-2 w-28"}

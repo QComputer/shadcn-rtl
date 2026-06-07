@@ -138,7 +138,21 @@ export class ProductService {
   async getById(id: string) {
     return prisma.product.findFirst({
       where: { id, deletedAt: null },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        basePrice: true,
+        image: true,
+        isActive: true,
+        trackInventory: true,
+        lowStockThreshold: true,
+        sortOrder: true,
+        organizationId: true,
+        organizationSlug: true,
+        categoryId: true,
+        discountType: true,
+        discountValue: true,
         category: true,
         organization: { select: { id: true, name: true, slug: true, type: true } },
         variants: {
@@ -254,7 +268,10 @@ export class ProductService {
 
     const product = await prisma.product.update({
       where: { id },
-      data,
+      data: {
+        ...data,
+        ...(data.discountType === "none" ? { discountValue: 0 } : {}),
+      },
       include: {
         category: true,
         variants: { where: { deletedAt: null } },

@@ -1,5 +1,4 @@
 "use client"
-//TODO: complete the organization settings control
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import { Save, User, Bell, Lock, Palette, Globe, Loader2, X } from "lucide-react"
@@ -8,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import dynamic from "next/dynamic"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { useTheme } from "@/hooks/use-theme"
 import { BusinessHour, Organization, OrganizationSettings, PaymentSettings } from "@prisma/client"
@@ -53,6 +53,12 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   const [phone, setPhone] = useState("")
   const [selectedLocale, setSelectedLocale] = useState(locale)
   const [selectedTheme, setSelectedTheme] = useState("system")
+  
+  const [lat, setLat] = useState<number | undefined>(undefined)
+  const [lng, setLng] = useState<number | undefined>(undefined)
+
+  // Dynamic import of MapLocationPicker to avoid SSR issues
+  const MapLocationPicker = dynamic(() => import("@/components/ui/map-location-picker"), { ssr: false })
 
   const [cardNumber, setCardNumber] = useState<string>("")
   const [cardOwnerName, setCardOwnerName] = useState<string>("")
@@ -85,14 +91,16 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
         if (!res.ok) throw new Error("Failed to fetch organization settings")
         return res.json()
       })
-      .then(settings => {
-      setSettings(settings)
-      setOrganization(settings.organization)
-      setName(settings.organization.name)
-      setAddress(settings.organization.address)
-      setPhone(settings.organization.phone)
-      setDescription(settings.organization.description)
-      setBusinessHours(settings.organization.businessHours)
+.then(settings => {
+       setSettings(settings)
+       setOrganization(settings.organization)
+       setName(settings.organization.name)
+       setAddress(settings.organization.address || "")
+       setPhone(settings.organization.phone || "")
+       setDescription(settings.organization.description || "")
+       setLat(settings.organization.lat ?? undefined)
+       setLng(settings.organization.lng ?? undefined)
+       setBusinessHours(settings.organization.businessHours)
       //setPaymentSettings(settings.organization.paymentSettings)
       settings.organization?.paymentSettings?.paymentMethodInt && setPaymentMethodInt(settings.organization.paymentSettings.paymentMethodInt.toString())
       settings.organization?.paymentSettings?.paymentCondition && setPaymenCondition(settings.organization.paymentSettings.paymentCondition)
@@ -238,6 +246,8 @@ const handleOpen = async (e: React.FormEvent) => {
           description: description || undefined,
           address: address || undefined,
           phone: phone || undefined,
+          lat: lat || undefined,
+          lng: lng || undefined,
         }),
       })
       
@@ -249,9 +259,11 @@ const handleOpen = async (e: React.FormEvent) => {
       const updatedOrganization = await response.json()
       setOrganization(updatedOrganization)
       setName(updatedOrganization.name)
-      setAddress(updatedOrganization.address)
-      setPhone(updatedOrganization.phone)
-      setDescription(updatedOrganization.description)
+      setAddress(updatedOrganization.address || "")
+      setPhone(updatedOrganization.phone || "")
+      setDescription(updatedOrganization.description || "")
+      setLat(updatedOrganization.lat ?? undefined)
+      setLng(updatedOrganization.lng ?? undefined)
       setSuccess(t("common.success"))
       
       // If locale changed, redirect to new locale

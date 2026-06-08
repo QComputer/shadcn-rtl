@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import "leaflet/dist/leaflet.css";
 
 interface MapViewProps {
   shopLat?: number;
@@ -72,8 +73,8 @@ export default function MapView({ shopLat, shopLng, deliveryLat, deliveryLng }: 
   return (
     <div
       ref={mapRef}
-      className="h-[300px] w-full rounded-md border"
-      style={{ zIndex: 0 }}
+      className="h-[300px] w-full rounded-md border bg-muted/20 relative"
+      style={{ minHeight: "300px", maxWidth: "100%" }}
     />
   );
 }

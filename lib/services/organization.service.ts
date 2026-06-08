@@ -117,6 +117,8 @@ export class OrganizationService {
         slug: true,
         description: true,
         address: true,
+        lat: true,
+        lng: true,
         phone: true,
         email: true,
         logo: true,
@@ -181,6 +183,7 @@ export class OrganizationService {
     });
 
     revalidatePath(`/dashboard/settings/organization`);
+    revalidatePath(`/fa/shop/${organization.slug}`);
     return organization;
   }
 

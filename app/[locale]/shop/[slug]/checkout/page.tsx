@@ -1,5 +1,5 @@
 "use client";
-// It should not communicate with /api/chechout/ route anymore
+import MapLocationPicker from "@/components/ui/map-location-picker";
 import React, { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -81,6 +81,8 @@ export default function CheckoutPage({
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [organizationName, setOrganizationName] = useState<string>("");
   const [deliveryFee, setDeliveryFee] = useState<number>(30000);
+  const [deliveryLat, setDeliveryLat] = useState<number | undefined>();
+  const [deliveryLng, setDeliveryLng] = useState<number | undefined>();
 
   // Helper to get translations based on locale
   const t = (key: string): string => {
@@ -179,27 +181,28 @@ export default function CheckoutPage({
     setIsSubmitting(true);
     setError(null);
 
-    try {
-      // get the order created
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          organizationSlug: slug,
-          paymentMethod,
-          deliveryAddress: formData.shippingAddress,
-          type: isDelivery? "DELIVERY" : "PICK_UP",
-          customerName: formData.customerName,
-          customerPhone: formData.customerPhone || undefined,
-          cart,
-          deliveryFee: isDelivery && deliveryFee,
-          items: cart.items.map(item => ({
-            variantId: item.variant.id,
-            quantity: item.quantity,
-            price: getCartItemUnitPrice(item),
-          })),
-        }),
-      }) 
+try {
+       const response = await fetch("/api/orders", {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({
+           organizationSlug: slug,
+           paymentMethod,
+           deliveryAddress: formData.shippingAddress,
+           deliveryLat: isDelivery ? deliveryLat : undefined,
+           deliveryLng: isDelivery ? deliveryLng : undefined,
+           type: isDelivery? "DELIVERY" : "PICK_UP",
+           customerName: formData.customerName,
+           customerPhone: formData.customerPhone || undefined,
+           cart,
+           deliveryFee: isDelivery && deliveryFee,
+           items: cart.items.map(item => ({
+             variantId: item.variant.id,
+             quantity: item.quantity,
+             price: getCartItemUnitPrice(item),
+           })),
+         }),
+       })
 
       if (!response.ok) {
         const data = await response.json();
@@ -382,17 +385,16 @@ export default function CheckoutPage({
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="shippingAddress">آدرس *</Label>
-                      <Input
-                        id="shippingAddress"
-                        name="shippingAddress"
-                        placeholder="آدرس کامل محل تحویل"
-                        value={formData.shippingAddress}
-                        onChange={handleInputChange}
-                        required={isDelivery}
-                      />
-                    </div>
+                    <MapLocationPicker
+                      onLocationSelect={(lat, lng, addr) => {
+                        setDeliveryLat(lat);
+                        setDeliveryLng(lng);
+                        setFormData(prev => ({ ...prev, shippingAddress: addr }));
+                      }}
+                      defaultAddress={formData.shippingAddress}
+                      defaultLat={deliveryLat}
+                      defaultLng={deliveryLng}
+                    />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="city">شهر (اختیاری)</Label>

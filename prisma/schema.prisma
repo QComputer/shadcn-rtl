@@ -128,6 +128,8 @@ model Organization {
   email       String?
   logo        String?
   coverImage  String?
+  lat         Float?
+  lng         Float?
   isActive    Boolean          @default(true)
   isOpen      Boolean          @default(true)
 
@@ -693,6 +695,8 @@ model Order {
 
   // Delivery details
   deliveryAddress       String?
+  deliveryLat           Decimal?
+  deliveryLng           Decimal?
   estimatedDeliveryTime DateTime?
   deliveredAt           DateTime?
 

@@ -24,8 +24,9 @@ const cartInclude = {
   },
 } as const;
 
-function toMoneyNumber(value: number | string | null | undefined): number {
+function toMoneyNumber(value: number | string | Decimal | null | undefined): number {
   if (value === null || value === undefined) return 0;
+  if (value instanceof Decimal) return value.toNumber();
   const parsed = typeof value === "string" ? Number(value) : value;
   return Number.isFinite(parsed) ? parsed : 0;
 }
@@ -402,8 +403,18 @@ export class CartService {
     const taxRate = 0;
 
     const subtotal = cart.items.reduce((sum, item) => {
-      const price = item.variant.price ?? item.variant.product.basePrice;
-      return sum + price.toNumber() * item.quantity;
+      const basePrice = toMoneyNumber(item.variant.price ?? item.variant.product.basePrice);
+      const discountType = item.variant.product.discountType;
+      const discountValue = toMoneyNumber(item.variant.product.discountValue);
+
+      let price = basePrice;
+      if (discountType === "percentage" && discountValue > 0) {
+        price = basePrice * (1 - discountValue / 100);
+      } else if (discountType === "fixed" && discountValue > 0) {
+        price = Math.max(0, basePrice - discountValue);
+      }
+
+      return sum + price * item.quantity;
     }, 0);
 
     const tax = subtotal * taxRate;

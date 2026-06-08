@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { CreateOrderInput, UpdateOrderStatusInput } from "@/lib/validators";
 import { hasPermission, type UserRole } from "@/lib/types";
 import { Decimal } from "@prisma/client/runtime/library";
-import { InventoryMovementReason, OrderStatus, PaymentMethod, PaymentStatus, type InventoryMovementReason as InventoryMovementReasonType, type Prisma } from "@prisma/client";
+import { InventoryMovementReason, OrderStatus, PaymentMethod, PaymentStatus, OrderType, type InventoryMovementReason as InventoryMovementReasonType, type Prisma } from "@prisma/client";
 // TODO: Notifications:
 //        1.Accepting Order: setting EstEndTime for preparation by shop admin, setting EstEndTime for pickup and delivery by shop admin, 
 //        2.Changing Order Status: notify 
@@ -100,6 +100,39 @@ async function getProgressId(
   return progressId;
 }
 
+function toMoneyNumber(value: number | string | Decimal | null | undefined): number {
+  if (value === null || value === undefined) return 0;
+  if (value instanceof Decimal) return value.toNumber();
+  const parsed = typeof value === "string" ? Number(value) : value;
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getProductPriceWithDiscount(item: {
+  variant: {
+    price: number | Decimal | null;
+    productId: string;
+    product: {
+      basePrice: number | Decimal;
+      discountType: string | null;
+      discountValue: number | Decimal | null;
+    };
+  };
+  variantId: string;
+  quantity: number;
+}): Decimal {
+  const basePrice = new Decimal(toMoneyNumber(item.variant.price ?? item.variant.product.basePrice));
+  const discountType = item.variant.product.discountType;
+  const discountValue = toMoneyNumber(item.variant.product.discountValue);
+
+  if (discountType === "percentage" && discountValue > 0) {
+    return basePrice.mul(1 - discountValue / 100);
+  }
+  if (discountType === "fixed" && discountValue > 0) {
+    return Decimal.max(new Decimal(0), basePrice.sub(discountValue));
+  }
+  return basePrice;
+}
+
 export class OrderService {
   private async getDeliveryFee(organizationSlug: string, type: string) {
     if (type !== "DELIVERY") return new Decimal(0);
@@ -108,7 +141,7 @@ export class OrderService {
       where: { organizationSlug },
     });
 
-    return new Decimal(settings?.deliveryRadius ? 20000 : 0);
+    return new Decimal(settings?.deliveryFee ?? 0);
   }
 
   private buildProgressEstimates() {
@@ -349,7 +382,7 @@ export class OrderService {
       const orderItems = [];
 
       for (const item of cart.items) {
-        const price = item.variant.price ?? item.variant.product.basePrice;
+        const price = getProductPriceWithDiscount(item);
         const itemTotal = price.mul(item.quantity);
         subtotal = subtotal.add(itemTotal);
 
@@ -428,6 +461,8 @@ export class OrderService {
           discount,
           total,
           deliveryAddress: orderData.deliveryAddress,
+          deliveryLat: data.deliveryLat ?? undefined,
+          deliveryLng: data.deliveryLng ?? undefined,
           notes: orderData.notes,
           organizationSlug,
           publicTrackingToken,
@@ -565,12 +600,12 @@ export class OrderService {
       deliveryEstimatedEndTime,
     } = this.buildProgressEstimates();
 
-    const order = await prisma.$transaction(async (tx) => {
+const order = await prisma.$transaction(async (tx) => {
       let subtotal = new Decimal(0);
       const orderItems = [];
 
       for (const item of cart.items) {
-        const price = item.variant.price ?? item.variant.product.basePrice;
+        const price = getProductPriceWithDiscount(item);
         const itemTotal = price.mul(item.quantity);
         subtotal = subtotal.add(itemTotal);
 
@@ -626,9 +661,8 @@ export class OrderService {
         discount = this.calculateDiscount(subtotal, promotion);
       }
 
-      const deliveryFee = await this.getDeliveryFee(organizationSlug, data.type);
+const deliveryFee = await this.getDeliveryFee(organizationSlug, data.type);
       const total = subtotal.add(deliveryFee).sub(discount);
-
       const guestCustomer = await tx.guestCustomer.upsert({
         where: { sessionId },
         update: {
@@ -664,6 +698,8 @@ export class OrderService {
           discount,
           total,
           deliveryAddress: orderData.deliveryAddress,
+          deliveryLat: data.deliveryLat ?? undefined,
+          deliveryLng: data.deliveryLng ?? undefined,
           notes: orderData.notes,
           organizationSlug,
           publicTrackingToken,
@@ -1095,38 +1131,71 @@ if (!org?.slug) return
       toDate,
     } = params;
 
-    const whereDriver: Record<string, unknown> = {};
+    const baseWhere: Prisma.OrderWhereInput = {};
 
     if (organizationSlug) {
-      whereDriver.organizationSlug = organizationSlug;
+      baseWhere.organizationSlug = organizationSlug;
     }
-    if (customerId) whereDriver.customerId = customerId;
-    if (guestCustomerId) whereDriver.guestCustomerId = guestCustomerId;
-    if (status) whereDriver.status = status;
-    if (type) whereDriver.type = type;
+    if (customerId) baseWhere.customerId = customerId;
+    if (guestCustomerId) baseWhere.guestCustomerId = guestCustomerId;
+    if (type) baseWhere.type = type as OrderType;
     if (fromDate || toDate) {
-      whereDriver.createdAt = {};
+      baseWhere.createdAt = {};
       if (fromDate)
-        (whereDriver.createdAt as Record<string, Date>).gte = new Date(
+        (baseWhere.createdAt as Prisma.DateTimeFilter).gte = new Date(
           fromDate,
         );
       if (toDate)
-        (whereDriver.createdAt as Record<string, Date>).lte = new Date(toDate);
+        (baseWhere.createdAt as Prisma.DateTimeFilter).lte = new Date(toDate);
     }
 
-    const whereNull: Record<string, unknown> = { ...whereDriver };
-    if (status && ["PENDING", "PLACED", "DENIED"].includes(status)) {
-      whereNull.status = { in: [] };
-    } else if (!status) {
-      whereNull.status = { in: ["ACCEPTED", "PREPARING", "READY", "PICKED_UP"] };
+    const allowedStatusFilters: OrderStatus[] = [
+      OrderStatus.PENDING,
+      OrderStatus.PLACED,
+      OrderStatus.ACCEPTED,
+      OrderStatus.PREPARING,
+      OrderStatus.READY,
+      OrderStatus.PICKED_UP,
+      OrderStatus.DELIVERED,
+      OrderStatus.CANCELLED,
+      OrderStatus.RECEIVED,
+      OrderStatus.REFUNDED,
+    ];
+    if (status && !allowedStatusFilters.includes(status as OrderStatus)) {
+      throw new Error("Invalid order status filter");
     }
 
-    const assignedWhere = { ...whereDriver, driverId };
-    const unassignedWhere = { ...whereNull, driverId: null };
+    const statusFilter = status as OrderStatus | undefined;
+    const availableDriverStatuses: OrderStatus[] = [
+      OrderStatus.ACCEPTED,
+      OrderStatus.PREPARING,
+      OrderStatus.READY,
+      OrderStatus.PICKED_UP,
+    ];
+
+    const assignedWhere: Prisma.OrderWhereInput = { ...baseWhere, driverId };
+    if (statusFilter) {
+      assignedWhere.status = statusFilter;
+    }
+
+    const availableWhere: Prisma.OrderWhereInput = {
+      ...baseWhere,
+      driverId: null,
+      status: statusFilter
+        ? statusFilter
+        : { in: availableDriverStatuses },
+      denies: { none: { userId: driverId } },
+    };
+
+    if (statusFilter && !availableDriverStatuses.includes(statusFilter)) {
+      availableWhere.status = { in: [] };
+    }
+
+    const orderWhere: Prisma.OrderWhereInput = { OR: [assignedWhere, availableWhere] };
 
     const [data, total] = await Promise.all([
       prisma.order.findMany({
-        where: { OR: [assignedWhere, unassignedWhere] },
+        where: orderWhere,
         skip: (page - 1) * pageSize,
         take: pageSize,
         orderBy: { createdAt: "desc" },
@@ -1194,11 +1263,7 @@ if (!org?.slug) return
           denies: true,
         },
       }),
-      prisma.order.count({
-        where: {
-          OR: [assignedWhere, unassignedWhere],
-        },
-      }),
+      prisma.order.count({ where: orderWhere }),
     ]);
 
     return {

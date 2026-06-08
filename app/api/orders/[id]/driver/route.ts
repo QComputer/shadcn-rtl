@@ -22,9 +22,8 @@ async function requireDriverSession() {
 }
 
 // POST /api/orders/[id]/driver
-// body: { action?: "accept" | "undeny" }
+// body: { action?: "accept" }
 // - no body / action="accept" => accept order
-// - action="undeny"        => remove driver deny
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -35,9 +34,11 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const action = (body as { action?: string })?.action;
 
-    if (action === "undeny") {
-      await orderService.unDenyOrderByDriver(id, session.user.id);
-      return NextResponse.json({ success: true });
+    if (action && action !== "accept") {
+      return NextResponse.json(
+        { error: "Unsupported driver action. Use POST to accept, PATCH to undeny, or DELETE to deny." },
+        { status: 400 },
+      );
     }
 
     const order = await orderService.acceptOrderByDriver(id, session.user.id);
@@ -54,17 +55,38 @@ export async function POST(
   }
 }
 
-// Backward-compatible alias for older deployed UI versions that used GET for accept.
-export async function GET(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> },
+// GET must remain read-only. Driver accept/undeny/deny are explicit mutations.
+export async function GET() {
+  return NextResponse.json(
+    { error: "Method not allowed. Use POST to accept, PATCH to undeny, or DELETE to deny." },
+    { status: 405, headers: { Allow: "POST, PATCH, DELETE" } },
+  );
+}
+
+// PATCH /api/orders/[id]/driver => remove a previous driver deny
+export async function PATCH(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  return POST(request, context);
+  try {
+    const session = await requireDriverSession();
+    const { id } = await params;
+
+    await orderService.unDenyOrderByDriver(id, session.user.id);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error undoing driver order deny:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Internal server error" },
+      { status: statusForDriverError(error) }
+    );
+  }
 }
 
 // DELETE /api/orders/[id]/driver => deny order
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

@@ -73,6 +73,8 @@ interface Order {
   discount: number
   total: number
   deliveryAddress: string | null
+  deliveryLat: number | null
+  deliveryLng: number | null
   notes: string | null
   createdAt: string
   customer: User | null
@@ -225,7 +227,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
       await fetch(`/api/orders/${selectedOrder.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ estimatedEndTime: pickupTime.toString(), type: "PICK_UP" }),
+        body: JSON.stringify({ estimatedEndTime: pickupTime.toDate().toISOString(), type: "PICK_UP" }),
       })
     } catch (err) {
       console.error("Error updating pickup progress:", err)
@@ -242,7 +244,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
       await fetch(`/api/orders/${selectedOrder.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ estimatedEndTime: deliveryTime.toString(), type: "DELIVERY" }),
+        body: JSON.stringify({ estimatedEndTime: deliveryTime.toDate().toISOString(), type: "DELIVERY" }),
       })
     } catch (err) {
       console.error("Error updating delivery progress:", err)
@@ -551,30 +553,28 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
                 </CardContent>
               </Card>
 
-              {selectedOrder.type === "DELIVERY" && (
-                <>
-                  <MapView
-                    shopLat={35.6892}
-                    shopLng={51.389}
-                    deliveryLat={35.7219}
-                    deliveryLng={51.3347}
-                  />
-                  {routeData && (
-                    <Card>
-                      <CardContent className="pt-4 space-y-2 text-sm">
-                        <p>
-                          <span className="text-muted-foreground">مسافت تقریبی:</span>{" "}
-                          {toPersianDigits((routeData.distance / 1000).toFixed(1))} کیلومتر
-                        </p>
-                        <p>
-                          <span className="text-muted-foreground">زمان تقریبی:</span>{" "}
-                          {toPersianDigits(Math.round(routeData.duration / 60))} دقیقه
-                        </p>
-                      </CardContent>
-                    </Card>
-                  )}
-                </>
-              )}
+{selectedOrder.type === "DELIVERY" && (
+                  <>
+                    <MapView
+                      deliveryLat={selectedOrder.deliveryLat ?? undefined}
+                      deliveryLng={selectedOrder.deliveryLng ?? undefined}
+                    />
+                    {routeData && (
+                     <Card>
+                       <CardContent className="pt-4 space-y-2 text-sm">
+                         <p>
+                           <span className="text-muted-foreground">مسافت تقریبی:</span>{" "}
+                           {toPersianDigits((routeData.distance / 1000).toFixed(1))} کیلومتر
+                         </p>
+                         <p>
+                           <span className="text-muted-foreground">زمان تقریبی:</span>{" "}
+                           {toPersianDigits(Math.round(routeData.duration / 60))} دقیقه
+                         </p>
+                       </CardContent>
+                     </Card>
+                   )}
+                 </>
+               )}
 
               {/* Order Items */}
               <Card>

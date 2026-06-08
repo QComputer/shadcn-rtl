@@ -25,22 +25,26 @@ The project is being hardened in phases. Each phase includes code changes, docum
 | 15 | Public order tracking privacy | Done | `docs/PHASE_15_PUBLIC_ORDER_TRACKING.md` | `npm run e2e:deployed:phase15` |
 | 16 | Public reviews/follows engagement hardening | Done | `docs/PHASE_16_PUBLIC_ENGAGEMENT.md` | `npm run e2e:deployed:phase16` |
 | 17 | Profile/settings/account self-service hardening | Done | `docs/PHASE_17_ACCOUNT_SETTINGS.md` | `npm run e2e:deployed:phase17` |
+| 20 | API/service consistency | Source-validated | `docs/PHASE_20_API_SERVICE_CONSISTENCY.md` | `node scripts/quality/validate-api-service-safety.mjs` |
+| 21 | Reality reset and API safety closure | Source-validated | `docs/PHASE_21_REALITY_RESET_API_SAFETY.md` | `npm run quality:local` |
 | C | Map & routing + driver dashboard | Done | `docs/PHASE_C_MAP_ROUTING.md` | — |
 | D | Improved driver dashboard UI | Done | `docs/PHASE_D_DRIVER_DASHBOARD.md` | — |
 | E | Admin order enhancements (assign driver) | Done | `docs/PHASE_E_ADMIN_ORDER_ENHANCEMENTS.md` | — |
 | F | Driver location tracking API | Done | `docs/PHASE_F_LOCATION_TRACKING.md` | — |
+
 ## Remaining production-hardening roadmap
 
-1. Add authenticated deployed smoke tests using seeded test credentials.
-2. Add a guarded staff/admin appointment-create endpoint, then enable create-from-slot in the dashboard calendar.
-3. Add safe drag/drop calendar rescheduling after server-side conflict checks are available.
-4. Finish migrating dashboard UI assumptions from global `User.role` to `OrganizationMember.role` where any legacy UI assumptions remain.
-5. Add public order tracking tokens instead of relying on order number and contextual access only.
-6. Add inventory movement records for order creation/cancellation/refund.
-7. Improve payment gateway integration with signed webhooks, idempotency keys, and amount verification.
-8. Add search rate limiting and search indexes.
-9. Add stricter TypeScript settings gradually.
-10. Fix ESLint configuration to match Next.js 16.
+Current source-of-truth handoff: `docs/CURRENT_SOURCE_OF_TRUTH.md`.
+
+1. P22 — GET purity and API normalization: remove writes/upserts/mark-read side effects from GET handlers and add a validator that blocks GET mutation patterns.
+2. P23 — dependency/package/build gate: align package versions, direct dependencies, Prisma generation/validation, typecheck, lint, and build on the target machine.
+3. P24 — tenant identity cleanup: reduce mixed `organizationId`/`organizationSlug` authorization and data-consistency risk.
+4. P25 — commerce correctness: harden delivery fee, driver visibility, payment idempotency, stock race safety, order token collisions, and cancellation/refund inventory behavior.
+5. P26 — appointment correctness: enforce business hours/provider availability/buffers inside create/reschedule APIs, not only slot generation.
+6. P27 — i18n/RTL completion: make FA/EN/AR dictionary keys complete and remove hardcoded user-visible text from production surfaces.
+7. P28 — UI decomposition and polish: split oversized dashboard/shop/order pages into feature components and normalize loading/empty/error states.
+8. P29 — production infrastructure: durable uploads, distributed rate limiting, logging/monitoring, health checks, backup/restore, and migration deployment checklist.
+9. P30 — release-candidate QA: real browser E2E, API integration tests, i18n/RTL checks, and concurrency tests.
 
 
 ## Phase 10 — Authentication and security headers

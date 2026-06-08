@@ -367,7 +367,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
 
   const handleSaveAllEstimatedEndTimes = async ()=>{
     if (!selectedOrder) return
-    await handleSavePreparationEstimatedEndTime(selectedOrder.id, preparationTime?.toString())
+    await handleSavePreparationEstimatedEndTime(selectedOrder.id, preparationTime?.toDate().toISOString())
     fetchOrders()
   }
 

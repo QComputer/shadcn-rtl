@@ -77,6 +77,8 @@ export const updateOrganizationSchema = z.object({
   coverImage: z.string().max(500).optional(),
   timezone: z.string().optional(),
   isActive: z.boolean().optional(),
+  lat: z.number().optional(),
+  lng: z.number().optional(),
 });
 
 // Business Hours validators
@@ -202,6 +204,8 @@ export const createOrderSchema = z.object({
   //customerPhone: z.string().max(100).optional(),
   customerPhone: phoneSchema.optional(),
   deliveryAddress: z.string().max(500).optional(),
+  deliveryLat: z.number().optional(),
+  deliveryLng: z.number().optional(),
   notes: z.string().max(2000).optional(),
   promotionCode: z.string().optional(),
   autoCompleteEndTimes: z.boolean().default(true),
@@ -216,7 +220,7 @@ export const updateOrderStatusSchema = z.object({
 
 export const updateOrderEstimatedEndTimeSchema = z.object({
   type: z.enum(["PREPARATION", "PICK_UP", "DELIVERY"]),
-  estimatedEndTime: z.string().max(100).optional(),
+  estimatedEndTime: z.string().datetime(),
 });
 
 export const updateOrderPaymentSchema = z.object({
@@ -256,6 +260,7 @@ export const updateOrganizationSettingsSchema = z.object({
   minimumOrderAmount: z.number().nonnegative().optional(),
   maximumOrderAmount: z.number().nonnegative().optional(),
   deliveryRadius: z.number().positive().optional(),
+  deliveryFee: z.number().nonnegative().optional(),
   enablePickup: z.boolean().default(true),
   enableDelivery: z.boolean().default(true),
   emailNotifications: z.boolean().default(true),
@@ -288,7 +293,7 @@ export const productFilterSchema = z.object({
 }).merge(paginationSchema);
 
 export const orderFilterSchema = z.object({
-  status: z.enum(["PENDING", "PLACED", "ACCEPTED", "PREPARING", "READY", "PICKED_UP", "DELIVERED", "RECEIVED", "REFUNDED"]).optional(),
+  status: z.enum(["PENDING", "PLACED", "ACCEPTED", "PREPARING", "READY", "PICKED_UP", "DELIVERED", "CANCELLED", "RECEIVED", "REFUNDED"]).optional(),
   type: z.enum(["DELIVERY", "PICK_UP"]).optional(),
   organizationId: z.string().cuid().optional(),
   driverId: z.string().cuid().optional(),

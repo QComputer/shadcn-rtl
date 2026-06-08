@@ -2,12 +2,11 @@ import { CartProvider } from "@/lib/contexts/cart-context";
 import { CartDrawer } from "@/components/shop/cart-drawer";
 import { CartBadge } from "@/components/shop/cart-badge";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Store } from "lucide-react";
 import { Metadata } from "next";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 import prisma from "@/lib/db";
 import Link from "next/link";
-
+import { ShopLocationDialog } from "@/components/shop/shop-location-dialog";
 
 interface ShopLayoutProps {
   children: React.ReactNode;
@@ -24,8 +23,6 @@ const organization = await prisma.organization.findUnique({
   where: { slug, type: "SHOP"},
   select: {name: true, slug: true, description: true}
 })
-    //console.log("------------------shop organization:", organization);
-    
     if (!organization) {
       return {
         title: "Shop Not Found",
@@ -48,16 +45,22 @@ const organization = await prisma.organization.findUnique({
   }
 }
 
+type ShopLayoutOrganization = {
+  id: string;
+  name: string | null;
+  slug: string | null;
+  lat: number | null;
+  lng: number | null;
+  type: string | null;
+};
 
 export default async function ShopLayout({ children, params }: ShopLayoutProps) {
   const { locale, slug } = await params;
 
 const organization = await prisma.organization.findUnique({
   where: { slug},
-  select: {name: true, slug: true}
-})
-
-  // Get organization ID from slug
+  select: {id: true, name: true, slug: true, lat: true, lng: true, type: true}
+}) as ShopLayoutOrganization | null;
 
   return (
     <CartProvider locale={locale} slug={slug} >
@@ -72,6 +75,13 @@ const organization = await prisma.organization.findUnique({
               </span>
 
             <div className="flex items-center gap-2 ">
+              {organization?.lat != null && organization?.lng != null && (
+                <ShopLocationDialog
+                  lat={organization.lat}
+                  lng={organization.lng}
+                  organizationName={organization.name}
+                />
+              )}
               <CartDrawer organizationSlug={slug} locale={locale}>
                 <Button variant="ghost" size="icon" className="relative">
                   <CartBadge />

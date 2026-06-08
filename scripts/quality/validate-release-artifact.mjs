@@ -10,10 +10,6 @@ function add(name, ok, detail = "") {
   results.push({ name, ok, detail });
 }
 
-function exists(rel) {
-  return fs.existsSync(path.join(root, rel));
-}
-
 function walk(absDir, out = []) {
   if (!fs.existsSync(absDir)) return out;
   for (const entry of fs.readdirSync(absDir, { withFileTypes: true })) {
@@ -82,7 +78,6 @@ const suspiciousSecretNames = files.filter((rel) => {
   return /secret|credential|private[-_]?key|service[-_]?account/.test(base);
 });
 add("no suspicious secret-like filenames", suspiciousSecretNames.length === 0, suspiciousSecretNames.slice(0, 5).join(", "));
-
 add("artifact root exists", fs.existsSync(root), root);
 
 console.table(results);

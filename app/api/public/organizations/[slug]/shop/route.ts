@@ -58,8 +58,11 @@ export async function GET(
       );
 
     const categories = activeCategories
-    // Get organization settings
-    let settings = await prisma.organizationSettings.findUnique({
+    // Get organization settings without mutating public GET state and without loading
+    // the Organization relation. Some deployed databases do not yet have newer
+    // Organization columns such as lat/lng, so this route must select only the
+    // public shop fields it needs.
+    const settings = await prisma.organizationSettings.findUnique({
       where: {
          organizationSlug: slug,
       },
@@ -69,44 +72,61 @@ export async function GET(
         enableDelivery: true,
         minimumOrderAmount: true,
         deliveryRadius: true,
-        organization: {include: {paymentSettings: true}}
+        deliveryFee: true,
       },
     });
-    if (!settings){
-      settings = await prisma.organizationSettings.create({
-        data: { organizationSlug: slug },
-        select: {
-          currency: true,
-          enablePickup: true,
-          enableDelivery: true,
-          minimumOrderAmount: true,
-          deliveryRadius: true,
-          organization: { include: { paymentSettings: true } },
-        },
-      });
-    } else if (!settings.organization.paymentSettings) {
-      const paymentSettings = await prisma.paymentSettings.upsert({
-        where: { organizationSlug: slug},
-        update:{},
-        create: { organizationSlug: slug },
-      });
-      settings = await prisma.organizationSettings.create({
-        data: { organizationSlug: slug },
-        select: {
-          currency: true,
-          enablePickup: true,
-          enableDelivery: true,
-          minimumOrderAmount: true,
-          deliveryRadius: true,
-          organization: { include: { paymentSettings: true } },
-        },
-      });
+
+    const organization = await prisma.organization.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        address: true,
+        phone: true,
+        email: true,
+        logo: true,
+        coverImage: true,
+        type: true,
+        isOpen: true,
+        isActive: true,
+      },
+    });
+
+    if (!organization) {
+      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
     }
+
+    const paymentSettings = await prisma.paymentSettings.findUnique({
+      where: {
+        organizationSlug: slug,
+      },
+      select: {
+        id: true,
+        organizationSlug: true,
+        cardOwnerName: true,
+        settings: true,
+        paymentCondition: true,
+        paymentMethodInt: true,
+        cardNumber: true,
+      },
+    });
+
+    const resolvedSettings = settings ?? {
+      currency: "IRR",
+      enablePickup: true,
+      enableDelivery: true,
+      minimumOrderAmount: null,
+      deliveryRadius: null,
+      deliveryFee: null,
+    };
+
       return NextResponse.json({
-        organization: settings?.organization,
+        organization,
         categories: categories,
-        settings,
-        paymentSettings: settings?.organization?.paymentSettings,
+        settings: resolvedSettings,
+        paymentSettings,
       });
   } catch (error) {
     console.error("Error getting shop organization:", error);

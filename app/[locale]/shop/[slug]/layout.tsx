@@ -6,7 +6,6 @@ import { Metadata } from "next";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 import prisma from "@/lib/db";
 import Link from "next/link";
-import { ShopLocationDialog } from "@/components/shop/shop-location-dialog";
 
 interface ShopLayoutProps {
   children: React.ReactNode;
@@ -49,8 +48,6 @@ type ShopLayoutOrganization = {
   id: string;
   name: string | null;
   slug: string | null;
-  lat: number | null;
-  lng: number | null;
   type: string | null;
 };
 
@@ -58,8 +55,8 @@ export default async function ShopLayout({ children, params }: ShopLayoutProps) 
   const { locale, slug } = await params;
 
 const organization = await prisma.organization.findUnique({
-  where: { slug},
-  select: {id: true, name: true, slug: true, lat: true, lng: true, type: true}
+  where: { slug },
+  select: { id: true, name: true, slug: true, type: true },
 }) as ShopLayoutOrganization | null;
 
   return (
@@ -75,13 +72,6 @@ const organization = await prisma.organization.findUnique({
               </span>
 
             <div className="flex items-center gap-2 ">
-              {organization?.lat != null && organization?.lng != null && (
-                <ShopLocationDialog
-                  lat={organization.lat}
-                  lng={organization.lng}
-                  organizationName={organization.name}
-                />
-              )}
               <CartDrawer organizationSlug={slug} locale={locale}>
                 <Button variant="ghost" size="icon" className="relative">
                   <CartBadge />

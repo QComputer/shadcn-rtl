@@ -20,17 +20,13 @@ export async function GET(
     }
     const organizationSlug = (session.user.role == "SUPER_ADMIN") ?  await getSlug(id) : (session.user.organizationId) ? await getSlug(session.user.organizationId) : null ;
 
-    if (!organizationSlug) return;
+    if (!organizationSlug) {
+      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+    }
 
-    let paymentSettings = await prisma.paymentSettings.findUnique({
+    const paymentSettings = await prisma.paymentSettings.findUnique({
       where: { organizationSlug },
     });
-
-    if (!paymentSettings){
-        paymentSettings = await prisma.paymentSettings.create({
-            data: { organizationSlug },
-    });
-    }
 
     return NextResponse.json(paymentSettings || {});
   } catch (error) {
@@ -72,7 +68,9 @@ export async function PUT(
         : session.user.organizationId
           ? await getSlug(session.user.organizationId)
           : null;
-    if (!organizationSlug) return;
+    if (!organizationSlug) {
+      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+    }
     const paymentSettings = await prisma.paymentSettings.upsert({
       where: { organizationSlug },
       update: data,

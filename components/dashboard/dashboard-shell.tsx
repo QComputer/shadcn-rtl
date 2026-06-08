@@ -72,6 +72,12 @@ function DashboardNotificationPoller() {
               })
             }
           }
+
+          await fetch("/api/dashboard/notifications", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids: notifications.map((notification) => notification.id) }),
+          }).catch(() => undefined)
         }
       } catch {
         // Keep dashboard rendering stable; notification polling will retry later.

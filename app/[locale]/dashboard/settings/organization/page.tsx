@@ -172,7 +172,11 @@ const handleOpen = async (e: React.FormEvent) => {
     setError(null)
     
     try {
-      const response = await fetch(`/api/organizations/open`)
+      const response = await fetch(`/api/organizations/open`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isOpen: true }),
+      })
       
       if (!response.ok) {
         const data = await response.json()

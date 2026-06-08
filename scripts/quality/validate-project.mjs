@@ -63,6 +63,7 @@ for (const rel of [
   "docs/PHASE_18_PRODUCTION_INTEGRITY_SMS_READINESS.md",
   "docs/PHASE_19_RBAC_AUTH_DASHBOARD_ACCESS.md",
   "docs/PHASE_20_API_SERVICE_CONSISTENCY.md",
+  "docs/PHASE_22_GET_PURITY_API_NORMALIZATION.md",
 ]) {
   exists(rel) ? ok(`${rel} exists`) : fail(`${rel} exists`);
 }
@@ -114,11 +115,11 @@ for (const rel of expectedE2E) {
   exists(rel) ? ok(`${rel} exists`) : fail(`${rel} exists`);
 }
 
-for (const rel of ["app/api/health/route.ts", "lib/runtime-env.ts", "scripts/quality/validate-env.mjs", "scripts/quality/validate-release-artifact.mjs"]) {
+for (const rel of ["app/api/health/route.ts", "lib/runtime-env.ts", "scripts/quality/validate-env.mjs", "scripts/quality/validate-release-artifact.mjs", "scripts/quality/validate-get-purity.mjs"]) {
   exists(rel) ? ok(`${rel} exists`) : fail(`${rel} exists`);
 }
 
-for (const rel of ["scripts/e2e/deployed-phase9-quality-gates.mjs", "scripts/e2e/deployed-phase10-auth-security.mjs", "scripts/e2e/deployed-phase11-health.mjs", "scripts/e2e/deployed-phase12-messaging.mjs", "scripts/e2e/deployed-phase13-catalog-hardening.mjs", "scripts/e2e/deployed-phase14-inventory-operations.mjs", "scripts/e2e/deployed-phase15-public-order-tracking.mjs", "scripts/e2e/deployed-phase16-engagement.mjs", "scripts/e2e/deployed-phase17-account-settings.mjs", "scripts/e2e/deployed-all.mjs", "scripts/quality/validate-env.mjs", "scripts/quality/validate-dashboard-access.mjs", "scripts/quality/validate-api-service-safety.mjs", "scripts/quality/validate-release-artifact.mjs"]) {
+for (const rel of ["scripts/e2e/deployed-phase9-quality-gates.mjs", "scripts/e2e/deployed-phase10-auth-security.mjs", "scripts/e2e/deployed-phase11-health.mjs", "scripts/e2e/deployed-phase12-messaging.mjs", "scripts/e2e/deployed-phase13-catalog-hardening.mjs", "scripts/e2e/deployed-phase14-inventory-operations.mjs", "scripts/e2e/deployed-phase15-public-order-tracking.mjs", "scripts/e2e/deployed-phase16-engagement.mjs", "scripts/e2e/deployed-phase17-account-settings.mjs", "scripts/e2e/deployed-all.mjs", "scripts/quality/validate-env.mjs", "scripts/quality/validate-dashboard-access.mjs", "scripts/quality/validate-api-service-safety.mjs", "scripts/quality/validate-release-artifact.mjs", "scripts/quality/validate-get-purity.mjs"]) {
   if (!exists(rel)) continue;
   const result = spawnSync(process.execPath, ["--check", rel], { cwd: root, encoding: "utf8" });
   result.status === 0 ? ok(`${rel} syntax`) : fail(`${rel} syntax`, result.stderr || result.stdout);
@@ -128,6 +129,11 @@ for (const rel of ["scripts/e2e/deployed-phase9-quality-gates.mjs", "scripts/e2e
 if (exists("scripts/quality/validate-api-service-safety.mjs")) {
   const result = spawnSync(process.execPath, ["scripts/quality/validate-api-service-safety.mjs"], { cwd: root, encoding: "utf8" });
   result.status === 0 ? ok("P20 API/service safety validator passes") : fail("P20 API/service safety validator passes", result.stderr || result.stdout);
+}
+
+if (exists("scripts/quality/validate-get-purity.mjs")) {
+  const result = spawnSync(process.execPath, ["scripts/quality/validate-get-purity.mjs"], { cwd: root, encoding: "utf8" });
+  result.status === 0 ? ok("P22 GET purity validator passes") : fail("P22 GET purity validator passes", result.stderr || result.stdout);
 }
 
 console.table(results);

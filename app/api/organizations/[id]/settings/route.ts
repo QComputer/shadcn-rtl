@@ -27,10 +27,8 @@ export async function GET(
     const organizationId = await resolveManageableOrganizationId(session, id);
     const organizationSlug = await getOrganizationSlug(organizationId);
 
-    const settings = await prisma.organizationSettings.upsert({
+    const settings = await prisma.organizationSettings.findUnique({
       where: { organizationSlug },
-      update: {},
-      create: { organizationSlug },
       include: {
         organization: {
           include: { businessHours: true, paymentSettings: true },
@@ -38,7 +36,36 @@ export async function GET(
       },
     });
 
-    return NextResponse.json(settings);
+    if (settings) {
+      return NextResponse.json(settings);
+    }
+
+    const organization = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      include: { businessHours: true, paymentSettings: true },
+    });
+
+    if (!organization) {
+      throw new ApiError(404, "Organization not found");
+    }
+
+    return NextResponse.json({
+      id: null,
+      organizationSlug,
+      currency: "IRR",
+      dateFormat: "YYYY-MM-DD",
+      timeFormat: "24h",
+      minimumOrderAmount: null,
+      maximumOrderAmount: null,
+      deliveryRadius: null,
+      deliveryFee: null,
+      enablePickup: true,
+      enableDelivery: true,
+      emailNotifications: true,
+      smsNotifications: false,
+      settings: null,
+      organization,
+    });
   } catch (error) {
     console.error("Error getting settings:", error);
     return jsonError(error, "Internal server error");

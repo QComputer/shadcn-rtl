@@ -97,7 +97,8 @@
     "myOrders": "طلباتي",
     "myAppointments": "مواعيدي",
     "myServices": "خدماتي",
-    "calendar": "التقويم"
+    "calendar": "التقويم",
+    "checkout": "الدفع"
   },
   "organization": {
     "title": "منظمة",
@@ -127,7 +128,12 @@
     "follow": "متابعة",
     "loginToFollow": "سجّل الدخول للمتابعة",
     "followUpdateError": "تعذر تحديث حالة المتابعة",
-    "fanpage": "صفحة المتابعين"
+    "fanpage": "صفحة المتابعين",
+    "bookNow": "احجز الآن",
+    "ourServices": "خدماتنا",
+    "closed": "مغلق",
+    "open": "مفتوح",
+    "myAppointments": "حجوزاتي"
   },
   "product": {
     "title": "منتج",

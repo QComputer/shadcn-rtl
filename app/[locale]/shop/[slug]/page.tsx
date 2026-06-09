@@ -39,6 +39,7 @@ import { DialogTitle } from "@radix-ui/react-dialog"
 import { ShopStatusBadge } from "@/components/ShopStatusBadge"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
+import { PublicImage } from "@/components/public/public-image"
 
 interface ProductVariant {
   id: string
@@ -373,19 +374,20 @@ const getDisplayPrice = (product: Product): PriceInfo => {
       {/* Hero Section */}
       <section className="relative h-80 ">
         <div className="absolute inset-0 " />
-        {data?.organization?.coverImage && (
-            <img
-              src={data.organization.coverImage}
-              alt={data.organization.name+"cover image"}
-              className="w-full h-full object-cover opacity-40 blure"
-            />
-            )}
+        <PublicImage
+          src={data?.organization?.coverImage}
+          alt={`${data.organization.name} cover image`}
+          kind="shop"
+          className="w-full h-full object-cover opacity-40"
+          decorative
+        />
         <div className="container mx-auto px-2 relative z-10">
             <div 
             className={"w-25 h-25 rounded-full border-2  overflow-hidden -mt-58 mx-5 bg-card mb-5"}>
-              <img 
-                src={data.organization?.logo || "logo"} 
-                alt={data.organization?.name+"logo"}
+              <PublicImage
+                src={data.organization?.logo}
+                alt={`${data.organization?.name ?? "Shop"} logo`}
+                kind="shop"
                 className="w-full h-full object-cover"
               />
             </div>
@@ -540,17 +542,12 @@ const getDisplayPrice = (product: Product): PriceInfo => {
                       <CardTitle>
                       <div className="aspect-square bg-muted relative -mt-4 -mb-4">
                       <Link   href={`/${locale}/shop/${slug}/product/${product.id}`}>
-                      {product.image ? (
-                          <img 
-                            src={product.image} 
-                            alt={product.name}
-                            className="w-full h-full object-cover "
-                          />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Package className="h-12 w-12 text-muted-foreground" />
-                          </div>
-                        )}
+                      <PublicImage
+                        src={product.image}
+                        alt={product.name}
+                        kind="product"
+                        className="w-full h-full object-cover"
+                      />
                         </Link>
                         {product.trackInventory && inventory === 0 && (
                           <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
@@ -637,17 +634,12 @@ const getDisplayPrice = (product: Product): PriceInfo => {
                         <div className="flex gap-4">
                                <div className="w-24 h-24 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                           <Link   href={`/${locale}/shop/${slug}/product/${product.id}`}>                        
-                              {product.image ? (
-                                <img 
-                                  src={product.image} 
-                                  alt={product.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                <Package className="h-8 w-8 text-muted-foreground" />
-                                </div>
-                              )}
+                              <PublicImage
+                                src={product.image}
+                                alt={product.name}
+                                kind="product"
+                                className="w-full h-full object-cover"
+                              />
                             </Link>
                           </div>
                           
@@ -734,13 +726,12 @@ const getDisplayPrice = (product: Product): PriceInfo => {
 
 
 
-                {selectedProduct?.image && (
-                  <img 
-                    src={selectedProduct.image} 
-                    alt={selectedProduct.name}
-                    className="w-full h-full object-cover "
-                  />
-                )}
+                <PublicImage
+                  src={selectedProduct?.image}
+                  alt={selectedProduct?.name || "Product image"}
+                  kind="product"
+                  className="w-full h-full object-cover"
+                />
                 </div>
                     <ScrollArea className={cn(" py-2 max-h-100")} dir="rtl">
               <div className="grid grid-cols-1 gap-5">

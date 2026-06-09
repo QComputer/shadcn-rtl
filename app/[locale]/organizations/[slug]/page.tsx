@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatToman, toPersianDigits } from "@/lib/persian"
 import { FollowButton } from "@/components/follow/follow-button"
+import { PublicImage } from "@/components/public/public-image"
 
 interface ServiceCategory {
   id: string
@@ -185,15 +186,14 @@ export default function OrganizationPage({
         <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
         <div className="container mx-auto px-4 pt-24 relative z-10">
           <div className="max-w-3xl">
-            {organization.logo && (
-              <div className="w-20 h-20 rounded-lg overflow-hidden mb-4 bg-card">
-                <img 
-                  src={organization.logo} 
-                  alt={organization.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
+            <div className="w-20 h-20 rounded-lg overflow-hidden mb-4 bg-card">
+              <PublicImage
+                src={organization.logo}
+                alt={organization.name}
+                kind="organization"
+                className="w-full h-full object-cover"
+              />
+            </div>
             <h1 className="text-3xl md:text-4xl font-bold mb-2">
               {organization.name}
             </h1>
@@ -295,15 +295,14 @@ export default function OrganizationPage({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {categories.slice(0, 6).map((category) => (
                 <Card key={locale+category.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                  {category.image && (
-                    <div className="h-48 overflow-hidden">
-                      <img 
-                        src={category.image} 
-                        alt={category.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
+                  <div className="h-48 overflow-hidden">
+                    <PublicImage
+                      src={category.image}
+                      alt={category.name}
+                      kind="service"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                   <CardHeader>
                     <CardTitle className="text-xl">{category.name}</CardTitle>
                     {category.description && (

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { LocaleSwitcher } from "@/components/ui/locale-switcher";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 import { HomeHero } from "@/components/home/home-hero";
+import { PublicImage } from "@/components/public/public-image";
 
 export const revalidate = 60;
 
@@ -428,22 +429,12 @@ function OrganizationCardItem({
   return (
     <Link href={href} className="group block overflow-hidden rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl">
       <div className="aspect-video overflow-hidden bg-muted">
-        {organization.coverImage || organization.logo ? (
-          <img
-            src={organization.coverImage || organization.logo || ""}
-            alt={organization.name}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/15 to-muted">
-            {organization.type === "SHOP" ? (
-              <Store className="h-14 w-14 text-primary/40" />
-            ) : (
-              <Calendar className="h-14 w-14 text-primary/40" />
-            )}
-          </div>
-        )}
+        <PublicImage
+          src={organization.coverImage || organization.logo}
+          alt={organization.name}
+          kind={organization.type === "SHOP" ? "shop" : "service"}
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+        />
       </div>
       <div className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">

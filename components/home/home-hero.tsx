@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { PublicImage } from "@/components/public/public-image";
 
 type Locale = "fa" | "en" | "ar";
 type ResultType = "ORGANIZATION" | "PRODUCT" | "SERVICE";
@@ -311,11 +312,13 @@ export function HomeHero({
                                   onClick={() => setOpen(false)}
                                 >
                                   <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary/10 text-primary">
-                                    {item.image ? (
-                                      <img src={item.image} alt="" className="h-full w-full object-cover" loading="lazy" />
-                                    ) : (
-                                      <Icon className="h-5 w-5" />
-                                    )}
+                                    <PublicImage
+                                      src={item.image}
+                                      alt={item.title}
+                                      kind={item.type === "PRODUCT" ? "product" : item.type === "SERVICE" ? "service" : "organization"}
+                                      className="h-full w-full object-cover"
+                                      decorative
+                                    />
                                   </div>
                                   <div className="min-w-0 flex-1">
                                     <p className="truncate font-medium">{item.title}</p>
@@ -364,22 +367,13 @@ export function HomeHero({
           <div className="absolute -inset-6 rounded-[2rem] bg-primary/10 blur-3xl" />
           <Link href={currentSlide.href} className="group relative block overflow-hidden rounded-[2rem] border bg-background shadow-2xl">
             <div className="aspect-[4/3] bg-muted">
-              {currentSlide.image ? (
-                <img
-                  src={currentSlide.image}
-                  alt={currentSlide.title}
-                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  loading="eager"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                  {currentSlide.type === "SHOP" ? (
-                    <ShoppingBag className="h-24 w-24 text-primary/40" />
-                  ) : (
-                    <Calendar className="h-24 w-24 text-primary/40" />
-                  )}
-                </div>
-              )}
+              <PublicImage
+                src={currentSlide.image}
+                alt={currentSlide.title}
+                kind={currentSlide.type === "SHOP" ? "shop" : "service"}
+                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                loading="eager"
+              />
             </div>
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/45 to-transparent p-6 text-white">
               <Badge variant="secondary" className="mb-3 bg-white/90 text-foreground">

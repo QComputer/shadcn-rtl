@@ -97,7 +97,8 @@
     "myOrders": "My Orders",
     "myAppointments": "My Appointments",
     "myServices": "My Services",
-    "calendar": "Calendar"
+    "calendar": "Calendar",
+    "checkout": "Checkout"
   },
   "organization": {
     "title": "Organization",

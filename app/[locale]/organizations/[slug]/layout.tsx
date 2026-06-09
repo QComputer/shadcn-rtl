@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { LocaleSwitcher } from "@/components/ui/locale-switcher";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 import prisma from "@/lib/db";
+import { getDictionary, getDictValue } from "@/lib/dictionary";
 
 interface OrganizationLayoutProps {
   children: React.ReactNode;
@@ -57,6 +58,14 @@ export async function generateMetadata({ params }: OrganizationLayoutProps): Pro
 export default async function OrganizationLayout({ children, params }: OrganizationLayoutProps) {
   const { locale, slug } = await params;
   const organization = await getAppointmentOrganization(slug);
+  const dict = getDictionary(locale);
+  const t = (key: string) => getDictValue(dict, key);
+  const navItems = [
+    { href: `/${locale}/organizations/${organization?.slug ?? slug}`, label: t("navigation.profile") },
+    { href: `/${locale}/organizations/${organization?.slug ?? slug}/services`, label: t("navigation.services") },
+    { href: `/${locale}/organizations/${organization?.slug ?? slug}/booking`, label: t("organization.bookNow") },
+    { href: `/${locale}/organizations/${organization?.slug ?? slug}/my-appointments`, label: t("navigation.myAppointments") },
+  ];
 
   if (!organization) {
     notFound();
@@ -72,6 +81,13 @@ export default async function OrganizationLayout({ children, params }: Organizat
                 {organization.name}
               </a>
             </div>
+            <nav className="hidden items-center gap-2 text-sm md:flex" aria-label={t("navigation.menu")}>
+              {navItems.map((item) => (
+                <a key={item.href} href={item.href} className="rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                  {item.label}
+                </a>
+              ))}
+            </nav>
             <div className="flex items-center gap-4">
               <LocaleSwitcher />
               <ThemeSwitcher />

@@ -153,3 +153,23 @@ P28 prepares the existing follow foundation for later fanpage implementation.
 - `pnpm run quality:fanpage-readiness` is available and included in `quality:local`.
 
 Fanpage feed/posts are still not implemented. Recommended next phase: P29 — Fanpage Content Model Foundation.
+
+## P29 — Public Experience Completion
+
+P29 hardens the public homepage, organization profile, and shop surfaces before adding new fanpage content features.
+
+- Added a reusable `PublicImage` client component with broken/missing-image fallback.
+- Homepage organization cards and hero/search imagery now use `PublicImage` instead of raw `<img>` tags.
+- Public appointment organization page logo/category imagery now uses `PublicImage`.
+- Public shop page cover/logo/product/modal imagery now uses `PublicImage`.
+- Public appointment and shop layouts now expose simple public navigation links.
+- Added missing public navigation dictionary keys used by the new layout nav.
+- Added `pnpm run quality:public-experience` and included it in `quality:local`.
+
+Known remaining public UX debt:
+
+- Some public page copy remains hardcoded and will be cleaned during the i18n completion pass.
+- Fanpage feed/posts are still not implemented.
+- Missing local upload files still return 404 at the static `/uploads/*` route; P29 makes visible page images degrade gracefully when the browser loads broken URLs.
+
+Recommended next phase: P30 — Fanpage MVP or P30 — Public page runtime smoke E2E, depending on whether product or release confidence is higher priority.

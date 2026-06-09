@@ -8,6 +8,7 @@ import prisma from "@/lib/db";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FollowButton } from "@/components/follow/follow-button";
+import { getDictionary, getDictValue } from "@/lib/dictionary";
 
 interface ShopLayoutProps {
   children: React.ReactNode;
@@ -55,6 +56,8 @@ type ShopLayoutOrganization = {
 
 export default async function ShopLayout({ children, params }: ShopLayoutProps) {
   const { locale, slug } = await params;
+  const dict = getDictionary(locale);
+  const t = (key: string) => getDictValue(dict, key);
 
 const organization = await prisma.organization.findFirst({
   where: { slug, type: "SHOP", isActive: true, deletedAt: null },
@@ -64,6 +67,11 @@ const organization = await prisma.organization.findFirst({
   if (!organization?.slug) {
     notFound();
   }
+
+  const navItems = [
+    { href: `/${locale}/shop/${organization.slug}`, label: t("navigation.products") },
+    { href: `/${locale}/shop/${organization.slug}/checkout`, label: t("navigation.checkout") },
+  ];
 
   return (
     <CartProvider locale={locale} slug={slug} >
@@ -77,6 +85,13 @@ const organization = await prisma.organization.findFirst({
               </Link>
               </span>
 
+            <nav className="hidden items-center gap-2 text-sm md:flex" aria-label={t("navigation.menu")}>
+              {navItems.map((item) => (
+                <Link key={item.href} href={item.href} className="rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
             <div className="flex items-center gap-2 ">
               <FollowButton organizationId={organization.id} locale={locale} />
               <CartDrawer organizationSlug={slug} locale={locale}>

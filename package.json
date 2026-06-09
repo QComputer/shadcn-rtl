@@ -53,7 +53,10 @@
     "smoke:deployed:account-settings": "node scripts/e2e/deployed-phase17-account-settings.mjs",
     "e2e:deployed:map-validation": "node scripts/e2e/deployed-phase-map-validation.mjs",
     "quality:release-artifact": "node scripts/quality/validate-release-artifact.mjs",
-    "quality:get-purity": "node scripts/quality/validate-get-purity.mjs"
+    "quality:get-purity": "node scripts/quality/validate-get-purity.mjs",
+    "db:drift": "node scripts/quality/validate-database-drift.mjs",
+    "db:repair:known-drift": "node scripts/db/repair-known-database-drift.mjs",
+    "quality:tenant-identity": "node scripts/quality/validate-tenant-identity.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

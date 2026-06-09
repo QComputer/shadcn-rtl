@@ -64,6 +64,8 @@ for (const rel of [
   "docs/PHASE_19_RBAC_AUTH_DASHBOARD_ACCESS.md",
   "docs/PHASE_20_API_SERVICE_CONSISTENCY.md",
   "docs/PHASE_22_GET_PURITY_API_NORMALIZATION.md",
+  "docs/PHASE_23_TENANT_DATABASE_DRIFT_AUDIT.md",
+  "docs/PHASE_24_TENANT_IDENTITY_AUDIT_GUARDRAILS.md",
 ]) {
   exists(rel) ? ok(`${rel} exists`) : fail(`${rel} exists`);
 }
@@ -115,11 +117,11 @@ for (const rel of expectedE2E) {
   exists(rel) ? ok(`${rel} exists`) : fail(`${rel} exists`);
 }
 
-for (const rel of ["app/api/health/route.ts", "lib/runtime-env.ts", "scripts/quality/validate-env.mjs", "scripts/quality/validate-release-artifact.mjs", "scripts/quality/validate-get-purity.mjs"]) {
+for (const rel of ["app/api/health/route.ts", "lib/runtime-env.ts", "scripts/quality/validate-env.mjs", "scripts/quality/validate-release-artifact.mjs", "scripts/quality/validate-get-purity.mjs", "scripts/quality/validate-database-drift.mjs", "scripts/quality/validate-tenant-identity.mjs", "scripts/db/repair-known-database-drift.mjs", "scripts/db/known-database-drift-repair.sql"]) {
   exists(rel) ? ok(`${rel} exists`) : fail(`${rel} exists`);
 }
 
-for (const rel of ["scripts/e2e/deployed-phase9-quality-gates.mjs", "scripts/e2e/deployed-phase10-auth-security.mjs", "scripts/e2e/deployed-phase11-health.mjs", "scripts/e2e/deployed-phase12-messaging.mjs", "scripts/e2e/deployed-phase13-catalog-hardening.mjs", "scripts/e2e/deployed-phase14-inventory-operations.mjs", "scripts/e2e/deployed-phase15-public-order-tracking.mjs", "scripts/e2e/deployed-phase16-engagement.mjs", "scripts/e2e/deployed-phase17-account-settings.mjs", "scripts/e2e/deployed-all.mjs", "scripts/quality/validate-env.mjs", "scripts/quality/validate-dashboard-access.mjs", "scripts/quality/validate-api-service-safety.mjs", "scripts/quality/validate-release-artifact.mjs", "scripts/quality/validate-get-purity.mjs"]) {
+for (const rel of ["scripts/e2e/deployed-phase9-quality-gates.mjs", "scripts/e2e/deployed-phase10-auth-security.mjs", "scripts/e2e/deployed-phase11-health.mjs", "scripts/e2e/deployed-phase12-messaging.mjs", "scripts/e2e/deployed-phase13-catalog-hardening.mjs", "scripts/e2e/deployed-phase14-inventory-operations.mjs", "scripts/e2e/deployed-phase15-public-order-tracking.mjs", "scripts/e2e/deployed-phase16-engagement.mjs", "scripts/e2e/deployed-phase17-account-settings.mjs", "scripts/e2e/deployed-all.mjs", "scripts/quality/validate-env.mjs", "scripts/quality/validate-dashboard-access.mjs", "scripts/quality/validate-api-service-safety.mjs", "scripts/quality/validate-release-artifact.mjs", "scripts/quality/validate-get-purity.mjs", "scripts/quality/validate-database-drift.mjs", "scripts/quality/validate-tenant-identity.mjs", "scripts/db/repair-known-database-drift.mjs"]) {
   if (!exists(rel)) continue;
   const result = spawnSync(process.execPath, ["--check", rel], { cwd: root, encoding: "utf8" });
   result.status === 0 ? ok(`${rel} syntax`) : fail(`${rel} syntax`, result.stderr || result.stdout);
@@ -134,6 +136,11 @@ if (exists("scripts/quality/validate-api-service-safety.mjs")) {
 if (exists("scripts/quality/validate-get-purity.mjs")) {
   const result = spawnSync(process.execPath, ["scripts/quality/validate-get-purity.mjs"], { cwd: root, encoding: "utf8" });
   result.status === 0 ? ok("P22 GET purity validator passes") : fail("P22 GET purity validator passes", result.stderr || result.stdout);
+}
+
+if (exists("scripts/quality/validate-tenant-identity.mjs")) {
+  const result = spawnSync(process.execPath, ["scripts/quality/validate-tenant-identity.mjs"], { cwd: root, encoding: "utf8" });
+  result.status === 0 ? ok("P24 tenant identity validator passes") : fail("P24 tenant identity validator passes", result.stderr || result.stdout);
 }
 
 console.table(results);

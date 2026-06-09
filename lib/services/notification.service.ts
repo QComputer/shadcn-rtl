@@ -151,10 +151,18 @@ export class NotificationService {
     // Store notification in database for tracking
     // This could be a separate Notification model in the future
     
-    // Check organization notification settings
-    const settings = await prisma.organizationSettings.findUnique({
-      where: { organizationSlug: organizationId },
+    // Check organization notification settings. The public settings model is keyed by
+    // organization slug, while appointment notification callers pass organization id.
+    const organization = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { slug: true },
     });
+
+    const settings = organization
+      ? await prisma.organizationSettings.findUnique({
+          where: { organizationSlug: organization.slug },
+        })
+      : null;
 
     if (settings?.emailNotifications && payload.email) {
       // TODO: Send email

@@ -72,3 +72,19 @@ P23 — API Error/Guard Normalization
 ```
 
 Keep it narrow: normalize private route guards and unknown-error responses without broad feature expansion.
+
+
+## P24 — Tenant Identity Audit and Guardrails
+
+P24 added a tenant identity validator and fixed two high-risk slug/id confusion paths:
+
+- driver order acceptance now resolves organization slug to organization id before checking `Follow.customerId_organizationId`;
+- notification settings lookup now resolves appointment `organizationId` to slug before reading slug-keyed `OrganizationSettings`.
+
+New command:
+
+```bash
+pnpm run quality:tenant-identity
+```
+
+This validator is included in `quality:local`.

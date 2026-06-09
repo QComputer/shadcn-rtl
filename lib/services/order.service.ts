@@ -1525,11 +1525,21 @@ if (!org?.slug) return
       throw new Error("Driver has denied this order");
     }
 
+    const organization = await prisma.organization.findUnique({
+      where: { slug: order.organizationSlug },
+      select: { id: true, slug: true },
+    });
+
+    if (!organization) {
+      throw new Error("Organization not found");
+    }
+
     const [membership, follow] = await Promise.all([
       prisma.organizationMember.findFirst({
         where: {
           userId: driverId,
-          organizationSlug: order.organizationSlug,
+          organizationId: organization.id,
+          organizationSlug: organization.slug,
           isActive: true,
         },
       }),
@@ -1537,7 +1547,7 @@ if (!org?.slug) return
         where: {
           customerId_organizationId: {
             customerId: driverId,
-            organizationId: order.organizationSlug,
+            organizationId: organization.id,
           },
         },
       }),

@@ -21,11 +21,10 @@ type OrganizationLayoutData = {
   description: string | null;
 };
 
-async function getAppointmentOrganization(slug: string): Promise<OrganizationLayoutData | null> {
+async function getPublicOrganization(slug: string): Promise<OrganizationLayoutData | null> {
   return prisma.organization.findFirst({
     where: {
       slug,
-      type: "APPOINTMENT",
       isActive: true,
       deletedAt: null,
     },
@@ -41,7 +40,7 @@ async function getAppointmentOrganization(slug: string): Promise<OrganizationLay
 
 export async function generateMetadata({ params }: OrganizationLayoutProps): Promise<Metadata> {
   const { slug } = await params;
-  const organization = await getAppointmentOrganization(slug);
+  const organization = await getPublicOrganization(slug);
 
   if (!organization) {
     return {
@@ -57,19 +56,27 @@ export async function generateMetadata({ params }: OrganizationLayoutProps): Pro
 
 export default async function OrganizationLayout({ children, params }: OrganizationLayoutProps) {
   const { locale, slug } = await params;
-  const organization = await getAppointmentOrganization(slug);
+  const organization = await getPublicOrganization(slug);
   const dict = getDictionary(locale);
   const t = (key: string) => getDictValue(dict, key);
-  const navItems = [
-    { href: `/${locale}/organizations/${organization?.slug ?? slug}`, label: t("navigation.profile") },
-    { href: `/${locale}/organizations/${organization?.slug ?? slug}/services`, label: t("navigation.services") },
-    { href: `/${locale}/organizations/${organization?.slug ?? slug}/booking`, label: t("organization.bookNow") },
-    { href: `/${locale}/organizations/${organization?.slug ?? slug}/my-appointments`, label: t("navigation.myAppointments") },
-  ];
-
   if (!organization) {
     notFound();
   }
+
+  const baseOrganizationPath = `/${locale}/organizations/${organization.slug}`;
+  const navItems = [
+    { href: baseOrganizationPath, label: t("navigation.profile") },
+    { href: `${baseOrganizationPath}/fanpage`, label: t("organization.fanpage") },
+    ...(organization.type === "APPOINTMENT"
+      ? [
+          { href: `${baseOrganizationPath}/services`, label: t("navigation.services") },
+          { href: `${baseOrganizationPath}/booking`, label: t("organization.bookNow") },
+          { href: `${baseOrganizationPath}/my-appointments`, label: t("navigation.myAppointments") },
+        ]
+      : [
+          { href: `/${locale}/shop/${organization.slug}`, label: t("navigation.products") },
+        ]),
+  ];
 
   return (
     <div className="min-h-screen bg-background">

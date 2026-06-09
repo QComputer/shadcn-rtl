@@ -173,3 +173,21 @@ Known remaining public UX debt:
 - Missing local upload files still return 404 at the static `/uploads/*` route; P29 makes visible page images degrade gracefully when the browser loads broken URLs.
 
 Recommended next phase: P30 — Fanpage MVP or P30 — Public page runtime smoke E2E, depending on whether product or release confidence is higher priority.
+
+
+## Phase 30 — Fanpage MVP
+
+Status: overlay prepared.
+
+Implemented minimal fanpage feed support:
+
+- `FanpagePost` Prisma model and migration.
+- Public read API for organization fanpage posts.
+- Authenticated `ADMIN`/`MANAGER` create API by organization slug.
+- Public `/[locale]/organizations/[slug]/fanpage` route.
+- Post card and create-post form components.
+- Fanpage navigation links from public organization/shop layouts.
+- FA/EN/AR fanpage dictionary keys.
+- `quality:fanpage-mvp` validator included in `quality:local`.
+
+Deferred: likes, comments, edit/delete, moderation, follower-only posts, upload-backed images, and dashboard post management.

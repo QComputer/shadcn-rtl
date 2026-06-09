@@ -148,6 +148,7 @@ model Organization {
   carts             ShopCart[]
   orders            Order[]
   followers         Follow[]
+  fanpagePosts      FanpagePost[]
   locations         Location[]
   reviews           Review[]              @relation("OrgReviews")
   images            Image[]               @relation("OrganizationImages")
@@ -236,6 +237,7 @@ model User {
   orders                   Order[]                   @relation("CustomerOrderRelation")
   assignedDeliveries       Order[]                   @relation("DriverOrderRelation")
   following                Follow[]
+  fanpagePosts             FanpagePost[]
   sentMessages             Message[]                 @relation("SentMessages")
   receivedMessages         Message[]                 @relation("ReceivedMessages")
   locations                Location[]
@@ -935,6 +937,25 @@ model Review {
   @@unique([userId, organizationSlug]) // One review per user per org
   @@index([organizationSlug])
   @@index([rating])
+}
+
+model FanpagePost {
+  id             String   @id @default(cuid())
+  organizationId String
+  authorId       String
+  title          String?
+  body           String   @db.Text
+  image          String?
+  isPublished    Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author       User         @relation(fields: [authorId], references: [id])
+
+  @@index([organizationId, isPublished, deletedAt, createdAt])
+  @@index([authorId])
 }
 
 model Follow {

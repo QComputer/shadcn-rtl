@@ -43,7 +43,7 @@ for (const rel of publicSurfaces) {
 }
 
 const orgLayout = read("app/[locale]/organizations/[slug]/layout.tsx");
-add("appointment public layout has visible nav", /const navItems = \[/.test(orgLayout) && /navigation\.profile/.test(orgLayout) && /organizations\/\$\{organization\?\.slug/.test(orgLayout));
+add("appointment public layout has visible nav", /const navItems = \[/.test(orgLayout) && /navigation\.profile/.test(orgLayout) && (/organizations\/\$\{organization\?\.slug/.test(orgLayout) || /baseOrganizationPath/.test(orgLayout)));
 add("appointment public layout uses explicit safe select", /select:\s*{[\s\S]*id:\s*true[\s\S]*name:\s*true[\s\S]*slug:\s*true/.test(orgLayout));
 
 const shopLayout = read("app/[locale]/shop/[slug]/layout.tsx");

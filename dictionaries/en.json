@@ -424,5 +424,19 @@
       "headphone": "Headphone",
       "smartwatch": "Smart Watch"
     }
+  },
+  "fanpage": {
+    "badge": "Fan page",
+    "title": "Fan page",
+    "subtitle": "Follow the latest updates, announcements, and posts from {organization}.",
+    "emptyTitle": "No posts yet",
+    "emptyDescription": "Posts from this organization will appear here after they are published.",
+    "followHint": "Follow this organization to keep up with new updates.",
+    "createPost": "Create a new post",
+    "titlePlaceholder": "Optional post title",
+    "bodyPlaceholder": "Write the post body...",
+    "imagePlaceholder": "Optional image URL",
+    "publish": "Publish post",
+    "createError": "Could not publish the post."
   }
 }

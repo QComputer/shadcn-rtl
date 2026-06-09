@@ -70,6 +70,7 @@ const organization = await prisma.organization.findFirst({
 
   const navItems = [
     { href: `/${locale}/shop/${organization.slug}`, label: t("navigation.products") },
+    { href: `/${locale}/organizations/${organization.slug}/fanpage`, label: t("organization.fanpage") },
     { href: `/${locale}/shop/${organization.slug}/checkout`, label: t("navigation.checkout") },
   ];
 

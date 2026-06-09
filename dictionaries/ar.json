@@ -407,5 +407,19 @@
       "headphone": "سماعات",
       "smartwatch": "ساعة ذكية"
     }
+  },
+  "fanpage": {
+    "badge": "صفحة المتابعين",
+    "title": "صفحة المتابعين",
+    "subtitle": "تابع آخر التحديثات والإعلانات والمنشورات من {organization}.",
+    "emptyTitle": "لا توجد منشورات بعد",
+    "emptyDescription": "ستظهر منشورات هذه المنظمة هنا بعد نشرها.",
+    "followHint": "تابع هذه المنظمة للاطلاع على آخر التحديثات.",
+    "createPost": "إنشاء منشور جديد",
+    "titlePlaceholder": "عنوان اختياري للمنشور",
+    "bodyPlaceholder": "اكتب نص المنشور...",
+    "imagePlaceholder": "رابط صورة اختياري",
+    "publish": "نشر المنشور",
+    "createError": "تعذر نشر المنشور."
   }
 }

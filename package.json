@@ -61,7 +61,8 @@
     "quality:appointment-correctness": "node scripts/quality/validate-appointment-correctness.mjs",
     "quality:i18n-rtl": "node scripts/quality/validate-i18n-rtl-audit.mjs",
     "quality:fanpage-readiness": "node scripts/quality/validate-fanpage-readiness.mjs",
-    "quality:public-experience": "node scripts/quality/validate-public-experience.mjs"
+    "quality:public-experience": "node scripts/quality/validate-public-experience.mjs",
+    "quality:fanpage-mvp": "node scripts/quality/validate-fanpage-mvp.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

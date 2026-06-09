@@ -2,6 +2,14 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { ApiError } from "@/lib/api-guards";
 import { normalizePagination } from "@/lib/pagination";
+import { supportedLocales } from "@/lib/i18n";
+
+function revalidateOrganizationPublicPages(slug: string) {
+  for (const locale of supportedLocales) {
+    revalidatePath(`/${locale}/organizations/${slug}`);
+    revalidatePath(`/${locale}/shop/${slug}`);
+  }
+}
 
 export class FollowService {
   async requireActiveOrganization(organizationId: string) {
@@ -60,8 +68,7 @@ export class FollowService {
       },
     });
 
-    revalidatePath(`/fa/organizations/${follow.organization.slug}`);
-    revalidatePath(`/fa/shop/${follow.organization.slug}`);
+    revalidateOrganizationPublicPages(follow.organization.slug);
     return { ...follow, alreadyFollowing: false };
   }
 
@@ -89,8 +96,7 @@ export class FollowService {
       },
     });
 
-    revalidatePath(`/fa/organizations/${organization.slug}`);
-    revalidatePath(`/fa/shop/${organization.slug}`);
+    revalidateOrganizationPublicPages(organization.slug);
     return { success: true, removed: true };
   }
 

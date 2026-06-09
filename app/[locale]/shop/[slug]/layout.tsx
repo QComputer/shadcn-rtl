@@ -6,6 +6,8 @@ import { Metadata } from "next";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 import prisma from "@/lib/db";
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { FollowButton } from "@/components/follow/follow-button";
 
 interface ShopLayoutProps {
   children: React.ReactNode;
@@ -54,10 +56,14 @@ type ShopLayoutOrganization = {
 export default async function ShopLayout({ children, params }: ShopLayoutProps) {
   const { locale, slug } = await params;
 
-const organization = await prisma.organization.findUnique({
-  where: { slug },
+const organization = await prisma.organization.findFirst({
+  where: { slug, type: "SHOP", isActive: true, deletedAt: null },
   select: { id: true, name: true, slug: true, type: true },
 }) as ShopLayoutOrganization | null;
+
+  if (!organization?.slug) {
+    notFound();
+  }
 
   return (
     <CartProvider locale={locale} slug={slug} >
@@ -72,6 +78,7 @@ const organization = await prisma.organization.findUnique({
               </span>
 
             <div className="flex items-center gap-2 ">
+              <FollowButton organizationId={organization.id} locale={locale} />
               <CartDrawer organizationSlug={slug} locale={locale}>
                 <Button variant="ghost" size="icon" className="relative">
                   <CartBadge />

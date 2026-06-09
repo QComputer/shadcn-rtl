@@ -137,4 +137,19 @@ Known localization debt remains:
 - English and Arabic dictionaries are not yet key-complete against Persian.
 - Multiple TS/TSX surfaces still contain hardcoded Persian/Arabic UI strings.
 
-Recommended next phase: P28 — release artifact / secret hygiene hardening.
+Recommended next phase: P28 — Follow/Fanpage Readiness Cleanup.
+
+
+## P28 — Follow/Fanpage Readiness Cleanup
+
+P28 prepares the existing follow foundation for later fanpage implementation.
+
+- Public appointment organization layout now uses explicit safe selected fields and active/deleted filters.
+- Organization metadata no longer server-self-fetches through `NEXT_PUBLIC_APP_URL`.
+- Follow button is wired into public appointment and shop pages.
+- Anonymous users now see a login-to-follow prompt instead of the follow button disappearing.
+- Follow labels are dictionary-driven for FA/EN/AR.
+- Follow revalidation now covers all configured locales instead of Persian-only paths.
+- `pnpm run quality:fanpage-readiness` is available and included in `quality:local`.
+
+Fanpage feed/posts are still not implemented. Recommended next phase: P29 — Fanpage Content Model Foundation.

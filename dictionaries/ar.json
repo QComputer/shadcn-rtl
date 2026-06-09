@@ -123,7 +123,11 @@
     "verify": "تحقق",
     "verified": "موثق",
     "unverified": "غير موثق",
-    "categories": "الفئات"
+    "categories": "الفئات",
+    "follow": "متابعة",
+    "loginToFollow": "سجّل الدخول للمتابعة",
+    "followUpdateError": "تعذر تحديث حالة المتابعة",
+    "fanpage": "صفحة المتابعين"
   },
   "product": {
     "title": "منتج",
@@ -154,7 +158,8 @@
     "newest": "الأحدث",
     "priceLowToHigh": "السعر: من الأقل للأعلى",
     "priceHighToLow": "السعر: من الأعلى للأقل",
-    "popular": "الأكثر شعبية"
+    "popular": "الأكثر شعبية",
+    "review": "تعليق"
   },
   "order": {
     "title": "طلب",
@@ -229,40 +234,7 @@
     "notifications": "الإشعارات",
     "language": "اللغة",
     "theme": "السمة",
-    "logout": "تسجيل الخروج",
-    "admin": "مدير المتجر"
-  },
-  "product": {
-    "title": "منتج",
-    "products": "المنتجات",
-    "create": "إنشاء منتج",
-    "name": "الاسم",
-    "price": "السعر",
-    "oldPrice": "السعر القديم",
-    "discount": "الخصم",
-    "category": "الفئة",
-    "inventory": "المخزون",
-    "variants": "المتغيرات",
-    "addToCart": "أضف إلى السلة",
-    "buyNow": "اشتر الآن",
-    "outOfStock": "غير متوفر",
-    "inStock": "متوفر",
-    "limitedStock": "مخزون محدود",
-    "quantity": "الكمية",
-    "description": "الوصف",
-    "features": "الميزات",
-    "specifications": "المواصفات",
-    "images": "الصور",
-    "reviews": "التعليقات",
-    "rating": "التقييم",
-    "addReview": "أضف تعليقاً",
-    "filterBy": "تصفية حسب",
-    "sortBy": "ترتيب حسب",
-    "newest": "الأحدث",
-    "priceLowToHigh": "السعر: من الأقل للأعلى",
-    "priceHighToLow": "السعر: من الأعلى للأقل",
-    "popular": "الأكثر شعبية",
-    "review": "تعليق"
+    "logout": "تسجيل الخروج"
   },
   "cart": {
     "title": "السلة",
@@ -320,32 +292,6 @@
     "products": "منتجات",
     "services": "خدمات",
     "subcategories": "فئات فرعية"
-  },
-  "user": {
-    "title": "مستخدم",
-    "profile": "الملف الشخصي",
-    "firstName": "الاسم الأول",
-    "lastName": "اسم العائلة",
-    "fullName": "الاسم الكامل",
-    "email": "البريد الإلكتروني",
-    "phone": "الهاتف",
-    "avatar": "الصورة الشخصية",
-    "bio": "النبذة",
-    "address": "العنوان",
-    "addresses": "العناوين",
-    "defaultAddress": "العنوان الافتراضي",
-    "addAddress": "إضافة عنوان",
-    "editAddress": "تعديل العنوان",
-    "deleteAddress": "حذف العنوان",
-    "password": "كلمة المرور",
-    "changePassword": "تغيير كلمة المرور",
-    "account": "الحساب",
-    "settings": "الإعدادات",
-    "preferences": "التفضيلات",
-    "notifications": "الإشعارات",
-    "language": "اللغة",
-    "theme": "السمة",
-    "logout": "تسجيل الخروج"
   },
   "theme": {
     "title": "السمة",

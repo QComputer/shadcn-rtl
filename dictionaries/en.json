@@ -130,7 +130,11 @@
     "closed": "Closed",
     "viewAllServices": "View All Services",
     "viewStaff": "View Our Team",
-    "myAppointments": "My Appointments"
+    "myAppointments": "My Appointments",
+    "follow": "Follow",
+    "loginToFollow": "Sign in to follow",
+    "followUpdateError": "Could not update follow status",
+    "fanpage": "Fan page"
   },
   "product": {
     "title": "Product",
@@ -161,7 +165,8 @@
     "newest": "Newest",
     "priceLowToHigh": "Price: Low to High",
     "priceHighToLow": "Price: High to Low",
-    "popular": "Most Popular"
+    "popular": "Most Popular",
+    "review": "Review"
   },
   "order": {
     "title": "Order",
@@ -236,40 +241,7 @@
     "notifications": "Notifications",
     "language": "Language",
     "theme": "Theme",
-    "logout": "Logout",
-    "admin": "Store Admin"
-  },
-  "product": {
-    "title": "Product",
-    "products": "Products",
-    "create": "Create Product",
-    "name": "Name",
-    "price": "Price",
-    "oldPrice": "Old Price",
-    "discount": "Discount",
-    "category": "Category",
-    "inventory": "Inventory",
-    "variants": "Variants",
-    "addToCart": "Add to Cart",
-    "buyNow": "Buy Now",
-    "outOfStock": "Out of Stock",
-    "inStock": "In Stock",
-    "limitedStock": "Limited Stock",
-    "quantity": "Quantity",
-    "description": "Description",
-    "features": "Features",
-    "specifications": "Specifications",
-    "images": "Images",
-    "reviews": "Reviews",
-    "rating": "Rating",
-    "addReview": "Add Review",
-    "filterBy": "Filter by",
-    "sortBy": "Sort by",
-    "newest": "Newest",
-    "priceLowToHigh": "Price: Low to High",
-    "priceHighToLow": "Price: High to Low",
-    "popular": "Most Popular",
-    "review": "Review"
+    "logout": "Logout"
   },
   "cart": {
     "title": "Cart",
@@ -342,32 +314,6 @@
     "products": "Products",
     "services": "Services",
     "subcategories": "Subcategories"
-  },
-  "user": {
-    "title": "User",
-    "profile": "Profile",
-    "firstName": "First Name",
-    "lastName": "Last Name",
-    "fullName": "Full Name",
-    "email": "Email",
-    "phone": "Phone",
-    "avatar": "Avatar",
-    "bio": "Bio",
-    "address": "Address",
-    "addresses": "Addresses",
-    "defaultAddress": "Default Address",
-    "addAddress": "Add Address",
-    "editAddress": "Edit Address",
-    "deleteAddress": "Delete Address",
-    "password": "Password",
-    "changePassword": "Change Password",
-    "account": "Account",
-    "settings": "Settings",
-    "preferences": "Preferences",
-    "notifications": "Notifications",
-    "language": "Language",
-    "theme": "Theme",
-    "logout": "Logout"
   },
   "theme": {
     "title": "Theme",

@@ -2,8 +2,8 @@
   "common": {
     "loading": "در حال بارگذاری...",
     "error": "خطایی رخ داد",
-    "processing":"در حال پردازش",
-    "more":"بیشتر",
+    "processing": "در حال پردازش",
+    "more": "بیشتر",
     "success": "عملیات موفقیت‌آمیز بود",
     "save": "ذخیره",
     "saving": "در حال ذخیره کردن",
@@ -161,7 +161,11 @@
     "myAppointments": "نوبت‌های من",
     "cardNumber": "شماره کارت بانکی",
     "cardOwnerName": "نام صاحب حساب",
-    "paymentMethod": "روش پرداخت"
+    "paymentMethod": "روش پرداخت",
+    "follow": "دنبال کردن",
+    "loginToFollow": "ورود برای دنبال کردن",
+    "followUpdateError": "خطا در به‌روزرسانی دنبال‌کردن",
+    "fanpage": "فن‌پیج"
   },
   "product": {
     "title": "محصول",
@@ -282,11 +286,10 @@
     "READY": "آماده",
     "ready": "آماده",
     "continueShopping": "منو",
-    "paymentStatus_badge":
-      {
-        "false": "پرداخت نشده",
-        "true": "پرداخت شده"
-      }
+    "paymentStatus_badge": {
+      "false": "پرداخت نشده",
+      "true": "پرداخت شده"
+    }
   },
   "dashboard": {
     "title": "داشبورد",
@@ -385,9 +388,9 @@
     "title": "خدمات",
     "details": "جزئیات سرویس",
     "edit": "ویرایش سرویس",
-    "createDescription":"یک سرویس جدید اضافه کنید",
+    "createDescription": "یک سرویس جدید اضافه کنید",
     "new": " سرویس جدید",
-    "activeDescription":" فعال/غیرفعال کردن سرویس ",
+    "activeDescription": " فعال/غیرفعال کردن سرویس ",
     "create": "ایجاد خدمات",
     "name": "نام",
     "description": "توضیحات",
@@ -515,7 +518,7 @@
     "thirdTitle": "عنوان سوم",
     "sampleText": "این یک نمونه متن فارسی است که برای نمایش قابلیت‌های سیستم تایپوگرافی استفاده می‌شود. متن فارسی باید راست‌چین باشد و از فونت مناسب فارسی استفاده شود."
   },
-  "booking":{
-    "summary":"خلاصه سفارش"
+  "booking": {
+    "summary": "خلاصه سفارش"
   }
 }

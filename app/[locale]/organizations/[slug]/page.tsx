@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatToman, toPersianDigits } from "@/lib/persian"
+import { FollowButton } from "@/components/follow/follow-button"
 
 interface ServiceCategory {
   id: string
@@ -214,6 +215,7 @@ export default function OrganizationPage({
                    <p className="text-xs">{t("organization.myAppointments")}</p>
                  </Link>
                </Button>
+               <FollowButton organizationId={organization.id} locale={locale} />
              </div>
           </div>
         </div>

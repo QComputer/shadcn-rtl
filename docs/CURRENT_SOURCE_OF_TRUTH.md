@@ -122,3 +122,19 @@ P26A adds a database compatibility migration and drift check for `Order.organiza
 ## P26B — Order deletedAt DB compatibility
 
 P26B adds a database compatibility migration and drift check for `Order.deletedAt`. This was needed after the target database reported Prisma `P2022` during build/page-data collection because the physical `Order` table was missing the nullable soft-delete column required by the current Prisma schema.
+
+## P27 — i18n / RTL Completion Audit
+
+P27 adds a greenable localization audit gate:
+
+- `pnpm run quality:i18n-rtl` validates dictionary presence/parsing, supported locale config, and html `lang`/`dir` wiring.
+- `quality:local` now includes the P27 validator.
+- P27 reports non-blocking audit warnings for dictionary-key drift and hardcoded RTL-script UI text.
+- Stale `ShopifyX` metadata in the locale layout was replaced with Bazar Baz copy.
+
+Known localization debt remains:
+
+- English and Arabic dictionaries are not yet key-complete against Persian.
+- Multiple TS/TSX surfaces still contain hardcoded Persian/Arabic UI strings.
+
+Recommended next phase: P28 — release artifact / secret hygiene hardening.

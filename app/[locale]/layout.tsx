@@ -30,10 +30,10 @@ export const metadata: Metadata = {
     template: "%s | بازارباز"
   },
   description: "پلتفرم تجارت الکترونیک و رزرو نوبت",
-  keywords: ["online shop", "fashion", "buy clothes online"],
+  keywords: ["Bazar Baz", "marketplace", "online shop", "appointment booking", "بازارباز"],
   openGraph: {
-    title: "ShopifyX – Trendy Online Store",
-    description: "Discover trending fashion with ShopifyX.",
+    title: "بازارباز - پلتفرم تجارت الکترونیک و رزرو نوبت",
+    description: "پلتفرم تجارت الکترونیک، فروشگاه آنلاین و رزرو نوبت",
     url: "https://bazar-baz.ir",
     siteName: "بازارباز",
     images: [

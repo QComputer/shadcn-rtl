@@ -167,6 +167,38 @@ export class OrderService {
     };
   }
 
+  private generateOrderNumber() {
+    return `ORD-${Date.now()}-${randomBytes(4).toString("hex").toUpperCase()}`;
+  }
+
+  private async generateUniqueOrderNumber(tx: Prisma.TransactionClient) {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const orderNumber = this.generateOrderNumber();
+      const existing = await tx.order.findUnique({
+        where: { orderNumber },
+        select: { id: true },
+      });
+
+      if (!existing) return orderNumber;
+    }
+
+    throw new Error("Unable to generate unique order number");
+  }
+
+  private async generateUniquePublicTrackingToken(tx: Prisma.TransactionClient) {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const publicTrackingToken = generatePublicTrackingToken();
+      const existing = await tx.order.findUnique({
+        where: { publicTrackingToken },
+        select: { id: true },
+      });
+
+      if (!existing) return publicTrackingToken;
+    }
+
+    throw new Error("Unable to generate unique public tracking token");
+  }
+
   private calculateDiscount(subtotal: Decimal, promotion: { discountType: string; discountValue: Decimal }) {
     const discount = promotion.discountType === "percentage"
       ? subtotal.mul(promotion.discountValue).div(100)
@@ -369,8 +401,6 @@ export class OrderService {
       throw new Error("Cart is empty");
     }
 
-    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-    const publicTrackingToken = generatePublicTrackingToken();
     const {
       preparationEstimatedEndTime,
       pickupEstimatedEndTime,
@@ -378,6 +408,8 @@ export class OrderService {
     } = this.buildProgressEstimates();
 
     const order = await prisma.$transaction(async (tx) => {
+      const orderNumber = await this.generateUniqueOrderNumber(tx);
+      const publicTrackingToken = await this.generateUniquePublicTrackingToken(tx);
       let subtotal = new Decimal(0);
       const orderItems = [];
 
@@ -592,15 +624,15 @@ export class OrderService {
       throw new Error("Cart is empty");
     }
 
-    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-    const publicTrackingToken = generatePublicTrackingToken();
     const {
       preparationEstimatedEndTime,
       pickupEstimatedEndTime,
       deliveryEstimatedEndTime,
     } = this.buildProgressEstimates();
 
-const order = await prisma.$transaction(async (tx) => {
+    const order = await prisma.$transaction(async (tx) => {
+      const orderNumber = await this.generateUniqueOrderNumber(tx);
+      const publicTrackingToken = await this.generateUniquePublicTrackingToken(tx);
       let subtotal = new Decimal(0);
       const orderItems = [];
 

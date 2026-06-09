@@ -56,7 +56,8 @@
     "quality:get-purity": "node scripts/quality/validate-get-purity.mjs",
     "db:drift": "node scripts/quality/validate-database-drift.mjs",
     "db:repair:known-drift": "node scripts/db/repair-known-database-drift.mjs",
-    "quality:tenant-identity": "node scripts/quality/validate-tenant-identity.mjs"
+    "quality:tenant-identity": "node scripts/quality/validate-tenant-identity.mjs",
+    "quality:commerce-correctness": "node scripts/quality/validate-commerce-correctness.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

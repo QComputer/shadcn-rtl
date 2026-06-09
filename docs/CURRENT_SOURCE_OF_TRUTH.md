@@ -88,3 +88,10 @@ pnpm run quality:tenant-identity
 ```
 
 This validator is included in `quality:local`.
+
+
+## Phase 25 update — commerce correctness guardrails
+
+P25 adds a commerce correctness validator and transaction-scoped uniqueness retries for order numbers and public tracking tokens. Aggregate `quality:local` now runs the P25 validator.
+
+Recommended next phase: P26 — appointment correctness guardrails.

@@ -67,6 +67,9 @@ for (const rel of [
   "docs/PHASE_23_TENANT_DATABASE_DRIFT_AUDIT.md",
   "docs/PHASE_24_TENANT_IDENTITY_AUDIT_GUARDRAILS.md",
   "docs/PHASE_25_COMMERCE_CORRECTNESS_GUARDRAILS.md",
+  "docs/PHASE_26_APPOINTMENT_CORRECTNESS_GUARDRAILS.md",
+  "docs/PHASE_26A_ORDER_ORGANIZATION_SLUG_DB_COMPATIBILITY_HOTFIX.md",
+  "docs/PHASE_26B_ORDER_DELETED_AT_DB_COMPATIBILITY_HOTFIX.md",
 ]) {
   exists(rel) ? ok(`${rel} exists`) : fail(`${rel} exists`);
 }
@@ -118,11 +121,11 @@ for (const rel of expectedE2E) {
   exists(rel) ? ok(`${rel} exists`) : fail(`${rel} exists`);
 }
 
-for (const rel of ["app/api/health/route.ts", "lib/runtime-env.ts", "scripts/quality/validate-env.mjs", "scripts/quality/validate-release-artifact.mjs", "scripts/quality/validate-get-purity.mjs", "scripts/quality/validate-database-drift.mjs", "scripts/quality/validate-tenant-identity.mjs", "scripts/quality/validate-commerce-correctness.mjs", "scripts/db/repair-known-database-drift.mjs", "scripts/db/known-database-drift-repair.sql"]) {
+for (const rel of ["app/api/health/route.ts", "lib/runtime-env.ts", "scripts/quality/validate-env.mjs", "scripts/quality/validate-release-artifact.mjs", "scripts/quality/validate-get-purity.mjs", "scripts/quality/validate-database-drift.mjs", "scripts/quality/validate-tenant-identity.mjs", "scripts/quality/validate-commerce-correctness.mjs", "scripts/quality/validate-appointment-correctness.mjs", "scripts/db/repair-known-database-drift.mjs", "scripts/db/known-database-drift-repair.sql"]) {
   exists(rel) ? ok(`${rel} exists`) : fail(`${rel} exists`);
 }
 
-for (const rel of ["scripts/e2e/deployed-phase9-quality-gates.mjs", "scripts/e2e/deployed-phase10-auth-security.mjs", "scripts/e2e/deployed-phase11-health.mjs", "scripts/e2e/deployed-phase12-messaging.mjs", "scripts/e2e/deployed-phase13-catalog-hardening.mjs", "scripts/e2e/deployed-phase14-inventory-operations.mjs", "scripts/e2e/deployed-phase15-public-order-tracking.mjs", "scripts/e2e/deployed-phase16-engagement.mjs", "scripts/e2e/deployed-phase17-account-settings.mjs", "scripts/e2e/deployed-all.mjs", "scripts/quality/validate-env.mjs", "scripts/quality/validate-dashboard-access.mjs", "scripts/quality/validate-api-service-safety.mjs", "scripts/quality/validate-release-artifact.mjs", "scripts/quality/validate-get-purity.mjs", "scripts/quality/validate-database-drift.mjs", "scripts/quality/validate-tenant-identity.mjs", "scripts/quality/validate-commerce-correctness.mjs", "scripts/db/repair-known-database-drift.mjs"]) {
+for (const rel of ["scripts/e2e/deployed-phase9-quality-gates.mjs", "scripts/e2e/deployed-phase10-auth-security.mjs", "scripts/e2e/deployed-phase11-health.mjs", "scripts/e2e/deployed-phase12-messaging.mjs", "scripts/e2e/deployed-phase13-catalog-hardening.mjs", "scripts/e2e/deployed-phase14-inventory-operations.mjs", "scripts/e2e/deployed-phase15-public-order-tracking.mjs", "scripts/e2e/deployed-phase16-engagement.mjs", "scripts/e2e/deployed-phase17-account-settings.mjs", "scripts/e2e/deployed-all.mjs", "scripts/quality/validate-env.mjs", "scripts/quality/validate-dashboard-access.mjs", "scripts/quality/validate-api-service-safety.mjs", "scripts/quality/validate-release-artifact.mjs", "scripts/quality/validate-get-purity.mjs", "scripts/quality/validate-database-drift.mjs", "scripts/quality/validate-tenant-identity.mjs", "scripts/quality/validate-commerce-correctness.mjs", "scripts/quality/validate-appointment-correctness.mjs", "scripts/db/repair-known-database-drift.mjs"]) {
   if (!exists(rel)) continue;
   const result = spawnSync(process.execPath, ["--check", rel], { cwd: root, encoding: "utf8" });
   result.status === 0 ? ok(`${rel} syntax`) : fail(`${rel} syntax`, result.stderr || result.stdout);
@@ -147,6 +150,11 @@ if (exists("scripts/quality/validate-tenant-identity.mjs")) {
 if (exists("scripts/quality/validate-commerce-correctness.mjs")) {
   const result = spawnSync(process.execPath, ["scripts/quality/validate-commerce-correctness.mjs"], { cwd: root, encoding: "utf8" });
   result.status === 0 ? ok("P25 commerce correctness validator passes") : fail("P25 commerce correctness validator passes", result.stderr || result.stdout);
+}
+
+if (exists("scripts/quality/validate-appointment-correctness.mjs")) {
+  const result = spawnSync(process.execPath, ["scripts/quality/validate-appointment-correctness.mjs"], { cwd: root, encoding: "utf8" });
+  result.status === 0 ? ok("P26 appointment correctness validator passes") : fail("P26 appointment correctness validator passes", result.stderr || result.stdout);
 }
 
 console.table(results);

@@ -1,13 +1,8 @@
--- P23 known database drift repair
--- Safe additive repairs for databases whose migration history is marked applied
--- but whose physical schema is missing nullable/default columns used by current code.
+-- P26A database compatibility repair
+-- Some migrated databases have Prisma migration history marked applied while the physical
+-- Order table is missing organizationSlug. Current Prisma schema and home/shop queries
+-- require this column.
 
-ALTER TABLE "Organization" ADD COLUMN IF NOT EXISTS "lat" DOUBLE PRECISION;
-ALTER TABLE "Organization" ADD COLUMN IF NOT EXISTS "lng" DOUBLE PRECISION;
-ALTER TABLE "OrganizationSettings" ADD COLUMN IF NOT EXISTS "deliveryFee" DOUBLE PRECISION DEFAULT 50000;
-
-
--- P26A known drift repair for Order.organizationSlug.
 ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "organizationSlug" TEXT;
 
 DO $$
@@ -43,6 +38,19 @@ SET "organizationSlug" = (SELECT "slug" FROM single_active_org)
 WHERE "organizationSlug" IS NULL
   AND (SELECT count FROM active_org_count) = 1;
 
+DO $$
+DECLARE
+  missing_count integer;
+BEGIN
+  SELECT COUNT(*)::integer INTO missing_count
+  FROM "Order"
+  WHERE "organizationSlug" IS NULL;
+
+  IF missing_count > 0 THEN
+    RAISE EXCEPTION 'Cannot mark Order.organizationSlug NOT NULL: % order rows still have NULL organizationSlug. Populate them manually before rerunning this migration.', missing_count;
+  END IF;
+END $$;
+
 ALTER TABLE "Order" ALTER COLUMN "organizationSlug" SET NOT NULL;
 
 CREATE INDEX IF NOT EXISTS "Order_organizationSlug_idx"
@@ -59,7 +67,3 @@ BEGIN
       ON DELETE RESTRICT ON UPDATE CASCADE;
   END IF;
 END $$;
-
--- P26B known drift repair for Order.deletedAt.
-ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMP(3);
-CREATE INDEX IF NOT EXISTS "Order_deletedAt_idx" ON "Order"("deletedAt");

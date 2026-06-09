@@ -191,6 +191,83 @@ function normalizePositiveInt(value: number | string | undefined, fallback: numb
   return Math.min(Math.floor(parsed), max);
 }
 
+async function findApplicableBusinessHours(
+  client: Prisma.TransactionClient | typeof prisma,
+  service: {
+    organizationId: string;
+    serviceProviderId: string | null;
+  },
+  dateOnly: string,
+  timeZone: string,
+) {
+  const noonUtc = localDateTimeToUtc(dateOnly, 12, 0, timeZone);
+  const dayOfWeek = getDayOfWeekInTimezone(noonUtc, timeZone);
+
+  return (
+    (await client.businessHour.findFirst({
+      where: {
+        organizationId: service.organizationId,
+        userId: service.serviceProviderId,
+        day: dayOfWeek,
+        isOpen: true,
+      },
+    })) ||
+    (await client.businessHour.findFirst({
+      where: {
+        organizationId: service.organizationId,
+        userId: null,
+        day: dayOfWeek,
+        isOpen: true,
+      },
+    }))
+  );
+}
+
+async function assertAppointmentFitsBusinessWindow(
+  client: Prisma.TransactionClient | typeof prisma,
+  service: {
+    organizationId: string;
+    serviceProviderId: string | null;
+  },
+  dateOnly: string,
+  startTime: Date,
+  endTime: Date,
+  timeZone: string,
+) {
+  const businessHours = await findApplicableBusinessHours(client, service, dateOnly, timeZone);
+
+  if (!businessHours) {
+    throw new Error("Appointment is outside available business hours");
+  }
+
+  const { hour: openHour, minute: openMinute } = parseTime(businessHours.openTime);
+  const { hour: closeHour, minute: closeMinute } = parseTime(businessHours.closeTime);
+  const openUtc = localDateTimeToUtc(dateOnly, openHour, openMinute, timeZone);
+  const closeUtc = localDateTimeToUtc(dateOnly, closeHour, closeMinute, timeZone);
+
+  if (closeUtc <= openUtc) {
+    throw new Error("Business hours are not configured correctly");
+  }
+
+  if (startTime < openUtc || endTime > closeUtc) {
+    throw new Error("Appointment is outside available business hours");
+  }
+}
+
+function buildGuardedAppointmentWindow(
+  startTime: Date,
+  endTime: Date,
+  bookingSettings?: { bufferBefore?: number | null; bufferAfter?: number | null } | null,
+) {
+  const bufferBefore = bookingSettings?.bufferBefore ?? 0;
+  const bufferAfter = bookingSettings?.bufferAfter ?? 0;
+
+  return {
+    guardedStart: new Date(startTime.getTime() - bufferBefore * 60 * 1000),
+    guardedEnd: new Date(endTime.getTime() + bufferAfter * 60 * 1000),
+  };
+}
+
 export class AppointmentService {
   private async createWithOwner(owner: BookingOwner, data: CreateAppointmentInput) {
     const appointment = await prisma.$transaction(
@@ -267,8 +344,23 @@ export class AppointmentService {
           }
         }
 
+        await assertAppointmentFitsBusinessWindow(
+          tx,
+          service,
+          appointmentDateOnly,
+          startTime,
+          endTime,
+          timezone,
+        );
+
+        const { guardedStart, guardedEnd } = buildGuardedAppointmentWindow(
+          startTime,
+          endTime,
+          bookingSettings,
+        );
+
         const conflicting = await tx.appointment.findFirst({
-          where: buildConflictWhere(scope, startTime, endTime),
+          where: buildConflictWhere(scope, guardedStart, guardedEnd),
           select: { id: true },
         });
 
@@ -679,13 +771,32 @@ export class AppointmentService {
       throw new Error("Appointment date does not match the selected start time in organization timezone");
     }
 
+    const bookingSettings = await prisma.bookingSettings.findUnique({
+      where: { organizationSlug: appointment.service.organization.slug },
+    });
+
+    await assertAppointmentFitsBusinessWindow(
+      prisma,
+      appointment.service,
+      requestedDateOnly,
+      newStart,
+      clampedEnd,
+      timezone,
+    );
+
     const scope: AppointmentConflictScope = appointment.service.serviceProviderId
       ? { serviceProviderId: appointment.service.serviceProviderId }
       : { serviceId: appointment.service.id };
 
+    const { guardedStart, guardedEnd } = buildGuardedAppointmentWindow(
+      newStart,
+      clampedEnd,
+      bookingSettings,
+    );
+
     const conflicting = await prisma.appointment.findFirst({
       where: {
-        ...buildConflictWhere(scope, newStart, clampedEnd),
+        ...buildConflictWhere(scope, guardedStart, guardedEnd),
         id: { not: id },
       },
       select: { id: true },
@@ -738,24 +849,12 @@ export class AppointmentService {
 
     const timezone = service.organization.timezone || "UTC";
     const dateOnly = parseDateOnly(date);
-    const noonUtc = localDateTimeToUtc(dateOnly, 12, 0, timezone);
-    const dayOfWeek = getDayOfWeekInTimezone(noonUtc, timezone);
-
-    const businessHours = await prisma.businessHour.findFirst({
-      where: {
-        organizationId: service.organizationId,
-        userId: service.serviceProviderId,
-        day: dayOfWeek,
-        isOpen: true,
-      },
-    }) || await prisma.businessHour.findFirst({
-      where: {
-        organizationId: service.organizationId,
-        userId: null,
-        day: dayOfWeek,
-        isOpen: true,
-      },
-    });
+    const businessHours = await findApplicableBusinessHours(
+      prisma,
+      service,
+      dateOnly,
+      timezone,
+    );
 
     if (!businessHours) {
       return [];

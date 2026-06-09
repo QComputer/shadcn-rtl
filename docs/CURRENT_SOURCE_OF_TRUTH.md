@@ -95,3 +95,30 @@ This validator is included in `quality:local`.
 P25 adds a commerce correctness validator and transaction-scoped uniqueness retries for order numbers and public tracking tokens. Aggregate `quality:local` now runs the P25 validator.
 
 Recommended next phase: P26 — appointment correctness guardrails.
+
+## P26 — Appointment Correctness Guardrails
+
+Status: source-level guardrails added.
+
+- Appointment create/reschedule paths now enforce configured business hours server-side.
+- Provider-specific business hours are checked before organization-wide fallback hours.
+- Appointment conflict detection now uses booking buffers through a shared guarded-window helper.
+- `pnpm run quality:appointment-correctness` is available and is included in `quality:local`.
+
+Required target validation for P26:
+
+```powershell
+pnpm run quality:appointment-correctness
+pnpm run typecheck
+pnpm run build
+pnpm run quality:local
+```
+
+
+## P26A — Order organizationSlug DB compatibility
+
+P26A adds a database compatibility migration and drift check for `Order.organizationSlug`. This was needed after the target database reported Prisma `P2022` during build/page-data collection because the physical `Order` table was missing the column required by the current Prisma schema.
+
+## P26B — Order deletedAt DB compatibility
+
+P26B adds a database compatibility migration and drift check for `Order.deletedAt`. This was needed after the target database reported Prisma `P2022` during build/page-data collection because the physical `Order` table was missing the nullable soft-delete column required by the current Prisma schema.

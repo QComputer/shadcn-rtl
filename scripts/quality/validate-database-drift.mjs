@@ -22,6 +22,18 @@ const expectedColumns = [
     expectedDataType: "double precision",
     reason: "Order delivery-fee calculation reads OrganizationSettings.deliveryFee.",
   },
+  {
+    table: "Order",
+    column: "organizationSlug",
+    expectedDataType: "text",
+    reason: "Current Prisma schema relates Order to Organization by organizationSlug.",
+  },
+  {
+    table: "Order",
+    column: "deletedAt",
+    expectedDataType: "timestamp without time zone",
+    reason: "Current Prisma schema includes Order.deletedAt and relation queries may select it.",
+  },
 ];
 
 function normalizeType(value) {
@@ -33,7 +45,7 @@ try {
     SELECT table_name, column_name, data_type
     FROM information_schema.columns
     WHERE table_schema = 'public'
-      AND table_name IN ('Organization', 'OrganizationSettings')
+      AND table_name IN ('Organization', 'OrganizationSettings', 'Order')
   `;
 
   const actual = new Map(

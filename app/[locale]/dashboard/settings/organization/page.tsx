@@ -454,7 +454,7 @@ const handleOpen = async (e: React.FormEvent) => {
         تنظیمات عمومی:
       </CardHeader>
       <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+<div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="slug">{t("organization.slug")}</Label>
                   <Input id="name" value={organization?.slug || ""} disabled />
@@ -481,6 +481,21 @@ const handleOpen = async (e: React.FormEvent) => {
                 </div>
               </div>
               <div className="space-y-2">
+                <Label>{t("organization.location") || "موقعیت روی نقشه"}</Label>
+                <div className="h-[300px] w-full">
+                  <MapLocationPicker
+                    onLocationSelect={(lat, lng, newAddress) => {
+                      setLat(lat)
+                      setLng(lng)
+                      setAddress(newAddress)
+                    }}
+                    defaultLat={lat}
+                    defaultLng={lng}
+                    defaultAddress={address}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="phone">{t("user.phone")}</Label>
                 <Input 
                   id="phone" 
@@ -489,7 +504,7 @@ const handleOpen = async (e: React.FormEvent) => {
                   dir="ltr"
                 />
               </div>
-      </CardContent>
+          </CardContent>
       <CardFooter>
         <div className="flex items-center">
         <Button 

@@ -64,6 +64,7 @@ export default async function OrganizationFanpagePage({ params }: FanpagePagePro
         title: true,
         body: true,
         image: true,
+        video: true,
         createdAt: true,
         author: {
           select: {

@@ -1,12 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PublicImage } from "@/components/public/public-image";
+import { Video } from "lucide-react";
 
 export type FanpagePostCardData = {
   id: string;
   title: string | null;
   body: string;
   image: string | null;
+  video: string | null;
   createdAt: Date | string;
   author: {
     name: string;
@@ -25,14 +27,25 @@ function formatAuthorName(author: FanpagePostCardData["author"]) {
 
 export function FanpagePostCard({ post, locale }: { post: FanpagePostCardData; locale: string }) {
   const authorName = formatAuthorName(post.author);
-  const date = new Intl.DateTimeFormat(locale === "fa" ? "fa-IR" : locale, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(post.createdAt));
+  const date = new Date(post.createdAt).toLocaleDateString(locale === "fa" ? "fa-IR" : locale, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 
   return (
     <Card className="overflow-hidden">
-      {post.image && (
+      {post.video && (
+        <div className="relative h-64 w-full overflow-hidden bg-muted">
+          <video
+            src={post.video}
+            controls
+            className="h-full w-full object-cover"
+            poster={post.image || undefined}
+          />
+        </div>
+      )}
+      {!post.video && post.image && (
         <div className="h-64 w-full overflow-hidden bg-muted">
           <PublicImage src={post.image} alt={post.title || authorName} kind="organization" className="h-full w-full object-cover" />
         </div>

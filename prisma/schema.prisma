@@ -946,6 +946,7 @@ model FanpagePost {
   title          String?
   body           String   @db.Text
   image          String?
+  video          String?
   isPublished    Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

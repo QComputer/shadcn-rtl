@@ -9,6 +9,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FollowButton } from "@/components/follow/follow-button";
 import { getDictionary, getDictValue } from "@/lib/dictionary";
+import { ShopLocationDialog } from "@/components/shop/shop-location-dialog";
 
 interface ShopLayoutProps {
   children: React.ReactNode;
@@ -52,6 +53,8 @@ type ShopLayoutOrganization = {
   name: string | null;
   slug: string | null;
   type: string | null;
+  lat: number | null;
+  lng: number | null;
 };
 
 export default async function ShopLayout({ children, params }: ShopLayoutProps) {
@@ -61,7 +64,7 @@ export default async function ShopLayout({ children, params }: ShopLayoutProps) 
 
 const organization = await prisma.organization.findFirst({
   where: { slug, type: "SHOP", isActive: true, deletedAt: null },
-  select: { id: true, name: true, slug: true, type: true },
+  select: { id: true, name: true, slug: true, type: true, lat: true, lng: true },
 }) as ShopLayoutOrganization | null;
 
   if (!organization?.slug) {
@@ -94,6 +97,9 @@ const organization = await prisma.organization.findFirst({
               ))}
             </nav>
             <div className="flex items-center gap-2 ">
+              {organization.lat != null && organization.lng != null && (
+                <ShopLocationDialog lat={organization.lat} lng={organization.lng} name={organization.name} locale={locale} />
+              )}
               <FollowButton organizationId={organization.id} locale={locale} />
               <CartDrawer organizationSlug={slug} locale={locale}>
                 <Button variant="ghost" size="icon" className="relative">

@@ -53,6 +53,7 @@ export class FanpageService {
           title: true,
           body: true,
           image: true,
+          video: true,
           createdAt: true,
           author: {
             select: {
@@ -79,7 +80,7 @@ export class FanpageService {
     };
   }
 
-  async create(slug: string, authorId: string, data: { title?: string | null; body: string; image?: string | null }) {
+  async create(slug: string, authorId: string, data: { title?: string | null; body: string; image?: string | null; video?: string | null }) {
     const organization = await this.requirePublicOrganization(slug);
     const post = await prisma.fanpagePost.create({
       data: {
@@ -88,6 +89,7 @@ export class FanpageService {
         title: data.title?.trim() || null,
         body: data.body.trim(),
         image: data.image?.trim() || null,
+        video: data.video?.trim() || null,
         isPublished: true,
       },
       select: {
@@ -95,6 +97,7 @@ export class FanpageService {
         title: true,
         body: true,
         image: true,
+        video: true,
         createdAt: true,
       },
     });

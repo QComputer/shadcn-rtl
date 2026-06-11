@@ -97,6 +97,8 @@ interface Organization {
   coverImage: string | null
   type: string
   isOpen: boolean
+  lat: number | null
+  lng: number | null
 }
 
 interface OrganizationSettings {

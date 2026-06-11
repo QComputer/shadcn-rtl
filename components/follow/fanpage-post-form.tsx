@@ -15,6 +15,7 @@ export function FanpagePostForm({ slug, locale }: { slug: string; locale: string
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [image, setImage] = useState("");
+  const [video, setVideo] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +28,7 @@ export function FanpagePostForm({ slug, locale }: { slug: string; locale: string
       const response = await fetch(`/api/public/organizations/${slug}/fanpage/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title || null, body, image: image || null }),
+        body: JSON.stringify({ title: title || null, body, image: image || null, video: video || null }),
       });
 
       if (!response.ok) {
@@ -38,6 +39,7 @@ export function FanpagePostForm({ slug, locale }: { slug: string; locale: string
       setTitle("");
       setBody("");
       setImage("");
+      setVideo("");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("fanpage.createError"));
@@ -56,6 +58,7 @@ export function FanpagePostForm({ slug, locale }: { slug: string; locale: string
           <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={t("fanpage.titlePlaceholder")} maxLength={120} />
           <Textarea value={body} onChange={(event) => setBody(event.target.value)} placeholder={t("fanpage.bodyPlaceholder")} required maxLength={4000} />
           <Input value={image} onChange={(event) => setImage(event.target.value)} placeholder={t("fanpage.imagePlaceholder")} maxLength={500} />
+          <Input value={video} onChange={(event) => setVideo(event.target.value)} placeholder={t("fanpage.videoPlaceholder") || "Video URL (optional)"} maxLength={500} />
           {error && <p className="text-sm text-destructive" role="status">{error}</p>}
           <Button type="submit" disabled={isSubmitting || body.trim().length === 0}>
             {isSubmitting ? t("common.loading") : t("fanpage.publish")}

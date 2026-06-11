@@ -8,6 +8,7 @@ const createFanpagePostSchema = z.object({
   title: z.string().trim().max(120).optional().nullable(),
   body: z.string().trim().min(1).max(4000),
   image: z.string().trim().max(500).optional().nullable(),
+  video: z.string().trim().max(500).optional().nullable(),
 });
 
 function postRateLimit(request: NextRequest, userId: string, slug: string) {

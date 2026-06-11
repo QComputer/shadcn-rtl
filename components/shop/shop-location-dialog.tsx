@@ -1,47 +1,37 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { MapPin } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { MapPin } from "lucide-react";
+import { getDictionary, getDictValue } from "@/lib/dictionary";
 
-const MapLocationView = dynamic(() => import("@/components/ui/map-location-view"), {
-  ssr: false,
-});
+const MapLocationView = dynamic(() => import("@/components/ui/map-location-view"), { ssr: false });
 
-type ShopLocationDialogProps = {
+interface ShopLocationDialogProps {
   lat: number;
   lng: number;
-  organizationName?: string | null;
-};
+  name?: string | null;
+  locale: string;
+}
 
-export function ShopLocationDialog({
-  lat,
-  lng,
-  organizationName,
-}: ShopLocationDialogProps) {
+export function ShopLocationDialog({ lat, lng, name, locale }: ShopLocationDialogProps) {
+  const dict = getDictionary(locale);
+  const t = (key: string) => getDictValue(dict, key);
+
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" title="موقعیت فروشگاه">
-          <MapPin className="h-5 w-5" />
+        <Button variant="ghost" size="icon" title={t("organization.location") || "موقعیت"}>
+          <MapPin className="h-4 w-4" />
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>
-            موقعیت فروشگاه{organizationName ? ` ${organizationName}` : ""}
-          </DialogTitle>
+          <DialogTitle>{t("organization.location") || "موقعیت فروشگاه"}</DialogTitle>
         </DialogHeader>
-        <div className="h-[400px] mt-4">
-          <MapLocationView lat={lat} lng={lng} />
+        <div className="h-[400px] w-full mt-4">
+          <MapLocationView lat={lat} lng={lng} label={name || "فروشگاه"} />
         </div>
       </DialogContent>
     </Dialog>

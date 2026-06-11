@@ -4,6 +4,7 @@ import { CartBadge } from "@/components/shop/cart-badge";
 import { Button } from "@/components/ui/button";
 import { Metadata } from "next";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher";
+import { Home, Package, ShoppingCart, ShoppingBasket } from "lucide-react";
 import prisma from "@/lib/db";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -73,7 +74,7 @@ const organization = await prisma.organization.findFirst({
 
   const navItems = [
     { href: `/${locale}/shop/${organization.slug}`, label: t("navigation.products") },
-    { href: `/${locale}/organizations/${organization.slug}/fanpage`, label: t("organization.fanpage") },
+    { href: `/${locale}/shop/${organization.slug}/fanpage`, label: t("organization.fanpage") },
     { href: `/${locale}/shop/${organization.slug}/checkout`, label: t("navigation.checkout") },
   ];
 
@@ -113,16 +114,42 @@ const organization = await prisma.organization.findFirst({
         </header>
 
         {/* Main Content */}
-        <main className="flex-1">
+        <main className="flex-1 pb-16 md:pb-0">
           {children}
         </main>
 
-        {/* Shop Footer */}
-        <footer className="border-t py-6 hidden">
-          <div className="container text-center text-sm text-muted-foreground">
-            <p>© {new Date().getFullYear()}. تمامی حقوق محفوظ است.</p>
+        {/* Mobile Navigation - Bottom Bar */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t supports-[backdrop-filter]:bg-background/60">
+          <div className="grid grid-cols-4 h-16">
+            <Link
+              href={`/${locale}/shop/${organization.slug}`}
+              className="flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <Home className="h-5 w-5" />
+              <span>{t("navigation.products")}</span>
+            </Link>
+            <Link
+              href={`/${locale}/shop/${organization.slug}/fanpage`}
+              className="flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <ShoppingBasket className="h-5 w-5" />
+              <span>{t("organization.fanpage")}</span>
+            </Link>
+            <Link
+              href={`/${locale}/shop/${organization.slug}/checkout`}
+              className="flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              <span>{t("navigation.checkout")}</span>
+            </Link>
+            <CartDrawer organizationSlug={slug} locale={locale}>
+              <button className="flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground w-full">
+                <ShoppingCart className="h-5 w-5" />
+                <span>{t("navigation.cart") || "سبد"}</span>
+              </button>
+            </CartDrawer>
           </div>
-        </footer>
+        </nav>
       </div>
     </CartProvider>
   );

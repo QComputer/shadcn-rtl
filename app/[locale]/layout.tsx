@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import "@/app/globals.css"
 import { localeConfig, supportedLocales, type SupportedLocale } from "@/lib/i18n";
 import { ThemeProvider } from "@/hooks/use-theme";
+import { SessionProvider } from "next-auth/react";
 import { getDictionary } from "@/lib/dictionary"
+import { AuthProvider } from "@/hooks/use-auth";
+import { LocaleProvider } from "@/components/locale-provider";
+import { ErrorBoundary } from "@/components/error-boundary";
 import Link from "next/link";
 import { Building2, ShoppingBag, Calendar, ArrowLeft, ArrowRight, Phone } from "lucide-react"
 import { toPersianDigits } from "@/lib/persian";
@@ -89,38 +93,42 @@ export default async function LocaleLayout({
       <head key={locale}>
       </head>
       <body className="antialiased">
-      <ThemeProvider defaultTheme="dark" storageKey="shadcn-rtl-theme">
-
-          {children}
-                {/* Footer */}
-      <footer className="bg-muted/50 py-12 mt-12">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Link
-                href={`/${locale}`}
-                className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
-
-              >
-              <Building2 className="h-6 w-6 text-primary" />
-
-                <span className="font-bold text-lg">{t("home.platformName") || "پلتفرم تجارت"}</span>
-              </Link>
-            </div>
+        <SessionProvider>
+          <LocaleProvider defaultLocale={locale}>
+            <AuthProvider>
+              <ErrorBoundary>
+                <ThemeProvider defaultTheme="dark" storageKey="shadcn-rtl-theme">
+                  {children}
+                </ThemeProvider>
+              </ErrorBoundary>
+            </AuthProvider>
+          </LocaleProvider>
+        </SessionProvider>
+        {/* Footer */}
+        <footer className="bg-muted/50 py-12 mt-12">
+          <div className="container mx-auto px-4">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/${locale}`}
+                  className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
+                >
+                  <Building2 className="h-6 w-6 text-primary" />
+                  <span className="font-bold text-lg">{t("home.platformName") || "پلتفرم تجارت"}</span>
+                </Link>
+              </div>
               <div className="flex gap-2">
                 <Phone className="h-3 w-3 mt-1" /> <a className="text-xs">{toPersianDigits(0) + toPersianDigits(9162244868)}</a>
               </div>
-                    <a referrerPolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=6010025&Code=PIS9oHglTwxwasymJaZx3w3cO1wbPvA7'>
-                    <img referrerPolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=6010025&Code=PIS9oHglTwxwasymJaZx3w3cO1wbPvA7' alt='' className='cursor:pointer' slot='PIS9oHglTwxwasymJaZx3w3cO1wbPvA7'/>
+              <a referrerPolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=6010025&Code=PIS9oHglTwxwasymJaZx3w3cO1wbPvA7'>
+                <img referrerPolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=6010025&Code=PIS9oHglTwxwasymJaZx3w3cO1wbPvA7' alt='' className='cursor:pointer' slot='PIS9oHglTwxwasymJaZx3w3cO1wbPvA7'/>
               </a>
-                            
-            <p className="text-sm text-muted-foreground">
-              <Link href='/myResume.pdf'>درمورد ما</Link>
-            </p>
+              <p className="text-sm text-muted-foreground">
+                <Link href='/myResume.pdf'>درمورد ما</Link>
+              </p>
+            </div>
           </div>
-        </div>
-      </footer>
-      </ThemeProvider>
+        </footer>
       </body>
     </html>
   );

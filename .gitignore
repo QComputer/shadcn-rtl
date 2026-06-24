@@ -57,3 +57,7 @@ next-env.d.ts
 /*.rar
 /New Folder
 /signaling-server
+# database migration backups and dumps
+/db-backups/
+*.dump
+*.backup

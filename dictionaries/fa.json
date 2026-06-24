@@ -224,7 +224,8 @@
     "addVariant_description": "برای اضافه کردن تنوع کلیک کنید",
     "variantSku": "sku",
     "variantPrice": "قیمت",
-    "sortOrder": "ترتیب نمایش"
+    "sortOrder": "ترتیب نمایش",
+    "review": "نظر"
   },
   "order": {
     "title": "سفارش",
@@ -382,7 +383,10 @@
     "bookingConfirmed": "رزرو شما تأیید شد",
     "bookingDetails": "جزئیات رزرو",
     "appointmentNumber": "شماره نوبت",
-    "thankYou": "سپاس از انتخاب ما"
+    "thankYou": "سپاس از انتخاب ما",
+    "bookingReference": "کد پیگیری رزرو",
+    "lookupTitle": "یافتن نوبت",
+    "lookupDesc": "برای مشاهده جزئیات نوبت، کد پیگیری رزرو را وارد کنید"
   },
   "service": {
     "title": "خدمات",
@@ -516,10 +520,30 @@
     "mainTitle": "عنوان اصلی",
     "secondTitle": "عنوان دوم",
     "thirdTitle": "عنوان سوم",
-    "sampleText": "این یک نمونه متن فارسی است که برای نمایش قابلیت‌های سیستم تایپوگرافی استفاده می‌شود. متن فارسی باید راست‌چین باشد و از فونت مناسب فارسی استفاده شود."
+    "sampleText": "این یک نمونه متن فارسی است که برای نمایش قابلیت‌های سیستم تایپوگرافی استفاده می‌شود. متن فارسی باید راست‌چین باشد و از فونت مناسب فارسی استفاده شود.",
+    "mutedText": "این متن کم‌رنگ‌تر برای توضیحات استفاده می‌شود.",
+    "themeTitle": "پیش‌نمایش قالب",
+    "themeDesc": "رنگ‌ها و اجزای قالب فعلی را پیش‌نمایش کنید.",
+    "primaryBtn": "اصلی",
+    "secondaryBtn": "ثانویه",
+    "outlineBtn": "خطی",
+    "dangerBtn": "خطر",
+    "defaultBadge": "پیش‌فرض",
+    "secondaryBadge": "ثانویه",
+    "outlineBadge": "خطی",
+    "dangerBadge": "خطر",
+    "products": {
+      "smartphone": "گوشی هوشمند",
+      "laptop": "لپ‌تاپ",
+      "headphone": "هدفون",
+      "smartwatch": "ساعت هوشمند"
+    }
   },
   "booking": {
-    "summary": "خلاصه سفارش"
+    "summary": "خلاصه سفارش",
+    "selectServiceFirst": "ابتدا یک خدمت انتخاب کنید",
+    "reviewDetails": "بررسی جزئیات",
+    "termsAgree": "با قوانین موافقم"
   },
   "fanpage": {
     "badge": "فن‌پیج",

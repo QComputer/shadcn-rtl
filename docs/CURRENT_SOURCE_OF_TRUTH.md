@@ -191,3 +191,10 @@ Implemented minimal fanpage feed support:
 - `quality:fanpage-mvp` validator included in `quality:local`.
 
 Deferred: likes, comments, edit/delete, moderation, follower-only posts, upload-backed images, and dashboard post management.
+
+
+## P31 — i18n Completion Pass
+
+Status: overlay prepared.
+
+P31 closes FA/EN/AR dictionary key drift by making all three locale dictionaries share the same leaf-key set. It adds `quality:i18n-completion` and integrates the validator into `quality:local`. Hardcoded dashboard/admin Persian copy remains documented non-blocking debt for a later dashboard copy extraction phase.

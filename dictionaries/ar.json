@@ -36,7 +36,11 @@
     "showing": "عرض",
     "of": "من",
     "all": "الكل",
-    "viewAll": "عرض الكل"
+    "viewAll": "عرض الكل",
+    "processing": "قيد المعالجة",
+    "more": "المزيد",
+    "saving": "جارٍ الحفظ",
+    "deactivate": "تعطيل"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -71,7 +75,14 @@
     "passwordMismatch": "كلمات المرور غير متطابقة",
     "passwordTooShort": "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل",
     "registrationFailed": "فشل التسجيل",
-    "alreadyHaveAccount": "لديك حساب؟"
+    "alreadyHaveAccount": "لديك حساب؟",
+    "orgSlug_placeHolder": "أدخل رابط المنظمة",
+    "newOrgSlug_placeHolder": "اختر رابطاً لمنظمتك",
+    "orgSlug": "رابط المنظمة",
+    "orgName": "اسم المنظمة",
+    "newOrgName_placeHolder": "اختر اسماً لمنظمتك",
+    "register_withOrganization": "تسجيل مستخدم ومنظمة",
+    "registerDesc_withOrganization": "إنشاء حساب مستخدم ومنظمة جديدة"
   },
   "navigation": {
     "home": "الرئيسية",
@@ -98,7 +109,13 @@
     "myAppointments": "مواعيدي",
     "myServices": "خدماتي",
     "calendar": "التقويم",
-    "checkout": "الدفع"
+    "checkout": "الدفع",
+    "product-categories": "فئات المنتجات",
+    "service-categories": "فئات الخدمات",
+    "settingsOrganization": "إعدادات المنظمة",
+    "members": "الأعضاء",
+    "users": "المستخدمون",
+    "qrcode": "رمز QR"
   },
   "organization": {
     "title": "منظمة",
@@ -133,7 +150,22 @@
     "ourServices": "خدماتنا",
     "closed": "مغلق",
     "open": "مفتوح",
-    "myAppointments": "حجوزاتي"
+    "myAppointments": "حجوزاتي",
+    "settings": "الإعدادات",
+    "logo": "الشعار",
+    "coverImage": "صورة الغلاف",
+    "shopType": "متجر",
+    "appointmentType": "مواعيد",
+    "activeMembers": "الأعضاء النشطون",
+    "welcome": "مرحباً",
+    "contactUs": "اتصل بنا",
+    "aboutUs": "من نحن",
+    "today": "اليوم",
+    "viewAllServices": "عرض كل الخدمات",
+    "viewStaff": "عرض الفريق",
+    "cardNumber": "رقم البطاقة",
+    "cardOwnerName": "اسم صاحب البطاقة",
+    "paymentMethod": "طريقة الدفع"
   },
   "product": {
     "title": "منتج",
@@ -165,7 +197,35 @@
     "priceLowToHigh": "السعر: من الأقل للأعلى",
     "priceHighToLow": "السعر: من الأعلى للأقل",
     "popular": "الأكثر شعبية",
-    "review": "تعليق"
+    "review": "تعليق",
+    "categories": "الفئات",
+    "categoryDescription": "وصف الفئة",
+    "descriptionPlaceholder": "أدخل وصف المنتج",
+    "sku_placeholder": "أدخل رمز SKU",
+    "sku": "SKU",
+    "categoryDescriptionPlaceholder": "أدخل وصف الفئة",
+    "edit": "تعديل المنتج",
+    "editVariant": "تعديل المتغير",
+    "editVariant_description": "تحديث متغير المنتج",
+    "editCategory": "تعديل الفئة",
+    "editCategoryDescription": "تحديث فئة المنتج",
+    "new": "منتج جديد",
+    "newCategory": "فئة جديدة",
+    "newCategoryDescription": "إنشاء فئة منتجات جديدة",
+    "name_placeholder": "أدخل اسم المنتج",
+    "categoryNamePlaceholder": "أدخل اسم الفئة",
+    "activeDescription": "المنتجات النشطة ظاهرة للعملاء",
+    "selectCategory": "اختر فئة",
+    "details": "تفاصيل المنتج",
+    "image": "الصورة",
+    "createDescription": "إنشاء منتج جديد لمتجرك",
+    "trackInventory_description": "تتبع كمية المخزون لهذا المنتج",
+    "lowStockThreshold": "حد انخفاض المخزون",
+    "addVariant": "إضافة متغير",
+    "addVariant_description": "إضافة متغير قابل للبيع لهذا المنتج",
+    "variantSku": "SKU المتغير",
+    "variantPrice": "سعر المتغير",
+    "sortOrder": "ترتيب العرض"
   },
   "order": {
     "title": "طلب",
@@ -201,7 +261,36 @@
     "delivered": "تم التوصيل",
     "cancelled": "ملغى",
     "refunded": "مسترد",
-    "newOrder": "طلب جديد"
+    "newOrder": "طلب جديد",
+    "place": "إرسال الطلب",
+    "placed": "تم الطلب",
+    "PLACED": "تم الطلب",
+    "PENDING": "قيد الانتظار",
+    "picked_up": "تم الاستلام",
+    "PICKED_UP": "تم الاستلام",
+    "active": "الطلبات النشطة",
+    "completed": "الطلبات المكتملة",
+    "noOrders": "لا توجد طلبات بعد",
+    "placedAt": "وقت الطلب",
+    "summary": "ملخص الطلب",
+    "preparing": "قيد التحضير",
+    "PREPARING": "قيد التحضير",
+    "notFound": "الطلب غير موجود",
+    "successfullyPlaced": "تم إرسال الطلب بنجاح",
+    "ACCEPTED": "مقبول",
+    "accepted": "مقبول",
+    "thankYou": "شكراً لطلبك",
+    "each": "لكل واحد",
+    "customerInfo": "معلومات العميل",
+    "address": "العنوان",
+    "noAddress": "لم يتم إدخال عنوان",
+    "READY": "جاهز",
+    "ready": "جاهز",
+    "continueShopping": "متابعة التسوق",
+    "paymentStatus_badge": {
+      "false": "غير مدفوع",
+      "true": "مدفوع"
+    }
   },
   "dashboard": {
     "title": "لوحة التحكم",
@@ -214,7 +303,8 @@
     "comparedToLastWeek": "مقارنة بالأسبوع الماضي",
     "comparedToLastMonth": "مقارنة بالشهر الماضي",
     "menu": "القائمة",
-    "viewAll": "عرض الكل"
+    "viewAll": "عرض الكل",
+    "recentAppointments": "المواعيد الأخيرة"
   },
   "user": {
     "title": "مستخدم",
@@ -240,7 +330,8 @@
     "notifications": "الإشعارات",
     "language": "اللغة",
     "theme": "السمة",
-    "logout": "تسجيل الخروج"
+    "logout": "تسجيل الخروج",
+    "admin": "مدير"
   },
   "cart": {
     "title": "السلة",
@@ -275,7 +366,27 @@
     "duration": "المدة",
     "notes": "ملاحظات",
     "provider": "مزود الخدمة",
-    "selectProvider": "اختر مزود الخدمة"
+    "selectProvider": "اختر مزود الخدمة",
+    "information": "معلومات الموعد",
+    "date": "التاريخ",
+    "details": "تفاصيل الموعد",
+    "pending": "قيد الانتظار",
+    "yourInfo": "معلوماتك",
+    "customerInfo": "معلومات العميل",
+    "confirmed": "مؤكد",
+    "price": "السعر",
+    "success": "تم حجز الموعد بنجاح",
+    "availableSlots": "الأوقات المتاحة",
+    "noSlots": "لا توجد أوقات متاحة",
+    "minutes": "دقائق",
+    "hour": "ساعة",
+    "bookingConfirmed": "تم تأكيد الحجز",
+    "bookingDetails": "تفاصيل الحجز",
+    "appointmentNumber": "رقم الموعد",
+    "thankYou": "شكراً لحجزك",
+    "bookingReference": "مرجع الحجز",
+    "lookupTitle": "ابحث عن موعدك",
+    "lookupDesc": "أدخل مرجع الحجز لعرض تفاصيل الموعد"
   },
   "service": {
     "title": "خدمة",
@@ -286,7 +397,13 @@
     "duration": "المدة",
     "category": "الفئة",
     "available": "متاح",
-    "unavailable": "غير متاح"
+    "unavailable": "غير متاح",
+    "details": "تفاصيل الخدمة",
+    "edit": "تعديل الخدمة",
+    "createDescription": "إنشاء خدمة جديدة",
+    "new": "خدمة جديدة",
+    "activeDescription": "الخدمات النشطة ظاهرة للعملاء",
+    "categories": "فئات الخدمات"
   },
   "category": {
     "title": "فئة",
@@ -339,7 +456,8 @@
     "unauthorized": "غير مصرح",
     "forbidden": "محظور",
     "serverError": "خطأ في الخادم",
-    "timeout": "انتهت مهلة الطلب"
+    "timeout": "انتهت مهلة الطلب",
+    "required_fields": "يرجى تعبئة جميع الحقول المطلوبة"
   },
   "time": {
     "am": "صباحاً",
@@ -361,7 +479,8 @@
     "hero": {
       "title": "أفضل منصة تجارة إلكترونية",
       "subtitle": "التسوق الإلكتروني وحجز الخدمات في منصة واحدة حديثة",
-      "dashboard": "الدخول إلى لوحة التحكم"
+      "dashboard": "الدخول إلى لوحة التحكم",
+      "help": "ابحث عن المتاجر والأنشطة التي تعتمد على المواعيد بالقرب منك."
     },
     "shops": "المتاجر",
     "services": "الخدمات",
@@ -421,5 +540,23 @@
     "imagePlaceholder": "رابط صورة اختياري",
     "publish": "نشر المنشور",
     "createError": "تعذر نشر المنشور."
+  },
+  "calendar": {
+    "today": "اليوم",
+    "week": "الأسبوع",
+    "month": "الشهر",
+    "upcoming": "القادمة",
+    "past": "السابقة",
+    "cancel": "إلغاء الموعد",
+    "reschedule": "إعادة الجدولة",
+    "noAppointments": "لا توجد مواعيد",
+    "viewDetails": "عرض التفاصيل",
+    "appointmentHistory": "سجل المواعيد"
+  },
+  "booking": {
+    "summary": "الملخص",
+    "selectServiceFirst": "يرجى اختيار خدمة أولاً",
+    "reviewDetails": "مراجعة التفاصيل",
+    "termsAgree": "أوافق على الشروط"
   }
 }

@@ -36,7 +36,11 @@
     "showing": "Showing",
     "of": "of",
     "all": "All",
-    "viewAll": "View All"
+    "viewAll": "View All",
+    "processing": "Processing",
+    "more": "More",
+    "saving": "Saving",
+    "deactivate": "Deactivate"
   },
   "auth": {
     "login": "Login",
@@ -71,7 +75,14 @@
     "passwordMismatch": "Passwords do not match",
     "passwordTooShort": "Password must be at least 6 characters",
     "registrationFailed": "Registration failed",
-    "alreadyHaveAccount": "Already have an account?"
+    "alreadyHaveAccount": "Already have an account?",
+    "orgSlug_placeHolder": "Enter the organization slug",
+    "newOrgSlug_placeHolder": "Choose a slug for your organization",
+    "orgSlug": "Organization slug",
+    "orgName": "Organization name",
+    "newOrgName_placeHolder": "Choose a name for your organization",
+    "register_withOrganization": "Register user and organization",
+    "registerDesc_withOrganization": "Create a new user account and organization"
   },
   "navigation": {
     "home": "Home",
@@ -98,7 +109,13 @@
     "myAppointments": "My Appointments",
     "myServices": "My Services",
     "calendar": "Calendar",
-    "checkout": "Checkout"
+    "checkout": "Checkout",
+    "product-categories": "Product categories",
+    "service-categories": "Service categories",
+    "settingsOrganization": "Organization settings",
+    "members": "Members",
+    "users": "Users",
+    "qrcode": "QR code"
   },
   "organization": {
     "title": "Organization",
@@ -135,7 +152,20 @@
     "follow": "Follow",
     "loginToFollow": "Sign in to follow",
     "followUpdateError": "Could not update follow status",
-    "fanpage": "Fan page"
+    "fanpage": "Fan page",
+    "settings": "Settings",
+    "logo": "Logo",
+    "coverImage": "Cover image",
+    "shopType": "Shop",
+    "appointmentType": "Appointments",
+    "activeMembers": "Active members",
+    "welcome": "Welcome",
+    "contactUs": "Contact us",
+    "aboutUs": "About us",
+    "today": "Today",
+    "cardNumber": "Card number",
+    "cardOwnerName": "Cardholder name",
+    "paymentMethod": "Payment method"
   },
   "product": {
     "title": "Product",
@@ -167,7 +197,35 @@
     "priceLowToHigh": "Price: Low to High",
     "priceHighToLow": "Price: High to Low",
     "popular": "Most Popular",
-    "review": "Review"
+    "review": "Review",
+    "categories": "Categories",
+    "categoryDescription": "Category description",
+    "descriptionPlaceholder": "Enter product description",
+    "sku_placeholder": "Enter SKU",
+    "sku": "SKU",
+    "categoryDescriptionPlaceholder": "Enter category description",
+    "edit": "Edit product",
+    "editVariant": "Edit variant",
+    "editVariant_description": "Update this product variant",
+    "editCategory": "Edit category",
+    "editCategoryDescription": "Update this product category",
+    "new": "New product",
+    "newCategory": "New category",
+    "newCategoryDescription": "Create a new product category",
+    "name_placeholder": "Enter product name",
+    "categoryNamePlaceholder": "Enter category name",
+    "activeDescription": "Active products are visible to customers",
+    "selectCategory": "Select category",
+    "details": "Product details",
+    "image": "Image",
+    "createDescription": "Create a new product for your shop",
+    "trackInventory_description": "Track stock quantity for this product",
+    "lowStockThreshold": "Low stock threshold",
+    "addVariant": "Add variant",
+    "addVariant_description": "Add a sellable variant for this product",
+    "variantSku": "Variant SKU",
+    "variantPrice": "Variant price",
+    "sortOrder": "Sort order"
   },
   "order": {
     "title": "Order",
@@ -203,7 +261,36 @@
     "delivered": "Delivered",
     "cancelled": "Cancelled",
     "refunded": "Refunded",
-    "newOrder": "New Order"
+    "newOrder": "New Order",
+    "place": "Place order",
+    "placed": "Placed",
+    "PLACED": "Placed",
+    "PENDING": "Pending",
+    "picked_up": "Picked up",
+    "PICKED_UP": "Picked up",
+    "active": "Active orders",
+    "completed": "Completed orders",
+    "noOrders": "No orders yet",
+    "placedAt": "Placed at",
+    "summary": "Order summary",
+    "preparing": "Preparing",
+    "PREPARING": "Preparing",
+    "notFound": "Order not found",
+    "successfullyPlaced": "Order placed successfully",
+    "ACCEPTED": "Accepted",
+    "accepted": "Accepted",
+    "thankYou": "Thank you for your order",
+    "each": "each",
+    "customerInfo": "Customer information",
+    "address": "Address",
+    "noAddress": "No address provided",
+    "READY": "Ready",
+    "ready": "Ready",
+    "continueShopping": "Continue shopping",
+    "paymentStatus_badge": {
+      "false": "Unpaid",
+      "true": "Paid"
+    }
   },
   "dashboard": {
     "title": "Dashboard",
@@ -216,7 +303,8 @@
     "comparedToLastWeek": "Compared to last week",
     "comparedToLastMonth": "Compared to last month",
     "menu": "Menu",
-    "viewAll": "View All"
+    "viewAll": "View All",
+    "recentAppointments": "Recent appointments"
   },
   "user": {
     "title": "User",
@@ -242,7 +330,8 @@
     "notifications": "Notifications",
     "language": "Language",
     "theme": "Theme",
-    "logout": "Logout"
+    "logout": "Logout",
+    "admin": "Admin"
   },
   "cart": {
     "title": "Cart",
@@ -286,7 +375,18 @@
     "thankYou": "Thank you for your booking. You will receive a confirmation shortly.",
     "bookingReference": "Booking Reference",
     "lookupTitle": "Find Your Appointment",
-    "lookupDesc": "Enter your phone number or booking reference to view your appointments"
+    "lookupDesc": "Enter your phone number or booking reference to view your appointments",
+    "information": "Appointment information",
+    "date": "Date",
+    "details": "Appointment details",
+    "pending": "Pending",
+    "customerInfo": "Customer information",
+    "confirmed": "Confirmed",
+    "price": "Price",
+    "success": "Appointment booked successfully",
+    "hour": "hour",
+    "bookingDetails": "Booking details",
+    "appointmentNumber": "Appointment number"
   },
   "booking": {
     "summary": "Booking Summary",
@@ -303,7 +403,13 @@
     "duration": "Duration",
     "category": "Category",
     "available": "Available",
-    "unavailable": "Unavailable"
+    "unavailable": "Unavailable",
+    "details": "Service details",
+    "edit": "Edit service",
+    "createDescription": "Create a new service",
+    "new": "New service",
+    "activeDescription": "Active services are visible to customers",
+    "categories": "Service categories"
   },
   "category": {
     "title": "Category",
@@ -356,7 +462,8 @@
     "unauthorized": "Unauthorized",
     "forbidden": "Forbidden",
     "serverError": "Server error",
-    "timeout": "Request timeout"
+    "timeout": "Request timeout",
+    "required_fields": "Please fill in all required fields"
   },
   "time": {
     "am": "AM",
@@ -378,7 +485,8 @@
     "hero": {
       "title": "Welcome to the Bazarbaz platform",
       "subtitle": "Modern E-Commerce Platform. Online shopping and service booking in one modern platform",
-      "dashboard": "Go to Dashboard"
+      "dashboard": "Go to Dashboard",
+      "help": "Find shops and appointment-based businesses near you."
     },
     "shops": "Shops",
     "services": "Services",
@@ -436,7 +544,20 @@
     "titlePlaceholder": "Optional post title",
     "bodyPlaceholder": "Write the post body...",
     "imagePlaceholder": "Optional image URL",
+    "videoPlaceholder": "Optional video URL",
     "publish": "Publish post",
     "createError": "Could not publish the post."
+  },
+  "calendar": {
+    "today": "Today",
+    "week": "Week",
+    "month": "Month",
+    "upcoming": "Upcoming",
+    "past": "Past",
+    "cancel": "Cancel appointment",
+    "reschedule": "Reschedule",
+    "noAppointments": "No appointments",
+    "viewDetails": "View details",
+    "appointmentHistory": "Appointment history"
   }
 }

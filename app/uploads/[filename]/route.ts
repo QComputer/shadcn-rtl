@@ -1,7 +1,8 @@
 import { NextResponse, NextRequest } from "next/server";
-import fs from "fs/promises";
 import { ApiError, jsonError } from "@/lib/api-guards";
-import { getMimeTypeFromFilename, getStoredFilePath } from "@/lib/media-storage";
+import { getMimeTypeFromFilename, getBlobPathname } from "@/lib/media-storage";
+import { getFromBlob } from "@/lib/blob-storage";
+import { prisma } from "@/lib/db";
 
 export const runtime = "nodejs";
 
@@ -16,11 +17,20 @@ export async function GET(
       throw new ApiError(400, "Missing filename");
     }
 
-    const filepath = getStoredFilePath(filename);
-    const fileContent = await fs.readFile(filepath);
+    const pathname = getBlobPathname(filename);
+    const image = await prisma.image.findFirst({
+      where: { filename: pathname, access: "PRIVATE" },
+      select: { id: true },
+    });
+
+    if (!image) {
+      return new NextResponse("File not found", { status: 404 });
+    }
+
+    const { buffer } = await getFromBlob(pathname);
     const mimeType = getMimeTypeFromFilename(filename);
 
-    return new NextResponse(fileContent, {
+    return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": mimeType,
@@ -29,7 +39,7 @@ export async function GET(
       },
     });
   } catch (error: any) {
-    if (error?.code === "ENOENT") {
+    if (error?.code === "ENOENT" || error?.message === "Blob not found") {
       return new NextResponse("File not found", { status: 404 });
     }
 

@@ -1,7 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { jsonError, requireAuthSession, requireImageManageAccess } from "@/lib/api-guards";
-import { deleteStoredImage } from "@/lib/media-storage";
+import { ApiError, jsonError, requireAuthSession, requireImageManageAccess } from "@/lib/api-guards";
+import { deleteStoredImage, getBlobPathname } from "@/lib/media-storage";
 
 export const runtime = "nodejs";
 
@@ -14,8 +14,8 @@ export async function DELETE(
     const { id } = await params;
     const image = await requireImageManageAccess(session, id);
 
-    const filename = image.filename || image.url.split("/").pop();
-    await deleteStoredImage(filename);
+    const pathname = getBlobPathname(image.filename || image.url.split("/").pop() || "");
+    await deleteStoredImage(pathname);
 
     await prisma.$transaction(async (tx) => {
       await tx.image.delete({ where: { id } });

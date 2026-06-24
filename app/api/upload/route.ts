@@ -16,7 +16,7 @@ import {
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  let filename: string | null = null;
+  let imageRecord: { url: string; filename: string; pathname: string } | null = null;
 
   try {
     const session = await requireAuthSession();
@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
     }
 
     const purpose = String(formData.get("purpose") || "upload").slice(0, 64);
+    const access = String(formData.get("access") || "PUBLIC").slice(0, 32) as "PUBLIC" | "PRIVATE";
     const organizationId = await resolveOptionalUploadOrganizationId(
       session,
       typeof formData.get("organizationId") === "string"
@@ -43,17 +44,17 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     validateImageBuffer(buffer, file.type, file.size);
 
-    filename = createStoredImageFilename(file.type, purpose);
-    await writeStoredImage(filename, buffer);
+    const filename = createStoredImageFilename(file.type, purpose);
+    const result = await writeStoredImage(filename, buffer, access);
 
-    const url = `/uploads/${filename}`;
     const image = await prisma.image.create({
       data: {
-        url,
-        filename,
+        url: result.url,
+        filename: result.pathname,
         mimeType: file.type,
         sizeBytes: file.size,
         purpose,
+        access,
         uploadedByUserId: session.user.id,
         organizationId,
       },
@@ -72,6 +73,7 @@ export async function POST(req: NextRequest) {
           mimeType: image.mimeType,
           sizeBytes: image.sizeBytes,
           purpose: image.purpose,
+          access: image.access,
         },
       },
     });

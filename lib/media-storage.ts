@@ -1,7 +1,7 @@
-import fs from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 import { ApiError } from "@/lib/api-guards";
+import { uploadToBlob, deleteFromBlob } from "@/lib/blob-storage";
 
 export const MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024;
 
@@ -22,16 +22,12 @@ const IMAGE_SIGNATURES: Record<string, number[][]> = {
   ],
 };
 
-export function getUploadDir() {
-  return path.resolve(process.cwd(), "../uploads");
-}
-
-export function getStoredFilePath(filename: string) {
+export function getBlobPathname(filename: string): string {
   const basename = path.basename(filename);
   if (!basename || basename !== filename || basename.includes("..")) {
     throw new ApiError(400, "Invalid filename");
   }
-  return path.join(getUploadDir(), basename);
+  return basename;
 }
 
 export function getMimeTypeFromFilename(filename: string) {
@@ -82,19 +78,20 @@ export function createStoredImageFilename(mimeType: string, purpose = "image") {
   return `${Date.now()}-${randomUUID()}-${safePurpose}.${extension}`;
 }
 
-export async function writeStoredImage(filename: string, buffer: Buffer) {
-  const uploadDir = getUploadDir();
-  await fs.mkdir(uploadDir, { recursive: true });
-  const filepath = getStoredFilePath(filename);
-  await fs.writeFile(filepath, buffer, { flag: "wx" });
-  return filepath;
+export async function writeStoredImage(filename: string, buffer: Buffer, access: "PUBLIC" | "PRIVATE" = "PRIVATE") {
+  const pathname = getBlobPathname(filename);
+  const blobUrl = await uploadToBlob(pathname, buffer, getMimeTypeFromFilename(filename), access);
+  return {
+    pathname,
+    url: access === "PUBLIC" ? blobUrl : `/uploads/${pathname}`,
+  };
 }
 
 export async function deleteStoredImage(filename?: string | null) {
   if (!filename) return;
-  const filepath = getStoredFilePath(path.basename(filename));
+  const pathname = getBlobPathname(path.basename(filename));
   try {
-    await fs.unlink(filepath);
+    await deleteFromBlob(pathname);
   } catch (error: any) {
     if (error?.code !== "ENOENT") throw error;
   }

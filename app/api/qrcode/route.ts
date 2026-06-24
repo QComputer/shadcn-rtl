@@ -70,9 +70,8 @@ export async function POST(request: NextRequest) {
 
     const qrCodeImageBuffer = await renderQrCode(url);
     const filename = createStoredImageFilename("image/png", "qrcode");
-    await writeStoredImage(filename, Buffer.from(qrCodeImageBuffer));
-
-    const imageUrl = `/uploads/${filename}`;
+    const result = await writeStoredImage(filename, Buffer.from(qrCodeImageBuffer), "PRIVATE");
+    const imageUrl = result.url;
     const image = await prisma.image.create({
       data: {
         url: imageUrl,

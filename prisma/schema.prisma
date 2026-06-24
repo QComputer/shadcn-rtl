@@ -104,6 +104,11 @@ enum AuditAction {
   CHANGE_STATUS
 }
 
+enum ImageAccess {
+  PUBLIC
+  PRIVATE
+}
+
 // --- CORE MODELS ---
 
 model TimeInterval {
@@ -522,12 +527,13 @@ model ProductCategory {
 }
 
 model Image {
-  id          String   @id @default(cuid())
+  id          String       @id @default(cuid())
   url         String
   filename    String?
   mimeType    String?
   sizeBytes   Int?
-  purpose     String   @default("upload")
+  purpose     String       @default("upload")
+  access      ImageAccess  @default(PUBLIC)
 
   uploadedByUserId String?
   organizationId   String?
@@ -541,6 +547,7 @@ model Image {
   @@index([uploadedByUserId])
   @@index([organizationId])
   @@index([purpose])
+  @@index([access])
   @@index([createdAt])
 }
 

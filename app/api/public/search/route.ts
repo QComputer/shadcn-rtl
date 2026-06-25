@@ -165,10 +165,10 @@ export async function GET(request: NextRequest) {
       type: "ORGANIZATION",
       title: organization.name,
       subtitle: organization.description || organization.address,
-      href:
-        organization.type === "SHOP"
-          ? `/${locale}/shop/${organization.slug}`
-          : `/${locale}/organizations/${organization.slug}`,
+href:
+         organization.type === "SHOP"
+           ? `/${locale}/shop/${organization.slug}`
+           : `/${locale}/appointment/${organization.slug}`,
       image: organization.coverImage || organization.logo,
       organizationName: organization.type === "SHOP" ? "Shop" : "Appointment",
     }));
@@ -189,7 +189,7 @@ export async function GET(request: NextRequest) {
       type: "SERVICE",
       title: service.name,
       subtitle: service.description,
-      href: `/${locale}/organizations/${service.organization.slug}/services/${service.id}`,
+      href: `/${locale}/appointment/${service.organization.slug}/services/${service.id}`,
       image: service.image,
       organizationName: service.organization.name,
       price: decimalToNumber(service.price),

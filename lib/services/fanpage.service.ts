@@ -6,7 +6,7 @@ import { supportedLocales } from "@/lib/i18n";
 
 function revalidateFanpage(slug: string) {
   for (const locale of supportedLocales) {
-    revalidatePath(`/${locale}/organizations/${slug}/fanpage`);
+    revalidatePath(`/${locale}/appointment/${slug}/fanpage`);
   }
 }
 

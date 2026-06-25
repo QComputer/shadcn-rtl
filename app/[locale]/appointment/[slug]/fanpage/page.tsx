@@ -97,7 +97,7 @@ export default async function OrganizationFanpagePage({ params }: FanpagePagePro
               </p>
             </div>
             <Button variant="outline">
-              <Link href={`/${locale}/organizations/${organization.slug}`}>{t("navigation.profile")}</Link>
+              <Link href={`/${locale}/appointment/${organization.slug}`}>{t("navigation.profile")}</Link>
             </Button>
           </div>
         </div>

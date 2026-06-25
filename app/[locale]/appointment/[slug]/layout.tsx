@@ -63,7 +63,7 @@ export default async function OrganizationLayout({ children, params }: Organizat
     notFound();
   }
 
-  const baseOrganizationPath = `/${locale}/organizations/${organization.slug}`;
+  const baseOrganizationPath = `/${locale}/appointment/${organization.slug}`;
   const navItems = [
     { href: baseOrganizationPath, label: t("navigation.profile") },
     { href: `${baseOrganizationPath}/fanpage`, label: t("organization.fanpage") },
@@ -84,7 +84,7 @@ export default async function OrganizationLayout({ children, params }: Organizat
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-4">
-              <a href={`/${locale}/organizations/${organization.slug}`} className="font-bold text-xl">
+              <a href={`/${locale}/appointment/${organization.slug}`} className="font-bold text-xl">
                 {organization.name}
               </a>
             </div>

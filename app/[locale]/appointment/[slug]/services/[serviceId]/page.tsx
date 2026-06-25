@@ -112,7 +112,7 @@ export default function ServiceDetailPage({
           <CardContent>
             <p className="text-muted-foreground">{error}</p>
             <Button className="mt-4">
-              <Link href={`/${locale}/organizations/${slug}/services`}>{t("common.back")}</Link>
+              <Link href={`/${locale}/appointment/${slug}/services`}>{t("common.back")}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -127,19 +127,19 @@ export default function ServiceDetailPage({
       <div className="container mx-auto px-4">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <Link 
-            href={`/${locale}/organizations/${slug}`}
-            className="hover:text-foreground"
-          >
-            {t("organization.title")}
-          </Link>
-          <ChevronRight className="h-4 w-4" />
-          <Link 
-            href={`/${locale}/organizations/${slug}/services`}
-            className="hover:text-foreground"
-          >
-            {t("service.title")}s
-          </Link>
+<Link 
+             href={`/${locale}/appointment/${slug}`}
+             className="hover:text-foreground"
+           >
+             {t("organization.title")}
+           </Link>
+           <ChevronRight className="h-4 w-4" />
+           <Link 
+             href={`/${locale}/appointment/${slug}/services`}
+             className="hover:text-foreground"
+           >
+             {t("service.title")}s
+           </Link>
           <ChevronRight className="h-4 w-4" />
           <span className="text-foreground">{service.name}</span>
         </nav>
@@ -192,8 +192,8 @@ export default function ServiceDetailPage({
                         {formatToman(service.price)}
                       </p>
                     </div>
-                    <Link href={`/${locale}/organizations/${slug}/booking?service=${service.id}`}>
-                      <Button size="lg">
+<Link href={`/${locale}/appointment/${slug}/booking?service=${service.id}`}>
+                       <Button size="lg">
                         <Calendar className="h-5 w-5 ml-2" />
                         {t("organization.bookNow")}
                       </Button>
@@ -261,7 +261,8 @@ export default function ServiceDetailPage({
                   </span>
                 </div>
 
-                <Link href={`/${locale}/organizations/${slug}/booking?service=${service.id}`} className="block">
+<Link 
+                   href={`/${locale}/appointment/${slug}/booking?service=${service.id}`} className="block">
                   <Button className="w-full">
                     <Calendar className="h-4 w-4 ml-2" />
                     {t("organization.bookNow")}
@@ -276,10 +277,10 @@ export default function ServiceDetailPage({
                 <CardTitle className="text-lg">{t("category.title")}</CardTitle>
               </CardHeader>
               <CardContent>
-                <Link 
-                  href={`/${locale}/organizations/${slug}/services?category=${service.category.id}`}
-                  className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
-                >
+<Link 
+                   href={`/${locale}/appointment/${slug}/services?category=${service.category.id}`}
+                   className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+                 >
                   <span>{service.category.name}</span>
                   <ChevronRight className="h-4 w-4" />
                 </Link>

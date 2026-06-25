@@ -6,7 +6,7 @@ import { supportedLocales } from "@/lib/i18n";
 
 function revalidateOrganizationPublicPages(slug: string) {
   for (const locale of supportedLocales) {
-    revalidatePath(`/${locale}/organizations/${slug}`);
+    revalidatePath(`/${locale}/appointment/${slug}`);
     revalidatePath(`/${locale}/shop/${slug}`);
   }
 }

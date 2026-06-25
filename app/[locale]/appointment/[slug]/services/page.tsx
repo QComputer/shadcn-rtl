@@ -139,7 +139,7 @@ export default function ServicesPage({
           <CardContent>
             <p className="text-muted-foreground">{error}</p>
             <Button className="mt-4">
-              <Link href={`/${locale}/organizations/${slug}`}>{t("common.back")}</Link>
+              <Link href={`/${locale}/appointment/${slug}`}>{t("common.back")}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -152,9 +152,9 @@ export default function ServicesPage({
       <div className="container mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
-          <Link 
-            href={`/${locale}/organizations/${slug}`}
-            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-2"
+<Link 
+             href={`/${locale}/appointment/${slug}`}
+             className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-2"
           >
             <ChevronRight className="h-4 w-4 rotate-180" />
             {t("common.back")}
@@ -242,7 +242,7 @@ export default function ServicesPage({
                     <span className="font-bold text-lg text-primary">
                       {formatToman(service.price)}
                     </span>
-                    <Link href={`/${locale}/organizations/${slug}/booking?service=${service.id}`}>
+                    <Link href={`/${locale}/appointment/${slug}/booking?service=${service.id}`}>
                       <Button>
                         <Calendar className="h-4 w-4 ml-2" />
                         {t("organization.bookNow")}

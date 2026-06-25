@@ -204,13 +204,13 @@ export default function OrganizationPage({
             )}
             <div className="flex flex-wrap gap-3">
                <Button  className="gap-2">
-                 <Link href={`/${locale}/organizations/${slug}/booking`}>
+<Link href={`/${locale}/appointment/${slug}/booking`}>
                    <Calendar className="h-3 w-3" />
                     <p className="text-xs">{t("organization.bookNow")}</p>
                  </Link>
                </Button>
                <Button variant="secondary" className="gap-2">
-                 <Link href={`/${locale}/organizations/${slug}/my-appointments`}>
+                 <Link href={`/${locale}/appointment/${slug}/my-appointments`}>
                    <Calendar className="h-3 w-3" />
                    <p className="text-xs">{t("organization.myAppointments")}</p>
                  </Link>
@@ -278,7 +278,7 @@ export default function OrganizationPage({
               </p>
             </div>
             <Button variant="outline">
-              <Link href={`/${locale}/organizations/${slug}/services`}>
+              <Link href={`/${locale}/appointment/${slug}/services`}>
                 {t("dashboard.viewAll")}
                 <ChevronRight className="h-4 w-4 mr-2" />
               </Link>
@@ -333,7 +333,7 @@ export default function OrganizationPage({
                       ))}
                       {category.services.length > 3 && (
                         <Button variant="ghost" size="sm" className="w-full">
-                          <Link href={`/${locale}/organizations/${slug}/services?category=${category.id}`}>
+                          <Link href={`/${locale}/appointment/${slug}/services?category=${category.id}`}>
                             +{category.services.length - 3} {t("common.more")}
                           </Link>
                         </Button>
@@ -428,7 +428,7 @@ export default function OrganizationPage({
             variant="secondary"
             className="gap-2"
           >
-            <Link href={`/${locale}/organizations/${slug}/booking`}>
+            <Link href={`/${locale}/appointment/${slug}/booking`}>
               <Calendar className="h-5 w-5" />
               {t("organization.bookNow")}
             </Link>

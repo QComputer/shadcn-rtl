@@ -184,7 +184,7 @@ Implemented minimal fanpage feed support:
 - `FanpagePost` Prisma model and migration.
 - Public read API for organization fanpage posts.
 - Authenticated `ADMIN`/`MANAGER` create API by organization slug.
-- Public `/[locale]/organizations/[slug]/fanpage` route.
+- Public `/[locale]/appointment/[slug]/fanpage` route.
 - Post card and create-post form components.
 - Fanpage navigation links from public organization/shop layouts.
 - FA/EN/AR fanpage dictionary keys.

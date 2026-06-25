@@ -253,10 +253,10 @@ export default function MyAppointmentsPage({
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <Link 
-              href={`/${locale}/organizations/${slug}`}
-              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-2"
-            >
+<Link 
+               href={`/${locale}/appointment/${slug}`}
+               className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-2"
+             >
               <ChevronRight className="h-4 w-4 rotate-180" />
               {t("common.back")}
             </Link>
@@ -306,7 +306,7 @@ export default function MyAppointmentsPage({
             <CardContent className="py-12 text-center">
               <CalendarClock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground mb-4">{t("common.no_results")}</p>
-              <Link href={`/${locale}/organizations/${slug}/booking`}>
+              <Link href={`/${locale}/appointment/${slug}/booking`}>
                 <Button>{t("organization.bookNow")}</Button>
               </Link>
             </CardContent>
@@ -350,7 +350,7 @@ export default function MyAppointmentsPage({
                             <p className="font-bold text-primary">
                               {formatToman(appointment.service.price)}
                             </p>
-                            <Link href={`/${locale}/organizations/${slug}/appointment/${appointment.id}`}>
+                            <Link href={`/${locale}/appointment/${slug}/appointment/${appointment.id}`}>
                               <Button variant="outline" size="sm" className="mt-2">
                                 {t("common.details")}
                               </Button>

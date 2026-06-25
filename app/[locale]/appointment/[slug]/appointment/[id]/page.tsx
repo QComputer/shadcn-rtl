@@ -202,9 +202,9 @@ export default function AppointmentDetailPage({
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">{error}</p>
-            <Link href={`/${locale}/organizations/${slug}/my-appointments`}>
-              <Button className="mt-4">{t("common.back")}</Button>
-            </Link>
+<Link href={`/${locale}/appointment/${slug}/my-appointments`}>
+               <Button className="mt-4">{t("common.back")}</Button>
+             </Link>
           </CardContent>
         </Card>
       </div>
@@ -220,19 +220,19 @@ export default function AppointmentDetailPage({
       <div className="container mx-auto px-4 max-w-3xl">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <Link 
-            href={`/${locale}/organizations/${slug}`}
-            className="hover:text-foreground"
-          >
-            {appointment.service.organization.name}
-          </Link>
-          <ChevronRight className="h-4 w-4" />
-          <Link 
-            href={`/${locale}/organizations/${slug}/my-appointments`}
-            className="hover:text-foreground"
-          >
-            {t("navigation.myAppointments")}
-          </Link>
+<Link 
+             href={`/${locale}/appointment/${slug}`}
+             className="hover:text-foreground"
+           >
+             {appointment.service.organization.name}
+           </Link>
+           <ChevronRight className="h-4 w-4" />
+           <Link 
+             href={`/${locale}/appointment/${slug}/my-appointments`}
+             className="hover:text-foreground"
+           >
+             {t("navigation.myAppointments")}
+           </Link>
           <ChevronRight className="h-4 w-4" />
           <span className="text-foreground">{t("common.details")}</span>
         </nav>
@@ -379,20 +379,20 @@ export default function AppointmentDetailPage({
             </div>
 
             {/* Actions */}
-            <div className="flex flex-wrap gap-3 pt-4">
-              <Link href={`/${locale}/organizations/${slug}`}>
-                <Button variant="outline">
-                  {t("organization.title")}
-                </Button>
-              </Link>
-              {!isPast && appointment.status !== "CANCELLED" && (
-                <Link href={`/${locale}/organizations/${slug}/booking?service=${appointment.service.id}`}>
-                  <Button>
-                    {t("appointment.reschedule")}
-                  </Button>
-                </Link>
-              )}
-            </div>
+<div className="flex flex-wrap gap-3 pt-4">
+               <Link href={`/${locale}/appointment/${slug}`}>
+                 <Button variant="outline">
+                   {t("organization.title")}
+                 </Button>
+               </Link>
+               {!isPast && appointment.status !== "CANCELLED" && (
+                 <Link href={`/${locale}/appointment/${slug}/booking?service=${appointment.service.id}`}>
+                   <Button>
+                     {t("appointment.reschedule")}
+                   </Button>
+                 </Link>
+               )}
+             </div>
           </CardContent>
         </Card>
       </div>

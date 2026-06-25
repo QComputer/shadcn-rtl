@@ -31,13 +31,13 @@ This document records the current application inventory so future work can be pl
 | /{locale}/dashboard/settings |
 | /{locale}/dashboard/users |
 | /{locale}/login |
-| /{locale}/organizations/{slug}/appointment/{id} |
-| /{locale}/organizations/{slug}/booking |
-| /{locale}/organizations/{slug}/my-appointments |
-| /{locale}/organizations/{slug} |
-| /{locale}/organizations/{slug}/services/{serviceId} |
-| /{locale}/organizations/{slug}/services |
-| /{locale}/organizations/{slug}/staff |
+| /{locale}/appointment/{slug}/appointment/{id} |
+ | /{locale}/appointment/{slug}/booking |
+ | /{locale}/appointment/{slug}/my-appointments |
+ | /{locale}/appointment/{slug} |
+ | /{locale}/appointment/{slug}/services/{serviceId} |
+ | /{locale}/appointment/{slug}/services |
+ | /{locale}/appointment/{slug}/staff |
 | /{locale} |
 | /{locale}/register/organization |
 | /{locale}/register |

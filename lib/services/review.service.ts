@@ -94,8 +94,8 @@ export class ReviewService {
       },
     });
 
-    revalidatePath(`/fa/organizations/${organization.slug}`);
-    revalidatePath(`/fa/shop/${organization.slug}`);
+revalidatePath(`/fa/appointment/${organization.slug}`);
+     revalidatePath(`/fa/shop/${organization.slug}`);
     return review;
   }
 
@@ -242,12 +242,12 @@ export class ReviewService {
       },
     });
 
-    revalidatePath(`/fa/organizations/${review.organizationSlug}`);
-    revalidatePath(`/fa/shop/${review.organizationSlug}`);
-    return updated;
-  }
+revalidatePath(`/fa/appointment/${review.organizationSlug}`);
+     revalidatePath(`/fa/shop/${review.organizationSlug}`);
+     return updated;
+   }
 
-  async delete(id: string, userId: string, userRole: UserRole) {
+   async delete(id: string, userId: string, userRole: UserRole) {
     const review = await prisma.review.findUnique({
       where: { id },
       select: { id: true, userId: true, organizationSlug: true },
@@ -258,10 +258,10 @@ export class ReviewService {
       throw new ApiError(403, "Forbidden");
     }
 
-    await prisma.review.delete({ where: { id } });
-    revalidatePath(`/fa/organizations/${review.organizationSlug}`);
-    revalidatePath(`/fa/shop/${review.organizationSlug}`);
-  }
+await prisma.review.delete({ where: { id } });
+     revalidatePath(`/fa/appointment/${review.organizationSlug}`);
+     revalidatePath(`/fa/shop/${review.organizationSlug}`);
+   }
 
   async getUserReview(userId: string, organizationSlug: string) {
     return prisma.review.findUnique({

@@ -228,8 +228,8 @@ PATCH /api/organizations/{id}/settings
 | Page | URL | Access |
 |------|-----|--------|
 | Login | `/[locale]/login` | All |
-| Organization | `/[locale]/organizations/[slug]` | Public |
-| Booking | `/[locale]/organizations/[slug]/booking` | Customer |
+| Organization | `/[locale]/appointment/[slug]` | Public |
+| Booking | `/[locale]/appointment/[slug]/booking` | Customer |
 | My Appointments | `/[locale]/my-appointments` | Customer |
 | Dashboard | `/[locale]/dashboard` | Staff+ |
 | Calendar | `/[locale]/dashboard/calendar` | Staff+ |
@@ -268,7 +268,7 @@ PATCH /api/organizations/{id}/settings
 ### Customer Testing
 - [ ] Login as customer1@example.com
 - [ ] Redirected away from dashboard
-- [ ] Can browse organizations at `/fa/organizations/clinic-ruya`
+- [ ] Can browse organizations at `/fa/appointment/clinic-ruya`
 - [ ] Can book appointment
 - [ ] Can view own appointments at `/fa/my-appointments`
 

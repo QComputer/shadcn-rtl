@@ -55,7 +55,7 @@ This overlay adds comprehensive project docs but does not change runtime code.
 | RBAC/API guards | `lib/api-guards.ts`, `lib/access-control.ts` |
 | Database | `prisma/schema.prisma`, `prisma/migrations/**`, `lib/db.ts` |
 | Services | `lib/services/*.ts` |
-| Public pages | `app/[locale]/shop/**`, `app/[locale]/organizations/**`, `app/[locale]/page.tsx` |
+| Public pages | `app/[locale]/shop/**`, `app/[locale]/appointment/**`, `app/[locale]/page.tsx` |
 | Dashboard pages | `app/[locale]/dashboard/**` |
 | APIs | `app/api/**/route.ts` |
 | i18n | `dictionaries/*.json`, `lib/dictionary.ts`, `lib/i18n.ts`, `proxy.ts` |

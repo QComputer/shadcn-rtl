@@ -299,12 +299,12 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
             )}
             {isCustomer && (
               <div className="flex gap-2">
-                <Link href={`/${locale}/organizations`}>
-                  <Button className="min-h-[44px] min-w-[44px]" aria-label=" organizations">
-                    <ShoppingBag className="h-5 w-5 rtl:ml-2" />
-                    <span className="hidden sm:inline">سازمان‌ها</span>
-                  </Button>
-                </Link>
+<Link href={`/${locale}/appointment`}>
+                       <Button className="min-h-[44px] min-w-[44px]" aria-label=" organizations">
+                         <ShoppingBag className="h-5 w-5 rtl:ml-2" />
+                         <span className="hidden sm:inline">سازمان‌ها</span>
+                       </Button>
+                     </Link>
               </div>
             )}
           </div>
@@ -984,9 +984,9 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
                     <ShoppingBag className="h-12 w-12 text-muted-foreground mb-4" />
                     <p className="text-muted-foreground text-lg mb-4">سفارش یا نوبتی ندارید</p>
                     <div className="flex gap-4">
-                      <Link href={`/${locale}/organizations`}>
-                        <Button>مشاهده سازمان‌ها</Button>
-                      </Link>
+<Link href={`/${locale}/appointment`}>
+                         <Button>مشاهده سازمان‌ها</Button>
+                       </Link>
                     </div>
                   </CardContent>
                 </Card>

@@ -37,7 +37,7 @@ add("fanpage posts POST requires org manage access by slug", /requireOrgManageAc
 add("fanpage posts POST validates body", /createFanpagePostSchema/.test(route) && /z\.object/.test(route));
 add("fanpage posts POST rate-limited", /checkRateLimit/.test(route) && /fanpage-post/.test(route));
 
-const pagePath = "app/[locale]/organizations/[slug]/fanpage/page.tsx";
+const pagePath = "app/[locale]/appointment/[slug]/fanpage/page.tsx";
 add("public fanpage route exists", exists(pagePath));
 const page = exists(pagePath) ? read(pagePath) : "";
 add("fanpage page uses active non-deleted organization", /isActive:\s*true/.test(page) && /deletedAt:\s*null/.test(page));
@@ -46,8 +46,8 @@ add("fanpage page gates create form by membership", /organizationMember\.findFir
 
 add("fanpage post card exists", exists("components/follow/fanpage-post-card.tsx"));
 add("fanpage post form exists", exists("components/follow/fanpage-post-form.tsx"));
-add("organization layout links fanpage", /organization\.fanpage/.test(read("app/[locale]/organizations/[slug]/layout.tsx")) && /\/fanpage/.test(read("app/[locale]/organizations/[slug]/layout.tsx")));
-add("shop layout links fanpage", /organization\.fanpage/.test(read("app/[locale]/shop/[slug]/layout.tsx")) && /organizations\/\$\{organization\.slug\}\/fanpage/.test(read("app/[locale]/shop/[slug]/layout.tsx")));
+add("organization layout links fanpage", /organization\.fanpage/.test(read("app/[locale]/appointment/[slug]/layout.tsx")) && /\/fanpage/.test(read("app/[locale]/appointment/[slug]/layout.tsx")));
+add("shop layout links fanpage", /organization\.fanpage/.test(read("app/[locale]/shop/[slug]/layout.tsx")) && /appointment\/\$\{organization\.slug\}\/fanpage/.test(read("app/[locale]/shop/[slug]/layout.tsx")));
 
 for (const locale of ["fa", "en", "ar"]) {
   const dictionary = json(`dictionaries/${locale}.json`);

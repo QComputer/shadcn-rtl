@@ -32,7 +32,7 @@ if (exists(publicImagePath)) {
 const publicSurfaces = [
   "app/[locale]/page.tsx",
   "components/home/home-hero.tsx",
-  "app/[locale]/organizations/[slug]/page.tsx",
+  "app/[locale]/appointment/[slug]/page.tsx",
   "app/[locale]/shop/[slug]/page.tsx",
 ];
 
@@ -42,7 +42,7 @@ for (const rel of publicSurfaces) {
   add(`${rel} has no raw img tags`, !/<img\b/.test(source));
 }
 
-const orgLayout = read("app/[locale]/organizations/[slug]/layout.tsx");
+const orgLayout = read("app/[locale]/appointment/[slug]/layout.tsx");
 add("appointment public layout has visible nav", /const navItems = \[/.test(orgLayout) && /navigation\.profile/.test(orgLayout) && (/organizations\/\$\{organization\?\.slug/.test(orgLayout) || /baseOrganizationPath/.test(orgLayout)));
 add("appointment public layout uses explicit safe select", /select:\s*{[\s\S]*id:\s*true[\s\S]*name:\s*true[\s\S]*slug:\s*true/.test(orgLayout));
 

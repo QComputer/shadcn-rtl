@@ -100,7 +100,7 @@ model FollowPostComment {
 
 ### Components to Create/Modify
 1. `app/[locale]/shop/[slug]/layout.tsx` - Add follow button to header
-2. `app/[locale]/organizations/[slug]/fanpage/page.tsx` - New follower feed page
+2. `app/[locale]/appointment/[slug]/fanpage/page.tsx` - New follower feed page
 3. `components/follow/follow-button.tsx` - Reusable follow/unfollow button
 4. `components/follow/post-feed.tsx` - Facebook-like feed component
 5. `components/follow/post-card.tsx` - Individual post display

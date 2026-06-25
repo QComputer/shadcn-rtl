@@ -26,7 +26,7 @@ Updated image usage in:
 ```txt
 app/[locale]/page.tsx
 components/home/home-hero.tsx
-app/[locale]/organizations/[slug]/page.tsx
+app/[locale]/appointment/[slug]/page.tsx
 app/[locale]/shop/[slug]/page.tsx
 ```
 
@@ -37,7 +37,7 @@ These public surfaces no longer use raw `<img>` tags directly.
 Updated:
 
 ```txt
-app/[locale]/organizations/[slug]/layout.tsx
+app/[locale]/appointment/[slug]/layout.tsx
 app/[locale]/shop/[slug]/layout.tsx
 ```
 

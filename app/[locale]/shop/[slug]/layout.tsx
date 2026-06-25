@@ -4,7 +4,7 @@ import { CartBadge } from "@/components/shop/cart-badge";
 import { Button } from "@/components/ui/button";
 import { Metadata } from "next";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher";
-import { Home, Package, ShoppingCart, ShoppingBasket } from "lucide-react";
+import { Home, Package, ShoppingCart, ShoppingBasket, User } from "lucide-react";
 import prisma from "@/lib/db";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -74,6 +74,7 @@ const organization = await prisma.organization.findFirst({
 
   const navItems = [
     { href: `/${locale}/shop/${organization.slug}`, label: t("navigation.products") },
+    { href: `/${locale}/shop/${organization.slug}/profile`, label: t("navigation.profile") },
     { href: `/${locale}/shop/${organization.slug}/fanpage`, label: t("organization.fanpage") },
     { href: `/${locale}/shop/${organization.slug}/checkout`, label: t("navigation.checkout") },
   ];
@@ -120,13 +121,20 @@ const organization = await prisma.organization.findFirst({
 
         {/* Mobile Navigation - Bottom Bar */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t supports-[backdrop-filter]:bg-background/60">
-          <div className="grid grid-cols-4 h-16">
+          <div className="grid grid-cols-5 h-16">
             <Link
               href={`/${locale}/shop/${organization.slug}`}
               className="flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
               <Home className="h-5 w-5" />
               <span>{t("navigation.products")}</span>
+            </Link>
+            <Link
+              href={`/${locale}/shop/${organization.slug}/profile`}
+              className="flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <User className="h-5 w-5" />
+              <span>{t("navigation.profile")}</span>
             </Link>
             <Link
               href={`/${locale}/shop/${organization.slug}/fanpage`}

@@ -29,7 +29,7 @@ This phase implements a minimal organization fanpage feed with public reading an
 
 ### UI
 
-- Added `app/[locale]/organizations/[slug]/fanpage/page.tsx`.
+- Added `app/[locale]/appointment/[slug]/fanpage/page.tsx`.
 - Added `FanpagePostCard`.
 - Added `FanpagePostForm`.
 - Added fanpage links to appointment organization layout and shop layout.

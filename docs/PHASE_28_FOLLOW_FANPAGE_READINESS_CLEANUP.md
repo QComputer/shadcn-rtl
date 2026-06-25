@@ -12,7 +12,7 @@ This phase is intentionally small and greenable. It cleans risky public organiza
 
 ### Public organization layout safety
 
-- `app/[locale]/organizations/[slug]/layout.tsx` now uses an explicit Prisma `select` instead of loading the full `Organization` row.
+- `app/[locale]/appointment/[slug]/layout.tsx` now uses an explicit Prisma `select` instead of loading the full `Organization` row.
 - The layout checks `type: "APPOINTMENT"`, `isActive: true`, and `deletedAt: null`.
 - Metadata is generated directly from the database with the same safe select path instead of server-side self-fetching through `NEXT_PUBLIC_APP_URL`.
 - The header now renders the real organization name instead of static `Logo` text.
@@ -30,7 +30,7 @@ This phase is intentionally small and greenable. It cleans risky public organiza
 ### Follow button wiring
 
 - The follow button is now visible on:
-  - `app/[locale]/organizations/[slug]/page.tsx`
+  - `app/[locale]/appointment/[slug]/page.tsx`
   - `app/[locale]/shop/[slug]/layout.tsx`
 
 ### Follow revalidation

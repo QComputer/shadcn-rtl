@@ -107,9 +107,9 @@ export default function StaffPage({
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">{error}</p>
-            <Link href={`/${locale}/organizations/${slug}`}>
-              <Button className="mt-4">{t("common.back")}</Button>
-            </Link>
+            <Button className="mt-4">
+              <Link href={`/${locale}/appointment/${slug}`}>{t("common.back")}</Link>
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -122,7 +122,7 @@ export default function StaffPage({
         {/* Header */}
         <div className="mb-8">
           <Link 
-            href={`/${locale}/organizations/${slug}`}
+            href={`/${locale}/appointment/${slug}`}
             className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-2"
           >
             <ChevronRight className="h-4 w-4 rotate-180" />
@@ -193,7 +193,7 @@ export default function StaffPage({
 
                   {/* Actions */}
                   <div className="flex gap-2">
-                    <Link href={`/${locale}/organizations/${slug}/booking?staff=${member.userId}`} className="flex-1">
+                    <Link href={`/${locale}/appointment/${slug}/booking?staff=${member.userId}`} className="flex-1">
                       <Button className="w-full">
                         <Calendar className="h-4 w-4 ml-2" />
                         {t("organization.bookNow")}

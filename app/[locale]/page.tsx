@@ -291,7 +291,7 @@ export default async function HomePage({
       href:
         organization.type === "SHOP"
           ? `/${locale}/shop/${organization.slug}`
-          : `/${locale}/organizations/${organization.slug}`,
+          : `/${locale}/appointment/${organization.slug}`,
       image: getImageUrl(organization),
       type: organization.type,
       badge: organization.type === "SHOP" ? text.shops : text.appointments,
@@ -420,7 +420,7 @@ function OrganizationCardItem({
   isRTL: boolean;
   text: Record<string, string>;
 }) {
-  const href = organization.type === "SHOP" ? `/${locale}/shop/${organization.slug}` : `/${locale}/organizations/${organization.slug}`;
+  const href = organization.type === "SHOP" ? `/${locale}/shop/${organization.slug}` : `/${locale}/appointment/${organization.slug}`;
   const primaryCount = organization.type === "SHOP" ? organization._count.products : organization._count.services;
   const primaryCountLabel = organization.type === "SHOP" ? text.products : text.services;
   const secondaryCount = organization.type === "SHOP" ? organization.orderCount : organization.appointmentCount;

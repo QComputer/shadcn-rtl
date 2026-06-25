@@ -256,7 +256,7 @@ export default function BookingPage({
           <CardContent>
             <p className="text-muted-foreground">{error}</p>
             <Button className="mt-4">
-              <Link href={`/${locale}/organizations/${slug}`}>{t("common.back")}</Link>
+              <Link href={`/${locale}/appointment/${slug}`}>{t("common.back")}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -292,9 +292,7 @@ export default function BookingPage({
 
               <div className="flex gap-4 justify-center">
                 <Button variant="outline">
-                  <Link href={`/${locale}/organizations/${slug}`}>
-                    {t("common.back")}
-                  </Link>
+                  <Link href={`/${locale}/appointment/${slug}`}>{t("common.back")}</Link>
                 </Button>
               </div>
             </CardContent>
@@ -310,7 +308,7 @@ export default function BookingPage({
         {/* Header */}
         <div className="mb-8">
           <Link 
-            href={`/${locale}/organizations/${slug}`}
+            href={`/${locale}/appointment/${slug}`}
             className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-2"
           >
             <ChevronRight className="h-4 w-4" />

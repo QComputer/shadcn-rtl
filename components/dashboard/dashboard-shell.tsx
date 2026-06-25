@@ -7,6 +7,7 @@ import { SocketProvider } from "@/context/SocketContext"
 import { DashboardAccessBoundary } from "@/components/dashboard/dashboard-access-boundary"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import { DashboardSidebarWithDict } from "@/components/dashboard/dashboard-sidebar"
+import { DashboardRouteAccessBoundary } from "@/components/dashboard/dashboard-route-access-boundary"
 import type { SupportedLocale } from "@/lib/i18n"
 
 type DashboardNotification = {
@@ -169,7 +170,9 @@ export function DashboardShell({ children, locale }: DashboardShellProps) {
                 aria-label={copy.mainContent}
                 className="flex-1 p-4 lg:p-6"
               >
-                {children}
+                <DashboardRouteAccessBoundary locale={locale}>
+                  {children}
+                </DashboardRouteAccessBoundary>
               </main>
             </div>
           </div>

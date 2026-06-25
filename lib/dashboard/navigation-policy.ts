@@ -135,11 +135,104 @@ export function isDashboardNavigationItemVisible(key: DashboardNavigationKey, ro
   return allowedRoles.includes(role) || role === "SUPER_ADMIN"
 }
 
-export function isDashboardRouteAllowed(route: keyof typeof DASHBOARD_ROUTE_POLICY, role: DashboardRole): boolean {
+export type DashboardRouteKey = keyof typeof DASHBOARD_ROUTE_POLICY
+
+export type DashboardRouteAccessDecision = {
+  isDashboardPath: boolean
+  isKnownRoute: boolean
+  isAllowed: boolean
+  routePath: string | null
+  routeKey: DashboardRouteKey | null
+  role: DashboardRole
+}
+
+export function isDashboardRouteAllowed(route: DashboardRouteKey, role: DashboardRole): boolean {
   const allowedRoles: readonly DashboardRole[] = DASHBOARD_ROUTE_POLICY[route]
   return allowedRoles.includes(role) || role === "SUPER_ADMIN"
 }
 
 export function getDashboardHref(locale: string, itemHref: string): string {
   return `/${locale}/dashboard${itemHref}`
+}
+
+export function getDashboardRoutePathFromPathname(locale: string, pathname: string | null | undefined): string | null {
+  if (!pathname) return null
+
+  const [pathOnly = ""] = pathname.split(/[?#]/, 1)
+  const normalizedPath = pathOnly.length > 1 ? pathOnly.replace(/\/+$/, "") : pathOnly
+  const dashboardRoot = getDashboardHref(locale, "")
+
+  if (normalizedPath === dashboardRoot) return ""
+  if (!normalizedPath.startsWith(`${dashboardRoot}/`)) return null
+
+  return normalizedPath.slice(dashboardRoot.length) || ""
+}
+
+function splitRouteSegments(route: string): string[] {
+  return route.split("/").filter(Boolean)
+}
+
+export function routePatternMatches(pattern: DashboardRouteKey, route: string): boolean {
+  if (pattern === route) return true
+
+  const patternSegments = splitRouteSegments(pattern)
+  const routeSegments = splitRouteSegments(route)
+
+  if (patternSegments.length !== routeSegments.length) return false
+
+  return patternSegments.every((segment, index) => {
+    const routeSegment = routeSegments[index]
+    return (segment.startsWith("[") && segment.endsWith("]")) || segment === routeSegment
+  })
+}
+
+export function getDashboardRouteKey(routePath: string | null | undefined): DashboardRouteKey | null {
+  if (routePath === null || typeof routePath === "undefined") return null
+
+  const normalizedRoute = routePath === "/" ? "" : routePath.replace(/\/+$/, "")
+  const directRoute = normalizedRoute as DashboardRouteKey
+
+  if (directRoute in DASHBOARD_ROUTE_POLICY) return directRoute
+
+  return (Object.keys(DASHBOARD_ROUTE_POLICY) as DashboardRouteKey[]).find((candidate) =>
+    routePatternMatches(candidate, normalizedRoute),
+  ) ?? null
+}
+
+export function getDashboardRouteKeyFromPathname(locale: string, pathname: string | null | undefined): DashboardRouteKey | null {
+  return getDashboardRouteKey(getDashboardRoutePathFromPathname(locale, pathname))
+}
+
+export function getDashboardRouteAccessDecision({
+  locale,
+  pathname,
+  role,
+}: {
+  locale: string
+  pathname: string | null | undefined
+  role: DashboardRole
+}): DashboardRouteAccessDecision {
+  const routePath = getDashboardRoutePathFromPathname(locale, pathname)
+
+  if (routePath === null) {
+    return {
+      isDashboardPath: false,
+      isKnownRoute: false,
+      isAllowed: true,
+      routePath: null,
+      routeKey: null,
+      role,
+    }
+  }
+
+  const routeKey = getDashboardRouteKey(routePath)
+
+  return {
+    isDashboardPath: true,
+    isKnownRoute: routeKey !== null,
+    isAllowed: routeKey !== null ? isDashboardRouteAllowed(routeKey, role) : false,
+    routePath,
+    routeKey,
+    role,
+  }
 }

@@ -49,6 +49,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 34 | Source-of-truth documentation sync | Docs-only | `pnpm run quality:local` |
 | 35 | Seed/auth docs and member refresh fix | Source-validated | `pnpm run quality:seed-auth-members` |
 | 36 | Member management UX and provider hardening | Source-validated | `pnpm run quality:members-provider-hardening` |
+| 37 | Dashboard navigation and localized shell copy cleanup | Source-validated | `pnpm run quality:dashboard-navigation-copy` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -62,6 +63,7 @@ pnpm run typecheck
 pnpm run build
 pnpm run quality:local
 pnpm run quality:members-provider-hardening
+pnpm run quality:dashboard-navigation-copy
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -119,8 +121,8 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P36 — member management UX and provider-layer hardening**.
+Latest completed implementation phase: **P37 — dashboard navigation and localized shell copy cleanup**.
 
-P36 compacted and hardened the dashboard members page, kept role/status edits scoped to the organization-member API, prevented self-lockout and final-active-admin removal, and removed the duplicate provider stack from the dashboard shell.
+P37 added localized dashboard shell copy, an accessible skip link, a semantic dashboard main landmark, and a compact mobile dashboard header while preserving the P36 provider-layer simplification.
 
-Recommended next phase: **P37 — dashboard navigation and localized admin copy cleanup**.
+Recommended next phase: **P38 — dashboard sidebar role-aware navigation cleanup**.

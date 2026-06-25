@@ -70,7 +70,8 @@
     "db:migrate:neon": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db/migrate-neon-data.ps1",
     "db:migrate:neon:dry-run": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db/migrate-neon-data.ps1 -DryRun",
     "quality:seed-auth-members": "node scripts/quality/validate-seed-auth-members-cleanup.mjs",
-    "quality:members-provider-hardening": "node scripts/quality/validate-member-provider-hardening.mjs"
+    "quality:members-provider-hardening": "node scripts/quality/validate-member-provider-hardening.mjs",
+    "quality:dashboard-navigation-copy": "node scripts/quality/validate-dashboard-navigation-copy.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

@@ -20,6 +20,36 @@ interface DashboardShellProps {
   locale: SupportedLocale
 }
 
+const dashboardShellCopy = {
+  fa: {
+    title: "داشبورد",
+    subtitle: "مدیریت سریع کسب‌وکار",
+    skipToContent: "رفتن به محتوای داشبورد",
+    mainContent: "محتوای اصلی داشبورد",
+  },
+  en: {
+    title: "Dashboard",
+    subtitle: "Fast business management",
+    skipToContent: "Skip to dashboard content",
+    mainContent: "Main dashboard content",
+  },
+  ar: {
+    title: "لوحة التحكم",
+    subtitle: "إدارة الأعمال بسرعة",
+    skipToContent: "الانتقال إلى محتوى لوحة التحكم",
+    mainContent: "المحتوى الرئيسي للوحة التحكم",
+  },
+} satisfies Record<SupportedLocale, {
+  title: string
+  subtitle: string
+  skipToContent: string
+  mainContent: string
+}>
+
+function getDashboardShellCopy(locale: SupportedLocale) {
+  return dashboardShellCopy[locale] ?? dashboardShellCopy.fa
+}
+
 function DashboardNotificationPoller() {
   const stopPollingRef = useRef(false)
 
@@ -95,36 +125,54 @@ function DashboardNotificationPoller() {
 
 export function DashboardShell({ children, locale }: DashboardShellProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const copy = getDashboardShellCopy(locale)
 
   return (
     <ToastProvider>
       <DashboardAccessBoundary>
         <SocketProvider>
-            <DashboardNotificationPoller />
-            <div className="flex min-h-screen bg-background">
-              <div className="hidden lg:block">
-                <DashboardSidebarWithDict locale={locale} isMobile={false} />
-              </div>
+          <DashboardNotificationPoller />
+          <a
+            href="#dashboard-main-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow"
+          >
+            {copy.skipToContent}
+          </a>
 
-              <div className="flex min-w-0 flex-1 flex-col">
-                <div className="flex items-center justify-between p-4">
+          <div className="flex min-h-screen bg-background">
+            <div className="hidden lg:block">
+              <DashboardSidebarWithDict locale={locale} isMobile={false} />
+            </div>
+
+            <div className="flex min-w-0 flex-1 flex-col">
+              <div className="sticky top-0 z-30 flex items-center justify-between border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:hidden">
+                <div className="flex min-w-0 items-center gap-3">
                   <DashboardSidebarWithDict
                     locale={locale}
                     isMobile={true}
                     isOpen={isMobileMenuOpen}
                     onOpenChange={setIsMobileMenuOpen}
                   />
-
-                  <div className="w-10" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">{copy.title}</p>
+                    <p className="truncate text-xs text-muted-foreground">{copy.subtitle}</p>
+                  </div>
                 </div>
-
-                <div className="border-b px-6 py-2 lg:block">
-                  <DashboardBreadcrumb locale={locale} />
-                </div>
-
-                <div className="flex-1 p-4 lg:p-6">{children}</div>
               </div>
+
+              <div className="hidden border-b px-6 py-2 lg:block">
+                <DashboardBreadcrumb locale={locale} />
+              </div>
+
+              <main
+                id="dashboard-main-content"
+                aria-label={copy.mainContent}
+                className="flex-1 p-4 lg:p-6"
+              >
+                {children}
+              </main>
             </div>
+          </div>
         </SocketProvider>
       </DashboardAccessBoundary>
     </ToastProvider>

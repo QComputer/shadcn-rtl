@@ -15,6 +15,7 @@ pnpm run typecheck
 pnpm run build
 pnpm run quality:local
 pnpm run quality:members-provider-hardening
+pnpm run quality:dashboard-navigation-copy
 ```
 
 Clean handoff gate introduced in P33:
@@ -66,6 +67,7 @@ pnpm run db:migrate:neon:dry-run
 | P34 | Docs-only source-of-truth, inventory, fanpage roadmap, and seed guide synchronization. |
 | P35 | Seed/auth demo-password documentation and dashboard member refresh/API cleanup. |
 | P36 | Dashboard members UX/API hardening and dashboard provider-layer simplification. |
+| P37 | Dashboard shell navigation semantics, localized mobile header copy, and accessibility guardrails. |
 
 ## Current route/API inventory
 
@@ -110,6 +112,7 @@ Deferred:
 - The active seed script hashes `123456` through `DEMO_PASSWORD` and the seed console footer prints the same value.
 - `app/[locale]/dashboard/members/page.tsx` now uses a compact searchable list, explicit refresh, API error surfacing, and a scrollable management dialog.
 - Organization-member role/status edits are scoped to `OrganizationMember` records and guard against self-lockout, manager-to-admin elevation, and removing the final active organization admin.
+- Dashboard shell now provides localized FA/EN/AR shell copy, a skip link, a semantic `main` landmark, and a compact mobile-only header.
 
 ## Clean release rules
 
@@ -146,12 +149,12 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P37 — dashboard navigation and localized admin copy cleanup
+P38 — dashboard sidebar role-aware navigation cleanup
 ```
 
 Scope:
 
-1. Audit dashboard navigation labels and admin-only copy for stale Persian hardcoding.
-2. Move high-value dashboard strings into dictionaries without broad UI redesign.
-3. Keep `ADMIN` practical workflows simple while leaving technical workflows for `SUPER_ADMIN`.
-4. Validate with typecheck, build, `quality:local`, i18n validators, and staged release checks.
+1. Inspect `components/dashboard/dashboard-sidebar.tsx` alongside dashboard route access rules.
+2. Keep practical `ADMIN` workflows visible and move technical-only workflows behind `SUPER_ADMIN` where appropriate.
+3. Keep navigation labels locale-aware and avoid new dashboard hardcoding.
+4. Validate with typecheck, build, `quality:local`, `quality:dashboard-navigation-copy`, and staged release checks.

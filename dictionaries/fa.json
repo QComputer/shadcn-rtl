@@ -115,7 +115,9 @@
     "settingsOrganization": "تنظیمات سازمان",
     "members": "اعضا",
     "users": "کاربرها",
-    "qrcode": "کد QR"
+    "qrcode": "کد QR",
+    "customerClub": "باشگاه مشتریان",
+    "customer-club": "باشگاه مشتریان"
   },
   "organization": {
     "title": "سازمان",
@@ -559,5 +561,37 @@
     "publish": "انتشار پست",
     "createError": "انتشار پست انجام نشد.",
     "videoPlaceholder": "لینک ویدئوی اختیاری"
+  },
+  "customerClub": {
+    "title": "باشگاه مشتریان",
+    "subtitle": "اعضای باشگاه مشتریان این سازمان را مدیریت کنید.",
+    "members": "اعضا",
+    "activeMembers": "عضو فعال",
+    "searchPlaceholder": "جستجوی نام، ایمیل، تلفن، وضعیت یا سطح...",
+    "refresh": "تازه‌سازی",
+    "loading": "در حال بارگذاری باشگاه مشتریان...",
+    "emptyTitle": "هنوز عضوی در باشگاه مشتریان نیست",
+    "emptyDescription": "عضویت‌های مشتریان پس از پیوستن یا افزودن توسط مدیر اینجا نمایش داده می‌شود.",
+    "errorTitle": "بارگذاری باشگاه مشتریان ناموفق بود",
+    "customer": "مشتری",
+    "status": "وضعیت",
+    "tier": "سطح",
+    "source": "منبع",
+    "joinedAt": "تاریخ عضویت",
+    "manageMember": "مدیریت عضو",
+    "updateHint": "تغییر وضعیت یا سطح فقط روی عضویت باشگاه همین سازمان اعمال می‌شود.",
+    "noContact": "اطلاعات تماس ثبت نشده",
+    "showing": "نمایش",
+    "statuses": {
+      "ACTIVE": "فعال",
+      "PAUSED": "متوقف",
+      "LEFT": "خارج شده",
+      "BLOCKED": "مسدود"
+    },
+    "tiers": {
+      "MEMBER": "عضو",
+      "LOYAL": "وفادار",
+      "VIP": "ویژه"
+    }
   }
 }

@@ -115,7 +115,9 @@
     "settingsOrganization": "Organization settings",
     "members": "Members",
     "users": "Users",
-    "qrcode": "QR code"
+    "qrcode": "QR code",
+    "customerClub": "Customer Club",
+    "customer-club": "Customer Club"
   },
   "organization": {
     "title": "Organization",
@@ -547,6 +549,38 @@
     "videoPlaceholder": "Optional video URL",
     "publish": "Publish post",
     "createError": "Could not publish the post."
+  },
+  "customerClub": {
+    "title": "Customer Club",
+    "subtitle": "Manage this organization's customer club members.",
+    "members": "Members",
+    "activeMembers": "active members",
+    "searchPlaceholder": "Search name, email, phone, status, or tier...",
+    "refresh": "Refresh",
+    "loading": "Loading customer club...",
+    "emptyTitle": "No customer club members yet",
+    "emptyDescription": "Customer memberships will appear here after customers join or managers add them.",
+    "errorTitle": "Customer club could not be loaded",
+    "customer": "Customer",
+    "status": "Status",
+    "tier": "Tier",
+    "source": "Source",
+    "joinedAt": "Joined",
+    "manageMember": "Manage member",
+    "updateHint": "Status and tier changes apply only to this organization's customer club membership.",
+    "noContact": "No contact details",
+    "showing": "Showing",
+    "statuses": {
+      "ACTIVE": "Active",
+      "PAUSED": "Paused",
+      "LEFT": "Left",
+      "BLOCKED": "Blocked"
+    },
+    "tiers": {
+      "MEMBER": "Member",
+      "LOYAL": "Loyal",
+      "VIP": "VIP"
+    }
   },
   "calendar": {
     "today": "Today",

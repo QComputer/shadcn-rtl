@@ -86,6 +86,16 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     requiresOrgMembership: true,
   },
 
+  "/dashboard/customer-club": {
+    allowedRoles: ORG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+  },
+
+  "/dashboard/customer-club/members": {
+    allowedRoles: ORG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+  },
+
   "/dashboard/orders": {
     allowedRoles: ORG_MANAGEMENT_ROLES,
     requiresOrgMembership: true,
@@ -390,6 +400,14 @@ export const dashboardNavItems: NavItem[] = [
     labelKey: "navigation.members",
     href: "/dashboard/members",
     icon: "Users",
+    requiredRoles: ORG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+  },
+  {
+    id: "customer-club",
+    labelKey: "navigation.customerClub",
+    href: "/dashboard/customer-club",
+    icon: "UserRoundCheck",
     requiredRoles: ORG_MANAGEMENT_ROLES,
     requiresOrgMembership: true,
   },

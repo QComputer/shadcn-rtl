@@ -4,7 +4,7 @@ Date: 2026-06-25
 
 ## Current validated baseline
 
-The current working baseline after P40 overlays is source-validator green.
+The current working baseline after P42 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -19,6 +19,8 @@ pnpm run quality:dashboard-navigation-copy
 pnpm run quality:dashboard-role-navigation
 pnpm run quality:dashboard-route-parity
 pnpm run quality:dashboard-route-authorization
+pnpm run quality:dashboard-route-guard-smoke
+pnpm run quality:customer-club-foundation
 ```
 
 Clean handoff gate introduced in P33:
@@ -40,11 +42,12 @@ pnpm run db:migrate:neon:dry-run
 - Next.js 16 App Router with localized routes under `app/[locale]`.
 - Supported locales: `fa`, `en`, `ar`; dictionary leaf-key parity is enforced by `quality:i18n-completion`.
 - Multi-tenant organization model supports `SHOP` and `APPOINTMENT` organization types.
-- Dashboard workflows cover appointments, calendar, organizations, members, products, product categories, orders, QR code, services, service categories, settings, and users.
+- Dashboard workflows cover appointments, calendar, organizations, members, Customer Club, products, product categories, orders, QR code, services, service categories, settings, and users.
 - Public shop workflows cover shop profile, product detail, checkout, order tracking, and shop fanpage.
 - Public appointment workflows cover organization profile, service listing, staff listing, booking, appointment detail, my appointments, and appointment fanpage.
 - Follow support exists through `Follow`, `follow.service.ts`, follow/unfollow API, public follow UI, and readiness validators.
 - Fanpage MVP exists through `FanpagePost`, `fanpage.service.ts`, public read API, authorized create API, post card/form UI, and both appointment/shop fanpage routes.
+- Customer Club foundation exists through `CustomerClubMembership`, `customer-club.service.ts`, self-service membership API, dashboard management API, localized dashboard pages, audit logging, and the `quality:customer-club-foundation` validator.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -74,6 +77,8 @@ pnpm run db:migrate:neon:dry-run
 | P38 | Shared dashboard sidebar role-aware navigation policy and localized navigation labels. |
 | P39 | Dashboard navigation policy extraction plus route/navigation parity validator. |
 | P40 | Dashboard route-level authorization helper adoption and localized fallback boundary. |
+| P41 | Dashboard unauthorized-state polish and route guard smoke validator. |
+| P42 | Organization-scoped Customer Club foundation with management dashboard and validator. |
 
 ## Current route/API inventory
 
@@ -88,6 +93,10 @@ Important currently implemented surfaces:
 /api/driver/location
 /api/orders/{id}/assign-driver
 /api/dashboard/notifications
+/{locale}/dashboard/customer-club
+/{locale}/dashboard/customer-club/members
+/api/customer-club/membership
+/api/dashboard/customer-club/members
 ```
 
 ## Current fanpage status
@@ -120,8 +129,10 @@ Deferred:
 - Organization-member role/status edits are scoped to `OrganizationMember` records and guard against self-lockout, manager-to-admin elevation, and removing the final active organization admin.
 - Dashboard shell now provides localized FA/EN/AR shell copy, a skip link, a semantic `main` landmark, and a compact mobile-only header.
 - Dashboard sidebar navigation is role-aware: SUPER_ADMIN keeps full navigation, ADMIN/MANAGER keep practical workflows, STAFF sees operational/catalog entries, DRIVER gets a minimal driving-focused menu, and global platform links are hidden outside SUPER_ADMIN.
-- Dashboard main content is wrapped by `DashboardRouteAccessBoundary`, which uses the shared route policy helper to show a localized fallback when a user manually opens a dashboard route hidden for their role.
-- Dashboard route/navigation policy now lives in `lib/dashboard/navigation-policy.ts`, with `DASHBOARD_NAVIGATION_ITEMS`, `ROLE_NAVIGATION_POLICY`, and `DASHBOARD_ROUTE_POLICY` available for validators and future route-level authorization helper adoption.
+- Dashboard main content is wrapped by `DashboardRouteAccessBoundary`, which uses the shared route policy helper to show a localized fallback when a user manually opens a dashboard route hidden for their role. P41 adds focus management, role/route details, improved mobile spacing, and a route-guard smoke validator.
+- Dashboard route/navigation policy now lives in `lib/dashboard/navigation-policy.ts`, with `DASHBOARD_NAVIGATION_ITEMS`, `ROLE_NAVIGATION_POLICY`, and `DASHBOARD_ROUTE_POLICY` available for validators and route-level authorization checks.
+- Customer Club management navigation and routes are available to SUPER_ADMIN, ADMIN, and MANAGER. STAFF and DRIVER do not receive Customer Club management navigation.
+- Customer Club membership data is organization-scoped and does not mutate global user roles.
 
 ## Clean release rules
 
@@ -158,13 +169,13 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P41 — dashboard unauthorized-state polish and route guard smoke tests
+P43 — Customer Club consent, tags, and segmentation planning
 ```
 
 Scope:
 
-1. Add focused route-guard smoke coverage for representative roles and dashboard routes.
-2. Polish unauthorized fallback spacing, copy, and return navigation after real-device/mobile review.
-3. Confirm page-local server/API guards still enforce data access independently of the client boundary.
-4. Preserve SUPER_ADMIN full access and ADMIN/MANAGER manual driver/dispatch override.
-5. Validate with typecheck, build, `quality:local`, dashboard navigation validators, and staged release checks.
+1. Add consent/preference records without sending external notifications.
+2. Add organization-scoped customer tags or segments if they stay simple and auditable.
+3. Preserve self-service leave/unsubscribe behavior.
+4. Keep real SMS, email, Telegram, and Web Push behind explicit dry-run-safe flags.
+5. Validate with typecheck, build, `quality:local`, customer club validator, dashboard navigation validators, and staged release checks.

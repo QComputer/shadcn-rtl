@@ -53,6 +53,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 38 | Dashboard sidebar role-aware navigation cleanup | Source-validated | `pnpm run quality:dashboard-role-navigation` |
 | 39 | Dashboard route access/navigation parity audit | Source-validated | `pnpm run quality:dashboard-route-parity` |
 | 40 | Dashboard route-level authorization helper adoption | Source-validated | `pnpm run quality:dashboard-route-authorization` |
+| 42 | Customer Club foundation | Source-validated | `pnpm run quality:customer-club-foundation` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -70,6 +71,8 @@ pnpm run quality:dashboard-navigation-copy
 pnpm run quality:dashboard-role-navigation
 pnpm run quality:dashboard-route-parity
 pnpm run quality:dashboard-route-authorization
+pnpm run quality:dashboard-route-guard-smoke
+pnpm run quality:customer-club-foundation
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -127,9 +130,15 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P40 — dashboard route-level authorization helper adoption**.
+Latest completed implementation phase: **P42 — Customer Club foundation**.
 
-P40 extends the shared dashboard policy with pathname-to-route matching and a reusable route authorization decision helper, then wraps dashboard main content with `DashboardRouteAccessBoundary` so hidden sidebar routes also receive a role-aware dashboard fallback.
+P42 adds organization-scoped `CustomerClubMembership`, self-service and dashboard management APIs, management-only dashboard navigation/pages, localized FA/EN/AR Customer Club copy, audit logging for membership mutations, and the focused `quality:customer-club-foundation` validator.
+
+Previous route guard phase retained: **P41 — dashboard unauthorized-state polish and route guard smoke tests**.
+
+P41 polishes the localized unauthorized dashboard fallback with focus management, clearer role/route context, mobile-friendly spacing, and a focused `quality:dashboard-route-guard-smoke` validator for representative route-guard expectations.
+
+Previous route authorization phase retained: **P40 — dashboard route-level authorization helper adoption**.
 
 Previous route parity phase retained: **P39 — dashboard route access/navigation parity audit**.
 
@@ -137,4 +146,4 @@ Previous dashboard role phase retained: **P38 — dashboard sidebar role-aware n
 
 Previous dashboard shell/copy phase retained: **P37 — dashboard navigation and localized shell copy cleanup**.
 
-Recommended next phase: **P41 — dashboard unauthorized-state polish and route guard smoke tests**.
+Recommended next phase: **P43 — Customer Club consent, tags, and segmentation planning**.

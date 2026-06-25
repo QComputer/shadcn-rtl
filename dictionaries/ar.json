@@ -115,7 +115,9 @@
     "settingsOrganization": "إعدادات المنظمة",
     "members": "الأعضاء",
     "users": "المستخدمون",
-    "qrcode": "رمز QR"
+    "qrcode": "رمز QR",
+    "customerClub": "نادي العملاء",
+    "customer-club": "نادي العملاء"
   },
   "organization": {
     "title": "منظمة",
@@ -541,6 +543,38 @@
     "publish": "نشر المنشور",
     "createError": "تعذر نشر المنشور.",
     "videoPlaceholder": "رابط فيديو اختياري"
+  },
+  "customerClub": {
+    "title": "نادي العملاء",
+    "subtitle": "إدارة أعضاء نادي العملاء لهذه المؤسسة.",
+    "members": "الأعضاء",
+    "activeMembers": "أعضاء نشطون",
+    "searchPlaceholder": "ابحث بالاسم أو البريد أو الهاتف أو الحالة أو المستوى...",
+    "refresh": "تحديث",
+    "loading": "جار تحميل نادي العملاء...",
+    "emptyTitle": "لا يوجد أعضاء في نادي العملاء بعد",
+    "emptyDescription": "ستظهر عضويات العملاء هنا بعد الانضمام أو الإضافة من المدير.",
+    "errorTitle": "تعذر تحميل نادي العملاء",
+    "customer": "العميل",
+    "status": "الحالة",
+    "tier": "المستوى",
+    "source": "المصدر",
+    "joinedAt": "تاريخ الانضمام",
+    "manageMember": "إدارة العضو",
+    "updateHint": "تغييرات الحالة والمستوى تطبق فقط على عضوية نادي هذه المؤسسة.",
+    "noContact": "لا توجد بيانات اتصال",
+    "showing": "عرض",
+    "statuses": {
+      "ACTIVE": "نشط",
+      "PAUSED": "متوقف",
+      "LEFT": "غادر",
+      "BLOCKED": "محظور"
+    },
+    "tiers": {
+      "MEMBER": "عضو",
+      "LOYAL": "وفي",
+      "VIP": "مميز"
+    }
   },
   "calendar": {
     "today": "اليوم",

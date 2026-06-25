@@ -109,6 +109,26 @@ enum ImageAccess {
   PRIVATE
 }
 
+enum CustomerClubMembershipStatus {
+  ACTIVE
+  PAUSED
+  LEFT
+  BLOCKED
+}
+
+enum CustomerClubTier {
+  MEMBER
+  LOYAL
+  VIP
+}
+
+enum CustomerClubJoinSource {
+  PUBLIC_SHOP
+  CHECKOUT
+  ADMIN_IMPORT
+  CAMPAIGN
+}
+
 // --- CORE MODELS ---
 
 model TimeInterval {
@@ -153,6 +173,7 @@ model Organization {
   carts             ShopCart[]
   orders            Order[]
   followers         Follow[]
+  customerClubMemberships CustomerClubMembership[]
   fanpagePosts      FanpagePost[]
   locations         Location[]
   reviews           Review[]              @relation("OrgReviews")
@@ -242,6 +263,7 @@ model User {
   orders                   Order[]                   @relation("CustomerOrderRelation")
   assignedDeliveries       Order[]                   @relation("DriverOrderRelation")
   following                Follow[]
+  customerClubMemberships  CustomerClubMembership[]
   fanpagePosts             FanpagePost[]
   sentMessages             Message[]                 @relation("SentMessages")
   receivedMessages         Message[]                 @relation("ReceivedMessages")
@@ -977,6 +999,26 @@ model Follow {
 
   @@unique([customerId, organizationId])
   @@index([organizationId])
+}
+
+model CustomerClubMembership {
+  id             String                       @id @default(cuid())
+  organizationId String
+  customerId     String
+  status         CustomerClubMembershipStatus @default(ACTIVE)
+  tier           CustomerClubTier             @default(MEMBER)
+  source         CustomerClubJoinSource       @default(PUBLIC_SHOP)
+  joinedAt       DateTime                     @default(now())
+  leftAt         DateTime?
+  createdAt      DateTime                     @default(now())
+  updatedAt      DateTime                     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     User         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, customerId])
+  @@index([organizationId, status])
+  @@index([customerId, status])
 }
 
 model Conversation {

@@ -50,6 +50,8 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 35 | Seed/auth docs and member refresh fix | Source-validated | `pnpm run quality:seed-auth-members` |
 | 36 | Member management UX and provider hardening | Source-validated | `pnpm run quality:members-provider-hardening` |
 | 37 | Dashboard navigation and localized shell copy cleanup | Source-validated | `pnpm run quality:dashboard-navigation-copy` |
+| 38 | Dashboard sidebar role-aware navigation cleanup | Source-validated | `pnpm run quality:dashboard-role-navigation` |
+| 39 | Dashboard route access/navigation parity audit | Source-validated | `pnpm run quality:dashboard-route-parity` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -64,6 +66,8 @@ pnpm run build
 pnpm run quality:local
 pnpm run quality:members-provider-hardening
 pnpm run quality:dashboard-navigation-copy
+pnpm run quality:dashboard-role-navigation
+pnpm run quality:dashboard-route-parity
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -121,8 +125,12 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P37 — dashboard navigation and localized shell copy cleanup**.
+Latest completed implementation phase: **P39 — dashboard route access/navigation parity audit**.
 
-P37 added localized dashboard shell copy, an accessible skip link, a semantic dashboard main landmark, and a compact mobile dashboard header while preserving the P36 provider-layer simplification.
+P39 extracted dashboard navigation/route policy into `lib/dashboard/navigation-policy.ts`, kept the sidebar as a policy consumer, and added a validator that checks nav item hrefs, real dashboard page files, nested route coverage, authentication layout presence, and access-boundary preservation.
 
-Recommended next phase: **P38 — dashboard sidebar role-aware navigation cleanup**.
+Previous dashboard role phase retained: **P38 — dashboard sidebar role-aware navigation cleanup**.
+
+Previous dashboard shell/copy phase retained: **P37 — dashboard navigation and localized shell copy cleanup**.
+
+Recommended next phase: **P40 — dashboard route-level authorization helper adoption**.

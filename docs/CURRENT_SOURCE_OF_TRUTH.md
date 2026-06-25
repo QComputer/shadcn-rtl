@@ -4,7 +4,7 @@ Date: 2026-06-25
 
 ## Current validated baseline
 
-The current working baseline after P36 overlays is source-validator green.
+The current working baseline after P39 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -16,6 +16,8 @@ pnpm run build
 pnpm run quality:local
 pnpm run quality:members-provider-hardening
 pnpm run quality:dashboard-navigation-copy
+pnpm run quality:dashboard-role-navigation
+pnpm run quality:dashboard-route-parity
 ```
 
 Clean handoff gate introduced in P33:
@@ -68,6 +70,8 @@ pnpm run db:migrate:neon:dry-run
 | P35 | Seed/auth demo-password documentation and dashboard member refresh/API cleanup. |
 | P36 | Dashboard members UX/API hardening and dashboard provider-layer simplification. |
 | P37 | Dashboard shell navigation semantics, localized mobile header copy, and accessibility guardrails. |
+| P38 | Shared dashboard sidebar role-aware navigation policy and localized navigation labels. |
+| P39 | Dashboard navigation policy extraction plus route/navigation parity validator. |
 
 ## Current route/API inventory
 
@@ -113,6 +117,8 @@ Deferred:
 - `app/[locale]/dashboard/members/page.tsx` now uses a compact searchable list, explicit refresh, API error surfacing, and a scrollable management dialog.
 - Organization-member role/status edits are scoped to `OrganizationMember` records and guard against self-lockout, manager-to-admin elevation, and removing the final active organization admin.
 - Dashboard shell now provides localized FA/EN/AR shell copy, a skip link, a semantic `main` landmark, and a compact mobile-only header.
+- Dashboard sidebar navigation is role-aware: SUPER_ADMIN keeps full navigation, ADMIN/MANAGER keep practical workflows, STAFF sees operational/catalog entries, DRIVER gets a minimal driving-focused menu, and global platform links are hidden outside SUPER_ADMIN.
+- Dashboard route/navigation policy now lives in `lib/dashboard/navigation-policy.ts`, with `DASHBOARD_NAVIGATION_ITEMS`, `ROLE_NAVIGATION_POLICY`, and `DASHBOARD_ROUTE_POLICY` available for validators and future route-level authorization helper adoption.
 
 ## Clean release rules
 
@@ -149,12 +155,13 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P38 — dashboard sidebar role-aware navigation cleanup
+P40 — dashboard route-level authorization helper adoption
 ```
 
 Scope:
 
-1. Inspect `components/dashboard/dashboard-sidebar.tsx` alongside dashboard route access rules.
-2. Keep practical `ADMIN` workflows visible and move technical-only workflows behind `SUPER_ADMIN` where appropriate.
-3. Keep navigation labels locale-aware and avoid new dashboard hardcoding.
-4. Validate with typecheck, build, `quality:local`, `quality:dashboard-navigation-copy`, and staged release checks.
+1. Reuse `lib/dashboard/navigation-policy.ts` from dashboard route/page guard helpers where practical.
+2. Keep sidebar visibility separate from authorization behavior.
+3. Add clear 403/redirect behavior for routes that currently rely only on page-local checks.
+4. Preserve SUPER_ADMIN full access and ADMIN/MANAGER manual driver/dispatch override.
+5. Validate with typecheck, build, `quality:local`, dashboard navigation validators, and staged release checks.

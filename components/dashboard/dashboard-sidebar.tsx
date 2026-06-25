@@ -1,253 +1,349 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { 
-  LayoutDashboard, 
-  ShoppingCart, 
-  Package, 
-  Calendar, 
-  Users, 
-  Settings,
-  CalendarDays,
-  ShoppingBag,
-  Briefcase,
-  ChevronRight,
-  ChevronLeft,
-  Scissors,
+import { usePathname } from "next/navigation"
+import { useSession } from "next-auth/react"
+import {
+  BarChart3,
   Building2,
-  LogOut,
-  FolderOpen,
-  QrCode
+  CalendarDays,
+  ClipboardList,
+  LayoutDashboard,
+  MapPinned,
+  Menu,
+  Package,
+  QrCode,
+  Settings,
+  ShieldCheck,
+  ShoppingCart,
+  Tags,
+  Users,
+  Wrench,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { useAuth } from "@/hooks/use-auth"
-import { filterNavItems, dashboardNavItems, type NavItem } from "@/lib/access-control"
-import { getDictionary, getDictValue } from "@/lib/dictionary"
-import { isRTL } from "@/lib/i18n"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
+import type { SupportedLocale } from "@/lib/i18n"
+import { cn } from "@/lib/utils"
+import {
+  DASHBOARD_NAVIGATION_GROUPS,
+  DASHBOARD_NAVIGATION_ITEMS,
+  ROLE_NAVIGATION_POLICY,
+  getDashboardHref,
+  getDashboardRoleFromUser,
+  isDashboardNavigationItemVisible,
+  type DashboardNavigationGroupKey,
+  type DashboardNavigationKey,
+  type DashboardRole,
+} from "@/lib/dashboard/navigation-policy"
 
-interface DashboardSidebarProps {
-  locale: string
-  dict?: Record<string, any>
+type DashboardIcon = typeof LayoutDashboard
+
+type NavigationItem = {
+  key: DashboardNavigationKey
+  href: string
+  icon: DashboardIcon
+}
+
+type NavigationGroup = {
+  key: DashboardNavigationGroupKey
+  items: NavigationItem[]
+}
+
+interface DashboardSidebarWithDictProps {
+  locale: SupportedLocale
   isMobile?: boolean
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
 }
 
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  LayoutDashboard,
-  ShoppingCart,
-  Package,
-  Calendar,
-  Users,
-  Settings,
-  CalendarDays,
-  ShoppingBag,
-  Briefcase,
-  Scissors,
-  Building2,
-  LogOut,
-  FolderOpen,
-  QrCode,
+const NAVIGATION_ICONS = {
+  overview: LayoutDashboard,
+  appointments: ClipboardList,
+  calendar: CalendarDays,
+  orders: ShoppingCart,
+  driverOrders: MapPinned,
+  products: Package,
+  productCategories: Tags,
+  services: Wrench,
+  serviceCategories: Tags,
+  members: Users,
+  settings: Settings,
+  organizationSettings: Building2,
+  qrcode: QrCode,
+  organizations: Building2,
+  users: ShieldCheck,
+} satisfies Record<DashboardNavigationKey, DashboardIcon>
+
+const NAVIGATION_GROUPS: NavigationGroup[] = DASHBOARD_NAVIGATION_GROUPS.map((group) => ({
+  key: group.key,
+  items: group.items.map((key) => ({
+    key,
+    href: DASHBOARD_NAVIGATION_ITEMS[key],
+    icon: NAVIGATION_ICONS[key],
+  })),
+}))
+
+const roleAwareNavigationCopy = {
+  fa: {
+    appName: "بازار باز",
+    sectionLabel: "ناوبری داشبورد",
+    openMenu: "باز کردن منوی داشبورد",
+    closeMenu: "بستن منوی داشبورد",
+    signedInAs: "سطح دسترسی",
+    groups: {
+      operations: "عملیات",
+      catalog: "کاتالوگ",
+      teamAndSettings: "تیم و تنظیمات",
+      platformAdmin: "مدیریت پلتفرم",
+    },
+    items: {
+      overview: "نمای کلی",
+      appointments: "نوبت‌ها",
+      calendar: "تقویم",
+      orders: "سفارش‌ها",
+      driverOrders: "رانندگی و تحویل",
+      products: "محصولات",
+      productCategories: "دسته‌های محصول",
+      services: "خدمات",
+      serviceCategories: "دسته‌های خدمت",
+      members: "اعضا",
+      settings: "تنظیمات",
+      organizationSettings: "تنظیمات سازمان",
+      qrcode: "کد QR",
+      organizations: "سازمان‌ها",
+      users: "کاربران",
+    },
+    roles: {
+      SUPER_ADMIN: "مدیر کل",
+      ADMIN: "مدیر",
+      MANAGER: "مدیر داخلی",
+      STAFF: "کارمند",
+      DRIVER: "راننده",
+      USER: "کاربر",
+    },
+  },
+  en: {
+    appName: "Bazar Baz",
+    sectionLabel: "Dashboard navigation",
+    openMenu: "Open dashboard menu",
+    closeMenu: "Close dashboard menu",
+    signedInAs: "Access level",
+    groups: {
+      operations: "Operations",
+      catalog: "Catalog",
+      teamAndSettings: "Team & settings",
+      platformAdmin: "Platform admin",
+    },
+    items: {
+      overview: "Overview",
+      appointments: "Appointments",
+      calendar: "Calendar",
+      orders: "Orders",
+      driverOrders: "Driving & delivery",
+      products: "Products",
+      productCategories: "Product categories",
+      services: "Services",
+      serviceCategories: "Service categories",
+      members: "Members",
+      settings: "Settings",
+      organizationSettings: "Organization settings",
+      qrcode: "QR code",
+      organizations: "Organizations",
+      users: "Users",
+    },
+    roles: {
+      SUPER_ADMIN: "Super admin",
+      ADMIN: "Admin",
+      MANAGER: "Manager",
+      STAFF: "Staff",
+      DRIVER: "Driver",
+      USER: "User",
+    },
+  },
+  ar: {
+    appName: "بازار باز",
+    sectionLabel: "تنقل لوحة التحكم",
+    openMenu: "فتح قائمة لوحة التحكم",
+    closeMenu: "إغلاق قائمة لوحة التحكم",
+    signedInAs: "مستوى الوصول",
+    groups: {
+      operations: "العمليات",
+      catalog: "الفهرس",
+      teamAndSettings: "الفريق والإعدادات",
+      platformAdmin: "إدارة المنصة",
+    },
+    items: {
+      overview: "نظرة عامة",
+      appointments: "المواعيد",
+      calendar: "التقويم",
+      orders: "الطلبات",
+      driverOrders: "القيادة والتوصيل",
+      products: "المنتجات",
+      productCategories: "فئات المنتجات",
+      services: "الخدمات",
+      serviceCategories: "فئات الخدمات",
+      members: "الأعضاء",
+      settings: "الإعدادات",
+      organizationSettings: "إعدادات المؤسسة",
+      qrcode: "رمز QR",
+      organizations: "المؤسسات",
+      users: "المستخدمون",
+    },
+    roles: {
+      SUPER_ADMIN: "مدير عام",
+      ADMIN: "مدير",
+      MANAGER: "مدير",
+      STAFF: "موظف",
+      DRIVER: "سائق",
+      USER: "مستخدم",
+    },
+  },
+} satisfies Record<SupportedLocale, {
+  appName: string
+  sectionLabel: string
+  openMenu: string
+  closeMenu: string
+  signedInAs: string
+  groups: Record<"operations" | "catalog" | "teamAndSettings" | "platformAdmin", string>
+  items: Record<DashboardNavigationKey, string>
+  roles: Record<DashboardRole, string>
+}>
+
+function getNavigationCopy(locale: SupportedLocale) {
+  return roleAwareNavigationCopy[locale] ?? roleAwareNavigationCopy.fa
 }
 
-function getIconComponent(iconName: string) {
-  return iconMap[iconName] || LayoutDashboard
+function isVisibleForRole(item: NavigationItem, role: DashboardRole) {
+  return isDashboardNavigationItemVisible(item.key, role)
 }
 
-export function DashboardSidebar({ 
-  locale, 
-  dict,
+function getVisibleNavGroups(role: DashboardRole) {
+  return NAVIGATION_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => isVisibleForRole(item, role)),
+  })).filter((group) => group.items.length > 0)
+}
+
+function isActivePath(pathname: string | null, locale: SupportedLocale, itemHref: string) {
+  const href = getDashboardHref(locale, itemHref)
+  if (!pathname) return false
+  if (itemHref === "") {
+    return pathname === href || pathname === `${href}/`
+  }
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
+
+function SidebarContent({
+  locale,
+  role,
+  onNavigate,
+}: {
+  locale: SupportedLocale
+  role: DashboardRole
+  onNavigate?: () => void
+}) {
+  const pathname = usePathname()
+  const copy = getNavigationCopy(locale)
+  const visibleGroups = getVisibleNavGroups(role)
+
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-background text-foreground" dir={locale === "fa" || locale === "ar" ? "rtl" : "ltr"}>
+      <div className="border-b px-4 py-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <BarChart3 className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">{copy.appName}</p>
+            <p className="truncate text-xs text-muted-foreground">{copy.signedInAs}: {copy.roles[role]}</p>
+          </div>
+        </div>
+      </div>
+
+      <ScrollArea className="min-h-0 flex-1 px-3 py-3">
+        <nav aria-label={copy.sectionLabel} className="space-y-5">
+          {visibleGroups.map((group) => (
+            <section key={group.key} className="space-y-2">
+              <h2 className="px-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {copy.groups[group.key]}
+              </h2>
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const Icon = item.icon
+                  const href = getDashboardHref(locale, item.href)
+                  const isActive = isActivePath(pathname, locale, item.href)
+
+                  return (
+                    <Link
+                      key={item.key}
+                      href={href}
+                      onClick={onNavigate}
+                      aria-current={isActive ? "page" : undefined}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                        "hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        isActive
+                          ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:text-primary-foreground"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{copy.items[item.key]}</span>
+                    </Link>
+                  )
+                })}
+              </div>
+            </section>
+          ))}
+        </nav>
+      </ScrollArea>
+    </div>
+  )
+}
+
+export function DashboardSidebarWithDict({
+  locale,
   isMobile = false,
   isOpen,
-  onOpenChange
-}: DashboardSidebarProps) {
-  const pathname = usePathname()
-  const { user, organizationMembership, isLoading, signOut } = useAuth()
-  const [filteredItems, setFilteredItems] = useState<NavItem[]>([])
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-    
-  }, [])
-
-  useEffect(() => {
-    if (!mounted || isLoading) return
-
-    // Build user access context
-    const context = {
-      userId: user?.id || "",
-      userRole: user?.role || "CUSTOMER",
-      organizationId: organizationMembership?.organizationId,
-      organizationType: organizationMembership?.organizationType,
-    }
-
-    // Filter navigation items based on user access
-    const items = filterNavItems(dashboardNavItems, context)
-    setFilteredItems(items)
-  }, [mounted, isLoading, user, organizationMembership])
-
-  const t = (key: string): string => {
-    if (!dict) return key
-    return getDictValue(dict, key)
-  }
-
-  const getNavLabel = (item: NavItem): string => {
-    return t(item.labelKey) || item.labelKey
-  }
-
-  if (!mounted || isLoading) {
-    return (
-      <div className={cn("space-y-2 p-4", isMobile ? "" : "w-64")}>
-        <div className="h-10 bg-muted animate-pulse rounded-lg" />
-        {/*<div className="h-10 bg-muted animate-pulse rounded-lg" />
-        <div className="h-10 bg-muted animate-pulse rounded-lg" />
-        <div className="h-10 bg-muted animate-pulse rounded-lg" /> */}
-      </div>
-    )
-  }
-
-  const content = (
-    <ScrollArea className={cn("flex-1 py-4", isMobile ? "h-[calc(100vh-8rem)]" : "h-full")}>
-      <nav className="space-y-1 px-2">
-        {filteredItems.map((item) => {
-          const Icon = getIconComponent(item.icon)
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
-          
-          return (
-            <Link
-              key={item.id+"ashboard-sidebar"}
-              href={`/${locale}${item.href}`}
-              onClick={() => isMobile && onOpenChange?.(false)}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <Icon className="h-5 w-5 flex-shrink-0" />
-              <span className="truncate">{getNavLabel(item)}</span>
-              {isActive && !isMobile && (
-                <ChevronRight className="h-4 w-4 mr-auto" />
-              )}
-            </Link>
-          )
-        })}
-      </nav>
-    </ScrollArea>
-  )
+  onOpenChange,
+}: DashboardSidebarWithDictProps) {
+  const { data: session } = useSession()
+  const copy = getNavigationCopy(locale)
+  const role = getDashboardRoleFromUser(session?.user)
+  const isRtl = locale === "fa" || locale === "ar"
 
   if (isMobile) {
     return (
-      <>
-        <Sheet open={isOpen} onOpenChange={onOpenChange}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="lg:hidden" aria-label="منو">
-              <Menu className="h-6 w-6" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-72"
-          dir={isRTL(locale) ? "rtl" : "ltr"}
-          >
-            <SheetHeader>
-              <SheetTitle>{t("navigation.menu") || "منو"}</SheetTitle>
-            </SheetHeader>
-            {content}
-            {/* Logout Button for Mobile */}
-            <div className="p-4 border-t mt-auto">
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                onClick={() => {
-                  onOpenChange?.(false)
-                  signOut()
-                }}
-              >
-                <LogOut className="h-5 w-5 ml-2" />
-                {t("auth.logout") || "خروج"}
-              </Button>
-            </div>
-          </SheetContent>
-        </Sheet>
-      </>
+      <Sheet open={isOpen} onOpenChange={onOpenChange}>
+        <SheetTrigger asChild>
+          <Button type="button" variant="outline" size="icon" aria-label={copy.openMenu}>
+            <Menu className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side={isRtl ? "right" : "left"} className="w-80 max-w-[85vw] p-0">
+          <SheetHeader className="sr-only">
+            <SheetTitle>{copy.sectionLabel}</SheetTitle>
+          </SheetHeader>
+          <SidebarContent locale={locale} role={role} onNavigate={() => onOpenChange?.(false)} />
+        </SheetContent>
+      </Sheet>
     )
   }
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 border-l bg-background">
-      <div className="p-4 border-b">
-        <Link href={`/${locale}/dashboard`} className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <LayoutDashboard className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <span className="font-semibold">{t("navigation.dashboard") || "پنل مدیریت"}</span>
-        </Link>
-      </div>
-      {content}
-      {/* Logout Button */}
-      <div className="p-4 border-t mb-15">
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-          onClick={() => {
-            signOut()
-          }}
-        >
-          <LogOut className="h-5 w-5 ml-2 " />
-          {t("auth.logout") || "خروج"}
-        </Button>
-      </div>
+    <aside className="sticky top-0 h-screen w-72 border-e" aria-label={copy.sectionLabel}>
+      <SidebarContent locale={locale} role={role} />
+      <Separator className="sr-only" />
     </aside>
   )
 }
 
-// Menu icon component for mobile trigger
-function Menu({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M4 6h16M4 12h16M4 18h16"
-      />
-    </svg>
-  )
-}
-
-// Export a version with dict loading built-in
-export function DashboardSidebarWithDict({ 
-  locale,
-  isMobile = false,
-  isOpen,
-  onOpenChange
-}: Omit<DashboardSidebarProps, "dict">) {
-  const [dict, setDict] = useState<Record<string, any>>({})
-
-  useEffect(() => {
-    const dict = getDictionary(locale)
-    setDict(dict)
-  }, [locale])
-
-  return (
-    <DashboardSidebar
-      locale={locale}
-      dict={dict}
-      isMobile={isMobile}
-      isOpen={isOpen}
-      onOpenChange={onOpenChange}
-    />
-  )
-}
+export { ROLE_NAVIGATION_POLICY }

@@ -175,6 +175,7 @@ model Organization {
   followers         Follow[]
   customerClubMemberships CustomerClubMembership[]
   fanpagePosts      FanpagePost[]
+  notifications     Notification[]
   locations         Location[]
   reviews           Review[]              @relation("OrgReviews")
   images            Image[]               @relation("OrganizationImages")
@@ -210,7 +211,11 @@ model Notification {
   id           String   @id @default(cuid())
   targetUserId String
   context      String
-  targetUser   User     @relation(fields: [targetUserId], references: [id])
+  organizationId String?
+  createdByUserId String?
+  targetUser   User     @relation("TargetNotifications", fields: [targetUserId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?    @relation("CreatedNotifications", fields: [createdByUserId], references: [id], onDelete: SetNull)
   seen         Boolean  @default(false)
   type         String?
   createdAt    DateTime @default(now())
@@ -219,6 +224,8 @@ model Notification {
 
   @@index([targetUserId])
   @@index([targetUserId, seen, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([createdByUserId])
 }
 
 
@@ -269,7 +276,8 @@ model User {
   receivedMessages         Message[]                 @relation("ReceivedMessages")
   locations                Location[]
   reviewsWritten           Review[]                  @relation("UserReviews")
-  notifications           Notification[]             
+  notifications             Notification[]            @relation("TargetNotifications")
+  createdNotifications      Notification[]            @relation("CreatedNotifications")
   passwordResets           PasswordReset[]
   emailVerifications       EmailVerification[]
   auditLogs                AuditLog[]

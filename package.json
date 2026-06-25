@@ -76,7 +76,8 @@
     "quality:dashboard-route-parity": "node scripts/quality/validate-dashboard-route-parity.mjs",
     "quality:dashboard-route-authorization": "node scripts/quality/validate-dashboard-route-authorization.mjs",
     "quality:dashboard-route-guard-smoke": "node scripts/quality/validate-dashboard-route-guard-smoke.mjs",
-    "quality:customer-club-foundation": "node scripts/quality/validate-customer-club-foundation.mjs"
+    "quality:customer-club-foundation": "node scripts/quality/validate-customer-club-foundation.mjs",
+    "quality:in-app-notifications": "node scripts/quality/validate-in-app-notifications.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

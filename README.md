@@ -54,6 +54,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 39 | Dashboard route access/navigation parity audit | Source-validated | `pnpm run quality:dashboard-route-parity` |
 | 40 | Dashboard route-level authorization helper adoption | Source-validated | `pnpm run quality:dashboard-route-authorization` |
 | 42 | Customer Club foundation | Source-validated | `pnpm run quality:customer-club-foundation` |
+| 43 | In-app notification inbox | Source-validated | `pnpm run quality:in-app-notifications` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -73,6 +74,7 @@ pnpm run quality:dashboard-route-parity
 pnpm run quality:dashboard-route-authorization
 pnpm run quality:dashboard-route-guard-smoke
 pnpm run quality:customer-club-foundation
+pnpm run quality:in-app-notifications
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -130,7 +132,11 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P42 — Customer Club foundation**.
+Latest completed implementation phase: **P43 — in-app notification inbox**.
+
+P43 adds a localized dashboard notification inbox, read/unread controls, a management-only in-app Customer Club broadcast path with dry-run recipient preview, `GET/PATCH /api/customer/notifications`, organization/actor context on `Notification`, audit logging for sends, and the focused `quality:in-app-notifications` validator. It does not send SMS, email, Telegram, Web Push, or other external notifications.
+
+Previous customer club phase retained: **P42 — Customer Club foundation**.
 
 P42 adds organization-scoped `CustomerClubMembership`, self-service and dashboard management APIs, management-only dashboard navigation/pages, localized FA/EN/AR Customer Club copy, audit logging for membership mutations, and the focused `quality:customer-club-foundation` validator.
 
@@ -146,4 +152,4 @@ Previous dashboard role phase retained: **P38 — dashboard sidebar role-aware n
 
 Previous dashboard shell/copy phase retained: **P37 — dashboard navigation and localized shell copy cleanup**.
 
-Recommended next phase: **P43 — Customer Club consent, tags, and segmentation planning**.
+Recommended next phase: **P44 — Customer Segments MVP**.

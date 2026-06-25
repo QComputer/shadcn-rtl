@@ -4,7 +4,7 @@ Date: 2026-06-25
 
 ## Current validated baseline
 
-The current working baseline after P42 overlays is source-validator green.
+The current working baseline after P43 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -21,6 +21,7 @@ pnpm run quality:dashboard-route-parity
 pnpm run quality:dashboard-route-authorization
 pnpm run quality:dashboard-route-guard-smoke
 pnpm run quality:customer-club-foundation
+pnpm run quality:in-app-notifications
 ```
 
 Clean handoff gate introduced in P33:
@@ -42,12 +43,13 @@ pnpm run db:migrate:neon:dry-run
 - Next.js 16 App Router with localized routes under `app/[locale]`.
 - Supported locales: `fa`, `en`, `ar`; dictionary leaf-key parity is enforced by `quality:i18n-completion`.
 - Multi-tenant organization model supports `SHOP` and `APPOINTMENT` organization types.
-- Dashboard workflows cover appointments, calendar, organizations, members, Customer Club, products, product categories, orders, QR code, services, service categories, settings, and users.
+- Dashboard workflows cover appointments, calendar, notifications, organizations, members, Customer Club, products, product categories, orders, QR code, services, service categories, settings, and users.
 - Public shop workflows cover shop profile, product detail, checkout, order tracking, and shop fanpage.
 - Public appointment workflows cover organization profile, service listing, staff listing, booking, appointment detail, my appointments, and appointment fanpage.
 - Follow support exists through `Follow`, `follow.service.ts`, follow/unfollow API, public follow UI, and readiness validators.
 - Fanpage MVP exists through `FanpagePost`, `fanpage.service.ts`, public read API, authorized create API, post card/form UI, and both appointment/shop fanpage routes.
 - Customer Club foundation exists through `CustomerClubMembership`, `customer-club.service.ts`, self-service membership API, dashboard management API, localized dashboard pages, audit logging, and the `quality:customer-club-foundation` validator.
+- In-app notification inbox exists through extended `Notification` organization/actor context, dashboard/customer inbox APIs, dashboard inbox UI, Customer Club in-app broadcast, dry-run recipient preview, audit logging, and the `quality:in-app-notifications` validator.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -79,6 +81,7 @@ pnpm run db:migrate:neon:dry-run
 | P40 | Dashboard route-level authorization helper adoption and localized fallback boundary. |
 | P41 | Dashboard unauthorized-state polish and route guard smoke validator. |
 | P42 | Organization-scoped Customer Club foundation with management dashboard and validator. |
+| P43 | In-app notification inbox and Customer Club broadcast foundation. |
 
 ## Current route/API inventory
 
@@ -93,10 +96,12 @@ Important currently implemented surfaces:
 /api/driver/location
 /api/orders/{id}/assign-driver
 /api/dashboard/notifications
+/{locale}/dashboard/notifications
 /{locale}/dashboard/customer-club
 /{locale}/dashboard/customer-club/members
 /api/customer-club/membership
 /api/dashboard/customer-club/members
+/api/customer/notifications
 ```
 
 ## Current fanpage status
@@ -133,6 +138,8 @@ Deferred:
 - Dashboard route/navigation policy now lives in `lib/dashboard/navigation-policy.ts`, with `DASHBOARD_NAVIGATION_ITEMS`, `ROLE_NAVIGATION_POLICY`, and `DASHBOARD_ROUTE_POLICY` available for validators and route-level authorization checks.
 - Customer Club management navigation and routes are available to SUPER_ADMIN, ADMIN, and MANAGER. STAFF and DRIVER do not receive Customer Club management navigation.
 - Customer Club membership data is organization-scoped and does not mutate global user roles.
+- Dashboard notifications are a personal inbox route for dashboard users. Creating in-app Customer Club broadcasts remains API-gated to organization ADMIN/MANAGER and SUPER_ADMIN.
+- P43 intentionally does not send SMS, email, Telegram, Web Push, or any external notification.
 
 ## Clean release rules
 
@@ -169,13 +176,13 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P43 — Customer Club consent, tags, and segmentation planning
+P44 — Customer Segments MVP
 ```
 
 Scope:
 
-1. Add consent/preference records without sending external notifications.
-2. Add organization-scoped customer tags or segments if they stay simple and auditable.
-3. Preserve self-service leave/unsubscribe behavior.
-4. Keep real SMS, email, Telegram, and Web Push behind explicit dry-run-safe flags.
-5. Validate with typecheck, build, `quality:local`, customer club validator, dashboard navigation validators, and staged release checks.
+1. Add organization-scoped customer segments for Customer Club members.
+2. Keep segment queries tenant-safe and role-aware.
+3. Reuse Customer Club membership and order data without exposing cross-organization customer records.
+4. Do not add external campaign delivery yet.
+5. Validate with typecheck, build, `quality:local`, customer club and in-app notification validators, dashboard navigation validators, and staged release checks.

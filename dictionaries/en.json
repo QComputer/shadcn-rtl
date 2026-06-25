@@ -582,6 +582,31 @@
       "VIP": "VIP"
     }
   },
+  "notificationInbox": {
+    "title": "Notifications",
+    "subtitle": "Read in-app messages and customer club notifications.",
+    "inbox": "Notification inbox",
+    "unread": "Unread",
+    "read": "Read",
+    "markRead": "Mark read",
+    "markUnread": "Mark unread",
+    "refresh": "Refresh",
+    "loading": "Loading notifications...",
+    "emptyTitle": "No notifications",
+    "emptyDescription": "In-app messages will appear here.",
+    "errorTitle": "Notifications could not be loaded",
+    "sendTitle": "Send in-app notification",
+    "sendDescription": "Create an in-app notification for active customer club members in this organization.",
+    "message": "Message",
+    "messagePlaceholder": "Write the notification message...",
+    "dryRun": "Preview recipients",
+    "send": "Send in app",
+    "sending": "Sending...",
+    "sent": "Notification created",
+    "recipients": "recipients",
+    "noOrganization": "An active management membership is required to send notifications.",
+    "inAppOnly": "This phase only creates in-app notifications and does not send external messages."
+  },
   "calendar": {
     "today": "Today",
     "week": "Week",

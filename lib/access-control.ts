@@ -59,6 +59,11 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     isUniversal: true,
   },
 
+  "/dashboard/notifications": {
+    allowedRoles: ALL_AUTHENTICATED_ROLES,
+    isUniversal: true,
+  },
+
   "/dashboard/settings/organization": {
     allowedRoles: ORG_MANAGEMENT_ROLES,
     requiresOrgMembership: true,
@@ -323,6 +328,13 @@ export const dashboardNavItems: NavItem[] = [
     labelKey: "navigation.dashboard",
     href: "/dashboard",
     icon: "LayoutDashboard",
+    isUniversal: true,
+  },
+  {
+    id: "notifications",
+    labelKey: "navigation.notifications",
+    href: "/dashboard/notifications",
+    icon: "Bell",
     isUniversal: true,
   },
   {

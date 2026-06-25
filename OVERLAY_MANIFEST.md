@@ -1,30 +1,33 @@
-# Overlay Manifest — Phase 33 Release Artifact Cleanup
+# P41A Overlay Manifest — Dashboard Guard Smoke Script Fix
 
-## Purpose
+This overlay repackages the P41 dashboard guard-smoke files at repository root. The previous P41 archive accidentally included a top-level folder, so `Expand-Archive -DestinationPath .` did not overwrite `package.json` and the script `quality:dashboard-route-guard-smoke` could remain missing.
 
-Adds repeatable clean-release packaging so future source ZIPs do not include local secrets, `.vercel`, DB dumps, generated caches, test output, personal files, or archive files.
-
-## Updated files
-
-- `.gitignore`
-- `package.json`
-- `scripts/quality/validate-release-artifact.mjs`
-- `scripts/release/create-clean-source.mjs`
-- `docs/PHASE_33_RELEASE_ARTIFACT_CLEANUP.md`
-- `docs/PHASE_33_OVERLAY_MANIFEST.md`
-
-## Validate after extraction
+## Apply
 
 ```powershell
-node --check scripts/release/create-clean-source.mjs
-node --check scripts/quality/validate-release-artifact.mjs
-pnpm run release:stage
-pnpm run quality:release-staged
-pnpm run quality:local
+Expand-Archive -LiteralPath .\bazar-baz-phase41a-dashboard-guard-smoke-script-fix-overlay.zip -DestinationPath . -Force
 ```
 
-## Create a clean future handoff ZIP
+## Files
+
+```txt
+components/dashboard/dashboard-route-access-boundary.tsx
+scripts/quality/validate-dashboard-route-guard-smoke.mjs
+scripts/quality/validate-project.mjs
+package.json
+README.md
+docs/CURRENT_SOURCE_OF_TRUTH.md
+docs/PHASE_41_DASHBOARD_GUARD_SMOKE.md
+docs/PHASE_41_OVERLAY_MANIFEST.md
+OVERLAY_MANIFEST.md
+```
+
+## Validation
 
 ```powershell
-pnpm run release:zip
+pnpm run quality:dashboard-route-guard-smoke
+pnpm run quality:dashboard-route-authorization
+pnpm run quality:local
+pnpm run typecheck
+pnpm run build
 ```

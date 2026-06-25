@@ -1,9 +1,10 @@
 "use client"
 
 import { use, useCallback, useEffect, useMemo, useState } from "react"
-import { AlertTriangle, Crown, RefreshCw, Search, UserRoundCheck, Users } from "lucide-react"
+import Link from "next/link"
+import { AlertTriangle, BarChart3, Crown, RefreshCw, Search, UserRoundCheck, Users } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -56,6 +57,7 @@ type CustomerClubCopy = {
   updateHint: string
   noContact: string
   showing: string
+  segments?: string
   statuses: Record<MembershipStatus, string>
   tiers: Record<MembershipTier, string>
 }
@@ -323,10 +325,16 @@ export default function CustomerClubMembersPage({ params }: { params: Promise<{ 
           <h1 className="text-2xl font-bold tracking-normal">{copy.title}</h1>
           <p className="text-sm text-muted-foreground">{copy.subtitle}</p>
         </div>
-        <Button variant="outline" onClick={refresh} disabled={refreshing || updating}>
-          <RefreshCw className={refreshing ? "h-4 w-4 animate-spin" : "h-4 w-4"} aria-hidden="true" />
-          {copy.refresh}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/${locale}/dashboard/customer-club/segments`} className={buttonVariants({ variant: "outline" })}>
+            <BarChart3 className="h-4 w-4" aria-hidden="true" />
+            {copy.segments ?? "Segments"}
+          </Link>
+          <Button variant="outline" onClick={refresh} disabled={refreshing || updating}>
+            <RefreshCw className={refreshing ? "h-4 w-4 animate-spin" : "h-4 w-4"} aria-hidden="true" />
+            {copy.refresh}
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">

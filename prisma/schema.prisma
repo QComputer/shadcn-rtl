@@ -174,6 +174,8 @@ model Organization {
   orders            Order[]
   followers         Follow[]
   customerClubMemberships CustomerClubMembership[]
+  customerSegments CustomerSegment[]
+  customerSegmentSnapshots CustomerSegmentSnapshot[]
   fanpagePosts      FanpagePost[]
   notifications     Notification[]
   locations         Location[]
@@ -1027,6 +1029,55 @@ model CustomerClubMembership {
   @@unique([organizationId, customerId])
   @@index([organizationId, status])
   @@index([customerId, status])
+}
+
+model CustomerSegment {
+  id             String   @id @default(cuid())
+  organizationId String
+  key            String
+  name           String
+  description    String?
+  rule           Json?
+  isSystem       Boolean  @default(true)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rules        CustomerSegmentRule[]
+  snapshots    CustomerSegmentSnapshot[]
+
+  @@unique([organizationId, key])
+  @@index([organizationId, isActive])
+}
+
+model CustomerSegmentRule {
+  id        String   @id @default(cuid())
+  segmentId String
+  field     String
+  operator  String
+  value     Json?
+  createdAt DateTime @default(now())
+
+  segment CustomerSegment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+
+  @@index([segmentId])
+}
+
+model CustomerSegmentSnapshot {
+  id             String   @id @default(cuid())
+  organizationId String
+  segmentId      String?
+  segmentKey     String
+  memberCount    Int
+  rule           Json?
+  calculatedAt   DateTime @default(now())
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  segment      CustomerSegment? @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, segmentKey, calculatedAt])
+  @@index([segmentId, calculatedAt])
 }
 
 model Conversation {

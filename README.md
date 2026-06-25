@@ -55,6 +55,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 40 | Dashboard route-level authorization helper adoption | Source-validated | `pnpm run quality:dashboard-route-authorization` |
 | 42 | Customer Club foundation | Source-validated | `pnpm run quality:customer-club-foundation` |
 | 43 | In-app notification inbox | Source-validated | `pnpm run quality:in-app-notifications` |
+| 44 | Customer Segments MVP | Source-validated | `pnpm run quality:customer-segments` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -75,6 +76,7 @@ pnpm run quality:dashboard-route-authorization
 pnpm run quality:dashboard-route-guard-smoke
 pnpm run quality:customer-club-foundation
 pnpm run quality:in-app-notifications
+pnpm run quality:customer-segments
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -132,24 +134,28 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P43 — in-app notification inbox**.
+Latest completed implementation phase: **P44 - Customer Segments MVP**.
+
+P44 adds organization-scoped customer segment definitions, reusable segment/rule/snapshot tables, a management-only `/dashboard/customer-club/segments` page, tenant-safe Customer Club/order/cart count computation, explicit snapshot saving with audit logging, localized FA/EN/AR segment copy, and the focused `quality:customer-segments` validator.
+
+Previous notification phase retained: **P43 - in-app notification inbox**.
 
 P43 adds a localized dashboard notification inbox, read/unread controls, a management-only in-app Customer Club broadcast path with dry-run recipient preview, `GET/PATCH /api/customer/notifications`, organization/actor context on `Notification`, audit logging for sends, and the focused `quality:in-app-notifications` validator. It does not send SMS, email, Telegram, Web Push, or other external notifications.
 
-Previous customer club phase retained: **P42 — Customer Club foundation**.
+Previous customer club phase retained: **P42 - Customer Club foundation**.
 
 P42 adds organization-scoped `CustomerClubMembership`, self-service and dashboard management APIs, management-only dashboard navigation/pages, localized FA/EN/AR Customer Club copy, audit logging for membership mutations, and the focused `quality:customer-club-foundation` validator.
 
-Previous route guard phase retained: **P41 — dashboard unauthorized-state polish and route guard smoke tests**.
+Previous route guard phase retained: **P41 - dashboard unauthorized-state polish and route guard smoke tests**.
 
 P41 polishes the localized unauthorized dashboard fallback with focus management, clearer role/route context, mobile-friendly spacing, and a focused `quality:dashboard-route-guard-smoke` validator for representative route-guard expectations.
 
-Previous route authorization phase retained: **P40 — dashboard route-level authorization helper adoption**.
+Previous route authorization phase retained: **P40 - dashboard route-level authorization helper adoption**.
 
-Previous route parity phase retained: **P39 — dashboard route access/navigation parity audit**.
+Previous route parity phase retained: **P39 - dashboard route access/navigation parity audit**.
 
-Previous dashboard role phase retained: **P38 — dashboard sidebar role-aware navigation cleanup**.
+Previous dashboard role phase retained: **P38 - dashboard sidebar role-aware navigation cleanup**.
 
-Previous dashboard shell/copy phase retained: **P37 — dashboard navigation and localized shell copy cleanup**.
+Previous dashboard shell/copy phase retained: **P37 - dashboard navigation and localized shell copy cleanup**.
 
-Recommended next phase: **P44 — Customer Segments MVP**.
+Recommended next phase: **P45 - Campaign Builder MVP**.

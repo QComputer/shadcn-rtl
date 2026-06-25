@@ -113,6 +113,7 @@ export const DASHBOARD_ROUTE_POLICY = {
   "/members": ROLE_NAVIGATION_POLICY.members,
   "/customer-club": ROLE_NAVIGATION_POLICY.customerClub,
   "/customer-club/members": ROLE_NAVIGATION_POLICY.customerClub,
+  "/customer-club/segments": ROLE_NAVIGATION_POLICY.customerClub,
   "/settings": ROLE_NAVIGATION_POLICY.settings,
   "/settings/organization": ROLE_NAVIGATION_POLICY.organizationSettings,
   "/qrcode": ROLE_NAVIGATION_POLICY.qrcode,

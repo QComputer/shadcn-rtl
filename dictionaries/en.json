@@ -570,6 +570,7 @@
     "updateHint": "Status and tier changes apply only to this organization's customer club membership.",
     "noContact": "No contact details",
     "showing": "Showing",
+    "segments": "Segments",
     "statuses": {
       "ACTIVE": "Active",
       "PAUSED": "Paused",
@@ -581,6 +582,24 @@
       "LOYAL": "Loyal",
       "VIP": "VIP"
     }
+  },
+  "customerSegments": {
+    "title": "Customer Segments",
+    "subtitle": "Review ready-made customer club groups for future notifications and campaigns.",
+    "refresh": "Refresh",
+    "saveSnapshot": "Save snapshot",
+    "saving": "Saving...",
+    "loading": "Calculating segments...",
+    "emptyTitle": "No segments to show",
+    "emptyDescription": "Segment counts will appear here when the customer club has data.",
+    "errorTitle": "Segments could not be calculated",
+    "currentCount": "Active club members",
+    "latestSnapshot": "Latest snapshot",
+    "neverSnapshotted": "Not saved yet",
+    "rule": "Rule",
+    "saved": "Snapshot saved",
+    "tenantSafeNote": "All counts are calculated only from this organization's data.",
+    "noOrganization": "An active management membership is required to view segments."
   },
   "notificationInbox": {
     "title": "Notifications",

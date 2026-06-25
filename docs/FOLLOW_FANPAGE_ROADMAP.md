@@ -1,176 +1,100 @@
-# Follow & Fanpage Feature - Phased Roadmap
+# Follow & Fanpage Roadmap — Current State
 
-## Current Status
+Date: 2026-06-25
 
-### ✅ Already Implemented
-| Component | Location | Status |
-|-----------|----------|--------|
-| Follow Model | prisma/schema.prisma:940-951 | Exists |
-| Follow Service | lib/services/follow.service.ts | Implemented |
-| Follow API | api/organizations/[id]/follow/route.ts | POST/DELETE endpoints exist |
-| Follower Count UI | app/[locale]/page.tsx (homepage) | Displaying counts |
+This document replaces the older `FollowPost` planning notes. The implemented model is now `FanpagePost`.
 
-## Phase 1: Enhanced Follow Model & Content Models
-**Goal:** Add media content capabilities to Follow functionality
+## Current status
 
-### Database Schema Additions
-```prisma
-model FollowPost {
-  id          String   @id @default(cuid())
-  organizationId String
-  authorId    String
-  content     String?  @db.Text
-  imageId     String?
-  videoId     String?
-  isStory     Boolean  @default(false)
-  isPinned    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?
-  
-  organization Organization @relation(fields: [organizationId], references: [id])
-  author       User       @relation(fields: [authorId], references: [id])
-  image        Image?     @relation(fields: [imageId], references: [id])
-  video        Image?     @relation(fields: [videoId], references: [id])  // Videos stored as Images
-  
-  @@index([organizationId])
-  @@index([authorId])
-  @@index([isStory])
-  @@index([createdAt])
-}
+### Implemented follow foundation
 
-model FollowPostLike {
-  id       String @id @default(cuid())
-  postId   String
-  userId   String
-  createdAt DateTime @default(now())
-  
-  post FollowPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@unique([postId, userId])
-  @@index([postId])
-  @@index([userId])
-}
+| Item | Location | Status |
+| --- | --- | --- |
+| Follow model | `prisma/schema.prisma` | Implemented |
+| Follow service | `lib/services/follow.service.ts` | Implemented |
+| Follow API | `app/api/organizations/[id]/follow/route.ts` | `POST`, `DELETE` |
+| Follow button | `components/follow/follow-button.tsx` | Implemented |
+| Public follow prompts/links | appointment and shop public layouts/pages | Implemented |
+| Readiness validator | `scripts/quality/validate-fanpage-readiness.mjs` | Included in `quality:local` |
 
-model FollowPostComment {
-  id       String @id @default(cuid())
-  postId   String
-  userId   String
-  content  String @db.Text
-  createdAt DateTime @default(now())
-  deletedAt DateTime?
-  
-  post FollowPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@index([postId])
-  @@index([userId])
-}
+### Implemented fanpage MVP
+
+| Item | Location | Status |
+| --- | --- | --- |
+| Fanpage post model | `FanpagePost` in `prisma/schema.prisma` | Implemented |
+| Migration | `prisma/migrations/20260609004000_add_fanpage_posts` | Implemented |
+| Fanpage service | `lib/services/fanpage.service.ts` | Implemented |
+| Public posts API | `app/api/public/organizations/[slug]/fanpage/posts/route.ts` | `GET`, `POST` |
+| Appointment fanpage | `app/[locale]/appointment/[slug]/fanpage/page.tsx` | Implemented |
+| Shop fanpage | `app/[locale]/shop/[slug]/fanpage/page.tsx` | Implemented |
+| Post card | `components/follow/fanpage-post-card.tsx` | Implemented |
+| Create-post form | `components/follow/fanpage-post-form.tsx` | Implemented |
+| Fanpage dictionaries | `dictionaries/fa.json`, `en.json`, `ar.json` | Key-complete |
+| MVP validator | `scripts/quality/validate-fanpage-mvp.mjs` | Included in `quality:local` |
+
+## Current API behavior
+
+| Endpoint | Method | Access | Purpose |
+| --- | --- | --- | --- |
+| `/api/public/organizations/{slug}/fanpage/posts` | `GET` | Public | List published, non-deleted posts for an active organization. |
+| `/api/public/organizations/{slug}/fanpage/posts` | `POST` | Authenticated organization `ADMIN`/`MANAGER` | Create a fanpage post for the organization slug. |
+| `/api/organizations/{id}/follow` | `POST` | Authenticated customer/user | Follow an active organization. |
+| `/api/organizations/{id}/follow` | `DELETE` | Authenticated customer/user | Unfollow an organization. |
+
+## Current public page behavior
+
+- Appointment organizations expose: `/{locale}/appointment/{slug}/fanpage`.
+- Shop organizations expose: `/{locale}/shop/{slug}/fanpage`.
+- Public navigation links are present from appointment/shop layouts.
+- The fanpage service revalidates both appointment and shop fanpage paths across configured locales.
+- Anonymous users can read published fanpage posts.
+- Authorized managers/admins can create text/image/video-link posts through the current form/API.
+
+## Deferred feature backlog
+
+Keep these as future phases rather than mixing them into unrelated stabilization work.
+
+### P35+ candidate: fanpage management and moderation
+
+- Add dashboard post management for organization admins/managers.
+- Add edit/delete endpoints with membership checks.
+- Add soft-delete UI and audit logging.
+- Add draft/published status controls.
+
+### Later: engagement features
+
+- Likes/reactions.
+- Comments and replies.
+- Comment moderation and abuse controls.
+- Follower-only post visibility.
+- Notification fanout to followers.
+
+### Later: media workflow
+
+- Replace raw image/video URL fields with upload-backed media selection.
+- Enforce upload access rules through `ImageAccess`/media helpers.
+- Add post media previews and validation for image/video formats.
+
+### Later: feed quality
+
+- Pagination/infinite scroll.
+- Pinned posts.
+- Story-like short-lived posts.
+- Organization profile highlights.
+
+## Validation commands
+
+```powershell
+pnpm run quality:fanpage-readiness
+pnpm run quality:fanpage-mvp
+pnpm run quality:i18n-completion
+pnpm run quality:local
 ```
 
-### Tasks
-1. Create migration file for new models
-2. Update Organization model to include `followPosts` relation
-3. Update User model to include `postLikes`, `postComments` relations
+For runtime confirmation after deployment, manually verify at least one appointment organization and one shop organization:
 
-## Phase 2: Content Management API
-**Goal:** RESTful endpoints for posts, stories, comments, and likes
-
-### Endpoints to Create
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/organizations/[slug]/posts` | GET | List posts/stories for followers |
-| `/api/organizations/[slug]/posts` | POST | Create new post (admin only) |
-| `/api/posts/[id]` | PATCH | Edit post (author/admin) |
-| `/api/posts/[id]` | DELETE | Delete post (author/admin) |
-| `/api/posts/[id]/like` | POST | Like/unlike post |
-| `/api/posts/[id]/comments` | GET | Get comments |
-| `/api/posts/[id]/comments` | POST | Add comment |
-
-### Tasks
-1. Create `lib/services/follow-post.service.ts`
-2. Create `app/api/organizations/[slug]/posts/route.ts`
-3. Create `app/api/posts/[id]/route.ts`
-4. Create `app/api/posts/[id]/like/route.ts`
-5. Create `app/api/posts/[id]/comments/route.ts`
-
-## Phase 3: UI Integration
-**Goal:** Follow button in shop and fanpage interface
-
-### Components to Create/Modify
-1. `app/[locale]/shop/[slug]/layout.tsx` - Add follow button to header
-2. `app/[locale]/appointment/[slug]/fanpage/page.tsx` - New follower feed page
-3. `components/follow/follow-button.tsx` - Reusable follow/unfollow button
-4. `components/follow/post-feed.tsx` - Facebook-like feed component
-5. `components/follow/post-card.tsx` - Individual post display
-6. `components/follow/create-post-dialog.tsx` - Admin post creation
-
-### Tasks
-1. Add `MapPin` icon import to shop layout
-2. Implement follow button with real-time state
-3. Create fanpage page layout
-4. Add navigation entry for fanpage
-
-## Phase 4: Media & Interactivity
-**Goal:** Rich media posts with stories, full interactivity
-
-### Features
-- Story carousel (24-hour expiry)
-- Photo/video upload for posts
-- Like counts and animations
-- Nested comments
-- Reply to comments
-
-### Components
-- `components/follow/story-carousel.tsx`
-- `components/follow/media-upload.tsx`
-- `components/follow/comment-section.tsx`
-
-## Phase 5: Notifications & Real-time
-**Goal:** Notification system and WebSockets
-
-### Tasks
-1. Add notification triggers in follow-post service
-2. Create notification UI bell icon
-3. Implement WebSocket connection for real-time updates
-4. Add push notification support
-
-## File Structure Required
-
+```txt
+/fa/appointment/{slug}/fanpage
+/fa/shop/{slug}/fanpage
+/api/public/organizations/{slug}/fanpage/posts
 ```
-app/
-  [locale]/
-    organizations/
-      [slug]/
-        fanpage/
-          page.tsx           # Follower feed page
-    shop/
-      [slug]/
-        layout.tsx           # Add follow button
-lib/
-  services/
-    follow-post.service.ts   # New service
-  validators/
-    follow-post-schemas.ts   # New validators
-components/
-  follow/
-    follow-button.tsx
-    post-feed.tsx
-    post-card.tsx
-    story-carousel.tsx
-    create-post-dialog.tsx
-    comment-section.tsx
-    media-upload.tsx
-```
-
-## Migration Commands
-```bash
-npx prisma migrate dev --name follow-content-models
-npx prisma generate
-```
-
-## Testing Strategy
-- Unit tests for services
-- API integration tests (existing e2e patterns)
-- Component tests for UI interactions

@@ -1,13 +1,23 @@
 # Bazar Baz — Route, API, Database, and Service Inventory
 
-_Last generated from source tree: 2026-06-02._
+_Last synchronized from the source tree: 2026-06-25._
 
-This document records the current application inventory so future work can be planned against the actual filesystem rather than stale assumptions.
+This inventory is a planning aid for future phases. It reflects the current filesystem after P30/P31 fanpage fixes and P33 release-artifact cleanup.
 
 ## 1. Localized page routes
 
+All localized pages are under `app/[locale]`; supported locales are `fa`, `en`, and `ar`.
+
 | Route |
 | --- |
+| /{locale}/appointment/{slug}/appointment/{id} |
+| /{locale}/appointment/{slug}/booking |
+| /{locale}/appointment/{slug}/fanpage |
+| /{locale}/appointment/{slug}/my-appointments |
+| /{locale}/appointment/{slug} |
+| /{locale}/appointment/{slug}/services/{serviceId} |
+| /{locale}/appointment/{slug}/services |
+| /{locale}/appointment/{slug}/staff |
 | /{locale}/dashboard/appointments/{id}/edit |
 | /{locale}/dashboard/appointments/{id} |
 | /{locale}/dashboard/appointments |
@@ -31,89 +41,98 @@ This document records the current application inventory so future work can be pl
 | /{locale}/dashboard/settings |
 | /{locale}/dashboard/users |
 | /{locale}/login |
-| /{locale}/appointment/{slug}/appointment/{id} |
- | /{locale}/appointment/{slug}/booking |
- | /{locale}/appointment/{slug}/my-appointments |
- | /{locale}/appointment/{slug} |
- | /{locale}/appointment/{slug}/services/{serviceId} |
- | /{locale}/appointment/{slug}/services |
- | /{locale}/appointment/{slug}/staff |
 | /{locale} |
 | /{locale}/register/organization |
 | /{locale}/register |
 | /{locale}/shop/{slug}/checkout |
+| /{locale}/shop/{slug}/fanpage |
 | /{locale}/shop/{slug}/order/{orderNumber} |
 | /{locale}/shop/{slug} |
 | /{locale}/shop/{slug}/product/{productId} |
+| /{locale}/shop/{slug}/profile |
 
-## 2. API routes
+## 2. Route layouts
+
+| Layout file | Scope |
+| --- | --- |
+| `app/[locale]/appointment/[slug]/layout.tsx` | `/{locale}/appointment/{slug}` |
+| `app/[locale]/dashboard/layout.tsx` | `/{locale}/dashboard` |
+| `app/[locale]/layout.tsx` | `/{locale}` |
+| `app/[locale]/shop/[slug]/layout.tsx` | `/{locale}/shop/{slug}` |
+
+## 3. API routes
 
 | Route | Exported methods |
 | --- | --- |
-| /app/api/appointments/{id}/confirm | POST |
-| /app/api/appointments/{id} | GET, PATCH, DELETE |
-| /app/api/appointments | GET, POST |
-| /app/api/auth/{...nextauth} | NextAuth handlers |
-| /app/api/auth/register/organization | POST |
-| /app/api/auth/register | POST |
-| /app/api/cart/items/{id} | PATCH, DELETE |
-| /app/api/cart | GET, POST, DELETE |
-| /app/api/conversations/{id}/messages | POST |
-| /app/api/conversations/{id} | GET |
-| /app/api/conversations | GET, POST |
-| /app/api/dashboard/notifications | GET |
-| /app/api/dashboard | GET |
-| /app/api/health | GET |
-| /app/api/images/{id} | DELETE |
-| /app/api/images | GET |
-| /app/api/orders/{id}/driver | POST, GET, DELETE, PATCH |
-| /app/api/orders/{id}/payment | PUT |
-| /app/api/orders/{id} | GET, PUT, PATCH, DELETE |
-| /app/api/orders | GET, POST |
-| /app/api/organizations/{id}/booking-settings | GET, PATCH |
-| /app/api/organizations/{id}/business-hours | GET, PUT |
-| /app/api/organizations/{id}/follow | POST, DELETE |
-| /app/api/organizations/{id}/members/{mId} | GET, PUT |
-| /app/api/organizations/{id}/members | GET, POST, PUT |
-| /app/api/organizations/{id}/payment | GET, PUT |
-| /app/api/organizations/{id} | PATCH, DELETE |
-| /app/api/organizations/{id}/settings | GET, PUT |
-| /app/api/organizations/open | GET, POST |
-| /app/api/organizations | GET, POST |
-| /app/api/product-categories/{id} | GET, PATCH, DELETE |
-| /app/api/product-categories | GET, POST |
-| /app/api/products/{id} | GET, PATCH, DELETE |
-| /app/api/products/{id}/variants/{varId} | GET, PATCH, DELETE |
-| /app/api/products/{id}/variants | GET, POST, PATCH |
-| /app/api/products | GET, POST |
-| /app/api/public/appointments/{id} | GET |
-| /app/api/public/appointments/lookup | POST |
-| /app/api/public/orders/{orderNumber} | GET, PUT |
-| /app/api/public/organizations/{slug}/booking-settings | GET |
-| /app/api/public/organizations/{slug} | GET |
-| /app/api/public/organizations/{slug}/services/{serviceId} | GET |
-| /app/api/public/organizations/{slug}/services | GET |
-| /app/api/public/organizations/{slug}/shop | GET |
-| /app/api/public/organizations/{slug}/staff | GET |
-| /app/api/public/organizations | GET |
-| /app/api/public/products/{id} | GET |
-| /app/api/public/search | GET |
-| /app/api/qrcode | GET, POST |
-| /app/api/reviews/{id} | GET, PATCH, DELETE |
-| /app/api/reviews | GET, POST |
-| /app/api/service-categories/{id} | GET, PATCH, DELETE |
-| /app/api/service-categories | GET, POST |
-| /app/api/services/{id} | GET, PATCH, DELETE |
-| /app/api/services/{id}/slots | GET |
-| /app/api/services | GET, POST |
-| /app/api/upload | POST |
-| /app/api/users/{id} | GET, PUT, DELETE |
-| /app/api/users/me/business-hours | GET, PUT |
-| /app/api/users/me/membership | GET |
-| /app/api/users/me | GET, PATCH, POST |
-| /app/api/users | GET |
+| /api/appointments/{id}/confirm | POST |
+| /api/appointments/{id}/reschedule | PATCH |
+| /api/appointments/{id} | GET, PATCH, DELETE |
+| /api/appointments | GET, POST |
+| /api/auth/{...nextauth} | NextAuth handlers |
+| /api/auth/register/organization | POST |
+| /api/auth/register | POST |
+| /api/cart/items/{id} | PATCH, DELETE |
+| /api/cart | GET, POST, DELETE |
+| /api/conversations/{id}/messages | POST |
+| /api/conversations/{id} | GET |
+| /api/conversations | GET, POST |
+| /api/dashboard/notifications | GET, PATCH |
+| /api/dashboard | GET |
+| /api/driver/location | POST, GET |
+| /api/health | GET |
+| /api/images/{id} | DELETE |
+| /api/images | GET |
+| /api/orders/{id}/assign-driver | PUT |
+| /api/orders/{id}/driver | POST, GET, PATCH, DELETE |
+| /api/orders/{id}/payment | PUT |
+| /api/orders/{id} | GET, PUT, PATCH, DELETE |
+| /api/orders | GET, POST |
+| /api/organizations/{id}/booking-settings | GET, PATCH |
+| /api/organizations/{id}/business-hours | GET, PUT |
+| /api/organizations/{id}/follow | POST, DELETE |
+| /api/organizations/{id}/members/{mId} | GET, PUT |
+| /api/organizations/{id}/members | GET, POST, PUT |
+| /api/organizations/{id}/payment | GET, PUT |
+| /api/organizations/{id} | PATCH, DELETE |
+| /api/organizations/{id}/settings | GET, PUT |
+| /api/organizations/open | GET, POST |
+| /api/organizations | GET, POST |
+| /api/product-categories/{id} | GET, PATCH, DELETE |
+| /api/product-categories | GET, POST |
+| /api/products/{id} | GET, PATCH, DELETE |
+| /api/products/{id}/variants/{varId} | GET, PATCH, DELETE |
+| /api/products/{id}/variants | GET, POST, PATCH |
+| /api/products | GET, POST |
+| /api/public/appointments/{id} | GET |
+| /api/public/appointments/lookup | POST |
+| /api/public/orders/{orderNumber} | GET, PUT |
+| /api/public/organizations/{slug}/booking-settings | GET |
+| /api/public/organizations/{slug}/fanpage/posts | GET, POST |
+| /api/public/organizations/{slug} | GET |
+| /api/public/organizations/{slug}/services/{serviceId} | GET |
+| /api/public/organizations/{slug}/services | GET |
+| /api/public/organizations/{slug}/shop | GET |
+| /api/public/organizations/{slug}/staff | GET |
+| /api/public/organizations | GET |
+| /api/public/products/{id} | GET |
+| /api/public/search | GET |
+| /api/qrcode | GET, POST |
+| /api/reviews/{id} | GET, PATCH, DELETE |
+| /api/reviews | GET, POST |
+| /api/service-categories/{id} | GET, PATCH, DELETE |
+| /api/service-categories | GET, POST |
+| /api/services/{id} | GET, PATCH, DELETE |
+| /api/services/{id}/slots | GET |
+| /api/services | GET, POST |
+| /api/upload | POST |
+| /api/users/{id} | GET, PUT, DELETE |
+| /api/users/me/business-hours | GET, PUT |
+| /api/users/me/membership | GET |
+| /api/users/me | GET, PATCH, POST |
+| /api/users | GET |
+| /uploads/{filename} | GET |
 
-## 3. Prisma enums
+## 4. Prisma enums
 
 | Enum |
 | --- |
@@ -128,8 +147,9 @@ This document records the current application inventory so future work can be pl
 | PaymentMethod |
 | InventoryMovementReason |
 | AuditAction |
+| ImageAccess |
 
-## 4. Prisma models
+## 5. Prisma models
 
 | Model |
 | --- |
@@ -163,6 +183,7 @@ This document records the current application inventory so future work can be pl
 | OrderStatusHistory |
 | Promotion |
 | Review |
+| FanpagePost |
 | Follow |
 | Conversation |
 | ConversationParticipant |
@@ -174,50 +195,31 @@ This document records the current application inventory so future work can be pl
 | BookingSettings |
 | AuditLog |
 
-## 5. Service modules
+## 6. Service modules
 
 | File | Lines | Exports |
-| --- | --- | --- |
-| lib/services/appointment.service.ts | 734 | AppointmentService, appointmentService |
-| lib/services/audit.service.ts | 200 | AuditService, auditService, logEntityChange |
-| lib/services/booking-settings.service.ts | 146 | BookingSettingsService, bookingSettingsService |
-| lib/services/cart.service.ts | 501 | CartService, cartService |
-| lib/services/category.service.ts | 384 | ProductCategoryService, ServiceCategoryService, productCategoryService, serviceCategoryService |
-| lib/services/follow.service.ts | 195 | FollowService, followService |
-| lib/services/messaging.service.ts | 317 | MessagingService, messagingService |
-| lib/services/notification.service.ts | 223 | NotificationService, notificationService |
-| lib/services/order.service.ts | 1501 | OrderService, orderService |
-| lib/services/organization.service.ts | 642 | OrganizationService, organizationService |
-| lib/services/product.service.ts | 441 | ProductService, productService |
-| lib/services/review.service.ts | 278 | ReviewService, reviewService |
-| lib/services/service.service.ts | 534 | ServiceService, serviceService |
-| lib/services/user.service.ts | 149 | UserService, userService |
+| --- | ---: | --- |
+| `lib/services/appointment.service.ts` | 920 | AppointmentService, appointmentService |
+| `lib/services/audit.service.ts` | 200 | AuditAction, CreateAuditLogInput, AuditService, auditService, logEntityChange |
+| `lib/services/booking-settings.service.ts` | 146 | BookingSettingsInput, BookingSettingsService, bookingSettingsService |
+| `lib/services/cart.service.ts` | 538 | CartService, cartService |
+| `lib/services/category.service.ts` | 384 | ProductCategoryService, ServiceCategoryService, productCategoryService, serviceCategoryService |
+| `lib/services/fanpage.service.ts` | 111 | FanpageService, fanpageService |
+| `lib/services/follow.service.ts` | 201 | FollowService, followService |
+| `lib/services/messaging.service.ts` | 317 | MessagingService, messagingService |
+| `lib/services/notification.service.ts` | 231 | NotificationPayload, AppointmentNotificationData, NotificationService, notificationService |
+| `lib/services/order.service.ts` | 1626 | OrderService, orderService |
+| `lib/services/organization.service.ts` | 651 | OrganizationService, organizationService |
+| `lib/services/product.service.ts` | 458 | ProductService, productService |
+| `lib/services/review.service.ts` | 278 | CreateReviewData, UpdateReviewData, ReviewService, reviewService |
+| `lib/services/service.service.ts` | 534 | ServiceService, serviceService |
+| `lib/services/user.service.ts` | 149 | UserService, userService |
 
-## 6. Important support modules
+## 7. Current interpretation notes
 
-| File | Responsibility |
-| --- | --- |
-| `lib/auth.ts` | NextAuth configuration, credentials provider, optional Google provider, account lockout behavior. |
-| `lib/api-guards.ts` | Shared API auth/RBAC/resource guard helpers and API error wrapper. |
-| `lib/access-control.ts` | Client-side dashboard nav and route access registry. Requires cleanup against actual routes. |
-| `lib/db.ts` | Prisma client creation and soft-delete helper metadata. |
-| `lib/dictionary.ts` | Dictionary loading and key lookup helper. |
-| `lib/i18n.ts` / `lib/i18n-routing.ts` | Supported locale and route helpers. |
-| `lib/rate-limit.ts` | In-memory rate limiting helper; acceptable for dev/single instance only. |
-| `lib/media-storage.ts` | Upload storage helper functions. |
-| `lib/runtime-env.ts` | Safe runtime environment validation/health metadata. |
-| `hooks/use-auth.tsx` | Client auth context, sign in/out helpers, dashboard access hook. Needs cleanup. |
-| `hooks/use-theme.tsx` | Client theme provider/hook. |
-| `hooks/useWebRTC.ts` | WebRTC hook support. |
-| `context/SocketContext.tsx` | Socket provider context. |
-| `components/providers.tsx` | Root client providers. Currently duplicates `SessionProvider`. |
-| `components/dashboard/dashboard-sidebar.tsx` | Dashboard navigation filtered by access-control context. |
-| `components/dashboard/appointment-full-calendar.tsx` | FullCalendar dashboard appointment surface. |
-
-## 7. Inventory interpretation notes
-
-- The actual dashboard page list is broader than the explicit `lib/access-control.ts` route registry.
-- The stale route registry contains paths that do not exist and misses several actual dashboard pages.
-- API route handlers use a mixture of shared guards, manual `auth()` checks, raw Prisma calls, manual validation, and some Zod validation.
-- Service files are substantial; future refactors should preserve service-layer boundaries rather than pushing business logic back into pages.
-- The Prisma schema is rich enough to support real workflows, but identity normalization should be addressed before more cross-tenant features are added.
+- Public fanpage surfaces now exist for both appointment organizations and shop organizations: `/{locale}/appointment/{slug}/fanpage` and `/{locale}/shop/{slug}/fanpage`.
+- The fanpage post API is slug-based and lives at `/api/public/organizations/{slug}/fanpage/posts`; `GET` is public and `POST` requires an authorized organization `ADMIN` or `MANAGER` session.
+- Driver location support exists through `/api/driver/location` and dashboard driver-order surfaces.
+- `dashboard/notifications` separates read and mutation behavior: `GET` lists notifications and `PATCH` marks notifications seen/read.
+- The route inventory intentionally records actual files. It is not a promise that every page is fully production-polished.
+- Future guard/authorization cleanup should continue to prefer shared service/API guard helpers over ad hoc route-level Prisma access.

@@ -1,200 +1,154 @@
 # Current Source of Truth — Bazar Baz
 
-Date: 2026-06-09
+Date: 2026-06-25
 
 ## Current validated baseline
 
-The current stabilization baseline has passed the minimum target-machine gate reported by the user:
+The current working baseline after P30/P31/P33 overlays is source-validator green.
 
-```bash
+Minimum target-machine gate for any implementation phase:
+
+```powershell
 pnpm install
+pnpm run db:validate
 pnpm run typecheck
 pnpm run build
 pnpm run quality:local
 ```
 
-## Completed stabilization state
+Clean handoff gate introduced in P33:
 
-### P21/P21A/P21B
-
-- API/service safety validator is green.
-- Prisma generate/validate, typecheck, build, and quality local were brought back to green under pnpm.
-- pnpm is the active package manager for this project.
-- Direct dependencies required by source imports were added.
-- The shop layout dynamic-map build issue was fixed by moving `ssr:false` dynamic import into a Client Component.
-
-### P22
-
-- API `GET` handlers covered by the phase no longer perform database writes or delegate to mutation handlers.
-- Dashboard notification read and mark-seen behavior is split into `GET` and `PATCH`.
-- Organization settings/payment public reads no longer bootstrap rows during `GET`.
-- Public shop `GET` no longer creates settings/payment settings and no longer risks duplicate settings creation when payment settings are missing.
-- Organization open/close UI uses explicit `POST` for the open action instead of relying on read-only `GET`.
-- A GET purity validator is now part of `quality:local`.
-
-
-### P22B
-
-- Added migration `20260609000000_add_organization_coordinates` for nullable `Organization.lat` / `Organization.lng`, matching the current Prisma schema.
-- Public shop API no longer loads `Organization` through relation includes that select all columns.
-- `GET /api/public/organizations/[slug]/shop` explicitly selects public organization fields and excludes `lat` / `lng` until all runtime paths are migrated/verified.
-- Payment settings are loaded independently with explicit selected fields.
-
-## Minimal required validation gate
-
-For stabilization phases, use the minimum required gate unless a phase explicitly changes lint-sensitive formatting or E2E behavior:
-
-```bash
-pnpm install
-pnpm run typecheck
-pnpm run build
-pnpm run quality:local
+```powershell
+pnpm run release:stage
+pnpm run quality:release-staged
 ```
 
-## Do not commit or ship
+Database/migration gate when database credentials and PostgreSQL client tools are available:
+
+```powershell
+pnpm run db:drift
+pnpm run db:migrate:neon:dry-run
+```
+
+## Current product and architecture state
+
+- Next.js 16 App Router with localized routes under `app/[locale]`.
+- Supported locales: `fa`, `en`, `ar`; dictionary leaf-key parity is enforced by `quality:i18n-completion`.
+- Multi-tenant organization model supports `SHOP` and `APPOINTMENT` organization types.
+- Dashboard workflows cover appointments, calendar, organizations, members, products, product categories, orders, QR code, services, service categories, settings, and users.
+- Public shop workflows cover shop profile, product detail, checkout, order tracking, and shop fanpage.
+- Public appointment workflows cover organization profile, service listing, staff listing, booking, appointment detail, my appointments, and appointment fanpage.
+- Follow support exists through `Follow`, `follow.service.ts`, follow/unfollow API, public follow UI, and readiness validators.
+- Fanpage MVP exists through `FanpagePost`, `fanpage.service.ts`, public read API, authorized create API, post card/form UI, and both appointment/shop fanpage routes.
+- Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
+- Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
+
+## Completed stabilization summary
+
+| Phase | Status summary |
+| --- | --- |
+| P20 | API/service safety validator and service-boundary cleanup. |
+| P21 | Reality reset; pnpm/typecheck/build/quality returned to green. |
+| P22 | GET handlers no longer perform covered write/upsert/read-marking side effects. |
+| P23 | Tenant database drift audit tooling. |
+| P24 | Tenant identity guardrails for slug/id confusion risks. |
+| P25 | Commerce correctness validator and order token/number retry guardrails. |
+| P26 | Appointment correctness guardrails for business hours, provider hours, and buffers. |
+| P26A/P26B | DB compatibility migrations for `Order.organizationSlug` and `Order.deletedAt`. |
+| P27 | i18n/RTL audit gate and stale branding cleanup. |
+| P28 | Follow/fanpage readiness cleanup and public follow links/prompts. |
+| P29 | Public image fallback component and public page experience cleanup. |
+| P30 | Fanpage MVP with `FanpagePost`, public feed API, create API, pages, components, dictionaries, validator. |
+| P31 | FA/EN/AR dictionary completion and strict dictionary parity validator. |
+| P32 | Safe Neon-to-current database data migration overlay and dry-run workflow. |
+| P33 | Clean release staging/ZIP workflow and artifact hygiene validator. |
+| P34 | Docs-only source-of-truth, inventory, fanpage roadmap, and seed guide synchronization. |
+
+## Current route/API inventory
+
+Use `docs/ROUTE_API_DB_SERVICE_INVENTORY.md` as the route/API/schema/service inventory for future planning. It was regenerated from the source tree on 2026-06-25.
+
+Important currently implemented surfaces:
+
+```txt
+/{locale}/appointment/{slug}/fanpage
+/{locale}/shop/{slug}/fanpage
+/api/public/organizations/{slug}/fanpage/posts
+/api/driver/location
+/api/orders/{id}/assign-driver
+/api/dashboard/notifications
+```
+
+## Current fanpage status
+
+Implemented:
+
+- `FanpagePost` Prisma model and migration.
+- `FanpageService` for listing/creating posts and revalidating both appointment and shop fanpage paths across configured locales.
+- Public `GET /api/public/organizations/{slug}/fanpage/posts`.
+- Authorized `POST /api/public/organizations/{slug}/fanpage/posts` for organization `ADMIN`/`MANAGER` sessions.
+- Public pages at `/{locale}/appointment/{slug}/fanpage` and `/{locale}/shop/{slug}/fanpage`.
+- `FanpagePostCard` and `FanpagePostForm` components.
+- FA/EN/AR dictionary parity for fanpage keys, including video placeholder text.
+
+Deferred:
+
+- Likes/reactions.
+- Comments/replies.
+- Edit/delete/moderation/drafts.
+- Follower-only visibility.
+- Upload-backed image/video picker from the create form.
+- Dashboard post management.
+
+## Known non-blocking debt
+
+- Dashboard/admin Persian copy remains hardcoded in several TS/TSX files. This is reported as warning-level i18n debt, not a blocking validator failure.
+- Some older phase docs remain historical and may mention outdated deployed URLs or older smoke-test context.
+- The active seed script hashes `123456`, while old console output and older docs said `password123`; Phase 34 docs now document the effective password, but the seed console output should be corrected in a code phase.
+- `app/[locale]/dashboard/members/page.tsx` has a suspicious refresh call to `/api/organizations/noId/members`; verify/fix before doing member-management UX work.
+- Root and dashboard provider layering should be reviewed before broad client-state/Auth UI refactors.
+
+## Clean release rules
+
+Never hand off a raw archive from the working directory. Use:
+
+```powershell
+pnpm run release:zip
+```
+
+Do not commit or ship:
 
 ```txt
 .env
-prisma/dev.db
-test-results/
+.env.local
+.env.*.local
+.vercel/
 .next/
 node_modules/
+.release/
+test-results/
+playwright-report/
+coverage/
+prisma/dev.db
+*.dump
+*.backup
+*.zip
+*.rar
+public/myResume.pdf
 public/uploads/
 uploads/
+tsconfig.tsbuildinfo
 ```
-
-Review `public/myResume.pdf` and remove it from release artifacts unless intentionally public.
 
 ## Recommended next phase
 
 ```txt
-P23 — API Error/Guard Normalization
+P35 — seed/auth testing cleanup and dashboard members refresh fix
 ```
 
-Keep it narrow: normalize private route guards and unknown-error responses without broad feature expansion.
+Scope:
 
-
-## P24 — Tenant Identity Audit and Guardrails
-
-P24 added a tenant identity validator and fixed two high-risk slug/id confusion paths:
-
-- driver order acceptance now resolves organization slug to organization id before checking `Follow.customerId_organizationId`;
-- notification settings lookup now resolves appointment `organizationId` to slug before reading slug-keyed `OrganizationSettings`.
-
-New command:
-
-```bash
-pnpm run quality:tenant-identity
-```
-
-This validator is included in `quality:local`.
-
-
-## Phase 25 update — commerce correctness guardrails
-
-P25 adds a commerce correctness validator and transaction-scoped uniqueness retries for order numbers and public tracking tokens. Aggregate `quality:local` now runs the P25 validator.
-
-Recommended next phase: P26 — appointment correctness guardrails.
-
-## P26 — Appointment Correctness Guardrails
-
-Status: source-level guardrails added.
-
-- Appointment create/reschedule paths now enforce configured business hours server-side.
-- Provider-specific business hours are checked before organization-wide fallback hours.
-- Appointment conflict detection now uses booking buffers through a shared guarded-window helper.
-- `pnpm run quality:appointment-correctness` is available and is included in `quality:local`.
-
-Required target validation for P26:
-
-```powershell
-pnpm run quality:appointment-correctness
-pnpm run typecheck
-pnpm run build
-pnpm run quality:local
-```
-
-
-## P26A — Order organizationSlug DB compatibility
-
-P26A adds a database compatibility migration and drift check for `Order.organizationSlug`. This was needed after the target database reported Prisma `P2022` during build/page-data collection because the physical `Order` table was missing the column required by the current Prisma schema.
-
-## P26B — Order deletedAt DB compatibility
-
-P26B adds a database compatibility migration and drift check for `Order.deletedAt`. This was needed after the target database reported Prisma `P2022` during build/page-data collection because the physical `Order` table was missing the nullable soft-delete column required by the current Prisma schema.
-
-## P27 — i18n / RTL Completion Audit
-
-P27 adds a greenable localization audit gate:
-
-- `pnpm run quality:i18n-rtl` validates dictionary presence/parsing, supported locale config, and html `lang`/`dir` wiring.
-- `quality:local` now includes the P27 validator.
-- P27 reports non-blocking audit warnings for dictionary-key drift and hardcoded RTL-script UI text.
-- Stale `ShopifyX` metadata in the locale layout was replaced with Bazar Baz copy.
-
-Known localization debt remains:
-
-- English and Arabic dictionaries are not yet key-complete against Persian.
-- Multiple TS/TSX surfaces still contain hardcoded Persian/Arabic UI strings.
-
-Recommended next phase: P28 — Follow/Fanpage Readiness Cleanup.
-
-
-## P28 — Follow/Fanpage Readiness Cleanup
-
-P28 prepares the existing follow foundation for later fanpage implementation.
-
-- Public appointment organization layout now uses explicit safe selected fields and active/deleted filters.
-- Organization metadata no longer server-self-fetches through `NEXT_PUBLIC_APP_URL`.
-- Follow button is wired into public appointment and shop pages.
-- Anonymous users now see a login-to-follow prompt instead of the follow button disappearing.
-- Follow labels are dictionary-driven for FA/EN/AR.
-- Follow revalidation now covers all configured locales instead of Persian-only paths.
-- `pnpm run quality:fanpage-readiness` is available and included in `quality:local`.
-
-Fanpage feed/posts are still not implemented. Recommended next phase: P29 — Fanpage Content Model Foundation.
-
-## P29 — Public Experience Completion
-
-P29 hardens the public homepage, organization profile, and shop surfaces before adding new fanpage content features.
-
-- Added a reusable `PublicImage` client component with broken/missing-image fallback.
-- Homepage organization cards and hero/search imagery now use `PublicImage` instead of raw `<img>` tags.
-- Public appointment organization page logo/category imagery now uses `PublicImage`.
-- Public shop page cover/logo/product/modal imagery now uses `PublicImage`.
-- Public appointment and shop layouts now expose simple public navigation links.
-- Added missing public navigation dictionary keys used by the new layout nav.
-- Added `pnpm run quality:public-experience` and included it in `quality:local`.
-
-Known remaining public UX debt:
-
-- Some public page copy remains hardcoded and will be cleaned during the i18n completion pass.
-- Fanpage feed/posts are still not implemented.
-- Missing local upload files still return 404 at the static `/uploads/*` route; P29 makes visible page images degrade gracefully when the browser loads broken URLs.
-
-Recommended next phase: P30 — Fanpage MVP or P30 — Public page runtime smoke E2E, depending on whether product or release confidence is higher priority.
-
-
-## Phase 30 — Fanpage MVP
-
-Status: overlay prepared.
-
-Implemented minimal fanpage feed support:
-
-- `FanpagePost` Prisma model and migration.
-- Public read API for organization fanpage posts.
-- Authenticated `ADMIN`/`MANAGER` create API by organization slug.
-- Public `/[locale]/appointment/[slug]/fanpage` route.
-- Post card and create-post form components.
-- Fanpage navigation links from public organization/shop layouts.
-- FA/EN/AR fanpage dictionary keys.
-- `quality:fanpage-mvp` validator included in `quality:local`.
-
-Deferred: likes, comments, edit/delete, moderation, follower-only posts, upload-backed images, and dashboard post management.
-
-
-## P31 — i18n Completion Pass
-
-Status: overlay prepared.
-
-P31 closes FA/EN/AR dictionary key drift by making all three locale dictionaries share the same leaf-key set. It adds `quality:i18n-completion` and integrates the validator into `quality:local`. Hardcoded dashboard/admin Persian copy remains documented non-blocking debt for a later dashboard copy extraction phase.
+1. Fix the seed console/password mismatch in `prisma/seed.ts`.
+2. Verify seeded username/email/phone login paths against the current auth implementation.
+3. Repair the dashboard members refetch path that references `/api/organizations/noId/members`.
+4. Keep the change narrow and validate with typecheck, build, `quality:local`, and any focused auth/member tests available.

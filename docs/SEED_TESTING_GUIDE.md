@@ -1,354 +1,166 @@
 # Seed Data & Role-Based Access Testing Guide
 
-This document provides comprehensive instructions for populating the database with test data and verifying role-based access control.
+Date: 2026-06-25
 
----
+This guide reflects the active seed file in this source tree: `prisma/seed.ts`.
 
-## 1. Running the Seed Script
+## Safety warning
 
-### Prerequisites
-- PostgreSQL database must be running
-- Environment variables configured in `.env`
-- Dependencies installed: `npm install`
+The seed script is destructive for demo-domain data. It deletes existing messages, conversations, follows, reviews, payments, orders, carts, appointments, catalog data, settings, locations, organizations, and users before recreating demo data.
 
-### Running the Seed
+Do not run it against a production database.
 
-The enhanced seed file is located at `prisma/seed-enhanced.ts`. To run it:
+## Prerequisites
 
-```bash
-# Using npx tsx (recommended for TypeScript)
-npx tsx prisma/seed-enhanced.ts
+- Dependencies installed with `pnpm install`.
+- `DATABASE_URL` points to a disposable local/demo database.
+- Prisma client can be generated against the current schema.
 
-# Or using ts-node
-npx ts-node prisma/seed-enhanced.ts
+Recommended preflight:
 
-# Alternative: Use Prisma's seed command (requires configuration in package.json)
-npx prisma db seed
+```powershell
+pnpm run db:validate
+pnpm run db:generate
 ```
 
-### What the Seed Creates
+## Run the seed
 
-| Category | Count | Details |
-|----------|-------|---------|
-| **Users** | 14 | All UserRole types |
-| **Organizations** | 6 | 3 SHOP, 3 APPOINTMENT |
-| **Organization Members** | 18 | All OrgMemberRole types |
-| **Services** | 10+ | Beauty, Dental, SPA |
-| **Appointments** | 7+ | Various statuses |
-| **Orders** | 2 | Shop orders |
-| **Reviews** | 3 | Organization reviews |
-| **Follows** | 3 | Customer follows |
+The active package script is:
 
----
-
-## 2. Test Credentials
-
-### User Roles & Login Information
-
-| Role | Email | Password | Access Level |
-|------|-------|----------|--------------|
-| **SUPER_ADMIN** | superadmin@example.com | password123 | Full system access |
-| **ADMIN** | admin@shop.ir | password123 | All org management |
-| **MANAGER** | manager@clinic.ir | password123 | Org team & services |
-| **STAFF** | staff@shop.ir | password123 | Assigned tasks |
-| **DRIVER** | driver@shop.ir | password123 | Delivery orders |
-| **CUSTOMER** | customer1@example.com | password123 | Book & order |
-| **SERVICE_PROVIDER** | dr.dermatologist@clinic.ir | password123 | View appointments |
-
-### Login Steps
-
-1. Navigate to: `http://localhost:3000/fa/login` (or your locale)
-2. Enter the email from the table above
-3. Enter password: `password123`
-4. Click "ورود" (Login)
-5. Redirected to dashboard based on role
-
----
-
-## 3. Testing Role-Based Access Control
-
-### A. SUPER_ADMIN Access
-
-**Login:** superadmin@example.com
-
-**Access:**
-- ✅ All organizations visible
-- ✅ System settings accessible
-- ✅ User management
-- ✅ View all data across organizations
-- ✅ API: `GET /api/users` - all users
-- ✅ API: `GET /api/organizations` - all orgs
-
-**Dashboard URL:** `http://localhost:3000/fa/dashboard`
-
----
-
-### B. ADMIN Access
-
-**Login:** admin@shop.ir
-
-**Access:**
-- ✅ Organizations where user is ADMIN
-- ✅ Manage organization settings
-- ✅ Manage products/services
-- ✅ View orders and appointments
-- ✅ Manage team members
-- ❌ Cannot access other organizations
-- ❌ Cannot manage system users
-
-**Dashboard URL:** `http://localhost:3000/fa/dashboard`
-
----
-
-### C. MANAGER Access
-
-**Login:** manager@clinic.ir
-
-**Access:**
-- ✅ Organizations where user is MANAGER
-- ✅ Manage services and appointments
-- ✅ View staff calendar
-- ✅ View customer data
-- ❌ Cannot change org settings
-- ❌ Cannot add/remove team members
-
-**Dashboard URL:** `http://localhost:3000/fa/dashboard`
-
----
-
-### D. STAFF Access
-
-**Login:** staff@shop.ir
-
-**Access:**
-- ✅ View assigned organization
-- ✅ Perform assigned tasks
-- ✅ View own schedule (if service provider)
-- ❌ Cannot manage org settings
-- ❌ Cannot view financials
-
-**Dashboard URL:** `http://localhost:3000/fa/dashboard`
-
----
-
-### E. CUSTOMER Access
-
-**Login:** customer1@example.com
-
-**Access:**
-- ✅ Browse public organizations
-- ✅ Book appointments
-- ✅ Place orders
-- ✅ View own appointments: `http://localhost:3000/fa/my-appointments`
-- ❌ Cannot access dashboard
-- ❌ Cannot view other customers
-
----
-
-## 4. API Endpoint Testing
-
-### Public Endpoints (No Auth Required)
-```bash
-# List organizations
-GET /api/organizations
-
-# Get organization by slug (public)
-GET /api/public/organizations/clinic-ruya
-
-# Get services
-GET /api/services?organizationId={id}
-
-# Get available slots
-GET /api/services/{id}/slots?date=2024-01-15
+```powershell
+pnpm run db:seed
 ```
 
-### Protected Endpoints (Auth Required)
+Equivalent direct command:
 
-#### Customer Endpoints
-```bash
-# Get my appointments
-GET /api/appointments
-
-# Create appointment
-POST /api/appointments
+```powershell
+pnpm exec tsx prisma/seed.ts
 ```
 
-#### Staff/Manager/Admin Endpoints
-```bash
-# Get all appointments (org)
-GET /api/appointments?organizationId={id}
+## Effective demo password
 
-# Update appointment
-PATCH /api/appointments/{id}
+The current seed hashes this password for seeded users:
 
-# Get customers
-GET /api/customers?organizationId={id}
-
-# Manage services
-POST /api/services
-PATCH /api/services/{id}
+```txt
+123456
 ```
 
-#### Admin Only Endpoints
-```bash
-# Manage users
-GET /api/users
-PATCH /api/users/{id}
+Older documentation and the seed console footer may mention `password123`; that is stale and should be fixed in the next code cleanup phase.
 
-# Manage organizations
-POST /api/organizations
-PATCH /api/organizations/{id}
+## Core seeded usernames
 
-# Organization settings
-GET /api/organizations/{id}/settings
-PATCH /api/organizations/{id}/settings
+Login supports username, email, or phone depending on the account fields. Username is the safest reference for seeded accounts because several demo users intentionally omit email.
+
+| Purpose | Username | Role | Notes |
+| --- | --- | --- | --- |
+| System admin | `superadmin` | `SUPER_ADMIN` | Full platform access. |
+| Shop admin | `shop-admin` | `ADMIN` | Admin member for a shop organization. |
+| Shop manager | `shop-manager` | `MANAGER` | Manager member for a shop organization. |
+| Shop staff | `shop-staff` | `STAFF` | Limited shop staff account. |
+| Shop driver | `shop-driver` | `DRIVER` | Driver workflow account. |
+| Appointment admin | `fariba` | `ADMIN` | Appointment organization admin. |
+| Appointment manager | `simin` | `MANAGER` | Appointment organization manager. |
+| Appointment staff | `negar` | `STAFF` | Appointment staff/provider account. |
+| Appointment staff/provider | `tahere` | `STAFF` | Appointment provider account. |
+| Appointment staff/provider | `narges` | `STAFF` | Appointment provider account. |
+| Customer | `eli` | `CUSTOMER` | Customer order/appointment workflows. |
+| Customer | `customer2` | `CUSTOMER` | Customer order/appointment workflows. |
+| Customer without email | `customer3` | `CUSTOMER` | Username/phone login path. |
+| Driver | `driver1` | `DRIVER` | Driver workflow account. |
+| Driver without email | `driver2` | `DRIVER` | Username/phone login path. |
+| Legal admin | `law-admin` | `ADMIN` | Appointment/legal organization account. |
+| Legal manager | `law-manager` | `MANAGER` | Appointment/legal organization account. |
+| Legal staff | `law-staff` | `STAFF` | Appointment/legal organization account. |
+| Senior lawyer | `lawyer-senior` | `STAFF` | Service-provider style legal account. |
+| Junior lawyer | `lawyer-junior` | `STAFF` | Service-provider style legal account. |
+| Dental admin | `denital-admin` | `ADMIN` | Current seed spelling is `denital-*`. |
+| Dental manager | `denital-manager` | `MANAGER` | Current seed spelling is `denital-*`. |
+| Dental staff | `denital-staff` | `STAFF` | Current seed spelling is `denital-*`. |
+| Dental senior | `denital-senior` | `STAFF` | Current seed spelling is `denital-*`. |
+| Dental junior | `denital-junior` | `STAFF` | Current seed spelling is `denital-*`. |
+| Additional shop admin | `hosein` | `ADMIN` | Additional shop organization account. |
+| Additional shop manager | `manager1` | `MANAGER` | Additional shop organization account. |
+| Additional shop staff | `sstaff1` | `STAFF` | Additional shop organization account. |
+| Additional driver | `driver0` | `DRIVER` | Additional driver account. |
+| Additional shop admin | `amir` | `ADMIN` | Additional shop organization account. |
+| Additional shop manager | `chakme1` | `MANAGER` | Additional shop organization account. |
+| Additional shop staff | `chakme2` | `STAFF` | Additional shop organization account. |
+| Additional driver | `chakme3` | `DRIVER` | Additional driver account. |
+
+## Seeded organization slugs
+
+| Slug | Type | Name |
+| --- | --- | --- |
+| `salamat-shop` | `SHOP` | فروشگاه اینترنتی سلامت |
+| `khoone-food` | `SHOP` | سفارش غذای خونه |
+| `sicily` | `SHOP` | رستوران سیسیلی |
+| `chakme` | `SHOP` | کافه رستوران چکمه |
+| `tikal` | `APPOINTMENT` | کلینیک زیبایی تی کال |
+| `dental-smile` | `APPOINTMENT` | دندانپزشکی لبخند |
+| `spa-aramesh` | `APPOINTMENT` | اسپا آرامش |
+| `law-justice` | `APPOINTMENT` | دفتر وکالت عدالت |
+
+## Basic local UI smoke checks
+
+Start the app after seeding:
+
+```powershell
+pnpm run dev
 ```
 
----
+Then verify:
 
-## 5. UI Components by Role
+| Workflow | URL pattern | Suggested account |
+| --- | --- | --- |
+| Home/search | `http://localhost:3000/fa` | anonymous |
+| Login | `http://localhost:3000/fa/login` | any seeded user |
+| Dashboard | `http://localhost:3000/fa/dashboard` | `superadmin`, `shop-admin`, `fariba` |
+| Shop page | `http://localhost:3000/fa/shop/sicily` | anonymous/customer |
+| Shop fanpage | `http://localhost:3000/fa/shop/sicily/fanpage` | anonymous/admin |
+| Appointment page | `http://localhost:3000/fa/appointment/tikal` | anonymous/customer |
+| Appointment fanpage | `http://localhost:3000/fa/appointment/tikal/fanpage` | anonymous/admin |
+| Booking | `http://localhost:3000/fa/appointment/tikal/booking` | customer |
+| Driver orders | `http://localhost:3000/fa/dashboard/driver-orders` | driver/admin depending on workflow |
 
-### Dashboard Navigation
+## API smoke checks
 
-| Component | SUPER_ADMIN | ADMIN | MANAGER | STAFF | CUSTOMER |
-|-----------|-------------|-------|---------|-------|----------|
-| Dashboard Home | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Appointments | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Calendar | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Customers | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Products | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Orders | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Settings | ✅ | ✅ | ⚠️ | ❌ | ❌ |
-| Team | ✅ | ✅ | ❌ | ❌ | ❌ |
+Use browser/devtools, PowerShell `Invoke-WebRequest`, or another HTTP client.
 
-⚠️ = Limited access
+Public reads:
 
-### Pages Accessible by Role
-
-| Page | URL | Access |
-|------|-----|--------|
-| Login | `/[locale]/login` | All |
-| Organization | `/[locale]/appointment/[slug]` | Public |
-| Booking | `/[locale]/appointment/[slug]/booking` | Customer |
-| My Appointments | `/[locale]/my-appointments` | Customer |
-| Dashboard | `/[locale]/dashboard` | Staff+ |
-| Calendar | `/[locale]/dashboard/calendar` | Staff+ |
-| Appointments | `/[locale]/dashboard/appointments` | Staff+ |
-| Customers | `/[locale]/dashboard/customers` | Manager+ |
-| Products | `/[locale]/dashboard/products` | Admin |
-| Orders | `/[locale]/dashboard/orders` | Admin |
-| Settings | `/[locale]/dashboard/settings` | Admin |
-
----
-
-## 6. Testing Checklist
-
-### Super Admin Testing
-- [ ] Login as superadmin@example.com
-- [ ] Verify all 6 organizations visible in dashboard
-- [ ] Can access settings page
-- [ ] Can view all users
-- [ ] API: GET /api/users returns all users
-- [ ] API: GET /api/organizations returns all orgs
-
-### Admin Testing
-- [ ] Login as admin@shop.ir
-- [ ] Dashboard shows only assigned organizations
-- [ ] Can manage products/services
-- [ ] Can view orders
-- [ ] Cannot access system settings
-
-### Manager Testing
-- [ ] Login as manager@clinic.ir
-- [ ] Can view calendar with appointments
-- [ ] Can manage services
-- [ ] Cannot access settings
-- [ ] Cannot add team members
-
-### Customer Testing
-- [ ] Login as customer1@example.com
-- [ ] Redirected away from dashboard
-- [ ] Can browse organizations at `/fa/appointment/clinic-ruya`
-- [ ] Can book appointment
-- [ ] Can view own appointments at `/fa/my-appointments`
-
----
-
-## 7. Database Schema Reference
-
-### User Roles (enum UserRole)
-```prisma
-SUPER_ADMIN  // Full system access
-ADMIN        // Organization admin
-MANAGER      // Organization manager  
-STAFF        // Staff member
-DRIVER       // Delivery driver
-CUSTOMER     // End customer
+```powershell
+Invoke-WebRequest http://localhost:3000/api/health
+Invoke-WebRequest http://localhost:3000/api/public/search
+Invoke-WebRequest http://localhost:3000/api/public/organizations/sicily/shop
+Invoke-WebRequest http://localhost:3000/api/public/organizations/sicily/fanpage/posts
+Invoke-WebRequest http://localhost:3000/api/public/organizations/tikal/services
 ```
 
-### Organization Member Roles (enum OrgMemberRole)
-```prisma
-ADMIN    // Full org control
-MANAGER  // Manage team/services
-STAFF    // Perform tasks
+Protected/dashboard APIs require a browser session or authenticated HTTP client. Prefer UI-based checks unless a phase explicitly adds API test helpers.
+
+## Role expectations
+
+| Role | Expected access |
+| --- | --- |
+| `SUPER_ADMIN` | Platform-wide dashboard and management access. |
+| `ADMIN` | Organization administration for memberships they own/administer. |
+| `MANAGER` | Organization operational management within assigned orgs. |
+| `STAFF` | Limited dashboard/provider/staff workflows depending on org membership. |
+| `DRIVER` | Driver orders/location workflows. |
+| `CUSTOMER` | Public browsing, order/appointment ownership workflows; no dashboard admin access. |
+| `GUEST` | Schema role exists; public anonymous flows mostly use unauthenticated/guest customer data. |
+
+## Validation after seeding
+
+```powershell
+pnpm run db:validate
+pnpm run typecheck
+pnpm run build
+pnpm run quality:local
 ```
 
-### Organization Types (enum OrganizationType)
-```prisma
-SHOP         // E-commerce
-APPOINTMENT  // Booking/Scheduling
-```
+## Known seed cleanup debt
 
----
-
-## 8. Troubleshooting
-
-### Seed Not Running
-```bash
-# Check database connection
-npx prisma db pull
-
-# Reset database
-npx prisma migrate reset
-
-# Then run seed
-npx tsx prisma/seed-enhanced.ts
-```
-
-### Login Not Working
-- Verify user exists: Check database `User` table
-- Verify password: Password is `password123` (hashed with bcrypt)
-- Check NextAuth config in `lib/auth.ts`
-
-### Wrong Redirect After Login
-- Role-based redirect is in `app/[locale]/login/page.tsx`
-- Check user's `role` field in database
-
----
-
-## 9. Additional Test Data
-
-### More Customers for Testing
-| Email | Phone |
-|-------|-------|
-| customer2@example.com | +989100000007 |
-| customer3@example.com | +989100000008 |
-| customer4@example.com | +989100000009 |
-
-### More Staff for Testing
-| Email | Role |
-|-------|------|
-| dr.dermatologist@clinic.ir | Dermatologist |
-| hairstylist@clinic.ir | Hair Stylist |
-| masseur@spa.ir | Massage Therapist |
-| beautician@clinic.ir | Beauty Consultant |
-
-### Test Organizations
-| Name | Slug | Type |
-|------|------|------|
-| کلینیک زیبایی رویا | clinic-ruya | APPOINTMENT |
-| دندانپزشکی لبخند | dental-smile | APPOINTMENT |
-| اسپا آرامش | spa-aramesh | APPOINTMENT |
-| فروشگاه سلامت | salamat-shop | SHOP |
-| سفارش غذا | khoone-food | SHOP |
-| دیجی کالا | digikala-shop | SHOP |
+- Fix the seed console footer so it prints the effective password `123456` instead of stale `password123` text.
+- Consider renaming `denital-*` usernames to `dental-*` only if a migration/seed reset can tolerate changed demo credentials.
+- Add a focused seed-auth smoke script if future phases rely heavily on deterministic demo users.

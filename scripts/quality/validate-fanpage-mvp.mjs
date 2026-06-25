@@ -37,17 +37,22 @@ add("fanpage posts POST requires org manage access by slug", /requireOrgManageAc
 add("fanpage posts POST validates body", /createFanpagePostSchema/.test(route) && /z\.object/.test(route));
 add("fanpage posts POST rate-limited", /checkRateLimit/.test(route) && /fanpage-post/.test(route));
 
-const pagePath = "app/[locale]/appointment/[slug]/fanpage/page.tsx";
-add("public fanpage route exists", exists(pagePath));
-const page = exists(pagePath) ? read(pagePath) : "";
-add("fanpage page uses active non-deleted organization", /isActive:\s*true/.test(page) && /deletedAt:\s*null/.test(page));
-add("fanpage page renders posts", /FanpagePostCard/.test(page) && /fanpagePost\.findMany/.test(page));
-add("fanpage page gates create form by membership", /organizationMember\.findFirst/.test(page) && /FanpagePostForm/.test(page));
+const appointmentPagePath = "app/[locale]/appointment/[slug]/fanpage/page.tsx";
+const shopPagePath = "app/[locale]/shop/[slug]/fanpage/page.tsx";
+add("appointment fanpage route exists", exists(appointmentPagePath));
+add("shop fanpage route exists", exists(shopPagePath));
+const appointmentPage = exists(appointmentPagePath) ? read(appointmentPagePath) : "";
+const shopPage = exists(shopPagePath) ? read(shopPagePath) : "";
+const fanpagePages = [appointmentPage, shopPage].filter(Boolean);
+add("fanpage pages use active non-deleted organization", fanpagePages.length === 2 && fanpagePages.every((page) => /isActive:\s*true/.test(page) && /deletedAt:\s*null/.test(page)));
+add("fanpage pages render posts", fanpagePages.length === 2 && fanpagePages.every((page) => /FanpagePostCard/.test(page) && /fanpagePost\.findMany/.test(page)));
+add("fanpage pages gate create form by membership", fanpagePages.length === 2 && fanpagePages.every((page) => /organizationMember\.findFirst/.test(page) && /FanpagePostForm/.test(page)));
 
 add("fanpage post card exists", exists("components/follow/fanpage-post-card.tsx"));
 add("fanpage post form exists", exists("components/follow/fanpage-post-form.tsx"));
 add("organization layout links fanpage", /organization\.fanpage/.test(read("app/[locale]/appointment/[slug]/layout.tsx")) && /\/fanpage/.test(read("app/[locale]/appointment/[slug]/layout.tsx")));
-add("shop layout links fanpage", /organization\.fanpage/.test(read("app/[locale]/shop/[slug]/layout.tsx")) && /appointment\/\$\{organization\.slug\}\/fanpage/.test(read("app/[locale]/shop/[slug]/layout.tsx")));
+add("shop layout links shop fanpage", /organization\.fanpage/.test(read("app/[locale]/shop/[slug]/layout.tsx")) && /shop\/\$\{organization\.slug\}\/fanpage/.test(read("app/[locale]/shop/[slug]/layout.tsx")));
+add("fanpage service revalidates shop and appointment routes", /revalidatePath\(`\/\$\{locale\}\/appointment\/\$\{slug\}\/fanpage`\)/.test(read("lib/services/fanpage.service.ts")) && /revalidatePath\(`\/\$\{locale\}\/shop\/\$\{slug\}\/fanpage`\)/.test(read("lib/services/fanpage.service.ts")));
 
 for (const locale of ["fa", "en", "ar"]) {
   const dictionary = json(`dictionaries/${locale}.json`);

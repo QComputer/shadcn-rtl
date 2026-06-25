@@ -539,7 +539,8 @@
     "bodyPlaceholder": "اكتب نص المنشور...",
     "imagePlaceholder": "رابط صورة اختياري",
     "publish": "نشر المنشور",
-    "createError": "تعذر نشر المنشور."
+    "createError": "تعذر نشر المنشور.",
+    "videoPlaceholder": "رابط فيديو اختياري"
   },
   "calendar": {
     "today": "اليوم",

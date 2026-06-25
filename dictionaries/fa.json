@@ -557,6 +557,7 @@
     "bodyPlaceholder": "متن پست را بنویسید...",
     "imagePlaceholder": "لینک تصویر اختیاری",
     "publish": "انتشار پست",
-    "createError": "انتشار پست انجام نشد."
+    "createError": "انتشار پست انجام نشد.",
+    "videoPlaceholder": "لینک ویدئوی اختیاری"
   }
 }

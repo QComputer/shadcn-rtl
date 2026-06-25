@@ -41,9 +41,11 @@ const forbiddenExactFiles = [
   ".env.production.local",
   ".env.test",
   ".env.test.local",
+  ".vercel/project.json",
   "prisma/dev.db",
   "public/myResume.pdf",
   "test-results/.last-run.json",
+  "tsconfig.tsbuildinfo",
 ];
 
 for (const rel of forbiddenExactFiles) {
@@ -53,12 +55,23 @@ for (const rel of forbiddenExactFiles) {
 const forbiddenDirs = [
   ".git/",
   ".next/",
+  ".vercel/",
+  ".vscode/",
+  ".idea/",
+  ".release/",
+  ".turbo/",
+  ".kilo/",
   "node_modules/",
+  "node_modules2/",
   "coverage/",
   "test-results/",
+  "playwright-report/",
   "public/uploads/",
   "uploads/",
   "lib/generated/prisma/",
+  "db-backups/",
+  "New Folder/",
+  "signaling-server/",
 ];
 
 for (const dir of forbiddenDirs) {
@@ -66,11 +79,17 @@ for (const dir of forbiddenDirs) {
   add(`forbidden directory absent: ${dir}`, offenders.length === 0, offenders.slice(0, 5).join(", "));
 }
 
-const forbiddenExtensions = [/\.pem$/i, /\.sqlite$/i, /\.db$/i, /\.zip$/i, /\.rar$/i, /\.7z$/i];
+const forbiddenExtensions = [/\.pem$/i, /\.sqlite$/i, /\.db$/i, /\.zip$/i, /\.rar$/i, /\.7z$/i, /\.dump$/i, /\.backup$/i];
 for (const pattern of forbiddenExtensions) {
   const offenders = files.filter((rel) => pattern.test(rel));
   add(`forbidden extension absent: ${pattern}`, offenders.length === 0, offenders.slice(0, 5).join(", "));
 }
+
+const envFiles = files.filter((rel) => {
+  const base = path.basename(rel);
+  return base.startsWith(".env") && base !== ".env.example";
+});
+add("no private env files", envFiles.length === 0, envFiles.slice(0, 5).join(", "));
 
 const suspiciousSecretNames = files.filter((rel) => {
   const base = path.basename(rel).toLowerCase();

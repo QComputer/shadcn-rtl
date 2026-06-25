@@ -61,3 +61,18 @@ next-env.d.ts
 /db-backups/
 *.dump
 *.backup
+
+# local release/staging artifacts
+/.release/
+/playwright-report/
+/test-results/
+
+# local editor/user files
+/.vscode/
+/.idea/
+/public/myResume.pdf
+
+# local/generated runtime artifacts
+/.vercel/
+*.sqlite
+*.db

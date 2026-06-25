@@ -45,7 +45,7 @@ The current seed hashes this password for seeded users:
 123456
 ```
 
-Older documentation and the seed console footer may mention `password123`; that is stale and should be fixed in the next code cleanup phase.
+The seed script now defines `DEMO_PASSWORD = "123456"` and prints the same value in its console footer.
 
 ## Core seeded usernames
 
@@ -161,6 +161,5 @@ pnpm run quality:local
 
 ## Known seed cleanup debt
 
-- Fix the seed console footer so it prints the effective password `123456` instead of stale `password123` text.
 - Consider renaming `denital-*` usernames to `dental-*` only if a migration/seed reset can tolerate changed demo credentials.
 - Add a focused seed-auth smoke script if future phases rely heavily on deterministic demo users.

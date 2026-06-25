@@ -8,6 +8,7 @@ function generateSessionId(name: string): string {
   return `SESSION-${timestamp}-${name}`;
 }
 const prisma = new PrismaClient();
+const DEMO_PASSWORD = "123456";
 
 async function main() {
   console.log("🌱 Starting database seed...\n");
@@ -49,7 +50,7 @@ async function main() {
   // ========================================
   console.log("👤 Creating users with all roles for access control testing...");
 
-  const hashedPassword = await bcrypt.hash("123456", 12);
+  const hashedPassword = await bcrypt.hash(DEMO_PASSWORD, 12);
 
   const users = await Promise.all([
     // ========================================
@@ -1903,13 +1904,13 @@ async function main() {
   console.log("🎉 Database seeding completed successfully!");
   console.log("\n📊 Summary:");
   console.log(`   - ${users.length} users with all role combinations`);
-  console.log(`   - 6 organizations (2 SHOP, 4 APPOINTMENT)`);
+  console.log(`   - 8 organizations (4 SHOP, 4 APPOINTMENT)`);
   console.log(`   - 4 booking settings for appointment organizations`);
   /* console.log(
     `   - ${guestCustomers.length} guest customers for guest checkout testing`,
   );*/
   console.log(`   - All OrgMemberRole types: ADMIN, MANAGER, STAFF`);
-  console.log("\n🔑 Test Credentials (all passwords: password123):");
+  console.log(`\n🔑 Test Credentials (all passwords: ${DEMO_PASSWORD}):`);
   console.log("\n   === SUPER_ADMIN ===");
   console.log("   - Username: superadmin (Full access to all features)");
 
@@ -1927,19 +1928,19 @@ async function main() {
 
   console.log("\n   === APPOINTMENT Organization (Beauty Clinic) ===");
   console.log(
-    "   - Username: appt-admin (ADMIN role, ADMIN org role - Access: Full appointment access)",
+    "   - Username: fariba (ADMIN role, ADMIN org role - Access: full appointment access)",
   );
   console.log(
-    "   - Username: appt-manager (MANAGER role, MANAGER org role - Access: appointments, services,  my-appointments, my-services)",
+    "   - Username: simin (MANAGER role, MANAGER org role - Access: appointments, services, my-appointments, my-services)",
   );
   console.log(
-    "   - Username: appt-staff (STAFF role, STAFF org role - Access: my-appointments, my-services)",
+    "   - Username: negar (STAFF role, STAFF org role - Access: my-appointments, my-services)",
   );
   console.log(
-    "   - Username: staff-admin-appt (STAFF role, ADMIN org role - Full appointment access)",
+    "   - Username: tahere (STAFF role, STAFF org role - Service provider)",
   );
   console.log(
-    "   - Username: staff-manager-appt (STAFF role, MANAGER org role - Full appointment access)",
+    "   - Username: narges (STAFF role, STAFF org role - Service provider)",
   );
 
   console.log("\n   === LAW FIRM Organization (دفتر وکالت عدالت) ===");
@@ -1959,7 +1960,7 @@ async function main() {
     "   - Username: lawyer-junior (STAFF role, STAFF org role - Service provider: Legal consultations)",
   );
   console.log("\n   === CUSTOMER ===");
-  console.log("   - Username: customer1 (Access: my-orders, my-appointments)");
+  console.log("   - Username: eli (Access: my-orders, my-appointments)");
   console.log("   - Username: customer2 (Access: my-orders, my-appointments)");
   console.log(
     "   - Username: customer3 (No email - Access: my-orders, my-appointments)",
@@ -1980,11 +1981,11 @@ async function main() {
   console.log("   - Add products to cart as guest");
   console.log("   - Checkout as guest without authentication");
   console.log("\n📅 Appointment Booking Testing:");
-  console.log("   - Visit: /organizations/clinic-ruya (Beauty Clinic)");
-  console.log("   - Visit: /organizations/dental-smile (Dental Clinic)");
-  console.log("   - Visit: /organizations/spa-aramesh (SPA Center)");
+  console.log("   - Visit: /appointment/tikal (Beauty Clinic)");
+  console.log("   - Visit: /appointment/dental-smile (Dental Clinic)");
+  console.log("   - Visit: /appointment/spa-aramesh (SPA Center)");
   console.log(
-    "   - Visit: /organizations/law-justice (Law Firm - دفتر وکالت عدالت)",
+    "   - Visit: /appointment/law-justice (Law Firm - دفتر وکالت عدالت)",
   );
   console.log(
     "\n📝 Note: Email is now optional. Users can authenticate using their unique username.",

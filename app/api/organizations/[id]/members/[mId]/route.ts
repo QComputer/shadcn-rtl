@@ -5,6 +5,7 @@ import { userService } from "@/lib/services/user.service";
 import { ApiError, jsonError, requireAuthSession, requireOrgAccess } from "@/lib/api-guards";
 import type { SessionWithUser } from "@/lib/api-guards";
 import { writeAuditLog } from "@/lib/audit-log";
+import type { UserRole } from "@/lib/types";
 
 async function resolveOrganizationId(session: SessionWithUser, routeId: string) {
   if (session?.user?.role === "SUPER_ADMIN") {
@@ -17,6 +18,18 @@ async function resolveOrganizationId(session: SessionWithUser, routeId: string) 
   }
 
   return sessionOrgId;
+}
+
+type ManageableMemberRole = Extract<UserRole, "ADMIN" | "MANAGER" | "STAFF" | "DRIVER">;
+
+const MANAGEABLE_MEMBER_ROLES = new Set<ManageableMemberRole>(["ADMIN", "MANAGER", "STAFF", "DRIVER"]);
+
+function parseManageableMemberRole(role: unknown): ManageableMemberRole {
+  if (typeof role !== "string" || !MANAGEABLE_MEMBER_ROLES.has(role as ManageableMemberRole)) {
+    throw new ApiError(400, "Unsupported organization member role");
+  }
+
+  return role as ManageableMemberRole;
 }
 
 async function loadMemberInOrganization(memberId: string, organizationId: string) {
@@ -90,22 +103,50 @@ export async function PUT(
     await loadMemberInOrganization(mId, organizationId);
 
     const body = await request.json();
-    if (typeof body.isActive !== "boolean") {
-      throw new ApiError(400, "isActive boolean is required");
+    const hasIsActive = typeof body.isActive === "boolean";
+    const hasRole = typeof body.role !== "undefined";
+
+    if (!hasIsActive && !hasRole) {
+      throw new ApiError(400, "At least one supported member update field is required");
     }
 
-    const organizationMember = await userService.updateMembershipIsActive(mId, body.isActive);
-    await writeAuditLog({
-      action: "CHANGE_STATUS",
-      entityType: "OrganizationMember",
-      entityId: mId,
-      description: "Changed organization member active status",
-      userId: session.user.id,
-      organizationId,
-      organizationSlug: organizationMember.organizationSlug,
-      newValue: { isActive: body.isActive },
-    });
-    return NextResponse.json(organizationMember);
+    const existingMember = await loadMemberInOrganization(mId, organizationId);
+
+    if (hasRole) {
+      const role = parseManageableMemberRole(body.role);
+      const organizationMember = await organizationService.updateMemberRole(
+        organizationId,
+        existingMember.userId,
+        role,
+      );
+      await writeAuditLog({
+        action: "ASSIGN_ROLE",
+        entityType: "OrganizationMember",
+        entityId: mId,
+        description: "Changed organization member role",
+        userId: session.user.id,
+        organizationId,
+        organizationSlug: organizationMember.organizationSlug,
+        newValue: { userId: existingMember.userId, role },
+      });
+    }
+
+    if (hasIsActive) {
+      const organizationMember = await userService.updateMembershipIsActive(mId, body.isActive);
+      await writeAuditLog({
+        action: "CHANGE_STATUS",
+        entityType: "OrganizationMember",
+        entityId: mId,
+        description: "Changed organization member active status",
+        userId: session.user.id,
+        organizationId,
+        organizationSlug: organizationMember.organizationSlug,
+        newValue: { isActive: body.isActive },
+      });
+    }
+
+    const updatedMember = await loadMemberInOrganization(mId, organizationId);
+    return NextResponse.json(updatedMember);
   } catch (error) {
     console.error("Error updating organization member:", error);
     return jsonError(error, "Internal server error");

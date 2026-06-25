@@ -1,22 +1,15 @@
 "use client"
 // TODO: complete the members page
-import { useState, useEffect, use } from "react"
+import { useCallback, useEffect, useState, use } from "react"
 import {
-  Users,
   Search,
   Plus,
   Mail,
   Phone,
-  MapPin,
-  Edit,
-  Trash2,
-  Eye,
   ChevronLeft,
   ChevronRight,
   ShoppingBag,
-  MoreVertical,
   Clock,
-  Package,
   ChessKing,
   ChessQueen,
   ChessPawnIcon,
@@ -29,25 +22,14 @@ import { Input } from "@/components/ui/input"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
-import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
-import { useDashboardAccess } from "@/hooks/use-auth"
 import { toPersianDigits } from "@/lib/persian"
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogTrigger 
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
-interface Me {
-  user: User
-  memberOf: {
-    id: string,
-    organization: Organization
-  }
-}
 
 interface User {
   id: string
@@ -63,22 +45,12 @@ interface User {
 }
 
 interface Member {
-  isActive: boolean,
-  joinedAt: Date,
-  user: User
-}
-
-
-interface Organization {
   id: string
-  name: string
-  slug: string
-  description: string | null
-  address: string | null
-  phone: string | null
-  email: string | null
-  logo: string | null
-  coverImage: string | null
+  organizationId: string
+  role: string
+  isActive: boolean
+  joinedAt: Date
+  user: User
 }
 
 const roleConfig: Record<string, { label: string; icon: typeof Clock; color: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -97,6 +69,7 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [members, setMembers] = useState<Member[]>([])
+  const [organizationId, setOrganizationId] = useState<string | null>(null)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedMember,setSelectedMember] = useState<Member | null>(null)
@@ -110,39 +83,39 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
     })
   }, [locale])
 
+  const fetchMembers = useCallback(async (signal?: AbortSignal) => {
+    setLoading(true)
+    setError(null)
+
+    const membershipResponse = await fetch("/api/users/me/membership", { signal })
+    if (!membershipResponse.ok) throw new Error("Failed to fetch membership")
+
+    const membershipData = await membershipResponse.json()
+    const orgId = membershipData?.membership?.organizationId
+    if (!orgId) throw new Error("No active organization membership")
+
+    setOrganizationId(orgId)
+
+    const membersResponse = await fetch(`/api/organizations/${orgId}/members`, { signal })
+    if (!membersResponse.ok) throw new Error("Failed to fetch members")
+
+    const nextMembers = await membersResponse.json()
+    setMembers(Array.isArray(nextMembers) ? nextMembers : [])
+  }, [])
+
   // fetch org-members
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    fetch("/api/users/me/membership")
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch membership");
-        return res.json();
+    const controller = new AbortController()
+
+    fetchMembers(controller.signal)
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === "AbortError") return
+        setError(err instanceof Error ? err.message : "Failed to fetch members")
       })
-      .then(data => {
-        if (cancelled) return;
-        const orgId = data?.membership?.organizationId;
-        if (!orgId) throw new Error("No active organization membership");
-        return fetch(`/api/organizations/${orgId}/members`);
-      })
-      .then(res => {
-        if (!res) return;
-        if (!res.ok) throw new Error("Failed to fetch members");
-        return res.json();
-      })
-      .then(members => {
-        if (cancelled) return;
-        setMembers(members || []);
-      })
-      .catch(err => {
-        if (cancelled) return;
-        setError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true };
-  }, [])
+      .finally(() => setLoading(false))
+
+    return () => controller.abort()
+  }, [fetchMembers])
  
    const t = (key: string): string => {
      if (!dict) return key
@@ -157,10 +130,23 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
   )*/
 
     
-  const handleUpdateRole = async (userId: string, newRole: string) => {
+  const refreshMembersAfterUpdate = async () => {
+    try {
+      await fetchMembers()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleUpdateRole = async (memberId: string, newRole: string) => {
+    if (!organizationId) {
+      setError("No active organization membership")
+      return
+    }
+
     setUpdating(true)
     try {
-      const response = await fetch(`/api/users/${userId}`, {
+      const response = await fetch(`/api/organizations/${organizationId}/members/${memberId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -169,71 +155,44 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
       })
       
       if (!response.ok) {
-        throw new Error("Failed to update order status")
+        throw new Error("Failed to update member role")
       }
-      
-      setLoading(true)
-      fetch(`/api/organizations/noId/members`)
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch members")
-        return res.json()
-      })
-      .then(members => {
-        setMembers(members)
-      })
-      .catch(err => {
-        setError(err.message)
-      })
-      .finally(() => setLoading(false))
-      
-      // Update selected member if dialog is open
-      if (selectedMember?.user?.id === userId) {
-        setSelectedMember(null)
-      }
+
+      await refreshMembersAfterUpdate()
+      setSelectedMember(null)
     } catch (err) {
-      console.error("Error updating user avtivation status:", err)
-      setError(err instanceof Error ? err.message : "Failed to update user avtivation status")
+      console.error("Error updating member role:", err)
+      setError(err instanceof Error ? err.message : "Failed to update member role")
     } finally {
       setUpdating(false)
     }
   }
 
-  const handleUpdateIsActive = async (userId: string, isActive: string) => {
+  const handleUpdateIsActive = async (memberId: string, isActive: string) => {
+    if (!organizationId) {
+      setError("No active organization membership")
+      return
+    }
+
     setUpdating(true)
     try {
-      const response = await fetch(`/api/users/${userId}`, {
+      const response = await fetch(`/api/organizations/${organizationId}/members/${memberId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ isActive: isActive == "active" ? true : false }),
+        body: JSON.stringify({ isActive: isActive === "active" }),
       })
       
       if (!response.ok) {
-        throw new Error("Failed to update user activation status")
+        throw new Error("Failed to update member activation status")
       }
-      
-      setLoading(true)
-      fetch(`/api/organizations/noId/members`)
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch appointments")
-        return res.json()
-      })
-      .then(members => {
-        setMembers(members)
-      })
-      .catch(err => {
-        setError(err.message)
-      })
-      .finally(() => setLoading(false))
-      
-      // Update selected member if dialog is open
-      if (selectedMember?.user?.id === userId) {
-        setSelectedMember(null)
-      }
+
+      await refreshMembersAfterUpdate()
+      setSelectedMember(null)
     } catch (err) {
-      console.error("Error updating order status:", err)
-      setError(err instanceof Error ? err.message : "Failed to update order status")
+      console.error("Error updating member activation status:", err)
+      setError(err instanceof Error ? err.message : "Failed to update member activation status")
     } finally {
       setUpdating(false)
     }
@@ -296,6 +255,12 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
         />
       </div>
 
+      {error && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
       {/* Members Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredMembers.map((member) => (
@@ -323,7 +288,7 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
               
               <div className="mt-4 flex items-center justify-between">
                 <Badge variant='outline'>
-                  {member.user.role}
+                  {member.role || member.user.role}
                 </Badge>
                 <Badge variant={member.isActive ? "default" : "destructive"}>
                   {member.isActive ? (t("common.active") || "فعال") : (t("common.inactive") || "غیرفعال")}
@@ -396,8 +361,8 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
                   </CardContent>
                   <CardFooter className="gap-5">
               <Select 
-                value={selectedMember.user.role} 
-                onValueChange={(value) => handleUpdateRole(selectedMember.user.id, value)}
+                value={selectedMember.role || selectedMember.user.role} 
+                onValueChange={(value) => handleUpdateRole(selectedMember.id, value)}
                 disabled={updating}
               >
                 <SelectTrigger className="w-40">
@@ -413,7 +378,7 @@ export default function OganizationMembersPage({ params }: { params: Promise<{ l
               </Select>
               <Select 
                 value={geIsActive(selectedMember.isActive)} 
-                onValueChange={(value) => handleUpdateIsActive(selectedMember.user.id, value)}
+                onValueChange={(value) => handleUpdateIsActive(selectedMember.id, value)}
                 disabled={updating}
               >
                 <SelectTrigger className="w-40">

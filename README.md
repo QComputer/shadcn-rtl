@@ -116,6 +116,6 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Recommended next implementation phase: **P35 — seed/auth testing cleanup and dashboard member refresh fix**.
+Latest completed implementation phase: **P35 — seed/auth testing cleanup and dashboard member refresh fix**.
 
-Keep it narrow: fix the seed console/password documentation mismatch in code, verify current seed credentials with the auth flow, and repair the suspicious dashboard members refetch path that currently references `/api/organizations/noId/members`.
+P35 corrected the seed console password output, aligned seed/auth documentation with the effective `123456` demo password, repaired dashboard member refetches so they use the active organization id, and added a focused quality guard for this cleanup.

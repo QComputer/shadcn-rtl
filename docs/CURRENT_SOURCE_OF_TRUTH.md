@@ -104,8 +104,8 @@ Deferred:
 
 - Dashboard/admin Persian copy remains hardcoded in several TS/TSX files. This is reported as warning-level i18n debt, not a blocking validator failure.
 - Some older phase docs remain historical and may mention outdated deployed URLs or older smoke-test context.
-- The active seed script hashes `123456`, while old console output and older docs said `password123`; Phase 34 docs now document the effective password, but the seed console output should be corrected in a code phase.
-- `app/[locale]/dashboard/members/page.tsx` has a suspicious refresh call to `/api/organizations/noId/members`; verify/fix before doing member-management UX work.
+- The active seed script hashes `123456` through `DEMO_PASSWORD` and the seed console footer prints the same value.
+- `app/[locale]/dashboard/members/page.tsx` now refetches members through the active organization id and updates role/status through `/api/organizations/[id]/members/[mId]`.
 - Root and dashboard provider layering should be reviewed before broad client-state/Auth UI refactors.
 
 ## Clean release rules
@@ -143,12 +143,12 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P35 — seed/auth testing cleanup and dashboard members refresh fix
+P36 — member-management UX hardening and provider-layer review
 ```
 
 Scope:
 
-1. Fix the seed console/password mismatch in `prisma/seed.ts`.
-2. Verify seeded username/email/phone login paths against the current auth implementation.
-3. Repair the dashboard members refetch path that references `/api/organizations/noId/members`.
-4. Keep the change narrow and validate with typecheck, build, `quality:local`, and any focused auth/member tests available.
+1. Review dashboard member-management UX after P35 role/status API cleanup.
+2. Improve empty/loading/error/unauthorized states without broad redesign.
+3. Review root/dashboard provider layering before larger client-state or Auth UI refactors.
+4. Keep validation focused with typecheck, build, `quality:local`, `quality:seed-auth-members`, and staged release checks.

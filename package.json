@@ -68,7 +68,8 @@
     "quality:fanpage-mvp": "node scripts/quality/validate-fanpage-mvp.mjs",
     "quality:i18n-completion": "node scripts/quality/validate-i18n-completion.mjs",
     "db:migrate:neon": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db/migrate-neon-data.ps1",
-    "db:migrate:neon:dry-run": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db/migrate-neon-data.ps1 -DryRun"
+    "db:migrate:neon:dry-run": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db/migrate-neon-data.ps1 -DryRun",
+    "quality:seed-auth-members": "node scripts/quality/validate-seed-auth-members-cleanup.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

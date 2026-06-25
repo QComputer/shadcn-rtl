@@ -271,15 +271,15 @@ The dashboard displays role-appropriate data but does NOT include client-side fi
 
 | Username | Role | Organization | Org Type | Password |
 |----------|------|--------------|----------|----------|
-| superadmin | SUPER_ADMIN | N/A | N/A | password123 |
-| shop-admin | ADMIN | سلامت shop | SHOP | password123 |
-| shop-manager | MANAGER | سلامت shop | SHOP | password123 |
-| shop-staff | STAFF | سلامت shop | SHOP | password123 |
-| appt-admin | ADMIN | کلینیک | APPOINTMENT | password123 |
-| appt-manager | MANAGER | کلینیک | APPOINTMENT | password123 |
-| appt-staff | STAFF | کلینیک | APPOINTMENT | password123 |
-| customer1 | CUSTOMER | N/A | N/A | password123 |
-| shop-driver | DRIVER | سلامت shop | SHOP | password123 |
+| superadmin | SUPER_ADMIN | N/A | N/A | 123456 |
+| shop-admin | ADMIN | سلامت shop | SHOP | 123456 |
+| shop-manager | MANAGER | سلامت shop | SHOP | 123456 |
+| shop-staff | STAFF | سلامت shop | SHOP | 123456 |
+| fariba | ADMIN | تی کال | APPOINTMENT | 123456 |
+| simin | MANAGER | تی کال | APPOINTMENT | 123456 |
+| negar | STAFF | تی کال | APPOINTMENT | 123456 |
+| eli | CUSTOMER | N/A | N/A | 123456 |
+| shop-driver | DRIVER | سلامت shop | SHOP | 123456 |
 
 ---
 

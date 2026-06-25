@@ -129,6 +129,25 @@ enum CustomerClubJoinSource {
   CAMPAIGN
 }
 
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  CANCELED
+}
+
+enum CampaignChannel {
+  IN_APP
+}
+
+enum CampaignDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELED
+}
+
 // --- CORE MODELS ---
 
 model TimeInterval {
@@ -176,6 +195,8 @@ model Organization {
   customerClubMemberships CustomerClubMembership[]
   customerSegments CustomerSegment[]
   customerSegmentSnapshots CustomerSegmentSnapshot[]
+  campaigns         Campaign[]
+  campaignDeliveries CampaignDelivery[]
   fanpagePosts      FanpagePost[]
   notifications     Notification[]
   locations         Location[]
@@ -218,6 +239,7 @@ model Notification {
   targetUser   User     @relation("TargetNotifications", fields: [targetUserId], references: [id])
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdBy    User?    @relation("CreatedNotifications", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  campaignDeliveries CampaignDelivery[]
   seen         Boolean  @default(false)
   type         String?
   createdAt    DateTime @default(now())
@@ -280,6 +302,8 @@ model User {
   reviewsWritten           Review[]                  @relation("UserReviews")
   notifications             Notification[]            @relation("TargetNotifications")
   createdNotifications      Notification[]            @relation("CreatedNotifications")
+  createdCampaigns          Campaign[]                @relation("CreatedCampaigns")
+  campaignDeliveries        CampaignDelivery[]        @relation("CampaignTargetDeliveries")
   passwordResets           PasswordReset[]
   emailVerifications       EmailVerification[]
   auditLogs                AuditLog[]
@@ -1046,6 +1070,7 @@ model CustomerSegment {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   rules        CustomerSegmentRule[]
   snapshots    CustomerSegmentSnapshot[]
+  campaignAudiences CampaignAudience[]
 
   @@unique([organizationId, key])
   @@index([organizationId, isActive])
@@ -1075,9 +1100,93 @@ model CustomerSegmentSnapshot {
 
   organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   segment      CustomerSegment? @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+  campaignAudiences CampaignAudience[]
 
   @@index([organizationId, segmentKey, calculatedAt])
   @@index([segmentId, calculatedAt])
+}
+
+model Campaign {
+  id              String         @id @default(cuid())
+  organizationId  String
+  createdByUserId String?
+  title           String
+  status          CampaignStatus @default(DRAFT)
+  scheduledAt     DateTime?
+  sentAt          DateTime?
+  canceledAt      DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?        @relation("CreatedCampaigns", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  audiences    CampaignAudience[]
+  messages     CampaignMessage[]
+  deliveries   CampaignDelivery[]
+
+  @@index([organizationId, status, createdAt])
+  @@index([createdByUserId])
+}
+
+model CampaignAudience {
+  id                String   @id @default(cuid())
+  campaignId        String
+  segmentId         String?
+  segmentSnapshotId String?
+  segmentKey        String
+  memberCount       Int      @default(0)
+  rule              Json?
+  createdAt         DateTime @default(now())
+
+  campaign        Campaign                 @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  segment         CustomerSegment?         @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+  segmentSnapshot CustomerSegmentSnapshot? @relation(fields: [segmentSnapshotId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId])
+  @@index([segmentId])
+  @@index([segmentSnapshotId])
+  @@index([segmentKey])
+}
+
+model CampaignMessage {
+  id         String          @id @default(cuid())
+  campaignId String
+  channel    CampaignChannel @default(IN_APP)
+  body       String
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  campaign   Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  deliveries CampaignDelivery[]
+
+  @@index([campaignId, channel])
+}
+
+model CampaignDelivery {
+  id             String                 @id @default(cuid())
+  campaignId     String
+  messageId      String?
+  organizationId String
+  targetUserId   String
+  notificationId String?
+  channel        CampaignChannel        @default(IN_APP)
+  status         CampaignDeliveryStatus @default(PENDING)
+  error          String?
+  sentAt         DateTime?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  campaign     Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  message      CampaignMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  targetUser   User             @relation("CampaignTargetDeliveries", fields: [targetUserId], references: [id], onDelete: Cascade)
+  notification Notification?    @relation(fields: [notificationId], references: [id], onDelete: SetNull)
+
+  @@unique([campaignId, targetUserId, channel])
+  @@index([organizationId, status, createdAt])
+  @@index([messageId])
+  @@index([notificationId])
+  @@index([targetUserId])
 }
 
 model Conversation {

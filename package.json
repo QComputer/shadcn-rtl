@@ -78,7 +78,8 @@
     "quality:dashboard-route-guard-smoke": "node scripts/quality/validate-dashboard-route-guard-smoke.mjs",
     "quality:customer-club-foundation": "node scripts/quality/validate-customer-club-foundation.mjs",
     "quality:in-app-notifications": "node scripts/quality/validate-in-app-notifications.mjs",
-    "quality:customer-segments": "node scripts/quality/validate-customer-segments.mjs"
+    "quality:customer-segments": "node scripts/quality/validate-customer-segments.mjs",
+    "quality:campaign-builder": "node scripts/quality/validate-campaign-builder.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

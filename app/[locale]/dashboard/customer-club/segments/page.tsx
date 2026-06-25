@@ -1,9 +1,10 @@
 "use client"
 
 import { use, useCallback, useEffect, useMemo, useState } from "react"
-import { AlertTriangle, BarChart3, RefreshCw, Save } from "lucide-react"
+import Link from "next/link"
+import { AlertTriangle, BarChart3, Megaphone, RefreshCw, Save } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getDictionary } from "@/lib/dictionary"
 import { toPersianDigits } from "@/lib/persian"
@@ -37,6 +38,7 @@ type SegmentCopy = {
   saved: string
   tenantSafeNote: string
   noOrganization: string
+  campaigns?: string
 }
 
 const defaultCopy: SegmentCopy = {
@@ -56,6 +58,7 @@ const defaultCopy: SegmentCopy = {
   saved: "Snapshot saved",
   tenantSafeNote: "All counts are calculated only from this organization's data.",
   noOrganization: "An active management membership is required to view segments.",
+  campaigns: "Campaigns",
 }
 
 const fallbackCopy: Record<string, SegmentCopy> = {
@@ -198,6 +201,10 @@ export default function CustomerSegmentsPage({ params }: { params: Promise<{ loc
           <p className="text-sm text-muted-foreground">{copy.subtitle}</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link href={`/${locale}/dashboard/customer-club/campaigns`} className={buttonVariants({ variant: "outline" })}>
+            <Megaphone className="h-4 w-4" aria-hidden="true" />
+            {copy.campaigns ?? "Campaigns"}
+          </Link>
           <Button variant="outline" onClick={refresh} disabled={refreshing || saving}>
             <RefreshCw className={refreshing ? "h-4 w-4 animate-spin" : "h-4 w-4"} aria-hidden="true" />
             {copy.refresh}

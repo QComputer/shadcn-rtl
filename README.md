@@ -56,6 +56,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 42 | Customer Club foundation | Source-validated | `pnpm run quality:customer-club-foundation` |
 | 43 | In-app notification inbox | Source-validated | `pnpm run quality:in-app-notifications` |
 | 44 | Customer Segments MVP | Source-validated | `pnpm run quality:customer-segments` |
+| 45 | Campaign Builder MVP | Source-validated | `pnpm run quality:campaign-builder` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -77,6 +78,7 @@ pnpm run quality:dashboard-route-guard-smoke
 pnpm run quality:customer-club-foundation
 pnpm run quality:in-app-notifications
 pnpm run quality:customer-segments
+pnpm run quality:campaign-builder
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -134,7 +136,11 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P44 - Customer Segments MVP**.
+Latest completed implementation phase: **P45 - Campaign Builder MVP**.
+
+P45 adds organization-scoped campaign drafts for Customer Club segments, reusable audience/message/delivery records, campaign list/new/detail dashboard pages, dry-run audience preview, in-app-only sending through `Notification`, one delivery row per recipient, pre-send cancellation, audit logging, and the focused `quality:campaign-builder` validator.
+
+Previous segment phase retained: **P44 - Customer Segments MVP**.
 
 P44 adds organization-scoped customer segment definitions, reusable segment/rule/snapshot tables, a management-only `/dashboard/customer-club/segments` page, tenant-safe Customer Club/order/cart count computation, explicit snapshot saving with audit logging, localized FA/EN/AR segment copy, and the focused `quality:customer-segments` validator.
 
@@ -158,4 +164,4 @@ Previous dashboard role phase retained: **P38 - dashboard sidebar role-aware nav
 
 Previous dashboard shell/copy phase retained: **P37 - dashboard navigation and localized shell copy cleanup**.
 
-Recommended next phase: **P45 - Campaign Builder MVP**.
+Recommended next phase: **P46 - Loyalty Points and Coupons**.

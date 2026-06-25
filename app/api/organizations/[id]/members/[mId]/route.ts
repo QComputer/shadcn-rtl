@@ -162,15 +162,17 @@ export async function PUT(
     const body = await request.json();
     assertValidBody(body);
 
-    const hasIsActive = typeof body.isActive === "boolean";
-    const hasRole = typeof body.role !== "undefined";
+    const rawRole = body.role;
+    const rawIsActive = body.isActive;
+    const hasIsActive = typeof rawIsActive === "boolean";
+    const hasRole = typeof rawRole !== "undefined";
 
     if (!hasIsActive && !hasRole) {
       throw new ApiError(400, "At least one supported member update field is required");
     }
 
-    const nextRole = hasRole ? parseManageableMemberRole(body.role) : undefined;
-    const nextIsActive = hasIsActive ? body.isActive : undefined;
+    const nextRole = hasRole ? parseManageableMemberRole(rawRole) : undefined;
+    const nextIsActive = hasIsActive ? rawIsActive : undefined;
 
     await assertCanApplyMemberUpdate({
       actorSession: session,

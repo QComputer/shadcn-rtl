@@ -47,6 +47,8 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 32 | Safe Neon data migration overlay | Tooling/docs | `pnpm run db:migrate:neon:dry-run` |
 | 33 | Clean release artifact workflow | Tooling/docs | `pnpm run release:stage && pnpm run quality:release-staged` |
 | 34 | Source-of-truth documentation sync | Docs-only | `pnpm run quality:local` |
+| 35 | Seed/auth docs and member refresh fix | Source-validated | `pnpm run quality:seed-auth-members` |
+| 36 | Member management UX and provider hardening | Source-validated | `pnpm run quality:members-provider-hardening` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -59,6 +61,7 @@ pnpm run db:validate
 pnpm run typecheck
 pnpm run build
 pnpm run quality:local
+pnpm run quality:members-provider-hardening
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -116,6 +119,8 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P35 — seed/auth testing cleanup and dashboard member refresh fix**.
+Latest completed implementation phase: **P36 — member management UX and provider-layer hardening**.
 
-P35 corrected the seed console password output, aligned seed/auth documentation with the effective `123456` demo password, repaired dashboard member refetches so they use the active organization id, and added a focused quality guard for this cleanup.
+P36 compacted and hardened the dashboard members page, kept role/status edits scoped to the organization-member API, prevented self-lockout and final-active-admin removal, and removed the duplicate provider stack from the dashboard shell.
+
+Recommended next phase: **P37 — dashboard navigation and localized admin copy cleanup**.

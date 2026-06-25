@@ -26,7 +26,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <DashboardShell locale={locale} session={session}>
+    <DashboardShell locale={locale}>
       {children}
     </DashboardShell>
   )

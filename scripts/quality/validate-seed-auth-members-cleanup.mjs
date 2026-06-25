@@ -55,13 +55,13 @@ assertIncludes(
 );
 assertIncludes(
   "app/api/organizations/[id]/members/[mId]/route.ts",
-  "organizationService.updateMemberRole",
-  "member API supports organization member role updates",
+  "prisma.organizationMember.update",
+  "member API supports direct organization member record updates",
 );
-assertIncludes(
+assertNotIncludes(
   "app/api/organizations/[id]/members/[mId]/route.ts",
-  "userService.updateMembershipIsActive",
-  "member API still supports organization member activation updates",
+  "organizationService.updateMemberRole",
+  "member API does not update global user roles for organization membership edits",
 );
 
 console.table(checks);

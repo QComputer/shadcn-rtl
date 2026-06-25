@@ -1,10 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import type { Session } from "next-auth"
 import { toast } from "react-toastify"
 import ToastProvider from "@/components/ToastProvider"
-import { Providers } from "@/components/providers"
 import { SocketProvider } from "@/context/SocketContext"
 import { DashboardAccessBoundary } from "@/components/dashboard/dashboard-access-boundary"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
@@ -20,7 +18,6 @@ type DashboardNotification = {
 interface DashboardShellProps {
   children: React.ReactNode
   locale: SupportedLocale
-  session: Session | null
 }
 
 function DashboardNotificationPoller() {
@@ -96,14 +93,13 @@ function DashboardNotificationPoller() {
   return null
 }
 
-export function DashboardShell({ children, locale, session }: DashboardShellProps) {
+export function DashboardShell({ children, locale }: DashboardShellProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   return (
     <ToastProvider>
-      <Providers locale={locale} session={session}>
-        <DashboardAccessBoundary>
-          <SocketProvider>
+      <DashboardAccessBoundary>
+        <SocketProvider>
             <DashboardNotificationPoller />
             <div className="flex min-h-screen bg-background">
               <div className="hidden lg:block">
@@ -129,9 +125,8 @@ export function DashboardShell({ children, locale, session }: DashboardShellProp
                 <div className="flex-1 p-4 lg:p-6">{children}</div>
               </div>
             </div>
-          </SocketProvider>
-        </DashboardAccessBoundary>
-      </Providers>
+        </SocketProvider>
+      </DashboardAccessBoundary>
     </ToastProvider>
   )
 }

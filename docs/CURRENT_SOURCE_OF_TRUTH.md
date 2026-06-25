@@ -4,7 +4,7 @@ Date: 2026-06-25
 
 ## Current validated baseline
 
-The current working baseline after P30/P31/P33 overlays is source-validator green.
+The current working baseline after P36 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -14,6 +14,7 @@ pnpm run db:validate
 pnpm run typecheck
 pnpm run build
 pnpm run quality:local
+pnpm run quality:members-provider-hardening
 ```
 
 Clean handoff gate introduced in P33:
@@ -63,6 +64,8 @@ pnpm run db:migrate:neon:dry-run
 | P32 | Safe Neon-to-current database data migration overlay and dry-run workflow. |
 | P33 | Clean release staging/ZIP workflow and artifact hygiene validator. |
 | P34 | Docs-only source-of-truth, inventory, fanpage roadmap, and seed guide synchronization. |
+| P35 | Seed/auth demo-password documentation and dashboard member refresh/API cleanup. |
+| P36 | Dashboard members UX/API hardening and dashboard provider-layer simplification. |
 
 ## Current route/API inventory
 
@@ -105,8 +108,8 @@ Deferred:
 - Dashboard/admin Persian copy remains hardcoded in several TS/TSX files. This is reported as warning-level i18n debt, not a blocking validator failure.
 - Some older phase docs remain historical and may mention outdated deployed URLs or older smoke-test context.
 - The active seed script hashes `123456` through `DEMO_PASSWORD` and the seed console footer prints the same value.
-- `app/[locale]/dashboard/members/page.tsx` now refetches members through the active organization id and updates role/status through `/api/organizations/[id]/members/[mId]`.
-- Root and dashboard provider layering should be reviewed before broad client-state/Auth UI refactors.
+- `app/[locale]/dashboard/members/page.tsx` now uses a compact searchable list, explicit refresh, API error surfacing, and a scrollable management dialog.
+- Organization-member role/status edits are scoped to `OrganizationMember` records and guard against self-lockout, manager-to-admin elevation, and removing the final active organization admin.
 
 ## Clean release rules
 
@@ -143,12 +146,12 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P36 — member-management UX hardening and provider-layer review
+P37 — dashboard navigation and localized admin copy cleanup
 ```
 
 Scope:
 
-1. Review dashboard member-management UX after P35 role/status API cleanup.
-2. Improve empty/loading/error/unauthorized states without broad redesign.
-3. Review root/dashboard provider layering before larger client-state or Auth UI refactors.
-4. Keep validation focused with typecheck, build, `quality:local`, `quality:seed-auth-members`, and staged release checks.
+1. Audit dashboard navigation labels and admin-only copy for stale Persian hardcoding.
+2. Move high-value dashboard strings into dictionaries without broad UI redesign.
+3. Keep `ADMIN` practical workflows simple while leaving technical workflows for `SUPER_ADMIN`.
+4. Validate with typecheck, build, `quality:local`, i18n validators, and staged release checks.

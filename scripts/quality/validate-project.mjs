@@ -127,12 +127,12 @@ for (const rel of expectedE2E) {
 }
 
 for (const rel of ["app/api/health/route.ts", "lib/runtime-env.ts", "scripts/quality/validate-env.mjs", "scripts/quality/validate-release-artifact.mjs", "scripts/quality/validate-get-purity.mjs", "scripts/quality/validate-database-drift.mjs", "scripts/quality/validate-tenant-identity.mjs", "scripts/quality/validate-commerce-correctness.mjs", "scripts/quality/validate-appointment-correctness.mjs", "scripts/quality/validate-i18n-rtl-audit.mjs", "scripts/quality/validate-i18n-completion.mjs", "scripts/quality/validate-fanpage-readiness.mjs",
-  "scripts/quality/validate-public-experience.mjs", "scripts/quality/validate-fanpage-mvp.mjs", "scripts/quality/validate-seed-auth-members-cleanup.mjs", "scripts/db/repair-known-database-drift.mjs", "scripts/db/known-database-drift-repair.sql"]) {
+  "scripts/quality/validate-public-experience.mjs", "scripts/quality/validate-fanpage-mvp.mjs", "scripts/quality/validate-seed-auth-members-cleanup.mjs", "scripts/quality/validate-member-provider-hardening.mjs", "scripts/db/repair-known-database-drift.mjs", "scripts/db/known-database-drift-repair.sql"]) {
   exists(rel) ? ok(`${rel} exists`) : fail(`${rel} exists`);
 }
 
 for (const rel of ["scripts/e2e/deployed-phase9-quality-gates.mjs", "scripts/e2e/deployed-phase10-auth-security.mjs", "scripts/e2e/deployed-phase11-health.mjs", "scripts/e2e/deployed-phase12-messaging.mjs", "scripts/e2e/deployed-phase13-catalog-hardening.mjs", "scripts/e2e/deployed-phase14-inventory-operations.mjs", "scripts/e2e/deployed-phase15-public-order-tracking.mjs", "scripts/e2e/deployed-phase16-engagement.mjs", "scripts/e2e/deployed-phase17-account-settings.mjs", "scripts/e2e/deployed-all.mjs", "scripts/quality/validate-env.mjs", "scripts/quality/validate-dashboard-access.mjs", "scripts/quality/validate-api-service-safety.mjs", "scripts/quality/validate-release-artifact.mjs", "scripts/quality/validate-get-purity.mjs", "scripts/quality/validate-database-drift.mjs", "scripts/quality/validate-tenant-identity.mjs", "scripts/quality/validate-commerce-correctness.mjs", "scripts/quality/validate-appointment-correctness.mjs", "scripts/quality/validate-i18n-rtl-audit.mjs", "scripts/quality/validate-i18n-completion.mjs", "scripts/quality/validate-fanpage-readiness.mjs",
-  "scripts/quality/validate-public-experience.mjs", "scripts/quality/validate-fanpage-mvp.mjs", "scripts/quality/validate-seed-auth-members-cleanup.mjs", "scripts/db/repair-known-database-drift.mjs"]) {
+  "scripts/quality/validate-public-experience.mjs", "scripts/quality/validate-fanpage-mvp.mjs", "scripts/quality/validate-seed-auth-members-cleanup.mjs", "scripts/quality/validate-member-provider-hardening.mjs", "scripts/db/repair-known-database-drift.mjs"]) {
   if (!exists(rel)) continue;
   const result = spawnSync(process.execPath, ["--check", rel], { cwd: root, encoding: "utf8" });
   result.status === 0 ? ok(`${rel} syntax`) : fail(`${rel} syntax`, result.stderr || result.stdout);
@@ -193,6 +193,12 @@ if (exists("scripts/quality/validate-fanpage-mvp.mjs")) {
 if (exists("scripts/quality/validate-seed-auth-members-cleanup.mjs")) {
   const result = spawnSync(process.execPath, ["scripts/quality/validate-seed-auth-members-cleanup.mjs"], { cwd: root, encoding: "utf8" });
   result.status === 0 ? ok("P35 seed/auth/member cleanup validator passes") : fail("P35 seed/auth/member cleanup validator passes", result.stderr || result.stdout);
+}
+
+
+if (exists("scripts/quality/validate-member-provider-hardening.mjs")) {
+  const result = spawnSync(process.execPath, ["scripts/quality/validate-member-provider-hardening.mjs"], { cwd: root, encoding: "utf8" });
+  result.status === 0 ? ok("P36 member/provider hardening validator passes") : fail("P36 member/provider hardening validator passes", result.stderr || result.stdout);
 }
 
 console.table(results);

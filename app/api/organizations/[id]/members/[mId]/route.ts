@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { organizationService } from "@/lib/services/organization.service";
-import { userService } from "@/lib/services/user.service";
 import { ApiError, jsonError, requireAuthSession, requireOrgAccess } from "@/lib/api-guards";
 import type { SessionWithUser } from "@/lib/api-guards";
 import { writeAuditLog } from "@/lib/audit-log";
@@ -14,6 +12,10 @@ async function resolveOrganizationId(session: SessionWithUser, routeId: string) 
 
   const sessionOrgId = session?.user?.organizationId;
   if (!sessionOrgId) {
+    throw new ApiError(403, "Forbidden");
+  }
+
+  if (sessionOrgId !== routeId) {
     throw new ApiError(403, "Forbidden");
   }
 
@@ -30,6 +32,12 @@ function parseManageableMemberRole(role: unknown): ManageableMemberRole {
   }
 
   return role as ManageableMemberRole;
+}
+
+function assertValidBody(body: unknown): asserts body is { role?: unknown; isActive?: unknown } {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    throw new ApiError(400, "Invalid member update body");
+  }
 }
 
 async function loadMemberInOrganization(memberId: string, organizationId: string) {
@@ -62,6 +70,51 @@ async function loadMemberInOrganization(memberId: string, organizationId: string
   return member;
 }
 
+async function assertAdminContinuity(options: {
+  organizationId: string;
+  memberId: string;
+  currentRole: UserRole;
+  currentIsActive: boolean;
+  nextRole?: ManageableMemberRole;
+  nextIsActive?: boolean;
+}) {
+  const nextRole = options.nextRole ?? options.currentRole;
+  const nextIsActive = options.nextIsActive ?? options.currentIsActive;
+  const removesActiveAdmin = options.currentRole === "ADMIN" && options.currentIsActive && (nextRole !== "ADMIN" || !nextIsActive);
+
+  if (!removesActiveAdmin) return;
+
+  const remainingActiveAdmins = await prisma.organizationMember.count({
+    where: {
+      organizationId: options.organizationId,
+      isActive: true,
+      role: "ADMIN",
+      id: { not: options.memberId },
+    },
+  });
+
+  if (remainingActiveAdmins === 0) {
+    throw new ApiError(400, "At least one active organization admin must remain");
+  }
+}
+
+async function assertCanApplyMemberUpdate(options: {
+  actorSession: SessionWithUser;
+  actorMembershipRole: UserRole | null;
+  targetUserId: string;
+  nextRole?: ManageableMemberRole;
+}) {
+  const isSuperAdmin = options.actorSession.user.role === "SUPER_ADMIN";
+
+  if (!isSuperAdmin && options.actorSession.user.id === options.targetUserId) {
+    throw new ApiError(400, "Use another admin account to change your own membership");
+  }
+
+  if (options.nextRole === "ADMIN" && !isSuperAdmin && options.actorMembershipRole !== "ADMIN") {
+    throw new ApiError(403, "Only organization admins can grant admin membership");
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; mId: string }> },
@@ -75,8 +128,11 @@ export async function GET(
       if (session.user.role === "ADMIN" || session.user.role === "MANAGER") {
         await requireOrgAccess(session, organizationId, ["ADMIN", "MANAGER"]);
       } else {
-        const ownMember = await organizationService.getAMemberByUserId(session.user.id);
-        if (!ownMember || ownMember.id !== mId || ownMember.organizationId !== organizationId) {
+        const ownMember = await prisma.organizationMember.findFirst({
+          where: { id: mId, organizationId, userId: session.user.id },
+          select: { id: true },
+        });
+        if (!ownMember) {
           throw new ApiError(403, "Forbidden");
         }
       }
@@ -99,10 +155,13 @@ export async function PUT(
     const { id, mId } = await params;
     const organizationId = await resolveOrganizationId(session, id);
 
-    await requireOrgAccess(session, organizationId, ["ADMIN", "MANAGER"]);
-    await loadMemberInOrganization(mId, organizationId);
+    const actorMembership = await requireOrgAccess(session, organizationId, ["ADMIN", "MANAGER"]);
+    const actorMembershipRole = actorMembership?.role ?? (session.user.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : null);
+    const existingMember = await loadMemberInOrganization(mId, organizationId);
 
     const body = await request.json();
+    assertValidBody(body);
+
     const hasIsActive = typeof body.isActive === "boolean";
     const hasRole = typeof body.role !== "undefined";
 
@@ -110,15 +169,35 @@ export async function PUT(
       throw new ApiError(400, "At least one supported member update field is required");
     }
 
-    const existingMember = await loadMemberInOrganization(mId, organizationId);
+    const nextRole = hasRole ? parseManageableMemberRole(body.role) : undefined;
+    const nextIsActive = hasIsActive ? body.isActive : undefined;
 
-    if (hasRole) {
-      const role = parseManageableMemberRole(body.role);
-      const organizationMember = await organizationService.updateMemberRole(
-        organizationId,
-        existingMember.userId,
-        role,
-      );
+    await assertCanApplyMemberUpdate({
+      actorSession: session,
+      actorMembershipRole,
+      targetUserId: existingMember.userId,
+      nextRole,
+    });
+
+    await assertAdminContinuity({
+      organizationId,
+      memberId: mId,
+      currentRole: existingMember.role as UserRole,
+      currentIsActive: existingMember.isActive,
+      nextRole,
+      nextIsActive,
+    });
+
+    const updateData: { role?: ManageableMemberRole; isActive?: boolean } = {};
+    if (nextRole) updateData.role = nextRole;
+    if (typeof nextIsActive === "boolean") updateData.isActive = nextIsActive;
+
+    await prisma.organizationMember.update({
+      where: { id: mId },
+      data: updateData,
+    });
+
+    if (nextRole) {
       await writeAuditLog({
         action: "ASSIGN_ROLE",
         entityType: "OrganizationMember",
@@ -126,13 +205,13 @@ export async function PUT(
         description: "Changed organization member role",
         userId: session.user.id,
         organizationId,
-        organizationSlug: organizationMember.organizationSlug,
-        newValue: { userId: existingMember.userId, role },
+        organizationSlug: existingMember.organizationSlug,
+        previousValue: { userId: existingMember.userId, role: existingMember.role },
+        newValue: { userId: existingMember.userId, role: nextRole },
       });
     }
 
-    if (hasIsActive) {
-      const organizationMember = await userService.updateMembershipIsActive(mId, body.isActive);
+    if (typeof nextIsActive === "boolean") {
       await writeAuditLog({
         action: "CHANGE_STATUS",
         entityType: "OrganizationMember",
@@ -140,8 +219,9 @@ export async function PUT(
         description: "Changed organization member active status",
         userId: session.user.id,
         organizationId,
-        organizationSlug: organizationMember.organizationSlug,
-        newValue: { isActive: body.isActive },
+        organizationSlug: existingMember.organizationSlug,
+        previousValue: { userId: existingMember.userId, isActive: existingMember.isActive },
+        newValue: { userId: existingMember.userId, isActive: nextIsActive },
       });
     }
 

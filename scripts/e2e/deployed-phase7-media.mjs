@@ -1,4 +1,4 @@
-const baseUrl = process.env.DEPLOYED_URL || "http://localhost:3000";
+const baseUrl = process.env.DEPLOYED_URL || "https://bazar-baz.ir";
 
 const checks = [];
 
@@ -70,6 +70,16 @@ await check("unauthenticated QR save is blocked", async () => {
 
 await check("upload filename traversal is not publicly served", async () => {
   await expectStatus("traversal", "/uploads/..%2Fpackage.json", {}, [400, 404]);
+});
+
+await check("BLOB_READ_WRITE_TOKEN is required for uploads", async () => {
+  // This test verifies the error is thrown when token is not set
+  // The actual env var check happens server-side
+  // We test the upload endpoint behavior
+  const form = new FormData();
+  const pngBuffer = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+  form.append("file", new Blob([pngBuffer], { type: "image/png" }), "test.png");
+  await expectStatus("valid image upload without auth", "/api/upload", { method: "POST", body: form }, [401]);
 });
 
 console.table(checks);

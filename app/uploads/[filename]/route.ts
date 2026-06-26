@@ -19,14 +19,23 @@ export async function GET(
 
     const pathname = getBlobPathname(filename);
     const image = await prisma.image.findFirst({
-      where: { filename: pathname, access: "PRIVATE" },
-      select: { id: true },
+      where: {
+        filename: pathname,
+        access: "PRIVATE", // Only PRIVATE images go through this endpoint
+      },
+      select: { id: true, url: true },
     });
 
     if (!image) {
       return new NextResponse("File not found", { status: 404 });
     }
 
+    // For Vercel Blob, redirect to the stored URL
+    if (image.url.startsWith("http")) {
+      return NextResponse.redirect(image.url, { status: 302 });
+    }
+
+    // Fallback: stream from blob storage using pathname
     const { buffer } = await getFromBlob(pathname);
     const mimeType = getMimeTypeFromFilename(filename);
 

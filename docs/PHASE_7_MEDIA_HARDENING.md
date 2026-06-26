@@ -85,32 +85,29 @@ Requires authentication and persists the generated QR code as an owned image rec
 
 ### `GET /uploads/[filename]`
 
-Serves stored images from the shared upload directory using the same path logic as upload/delete. It rejects unsafe filenames and returns cache headers plus `X-Content-Type-Options: nosniff`.
+Serves stored images via redirect to Vercel Blob URLs for PRIVATE images. PUBLIC images are served directly via their blob URLs (stored in the `url` field). Path traversal attempts are rejected.
 
-## Storage path
+## Storage
 
-All media operations use `lib/media-storage.ts`.
+All media operations use `lib/blob-storage.ts` with **Vercel Blob Storage only** (no local fallback).
 
-Current storage root:
+**Required Environment Variable:**
+- `BLOB_READ_WRITE_TOKEN` - Your Vercel Blob storage token (required in all environments)
 
-```text
-../uploads relative to process.cwd()
-```
-
-This keeps compatibility with the existing deployment layout. For larger production usage, move this behind durable object storage or a mounted persistent volume.
+Get your token from: https://vercel.com/dashboard/blob
 
 ## Deployed no-Playwright smoke test
 
 PowerShell:
 
 ```powershell
-$env:DEPLOYED_URL="https://zc0.runflare.run"; npm run e2e:deployed:phase7
+$env:DEPLOYED_URL="https://bazar-baz.ir"; npm run e2e:deployed:phase7
 ```
 
 Linux/macOS/Git Bash:
 
 ```bash
-DEPLOYED_URL=https://zc0.runflare.run npm run e2e:deployed:phase7
+DEPLOYED_URL=https://bazar-baz.ir npm run e2e:deployed:phase7
 ```
 
 The test verifies:
@@ -123,11 +120,11 @@ The test verifies:
 - unauthenticated QR save is blocked,
 - filename traversal is not served from `/uploads`.
 
-## Remaining production recommendations
+## Production recommendations (completed)
 
-- Move persistent images to object storage or a durable volume.
-- Add virus/malware scanning for user uploads.
-- Add per-user and per-organization upload quotas.
-- Add image optimization/resizing pipeline.
-- Add old/orphaned media cleanup job.
-- Add signed private URLs if sensitive documents are uploaded later.
+- [x] Move persistent images to Vercel Blob Storage
+- [ ] Add virus/malware scanning for user uploads
+- [ ] Add per-user and per-organization upload quotas
+- [ ] Add image optimization/resizing pipeline
+- [ ] Add old/orphaned media cleanup job
+- [ ] Add signed private URLs if sensitive documents are uploaded later

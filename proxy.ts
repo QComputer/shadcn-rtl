@@ -213,13 +213,17 @@ export async function proxy(request: NextRequest) {
     const shop = await resolveShopForCustomDomain(request, normalizedHost);
 
     if (!shop) {
-      const locale = getLocale(request);
       const notConfiguredUrl = request.nextUrl.clone();
-      notConfiguredUrl.pathname = `/${locale}/domain-not-configured`;
+      notConfiguredUrl.pathname = `/${defaultLocale}/domain-not-configured`;
       return withSecurityHeaders(NextResponse.rewrite(notConfiguredUrl));
     }
 
-    const localeForTenant = getLocale(request) || shop.locale;
+    // Tenant custom domains must be Persian-first. Do not derive the default
+    // locale from Accept-Language for bare custom-domain visits, because the
+    // overwhelming majority of shop visitors are expected to be Persian.
+    // Explicit locale prefixes such as /en/... and /ar/... still work.
+    const tenantPathLocale = splitLocalePrefix(pathname).locale;
+    const localeForTenant = tenantPathLocale || defaultLocale;
     if (pathname === "/sitemap.xml" || pathname === "/robots.txt") {
       const internalUrl = request.nextUrl.clone();
       internalUrl.pathname = pathname === "/sitemap.xml"
@@ -243,7 +247,7 @@ export async function proxy(request: NextRequest) {
     }
 
     const splitPath = splitLocalePrefix(pathname);
-    const locale = splitPath.locale || getLocale(request) || shop.locale;
+    const locale = splitPath.locale || defaultLocale;
     const rewrittenUrl = request.nextUrl.clone();
     rewrittenUrl.pathname = buildShopPlatformPath({
       locale,
@@ -264,6 +268,11 @@ export async function proxy(request: NextRequest) {
     });
     response.headers.set("x-locale", locale);
     response.headers.set("x-direction", localeConfig[locale].dir);
+    response.cookies.set("locale", locale, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      httpOnly: false,
+    });
     return withSecurityHeaders(response);
   }
 

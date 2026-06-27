@@ -105,7 +105,8 @@
     "quality:shop-domain-admin": "node scripts/quality/validate-shop-domain-admin.mjs",
     "quality:dashboard-organizations-published": "node scripts/quality/validate-dashboard-organizations-published.mjs",
     "quality:vercel-domain-automation": "node scripts/quality/validate-vercel-domain-automation.mjs",
-    "quality:custom-domain-seo": "node scripts/quality/validate-custom-domain-seo-hardening.mjs"
+    "quality:custom-domain-seo": "node scripts/quality/validate-custom-domain-seo-hardening.mjs",
+    "quality:custom-domain-default-locale": "node scripts/quality/validate-custom-domain-default-locale.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

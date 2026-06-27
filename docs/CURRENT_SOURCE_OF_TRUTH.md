@@ -4,7 +4,7 @@ Date: 2026-06-27
 
 ## Current validated baseline
 
-The current working baseline after P55 overlays is source-validator green.
+The current working baseline after P58 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -36,6 +36,7 @@ pnpm run quality:dashboard-slug-editing
 pnpm run quality:public-slug-preview-share
 pnpm run quality:tenant-og-images
 pnpm run quality:deployed-social-preview
+pnpm run quality:social-preview-evidence
 ```
 
 Clean handoff gate introduced in P33:
@@ -78,6 +79,7 @@ pnpm run db:migrate:neon:dry-run
 - Public slug preview/share polish exists through dashboard slug copy/open controls, deployment-origin URL previews, explicit social image dimensions/alt text, and stronger product/service/category image fallbacks, with `quality:public-slug-preview-share`.
 - Tenant-specific Open Graph image generation exists through parameterized `/og-image` cards, generated organization/category/product/service fallback image URLs, uploaded-media-first share metadata, and the `quality:tenant-og-images` validator.
 - Deployed social preview verification exists through `scripts/e2e/deployed-social-preview.mjs`, Persian generated-card and uploaded-image `og:image` capture checks, deployed sitemap sampling, bundled Vazirmatn OG fonts, and the `quality:deployed-social-preview` validator.
+- Social preview release evidence exists through `scripts/release/archive-social-preview-evidence.mjs`, `.release/social-preview-evidence` archives, `evidence.json`, generated `REVIEW.md` checklists, `docs/RELEASE_NOTES_TEMPLATE.md`, and the `quality:social-preview-evidence` validator.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -124,6 +126,7 @@ pnpm run db:migrate:neon:dry-run
 | P55 | Public Slug Preview and Rich Share Polish with dashboard copy/open URL actions and image-rich metadata fallbacks. |
 | P56 | Tenant-Specific Open Graph Image Generation with uploaded-media precedence and generated fallback cards. |
 | P57 | Deployed Social Preview Verification with read-only `og:image` resolution and capture evidence. |
+| P58 | Social Preview Artifact Review and Release Evidence with `.release` archives, review checklist, and release-note template. |
 
 ## Current route/API inventory
 
@@ -221,6 +224,7 @@ Deferred:
 - P56 generated OG cards are deterministic URL-query images, not persisted media assets or per-tenant theme settings.
 - P57 writes deployed social preview captures under `test-results/deployed-social-preview`; those artifacts are verification output and must not be committed.
 - P57 live smoke currently treats category sitemap candidates as sampled-but-not-required by default because deployed category sitemap URLs can be stale/404; set `DEPLOYED_SOCIAL_PREVIEW_REQUIRE_CATEGORY=1` after category sitemap reachability is cleaned up.
+- P58 writes release evidence under `.release/social-preview-evidence`; those archives are external release records and must not be committed.
 
 ## Clean release rules
 
@@ -240,6 +244,8 @@ Do not commit or ship:
 .next/
 node_modules/
 .release/
+test-results/deployed-social-preview/
+/.release/social-preview-evidence/
 test-results/
 playwright-report/
 coverage/
@@ -257,12 +263,12 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P58 - Social Preview Artifact Review and Release Evidence
+P59 - Category Sitemap Reachability Cleanup
 ```
 
 Scope:
 
-1. Add a lightweight documented review checklist for generated social preview captures.
-2. Preserve deployed capture manifests as release evidence outside committed source artifacts.
-3. Optionally add a release-note template section for deployed SEO/social preview evidence.
-4. Validate with typecheck, build, `quality:local`, P42-P57 validators, dashboard navigation validators, and staged release checks.
+1. Investigate deployed category sitemap URLs that currently return 404.
+2. Align sitemap category entries with route reachability for shop and appointment category pages.
+3. Enable strict `DEPLOYED_SOCIAL_PREVIEW_REQUIRE_CATEGORY=1` in the deployed social preview smoke after cleanup.
+4. Validate with typecheck, build, `quality:local`, P42-P58 validators, and deployed social preview smoke.

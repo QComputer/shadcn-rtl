@@ -70,6 +70,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 55 | Public Slug Preview and Rich Share Polish | Source-validated | `pnpm run quality:public-slug-preview-share` |
 | 56 | Tenant-Specific Open Graph Image Generation | Source-validated | `pnpm run quality:tenant-og-images` |
 | 57 | Deployed Social Preview Verification | Source/deployed smoke | `pnpm run quality:deployed-social-preview` / `pnpm run e2e:deployed:social-preview` |
+| 58 | Social Preview Artifact Review and Release Evidence | Tooling/docs | `pnpm run quality:social-preview-evidence` / `pnpm run release:social-preview-evidence` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -104,6 +105,7 @@ pnpm run quality:dashboard-slug-editing
 pnpm run quality:public-slug-preview-share
 pnpm run quality:tenant-og-images
 pnpm run quality:deployed-social-preview
+pnpm run quality:social-preview-evidence
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -147,6 +149,16 @@ pnpm run e2e:deployed:social-preview
 ```
 
 The suite samples deployed sitemap pages for organization, category, product, and service routes, fetches each page `og:image`, captures image bytes under `test-results/deployed-social-preview`, and directly verifies a Persian generated `/og-image?...` card backed by bundled Vazirmatn fonts. Use `DEPLOYED_SOCIAL_PREVIEW_ALLOW_EMPTY=1` only for intentionally sparse non-production deployments, and `DEPLOYED_SOCIAL_PREVIEW_REQUIRE_CATEGORY=1` when category sitemap URLs are expected to be reachable.
+
+## Social preview release evidence
+
+After a deployed social preview smoke pass, archive review evidence outside committed source:
+
+```powershell
+pnpm run release:social-preview-evidence
+```
+
+The archive is written under `.release/social-preview-evidence/<timestamp>` with copied captures, `manifest.json`, `evidence.json`, and `REVIEW.md`. Keep this directory in external release records if needed; do not commit it.
 
 ## Clean source handoff
 
@@ -194,7 +206,11 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P57 - Deployed Social Preview Verification**.
+Latest completed implementation phase: **P58 - Social Preview Artifact Review and Release Evidence**.
+
+P58 adds a release evidence workflow for deployed social preview captures, including copied capture artifacts under `.release/social-preview-evidence`, machine-readable `evidence.json`, a visual review checklist, and `quality:social-preview-evidence`.
+
+Previous deployed social preview phase retained: **P57 - Deployed Social Preview Verification**.
 
 P57 adds a read-only deployed social preview smoke suite for sampled organization/category/product/service pages, `og:image` URL resolution, generated `/og-image` crawler access, uploaded-image preview capture, and capture manifests under `test-results/deployed-social-preview`.
 
@@ -270,4 +286,4 @@ Previous dashboard role phase retained: **P38 - dashboard sidebar role-aware nav
 
 Previous dashboard shell/copy phase retained: **P37 - dashboard navigation and localized shell copy cleanup**.
 
-Recommended next phase: **P58 - Social Preview Artifact Review and Release Evidence**.
+Recommended next phase: **P59 - Category Sitemap Reachability Cleanup**.

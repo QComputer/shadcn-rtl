@@ -145,7 +145,46 @@ export function buildShopPlatformPath(input: {
   return `/${locale}/shop/${input.slug}${cleanPath}`;
 }
 
+export type ParsedShopPlatformPath = {
+  locale: CustomDomainLocale;
+  slug: string;
+  subPath: string;
+};
+
+export function parseShopPlatformPath(pathname: string): ParsedShopPlatformPath | null {
+  const { locale, pathnameWithoutLocale } = splitLocalePrefix(pathname);
+  if (!locale) return null;
+
+  const parts = pathnameWithoutLocale.split("/").filter(Boolean);
+  if (parts[0] !== "shop" || !parts[1]) return null;
+
+  const subPathParts = parts.slice(2);
+  const subPath = subPathParts.length > 0 ? `/${subPathParts.join("/")}` : "/";
+
+  return {
+    locale,
+    slug: parts[1],
+    subPath,
+  };
+}
+
+export function isSeoIndexableShopSubPath(subPath: string) {
+  const normalizedSubPath = subPath.startsWith("/") ? subPath : `/${subPath}`;
+
+  return (
+    normalizedSubPath === "/" ||
+    normalizedSubPath === "/profile" ||
+    normalizedSubPath === "/fanpage" ||
+    normalizedSubPath.startsWith("/category/") ||
+    normalizedSubPath.startsWith("/product/")
+  );
+}
+
 export function isCustomDomainBypassPath(pathname: string) {
+  if (pathname === "/robots.txt" || pathname === "/sitemap.xml") {
+    return false;
+  }
+
   return (
     pathname.startsWith("/api") ||
     pathname.startsWith("/_next") ||
@@ -153,8 +192,6 @@ export function isCustomDomainBypassPath(pathname: string) {
     pathname.startsWith("/og-image") ||
     pathname.startsWith("/static") ||
     pathname === "/favicon.ico" ||
-    pathname === "/robots.txt" ||
-    pathname === "/sitemap.xml" ||
     pathname.includes(".")
   );
 }

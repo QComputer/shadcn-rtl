@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import prisma from "@/lib/db";
 import {
   buildTenantPublicPath,
   defaultCustomDomainLocale,
@@ -12,6 +13,24 @@ export type ShopTenantSeoContext = {
   path: string;
   alternatePath: (locale: CustomDomainLocale) => string;
 };
+
+async function getPrimaryShopDomainBaseUrl(slug: string) {
+  const domain = await prisma.organizationDomain.findFirst({
+    where: {
+      status: "ACTIVE",
+      isPrimary: true,
+      organization: {
+        slug,
+        type: "SHOP",
+        isActive: true,
+        deletedAt: null,
+      },
+    },
+    select: { normalizedDomain: true },
+  });
+
+  return domain?.normalizedDomain ? `https://${domain.normalizedDomain}` : undefined;
+}
 
 export async function getShopTenantSeoContext(input: {
   locale: string;
@@ -31,6 +50,17 @@ export async function getShopTenantSeoContext(input: {
     return {
       isCustomDomain: true,
       baseUrl: customBaseUrl,
+      path: buildTenantPublicPath(locale, subPath),
+      alternatePath: (nextLocale) => buildTenantPublicPath(nextLocale, subPath),
+    };
+  }
+
+  const primaryDomainBaseUrl = await getPrimaryShopDomainBaseUrl(input.slug);
+
+  if (primaryDomainBaseUrl) {
+    return {
+      isCustomDomain: false,
+      baseUrl: primaryDomainBaseUrl,
       path: buildTenantPublicPath(locale, subPath),
       alternatePath: (nextLocale) => buildTenantPublicPath(nextLocale, subPath),
     };

@@ -103,13 +103,9 @@
     "quality:social-preview-evidence": "node scripts/quality/validate-social-preview-evidence.mjs",
     "quality:shop-custom-domains": "node scripts/quality/validate-shop-custom-domains.mjs",
     "quality:shop-domain-admin": "node scripts/quality/validate-shop-domain-admin.mjs",
-    "env:push:vercel": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ops/push-vercel-env.ps1 -EnvFile .env -Targets production",
-    "env:push:vercel:preview": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ops/push-vercel-env.ps1 -EnvFile .env -Targets preview",
-    "env:push:vercel:all": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ops/push-vercel-env.ps1 -EnvFile .env -Targets production,preview,development",
-    "env:push:vercel:dry-run": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ops/push-vercel-env.ps1 -EnvFile .env -Targets production -DryRun",
-    "quality:vercel-env-push": "node scripts/quality/validate-vercel-env-push.mjs",
     "quality:dashboard-organizations-published": "node scripts/quality/validate-dashboard-organizations-published.mjs",
-    "quality:vercel-domain-automation": "node scripts/quality/validate-vercel-domain-automation.mjs"
+    "quality:vercel-domain-automation": "node scripts/quality/validate-vercel-domain-automation.mjs",
+    "quality:custom-domain-seo": "node scripts/quality/validate-custom-domain-seo-hardening.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
@@ -134,7 +130,6 @@
     "@radix-ui/react-visually-hidden": "^1.2.4",
     "@tailwindcss/postcss": "4.1.18",
     "@types/leaflet": "^1.9.12",
-    "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.4.1",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",

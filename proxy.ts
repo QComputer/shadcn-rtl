@@ -7,7 +7,9 @@ import {
   isCustomDomainBypassPath,
   isPlatformHost,
   normalizeDomainHost,
+  parseShopPlatformPath,
   splitLocalePrefix,
+  isSeoIndexableShopSubPath,
   type ResolvedCustomDomainShop,
 } from "@/lib/custom-domain-routing";
 
@@ -148,6 +150,44 @@ async function resolveShopForCustomDomain(
   return data;
 }
 
+async function resolvePrimaryDomainForShop(
+  request: NextRequest,
+  slug: string,
+): Promise<string | null> {
+  const resolverUrl = new URL("/api/internal/shop-primary-domain", request.url);
+  resolverUrl.searchParams.set("slug", slug);
+
+  const resolverSecret = process.env.CUSTOM_DOMAIN_RESOLVER_SECRET || process.env.INTERNAL_API_SECRET || "";
+
+  const response = await fetch(resolverUrl, {
+    headers: resolverSecret ? { "x-internal-secret": resolverSecret } : undefined,
+    cache: "no-store",
+  });
+
+  if (!response.ok) return null;
+
+  const data = (await response.json().catch(() => null)) as { domain?: string } | null;
+  return data?.domain || null;
+}
+
+function buildTenantRewriteHeaders(
+  request: NextRequest,
+  normalizedHost: string,
+  shop: ResolvedCustomDomainShop,
+  locale: Locale,
+  publicPath: string,
+) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-bazar-custom-domain", "true");
+  requestHeaders.set("x-bazar-tenant-domain", normalizedHost);
+  requestHeaders.set("x-bazar-tenant-slug", shop.slug);
+  requestHeaders.set("x-bazar-tenant-organization-id", shop.organizationId);
+  requestHeaders.set("x-bazar-tenant-public-base-url", getRequestOrigin(request));
+  requestHeaders.set("x-bazar-tenant-public-locale", locale);
+  requestHeaders.set("x-bazar-tenant-public-path", publicPath);
+  return requestHeaders;
+}
+
 function getRequestOrigin(request: NextRequest) {
   const host = request.headers.get("host") || request.nextUrl.host;
   const protocol = request.headers.get("x-forwarded-proto") || request.nextUrl.protocol.replace(":", "") || "https";
@@ -179,6 +219,22 @@ export async function proxy(request: NextRequest) {
       return withSecurityHeaders(NextResponse.rewrite(notConfiguredUrl));
     }
 
+    const localeForTenant = getLocale(request) || shop.locale;
+    if (pathname === "/sitemap.xml" || pathname === "/robots.txt") {
+      const internalUrl = request.nextUrl.clone();
+      internalUrl.pathname = pathname === "/sitemap.xml"
+        ? "/api/public/custom-domain/sitemap"
+        : "/api/public/custom-domain/robots";
+      const requestHeaders = buildTenantRewriteHeaders(
+        request,
+        normalizedHost,
+        shop,
+        localeForTenant,
+        pathname,
+      );
+      return withSecurityHeaders(NextResponse.rewrite(internalUrl, { request: { headers: requestHeaders } }));
+    }
+
     const platformPath = getShopSubPathFromPlatformPath(pathname, shop.slug);
     if (platformPath) {
       const cleanUrl = request.nextUrl.clone();
@@ -195,14 +251,13 @@ export async function proxy(request: NextRequest) {
       publicPathname: pathname,
     });
 
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("x-bazar-custom-domain", "true");
-    requestHeaders.set("x-bazar-tenant-domain", normalizedHost);
-    requestHeaders.set("x-bazar-tenant-slug", shop.slug);
-    requestHeaders.set("x-bazar-tenant-organization-id", shop.organizationId);
-    requestHeaders.set("x-bazar-tenant-public-base-url", getRequestOrigin(request));
-    requestHeaders.set("x-bazar-tenant-public-locale", locale);
-    requestHeaders.set("x-bazar-tenant-public-path", buildTenantPublicPath(locale, splitPath.pathnameWithoutLocale));
+    const requestHeaders = buildTenantRewriteHeaders(
+      request,
+      normalizedHost,
+      shop,
+      locale,
+      buildTenantPublicPath(locale, splitPath.pathnameWithoutLocale),
+    );
 
     const response = NextResponse.rewrite(rewrittenUrl, {
       request: { headers: requestHeaders },
@@ -210,6 +265,23 @@ export async function proxy(request: NextRequest) {
     response.headers.set("x-locale", locale);
     response.headers.set("x-direction", localeConfig[locale].dir);
     return withSecurityHeaders(response);
+  }
+
+  // If a shop has an active primary custom domain, redirect indexable public
+  // storefront URLs from the platform host to the tenant domain. Transactional
+  // paths are intentionally excluded so carts/orders remain on their current
+  // cookie origin and are noindexed by robots.
+  const platformShopPath = parseShopPlatformPath(pathname);
+  if (platformShopPath && isSeoIndexableShopSubPath(platformShopPath.subPath)) {
+    const primaryDomain = await resolvePrimaryDomainForShop(request, platformShopPath.slug);
+
+    if (primaryDomain) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.protocol = "https:";
+      redirectUrl.host = primaryDomain;
+      redirectUrl.pathname = buildTenantPublicPath(platformShopPath.locale, platformShopPath.subPath);
+      return withSecurityHeaders(NextResponse.redirect(redirectUrl, 308));
+    }
   }
 
   // Skip API routes, static files, and Next.js internals
@@ -283,6 +355,8 @@ export async function proxy(request: NextRequest) {
 // Export config for Next.js 16 matcher
 export const config = {
   matcher: [
+    "/robots.txt",
+    "/sitemap.xml",
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
   ],
 };

@@ -27,6 +27,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           slug: true,
           type: true,
           updatedAt: true,
+          domains: {
+            where: { status: "ACTIVE", isPrimary: true },
+            select: { normalizedDomain: true },
+            take: 1,
+          },
           fanpagePosts: {
             where: { isPublished: true, deletedAt: null },
             select: { updatedAt: true },
@@ -41,7 +46,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         where: {
           isActive: true,
           deletedAt: null,
-          organization: { isActive: true, deletedAt: null, type: "SHOP" },
+          organization: {
+            isActive: true,
+            deletedAt: null,
+            type: "SHOP",
+            domains: { none: { status: "ACTIVE", isPrimary: true } },
+          },
           products: { some: { isActive: true, deletedAt: null } },
         },
         select: {
@@ -75,7 +85,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         where: {
           isActive: true,
           deletedAt: null,
-          organization: { isActive: true, deletedAt: null, type: "SHOP" },
+          organization: {
+            isActive: true,
+            deletedAt: null,
+            type: "SHOP",
+            domains: { none: { status: "ACTIVE", isPrimary: true } },
+          },
         },
         select: {
           id: true,
@@ -107,14 +122,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     for (const organization of organizations) {
       if (organization.type === "SHOP") {
-        entries.push(
-          ...localizedEntries((locale) => `/${locale}/shop/${organization.slug}`, organization.updatedAt),
-          ...localizedEntries((locale) => `/${locale}/shop/${organization.slug}/profile`, organization.updatedAt),
-          ...localizedEntries(
-            (locale) => `/${locale}/shop/${organization.slug}/fanpage`,
-            organization.fanpagePosts[0]?.updatedAt || organization.updatedAt,
-          ),
-        );
+        // Shops with active primary custom domains publish their public SEO
+        // surface through the tenant-domain sitemap. Keep them out of the
+        // platform sitemap to avoid platform/custom-domain duplication.
+        if (organization.domains.length === 0) {
+          entries.push(
+            ...localizedEntries((locale) => `/${locale}/shop/${organization.slug}`, organization.updatedAt),
+            ...localizedEntries((locale) => `/${locale}/shop/${organization.slug}/profile`, organization.updatedAt),
+            ...localizedEntries(
+              (locale) => `/${locale}/shop/${organization.slug}/fanpage`,
+              organization.fanpagePosts[0]?.updatedAt || organization.updatedAt,
+            ),
+          );
+        }
       }
 
       if (organization.type === "APPOINTMENT") {

@@ -41,6 +41,7 @@ async function getPublicProduct(slug: string, productId: string) {
           name: true,
           slug: true,
           logo: true,
+          coverImage: true,
         },
       },
       category: {
@@ -68,7 +69,7 @@ export async function generateMetadata({ params }: ProductDetailLayoutProps): Pr
     path,
     title: `${product.name} | ${product.organization.name}`,
     description: product.description || `${product.name} from ${product.organization.name}.`,
-    image: product.image || product.organization.logo,
+    image: product.image || product.organization.coverImage || product.organization.logo,
     keywords: ["Bazar Baz", "product", product.name, product.organization.slug, product.category.name],
     alternatePath: (nextLocale) => `/${nextLocale}/shop/${slug}/product/${productSegment}`,
   });
@@ -92,7 +93,7 @@ export default async function ProductDetailLayout({ children, params }: ProductD
     "@id": `${getCanonicalUrl(path)}#product`,
     name: product.name,
     description: truncateSeoText(product.description, `${product.name} from ${product.organization.name}.`),
-    image: getSeoImageUrl(product.image || product.organization.logo),
+    image: getSeoImageUrl(product.image || product.organization.coverImage || product.organization.logo),
     sku: product.sku || product.id,
     category: product.category.name,
     brand: {

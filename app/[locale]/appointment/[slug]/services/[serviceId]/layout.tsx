@@ -39,6 +39,7 @@ async function getPublicService(slug: string, serviceId: string) {
           name: true,
           slug: true,
           logo: true,
+          coverImage: true,
         },
       },
       category: {
@@ -79,7 +80,7 @@ export async function generateMetadata({ params }: ServiceDetailLayoutProps): Pr
     path,
     title: `${service.name} | ${service.organization.name}`,
     description: service.description || `Book ${service.name} at ${service.organization.name}.`,
-    image: service.image || service.organization.logo,
+    image: service.image || service.organization.coverImage || service.organization.logo,
     keywords: ["Bazar Baz", "service", "appointment", service.name, service.organization.slug, service.category.name],
     alternatePath: (nextLocale) => `/${nextLocale}/appointment/${slug}/services/${serviceSegment}`,
   });
@@ -104,7 +105,7 @@ export default async function ServiceDetailLayout({ children, params }: ServiceD
     "@id": `${getCanonicalUrl(path)}#service`,
     name: service.name,
     description: truncateSeoText(service.description, `Book ${service.name} at ${service.organization.name}.`),
-    image: getSeoImageUrl(service.image || service.organization.logo),
+    image: getSeoImageUrl(service.image || service.organization.coverImage || service.organization.logo),
     serviceType: service.category.name,
     provider: {
       "@type": "LocalBusiness",

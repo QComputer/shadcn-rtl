@@ -49,11 +49,13 @@ import {
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { toPersianDigits } from "@/lib/persian"
 import { useDashboardAccess } from "@/hooks/use-auth"
+import { SlugPreviewActions } from "@/components/dashboard/slug-preview-actions"
 
 interface Category {
   id: string
   name: string
   slug: string | null
+  organizationSlug: string
   description: string | null
   isActive: boolean
   sortOrder: number
@@ -78,6 +80,7 @@ export default function ProductCategoriesPage({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
+  const [currentOrganizationSlug, setCurrentOrganizationSlug] = useState("")
   
   // Search
   const [searchQuery, setSearchQuery] = useState("")
@@ -111,13 +114,19 @@ export default function ProductCategoriesPage({
     if (!hasAccess || accessLoading) return
     
     setLoading(true)
-    fetch("/api/product-categories?pageSize=100")
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch categories")
-        return res.json()
-      })
-      .then(data => {
+    Promise.all([
+      fetch("/api/product-categories?pageSize=100")
+        .then(res => {
+          if (!res.ok) throw new Error("Failed to fetch categories")
+          return res.json()
+        }),
+      fetch("/api/users/me/membership")
+        .then(res => res.ok ? res.json() : null)
+        .catch(() => null),
+    ])
+      .then(([data, membership]) => {
         setCategories(data.data || [])
+        setCurrentOrganizationSlug(data.data?.[0]?.organizationSlug || membership?.membership?.organizationSlug || "")
         setError(null)
       })
       .catch(err => {
@@ -141,6 +150,12 @@ export default function ProductCategoriesPage({
       description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       slug.toLowerCase().includes(searchQuery.toLowerCase())
   })
+
+  const getCategoryPreviewPath = () => {
+    const segment = formData.slug.trim() || editingCategory?.slug || ""
+    const organizationSlug = editingCategory?.organizationSlug || currentOrganizationSlug
+    return segment && organizationSlug ? `/${locale}/shop/${organizationSlug}/category/${segment}` : null
+  }
 
   // Open create dialog
   const openCreateDialog = () => {
@@ -438,6 +453,7 @@ export default function ProductCategoriesPage({
               <p className="text-xs text-muted-foreground">
                 {t("common.slugHelp") || "Leave blank to generate it from the name. Saved slugs are normalized and kept unique."}
               </p>
+              <SlugPreviewActions path={getCategoryPreviewPath()} />
             </div>
             
             <div className="space-y-2">

@@ -47,6 +47,7 @@ import {
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { toPersianDigits } from "@/lib/persian"
 import { useDashboardAccess } from "@/hooks/use-auth"
+import { SlugPreviewActions } from "@/components/dashboard/slug-preview-actions"
 
 interface Category {
   id: string
@@ -54,6 +55,9 @@ interface Category {
   slug: string | null
   description: string | null
   image: string | null
+  organization?: {
+    slug: string
+  }
   isActive: boolean
   sortOrder: number
   _count?: {
@@ -77,6 +81,7 @@ export default function ServiceCategoriesPage({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
+  const [currentOrganizationSlug, setCurrentOrganizationSlug] = useState("")
   
   // Search
   const [searchQuery, setSearchQuery] = useState("")
@@ -111,13 +116,19 @@ export default function ServiceCategoriesPage({
     if (!hasAccess || accessLoading) return
     
     setLoading(true)
-    fetch("/api/service-categories?pageSize=100")
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch categories")
-        return res.json()
-      })
-      .then(data => {
+    Promise.all([
+      fetch("/api/service-categories?pageSize=100")
+        .then(res => {
+          if (!res.ok) throw new Error("Failed to fetch categories")
+          return res.json()
+        }),
+      fetch("/api/users/me/membership")
+        .then(res => res.ok ? res.json() : null)
+        .catch(() => null),
+    ])
+      .then(([data, membership]) => {
         setCategories(data.data || [])
+        setCurrentOrganizationSlug(data.data?.[0]?.organization?.slug || membership?.membership?.organizationSlug || "")
         setError(null)
       })
       .catch(err => {
@@ -141,6 +152,12 @@ export default function ServiceCategoriesPage({
       description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       slug.toLowerCase().includes(searchQuery.toLowerCase())
   })
+
+  const getCategoryPreviewPath = () => {
+    const segment = formData.slug.trim() || editingCategory?.slug || ""
+    const organizationSlug = editingCategory?.organization?.slug || currentOrganizationSlug
+    return segment && organizationSlug ? `/${locale}/appointment/${organizationSlug}/services/category/${segment}` : null
+  }
 
   // Open create dialog
   const openCreateDialog = () => {
@@ -440,6 +457,7 @@ export default function ServiceCategoriesPage({
               <p className="text-xs text-muted-foreground">
                 {t("common.slugHelp") || "Leave blank to generate it from the name. Saved slugs are normalized and kept unique."}
               </p>
+              <SlugPreviewActions path={getCategoryPreviewPath()} />
             </div>
             
             <div className="space-y-2">

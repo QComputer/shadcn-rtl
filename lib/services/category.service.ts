@@ -333,6 +333,13 @@ export class ServiceCategoryService {
         take: pagination.take,
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
         include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
           _count: {
             select: { services: { where: { deletedAt: null } } },
           },

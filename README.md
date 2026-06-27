@@ -67,6 +67,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 52 | Public Product and Service Slug Detail URLs | Source-validated | `pnpm run quality:public-detail-slugs` |
 | 53 | Public SEO Deployed Slug Verification | Source/deployed smoke | `pnpm run quality:deployed-slug-seo` / `pnpm run e2e:deployed:slug-seo` |
 | 54 | Dashboard Slug Editing UI | Source-validated | `pnpm run quality:dashboard-slug-editing` |
+| 55 | Public Slug Preview and Rich Share Polish | Source-validated | `pnpm run quality:public-slug-preview-share` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -98,6 +99,7 @@ pnpm run quality:public-category-slugs-pagination
 pnpm run quality:public-detail-slugs
 pnpm run quality:deployed-slug-seo
 pnpm run quality:dashboard-slug-editing
+pnpm run quality:public-slug-preview-share
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -177,7 +179,11 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P54 - Dashboard Slug Editing UI**.
+Latest completed implementation phase: **P55 - Public Slug Preview and Rich Share Polish**.
+
+P55 adds copy/open controls for dashboard public slug URLs, exposes service-category organization slugs for accurate appointment category previews, adds explicit social image metadata dimensions/alt text, and strengthens image fallbacks for product/service/category share metadata.
+
+Previous dashboard slug phase retained: **P54 - Dashboard Slug Editing UI**.
 
 P54 adds dashboard slug fields for product categories, service categories, products, and services, shows saved category slugs in management lists, sends blank slug fields as auto-generation requests, and adds the focused `quality:dashboard-slug-editing` validator.
 
@@ -241,4 +247,4 @@ Previous dashboard role phase retained: **P38 - dashboard sidebar role-aware nav
 
 Previous dashboard shell/copy phase retained: **P37 - dashboard navigation and localized shell copy cleanup**.
 
-Recommended next phase: **P55 - Public Slug Preview and Rich Share Polish**.
+Recommended next phase: **P56 - Tenant-Specific Open Graph Image Generation**.

@@ -182,7 +182,7 @@ export default async function ShopCategoryPage({ params, searchParams }: ShopCat
         "@type": "Product",
         name: product.name,
         description: truncateSeoText(product.description, `${product.name} from ${category.organization.name}.`),
-        image: getSeoImageUrl(product.image || category.image || category.organization.logo),
+        image: getSeoImageUrl(product.image || category.image || category.organization.coverImage || category.organization.logo),
         offers: {
           "@type": "Offer",
           price: getProductPrice(product),

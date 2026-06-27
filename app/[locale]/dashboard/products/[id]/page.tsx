@@ -43,6 +43,7 @@ import { formatToman, toPersianDigits } from "@/lib/persian"
 import { useDashboardAccess } from "@/hooks/use-auth"
 import { useSession } from "next-auth/react"
 import { isRTL } from "@/lib/i18n"
+import { SlugPreviewActions } from "@/components/dashboard/slug-preview-actions"
 
 
 interface ProductVariant {
@@ -58,6 +59,7 @@ interface ProductVariant {
 interface ProductCategory {
   id: string
   name: string
+  organizationSlug?: string
 }
 
 interface Product {
@@ -76,6 +78,7 @@ interface Product {
   variants: ProductVariant[]
   createdAt: string
   sortOrder: number
+  organizationSlug: string
 }
 interface ImageRecord {
   id: number;
@@ -253,6 +256,11 @@ export default function EditProductPage({
     if (!dict) return key
     return getDictValue(dict, key)
   }
+
+  const productSlugSegment = slug.trim() || product?.slug || ""
+  const productPreviewPath = product?.organizationSlug && productSlugSegment
+    ? `/${locale}/shop/${product.organizationSlug}/product/${productSlugSegment}`
+    : null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -572,6 +580,7 @@ export default function EditProductPage({
               <p className="text-xs text-muted-foreground">
                 {t("common.slugHelp") || "Leave blank to generate it from the name. Saved slugs are normalized and kept unique."}
               </p>
+              <SlugPreviewActions path={productPreviewPath} />
             </div>
             
             {/* Description */}

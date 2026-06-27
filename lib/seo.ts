@@ -142,7 +142,7 @@ export function buildPublicMetadata(input: PublicSeoInput): Metadata {
       description,
       url: alternates.canonical,
       siteName: DEFAULT_TITLE,
-      images: [{ url: image }],
+      images: [{ url: image, width: 1200, height: 630, alt: input.title || DEFAULT_TITLE }],
       locale: localeConfig[locale].languageCode.replace("-", "_"),
       alternateLocale: supportedLocales
         .filter((nextLocale) => nextLocale !== locale)
@@ -153,7 +153,7 @@ export function buildPublicMetadata(input: PublicSeoInput): Metadata {
       card: "summary_large_image",
       title: input.title || DEFAULT_TITLE,
       description,
-      images: [image],
+      images: [{ url: image, width: 1200, height: 630, alt: input.title || DEFAULT_TITLE }],
     },
   };
 }

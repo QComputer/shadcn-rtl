@@ -22,10 +22,14 @@ import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatToman } from "@/lib/persian"
 import { useDashboardAccess } from "@/hooks/use-auth"
 import { useSession } from "next-auth/react"
+import { SlugPreviewActions } from "@/components/dashboard/slug-preview-actions"
 
 interface Category {
   id: string
   name: string
+  organization?: {
+    slug: string
+  }
 }
 
 interface StaffMember {
@@ -110,6 +114,11 @@ export default function NewServicePage({
     if (!dict) return key
     return getDictValue(dict, key)
   }
+
+  const selectedCategory = categories.find(category => category.id === categoryId)
+  const servicePreviewPath = slug.trim() && selectedCategory?.organization?.slug
+    ? `/${locale}/appointment/${selectedCategory.organization.slug}/services/${slug.trim()}`
+    : null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -232,6 +241,7 @@ export default function NewServicePage({
               <p className="text-xs text-muted-foreground">
                 {t("common.slugHelp") || "Leave blank to generate it from the name. Saved slugs are normalized and kept unique."}
               </p>
+              <SlugPreviewActions path={servicePreviewPath} />
             </div>
             
             {/* Description */}

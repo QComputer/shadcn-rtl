@@ -93,7 +93,8 @@
     "quality:public-category-slugs-pagination": "node scripts/quality/validate-public-category-slugs-pagination.mjs",
     "quality:public-detail-slugs": "node scripts/quality/validate-public-detail-slugs.mjs",
     "quality:deployed-slug-seo": "node scripts/quality/validate-deployed-slug-seo.mjs",
-    "quality:dashboard-slug-editing": "node scripts/quality/validate-dashboard-slug-editing.mjs"
+    "quality:dashboard-slug-editing": "node scripts/quality/validate-dashboard-slug-editing.mjs",
+    "quality:public-slug-preview-share": "node scripts/quality/validate-public-slug-preview-share.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

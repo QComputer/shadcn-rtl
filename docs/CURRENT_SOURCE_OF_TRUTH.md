@@ -4,7 +4,7 @@ Date: 2026-06-27
 
 ## Current validated baseline
 
-The current working baseline after P54 overlays is source-validator green.
+The current working baseline after P55 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -33,6 +33,7 @@ pnpm run quality:public-category-slugs-pagination
 pnpm run quality:public-detail-slugs
 pnpm run quality:deployed-slug-seo
 pnpm run quality:dashboard-slug-editing
+pnpm run quality:public-slug-preview-share
 ```
 
 Clean handoff gate introduced in P33:
@@ -72,6 +73,7 @@ pnpm run db:migrate:neon:dry-run
 - Public detail slug support exists through product/service `slug` columns, `lib/detail-slugs.ts`, slug-first product/service links/search/sitemap entries, ID-to-slug public detail redirects, and the `quality:public-detail-slugs` validator.
 - Deployed slug SEO verification exists through `scripts/e2e/deployed-slug-seo.mjs`, `e2e:deployed:slug-seo`, and `quality:deployed-slug-seo`; it checks deployed robots/sitemap, sampled slug canonical links, JSON-LD, `og:image`, slug API resolution, and product/service ID-to-slug redirects.
 - Dashboard slug editing exists for product categories, service categories, products, and services, with ID-based mutation routes preserved and `quality:dashboard-slug-editing` enforcing the UI controls.
+- Public slug preview/share polish exists through dashboard slug copy/open controls, deployment-origin URL previews, explicit social image dimensions/alt text, and stronger product/service/category image fallbacks, with `quality:public-slug-preview-share`.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -115,6 +117,7 @@ pnpm run db:migrate:neon:dry-run
 | P52 | Public Product and Service Slug Detail URLs with slug-first detail links, ID compatibility redirects, search/sitemap updates, and validator. |
 | P53 | Public SEO Deployed Slug Verification with sitemap-driven slug page, metadata, and redirect smoke checks. |
 | P54 | Dashboard Slug Editing UI for category/product/service public slug controls with validator. |
+| P55 | Public Slug Preview and Rich Share Polish with dashboard copy/open URL actions and image-rich metadata fallbacks. |
 
 ## Current route/API inventory
 
@@ -208,6 +211,7 @@ Deferred:
 - P52 keeps ID product/service detail URLs backward-compatible, but sitemap, search, cards, and JSON-LD prefer detail slugs.
 - P53 deployed slug SEO smoke is data-dependent. Use `DEPLOYED_SLUG_SEO_ALLOW_EMPTY=1` only for intentionally empty deployments; production verification should require slug-like sitemap entries.
 - P54 keeps dashboard mutation URLs ID-based even when public slugs are manually edited.
+- P55 preview links depend on a known organization slug; fields without a resolvable public organization path keep preview actions disabled.
 
 ## Clean release rules
 
@@ -244,12 +248,12 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P55 - Public Slug Preview and Rich Share Polish
+P56 - Tenant-Specific Open Graph Image Generation
 ```
 
 Scope:
 
-1. Add public URL preview/copy actions for dashboard slug fields.
-2. Add richer detail/category share previews where stable product/service/category images exist.
-3. Keep generated fallback OG images for image-missing records.
-4. Validate with typecheck, build, `quality:local`, P42-P54 validators, dashboard navigation validators, and staged release checks.
+1. Generate branded fallback OG images for organization, category, product, and service pages when no uploaded image exists.
+2. Preserve uploaded image precedence for real product/service/category/share previews.
+3. Keep public metadata deterministic and cache-safe across FA/EN/AR routes.
+4. Validate with typecheck, build, `quality:local`, P42-P55 validators, dashboard navigation validators, and staged release checks.

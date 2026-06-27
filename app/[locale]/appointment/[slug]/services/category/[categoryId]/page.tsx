@@ -172,7 +172,7 @@ export default async function ServiceCategoryPage({ params, searchParams }: Serv
         "@type": "Service",
         name: service.name,
         description: truncateSeoText(service.description, `Book ${service.name} at ${category.organization.name}.`),
-        image: getSeoImageUrl(service.image || category.image || category.organization.logo),
+        image: getSeoImageUrl(service.image || category.image || category.organization.coverImage || category.organization.logo),
         serviceType: category.name,
         offers: {
           "@type": "Offer",

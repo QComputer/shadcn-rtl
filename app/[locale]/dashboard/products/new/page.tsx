@@ -33,6 +33,7 @@ import { useDashboardAccess } from "@/hooks/use-auth"
 import { useSession } from "next-auth/react"
 import { isRTL } from "@/lib/i18n"
 import { FieldLabel } from "@/components/ui/field"
+import { SlugPreviewActions } from "@/components/dashboard/slug-preview-actions"
 
 interface ProductVariant {
   id?: string
@@ -46,6 +47,7 @@ interface ProductVariant {
 interface ProductCategory {
   id: string
   name: string
+  organizationSlug: string
 }
 
 interface Product {
@@ -182,6 +184,11 @@ export default function NewProductPage({
     if (!dict) return key
     return getDictValue(dict, key)
   }
+
+  const selectedCategory = categories.find(category => category.id === categoryId)
+  const productPreviewPath = slug.trim() && selectedCategory?.organizationSlug
+    ? `/${locale}/shop/${selectedCategory.organizationSlug}/product/${slug.trim()}`
+    : null
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -425,6 +432,7 @@ export default function NewProductPage({
                 <p className="text-xs text-muted-foreground">
                   {t("common.slugHelp") || "Leave blank to generate it from the name. Saved slugs are normalized and kept unique."}
                 </p>
+                <SlugPreviewActions path={productPreviewPath} />
               </div>
 
               <div className="space-y-2">

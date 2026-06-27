@@ -64,6 +64,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 49 | Public SEO QA and Rich Preview Hardening | Source-validated | `pnpm run quality:public-seo-qa` |
 | 50 | Public Category Metadata and Listing SEO Polish | Source-validated | `pnpm run quality:public-category-seo` |
 | 51 | Category Slugs and Public Listing Pagination | Source-validated | `pnpm run quality:public-category-slugs-pagination` |
+| 52 | Public Product and Service Slug Detail URLs | Source-validated | `pnpm run quality:public-detail-slugs` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -92,6 +93,7 @@ pnpm run quality:public-seo
 pnpm run quality:public-seo-qa
 pnpm run quality:public-category-seo
 pnpm run quality:public-category-slugs-pagination
+pnpm run quality:public-detail-slugs
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -160,7 +162,11 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P51 - Category Slugs and Public Listing Pagination**.
+Latest completed implementation phase: **P52 - Public Product and Service Slug Detail URLs**.
+
+P52 adds stable product/service slug storage and backfill, unique detail slug generation in product/service services, slug-or-ID public detail API resolution, ID-to-slug detail redirects, slug-first public product/service cards, search results, JSON-LD, sitemap entries, and the focused `quality:public-detail-slugs` validator.
+
+Previous category slug phase retained: **P51 - Category Slugs and Public Listing Pagination**.
 
 P51 adds stable category slug storage/backfill, unique slug generation in category services, slug-first public category links and sitemap entries, ID-route compatibility via slug redirects, paginated category landing pages, page-aware canonical alternates, `rel="prev"` / `rel="next"` navigation links, and the focused `quality:public-category-slugs-pagination` validator.
 
@@ -212,4 +218,4 @@ Previous dashboard role phase retained: **P38 - dashboard sidebar role-aware nav
 
 Previous dashboard shell/copy phase retained: **P37 - dashboard navigation and localized shell copy cleanup**.
 
-Recommended next phase: **P52 - Public Product and Service Slug Detail URLs**.
+Recommended next phase: **P53 - Public SEO Deployed Slug Verification**.

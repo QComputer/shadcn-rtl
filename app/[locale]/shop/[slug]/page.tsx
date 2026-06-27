@@ -54,6 +54,7 @@ interface ProductVariant {
 
 interface Product {
   id: string
+  slug: string | null
   name: string
   description: string | null
   basePrice: number
@@ -542,7 +543,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
                     <Card key={locale+product.id} className="hover:shadow-md transition-shadow overflow-hidden h-full">
                       <CardTitle>
                       <div className="aspect-square bg-muted relative -mt-4 -mb-4">
-                      <Link   href={`/${locale}/shop/${slug}/product/${product.id}`}>
+                      <Link   href={`/${locale}/shop/${slug}/product/${product.slug || product.id}`}>
                       <PublicImage
                         src={product.image}
                         alt={product.name}
@@ -634,7 +635,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
                       
                         <div className="flex gap-4">
                                <div className="w-24 h-24 bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                          <Link   href={`/${locale}/shop/${slug}/product/${product.id}`}>                        
+                          <Link href={`/${locale}/shop/${slug}/product/${product.slug || product.id}`}>
                               <PublicImage
                                 src={product.image}
                                 alt={product.name}

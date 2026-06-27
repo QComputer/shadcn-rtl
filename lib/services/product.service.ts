@@ -8,14 +8,18 @@ import type {
 } from "@/lib/validators";
 import { hasPermission, type UserRole } from "@/lib/types";
 import { ApiError } from "@/lib/api-guards";
+import { buildUniqueDetailSlug, normalizeDetailSlug } from "@/lib/detail-slugs";
 import { normalizePagination } from "@/lib/pagination";
 import { InventoryMovementReason } from "@prisma/client";
 import { supportedLocales } from "@/lib/i18n";
 
-function revalidateShopProductPages(productId: string, organizationSlug: string) {
+function revalidateShopProductPages(productId: string, organizationSlug: string, segments: Array<string | null | undefined> = []) {
+  const uniqueSegments = Array.from(new Set([productId, ...segments].filter(Boolean)));
   for (const locale of supportedLocales) {
     revalidatePath(`/${locale}/shop/${organizationSlug}`);
-    revalidatePath(`/${locale}/shop/${organizationSlug}/product/${productId}`);
+    for (const segment of uniqueSegments) {
+      revalidatePath(`/${locale}/shop/${organizationSlug}/product/${segment}`);
+    }
   }
   revalidateTag("home-page", "max");
 }
@@ -33,6 +37,22 @@ type ProductListParams = {
 };
 
 export class ProductService {
+  private async buildUniqueSlug(organizationId: string, source: string, excludeId?: string) {
+    return buildUniqueDetailSlug(source, async (candidate) => {
+      const existing = await prisma.product.findFirst({
+        where: {
+          organizationId,
+          deletedAt: null,
+          slug: candidate,
+          ...(excludeId ? { id: { not: excludeId } } : {}),
+        },
+        select: { id: true },
+      });
+
+      return Boolean(existing);
+    });
+  }
+
   private async requireShopOrganization(organizationId: string) {
     const organization = await prisma.organization.findFirst({
       where: {
@@ -120,6 +140,7 @@ export class ProductService {
     const product = await prisma.product.create({
       data: {
         ...data,
+        slug: await this.buildUniqueSlug(organizationId, data.slug || data.name),
         organizationId,
         organizationSlug: organization.slug,
       },
@@ -141,6 +162,7 @@ export class ProductService {
 
     const created = await this.getById(product.id);
     revalidatePath(`/dashboard/products`);
+    revalidateShopProductPages(product.id, organization.slug, [product.slug]);
     return created;
   }
 
@@ -150,6 +172,7 @@ export class ProductService {
       select: {
         id: true,
         name: true,
+        slug: true,
         description: true,
         basePrice: true,
         image: true,
@@ -184,7 +207,7 @@ export class ProductService {
 
     return prisma.product.findFirst({
       where: {
-        id: slug,
+        OR: [{ id: slug }, { slug }],
         organizationId: organization.id,
         isActive: true,
         deletedAt: null,
@@ -267,7 +290,7 @@ export class ProductService {
 
     const existing = await prisma.product.findFirst({
       where: { id, deletedAt: null },
-      select: { id: true, organizationId: true, organizationSlug: true },
+      select: { id: true, name: true, slug: true, organizationId: true, organizationSlug: true },
     });
     if (!existing) throw new ApiError(404, "Product not found");
 
@@ -275,10 +298,19 @@ export class ProductService {
       await this.requireProductCategory(data.categoryId, existing.organizationId);
     }
 
+    const nextData = {
+      ...data,
+      ...(data.slug
+        ? { slug: await this.buildUniqueSlug(existing.organizationId, normalizeDetailSlug(data.slug, "product"), id) }
+        : !existing.slug
+          ? { slug: await this.buildUniqueSlug(existing.organizationId, data.name || existing.name, id) }
+          : {}),
+    };
+
     const product = await prisma.product.update({
       where: { id },
       data: {
-        ...data,
+        ...nextData,
         ...(data.discountType === "none" ? { discountValue: 0 } : {}),
       },
       include: {
@@ -288,7 +320,7 @@ export class ProductService {
     });
 
     revalidatePath(`/dashboard/products`);
-    revalidateShopProductPages(product.id, product.organizationSlug);
+    revalidateShopProductPages(product.id, product.organizationSlug, [existing.slug, product.slug]);
     return product;
   }
 
@@ -308,6 +340,7 @@ export class ProductService {
     });
 
     revalidatePath(`/dashboard/products`);
+    revalidateShopProductPages(product.id, product.organizationSlug, [product.slug]);
     return product;
   }
 

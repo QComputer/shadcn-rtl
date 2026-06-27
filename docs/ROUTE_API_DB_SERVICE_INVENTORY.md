@@ -2,7 +2,7 @@
 
 _Last synchronized from the source tree: 2026-06-26._
 
-This inventory is a planning aid for future phases. It reflects the current filesystem after Customer Club, campaign, loyalty/coupon, Web Push, public SEO, and category slug/pagination phases.
+This inventory is a planning aid for future phases. It reflects the current filesystem after Customer Club, campaign, loyalty/coupon, Web Push, public SEO, category slug/pagination, and public detail slug phases.
 
 ## 1. Localized page routes
 
@@ -16,7 +16,7 @@ All localized pages are under `app/[locale]`; supported locales are `fa`, `en`, 
 | /{locale}/appointment/{slug}/my-appointments |
 | /{locale}/appointment/{slug} |
 | /{locale}/appointment/{slug}/services/category/{categoryIdOrSlug} |
-| /{locale}/appointment/{slug}/services/{serviceId} |
+| /{locale}/appointment/{slug}/services/{serviceIdOrSlug} |
 | /{locale}/appointment/{slug}/services |
 | /{locale}/appointment/{slug}/staff |
 | /{locale}/dashboard/appointments/{id}/edit |
@@ -59,7 +59,7 @@ All localized pages are under `app/[locale]`; supported locales are `fa`, `en`, 
 | /{locale}/shop/{slug}/fanpage |
 | /{locale}/shop/{slug}/order/{orderNumber} |
 | /{locale}/shop/{slug} |
-| /{locale}/shop/{slug}/product/{productId} |
+| /{locale}/shop/{slug}/product/{productIdOrSlug} |
 | /{locale}/shop/{slug}/profile |
 
 ## 2. Route layouts
@@ -70,13 +70,13 @@ All localized pages are under `app/[locale]`; supported locales are `fa`, `en`, 
 | `app/[locale]/appointment/[slug]/appointment/[id]/layout.tsx` | `/{locale}/appointment/{slug}/appointment/{id}` |
 | `app/[locale]/appointment/[slug]/booking/layout.tsx` | `/{locale}/appointment/{slug}/booking` |
 | `app/[locale]/appointment/[slug]/my-appointments/layout.tsx` | `/{locale}/appointment/{slug}/my-appointments` |
-| `app/[locale]/appointment/[slug]/services/[serviceId]/layout.tsx` | `/{locale}/appointment/{slug}/services/{serviceId}` |
+| `app/[locale]/appointment/[slug]/services/[serviceId]/layout.tsx` | `/{locale}/appointment/{slug}/services/{serviceIdOrSlug}` |
 | `app/[locale]/dashboard/layout.tsx` | `/{locale}/dashboard` |
 | `app/[locale]/layout.tsx` | `/{locale}` |
 | `app/[locale]/shop/[slug]/checkout/layout.tsx` | `/{locale}/shop/{slug}/checkout` |
 | `app/[locale]/shop/[slug]/layout.tsx` | `/{locale}/shop/{slug}` |
 | `app/[locale]/shop/[slug]/order/[orderNumber]/layout.tsx` | `/{locale}/shop/{slug}/order/{orderNumber}` |
-| `app/[locale]/shop/[slug]/product/[productId]/layout.tsx` | `/{locale}/shop/{slug}/product/{productId}` |
+| `app/[locale]/shop/[slug]/product/[productId]/layout.tsx` | `/{locale}/shop/{slug}/product/{productIdOrSlug}` |
 
 ## 3. API routes
 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import prisma from "@/lib/db";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildBreadcrumbJsonLd, buildPublicMetadata, getCanonicalUrl, getSeoImageUrl, truncateSeoText } from "@/lib/seo";
@@ -15,7 +16,7 @@ type ServiceDetailLayoutProps = {
 async function getPublicService(slug: string, serviceId: string) {
   return prisma.service.findFirst({
     where: {
-      id: serviceId,
+      OR: [{ id: serviceId }, { slug: serviceId }],
       isActive: true,
       deletedAt: null,
       organization: {
@@ -28,6 +29,7 @@ async function getPublicService(slug: string, serviceId: string) {
     select: {
       id: true,
       name: true,
+      slug: true,
       description: true,
       price: true,
       duration: true,
@@ -69,7 +71,8 @@ export async function generateMetadata({ params }: ServiceDetailLayoutProps): Pr
     return { title: "Service Not Found" };
   }
 
-  const path = `/${locale}/appointment/${slug}/services/${service.id}`;
+  const serviceSegment = service.slug || service.id;
+  const path = `/${locale}/appointment/${slug}/services/${serviceSegment}`;
 
   return buildPublicMetadata({
     locale,
@@ -78,7 +81,7 @@ export async function generateMetadata({ params }: ServiceDetailLayoutProps): Pr
     description: service.description || `Book ${service.name} at ${service.organization.name}.`,
     image: service.image || service.organization.logo,
     keywords: ["Bazar Baz", "service", "appointment", service.name, service.organization.slug, service.category.name],
-    alternatePath: (nextLocale) => `/${nextLocale}/appointment/${slug}/services/${service.id}`,
+    alternatePath: (nextLocale) => `/${nextLocale}/appointment/${slug}/services/${serviceSegment}`,
   });
 }
 
@@ -88,7 +91,12 @@ export default async function ServiceDetailLayout({ children, params }: ServiceD
 
   if (!service) return children;
 
-  const path = `/${locale}/appointment/${slug}/services/${service.id}`;
+  const serviceSegment = service.slug || service.id;
+  if (service.slug && serviceId !== service.slug) {
+    redirect(`/${locale}/appointment/${slug}/services/${service.slug}`);
+  }
+
+  const path = `/${locale}/appointment/${slug}/services/${serviceSegment}`;
   const providerName = getProviderName(service);
   const serviceJsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",

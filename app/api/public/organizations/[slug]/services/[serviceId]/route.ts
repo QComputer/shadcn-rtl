@@ -21,7 +21,7 @@ export async function GET(
     // Get service with full details
     const service = await prisma.service.findFirst({
       where: {
-        id: serviceId,
+        OR: [{ id: serviceId }, { slug: serviceId }],
         organizationId: organization.id,
         isActive: true,
         deletedAt: null,

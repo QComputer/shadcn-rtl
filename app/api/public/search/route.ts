@@ -77,8 +77,8 @@ export async function GET(request: NextRequest) {
         },
         select: {
           id: true,
-          name: true,
           slug: true,
+          name: true,
           type: true,
           description: true,
           address: true,
@@ -109,6 +109,7 @@ export async function GET(request: NextRequest) {
         },
         select: {
           id: true,
+          slug: true,
           name: true,
           description: true,
           image: true,
@@ -143,6 +144,7 @@ export async function GET(request: NextRequest) {
         },
         select: {
           id: true,
+          slug: true,
           name: true,
           description: true,
           image: true,
@@ -178,7 +180,7 @@ href:
       type: "PRODUCT",
       title: product.name,
       subtitle: product.description,
-      href: `/${locale}/shop/${product.organization.slug}/product/${product.id}`,
+      href: `/${locale}/shop/${product.organization.slug}/product/${product.slug || product.id}`,
       image: product.image,
       organizationName: product.organization.name,
       price: decimalToNumber(product.basePrice),
@@ -189,7 +191,7 @@ href:
       type: "SERVICE",
       title: service.name,
       subtitle: service.description,
-      href: `/${locale}/appointment/${service.organization.slug}/services/${service.id}`,
+      href: `/${locale}/appointment/${service.organization.slug}/services/${service.slug || service.id}`,
       image: service.image,
       organizationName: service.organization.name,
       price: decimalToNumber(service.price),

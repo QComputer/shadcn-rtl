@@ -67,8 +67,8 @@ for (const needle of [
   "/appointment/${organization.slug}",
   "/appointment/${organization.slug}/services",
   "/appointment/${organization.slug}/fanpage",
-  "/shop/${product.organizationSlug}/product/${product.id}",
-  "/appointment/${service.organization.slug}/services/${service.id}",
+  "/shop/${product.organizationSlug}/product/${product.slug || product.id}",
+  "/appointment/${service.organization.slug}/services/${service.slug || service.id}",
 ]) {
   expectIncludes("app/sitemap.ts", needle, `sitemap includes ${needle}`);
 }

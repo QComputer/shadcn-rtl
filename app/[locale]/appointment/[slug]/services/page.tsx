@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils"
 
 interface Service {
   id: string
+  slug: string | null
   name: string
   description: string | null
   price: number
@@ -228,16 +229,22 @@ export default function ServicesPage({
               <Card key={locale+service.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                 {service.image && (
                   <div className="h-48 overflow-hidden">
-                    <img 
-                      src={service.image} 
-                      alt={service.name}
-                      className="w-full h-full object-cover"
-                    />
+                    <Link href={`/${locale}/appointment/${slug}/services/${service.slug || service.id}`}>
+                      <img
+                        src={service.image}
+                        alt={service.name}
+                        className="h-full w-full object-cover transition-transform hover:scale-[1.02]"
+                      />
+                    </Link>
                   </div>
                 )}
                 <CardHeader>
                   <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-lg">{service.name}</CardTitle>
+                    <CardTitle className="text-lg">
+                      <Link href={`/${locale}/appointment/${slug}/services/${service.slug || service.id}`} className="hover:text-primary">
+                        {service.name}
+                      </Link>
+                    </CardTitle>
                     <Badge variant="secondary">{service.category.name}</Badge>
                   </div>
                 </CardHeader>

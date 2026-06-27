@@ -79,6 +79,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         },
         select: {
           id: true,
+          slug: true,
           organizationSlug: true,
           updatedAt: true,
         },
@@ -93,6 +94,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         },
         select: {
           id: true,
+          slug: true,
           updatedAt: true,
           organization: {
             select: { slug: true },
@@ -148,7 +150,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const product of products) {
       entries.push(
         ...localizedEntries(
-          (locale) => `/${locale}/shop/${product.organizationSlug}/product/${product.id}`,
+          (locale) => `/${locale}/shop/${product.organizationSlug}/product/${product.slug || product.id}`,
           product.updatedAt,
         ),
       );
@@ -157,7 +159,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const service of services) {
       entries.push(
         ...localizedEntries(
-          (locale) => `/${locale}/appointment/${service.organization.slug}/services/${service.id}`,
+          (locale) => `/${locale}/appointment/${service.organization.slug}/services/${service.slug || service.id}`,
           service.updatedAt,
         ),
       );

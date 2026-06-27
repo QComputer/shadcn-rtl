@@ -20,6 +20,7 @@ export async function GET(
         products: {
           select: {
             id: true,
+            slug: true,
             name: true,
             basePrice: true,
             description: true,

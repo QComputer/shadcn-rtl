@@ -107,6 +107,7 @@ export const updateServiceCategorySchema = createServiceCategorySchema.partial()
 // Service validators
 export const createServiceSchema = z.object({
   name: z.string().min(2).max(200),
+  slug: z.string().min(2).max(100).optional(),
   description: z.string().max(5000).optional(),
   price: z.number().positive(),
   duration: z.number().int().positive().max(1440),
@@ -159,6 +160,7 @@ const image = z.object({
 // Product validators
 export const createProductSchema = z.object({
   name: z.string().min(2).max(200),
+  slug: z.string().min(2).max(100).optional(),
   description: z.string().max(5000).optional(),
   basePrice: z.number().nonnegative(),
   image: z.string().max(500).nullable().optional(),

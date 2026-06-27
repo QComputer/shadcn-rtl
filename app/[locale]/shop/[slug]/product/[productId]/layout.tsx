@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import prisma from "@/lib/db";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildBreadcrumbJsonLd, buildPublicMetadata, getCanonicalUrl, getSeoImageUrl, truncateSeoText } from "@/lib/seo";
@@ -15,7 +16,7 @@ type ProductDetailLayoutProps = {
 async function getPublicProduct(slug: string, productId: string) {
   return prisma.product.findFirst({
     where: {
-      id: productId,
+      OR: [{ id: productId }, { slug: productId }],
       organizationSlug: slug,
       isActive: true,
       deletedAt: null,
@@ -29,6 +30,7 @@ async function getPublicProduct(slug: string, productId: string) {
     select: {
       id: true,
       name: true,
+      slug: true,
       description: true,
       basePrice: true,
       image: true,
@@ -58,7 +60,8 @@ export async function generateMetadata({ params }: ProductDetailLayoutProps): Pr
     return { title: "Product Not Found" };
   }
 
-  const path = `/${locale}/shop/${slug}/product/${product.id}`;
+  const productSegment = product.slug || product.id;
+  const path = `/${locale}/shop/${slug}/product/${productSegment}`;
 
   return buildPublicMetadata({
     locale,
@@ -67,7 +70,7 @@ export async function generateMetadata({ params }: ProductDetailLayoutProps): Pr
     description: product.description || `${product.name} from ${product.organization.name}.`,
     image: product.image || product.organization.logo,
     keywords: ["Bazar Baz", "product", product.name, product.organization.slug, product.category.name],
-    alternatePath: (nextLocale) => `/${nextLocale}/shop/${slug}/product/${product.id}`,
+    alternatePath: (nextLocale) => `/${nextLocale}/shop/${slug}/product/${productSegment}`,
   });
 }
 
@@ -77,7 +80,12 @@ export default async function ProductDetailLayout({ children, params }: ProductD
 
   if (!product) return children;
 
-  const path = `/${locale}/shop/${slug}/product/${product.id}`;
+  const productSegment = product.slug || product.id;
+  if (product.slug && productId !== product.slug) {
+    redirect(`/${locale}/shop/${slug}/product/${product.slug}`);
+  }
+
+  const path = `/${locale}/shop/${slug}/product/${productSegment}`;
   const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",

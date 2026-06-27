@@ -88,6 +88,7 @@ async function getServiceCategory(slug: string, categoryId: string, pagination: 
         where: visibleServiceWhere,
         select: {
           id: true,
+          slug: true,
           name: true,
           description: true,
           image: true,
@@ -166,7 +167,7 @@ export default async function ServiceCategoryPage({ params, searchParams }: Serv
     itemListElement: category.services.map((service, index) => ({
       "@type": "ListItem",
       position: pagination.skip + index + 1,
-      url: getCanonicalUrl(`/${locale}/appointment/${slug}/services/${service.id}`),
+      url: getCanonicalUrl(`/${locale}/appointment/${slug}/services/${service.slug || service.id}`),
       item: {
         "@type": "Service",
         name: service.name,
@@ -177,7 +178,7 @@ export default async function ServiceCategoryPage({ params, searchParams }: Serv
           "@type": "Offer",
           price: Number(service.price),
           priceCurrency: "IRR",
-          url: getCanonicalUrl(`/${locale}/appointment/${slug}/services/${service.id}`),
+          url: getCanonicalUrl(`/${locale}/appointment/${slug}/services/${service.slug || service.id}`),
         },
       },
     })),
@@ -238,7 +239,11 @@ export default async function ServiceCategoryPage({ params, searchParams }: Serv
                 <Card key={service.id} className="h-full overflow-hidden transition-shadow hover:shadow-md">
                   {service.image && <img src={service.image} alt={service.name} className="h-44 w-full object-cover" />}
                   <CardHeader>
-                    <CardTitle className="line-clamp-2 text-lg">{service.name}</CardTitle>
+                    <CardTitle className="line-clamp-2 text-lg">
+                      <Link href={`/${locale}/appointment/${slug}/services/${service.slug || service.id}`} className="hover:text-primary">
+                        {service.name}
+                      </Link>
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     {service.description && <p className="mb-4 line-clamp-2 text-sm text-muted-foreground">{service.description}</p>}

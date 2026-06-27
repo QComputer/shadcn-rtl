@@ -88,7 +88,8 @@
     "quality:public-seo": "node scripts/quality/validate-public-seo.mjs",
     "quality:public-seo-qa": "node scripts/quality/validate-public-seo-qa.mjs",
     "quality:public-category-seo": "node scripts/quality/validate-public-category-seo.mjs",
-    "quality:public-category-slugs-pagination": "node scripts/quality/validate-public-category-slugs-pagination.mjs"
+    "quality:public-category-slugs-pagination": "node scripts/quality/validate-public-category-slugs-pagination.mjs",
+    "quality:public-detail-slugs": "node scripts/quality/validate-public-detail-slugs.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

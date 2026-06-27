@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { 
   createServiceSchema, 
   updateServiceSchema 
@@ -10,9 +10,41 @@ import type {
 } from "@/lib/validators";
 import { hasPermission, type UserRole } from "@/lib/types";
 import { ApiError } from "@/lib/api-guards";
+import { buildUniqueDetailSlug, normalizeDetailSlug } from "@/lib/detail-slugs";
 import { normalizePagination } from "@/lib/pagination";
+import { supportedLocales } from "@/lib/i18n";
+
+function revalidateAppointmentServicePages(serviceId: string, organizationSlug: string, segments: Array<string | null | undefined> = []) {
+  const uniqueSegments = Array.from(new Set([serviceId, ...segments].filter(Boolean)));
+
+  for (const locale of supportedLocales) {
+    revalidatePath(`/${locale}/appointment/${organizationSlug}`);
+    revalidatePath(`/${locale}/appointment/${organizationSlug}/services`);
+    for (const segment of uniqueSegments) {
+      revalidatePath(`/${locale}/appointment/${organizationSlug}/services/${segment}`);
+    }
+  }
+
+  revalidateTag("home-page", "max");
+}
 
 export class ServiceService {
+  private async buildUniqueSlug(organizationId: string, source: string, excludeId?: string) {
+    return buildUniqueDetailSlug(source, async (candidate) => {
+      const existing = await prisma.service.findFirst({
+        where: {
+          organizationId,
+          deletedAt: null,
+          slug: candidate,
+          ...(excludeId ? { id: { not: excludeId } } : {}),
+        },
+        select: { id: true },
+      });
+
+      return Boolean(existing);
+    });
+  }
+
   /**
    * Create a new service
    */
@@ -47,13 +79,14 @@ export class ServiceService {
 
     const organization = await prisma.organization.findFirst({
       where: { id: organizationId, deletedAt: null, isActive: true, type: "APPOINTMENT" },
-      select: { id: true },
+      select: { id: true, slug: true },
     });
     if (!organization) throw new ApiError(404, "Appointment organization not found");
 
     const service = await prisma.service.create({
       data: {
         name: data.name,
+        slug: await this.buildUniqueSlug(organizationId, data.slug || data.name),
         description: data.description,
         price: data.price,
         duration: data.duration,
@@ -84,6 +117,7 @@ export class ServiceService {
     });
 
     revalidatePath(`/dashboard/services`);
+    revalidateAppointmentServicePages(service.id, organization.slug, [service.slug]);
     return service;
   }
 
@@ -98,6 +132,7 @@ export class ServiceService {
           select: {
             id: true,
             name: true,
+            slug: true,
             description: true,
           },
         },
@@ -329,29 +364,33 @@ export class ServiceService {
    * Update a service
    */
   async update(id: string, data: Partial<UpdateServiceInput>, userId?: string, userRole?: UserRole) {
-    // If user info provided, check permissions
     if (userId && userRole) {
       if (!hasPermission(userRole, "service:update")) {
         throw new ApiError(403, "Forbidden");
       }
     }
 
-    // If serviceProviderId provided, verify it's valid
+    const existingService = await prisma.service.findFirst({
+      where: { id, deletedAt: null },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        organizationId: true,
+        organization: { select: { slug: true } },
+      },
+    });
+
+    if (!existingService) {
+      throw new ApiError(404, "Service not found");
+    }
+
     if (data.serviceProviderId !== undefined) {
-      const service = await prisma.service.findFirst({
-        where: { id, deletedAt: null },
-        select: { organizationId: true },
-      });
-
-      if (!service) {
-        throw new ApiError(404, "Service not found");
-      }
-
       if (data.serviceProviderId) {
         const member = await prisma.organizationMember.findFirst({
           where: {
             userId: data.serviceProviderId,
-            organizationId: service.organizationId,
+            organizationId: existingService.organizationId,
             isActive: true,
           },
         });
@@ -362,21 +401,11 @@ export class ServiceService {
       }
     }
 
-    // If categoryId provided, verify it belongs to same organization
     if (data.categoryId) {
-      const service = await prisma.service.findFirst({
-        where: { id, deletedAt: null },
-        select: { organizationId: true },
-      });
-
-      if (!service) {
-        throw new ApiError(404, "Service not found");
-      }
-
       const category = await prisma.serviceCategory.findFirst({
         where: {
           id: data.categoryId,
-          organizationId: service.organizationId,
+          organizationId: existingService.organizationId,
           deletedAt: null,
         },
       });
@@ -386,9 +415,18 @@ export class ServiceService {
       }
     }
 
+    const nextData = {
+      ...data,
+      ...(data.slug
+        ? { slug: await this.buildUniqueSlug(existingService.organizationId, normalizeDetailSlug(data.slug, "service"), id) }
+        : !existingService.slug
+          ? { slug: await this.buildUniqueSlug(existingService.organizationId, data.name || existingService.name, id) }
+          : {}),
+    };
+
     const service = await prisma.service.update({
       where: { id },
-      data,
+      data: nextData,
       include: {
         category: {
           select: {
@@ -409,6 +447,7 @@ export class ServiceService {
     });
 
     revalidatePath(`/dashboard/services`);
+    revalidateAppointmentServicePages(service.id, existingService.organization.slug, [existingService.slug, service.slug]);
     return service;
   }
 
@@ -438,6 +477,13 @@ export class ServiceService {
     });
 
     revalidatePath(`/dashboard/services`);
+    const organization = await prisma.organization.findUnique({
+      where: { id: service.organizationId },
+      select: { slug: true },
+    });
+    if (organization) {
+      revalidateAppointmentServicePages(service.id, organization.slug, [service.slug]);
+    }
     return service;
   }
 

@@ -32,6 +32,7 @@ interface ServiceCategory {
 
 interface Service {
   id: string
+  slug: string | null
   name: string
   description: string | null
   price: number
@@ -319,7 +320,12 @@ export default function OrganizationPage({
                           className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
                         >
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{service.name}</p>
+                            <Link
+                              href={`/${locale}/appointment/${slug}/services/${service.slug || service.id}`}
+                              className="block truncate font-medium hover:text-primary"
+                            >
+                              {service.name}
+                            </Link>
                             <p className="text-sm text-muted-foreground">
                               {service.duration} {t("appointment.minutes")}
                             </p>

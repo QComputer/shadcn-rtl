@@ -93,6 +93,7 @@ async function getShopCategory(slug: string, categoryId: string, pagination: Cat
         where: visibleProductWhere,
         select: {
           id: true,
+          slug: true,
           name: true,
           description: true,
           image: true,
@@ -176,7 +177,7 @@ export default async function ShopCategoryPage({ params, searchParams }: ShopCat
     itemListElement: products.map((product, index) => ({
       "@type": "ListItem",
       position: pagination.skip + index + 1,
-      url: getCanonicalUrl(`/${locale}/shop/${slug}/product/${product.id}`),
+      url: getCanonicalUrl(`/${locale}/shop/${slug}/product/${product.slug || product.id}`),
       item: {
         "@type": "Product",
         name: product.name,
@@ -186,7 +187,7 @@ export default async function ShopCategoryPage({ params, searchParams }: ShopCat
           "@type": "Offer",
           price: getProductPrice(product),
           priceCurrency: "IRR",
-          url: getCanonicalUrl(`/${locale}/shop/${slug}/product/${product.id}`),
+          url: getCanonicalUrl(`/${locale}/shop/${slug}/product/${product.slug || product.id}`),
         },
       },
     })),
@@ -241,7 +242,7 @@ export default async function ShopCategoryPage({ params, searchParams }: ShopCat
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {products.map((product) => (
-              <Link key={product.id} href={`/${locale}/shop/${slug}/product/${product.id}`}>
+              <Link key={product.id} href={`/${locale}/shop/${slug}/product/${product.slug || product.id}`}>
                 <Card className="h-full overflow-hidden transition-shadow hover:shadow-md">
                   {product.image && <img src={product.image} alt={product.name} className="h-44 w-full object-cover" />}
                   <CardHeader>

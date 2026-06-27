@@ -454,6 +454,7 @@ model ServiceCategory {
 model Service {
   id          String  @id @default(cuid())
   name        String
+  slug        String?
   description String? //@db.Text
   price       Decimal //@db.Decimal(12, 2)
   duration    Int // In minutes
@@ -475,6 +476,7 @@ model Service {
   deletedAt DateTime?
 
   @@index([organizationId])
+  @@index([organizationId, slug])
   @@index([categoryId])
   @@index([serviceProviderId])
   @@index([deletedAt])
@@ -646,6 +648,7 @@ model Image {
 model Product {
   id          String   @id @default(cuid())
   name        String
+  slug        String?
   description String?  //@db.Text
   basePrice   Decimal  //@db.Decimal(12, 2)
 
@@ -680,6 +683,8 @@ model Product {
 
   @@index([organizationId])
   @@index([organizationSlug])
+  @@index([organizationId, slug])
+  @@index([organizationSlug, slug])
   @@index([categoryId])
   @@index([isActive])
   @@index([deletedAt])

@@ -4,7 +4,7 @@ Date: 2026-06-27
 
 ## Current validated baseline
 
-The current working baseline after P51 overlays is source-validator green.
+The current working baseline after P52 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -30,6 +30,7 @@ pnpm run quality:public-seo
 pnpm run quality:public-seo-qa
 pnpm run quality:public-category-seo
 pnpm run quality:public-category-slugs-pagination
+pnpm run quality:public-detail-slugs
 ```
 
 Clean handoff gate introduced in P33:
@@ -66,6 +67,7 @@ pnpm run db:migrate:neon:dry-run
 - Public SEO QA and Rich Preview Hardening exists through generated `app/og-image/route.tsx`, noindex layouts for transactional public surfaces, expanded robots disallows, and the `quality:public-seo-qa` validator.
 - Public Category SEO exists through indexable product-category and service-category routes, category CollectionPage/ItemList/breadcrumb JSON-LD, category sitemap entries, and the `quality:public-category-seo` validator.
 - Category slug and public pagination support exists through category `slug` columns, `lib/category-slugs.ts`, slug-first category links/sitemap entries, ID-to-slug category redirects, page-aware category metadata, and the `quality:public-category-slugs-pagination` validator.
+- Public detail slug support exists through product/service `slug` columns, `lib/detail-slugs.ts`, slug-first product/service links/search/sitemap entries, ID-to-slug public detail redirects, and the `quality:public-detail-slugs` validator.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -106,6 +108,7 @@ pnpm run db:migrate:neon:dry-run
 | P49 | Public SEO QA and Rich Preview Hardening with generated OG fallback image, noindex transactional route metadata, robots disallows, and validator. |
 | P50 | Public Category Metadata and Listing SEO Polish with category landing pages, JSON-LD, sitemap entries, and validator. |
 | P51 | Category Slugs and Public Listing Pagination with slug-first category URLs, ID compatibility redirects, paginated category pages, and validator. |
+| P52 | Public Product and Service Slug Detail URLs with slug-first detail links, ID compatibility redirects, search/sitemap updates, and validator. |
 
 ## Current route/API inventory
 
@@ -118,6 +121,8 @@ Important currently implemented surfaces:
 /{locale}/shop/{slug}/fanpage
 /{locale}/appointment/{slug}/services/category/{categoryIdOrSlug}
 /{locale}/shop/{slug}/category/{categoryIdOrSlug}
+/{locale}/appointment/{slug}/services/{serviceIdOrSlug}
+/{locale}/shop/{slug}/product/{productIdOrSlug}
 /api/public/organizations/{slug}/fanpage/posts
 /api/driver/location
 /api/orders/{id}/assign-driver
@@ -194,7 +199,9 @@ Deferred:
 - P49 does not submit Search Console sitemaps, run deployed social-card screenshot verification, or generate tenant-specific OG images.
 - P51 keeps ID category URLs backward-compatible, but sitemap and listing links prefer category slugs.
 - P51 category pages are intentionally server-rendered and indexable; checkout/booking/order lookup pages remain noindexed.
+- P52 keeps ID product/service detail URLs backward-compatible, but sitemap, search, cards, and JSON-LD prefer detail slugs.
 - Dedicated dashboard UI for manually editing category slugs is still deferred.
+- Dedicated dashboard UI for manually editing product/service slugs is still deferred.
 
 ## Clean release rules
 
@@ -231,12 +238,12 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P52 - Public Product and Service Slug Detail URLs
+P53 - Public SEO Deployed Slug Verification
 ```
 
 Scope:
 
-1. Add stable product/service slug support or slug aliases for public detail URLs.
-2. Keep current ID-based product/service detail routes backward-compatible.
-3. Prefer product/service slugs in public cards, breadcrumbs, JSON-LD, and sitemap entries.
-4. Validate with typecheck, build, `quality:local`, P42-P51 validators, dashboard navigation validators, and staged release checks.
+1. Run deployed crawl checks for category/product/service slug URLs and ID-to-slug redirects.
+2. Verify sitemap, robots, canonical, JSON-LD, and image rendering on deployed slug pages.
+3. Add a focused deployed slug/SEO smoke script if stable test data is available.
+4. Validate with typecheck, build, `quality:local`, P42-P52 validators, dashboard navigation validators, and staged release checks.

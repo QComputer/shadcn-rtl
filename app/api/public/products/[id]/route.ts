@@ -12,7 +12,7 @@ export async function GET(
 
     // Build the where clause
     const where: Record<string, unknown> = {
-      id,
+      OR: [{ id }, { slug: id }],
       isActive: true,
       deletedAt: null,
     };
@@ -75,6 +75,7 @@ export async function GET(
     return NextResponse.json({
       product: {
         id: product.id,
+        slug: product.slug,
         name: product.name,
         description: product.description,
         basePrice: product.basePrice,

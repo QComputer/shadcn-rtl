@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { localeConfig, supportedLocales, type SupportedLocale } from "@/lib/i18n";
 
 const DEFAULT_BASE_URL = "https://bazar-baz.ir";
+const LEGACY_PRODUCTION_HOSTS = new Set(["shadcn-rtl.vercel.app"]);
 const DEFAULT_TITLE = "Bazar Baz";
 const DEFAULT_DESCRIPTION = "Multi-tenant commerce and appointment booking marketplace.";
 const DEFAULT_IMAGE = "/og-image";
@@ -42,7 +43,12 @@ export function getPublicBaseUrl() {
       ? `http://${rawUrl}`
       : `https://${rawUrl}`;
 
-  return new URL(normalizedUrl);
+  const url = new URL(normalizedUrl);
+  if (process.env.VERCEL_ENV === "production" && LEGACY_PRODUCTION_HOSTS.has(url.hostname)) {
+    return new URL(DEFAULT_BASE_URL);
+  }
+
+  return url;
 }
 
 export function getSupportedLocale(locale: string): SupportedLocale {

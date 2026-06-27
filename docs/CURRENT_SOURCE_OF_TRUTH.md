@@ -4,7 +4,7 @@ Date: 2026-06-27
 
 ## Current validated baseline
 
-The current working baseline after P52 overlays is source-validator green.
+The current working baseline after P53 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -31,6 +31,7 @@ pnpm run quality:public-seo-qa
 pnpm run quality:public-category-seo
 pnpm run quality:public-category-slugs-pagination
 pnpm run quality:public-detail-slugs
+pnpm run quality:deployed-slug-seo
 ```
 
 Clean handoff gate introduced in P33:
@@ -68,6 +69,7 @@ pnpm run db:migrate:neon:dry-run
 - Public Category SEO exists through indexable product-category and service-category routes, category CollectionPage/ItemList/breadcrumb JSON-LD, category sitemap entries, and the `quality:public-category-seo` validator.
 - Category slug and public pagination support exists through category `slug` columns, `lib/category-slugs.ts`, slug-first category links/sitemap entries, ID-to-slug category redirects, page-aware category metadata, and the `quality:public-category-slugs-pagination` validator.
 - Public detail slug support exists through product/service `slug` columns, `lib/detail-slugs.ts`, slug-first product/service links/search/sitemap entries, ID-to-slug public detail redirects, and the `quality:public-detail-slugs` validator.
+- Deployed slug SEO verification exists through `scripts/e2e/deployed-slug-seo.mjs`, `e2e:deployed:slug-seo`, and `quality:deployed-slug-seo`; it checks deployed robots/sitemap, sampled slug canonical links, JSON-LD, `og:image`, slug API resolution, and product/service ID-to-slug redirects.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -109,6 +111,7 @@ pnpm run db:migrate:neon:dry-run
 | P50 | Public Category Metadata and Listing SEO Polish with category landing pages, JSON-LD, sitemap entries, and validator. |
 | P51 | Category Slugs and Public Listing Pagination with slug-first category URLs, ID compatibility redirects, paginated category pages, and validator. |
 | P52 | Public Product and Service Slug Detail URLs with slug-first detail links, ID compatibility redirects, search/sitemap updates, and validator. |
+| P53 | Public SEO Deployed Slug Verification with sitemap-driven slug page, metadata, and redirect smoke checks. |
 
 ## Current route/API inventory
 
@@ -200,6 +203,7 @@ Deferred:
 - P51 keeps ID category URLs backward-compatible, but sitemap and listing links prefer category slugs.
 - P51 category pages are intentionally server-rendered and indexable; checkout/booking/order lookup pages remain noindexed.
 - P52 keeps ID product/service detail URLs backward-compatible, but sitemap, search, cards, and JSON-LD prefer detail slugs.
+- P53 deployed slug SEO smoke is data-dependent. Use `DEPLOYED_SLUG_SEO_ALLOW_EMPTY=1` only for intentionally empty deployments; production verification should require slug-like sitemap entries.
 - Dedicated dashboard UI for manually editing category slugs is still deferred.
 - Dedicated dashboard UI for manually editing product/service slugs is still deferred.
 
@@ -238,12 +242,12 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P53 - Public SEO Deployed Slug Verification
+P54 - Dashboard Slug Editing UI
 ```
 
 Scope:
 
-1. Run deployed crawl checks for category/product/service slug URLs and ID-to-slug redirects.
-2. Verify sitemap, robots, canonical, JSON-LD, and image rendering on deployed slug pages.
-3. Add a focused deployed slug/SEO smoke script if stable test data is available.
-4. Validate with typecheck, build, `quality:local`, P42-P52 validators, dashboard navigation validators, and staged release checks.
+1. Add dashboard controls for viewing and editing category slugs.
+2. Add dashboard controls for viewing and editing product/service slugs.
+3. Preserve slug uniqueness and ID-based mutation targets.
+4. Validate with typecheck, build, `quality:local`, P42-P53 validators, dashboard navigation validators, and staged release checks.

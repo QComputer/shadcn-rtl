@@ -53,6 +53,8 @@
     "smoke:deployed:account-settings": "node scripts/e2e/deployed-phase17-account-settings.mjs",
     "e2e:deployed:media-display": "node scripts/e2e/deployed-media-upload-display.mjs",
     "smoke:deployed:media-display": "node scripts/e2e/deployed-media-upload-display.mjs",
+    "e2e:deployed:slug-seo": "node scripts/e2e/deployed-slug-seo.mjs",
+    "smoke:deployed:slug-seo": "node scripts/e2e/deployed-slug-seo.mjs",
     "e2e:deployed:map-validation": "node scripts/e2e/deployed-phase-map-validation.mjs",
     "quality:release-artifact": "node scripts/quality/validate-release-artifact.mjs",
     "release:stage": "node scripts/release/create-clean-source.mjs",
@@ -89,7 +91,8 @@
     "quality:public-seo-qa": "node scripts/quality/validate-public-seo-qa.mjs",
     "quality:public-category-seo": "node scripts/quality/validate-public-category-seo.mjs",
     "quality:public-category-slugs-pagination": "node scripts/quality/validate-public-category-slugs-pagination.mjs",
-    "quality:public-detail-slugs": "node scripts/quality/validate-public-detail-slugs.mjs"
+    "quality:public-detail-slugs": "node scripts/quality/validate-public-detail-slugs.mjs",
+    "quality:deployed-slug-seo": "node scripts/quality/validate-deployed-slug-seo.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

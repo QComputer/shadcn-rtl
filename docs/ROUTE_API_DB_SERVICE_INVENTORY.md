@@ -2,7 +2,7 @@
 
 _Last synchronized from the source tree: 2026-06-26._
 
-This inventory is a planning aid for future phases. It reflects the current filesystem after Customer Club, campaign, loyalty/coupon, Web Push, public SEO, category slug/pagination, and public detail slug phases.
+This inventory is a planning aid for future phases. It reflects the current filesystem after Customer Club, campaign, loyalty/coupon, Web Push, public SEO, category slug/pagination, public detail slug, and deployed slug SEO verification phases.
 
 ## 1. Localized page routes
 

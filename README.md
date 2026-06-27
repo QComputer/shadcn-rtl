@@ -65,6 +65,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 50 | Public Category Metadata and Listing SEO Polish | Source-validated | `pnpm run quality:public-category-seo` |
 | 51 | Category Slugs and Public Listing Pagination | Source-validated | `pnpm run quality:public-category-slugs-pagination` |
 | 52 | Public Product and Service Slug Detail URLs | Source-validated | `pnpm run quality:public-detail-slugs` |
+| 53 | Public SEO Deployed Slug Verification | Source/deployed smoke | `pnpm run quality:deployed-slug-seo` / `pnpm run e2e:deployed:slug-seo` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -94,6 +95,7 @@ pnpm run quality:public-seo-qa
 pnpm run quality:public-category-seo
 pnpm run quality:public-category-slugs-pagination
 pnpm run quality:public-detail-slugs
+pnpm run quality:deployed-slug-seo
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -115,6 +117,17 @@ pnpm run e2e:deployed:media-display
 ```
 
 The suite logs in with seeded dashboard credentials by default, uploads temporary PNGs, updates organization logo/cover and product images, verifies public API and browser-rendered public pages, restores original image values, and deletes temporary uploads. Set `MEDIA_E2E_INCLUDE_APPOINTMENT=0` to skip the appointment/service media pass, or override credentials with `MEDIA_E2E_SHOP_USERNAME`, `MEDIA_E2E_SHOP_PASSWORD`, `MEDIA_E2E_APPOINTMENT_USERNAME`, and `MEDIA_E2E_APPOINTMENT_PASSWORD`.
+
+## Deployed slug SEO validation
+
+Run the read-only deployed slug SEO suite when validating sitemap, robots, canonical, JSON-LD, social image metadata, and product/service ID-to-slug redirects:
+
+```powershell
+$env:DEPLOYED_URL="https://bazar-baz.ir"
+pnpm run e2e:deployed:slug-seo
+```
+
+The suite samples slug-like category/product/service URLs from the deployed sitemap. Set `DEPLOYED_SLUG_SEO_MAX_PER_KIND` to change sample size. Use `DEPLOYED_SLUG_SEO_ALLOW_EMPTY=1` only for intentionally empty deployments.
 
 ## Clean source handoff
 
@@ -162,7 +175,11 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P52 - Public Product and Service Slug Detail URLs**.
+Latest completed implementation phase: **P53 - Public SEO Deployed Slug Verification**.
+
+P53 adds a read-only deployed slug SEO smoke suite for `robots.txt`, `sitemap.xml`, canonical links, JSON-LD, `og:image`, public slug API resolution, and product/service ID-to-slug redirects, plus the focused `quality:deployed-slug-seo` validator.
+
+Previous detail slug phase retained: **P52 - Public Product and Service Slug Detail URLs**.
 
 P52 adds stable product/service slug storage and backfill, unique detail slug generation in product/service services, slug-or-ID public detail API resolution, ID-to-slug detail redirects, slug-first public product/service cards, search results, JSON-LD, sitemap entries, and the focused `quality:public-detail-slugs` validator.
 
@@ -218,4 +235,4 @@ Previous dashboard role phase retained: **P38 - dashboard sidebar role-aware nav
 
 Previous dashboard shell/copy phase retained: **P37 - dashboard navigation and localized shell copy cleanup**.
 
-Recommended next phase: **P53 - Public SEO Deployed Slug Verification**.
+Recommended next phase: **P54 - Dashboard Slug Editing UI**.

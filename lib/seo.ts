@@ -7,6 +7,16 @@ const DEFAULT_TITLE = "Bazar Baz";
 const DEFAULT_DESCRIPTION = "Multi-tenant commerce and appointment booking marketplace.";
 const DEFAULT_IMAGE = "/og-image";
 
+export type GeneratedOgImageKind = "organization" | "category" | "product" | "service";
+
+export type GeneratedOgImageInput = {
+  kind: GeneratedOgImageKind;
+  locale: string;
+  title: string;
+  subtitle?: string | null;
+  organizationName?: string | null;
+};
+
 export type PublicSeoInput = {
   locale: string;
   path: string;
@@ -73,6 +83,35 @@ export function getSeoImageUrl(image?: string | null) {
   } catch {
     return getCanonicalUrl(value.startsWith("/") ? value : `/${value}`);
   }
+}
+
+function compactOgText(value: string | null | undefined, fallback: string, maxLength: number) {
+  const normalized = (value || fallback).replace(/\s+/g, " ").trim();
+  return normalized.length <= maxLength ? normalized : `${normalized.slice(0, maxLength - 1).trim()}...`;
+}
+
+export function buildGeneratedOgImagePath(input: GeneratedOgImageInput) {
+  const locale = getSupportedLocale(input.locale);
+  const params = new URLSearchParams({
+    kind: input.kind,
+    locale,
+    title: compactOgText(input.title, DEFAULT_TITLE, 86),
+  });
+
+  const subtitle = compactOgText(input.subtitle, "", 96);
+  if (subtitle) params.set("subtitle", subtitle);
+
+  const organizationName = compactOgText(input.organizationName, "", 72);
+  if (organizationName) params.set("organization", organizationName);
+
+  return `${DEFAULT_IMAGE}?${params.toString()}`;
+}
+
+export function getUploadedOrGeneratedSeoImageUrl(
+  uploadedImage: string | null | undefined,
+  generatedImage: GeneratedOgImageInput,
+) {
+  return uploadedImage?.trim() ? getSeoImageUrl(uploadedImage) : getSeoImageUrl(buildGeneratedOgImagePath(generatedImage));
 }
 
 export function truncateSeoText(value: string | null | undefined, fallback = DEFAULT_DESCRIPTION, maxLength = 155) {

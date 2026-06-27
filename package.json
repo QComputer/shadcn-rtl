@@ -94,7 +94,8 @@
     "quality:public-detail-slugs": "node scripts/quality/validate-public-detail-slugs.mjs",
     "quality:deployed-slug-seo": "node scripts/quality/validate-deployed-slug-seo.mjs",
     "quality:dashboard-slug-editing": "node scripts/quality/validate-dashboard-slug-editing.mjs",
-    "quality:public-slug-preview-share": "node scripts/quality/validate-public-slug-preview-share.mjs"
+    "quality:public-slug-preview-share": "node scripts/quality/validate-public-slug-preview-share.mjs",
+    "quality:tenant-og-images": "node scripts/quality/validate-tenant-og-images.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

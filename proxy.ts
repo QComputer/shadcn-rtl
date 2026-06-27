@@ -131,6 +131,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/api") ||
     pathname.startsWith("/fa/shop") ||
     pathname.startsWith("/uploads") ||
+    pathname.startsWith("/og-image") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/static") ||
     pathname.includes(".") ||

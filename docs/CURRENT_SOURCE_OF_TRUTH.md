@@ -34,6 +34,7 @@ pnpm run quality:public-detail-slugs
 pnpm run quality:deployed-slug-seo
 pnpm run quality:dashboard-slug-editing
 pnpm run quality:public-slug-preview-share
+pnpm run quality:tenant-og-images
 ```
 
 Clean handoff gate introduced in P33:
@@ -74,6 +75,7 @@ pnpm run db:migrate:neon:dry-run
 - Deployed slug SEO verification exists through `scripts/e2e/deployed-slug-seo.mjs`, `e2e:deployed:slug-seo`, and `quality:deployed-slug-seo`; it checks deployed robots/sitemap, sampled slug canonical links, JSON-LD, `og:image`, slug API resolution, and product/service ID-to-slug redirects.
 - Dashboard slug editing exists for product categories, service categories, products, and services, with ID-based mutation routes preserved and `quality:dashboard-slug-editing` enforcing the UI controls.
 - Public slug preview/share polish exists through dashboard slug copy/open controls, deployment-origin URL previews, explicit social image dimensions/alt text, and stronger product/service/category image fallbacks, with `quality:public-slug-preview-share`.
+- Tenant-specific Open Graph image generation exists through parameterized `/og-image` cards, generated organization/category/product/service fallback image URLs, uploaded-media-first share metadata, and the `quality:tenant-og-images` validator.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -118,6 +120,7 @@ pnpm run db:migrate:neon:dry-run
 | P53 | Public SEO Deployed Slug Verification with sitemap-driven slug page, metadata, and redirect smoke checks. |
 | P54 | Dashboard Slug Editing UI for category/product/service public slug controls with validator. |
 | P55 | Public Slug Preview and Rich Share Polish with dashboard copy/open URL actions and image-rich metadata fallbacks. |
+| P56 | Tenant-Specific Open Graph Image Generation with uploaded-media precedence and generated fallback cards. |
 
 ## Current route/API inventory
 
@@ -205,13 +208,14 @@ Deferred:
 - P47 stores push consent/subscription state and supports dry-run previews only. Real Web Push delivery remains behind `WEB_PUSH_PROVIDER`, `WEB_PUSH_DRY_RUN`, and `WEB_PUSH_REAL_SEND_ENABLED` environment gates.
 - P48 uses runtime database queries for sitemap generation and falls back to localized home URLs if the database query fails.
 - P49 keeps checkout, order status, booking, appointment lookup, and appointment status out of search indexes.
-- P49 does not submit Search Console sitemaps, run deployed social-card screenshot verification, or generate tenant-specific OG images.
+- P49 does not submit Search Console sitemaps or run deployed social-card screenshot verification.
 - P51 keeps ID category URLs backward-compatible, but sitemap and listing links prefer category slugs.
 - P51 category pages are intentionally server-rendered and indexable; checkout/booking/order lookup pages remain noindexed.
 - P52 keeps ID product/service detail URLs backward-compatible, but sitemap, search, cards, and JSON-LD prefer detail slugs.
 - P53 deployed slug SEO smoke is data-dependent. Use `DEPLOYED_SLUG_SEO_ALLOW_EMPTY=1` only for intentionally empty deployments; production verification should require slug-like sitemap entries.
 - P54 keeps dashboard mutation URLs ID-based even when public slugs are manually edited.
 - P55 preview links depend on a known organization slug; fields without a resolvable public organization path keep preview actions disabled.
+- P56 generated OG cards are deterministic URL-query images, not persisted media assets or per-tenant theme settings.
 
 ## Clean release rules
 
@@ -248,12 +252,12 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P56 - Tenant-Specific Open Graph Image Generation
+P57 - Deployed Social Preview Verification
 ```
 
 Scope:
 
-1. Generate branded fallback OG images for organization, category, product, and service pages when no uploaded image exists.
-2. Preserve uploaded image precedence for real product/service/category/share previews.
-3. Keep public metadata deterministic and cache-safe across FA/EN/AR routes.
-4. Validate with typecheck, build, `quality:local`, P42-P55 validators, dashboard navigation validators, and staged release checks.
+1. Verify deployed `og:image` URLs resolve for sampled organization, category, product, and service pages.
+2. Capture at least one deployed generated card and one uploaded-image social preview candidate.
+3. Keep the smoke read-only and data-dependent, with an explicit allow-empty mode only for non-production deployments.
+4. Validate with typecheck, build, `quality:local`, P42-P56 validators, dashboard navigation validators, and staged release checks.

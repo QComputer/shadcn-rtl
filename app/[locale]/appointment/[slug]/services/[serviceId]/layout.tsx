@@ -2,7 +2,14 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/db";
 import { JsonLd } from "@/components/seo/json-ld";
-import { buildBreadcrumbJsonLd, buildPublicMetadata, getCanonicalUrl, getSeoImageUrl, truncateSeoText } from "@/lib/seo";
+import {
+  buildBreadcrumbJsonLd,
+  buildPublicMetadata,
+  getCanonicalUrl,
+  getSeoImageUrl,
+  getUploadedOrGeneratedSeoImageUrl,
+  truncateSeoText,
+} from "@/lib/seo";
 
 type ServiceDetailLayoutProps = {
   children: React.ReactNode;
@@ -74,13 +81,20 @@ export async function generateMetadata({ params }: ServiceDetailLayoutProps): Pr
 
   const serviceSegment = service.slug || service.id;
   const path = `/${locale}/appointment/${slug}/services/${serviceSegment}`;
+  const serviceUploadedShareImage = service.image || service.organization.coverImage || service.organization.logo;
 
   return buildPublicMetadata({
     locale,
     path,
     title: `${service.name} | ${service.organization.name}`,
     description: service.description || `Book ${service.name} at ${service.organization.name}.`,
-    image: service.image || service.organization.coverImage || service.organization.logo,
+    image: getUploadedOrGeneratedSeoImageUrl(serviceUploadedShareImage, {
+      kind: "service",
+      locale,
+      title: service.name,
+      subtitle: service.description || `Book ${service.name} at ${service.organization.name}.`,
+      organizationName: service.organization.name,
+    }),
     keywords: ["Bazar Baz", "service", "appointment", service.name, service.organization.slug, service.category.name],
     alternatePath: (nextLocale) => `/${nextLocale}/appointment/${slug}/services/${serviceSegment}`,
   });
@@ -99,13 +113,14 @@ export default async function ServiceDetailLayout({ children, params }: ServiceD
 
   const path = `/${locale}/appointment/${slug}/services/${serviceSegment}`;
   const providerName = getProviderName(service);
+  const serviceUploadedShareImage = service.image || service.organization.coverImage || service.organization.logo;
   const serviceJsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Service",
     "@id": `${getCanonicalUrl(path)}#service`,
     name: service.name,
     description: truncateSeoText(service.description, `Book ${service.name} at ${service.organization.name}.`),
-    image: getSeoImageUrl(service.image || service.organization.coverImage || service.organization.logo),
+    image: getSeoImageUrl(serviceUploadedShareImage),
     serviceType: service.category.name,
     provider: {
       "@type": "LocalBusiness",

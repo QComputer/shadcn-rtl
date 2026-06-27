@@ -5,7 +5,7 @@ import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 import prisma from "@/lib/db";
 import { getDictionary, getDictValue } from "@/lib/dictionary";
 import { JsonLd } from "@/components/seo/json-ld";
-import { buildOrganizationJsonLd, buildPublicMetadata } from "@/lib/seo";
+import { buildOrganizationJsonLd, buildPublicMetadata, getUploadedOrGeneratedSeoImageUrl } from "@/lib/seo";
 
 interface OrganizationLayoutProps {
   children: React.ReactNode;
@@ -64,12 +64,20 @@ export async function generateMetadata({ params }: OrganizationLayoutProps): Pro
     };
   }
 
+  const uploadedShareImage = organization.coverImage || organization.logo;
+
   return buildPublicMetadata({
     locale,
     path: `/${locale}/appointment/${organization.slug}`,
     title: organization.name || "Bazar Baz appointment",
     description: organization.description || "Book appointments online on Bazar Baz.",
-    image: organization.coverImage || organization.logo,
+    image: getUploadedOrGeneratedSeoImageUrl(uploadedShareImage, {
+      kind: "organization",
+      locale,
+      title: organization.name || "Bazar Baz appointment",
+      subtitle: organization.description || "Book appointments online on Bazar Baz.",
+      organizationName: organization.name,
+    }),
     keywords: ["Bazar Baz", "appointment", "booking", organization.slug],
     alternatePath: (nextLocale) => `/${nextLocale}/appointment/${organization.slug}`,
   });

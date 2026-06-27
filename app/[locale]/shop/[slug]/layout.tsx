@@ -12,7 +12,7 @@ import { FollowButton } from "@/components/follow/follow-button";
 import { getDictionary, getDictValue } from "@/lib/dictionary";
 import { ShopLocationDialog } from "@/components/shop/shop-location-dialog";
 import { JsonLd } from "@/components/seo/json-ld";
-import { buildOrganizationJsonLd, buildPublicMetadata } from "@/lib/seo";
+import { buildOrganizationJsonLd, buildPublicMetadata, getUploadedOrGeneratedSeoImageUrl } from "@/lib/seo";
 
 interface ShopLayoutProps {
   children: React.ReactNode;
@@ -35,12 +35,20 @@ const organization = await prisma.organization.findUnique({
       };
     }
 
+    const uploadedShareImage = organization.coverImage || organization.logo;
+
     return buildPublicMetadata({
       locale,
       path: `/${locale}/shop/${organization.slug}`,
       title: organization.name || "Bazar Baz shop",
       description: organization.description || "Online shop on Bazar Baz.",
-      image: organization.coverImage || organization.logo,
+      image: getUploadedOrGeneratedSeoImageUrl(uploadedShareImage, {
+        kind: "organization",
+        locale,
+        title: organization.name || "Bazar Baz shop",
+        subtitle: organization.description || "Online shop on Bazar Baz.",
+        organizationName: organization.name,
+      }),
       keywords: ["Bazar Baz", "shop", "online shopping", organization.slug],
       alternatePath: (nextLocale) => `/${nextLocale}/shop/${organization.slug}`,
     });

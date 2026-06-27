@@ -68,6 +68,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 53 | Public SEO Deployed Slug Verification | Source/deployed smoke | `pnpm run quality:deployed-slug-seo` / `pnpm run e2e:deployed:slug-seo` |
 | 54 | Dashboard Slug Editing UI | Source-validated | `pnpm run quality:dashboard-slug-editing` |
 | 55 | Public Slug Preview and Rich Share Polish | Source-validated | `pnpm run quality:public-slug-preview-share` |
+| 56 | Tenant-Specific Open Graph Image Generation | Source-validated | `pnpm run quality:tenant-og-images` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -100,6 +101,7 @@ pnpm run quality:public-detail-slugs
 pnpm run quality:deployed-slug-seo
 pnpm run quality:dashboard-slug-editing
 pnpm run quality:public-slug-preview-share
+pnpm run quality:tenant-og-images
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -179,7 +181,11 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P55 - Public Slug Preview and Rich Share Polish**.
+Latest completed implementation phase: **P56 - Tenant-Specific Open Graph Image Generation**.
+
+P56 adds deterministic generated Open Graph cards for organization, category, product, and service pages when uploaded share images are absent, while preserving uploaded image precedence for real logo/cover/category/product/service media. It adds the focused `quality:tenant-og-images` validator.
+
+Previous public slug/share phase retained: **P55 - Public Slug Preview and Rich Share Polish**.
 
 P55 adds copy/open controls for dashboard public slug URLs, exposes service-category organization slugs for accurate appointment category previews, adds explicit social image metadata dimensions/alt text, and strengthens image fallbacks for product/service/category share metadata.
 
@@ -247,4 +253,4 @@ Previous dashboard role phase retained: **P38 - dashboard sidebar role-aware nav
 
 Previous dashboard shell/copy phase retained: **P37 - dashboard navigation and localized shell copy cleanup**.
 
-Recommended next phase: **P56 - Tenant-Specific Open Graph Image Generation**.
+Recommended next phase: **P57 - Deployed Social Preview Verification**.

@@ -13,6 +13,7 @@ import {
   buildPublicMetadata,
   getCanonicalUrl,
   getSeoImageUrl,
+  getUploadedOrGeneratedSeoImageUrl,
   truncateSeoText,
 } from "@/lib/seo";
 import { formatToman } from "@/lib/persian";
@@ -137,13 +138,20 @@ export async function generateMetadata({ params, searchParams }: ShopCategoryPag
 
   const categorySegment = category.slug || category.id;
   const path = categoryPath(locale, slug, categorySegment, pagination.page);
+  const categoryUploadedShareImage = category.image || category.organization.coverImage || category.organization.logo;
 
   return buildPublicMetadata({
     locale,
     path,
     title: `${category.name} | ${category.organization.name}${pagination.page > 1 ? ` - Page ${pagination.page}` : ""}`,
     description: category.description || `${category.name} products from ${category.organization.name}.`,
-    image: category.image || category.organization.coverImage || category.organization.logo,
+    image: getUploadedOrGeneratedSeoImageUrl(categoryUploadedShareImage, {
+      kind: "category",
+      locale,
+      title: category.name,
+      subtitle: category.description || `${category.name} products from ${category.organization.name}.`,
+      organizationName: category.organization.name,
+    }),
     keywords: ["Bazar Baz", "shop category", category.name, category.organization.slug],
     alternatePath: (nextLocale) => categoryPath(nextLocale, slug, categorySegment, pagination.page),
   });

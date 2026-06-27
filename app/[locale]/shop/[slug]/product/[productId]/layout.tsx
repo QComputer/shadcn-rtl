@@ -2,7 +2,14 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/db";
 import { JsonLd } from "@/components/seo/json-ld";
-import { buildBreadcrumbJsonLd, buildPublicMetadata, getCanonicalUrl, getSeoImageUrl, truncateSeoText } from "@/lib/seo";
+import {
+  buildBreadcrumbJsonLd,
+  buildPublicMetadata,
+  getCanonicalUrl,
+  getSeoImageUrl,
+  getUploadedOrGeneratedSeoImageUrl,
+  truncateSeoText,
+} from "@/lib/seo";
 
 type ProductDetailLayoutProps = {
   children: React.ReactNode;
@@ -63,13 +70,20 @@ export async function generateMetadata({ params }: ProductDetailLayoutProps): Pr
 
   const productSegment = product.slug || product.id;
   const path = `/${locale}/shop/${slug}/product/${productSegment}`;
+  const productUploadedShareImage = product.image || product.organization.coverImage || product.organization.logo;
 
   return buildPublicMetadata({
     locale,
     path,
     title: `${product.name} | ${product.organization.name}`,
     description: product.description || `${product.name} from ${product.organization.name}.`,
-    image: product.image || product.organization.coverImage || product.organization.logo,
+    image: getUploadedOrGeneratedSeoImageUrl(productUploadedShareImage, {
+      kind: "product",
+      locale,
+      title: product.name,
+      subtitle: product.description || `${product.name} from ${product.organization.name}.`,
+      organizationName: product.organization.name,
+    }),
     keywords: ["Bazar Baz", "product", product.name, product.organization.slug, product.category.name],
     alternatePath: (nextLocale) => `/${nextLocale}/shop/${slug}/product/${productSegment}`,
   });
@@ -87,13 +101,14 @@ export default async function ProductDetailLayout({ children, params }: ProductD
   }
 
   const path = `/${locale}/shop/${slug}/product/${productSegment}`;
+  const productUploadedShareImage = product.image || product.organization.coverImage || product.organization.logo;
   const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
     "@id": `${getCanonicalUrl(path)}#product`,
     name: product.name,
     description: truncateSeoText(product.description, `${product.name} from ${product.organization.name}.`),
-    image: getSeoImageUrl(product.image || product.organization.coverImage || product.organization.logo),
+    image: getSeoImageUrl(productUploadedShareImage),
     sku: product.sku || product.id,
     category: product.category.name,
     brand: {

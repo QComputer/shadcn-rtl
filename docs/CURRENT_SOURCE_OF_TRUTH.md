@@ -1,10 +1,10 @@
 # Current Source of Truth — Bazar Baz
 
-Date: 2026-06-25
+Date: 2026-06-27
 
 ## Current validated baseline
 
-The current working baseline after P45 overlays is source-validator green.
+The current working baseline after P47 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -24,6 +24,11 @@ pnpm run quality:customer-club-foundation
 pnpm run quality:in-app-notifications
 pnpm run quality:customer-segments
 pnpm run quality:campaign-builder
+pnpm run quality:loyalty-coupons
+pnpm run quality:web-push-foundation
+pnpm run quality:public-seo
+pnpm run quality:public-seo-qa
+pnpm run quality:public-category-seo
 ```
 
 Clean handoff gate introduced in P33:
@@ -45,7 +50,7 @@ pnpm run db:migrate:neon:dry-run
 - Next.js 16 App Router with localized routes under `app/[locale]`.
 - Supported locales: `fa`, `en`, `ar`; dictionary leaf-key parity is enforced by `quality:i18n-completion`.
 - Multi-tenant organization model supports `SHOP` and `APPOINTMENT` organization types.
-- Dashboard workflows cover appointments, calendar, notifications, organizations, members, Customer Club, Customer Segments, Campaign Builder, products, product categories, orders, QR code, services, service categories, settings, and users.
+- Dashboard workflows cover appointments, calendar, notifications, organizations, members, Customer Club, Customer Segments, Campaign Builder, Loyalty, Coupons, products, product categories, orders, QR code, services, service categories, settings, and users.
 - Public shop workflows cover shop profile, product detail, checkout, order tracking, and shop fanpage.
 - Public appointment workflows cover organization profile, service listing, staff listing, booking, appointment detail, my appointments, and appointment fanpage.
 - Follow support exists through `Follow`, `follow.service.ts`, follow/unfollow API, public follow UI, and readiness validators.
@@ -54,6 +59,11 @@ pnpm run db:migrate:neon:dry-run
 - In-app notification inbox exists through extended `Notification` organization/actor context, dashboard/customer inbox APIs, dashboard inbox UI, Customer Club in-app broadcast, dry-run recipient preview, audit logging, and the `quality:in-app-notifications` validator.
 - Customer Segments MVP exists through `CustomerSegment`, `CustomerSegmentRule`, `CustomerSegmentSnapshot`, `customer-segments.service.ts`, dashboard segment API/UI, tenant-safe Customer Club/order/cart counts, snapshot audit logging, and the `quality:customer-segments` validator.
 - Campaign Builder MVP exists through `Campaign`, `CampaignAudience`, `CampaignMessage`, `CampaignDelivery`, `campaign-builder.service.ts`, campaign dashboard APIs/UI, dry-run preview, in-app-only sends, per-recipient delivery rows, cancellation, audit logging, and the `quality:campaign-builder` validator.
+- Loyalty Points and Coupons exist through `LoyaltyLedger`, `LoyaltyRule`, `Coupon`, `CouponRedemption`, `loyalty-coupons.service.ts`, dashboard loyalty/coupon APIs and pages, append-only point accounting, coupon date/count/customer/segment enforcement, audit logging, and the `quality:loyalty-coupons` validator.
+- Web Push Opt-In Foundation exists through `PushSubscription`, `NotificationPermissionEvent`, `web-push-foundation.service.ts`, customer opt-in/unsubscribe API/UI, dashboard push status/dry-run API/UI, VAPID/feature-flag env validation, and the `quality:web-push-foundation` validator. Real external delivery remains disabled by default.
+- Public SEO Foundation exists through `lib/seo.ts`, `components/seo/json-ld.tsx`, public route metadata, product/service/fanpage JSON-LD, dynamic `app/robots.ts`, dynamic `app/sitemap.ts`, and the `quality:public-seo` validator.
+- Public SEO QA and Rich Preview Hardening exists through generated `app/og-image/route.tsx`, noindex layouts for transactional public surfaces, expanded robots disallows, and the `quality:public-seo-qa` validator.
+- Public Category SEO exists through indexable product-category and service-category routes, category CollectionPage/ItemList/breadcrumb JSON-LD, category sitemap entries, and the `quality:public-category-seo` validator.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -88,16 +98,23 @@ pnpm run db:migrate:neon:dry-run
 | P43 | In-app notification inbox and Customer Club broadcast foundation. |
 | P44 | Customer Segments MVP with organization-scoped ready segments, counts, snapshots, and validator. |
 | P45 | Campaign Builder MVP with dry-run-safe in-app sends and delivery records. |
+| P46 | Loyalty Points and Coupons with append-only point ledger, purchase rules, coupons, redemptions, and validator. |
+| P47 | Web Push Opt-In Foundation with explicit browser opt-in, unsubscribe, permission events, dry-run preview, and validator. |
+| P48 | Public SEO Foundation with locale-aware metadata, JSON-LD, dynamic robots/sitemap, and validator. |
+| P49 | Public SEO QA and Rich Preview Hardening with generated OG fallback image, noindex transactional route metadata, robots disallows, and validator. |
+| P50 | Public Category Metadata and Listing SEO Polish with category landing pages, JSON-LD, sitemap entries, and validator. |
 
 ## Current route/API inventory
 
-Use `docs/ROUTE_API_DB_SERVICE_INVENTORY.md` as the route/API/schema/service inventory for future planning. It was regenerated from the source tree on 2026-06-25.
+Use `docs/ROUTE_API_DB_SERVICE_INVENTORY.md` as the route/API/schema/service inventory for future planning. It was refreshed from the source tree on 2026-06-26.
 
 Important currently implemented surfaces:
 
 ```txt
 /{locale}/appointment/{slug}/fanpage
 /{locale}/shop/{slug}/fanpage
+/{locale}/appointment/{slug}/services/category/{categoryId}
+/{locale}/shop/{slug}/category/{categoryId}
 /api/public/organizations/{slug}/fanpage/posts
 /api/driver/location
 /api/orders/{id}/assign-driver
@@ -109,13 +126,20 @@ Important currently implemented surfaces:
 /{locale}/dashboard/customer-club/campaigns
 /{locale}/dashboard/customer-club/campaigns/new
 /{locale}/dashboard/customer-club/campaigns/[id]
+/{locale}/dashboard/customer-club/loyalty
+/{locale}/dashboard/customer-club/coupons
+/{locale}/dashboard/customer-club/push
 /api/customer-club/membership
 /api/dashboard/customer-club/members
 /api/dashboard/customer-club/segments
 /api/dashboard/customer-club/campaigns
 /api/dashboard/customer-club/campaigns/[id]
 /api/dashboard/customer-club/campaigns/[id]/send
+/api/dashboard/customer-club/loyalty
+/api/dashboard/customer-club/coupons
+/api/dashboard/customer-club/push
 /api/customer/notifications
+/api/customer/push-subscriptions
 ```
 
 ## Current fanpage status
@@ -158,6 +182,15 @@ Deferred:
 - P44 does not create campaigns or external message delivery. Segments are prepared for future campaign reuse.
 - Campaign dry runs create no notifications or deliveries. Actual sends create in-app `Notification` rows and one `CampaignDelivery` row per recipient.
 - P45 intentionally does not send SMS, email, Telegram, Web Push, or any external notification.
+- Loyalty balances are derived from immutable `LoyaltyLedger` rows. P46 does not store or mutate a direct customer point balance.
+- Coupon redemption is organization-scoped and enforces active dates, total usage limits, per-customer limits, and optional Customer Segment membership.
+- Web Push permission prompts are only requested after an explicit user action in the shop profile opt-in UI.
+- P47 stores push consent/subscription state and supports dry-run previews only. Real Web Push delivery remains behind `WEB_PUSH_PROVIDER`, `WEB_PUSH_DRY_RUN`, and `WEB_PUSH_REAL_SEND_ENABLED` environment gates.
+- P48 uses runtime database queries for sitemap generation and falls back to localized home URLs if the database query fails.
+- P49 keeps checkout, order status, booking, appointment lookup, and appointment status out of search indexes.
+- P49 does not submit Search Console sitemaps, run deployed social-card screenshot verification, or generate tenant-specific OG images.
+- P50 category URLs use category IDs, not stable category slugs. Human-readable slugs are deferred.
+- P50 category pages are intentionally server-rendered and indexable; checkout/booking/order lookup pages remain noindexed.
 
 ## Clean release rules
 
@@ -194,13 +227,12 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P46 - Loyalty Points and Coupons
+P51 - Category Slugs and Public Listing Pagination
 ```
 
 Scope:
 
-1. Add organization-scoped loyalty ledgers, loyalty rules, coupons, and coupon redemptions.
-2. Keep loyalty ledgers append-only; do not mutate points by direct balance updates.
-3. Enforce coupon date, usage, organization, and segment restrictions.
-4. Add `/dashboard/customer-club/loyalty` and `/dashboard/customer-club/coupons`.
-5. Validate with typecheck, build, `quality:local`, P42-P45 validators, dashboard navigation validators, and staged release checks.
+1. Add stable category slug support or slug aliases for public category URLs.
+2. Add pagination and canonical/prev-next strategy for large category listings.
+3. Keep current ID-based category routes backward-compatible.
+4. Validate with typecheck, build, `quality:local`, P42-P50 validators, dashboard navigation validators, and staged release checks.

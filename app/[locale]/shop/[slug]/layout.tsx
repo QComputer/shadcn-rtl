@@ -11,6 +11,8 @@ import { notFound } from "next/navigation";
 import { FollowButton } from "@/components/follow/follow-button";
 import { getDictionary, getDictValue } from "@/lib/dictionary";
 import { ShopLocationDialog } from "@/components/shop/shop-location-dialog";
+import { JsonLd } from "@/components/seo/json-ld";
+import { buildOrganizationJsonLd, buildPublicMetadata } from "@/lib/seo";
 
 interface ShopLayoutProps {
   children: React.ReactNode;
@@ -25,23 +27,23 @@ export async function generateMetadata({ params }: ShopLayoutProps): Promise<Met
   try {
 const organization = await prisma.organization.findUnique({
   where: { slug, type: "SHOP"},
-  select: {name: true, slug: true, description: true}
+  select: {name: true, slug: true, description: true, logo: true, coverImage: true}
 })
     if (!organization) {
       return {
         title: "Shop Not Found",
       };
     }
-    
-    return {
-      title: organization?.name || "بازارباز",
-      description: organization.description || "خرید آنلاین",
-      icons:{
-         icon: [
-        { url: '/globe.svg', type: 'image/svg', sizes: '192x192' },
-      ],
-    }
-    };
+
+    return buildPublicMetadata({
+      locale,
+      path: `/${locale}/shop/${organization.slug}`,
+      title: organization.name || "Bazar Baz shop",
+      description: organization.description || "Online shop on Bazar Baz.",
+      image: organization.coverImage || organization.logo,
+      keywords: ["Bazar Baz", "shop", "online shopping", organization.slug],
+      alternatePath: (nextLocale) => `/${nextLocale}/shop/${organization.slug}`,
+    });
   } catch {
     return {
       title: "بازارباز",
@@ -56,6 +58,12 @@ type ShopLayoutOrganization = {
   type: string | null;
   lat: number | null;
   lng: number | null;
+  description: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  logo: string | null;
+  coverImage: string | null;
 };
 
 export default async function ShopLayout({ children, params }: ShopLayoutProps) {
@@ -65,7 +73,7 @@ export default async function ShopLayout({ children, params }: ShopLayoutProps) 
 
 const organization = await prisma.organization.findFirst({
   where: { slug, type: "SHOP", isActive: true, deletedAt: null },
-  select: { id: true, name: true, slug: true, type: true, lat: true, lng: true },
+  select: { id: true, name: true, slug: true, type: true, lat: true, lng: true, description: true, address: true, phone: true, email: true, logo: true, coverImage: true },
 }) as ShopLayoutOrganization | null;
 
   if (!organization?.slug) {
@@ -81,6 +89,13 @@ const organization = await prisma.organization.findFirst({
 
   return (
     <CartProvider locale={locale} slug={slug} >
+      <JsonLd
+        data={buildOrganizationJsonLd({
+          organization,
+          path: `/${locale}/shop/${organization.slug}`,
+          kind: "Store",
+        })}
+      />
       <div className="min-h-screen flex flex-col">
         {/* Shop Header */}
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

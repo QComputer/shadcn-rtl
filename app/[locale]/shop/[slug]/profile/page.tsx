@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { PublicImage } from "@/components/public/public-image"
+import { WebPushOptIn } from "@/components/public/web-push-opt-in"
 
 interface ShopProfile {
   id: string
@@ -212,6 +213,12 @@ export default function ShopProfilePage({
                </div>
              </CardContent>
            </Card>
+         </div>
+       </section>
+
+       <section className="pb-8">
+         <div className="container mx-auto px-4">
+           <WebPushOptIn organizationSlug={profile.slug} organizationName={profile.name} />
          </div>
        </section>
      </div>

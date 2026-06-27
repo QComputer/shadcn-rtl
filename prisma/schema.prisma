@@ -148,6 +148,27 @@ enum CampaignDeliveryStatus {
   CANCELED
 }
 
+enum LoyaltyLedgerType {
+  EARN
+  REDEEM
+  ADJUST
+  EXPIRE
+  REFUND
+}
+
+enum CouponDiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+enum PushPermissionState {
+  PROMPT
+  GRANTED
+  DENIED
+  UNSUPPORTED
+  REVOKED
+}
+
 // --- CORE MODELS ---
 
 model TimeInterval {
@@ -197,6 +218,12 @@ model Organization {
   customerSegmentSnapshots CustomerSegmentSnapshot[]
   campaigns         Campaign[]
   campaignDeliveries CampaignDelivery[]
+  loyaltyLedgers    LoyaltyLedger[]
+  loyaltyRules      LoyaltyRule[]
+  coupons           Coupon[]
+  couponRedemptions CouponRedemption[]
+  pushSubscriptions PushSubscription[]
+  notificationPermissionEvents NotificationPermissionEvent[]
   fanpagePosts      FanpagePost[]
   notifications     Notification[]
   locations         Location[]
@@ -304,6 +331,11 @@ model User {
   createdNotifications      Notification[]            @relation("CreatedNotifications")
   createdCampaigns          Campaign[]                @relation("CreatedCampaigns")
   campaignDeliveries        CampaignDelivery[]        @relation("CampaignTargetDeliveries")
+  loyaltyLedgers            LoyaltyLedger[]           @relation("CustomerLoyaltyLedger")
+  createdLoyaltyLedgers     LoyaltyLedger[]           @relation("CreatedLoyaltyLedger")
+  couponRedemptions         CouponRedemption[]        @relation("CustomerCouponRedemptions")
+  pushSubscriptions         PushSubscription[]        @relation("CustomerPushSubscriptions")
+  notificationPermissionEvents NotificationPermissionEvent[] @relation("CustomerNotificationPermissionEvents")
   passwordResets           PasswordReset[]
   emailVerifications       EmailVerification[]
   auditLogs                AuditLog[]
@@ -797,6 +829,8 @@ model Order {
   statusHistory  OrderStatusHistory[]
   inventoryMovements InventoryMovement[]
   promotion      Promotion?     @relation(fields: [promotionId], references: [id])
+  loyaltyLedgers LoyaltyLedger[]
+  couponRedemptions CouponRedemption[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -1187,6 +1221,144 @@ model CampaignDelivery {
   @@index([messageId])
   @@index([notificationId])
   @@index([targetUserId])
+}
+
+model LoyaltyLedger {
+  id              String            @id @default(cuid())
+  organizationId  String
+  customerId      String
+  orderId         String?
+  type            LoyaltyLedgerType
+  points          Int
+  reason          String?
+  metadata        Json?
+  createdByUserId String?
+  createdAt       DateTime          @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     User         @relation("CustomerLoyaltyLedger", fields: [customerId], references: [id], onDelete: Cascade)
+  order        Order?       @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  createdBy    User?        @relation("CreatedLoyaltyLedger", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, orderId, type])
+  @@index([organizationId, customerId, createdAt])
+  @@index([customerId, createdAt])
+  @@index([orderId])
+  @@index([createdByUserId])
+}
+
+model LoyaltyRule {
+  id              String   @id @default(cuid())
+  organizationId  String
+  name            String
+  spendAmount     Decimal  @default(100000)
+  pointsAwarded   Int      @default(1)
+  pointsPerOrder  Int      @default(0)
+  minOrderTotal   Decimal  @default(0)
+  isActive        Boolean  @default(true)
+  startsAt        DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, isActive])
+  @@index([organizationId, createdAt])
+}
+
+model Coupon {
+  id                String             @id @default(cuid())
+  organizationId    String
+  code              String
+  name              String
+  description       String?
+  discountType      CouponDiscountType
+  discountValue     Decimal
+  minOrderTotal     Decimal?
+  maxDiscountAmount Decimal?
+  startsAt          DateTime?
+  expiresAt         DateTime?
+  usageLimit        Int?
+  usedCount         Int                @default(0)
+  perCustomerLimit  Int?
+  segmentKey        String?
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  redemptions  CouponRedemption[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId, isActive])
+  @@index([organizationId, segmentKey])
+}
+
+model CouponRedemption {
+  id             String   @id @default(cuid())
+  couponId       String
+  organizationId String
+  customerId     String
+  orderId        String?
+  discountAmount Decimal  @default(0)
+  pointsSpent    Int      @default(0)
+  metadata       Json?
+  redeemedAt     DateTime @default(now())
+
+  coupon       Coupon       @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     User         @relation("CustomerCouponRedemptions", fields: [customerId], references: [id], onDelete: Cascade)
+  order        Order?       @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@unique([couponId, orderId])
+  @@index([organizationId, customerId, redeemedAt])
+  @@index([couponId, redeemedAt])
+  @@index([orderId])
+}
+
+model PushSubscription {
+  id             String   @id @default(cuid())
+  organizationId String
+  customerId     String
+  endpoint       String
+  p256dh         String
+  auth           String
+  userAgent      String?
+  isActive       Boolean  @default(true)
+  lastSeenAt     DateTime @default(now())
+  unsubscribedAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization     Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer         User                          @relation("CustomerPushSubscriptions", fields: [customerId], references: [id], onDelete: Cascade)
+  permissionEvents NotificationPermissionEvent[]
+
+  @@unique([organizationId, customerId, endpoint])
+  @@index([organizationId, customerId, isActive])
+  @@index([customerId, isActive])
+  @@index([endpoint])
+}
+
+model NotificationPermissionEvent {
+  id             String              @id @default(cuid())
+  organizationId String
+  customerId     String
+  subscriptionId String?
+  state          PushPermissionState
+  source         String              @default("PUBLIC_SHOP")
+  reason         String?
+  userAgent      String?
+  createdAt      DateTime            @default(now())
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     User              @relation("CustomerNotificationPermissionEvents", fields: [customerId], references: [id], onDelete: Cascade)
+  subscription PushSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, customerId, createdAt])
+  @@index([subscriptionId])
+  @@index([state, createdAt])
 }
 
 model Conversation {

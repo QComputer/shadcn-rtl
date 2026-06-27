@@ -11,7 +11,7 @@ import {
   Calendar
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatToman } from "@/lib/persian"
+import { cn } from "@/lib/utils"
 
 interface Service {
   id: string
@@ -191,6 +192,26 @@ export default function ServicesPage({
             </SelectContent>
           </Select>
         </div>
+
+        {data.categories.length > 0 && (
+          <div className="mb-8 flex flex-wrap gap-2">
+            <Link
+              href={`/${locale}/appointment/${slug}/services`}
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            >
+              {t("common.all")}
+            </Link>
+            {data.categories.map((category) => (
+              <Link
+                key={locale + category.id}
+                href={`/${locale}/appointment/${slug}/services/category/${category.id}`}
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+              >
+                {category.name} ({category.serviceCount})
+              </Link>
+            ))}
+          </div>
+        )}
 
         {/* Services Grid */}
         {filteredServices.length === 0 ? (

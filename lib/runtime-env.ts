@@ -17,6 +17,10 @@ export type RuntimeEnvValidation = {
     deployedAppUrlConfigured: boolean;
     authTrustHost: string | null;
     googleOAuthConfigured: boolean;
+    webPushProvider: string;
+    webPushDryRun: boolean;
+    webPushPublicKeyConfigured: boolean;
+    webPushRealSendEnabled: boolean;
   };
 };
 
@@ -87,6 +91,52 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
     });
   }
 
+  const webPushProvider = process.env.WEB_PUSH_PROVIDER || "dry_run";
+  const webPushDryRun = process.env.WEB_PUSH_DRY_RUN !== "false";
+  const webPushRealSendEnabled = process.env.WEB_PUSH_REAL_SEND_ENABLED === "true";
+
+  if (!["dry_run", "web_push"].includes(webPushProvider)) {
+    issues.push({
+      name: "WEB_PUSH_PROVIDER",
+      severity: "error",
+      message: "WEB_PUSH_PROVIDER must be either dry_run or web_push.",
+    });
+  }
+
+  if (!hasValue(process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY)) {
+    issues.push({
+      name: "NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY",
+      severity: "warning",
+      message: "Set NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY before enabling browser Web Push opt-in.",
+    });
+  }
+
+  if (webPushProvider === "web_push" && webPushRealSendEnabled && !webPushDryRun) {
+    if (!hasValue(process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY)) {
+      issues.push({
+        name: "NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY",
+        severity: "error",
+        message: "NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY is required when real Web Push is enabled.",
+      });
+    }
+
+    if (!hasValue(process.env.WEB_PUSH_VAPID_PRIVATE_KEY)) {
+      issues.push({
+        name: "WEB_PUSH_VAPID_PRIVATE_KEY",
+        severity: "error",
+        message: "WEB_PUSH_VAPID_PRIVATE_KEY is required when real Web Push is enabled.",
+      });
+    }
+
+    if (!hasValue(process.env.WEB_PUSH_VAPID_SUBJECT)) {
+      issues.push({
+        name: "WEB_PUSH_VAPID_SUBJECT",
+        severity: "error",
+        message: "WEB_PUSH_VAPID_SUBJECT is required when real Web Push is enabled.",
+      });
+    }
+  }
+
   return {
     ok: issues.every((issue) => issue.severity !== "error"),
     issues,
@@ -98,6 +148,10 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
       deployedAppUrlConfigured: isProbablyUrl(process.env.NEXT_PUBLIC_DEPLOYED_APP_URL),
       authTrustHost: process.env.AUTH_TRUST_HOST || null,
       googleOAuthConfigured: hasGoogleClientId && hasGoogleClientSecret,
+      webPushProvider,
+      webPushDryRun,
+      webPushPublicKeyConfigured: hasValue(process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY),
+      webPushRealSendEnabled,
     },
   };
 }

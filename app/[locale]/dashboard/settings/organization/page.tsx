@@ -351,7 +351,7 @@ const handleOpen = async (e: React.FormEvent) => {
 
   const handleSaveImages = async () => {
     if (!organization) return
-    setSaving(true)
+    setSavingImages(true)
     setError(null)
     setSuccess(null)
     try {
@@ -369,7 +369,12 @@ const handleOpen = async (e: React.FormEvent) => {
         throw new Error(data.error || "Failed to save")
       }
       
-      const updatedUser = await response.json()
+      const updatedOrganization = await response.json()
+      setOrganization(updatedOrganization)
+      setLogo(updatedOrganization.logo || "")
+      setCoverImage(updatedOrganization.coverImage || "")
+      setLogoPreview(null)
+      setCoverImagePreview(null)
       setSuccess(t("common.success"))
       
       // If locale changed, redirect to new locale
@@ -379,7 +384,7 @@ const handleOpen = async (e: React.FormEvent) => {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save")
     } finally {
-      setSaving(false)
+      setSavingImages(false)
     }
   }
 
@@ -681,7 +686,7 @@ const handleOpen = async (e: React.FormEvent) => {
         onClick={handleSaveImages}
         disabled={savingImages}
         >
-          {saving ? "ذخیره کردن..." : " ذخیره" }
+          {savingImages ? "ذخیره کردن..." : " ذخیره" }
         </Button>
         </div>
         </CardFooter>

@@ -2,7 +2,7 @@
 
 import { use, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { AlertTriangle, BarChart3, Crown, RefreshCw, Search, UserRoundCheck, Users } from "lucide-react"
+import { AlertTriangle, BarChart3, Bell, Coins, Crown, Gift, RefreshCw, Search, UserRoundCheck, Users } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -58,6 +58,9 @@ type CustomerClubCopy = {
   noContact: string
   showing: string
   segments?: string
+  loyalty?: string
+  coupons?: string
+  push?: string
   statuses: Record<MembershipStatus, string>
   tiers: Record<MembershipTier, string>
 }
@@ -329,6 +332,18 @@ export default function CustomerClubMembersPage({ params }: { params: Promise<{ 
           <Link href={`/${locale}/dashboard/customer-club/segments`} className={buttonVariants({ variant: "outline" })}>
             <BarChart3 className="h-4 w-4" aria-hidden="true" />
             {copy.segments ?? "Segments"}
+          </Link>
+          <Link href={`/${locale}/dashboard/customer-club/loyalty`} className={buttonVariants({ variant: "outline" })}>
+            <Coins className="h-4 w-4" aria-hidden="true" />
+            {copy.loyalty ?? "Loyalty"}
+          </Link>
+          <Link href={`/${locale}/dashboard/customer-club/coupons`} className={buttonVariants({ variant: "outline" })}>
+            <Gift className="h-4 w-4" aria-hidden="true" />
+            {copy.coupons ?? "Coupons"}
+          </Link>
+          <Link href={`/${locale}/dashboard/customer-club/push`} className={buttonVariants({ variant: "outline" })}>
+            <Bell className="h-4 w-4" aria-hidden="true" />
+            {copy.push ?? "Web Push"}
           </Link>
           <Button variant="outline" onClick={refresh} disabled={refreshing || updating}>
             <RefreshCw className={refreshing ? "h-4 w-4 animate-spin" : "h-4 w-4"} aria-hidden="true" />

@@ -8,6 +8,9 @@ import { FanpagePostCard } from "@/components/follow/fanpage-post-card";
 import { FanpagePostForm } from "@/components/follow/fanpage-post-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { JsonLd } from "@/components/seo/json-ld";
+import { buildPublicMetadata, getCanonicalUrl, truncateSeoText } from "@/lib/seo";
+import type { Metadata } from "next";
 
 interface FanpagePageProps {
   params: Promise<{ locale: string; slug: string }>;
@@ -28,6 +31,29 @@ async function canManageFanpage(userId: string | undefined, userRole: string | u
   });
 
   return Boolean(membership);
+}
+
+export async function generateMetadata({ params }: FanpagePageProps): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const organization = await prisma.organization.findFirst({
+    where: { slug, type: "SHOP", isActive: true, deletedAt: null },
+    select: { name: true, slug: true, description: true, logo: true, coverImage: true },
+  });
+
+  if (!organization) {
+    return { title: "Fanpage Not Found" };
+  }
+
+  return buildPublicMetadata({
+    locale,
+    path: `/${locale}/shop/${organization.slug}/fanpage`,
+    title: `${organization.name} fanpage`,
+    description: organization.description || `Latest updates from ${organization.name}.`,
+    image: organization.coverImage || organization.logo,
+    type: "article",
+    keywords: ["Bazar Baz", "fanpage", "shop", organization.slug],
+    alternatePath: (nextLocale) => `/${nextLocale}/shop/${organization.slug}/fanpage`,
+  });
 }
 
 export default async function ShopFanpagePage({ params }: FanpagePageProps) {
@@ -83,6 +109,16 @@ export default async function ShopFanpagePage({ params }: FanpagePageProps) {
 
   return (
     <div className="min-h-screen bg-muted/20">
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          "@id": `${getCanonicalUrl(`/${locale}/shop/${organization.slug}/fanpage`)}#fanpage`,
+          name: `${organization.name} fanpage`,
+          description: truncateSeoText(organization.description, `Latest updates from ${organization.name}.`),
+          url: getCanonicalUrl(`/${locale}/shop/${organization.slug}/fanpage`),
+        }}
+      />
       <section className="border-b bg-background">
         <div className="container mx-auto px-4 py-10">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">

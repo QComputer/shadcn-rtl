@@ -4,6 +4,8 @@ import { LocaleSwitcher } from "@/components/ui/locale-switcher";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 import prisma from "@/lib/db";
 import { getDictionary, getDictValue } from "@/lib/dictionary";
+import { JsonLd } from "@/components/seo/json-ld";
+import { buildOrganizationJsonLd, buildPublicMetadata } from "@/lib/seo";
 
 interface OrganizationLayoutProps {
   children: React.ReactNode;
@@ -19,6 +21,13 @@ type OrganizationLayoutData = {
   slug: string;
   type: "APPOINTMENT" | "SHOP";
   description: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  logo: string | null;
+  coverImage: string | null;
+  lat: number | null;
+  lng: number | null;
 };
 
 async function getPublicOrganization(slug: string): Promise<OrganizationLayoutData | null> {
@@ -34,12 +43,19 @@ async function getPublicOrganization(slug: string): Promise<OrganizationLayoutDa
       slug: true,
       type: true,
       description: true,
+      address: true,
+      phone: true,
+      email: true,
+      logo: true,
+      coverImage: true,
+      lat: true,
+      lng: true,
     },
   });
 }
 
 export async function generateMetadata({ params }: OrganizationLayoutProps): Promise<Metadata> {
-  const { slug } = await params;
+  const { locale, slug } = await params;
   const organization = await getPublicOrganization(slug);
 
   if (!organization) {
@@ -48,10 +64,15 @@ export async function generateMetadata({ params }: OrganizationLayoutProps): Pro
     };
   }
 
-  return {
-    title: organization.name || "Organization",
-    description: organization.description || "Book your appointment",
-  };
+  return buildPublicMetadata({
+    locale,
+    path: `/${locale}/appointment/${organization.slug}`,
+    title: organization.name || "Bazar Baz appointment",
+    description: organization.description || "Book appointments online on Bazar Baz.",
+    image: organization.coverImage || organization.logo,
+    keywords: ["Bazar Baz", "appointment", "booking", organization.slug],
+    alternatePath: (nextLocale) => `/${nextLocale}/appointment/${organization.slug}`,
+  });
 }
 
 export default async function OrganizationLayout({ children, params }: OrganizationLayoutProps) {
@@ -80,6 +101,13 @@ export default async function OrganizationLayout({ children, params }: Organizat
 
   return (
     <div className="min-h-screen bg-background">
+      <JsonLd
+        data={buildOrganizationJsonLd({
+          organization,
+          path: `/${locale}/appointment/${organization.slug}`,
+          kind: "LocalBusiness",
+        })}
+      />
       <header className="border-b sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">

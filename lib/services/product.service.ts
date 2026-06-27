@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import type {
   CreateProductInput,
   UpdateProductInput,
@@ -10,6 +10,15 @@ import { hasPermission, type UserRole } from "@/lib/types";
 import { ApiError } from "@/lib/api-guards";
 import { normalizePagination } from "@/lib/pagination";
 import { InventoryMovementReason } from "@prisma/client";
+import { supportedLocales } from "@/lib/i18n";
+
+function revalidateShopProductPages(productId: string, organizationSlug: string) {
+  for (const locale of supportedLocales) {
+    revalidatePath(`/${locale}/shop/${organizationSlug}`);
+    revalidatePath(`/${locale}/shop/${organizationSlug}/product/${productId}`);
+  }
+  revalidateTag("home-page", "max");
+}
 
 type ProductListParams = {
   page?: number | string;
@@ -258,7 +267,7 @@ export class ProductService {
 
     const existing = await prisma.product.findFirst({
       where: { id, deletedAt: null },
-      select: { id: true, organizationId: true },
+      select: { id: true, organizationId: true, organizationSlug: true },
     });
     if (!existing) throw new ApiError(404, "Product not found");
 
@@ -279,6 +288,7 @@ export class ProductService {
     });
 
     revalidatePath(`/dashboard/products`);
+    revalidateShopProductPages(product.id, product.organizationSlug);
     return product;
   }
 

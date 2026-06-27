@@ -88,6 +88,11 @@ for (const rel of [
   "docs/PHASE_43_IN_APP_NOTIFICATION_INBOX.md",
   "docs/PHASE_44_CUSTOMER_SEGMENTS_MVP.md",
   "docs/PHASE_45_CAMPAIGN_BUILDER_MVP.md",
+  "docs/PHASE_46_LOYALTY_COUPONS.md",
+  "docs/PHASE_47_WEB_PUSH_FOUNDATION.md",
+  "docs/PHASE_48_PUBLIC_SEO_FOUNDATION.md",
+  "docs/PHASE_49_PUBLIC_SEO_QA_RICH_PREVIEW.md",
+  "docs/PHASE_50_PUBLIC_CATEGORY_SEO.md",
 ]) {
   exists(rel) ? ok(`${rel} exists`) : fail(`${rel} exists`);
 }
@@ -140,12 +145,12 @@ for (const rel of expectedE2E) {
 }
 
 for (const rel of ["app/api/health/route.ts", "lib/runtime-env.ts", "scripts/quality/validate-env.mjs", "scripts/quality/validate-release-artifact.mjs", "scripts/quality/validate-get-purity.mjs", "scripts/quality/validate-database-drift.mjs", "scripts/quality/validate-tenant-identity.mjs", "scripts/quality/validate-commerce-correctness.mjs", "scripts/quality/validate-appointment-correctness.mjs", "scripts/quality/validate-i18n-rtl-audit.mjs", "scripts/quality/validate-i18n-completion.mjs", "scripts/quality/validate-fanpage-readiness.mjs",
-  "scripts/quality/validate-public-experience.mjs", "scripts/quality/validate-fanpage-mvp.mjs", "scripts/quality/validate-seed-auth-members-cleanup.mjs", "scripts/quality/validate-member-provider-hardening.mjs", "scripts/quality/validate-dashboard-navigation-copy.mjs", "scripts/quality/validate-dashboard-role-navigation.mjs", "scripts/quality/validate-dashboard-route-parity.mjs", "scripts/quality/validate-dashboard-route-authorization.mjs", "scripts/quality/validate-dashboard-route-guard-smoke.mjs", "scripts/quality/validate-customer-club-foundation.mjs", "scripts/quality/validate-in-app-notifications.mjs", "scripts/quality/validate-customer-segments.mjs", "scripts/quality/validate-campaign-builder.mjs", "scripts/db/repair-known-database-drift.mjs", "scripts/db/known-database-drift-repair.sql"]) {
+  "scripts/quality/validate-public-experience.mjs", "scripts/quality/validate-fanpage-mvp.mjs", "scripts/quality/validate-seed-auth-members-cleanup.mjs", "scripts/quality/validate-member-provider-hardening.mjs", "scripts/quality/validate-dashboard-navigation-copy.mjs", "scripts/quality/validate-dashboard-role-navigation.mjs", "scripts/quality/validate-dashboard-route-parity.mjs", "scripts/quality/validate-dashboard-route-authorization.mjs", "scripts/quality/validate-dashboard-route-guard-smoke.mjs", "scripts/quality/validate-customer-club-foundation.mjs", "scripts/quality/validate-in-app-notifications.mjs", "scripts/quality/validate-customer-segments.mjs", "scripts/quality/validate-campaign-builder.mjs", "scripts/quality/validate-loyalty-coupons.mjs", "scripts/quality/validate-web-push-foundation.mjs", "scripts/quality/validate-public-seo.mjs", "scripts/quality/validate-public-seo-qa.mjs", "scripts/quality/validate-public-category-seo.mjs", "scripts/db/repair-known-database-drift.mjs", "scripts/db/known-database-drift-repair.sql"]) {
   exists(rel) ? ok(`${rel} exists`) : fail(`${rel} exists`);
 }
 
 for (const rel of ["scripts/e2e/deployed-phase9-quality-gates.mjs", "scripts/e2e/deployed-phase10-auth-security.mjs", "scripts/e2e/deployed-phase11-health.mjs", "scripts/e2e/deployed-phase12-messaging.mjs", "scripts/e2e/deployed-phase13-catalog-hardening.mjs", "scripts/e2e/deployed-phase14-inventory-operations.mjs", "scripts/e2e/deployed-phase15-public-order-tracking.mjs", "scripts/e2e/deployed-phase16-engagement.mjs", "scripts/e2e/deployed-phase17-account-settings.mjs", "scripts/e2e/deployed-all.mjs", "scripts/quality/validate-env.mjs", "scripts/quality/validate-dashboard-access.mjs", "scripts/quality/validate-api-service-safety.mjs", "scripts/quality/validate-release-artifact.mjs", "scripts/quality/validate-get-purity.mjs", "scripts/quality/validate-database-drift.mjs", "scripts/quality/validate-tenant-identity.mjs", "scripts/quality/validate-commerce-correctness.mjs", "scripts/quality/validate-appointment-correctness.mjs", "scripts/quality/validate-i18n-rtl-audit.mjs", "scripts/quality/validate-i18n-completion.mjs", "scripts/quality/validate-fanpage-readiness.mjs",
-  "scripts/quality/validate-public-experience.mjs", "scripts/quality/validate-fanpage-mvp.mjs", "scripts/quality/validate-seed-auth-members-cleanup.mjs", "scripts/quality/validate-member-provider-hardening.mjs", "scripts/quality/validate-dashboard-navigation-copy.mjs", "scripts/quality/validate-dashboard-role-navigation.mjs", "scripts/quality/validate-dashboard-route-parity.mjs", "scripts/quality/validate-dashboard-route-authorization.mjs", "scripts/quality/validate-dashboard-route-guard-smoke.mjs", "scripts/quality/validate-customer-club-foundation.mjs", "scripts/quality/validate-in-app-notifications.mjs", "scripts/quality/validate-customer-segments.mjs", "scripts/quality/validate-campaign-builder.mjs", "scripts/db/repair-known-database-drift.mjs"]) {
+  "scripts/quality/validate-public-experience.mjs", "scripts/quality/validate-fanpage-mvp.mjs", "scripts/quality/validate-seed-auth-members-cleanup.mjs", "scripts/quality/validate-member-provider-hardening.mjs", "scripts/quality/validate-dashboard-navigation-copy.mjs", "scripts/quality/validate-dashboard-role-navigation.mjs", "scripts/quality/validate-dashboard-route-parity.mjs", "scripts/quality/validate-dashboard-route-authorization.mjs", "scripts/quality/validate-dashboard-route-guard-smoke.mjs", "scripts/quality/validate-customer-club-foundation.mjs", "scripts/quality/validate-in-app-notifications.mjs", "scripts/quality/validate-customer-segments.mjs", "scripts/quality/validate-campaign-builder.mjs", "scripts/quality/validate-loyalty-coupons.mjs", "scripts/quality/validate-web-push-foundation.mjs", "scripts/quality/validate-public-seo.mjs", "scripts/quality/validate-public-seo-qa.mjs", "scripts/quality/validate-public-category-seo.mjs", "scripts/db/repair-known-database-drift.mjs"]) {
   if (!exists(rel)) continue;
   const result = spawnSync(process.execPath, ["--check", rel], { cwd: root, encoding: "utf8" });
   result.status === 0 ? ok(`${rel} syntax`) : fail(`${rel} syntax`, result.stderr || result.stdout);
@@ -258,6 +263,31 @@ if (exists("scripts/quality/validate-customer-segments.mjs")) {
 if (exists("scripts/quality/validate-campaign-builder.mjs")) {
   const result = spawnSync(process.execPath, ["scripts/quality/validate-campaign-builder.mjs"], { cwd: root, encoding: "utf8" });
   result.status === 0 ? ok("P45 campaign builder validator passes") : fail("P45 campaign builder validator passes", result.stderr || result.stdout);
+}
+
+if (exists("scripts/quality/validate-loyalty-coupons.mjs")) {
+  const result = spawnSync(process.execPath, ["scripts/quality/validate-loyalty-coupons.mjs"], { cwd: root, encoding: "utf8" });
+  result.status === 0 ? ok("P46 loyalty/coupons validator passes") : fail("P46 loyalty/coupons validator passes", result.stderr || result.stdout);
+}
+
+if (exists("scripts/quality/validate-web-push-foundation.mjs")) {
+  const result = spawnSync(process.execPath, ["scripts/quality/validate-web-push-foundation.mjs"], { cwd: root, encoding: "utf8" });
+  result.status === 0 ? ok("P47 web push foundation validator passes") : fail("P47 web push foundation validator passes", result.stderr || result.stdout);
+}
+
+if (exists("scripts/quality/validate-public-seo.mjs")) {
+  const result = spawnSync(process.execPath, ["scripts/quality/validate-public-seo.mjs"], { cwd: root, encoding: "utf8" });
+  result.status === 0 ? ok("P48 public SEO validator passes") : fail("P48 public SEO validator passes", result.stderr || result.stdout);
+}
+
+if (exists("scripts/quality/validate-public-seo-qa.mjs")) {
+  const result = spawnSync(process.execPath, ["scripts/quality/validate-public-seo-qa.mjs"], { cwd: root, encoding: "utf8" });
+  result.status === 0 ? ok("P49 public SEO QA validator passes") : fail("P49 public SEO QA validator passes", result.stderr || result.stdout);
+}
+
+if (exists("scripts/quality/validate-public-category-seo.mjs")) {
+  const result = spawnSync(process.execPath, ["scripts/quality/validate-public-category-seo.mjs"], { cwd: root, encoding: "utf8" });
+  result.status === 0 ? ok("P50 public category SEO validator passes") : fail("P50 public category SEO validator passes", result.stderr || result.stdout);
 }
 
 console.table(results);

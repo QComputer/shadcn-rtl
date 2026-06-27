@@ -18,16 +18,36 @@ export async function uploadToBlob(
   buffer: Buffer,
   contentType: string,
   access: "PUBLIC" | "PRIVATE"
-): Promise<string> {
+): Promise<{ url: string; access: "public" | "private" }> {
   if (!shouldUseVercelBlob()) {
     throw new Error("BLOB_READ_WRITE_TOKEN environment variable is required for image storage");
   }
 
-  const blob = await put(filename, buffer, {
-    contentType,
-    access: access === "PUBLIC" ? "public" : "private",
-  });
-  return blob.url;
+  const preferredAccess = access === "PUBLIC" ? "public" : "private";
+
+  async function putWithAccess(blobAccess: "public" | "private") {
+    const blob = await put(filename, buffer, {
+      contentType,
+      access: blobAccess,
+    });
+    return { url: blob.url, access: blobAccess };
+  }
+
+  try {
+    return await putWithAccess(preferredAccess);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (preferredAccess === "public" && /public access on a private store/i.test(message)) {
+      return putWithAccess("private");
+    }
+
+    if (preferredAccess === "private" && /private access on a public store/i.test(message)) {
+      return putWithAccess("public");
+    }
+
+    throw error;
+  }
 }
 
 export async function deleteFromBlob(pathname: string): Promise<void> {

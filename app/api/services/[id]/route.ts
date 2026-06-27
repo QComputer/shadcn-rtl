@@ -54,7 +54,7 @@ export async function PATCH(
 
     const body = await request.json();
     const sanitizedBody = { ...body };
-    if (sanitizedBody.image === null || sanitizedBody.image === "") sanitizedBody.image = undefined;
+    if (sanitizedBody.image === "") sanitizedBody.image = null;
     if (sanitizedBody.description === null || sanitizedBody.description === "") sanitizedBody.description = undefined;
     if (sanitizedBody.categoryId === null || sanitizedBody.categoryId === "") sanitizedBody.categoryId = undefined;
     if (sanitizedBody.serviceProviderId === null || sanitizedBody.serviceProviderId === "") sanitizedBody.serviceProviderId = undefined;

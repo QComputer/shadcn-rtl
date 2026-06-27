@@ -120,6 +120,39 @@ The test verifies:
 - unauthenticated QR save is blocked,
 - filename traversal is not served from `/uploads`.
 
+## Authenticated deployed upload/display suite
+
+Use the deeper deployed suite when you need to validate that uploaded media becomes visible on public pages after dashboard updates:
+
+```powershell
+$env:DEPLOYED_URL="https://bazar-baz.ir"
+pnpm run e2e:deployed:media-display
+```
+
+The suite:
+
+- signs in through NextAuth credentials using a cookie jar,
+- uploads temporary PNG files through `POST /api/upload`,
+- updates shop organization `logo` and `coverImage`,
+- updates a shop product `image`,
+- verifies `/api/images`, public shop/product APIs, shop page, product detail page, shop profile page, and home-page rendering when the changed organization is present,
+- optionally updates appointment organization, service category, and service media with the `fariba` seeded appointment admin,
+- restores original image values and deletes temporary uploaded images.
+
+Useful environment overrides:
+
+```text
+MEDIA_E2E_SHOP_USERNAME=shop-admin
+MEDIA_E2E_SHOP_PASSWORD=123456
+MEDIA_E2E_APPOINTMENT_USERNAME=fariba
+MEDIA_E2E_APPOINTMENT_PASSWORD=123456
+MEDIA_E2E_INCLUDE_APPOINTMENT=0
+MEDIA_E2E_LOCALE=fa
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=C:\Program Files\Google\Chrome\Application\chrome.exe
+```
+
+The suite can mutate image fields that are currently empty and restore them to `null`. Set `MEDIA_E2E_ALLOW_EMPTY_ORIGINALS=0` if you want it to only use records that already have image values.
+
 ## Production recommendations (completed)
 
 - [x] Move persistent images to Vercel Blob Storage

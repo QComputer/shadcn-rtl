@@ -10,25 +10,11 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import Link from "next/link";
 import { Building2, ShoppingBag, Calendar, ArrowLeft, ArrowRight, Phone } from "lucide-react"
 import { toPersianDigits } from "@/lib/persian";
-
-function resolveMetadataBase() {
-  const rawUrl =
-    process.env.NEXT_PUBLIC_DEPLOYED_APP_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    "https://bazar-baz.ir";
-
-  const normalizedUrl = /^https?:\/\//i.test(rawUrl)
-    ? rawUrl
-    : rawUrl.startsWith("localhost") || rawUrl.startsWith("127.0.0.1")
-      ? `http://${rawUrl}`
-      : `https://${rawUrl}`;
-
-  return new URL(normalizedUrl);
-}
+import { getCanonicalUrl, getPublicBaseUrl } from "@/lib/seo";
 
 
 export const metadata: Metadata = {
-  metadataBase: resolveMetadataBase(),
+  metadataBase: getPublicBaseUrl(),
   title: {
     default: "بازارباز - پلتفرم تجارت الکترونیک و رزو آنلاین نوبت",
     template: "%s | بازارباز"
@@ -42,13 +28,17 @@ export const metadata: Metadata = {
     siteName: "بازارباز",
     images: [
       {
-        url: "/og-image.jpg",
-        width: 800,
-        height: 600,
+        url: getCanonicalUrl("/og-image"),
+        width: 1200,
+        height: 630,
       },
     ],
     locale: "fa",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: [getCanonicalUrl("/og-image")],
   },
 };
 

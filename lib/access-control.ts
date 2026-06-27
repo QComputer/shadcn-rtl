@@ -121,6 +121,21 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     requiresOrgMembership: true,
   },
 
+  "/dashboard/customer-club/loyalty": {
+    allowedRoles: ORG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+  },
+
+  "/dashboard/customer-club/coupons": {
+    allowedRoles: ORG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+  },
+
+  "/dashboard/customer-club/push": {
+    allowedRoles: ORG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+  },
+
   "/dashboard/orders": {
     allowedRoles: ORG_MANAGEMENT_ROLES,
     requiresOrgMembership: true,

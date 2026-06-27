@@ -80,10 +80,10 @@ export function createStoredImageFilename(mimeType: string, purpose = "image") {
 
 export async function writeStoredImage(filename: string, buffer: Buffer, access: "PUBLIC" | "PRIVATE" = "PRIVATE") {
   const pathname = getBlobPathname(filename);
-  const blobUrl = await uploadToBlob(pathname, buffer, getMimeTypeFromFilename(filename), access);
+  const blob = await uploadToBlob(pathname, buffer, getMimeTypeFromFilename(filename), access);
   return {
     pathname,
-    url: access === "PUBLIC" ? blobUrl : `/uploads/${pathname}`,
+    url: access === "PUBLIC" && blob.access === "public" ? blob.url : `/uploads/${pathname}`,
   };
 }
 

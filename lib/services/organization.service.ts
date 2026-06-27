@@ -1,8 +1,17 @@
 import { prisma } from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { createOrganizationSchema, pageSizeSchema, updateOrganizationSchema } from "@/lib/validators";
 import type { CreateOrganizationInput, UpdateOrganizationInput } from "@/lib/validators";
 import { hasPermission, type UserRole, type Permission } from "@/lib/types";
+import { supportedLocales } from "@/lib/i18n";
+
+function revalidateOrganizationPublicPages(slug: string) {
+  for (const locale of supportedLocales) {
+    revalidatePath(`/${locale}/shop/${slug}`);
+    revalidatePath(`/${locale}/shop/${slug}/profile`);
+    revalidatePath(`/${locale}/appointment/${slug}`);
+  }
+}
 
 export class OrganizationService {
   async create(data: CreateOrganizationInput) {
@@ -183,7 +192,8 @@ export class OrganizationService {
     });
 
     revalidatePath(`/dashboard/settings/organization`);
-    revalidatePath(`/fa/shop/${organization.slug}`);
+    revalidateOrganizationPublicPages(organization.slug);
+    revalidateTag("home-page", "max");
     return organization;
   }
 

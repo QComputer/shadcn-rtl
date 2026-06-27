@@ -20,7 +20,7 @@ import {
   Check,
 } from "lucide-react"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -482,31 +482,29 @@ const getDisplayPrice = (product: Product): PriceInfo => {
           {/* Categories Quick Links */}
           {data.categories.length > 1 && (
             <div className="flex flex-wrap gap-2 mb-6">
-              <Button
-                  variant={"all" == selectedCategory ? "default" : "outline"} 
-                  size="sm"
-                  onClick={() => setSelectedCategory("all")}
+              <Link
+                href={`/${locale}/shop/${slug}`}
+                className={cn(buttonVariants({ variant: "all" == selectedCategory ? "default" : "outline", size: "sm" }))}
+              >
+                {"همه"}
+                <Badge
+                  variant={"all" == selectedCategory ? "default" : "secondary"}
+                  className="mr-2"
                 >
-                  {"همه"}
-                  <Badge 
-                  variant={"all" == selectedCategory ? "default" : "secondary"} 
-                   className="mr-2">
-                    {toPersianDigits(getTotalProducts())}
-                  </Badge>
-                </Button>
+                  {toPersianDigits(getTotalProducts())}
+                </Badge>
+              </Link>
               {data.categories.map((category) => (
-                <Button
+                <Link
                   key={locale+category.id}
-                  variant={category.id == selectedCategory ? "default" : "outline"} 
-                  size="sm"
-                  onClick={() => setSelectedCategory(category.id)}
+                  href={`/${locale}/shop/${slug}/category/${category.id}`}
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
                 >
                   {category.name}
-                  <Badge variant={category.id == selectedCategory ? "default" : "secondary"} 
-                  className="mr-2">
+                  <Badge variant="secondary" className="mr-2">
                     {toPersianDigits(category.products.length.toString())}
                   </Badge>
-                </Button>
+                </Link>
               ))}
             </div>
           )}
@@ -797,5 +795,3 @@ const getDisplayPrice = (product: Product): PriceInfo => {
     </div>
   )}
 }
-
-

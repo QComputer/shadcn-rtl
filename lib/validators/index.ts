@@ -73,8 +73,8 @@ export const updateOrganizationSchema = z.object({
   address: z.string().max(500).optional(),
   phone: phoneSchema.optional(),
   email: emailSchema.optional(),
-  logo: z.string().max(500).optional(),
-  coverImage: z.string().max(500).optional(),
+  logo: z.string().max(500).nullable().optional(),
+  coverImage: z.string().max(500).nullable().optional(),
   timezone: z.string().optional(),
   isActive: z.boolean().optional(),
   lat: z.number().optional(),
@@ -95,7 +95,7 @@ export const businessHoursSchema = z.array(
 export const createServiceCategorySchema = z.object({
   name: z.string().min(2, "Name is required").max(200),
   description: z.string().max(5000).optional(),
-  image: z.string().url().optional(),
+  image: z.string().max(500).nullable().optional(),
   sortOrder: z.number().int().default(0),
 });
 
@@ -109,7 +109,7 @@ export const createServiceSchema = z.object({
   description: z.string().max(5000).optional(),
   price: z.number().positive(),
   duration: z.number().int().positive().max(1440),
-  image: z.string().max(500).optional(),
+  image: z.string().max(500).nullable().optional(),
   categoryId: z.string().cuid(),
   serviceProviderId: z.string().cuid().nullable().optional(),
   sortOrder: z.number().int().default(0),
@@ -142,7 +142,7 @@ export const updateAppointmentSchema = z.object({
 export const createProductCategorySchema = z.object({
   name: z.string().min(2).max(200),
   description: z.string().max(5000).optional(),
-  image: z.string().url().optional(),
+  image: z.string().max(500).nullable().optional(),
   sortOrder: z.number().int().default(0),
 });
 
@@ -159,7 +159,7 @@ export const createProductSchema = z.object({
   name: z.string().min(2).max(200),
   description: z.string().max(5000).optional(),
   basePrice: z.number().nonnegative(),
-  image: z.string().max(500).optional(),
+  image: z.string().max(500).nullable().optional(),
   sku: z.string().max(100).optional(),
   categoryId: z.string().cuid(),
   organizationId: z.string().cuid().optional(),

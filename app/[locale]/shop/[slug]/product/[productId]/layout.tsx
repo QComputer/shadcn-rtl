@@ -1,0 +1,118 @@
+import type { Metadata } from "next";
+import prisma from "@/lib/db";
+import { JsonLd } from "@/components/seo/json-ld";
+import { buildBreadcrumbJsonLd, buildPublicMetadata, getCanonicalUrl, getSeoImageUrl, truncateSeoText } from "@/lib/seo";
+
+type ProductDetailLayoutProps = {
+  children: React.ReactNode;
+  params: Promise<{
+    locale: string;
+    slug: string;
+    productId: string;
+  }>;
+};
+
+async function getPublicProduct(slug: string, productId: string) {
+  return prisma.product.findFirst({
+    where: {
+      id: productId,
+      organizationSlug: slug,
+      isActive: true,
+      deletedAt: null,
+      organization: {
+        slug,
+        type: "SHOP",
+        isActive: true,
+        deletedAt: null,
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      basePrice: true,
+      image: true,
+      sku: true,
+      updatedAt: true,
+      organization: {
+        select: {
+          name: true,
+          slug: true,
+          logo: true,
+        },
+      },
+      category: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+}
+
+export async function generateMetadata({ params }: ProductDetailLayoutProps): Promise<Metadata> {
+  const { locale, slug, productId } = await params;
+  const product = await getPublicProduct(slug, productId);
+
+  if (!product) {
+    return { title: "Product Not Found" };
+  }
+
+  const path = `/${locale}/shop/${slug}/product/${product.id}`;
+
+  return buildPublicMetadata({
+    locale,
+    path,
+    title: `${product.name} | ${product.organization.name}`,
+    description: product.description || `${product.name} from ${product.organization.name}.`,
+    image: product.image || product.organization.logo,
+    keywords: ["Bazar Baz", "product", product.name, product.organization.slug, product.category.name],
+    alternatePath: (nextLocale) => `/${nextLocale}/shop/${slug}/product/${product.id}`,
+  });
+}
+
+export default async function ProductDetailLayout({ children, params }: ProductDetailLayoutProps) {
+  const { locale, slug, productId } = await params;
+  const product = await getPublicProduct(slug, productId);
+
+  if (!product) return children;
+
+  const path = `/${locale}/shop/${slug}/product/${product.id}`;
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "@id": `${getCanonicalUrl(path)}#product`,
+    name: product.name,
+    description: truncateSeoText(product.description, `${product.name} from ${product.organization.name}.`),
+    image: getSeoImageUrl(product.image || product.organization.logo),
+    sku: product.sku || product.id,
+    category: product.category.name,
+    brand: {
+      "@type": "Brand",
+      name: product.organization.name,
+    },
+    offers: {
+      "@type": "Offer",
+      price: Number(product.basePrice),
+      priceCurrency: "IRR",
+      availability: "https://schema.org/InStock",
+      url: getCanonicalUrl(path),
+    },
+  };
+
+  return (
+    <>
+      <JsonLd
+        data={[
+          productJsonLd,
+          buildBreadcrumbJsonLd([
+            { name: "Home", path: `/${locale}` },
+            { name: product.organization.name, path: `/${locale}/shop/${slug}` },
+            { name: product.name, path },
+          ]),
+        ]}
+      />
+      {children}
+    </>
+  );
+}

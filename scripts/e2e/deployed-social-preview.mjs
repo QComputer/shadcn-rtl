@@ -190,7 +190,7 @@ async function main() {
   }
 
   const successfulPages = verified.filter(Boolean);
-  const uploadedCandidate = successfulPages.find((entry) => entry.ogImage && !isGeneratedOgImage(entry.ogImage));
+  const uploadedCandidate = successfulPages.find((entry) => entry.capture && entry.ogImage && !isGeneratedOgImage(entry.ogImage));
   const generatedPageCandidate = successfulPages.find((entry) => entry.ogImage && isGeneratedOgImage(entry.ogImage));
 
   record("at least one sampled page social image resolved", allowEmpty || successfulPages.length > 0, `${successfulPages.length} pages`);

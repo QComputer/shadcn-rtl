@@ -60,7 +60,9 @@ expectIncludes("proxy.ts", 'pathname.startsWith("/og-image")', "proxy leaves gen
 expectIncludes("lib/seo.ts", "GeneratedOgImageKind", "SEO helper defines generated OG image kinds");
 expectIncludes("lib/seo.ts", "buildGeneratedOgImagePath", "SEO helper builds deterministic generated OG paths");
 expectIncludes("lib/seo.ts", "getUploadedOrGeneratedSeoImageUrl", "SEO helper preserves uploaded image precedence");
-expectIncludes("lib/seo.ts", "uploadedImage?.trim() ? getSeoImageUrl(uploadedImage)", "uploaded images remain first priority");
+expectIncludes("lib/seo.ts", "isDurableSeoImage", "SEO helper filters non-durable uploaded image paths");
+expectIncludes("lib/seo.ts", "!value.startsWith(\"/uploads/\")", "legacy local uploads are not used as durable SEO images");
+expectIncludes("lib/seo.ts", "isDurableSeoImage(uploadedImage)", "durable uploaded images remain first priority");
 expectIncludes("lib/seo.ts", "DEFAULT_IMAGE}?${params.toString()}", "generated OG image URLs are query based and cacheable");
 expectIncludes("lib/seo.ts", "getSupportedLocale(input.locale)", "generated OG image helper normalizes locales");
 

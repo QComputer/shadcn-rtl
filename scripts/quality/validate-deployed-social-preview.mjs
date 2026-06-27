@@ -56,6 +56,7 @@ expectIncludes("scripts/e2e/deployed-social-preview.mjs", "generated-og-card", "
 expectIncludes("scripts/e2e/deployed-social-preview.mjs", "locale=fa", "deployed social preview generated card defaults to Persian");
 expectIncludes("scripts/e2e/deployed-social-preview.mjs", "%D9%BE%DB%8C%D8%B4", "deployed social preview generated card uses Persian title text");
 expectIncludes("scripts/e2e/deployed-social-preview.mjs", "uploaded-image social preview candidate", "deployed social preview script requires uploaded-image candidate");
+expectIncludes("scripts/e2e/deployed-social-preview.mjs", "entry.capture && entry.ogImage && !isGeneratedOgImage(entry.ogImage)", "deployed social preview script requires captured uploaded-image candidate");
 expectIncludes("scripts/e2e/deployed-social-preview.mjs", "shop organization", "deployed social preview script samples shop organization pages");
 expectIncludes("scripts/e2e/deployed-social-preview.mjs", "appointment organization", "deployed social preview script samples appointment organization pages");
 expectIncludes("scripts/e2e/deployed-social-preview.mjs", "product detail", "deployed social preview script samples product detail pages");

@@ -85,6 +85,15 @@ export function getSeoImageUrl(image?: string | null) {
   }
 }
 
+function isDurableSeoImage(image?: string | null) {
+  const value = image?.trim();
+  if (!value) return false;
+
+  // Legacy local uploads are not durable across Vercel deployments. Prefer generated
+  // share cards over advertising stale /uploads URLs to social crawlers.
+  return !value.startsWith("/uploads/");
+}
+
 function compactOgText(value: string | null | undefined, fallback: string, maxLength: number) {
   const normalized = (value || fallback).replace(/\s+/g, " ").trim();
   return normalized.length <= maxLength ? normalized : `${normalized.slice(0, maxLength - 1).trim()}...`;
@@ -111,7 +120,9 @@ export function getUploadedOrGeneratedSeoImageUrl(
   uploadedImage: string | null | undefined,
   generatedImage: GeneratedOgImageInput,
 ) {
-  return uploadedImage?.trim() ? getSeoImageUrl(uploadedImage) : getSeoImageUrl(buildGeneratedOgImagePath(generatedImage));
+  return isDurableSeoImage(uploadedImage)
+    ? getSeoImageUrl(uploadedImage)
+    : getSeoImageUrl(buildGeneratedOgImagePath(generatedImage));
 }
 
 export function truncateSeoText(value: string | null | undefined, fallback = DEFAULT_DESCRIPTION, maxLength = 155) {

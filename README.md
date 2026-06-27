@@ -63,6 +63,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 48 | Public SEO Foundation | Source-validated | `pnpm run quality:public-seo` |
 | 49 | Public SEO QA and Rich Preview Hardening | Source-validated | `pnpm run quality:public-seo-qa` |
 | 50 | Public Category Metadata and Listing SEO Polish | Source-validated | `pnpm run quality:public-category-seo` |
+| 51 | Category Slugs and Public Listing Pagination | Source-validated | `pnpm run quality:public-category-slugs-pagination` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -90,6 +91,7 @@ pnpm run quality:web-push-foundation
 pnpm run quality:public-seo
 pnpm run quality:public-seo-qa
 pnpm run quality:public-category-seo
+pnpm run quality:public-category-slugs-pagination
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -158,7 +160,11 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P50 - Public Category Metadata and Listing SEO Polish**.
+Latest completed implementation phase: **P51 - Category Slugs and Public Listing Pagination**.
+
+P51 adds stable category slug storage/backfill, unique slug generation in category services, slug-first public category links and sitemap entries, ID-route compatibility via slug redirects, paginated category landing pages, page-aware canonical alternates, `rel="prev"` / `rel="next"` navigation links, and the focused `quality:public-category-slugs-pagination` validator.
+
+Previous category SEO phase retained: **P50 - Public Category Metadata and Listing SEO Polish**.
 
 P50 adds indexable public product-category and service-category landing pages, category metadata, CollectionPage/ItemList/breadcrumb JSON-LD, category sitemap entries, discovery links from listing pages, and the focused `quality:public-category-seo` validator.
 
@@ -206,4 +212,4 @@ Previous dashboard role phase retained: **P38 - dashboard sidebar role-aware nav
 
 Previous dashboard shell/copy phase retained: **P37 - dashboard navigation and localized shell copy cleanup**.
 
-Recommended next phase: **P51 - Category Slugs and Public Listing Pagination**.
+Recommended next phase: **P52 - Public Product and Service Slug Detail URLs**.

@@ -431,6 +431,7 @@ model EmailVerification {
 model ServiceCategory {
   id             String  @id @default(cuid())
   name           String
+  slug           String?
   description    String? //@db.Text
   image          String?
   sortOrder      Int     @default(0)
@@ -446,6 +447,7 @@ model ServiceCategory {
   deletedAt DateTime?
 
   @@index([organizationId])
+  @@index([organizationId, slug])
   @@index([deletedAt])
 }
 
@@ -595,6 +597,7 @@ model BookingSession {
 model ProductCategory {
   id             String  @id @default(cuid())
   name           String
+  slug           String?
   description    String? //@db.Text
   image          String?
   sortOrder      Int     @default(0)
@@ -611,6 +614,7 @@ model ProductCategory {
 
   @@index([organizationId])
   @@index([organizationSlug])
+  @@index([organizationId, slug])
   @@index([deletedAt])
 }
 

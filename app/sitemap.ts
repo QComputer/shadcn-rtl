@@ -46,6 +46,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         },
         select: {
           id: true,
+          slug: true,
           organizationSlug: true,
           updatedAt: true,
         },
@@ -61,6 +62,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         },
         select: {
           id: true,
+          slug: true,
           updatedAt: true,
           organization: {
             select: { slug: true },
@@ -128,7 +130,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const category of productCategories) {
       entries.push(
         ...localizedEntries(
-          (locale) => `/${locale}/shop/${category.organizationSlug}/category/${category.id}`,
+          (locale) => `/${locale}/shop/${category.organizationSlug}/category/${category.slug || category.id}`,
           category.updatedAt,
         ),
       );
@@ -137,7 +139,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const category of serviceCategories) {
       entries.push(
         ...localizedEntries(
-          (locale) => `/${locale}/appointment/${category.organization.slug}/services/category/${category.id}`,
+          (locale) => `/${locale}/appointment/${category.organization.slug}/services/category/${category.slug || category.id}`,
           category.updatedAt,
         ),
       );

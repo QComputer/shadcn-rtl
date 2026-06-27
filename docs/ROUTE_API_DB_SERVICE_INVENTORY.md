@@ -2,7 +2,7 @@
 
 _Last synchronized from the source tree: 2026-06-26._
 
-This inventory is a planning aid for future phases. It reflects the current filesystem after Customer Club, campaign, loyalty/coupon, Web Push, and public SEO phases.
+This inventory is a planning aid for future phases. It reflects the current filesystem after Customer Club, campaign, loyalty/coupon, Web Push, public SEO, and category slug/pagination phases.
 
 ## 1. Localized page routes
 
@@ -15,7 +15,7 @@ All localized pages are under `app/[locale]`; supported locales are `fa`, `en`, 
 | /{locale}/appointment/{slug}/fanpage |
 | /{locale}/appointment/{slug}/my-appointments |
 | /{locale}/appointment/{slug} |
-| /{locale}/appointment/{slug}/services/category/{categoryId} |
+| /{locale}/appointment/{slug}/services/category/{categoryIdOrSlug} |
 | /{locale}/appointment/{slug}/services/{serviceId} |
 | /{locale}/appointment/{slug}/services |
 | /{locale}/appointment/{slug}/staff |
@@ -55,7 +55,7 @@ All localized pages are under `app/[locale]`; supported locales are `fa`, `en`, 
 | /{locale}/register/organization |
 | /{locale}/register |
 | /{locale}/shop/{slug}/checkout |
-| /{locale}/shop/{slug}/category/{categoryId} |
+| /{locale}/shop/{slug}/category/{categoryIdOrSlug} |
 | /{locale}/shop/{slug}/fanpage |
 | /{locale}/shop/{slug}/order/{orderNumber} |
 | /{locale}/shop/{slug} |

@@ -70,6 +70,7 @@ interface Product {
 
 interface ProductCategory {
   id: string
+  slug: string | null
   name: string
   description: string | null
   image: string | null
@@ -497,7 +498,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
               {data.categories.map((category) => (
                 <Link
                   key={locale+category.id}
-                  href={`/${locale}/shop/${slug}/category/${category.id}`}
+                  href={`/${locale}/shop/${slug}/category/${category.slug || category.id}`}
                   className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
                 >
                   {category.name}

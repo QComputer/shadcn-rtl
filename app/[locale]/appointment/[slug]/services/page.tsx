@@ -35,6 +35,7 @@ interface Service {
   image: string | null
   category: {
     id: string
+    slug: string | null
     name: string
   }
   serviceProvider: {
@@ -47,6 +48,7 @@ interface Service {
 
 interface Category {
   id: string
+  slug: string | null
   name: string
   description: string | null
   serviceCount: number
@@ -204,7 +206,7 @@ export default function ServicesPage({
             {data.categories.map((category) => (
               <Link
                 key={locale + category.id}
-                href={`/${locale}/appointment/${slug}/services/category/${category.id}`}
+                href={`/${locale}/appointment/${slug}/services/category/${category.slug || category.id}`}
                 className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
               >
                 {category.name} ({category.serviceCount})

@@ -38,6 +38,7 @@ export async function GET(
         category: {
           select: {
             id: true,
+            slug: true,
             name: true,
           },
         },

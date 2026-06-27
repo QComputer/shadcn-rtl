@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { Calendar, Clock, User } from "lucide-react";
+import { notFound, redirect } from "next/navigation";
+import { Calendar, ChevronLeft, ChevronRight, Clock, User } from "lucide-react";
 import prisma from "@/lib/db";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { normalizePagination } from "@/lib/pagination";
 import {
   buildBreadcrumbJsonLd,
   buildPublicMetadata,
@@ -17,18 +18,43 @@ import {
 import { formatToman } from "@/lib/persian";
 import { cn } from "@/lib/utils";
 
+const CATEGORY_PAGE_SIZE = 24;
+
 type ServiceCategoryPageProps = {
   params: Promise<{
     locale: string;
     slug: string;
     categoryId: string;
   }>;
+  searchParams?: Promise<{
+    page?: string | string[];
+  }>;
 };
 
-async function getServiceCategory(slug: string, categoryId: string) {
+type CategoryPagination = ReturnType<typeof normalizePagination>;
+
+function getRequestedPagination(searchParams?: { page?: string | string[] }): CategoryPagination {
+  const rawPage = Array.isArray(searchParams?.page) ? searchParams?.page[0] : searchParams?.page;
+  return normalizePagination(
+    { page: rawPage, pageSize: CATEGORY_PAGE_SIZE },
+    { defaultPageSize: CATEGORY_PAGE_SIZE, maxPageSize: CATEGORY_PAGE_SIZE },
+  );
+}
+
+function categoryPath(locale: string, appointmentSlug: string, categorySegment: string, page = 1) {
+  const path = `/${locale}/appointment/${appointmentSlug}/services/category/${categorySegment}`;
+  return page > 1 ? `${path}?page=${page}` : path;
+}
+
+const visibleServiceWhere = {
+  isActive: true,
+  deletedAt: null,
+};
+
+async function getServiceCategory(slug: string, categoryId: string, pagination: CategoryPagination) {
   return prisma.serviceCategory.findFirst({
     where: {
-      id: categoryId,
+      OR: [{ id: categoryId }, { slug: categoryId }],
       isActive: true,
       deletedAt: null,
       organization: {
@@ -41,9 +67,15 @@ async function getServiceCategory(slug: string, categoryId: string) {
     select: {
       id: true,
       name: true,
+      slug: true,
       description: true,
       image: true,
       updatedAt: true,
+      _count: {
+        select: {
+          services: { where: visibleServiceWhere },
+        },
+      },
       organization: {
         select: {
           name: true,
@@ -53,10 +85,7 @@ async function getServiceCategory(slug: string, categoryId: string) {
         },
       },
       services: {
-        where: {
-          isActive: true,
-          deletedAt: null,
-        },
+        where: visibleServiceWhere,
         select: {
           id: true,
           name: true,
@@ -74,7 +103,8 @@ async function getServiceCategory(slug: string, categoryId: string) {
           },
         },
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-        take: 60,
+        skip: pagination.skip,
+        take: pagination.take,
       },
     },
   });
@@ -86,41 +116,56 @@ function getProviderName(service: NonNullable<Awaited<ReturnType<typeof getServi
   return provider.name || [provider.firstName, provider.lastName].filter(Boolean).join(" ") || null;
 }
 
-export async function generateMetadata({ params }: ServiceCategoryPageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: ServiceCategoryPageProps): Promise<Metadata> {
   const { locale, slug, categoryId } = await params;
-  const category = await getServiceCategory(slug, categoryId);
+  const pagination = getRequestedPagination(await searchParams);
+  const category = await getServiceCategory(slug, categoryId, pagination);
 
   if (!category) {
     return { title: "Category Not Found" };
   }
 
+  const categorySegment = category.slug || category.id;
+  const path = categoryPath(locale, slug, categorySegment, pagination.page);
+
   return buildPublicMetadata({
     locale,
-    path: `/${locale}/appointment/${slug}/services/category/${category.id}`,
-    title: `${category.name} | ${category.organization.name}`,
+    path,
+    title: `${category.name} | ${category.organization.name}${pagination.page > 1 ? ` - Page ${pagination.page}` : ""}`,
     description: category.description || `${category.name} services from ${category.organization.name}.`,
     image: category.image || category.organization.coverImage || category.organization.logo,
     keywords: ["Bazar Baz", "service category", category.name, category.organization.slug],
-    alternatePath: (nextLocale) => `/${nextLocale}/appointment/${slug}/services/category/${category.id}`,
+    alternatePath: (nextLocale) => categoryPath(nextLocale, slug, categorySegment, pagination.page),
   });
 }
 
-export default async function ServiceCategoryPage({ params }: ServiceCategoryPageProps) {
+export default async function ServiceCategoryPage({ params, searchParams }: ServiceCategoryPageProps) {
   const { locale, slug, categoryId } = await params;
-  const category = await getServiceCategory(slug, categoryId);
+  const pagination = getRequestedPagination(await searchParams);
+  const category = await getServiceCategory(slug, categoryId, pagination);
 
   if (!category) notFound();
 
-  const path = `/${locale}/appointment/${slug}/services/category/${category.id}`;
+  const categorySegment = category.slug || category.id;
+  if (category.slug && categoryId !== category.slug) {
+    redirect(categoryPath(locale, slug, category.slug, pagination.page));
+  }
+
+  const totalServices = category._count.services;
+  const totalPages = Math.max(1, Math.ceil(totalServices / pagination.pageSize));
+  const path = categoryPath(locale, slug, categorySegment, pagination.page);
+  const canonicalCategoryPath = categoryPath(locale, slug, categorySegment);
+  const previousPath = pagination.page > 1 ? categoryPath(locale, slug, categorySegment, pagination.page - 1) : null;
+  const nextPath = pagination.page < totalPages ? categoryPath(locale, slug, categorySegment, pagination.page + 1) : null;
   const itemListJsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
     "@id": `${getCanonicalUrl(path)}#services`,
     name: `${category.name} services`,
-    numberOfItems: category.services.length,
+    numberOfItems: totalServices,
     itemListElement: category.services.map((service, index) => ({
       "@type": "ListItem",
-      position: index + 1,
+      position: pagination.skip + index + 1,
       url: getCanonicalUrl(`/${locale}/appointment/${slug}/services/${service.id}`),
       item: {
         "@type": "Service",
@@ -150,6 +195,7 @@ export default async function ServiceCategoryPage({ params }: ServiceCategoryPag
             description: truncateSeoText(category.description, `${category.name} services from ${category.organization.name}.`),
             url: getCanonicalUrl(path),
             image: getSeoImageUrl(category.image || category.organization.coverImage || category.organization.logo),
+            mainEntity: { "@id": `${getCanonicalUrl(path)}#services` },
           },
           itemListJsonLd,
           buildBreadcrumbJsonLd([
@@ -168,6 +214,10 @@ export default async function ServiceCategoryPage({ params }: ServiceCategoryPag
           </Badge>
           <h1 className="text-3xl font-bold md:text-4xl">{category.name}</h1>
           {category.description && <p className="mt-3 max-w-2xl text-muted-foreground">{category.description}</p>}
+          <p className="mt-3 text-sm text-muted-foreground">
+            {totalServices} services
+            {pagination.page > 1 ? ` - page ${pagination.page} of ${totalPages}` : ""}
+          </p>
         </div>
       </section>
 
@@ -218,6 +268,39 @@ export default async function ServiceCategoryPage({ params }: ServiceCategoryPag
               );
             })}
           </div>
+        )}
+
+        {totalPages > 1 && (
+          <nav className="mt-8 flex flex-wrap items-center justify-center gap-3" aria-label="Service category pagination">
+            {previousPath ? (
+              <Link rel="prev" href={previousPath} className={cn(buttonVariants({ variant: "outline" }))}>
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Link>
+            ) : null}
+            <Link href={canonicalCategoryPath} className={cn(buttonVariants({ variant: pagination.page === 1 ? "default" : "outline", size: "sm" }))}>
+              1
+            </Link>
+            {pagination.page > 2 && <span className="text-sm text-muted-foreground">...</span>}
+            {pagination.page > 1 && pagination.page < totalPages && (
+              <span className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{pagination.page}</span>
+            )}
+            {pagination.page < totalPages - 1 && <span className="text-sm text-muted-foreground">...</span>}
+            {totalPages > 1 && (
+              <Link
+                href={categoryPath(locale, slug, categorySegment, totalPages)}
+                className={cn(buttonVariants({ variant: pagination.page === totalPages ? "default" : "outline", size: "sm" }))}
+              >
+                {totalPages}
+              </Link>
+            )}
+            {nextPath ? (
+              <Link rel="next" href={nextPath} className={cn(buttonVariants({ variant: "outline" }))}>
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            ) : null}
+          </nav>
         )}
       </section>
     </main>

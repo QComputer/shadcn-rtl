@@ -7,6 +7,7 @@ import type {
   UpdateServiceCategoryInput,
 } from "@/lib/validators";
 import { ApiError } from "@/lib/api-guards";
+import { buildUniqueCategorySlug, normalizeCategorySlug } from "@/lib/category-slugs";
 import { normalizePagination } from "@/lib/pagination";
 
 type CategoryListParams = {
@@ -49,8 +50,47 @@ function buildCategoryWhere(params: CategoryListParams, organizationId?: string)
   return where;
 }
 
+function revalidateCategoryPublicPages(input: {
+  organizationSlug: string;
+  mode: "shop" | "appointment";
+  segments: Array<string | null | undefined>;
+}) {
+  const locales = ["fa", "en", "ar"] as const;
+  const uniqueSegments = Array.from(new Set(input.segments.filter(Boolean)));
+
+  for (const locale of locales) {
+    if (input.mode === "shop") {
+      revalidatePath(`/${locale}/shop/${input.organizationSlug}`);
+      for (const segment of uniqueSegments) {
+        revalidatePath(`/${locale}/shop/${input.organizationSlug}/category/${segment}`);
+      }
+    } else {
+      revalidatePath(`/${locale}/appointment/${input.organizationSlug}/services`);
+      for (const segment of uniqueSegments) {
+        revalidatePath(`/${locale}/appointment/${input.organizationSlug}/services/category/${segment}`);
+      }
+    }
+  }
+}
+
 // Product Category Service
 export class ProductCategoryService {
+  private async buildUniqueSlug(organizationId: string, source: string, excludeId?: string) {
+    return buildUniqueCategorySlug(source, async (candidate) => {
+      const existing = await prisma.productCategory.findFirst({
+        where: {
+          organizationId,
+          deletedAt: null,
+          slug: candidate,
+          ...(excludeId ? { id: { not: excludeId } } : {}),
+        },
+        select: { id: true },
+      });
+
+      return Boolean(existing);
+    });
+  }
+
   async create(organizationId: string, data: CreateProductCategoryInput) {
     const org = await requireOrganization(organizationId, "SHOP");
 
@@ -69,12 +109,18 @@ export class ProductCategoryService {
     const category = await prisma.productCategory.create({
       data: {
         ...data,
+        slug: await this.buildUniqueSlug(organizationId, data.slug || data.name),
         organizationId,
         organizationSlug: org.slug,
       },
     });
 
     revalidatePath(`/dashboard/product-categories`);
+    revalidateCategoryPublicPages({
+      organizationSlug: org.slug,
+      mode: "shop",
+      segments: [category.id, category.slug],
+    });
     return category;
   }
 
@@ -155,7 +201,7 @@ export class ProductCategoryService {
   async update(id: string, data: UpdateProductCategoryInput) {
     const existing = await prisma.productCategory.findFirst({
       where: { id, deletedAt: null },
-      select: { id: true, organizationId: true },
+      select: { id: true, name: true, slug: true, organizationId: true, organizationSlug: true },
     });
     if (!existing) throw new ApiError(404, "Product category not found");
 
@@ -174,12 +220,26 @@ export class ProductCategoryService {
       }
     }
 
+    const nextData = {
+      ...data,
+      ...(data.slug
+        ? { slug: await this.buildUniqueSlug(existing.organizationId, normalizeCategorySlug(data.slug), id) }
+        : !existing.slug
+          ? { slug: await this.buildUniqueSlug(existing.organizationId, data.name || existing.name, id) }
+          : {}),
+    };
+
     const category = await prisma.productCategory.update({
       where: { id },
-      data,
+      data: nextData,
     });
 
     revalidatePath(`/dashboard/product-categories`);
+    revalidateCategoryPublicPages({
+      organizationSlug: existing.organizationSlug,
+      mode: "shop",
+      segments: [existing.id, existing.slug, category.slug],
+    });
     return category;
   }
 
@@ -203,8 +263,24 @@ export class ProductCategoryService {
 
 // Service Category Service
 export class ServiceCategoryService {
+  private async buildUniqueSlug(organizationId: string, source: string, excludeId?: string) {
+    return buildUniqueCategorySlug(source, async (candidate) => {
+      const existing = await prisma.serviceCategory.findFirst({
+        where: {
+          organizationId,
+          deletedAt: null,
+          slug: candidate,
+          ...(excludeId ? { id: { not: excludeId } } : {}),
+        },
+        select: { id: true },
+      });
+
+      return Boolean(existing);
+    });
+  }
+
   async create(organizationId: string, data: CreateServiceCategoryInput) {
-    await requireOrganization(organizationId, "APPOINTMENT");
+    const org = await requireOrganization(organizationId, "APPOINTMENT");
 
     const duplicate = await prisma.serviceCategory.findFirst({
       where: {
@@ -221,11 +297,17 @@ export class ServiceCategoryService {
     const category = await prisma.serviceCategory.create({
       data: {
         ...data,
+        slug: await this.buildUniqueSlug(organizationId, data.slug || data.name),
         organizationId,
       },
     });
 
     revalidatePath(`/dashboard/service-categories`);
+    revalidateCategoryPublicPages({
+      organizationSlug: org.slug,
+      mode: "appointment",
+      segments: [category.id, category.slug],
+    });
     return category;
   }
 
@@ -334,7 +416,13 @@ export class ServiceCategoryService {
   async update(id: string, data: UpdateServiceCategoryInput) {
     const existing = await prisma.serviceCategory.findFirst({
       where: { id, deletedAt: null },
-      select: { id: true, organizationId: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        organizationId: true,
+        organization: { select: { slug: true } },
+      },
     });
     if (!existing) throw new ApiError(404, "Service category not found");
 
@@ -353,12 +441,26 @@ export class ServiceCategoryService {
       }
     }
 
+    const nextData = {
+      ...data,
+      ...(data.slug
+        ? { slug: await this.buildUniqueSlug(existing.organizationId, normalizeCategorySlug(data.slug), id) }
+        : !existing.slug
+          ? { slug: await this.buildUniqueSlug(existing.organizationId, data.name || existing.name, id) }
+          : {}),
+    };
+
     const category = await prisma.serviceCategory.update({
       where: { id },
-      data,
+      data: nextData,
     });
 
     revalidatePath(`/dashboard/service-categories`);
+    revalidateCategoryPublicPages({
+      organizationSlug: existing.organization.slug,
+      mode: "appointment",
+      segments: [existing.id, existing.slug, category.slug],
+    });
     return category;
   }
 

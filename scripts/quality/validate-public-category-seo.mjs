@@ -53,12 +53,12 @@ for (const rel of categoryPages) {
 
 expectIncludes(
   "app/[locale]/shop/[slug]/page.tsx",
-  "/shop/${slug}/category/${category.id}",
+  "/shop/${slug}/category/${category.slug || category.id}",
   "shop listing links to product category pages",
 );
 expectIncludes(
   "app/[locale]/appointment/[slug]/services/page.tsx",
-  "/appointment/${slug}/services/category/${category.id}",
+  "/appointment/${slug}/services/category/${category.slug || category.id}",
   "appointment services listing links to service category pages",
 );
 
@@ -66,12 +66,12 @@ expectIncludes("app/sitemap.ts", "productCategory.findMany", "sitemap queries pr
 expectIncludes("app/sitemap.ts", "serviceCategory.findMany", "sitemap queries service categories");
 expectIncludes(
   "app/sitemap.ts",
-  "/shop/${category.organizationSlug}/category/${category.id}",
+  "/shop/${category.organizationSlug}/category/${category.slug || category.id}",
   "sitemap includes product category routes",
 );
 expectIncludes(
   "app/sitemap.ts",
-  "/appointment/${category.organization.slug}/services/category/${category.id}",
+  "/appointment/${category.organization.slug}/services/category/${category.slug || category.id}",
   "sitemap includes service category routes",
 );
 

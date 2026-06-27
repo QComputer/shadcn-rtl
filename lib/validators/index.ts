@@ -94,6 +94,7 @@ export const businessHoursSchema = z.array(
 // Service Category validators
 export const createServiceCategorySchema = z.object({
   name: z.string().min(2, "Name is required").max(200),
+  slug: z.string().min(2).max(100).optional(),
   description: z.string().max(5000).optional(),
   image: z.string().max(500).nullable().optional(),
   sortOrder: z.number().int().default(0),
@@ -141,6 +142,7 @@ export const updateAppointmentSchema = z.object({
 // Product Category validators
 export const createProductCategorySchema = z.object({
   name: z.string().min(2).max(200),
+  slug: z.string().min(2).max(100).optional(),
   description: z.string().max(5000).optional(),
   image: z.string().max(500).nullable().optional(),
   sortOrder: z.number().int().default(0),

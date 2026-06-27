@@ -17,6 +17,7 @@ export const createShopDomainSchema = z.object({
   status: shopDomainStatusSchema.optional().default("DNS_REQUIRED"),
   isPrimary: z.boolean().optional().default(false),
   failureReason: z.string().trim().max(500).optional().nullable(),
+  provisionOnVercel: z.boolean().optional().default(false),
 });
 
 export const updateShopDomainSchema = z.object({
@@ -30,6 +31,10 @@ export const updateShopDomainSchema = z.object({
 
 export const deleteShopDomainSchema = z.object({
   id: z.string().min(1, "Domain id is required"),
+});
+
+export const vercelShopDomainActionSchema = z.object({
+  action: z.enum(["add", "check", "remove"]),
 });
 
 export function requireSuperAdmin(session: SessionWithUser) {

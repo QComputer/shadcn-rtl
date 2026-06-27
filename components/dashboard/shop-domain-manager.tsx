@@ -33,6 +33,8 @@ type ShopDomain = {
   normalizedDomain: string;
   status: DomainStatus;
   isPrimary: boolean;
+  vercelProjectDomainId: string | null;
+  verificationToken: string | null;
   failureReason: string | null;
   verifiedAt: string | null;
   lastCheckedAt: string | null;
@@ -50,6 +52,30 @@ type ShopDomain = {
 type ShopDomainPayload = {
   shops: ShopSummary[];
   domains: ShopDomain[];
+  vercelAutomation: {
+    configured: boolean;
+    dryRun: boolean;
+    projectConfigured: boolean;
+    teamConfigured: boolean;
+  };
+};
+
+type VercelDnsRecord = {
+  type: string;
+  name: string;
+  value: string;
+  purpose: string;
+};
+
+type VercelAutomationResult = {
+  ok: boolean;
+  dryRun: boolean;
+  action: "add" | "check" | "remove";
+  domain: string;
+  verified: boolean;
+  status: DomainStatus;
+  message: string;
+  dnsRecords: VercelDnsRecord[];
 };
 
 type Copy = {
@@ -78,6 +104,17 @@ type Copy = {
   remove: string;
   save: string;
   dnsHint: string;
+  automationHint: string;
+  automationDisabled: string;
+  automationDryRun: string;
+  provisionOnVercel: string;
+  addToVercel: string;
+  checkVercel: string;
+  removeFromVercel: string;
+  dnsRecords: string;
+  copiedDns: string;
+  lastChecked: string;
+  failureReason: string;
   securityNote: string;
   failedToLoad: string;
   failedToSave: string;
@@ -110,7 +147,18 @@ const copyByLocale = {
     setPrimary: "اصلی شود",
     remove: "حذف",
     save: "ذخیره",
-    dnsHint: "بعد از اتصال دامنه در این صفحه، دامنه را در Vercel هم اضافه کنید و DNS مشتری را طبق رکوردهای Vercel تنظیم کنید. اتوماسیون Vercel در فاز بعدی اضافه می‌شود.",
+    dnsHint: "دامنه‌های فعال فقط وقتی مسیر سفارشی را سرو می‌کنند که وضعیت آن‌ها ACTIVE باشد.",
+    automationHint: "اتوماسیون Vercel می‌تواند دامنه را به پروژه اضافه کند، وضعیت را بررسی کند و رکوردهای DNS پیشنهادی را نمایش دهد.",
+    automationDisabled: "اتوماسیون Vercel هنوز پیکربندی نشده است. VERCEL_ACCESS_TOKEN و VERCEL_PROJECT_ID را تنظیم کنید.",
+    automationDryRun: "حالت Dry-run فعال است؛ عملیات روی Vercel واقعی انجام نمی‌شود.",
+    provisionOnVercel: "هم‌زمان در Vercel هم اضافه شود",
+    addToVercel: "افزودن به Vercel",
+    checkVercel: "بررسی Vercel",
+    removeFromVercel: "حذف از Vercel",
+    dnsRecords: "رکوردهای DNS",
+    copiedDns: "رکوردهای DNS در خروجی عملیات برگشت داده شد.",
+    lastChecked: "آخرین بررسی",
+    failureReason: "خطا",
     securityNote: "این ابزار عمداً سازمانی نیست؛ فقط SUPER_ADMIN می‌تواند دامنه را به فروشگاه متصل یا از آن جدا کند.",
     failedToLoad: "بارگذاری دامنه‌ها ناموفق بود.",
     failedToSave: "ذخیره تغییرات ناموفق بود.",
@@ -141,7 +189,18 @@ const copyByLocale = {
     setPrimary: "Set primary",
     remove: "Remove",
     save: "Save",
-    dnsHint: "After connecting the domain here, also add it to Vercel and configure the customer's DNS using Vercel records. Vercel automation comes in the next phase.",
+    dnsHint: "Custom domains are only served publicly after their status becomes ACTIVE.",
+    automationHint: "Vercel automation can add the domain to the project, check verification status, and return suggested DNS records.",
+    automationDisabled: "Vercel automation is not configured yet. Set VERCEL_ACCESS_TOKEN and VERCEL_PROJECT_ID.",
+    automationDryRun: "Dry-run mode is active; no real Vercel mutation will be sent.",
+    provisionOnVercel: "Also provision on Vercel",
+    addToVercel: "Add to Vercel",
+    checkVercel: "Check Vercel",
+    removeFromVercel: "Remove from Vercel",
+    dnsRecords: "DNS records",
+    copiedDns: "DNS records were returned by the Vercel operation.",
+    lastChecked: "Last checked",
+    failureReason: "Failure",
     securityNote: "This is intentionally not an organization-admin tool; only SUPER_ADMIN can connect or disconnect shop domains.",
     failedToLoad: "Failed to load domains.",
     failedToSave: "Failed to save changes.",
@@ -172,7 +231,18 @@ const copyByLocale = {
     setPrimary: "اجعله رئيسياً",
     remove: "حذف",
     save: "حفظ",
-    dnsHint: "بعد ربط النطاق هنا، أضفه أيضاً في Vercel واضبط DNS العميل حسب سجلات Vercel. أتمتة Vercel ستأتي في المرحلة التالية.",
+    dnsHint: "النطاقات المخصصة لا تعمل علناً إلا بعد أن تصبح حالتها ACTIVE.",
+    automationHint: "يمكن لأتمتة Vercel إضافة النطاق للمشروع، فحص التحقق، وإرجاع سجلات DNS المقترحة.",
+    automationDisabled: "أتمتة Vercel غير مهيأة بعد. اضبط VERCEL_ACCESS_TOKEN و VERCEL_PROJECT_ID.",
+    automationDryRun: "وضع Dry-run مفعّل؛ لن يتم إرسال تغيير حقيقي إلى Vercel.",
+    provisionOnVercel: "أضفه أيضاً في Vercel",
+    addToVercel: "إضافة إلى Vercel",
+    checkVercel: "فحص Vercel",
+    removeFromVercel: "حذف من Vercel",
+    dnsRecords: "سجلات DNS",
+    copiedDns: "تم إرجاع سجلات DNS من عملية Vercel.",
+    lastChecked: "آخر فحص",
+    failureReason: "الخطأ",
     securityNote: "هذه الأداة ليست لإدارة المؤسسة؛ فقط SUPER_ADMIN يمكنه ربط أو فصل نطاقات المتاجر.",
     failedToLoad: "فشل تحميل النطاقات.",
     failedToSave: "فشل حفظ التغييرات.",
@@ -207,6 +277,7 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
   const isRtl = locale === "fa" || locale === "ar";
   const [shops, setShops] = useState<ShopSummary[]>([]);
   const [domains, setDomains] = useState<ShopDomain[]>([]);
+  const [vercelAutomation, setVercelAutomation] = useState<ShopDomainPayload["vercelAutomation"] | null>(null);
   const [selectedShopId, setSelectedShopId] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<DomainStatus | "ALL">("ALL");
   const [query, setQuery] = useState("");
@@ -214,8 +285,11 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
   const [newShopId, setNewShopId] = useState("");
   const [newStatus, setNewStatus] = useState<DomainStatus>("DNS_REQUIRED");
   const [newPrimary, setNewPrimary] = useState(false);
+  const [newProvisionOnVercel, setNewProvisionOnVercel] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [actionBusyId, setActionBusyId] = useState<string | null>(null);
+  const [dnsRecords, setDnsRecords] = useState<VercelDnsRecord[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -229,6 +303,7 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
       const data = payload as ShopDomainPayload;
       setShops(data.shops);
       setDomains(data.domains);
+      setVercelAutomation(data.vercelAutomation);
       if (!newShopId && data.shops[0]) setNewShopId(data.shops[0].id);
     } catch (err) {
       setError(err instanceof Error ? err.message : copy.failedToLoad);
@@ -275,14 +350,16 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
           organizationId: newShopId,
           status: newStatus,
           isPrimary: newPrimary,
+          provisionOnVercel: newProvisionOnVercel,
         }),
       });
-      const payload = await readJson<{ domain?: ShopDomain; error?: string }>(response);
+      const payload = await readJson<{ domain?: ShopDomain; vercel?: VercelAutomationResult | null; error?: string }>(response);
       if (!response.ok || !payload.domain) throw new Error(getJsonError(payload, copy.failedToSave));
       setDomains((current) => [payload.domain as ShopDomain, ...current.filter((domain) => domain.id !== payload.domain?.id)]);
       setNewDomain("");
       setNewPrimary(false);
-      setMessage(copy.saved);
+      if (payload.vercel?.dnsRecords?.length) setDnsRecords(payload.vercel.dnsRecords);
+      setMessage(payload.vercel ? `${copy.saved} ${payload.vercel.message}` : copy.saved);
       await loadDomains();
     } catch (err) {
       setError(err instanceof Error ? err.message : copy.failedToSave);
@@ -309,6 +386,29 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
       setError(err instanceof Error ? err.message : copy.failedToSave);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const runVercelAction = async (domainId: string, action: "add" | "check" | "remove") => {
+    setActionBusyId(`${domainId}:${action}`);
+    setError(null);
+    setMessage(null);
+    setDnsRecords([]);
+    try {
+      const response = await fetch(`/api/dashboard/shop-domains/${domainId}/vercel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const payload = await readJson<{ domain?: ShopDomain; vercel?: VercelAutomationResult; error?: string }>(response);
+      if (!response.ok || !payload.domain || !payload.vercel) throw new Error(getJsonError(payload, copy.failedToSave));
+      if (payload.vercel.dnsRecords?.length) setDnsRecords(payload.vercel.dnsRecords);
+      setMessage(`${copy.saved} ${payload.vercel.message}`);
+      await loadDomains();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : copy.failedToSave);
+    } finally {
+      setActionBusyId(null);
     }
   };
 
@@ -356,6 +456,9 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
       <div className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground">
         <p>{copy.securityNote}</p>
         <p className="mt-2">{copy.dnsHint}</p>
+        <p className="mt-2">{copy.automationHint}</p>
+        {vercelAutomation && !vercelAutomation.configured && <p className="mt-2 font-medium text-destructive">{copy.automationDisabled}</p>}
+        {vercelAutomation?.dryRun && <p className="mt-2 font-medium text-amber-600">{copy.automationDryRun}</p>}
       </div>
 
       {(error || message) && (
@@ -363,6 +466,32 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
           {error ? <XCircle className="h-4 w-4" aria-hidden="true" /> : <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
           <span>{error || message}</span>
         </div>
+      )}
+
+      {dnsRecords.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{copy.dnsRecords}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-hidden rounded-xl border">
+              <div className="grid grid-cols-[90px_minmax(120px,1fr)_minmax(160px,1.4fr)] gap-3 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground">
+                <span>Type</span>
+                <span>Name</span>
+                <span>Value</span>
+              </div>
+              <div className="divide-y">
+                {dnsRecords.map((record, index) => (
+                  <div key={`${record.type}-${record.name}-${index}`} className="grid grid-cols-[90px_minmax(120px,1fr)_minmax(160px,1.4fr)] gap-3 px-4 py-3 text-sm">
+                    <Badge variant="outline">{record.type}</Badge>
+                    <span className="truncate" dir="ltr">{record.name}</span>
+                    <span className="truncate font-mono text-xs" dir="ltr">{record.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
@@ -407,15 +536,27 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
             </div>
 
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={newPrimary}
-                  onChange={(event) => setNewPrimary(event.target.checked)}
-                  className="h-4 w-4 rounded border-input accent-current"
-                />
-                {copy.primaryLabel}
-              </label>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={newPrimary}
+                    onChange={(event) => setNewPrimary(event.target.checked)}
+                    className="h-4 w-4 rounded border-input accent-current"
+                  />
+                  {copy.primaryLabel}
+                </label>
+                <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={newProvisionOnVercel}
+                    onChange={(event) => setNewProvisionOnVercel(event.target.checked)}
+                    disabled={vercelAutomation ? !vercelAutomation.configured : false}
+                    className="h-4 w-4 rounded border-input accent-current"
+                  />
+                  {copy.provisionOnVercel}
+                </label>
+              </div>
               <Button type="button" onClick={() => void handleCreate()} disabled={saving || !newDomain.trim() || !newShopId}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Link2 className="h-4 w-4" aria-hidden="true" />}
                 {copy.addButton}
@@ -501,7 +642,7 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
                 {filteredDomains.map((domain) => {
                   const shop = shopById.get(domain.organizationId);
                   return (
-                    <div key={domain.id} className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_150px_130px_220px] lg:items-center">
+                    <div key={domain.id} className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_150px_130px_300px] lg:items-center">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <Globe2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -542,6 +683,8 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
                           <Badge variant="destructive" className="ms-2">{copy.inactive}</Badge>
                         )}
                         <Badge variant={statusBadgeVariant(domain.status)} className="ms-2 lg:hidden">{domain.status}</Badge>
+                        {domain.lastCheckedAt && <p className="mt-1 text-xs text-muted-foreground">{copy.lastChecked}: {new Date(domain.lastCheckedAt).toLocaleDateString(locale)}</p>}
+                        {domain.failureReason && <p className="mt-1 text-xs text-destructive">{copy.failureReason}: {domain.failureReason}</p>}
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2">
@@ -553,6 +696,36 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
                           disabled={saving || domain.isPrimary}
                         >
                           {copy.setPrimary}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void runVercelAction(domain.id, "add")}
+                          disabled={saving || Boolean(actionBusyId) || Boolean(vercelAutomation && !vercelAutomation.configured)}
+                        >
+                          {actionBusyId === `${domain.id}:add` ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Link2 className="h-4 w-4" aria-hidden="true" />}
+                          {copy.addToVercel}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void runVercelAction(domain.id, "check")}
+                          disabled={saving || Boolean(actionBusyId) || Boolean(vercelAutomation && !vercelAutomation.configured)}
+                        >
+                          {actionBusyId === `${domain.id}:check` ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="h-4 w-4" aria-hidden="true" />}
+                          {copy.checkVercel}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void runVercelAction(domain.id, "remove")}
+                          disabled={saving || Boolean(actionBusyId) || Boolean(vercelAutomation && !vercelAutomation.configured)}
+                        >
+                          {actionBusyId === `${domain.id}:remove` ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
+                          {copy.removeFromVercel}
                         </Button>
                         <Button
                           type="button"

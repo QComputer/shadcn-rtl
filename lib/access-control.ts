@@ -82,6 +82,10 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     allowedRoles: ["SUPER_ADMIN"],
   },
 
+  "/dashboard/shop-domains": {
+    allowedRoles: ["SUPER_ADMIN"],
+  },
+
   "/dashboard/users": {
     allowedRoles: ["SUPER_ADMIN"],
   },

@@ -26,6 +26,7 @@ export type DashboardNavigationKey =
   | "organizationSettings"
   | "qrcode"
   | "organizations"
+  | "shopDomains"
   | "users"
 
 export type DashboardNavigationGroupKey = "operations" | "catalog" | "teamAndSettings" | "platformAdmin"
@@ -47,6 +48,7 @@ export const DASHBOARD_NAVIGATION_ITEMS = {
   organizationSettings: "/settings/organization",
   qrcode: "/qrcode",
   organizations: "/organizations",
+  shopDomains: "/shop-domains",
   users: "/users",
 } as const satisfies Record<DashboardNavigationKey, string>
 
@@ -65,7 +67,7 @@ export const DASHBOARD_NAVIGATION_GROUPS = [
   },
   {
     key: "platformAdmin",
-    items: ["organizations", "users"],
+    items: ["organizations", "shopDomains", "users"],
   },
 ] as const satisfies readonly { key: DashboardNavigationGroupKey; items: readonly DashboardNavigationKey[] }[]
 
@@ -90,6 +92,7 @@ export const ROLE_NAVIGATION_POLICY = {
   organizationSettings: MANAGEMENT_ROLES,
   qrcode: MANAGEMENT_ROLES,
   organizations: ["SUPER_ADMIN"],
+  shopDomains: ["SUPER_ADMIN"],
   users: ["SUPER_ADMIN"],
 } as const satisfies Record<DashboardNavigationKey, readonly DashboardRole[]>
 
@@ -125,6 +128,7 @@ export const DASHBOARD_ROUTE_POLICY = {
   "/qrcode": ROLE_NAVIGATION_POLICY.qrcode,
   "/organizations": ROLE_NAVIGATION_POLICY.organizations,
   "/organizations/new": ROLE_NAVIGATION_POLICY.organizations,
+  "/shop-domains": ROLE_NAVIGATION_POLICY.shopDomains,
   "/users": ROLE_NAVIGATION_POLICY.users,
 } as const satisfies Record<string, readonly DashboardRole[]>
 

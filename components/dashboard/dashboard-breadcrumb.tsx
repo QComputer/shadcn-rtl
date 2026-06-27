@@ -39,6 +39,7 @@ const defaultRouteLabels: Record<string, string> = {
   "driver-orders": "سفارش‌های من",
   "my-services": "خدمات من",
   organizations: "سازمان‌ها",
+  "shop-domains": "دامنه‌های فروشگاه",
   members: "اعضا",
   categories: "دسته‌بندی‌ها",
   services: "خدمات",

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { ApiError, jsonError, requireAuthSession, resolveManageableOrganizationId } from "@/lib/api-guards";
+import { ApiError, jsonError, requireAuthSession } from "@/lib/api-guards";
+import { requireSuperAdmin } from "@/lib/shop-domain-admin";
 import { normalizeDomainHost } from "@/lib/custom-domain-routing";
 
 const createDomainSchema = z.object({
@@ -30,8 +31,8 @@ export async function GET(
 ) {
   try {
     const session = await requireAuthSession();
-    const { id } = await params;
-    const organizationId = await resolveManageableOrganizationId(session, id);
+    requireSuperAdmin(session);
+    const { id: organizationId } = await params;
 
     const domains = await prisma.organizationDomain.findMany({
       where: { organizationId },
@@ -50,8 +51,8 @@ export async function POST(
 ) {
   try {
     const session = await requireAuthSession();
-    const { id } = await params;
-    const organizationId = await resolveManageableOrganizationId(session, id);
+    requireSuperAdmin(session);
+    const { id: organizationId } = await params;
     const body = createDomainSchema.parse(await request.json());
     const normalizedDomain = validateDomain(body.domain);
 

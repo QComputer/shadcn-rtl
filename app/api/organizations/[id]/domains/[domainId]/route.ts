@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { ApiError, jsonError, requireAuthSession, resolveManageableOrganizationId } from "@/lib/api-guards";
+import { ApiError, jsonError, requireAuthSession } from "@/lib/api-guards";
+import { requireSuperAdmin } from "@/lib/shop-domain-admin";
 
 const updateDomainSchema = z.object({
   status: z.enum(["PENDING", "DNS_REQUIRED", "VERIFYING", "ACTIVE", "FAILED", "DISABLED"]).optional(),
@@ -17,8 +18,8 @@ export async function PATCH(
 ) {
   try {
     const session = await requireAuthSession();
-    const { id, domainId } = await params;
-    const organizationId = await resolveManageableOrganizationId(session, id);
+    requireSuperAdmin(session);
+    const { id: organizationId, domainId } = await params;
     const body = updateDomainSchema.parse(await request.json());
 
     const existing = await prisma.organizationDomain.findFirst({
@@ -64,8 +65,8 @@ export async function DELETE(
 ) {
   try {
     const session = await requireAuthSession();
-    const { id, domainId } = await params;
-    const organizationId = await resolveManageableOrganizationId(session, id);
+    requireSuperAdmin(session);
+    const { id: organizationId, domainId } = await params;
 
     const existing = await prisma.organizationDomain.findFirst({
       where: { id: domainId, organizationId },

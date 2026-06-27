@@ -7,6 +7,7 @@ import {
   BarChart3,
   Bell,
   Building2,
+  Globe2,
   CalendarDays,
   ClipboardList,
   LayoutDashboard,
@@ -83,6 +84,7 @@ const NAVIGATION_ICONS = {
   organizationSettings: Building2,
   qrcode: QrCode,
   organizations: Building2,
+  shopDomains: Globe2,
   users: ShieldCheck,
 } satisfies Record<DashboardNavigationKey, DashboardIcon>
 
@@ -125,6 +127,7 @@ const roleAwareNavigationCopy = {
       organizationSettings: "تنظیمات سازمان",
       qrcode: "کد QR",
       organizations: "سازمان‌ها",
+      shopDomains: "دامنه‌های فروشگاه",
       users: "کاربران",
     },
     roles: {
@@ -165,6 +168,7 @@ const roleAwareNavigationCopy = {
       organizationSettings: "Organization settings",
       qrcode: "QR code",
       organizations: "Organizations",
+      shopDomains: "Shop domains",
       users: "Users",
     },
     roles: {
@@ -205,6 +209,7 @@ const roleAwareNavigationCopy = {
       organizationSettings: "إعدادات المؤسسة",
       qrcode: "رمز QR",
       organizations: "المؤسسات",
+      shopDomains: "نطاقات المتاجر",
       users: "المستخدمون",
     },
     roles: {

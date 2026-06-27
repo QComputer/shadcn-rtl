@@ -107,7 +107,8 @@
     "env:push:vercel:preview": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ops/push-vercel-env.ps1 -EnvFile .env -Targets preview",
     "env:push:vercel:all": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ops/push-vercel-env.ps1 -EnvFile .env -Targets production,preview,development",
     "env:push:vercel:dry-run": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ops/push-vercel-env.ps1 -EnvFile .env -Targets production -DryRun",
-    "quality:vercel-env-push": "node scripts/quality/validate-vercel-env-push.mjs"
+    "quality:vercel-env-push": "node scripts/quality/validate-vercel-env-push.mjs",
+    "quality:dashboard-organizations-published": "node scripts/quality/validate-dashboard-organizations-published.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

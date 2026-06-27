@@ -18,6 +18,7 @@ import {
 } from "@/lib/seo";
 import { formatToman } from "@/lib/persian";
 import { cn } from "@/lib/utils";
+import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
 
 const CATEGORY_PAGE_SIZE = 24;
 
@@ -137,12 +138,14 @@ export async function generateMetadata({ params, searchParams }: ShopCategoryPag
   }
 
   const categorySegment = category.slug || category.id;
-  const path = categoryPath(locale, slug, categorySegment, pagination.page);
+  const subPath = `/category/${categorySegment}${pagination.page > 1 ? `?page=${pagination.page}` : ""}`;
+  const seoContext = await getShopTenantSeoContext({ locale, slug, subPath });
   const categoryUploadedShareImage = category.image || category.organization.coverImage || category.organization.logo;
 
   return buildPublicMetadata({
     locale,
-    path,
+    baseUrl: seoContext.baseUrl,
+    path: seoContext.path,
     title: `${category.name} | ${category.organization.name}${pagination.page > 1 ? ` - Page ${pagination.page}` : ""}`,
     description: category.description || `${category.name} products from ${category.organization.name}.`,
     image: getUploadedOrGeneratedSeoImageUrl(categoryUploadedShareImage, {
@@ -151,9 +154,9 @@ export async function generateMetadata({ params, searchParams }: ShopCategoryPag
       title: category.name,
       subtitle: category.description || `${category.name} products from ${category.organization.name}.`,
       organizationName: category.organization.name,
-    }),
+    }, seoContext.baseUrl),
     keywords: ["Bazar Baz", "shop category", category.name, category.organization.slug],
-    alternatePath: (nextLocale) => categoryPath(nextLocale, slug, categorySegment, pagination.page),
+    alternatePath: seoContext.alternatePath,
   });
 }
 
@@ -169,33 +172,34 @@ export default async function ShopCategoryPage({ params, searchParams }: ShopCat
     redirect(categoryPath(locale, slug, category.slug, pagination.page));
   }
 
+  const seoContext = await getShopTenantSeoContext({ locale, slug, subPath: `/category/${categorySegment}${pagination.page > 1 ? `?page=${pagination.page}` : ""}` });
+  const path = seoContext.path;
   const products = category.products;
   const totalProducts = category._count.products;
   const totalPages = Math.max(1, Math.ceil(totalProducts / pagination.pageSize));
-  const path = categoryPath(locale, slug, categorySegment, pagination.page);
   const canonicalCategoryPath = categoryPath(locale, slug, categorySegment);
   const previousPath = pagination.page > 1 ? categoryPath(locale, slug, categorySegment, pagination.page - 1) : null;
   const nextPath = pagination.page < totalPages ? categoryPath(locale, slug, categorySegment, pagination.page + 1) : null;
   const itemListJsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    "@id": `${getCanonicalUrl(path)}#products`,
+    "@id": `${getCanonicalUrl(path, seoContext.baseUrl)}#products`,
     name: `${category.name} products`,
     numberOfItems: totalProducts,
     itemListElement: products.map((product, index) => ({
       "@type": "ListItem",
       position: pagination.skip + index + 1,
-      url: getCanonicalUrl(`/${locale}/shop/${slug}/product/${product.slug || product.id}`),
+      url: getCanonicalUrl(seoContext.isCustomDomain ? `/product/${product.slug || product.id}` : `/${locale}/shop/${slug}/product/${product.slug || product.id}`, seoContext.baseUrl),
       item: {
         "@type": "Product",
         name: product.name,
         description: truncateSeoText(product.description, `${product.name} from ${category.organization.name}.`),
-        image: getSeoImageUrl(product.image || category.image || category.organization.coverImage || category.organization.logo),
+        image: getSeoImageUrl(product.image || category.image || category.organization.coverImage || category.organization.logo, seoContext.baseUrl),
         offers: {
           "@type": "Offer",
           price: getProductPrice(product),
           priceCurrency: "IRR",
-          url: getCanonicalUrl(`/${locale}/shop/${slug}/product/${product.slug || product.id}`),
+          url: getCanonicalUrl(seoContext.isCustomDomain ? `/product/${product.slug || product.id}` : `/${locale}/shop/${slug}/product/${product.slug || product.id}`, seoContext.baseUrl),
         },
       },
     })),
@@ -208,19 +212,19 @@ export default async function ShopCategoryPage({ params, searchParams }: ShopCat
           {
             "@context": "https://schema.org",
             "@type": "CollectionPage",
-            "@id": `${getCanonicalUrl(path)}#category`,
+            "@id": `${getCanonicalUrl(path, seoContext.baseUrl)}#category`,
             name: category.name,
             description: truncateSeoText(category.description, `${category.name} products from ${category.organization.name}.`),
-            url: getCanonicalUrl(path),
-            image: getSeoImageUrl(category.image || category.organization.coverImage || category.organization.logo),
-            mainEntity: { "@id": `${getCanonicalUrl(path)}#products` },
+            url: getCanonicalUrl(path, seoContext.baseUrl),
+            image: getSeoImageUrl(category.image || category.organization.coverImage || category.organization.logo, seoContext.baseUrl),
+            mainEntity: { "@id": `${getCanonicalUrl(path, seoContext.baseUrl)}#products` },
           },
           itemListJsonLd,
           buildBreadcrumbJsonLd([
-            { name: "Home", path: `/${locale}` },
-            { name: category.organization.name, path: `/${locale}/shop/${slug}` },
+            { name: "Home", path: seoContext.isCustomDomain ? "/" : `/${locale}` },
+            { name: category.organization.name, path: seoContext.isCustomDomain ? "/" : `/${locale}/shop/${slug}` },
             { name: category.name, path },
-          ]),
+          ], seoContext.baseUrl),
         ]}
       />
 

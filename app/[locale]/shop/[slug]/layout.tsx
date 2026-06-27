@@ -13,6 +13,7 @@ import { getDictionary, getDictValue } from "@/lib/dictionary";
 import { ShopLocationDialog } from "@/components/shop/shop-location-dialog";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildOrganizationJsonLd, buildPublicMetadata, getUploadedOrGeneratedSeoImageUrl } from "@/lib/seo";
+import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
 
 interface ShopLayoutProps {
   children: React.ReactNode;
@@ -36,10 +37,12 @@ const organization = await prisma.organization.findUnique({
     }
 
     const uploadedShareImage = organization.coverImage || organization.logo;
+    const seoContext = await getShopTenantSeoContext({ locale, slug: organization.slug, subPath: "/" });
 
     return buildPublicMetadata({
       locale,
-      path: `/${locale}/shop/${organization.slug}`,
+      baseUrl: seoContext.baseUrl,
+      path: seoContext.path,
       title: organization.name || "Bazar Baz shop",
       description: organization.description || "Online shop on Bazar Baz.",
       image: getUploadedOrGeneratedSeoImageUrl(uploadedShareImage, {
@@ -48,9 +51,9 @@ const organization = await prisma.organization.findUnique({
         title: organization.name || "Bazar Baz shop",
         subtitle: organization.description || "Online shop on Bazar Baz.",
         organizationName: organization.name,
-      }),
+      }, seoContext.baseUrl),
       keywords: ["Bazar Baz", "shop", "online shopping", organization.slug],
-      alternatePath: (nextLocale) => `/${nextLocale}/shop/${organization.slug}`,
+      alternatePath: seoContext.alternatePath,
     });
   } catch {
     return {
@@ -88,11 +91,17 @@ const organization = await prisma.organization.findFirst({
     notFound();
   }
 
+  const seoContext = await getShopTenantSeoContext({ locale, slug: organization.slug, subPath: "/" });
+  const tenantHref = (subPath = "/") =>
+    seoContext.isCustomDomain
+      ? seoContext.alternatePath(locale as "fa" | "en" | "ar").replace(/\/$/, "") + (subPath === "/" ? "" : subPath) || "/"
+      : `/${locale}/shop/${organization.slug}${subPath === "/" ? "" : subPath}`;
+
   const navItems = [
-    { href: `/${locale}/shop/${organization.slug}`, label: t("navigation.products") },
-    { href: `/${locale}/shop/${organization.slug}/profile`, label: t("navigation.profile") },
-    { href: `/${locale}/shop/${organization.slug}/fanpage`, label: t("organization.fanpage") },
-    { href: `/${locale}/shop/${organization.slug}/checkout`, label: t("navigation.checkout") },
+    { href: tenantHref("/"), label: t("navigation.products") },
+    { href: tenantHref("/profile"), label: t("navigation.profile") },
+    { href: tenantHref("/fanpage"), label: t("organization.fanpage") },
+    { href: tenantHref("/checkout"), label: t("navigation.checkout") },
   ];
 
   return (
@@ -100,8 +109,9 @@ const organization = await prisma.organization.findFirst({
       <JsonLd
         data={buildOrganizationJsonLd({
           organization,
-          path: `/${locale}/shop/${organization.slug}`,
+          path: seoContext.path,
           kind: "Store",
+          baseUrl: seoContext.baseUrl,
         })}
       />
       <div className="min-h-screen flex flex-col">
@@ -109,7 +119,7 @@ const organization = await prisma.organization.findFirst({
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container flex h-16 pr-5 pl-2 justify-between ">
             <span className="flex items-center text-lg md:text-xl">
-              <Link href={`/${locale}/shop/${organization?.slug}`}>              
+              <Link href={tenantHref("/")}>              
               {organization?.name}
               </Link>
               </span>
@@ -146,28 +156,28 @@ const organization = await prisma.organization.findFirst({
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t supports-[backdrop-filter]:bg-background/60">
           <div className="grid grid-cols-5 h-16">
             <Link
-              href={`/${locale}/shop/${organization.slug}`}
+              href={tenantHref("/")}
               className="flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
               <Home className="h-5 w-5" />
               <span>{t("navigation.products")}</span>
             </Link>
             <Link
-              href={`/${locale}/shop/${organization.slug}/profile`}
+              href={tenantHref("/profile")}
               className="flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
               <User className="h-5 w-5" />
               <span>{t("navigation.profile")}</span>
             </Link>
             <Link
-              href={`/${locale}/shop/${organization.slug}/fanpage`}
+              href={tenantHref("/fanpage")}
               className="flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
               <ShoppingBasket className="h-5 w-5" />
               <span>{t("organization.fanpage")}</span>
             </Link>
             <Link
-              href={`/${locale}/shop/${organization.slug}/checkout`}
+              href={tenantHref("/checkout")}
               className="flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
               <ShoppingCart className="h-5 w-5" />

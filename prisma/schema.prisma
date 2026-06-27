@@ -17,6 +17,20 @@ enum OrganizationType {
   APPOINTMENT
 }
 
+enum DomainType {
+  PLATFORM_SUBDOMAIN
+  CUSTOM
+}
+
+enum DomainStatus {
+  PENDING
+  DNS_REQUIRED
+  VERIFYING
+  ACTIVE
+  FAILED
+  DISABLED
+}
+
 enum UserRole {
   SUPER_ADMIN
   ADMIN
@@ -235,6 +249,7 @@ model Organization {
   auditLogs         AuditLog[]
   staffAvailability StaffAvailability[]
   bookingSessions   BookingSession[]
+  domains           OrganizationDomain[]
 
   @@index([type])
   @@index([slug])
@@ -245,6 +260,33 @@ model Organization {
   @@unique([id])
   @@index([id])
   paymentSettings PaymentSettings?
+}
+
+
+model OrganizationDomain {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  domain           String       @unique
+  normalizedDomain String       @unique
+  type             DomainType   @default(CUSTOM)
+  status           DomainStatus @default(PENDING)
+  isPrimary        Boolean      @default(false)
+
+  vercelProjectDomainId String?
+  verificationToken     String?
+  verifiedAt            DateTime?
+  lastCheckedAt         DateTime?
+  failureReason         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([isPrimary])
+  @@index([organizationId, status])
 }
 
 model Deny {

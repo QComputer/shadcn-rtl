@@ -10,6 +10,7 @@ import {
   getUploadedOrGeneratedSeoImageUrl,
   truncateSeoText,
 } from "@/lib/seo";
+import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
 
 type ProductDetailLayoutProps = {
   children: React.ReactNode;
@@ -69,12 +70,13 @@ export async function generateMetadata({ params }: ProductDetailLayoutProps): Pr
   }
 
   const productSegment = product.slug || product.id;
-  const path = `/${locale}/shop/${slug}/product/${productSegment}`;
+  const seoContext = await getShopTenantSeoContext({ locale, slug, subPath: `/product/${productSegment}` });
   const productUploadedShareImage = product.image || product.organization.coverImage || product.organization.logo;
 
   return buildPublicMetadata({
     locale,
-    path,
+    baseUrl: seoContext.baseUrl,
+    path: seoContext.path,
     title: `${product.name} | ${product.organization.name}`,
     description: product.description || `${product.name} from ${product.organization.name}.`,
     image: getUploadedOrGeneratedSeoImageUrl(productUploadedShareImage, {
@@ -83,9 +85,9 @@ export async function generateMetadata({ params }: ProductDetailLayoutProps): Pr
       title: product.name,
       subtitle: product.description || `${product.name} from ${product.organization.name}.`,
       organizationName: product.organization.name,
-    }),
+    }, seoContext.baseUrl),
     keywords: ["Bazar Baz", "product", product.name, product.organization.slug, product.category.name],
-    alternatePath: (nextLocale) => `/${nextLocale}/shop/${slug}/product/${productSegment}`,
+    alternatePath: seoContext.alternatePath,
   });
 }
 
@@ -100,15 +102,16 @@ export default async function ProductDetailLayout({ children, params }: ProductD
     redirect(`/${locale}/shop/${slug}/product/${product.slug}`);
   }
 
-  const path = `/${locale}/shop/${slug}/product/${productSegment}`;
+  const seoContext = await getShopTenantSeoContext({ locale, slug, subPath: `/product/${productSegment}` });
+  const path = seoContext.path;
   const productUploadedShareImage = product.image || product.organization.coverImage || product.organization.logo;
   const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
-    "@id": `${getCanonicalUrl(path)}#product`,
+    "@id": `${getCanonicalUrl(path, seoContext.baseUrl)}#product`,
     name: product.name,
     description: truncateSeoText(product.description, `${product.name} from ${product.organization.name}.`),
-    image: getSeoImageUrl(productUploadedShareImage),
+    image: getSeoImageUrl(productUploadedShareImage, seoContext.baseUrl),
     sku: product.sku || product.id,
     category: product.category.name,
     brand: {
@@ -120,7 +123,7 @@ export default async function ProductDetailLayout({ children, params }: ProductD
       price: Number(product.basePrice),
       priceCurrency: "IRR",
       availability: "https://schema.org/InStock",
-      url: getCanonicalUrl(path),
+      url: getCanonicalUrl(path, seoContext.baseUrl),
     },
   };
 
@@ -130,10 +133,10 @@ export default async function ProductDetailLayout({ children, params }: ProductD
         data={[
           productJsonLd,
           buildBreadcrumbJsonLd([
-            { name: "Home", path: `/${locale}` },
-            { name: product.organization.name, path: `/${locale}/shop/${slug}` },
+            { name: "Home", path: seoContext.isCustomDomain ? "/" : `/${locale}` },
+            { name: product.organization.name, path: seoContext.isCustomDomain ? "/" : `/${locale}/shop/${slug}` },
             { name: product.name, path },
-          ]),
+          ], seoContext.baseUrl),
         ]}
       />
       {children}

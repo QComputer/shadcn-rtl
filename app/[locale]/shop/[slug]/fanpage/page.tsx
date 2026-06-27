@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildPublicMetadata, getCanonicalUrl, truncateSeoText } from "@/lib/seo";
 import type { Metadata } from "next";
+import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
 
 interface FanpagePageProps {
   params: Promise<{ locale: string; slug: string }>;
@@ -44,15 +45,18 @@ export async function generateMetadata({ params }: FanpagePageProps): Promise<Me
     return { title: "Fanpage Not Found" };
   }
 
+  const seoContext = await getShopTenantSeoContext({ locale, slug: organization.slug, subPath: "/fanpage" });
+
   return buildPublicMetadata({
     locale,
-    path: `/${locale}/shop/${organization.slug}/fanpage`,
+    baseUrl: seoContext.baseUrl,
+    path: seoContext.path,
     title: `${organization.name} fanpage`,
     description: organization.description || `Latest updates from ${organization.name}.`,
     image: organization.coverImage || organization.logo,
     type: "article",
     keywords: ["Bazar Baz", "fanpage", "shop", organization.slug],
-    alternatePath: (nextLocale) => `/${nextLocale}/shop/${organization.slug}/fanpage`,
+    alternatePath: seoContext.alternatePath,
   });
 }
 
@@ -76,6 +80,7 @@ export default async function ShopFanpagePage({ params }: FanpagePageProps) {
     notFound();
   }
 
+  const seoContext = await getShopTenantSeoContext({ locale, slug: organization.slug, subPath: "/fanpage" });
   const [posts, userCanManage] = await Promise.all([
     prisma.fanpagePost.findMany({
       where: {
@@ -113,10 +118,10 @@ export default async function ShopFanpagePage({ params }: FanpagePageProps) {
         data={{
           "@context": "https://schema.org",
           "@type": "CollectionPage",
-          "@id": `${getCanonicalUrl(`/${locale}/shop/${organization.slug}/fanpage`)}#fanpage`,
+          "@id": `${getCanonicalUrl(seoContext.path, seoContext.baseUrl)}#fanpage`,
           name: `${organization.name} fanpage`,
           description: truncateSeoText(organization.description, `Latest updates from ${organization.name}.`),
-          url: getCanonicalUrl(`/${locale}/shop/${organization.slug}/fanpage`),
+          url: getCanonicalUrl(seoContext.path, seoContext.baseUrl),
         }}
       />
       <section className="border-b bg-background">
@@ -133,7 +138,7 @@ export default async function ShopFanpagePage({ params }: FanpagePageProps) {
               </p>
             </div>
             <Button variant="outline">
-              <Link href={`/${locale}/shop/${organization.slug}`}>{t("navigation.products")}</Link>
+              <Link href={seoContext.isCustomDomain ? "/" : `/${locale}/shop/${organization.slug}`}>{t("navigation.products")}</Link>
             </Button>
           </div>
         </div>

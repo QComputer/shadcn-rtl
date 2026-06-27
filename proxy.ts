@@ -1,5 +1,15 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import {
+  buildShopPlatformPath,
+  buildTenantPublicPath,
+  getShopSubPathFromPlatformPath,
+  isCustomDomainBypassPath,
+  isPlatformHost,
+  normalizeDomainHost,
+  splitLocalePrefix,
+  type ResolvedCustomDomainShop,
+} from "@/lib/custom-domain-routing";
 
 // Supported locales - Persian is the default (primary native language)
 export const locales = ["fa", "en", "ar"] as const;
@@ -115,6 +125,35 @@ export function isRTL(locale: Locale): boolean {
   return localeConfig[locale].dir === "rtl";
 }
 
+
+async function resolveShopForCustomDomain(
+  request: NextRequest,
+  normalizedHost: string,
+): Promise<ResolvedCustomDomainShop | null> {
+  const resolverUrl = new URL("/api/internal/domain-resolver", request.url);
+  resolverUrl.searchParams.set("host", normalizedHost);
+
+  const resolverSecret = process.env.CUSTOM_DOMAIN_RESOLVER_SECRET || process.env.INTERNAL_API_SECRET || "";
+
+  const response = await fetch(resolverUrl, {
+    headers: resolverSecret ? { "x-internal-secret": resolverSecret } : undefined,
+    cache: "no-store",
+  });
+
+  if (!response.ok) return null;
+
+  const data = (await response.json().catch(() => null)) as ResolvedCustomDomainShop | null;
+  if (!data?.slug || !data.organizationId) return null;
+
+  return data;
+}
+
+function getRequestOrigin(request: NextRequest) {
+  const host = request.headers.get("host") || request.nextUrl.host;
+  const protocol = request.headers.get("x-forwarded-proto") || request.nextUrl.protocol.replace(":", "") || "https";
+  return `${protocol}://${host}`;
+}
+
 // ============================================
 // Main Middleware Function
 // ============================================
@@ -125,6 +164,53 @@ export function isRTL(locale: Locale): boolean {
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const hostHeader = request.headers.get("host") || request.nextUrl.host;
+  const normalizedHost = normalizeDomainHost(hostHeader);
+
+  // Custom shop domains are public storefront domains. They bypass the platform
+  // locale redirect and are rewritten to /[locale]/shop/[slug] internally.
+  if (!isPlatformHost(normalizedHost) && !isCustomDomainBypassPath(pathname)) {
+    const shop = await resolveShopForCustomDomain(request, normalizedHost);
+
+    if (!shop) {
+      const locale = getLocale(request);
+      const notConfiguredUrl = request.nextUrl.clone();
+      notConfiguredUrl.pathname = `/${locale}/domain-not-configured`;
+      return withSecurityHeaders(NextResponse.rewrite(notConfiguredUrl));
+    }
+
+    const platformPath = getShopSubPathFromPlatformPath(pathname, shop.slug);
+    if (platformPath) {
+      const cleanUrl = request.nextUrl.clone();
+      cleanUrl.pathname = buildTenantPublicPath(platformPath.locale, platformPath.subPath);
+      return withSecurityHeaders(NextResponse.redirect(cleanUrl, 308));
+    }
+
+    const splitPath = splitLocalePrefix(pathname);
+    const locale = splitPath.locale || getLocale(request) || shop.locale;
+    const rewrittenUrl = request.nextUrl.clone();
+    rewrittenUrl.pathname = buildShopPlatformPath({
+      locale,
+      slug: shop.slug,
+      publicPathname: pathname,
+    });
+
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-bazar-custom-domain", "true");
+    requestHeaders.set("x-bazar-tenant-domain", normalizedHost);
+    requestHeaders.set("x-bazar-tenant-slug", shop.slug);
+    requestHeaders.set("x-bazar-tenant-organization-id", shop.organizationId);
+    requestHeaders.set("x-bazar-tenant-public-base-url", getRequestOrigin(request));
+    requestHeaders.set("x-bazar-tenant-public-locale", locale);
+    requestHeaders.set("x-bazar-tenant-public-path", buildTenantPublicPath(locale, splitPath.pathnameWithoutLocale));
+
+    const response = NextResponse.rewrite(rewrittenUrl, {
+      request: { headers: requestHeaders },
+    });
+    response.headers.set("x-locale", locale);
+    response.headers.set("x-direction", localeConfig[locale].dir);
+    return withSecurityHeaders(response);
+  }
 
   // Skip API routes, static files, and Next.js internals
   if (

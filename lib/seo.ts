@@ -19,6 +19,7 @@ export type GeneratedOgImageInput = {
 
 export type PublicSeoInput = {
   locale: string;
+  baseUrl?: string | URL;
   path: string;
   title: string;
   description?: string | null;
@@ -70,18 +71,18 @@ export function normalizePath(path: string) {
   return path.startsWith("/") ? path : `/${path}`;
 }
 
-export function getCanonicalUrl(path = "/") {
-  return new URL(normalizePath(path), getPublicBaseUrl()).toString();
+export function getCanonicalUrl(path = "/", baseUrl?: string | URL) {
+  return new URL(normalizePath(path), baseUrl || getPublicBaseUrl()).toString();
 }
 
-export function getSeoImageUrl(image?: string | null) {
+export function getSeoImageUrl(image?: string | null, baseUrl?: string | URL) {
   const value = image?.trim();
-  if (!value) return getCanonicalUrl(DEFAULT_IMAGE);
+  if (!value) return getCanonicalUrl(DEFAULT_IMAGE, baseUrl);
 
   try {
     return new URL(value).toString();
   } catch {
-    return getCanonicalUrl(value.startsWith("/") ? value : `/${value}`);
+    return getCanonicalUrl(value.startsWith("/") ? value : `/${value}`, baseUrl);
   }
 }
 
@@ -119,10 +120,11 @@ export function buildGeneratedOgImagePath(input: GeneratedOgImageInput) {
 export function getUploadedOrGeneratedSeoImageUrl(
   uploadedImage: string | null | undefined,
   generatedImage: GeneratedOgImageInput,
+  baseUrl?: string | URL,
 ) {
   return isDurableSeoImage(uploadedImage)
-    ? getSeoImageUrl(uploadedImage)
-    : getSeoImageUrl(buildGeneratedOgImagePath(generatedImage));
+    ? getSeoImageUrl(uploadedImage, baseUrl)
+    : getSeoImageUrl(buildGeneratedOgImagePath(generatedImage), baseUrl);
 }
 
 export function truncateSeoText(value: string | null | undefined, fallback = DEFAULT_DESCRIPTION, maxLength = 155) {
@@ -135,6 +137,7 @@ export function buildLocaleAlternates(
   currentLocale: string,
   path: string,
   alternatePath?: (locale: SupportedLocale) => string,
+  baseUrl?: string | URL,
 ) {
   const locale = getSupportedLocale(currentLocale);
   const resolvePath =
@@ -151,15 +154,15 @@ export function buildLocaleAlternates(
   const languages = Object.fromEntries(
     supportedLocales.map((nextLocale) => [
       localeConfig[nextLocale].languageCode,
-      getCanonicalUrl(resolvePath(nextLocale)),
+      getCanonicalUrl(resolvePath(nextLocale), baseUrl),
     ]),
   );
 
   return {
-    canonical: getCanonicalUrl(resolvePath(locale)),
+    canonical: getCanonicalUrl(resolvePath(locale), baseUrl),
     languages: {
       ...languages,
-      "x-default": getCanonicalUrl(resolvePath("fa")),
+      "x-default": getCanonicalUrl(resolvePath("fa"), baseUrl),
     },
   };
 }
@@ -167,11 +170,11 @@ export function buildLocaleAlternates(
 export function buildPublicMetadata(input: PublicSeoInput): Metadata {
   const locale = getSupportedLocale(input.locale);
   const description = truncateSeoText(input.description);
-  const image = getSeoImageUrl(input.image);
-  const alternates = buildLocaleAlternates(locale, input.path, input.alternatePath);
+  const image = getSeoImageUrl(input.image, input.baseUrl);
+  const alternates = buildLocaleAlternates(locale, input.path, input.alternatePath, input.baseUrl);
 
   return {
-    metadataBase: getPublicBaseUrl(),
+    metadataBase: input.baseUrl ? new URL(input.baseUrl) : getPublicBaseUrl(),
     title: input.title || DEFAULT_TITLE,
     description,
     keywords: input.keywords,
@@ -229,10 +232,11 @@ export function buildOrganizationJsonLd(input: {
   organization: SeoOrganization;
   path: string;
   kind: "Store" | "LocalBusiness";
+  baseUrl?: string | URL;
 }) {
   const { organization, path, kind } = input;
-  const url = getCanonicalUrl(path);
-  const image = getSeoImageUrl(organization.coverImage || organization.logo);
+  const url = getCanonicalUrl(path, input.baseUrl);
+  const image = getSeoImageUrl(organization.coverImage || organization.logo, input.baseUrl);
   const data: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": kind,
@@ -241,7 +245,7 @@ export function buildOrganizationJsonLd(input: {
     url,
     description: truncateSeoText(organization.description),
     image,
-    logo: getSeoImageUrl(organization.logo),
+    logo: getSeoImageUrl(organization.logo, input.baseUrl),
   };
 
   if (organization.phone) data.telephone = organization.phone;
@@ -258,7 +262,7 @@ export function buildOrganizationJsonLd(input: {
   return data;
 }
 
-export function buildBreadcrumbJsonLd(items: Array<{ name: string; path: string }>) {
+export function buildBreadcrumbJsonLd(items: Array<{ name: string; path: string }>, baseUrl?: string | URL) {
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -266,7 +270,7 @@ export function buildBreadcrumbJsonLd(items: Array<{ name: string; path: string 
       "@type": "ListItem",
       position: index + 1,
       name: item.name,
-      item: getCanonicalUrl(item.path),
+      item: getCanonicalUrl(item.path, baseUrl),
     })),
   };
 }

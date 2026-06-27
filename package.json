@@ -100,7 +100,8 @@
     "quality:public-slug-preview-share": "node scripts/quality/validate-public-slug-preview-share.mjs",
     "quality:tenant-og-images": "node scripts/quality/validate-tenant-og-images.mjs",
     "quality:deployed-social-preview": "node scripts/quality/validate-deployed-social-preview.mjs",
-    "quality:social-preview-evidence": "node scripts/quality/validate-social-preview-evidence.mjs"
+    "quality:social-preview-evidence": "node scripts/quality/validate-social-preview-evidence.mjs",
+    "quality:shop-custom-domains": "node scripts/quality/validate-shop-custom-domains.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

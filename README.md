@@ -66,6 +66,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 51 | Category Slugs and Public Listing Pagination | Source-validated | `pnpm run quality:public-category-slugs-pagination` |
 | 52 | Public Product and Service Slug Detail URLs | Source-validated | `pnpm run quality:public-detail-slugs` |
 | 53 | Public SEO Deployed Slug Verification | Source/deployed smoke | `pnpm run quality:deployed-slug-seo` / `pnpm run e2e:deployed:slug-seo` |
+| 54 | Dashboard Slug Editing UI | Source-validated | `pnpm run quality:dashboard-slug-editing` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -96,6 +97,7 @@ pnpm run quality:public-category-seo
 pnpm run quality:public-category-slugs-pagination
 pnpm run quality:public-detail-slugs
 pnpm run quality:deployed-slug-seo
+pnpm run quality:dashboard-slug-editing
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -175,7 +177,11 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P53 - Public SEO Deployed Slug Verification**.
+Latest completed implementation phase: **P54 - Dashboard Slug Editing UI**.
+
+P54 adds dashboard slug fields for product categories, service categories, products, and services, shows saved category slugs in management lists, sends blank slug fields as auto-generation requests, and adds the focused `quality:dashboard-slug-editing` validator.
+
+Previous deployed SEO phase retained: **P53 - Public SEO Deployed Slug Verification**.
 
 P53 adds a read-only deployed slug SEO smoke suite for `robots.txt`, `sitemap.xml`, canonical links, JSON-LD, `og:image`, public slug API resolution, and product/service ID-to-slug redirects, plus the focused `quality:deployed-slug-seo` validator.
 
@@ -235,4 +241,4 @@ Previous dashboard role phase retained: **P38 - dashboard sidebar role-aware nav
 
 Previous dashboard shell/copy phase retained: **P37 - dashboard navigation and localized shell copy cleanup**.
 
-Recommended next phase: **P54 - Dashboard Slug Editing UI**.
+Recommended next phase: **P55 - Public Slug Preview and Rich Share Polish**.

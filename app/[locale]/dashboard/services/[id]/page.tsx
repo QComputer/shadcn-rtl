@@ -37,6 +37,7 @@ import { useSession } from "next-auth/react"
 interface Service {
   id: string
   name: string
+  slug: string | null
   description: string | null
   price: number
   duration: number
@@ -99,6 +100,7 @@ export default function EditServicePage({
   
   // Form state
   const [name, setName] = useState("")
+  const [slug, setSlug] = useState("")
   const [description, setDescription] = useState("")
   const [price, setPrice] = useState("")
   const [duration, setDuration] = useState("30")
@@ -146,6 +148,7 @@ export default function EditServicePage({
     ]).then(([serviceData, categoriesData, staffData]) => {
       setService(serviceData)
       setName(serviceData.name)
+      setSlug(serviceData.slug || "")
       setDescription(serviceData.description || "")
       setPrice(serviceData.price.toString())
       setDuration(serviceData.duration.toString())
@@ -182,6 +185,7 @@ export default function EditServicePage({
         headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name,
+            slug: slug.trim() || undefined,
             description: description || undefined,
             price: parseFloat(price),
             duration: parseInt(duration),
@@ -349,6 +353,22 @@ export default function EditServicePage({
                 placeholder={t("service.name_placeholder") || "Enter service name"}
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="slug">
+                {t("common.slug") || "Public slug"}
+              </Label>
+              <Input
+                id="slug"
+                dir="ltr"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                placeholder="hair-cut"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("common.slugHelp") || "Leave blank to generate it from the name. Saved slugs are normalized and kept unique."}
+              </p>
             </div>
             
             {/* Description */}

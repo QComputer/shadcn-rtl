@@ -63,6 +63,7 @@ interface ProductCategory {
 interface Product {
   id: string
   name: string
+  slug: string | null
   description: string | null
   basePrice: number
   images: string[]
@@ -108,6 +109,7 @@ export default function EditProductPage({
   
   // Form state
   const [name, setName] = useState("")
+  const [slug, setSlug] = useState("")
   const [description, setDescription] = useState("")
   const [categoryId, setCategoryId] = useState("")
   const [variantId, setVariantId] = useState("")
@@ -222,6 +224,7 @@ export default function EditProductPage({
 
       setProduct(productData)
       setName(productData.name)
+      setSlug(productData.slug || "")
       setDescription(productData.description || "")
       setBasePrice(productData.basePrice.toString())
       setCategoryId(productData.category?.id || "")
@@ -268,6 +271,7 @@ export default function EditProductPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
+          slug: slug.trim() || undefined,
           description: description || undefined,
           basePrice: parseFloat(basePrice),
           categoryId,
@@ -552,6 +556,22 @@ export default function EditProductPage({
                 placeholder={t("product.name_placeholder") || "Enter product name"}
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="slug">
+                {t("common.slug") || "Public slug"}
+              </Label>
+              <Input
+                id="slug"
+                dir="ltr"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                placeholder="organic-honey"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("common.slugHelp") || "Leave blank to generate it from the name. Saved slugs are normalized and kept unique."}
+              </p>
             </div>
             
             {/* Description */}

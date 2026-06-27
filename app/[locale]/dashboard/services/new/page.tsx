@@ -59,6 +59,7 @@ export default function NewServicePage({
   
   // Form state
   const [name, setName] = useState("")
+  const [slug, setSlug] = useState("")
   const [description, setDescription] = useState("")
   const [price, setPrice] = useState("")
   const [duration, setDuration] = useState("30")
@@ -127,6 +128,7 @@ export default function NewServicePage({
         headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name,
+            slug: slug.trim() || undefined,
             description: description || undefined,
             price: parseFloat(price),
             duration: parseInt(duration),
@@ -214,6 +216,22 @@ export default function NewServicePage({
                 placeholder={t("service.name_placeholder") || "Enter service name"}
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="slug">
+                {t("common.slug") || "Public slug"}
+              </Label>
+              <Input
+                id="slug"
+                dir="ltr"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                placeholder="hair-cut"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("common.slugHelp") || "Leave blank to generate it from the name. Saved slugs are normalized and kept unique."}
+              </p>
             </div>
             
             {/* Description */}

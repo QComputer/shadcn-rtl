@@ -51,6 +51,7 @@ import { useDashboardAccess } from "@/hooks/use-auth"
 interface Category {
   id: string
   name: string
+  slug: string | null
   description: string | null
   image: string | null
   isActive: boolean
@@ -86,6 +87,7 @@ export default function ServiceCategoriesPage({
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
+    slug: "",
     description: "",
     image: "",
     isActive: true,
@@ -134,8 +136,10 @@ export default function ServiceCategoriesPage({
   const filteredCategories = categories.filter(category => {
     const name = category.name || ""
     const description = category.description || ""
+    const slug = category.slug || ""
     return name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      description.toLowerCase().includes(searchQuery.toLowerCase())
+      description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      slug.toLowerCase().includes(searchQuery.toLowerCase())
   })
 
   // Open create dialog
@@ -143,6 +147,7 @@ export default function ServiceCategoriesPage({
     setEditingCategory(null)
     setFormData({
       name: "",
+      slug: "",
       description: "",
       image: "",
       isActive: true,
@@ -155,6 +160,7 @@ export default function ServiceCategoriesPage({
     setEditingCategory(category)
     setFormData({
       name: category.name,
+      slug: category.slug || "",
       description: category.description || "",
       image: category.image || "",
       isActive: category.isActive,
@@ -183,7 +189,10 @@ export default function ServiceCategoriesPage({
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          slug: formData.slug.trim() || undefined,
+        }),
       })
       
       if (!response.ok) {
@@ -345,6 +354,11 @@ export default function ServiceCategoriesPage({
                           : (t("common.inactive") || "Inactive")}
                       </Badge>
                     </div>
+                    {category.slug && (
+                      <p className="text-xs text-muted-foreground font-mono truncate mt-1">
+                        /{category.slug}
+                      </p>
+                    )}
                     {category.description && (
                       <p className="text-sm text-muted-foreground truncate mt-1">
                         {category.description}
@@ -412,6 +426,20 @@ export default function ServiceCategoriesPage({
                 placeholder={t("service.name_placeholder") || "Category name"}
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="slug">{t("common.slug") || "Public slug"}</Label>
+              <Input
+                id="slug"
+                dir="ltr"
+                value={formData.slug}
+                onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
+                placeholder="consultation"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("common.slugHelp") || "Leave blank to generate it from the name. Saved slugs are normalized and kept unique."}
+              </p>
             </div>
             
             <div className="space-y-2">

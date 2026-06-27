@@ -100,6 +100,7 @@ export default function NewProductPage({
   
   // Form state
   const [name, setName] = useState("")
+  const [slug, setSlug] = useState("")
   const [description, setDescription] = useState("")
   const [basePrice, setBasePrice] = useState("")
   const [categoryId, setCategoryId] = useState("")
@@ -223,8 +224,9 @@ export default function NewProductPage({
       const response = await fetch("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+            body: JSON.stringify({
             name,
+            slug: slug.trim() || undefined,
             description: description || undefined,
             basePrice: parseFloat(basePrice),
             image: imageUrl || undefined,
@@ -407,6 +409,22 @@ export default function NewProductPage({
                   placeholder={t("product.name_placeholder") || "Enter product name"}
                   required
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="slug">
+                  {t("common.slug") || "Public slug"}
+                </Label>
+                <Input
+                  id="slug"
+                  dir="ltr"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  placeholder="organic-honey"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("common.slugHelp") || "Leave blank to generate it from the name. Saved slugs are normalized and kept unique."}
+                </p>
               </div>
 
               <div className="space-y-2">

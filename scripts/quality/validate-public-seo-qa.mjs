@@ -49,7 +49,11 @@ for (const rel of [
 expectIncludes("app/og-image/route.tsx", "ImageResponse", "default rich preview image uses Next ImageResponse");
 expectIncludes("app/og-image/route.tsx", "1200", "default rich preview width is 1200");
 expectIncludes("app/og-image/route.tsx", "630", "default rich preview height is 630");
-expectIncludes("app/og-image/route.tsx", "export function GET", "default rich preview is served by a route handler");
+add(
+  "default rich preview is served by a route handler",
+  /export\s+(async\s+)?function\s+GET/.test(read("app/og-image/route.tsx")),
+  "export function GET or export async function GET",
+);
 
 expectIncludes("lib/seo.ts", "const DEFAULT_IMAGE = \"/og-image\"", "SEO fallback image points to generated OG image");
 expectIncludes("lib/seo.ts", "buildNoIndexMetadata", "shared noindex metadata helper exists");

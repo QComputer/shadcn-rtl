@@ -6,7 +6,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 
 - Package manager: `pnpm`.
 - App Router pages are localized under `app/[locale]`.
-- Supported locales: `fa`, `en`, `ar`; Persian is the default public locale.
+- Supported locales: `fa`, `en`, `ar`; Persian is the default public locale, and first-time unprefixed visits to `/` redirect to `/fa`.
 - Primary domains: organizations, appointment booking, shop/cart/order/payment, inventory, reviews, follows, fanpage posts, conversations, notifications, driver location, dashboard operations.
 - Current handoff/source-of-truth: `docs/CURRENT_SOURCE_OF_TRUTH.md`.
 - Current route/API/database inventory: `docs/ROUTE_API_DB_SERVICE_INVENTORY.md`.
@@ -69,6 +69,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 54 | Dashboard Slug Editing UI | Source-validated | `pnpm run quality:dashboard-slug-editing` |
 | 55 | Public Slug Preview and Rich Share Polish | Source-validated | `pnpm run quality:public-slug-preview-share` |
 | 56 | Tenant-Specific Open Graph Image Generation | Source-validated | `pnpm run quality:tenant-og-images` |
+| 57 | Deployed Social Preview Verification | Source/deployed smoke | `pnpm run quality:deployed-social-preview` / `pnpm run e2e:deployed:social-preview` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -102,6 +103,7 @@ pnpm run quality:deployed-slug-seo
 pnpm run quality:dashboard-slug-editing
 pnpm run quality:public-slug-preview-share
 pnpm run quality:tenant-og-images
+pnpm run quality:deployed-social-preview
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -134,6 +136,17 @@ pnpm run e2e:deployed:slug-seo
 ```
 
 The suite samples slug-like category/product/service URLs from the deployed sitemap. Set `DEPLOYED_SLUG_SEO_MAX_PER_KIND` to change sample size. Use `DEPLOYED_SLUG_SEO_ALLOW_EMPTY=1` only for intentionally empty deployments.
+
+## Deployed social preview validation
+
+Run the read-only deployed social preview suite when validating `og:image` resolution and generated/uploaded social-card captures:
+
+```powershell
+$env:DEPLOYED_URL="https://bazar-baz.ir"
+pnpm run e2e:deployed:social-preview
+```
+
+The suite samples deployed sitemap pages for organization, category, product, and service routes, fetches each page `og:image`, captures image bytes under `test-results/deployed-social-preview`, and directly verifies a Persian generated `/og-image?...` card backed by bundled Vazirmatn fonts. Use `DEPLOYED_SOCIAL_PREVIEW_ALLOW_EMPTY=1` only for intentionally sparse non-production deployments, and `DEPLOYED_SOCIAL_PREVIEW_REQUIRE_CATEGORY=1` when category sitemap URLs are expected to be reachable.
 
 ## Clean source handoff
 
@@ -181,7 +194,11 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P56 - Tenant-Specific Open Graph Image Generation**.
+Latest completed implementation phase: **P57 - Deployed Social Preview Verification**.
+
+P57 adds a read-only deployed social preview smoke suite for sampled organization/category/product/service pages, `og:image` URL resolution, generated `/og-image` crawler access, uploaded-image preview capture, and capture manifests under `test-results/deployed-social-preview`.
+
+Previous tenant OG phase retained: **P56 - Tenant-Specific Open Graph Image Generation**.
 
 P56 adds deterministic generated Open Graph cards for organization, category, product, and service pages when uploaded share images are absent, while preserving uploaded image precedence for real logo/cover/category/product/service media. It adds the focused `quality:tenant-og-images` validator.
 
@@ -253,4 +270,4 @@ Previous dashboard role phase retained: **P38 - dashboard sidebar role-aware nav
 
 Previous dashboard shell/copy phase retained: **P37 - dashboard navigation and localized shell copy cleanup**.
 
-Recommended next phase: **P57 - Deployed Social Preview Verification**.
+Recommended next phase: **P58 - Social Preview Artifact Review and Release Evidence**.

@@ -90,9 +90,15 @@ const i18nSource = exists("lib/i18n.ts") ? read("lib/i18n.ts") : "";
 for (const locale of locales) {
   add(`supportedLocales includes ${locale}`, i18nSource.includes(`"${locale}"`) || i18nSource.includes(`'${locale}'`));
 }
+add("default locale helper returns fa", /getDefaultLocale\(\)[\s\S]*?return\s+["']fa["']/.test(i18nSource));
+add("unknown dictionary fallback returns fa", /return\s+loaders\.fa\(\)/.test(i18nSource));
 add("fa locale is rtl", /fa:\s*{[\s\S]*?dir:\s*["']rtl["']/.test(i18nSource));
 add("ar locale is rtl", /ar:\s*{[\s\S]*?dir:\s*["']rtl["']/.test(i18nSource));
 add("en locale is ltr", /en:\s*{[\s\S]*?dir:\s*["']ltr["']/.test(i18nSource));
+
+const rootPageSource = exists("app/page.tsx") ? read("app/page.tsx") : "";
+add("root page exists for first-visit locale redirect", exists("app/page.tsx"));
+add("root page redirects first-time visitors to fa", /redirect\(["']\/fa["']\)/.test(rootPageSource));
 
 const layoutSource = exists("app/[locale]/layout.tsx") ? read("app/[locale]/layout.tsx") : "";
 add("locale layout sets html lang", /<html[^>]+lang=/.test(layoutSource));

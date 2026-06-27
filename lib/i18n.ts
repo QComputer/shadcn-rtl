@@ -66,8 +66,8 @@ export async function getDictionary(locale: string): Promise<Dictionary> {
     return loaders[localeKey]();
   }
   
-  // Fallback to English
-  return loaders.en();
+  // Fallback to Persian, the primary public locale.
+  return loaders.fa();
 }
 
 /**

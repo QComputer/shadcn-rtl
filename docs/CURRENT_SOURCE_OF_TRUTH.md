@@ -35,6 +35,7 @@ pnpm run quality:deployed-slug-seo
 pnpm run quality:dashboard-slug-editing
 pnpm run quality:public-slug-preview-share
 pnpm run quality:tenant-og-images
+pnpm run quality:deployed-social-preview
 ```
 
 Clean handoff gate introduced in P33:
@@ -54,7 +55,7 @@ pnpm run db:migrate:neon:dry-run
 ## Current product and architecture state
 
 - Next.js 16 App Router with localized routes under `app/[locale]`.
-- Supported locales: `fa`, `en`, `ar`; dictionary leaf-key parity is enforced by `quality:i18n-completion`.
+- Supported locales: `fa`, `en`, `ar`; Persian (`fa`) is the first-visit public locale, `/` redirects to `/fa`, and dictionary leaf-key parity is enforced by `quality:i18n-completion`.
 - Multi-tenant organization model supports `SHOP` and `APPOINTMENT` organization types.
 - Dashboard workflows cover appointments, calendar, notifications, organizations, members, Customer Club, Customer Segments, Campaign Builder, Loyalty, Coupons, products, product categories, orders, QR code, services, service categories, settings, and users.
 - Public shop workflows cover shop profile, product detail, checkout, order tracking, and shop fanpage.
@@ -76,6 +77,7 @@ pnpm run db:migrate:neon:dry-run
 - Dashboard slug editing exists for product categories, service categories, products, and services, with ID-based mutation routes preserved and `quality:dashboard-slug-editing` enforcing the UI controls.
 - Public slug preview/share polish exists through dashboard slug copy/open controls, deployment-origin URL previews, explicit social image dimensions/alt text, and stronger product/service/category image fallbacks, with `quality:public-slug-preview-share`.
 - Tenant-specific Open Graph image generation exists through parameterized `/og-image` cards, generated organization/category/product/service fallback image URLs, uploaded-media-first share metadata, and the `quality:tenant-og-images` validator.
+- Deployed social preview verification exists through `scripts/e2e/deployed-social-preview.mjs`, Persian generated-card and uploaded-image `og:image` capture checks, deployed sitemap sampling, bundled Vazirmatn OG fonts, and the `quality:deployed-social-preview` validator.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -121,6 +123,7 @@ pnpm run db:migrate:neon:dry-run
 | P54 | Dashboard Slug Editing UI for category/product/service public slug controls with validator. |
 | P55 | Public Slug Preview and Rich Share Polish with dashboard copy/open URL actions and image-rich metadata fallbacks. |
 | P56 | Tenant-Specific Open Graph Image Generation with uploaded-media precedence and generated fallback cards. |
+| P57 | Deployed Social Preview Verification with read-only `og:image` resolution and capture evidence. |
 
 ## Current route/API inventory
 
@@ -216,6 +219,8 @@ Deferred:
 - P54 keeps dashboard mutation URLs ID-based even when public slugs are manually edited.
 - P55 preview links depend on a known organization slug; fields without a resolvable public organization path keep preview actions disabled.
 - P56 generated OG cards are deterministic URL-query images, not persisted media assets or per-tenant theme settings.
+- P57 writes deployed social preview captures under `test-results/deployed-social-preview`; those artifacts are verification output and must not be committed.
+- P57 live smoke currently treats category sitemap candidates as sampled-but-not-required by default because deployed category sitemap URLs can be stale/404; set `DEPLOYED_SOCIAL_PREVIEW_REQUIRE_CATEGORY=1` after category sitemap reachability is cleaned up.
 
 ## Clean release rules
 
@@ -252,12 +257,12 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P57 - Deployed Social Preview Verification
+P58 - Social Preview Artifact Review and Release Evidence
 ```
 
 Scope:
 
-1. Verify deployed `og:image` URLs resolve for sampled organization, category, product, and service pages.
-2. Capture at least one deployed generated card and one uploaded-image social preview candidate.
-3. Keep the smoke read-only and data-dependent, with an explicit allow-empty mode only for non-production deployments.
-4. Validate with typecheck, build, `quality:local`, P42-P56 validators, dashboard navigation validators, and staged release checks.
+1. Add a lightweight documented review checklist for generated social preview captures.
+2. Preserve deployed capture manifests as release evidence outside committed source artifacts.
+3. Optionally add a release-note template section for deployed SEO/social preview evidence.
+4. Validate with typecheck, build, `quality:local`, P42-P57 validators, dashboard navigation validators, and staged release checks.

@@ -15,6 +15,11 @@ import { parseManualInstagramContent } from "@/lib/import-hub/instagram-manual-p
 import { parseMenuOcrFixture, realMenuOcrEnabled } from "@/lib/import-hub/menu-ocr-fixtures"
 import { parseProductSpreadsheet } from "@/lib/import-hub/spreadsheet-parser"
 import {
+  isSnappfoodUrl,
+  parseSnappfoodUrlFixture,
+  snappfoodPublicFetchEnabled,
+} from "@/lib/import-hub/snappfood-adapter"
+import {
   externalTextExtractionEnabled,
   getProductTextExtractionProvider,
 } from "@/lib/import-hub/text-extraction-provider"
@@ -148,10 +153,14 @@ export class ImportHubService {
           sourceUrl: normalizedUrl,
         })
       : []
+    const parsedSnappfoodProductDrafts = type === "SNAP_FOOD" && normalizedUrl
+      ? parseSnappfoodUrlFixture({ sourceUrl: normalizedUrl })
+      : []
     const parsedProductDrafts = [
       ...parsedSpreadsheetProductDrafts,
       ...parsedTextProductDrafts,
       ...parsedMenuProductDrafts,
+      ...parsedSnappfoodProductDrafts,
     ]
     const parsedContentDrafts = type === "INSTAGRAM"
       ? [parseManualInstagramContent({
@@ -171,6 +180,12 @@ export class ImportHubService {
     if (menuImportType && !inputFilename && !normalizedUrl) {
       throw new ApiError(400, "Image/PDF menu import requires a file name or source URL")
     }
+    if (type === "SNAP_FOOD" && !normalizedUrl) {
+      throw new ApiError(400, "Snappfood import requires a seller-provided source URL")
+    }
+    if (type === "SNAP_FOOD" && normalizedUrl && !isSnappfoodUrl(normalizedUrl)) {
+      throw new ApiError(400, "Snappfood import requires a valid snappfood.ir URL")
+    }
     if (type === "INSTAGRAM" && !normalizedUrl) {
       throw new ApiError(400, "Instagram import requires a seller-provided post URL")
     }
@@ -188,6 +203,7 @@ export class ImportHubService {
       Boolean(spreadsheetType),
       parsedTextProductDrafts.length > 0,
       parsedMenuProductDrafts.length > 0,
+      parsedSnappfoodProductDrafts.length > 0,
     )
 
     const job = await prisma.$transaction(async (tx) => {
@@ -209,6 +225,8 @@ export class ImportHubService {
                 ? "P71_TEXT_PRODUCT_EXTRACTION"
                 : parsedMenuProductDrafts.length > 0
                 ? "P72_IMAGE_PDF_MENU_IMPORT"
+                : parsedSnappfoodProductDrafts.length > 0
+                ? "P73_SNAPPFOOD_URL_IMPORT"
                 : spreadsheetType
                 ? "P69_CSV_EXCEL_PRODUCT_IMPORTER"
                 : "P68_FOUNDATION",
@@ -218,6 +236,8 @@ export class ImportHubService {
             externalTextExtractionEnabled: externalTextExtractionEnabled(),
             realMenuOcrEnabled: realMenuOcrEnabled(),
             dryRunMenuOcrFixture: parsedMenuProductDrafts.length > 0,
+            snappfoodPublicFetchEnabled: snappfoodPublicFetchEnabled(),
+            snappfoodFallback: parsedSnappfoodProductDrafts.length > 0,
           },
         },
       })
@@ -314,6 +334,8 @@ export class ImportHubService {
             ? "local-rule-based-text-product-extractor"
             : parsedMenuProductDrafts.length > 0
             ? "dry-run-menu-ocr-fixture"
+            : parsedSnappfoodProductDrafts.length > 0
+            ? "snappfood-url-fallback"
             : spreadsheetType
             ? "spreadsheet-draft-parser"
             : false,
@@ -321,6 +343,7 @@ export class ImportHubService {
         contentDraftCount: parsedContentDrafts.length,
         externalTextExtractionEnabled: externalTextExtractionEnabled(),
         realMenuOcrEnabled: realMenuOcrEnabled(),
+        snappfoodPublicFetchEnabled: snappfoodPublicFetchEnabled(),
       },
       userId: input.actorUserId,
       organizationId: organization.id,
@@ -433,6 +456,7 @@ export class ImportHubService {
     spreadsheetImporterEnabled = false,
     textImporterEnabled = false,
     menuImporterEnabled = false,
+    snappfoodImporterEnabled = false,
   ): ImportJobSummary {
     if (contentDraftCount > 0 && type === "INSTAGRAM") {
       return {
@@ -473,6 +497,17 @@ export class ImportHubService {
         draftFirst: true,
         importerEnabled: "dry-run-menu-ocr-fixture",
         message: "Image/PDF menu intake was recorded with dry-run OCR fixture rows. Real OCR remains disabled.",
+        productDraftCount,
+        contentDraftCount,
+      }
+    }
+
+    if (productDraftCount > 0 && type === "SNAP_FOOD" && snappfoodImporterEnabled) {
+      return {
+        phase: "P73_SNAPPFOOD_URL_IMPORT",
+        draftFirst: true,
+        importerEnabled: "snappfood-url-fallback",
+        message: "Snappfood URL intake was recorded with fallback draft rows. Public fetching remains disabled.",
         productDraftCount,
         contentDraftCount,
       }

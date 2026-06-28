@@ -117,7 +117,8 @@
     "quality:csv-excel-importer": "node scripts/quality/validate-csv-excel-importer.mjs",
     "quality:manual-instagram-import": "node scripts/quality/validate-manual-instagram-import.mjs",
     "quality:text-product-extraction": "node scripts/quality/validate-text-product-extraction.mjs",
-    "quality:image-pdf-menu-import": "node scripts/quality/validate-image-pdf-menu-import.mjs"
+    "quality:image-pdf-menu-import": "node scripts/quality/validate-image-pdf-menu-import.mjs",
+    "quality:snappfood-url-import": "node scripts/quality/validate-snappfood-url-import.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

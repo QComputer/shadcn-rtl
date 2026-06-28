@@ -112,6 +112,8 @@ Scope:
 
 ## Phase 73 - Snappfood URL Import MVP
 
+Status: Implemented in P73.
+
 Goal: support cautious one-time Snappfood seller URL intake.
 
 Scope:

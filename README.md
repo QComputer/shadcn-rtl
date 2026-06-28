@@ -89,6 +89,10 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 73 | Snappfood URL Import MVP | Source-validated | `pnpm run quality:snappfood-url-import` |
 | 74 | Snappmarket URL Import MVP | Source-validated | `pnpm run quality:snappmarket-url-import` |
 | 75 | Telegram Post Import | Source-validated | `pnpm run quality:telegram-post-import` |
+| 76 | External Source Mapping and Re-import Diff | Source-validated | `pnpm run quality:external-source-mapping` |
+| 77 | Import Hub Audit, Limits, and Plan Readiness | Source-validated | `pnpm run quality:import-hub-audit-limits` |
+| 78 | Export Hub Foundation | Source-validated | `pnpm run quality:export-hub-foundation` |
+| 79 | Import Approval Publishing | Source-validated | `pnpm run quality:import-approval-publishing` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -141,6 +145,10 @@ pnpm run quality:image-pdf-menu-import
 pnpm run quality:snappfood-url-import
 pnpm run quality:snappmarket-url-import
 pnpm run quality:telegram-post-import
+pnpm run quality:external-source-mapping
+pnpm run quality:import-hub-audit-limits
+pnpm run quality:export-hub-foundation
+pnpm run quality:import-approval-publishing
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -259,12 +267,12 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P78 - Export Hub Foundation**.
+Latest completed implementation phase: **P79 - Import Approval Publishing**.
 
-Recommended next phase: **Post-P78 deployed verification and export/import polish**.
+Recommended next phase: **Post-P79 deployed verification and export/import polish**.
 
-The active roadmap is `docs/IMPORT_HUB_ROADMAP.md`. P68-P78 are implemented; the next work should verify the deployed import/export flows with real organization data and then polish approval-to-live publishing.
+The active roadmap is `docs/IMPORT_HUB_ROADMAP.md` plus `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md`. P68-P79 are implemented; the next work should verify deployed import/export flows with real organization data and then add export streaming/blob-backed downloads for larger payloads.
 
 ## Historical validator anchors
 
-The source tree keeps focused validators for these retained phases: P37 dashboard navigation and localized shell copy, P38 dashboard role navigation, P39 dashboard route parity, P40 dashboard route authorization, P41 dashboard route guard smoke, P42 Customer Club foundation, P43 in-app notification inbox, P44 Customer Segments, P45 Campaign Builder, P46 Loyalty Points and Coupons, P47 Web Push Opt-In Foundation, P68 Import Hub Foundation, P69 CSV/Excel Product Importer, P70 Manual Instagram Fanpage Import, P71 AI/Text Product Extraction Foundation, P72 Image/PDF Menu Import Foundation, P73 Snappfood URL Import MVP, P74 Snappmarket URL Import MVP, P75 Telegram Post Import, P76 External Source Mapping and Re-import Diff, P77 Import Hub Audit, Limits, and Plan Readiness, and P78 Export Hub Foundation.
+The source tree keeps focused validators for these retained phases: P37 dashboard navigation and localized shell copy, P38 dashboard role navigation, P39 dashboard route parity, P40 dashboard route authorization, P41 dashboard route guard smoke, P42 Customer Club foundation, P43 in-app notification inbox, P44 Customer Segments, P45 Campaign Builder, P46 Loyalty Points and Coupons, P47 Web Push Opt-In Foundation, P68 Import Hub Foundation, P69 CSV/Excel Product Importer, P70 Manual Instagram Fanpage Import, P71 AI/Text Product Extraction Foundation, P72 Image/PDF Menu Import Foundation, P73 Snappfood URL Import MVP, P74 Snappmarket URL Import MVP, P75 Telegram Post Import, P76 External Source Mapping and Re-import Diff, P77 Import Hub Audit, Limits, and Plan Readiness, P78 Export Hub Foundation, and P79 Import Approval Publishing.

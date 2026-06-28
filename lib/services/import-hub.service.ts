@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/db"
 import { ApiError } from "@/lib/api-guards"
 import { writeAuditLog } from "@/lib/audit-log"
+import { buildUniqueCategorySlug } from "@/lib/category-slugs"
+import { buildUniqueDetailSlug } from "@/lib/detail-slugs"
+import { supportedLocales } from "@/lib/i18n"
 import {
   detectImportSourceType,
   isThirdPartyUrlSource,
@@ -48,7 +51,8 @@ import type {
   ReviewImportDraftsInput,
 } from "@/lib/import-hub/types"
 import { reimportResolutionDecisions, reviewableDraftStatuses } from "@/lib/import-hub/types"
-import type { ExternalImportSourceType, ImportedDraftStatus, Prisma } from "@prisma/client"
+import type { ExternalImportSourceType, Prisma } from "@prisma/client"
+import { revalidatePath, revalidateTag } from "next/cache"
 
 const importJobInclude = {
   organization: {
@@ -73,6 +77,33 @@ const importJobInclude = {
     select: { productDrafts: true, contentDrafts: true },
   },
 } satisfies Prisma.ExternalImportJobInclude
+
+const IMPORTED_CATEGORY_FALLBACK = "واردشده"
+
+function revalidateImportedProductPages(
+  organizationSlug: string,
+  productSlugs: Array<string | null>,
+  categorySlugs: Array<string | null>,
+) {
+  for (const locale of supportedLocales) {
+    revalidatePath(`/${locale}/shop/${organizationSlug}`)
+    for (const slug of productSlugs) {
+      if (slug) revalidatePath(`/${locale}/shop/${organizationSlug}/product/${slug}`)
+    }
+    for (const slug of categorySlugs) {
+      if (slug) revalidatePath(`/${locale}/shop/${organizationSlug}/category/${slug}`)
+    }
+  }
+  revalidateTag("home-page", "max")
+}
+
+function revalidateImportedFanpagePages(organizationSlug: string) {
+  for (const locale of supportedLocales) {
+    revalidatePath(`/${locale}/shop/${organizationSlug}/fanpage`)
+    revalidatePath(`/${locale}/appointment/${organizationSlug}/fanpage`)
+  }
+  revalidateTag("home-page", "max")
+}
 
 export class ImportHubService {
   async listJobs(options: ImportJobListOptions = {}) {
@@ -588,56 +619,260 @@ export class ImportHubService {
 
     const job = await prisma.externalImportJob.findFirst({
       where: { id: input.jobId, organizationId: input.organizationId },
-      select: { id: true, organizationId: true },
+      select: {
+        id: true,
+        organizationId: true,
+        organization: { select: { id: true, slug: true, type: true } },
+      },
     })
     if (!job) throw new ApiError(404, "Import job not found")
 
     const productDraftIds = input.productDraftIds ?? []
     const contentDraftIds = input.contentDraftIds ?? []
     const reviewedAt = new Date()
-    const data = {
-      status: input.status as ImportedDraftStatus,
-      reviewedByUserId: input.actorUserId,
-      reviewedAt,
+
+    if (input.status === "REJECTED") {
+      const data = {
+        status: "REJECTED" as const,
+        reviewedByUserId: input.actorUserId,
+        reviewedAt,
+      }
+
+      const [productResult, contentResult, remainingProductDrafts, remainingContentDrafts] = await prisma.$transaction([
+        prisma.importedProductDraft.updateMany({
+          where: {
+            id: { in: productDraftIds },
+            jobId: input.jobId,
+            organizationId: input.organizationId,
+            status: "DRAFT",
+          },
+          data,
+        }),
+        prisma.importedContentDraft.updateMany({
+          where: {
+            id: { in: contentDraftIds },
+            jobId: input.jobId,
+            organizationId: input.organizationId,
+            status: "DRAFT",
+          },
+          data,
+        }),
+        prisma.importedProductDraft.count({
+          where: {
+            jobId: input.jobId,
+            organizationId: input.organizationId,
+            status: "DRAFT",
+            id: { notIn: productDraftIds },
+          },
+        }),
+        prisma.importedContentDraft.count({
+          where: {
+            jobId: input.jobId,
+            organizationId: input.organizationId,
+            status: "DRAFT",
+            id: { notIn: contentDraftIds },
+          },
+        }),
+      ])
+
+      if (remainingProductDrafts + remainingContentDrafts === 0) {
+        await prisma.externalImportJob.update({
+          where: { id: input.jobId },
+          data: {
+            status: "COMPLETED",
+            completedAt: reviewedAt,
+          },
+        })
+      }
+
+      await writeAuditLog({
+        action: "UPDATE",
+        entityType: "ExternalImportJob",
+        entityId: input.jobId,
+        description: "Import drafts rejected after seller review",
+        newValue: {
+          status: input.status,
+          productDraftCount: productResult.count,
+          contentDraftCount: contentResult.count,
+          remainingDraftCount: remainingProductDrafts + remainingContentDrafts,
+        },
+        userId: input.actorUserId,
+        organizationId: input.organizationId,
+      })
+
+      return this.getJob(input.jobId, input.organizationId)
     }
 
-    const [productResult, contentResult] = await prisma.$transaction([
-      prisma.importedProductDraft.updateMany({
-        where: {
-          id: { in: productDraftIds },
-          jobId: input.jobId,
-          organizationId: input.organizationId,
-          status: "DRAFT",
-        },
-        data,
-      }),
-      prisma.importedContentDraft.updateMany({
-        where: {
-          id: { in: contentDraftIds },
-          jobId: input.jobId,
-          organizationId: input.organizationId,
-          status: "DRAFT",
-        },
-        data,
-      }),
-      prisma.externalImportJob.update({
-        where: { id: input.jobId },
-        data: {
-          status: "COMPLETED",
-          completedAt: reviewedAt,
-        },
-      }),
-    ])
+    const publishResult = await prisma.$transaction(async (tx) => {
+      const productDrafts = productDraftIds.length
+        ? await tx.importedProductDraft.findMany({
+            where: {
+              id: { in: productDraftIds },
+              jobId: input.jobId,
+              organizationId: input.organizationId,
+              status: "DRAFT",
+            },
+            orderBy: { createdAt: "asc" },
+          })
+        : []
+      const contentDrafts = contentDraftIds.length
+        ? await tx.importedContentDraft.findMany({
+            where: {
+              id: { in: contentDraftIds },
+              jobId: input.jobId,
+              organizationId: input.organizationId,
+              status: "DRAFT",
+            },
+            orderBy: { createdAt: "asc" },
+          })
+        : []
+
+      if (productDrafts.length > 0 && job.organization.type !== "SHOP") {
+        throw new ApiError(400, "Product import publishing requires a shop organization")
+      }
+
+      const productSlugs: Array<string | null> = []
+      const categorySlugs: Array<string | null> = []
+      const fanpagePostIds: string[] = []
+
+      for (const draft of productDrafts) {
+        const productName = draft.name?.trim()
+        if (!productName) throw new ApiError(400, "Approved product drafts require a product name")
+        if (draft.basePrice === null) throw new ApiError(400, `Approved product draft ${draft.id} requires a base price`)
+
+        const category = await this.findOrCreateImportedCategory(tx, {
+          organizationId: job.organization.id,
+          organizationSlug: job.organization.slug,
+          name: draft.categoryName?.trim() || IMPORTED_CATEGORY_FALLBACK,
+        })
+        if (category.slug && !categorySlugs.includes(category.slug)) categorySlugs.push(category.slug)
+
+        const productSlug = await buildUniqueDetailSlug(productName, async (candidate) => {
+          const existing = await tx.product.findFirst({
+            where: {
+              organizationId: job.organization.id,
+              slug: candidate,
+              deletedAt: null,
+            },
+            select: { id: true },
+          })
+          return Boolean(existing)
+        })
+
+        const product = await tx.product.create({
+          data: {
+            organizationId: job.organization.id,
+            organizationSlug: job.organization.slug,
+            categoryId: category.id,
+            name: productName,
+            slug: productSlug,
+            description: draft.description?.trim() || null,
+            basePrice: draft.basePrice,
+            image: draft.imageUrl?.trim() || null,
+            sku: draft.sku?.trim() || null,
+            isActive: true,
+            trackInventory: true,
+          },
+          select: { id: true, slug: true, basePrice: true },
+        })
+
+        await tx.productVariant.create({
+          data: {
+            productId: product.id,
+            name: "Default",
+            price: product.basePrice,
+            sku: draft.sku?.trim() || undefined,
+            inventory: draft.stock ?? 0,
+          },
+        })
+
+        await tx.importedProductDraft.update({
+          where: { id: draft.id },
+          data: {
+            status: "IMPORTED",
+            reviewedByUserId: input.actorUserId,
+            reviewedAt,
+            importedAt: reviewedAt,
+          },
+        })
+        productSlugs.push(product.slug)
+      }
+
+      for (const draft of contentDrafts) {
+        const body = draft.body?.trim()
+        if (!body) throw new ApiError(400, "Approved content drafts require body text")
+
+        const mediaUrl = draft.mediaUrl?.trim() || null
+        const post = await tx.fanpagePost.create({
+          data: {
+            organizationId: job.organization.id,
+            authorId: input.actorUserId,
+            title: draft.title?.trim() || null,
+            body,
+            image: mediaUrl && draft.mediaType !== "video" ? mediaUrl : null,
+            video: mediaUrl && draft.mediaType === "video" ? mediaUrl : null,
+            isPublished: true,
+          },
+          select: { id: true },
+        })
+
+        await tx.importedContentDraft.update({
+          where: { id: draft.id },
+          data: {
+            status: "IMPORTED",
+            reviewedByUserId: input.actorUserId,
+            reviewedAt,
+            importedAt: reviewedAt,
+          },
+        })
+        fanpagePostIds.push(post.id)
+      }
+
+      const remainingProductDrafts = await tx.importedProductDraft.count({
+        where: { jobId: input.jobId, organizationId: input.organizationId, status: "DRAFT" },
+      })
+      const remainingContentDrafts = await tx.importedContentDraft.count({
+        where: { jobId: input.jobId, organizationId: input.organizationId, status: "DRAFT" },
+      })
+
+      if (remainingProductDrafts + remainingContentDrafts === 0) {
+        await tx.externalImportJob.update({
+          where: { id: input.jobId },
+          data: {
+            status: "COMPLETED",
+            completedAt: reviewedAt,
+          },
+        })
+      }
+
+      return {
+        productDraftCount: productDrafts.length,
+        contentDraftCount: contentDrafts.length,
+        remainingDraftCount: remainingProductDrafts + remainingContentDrafts,
+        productSlugs,
+        categorySlugs,
+        fanpagePostIds,
+      }
+    })
+
+    if (publishResult.productDraftCount > 0) {
+      revalidateImportedProductPages(job.organization.slug, publishResult.productSlugs, publishResult.categorySlugs)
+    }
+    if (publishResult.contentDraftCount > 0) {
+      revalidateImportedFanpagePages(job.organization.slug)
+    }
 
     await writeAuditLog({
       action: "UPDATE",
       entityType: "ExternalImportJob",
       entityId: input.jobId,
-      description: "Import drafts reviewed without publishing",
+      description: "Approved import drafts published to live records",
       newValue: {
-        status: input.status,
-        productDraftCount: productResult.count,
-        contentDraftCount: contentResult.count,
+        status: "IMPORTED",
+        productDraftCount: publishResult.productDraftCount,
+        contentDraftCount: publishResult.contentDraftCount,
+        remainingDraftCount: publishResult.remainingDraftCount,
+        fanpagePostCount: publishResult.fanpagePostIds.length,
       },
       userId: input.actorUserId,
       organizationId: input.organizationId,
@@ -899,6 +1134,44 @@ export class ImportHubService {
     if (filename) return filename
     if (normalizedUrl) return `${getImportSourceLabel(type)} - ${normalizedUrl}`
     return getImportSourceLabel(type)
+  }
+
+  private async findOrCreateImportedCategory(
+    tx: Prisma.TransactionClient,
+    input: { organizationId: string; organizationSlug: string; name: string },
+  ) {
+    const existing = await tx.productCategory.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        deletedAt: null,
+        name: { equals: input.name, mode: "insensitive" },
+      },
+      select: { id: true, slug: true },
+    })
+    if (existing) return existing
+
+    const slug = await buildUniqueCategorySlug(input.name, async (candidate) => {
+      const category = await tx.productCategory.findFirst({
+        where: {
+          organizationId: input.organizationId,
+          slug: candidate,
+          deletedAt: null,
+        },
+        select: { id: true },
+      })
+      return Boolean(category)
+    })
+
+    return tx.productCategory.create({
+      data: {
+        organizationId: input.organizationId,
+        organizationSlug: input.organizationSlug,
+        name: input.name,
+        slug,
+        isActive: true,
+      },
+      select: { id: true, slug: true },
+    })
   }
 }
 

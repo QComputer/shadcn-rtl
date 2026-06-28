@@ -24,6 +24,7 @@ const service = read("lib/services/import-hub.service.ts")
 const detection = read("lib/import-hub/source-detection.ts")
 const packageJson = read("package.json")
 const validateProject = read("scripts/quality/validate-project.mjs")
+const reviewDraftsBlock = service.match(/async reviewDrafts[\s\S]*?async resolveReimportDrafts/)?.[0] ?? ""
 
 add("Snappmarket adapter exists", exists("lib/import-hub/snappmarket-adapter.ts"))
 add("adapter validates Snappmarket URLs", /isSnappmarketUrl/.test(adapter) && /snappmarket/.test(adapter))
@@ -39,7 +40,7 @@ add("service requires Snappmarket URL", /Snappmarket import requires a seller-pr
 add("service rejects non-Snappmarket URL", /valid snapp\.market or snappmarket\.ir URL/.test(service))
 add("service stores P74 metadata", /P74_SNAPPMARKET_URL_IMPORT/.test(service) && /snappmarketFallback/.test(service))
 add("service keeps Snappmarket rows draft-only", /status:\s*"DRAFT"/.test(service))
-add("service does not create live products", !/prisma\.product\.create/.test(service))
+add("service publishes products only after review approval", /tx\.product\.create/.test(reviewDraftsBlock) && /status:\s*"IMPORTED"/.test(reviewDraftsBlock))
 
 add("package script exposes P74 validator", /"quality:snappmarket-url-import":\s*"node scripts\/quality\/validate-snappmarket-url-import\.mjs"/.test(packageJson))
 add("project validator references P74 validator", /validate-snappmarket-url-import\.mjs/.test(validateProject))

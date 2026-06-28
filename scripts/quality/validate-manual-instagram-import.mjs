@@ -25,6 +25,7 @@ const route = read("app/api/dashboard/imports/jobs/route.ts")
 const page = read("app/[locale]/dashboard/imports/page.tsx")
 const packageJson = read("package.json")
 const validateProject = read("scripts/quality/validate-project.mjs")
+const reviewDraftsBlock = service.match(/async reviewDrafts[\s\S]*?async resolveReimportDrafts/)?.[0] ?? ""
 
 add("manual Instagram parser exists", exists("lib/import-hub/instagram-manual-parser.ts"))
 add("parser extracts hashtags", /extractHashtags/.test(parser) && /matchAll/.test(parser))
@@ -38,7 +39,7 @@ add("service creates ImportedContentDraft rows", /importedContentDraft\.createMa
 add("service keeps Instagram imports draft-only", /status:\s*"DRAFT"/.test(service))
 add("service stores Instagram metadata", /parseManualInstagramContent/.test(service) && (/sourceMetadata:\s*draft\.sourceMetadata/.test(service) || /withReimportMetadata\(draft\.sourceMetadata/.test(service)))
 add("service requires Instagram URL", /Instagram import requires a seller-provided post URL/.test(service))
-add("service does not publish fanpage posts", !/fanpagePost\.create/.test(service))
+add("service publishes fanpage posts only after review approval", /tx\.fanpagePost\.create/.test(reviewDraftsBlock) && /status:\s*"IMPORTED"/.test(reviewDraftsBlock))
 
 add("API accepts bounded media references", /mediaReferences:\s*z\.array/.test(route) && /\.max\(10\)/.test(route))
 add("API passes media references to service", /mediaReferences:\s*body\.mediaReferences/.test(route))

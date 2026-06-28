@@ -30,6 +30,7 @@ const sidebar = exists("components/dashboard/dashboard-sidebar.tsx") ? read("com
 const accessControl = exists("lib/access-control.ts") ? read("lib/access-control.ts") : ""
 const packageJson = read("package.json")
 const validateProject = read("scripts/quality/validate-project.mjs")
+const reviewDraftsBlock = service.match(/async reviewDrafts[\s\S]*?async resolveReimportDrafts/)?.[0] ?? ""
 
 for (const enumName of [
   "ExternalImportSourceType",
@@ -70,8 +71,8 @@ add("service creates draft-first jobs", /status:\s*"NEEDS_REVIEW"/.test(service)
 add("service requires seller consent for third-party URL sources", /Seller ownership or permission confirmation is required/.test(service))
 add("service writes audit logs", /writeAuditLog/.test(service))
 add("service does not fetch external URLs", !/\bfetch\s*\(/.test(service))
-add("service does not create real products", !/prisma\.product\.create/.test(service))
-add("service does not publish fanpage posts", !/fanpagePost\.create/.test(service))
+add("service creates live records only from review approval", /input\.status === "REJECTED"/.test(reviewDraftsBlock) && /tx\.product\.create/.test(reviewDraftsBlock) && /tx\.fanpagePost\.create/.test(reviewDraftsBlock))
+add("approved draft publishing marks rows imported", /status:\s*"IMPORTED"/.test(reviewDraftsBlock) && /importedAt:\s*reviewedAt/.test(reviewDraftsBlock))
 
 for (const rel of [
   "app/api/dashboard/imports/jobs/route.ts",

@@ -24,6 +24,7 @@ const service = read("lib/services/import-hub.service.ts")
 const page = read("app/[locale]/dashboard/imports/page.tsx")
 const packageJson = read("package.json")
 const validateProject = read("scripts/quality/validate-project.mjs")
+const reviewDraftsBlock = service.match(/async reviewDrafts[\s\S]*?async resolveReimportDrafts/)?.[0] ?? ""
 
 add("menu OCR fixture parser exists", exists("lib/import-hub/menu-ocr-fixtures.ts"))
 add("fixture parser supports PDF and image menu", /PDF/.test(fixture) && /IMAGE_MENU/.test(fixture))
@@ -35,7 +36,7 @@ add("service imports menu OCR fixtures", /parseMenuOcrFixture/.test(service) && 
 add("service parses PDF/image menu into product drafts", /type === "PDF" \|\| type === "IMAGE_MENU"/.test(service) && /parsedMenuProductDrafts/.test(service))
 add("service stores P72 metadata", /P72_IMAGE_PDF_MENU_IMPORT/.test(service) && /dryRunMenuOcrFixture/.test(service))
 add("service keeps menu rows draft-only", /status:\s*"DRAFT"/.test(service))
-add("service does not create live products", !/prisma\.product\.create/.test(service))
+add("service publishes products only after review approval", /tx\.product\.create/.test(reviewDraftsBlock) && /status:\s*"IMPORTED"/.test(reviewDraftsBlock))
 
 add("imports page accepts PDF and images", /accept="\.csv,\.xlsx,\.xls,\.pdf,\.png,\.jpg,\.jpeg,\.webp,\.gif"/.test(page))
 add("imports page classifies PDF files", /setSourceType\("PDF"\)/.test(page))

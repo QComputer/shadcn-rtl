@@ -27,6 +27,7 @@ const service = read("lib/services/import-hub.service.ts")
 const page = read("app/[locale]/dashboard/imports/page.tsx")
 const packageJson = read("package.json")
 const validateProject = read("scripts/quality/validate-project.mjs")
+const reviewDraftsBlock = service.match(/async reviewDrafts[\s\S]*?async resolveReimportDrafts/)?.[0] ?? ""
 
 add("text product extractor exists", exists("lib/import-hub/text-product-extractor.ts"))
 add("text extractor supports Persian/Arabic digits", /digitMap/.test(parser) && /۰/.test(parser) && /٩/.test(parser))
@@ -42,7 +43,7 @@ add("service imports provider abstraction", /getProductTextExtractionProvider/.t
 add("service parses MANUAL_TEXT into product drafts", /type === "MANUAL_TEXT"/.test(service) && /extractProducts/.test(service))
 add("service stores confidence metadata", /sourceMetadata/.test(service) && /local-rule-based-text-product-extractor/.test(service))
 add("service keeps text products draft-only", /status:\s*"DRAFT"/.test(service))
-add("service does not create live products", !/prisma\.product\.create/.test(service))
+add("service publishes products only after review approval", /tx\.product\.create/.test(reviewDraftsBlock) && /status:\s*"IMPORTED"/.test(reviewDraftsBlock))
 
 add("imports page displays product confidence", /sourceMetadata\?\.confidence/.test(page))
 add("package script exposes P71 validator", /"quality:text-product-extraction":\s*"node scripts\/quality\/validate-text-product-extraction\.mjs"/.test(packageJson))

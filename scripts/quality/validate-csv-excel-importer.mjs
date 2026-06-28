@@ -24,6 +24,7 @@ const route = read("app/api/dashboard/imports/jobs/route.ts")
 const page = read("app/[locale]/dashboard/imports/page.tsx")
 const packageJson = read("package.json")
 const validateProject = read("scripts/quality/validate-project.mjs")
+const reviewDraftsBlock = service.match(/async reviewDrafts[\s\S]*?async resolveReimportDrafts/)?.[0] ?? ""
 
 add("xlsx dependency is declared", /"xlsx":\s*"\^0\.18\.5"/.test(packageJson))
 add("ImportedProductDraft has row number", /model\s+ImportedProductDraft\s*{[^}]*rowNumber\s+Int\?/.test(schema))
@@ -42,7 +43,7 @@ add("spreadsheet parser caps rows", /maxRows/.test(parser) && /slice\(0, maxRows
 add("service parses spreadsheets into product drafts", /parseProductSpreadsheet/.test(service) && /importedProductDraft\.createMany/.test(service))
 add("service keeps spreadsheet imports draft-only", /status:\s*"DRAFT"/.test(service))
 add("service stores row metadata", /rowNumber/.test(service) && /rawData/.test(service) && /warnings/.test(service) && /errors/.test(service))
-add("service does not create live products", !/prisma\.product\.create/.test(service))
+add("service publishes products only after review approval", /tx\.product\.create/.test(reviewDraftsBlock) && /status:\s*"IMPORTED"/.test(reviewDraftsBlock))
 add("service does not copy images to Blob", !/put\(/.test(service) && !/@vercel\/blob/.test(service))
 
 add("API accepts CSV text content", /fileContent/.test(route))

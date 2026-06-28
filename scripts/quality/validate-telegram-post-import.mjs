@@ -24,6 +24,7 @@ const service = read("lib/services/import-hub.service.ts")
 const detection = read("lib/import-hub/source-detection.ts")
 const packageJson = read("package.json")
 const validateProject = read("scripts/quality/validate-project.mjs")
+const reviewDraftsBlock = service.match(/async reviewDrafts[\s\S]*?async resolveReimportDrafts/)?.[0] ?? ""
 
 add("Telegram parser exists", exists("lib/import-hub/telegram-manual-parser.ts"))
 add("parser validates public Telegram post URLs", /isTelegramPublicPostUrl/.test(parser) && /t\\.me/.test(parser))
@@ -40,7 +41,7 @@ add("service requires Telegram public post URL", /Telegram import requires a sel
 add("service rejects non-public Telegram URL", /valid public Telegram post URL/.test(service))
 add("service stores P75 metadata", /P75_TELEGRAM_POST_IMPORT/.test(service) && /telegramFetchEnabled/.test(service))
 add("service keeps Telegram rows content-draft-only", /importedContentDraft\.createMany/.test(service) && /status:\s*"DRAFT"/.test(service))
-add("service does not publish fanpage posts", !/fanpagePost\.create/.test(service))
+add("service publishes fanpage posts only after review approval", /tx\.fanpagePost\.create/.test(reviewDraftsBlock) && /status:\s*"IMPORTED"/.test(reviewDraftsBlock))
 
 add("package script exposes P75 validator", /"quality:telegram-post-import":\s*"node scripts\/quality\/validate-telegram-post-import\.mjs"/.test(packageJson))
 add("project validator references P75 validator", /validate-telegram-post-import\.mjs/.test(validateProject))

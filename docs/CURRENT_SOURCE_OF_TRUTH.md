@@ -4,7 +4,7 @@ Date: 2026-06-28
 
 ## Current validated baseline
 
-The current working baseline after P78 overlays is source-validator green.
+The current working baseline after P79 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -97,17 +97,18 @@ pnpm run db:migrate:neon:dry-run
 - Custom-domain SEO hardening exists through tenant-aware robots/sitemap output, platform-to-primary-custom-domain redirects for indexable shop pages, transactional-route redirect exclusions, and `quality:custom-domain-seo`.
 - Custom-domain and platform no-locale visits default to Persian (`fa`) through the current proxy behavior, with `quality:custom-domain-default-locale`, `quality:platform-default-locale`, `e2e:custom-domain-smoke`, and `e2e:platform-default-locale`.
 - Dashboard organizations is a SUPER_ADMIN-only localized route at `/{locale}/dashboard/organizations`, backed by hardened `/api/organizations` access and validated by `quality:dashboard-organizations-published`.
-- Import Hub Foundation exists through external import source/job/draft models, consent-based intake, source detection, draft review APIs, localized `/dashboard/imports` UI, and the `quality:import-hub-foundation` validator. P68 does not perform scraping, real external provider calls, Blob copying, product creation, or fanpage publishing.
-- CSV/Excel Product Importer exists through `xlsx` parsing, `lib/import-hub/spreadsheet-parser.ts`, file intake on `/dashboard/imports`, row-level `ImportedProductDraft` creation, draft approval/rejection UI, and the `quality:csv-excel-importer` validator. P69 does not create live products, categories, inventory movements, or Blob image copies.
-- Manual Instagram Fanpage Import exists through `lib/import-hub/instagram-manual-parser.ts`, seller-provided Instagram URL/caption/media reference intake, `ImportedContentDraft` creation, draft approval/rejection UI, and the `quality:manual-instagram-import` validator. P70 does not scrape Instagram, call Instagram APIs, copy media to Blob, or publish fanpage posts.
+- Import Hub Foundation exists through external import source/job/draft models, consent-based intake, source detection, draft review APIs, localized `/dashboard/imports` UI, and the `quality:import-hub-foundation` validator. P68 does not perform scraping, real external provider calls, Blob copying, or pre-review publishing.
+- CSV/Excel Product Importer exists through `xlsx` parsing, `lib/import-hub/spreadsheet-parser.ts`, file intake on `/dashboard/imports`, row-level `ImportedProductDraft` creation, draft approval/rejection UI, and the `quality:csv-excel-importer` validator. P69 product rows remain drafts until explicit approval.
+- Manual Instagram Fanpage Import exists through `lib/import-hub/instagram-manual-parser.ts`, seller-provided Instagram URL/caption/media reference intake, `ImportedContentDraft` creation, draft approval/rejection UI, and the `quality:manual-instagram-import` validator. P70 does not scrape Instagram, call Instagram APIs, or copy media to Blob.
 - AI/Text Product Extraction Foundation exists through `lib/import-hub/text-extraction-provider.ts`, `lib/import-hub/text-product-extractor.ts`, dry-run local rule-based parsing, confidence metadata on `ImportedProductDraft` rows, dashboard review display, and the `quality:text-product-extraction` validator. P71 does not call external AI providers or create live products.
 - Image/PDF Menu Import Foundation exists through `lib/import-hub/menu-ocr-fixtures.ts`, PDF/image file intake classification, dry-run OCR fixture rows saved as `ImportedProductDraft`, real OCR disabled by default, and the `quality:image-pdf-menu-import` validator. P72 does not call OCR, vision, AI, or network providers.
 - Snappfood URL Import MVP exists through `lib/import-hub/snappfood-adapter.ts`, `snappfood.ir` URL validation, disabled-by-default public fetching, fallback product drafts, source evidence, and the `quality:snappfood-url-import` validator. P73 does not crawl Snappfood or create live products.
 - Snappmarket URL Import MVP exists through `lib/import-hub/snappmarket-adapter.ts`, `snapp.market`/`snappmarket.ir` URL validation, disabled-by-default public fetching, fallback product drafts, source evidence, and the `quality:snappmarket-url-import` validator. P74 does not crawl Snappmarket or create live products.
-- Telegram Post Import exists through `lib/import-hub/telegram-manual-parser.ts`, public Telegram post URL validation, pasted content/media-reference intake, `ImportedContentDraft` creation, and the `quality:telegram-post-import` validator. P75 does not fetch Telegram or publish fanpage posts.
+- Telegram Post Import exists through `lib/import-hub/telegram-manual-parser.ts`, public Telegram post URL validation, pasted content/media-reference intake, `ImportedContentDraft` creation, and the `quality:telegram-post-import` validator. P75 does not fetch Telegram.
 - External Source Mapping and Re-import Diff exists through `lib/import-hub/source-mapping.ts`, duplicate source URL/external ID detection, `sourceMetadata.reimport` diff summaries, `POST /api/dashboard/imports/jobs/[jobId]/resolve`, dashboard merge/skip/create-new controls, audit logging, and the `quality:external-source-mapping` validator. P76 does not publish content or apply live product/post merges.
 - Import Hub Audit, Limits, and Plan Readiness exists through `lib/import-hub/limits.ts`, per-organization active/daily/draft limits, audit event API, retry policy, safer cancellation policy, dashboard audit event display, and the `quality:import-hub-audit-limits` validator.
 - Export Hub Foundation exists through the `ExportJob` model/migration, `lib/services/export-hub.service.ts`, organization-scoped export job APIs, localized `/dashboard/exports` UI, dashboard navigation/access policy, CSV/JSON payload generation for products/categories/orders/customers/fanpage posts, audit logging, and the `quality:export-hub-foundation` validator.
+- Import Approval Publishing exists through the approval-to-live `ImportHubService.reviewDrafts("APPROVED")` path, approved product draft publishing into live products/categories/default variants, approved content draft publishing into live fanpage posts, `IMPORTED` draft status, all-locale public path/home cache revalidation, localized dashboard approve-and-publish copy, audit logging, and the `quality:import-approval-publishing` validator.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -175,6 +176,7 @@ pnpm run db:migrate:neon:dry-run
 | P76 | External Source Mapping and Re-import Diff with duplicate evidence and merge/skip/create-new audit decisions. |
 | P77 | Import Hub Audit, Limits, and Plan Readiness with audit events, retry/cancel policy, and org guardrails. |
 | P78 | Export Hub Foundation with organization-scoped CSV/JSON export jobs and dashboard/API coverage. |
+| P79 | Import Approval Publishing with review-gated live product/category/variant and fanpage post creation. |
 
 ## Current route/API inventory
 
@@ -289,7 +291,7 @@ Deferred:
 - Custom-domain smoke tests are deployment/data dependent. Current reference configuration uses `CUSTOM_DOMAIN_SMOKE_BASE_URL=https://www.khalae.ir`, `CUSTOM_DOMAIN_SMOKE_PLATFORM_URL=https://www.bazar-baz.ir`, and `CUSTOM_DOMAIN_SMOKE_SHOP_SLUG=ahmad`.
 - Shop owners cannot self-serve custom-domain management yet; P60/P67 keep domain management SUPER_ADMIN-only.
 - Vercel domain automation must remain dry-run-safe by default and must never hardcode tokens or project/team secrets.
-- P68-P78 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, and Export Hub foundation are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
+- P68-P79 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation, and review-gated import publishing are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
 
 ## Clean release rules
 
@@ -328,15 +330,15 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-Post-P78 deployed verification and export/import polish
+Post-P79 deployed verification and export/import polish
 ```
 
 Scope:
 
 1. Run deployed smoke coverage for Import Hub and Export Hub with a real admin organization.
 2. Verify the P78 migration is applied on the target database before using `/dashboard/exports`.
-3. Add approval-to-live publishing for imported products/posts after seller review.
+3. Verify P79 approval publishing on a real shop organization with product and fanpage drafts.
 4. Add export download streaming/blob storage once payload sizes need to exceed JSON preview limits.
 5. Keep Persian (`fa`) as the primary UX/SEO language for the next polish pass.
 
-See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap and safety rules.
+See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap and `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge.

@@ -187,7 +187,7 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     review: "بررسی",
     cancel: "لغو",
     retry: "تلاش دوباره",
-    approve: "تایید پیش‌نویس‌ها",
+    approve: "تایید و انتشار",
     reject: "رد پیش‌نویس‌ها",
     duplicate: "تکراری احتمالی",
     merge: "ادغام",
@@ -245,7 +245,7 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     review: "Review",
     cancel: "Cancel",
     retry: "Retry",
-    approve: "Approve drafts",
+    approve: "Approve and publish",
     reject: "Reject drafts",
     duplicate: "Possible duplicate",
     merge: "Merge",
@@ -303,7 +303,7 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     review: "مراجعة",
     cancel: "إلغاء",
     retry: "إعادة المحاولة",
-    approve: "قبول المسودات",
+    approve: "قبول ونشر",
     reject: "رفض المسودات",
     duplicate: "تكرار محتمل",
     merge: "دمج",
@@ -885,7 +885,7 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
                       <td className="px-2 py-2">{draft.stock != null ? formatNumber(draft.stock, locale) : "-"}</td>
                       <td className="px-2 py-2">
                         <div className="flex flex-col gap-1">
-                          <Badge variant={draft.status === "DRAFT" ? "secondary" : draft.status === "APPROVED" ? "default" : "outline"}>
+                          <Badge variant={draft.status === "DRAFT" ? "secondary" : draft.status === "APPROVED" || draft.status === "IMPORTED" ? "default" : "outline"}>
                             {draft.status}
                           </Badge>
                           {Array.isArray(draft.errors) && draft.errors.length > 0 && (
@@ -948,7 +948,7 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
                           <td className="px-2 py-2">{hints.length > 0 ? hints.join(", ") : "-"}</td>
                           <td className="px-2 py-2">
                             <div className="flex flex-col gap-1">
-                              <Badge variant={draft.status === "DRAFT" ? "secondary" : draft.status === "APPROVED" ? "default" : "outline"}>
+                              <Badge variant={draft.status === "DRAFT" ? "secondary" : draft.status === "APPROVED" || draft.status === "IMPORTED" ? "default" : "outline"}>
                                 {draft.status}
                               </Badge>
                               {Array.isArray(draft.warnings) && draft.warnings.length > 0 && (

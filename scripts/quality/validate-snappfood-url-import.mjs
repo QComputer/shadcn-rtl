@@ -24,6 +24,7 @@ const service = read("lib/services/import-hub.service.ts")
 const detection = read("lib/import-hub/source-detection.ts")
 const packageJson = read("package.json")
 const validateProject = read("scripts/quality/validate-project.mjs")
+const reviewDraftsBlock = service.match(/async reviewDrafts[\s\S]*?async resolveReimportDrafts/)?.[0] ?? ""
 
 add("Snappfood adapter exists", exists("lib/import-hub/snappfood-adapter.ts"))
 add("adapter validates snappfood.ir URLs", /isSnappfoodUrl/.test(adapter) && /snappfood\\.ir/.test(adapter))
@@ -39,7 +40,7 @@ add("service requires Snappfood URL", /Snappfood import requires a seller-provid
 add("service rejects non-Snappfood URL", /valid snappfood\.ir URL/.test(service))
 add("service stores P73 metadata", /P73_SNAPPFOOD_URL_IMPORT/.test(service) && /snappfoodFallback/.test(service))
 add("service keeps Snappfood rows draft-only", /status:\s*"DRAFT"/.test(service))
-add("service does not create live products", !/prisma\.product\.create/.test(service))
+add("service publishes products only after review approval", /tx\.product\.create/.test(reviewDraftsBlock) && /status:\s*"IMPORTED"/.test(reviewDraftsBlock))
 
 add("package script exposes P73 validator", /"quality:snappfood-url-import":\s*"node scripts\/quality\/validate-snappfood-url-import\.mjs"/.test(packageJson))
 add("project validator references P73 validator", /validate-snappfood-url-import\.mjs/.test(validateProject))

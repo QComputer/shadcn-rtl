@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-28._
 
-This roadmap is ordered for risk reduction. Phases 18-71 are historical/completed hardening and growth work. The current integrated next track is the Import Hub roadmap, continuing at Phase 72.
+This roadmap is ordered for risk reduction. Phases 18-72 are historical/completed hardening and growth work. The current integrated next track is the Import Hub roadmap, continuing at Phase 73.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P71 - AI/Text Product Extraction Foundation**.
+- Completed through **P72 - Image/PDF Menu Import Foundation**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -17,15 +17,15 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P72 - Image/PDF Menu Import Foundation
+P73 - Snappfood URL Import MVP
 ```
 
-P72 should add image/PDF menu intake metadata and dry-run fake OCR fixtures without enabling real OCR dependencies by default.
+P73 should add cautious one-time Snappfood URL import with seller ownership confirmation, public-metadata-only behavior, graceful parser failure, and fallback to manual/CSV import.
 
-Immediate P72 validation target:
+Immediate P73 validation target:
 
 ```powershell
-pnpm run quality:image-pdf-menu-import
+pnpm run quality:snappfood-url-import
 pnpm prisma generate
 pnpm run typecheck
 pnpm run build
@@ -35,7 +35,6 @@ Follow-on phases:
 
 | Phase | Focus |
 | --- | --- |
-| P72 | Image/PDF menu import foundation, dry-run fake OCR first. |
 | P73 | Snappfood URL import MVP, cautious one-time import with fallback. |
 | P74 | Snappmarket URL import MVP, cautious one-time import with fallback. |
 | P75 | Telegram post import, manual and permission-aware. |

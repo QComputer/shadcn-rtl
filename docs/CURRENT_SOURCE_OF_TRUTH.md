@@ -4,7 +4,7 @@ Date: 2026-06-28
 
 ## Current validated baseline
 
-The current working baseline after P71 overlays is source-validator green.
+The current working baseline after P72 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -101,6 +101,7 @@ pnpm run db:migrate:neon:dry-run
 - CSV/Excel Product Importer exists through `xlsx` parsing, `lib/import-hub/spreadsheet-parser.ts`, file intake on `/dashboard/imports`, row-level `ImportedProductDraft` creation, draft approval/rejection UI, and the `quality:csv-excel-importer` validator. P69 does not create live products, categories, inventory movements, or Blob image copies.
 - Manual Instagram Fanpage Import exists through `lib/import-hub/instagram-manual-parser.ts`, seller-provided Instagram URL/caption/media reference intake, `ImportedContentDraft` creation, draft approval/rejection UI, and the `quality:manual-instagram-import` validator. P70 does not scrape Instagram, call Instagram APIs, copy media to Blob, or publish fanpage posts.
 - AI/Text Product Extraction Foundation exists through `lib/import-hub/text-extraction-provider.ts`, `lib/import-hub/text-product-extractor.ts`, dry-run local rule-based parsing, confidence metadata on `ImportedProductDraft` rows, dashboard review display, and the `quality:text-product-extraction` validator. P71 does not call external AI providers or create live products.
+- Image/PDF Menu Import Foundation exists through `lib/import-hub/menu-ocr-fixtures.ts`, PDF/image file intake classification, dry-run OCR fixture rows saved as `ImportedProductDraft`, real OCR disabled by default, and the `quality:image-pdf-menu-import` validator. P72 does not call OCR, vision, AI, or network providers.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -161,6 +162,7 @@ pnpm run db:migrate:neon:dry-run
 | P69 | CSV/Excel Product Importer with draft-only product row parsing and review UI. |
 | P70 | Manual Instagram Fanpage Import with draft-only content parsing and review UI. |
 | P71 | AI/Text Product Extraction Foundation with local dry-run product parsing and confidence metadata. |
+| P72 | Image/PDF Menu Import Foundation with dry-run OCR fixtures and draft-only rows. |
 
 ## Current route/API inventory
 
@@ -275,7 +277,7 @@ Deferred:
 - Custom-domain smoke tests are deployment/data dependent. Current reference configuration uses `CUSTOM_DOMAIN_SMOKE_BASE_URL=https://www.khalae.ir`, `CUSTOM_DOMAIN_SMOKE_PLATFORM_URL=https://www.bazar-baz.ir`, and `CUSTOM_DOMAIN_SMOKE_SHOP_SLUG=ahmad`.
 - Shop owners cannot self-serve custom-domain management yet; P60/P67 keep domain management SUPER_ADMIN-only.
 - Vercel domain automation must remain dry-run-safe by default and must never hardcode tokens or project/team secrets.
-- P68-P71 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, and dry-run text product extraction are implemented. Future importer phases must remain seller-initiated, consent-based, draft-first, auditable, rate-limited, and review-before-publish.
+- P68-P72 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, and dry-run image/PDF menu fixtures are implemented. Future importer phases must remain seller-initiated, consent-based, draft-first, auditable, rate-limited, and review-before-publish.
 
 ## Clean release rules
 
@@ -314,15 +316,15 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P72 - Image/PDF Menu Import Foundation
+P73 - Snappfood URL Import MVP
 ```
 
 Scope:
 
-1. Add image/PDF menu intake metadata without performing real OCR.
-2. Add dry-run fake OCR fixtures for validator coverage.
-3. Save extracted fixture rows as `ImportedProductDraft` rows.
-4. Keep real OCR disabled behind future integration flags.
-5. Validate with a focused P72 quality gate, `pnpm prisma generate`, `pnpm run typecheck`, and `pnpm run build`.
+1. Require seller ownership/permission confirmation for Snappfood URLs.
+2. Fetch only allowed public metadata when feasible, with low volume and no hidden crawling.
+3. Fail gracefully to CSV/manual import when parsing is blocked or uncertain.
+4. Store draft rows and source evidence for review.
+5. Validate with a focused P73 quality gate, `pnpm prisma generate`, `pnpm run typecheck`, and `pnpm run build`.
 
 See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap and safety rules.

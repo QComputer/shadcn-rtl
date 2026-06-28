@@ -521,6 +521,26 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
       let binary = ""
       for (const byte of bytes) binary += String.fromCharCode(byte)
       setFileBase64(btoa(binary))
+      return
+    }
+
+    if (lowerName.endsWith(".pdf")) {
+      setSourceType("PDF")
+      const buffer = await file.arrayBuffer()
+      const bytes = new Uint8Array(buffer)
+      let binary = ""
+      for (const byte of bytes) binary += String.fromCharCode(byte)
+      setFileBase64(btoa(binary))
+      return
+    }
+
+    if (/\.(png|jpe?g|webp|gif)$/.test(lowerName)) {
+      setSourceType("IMAGE_MENU")
+      const buffer = await file.arrayBuffer()
+      const bytes = new Uint8Array(buffer)
+      let binary = ""
+      for (const byte of bytes) binary += String.fromCharCode(byte)
+      setFileBase64(btoa(binary))
     }
   }
 
@@ -611,7 +631,7 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
               <label className="text-sm font-medium">{copy.file}</label>
               <Input
                 type="file"
-                accept=".csv,.xlsx,.xls"
+                accept=".csv,.xlsx,.xls,.pdf,.png,.jpg,.jpeg,.webp,.gif"
                 onChange={(event) => handleFile(event.target.files?.[0] ?? null)}
               />
               {inputFilename && <div className="text-xs text-muted-foreground">{inputFilename}</div>}

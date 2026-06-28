@@ -99,6 +99,8 @@ Scope:
 
 ## Phase 72 - Image/PDF Menu Import Foundation
 
+Status: Implemented in P72.
+
 Goal: prepare menu/image/PDF import without real OCR dependency.
 
 Scope:

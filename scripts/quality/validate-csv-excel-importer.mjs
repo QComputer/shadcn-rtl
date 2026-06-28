@@ -49,7 +49,7 @@ add("API accepts CSV text content", /fileContent/.test(route))
 add("API accepts Excel base64 content", /fileBase64/.test(route))
 add("API size-limits file payloads", /1_000_000/.test(route) && /5_000_000/.test(route))
 
-add("imports page has real file input", /type="file"/.test(page) && /accept="\.csv,\.xlsx,\.xls"/.test(page))
+add("imports page has real CSV/Excel file input", /type="file"/.test(page) && /\.csv/.test(page) && /\.xlsx/.test(page) && /\.xls/.test(page))
 add("imports page reads CSV as text", /file\.text\(\)/.test(page))
 add("imports page reads Excel as base64", /arrayBuffer/.test(page) && /btoa/.test(page))
 add("imports page displays product drafts", /selectedJob\.productDrafts/.test(page) && /draft\.rowNumber/.test(page))

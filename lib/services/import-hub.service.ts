@@ -12,6 +12,7 @@ import {
   normalizeImportText,
 } from "@/lib/import-hub/normalizers"
 import { parseManualInstagramContent } from "@/lib/import-hub/instagram-manual-parser"
+import { parseMenuOcrFixture, realMenuOcrEnabled } from "@/lib/import-hub/menu-ocr-fixtures"
 import { parseProductSpreadsheet } from "@/lib/import-hub/spreadsheet-parser"
 import {
   externalTextExtractionEnabled,
@@ -124,6 +125,7 @@ export class ImportHubService {
     const consentText = input.consentText?.trim() || null
     const displayName = this.getSourceDisplayName(type, normalizedUrl, inputFilename)
     const spreadsheetType = type === "CSV" || type === "EXCEL" ? type : null
+    const menuImportType = type === "PDF" || type === "IMAGE_MENU" ? type : null
     const parsedSpreadsheetProductDrafts = spreadsheetType
       ? parseProductSpreadsheet({
           type: spreadsheetType,
@@ -139,7 +141,18 @@ export class ImportHubService {
           maxLines: 200,
         })
       : []
-    const parsedProductDrafts = [...parsedSpreadsheetProductDrafts, ...parsedTextProductDrafts]
+    const parsedMenuProductDrafts = menuImportType
+      ? parseMenuOcrFixture({
+          type: menuImportType,
+          filename: inputFilename,
+          sourceUrl: normalizedUrl,
+        })
+      : []
+    const parsedProductDrafts = [
+      ...parsedSpreadsheetProductDrafts,
+      ...parsedTextProductDrafts,
+      ...parsedMenuProductDrafts,
+    ]
     const parsedContentDrafts = type === "INSTAGRAM"
       ? [parseManualInstagramContent({
           sourceUrl: input.inputUrl,
@@ -154,6 +167,9 @@ export class ImportHubService {
     }
     if (type === "MANUAL_TEXT" && inputText && parsedTextProductDrafts.length === 0) {
       throw new ApiError(400, "Manual text import did not contain product-like lines")
+    }
+    if (menuImportType && !inputFilename && !normalizedUrl) {
+      throw new ApiError(400, "Image/PDF menu import requires a file name or source URL")
     }
     if (type === "INSTAGRAM" && !normalizedUrl) {
       throw new ApiError(400, "Instagram import requires a seller-provided post URL")
@@ -171,6 +187,7 @@ export class ImportHubService {
       type,
       Boolean(spreadsheetType),
       parsedTextProductDrafts.length > 0,
+      parsedMenuProductDrafts.length > 0,
     )
 
     const job = await prisma.$transaction(async (tx) => {
@@ -190,6 +207,8 @@ export class ImportHubService {
               ? "P70_MANUAL_INSTAGRAM_FANPAGE_IMPORT"
               : parsedTextProductDrafts.length > 0
                 ? "P71_TEXT_PRODUCT_EXTRACTION"
+                : parsedMenuProductDrafts.length > 0
+                ? "P72_IMAGE_PDF_MENU_IMPORT"
                 : spreadsheetType
                 ? "P69_CSV_EXCEL_PRODUCT_IMPORTER"
                 : "P68_FOUNDATION",
@@ -197,6 +216,8 @@ export class ImportHubService {
             remotePreviewOnly: true,
             blobCopyRequiresReview: true,
             externalTextExtractionEnabled: externalTextExtractionEnabled(),
+            realMenuOcrEnabled: realMenuOcrEnabled(),
+            dryRunMenuOcrFixture: parsedMenuProductDrafts.length > 0,
           },
         },
       })
@@ -291,12 +312,15 @@ export class ImportHubService {
           ? "manual-instagram-content-drafts"
           : parsedTextProductDrafts.length > 0
             ? "local-rule-based-text-product-extractor"
+            : parsedMenuProductDrafts.length > 0
+            ? "dry-run-menu-ocr-fixture"
             : spreadsheetType
             ? "spreadsheet-draft-parser"
             : false,
         productDraftCount: parsedProductDrafts.length,
         contentDraftCount: parsedContentDrafts.length,
         externalTextExtractionEnabled: externalTextExtractionEnabled(),
+        realMenuOcrEnabled: realMenuOcrEnabled(),
       },
       userId: input.actorUserId,
       organizationId: organization.id,
@@ -408,6 +432,7 @@ export class ImportHubService {
     type: ExternalImportSourceType = "UNKNOWN",
     spreadsheetImporterEnabled = false,
     textImporterEnabled = false,
+    menuImporterEnabled = false,
   ): ImportJobSummary {
     if (contentDraftCount > 0 && type === "INSTAGRAM") {
       return {
@@ -437,6 +462,17 @@ export class ImportHubService {
         draftFirst: true,
         importerEnabled: "local-rule-based-text-product-extractor",
         message: "Pasted text was parsed by the local rule-based extractor into product drafts. External AI calls remain disabled.",
+        productDraftCount,
+        contentDraftCount,
+      }
+    }
+
+    if (productDraftCount > 0 && (type === "PDF" || type === "IMAGE_MENU") && menuImporterEnabled) {
+      return {
+        phase: "P72_IMAGE_PDF_MENU_IMPORT",
+        draftFirst: true,
+        importerEnabled: "dry-run-menu-ocr-fixture",
+        message: "Image/PDF menu intake was recorded with dry-run OCR fixture rows. Real OCR remains disabled.",
         productDraftCount,
         contentDraftCount,
       }

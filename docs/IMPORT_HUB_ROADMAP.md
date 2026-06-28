@@ -145,6 +145,8 @@ Scope:
 
 ## Phase 76 - External Source Mapping and Re-import Diff
 
+Status: Implemented in P76.
+
 Goal: make repeat imports safe and understandable.
 
 Scope:

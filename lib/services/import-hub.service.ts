@@ -33,13 +33,20 @@ import {
   externalTextExtractionEnabled,
   getProductTextExtractionProvider,
 } from "@/lib/import-hub/text-extraction-provider"
+import {
+  findExistingExternalDraftMappings,
+  withReimportMetadata,
+  withReimportWarning,
+  type ReimportCandidate,
+} from "@/lib/import-hub/source-mapping"
 import type {
   CreateImportJobInput,
   ImportJobListOptions,
   ImportJobSummary,
+  ResolveReimportDraftsInput,
   ReviewImportDraftsInput,
 } from "@/lib/import-hub/types"
-import { reviewableDraftStatuses } from "@/lib/import-hub/types"
+import { reimportResolutionDecisions, reviewableDraftStatuses } from "@/lib/import-hub/types"
 import type { ExternalImportSourceType, ImportedDraftStatus, Prisma } from "@prisma/client"
 
 const importJobInclude = {
@@ -231,18 +238,52 @@ export class ImportHubService {
       throw new ApiError(400, "Instagram import requires a pasted caption or seller-approved media reference")
     }
 
-    const summary = this.buildSummary(
-      parsedProductDrafts.length,
-      parsedContentDrafts.length,
-      type,
-      Boolean(spreadsheetType),
-      parsedTextProductDrafts.length > 0,
-      parsedMenuProductDrafts.length > 0,
-      parsedSnappfoodProductDrafts.length > 0,
-      parsedSnappmarketProductDrafts.length > 0,
-    )
+    const created = await prisma.$transaction(async (tx) => {
+      const reimportCandidates: ReimportCandidate[] = [
+        ...parsedProductDrafts.map((draft, index) => ({
+          key: `product:${index}`,
+          kind: "product" as const,
+          sourceExternalId: "sourceExternalId" in draft && typeof draft.sourceExternalId === "string"
+            ? draft.sourceExternalId
+            : draft.rowNumber.toString(),
+          sourceUrl: draft.sourceUrl,
+          fields: {
+            name: draft.name,
+            description: draft.description,
+            sku: draft.sku,
+            categoryName: draft.categoryName,
+            basePrice: draft.basePrice,
+            stock: draft.stock,
+            imageUrl: draft.imageUrl,
+          },
+        })),
+        ...parsedContentDrafts.map((draft, index) => ({
+          key: `content:${index}`,
+          kind: "content" as const,
+          sourceExternalId: draft.sourceExternalId,
+          sourceUrl: draft.sourceUrl,
+          fields: {
+            title: draft.title,
+            body: draft.body,
+            mediaUrl: draft.mediaUrl,
+            mediaType: draft.mediaType,
+          },
+        })),
+      ]
+      const reimportMappings = await findExistingExternalDraftMappings(tx, organization.id, reimportCandidates)
+      const reimportDuplicateCount = reimportMappings.size
+      const summary = this.buildSummary(
+        parsedProductDrafts.length,
+        parsedContentDrafts.length,
+        type,
+        Boolean(spreadsheetType),
+        parsedTextProductDrafts.length > 0,
+        parsedMenuProductDrafts.length > 0,
+        parsedSnappfoodProductDrafts.length > 0,
+        parsedSnappmarketProductDrafts.length > 0,
+        reimportDuplicateCount,
+      )
 
-    const job = await prisma.$transaction(async (tx) => {
       const source = await tx.externalImportSource.create({
         data: {
           organizationId: organization.id,
@@ -281,6 +322,10 @@ export class ImportHubService {
             snappmarketPublicFetchEnabled: snappmarketPublicFetchEnabled(),
             snappmarketFallback: parsedSnappmarketProductDrafts.length > 0,
             telegramFetchEnabled: telegramFetchEnabled(),
+            externalSourceMappingEnabled: true,
+            reimportDiffEnabled: true,
+            reimportDuplicateCount,
+            sourceMappingPhase: "P76_EXTERNAL_SOURCE_MAPPING_REIMPORT_DIFF",
           },
         },
       })
@@ -306,7 +351,20 @@ export class ImportHubService {
 
       if (parsedProductDrafts.length > 0) {
         await tx.importedProductDraft.createMany({
-          data: parsedProductDrafts.map((draft) => ({
+          data: parsedProductDrafts.map((draft, index) => {
+            const mapping = reimportMappings.get(`product:${index}`) ?? null
+            const sourceExternalId = "sourceExternalId" in draft && typeof draft.sourceExternalId === "string"
+              ? draft.sourceExternalId
+              : draft.rowNumber.toString()
+            const sourceMetadata = "sourceMetadata" in draft
+              ? draft.sourceMetadata
+              : {
+                  type,
+                  rowNumber: draft.rowNumber,
+                  remoteImagePreviewOnly: Boolean(draft.imageUrl),
+                }
+
+            return {
             organizationId: organization.id,
             jobId: job.id,
             sourceId: source.id,
@@ -319,25 +377,22 @@ export class ImportHubService {
             stock: draft.stock,
             imageUrl: draft.imageUrl,
             sourceUrl: draft.sourceUrl,
-            sourceExternalId: draft.rowNumber.toString(),
-            sourceMetadata: "sourceMetadata" in draft
-              ? draft.sourceMetadata
-              : {
-                  type,
-                  rowNumber: draft.rowNumber,
-                  remoteImagePreviewOnly: Boolean(draft.imageUrl),
-                },
+            sourceExternalId,
+            sourceMetadata: withReimportMetadata(sourceMetadata, mapping) as Prisma.InputJsonObject,
             rawData: draft.rawData,
-            warnings: draft.warnings,
+            warnings: withReimportWarning(draft.warnings, mapping) as Prisma.InputJsonArray,
             errors: draft.errors,
             rowNumber: draft.rowNumber,
-          })),
+            }
+          }),
         })
       }
 
       if (parsedContentDrafts.length > 0) {
         await tx.importedContentDraft.createMany({
-          data: parsedContentDrafts.map((draft) => ({
+          data: parsedContentDrafts.map((draft, index) => {
+            const mapping = reimportMappings.get(`content:${index}`) ?? null
+            return {
             organizationId: organization.id,
             jobId: job.id,
             sourceId: source.id,
@@ -348,18 +403,22 @@ export class ImportHubService {
             mediaType: draft.mediaType,
             sourceUrl: draft.sourceUrl,
             sourceExternalId: draft.sourceExternalId,
-            sourceMetadata: draft.sourceMetadata,
+            sourceMetadata: withReimportMetadata(draft.sourceMetadata, mapping) as Prisma.InputJsonObject,
             rawData: draft.rawData,
-            warnings: draft.warnings,
-          })),
+            warnings: withReimportWarning(draft.warnings, mapping) as Prisma.InputJsonArray,
+            }
+          }),
         })
       }
 
-      return tx.externalImportJob.findUniqueOrThrow({
+      const jobWithCounts = await tx.externalImportJob.findUniqueOrThrow({
         where: { id: job.id },
         include: importJobInclude,
       })
+
+      return { job: jobWithCounts, reimportDuplicateCount }
     })
+    const { job, reimportDuplicateCount } = created
 
     await writeAuditLog({
       action: "CREATE",
@@ -393,6 +452,9 @@ export class ImportHubService {
         snappfoodPublicFetchEnabled: snappfoodPublicFetchEnabled(),
         snappmarketPublicFetchEnabled: snappmarketPublicFetchEnabled(),
         telegramFetchEnabled: telegramFetchEnabled(),
+        externalSourceMappingEnabled: true,
+        reimportDiffEnabled: true,
+        reimportDuplicateCount,
       },
       userId: input.actorUserId,
       organizationId: organization.id,
@@ -498,6 +560,113 @@ export class ImportHubService {
     return this.getJob(input.jobId, input.organizationId)
   }
 
+  async resolveReimportDrafts(input: ResolveReimportDraftsInput) {
+    if (!reimportResolutionDecisions.includes(input.decision)) {
+      throw new ApiError(400, "Invalid re-import resolution decision")
+    }
+
+    const job = await prisma.externalImportJob.findFirst({
+      where: { id: input.jobId, organizationId: input.organizationId },
+      select: { id: true, organizationId: true },
+    })
+    if (!job) throw new ApiError(404, "Import job not found")
+
+    const productDraftIds = input.productDraftIds ?? []
+    const contentDraftIds = input.contentDraftIds ?? []
+    const reviewedAt = new Date()
+    const status = input.decision === "MERGE"
+      ? "MERGED"
+      : input.decision === "SKIP"
+      ? "REJECTED"
+      : "DRAFT"
+
+    const [productResult, contentResult] = input.decision === "CREATE_NEW"
+      ? await prisma.$transaction([
+          prisma.importedProductDraft.updateMany({
+            where: {
+              id: { in: productDraftIds },
+              jobId: input.jobId,
+              organizationId: input.organizationId,
+              status: "DRAFT",
+            },
+            data: { status: "DRAFT" },
+          }),
+          prisma.importedContentDraft.updateMany({
+            where: {
+              id: { in: contentDraftIds },
+              jobId: input.jobId,
+              organizationId: input.organizationId,
+              status: "DRAFT",
+            },
+            data: { status: "DRAFT" },
+          }),
+        ])
+      : await prisma.$transaction([
+          prisma.importedProductDraft.updateMany({
+            where: {
+              id: { in: productDraftIds },
+              jobId: input.jobId,
+              organizationId: input.organizationId,
+              status: "DRAFT",
+            },
+            data: {
+              status,
+              reviewedByUserId: input.actorUserId,
+              reviewedAt,
+            },
+          }),
+          prisma.importedContentDraft.updateMany({
+            where: {
+              id: { in: contentDraftIds },
+              jobId: input.jobId,
+              organizationId: input.organizationId,
+              status: "DRAFT",
+            },
+            data: {
+              status,
+              reviewedByUserId: input.actorUserId,
+              reviewedAt,
+            },
+          }),
+        ])
+
+    const [remainingProductDrafts, remainingContentDrafts] = await prisma.$transaction([
+      prisma.importedProductDraft.count({
+        where: { jobId: input.jobId, organizationId: input.organizationId, status: "DRAFT" },
+      }),
+      prisma.importedContentDraft.count({
+        where: { jobId: input.jobId, organizationId: input.organizationId, status: "DRAFT" },
+      }),
+    ])
+
+    if (remainingProductDrafts + remainingContentDrafts === 0) {
+      await prisma.externalImportJob.update({
+        where: { id: input.jobId },
+        data: {
+          status: "COMPLETED",
+          completedAt: reviewedAt,
+        },
+      })
+    }
+
+    await writeAuditLog({
+      action: "UPDATE",
+      entityType: "ExternalImportJob",
+      entityId: input.jobId,
+      description: "Re-import draft resolution recorded",
+      newValue: {
+        decision: input.decision,
+        productDraftCount: productResult.count,
+        contentDraftCount: contentResult.count,
+        remainingDraftCount: remainingProductDrafts + remainingContentDrafts,
+      },
+      userId: input.actorUserId,
+      organizationId: input.organizationId,
+    })
+
+    return this.getJob(input.jobId, input.organizationId)
+  }
+
   private buildSummary(
     productDraftCount = 0,
     contentDraftCount = 0,
@@ -507,92 +676,106 @@ export class ImportHubService {
     menuImporterEnabled = false,
     snappfoodImporterEnabled = false,
     snappmarketImporterEnabled = false,
+    reimportDuplicateCount = 0,
   ): ImportJobSummary {
+    const withReimportSummary = (summary: ImportJobSummary): ImportJobSummary => reimportDuplicateCount > 0
+      ? {
+          ...summary,
+          message: `${summary.message} Potential re-import matches were flagged for merge, skip, or create-new review.`,
+          reimportDiffEnabled: true,
+          reimportDuplicateCount,
+        }
+      : {
+          ...summary,
+          reimportDiffEnabled: true,
+          reimportDuplicateCount: 0,
+        }
+
     if (contentDraftCount > 0 && type === "INSTAGRAM") {
-      return {
+      return withReimportSummary({
         phase: "P70_MANUAL_INSTAGRAM_FANPAGE_IMPORT",
         draftFirst: true,
         importerEnabled: "manual-instagram-content-drafts",
         message: "Manual Instagram content was saved as fanpage drafts. Publishing remains disabled until seller review.",
         productDraftCount,
         contentDraftCount,
-      }
+      })
     }
 
     if (contentDraftCount > 0 && type === "TELEGRAM") {
-      return {
+      return withReimportSummary({
         phase: "P75_TELEGRAM_POST_IMPORT",
         draftFirst: true,
         importerEnabled: "manual-telegram-content-drafts",
         message: "Manual Telegram post content was saved as drafts. Telegram fetching remains disabled.",
         productDraftCount,
         contentDraftCount,
-      }
+      })
     }
 
     if (productDraftCount > 0 && spreadsheetImporterEnabled) {
-      return {
+      return withReimportSummary({
         phase: "P69_CSV_EXCEL_PRODUCT_IMPORTER",
         draftFirst: true,
         importerEnabled: "spreadsheet-draft-parser",
         message: "Spreadsheet rows were parsed into product drafts. Publishing remains disabled until seller review.",
         productDraftCount,
         contentDraftCount,
-      }
+      })
     }
 
     if (productDraftCount > 0 && type === "MANUAL_TEXT" && textImporterEnabled) {
-      return {
+      return withReimportSummary({
         phase: "P71_TEXT_PRODUCT_EXTRACTION",
         draftFirst: true,
         importerEnabled: "local-rule-based-text-product-extractor",
         message: "Pasted text was parsed by the local rule-based extractor into product drafts. External AI calls remain disabled.",
         productDraftCount,
         contentDraftCount,
-      }
+      })
     }
 
     if (productDraftCount > 0 && (type === "PDF" || type === "IMAGE_MENU") && menuImporterEnabled) {
-      return {
+      return withReimportSummary({
         phase: "P72_IMAGE_PDF_MENU_IMPORT",
         draftFirst: true,
         importerEnabled: "dry-run-menu-ocr-fixture",
         message: "Image/PDF menu intake was recorded with dry-run OCR fixture rows. Real OCR remains disabled.",
         productDraftCount,
         contentDraftCount,
-      }
+      })
     }
 
     if (productDraftCount > 0 && type === "SNAP_FOOD" && snappfoodImporterEnabled) {
-      return {
+      return withReimportSummary({
         phase: "P73_SNAPPFOOD_URL_IMPORT",
         draftFirst: true,
         importerEnabled: "snappfood-url-fallback",
         message: "Snappfood URL intake was recorded with fallback draft rows. Public fetching remains disabled.",
         productDraftCount,
         contentDraftCount,
-      }
+      })
     }
 
     if (productDraftCount > 0 && type === "SNAP_MARKET" && snappmarketImporterEnabled) {
-      return {
+      return withReimportSummary({
         phase: "P74_SNAPPMARKET_URL_IMPORT",
         draftFirst: true,
         importerEnabled: "snappmarket-url-fallback",
         message: "Snappmarket URL intake was recorded with fallback draft rows. Public fetching remains disabled.",
         productDraftCount,
         contentDraftCount,
-      }
+      })
     }
 
-    return {
+    return withReimportSummary({
       phase: "P68_FOUNDATION",
       draftFirst: true,
       importerEnabled: false,
       message: "Import intake was recorded. Real external parsing and publishing are disabled in this foundation phase.",
       productDraftCount,
       contentDraftCount,
-    }
+    })
   }
 
   private getSourceDisplayName(type: ExternalImportSourceType, normalizedUrl: string | null, filename: string | null) {

@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-28._
 
-This roadmap is ordered for risk reduction. Phases 18-75 are historical/completed hardening and growth work. The current integrated next track is the Import Hub roadmap, continuing at Phase 76.
+This roadmap is ordered for risk reduction. Phases 18-76 are historical/completed hardening and growth work. The current integrated next track is the Import Hub roadmap, continuing at Phase 77.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P75 - Telegram Post Import**.
+- Completed through **P76 - External Source Mapping and Re-import Diff**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -17,15 +17,15 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P76 - External Source Mapping and Re-import Diff
+P77 - Import Hub Audit, Limits, and Plan Readiness
 ```
 
-P76 should make repeat imports safer with external source mapping, re-import diff summaries, and merge/skip/create-new decision evidence.
+P77 should add production guardrails around Import Hub auditability, limits, cancellation/retry policy, and plan-tier readiness.
 
-Immediate P76 validation target:
+Immediate P77 validation target:
 
 ```powershell
-pnpm run quality:external-source-mapping
+pnpm run quality:import-hub-audit-limits
 pnpm prisma generate
 pnpm run typecheck
 pnpm run build
@@ -35,7 +35,6 @@ Follow-on phases:
 
 | Phase | Focus |
 | --- | --- |
-| P76 | External source mapping and re-import diff. |
 | P77 | Import Hub audit, limits, and plan readiness. |
 | P78 | Export Hub foundation. |
 

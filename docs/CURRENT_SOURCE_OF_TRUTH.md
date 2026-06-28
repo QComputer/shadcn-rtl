@@ -4,7 +4,7 @@ Date: 2026-06-28
 
 ## Current validated baseline
 
-The current working baseline after P75 overlays is source-validator green.
+The current working baseline after P76 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -105,6 +105,7 @@ pnpm run db:migrate:neon:dry-run
 - Snappfood URL Import MVP exists through `lib/import-hub/snappfood-adapter.ts`, `snappfood.ir` URL validation, disabled-by-default public fetching, fallback product drafts, source evidence, and the `quality:snappfood-url-import` validator. P73 does not crawl Snappfood or create live products.
 - Snappmarket URL Import MVP exists through `lib/import-hub/snappmarket-adapter.ts`, `snapp.market`/`snappmarket.ir` URL validation, disabled-by-default public fetching, fallback product drafts, source evidence, and the `quality:snappmarket-url-import` validator. P74 does not crawl Snappmarket or create live products.
 - Telegram Post Import exists through `lib/import-hub/telegram-manual-parser.ts`, public Telegram post URL validation, pasted content/media-reference intake, `ImportedContentDraft` creation, and the `quality:telegram-post-import` validator. P75 does not fetch Telegram or publish fanpage posts.
+- External Source Mapping and Re-import Diff exists through `lib/import-hub/source-mapping.ts`, duplicate source URL/external ID detection, `sourceMetadata.reimport` diff summaries, `POST /api/dashboard/imports/jobs/[jobId]/resolve`, dashboard merge/skip/create-new controls, audit logging, and the `quality:external-source-mapping` validator. P76 does not publish content or apply live product/post merges.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -169,6 +170,7 @@ pnpm run db:migrate:neon:dry-run
 | P73 | Snappfood URL Import MVP with consent-gated URL validation and fallback draft rows. |
 | P74 | Snappmarket URL Import MVP with consent-gated URL validation and fallback draft rows. |
 | P75 | Telegram Post Import with public URL validation and draft-only content intake. |
+| P76 | External Source Mapping and Re-import Diff with duplicate evidence and merge/skip/create-new audit decisions. |
 
 ## Current route/API inventory
 
@@ -283,7 +285,7 @@ Deferred:
 - Custom-domain smoke tests are deployment/data dependent. Current reference configuration uses `CUSTOM_DOMAIN_SMOKE_BASE_URL=https://www.khalae.ir`, `CUSTOM_DOMAIN_SMOKE_PLATFORM_URL=https://www.bazar-baz.ir`, and `CUSTOM_DOMAIN_SMOKE_SHOP_SLUG=ahmad`.
 - Shop owners cannot self-serve custom-domain management yet; P60/P67 keep domain management SUPER_ADMIN-only.
 - Vercel domain automation must remain dry-run-safe by default and must never hardcode tokens or project/team secrets.
-- P68-P75 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, and manual Telegram post import are implemented. Future importer phases must remain seller-initiated, consent-based, draft-first, auditable, rate-limited, and review-before-publish.
+- P68-P76 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, and external source re-import diff decisions are implemented. Future importer phases must remain seller-initiated, consent-based, draft-first, auditable, rate-limited, and review-before-publish.
 
 ## Clean release rules
 
@@ -322,15 +324,15 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P76 - External Source Mapping and Re-import Diff
+P77 - Import Hub Audit, Limits, and Plan Readiness
 ```
 
 Scope:
 
-1. Map external source IDs/URLs to existing drafts/products/posts.
-2. Show diffs on re-import.
-3. Let sellers merge, skip, or create new drafts.
-4. Preserve audit records for all merge decisions.
-5. Validate with a focused P76 quality gate, `pnpm prisma generate`, `pnpm run typecheck`, and `pnpm run build`.
+1. Add per-organization Import Hub limits and clear limit errors.
+2. Add import audit/event visibility for admins.
+3. Harden cancellation/retry policy for queued and review-needed jobs.
+4. Prepare future plan-tier enforcement without blocking current admins.
+5. Validate with a focused P77 quality gate, `pnpm prisma generate`, `pnpm run typecheck`, and `pnpm run build`.
 
 See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap and safety rules.

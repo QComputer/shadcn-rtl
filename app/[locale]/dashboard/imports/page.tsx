@@ -74,6 +74,7 @@ type ImportedProductDraft = {
   sourceMetadata?: {
     confidence?: number
     provider?: string
+    reimport?: ReimportMetadata
   } | null
 }
 
@@ -91,7 +92,22 @@ type ImportedContentDraft = {
     mentions?: string[]
     likelyProductMentions?: string[]
     mediaReferences?: string[]
+    reimport?: ReimportMetadata
   } | null
+}
+
+type ReimportDecision = "MERGE" | "SKIP" | "CREATE_NEW"
+
+type ReimportMetadata = {
+  isDuplicate?: boolean
+  existingDraftId?: string
+  existingStatus?: string
+  matchFields?: string[]
+  diffSummary?: {
+    changedFields?: string[]
+    unchangedFields?: string[]
+  }
+  suggestedDecision?: ReimportDecision
 }
 
 type OrganizationOption = {
@@ -122,6 +138,11 @@ type ImportHubCopy = {
   cancel: string
   approve: string
   reject: string
+  duplicate: string
+  merge: string
+  skip: string
+  createNew: string
+  diff: string
   row: string
   product: string
   category: string
@@ -157,6 +178,11 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     cancel: "لغو",
     approve: "تایید پیش‌نویس‌ها",
     reject: "رد پیش‌نویس‌ها",
+    duplicate: "تکراری احتمالی",
+    merge: "ادغام",
+    skip: "رد تکراری",
+    createNew: "پیش‌نویس جدید",
+    diff: "تغییر",
     row: "ردیف",
     product: "محصول",
     category: "دسته",
@@ -208,6 +234,11 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     cancel: "Cancel",
     approve: "Approve drafts",
     reject: "Reject drafts",
+    duplicate: "Possible duplicate",
+    merge: "Merge",
+    skip: "Skip duplicate",
+    createNew: "Create new",
+    diff: "Diff",
     row: "Row",
     product: "Product",
     category: "Category",
@@ -259,6 +290,11 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     cancel: "إلغاء",
     approve: "قبول المسودات",
     reject: "رفض المسودات",
+    duplicate: "تكرار محتمل",
+    merge: "دمج",
+    skip: "تخطي التكرار",
+    createNew: "مسودة جديدة",
+    diff: "تغيير",
     row: "صف",
     product: "المنتج",
     category: "الفئة",
@@ -501,6 +537,35 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
     await fetchJobs(organizationId)
   }
 
+  function getDuplicateDraftIds(job: ImportJob) {
+    return {
+      productDraftIds: (job.productDrafts ?? [])
+        .filter((draft) => draft.status === "DRAFT" && draft.sourceMetadata?.reimport?.isDuplicate)
+        .map((draft) => draft.id),
+      contentDraftIds: (job.contentDrafts ?? [])
+        .filter((draft) => draft.status === "DRAFT" && draft.sourceMetadata?.reimport?.isDuplicate)
+        .map((draft) => draft.id),
+    }
+  }
+
+  async function resolveReimport(decision: ReimportDecision) {
+    if (!selectedJob) return
+    const { productDraftIds, contentDraftIds } = getDuplicateDraftIds(selectedJob)
+    if (productDraftIds.length + contentDraftIds.length === 0) return
+    const response = await fetch(`/api/dashboard/imports/jobs/${selectedJob.id}/resolve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision, productDraftIds, contentDraftIds }),
+    })
+    if (!response.ok) {
+      setError(await readError(response, copy.error))
+      return
+    }
+    const data = await response.json()
+    setSelectedJob(data.job as ImportJob)
+    await fetchJobs(organizationId)
+  }
+
   async function handleFile(file: File | null) {
     setInputFilename(file?.name ?? "")
     setFileContent("")
@@ -545,6 +610,10 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
   }
 
   const hasInput = Boolean(inputUrl.trim() || inputText.trim() || inputFilename.trim() || fileContent || fileBase64 || mediaReferences.length > 0)
+  const selectedDuplicateDraftIds = selectedJob
+    ? getDuplicateDraftIds(selectedJob)
+    : { productDraftIds: [], contentDraftIds: [] }
+  const hasDuplicateDrafts = selectedDuplicateDraftIds.productDraftIds.length + selectedDuplicateDraftIds.contentDraftIds.length > 0
 
   return (
     <div className="space-y-6">
@@ -740,6 +809,22 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
               >
                 {copy.reject}
               </Button>
+              {hasDuplicateDrafts && (
+                <>
+                  <Button type="button" size="sm" variant="outline" onClick={() => resolveReimport("MERGE")}>
+                    <CheckCircle2 className="size-4" />
+                    {copy.merge}
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => resolveReimport("SKIP")}>
+                    <XCircle className="size-4" />
+                    {copy.skip}
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => resolveReimport("CREATE_NEW")}>
+                    <RefreshCw className="size-4" />
+                    {copy.createNew}
+                  </Button>
+                </>
+              )}
             </div>
 
             {(selectedJob.productDrafts ?? []).length > 0 && (
@@ -777,6 +862,14 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
                           {typeof draft.sourceMetadata?.confidence === "number" && (
                             <span className="text-xs text-muted-foreground">
                               {Math.round(draft.sourceMetadata.confidence * 100)}%
+                            </span>
+                          )}
+                          {draft.sourceMetadata?.reimport?.isDuplicate && (
+                            <span className="text-xs text-muted-foreground">
+                              {copy.duplicate}
+                              {draft.sourceMetadata.reimport.diffSummary?.changedFields?.length
+                                ? ` - ${copy.diff}: ${draft.sourceMetadata.reimport.diffSummary.changedFields.join(", ")}`
+                                : ""}
                             </span>
                           )}
                         </div>
@@ -825,6 +918,14 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
                               </Badge>
                               {Array.isArray(draft.warnings) && draft.warnings.length > 0 && (
                                 <span className="text-xs text-muted-foreground">{draft.warnings.join(", ")}</span>
+                              )}
+                              {draft.sourceMetadata?.reimport?.isDuplicate && (
+                                <span className="text-xs text-muted-foreground">
+                                  {copy.duplicate}
+                                  {draft.sourceMetadata.reimport.diffSummary?.changedFields?.length
+                                    ? ` - ${copy.diff}: ${draft.sourceMetadata.reimport.diffSummary.changedFields.join(", ")}`
+                                    : ""}
+                                </span>
                               )}
                             </div>
                           </td>

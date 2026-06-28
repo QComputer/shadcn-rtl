@@ -36,7 +36,7 @@ add("parser avoids network scraping", !/\bfetch\s*\(/.test(parser) && !/instagra
 add("service imports manual Instagram parser", /parseManualInstagramContent/.test(service))
 add("service creates ImportedContentDraft rows", /importedContentDraft\.createMany/.test(service))
 add("service keeps Instagram imports draft-only", /status:\s*"DRAFT"/.test(service))
-add("service stores Instagram metadata", /hashtags/.test(service) || /sourceMetadata:\s*draft\.sourceMetadata/.test(service))
+add("service stores Instagram metadata", /parseManualInstagramContent/.test(service) && (/sourceMetadata:\s*draft\.sourceMetadata/.test(service) || /withReimportMetadata\(draft\.sourceMetadata/.test(service)))
 add("service requires Instagram URL", /Instagram import requires a seller-provided post URL/.test(service))
 add("service does not publish fanpage posts", !/fanpagePost\.create/.test(service))
 

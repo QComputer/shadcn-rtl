@@ -23,6 +23,12 @@ export const reviewableDraftStatuses = [
   "REJECTED",
 ] as const satisfies readonly ImportedDraftStatus[]
 
+export const reimportResolutionDecisions = [
+  "MERGE",
+  "SKIP",
+  "CREATE_NEW",
+] as const
+
 export type ImportJobSummary = {
   phase: "P68_FOUNDATION" | "P69_CSV_EXCEL_PRODUCT_IMPORTER" | "P70_MANUAL_INSTAGRAM_FANPAGE_IMPORT" | "P71_TEXT_PRODUCT_EXTRACTION" | "P72_IMAGE_PDF_MENU_IMPORT" | "P73_SNAPPFOOD_URL_IMPORT" | "P74_SNAPPMARKET_URL_IMPORT" | "P75_TELEGRAM_POST_IMPORT"
   draftFirst: true
@@ -30,6 +36,8 @@ export type ImportJobSummary = {
   message: string
   productDraftCount: number
   contentDraftCount: number
+  reimportDiffEnabled?: true
+  reimportDuplicateCount?: number
 }
 
 export type CreateImportJobInput = {
@@ -51,6 +59,15 @@ export type ReviewImportDraftsInput = {
   organizationId: string
   actorUserId: string
   status: (typeof reviewableDraftStatuses)[number]
+  productDraftIds?: string[]
+  contentDraftIds?: string[]
+}
+
+export type ResolveReimportDraftsInput = {
+  jobId: string
+  organizationId: string
+  actorUserId: string
+  decision: (typeof reimportResolutionDecisions)[number]
   productDraftIds?: string[]
   contentDraftIds?: string[]
 }

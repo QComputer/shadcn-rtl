@@ -109,7 +109,9 @@
     "quality:custom-domain-default-locale": "node scripts/quality/validate-custom-domain-default-locale.mjs",
     "e2e:custom-domain-smoke": "node scripts/e2e/custom-domain-smoke.mjs",
     "e2e:deployed:custom-domain-smoke": "node scripts/e2e/custom-domain-smoke.mjs",
-    "quality:custom-domain-smoke": "node scripts/quality/validate-custom-domain-smoke.mjs"
+    "quality:custom-domain-smoke": "node scripts/quality/validate-custom-domain-smoke.mjs",
+    "quality:platform-default-locale": "node scripts/quality/validate-platform-default-locale.mjs",
+    "e2e:platform-default-locale": "node scripts/e2e/platform-default-locale-smoke.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

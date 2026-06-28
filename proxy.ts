@@ -72,48 +72,6 @@ function pathnameHasLocale(pathname: string): boolean {
 }
 
 /**
- * Get locale from request
- */
-function getLocale(request: NextRequest): Locale {
-  const pathname = request.nextUrl.pathname;
-
-  // Check if pathname already has a locale
-  if (pathnameHasLocale(pathname)) {
-    const pathnameLocale = pathname.split("/")[1];
-    if (locales.includes(pathnameLocale as Locale)) {
-      return pathnameLocale as Locale;
-    }
-  }
-
-  // Try to get locale from cookie or accept-language header
-  const cookieLocale = request.cookies.get("locale")?.value;
-  if (cookieLocale && locales.includes(cookieLocale as Locale)) {
-    return cookieLocale as Locale;
-  }
-
-  const acceptLanguage = request.headers.get("Accept-Language");
-  if (acceptLanguage) {
-    const preferredLocales = acceptLanguage.split(",").map((lang) => {
-      const [locale, quality] = lang.trim().split(";q=");
-      return {
-        locale: locale.split("-")[0],
-        quality: quality ? parseFloat(quality) : 1.0
-      };
-    });
-
-    preferredLocales.sort((a, b) => b.quality - a.quality);
-
-    for (const { locale } of preferredLocales) {
-      if (locales.includes(locale as Locale)) {
-        return locale as Locale;
-      }
-    }
-  }
-
-  return defaultLocale;
-}
-
-/**
  * Get the direction (RTL/LTR) for a given locale
  */
 export function getDirection(locale: Locale): "rtl" | "ltr" {
@@ -219,7 +177,7 @@ export async function proxy(request: NextRequest) {
     }
 
     // Tenant custom domains must be Persian-first. Do not derive the default
-    // locale from Accept-Language for bare custom-domain visits, because the
+    // locale from browser language for bare custom-domain visits, because the
     // overwhelming majority of shop visitors are expected to be Persian.
     // Explicit locale prefixes such as /en/... and /ar/... still work.
     const tenantPathLocale = splitLocalePrefix(pathname).locale;
@@ -311,11 +269,13 @@ export async function proxy(request: NextRequest) {
   // Check if pathname already has locale
   const hasLocale = pathnameHasLocale(pathname);
 
-  // If no locale in path, redirect to locale-prefixed path
+  // If no locale is present on the platform domain, always use Persian.
+  // Do not derive the first-visit locale from cookies or browser language: Bazar Baz
+  // is Persian-first, and explicit /en/... or /ar/... paths remain available.
   if (!hasLocale) {
-    const locale = getLocale(request);
+    const locale = defaultLocale;
 
-    // Build new URL with locale prefix
+    // Build new URL with the Persian locale prefix
     const newPath = pathname === "/"
       ? `/${locale}`
       : `/${locale}${pathname}`;

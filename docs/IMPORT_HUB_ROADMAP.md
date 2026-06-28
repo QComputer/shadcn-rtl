@@ -171,6 +171,8 @@ Scope:
 
 ## Phase 78 - Export Hub Foundation
 
+Status: Implemented in P78.
+
 Goal: give sellers a reversible way to move or back up Bazar Baz data.
 
 Scope:

@@ -23,6 +23,7 @@ export type DashboardNavigationKey =
   | "members"
   | "customerClub"
   | "imports"
+  | "exports"
   | "settings"
   | "organizationSettings"
   | "qrcode"
@@ -46,6 +47,7 @@ export const DASHBOARD_NAVIGATION_ITEMS = {
   members: "/members",
   customerClub: "/customer-club",
   imports: "/imports",
+  exports: "/exports",
   settings: "/settings",
   organizationSettings: "/settings/organization",
   qrcode: "/qrcode",
@@ -65,7 +67,7 @@ export const DASHBOARD_NAVIGATION_GROUPS = [
   },
   {
     key: "teamAndSettings",
-    items: ["members", "customerClub", "imports", "settings", "organizationSettings", "qrcode"],
+    items: ["members", "customerClub", "imports", "exports", "settings", "organizationSettings", "qrcode"],
   },
   {
     key: "platformAdmin",
@@ -91,6 +93,7 @@ export const ROLE_NAVIGATION_POLICY = {
   members: MANAGEMENT_ROLES,
   customerClub: MANAGEMENT_ROLES,
   imports: MANAGEMENT_ROLES,
+  exports: MANAGEMENT_ROLES,
   settings: MANAGEMENT_ROLES,
   organizationSettings: MANAGEMENT_ROLES,
   qrcode: MANAGEMENT_ROLES,
@@ -127,6 +130,7 @@ export const DASHBOARD_ROUTE_POLICY = {
   "/customer-club/coupons": ROLE_NAVIGATION_POLICY.customerClub,
   "/customer-club/push": ROLE_NAVIGATION_POLICY.customerClub,
   "/imports": ROLE_NAVIGATION_POLICY.imports,
+  "/exports": ROLE_NAVIGATION_POLICY.exports,
   "/settings": ROLE_NAVIGATION_POLICY.settings,
   "/settings/organization": ROLE_NAVIGATION_POLICY.organizationSettings,
   "/qrcode": ROLE_NAVIGATION_POLICY.qrcode,

@@ -4,7 +4,7 @@ Date: 2026-06-28
 
 ## Current validated baseline
 
-The current working baseline after P77 overlays is source-validator green.
+The current working baseline after P78 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -107,6 +107,7 @@ pnpm run db:migrate:neon:dry-run
 - Telegram Post Import exists through `lib/import-hub/telegram-manual-parser.ts`, public Telegram post URL validation, pasted content/media-reference intake, `ImportedContentDraft` creation, and the `quality:telegram-post-import` validator. P75 does not fetch Telegram or publish fanpage posts.
 - External Source Mapping and Re-import Diff exists through `lib/import-hub/source-mapping.ts`, duplicate source URL/external ID detection, `sourceMetadata.reimport` diff summaries, `POST /api/dashboard/imports/jobs/[jobId]/resolve`, dashboard merge/skip/create-new controls, audit logging, and the `quality:external-source-mapping` validator. P76 does not publish content or apply live product/post merges.
 - Import Hub Audit, Limits, and Plan Readiness exists through `lib/import-hub/limits.ts`, per-organization active/daily/draft limits, audit event API, retry policy, safer cancellation policy, dashboard audit event display, and the `quality:import-hub-audit-limits` validator.
+- Export Hub Foundation exists through the `ExportJob` model/migration, `lib/services/export-hub.service.ts`, organization-scoped export job APIs, localized `/dashboard/exports` UI, dashboard navigation/access policy, CSV/JSON payload generation for products/categories/orders/customers/fanpage posts, audit logging, and the `quality:export-hub-foundation` validator.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -173,6 +174,7 @@ pnpm run db:migrate:neon:dry-run
 | P75 | Telegram Post Import with public URL validation and draft-only content intake. |
 | P76 | External Source Mapping and Re-import Diff with duplicate evidence and merge/skip/create-new audit decisions. |
 | P77 | Import Hub Audit, Limits, and Plan Readiness with audit events, retry/cancel policy, and org guardrails. |
+| P78 | Export Hub Foundation with organization-scoped CSV/JSON export jobs and dashboard/API coverage. |
 
 ## Current route/API inventory
 
@@ -287,7 +289,7 @@ Deferred:
 - Custom-domain smoke tests are deployment/data dependent. Current reference configuration uses `CUSTOM_DOMAIN_SMOKE_BASE_URL=https://www.khalae.ir`, `CUSTOM_DOMAIN_SMOKE_PLATFORM_URL=https://www.bazar-baz.ir`, and `CUSTOM_DOMAIN_SMOKE_SHOP_SLUG=ahmad`.
 - Shop owners cannot self-serve custom-domain management yet; P60/P67 keep domain management SUPER_ADMIN-only.
 - Vercel domain automation must remain dry-run-safe by default and must never hardcode tokens or project/team secrets.
-- P68-P77 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, and import audit/limit guardrails are implemented. Future importer phases must remain seller-initiated, consent-based, draft-first, auditable, rate-limited, and review-before-publish.
+- P68-P78 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, and Export Hub foundation are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
 
 ## Clean release rules
 
@@ -326,15 +328,15 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P78 - Export Hub Foundation
+Post-P78 deployed verification and export/import polish
 ```
 
 Scope:
 
-1. Add export job shell for products, categories, orders, customers, and fanpage posts.
-2. Generate CSV/JSON export payloads.
-3. Keep access organization-scoped and auditable.
-4. Add dashboard/API entry points for creating and inspecting export jobs.
-5. Validate with a focused P78 quality gate, `pnpm prisma generate`, `pnpm run typecheck`, and `pnpm run build`.
+1. Run deployed smoke coverage for Import Hub and Export Hub with a real admin organization.
+2. Verify the P78 migration is applied on the target database before using `/dashboard/exports`.
+3. Add approval-to-live publishing for imported products/posts after seller review.
+4. Add export download streaming/blob storage once payload sizes need to exceed JSON preview limits.
+5. Keep Persian (`fa`) as the primary UX/SEO language for the next polish pass.
 
 See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap and safety rules.

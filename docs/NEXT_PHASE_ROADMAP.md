@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-28._
 
-This roadmap is ordered for risk reduction. Phases 18-77 are historical/completed hardening and growth work. The current integrated next track is the Import Hub roadmap, continuing at Phase 78.
+This roadmap is ordered for risk reduction. Phases 18-78 are historical/completed hardening and growth work. The integrated Import Hub and Export Hub roadmap is implemented through Phase 78.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P77 - Import Hub Audit, Limits, and Plan Readiness**.
+- Completed through **P78 - Export Hub Foundation**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -17,24 +17,35 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P78 - Export Hub Foundation
+Post-P78 deployed verification and export/import polish
 ```
 
-P78 should add an organization-scoped Export Hub foundation for seller data backups and future migration workflows.
+Next work should verify deployed import/export flows with real organization data, then polish draft approval into live product/post publishing.
 
-Immediate P78 validation target:
+Immediate validation target:
 
 ```powershell
 pnpm run quality:export-hub-foundation
+pnpm run quality:local
 pnpm prisma generate
 pnpm run typecheck
 pnpm run build
 ```
 
-Follow-on phases:
+Completed integrated phases:
 
 | Phase | Focus |
 | --- | --- |
+| P68 | Import Hub foundation. |
+| P69 | CSV/Excel product importer. |
+| P70 | Manual Instagram fanpage import. |
+| P71 | AI/text product extraction foundation. |
+| P72 | Image/PDF menu import foundation. |
+| P73 | Snappfood URL import MVP. |
+| P74 | Snappmarket URL import MVP. |
+| P75 | Telegram post import. |
+| P76 | External source mapping and re-import diff. |
+| P77 | Import Hub audit, limits, and plan readiness. |
 | P78 | Export Hub foundation. |
 
 Safety constraints for all Import Hub phases:

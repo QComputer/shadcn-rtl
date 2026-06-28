@@ -121,7 +121,8 @@
     "quality:snappfood-url-import": "node scripts/quality/validate-snappfood-url-import.mjs",
     "quality:snappmarket-url-import": "node scripts/quality/validate-snappmarket-url-import.mjs",
     "quality:telegram-post-import": "node scripts/quality/validate-telegram-post-import.mjs",
-    "quality:external-source-mapping": "node scripts/quality/validate-external-source-mapping.mjs"
+    "quality:external-source-mapping": "node scripts/quality/validate-external-source-mapping.mjs",
+    "quality:import-hub-audit-limits": "node scripts/quality/validate-import-hub-audit-limits.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

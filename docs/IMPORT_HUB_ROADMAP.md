@@ -158,6 +158,8 @@ Scope:
 
 ## Phase 77 - Import Hub Audit, Limits, and Plan Readiness
 
+Status: Implemented in P77.
+
 Goal: add operational guardrails for production use.
 
 Scope:

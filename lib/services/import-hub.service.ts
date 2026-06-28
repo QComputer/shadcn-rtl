@@ -11,6 +11,7 @@ import {
   normalizeImportFilename,
   normalizeImportText,
 } from "@/lib/import-hub/normalizers"
+import { buildImportHubLimitSnapshot, importHubLimits } from "@/lib/import-hub/limits"
 import { parseManualInstagramContent } from "@/lib/import-hub/instagram-manual-parser"
 import { parseMenuOcrFixture, realMenuOcrEnabled } from "@/lib/import-hub/menu-ocr-fixtures"
 import { parseProductSpreadsheet } from "@/lib/import-hub/spreadsheet-parser"
@@ -117,6 +118,33 @@ export class ImportHubService {
 
     if (!job) throw new ApiError(404, "Import job not found")
     return job.organizationId
+  }
+
+  async listJobAuditEvents(jobId: string, organizationId: string) {
+    const job = await prisma.externalImportJob.findFirst({
+      where: { id: jobId, organizationId },
+      select: { id: true },
+    })
+    if (!job) throw new ApiError(404, "Import job not found")
+
+    return prisma.auditLog.findMany({
+      where: {
+        organizationId,
+        entityType: "ExternalImportJob",
+        entityId: jobId,
+      },
+      orderBy: { createdAt: "desc" },
+      take: importHubLimits.auditEventPageSize,
+      select: {
+        id: true,
+        action: true,
+        description: true,
+        previousValue: true,
+        newValue: true,
+        userId: true,
+        createdAt: true,
+      },
+    })
   }
 
   async createJob(input: CreateImportJobInput) {
@@ -237,6 +265,7 @@ export class ImportHubService {
     if (type === "INSTAGRAM" && !inputText && parsedContentDrafts[0]?.sourceMetadata.mediaReferences.length === 0) {
       throw new ApiError(400, "Instagram import requires a pasted caption or seller-approved media reference")
     }
+    const limitSnapshot = await this.assertCreateWithinLimits(organization.id, totalDraftCount)
 
     const created = await prisma.$transaction(async (tx) => {
       const reimportCandidates: ReimportCandidate[] = [
@@ -326,6 +355,9 @@ export class ImportHubService {
             reimportDiffEnabled: true,
             reimportDuplicateCount,
             sourceMappingPhase: "P76_EXTERNAL_SOURCE_MAPPING_REIMPORT_DIFF",
+            importHubLimits: limitSnapshot,
+            planReadinessMode: importHubLimits.planReadinessMode,
+            operationalGuardrailsPhase: "P77_IMPORT_HUB_AUDIT_LIMITS_PLAN_READINESS",
           },
         },
       })
@@ -455,6 +487,8 @@ export class ImportHubService {
         externalSourceMappingEnabled: true,
         reimportDiffEnabled: true,
         reimportDuplicateCount,
+        importHubLimits: limitSnapshot,
+        planReadinessMode: importHubLimits.planReadinessMode,
       },
       userId: input.actorUserId,
       organizationId: organization.id,
@@ -470,6 +504,9 @@ export class ImportHubService {
     })
     if (!existing) throw new ApiError(404, "Import job not found")
     if (existing.status === "CANCELED") return this.getJob(jobId, organizationId)
+    if (!["QUEUED", "NEEDS_REVIEW", "FAILED"].includes(existing.status)) {
+      throw new ApiError(400, "Only queued, review-needed, or failed import jobs can be canceled")
+    }
 
     const job = await prisma.externalImportJob.update({
       where: { id: jobId },
@@ -488,6 +525,55 @@ export class ImportHubService {
       description: "Import job canceled",
       previousValue: { status: existing.status },
       newValue: { status: job.status },
+      userId: actorUserId,
+      organizationId,
+    })
+
+    return job
+  }
+
+  async retryJob(jobId: string, organizationId: string, actorUserId: string) {
+    const existing = await prisma.externalImportJob.findFirst({
+      where: { id: jobId, organizationId },
+      select: {
+        id: true,
+        status: true,
+        organizationId: true,
+        _count: { select: { productDrafts: true, contentDrafts: true } },
+      },
+    })
+    if (!existing) throw new ApiError(404, "Import job not found")
+    if (!["FAILED", "CANCELED"].includes(existing.status)) {
+      throw new ApiError(400, "Only failed or canceled import jobs can be retried")
+    }
+    if (existing._count.productDrafts + existing._count.contentDrafts === 0) {
+      throw new ApiError(400, "Import job has no drafts to return to review")
+    }
+
+    const retriedAt = new Date()
+    const job = await prisma.externalImportJob.update({
+      where: { id: jobId },
+      data: {
+        status: "NEEDS_REVIEW",
+        startedAt: retriedAt,
+        completedAt: null,
+        canceledAt: null,
+        errorMessage: null,
+      },
+      include: importJobInclude,
+    })
+
+    await writeAuditLog({
+      action: "UPDATE",
+      entityType: "ExternalImportJob",
+      entityId: job.id,
+      description: "Import job returned to review after retry",
+      previousValue: { status: existing.status },
+      newValue: {
+        status: job.status,
+        productDraftCount: existing._count.productDrafts,
+        contentDraftCount: existing._count.contentDrafts,
+      },
       userId: actorUserId,
       organizationId,
     })
@@ -776,6 +862,37 @@ export class ImportHubService {
       productDraftCount,
       contentDraftCount,
     })
+  }
+
+  private async assertCreateWithinLimits(organizationId: string, totalDraftCount: number) {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    const [activeJobCount, jobsTodayCount] = await prisma.$transaction([
+      prisma.externalImportJob.count({
+        where: {
+          organizationId,
+          status: { in: ["QUEUED", "NEEDS_REVIEW"] },
+        },
+      }),
+      prisma.externalImportJob.count({
+        where: {
+          organizationId,
+          createdAt: { gte: since },
+        },
+      }),
+    ])
+    const snapshot = buildImportHubLimitSnapshot({ activeJobCount, jobsTodayCount })
+
+    if (activeJobCount >= importHubLimits.maxActiveJobsPerOrganization) {
+      throw new ApiError(429, "Import Hub active job limit reached for this organization")
+    }
+    if (jobsTodayCount >= importHubLimits.maxJobsPerOrganizationPerDay) {
+      throw new ApiError(429, "Import Hub daily job limit reached for this organization")
+    }
+    if (totalDraftCount > importHubLimits.maxDraftsPerJob) {
+      throw new ApiError(413, "Import Hub draft limit exceeded for this job")
+    }
+
+    return snapshot
   }
 
   private getSourceDisplayName(type: ExternalImportSourceType, normalizedUrl: string | null, filename: string | null) {

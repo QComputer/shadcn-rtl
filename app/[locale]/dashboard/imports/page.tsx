@@ -56,6 +56,14 @@ type ImportJob = {
   }
   productDrafts?: ImportedProductDraft[]
   contentDrafts?: ImportedContentDraft[]
+  auditEvents?: ImportAuditEvent[]
+}
+
+type ImportAuditEvent = {
+  id: string
+  action: string
+  description?: string | null
+  createdAt: string
 }
 
 type ImportedProductDraft = {
@@ -136,6 +144,7 @@ type ImportHubCopy = {
   draftCounts: string
   review: string
   cancel: string
+  retry: string
   approve: string
   reject: string
   duplicate: string
@@ -143,6 +152,7 @@ type ImportHubCopy = {
   skip: string
   createNew: string
   diff: string
+  auditEvents: string
   row: string
   product: string
   category: string
@@ -176,6 +186,7 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     draftCounts: "پیش‌نویس",
     review: "بررسی",
     cancel: "لغو",
+    retry: "تلاش دوباره",
     approve: "تایید پیش‌نویس‌ها",
     reject: "رد پیش‌نویس‌ها",
     duplicate: "تکراری احتمالی",
@@ -183,6 +194,7 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     skip: "رد تکراری",
     createNew: "پیش‌نویس جدید",
     diff: "تغییر",
+    auditEvents: "رویدادهای واردسازی",
     row: "ردیف",
     product: "محصول",
     category: "دسته",
@@ -232,6 +244,7 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     draftCounts: "Drafts",
     review: "Review",
     cancel: "Cancel",
+    retry: "Retry",
     approve: "Approve drafts",
     reject: "Reject drafts",
     duplicate: "Possible duplicate",
@@ -239,6 +252,7 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     skip: "Skip duplicate",
     createNew: "Create new",
     diff: "Diff",
+    auditEvents: "Import events",
     row: "Row",
     product: "Product",
     category: "Category",
@@ -288,6 +302,7 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     draftCounts: "مسودات",
     review: "مراجعة",
     cancel: "إلغاء",
+    retry: "إعادة المحاولة",
     approve: "قبول المسودات",
     reject: "رفض المسودات",
     duplicate: "تكرار محتمل",
@@ -295,6 +310,7 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     skip: "تخطي التكرار",
     createNew: "مسودة جديدة",
     diff: "تغيير",
+    auditEvents: "أحداث الاستيراد",
     row: "صف",
     product: "المنتج",
     category: "الفئة",
@@ -505,6 +521,17 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
     await fetchJobs(organizationId)
   }
 
+  async function retryJob(jobId: string) {
+    const response = await fetch(`/api/dashboard/imports/jobs/${jobId}/retry`, { method: "POST" })
+    if (!response.ok) {
+      setError(await readError(response, copy.error))
+      return
+    }
+    const data = await response.json()
+    setSelectedJob(data.job as ImportJob)
+    await fetchJobs(organizationId)
+  }
+
   async function loadJob(jobId: string) {
     const response = await fetch(`/api/dashboard/imports/jobs/${jobId}`, { cache: "no-store" })
     if (!response.ok) {
@@ -512,7 +539,9 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
       return
     }
     const data = await response.json()
-    setSelectedJob(data.job as ImportJob)
+    const eventsResponse = await fetch(`/api/dashboard/imports/jobs/${jobId}/events`, { cache: "no-store" })
+    const eventsData = eventsResponse.ok ? await eventsResponse.json() : { events: [] }
+    setSelectedJob({ ...(data.job as ImportJob), auditEvents: eventsData.events ?? [] })
   }
 
   async function reviewDrafts(status: "APPROVED" | "REJECTED") {
@@ -766,6 +795,12 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
                               {copy.cancel}
                             </Button>
                           )}
+                          {(job.status === "FAILED" || job.status === "CANCELED") && (
+                            <Button variant="outline" size="sm" onClick={() => retryJob(job.id)}>
+                              <RefreshCw className="size-4" />
+                              {copy.retry}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -934,6 +969,22 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {(selectedJob.auditEvents ?? []).length > 0 && (
+              <div className="space-y-2 border-t pt-4">
+                <h2 className="text-sm font-medium">{copy.auditEvents}</h2>
+                <div className="space-y-2">
+                  {(selectedJob.auditEvents ?? []).map((event) => (
+                    <div key={event.id} className="flex flex-col gap-1 rounded-md border px-3 py-2 text-sm md:flex-row md:items-center md:justify-between">
+                      <span>{event.description || event.action}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(event.createdAt).toLocaleString(locale === "fa" ? "fa-IR" : locale)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </CardContent>

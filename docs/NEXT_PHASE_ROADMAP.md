@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-28._
 
-This roadmap is ordered for risk reduction. Phases 18-76 are historical/completed hardening and growth work. The current integrated next track is the Import Hub roadmap, continuing at Phase 77.
+This roadmap is ordered for risk reduction. Phases 18-77 are historical/completed hardening and growth work. The current integrated next track is the Import Hub roadmap, continuing at Phase 78.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P76 - External Source Mapping and Re-import Diff**.
+- Completed through **P77 - Import Hub Audit, Limits, and Plan Readiness**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -17,15 +17,15 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P77 - Import Hub Audit, Limits, and Plan Readiness
+P78 - Export Hub Foundation
 ```
 
-P77 should add production guardrails around Import Hub auditability, limits, cancellation/retry policy, and plan-tier readiness.
+P78 should add an organization-scoped Export Hub foundation for seller data backups and future migration workflows.
 
-Immediate P77 validation target:
+Immediate P78 validation target:
 
 ```powershell
-pnpm run quality:import-hub-audit-limits
+pnpm run quality:export-hub-foundation
 pnpm prisma generate
 pnpm run typecheck
 pnpm run build
@@ -35,7 +35,6 @@ Follow-on phases:
 
 | Phase | Focus |
 | --- | --- |
-| P77 | Import Hub audit, limits, and plan readiness. |
 | P78 | Export Hub foundation. |
 
 Safety constraints for all Import Hub phases:

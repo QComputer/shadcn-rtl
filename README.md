@@ -88,6 +88,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 72 | Image/PDF Menu Import Foundation | Source-validated | `pnpm run quality:image-pdf-menu-import` |
 | 73 | Snappfood URL Import MVP | Source-validated | `pnpm run quality:snappfood-url-import` |
 | 74 | Snappmarket URL Import MVP | Source-validated | `pnpm run quality:snappmarket-url-import` |
+| 75 | Telegram Post Import | Source-validated | `pnpm run quality:telegram-post-import` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -139,6 +140,7 @@ pnpm run quality:text-product-extraction
 pnpm run quality:image-pdf-menu-import
 pnpm run quality:snappfood-url-import
 pnpm run quality:snappmarket-url-import
+pnpm run quality:telegram-post-import
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -257,12 +259,12 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P74 - Snappmarket URL Import MVP**.
+Latest completed implementation phase: **P75 - Telegram Post Import**.
 
-Recommended next phase: **P75 - Telegram Post Import**.
+Recommended next phase: **P76 - External Source Mapping and Re-import Diff**.
 
-The active roadmap is `docs/IMPORT_HUB_ROADMAP.md`. P75 should add manual Telegram public post import where the seller has permission, accepting public post URLs and pasted content while avoiding private or auth-gated scraping.
+The active roadmap is `docs/IMPORT_HUB_ROADMAP.md`. P76 should make repeat imports safer with external source mapping, re-import diff summaries, and merge/skip/create-new decision evidence.
 
 ## Historical validator anchors
 
-The source tree keeps focused validators for these retained phases: P37 dashboard navigation and localized shell copy, P38 dashboard role navigation, P39 dashboard route parity, P40 dashboard route authorization, P41 dashboard route guard smoke, P42 Customer Club foundation, P43 in-app notification inbox, P44 Customer Segments, P45 Campaign Builder, P46 Loyalty Points and Coupons, P47 Web Push Opt-In Foundation, P68 Import Hub Foundation, P69 CSV/Excel Product Importer, P70 Manual Instagram Fanpage Import, P71 AI/Text Product Extraction Foundation, P72 Image/PDF Menu Import Foundation, P73 Snappfood URL Import MVP, and P74 Snappmarket URL Import MVP.
+The source tree keeps focused validators for these retained phases: P37 dashboard navigation and localized shell copy, P38 dashboard role navigation, P39 dashboard route parity, P40 dashboard route authorization, P41 dashboard route guard smoke, P42 Customer Club foundation, P43 in-app notification inbox, P44 Customer Segments, P45 Campaign Builder, P46 Loyalty Points and Coupons, P47 Web Push Opt-In Foundation, P68 Import Hub Foundation, P69 CSV/Excel Product Importer, P70 Manual Instagram Fanpage Import, P71 AI/Text Product Extraction Foundation, P72 Image/PDF Menu Import Foundation, P73 Snappfood URL Import MVP, P74 Snappmarket URL Import MVP, and P75 Telegram Post Import.

@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-28._
 
-This roadmap is ordered for risk reduction. Phases 18-74 are historical/completed hardening and growth work. The current integrated next track is the Import Hub roadmap, continuing at Phase 75.
+This roadmap is ordered for risk reduction. Phases 18-75 are historical/completed hardening and growth work. The current integrated next track is the Import Hub roadmap, continuing at Phase 76.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P74 - Snappmarket URL Import MVP**.
+- Completed through **P75 - Telegram Post Import**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -17,15 +17,15 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P75 - Telegram Post Import
+P76 - External Source Mapping and Re-import Diff
 ```
 
-P75 should support manual Telegram post import for public seller-permitted URLs and pasted content without private/auth-gated scraping.
+P76 should make repeat imports safer with external source mapping, re-import diff summaries, and merge/skip/create-new decision evidence.
 
-Immediate P75 validation target:
+Immediate P76 validation target:
 
 ```powershell
-pnpm run quality:telegram-post-import
+pnpm run quality:external-source-mapping
 pnpm prisma generate
 pnpm run typecheck
 pnpm run build
@@ -35,7 +35,6 @@ Follow-on phases:
 
 | Phase | Focus |
 | --- | --- |
-| P75 | Telegram post import, manual and permission-aware. |
 | P76 | External source mapping and re-import diff. |
 | P77 | Import Hub audit, limits, and plan readiness. |
 | P78 | Export Hub foundation. |

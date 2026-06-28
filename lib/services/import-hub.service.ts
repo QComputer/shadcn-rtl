@@ -25,6 +25,11 @@ import {
   snappmarketPublicFetchEnabled,
 } from "@/lib/import-hub/snappmarket-adapter"
 import {
+  isTelegramPublicPostUrl,
+  parseManualTelegramContent,
+  telegramFetchEnabled,
+} from "@/lib/import-hub/telegram-manual-parser"
+import {
   externalTextExtractionEnabled,
   getProductTextExtractionProvider,
 } from "@/lib/import-hub/text-extraction-provider"
@@ -177,6 +182,12 @@ export class ImportHubService {
           caption: inputText,
           mediaReferences: input.mediaReferences,
         })]
+      : type === "TELEGRAM"
+      ? [parseManualTelegramContent({
+          sourceUrl: input.inputUrl,
+          text: inputText,
+          mediaReferences: input.mediaReferences,
+        })]
       : []
     const totalDraftCount = parsedProductDrafts.length + parsedContentDrafts.length
 
@@ -200,6 +211,15 @@ export class ImportHubService {
     }
     if (type === "SNAP_MARKET" && normalizedUrl && !isSnappmarketUrl(normalizedUrl)) {
       throw new ApiError(400, "Snappmarket import requires a valid snapp.market or snappmarket.ir URL")
+    }
+    if (type === "TELEGRAM" && !normalizedUrl) {
+      throw new ApiError(400, "Telegram import requires a seller-provided public post URL")
+    }
+    if (type === "TELEGRAM" && normalizedUrl && !isTelegramPublicPostUrl(normalizedUrl)) {
+      throw new ApiError(400, "Telegram import requires a valid public Telegram post URL")
+    }
+    if (type === "TELEGRAM" && !inputText && parsedContentDrafts[0]?.sourceMetadata.mediaReferences.length === 0) {
+      throw new ApiError(400, "Telegram import requires pasted content or seller-approved media reference")
     }
     if (type === "INSTAGRAM" && !normalizedUrl) {
       throw new ApiError(400, "Instagram import requires a seller-provided post URL")
@@ -236,7 +256,9 @@ export class ImportHubService {
           createdByUserId: input.actorUserId,
           metadata: {
             phase: parsedContentDrafts.length > 0
-              ? "P70_MANUAL_INSTAGRAM_FANPAGE_IMPORT"
+              ? type === "TELEGRAM"
+                ? "P75_TELEGRAM_POST_IMPORT"
+                : "P70_MANUAL_INSTAGRAM_FANPAGE_IMPORT"
               : parsedTextProductDrafts.length > 0
                 ? "P71_TEXT_PRODUCT_EXTRACTION"
                 : parsedMenuProductDrafts.length > 0
@@ -258,6 +280,7 @@ export class ImportHubService {
             snappfoodFallback: parsedSnappfoodProductDrafts.length > 0,
             snappmarketPublicFetchEnabled: snappmarketPublicFetchEnabled(),
             snappmarketFallback: parsedSnappmarketProductDrafts.length > 0,
+            telegramFetchEnabled: telegramFetchEnabled(),
           },
         },
       })
@@ -318,7 +341,7 @@ export class ImportHubService {
             organizationId: organization.id,
             jobId: job.id,
             sourceId: source.id,
-            status: "DRAFT",
+            status: "DRAFT" as const,
             title: draft.title,
             body: draft.body,
             mediaUrl: draft.mediaUrl,
@@ -349,7 +372,9 @@ export class ImportHubService {
         status: job.status,
         consentConfirmed: job.consentConfirmed,
         importerEnabled: parsedContentDrafts.length > 0
-          ? "manual-instagram-content-drafts"
+          ? type === "TELEGRAM"
+            ? "manual-telegram-content-drafts"
+            : "manual-instagram-content-drafts"
           : parsedTextProductDrafts.length > 0
             ? "local-rule-based-text-product-extractor"
             : parsedMenuProductDrafts.length > 0
@@ -367,6 +392,7 @@ export class ImportHubService {
         realMenuOcrEnabled: realMenuOcrEnabled(),
         snappfoodPublicFetchEnabled: snappfoodPublicFetchEnabled(),
         snappmarketPublicFetchEnabled: snappmarketPublicFetchEnabled(),
+        telegramFetchEnabled: telegramFetchEnabled(),
       },
       userId: input.actorUserId,
       organizationId: organization.id,
@@ -488,6 +514,17 @@ export class ImportHubService {
         draftFirst: true,
         importerEnabled: "manual-instagram-content-drafts",
         message: "Manual Instagram content was saved as fanpage drafts. Publishing remains disabled until seller review.",
+        productDraftCount,
+        contentDraftCount,
+      }
+    }
+
+    if (contentDraftCount > 0 && type === "TELEGRAM") {
+      return {
+        phase: "P75_TELEGRAM_POST_IMPORT",
+        draftFirst: true,
+        importerEnabled: "manual-telegram-content-drafts",
+        message: "Manual Telegram post content was saved as drafts. Telegram fetching remains disabled.",
         productDraftCount,
         contentDraftCount,
       }

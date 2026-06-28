@@ -133,6 +133,8 @@ Scope follows Phase 73 with Snappmarket-specific detection and fixtures.
 
 ## Phase 75 - Telegram Post Import
 
+Status: Implemented in P75.
+
 Goal: support manual Telegram channel/post import where the seller has permission.
 
 Scope:

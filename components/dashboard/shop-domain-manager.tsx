@@ -1,7 +1,22 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Globe2, Link2, Loader2, RefreshCw, Search, ShieldCheck, Trash2, XCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clipboard,
+  Copy as CopyIcon,
+  ExternalLink,
+  Globe2,
+  Link2,
+  Loader2,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Terminal,
+  Trash2,
+  XCircle,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -107,18 +122,37 @@ type Copy = {
   automationHint: string;
   automationDisabled: string;
   automationDryRun: string;
+  automationConfigured: string;
+  automationMissing: string;
   provisionOnVercel: string;
   addToVercel: string;
   checkVercel: string;
   removeFromVercel: string;
   dnsRecords: string;
+  copied: string;
+  copy: string;
+  copyRecord: string;
   copiedDns: string;
   lastChecked: string;
+  neverChecked: string;
   failureReason: string;
   securityNote: string;
+  links: string;
+  openStore: string;
+  robots: string;
+  sitemap: string;
+  dnsRecommendation: string;
+  apexWwwWarning: string;
+  counterpartMissing: string;
+  smokeTitle: string;
+  smokeDescription: string;
+  smokeCommand: string;
+  confirmRemoveVercel: string;
+  confirmDelete: string;
   failedToLoad: string;
   failedToSave: string;
   saved: string;
+  statusLabels: Record<DomainStatus, string>;
 };
 
 const copyByLocale = {
@@ -151,18 +185,44 @@ const copyByLocale = {
     automationHint: "اتوماسیون Vercel می‌تواند دامنه را به پروژه اضافه کند، وضعیت را بررسی کند و رکوردهای DNS پیشنهادی را نمایش دهد.",
     automationDisabled: "اتوماسیون Vercel هنوز پیکربندی نشده است. VERCEL_ACCESS_TOKEN و VERCEL_PROJECT_ID را تنظیم کنید.",
     automationDryRun: "حالت Dry-run فعال است؛ عملیات روی Vercel واقعی انجام نمی‌شود.",
+    automationConfigured: "اتوماسیون Vercel آماده است.",
+    automationMissing: "پیکربندی ناقص",
     provisionOnVercel: "هم‌زمان در Vercel هم اضافه شود",
     addToVercel: "افزودن به Vercel",
     checkVercel: "بررسی Vercel",
     removeFromVercel: "حذف از Vercel",
     dnsRecords: "رکوردهای DNS",
+    copied: "کپی شد.",
+    copy: "کپی",
+    copyRecord: "کپی رکورد",
     copiedDns: "رکوردهای DNS در خروجی عملیات برگشت داده شد.",
     lastChecked: "آخرین بررسی",
+    neverChecked: "هنوز بررسی نشده",
     failureReason: "خطا",
     securityNote: "این ابزار عمداً سازمانی نیست؛ فقط SUPER_ADMIN می‌تواند دامنه را به فروشگاه متصل یا از آن جدا کند.",
+    links: "لینک‌های سریع",
+    openStore: "باز کردن فروشگاه",
+    robots: "robots.txt",
+    sitemap: "sitemap.xml",
+    dnsRecommendation: "پیشنهاد: برای دامنه‌های اصلی، هم نسخه بدون www و هم نسخه www را به همین فروشگاه وصل کنید؛ یکی را Primary بگذارید و دیگری را هم در Vercel فعال نگه دارید.",
+    apexWwwWarning: "نسخه مکمل apex/www برای این فروشگاه پیدا نشد.",
+    counterpartMissing: "دامنه مکمل وصل نشده است",
+    smokeTitle: "تست سریع دامنه انتخابی",
+    smokeDescription: "بعد از فعال‌سازی دامنه، این دستورها را از PowerShell اجرا کنید تا مسیرهای حیاتی بررسی شوند.",
+    smokeCommand: "کپی دستور تست",
+    confirmRemoveVercel: "این دامنه از پروژه Vercel حذف شود؟ نگاشت داخلی بازارباز حذف نمی‌شود.",
+    confirmDelete: "این نگاشت دامنه از بازارباز حذف شود؟",
     failedToLoad: "بارگذاری دامنه‌ها ناموفق بود.",
     failedToSave: "ذخیره تغییرات ناموفق بود.",
     saved: "تغییرات ذخیره شد.",
+    statusLabels: {
+      PENDING: "در انتظار",
+      DNS_REQUIRED: "نیازمند DNS",
+      VERIFYING: "در حال بررسی",
+      ACTIVE: "فعال",
+      FAILED: "ناموفق",
+      DISABLED: "غیرفعال",
+    },
   },
   en: {
     title: "Shop domains",
@@ -193,18 +253,44 @@ const copyByLocale = {
     automationHint: "Vercel automation can add the domain to the project, check verification status, and return suggested DNS records.",
     automationDisabled: "Vercel automation is not configured yet. Set VERCEL_ACCESS_TOKEN and VERCEL_PROJECT_ID.",
     automationDryRun: "Dry-run mode is active; no real Vercel mutation will be sent.",
+    automationConfigured: "Vercel automation is ready.",
+    automationMissing: "Configuration incomplete",
     provisionOnVercel: "Also provision on Vercel",
     addToVercel: "Add to Vercel",
     checkVercel: "Check Vercel",
     removeFromVercel: "Remove from Vercel",
     dnsRecords: "DNS records",
+    copied: "Copied.",
+    copy: "Copy",
+    copyRecord: "Copy record",
     copiedDns: "DNS records were returned by the Vercel operation.",
     lastChecked: "Last checked",
+    neverChecked: "Not checked yet",
     failureReason: "Failure",
     securityNote: "This is intentionally not an organization-admin tool; only SUPER_ADMIN can connect or disconnect shop domains.",
+    links: "Quick links",
+    openStore: "Open store",
+    robots: "robots.txt",
+    sitemap: "sitemap.xml",
+    dnsRecommendation: "Recommendation: for apex domains, connect both apex and www to the same shop. Set one as Primary and keep the other active in Vercel too.",
+    apexWwwWarning: "The matching apex/www domain was not found for this shop.",
+    counterpartMissing: "Matching domain is missing",
+    smokeTitle: "Selected domain smoke test",
+    smokeDescription: "After the domain becomes active, run these PowerShell commands to verify the critical paths.",
+    smokeCommand: "Copy smoke command",
+    confirmRemoveVercel: "Remove this domain from the Vercel project? The local Bazar Baz mapping will remain.",
+    confirmDelete: "Delete this domain mapping from Bazar Baz?",
     failedToLoad: "Failed to load domains.",
     failedToSave: "Failed to save changes.",
     saved: "Changes saved.",
+    statusLabels: {
+      PENDING: "Pending",
+      DNS_REQUIRED: "DNS required",
+      VERIFYING: "Verifying",
+      ACTIVE: "Active",
+      FAILED: "Failed",
+      DISABLED: "Disabled",
+    },
   },
   ar: {
     title: "نطاقات المتاجر",
@@ -235,18 +321,44 @@ const copyByLocale = {
     automationHint: "يمكن لأتمتة Vercel إضافة النطاق للمشروع، فحص التحقق، وإرجاع سجلات DNS المقترحة.",
     automationDisabled: "أتمتة Vercel غير مهيأة بعد. اضبط VERCEL_ACCESS_TOKEN و VERCEL_PROJECT_ID.",
     automationDryRun: "وضع Dry-run مفعّل؛ لن يتم إرسال تغيير حقيقي إلى Vercel.",
+    automationConfigured: "أتمتة Vercel جاهزة.",
+    automationMissing: "الإعداد غير مكتمل",
     provisionOnVercel: "أضفه أيضاً في Vercel",
     addToVercel: "إضافة إلى Vercel",
     checkVercel: "فحص Vercel",
     removeFromVercel: "حذف من Vercel",
     dnsRecords: "سجلات DNS",
+    copied: "تم النسخ.",
+    copy: "نسخ",
+    copyRecord: "نسخ السجل",
     copiedDns: "تم إرجاع سجلات DNS من عملية Vercel.",
     lastChecked: "آخر فحص",
+    neverChecked: "لم يتم الفحص بعد",
     failureReason: "الخطأ",
     securityNote: "هذه الأداة ليست لإدارة المؤسسة؛ فقط SUPER_ADMIN يمكنه ربط أو فصل نطاقات المتاجر.",
+    links: "روابط سريعة",
+    openStore: "فتح المتجر",
+    robots: "robots.txt",
+    sitemap: "sitemap.xml",
+    dnsRecommendation: "التوصية: للنطاقات الرئيسية، اربط النسختين بدون www ومع www بنفس المتجر. اجعل واحدة Primary وأبق الأخرى نشطة في Vercel أيضاً.",
+    apexWwwWarning: "لم يتم العثور على نطاق apex/www المكمل لهذا المتجر.",
+    counterpartMissing: "النطاق المكمل غير مربوط",
+    smokeTitle: "اختبار سريع للنطاق المحدد",
+    smokeDescription: "بعد تفعيل النطاق، نفّذ أوامر PowerShell هذه للتحقق من المسارات المهمة.",
+    smokeCommand: "نسخ أمر الاختبار",
+    confirmRemoveVercel: "هل تريد حذف هذا النطاق من مشروع Vercel؟ سيبقى الربط المحلي في بازارباز.",
+    confirmDelete: "هل تريد حذف ربط هذا النطاق من بازارباز؟",
     failedToLoad: "فشل تحميل النطاقات.",
     failedToSave: "فشل حفظ التغييرات.",
     saved: "تم حفظ التغييرات.",
+    statusLabels: {
+      PENDING: "بانتظار",
+      DNS_REQUIRED: "يتطلب DNS",
+      VERIFYING: "جار التحقق",
+      ACTIVE: "نشط",
+      FAILED: "فشل",
+      DISABLED: "معطل",
+    },
   },
 } satisfies Record<SupportedLocale, Copy>;
 
@@ -272,6 +384,38 @@ async function readJson<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
+function getDomainUrl(domain: string, path = "") {
+  return `https://${domain}${path}`;
+}
+
+function getMatchingApexWwwDomain(domain: string) {
+  if (domain.startsWith("www.")) return domain.slice(4);
+  if (domain.split(".").length === 2) return `www.${domain}`;
+  return null;
+}
+
+function formatDate(value: string | null, locale: SupportedLocale, fallback: string) {
+  if (!value) return fallback;
+  return new Date(value).toLocaleString(locale === "fa" ? "fa-IR" : locale);
+}
+
+function buildRecordText(record: VercelDnsRecord) {
+  return `${record.type}\t${record.name}\t${record.value}`;
+}
+
+function buildSmokeCommand(domain: ShopDomain, platformUrl: string) {
+  return [
+    `$env:CUSTOM_DOMAIN_SMOKE_BASE_URL="https://${domain.normalizedDomain}"`,
+    `$env:CUSTOM_DOMAIN_SMOKE_PLATFORM_URL="${platformUrl}"`,
+    `$env:CUSTOM_DOMAIN_SMOKE_SHOP_SLUG="${domain.organization.slug}"`,
+    "pnpm run e2e:custom-domain-smoke",
+  ].join("\n");
+}
+
+function quickLinkClass() {
+  return "inline-flex h-7 items-center gap-1 rounded-lg border px-2 text-xs font-medium text-foreground transition hover:bg-muted";
+}
+
 export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
   const copy = getCopy(locale);
   const isRtl = locale === "fa" || locale === "ar";
@@ -292,6 +436,17 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
   const [dnsRecords, setDnsRecords] = useState<VercelDnsRecord[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const platformUrl = typeof window === "undefined" ? "https://www.bazar-baz.ir" : window.location.origin;
+
+  const copyText = async (text: string, successMessage = copy.copied) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setMessage(successMessage);
+    } catch {
+      setError(copy.failedToSave);
+    }
+  };
 
   const loadDomains = async () => {
     setLoading(true);
@@ -318,6 +473,7 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
   }, []);
 
   const shopById = useMemo(() => new Map(shops.map((shop) => [shop.id, shop])), [shops]);
+  const domainKeySet = useMemo(() => new Set(domains.map((domain) => `${domain.organizationId}:${domain.normalizedDomain}`)), [domains]);
 
   const filteredDomains = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -334,6 +490,15 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
       );
     });
   }, [domains, query, selectedShopId, selectedStatus]);
+
+  const selectedSmokeDomain = useMemo(() => {
+    return (
+      filteredDomains.find((domain) => domain.isPrimary && domain.status === "ACTIVE") ||
+      filteredDomains.find((domain) => domain.status === "ACTIVE") ||
+      filteredDomains[0] ||
+      null
+    );
+  }, [filteredDomains]);
 
   const handleCreate = async () => {
     if (!newDomain.trim() || !newShopId) return;
@@ -390,6 +555,8 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
   };
 
   const runVercelAction = async (domainId: string, action: "add" | "check" | "remove") => {
+    if (action === "remove" && !window.confirm(copy.confirmRemoveVercel)) return;
+
     setActionBusyId(`${domainId}:${action}`);
     setError(null);
     setMessage(null);
@@ -413,6 +580,8 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
   };
 
   const deleteDomain = async (id: string) => {
+    if (!window.confirm(copy.confirmDelete)) return;
+
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -434,6 +603,8 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
     }
   };
 
+  const automationTone = vercelAutomation?.configured ? "border-primary/20 bg-primary/10 text-primary" : "border-destructive/20 bg-destructive/10 text-destructive";
+
   return (
     <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -453,12 +624,23 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
         </Button>
       </div>
 
-      <div className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground">
-        <p>{copy.securityNote}</p>
-        <p className="mt-2">{copy.dnsHint}</p>
-        <p className="mt-2">{copy.automationHint}</p>
-        {vercelAutomation && !vercelAutomation.configured && <p className="mt-2 font-medium text-destructive">{copy.automationDisabled}</p>}
-        {vercelAutomation?.dryRun && <p className="mt-2 font-medium text-amber-600">{copy.automationDryRun}</p>}
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,340px)]">
+        <div className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground">
+          <p>{copy.securityNote}</p>
+          <p className="mt-2">{copy.dnsHint}</p>
+          <p className="mt-2">{copy.automationHint}</p>
+          <p className="mt-2">{copy.dnsRecommendation}</p>
+          {vercelAutomation?.dryRun && <p className="mt-2 font-medium text-amber-600">{copy.automationDryRun}</p>}
+        </div>
+        <div className={cn("rounded-xl border p-4 text-sm", automationTone)}>
+          <div className="flex items-center gap-2 font-medium">
+            {vercelAutomation?.configured ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : <XCircle className="h-4 w-4" aria-hidden="true" />}
+            {vercelAutomation?.configured ? copy.automationConfigured : copy.automationMissing}
+          </div>
+          <p className="mt-2 text-xs opacity-90">
+            {vercelAutomation?.configured ? copy.automationHint : copy.automationDisabled}
+          </p>
+        </div>
       </div>
 
       {(error || message) && (
@@ -475,17 +657,22 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
           </CardHeader>
           <CardContent>
             <div className="overflow-hidden rounded-xl border">
-              <div className="grid grid-cols-[90px_minmax(120px,1fr)_minmax(160px,1.4fr)] gap-3 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground">
+              <div className="grid grid-cols-[80px_minmax(100px,1fr)_minmax(160px,1.4fr)_80px] gap-3 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground">
                 <span>Type</span>
                 <span>Name</span>
                 <span>Value</span>
+                <span>{copy.copy}</span>
               </div>
               <div className="divide-y">
                 {dnsRecords.map((record, index) => (
-                  <div key={`${record.type}-${record.name}-${index}`} className="grid grid-cols-[90px_minmax(120px,1fr)_minmax(160px,1.4fr)] gap-3 px-4 py-3 text-sm">
+                  <div key={`${record.type}-${record.name}-${index}`} className="grid grid-cols-[80px_minmax(100px,1fr)_minmax(160px,1.4fr)_80px] gap-3 px-4 py-3 text-sm">
                     <Badge variant="outline">{record.type}</Badge>
                     <span className="truncate" dir="ltr">{record.name}</span>
                     <span className="truncate font-mono text-xs" dir="ltr">{record.value}</span>
+                    <Button type="button" variant="outline" size="xs" onClick={() => void copyText(buildRecordText(record), copy.copied)}>
+                      <Clipboard className="h-3.5 w-3.5" aria-hidden="true" />
+                      {copy.copy}
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -529,7 +716,7 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
                   className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
                   {domainStatuses.map((status) => (
-                    <option key={status} value={status}>{status}</option>
+                    <option key={status} value={status}>{copy.statusLabels[status]}</option>
                   ))}
                 </select>
               </label>
@@ -584,6 +771,27 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
         </Card>
       </div>
 
+      {selectedSmokeDomain && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Terminal className="h-4 w-4" aria-hidden="true" />
+              {copy.smokeTitle}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">{copy.smokeDescription}</p>
+            <div className="mt-3 rounded-xl border bg-muted/30 p-3" dir="ltr">
+              <pre className="whitespace-pre-wrap text-xs"><code>{buildSmokeCommand(selectedSmokeDomain, platformUrl)}</code></pre>
+            </div>
+            <Button className="mt-3" type="button" variant="outline" size="sm" onClick={() => void copyText(buildSmokeCommand(selectedSmokeDomain, platformUrl), copy.copied)}>
+              <CopyIcon className="h-4 w-4" aria-hidden="true" />
+              {copy.smokeCommand}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>{copy.domains}</CardTitle>
@@ -616,17 +824,17 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
             >
               <option value="ALL">{copy.allStatuses}</option>
               {domainStatuses.map((status) => (
-                <option key={status} value={status}>{status}</option>
+                <option key={status} value={status}>{copy.statusLabels[status]}</option>
               ))}
             </select>
           </div>
 
           <div className="mt-4 overflow-hidden rounded-xl border">
-            <div className="hidden grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_150px_130px_220px] gap-3 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground lg:grid">
+            <div className="hidden grid-cols-[minmax(220px,1.1fr)_minmax(180px,1fr)_170px_170px_260px] gap-3 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground lg:grid">
               <span>{copy.domain}</span>
               <span>{copy.shop}</span>
               <span>{copy.status}</span>
-              <span>{copy.primary}</span>
+              <span>{copy.links}</span>
               <span>{copy.save}</span>
             </div>
 
@@ -641,14 +849,29 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
               <div className="divide-y">
                 {filteredDomains.map((domain) => {
                   const shop = shopById.get(domain.organizationId);
+                  const matchingDomain = getMatchingApexWwwDomain(domain.normalizedDomain);
+                  const counterpartMissing = Boolean(matchingDomain && !domainKeySet.has(`${domain.organizationId}:${matchingDomain}`));
                   return (
-                    <div key={domain.id} className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(180px,1.2fr)_minmax(180px,1fr)_150px_130px_300px] lg:items-center">
+                    <div key={domain.id} className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(220px,1.1fr)_minmax(180px,1fr)_170px_170px_300px] lg:items-start">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <Globe2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                          <p className="truncate font-medium" dir="ltr">{domain.normalizedDomain}</p>
+                          <a className="truncate font-medium underline-offset-4 hover:underline" href={getDomainUrl(domain.normalizedDomain)} target="_blank" rel="noreferrer" dir="ltr">
+                            {domain.normalizedDomain}
+                          </a>
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <Badge variant={domain.isPrimary ? "default" : "outline"}>{domain.isPrimary ? copy.primary : "Secondary"}</Badge>
+                          {shop && !shop.isActive && <Badge variant="destructive">{copy.inactive}</Badge>}
+                          {domain.vercelProjectDomainId && <Badge variant="secondary">Vercel</Badge>}
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground" dir="ltr">/{domain.organization.slug}</p>
+                        {counterpartMissing && (
+                          <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300">
+                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                            <span>{copy.apexWwwWarning} <span dir="ltr">{matchingDomain}</span></span>
+                          </div>
+                        )}
                       </div>
 
                       <select
@@ -663,28 +886,36 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
                         ))}
                       </select>
 
-                      <select
-                        value={domain.status}
-                        onChange={(event) => void patchDomain({ id: domain.id, status: event.target.value as DomainStatus })}
-                        disabled={saving}
-                        className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                        aria-label={copy.status}
-                      >
-                        {domainStatuses.map((status) => (
-                          <option key={status} value={status}>{status}</option>
-                        ))}
-                      </select>
-
                       <div>
-                        <Badge variant={domain.isPrimary ? "default" : "outline"}>
-                          {domain.isPrimary ? copy.primary : "—"}
-                        </Badge>
-                        {shop && !shop.isActive && (
-                          <Badge variant="destructive" className="ms-2">{copy.inactive}</Badge>
-                        )}
-                        <Badge variant={statusBadgeVariant(domain.status)} className="ms-2 lg:hidden">{domain.status}</Badge>
-                        {domain.lastCheckedAt && <p className="mt-1 text-xs text-muted-foreground">{copy.lastChecked}: {new Date(domain.lastCheckedAt).toLocaleDateString(locale)}</p>}
+                        <Badge variant={statusBadgeVariant(domain.status)}>{copy.statusLabels[domain.status]}</Badge>
+                        <select
+                          value={domain.status}
+                          onChange={(event) => void patchDomain({ id: domain.id, status: event.target.value as DomainStatus })}
+                          disabled={saving}
+                          className="mt-2 h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                          aria-label={copy.status}
+                        >
+                          {domainStatuses.map((status) => (
+                            <option key={status} value={status}>{copy.statusLabels[status]}</option>
+                          ))}
+                        </select>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {copy.lastChecked}: {formatDate(domain.lastCheckedAt, locale, copy.neverChecked)}
+                        </p>
                         {domain.failureReason && <p className="mt-1 text-xs text-destructive">{copy.failureReason}: {domain.failureReason}</p>}
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        <a className={quickLinkClass()} href={getDomainUrl(domain.normalizedDomain)} target="_blank" rel="noreferrer">
+                          <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                          {copy.openStore}
+                        </a>
+                        <a className={quickLinkClass()} href={getDomainUrl(domain.normalizedDomain, "/robots.txt")} target="_blank" rel="noreferrer">
+                          {copy.robots}
+                        </a>
+                        <a className={quickLinkClass()} href={getDomainUrl(domain.normalizedDomain, "/sitemap.xml")} target="_blank" rel="noreferrer">
+                          {copy.sitemap}
+                        </a>
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2">
@@ -727,13 +958,7 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
                           {actionBusyId === `${domain.id}:remove` ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
                           {copy.removeFromVercel}
                         </Button>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => void deleteDomain(domain.id)}
-                          disabled={saving}
-                        >
+                        <Button type="button" variant="destructive" size="sm" onClick={() => void deleteDomain(domain.id)} disabled={saving}>
                           <Trash2 className="h-4 w-4" aria-hidden="true" />
                           {copy.remove}
                         </Button>

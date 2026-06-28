@@ -20,7 +20,7 @@ Safety notes:
 
 - Export jobs are organization-scoped through dashboard auth and membership checks.
 - P78 stores generated CSV/JSON payload previews in the database as a foundation; future large exports should stream to Blob storage.
-- P78 does not expose public export links.
+- P78 does not expose public export links. P81 adds protected dashboard downloads for completed jobs.
 
 Validation:
 

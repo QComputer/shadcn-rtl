@@ -156,6 +156,12 @@ function formatNumber(value: number, locale: string) {
   return locale === "fa" || locale === "ar" ? toPersianDigits(value.toString()) : value.toString()
 }
 
+function downloadLabel(locale: string) {
+  if (locale === "fa") return "دانلود فایل"
+  if (locale === "ar") return "تنزيل الملف"
+  return "Download file"
+}
+
 function statusVariant(status: ExportJobStatus): "default" | "secondary" | "destructive" | "outline" {
   if (status === "FAILED") return "destructive"
   if (status === "COMPLETED") return "default"
@@ -274,6 +280,10 @@ export default function ExportHubPage({ params }: { params: Promise<{ locale: st
     setSelectedJob(data.job as ExportJob)
   }
 
+  function downloadJob(jobId: string) {
+    window.location.assign(`/api/dashboard/exports/jobs/${encodeURIComponent(jobId)}/download`)
+  }
+
   const previewRows = selectedJob?.payload?.rows?.slice(0, 5) ?? []
 
   return (
@@ -386,10 +396,22 @@ export default function ExportHubPage({ params }: { params: Promise<{ locale: st
                           <span>{new Date(job.createdAt).toLocaleDateString(locale === "fa" ? "fa-IR" : locale)}</span>
                         </div>
                       </div>
-                      <Button type="button" variant="outline" size="sm" onClick={() => loadJob(job.id)}>
-                        <Eye className="size-4" />
-                        {copy.preview}
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={() => loadJob(job.id)}>
+                          <Eye className="size-4" />
+                          {copy.preview}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => downloadJob(job.id)}
+                          disabled={job.status !== "COMPLETED"}
+                        >
+                          <Download className="size-4" />
+                          {downloadLabel(locale)}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -411,6 +433,16 @@ export default function ExportHubPage({ params }: { params: Promise<{ locale: st
               <Badge variant={statusVariant(selectedJob.status)}>{copy.statuses[selectedJob.status]}</Badge>
               <span>{copy.file}: {selectedJob.fileName || selectedJob.id}</span>
               <span>{copy.rows}: {formatNumber(selectedJob.rowCount, locale)}</span>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => downloadJob(selectedJob.id)}
+                disabled={selectedJob.status !== "COMPLETED"}
+              >
+                <Download className="size-4" />
+                {downloadLabel(locale)}
+              </Button>
             </div>
             {selectedJob.format === "CSV" && selectedJob.payload?.csv ? (
               <pre className="max-h-[420px] overflow-auto rounded-md border bg-muted/40 p-3 text-xs" dir="ltr">

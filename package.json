@@ -124,6 +124,7 @@
     "quality:external-source-mapping": "node scripts/quality/validate-external-source-mapping.mjs",
     "quality:import-hub-audit-limits": "node scripts/quality/validate-import-hub-audit-limits.mjs",
     "quality:export-hub-foundation": "node scripts/quality/validate-export-hub-foundation.mjs",
+    "quality:export-downloads": "node scripts/quality/validate-export-downloads.mjs",
     "quality:import-approval-publishing": "node scripts/quality/validate-import-approval-publishing.mjs",
     "quality:ai-media": "node scripts/quality/validate-ai-media.mjs",
     "quality:ai-media-client": "node scripts/quality/validate-ai-media.mjs",

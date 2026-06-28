@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-28._
 
-This roadmap is ordered for risk reduction. Phases 18-80 are historical/completed hardening and growth work. The integrated Import Hub and Export Hub roadmap is implemented through Phase 80.
+This roadmap is ordered for risk reduction. Phases 18-81 are historical/completed hardening and growth work. The integrated Import Hub and Export Hub roadmap is implemented through Phase 81.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P80 - AI Media Suggestions Hardening**.
+- Completed through **P81 - Export Downloads**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -17,10 +17,10 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-Post-P80 deployed verification and export/import polish
+Post-P81 deployed import/export verification and storage polish
 ```
 
-Next work should verify deployed import/export flows with real organization data, then add export download streaming/blob storage for large payloads.
+Next work should verify deployed import/export flows with real organization data, then move generated export artifacts to Blob storage if payload sizes exceed the current stored snapshot model.
 
 Immediate validation target:
 
@@ -28,6 +28,7 @@ Immediate validation target:
 pnpm run quality:export-hub-foundation
 pnpm run quality:import-approval-publishing
 pnpm run quality:ai-media
+pnpm run quality:export-downloads
 pnpm run quality:local
 pnpm prisma generate
 pnpm run typecheck
@@ -51,6 +52,7 @@ Completed integrated phases:
 | P78 | Export Hub foundation. |
 | P79 | Import approval publishing. |
 | P80 | AI media suggestions hardening. |
+| P81 | Protected export downloads. |
 
 Safety constraints for all Import Hub phases:
 

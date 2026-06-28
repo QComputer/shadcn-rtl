@@ -11,6 +11,12 @@ type ExportPayload = {
   csv?: string
 }
 
+type ExportDownload = {
+  content: string
+  fileName: string
+  mimeType: string
+}
+
 const exportJobInclude = {
   organization: {
     select: { id: true, name: true, slug: true, type: true },
@@ -20,6 +26,25 @@ const exportJobInclude = {
   },
 } satisfies Prisma.ExportJobInclude
 
+const exportJobSummarySelect = {
+  id: true,
+  organizationId: true,
+  type: true,
+  format: true,
+  status: true,
+  fileName: true,
+  mimeType: true,
+  rowCount: true,
+  errorMessage: true,
+  requestedByUserId: true,
+  completedAt: true,
+  canceledAt: true,
+  createdAt: true,
+  updatedAt: true,
+  organization: exportJobInclude.organization,
+  requestedBy: exportJobInclude.requestedBy,
+} satisfies Prisma.ExportJobSelect
+
 function serializeValue(value: unknown): unknown {
   if (value == null) return null
   if (value instanceof Date) return value.toISOString()
@@ -27,6 +52,10 @@ function serializeValue(value: unknown): unknown {
     return value.toString()
   }
   return value
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
 function toRow(input: Record<string, unknown>) {
@@ -50,6 +79,21 @@ function filenameFor(type: ExportDataType, format: "CSV" | "JSON", organizationS
   return `${organizationSlug}-${type.toLowerCase()}-export.${extension}`
 }
 
+function normalizeStoredPayload(payload: Prisma.JsonValue | null | undefined): ExportPayload {
+  if (!isRecord(payload)) {
+    return { columns: [], rows: [], generatedAt: new Date().toISOString() }
+  }
+
+  const rawColumns: unknown[] = Array.isArray(payload.columns) ? payload.columns : []
+  const rawRows: unknown[] = Array.isArray(payload.rows) ? payload.rows : []
+  const columns = rawColumns.filter((column): column is string => typeof column === "string")
+  const rows = rawRows.filter(isRecord)
+  const generatedAt = typeof payload.generatedAt === "string" ? payload.generatedAt : new Date().toISOString()
+  const csv = typeof payload.csv === "string" ? payload.csv : undefined
+
+  return { columns, rows, generatedAt, csv }
+}
+
 export class ExportHubService {
   async listJobs(options: ExportJobListOptions = {}) {
     return prisma.exportJob.findMany({
@@ -59,7 +103,7 @@ export class ExportHubService {
       },
       orderBy: { createdAt: "desc" },
       take: Math.min(Math.max(options.take ?? 40, 1), 100),
-      include: exportJobInclude,
+      select: exportJobSummarySelect,
     })
   }
 
@@ -74,6 +118,28 @@ export class ExportHubService {
 
     if (!job) throw new ApiError(404, "Export job not found")
     return job
+  }
+
+  async getJobDownload(jobId: string, organizationId: string): Promise<ExportDownload> {
+    const job = await this.getJob(jobId, organizationId)
+    if (job.status !== "COMPLETED") {
+      throw new ApiError(409, "Export job is not ready for download")
+    }
+
+    const payload = normalizeStoredPayload(job.payload)
+    const content = job.format === "CSV"
+      ? payload.csv ?? rowsToCsv(payload.columns, payload.rows)
+      : JSON.stringify({
+          columns: payload.columns,
+          rows: payload.rows,
+          generatedAt: payload.generatedAt,
+        }, null, 2)
+
+    return {
+      content,
+      fileName: job.fileName ?? filenameFor(job.type, job.format, job.organization.slug),
+      mimeType: job.mimeType ?? (job.format === "CSV" ? "text/csv" : "application/json"),
+    }
   }
 
   async getJobOrganizationId(jobId: string) {

@@ -15,7 +15,8 @@ P80 stabilizes the AI media suggestion work for product images. The feature rema
 - Restricted image selection to completed jobs owned by the same organization/product.
 - Updated selected product images through the service layer and revalidated public shop/product/home cache.
 - Added a product edit dialog for Persian-first AI image suggestion selection.
-- Added source-level and typecheck-backed `quality:ai-media` validation plus unauthenticated deployed smoke coverage.
+- Added a safe new-product placeholder button so sellers discover the AI action after the product is saved.
+- Added source-level and typecheck-backed `quality:ai-media`, `quality:ai-media-client`, and `quality:ai-media-mock` validation aliases plus deployed smoke coverage.
 
 ## Guardrails
 
@@ -28,6 +29,11 @@ P80 stabilizes the AI media suggestion work for product images. The feature rema
 
 ```powershell
 pnpm run quality:ai-media
+pnpm run quality:ai-media-client
+pnpm run quality:ai-media-mock
+$env:DEPLOYED_URL="https://www.bazar-baz.ir"
+$env:AI_MEDIA_SERVICE_URL="https://bazar-baz-ai-media-service.onrender.com"
+pnpm run quality:ai-media-deployed-smoke
 pnpm run quality:local
 pnpm run typecheck
 pnpm run build

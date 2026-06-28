@@ -23,6 +23,7 @@ const client = read("lib/services/ai-media-service-client.ts")
 const service = read("lib/services/ai-media.service.ts")
 const validators = read("lib/validators/index.ts")
 const productPage = read("app/[locale]/dashboard/products/[id]/page.tsx")
+const newProductPage = read("app/[locale]/dashboard/products/new/page.tsx")
 const createRoute = read("app/api/dashboard/products/[productId]/ai-image-suggestions/route.ts")
 const selectRoute = read("app/api/dashboard/products/[productId]/ai-image-suggestions/select/route.ts")
 const pollRoute = read("app/api/dashboard/ai-image-suggestions/[jobId]/route.ts")
@@ -51,7 +52,8 @@ add("status route exposes boolean feature flag only", /enabled/.test(statusRoute
 add("dashboard UI gates AI button by status endpoint", /aiFeatureEnabled/.test(productPage) && /\/api\/dashboard\/ai-media\/status/.test(productPage))
 add("dashboard UI sends job ID when selecting image", /job_id:\s*aiJobId/.test(productPage) && /aiSelectedIndex/.test(productPage))
 add("deployed smoke blocks unauthenticated protected routes", /Unauthenticated AI job creation is blocked/.test(deployedSmoke) && /Unauthenticated AI image select is blocked/.test(deployedSmoke))
-add("package exposes AI media validators", /"quality:ai-media":\s*"node scripts\/quality\/validate-ai-media\.mjs"/.test(packageJson) && /"smoke:deployed:ai-media"/.test(packageJson))
+add("new product UI safely acknowledges AI media after save", /aiFeatureEnabled/.test(newProductPage) && /پس از ذخیره محصول/.test(newProductPage) && /پیشنهاد تصویر حرفه‌ای با AI/.test(newProductPage))
+add("package exposes AI media validators", /"quality:ai-media":\s*"node scripts\/quality\/validate-ai-media\.mjs"/.test(packageJson) && /"quality:ai-media-client"/.test(packageJson) && /"quality:ai-media-mock"/.test(packageJson) && /"quality:ai-media-deployed-smoke"/.test(packageJson) && /"smoke:deployed:ai-media"/.test(packageJson))
 add("AI media docs exist", exists("docs/AI_MEDIA_SERVICE.md"))
 
 const pnpmEntrypoint = process.env.npm_execpath

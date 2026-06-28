@@ -127,6 +127,8 @@ Request body:
 Run the quality gate:
 ```powershell
 pnpm run quality:ai-media
+pnpm run quality:ai-media-client
+pnpm run quality:ai-media-mock
 ```
 
 Run the deployed smoke test:
@@ -134,8 +136,10 @@ Run the deployed smoke test:
 $env:DEPLOYED_URL="https://www.bazar-baz.ir"
 $env:AI_MEDIA_SERVICE_URL="https://bazar-baz-ai-media-service.onrender.com"
 $env:AI_MEDIA_SERVICE_INTERNAL_KEY="<vercel-secret>"
-pnpm run smoke:deployed:ai-media
+pnpm run quality:ai-media-deployed-smoke
 ```
+
+Without `AI_MEDIA_SERVICE_INTERNAL_KEY`, the deployed smoke still verifies Bazar Baz route protection plus Render `/health`, `/ready`, and unauthenticated rejection. With the key, it also creates and polls a MOCK job and verifies `/local-output/` URLs.
 
 ## Important Warnings
 

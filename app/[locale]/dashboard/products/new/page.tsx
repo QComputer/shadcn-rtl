@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowRight, Save, Loader2, Plus, ArrowLeft, ChevronLeftIcon, ChevronRightIcon, X } from "lucide-react"
+import { ArrowRight, Save, Loader2, Plus, ArrowLeft, ChevronLeftIcon, ChevronRightIcon, X, Sparkles } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -112,6 +112,7 @@ export default function NewProductPage({
   const [image, setImage] = useState<ImageRecord|null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isActive, setIsActive] = useState(true)
+  const [aiFeatureEnabled, setAiFeatureEnabled] = useState(false)
 
    const [images, setImages] = useState<ImageRecord[]>([]);
     const [isDragging, setIsDragging] = useState(false);
@@ -162,6 +163,13 @@ export default function NewProductPage({
       setDict(getDictionary(locale))
     })
   }, [locale])
+
+  useEffect(() => {
+    fetch("/api/dashboard/ai-media/status")
+      .then((res) => res.json())
+      .then((data) => setAiFeatureEnabled(Boolean(data.enabled)))
+      .catch(() => setAiFeatureEnabled(false))
+  }, [])
 
   // Fetch categories and staff members
   useEffect(() => {
@@ -398,6 +406,17 @@ export default function NewProductPage({
                 >
                   <X/>
                 </Button>
+                {aiFeatureEnabled && (
+                  <div className="mr-2 flex flex-col gap-1">
+                    <Button type="button" variant="secondary" disabled className="gap-2">
+                      <Sparkles className="h-4 w-4" />
+                      پیشنهاد تصویر حرفه‌ای با AI
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      پس از ذخیره محصول، پیشنهادهای AI در صفحه ویرایش فعال می‌شود.
+                    </p>
+                  </div>
+                )}
             
           </div>
           </div>

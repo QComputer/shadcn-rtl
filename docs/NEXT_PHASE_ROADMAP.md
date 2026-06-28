@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-28._
 
-This roadmap is ordered for risk reduction. Phases 18-73 are historical/completed hardening and growth work. The current integrated next track is the Import Hub roadmap, continuing at Phase 74.
+This roadmap is ordered for risk reduction. Phases 18-74 are historical/completed hardening and growth work. The current integrated next track is the Import Hub roadmap, continuing at Phase 75.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P73 - Snappfood URL Import MVP**.
+- Completed through **P74 - Snappmarket URL Import MVP**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -17,15 +17,15 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P74 - Snappmarket URL Import MVP
+P75 - Telegram Post Import
 ```
 
-P74 should mirror the cautious Snappfood approach for Snappmarket URLs with seller permission confirmation, fallback draft rows, and no hidden crawling.
+P75 should support manual Telegram post import for public seller-permitted URLs and pasted content without private/auth-gated scraping.
 
-Immediate P74 validation target:
+Immediate P75 validation target:
 
 ```powershell
-pnpm run quality:snappmarket-url-import
+pnpm run quality:telegram-post-import
 pnpm prisma generate
 pnpm run typecheck
 pnpm run build
@@ -35,7 +35,6 @@ Follow-on phases:
 
 | Phase | Focus |
 | --- | --- |
-| P74 | Snappmarket URL import MVP, cautious one-time import with fallback. |
 | P75 | Telegram post import, manual and permission-aware. |
 | P76 | External source mapping and re-import diff. |
 | P77 | Import Hub audit, limits, and plan readiness. |

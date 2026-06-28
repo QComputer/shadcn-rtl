@@ -4,7 +4,7 @@ Date: 2026-06-28
 
 ## Current validated baseline
 
-The current working baseline after P73 overlays is source-validator green.
+The current working baseline after P74 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -103,6 +103,7 @@ pnpm run db:migrate:neon:dry-run
 - AI/Text Product Extraction Foundation exists through `lib/import-hub/text-extraction-provider.ts`, `lib/import-hub/text-product-extractor.ts`, dry-run local rule-based parsing, confidence metadata on `ImportedProductDraft` rows, dashboard review display, and the `quality:text-product-extraction` validator. P71 does not call external AI providers or create live products.
 - Image/PDF Menu Import Foundation exists through `lib/import-hub/menu-ocr-fixtures.ts`, PDF/image file intake classification, dry-run OCR fixture rows saved as `ImportedProductDraft`, real OCR disabled by default, and the `quality:image-pdf-menu-import` validator. P72 does not call OCR, vision, AI, or network providers.
 - Snappfood URL Import MVP exists through `lib/import-hub/snappfood-adapter.ts`, `snappfood.ir` URL validation, disabled-by-default public fetching, fallback product drafts, source evidence, and the `quality:snappfood-url-import` validator. P73 does not crawl Snappfood or create live products.
+- Snappmarket URL Import MVP exists through `lib/import-hub/snappmarket-adapter.ts`, `snapp.market`/`snappmarket.ir` URL validation, disabled-by-default public fetching, fallback product drafts, source evidence, and the `quality:snappmarket-url-import` validator. P74 does not crawl Snappmarket or create live products.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -165,6 +166,7 @@ pnpm run db:migrate:neon:dry-run
 | P71 | AI/Text Product Extraction Foundation with local dry-run product parsing and confidence metadata. |
 | P72 | Image/PDF Menu Import Foundation with dry-run OCR fixtures and draft-only rows. |
 | P73 | Snappfood URL Import MVP with consent-gated URL validation and fallback draft rows. |
+| P74 | Snappmarket URL Import MVP with consent-gated URL validation and fallback draft rows. |
 
 ## Current route/API inventory
 
@@ -279,7 +281,7 @@ Deferred:
 - Custom-domain smoke tests are deployment/data dependent. Current reference configuration uses `CUSTOM_DOMAIN_SMOKE_BASE_URL=https://www.khalae.ir`, `CUSTOM_DOMAIN_SMOKE_PLATFORM_URL=https://www.bazar-baz.ir`, and `CUSTOM_DOMAIN_SMOKE_SHOP_SLUG=ahmad`.
 - Shop owners cannot self-serve custom-domain management yet; P60/P67 keep domain management SUPER_ADMIN-only.
 - Vercel domain automation must remain dry-run-safe by default and must never hardcode tokens or project/team secrets.
-- P68-P73 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, and cautious Snappfood URL fallback import are implemented. Future importer phases must remain seller-initiated, consent-based, draft-first, auditable, rate-limited, and review-before-publish.
+- P68-P74 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood fallback import, and cautious Snappmarket fallback import are implemented. Future importer phases must remain seller-initiated, consent-based, draft-first, auditable, rate-limited, and review-before-publish.
 
 ## Clean release rules
 
@@ -318,15 +320,15 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P74 - Snappmarket URL Import MVP
+P75 - Telegram Post Import
 ```
 
 Scope:
 
-1. Require seller ownership/permission confirmation for Snappmarket URLs.
-2. Mirror the Snappfood fallback-first approach with no hidden crawling.
-3. Fail gracefully to CSV/manual import when parsing is blocked or uncertain.
-4. Store draft rows and source evidence for review.
-5. Validate with a focused P74 quality gate, `pnpm prisma generate`, `pnpm run typecheck`, and `pnpm run build`.
+1. Accept public Telegram post URLs and pasted content.
+2. Avoid private/auth-gated scraping and hidden background crawling.
+3. Save imported content/product candidates as drafts for review.
+4. Preserve source URL and seller consent evidence.
+5. Validate with a focused P75 quality gate, `pnpm prisma generate`, `pnpm run typecheck`, and `pnpm run build`.
 
 See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap and safety rules.

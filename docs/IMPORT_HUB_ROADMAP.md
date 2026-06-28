@@ -125,6 +125,8 @@ Scope:
 
 ## Phase 74 - Snappmarket URL Import MVP
 
+Status: Implemented in P74.
+
 Goal: mirror the cautious Snappfood approach for Snappmarket seller/product URLs.
 
 Scope follows Phase 73 with Snappmarket-specific detection and fixtures.

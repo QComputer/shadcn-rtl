@@ -68,12 +68,70 @@ export class AiMediaServiceError extends Error {
   }
 }
 
+export type AiMediaServiceConfigStatus = {
+  enabled: boolean;
+  configured: boolean;
+  ready: boolean;
+  urlConfigured: boolean;
+  internalKeyConfigured: boolean;
+  timeoutMs: number;
+};
+
+export type AiMediaReadinessCheck = {
+  endpoint: "/health" | "/ready";
+  ok: boolean;
+  status: number | null;
+  code?: string;
+};
+
+export type AiMediaServiceReadiness = {
+  ok: boolean;
+  checked: boolean;
+  config: AiMediaServiceConfigStatus;
+  checks: AiMediaReadinessCheck[];
+};
+
+function hasValue(value: string | null | undefined) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isHttpUrl(value: string | null) {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function normalizeTimeoutMs(value: string | undefined) {
+  const timeoutMs = Number.parseInt(value || "60000", 10);
+  return Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 60000;
+}
+
 function getAiMediaConfig() {
   return {
     enabled: process.env.AI_MEDIA_SERVICE_ENABLED === "true",
     url: process.env.AI_MEDIA_SERVICE_URL?.replace(/\/$/, "") || null,
     internalKey: process.env.AI_MEDIA_SERVICE_INTERNAL_KEY || null,
-    timeoutMs: Number.parseInt(process.env.AI_MEDIA_SERVICE_TIMEOUT_MS || "60000", 10),
+    timeoutMs: normalizeTimeoutMs(process.env.AI_MEDIA_SERVICE_TIMEOUT_MS),
+  };
+}
+
+export function getAiMediaServiceConfigStatus(): AiMediaServiceConfigStatus {
+  const config = getAiMediaConfig();
+  const urlConfigured = isHttpUrl(config.url);
+  const internalKeyConfigured = hasValue(config.internalKey);
+  const configured = urlConfigured && internalKeyConfigured;
+
+  return {
+    enabled: config.enabled,
+    configured,
+    ready: config.enabled && configured,
+    urlConfigured,
+    internalKeyConfigured,
+    timeoutMs: config.timeoutMs,
   };
 }
 
@@ -94,7 +152,7 @@ function assertConfigured(): { enabled: true; url: string; internalKey: string; 
     enabled: true,
     url: config.url,
     internalKey: config.internalKey,
-    timeoutMs: Number.isFinite(config.timeoutMs) ? config.timeoutMs : 60000,
+    timeoutMs: config.timeoutMs,
   };
 }
 
@@ -108,9 +166,9 @@ async function aiMediaFetch(input: string, init: RequestInit = {}): Promise<Resp
     const response = await fetch(input, {
       ...init,
       headers: {
+        ...(init.headers || {}),
         "Content-Type": "application/json",
         "X-BazarBaz-AI-Key": config.internalKey,
-        ...(init.headers || {}),
       },
       signal: controller.signal,
     });
@@ -124,6 +182,58 @@ async function aiMediaFetch(input: string, init: RequestInit = {}): Promise<Resp
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+async function probeAiMediaEndpoint(endpoint: "/health" | "/ready", expectedText: string): Promise<AiMediaReadinessCheck> {
+  try {
+    const config = assertConfigured();
+    const response = await aiMediaFetch(`${config.url}${endpoint}`, { method: "GET" });
+    const text = await response.text().catch(() => "");
+    return {
+      endpoint,
+      ok: response.ok && text.trim().toLowerCase().includes(expectedText),
+      status: response.status,
+    };
+  } catch (error) {
+    if (error instanceof AiMediaServiceError) {
+      return {
+        endpoint,
+        ok: false,
+        status: error.status,
+        code: error.code || "AI_MEDIA_SERVICE_ERROR",
+      };
+    }
+    return {
+      endpoint,
+      ok: false,
+      status: null,
+      code: "UNKNOWN_ERROR",
+    };
+  }
+}
+
+export async function checkAiMediaServiceReadiness(): Promise<AiMediaServiceReadiness> {
+  const config = getAiMediaServiceConfigStatus();
+  if (!config.ready) {
+    return {
+      ok: false,
+      checked: false,
+      config,
+      checks: [],
+    };
+  }
+
+  const checks = await Promise.all([
+    probeAiMediaEndpoint("/health", "ok"),
+    probeAiMediaEndpoint("/ready", "ready"),
+  ]);
+
+  return {
+    ok: checks.every((check) => check.ok),
+    checked: true,
+    config,
+    checks,
+  };
 }
 
 export async function createAiMediaJob(request: AiMediaCreateJobRequest): Promise<AiMediaCreateJobResponse> {

@@ -4,7 +4,7 @@ Date: 2026-06-29
 
 ## Current validated baseline
 
-The current working baseline after P83 reconciliation is source-validator green after the P83 validation gate.
+The current working baseline after P84 AI media health-gate hardening is source-validator green after the P84 validation gate.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -111,6 +111,7 @@ pnpm run db:migrate:neon:dry-run
 - Import Approval Publishing exists through the approval-to-live `ImportHubService.reviewDrafts("APPROVED")` path, approved product draft publishing into live products/categories/default variants, approved content draft publishing into live fanpage posts, `IMPORTED` draft status, all-locale public path/home cache revalidation, localized dashboard approve-and-publish copy, audit logging, and the `quality:import-approval-publishing` validator.
 - AI Media Suggestions Hardening exists through `AiMediaJob`, server-only AI media client calls, authenticated product-scoped suggestion APIs, completed-job output validation before image selection, public product/home cache revalidation, Persian-first product edit UI, `docs/AI_MEDIA_SERVICE.md`, deployed unauthenticated smoke coverage, and the `quality:ai-media` validator. Bazar Baz calls only the deployed Render AI media service and does not call local workers directly.
 - AI selected-image durability exists through `lib/media-storage.ts` and `AiMediaService.selectImage()`: selected AI outputs are copied to Vercel Blob when `BLOB_READ_WRITE_TOKEN` is configured, with the remote Render URL used as a documented fallback. Real paid AI generation, usage quotas, and admin rollout controls are not implemented yet.
+- AI Media Health Gate exists through `getAiMediaServiceConfigStatus()`, `checkAiMediaServiceReadiness()`, authenticated `/api/dashboard/ai-media/status`, optional `?check=1` Render `/health` and `/ready` probes, secret-safe readiness responses, timeout normalization, and the `quality:ai-media-health-gate` validator.
 - Export Downloads exists through protected `GET /api/dashboard/exports/jobs/[jobId]/download`, completed-job checks, private no-store attachment responses, lightweight export job list responses, Persian-first dashboard download actions, and the `quality:export-downloads` validator.
 - Deployed Import/Export Smoke exists through `scripts/e2e/deployed-import-export-smoke.mjs`, validating deployed auth, organization resolution, draft-first manual text imports, rejection instead of publishing, JSON/CSV export job creation, and protected export downloads against a real deployment.
 - P83 Project State Reconciliation exists through `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md`, which marks older Phase-18 handoff guidance as historical and reconciles the post-P82 local AI media commits with the current roadmap.
@@ -186,6 +187,7 @@ pnpm run db:migrate:neon:dry-run
 | P81 | Export Downloads with protected CSV/JSON attachment responses for completed export jobs. |
 | P82 | Deployed Import/Export Smoke with real deployment auth, draft-only import verification, and export download checks. |
 | P83 | Project State Reconciliation and AI Media Readiness with current-doc alignment after post-P82 AI media commits. |
+| P84 | AI Media Health Gate Audit with secret-safe readiness and optional Render health probes. |
 
 ## Current route/API inventory
 
@@ -301,7 +303,7 @@ Deferred:
 - Custom-domain smoke tests are deployment/data dependent. Current reference configuration uses `CUSTOM_DOMAIN_SMOKE_BASE_URL=https://www.khalae.ir`, `CUSTOM_DOMAIN_SMOKE_PLATFORM_URL=https://www.bazar-baz.ir`, and `CUSTOM_DOMAIN_SMOKE_SHOP_SLUG=ahmad`.
 - Shop owners cannot self-serve custom-domain management yet; P60/P67 keep domain management SUPER_ADMIN-only.
 - Vercel domain automation must remain dry-run-safe by default and must never hardcode tokens or project/team secrets.
-- P68-P83 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation/downloads, review-gated import publishing, AI media suggestion hardening, deployed import/export smoke coverage, and project-state reconciliation are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
+- P68-P84 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation/downloads, review-gated import publishing, AI media suggestion hardening, deployed import/export smoke coverage, project-state reconciliation, and AI media health-gate hardening are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
 
 ## Clean release rules
 
@@ -340,14 +342,14 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P84 - Server-only AI media service client and health gate audit
+P85 - Product image suggestion MOCK flow acceptance/hardening
 ```
 
 Scope:
 
-1. Audit the existing server-only AI media client and health/status routes against the deployed Render service contract.
-2. Confirm disabled/missing config behavior never exposes secrets and returns controlled responses.
-3. Add or tighten quality checks for health/ready, timeout, auth-header, and secret-redaction behavior.
-4. Keep Bazar Baz unaware of any local worker; it should only know Render job status.
+1. Validate the existing product edit MOCK suggestion flow end to end at source level and, where credentials are available, deployed level.
+2. Confirm Persian-first UI copy, loading, failure, retry, selection, and disabled-new-product states are complete.
+3. Tighten tests around job creation, polling, output display, output selection, and protected route behavior.
+4. Keep real paid generation disabled until quotas, audit controls, and rollout gates are complete.
 
-See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification, and `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` for the current roadmap reconciliation.
+See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` for the roadmap reconciliation, and `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md` for the AI media health gate.

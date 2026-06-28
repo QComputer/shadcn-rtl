@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-29._
 
-This roadmap is ordered for risk reduction. Phases 18-83 are historical/completed hardening and growth work. The integrated Import Hub and Export Hub roadmap is implemented through Phase 83.
+This roadmap is ordered for risk reduction. Phases 18-84 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, and AI media hardening roadmap is implemented through Phase 84.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P83 - Project State Reconciliation and AI Media Readiness**.
+- Completed through **P84 - AI Media Health Gate Audit**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -19,10 +19,10 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P84 - Server-only AI media service client and health gate audit
+P85 - Product image suggestion MOCK flow acceptance/hardening
 ```
 
-Next work should audit and harden the existing server-only AI media client/health gate against the deployed Render service. Bazar Baz must continue to call only Render and must not become aware of local workers.
+Next work should validate and harden the existing product edit MOCK suggestion flow: creation, polling, displayed outputs, selection, disabled states, Persian copy, and failure/retry handling. Real paid generation remains disabled until later rollout gates.
 
 Immediate validation target:
 
@@ -30,6 +30,7 @@ Immediate validation target:
 pnpm run quality:export-hub-foundation
 pnpm run quality:import-approval-publishing
 pnpm run quality:ai-media
+pnpm run quality:ai-media-health-gate
 pnpm run quality:export-downloads
 pnpm run quality:deployed-import-export-smoke
 pnpm run quality:local
@@ -58,12 +59,12 @@ Completed integrated phases:
 | P81 | Protected export downloads. |
 | P82 | Deployed import/export smoke. |
 | P83 | Project state reconciliation and AI media readiness. |
+| P84 | AI media health gate audit. |
 
 Upcoming AI media phases should be treated as audits/hardening against the actual implementation already present in the repo:
 
 | Phase | Focus |
 | --- | --- |
-| P84 | Server-only AI media client and health gate audit. |
 | P85 | Product image suggestion MOCK flow acceptance/hardening. |
 | P86 | Durable selected image storage acceptance/hardening. |
 | P87 | Long-running/local-worker-compatible job state UX. |

@@ -98,6 +98,24 @@ Request body:
 
 - `job_id` is optional. If omitted, the most recent completed job for the product is used.
 
+### Dashboard status
+
+```http
+GET /api/dashboard/ai-media/status
+Authorization: required
+```
+
+The status response is secret-safe. It exposes readiness booleans such as `enabled`, `configured`, `ready`, `urlConfigured`, `internalKeyConfigured`, and `timeoutMs`, but never returns `AI_MEDIA_SERVICE_INTERNAL_KEY` or remote response bodies.
+
+Use an explicit remote check only when needed:
+
+```http
+GET /api/dashboard/ai-media/status?check=1
+Authorization: required
+```
+
+With `check=1`, Bazar Baz probes the deployed Render `/health` and `/ready` endpoints from the server and returns sanitized check statuses.
+
 ## UI Flow
 
 ### Edit product form
@@ -178,3 +196,5 @@ If `BLOB_READ_WRITE_TOKEN` is missing, the system falls back to the ephemeral Re
 - Public users cannot call protected AI routes
 - AI internal key is never exposed to browser
 - No OpenAI/premium provider is called
+- Dashboard status remains authenticated and secret-safe
+- Optional remote readiness checks cover Render `/health` and `/ready`

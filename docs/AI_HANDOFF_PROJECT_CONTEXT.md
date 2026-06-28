@@ -1,8 +1,15 @@
-# Bazar Baz — AI/Developer Handoff Context
+# Bazar Baz - AI/Developer Handoff Context
+
+> Historical/stale handoff note, reconciled on 2026-06-29 in P83.
+> This document records an old Phase 1-17 overlay and must not be used as the
+> active continuation plan. The current roadmap starts from P83/P84; use
+> `README.md`, `docs/CURRENT_SOURCE_OF_TRUTH.md`,
+> `docs/NEXT_PHASE_ROADMAP.md`, and
+> `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` instead.
 
 _Last updated from source inspection: 2026-06-02._
 
-This file is intended for the next AI assistant or developer who continues the project. It summarizes the project identity, actual source layout, known risks, validation expectations, and recommended next actions.
+This file is preserved for historical context only. It summarizes the project identity, source layout, known risks, validation expectations, and recommended next actions as they existed on 2026-06-02.
 
 ## 1. Project identity
 
@@ -23,9 +30,9 @@ Primary stack:
 
 Do not confuse this project with the larger dental web app from other conversations. This snapshot is a smaller/ecommerce-booking project.
 
-## 2. Current phase state
+## 2. Historical phase state
 
-Existing docs record phases 1 through 17:
+At the time this handoff was written, existing docs recorded phases 1 through 17:
 
 - Security/dashboard API baseline.
 - Resource ownership.
@@ -45,7 +52,7 @@ Existing docs record phases 1 through 17:
 - Public engagement.
 - Account settings.
 
-This overlay adds comprehensive project docs but does not change runtime code.
+This overlay added comprehensive project docs but did not change runtime code.
 
 ## 3. Important source files
 
@@ -97,11 +104,16 @@ Be transparent about any validation that could not be run. Do not claim build/ty
 9. Tenant identity should standardize around `organizationId`, not `organizationSlug`.
 10. i18n dictionaries and hardcoded strings need a production audit.
 
-## 6. Recommended next phase
+## 6. Superseded recommended next phase
 
-The next phase should be `Phase 18 — Production integrity and clean build gate` from `docs/NEXT_PHASE_ROADMAP.md`.
+The old recommendation was `Phase 18 - Production integrity and clean build gate`.
+That recommendation has been superseded. As of P83, phases 18-83 are historical/completed hardening and growth work, and the recommended next phase is:
 
-Do not start with cosmetic UI work. First make the repository clean, installable, and buildable. Then harden RBAC and data consistency.
+```txt
+P84 - Server-only AI media service client and health gate audit
+```
+
+Do not restart from Phase 18. Continue from `docs/CURRENT_SOURCE_OF_TRUTH.md` and `docs/NEXT_PHASE_ROADMAP.md`.
 
 ## 7. Packaging rule
 
@@ -112,9 +124,9 @@ For future overlays:
 - Include a manifest that lists changed files and validation commands run.
 - Preserve existing phase docs and quality scripts unless intentionally updating them.
 
-## 8. Suggested prompt for the next AI/developer
+## 8. Historical suggested prompt
 
-Use this prompt when continuing:
+Do not use this prompt for current continuation. It is kept only to explain the older overlay:
 
 ```txt
 You are a senior Next.js 16 / Prisma / production-readiness engineer. Continue the Bazar Baz project from the latest ZIP. First read README.md and the docs added in the documentation overlay: PROJECT_PROSPECT_AND_CURRENT_STATUS, ARCHITECTURE_AND_WORKFLOWS, ROUTE_API_DB_SERVICE_INVENTORY, PRODUCTION_READINESS_AUDIT, NEXT_PHASE_ROADMAP, and AI_HANDOFF_PROJECT_CONTEXT. Do not confuse this project with the dental web app. Start with Phase 18: production integrity and clean build gate. Inspect the actual files before changing anything. Remove secrets/local artifacts from distributable ZIPs, repair package/lockfile/dependency drift, run clean install/build/typecheck/lint/prisma/quality validation as much as the environment allows, and package only changed files in an overlay ZIP with a manifest. Be transparent about validations not run.

@@ -4,6 +4,8 @@ _Last synchronized from the source tree: 2026-06-26._
 
 This inventory is a planning aid for future phases. It reflects the current filesystem after Customer Club, campaign, loyalty/coupon, Web Push, public SEO, category slug/pagination, public detail slug, deployed slug SEO verification, dashboard slug editing, public slug preview/share, tenant-specific Open Graph image, deployed social preview verification, and social preview release evidence phases.
 
+P83 reconciliation note: this inventory predates the later Import Hub, Export Hub, and AI media phases. Use `docs/CURRENT_SOURCE_OF_TRUTH.md`, `docs/NEXT_PHASE_ROADMAP.md`, and `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` as the current continuation source until this full inventory is regenerated.
+
 ## 1. Localized page routes
 
 All localized pages are under `app/[locale]`; supported locales are `fa`, `en`, and `ar`.

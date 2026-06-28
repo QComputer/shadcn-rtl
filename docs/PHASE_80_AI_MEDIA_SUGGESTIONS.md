@@ -25,6 +25,8 @@ P80 stabilizes the AI media suggestion work for product images. The feature rema
 - Selecting an image requires `job_id`, `image_url`, and `output_index`; the URL must match a generated output saved for that job.
 - The phase does not copy generated images to durable Blob storage. That remains a later media durability phase.
 
+P83 reconciliation note: the post-P82 AI media durability commits now copy selected AI outputs to Vercel Blob when `BLOB_READ_WRITE_TOKEN` is configured, with the Render URL used as a fallback. This P80 guardrail is historical to the original phase boundary.
+
 ## Validation
 
 ```powershell

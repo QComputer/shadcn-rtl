@@ -2,7 +2,7 @@
 
 ## Status
 
-MOCK mode only. No real paid image generation is used in this phase.
+Deployed as a separate Render service. The current Bazar Baz integration uses the service in MOCK provider mode only; no real paid image generation is used in this phase.
 
 ## AI Media Service URL
 

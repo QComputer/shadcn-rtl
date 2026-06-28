@@ -1,26 +1,28 @@
 # Bazar Baz — Recommended Next Phase Roadmap
 
-_Last updated from source inspection and roadmap reconciliation: 2026-06-28._
+_Last updated from source inspection and roadmap reconciliation: 2026-06-29._
 
-This roadmap is ordered for risk reduction. Phases 18-82 are historical/completed hardening and growth work. The integrated Import Hub and Export Hub roadmap is implemented through Phase 82.
+This roadmap is ordered for risk reduction. Phases 18-83 are historical/completed hardening and growth work. The integrated Import Hub and Export Hub roadmap is implemented through Phase 83.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P82 - Deployed Import/Export Smoke**.
+- Completed through **P83 - Project State Reconciliation and AI Media Readiness**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
 - `docs/IMPORT_HUB_ROADMAP.md` is the active P68-P78 implementation plan.
+- Local post-P82 AI media commits already include the server-mediated product suggestion flow and selected-image Vercel Blob copy when `BLOB_READ_WRITE_TOKEN` is configured.
+- `docs/AI_HANDOFF_PROJECT_CONTEXT.md` is historical and stale; do not restart at Phase 18.
 
 Recommended next phase:
 
 ```txt
-Post-P82 export artifact storage polish
+P84 - Server-only AI media service client and health gate audit
 ```
 
-Next work should move generated export artifacts to Blob storage if payload sizes exceed the current stored snapshot model.
+Next work should audit and harden the existing server-only AI media client/health gate against the deployed Render service. Bazar Baz must continue to call only Render and must not become aware of local workers.
 
 Immediate validation target:
 
@@ -55,6 +57,19 @@ Completed integrated phases:
 | P80 | AI media suggestions hardening. |
 | P81 | Protected export downloads. |
 | P82 | Deployed import/export smoke. |
+| P83 | Project state reconciliation and AI media readiness. |
+
+Upcoming AI media phases should be treated as audits/hardening against the actual implementation already present in the repo:
+
+| Phase | Focus |
+| --- | --- |
+| P84 | Server-only AI media client and health gate audit. |
+| P85 | Product image suggestion MOCK flow acceptance/hardening. |
+| P86 | Durable selected image storage acceptance/hardening. |
+| P87 | Long-running/local-worker-compatible job state UX. |
+| P88 | Usage logs, quotas, and audit controls before paid generation. |
+| P89 | Import draft product to AI image suggestion workflow integration. |
+| P90 | Deployed AI media rollout gate through Bazar Baz. |
 
 Safety constraints for all Import Hub phases:
 

@@ -87,6 +87,31 @@ export async function writeStoredImage(filename: string, buffer: Buffer, access:
   };
 }
 
+export async function copyRemoteImageToBlob(
+  remoteUrl: string,
+  purpose = "ai-generated",
+): Promise<{ url: string; pathname: string }> {
+  const response = await fetch(remoteUrl, {
+    redirect: "follow",
+    headers: { "User-Agent": "BazarBaz-AI-Media/1.0" },
+  });
+
+  if (!response.ok) {
+    throw new ApiError(502, `Failed to fetch remote image: ${response.status}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "application/octet-stream";
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  if (!(buffer.length > 0 && buffer.length <= MAX_IMAGE_UPLOAD_BYTES)) {
+    throw new ApiError(413, "Remote image size is invalid");
+  }
+
+  const filename = createStoredImageFilename(contentType, `${purpose}-${Date.now()}`);
+  return writeStoredImage(filename, buffer, "PUBLIC");
+}
+
 export async function deleteStoredImage(filename?: string | null) {
   if (!filename) return;
   const pathname = getBlobPathname(path.basename(filename));

@@ -27,6 +27,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       imageUrl: result.imageUrl,
+      storedDurably: result.storedDurably,
     });
   } catch (error) {
     return jsonError(error, "Failed to select AI image");

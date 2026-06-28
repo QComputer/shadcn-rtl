@@ -12,6 +12,8 @@ import { supportedLocales } from "@/lib/i18n";
 import type { UserRole } from "@/lib/types";
 import { hasPermission } from "@/lib/types";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { copyRemoteImageToBlob } from "@/lib/media-storage";
+import { shouldUseVercelBlob } from "@/lib/blob-storage";
 
 function revalidateAiSelectedProductImage(organizationSlug: string, productSlugOrId: string) {
   try {
@@ -189,7 +191,7 @@ export class AiMediaService {
     jobId: string | undefined,
     imageUrl: string,
     outputIndex: number,
-  ): Promise<{ success: boolean; imageUrl: string }> {
+  ): Promise<{ success: boolean; imageUrl: string; storedDurably: boolean }> {
     let job;
 
     if (jobId) {
@@ -224,15 +226,30 @@ export class AiMediaService {
       throw new ApiError(400, "Selected image must match a generated output from this job");
     }
 
+    let durableUrl = imageUrl;
+    let storedDurably = false;
+
+    if (shouldUseVercelBlob()) {
+      try {
+        const result = await copyRemoteImageToBlob(imageUrl, `ai-media-${productId}`);
+        durableUrl = result.url;
+        storedDurably = true;
+      } catch (error) {
+        console.error("[AiMediaService] Failed to copy remote image to blob, falling back to remote URL:", error);
+        durableUrl = imageUrl;
+        storedDurably = false;
+      }
+    }
+
     const product = await prisma.product.update({
       where: { id: productId },
-      data: { image: imageUrl },
+      data: { image: durableUrl },
       select: { id: true, slug: true, organizationSlug: true },
     });
 
     revalidateAiSelectedProductImage(product.organizationSlug, product.slug || product.id);
 
-    return { success: true, imageUrl };
+    return { success: true, imageUrl: durableUrl, storedDurably };
   }
 
   async cancelJob(jobId: string, organizationId: string): Promise<AiMediaJob> {

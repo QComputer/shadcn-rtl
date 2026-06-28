@@ -133,6 +133,7 @@ describe("AiMediaService selectImage", () => {
       const result = await aiMediaService.selectImage("test-org", "test-product", undefined, "https://example.com/new.png", 0);
       assert.strictEqual(result.success, true);
       assert.strictEqual(result.imageUrl, "https://example.com/new.png");
+      assert.strictEqual(typeof result.storedDurably, "boolean");
     } finally {
       await prisma.aiMediaJob.delete({ where: { id: oldJob.id } });
       await prisma.aiMediaJob.delete({ where: { id: newJob.id } });

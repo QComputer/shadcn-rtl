@@ -149,10 +149,18 @@ The deployed smoke verifies Bazar Baz route protection plus Render `/health`, `/
 
 ## Important Warnings
 
-1. **MOCK-only**: The AI media service is running in MOCK mode. Generated images are temporary local assets served from Render's local storage. They are **not** permanent production storage.
-2. **Next phase**: After this phase, selected/generated images should be copied to durable object storage (e.g., Vercel Blob or equivalent).
+1. **Durable storage (BZ-AI-02)**: When `BLOB_READ_WRITE_TOKEN` is configured, selected images are copied from Render's temporary local storage into Vercel Blob before being saved to the product. The product image URL is then the durable Blob URL. If Blob is not configured, the ephemeral Render URL is used as a fallback.
+2. **Next phase**: If using Blob storage, no further action is needed for image durability. If not using Blob, implement durable object storage before production use.
 3. **No OpenAI/premium provider is called** in this phase.
 4. **Do not commit `.env`** files containing real secrets.
+
+### Environment Variables for Durable Storage
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `BLOB_READ_WRITE_TOKEN` | Yes (for durability) | Vercel Blob token for durable image storage |
+
+If `BLOB_READ_WRITE_TOKEN` is missing, the system falls back to the ephemeral Render URL and logs a warning.
 
 ## Acceptance Criteria
 

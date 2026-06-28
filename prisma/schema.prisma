@@ -1256,6 +1256,26 @@ model ExportJob {
   @@index([createdAt])
 }
 
+model AiMediaJob {
+  id                String           @id @default(cuid())
+  jobId             String           @unique
+  organizationId    String
+  productId         String
+  requestedByUserId String
+  status            String           @default("QUEUED")
+  provider          String           @default("MOCK")
+  errorMessage      String?
+  inputs            Json?
+  outputs           Json?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([organizationId])
+  @@index([productId])
+  @@index([jobId])
+  @@index([status])
+}
+
 model ImportedProductDraft {
   id               String              @id @default(cuid())
   organizationId   String

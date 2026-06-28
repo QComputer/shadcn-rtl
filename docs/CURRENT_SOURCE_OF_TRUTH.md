@@ -4,7 +4,7 @@ Date: 2026-06-28
 
 ## Current validated baseline
 
-The current working baseline after P79 overlays is source-validator green.
+The current working baseline after P80 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -109,6 +109,7 @@ pnpm run db:migrate:neon:dry-run
 - Import Hub Audit, Limits, and Plan Readiness exists through `lib/import-hub/limits.ts`, per-organization active/daily/draft limits, audit event API, retry policy, safer cancellation policy, dashboard audit event display, and the `quality:import-hub-audit-limits` validator.
 - Export Hub Foundation exists through the `ExportJob` model/migration, `lib/services/export-hub.service.ts`, organization-scoped export job APIs, localized `/dashboard/exports` UI, dashboard navigation/access policy, CSV/JSON payload generation for products/categories/orders/customers/fanpage posts, audit logging, and the `quality:export-hub-foundation` validator.
 - Import Approval Publishing exists through the approval-to-live `ImportHubService.reviewDrafts("APPROVED")` path, approved product draft publishing into live products/categories/default variants, approved content draft publishing into live fanpage posts, `IMPORTED` draft status, all-locale public path/home cache revalidation, localized dashboard approve-and-publish copy, audit logging, and the `quality:import-approval-publishing` validator.
+- AI Media Suggestions Hardening exists through `AiMediaJob`, server-only AI media client calls, authenticated product-scoped suggestion APIs, completed-job output validation before image selection, public product/home cache revalidation, Persian-first product edit UI, `docs/AI_MEDIA_SERVICE.md`, deployed unauthenticated smoke coverage, and the `quality:ai-media` validator. This phase remains MOCK/service-backed and does not copy generated images to durable Blob storage.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -177,6 +178,7 @@ pnpm run db:migrate:neon:dry-run
 | P77 | Import Hub Audit, Limits, and Plan Readiness with audit events, retry/cancel policy, and org guardrails. |
 | P78 | Export Hub Foundation with organization-scoped CSV/JSON export jobs and dashboard/API coverage. |
 | P79 | Import Approval Publishing with review-gated live product/category/variant and fanpage post creation. |
+| P80 | AI Media Suggestions Hardening with server-mediated product image suggestion jobs and selection guardrails. |
 
 ## Current route/API inventory
 
@@ -291,7 +293,7 @@ Deferred:
 - Custom-domain smoke tests are deployment/data dependent. Current reference configuration uses `CUSTOM_DOMAIN_SMOKE_BASE_URL=https://www.khalae.ir`, `CUSTOM_DOMAIN_SMOKE_PLATFORM_URL=https://www.bazar-baz.ir`, and `CUSTOM_DOMAIN_SMOKE_SHOP_SLUG=ahmad`.
 - Shop owners cannot self-serve custom-domain management yet; P60/P67 keep domain management SUPER_ADMIN-only.
 - Vercel domain automation must remain dry-run-safe by default and must never hardcode tokens or project/team secrets.
-- P68-P79 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation, and review-gated import publishing are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
+- P68-P80 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation, review-gated import publishing, and AI media suggestion hardening are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
 
 ## Clean release rules
 
@@ -330,7 +332,7 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-Post-P79 deployed verification and export/import polish
+Post-P80 deployed verification and export/import polish
 ```
 
 Scope:
@@ -338,7 +340,8 @@ Scope:
 1. Run deployed smoke coverage for Import Hub and Export Hub with a real admin organization.
 2. Verify the P78 migration is applied on the target database before using `/dashboard/exports`.
 3. Verify P79 approval publishing on a real shop organization with product and fanpage drafts.
-4. Add export download streaming/blob storage once payload sizes need to exceed JSON preview limits.
-5. Keep Persian (`fa`) as the primary UX/SEO language for the next polish pass.
+4. Verify P80 AI media service configuration and unauthenticated deployed smoke routes before enabling it for sellers.
+5. Add export download streaming/blob storage once payload sizes need to exceed JSON preview limits.
+6. Keep Persian (`fa`) as the primary UX/SEO language for the next polish pass.
 
-See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap and `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge.
+See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, and `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails.

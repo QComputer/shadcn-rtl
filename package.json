@@ -124,7 +124,10 @@
     "quality:external-source-mapping": "node scripts/quality/validate-external-source-mapping.mjs",
     "quality:import-hub-audit-limits": "node scripts/quality/validate-import-hub-audit-limits.mjs",
     "quality:export-hub-foundation": "node scripts/quality/validate-export-hub-foundation.mjs",
-    "quality:import-approval-publishing": "node scripts/quality/validate-import-approval-publishing.mjs"
+    "quality:import-approval-publishing": "node scripts/quality/validate-import-approval-publishing.mjs",
+    "quality:ai-media": "node scripts/quality/validate-ai-media.mjs",
+    "e2e:deployed:ai-media": "node scripts/e2e/deployed-ai-media-smoke.mjs",
+    "smoke:deployed:ai-media": "node scripts/e2e/deployed-ai-media-smoke.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

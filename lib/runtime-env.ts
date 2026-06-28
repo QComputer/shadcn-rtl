@@ -21,6 +21,9 @@ export type RuntimeEnvValidation = {
     webPushDryRun: boolean;
     webPushPublicKeyConfigured: boolean;
     webPushRealSendEnabled: boolean;
+    aiMediaServiceEnabled: boolean;
+    aiMediaServiceUrlConfigured: boolean;
+    aiMediaServiceInternalKeyConfigured: boolean;
   };
 };
 
@@ -137,6 +140,27 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
     }
   }
 
+  const aiMediaServiceEnabled = process.env.AI_MEDIA_SERVICE_ENABLED === "true";
+  const aiMediaServiceUrlConfigured = isProbablyUrl(process.env.AI_MEDIA_SERVICE_URL);
+  const aiMediaServiceInternalKeyConfigured = hasValue(process.env.AI_MEDIA_SERVICE_INTERNAL_KEY);
+
+  if (aiMediaServiceEnabled) {
+    if (!aiMediaServiceUrlConfigured) {
+      issues.push({
+        name: "AI_MEDIA_SERVICE_URL",
+        severity: "error",
+        message: "AI_MEDIA_SERVICE_URL is required when AI_MEDIA_SERVICE_ENABLED is true.",
+      });
+    }
+    if (!aiMediaServiceInternalKeyConfigured) {
+      issues.push({
+        name: "AI_MEDIA_SERVICE_INTERNAL_KEY",
+        severity: "error",
+        message: "AI_MEDIA_SERVICE_INTERNAL_KEY is required when AI_MEDIA_SERVICE_ENABLED is true.",
+      });
+    }
+  }
+
   return {
     ok: issues.every((issue) => issue.severity !== "error"),
     issues,
@@ -152,6 +176,9 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
       webPushDryRun,
       webPushPublicKeyConfigured: hasValue(process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY),
       webPushRealSendEnabled,
+      aiMediaServiceEnabled,
+      aiMediaServiceUrlConfigured,
+      aiMediaServiceInternalKeyConfigured,
     },
   };
 }

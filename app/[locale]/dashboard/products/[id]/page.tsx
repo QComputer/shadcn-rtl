@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowRight, Save, Loader2, Trash2, ArrowLeft, Plus, ChevronLeftIcon, ChevronRightIcon, X } from "lucide-react"
+import { ArrowRight, Save, Loader2, Trash2, ArrowLeft, Plus, ChevronLeftIcon, ChevronRightIcon, X, Sparkles } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -144,6 +144,19 @@ export default function EditProductPage({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [discountType, setDiscountType] = useState<"none" | "percentage" | "fixed">("none")
   const [discountValue, setDiscountValue] = useState<number>(0)
+
+  // AI Media suggestion state
+  const [aiFeatureEnabled, setAiFeatureEnabled] = useState(false)
+  const [aiDialogOpen, setAiDialogOpen] = useState(false)
+  const [aiJobId, setAiJobId] = useState<string | null>(null)
+  const [aiJobStatus, setAiJobStatus] = useState<string | null>(null)
+  const [aiOutputs, setAiOutputs] = useState<Array<{ url: string }>>([])
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiPolling, setAiPolling] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [aiSelectedImage, setAiSelectedImage] = useState<string | null>(null)
+  const [aiSelectedIndex, setAiSelectedIndex] = useState<number | null>(null)
+  const [aiConfirming, setAiConfirming] = useState(false)
     
     // Upload function
   async function uploadFile(file: File) {
@@ -199,7 +212,13 @@ export default function EditProductPage({
       setDict(getDictionary(locale))
     })
   }, [locale])
-  
+
+  useEffect(() => {
+    fetch("/api/dashboard/ai-media/status")
+      .then(res => res.json())
+      .then(data => setAiFeatureEnabled(data.enabled))
+      .catch(() => setAiFeatureEnabled(false))
+  }, [])
 
   useEffect(()=>{
   //console.log(newVariant);
@@ -344,6 +363,130 @@ export default function EditProductPage({
     } finally {
       setDeletingVariant(false)
     }
+  }
+
+  const createAiJob = async () => {
+    setAiLoading(true)
+    setAiError(null)
+    setAiOutputs([])
+    setAiSelectedImage(null)
+    setAiSelectedIndex(null)
+    setAiJobStatus(null)
+
+    try {
+      const response = await fetch(`/api/dashboard/products/${productId}/ai-image-suggestions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          count: 3,
+          aspect_ratio: "1:1",
+          style_preset: "LIGHT_MENU_PHOTO",
+          seller_prompt: description || undefined,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to create AI suggestion job")
+      }
+
+      const data = await response.json()
+      setAiJobId(data.job_id)
+      setAiPolling(true)
+      pollAiJob(data.job_id)
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "Failed to start AI suggestion")
+      setAiLoading(false)
+    }
+  }
+
+  const pollAiJob = async (jobId: string) => {
+    setAiPolling(true)
+    const maxAttempts = 60
+    let attempts = 0
+
+    const interval = setInterval(async () => {
+      attempts++
+      try {
+        const response = await fetch(`/api/dashboard/ai-image-suggestions/${jobId}`)
+        if (!response.ok) {
+          throw new Error("Failed to poll job")
+        }
+        const data = await response.json()
+        const status = data.job?.status
+        setAiJobStatus(status)
+
+        if (status === "COMPLETED" && data.job?.outputs) {
+          clearInterval(interval)
+          setAiPolling(false)
+          setAiLoading(false)
+          setAiOutputs(data.job.outputs)
+        } else if (status === "FAILED") {
+          clearInterval(interval)
+          setAiPolling(false)
+          setAiLoading(false)
+          setAiError(data.job?.error_message || "AI suggestion failed")
+        } else if (status === "CANCELED") {
+          clearInterval(interval)
+          setAiPolling(false)
+          setAiLoading(false)
+          setAiError("Job was canceled")
+        } else if (attempts >= maxAttempts) {
+          clearInterval(interval)
+          setAiPolling(false)
+          setAiLoading(false)
+          setAiError("AI suggestion timed out. Please try again.")
+        }
+      } catch (err) {
+        clearInterval(interval)
+        setAiPolling(false)
+        setAiLoading(false)
+        setAiError(err instanceof Error ? err.message : "Failed to poll job")
+      }
+    }, 2000)
+  }
+
+  const handleAiSelectImage = async (imageUrl: string, outputIndex: number) => {
+    setAiSelectedImage(imageUrl)
+    const confirmed = window.confirm("آیا می‌خواهید این تصویر را به عنوان تصویر اصلی محصول انتخاب کنید؟")
+    if (!confirmed) {
+      setAiSelectedImage(null)
+      return
+    }
+
+    setAiConfirming(true)
+    try {
+      const response = await fetch(`/api/dashboard/products/${productId}/ai-image-suggestions/select`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_id: aiJobId, image_url: imageUrl, output_index: outputIndex }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to select image")
+      }
+
+      setImage(imageUrl)
+      setImagePreview(imageUrl)
+      setAiDialogOpen(false)
+      setAiSelectedImage(null)
+      setAiSelectedIndex(null)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to select image")
+    } finally {
+      setAiConfirming(false)
+    }
+  }
+
+  const retryAiJob = () => {
+    setAiError(null)
+    setAiOutputs([])
+    setAiSelectedImage(null)
+    setAiSelectedIndex(null)
+    setAiJobStatus(null)
+    setAiJobId(null)
+    createAiJob()
   }
 
   
@@ -498,53 +641,73 @@ export default function EditProductPage({
               </div>
             )}
             
-             {/* Upload Area */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="image">
-                  {t("product.image") || "Product image"}
-                </Label>
-              </div>
-              <div className="mt-1 px-5 flex items-center">
-                <Input
-                  type="file"
-                  accept="image/*" // Only accept image files
-                  onChange={handleImageChange}
-                  className="sr-only w-10" // Hide the default file input
-                  id="imageUpload"
-                />
-                <Label
-                  htmlFor="imageUpload"
-                >
-                <div className="items-center rounded-lg border-3">
-                {imagePreview ? 
-                  <img
-                  src={imagePreview}
-                  alt="Image Preview"
-                  className="items-center h-20 w-20 object-cover rounded-md"
-                  />
-                : product?.image 
-                  ? <img
-                    src={product.image}
-                    alt="Original Image Preview"
-                    className=" items-center h-20 w-20 object-cover rounded-md"
-                    />
-                  :
-               (
-                <div className=" items-center text-sm border-1 p-2 rounded-md w-20 h-20">هیچ تصویری انتخاب نشده</div>
-              )}
-              </div>
-                </Label>
-                  <Button
-                    onClick={() => {setImagePreview("")
-                    }}
-                    size={"icon"}
-                    variant={"outline"}
-                    className={"border-2 -mt-16 mr-1"}
-                  >
-                    <X/>
-                  </Button>
-              </div>
+              {/* Upload Area */}
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <div className="space-y-2">
+                 <Label htmlFor="image">
+                   {t("product.image") || "Product image"}
+                 </Label>
+               </div>
+               <div className="mt-1 px-5 flex items-center gap-2">
+                 <Input
+                   type="file"
+                   accept="image/*" // Only accept image files
+                   onChange={handleImageChange}
+                   className="sr-only w-10" // Hide the default file input
+                   id="imageUpload"
+                 />
+                 <Label
+                   htmlFor="imageUpload"
+                 >
+                 <div className="items-center rounded-lg border-3">
+                 {imagePreview ?
+                   <img
+                   src={imagePreview}
+                   alt="Image Preview"
+                   className="items-center h-20 w-20 object-cover rounded-md"
+                   />
+                 : product?.image
+                   ? <img
+                     src={product.image}
+                     alt="Original Image Preview"
+                     className=" items-center h-20 w-20 object-cover rounded-md"
+                     />
+                   :
+                (
+                 <div className=" items-center text-sm border-1 p-2 rounded-md w-20 h-20">هیچ تصویری انتخاب نشده</div>
+               )}
+               </div>
+                 </Label>
+                   <Button
+                     onClick={() => {setImagePreview("")
+                     }}
+                     size={"icon"}
+                     variant={"outline"}
+                     className={"border-2 -mt-16 mr-1"}
+                   >
+                     <X/>
+                   </Button>
+
+                   {aiFeatureEnabled && (
+                     <Button
+                       type="button"
+                       variant="secondary"
+                       className="gap-2"
+                       onClick={() => {
+                         setAiDialogOpen(true)
+                         setAiError(null)
+                         setAiOutputs([])
+                         setAiSelectedImage(null)
+                         setAiSelectedIndex(null)
+                         setAiJobStatus(null)
+                         setAiJobId(null)
+                       }}
+                     >
+                       <Sparkles className="h-4 w-4" />
+                       پیشنهاد تصویر حرفه‌ای با AI
+                     </Button>
+                   )}
+               </div>
             
             <div className="row-2">
               {toPersianDigits(progress)} / {toPersianDigits(100)} 
@@ -1003,6 +1166,105 @@ export default function EditProductPage({
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* AI Image Suggestion Dialog */}
+      <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>پیشنهاد تصویر با AI</DialogTitle>
+            <DialogDescription>
+              {aiLoading && !aiPolling && "در حال ایجاد درخواست تصویر..."}
+              {aiPolling && "در حال تولید تصاویر..."}
+              {aiJobStatus === "COMPLETED" && "تصاویر پیشنهادی آماده است"}
+              {aiJobStatus === "FAILED" && "خطا در تولید تصویر"}
+              {aiError && aiJobStatus !== "FAILED" && aiError}
+            </DialogDescription>
+          </DialogHeader>
+
+          {aiLoading && !aiPolling && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {aiPolling && (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center space-y-4">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto" />
+                <p className="text-sm text-muted-foreground">در حال تولید تصاویر پیشنهادی...</p>
+              </div>
+            </div>
+          )}
+
+          {aiJobStatus === "COMPLETED" && aiOutputs.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {aiOutputs.map((output, index) => (
+                <Card key={index} className={`overflow-hidden ${aiSelectedImage === output.url ? "ring-2 ring-primary" : ""}`}>
+                  <CardContent className="p-2">
+                    <img
+                      src={output.url}
+                      alt={`AI suggestion ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-md"
+                    />
+                    <Button
+                      type="button"
+                      variant={aiSelectedImage === output.url ? "default" : "outline"}
+                      className="w-full mt-2"
+                      onClick={() => {
+                        setAiSelectedImage(output.url)
+                        setAiSelectedIndex(index)
+                      }}
+                      disabled={aiConfirming}
+                    >
+                      {aiSelectedImage === output.url ? "انتخاب شده" : "انتخاب تصویر"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {aiJobStatus === "FAILED" && (
+            <div className="text-center py-8 space-y-4">
+              <p className="text-destructive">{aiError || "خطا در تولید تصویر"}</p>
+              <Button type="button" variant="outline" onClick={retryAiJob}>
+                تلاش مجدد
+              </Button>
+            </div>
+          )}
+
+          {aiJobStatus === "COMPLETED" && aiSelectedImage && aiSelectedIndex !== null && (
+            <DialogFooter>
+              <Button
+                type="button"
+                onClick={() => handleAiSelectImage(aiSelectedImage, aiSelectedIndex)}
+                disabled={aiConfirming}
+                className="w-full"
+              >
+                {aiConfirming ? (
+                  <>
+                    <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                    در حال اعمال...
+                  </>
+                ) : (
+                  "اعمال تصویر انتخاب شده"
+                )}
+              </Button>
+            </DialogFooter>
+          )}
+
+          {!aiLoading && !aiPolling && aiJobStatus !== "COMPLETED" && aiJobStatus !== "FAILED" && !aiError && (
+            <div className="text-center py-8">
+              <p className="text-sm text-muted-foreground mb-4">
+                با استفاده از هوش مصنوعی، ۳ تصویر پیشنهادی برای محصول شما تولید می‌شود.
+              </p>
+              <Button type="button" onClick={createAiJob} disabled={aiLoading}>
+                <Sparkles className="h-4 w-4 ml-2" />
+                شروع تولید تصاویر
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
     </div>
   )

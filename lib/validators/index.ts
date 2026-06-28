@@ -272,6 +272,20 @@ export const updateOrganizationSettingsSchema = z.object({
   settings: z.any().optional(),
 });
 
+// AI Media validators
+export const createAiMediaJobSchema = z.object({
+  count: z.number().int().min(1).max(6).default(3),
+  aspect_ratio: z.string().default("1:1"),
+  style_preset: z.string().default("LIGHT_MENU_PHOTO"),
+  seller_prompt: z.string().max(1000).optional().nullable(),
+});
+
+export const selectAiMediaImageSchema = z.object({
+  job_id: z.string().min(1),
+  image_url: z.string().url(),
+  output_index: z.number().int().min(0),
+});
+
 // Pagination and filtering
 export const paginationSchema = z.object({
   page: pageSchema,
@@ -333,4 +347,6 @@ export type CreateReviewInput = z.infer<typeof createReviewSchema>;
 export type CreatePromotionInput = z.infer<typeof createPromotionSchema>;
 export type UpdatePromotionInput = z.infer<typeof updatePromotionSchema>;
 export type UpdateOrganizationSettingsInput = z.infer<typeof updateOrganizationSettingsSchema>;
+export type CreateAiMediaJobInput = z.infer<typeof createAiMediaJobSchema>;
+export type SelectAiMediaImageInput = z.infer<typeof selectAiMediaImageSchema>;
 export type PaginationParams = z.infer<typeof paginationSchema>;

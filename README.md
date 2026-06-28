@@ -93,6 +93,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 77 | Import Hub Audit, Limits, and Plan Readiness | Source-validated | `pnpm run quality:import-hub-audit-limits` |
 | 78 | Export Hub Foundation | Source-validated | `pnpm run quality:export-hub-foundation` |
 | 79 | Import Approval Publishing | Source-validated | `pnpm run quality:import-approval-publishing` |
+| 80 | AI Media Suggestions Hardening | Source-validated | `pnpm run quality:ai-media` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -149,6 +150,7 @@ pnpm run quality:external-source-mapping
 pnpm run quality:import-hub-audit-limits
 pnpm run quality:export-hub-foundation
 pnpm run quality:import-approval-publishing
+pnpm run quality:ai-media
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -267,12 +269,12 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P79 - Import Approval Publishing**.
+Latest completed implementation phase: **P80 - AI Media Suggestions Hardening**.
 
-Recommended next phase: **Post-P79 deployed verification and export/import polish**.
+Recommended next phase: **Post-P80 deployed verification and export/import polish**.
 
-The active roadmap is `docs/IMPORT_HUB_ROADMAP.md` plus `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md`. P68-P79 are implemented; the next work should verify deployed import/export flows with real organization data and then add export streaming/blob-backed downloads for larger payloads.
+The active roadmap is `docs/IMPORT_HUB_ROADMAP.md` plus `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` and `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md`. P68-P80 are implemented; the next work should verify deployed import/export flows with real organization data and then add export streaming/blob-backed downloads for larger payloads.
 
 ## Historical validator anchors
 
-The source tree keeps focused validators for these retained phases: P37 dashboard navigation and localized shell copy, P38 dashboard role navigation, P39 dashboard route parity, P40 dashboard route authorization, P41 dashboard route guard smoke, P42 Customer Club foundation, P43 in-app notification inbox, P44 Customer Segments, P45 Campaign Builder, P46 Loyalty Points and Coupons, P47 Web Push Opt-In Foundation, P68 Import Hub Foundation, P69 CSV/Excel Product Importer, P70 Manual Instagram Fanpage Import, P71 AI/Text Product Extraction Foundation, P72 Image/PDF Menu Import Foundation, P73 Snappfood URL Import MVP, P74 Snappmarket URL Import MVP, P75 Telegram Post Import, P76 External Source Mapping and Re-import Diff, P77 Import Hub Audit, Limits, and Plan Readiness, P78 Export Hub Foundation, and P79 Import Approval Publishing.
+The source tree keeps focused validators for these retained phases: P37 dashboard navigation and localized shell copy, P38 dashboard role navigation, P39 dashboard route parity, P40 dashboard route authorization, P41 dashboard route guard smoke, P42 Customer Club foundation, P43 in-app notification inbox, P44 Customer Segments, P45 Campaign Builder, P46 Loyalty Points and Coupons, P47 Web Push Opt-In Foundation, P68 Import Hub Foundation, P69 CSV/Excel Product Importer, P70 Manual Instagram Fanpage Import, P71 AI/Text Product Extraction Foundation, P72 Image/PDF Menu Import Foundation, P73 Snappfood URL Import MVP, P74 Snappmarket URL Import MVP, P75 Telegram Post Import, P76 External Source Mapping and Re-import Diff, P77 Import Hub Audit, Limits, and Plan Readiness, P78 Export Hub Foundation, P79 Import Approval Publishing, and P80 AI Media Suggestions Hardening.

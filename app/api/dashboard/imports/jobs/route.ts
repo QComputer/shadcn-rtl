@@ -17,6 +17,8 @@ const createImportJobSchema = z.object({
   inputUrl: z.string().trim().max(2000).optional().nullable(),
   inputText: z.string().trim().max(12000).optional().nullable(),
   inputFilename: z.string().trim().max(180).optional().nullable(),
+  fileContent: z.string().max(1_000_000).optional().nullable(),
+  fileBase64: z.string().max(5_000_000).optional().nullable(),
   consentConfirmed: z.boolean().default(false),
   consentText: z.string().trim().max(600).optional().nullable(),
 })
@@ -65,6 +67,8 @@ export async function POST(request: NextRequest) {
       inputUrl: body.inputUrl ?? null,
       inputText: body.inputText ?? null,
       inputFilename: body.inputFilename ?? null,
+      fileContent: body.fileContent ?? null,
+      fileBase64: body.fileBase64 ?? null,
       consentConfirmed: body.consentConfirmed,
       consentText: body.consentText ?? null,
     })

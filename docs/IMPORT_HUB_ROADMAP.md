@@ -59,6 +59,8 @@ feat(imports): add import hub foundation
 
 ## Phase 69 - CSV/Excel Product Importer
 
+Status: Implemented in P69.
+
 Goal: support seller-owned spreadsheet product imports as reviewable product drafts.
 
 Scope:

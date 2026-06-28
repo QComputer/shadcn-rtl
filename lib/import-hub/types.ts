@@ -39,6 +39,8 @@ export type CreateImportJobInput = {
   inputUrl?: string | null
   inputText?: string | null
   inputFilename?: string | null
+  fileContent?: string | null
+  fileBase64?: string | null
   consentConfirmed: boolean
   consentText?: string | null
 }

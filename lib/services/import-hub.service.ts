@@ -11,6 +11,7 @@ import {
   normalizeImportFilename,
   normalizeImportText,
 } from "@/lib/import-hub/normalizers"
+import { parseProductSpreadsheet } from "@/lib/import-hub/spreadsheet-parser"
 import type {
   CreateImportJobInput,
   ImportJobListOptions,
@@ -117,7 +118,21 @@ export class ImportHubService {
 
     const consentText = input.consentText?.trim() || null
     const displayName = this.getSourceDisplayName(type, normalizedUrl, inputFilename)
-    const summary = this.foundationSummary()
+    const spreadsheetType = type === "CSV" || type === "EXCEL" ? type : null
+    const parsedProductDrafts = spreadsheetType
+      ? parseProductSpreadsheet({
+          type: spreadsheetType,
+          fileContent: input.fileContent,
+          fileBase64: input.fileBase64,
+          maxRows: 500,
+        })
+      : []
+
+    if (spreadsheetType && parsedProductDrafts.length === 0) {
+      throw new ApiError(400, "CSV/Excel import did not contain product rows")
+    }
+
+    const summary = this.foundationSummary(parsedProductDrafts.length, 0)
 
     const job = await prisma.$transaction(async (tx) => {
       const source = await tx.externalImportSource.create({
@@ -140,7 +155,7 @@ export class ImportHubService {
         },
       })
 
-      return tx.externalImportJob.create({
+      const job = await tx.externalImportJob.create({
         data: {
           organizationId: organization.id,
           sourceId: source.id,
@@ -153,9 +168,43 @@ export class ImportHubService {
           consentText,
           requestedByUserId: input.actorUserId,
           startedAt: new Date(),
-          completedAt: new Date(),
+          completedAt: parsedProductDrafts.length > 0 ? null : new Date(),
           summary: summary as unknown as Prisma.InputJsonObject,
         },
+        include: importJobInclude,
+      })
+
+      if (parsedProductDrafts.length > 0) {
+        await tx.importedProductDraft.createMany({
+          data: parsedProductDrafts.map((draft) => ({
+            organizationId: organization.id,
+            jobId: job.id,
+            sourceId: source.id,
+            status: "DRAFT",
+            name: draft.name,
+            description: draft.description,
+            sku: draft.sku,
+            categoryName: draft.categoryName,
+            basePrice: draft.basePrice,
+            stock: draft.stock,
+            imageUrl: draft.imageUrl,
+            sourceUrl: draft.sourceUrl,
+            sourceExternalId: draft.rowNumber.toString(),
+            sourceMetadata: {
+              type,
+              rowNumber: draft.rowNumber,
+              remoteImagePreviewOnly: Boolean(draft.imageUrl),
+            },
+            rawData: draft.rawData,
+            warnings: draft.warnings,
+            errors: draft.errors,
+            rowNumber: draft.rowNumber,
+          })),
+        })
+      }
+
+      return tx.externalImportJob.findUniqueOrThrow({
+        where: { id: job.id },
         include: importJobInclude,
       })
     })
@@ -170,7 +219,8 @@ export class ImportHubService {
         type,
         status: job.status,
         consentConfirmed: job.consentConfirmed,
-        importerEnabled: false,
+        importerEnabled: spreadsheetType ? "spreadsheet-draft-parser" : false,
+        productDraftCount: parsedProductDrafts.length,
       },
       userId: input.actorUserId,
       organizationId: organization.id,
@@ -276,14 +326,16 @@ export class ImportHubService {
     return this.getJob(input.jobId, input.organizationId)
   }
 
-  private foundationSummary(): ImportJobSummary {
+  private foundationSummary(productDraftCount = 0, contentDraftCount = 0): ImportJobSummary {
     return {
       phase: "P68_FOUNDATION",
       draftFirst: true,
       importerEnabled: false,
-      message: "Import intake was recorded. Real external parsing and publishing are disabled in this foundation phase.",
-      productDraftCount: 0,
-      contentDraftCount: 0,
+      message: productDraftCount > 0
+        ? "Spreadsheet rows were parsed into product drafts. Publishing remains disabled until seller review."
+        : "Import intake was recorded. Real external parsing and publishing are disabled in this foundation phase.",
+      productDraftCount,
+      contentDraftCount,
     }
   }
 

@@ -54,6 +54,22 @@ type ImportJob = {
     productDrafts: number
     contentDrafts: number
   }
+  productDrafts?: ImportedProductDraft[]
+}
+
+type ImportedProductDraft = {
+  id: string
+  rowNumber?: number | null
+  status: "DRAFT" | "APPROVED" | "REJECTED" | "IMPORTED" | "MERGED"
+  name?: string | null
+  description?: string | null
+  sku?: string | null
+  categoryName?: string | null
+  basePrice?: string | number | null
+  stock?: number | null
+  imageUrl?: string | null
+  warnings?: string[] | null
+  errors?: string[] | null
 }
 
 type OrganizationOption = {
@@ -81,6 +97,13 @@ type ImportHubCopy = {
   draftCounts: string
   review: string
   cancel: string
+  approve: string
+  reject: string
+  row: string
+  product: string
+  category: string
+  price: string
+  stock: string
   sourceLabels: Record<SourceType, string>
   statuses: Record<JobStatus, string>
 }
@@ -104,6 +127,13 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     draftCounts: "پیش‌نویس",
     review: "بررسی",
     cancel: "لغو",
+    approve: "تایید پیش‌نویس‌ها",
+    reject: "رد پیش‌نویس‌ها",
+    row: "ردیف",
+    product: "محصول",
+    category: "دسته",
+    price: "قیمت",
+    stock: "موجودی",
     sourceLabels: {
       INSTAGRAM: "اینستاگرام",
       TELEGRAM: "تلگرام",
@@ -143,6 +173,13 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     draftCounts: "Drafts",
     review: "Review",
     cancel: "Cancel",
+    approve: "Approve drafts",
+    reject: "Reject drafts",
+    row: "Row",
+    product: "Product",
+    category: "Category",
+    price: "Price",
+    stock: "Stock",
     sourceLabels: {
       INSTAGRAM: "Instagram",
       TELEGRAM: "Telegram",
@@ -182,6 +219,13 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     draftCounts: "مسودات",
     review: "مراجعة",
     cancel: "إلغاء",
+    approve: "قبول المسودات",
+    reject: "رفض المسودات",
+    row: "صف",
+    product: "المنتج",
+    category: "الفئة",
+    price: "السعر",
+    stock: "المخزون",
     sourceLabels: {
       INSTAGRAM: "إنستغرام",
       TELEGRAM: "تلغرام",
@@ -249,8 +293,11 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
   const [inputUrl, setInputUrl] = useState("")
   const [inputText, setInputText] = useState("")
   const [inputFilename, setInputFilename] = useState("")
+  const [fileContent, setFileContent] = useState("")
+  const [fileBase64, setFileBase64] = useState("")
   const [consentConfirmed, setConsentConfirmed] = useState(false)
   const [jobs, setJobs] = useState<ImportJob[]>([])
+  const [selectedJob, setSelectedJob] = useState<ImportJob | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -339,6 +386,8 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
           inputUrl,
           inputText,
           inputFilename,
+          fileContent,
+          fileBase64,
           consentConfirmed,
           consentText: copy.consent,
         }),
@@ -347,6 +396,8 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
       setInputUrl("")
       setInputText("")
       setInputFilename("")
+      setFileContent("")
+      setFileBase64("")
       setConsentConfirmed(false)
       await fetchJobs(organizationId)
     } catch (err) {
@@ -365,7 +416,59 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
     await fetchJobs(organizationId)
   }
 
-  const hasInput = Boolean(inputUrl.trim() || inputText.trim() || inputFilename.trim())
+  async function loadJob(jobId: string) {
+    const response = await fetch(`/api/dashboard/imports/jobs/${jobId}`, { cache: "no-store" })
+    if (!response.ok) {
+      setError(await readError(response, copy.error))
+      return
+    }
+    const data = await response.json()
+    setSelectedJob(data.job as ImportJob)
+  }
+
+  async function reviewDrafts(status: "APPROVED" | "REJECTED") {
+    if (!selectedJob) return
+    const draftIds = (selectedJob.productDrafts ?? [])
+      .filter((draft) => draft.status === "DRAFT")
+      .map((draft) => draft.id)
+    const response = await fetch(`/api/dashboard/imports/jobs/${selectedJob.id}/review`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status, productDraftIds: draftIds }),
+    })
+    if (!response.ok) {
+      setError(await readError(response, copy.error))
+      return
+    }
+    const data = await response.json()
+    setSelectedJob(data.job as ImportJob)
+    await fetchJobs(organizationId)
+  }
+
+  async function handleFile(file: File | null) {
+    setInputFilename(file?.name ?? "")
+    setFileContent("")
+    setFileBase64("")
+    if (!file) return
+
+    const lowerName = file.name.toLowerCase()
+    if (lowerName.endsWith(".csv")) {
+      setSourceType("CSV")
+      setFileContent(await file.text())
+      return
+    }
+
+    if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) {
+      setSourceType("EXCEL")
+      const buffer = await file.arrayBuffer()
+      const bytes = new Uint8Array(buffer)
+      let binary = ""
+      for (const byte of bytes) binary += String.fromCharCode(byte)
+      setFileBase64(btoa(binary))
+    }
+  }
+
+  const hasInput = Boolean(inputUrl.trim() || inputText.trim() || inputFilename.trim() || fileContent || fileBase64)
 
   return (
     <div className="space-y-6">
@@ -440,7 +543,12 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
 
             <div className="space-y-2">
               <label className="text-sm font-medium">{copy.file}</label>
-              <Input value={inputFilename} onChange={(event) => setInputFilename(event.target.value)} />
+              <Input
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={(event) => handleFile(event.target.files?.[0] ?? null)}
+              />
+              {inputFilename && <div className="text-xs text-muted-foreground">{inputFilename}</div>}
             </div>
 
             <label className="flex items-start gap-3 rounded-md border p-3 text-sm leading-6">
@@ -493,7 +601,7 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
                           {job.errorMessage && <div className="text-sm text-destructive">{job.errorMessage}</div>}
                         </div>
                         <div className="flex shrink-0 gap-2">
-                          <Link href={`#job-${job.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                          <Link href={`#job-${job.id}`} className={buttonVariants({ variant: "outline", size: "sm" })} onClick={() => loadJob(job.id)}>
                             <CheckCircle2 className="size-4" />
                             {copy.review}
                           </Link>
@@ -513,6 +621,76 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
           </CardContent>
         </Card>
       </div>
+
+      {selectedJob && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              {copy.review}: {copy.sourceLabels[selectedJob.type]}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                disabled={!selectedJob.productDrafts?.some((draft) => draft.status === "DRAFT")}
+                onClick={() => reviewDrafts("APPROVED")}
+              >
+                {copy.approve}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={!selectedJob.productDrafts?.some((draft) => draft.status === "DRAFT")}
+                onClick={() => reviewDrafts("REJECTED")}
+              >
+                {copy.reject}
+              </Button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] text-sm">
+                <thead>
+                  <tr className="border-b text-muted-foreground">
+                    <th className="px-2 py-2 text-start">{copy.row}</th>
+                    <th className="px-2 py-2 text-start">{copy.product}</th>
+                    <th className="px-2 py-2 text-start">{copy.category}</th>
+                    <th className="px-2 py-2 text-start">{copy.price}</th>
+                    <th className="px-2 py-2 text-start">{copy.stock}</th>
+                    <th className="px-2 py-2 text-start">{copy.review}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(selectedJob.productDrafts ?? []).map((draft) => (
+                    <tr key={draft.id} className="border-b last:border-0">
+                      <td className="px-2 py-2">{formatNumber(draft.rowNumber ?? 0, locale)}</td>
+                      <td className="px-2 py-2">{draft.name || "-"}</td>
+                      <td className="px-2 py-2">{draft.categoryName || draft.sku || "-"}</td>
+                      <td className="px-2 py-2">{draft.basePrice ? String(draft.basePrice) : "-"}</td>
+                      <td className="px-2 py-2">{draft.stock != null ? formatNumber(draft.stock, locale) : "-"}</td>
+                      <td className="px-2 py-2">
+                        <div className="flex flex-col gap-1">
+                          <Badge variant={draft.status === "DRAFT" ? "secondary" : draft.status === "APPROVED" ? "default" : "outline"}>
+                            {draft.status}
+                          </Badge>
+                          {Array.isArray(draft.errors) && draft.errors.length > 0 && (
+                            <span className="text-xs text-destructive">{draft.errors.join(", ")}</span>
+                          )}
+                          {Array.isArray(draft.warnings) && draft.warnings.length > 0 && (
+                            <span className="text-xs text-muted-foreground">{draft.warnings.join(", ")}</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

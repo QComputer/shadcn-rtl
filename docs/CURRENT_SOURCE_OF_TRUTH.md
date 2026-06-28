@@ -4,7 +4,7 @@ Date: 2026-06-28
 
 ## Current validated baseline
 
-The current working baseline after P68 overlays is source-validator green.
+The current working baseline after P69 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -47,6 +47,7 @@ pnpm run quality:custom-domain-smoke
 pnpm run quality:platform-default-locale
 pnpm run quality:shop-domain-ux
 pnpm run quality:import-hub-foundation
+pnpm run quality:csv-excel-importer
 ```
 
 Clean handoff gate introduced in P33:
@@ -97,6 +98,7 @@ pnpm run db:migrate:neon:dry-run
 - Custom-domain and platform no-locale visits default to Persian (`fa`) through the current proxy behavior, with `quality:custom-domain-default-locale`, `quality:platform-default-locale`, `e2e:custom-domain-smoke`, and `e2e:platform-default-locale`.
 - Dashboard organizations is a SUPER_ADMIN-only localized route at `/{locale}/dashboard/organizations`, backed by hardened `/api/organizations` access and validated by `quality:dashboard-organizations-published`.
 - Import Hub Foundation exists through external import source/job/draft models, consent-based intake, source detection, draft review APIs, localized `/dashboard/imports` UI, and the `quality:import-hub-foundation` validator. P68 does not perform scraping, real external provider calls, Blob copying, product creation, or fanpage publishing.
+- CSV/Excel Product Importer exists through `xlsx` parsing, `lib/import-hub/spreadsheet-parser.ts`, file intake on `/dashboard/imports`, row-level `ImportedProductDraft` creation, draft approval/rejection UI, and the `quality:csv-excel-importer` validator. P69 does not create live products, categories, inventory movements, or Blob image copies.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -154,6 +156,7 @@ pnpm run db:migrate:neon:dry-run
 | P66/P66A | Deployed custom-domain smoke coverage and platform no-locale default `fa` routing. |
 | P67 | Shop-domain dashboard UX polish and focused validator. |
 | P68 | Import Hub Foundation with consent-based intake, source/job/draft models, dashboard UI, APIs, and validator. |
+| P69 | CSV/Excel Product Importer with draft-only product row parsing and review UI. |
 
 ## Current route/API inventory
 
@@ -307,15 +310,15 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P69 - CSV/Excel Product Importer
+P70 - Manual Instagram Fanpage Import
 ```
 
 Scope:
 
-1. Parse seller-uploaded CSV/XLSX files with size/type limits.
-2. Normalize product names, prices, stock, categories, descriptions, and image URLs into `ImportedProductDraft` rows.
-3. Keep imported rows draft-first with row-level warnings/errors and review-before-import actions.
-4. Do not publish products or copy remote images until explicit seller approval.
-5. Validate with a focused `quality:csv-excel-importer` gate, `pnpm prisma generate`, `pnpm run typecheck`, and `pnpm run build`.
+1. Accept seller-provided Instagram URLs, pasted captions, and approved media references.
+2. Save imported material as `ImportedContentDraft` rows, not published fanpage posts.
+3. Preserve source URL, consent confirmation, and source metadata for review.
+4. Avoid private/unauthorized scraping and do not call Instagram APIs without explicit provider enablement.
+5. Validate with a focused `quality:manual-instagram-import` gate, `pnpm prisma generate`, `pnpm run typecheck`, and `pnpm run build`.
 
 See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap and safety rules.

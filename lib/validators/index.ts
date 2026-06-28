@@ -281,7 +281,7 @@ export const createAiMediaJobSchema = z.object({
 });
 
 export const selectAiMediaImageSchema = z.object({
-  job_id: z.string().min(1),
+  job_id: z.string().min(1).optional(),
   image_url: z.string().url(),
   output_index: z.number().int().min(0),
 });

@@ -128,6 +128,7 @@
     "quality:deployed-import-export-smoke": "node scripts/quality/validate-deployed-import-export-smoke.mjs",
     "quality:import-approval-publishing": "node scripts/quality/validate-import-approval-publishing.mjs",
     "quality:ai-media": "node scripts/quality/validate-ai-media.mjs",
+    "test:ai-media": "npx tsx scripts/quality/validate-ai-media.mts",
     "quality:ai-media-client": "node scripts/quality/validate-ai-media.mjs",
     "quality:ai-media-mock": "node scripts/quality/validate-ai-media.mjs",
     "quality:ai-media-deployed-smoke": "node scripts/e2e/deployed-ai-media-smoke.mjs",

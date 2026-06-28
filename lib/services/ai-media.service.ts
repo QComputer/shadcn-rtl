@@ -14,11 +14,15 @@ import { hasPermission } from "@/lib/types";
 import { revalidatePath, revalidateTag } from "next/cache";
 
 function revalidateAiSelectedProductImage(organizationSlug: string, productSlugOrId: string) {
-  for (const locale of supportedLocales) {
-    revalidatePath(`/${locale}/shop/${organizationSlug}`);
-    revalidatePath(`/${locale}/shop/${organizationSlug}/product/${productSlugOrId}`);
+  try {
+    for (const locale of supportedLocales) {
+      revalidatePath(`/${locale}/shop/${organizationSlug}`);
+      revalidatePath(`/${locale}/shop/${organizationSlug}/product/${productSlugOrId}`);
+    }
+    revalidateTag("home-page", "max");
+  } catch {
+    // revalidatePath requires a Next.js request context; ignore in tests
   }
-  revalidateTag("home-page", "max");
 }
 
 function normalizeOutputs(job: AiMediaJob) {
@@ -182,27 +186,37 @@ export class AiMediaService {
   async selectImage(
     organizationId: string,
     productId: string,
-    jobId: string,
+    jobId: string | undefined,
     imageUrl: string,
     outputIndex: number,
   ): Promise<{ success: boolean; imageUrl: string }> {
-    const job = await prisma.aiMediaJob.findFirst({
-      where: { jobId, organizationId, productId },
-      select: {
-        id: true,
-        status: true,
-        outputs: true,
-      },
-    });
+    let job;
 
-    if (!job) throw new ApiError(404, "AI media job not found");
-    if (job.status !== "COMPLETED") {
-      throw new ApiError(400, "Only completed AI media jobs can be selected");
+    if (jobId) {
+      job = await prisma.aiMediaJob.findFirst({
+        where: { jobId, organizationId, productId },
+        select: { id: true, status: true, outputs: true },
+      });
+      if (!job) throw new ApiError(404, "AI media job not found");
+      if (job.status !== "COMPLETED") {
+        throw new ApiError(400, "Only completed AI media jobs can be selected");
+      }
+    } else {
+      job = await prisma.aiMediaJob.findFirst({
+        where: { organizationId, productId, status: "COMPLETED" },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, status: true, outputs: true },
+      });
+      if (!job) throw new ApiError(404, "No completed AI media job found for this product");
     }
 
     const outputs = Array.isArray(job.outputs) ? job.outputs : [];
-    const selected = outputs[outputIndex];
-    const selectedUrl = typeof selected === "object" && selected && "url" in selected
+    if (outputIndex < 0 || outputIndex >= outputs.length) {
+      throw new ApiError(400, "Invalid output index");
+    }
+
+    const selected = outputs[outputIndex] as Record<string, unknown> | null;
+    const selectedUrl = selected && typeof selected === "object" && "url" in selected
       ? String(selected.url)
       : null;
 
@@ -218,10 +232,7 @@ export class AiMediaService {
 
     revalidateAiSelectedProductImage(product.organizationSlug, product.slug || product.id);
 
-    return {
-      success: true,
-      imageUrl,
-    };
+    return { success: true, imageUrl };
   }
 
   async cancelJob(jobId: string, organizationId: string): Promise<AiMediaJob> {

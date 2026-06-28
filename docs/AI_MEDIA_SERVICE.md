@@ -89,15 +89,18 @@ Authorization: required (ADMIN, MANAGER)
 Request body:
 ```json
 {
-  "job_id": "string",
   "image_url": "https://...",
-  "output_index": 0
+  "output_index": 0,
+  "job_id": "optional-job-id"
 }
 ```
 
+- `job_id` is optional. If omitted, the most recent completed job for the product is used.
+
 ## UI Flow
 
-1. Seller opens the product create/edit form.
+### Edit product form
+1. Seller opens the product edit form (`products/[id]`).
 2. If `AI_MEDIA_SERVICE_ENABLED` is `true`, a button appears next to the image upload:
    - **پیشنهاد تصویر حرفه‌ای با AI**
 3. Seller clicks the button → a dialog opens.
@@ -108,6 +111,11 @@ Request body:
 8. Seller clicks **انتخاب تصویر** on a card.
 9. Seller confirms in the browser dialog.
 10. The product image preview updates.
+
+### New product form
+- The AI button is shown as **disabled** on the new product form.
+- A helper text explains: "پس از ذخیره محصول، پیشنهادهای AI در صفحه ویرایش فعال می‌شود."
+- After saving the product, the seller is redirected to the edit page where AI is available.
 
 ## Database Model
 
@@ -127,8 +135,6 @@ Request body:
 Run the quality gate:
 ```powershell
 pnpm run quality:ai-media
-pnpm run quality:ai-media-client
-pnpm run quality:ai-media-mock
 ```
 
 Run the deployed smoke test:
@@ -136,10 +142,10 @@ Run the deployed smoke test:
 $env:DEPLOYED_URL="https://www.bazar-baz.ir"
 $env:AI_MEDIA_SERVICE_URL="https://bazar-baz-ai-media-service.onrender.com"
 $env:AI_MEDIA_SERVICE_INTERNAL_KEY="<vercel-secret>"
-pnpm run quality:ai-media-deployed-smoke
+pnpm run smoke:deployed:ai-media
 ```
 
-Without `AI_MEDIA_SERVICE_INTERNAL_KEY`, the deployed smoke still verifies Bazar Baz route protection plus Render `/health`, `/ready`, and unauthenticated rejection. With the key, it also creates and polls a MOCK job and verifies `/local-output/` URLs.
+The deployed smoke verifies Bazar Baz route protection plus Render `/health`, `/ready`, and unauthenticated rejection. With the key, it also creates and polls a MOCK job and verifies `/local-output/` URLs.
 
 ## Important Warnings
 

@@ -50,12 +50,13 @@ Request body:
 Response:
 ```json
 {
-  "job_id": "string",
-  "status": "QUEUED",
-  "provider": "MOCK",
-  "local_job_id": "string"
+  "success": true,
+  "imageUrl": "https://...",
+  "storedDurably": true
 }
 ```
+
+- `storedDurably` is `true` when the image was copied to Vercel Blob, `false` when falling back to the remote URL.
 
 ### Poll job status
 
@@ -168,10 +169,12 @@ If `BLOB_READ_WRITE_TOKEN` is missing, the system falls back to the ephemeral Re
 - `pnpm lint` passes
 - `pnpm build` passes
 - `quality:ai-media` passes
+- `test:ai-media` passes
 - Deployed Render AI service remains green
 - Dashboard product form can request MOCK suggestions
 - 3 suggestion cards appear
 - Seller can select one completed generated image that belongs to the product/job
+- Selected image is copied to Vercel Blob when `BLOB_READ_WRITE_TOKEN` is configured
 - Public users cannot call protected AI routes
 - AI internal key is never exposed to browser
 - No OpenAI/premium provider is called

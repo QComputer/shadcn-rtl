@@ -1,8 +1,61 @@
 # Bazar Baz — Recommended Next Phase Roadmap
 
-_Last updated from source inspection: 2026-06-02._
+_Last updated from source inspection and roadmap reconciliation: 2026-06-28._
 
-This roadmap is ordered for risk reduction. It intentionally starts with integrity, validation, access control, and data consistency before major product expansion.
+This roadmap is ordered for risk reduction. Phases 18-67 are historical/completed hardening and growth work. The current integrated next track is the Import Hub roadmap, beginning at Phase 68.
+
+## Current integrated roadmap
+
+Current baseline:
+
+- Completed through **P67 - Shop-domain dashboard UX polish**.
+- Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
+- Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
+- `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
+- `docs/IMPORT_HUB_ROADMAP.md` is the active P68-P78 implementation plan.
+
+Recommended next phase:
+
+```txt
+P68 - Import Hub Foundation
+```
+
+P68 should add the central import models, services, dashboard shell, APIs, source detection, consent capture, draft-first review workflow, and `quality:import-hub-foundation` validator. It must not add real scraping or auto-publishing.
+
+Immediate P68 validation target:
+
+```powershell
+pnpm run quality:import-hub-foundation
+pnpm prisma generate
+pnpm run typecheck
+pnpm run build
+```
+
+Follow-on phases:
+
+| Phase | Focus |
+| --- | --- |
+| P69 | CSV/Excel product importer, draft-first. |
+| P70 | Manual Instagram fanpage import, consent-based. |
+| P71 | AI/text product extraction foundation, rule-based first. |
+| P72 | Image/PDF menu import foundation, dry-run fake OCR first. |
+| P73 | Snappfood URL import MVP, cautious one-time import with fallback. |
+| P74 | Snappmarket URL import MVP, cautious one-time import with fallback. |
+| P75 | Telegram post import, manual and permission-aware. |
+| P76 | External source mapping and re-import diff. |
+| P77 | Import Hub audit, limits, and plan readiness. |
+| P78 | Export Hub foundation. |
+
+Safety constraints for all Import Hub phases:
+
+1. Imports are seller-initiated and consent-based.
+2. External URL imports require explicit seller confirmation of ownership or permission.
+3. Imported items stay as drafts until reviewed and approved.
+4. Images preserve source URL/metadata and are not copied to Blob until seller approval.
+5. Snappfood/Snappmarket/Instagram/Telegram work must avoid private, unauthorized, auth-gated, or high-volume scraping.
+6. Real external provider calls stay dry-run or disabled unless explicitly enabled.
+
+## Historical hardening roadmap
 
 ## Phase 18 — Production integrity and clean build gate
 

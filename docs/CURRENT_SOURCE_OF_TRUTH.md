@@ -1,10 +1,10 @@
 # Current Source of Truth — Bazar Baz
 
-Date: 2026-06-27
+Date: 2026-06-28
 
 ## Current validated baseline
 
-The current working baseline after P58 overlays is source-validator green.
+The current working baseline after P67 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -37,6 +37,15 @@ pnpm run quality:public-slug-preview-share
 pnpm run quality:tenant-og-images
 pnpm run quality:deployed-social-preview
 pnpm run quality:social-preview-evidence
+pnpm run quality:shop-custom-domains
+pnpm run quality:shop-domain-admin
+pnpm run quality:dashboard-organizations-published
+pnpm run quality:vercel-domain-automation
+pnpm run quality:custom-domain-seo
+pnpm run quality:custom-domain-default-locale
+pnpm run quality:custom-domain-smoke
+pnpm run quality:platform-default-locale
+pnpm run quality:shop-domain-ux
 ```
 
 Clean handoff gate introduced in P33:
@@ -80,6 +89,12 @@ pnpm run db:migrate:neon:dry-run
 - Tenant-specific Open Graph image generation exists through parameterized `/og-image` cards, generated organization/category/product/service fallback image URLs, uploaded-media-first share metadata, and the `quality:tenant-og-images` validator.
 - Deployed social preview verification exists through `scripts/e2e/deployed-social-preview.mjs`, Persian generated-card and uploaded-image `og:image` capture checks, deployed sitemap sampling, bundled Vazirmatn OG fonts, and the `quality:deployed-social-preview` validator.
 - Social preview release evidence exists through `scripts/release/archive-social-preview-evidence.mjs`, `.release/social-preview-evidence` archives, `evidence.json`, generated `REVIEW.md` checklists, `docs/RELEASE_NOTES_TEMPLATE.md`, and the `quality:social-preview-evidence` validator.
+- Shop custom-domain foundation exists through `OrganizationDomain`, custom-domain-aware `proxy.ts` routing, tenant-safe domain lookup, a domain-not-configured fallback, and the `quality:shop-custom-domains` validator.
+- SUPER_ADMIN shop-domain management exists at `/{locale}/dashboard/shop-domains`, with provision/remove/status/primary controls guarded to SUPER_ADMIN and validated by `quality:shop-domain-admin` and `quality:shop-domain-ux`.
+- Vercel custom-domain automation exists through dry-run-safe domain provisioning helpers, `scripts/ops/push-vercel-env.ps1`, and `quality:vercel-domain-automation`.
+- Custom-domain SEO hardening exists through tenant-aware robots/sitemap output, platform-to-primary-custom-domain redirects for indexable shop pages, transactional-route redirect exclusions, and `quality:custom-domain-seo`.
+- Custom-domain and platform no-locale visits default to Persian (`fa`) through the current proxy behavior, with `quality:custom-domain-default-locale`, `quality:platform-default-locale`, `e2e:custom-domain-smoke`, and `e2e:platform-default-locale`.
+- Dashboard organizations is a SUPER_ADMIN-only localized route at `/{locale}/dashboard/organizations`, backed by hardened `/api/organizations` access and validated by `quality:dashboard-organizations-published`.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -127,6 +142,15 @@ pnpm run db:migrate:neon:dry-run
 | P56 | Tenant-Specific Open Graph Image Generation with uploaded-media precedence and generated fallback cards. |
 | P57 | Deployed Social Preview Verification with read-only `og:image` resolution and capture evidence. |
 | P58 | Social Preview Artifact Review and Release Evidence with `.release` archives, review checklist, and release-note template. |
+| P59 | Shop Custom Domains with `OrganizationDomain`, custom-domain proxy routing, domain fallback, and validators. |
+| P60 | SUPER_ADMIN Shop Domains dashboard for controlled custom-domain management. |
+| P61/P61A/P61B/P61C | Vercel environment push tooling and PowerShell 5.1-safe hotfixes. |
+| P62/P62A | SUPER_ADMIN Dashboard Organizations publication and search-param compatibility hotfix. |
+| P63 | Dry-run-safe Vercel custom-domain automation for domain provisioning/removal/status. |
+| P64 | Custom-domain SEO hardening for robots, sitemap, canonicals, and platform-to-custom-domain redirects. |
+| P65 | Custom-domain default `fa` locale routing. |
+| P66/P66A | Deployed custom-domain smoke coverage and platform no-locale default `fa` routing. |
+| P67 | Shop-domain dashboard UX polish and focused validator. |
 
 ## Current route/API inventory
 
@@ -166,6 +190,14 @@ Important currently implemented surfaces:
 /api/dashboard/customer-club/push
 /api/customer/notifications
 /api/customer/push-subscriptions
+/{locale}/dashboard/shop-domains
+/{locale}/dashboard/organizations
+/api/dashboard/shop-domains
+/api/dashboard/shop-domains/[id]
+/api/dashboard/shop-domains/[id]/primary
+/api/dashboard/shop-domains/[id]/provision
+/api/dashboard/shop-domains/[id]/status
+/api/organizations
 ```
 
 ## Current fanpage status
@@ -225,6 +257,10 @@ Deferred:
 - P57 writes deployed social preview captures under `test-results/deployed-social-preview`; those artifacts are verification output and must not be committed.
 - P57 live smoke currently treats category sitemap candidates as sampled-but-not-required by default because deployed category sitemap URLs can be stale/404; set `DEPLOYED_SOCIAL_PREVIEW_REQUIRE_CATEGORY=1` after category sitemap reachability is cleaned up.
 - P58 writes release evidence under `.release/social-preview-evidence`; those archives are external release records and must not be committed.
+- Custom-domain smoke tests are deployment/data dependent. Current reference configuration uses `CUSTOM_DOMAIN_SMOKE_BASE_URL=https://www.khalae.ir`, `CUSTOM_DOMAIN_SMOKE_PLATFORM_URL=https://www.bazar-baz.ir`, and `CUSTOM_DOMAIN_SMOKE_SHOP_SLUG=ahmad`.
+- Shop owners cannot self-serve custom-domain management yet; P60/P67 keep domain management SUPER_ADMIN-only.
+- Vercel domain automation must remain dry-run-safe by default and must never hardcode tokens or project/team secrets.
+- Third-party import features are not implemented yet. Future Import Hub work must be seller-initiated, consent-based, draft-first, auditable, rate-limited, and review-before-publish.
 
 ## Clean release rules
 
@@ -263,12 +299,15 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P59 - Category Sitemap Reachability Cleanup
+P68 - Import Hub Foundation
 ```
 
 Scope:
 
-1. Investigate deployed category sitemap URLs that currently return 404.
-2. Align sitemap category entries with route reachability for shop and appointment category pages.
-3. Enable strict `DEPLOYED_SOCIAL_PREVIEW_REQUIRE_CATEGORY=1` in the deployed social preview smoke after cleanup.
-4. Validate with typecheck, build, `quality:local`, P42-P58 validators, and deployed social preview smoke.
+1. Add central Import Hub infrastructure without real external scraping/importing.
+2. Introduce external source/job/draft models, source detection, normalizers, and dashboard/API shells.
+3. Require explicit seller confirmation for third-party URLs and save all imported material as drafts.
+4. Preserve source URL/metadata and show remote image previews before any Blob copy.
+5. Validate with `quality:import-hub-foundation`, `pnpm prisma generate`, `pnpm run typecheck`, and `pnpm run build`.
+
+See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap and safety rules.

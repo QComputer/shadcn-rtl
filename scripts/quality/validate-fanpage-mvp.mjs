@@ -51,7 +51,12 @@ add("fanpage pages gate create form by membership", fanpagePages.length === 2 &&
 add("fanpage post card exists", exists("components/follow/fanpage-post-card.tsx"));
 add("fanpage post form exists", exists("components/follow/fanpage-post-form.tsx"));
 add("organization layout links fanpage", /organization\.fanpage/.test(read("app/[locale]/appointment/[slug]/layout.tsx")) && /\/fanpage/.test(read("app/[locale]/appointment/[slug]/layout.tsx")));
-add("shop layout links shop fanpage", /organization\.fanpage/.test(read("app/[locale]/shop/[slug]/layout.tsx")) && /shop\/\$\{organization\.slug\}\/fanpage/.test(read("app/[locale]/shop/[slug]/layout.tsx")));
+const shopLayout = read("app/[locale]/shop/[slug]/layout.tsx");
+add(
+  "shop layout links shop fanpage",
+  /organization\.fanpage/.test(shopLayout) &&
+    (/shop\/\$\{organization\.slug\}\/fanpage/.test(shopLayout) || /tenantHref\("\/fanpage"\)/.test(shopLayout)),
+);
 add("fanpage service revalidates shop and appointment routes", /revalidatePath\(`\/\$\{locale\}\/appointment\/\$\{slug\}\/fanpage`\)/.test(read("lib/services/fanpage.service.ts")) && /revalidatePath\(`\/\$\{locale\}\/shop\/\$\{slug\}\/fanpage`\)/.test(read("lib/services/fanpage.service.ts")));
 
 for (const locale of ["fa", "en", "ar"]) {

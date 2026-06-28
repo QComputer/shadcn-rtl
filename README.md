@@ -71,6 +71,16 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 56 | Tenant-Specific Open Graph Image Generation | Source-validated | `pnpm run quality:tenant-og-images` |
 | 57 | Deployed Social Preview Verification | Source/deployed smoke | `pnpm run quality:deployed-social-preview` / `pnpm run e2e:deployed:social-preview` |
 | 58 | Social Preview Artifact Review and Release Evidence | Tooling/docs | `pnpm run quality:social-preview-evidence` / `pnpm run release:social-preview-evidence` |
+| 59 | Shop Custom Domains | Source-validated | `pnpm run quality:shop-custom-domains` |
+| 60 | SUPER_ADMIN Shop Domains | Source-validated | `pnpm run quality:shop-domain-admin` |
+| 61 | Vercel environment push tooling | Tooling | `scripts/ops/push-vercel-env.ps1` |
+| 62 | Dashboard Organizations publication | Source-validated | `pnpm run quality:dashboard-organizations-published` |
+| 63 | Vercel custom-domain automation | Source/tooling | `pnpm run quality:vercel-domain-automation` |
+| 64 | Custom-domain SEO hardening | Source-validated | `pnpm run quality:custom-domain-seo` |
+| 65 | Custom-domain default Persian locale | Source-validated | `pnpm run quality:custom-domain-default-locale` |
+| 66 | Deployed custom-domain smoke | Source/deployed smoke | `pnpm run quality:custom-domain-smoke` / `pnpm run e2e:custom-domain-smoke` |
+| 66A | Platform default Persian locale | Source/deployed smoke | `pnpm run quality:platform-default-locale` / `pnpm run e2e:platform-default-locale` |
+| 67 | Shop-domain dashboard UX polish | Source-validated | `pnpm run quality:shop-domain-ux` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -106,6 +116,15 @@ pnpm run quality:public-slug-preview-share
 pnpm run quality:tenant-og-images
 pnpm run quality:deployed-social-preview
 pnpm run quality:social-preview-evidence
+pnpm run quality:shop-custom-domains
+pnpm run quality:shop-domain-admin
+pnpm run quality:dashboard-organizations-published
+pnpm run quality:vercel-domain-automation
+pnpm run quality:custom-domain-seo
+pnpm run quality:custom-domain-default-locale
+pnpm run quality:custom-domain-smoke
+pnpm run quality:platform-default-locale
+pnpm run quality:shop-domain-ux
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -149,6 +168,24 @@ pnpm run e2e:deployed:social-preview
 ```
 
 The suite samples deployed sitemap pages for organization, category, product, and service routes, fetches each page `og:image`, captures image bytes under `test-results/deployed-social-preview`, and directly verifies a Persian generated `/og-image?...` card backed by bundled Vazirmatn fonts. Use `DEPLOYED_SOCIAL_PREVIEW_ALLOW_EMPTY=1` only for intentionally sparse non-production deployments, and `DEPLOYED_SOCIAL_PREVIEW_REQUIRE_CATEGORY=1` when category sitemap URLs are expected to be reachable.
+
+## Deployed custom-domain validation
+
+Run the custom-domain smoke suite when validating Persian default locale behavior, platform-to-custom-domain SEO redirects, and clean custom-domain storefront URLs:
+
+```powershell
+$env:CUSTOM_DOMAIN_SMOKE_BASE_URL="https://www.khalae.ir"
+$env:CUSTOM_DOMAIN_SMOKE_PLATFORM_URL="https://www.bazar-baz.ir"
+$env:CUSTOM_DOMAIN_SMOKE_SHOP_SLUG="ahmad"
+pnpm run e2e:custom-domain-smoke
+```
+
+Run the platform no-locale smoke when validating first-time platform visits default to `fa`:
+
+```powershell
+$env:PLATFORM_DEFAULT_LOCALE_BASE_URL="https://www.bazar-baz.ir"
+pnpm run e2e:platform-default-locale
+```
 
 ## Social preview release evidence
 
@@ -206,84 +243,12 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P58 - Social Preview Artifact Review and Release Evidence**.
+Latest completed implementation phase: **P67 - Shop-domain dashboard UX polish**.
 
-P58 adds a release evidence workflow for deployed social preview captures, including copied capture artifacts under `.release/social-preview-evidence`, machine-readable `evidence.json`, a visual review checklist, and `quality:social-preview-evidence`.
+Recommended next phase: **P68 - Import Hub Foundation**.
 
-Previous deployed social preview phase retained: **P57 - Deployed Social Preview Verification**.
+The active roadmap is `docs/IMPORT_HUB_ROADMAP.md`. P68 should add the Import Hub model/service/API/dashboard shell with source detection, consent capture, draft-first review, and a focused `quality:import-hub-foundation` validator. It must not add real scraping, real external provider calls, or auto-publishing.
 
-P57 adds a read-only deployed social preview smoke suite for sampled organization/category/product/service pages, `og:image` URL resolution, generated `/og-image` crawler access, uploaded-image preview capture, and capture manifests under `test-results/deployed-social-preview`.
+## Historical validator anchors
 
-Previous tenant OG phase retained: **P56 - Tenant-Specific Open Graph Image Generation**.
-
-P56 adds deterministic generated Open Graph cards for organization, category, product, and service pages when uploaded share images are absent, while preserving uploaded image precedence for real logo/cover/category/product/service media. It adds the focused `quality:tenant-og-images` validator.
-
-Previous public slug/share phase retained: **P55 - Public Slug Preview and Rich Share Polish**.
-
-P55 adds copy/open controls for dashboard public slug URLs, exposes service-category organization slugs for accurate appointment category previews, adds explicit social image metadata dimensions/alt text, and strengthens image fallbacks for product/service/category share metadata.
-
-Previous dashboard slug phase retained: **P54 - Dashboard Slug Editing UI**.
-
-P54 adds dashboard slug fields for product categories, service categories, products, and services, shows saved category slugs in management lists, sends blank slug fields as auto-generation requests, and adds the focused `quality:dashboard-slug-editing` validator.
-
-Previous deployed SEO phase retained: **P53 - Public SEO Deployed Slug Verification**.
-
-P53 adds a read-only deployed slug SEO smoke suite for `robots.txt`, `sitemap.xml`, canonical links, JSON-LD, `og:image`, public slug API resolution, and product/service ID-to-slug redirects, plus the focused `quality:deployed-slug-seo` validator.
-
-Previous detail slug phase retained: **P52 - Public Product and Service Slug Detail URLs**.
-
-P52 adds stable product/service slug storage and backfill, unique detail slug generation in product/service services, slug-or-ID public detail API resolution, ID-to-slug detail redirects, slug-first public product/service cards, search results, JSON-LD, sitemap entries, and the focused `quality:public-detail-slugs` validator.
-
-Previous category slug phase retained: **P51 - Category Slugs and Public Listing Pagination**.
-
-P51 adds stable category slug storage/backfill, unique slug generation in category services, slug-first public category links and sitemap entries, ID-route compatibility via slug redirects, paginated category landing pages, page-aware canonical alternates, `rel="prev"` / `rel="next"` navigation links, and the focused `quality:public-category-slugs-pagination` validator.
-
-Previous category SEO phase retained: **P50 - Public Category Metadata and Listing SEO Polish**.
-
-P50 adds indexable public product-category and service-category landing pages, category metadata, CollectionPage/ItemList/breadcrumb JSON-LD, category sitemap entries, discovery links from listing pages, and the focused `quality:public-category-seo` validator.
-
-Previous SEO QA phase retained: **P49 - Public SEO QA and Rich Preview Hardening**.
-
-P49 adds a generated default Open Graph image, points fallback/base social images at it, adds a shared noindex metadata helper, noindexes checkout/order/booking/appointment lookup/status routes, expands robots disallow rules for transactional public route families, and adds the focused `quality:public-seo-qa` validator.
-
-Previous SEO foundation phase retained: **P48 - Public SEO Foundation**.
-
-P48 adds centralized public SEO helpers, locale-aware canonical/alternate metadata, public route metadata for shop, appointment, product, service, and fanpage routes, JSON-LD for organizations/products/services/breadcrumbs/fanpages, dynamic robots and sitemap metadata routes, and the focused `quality:public-seo` validator.
-
-Previous web push phase retained: **P47 - Web Push Opt-In Foundation**.
-
-P47 adds organization/customer-scoped browser push subscriptions, append-only notification permission events, customer opt-in/unsubscribe UI on shop profiles, a management-only `/dashboard/customer-club/push` page, dry-run push delivery preview, VAPID/feature-flag environment validation, and the focused `quality:web-push-foundation` validator. Real Web Push delivery remains disabled behind explicit environment flags.
-
-Previous loyalty/coupon phase retained: **P46 - Loyalty Points and Coupons**.
-
-P46 adds organization-scoped loyalty ledgers, purchase earning rules, coupons, and coupon redemptions; management-only `/dashboard/customer-club/loyalty` and `/dashboard/customer-club/coupons` pages; thin dashboard APIs; append-only point accounting; coupon date/count/customer/segment enforcement; audit logging; localized dictionary copy; and the focused `quality:loyalty-coupons` validator.
-
-Previous campaign phase retained: **P45 - Campaign Builder MVP**.
-
-P45 adds organization-scoped campaign drafts for Customer Club segments, reusable audience/message/delivery records, campaign list/new/detail dashboard pages, dry-run audience preview, in-app-only sending through `Notification`, one delivery row per recipient, pre-send cancellation, audit logging, and the focused `quality:campaign-builder` validator.
-
-Previous segment phase retained: **P44 - Customer Segments MVP**.
-
-P44 adds organization-scoped customer segment definitions, reusable segment/rule/snapshot tables, a management-only `/dashboard/customer-club/segments` page, tenant-safe Customer Club/order/cart count computation, explicit snapshot saving with audit logging, localized FA/EN/AR segment copy, and the focused `quality:customer-segments` validator.
-
-Previous notification phase retained: **P43 - in-app notification inbox**.
-
-P43 adds a localized dashboard notification inbox, read/unread controls, a management-only in-app Customer Club broadcast path with dry-run recipient preview, `GET/PATCH /api/customer/notifications`, organization/actor context on `Notification`, audit logging for sends, and the focused `quality:in-app-notifications` validator. It does not send SMS, email, Telegram, Web Push, or other external notifications.
-
-Previous customer club phase retained: **P42 - Customer Club foundation**.
-
-P42 adds organization-scoped `CustomerClubMembership`, self-service and dashboard management APIs, management-only dashboard navigation/pages, localized FA/EN/AR Customer Club copy, audit logging for membership mutations, and the focused `quality:customer-club-foundation` validator.
-
-Previous route guard phase retained: **P41 - dashboard unauthorized-state polish and route guard smoke tests**.
-
-P41 polishes the localized unauthorized dashboard fallback with focus management, clearer role/route context, mobile-friendly spacing, and a focused `quality:dashboard-route-guard-smoke` validator for representative route-guard expectations.
-
-Previous route authorization phase retained: **P40 - dashboard route-level authorization helper adoption**.
-
-Previous route parity phase retained: **P39 - dashboard route access/navigation parity audit**.
-
-Previous dashboard role phase retained: **P38 - dashboard sidebar role-aware navigation cleanup**.
-
-Previous dashboard shell/copy phase retained: **P37 - dashboard navigation and localized shell copy cleanup**.
-
-Recommended next phase: **P59 - Category Sitemap Reachability Cleanup**.
+The source tree keeps focused validators for these retained phases: P37 dashboard navigation and localized shell copy, P38 dashboard role navigation, P39 dashboard route parity, P40 dashboard route authorization, P41 dashboard route guard smoke, P42 Customer Club foundation, P43 in-app notification inbox, P44 Customer Segments, P45 Campaign Builder, P46 Loyalty Points and Coupons, and P47 Web Push Opt-In Foundation.

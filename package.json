@@ -125,11 +125,13 @@
     "quality:import-hub-audit-limits": "node scripts/quality/validate-import-hub-audit-limits.mjs",
     "quality:export-hub-foundation": "node scripts/quality/validate-export-hub-foundation.mjs",
     "quality:export-downloads": "node scripts/quality/validate-export-downloads.mjs",
+    "quality:deployed-import-export-smoke": "node scripts/quality/validate-deployed-import-export-smoke.mjs",
     "quality:import-approval-publishing": "node scripts/quality/validate-import-approval-publishing.mjs",
     "quality:ai-media": "node scripts/quality/validate-ai-media.mjs",
     "quality:ai-media-client": "node scripts/quality/validate-ai-media.mjs",
     "quality:ai-media-mock": "node scripts/quality/validate-ai-media.mjs",
     "quality:ai-media-deployed-smoke": "node scripts/e2e/deployed-ai-media-smoke.mjs",
+    "e2e:deployed:import-export": "node scripts/e2e/deployed-import-export-smoke.mjs",
     "e2e:deployed:ai-media": "node scripts/e2e/deployed-ai-media-smoke.mjs",
     "smoke:deployed:ai-media": "node scripts/e2e/deployed-ai-media-smoke.mjs"
   },

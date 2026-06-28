@@ -95,6 +95,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 79 | Import Approval Publishing | Source-validated | `pnpm run quality:import-approval-publishing` |
 | 80 | AI Media Suggestions Hardening | Source-validated | `pnpm run quality:ai-media` |
 | 81 | Export Downloads | Source-validated | `pnpm run quality:export-downloads` |
+| 82 | Deployed Import/Export Smoke | Source/deployed smoke | `pnpm run quality:deployed-import-export-smoke` / `pnpm run e2e:deployed:import-export` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -153,6 +154,7 @@ pnpm run quality:export-hub-foundation
 pnpm run quality:import-approval-publishing
 pnpm run quality:ai-media
 pnpm run quality:export-downloads
+pnpm run quality:deployed-import-export-smoke
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -271,12 +273,12 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P81 - Export Downloads**.
+Latest completed implementation phase: **P82 - Deployed Import/Export Smoke**.
 
-Recommended next phase: **Post-P81 deployed import/export verification and storage polish**.
+Recommended next phase: **Post-P82 export artifact storage polish**.
 
-The active roadmap is `docs/IMPORT_HUB_ROADMAP.md` plus `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md`, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md`, and `docs/PHASE_81_EXPORT_DOWNLOADS.md`. P68-P81 are implemented; the next work should verify deployed import/export flows with real organization data and then move generated export artifacts to Blob storage if payload sizes exceed the current snapshot model.
+The active roadmap is `docs/IMPORT_HUB_ROADMAP.md` plus `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md`, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md`, `docs/PHASE_81_EXPORT_DOWNLOADS.md`, and `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md`. P68-P82 are implemented; the next work should move generated export artifacts to Blob storage if payload sizes exceed the current snapshot model.
 
 ## Historical validator anchors
 
-The source tree keeps focused validators for these retained phases: P37 dashboard navigation and localized shell copy, P38 dashboard role navigation, P39 dashboard route parity, P40 dashboard route authorization, P41 dashboard route guard smoke, P42 Customer Club foundation, P43 in-app notification inbox, P44 Customer Segments, P45 Campaign Builder, P46 Loyalty Points and Coupons, P47 Web Push Opt-In Foundation, P68 Import Hub Foundation, P69 CSV/Excel Product Importer, P70 Manual Instagram Fanpage Import, P71 AI/Text Product Extraction Foundation, P72 Image/PDF Menu Import Foundation, P73 Snappfood URL Import MVP, P74 Snappmarket URL Import MVP, P75 Telegram Post Import, P76 External Source Mapping and Re-import Diff, P77 Import Hub Audit, Limits, and Plan Readiness, P78 Export Hub Foundation, P79 Import Approval Publishing, P80 AI Media Suggestions Hardening, and P81 Export Downloads.
+The source tree keeps focused validators for these retained phases: P37 dashboard navigation and localized shell copy, P38 dashboard role navigation, P39 dashboard route parity, P40 dashboard route authorization, P41 dashboard route guard smoke, P42 Customer Club foundation, P43 in-app notification inbox, P44 Customer Segments, P45 Campaign Builder, P46 Loyalty Points and Coupons, P47 Web Push Opt-In Foundation, P68 Import Hub Foundation, P69 CSV/Excel Product Importer, P70 Manual Instagram Fanpage Import, P71 AI/Text Product Extraction Foundation, P72 Image/PDF Menu Import Foundation, P73 Snappfood URL Import MVP, P74 Snappmarket URL Import MVP, P75 Telegram Post Import, P76 External Source Mapping and Re-import Diff, P77 Import Hub Audit, Limits, and Plan Readiness, P78 Export Hub Foundation, P79 Import Approval Publishing, P80 AI Media Suggestions Hardening, P81 Export Downloads, and P82 Deployed Import/Export Smoke.

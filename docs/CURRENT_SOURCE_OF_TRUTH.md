@@ -4,7 +4,7 @@ Date: 2026-06-28
 
 ## Current validated baseline
 
-The current working baseline after P81 overlays is source-validator green.
+The current working baseline after P82 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -111,6 +111,7 @@ pnpm run db:migrate:neon:dry-run
 - Import Approval Publishing exists through the approval-to-live `ImportHubService.reviewDrafts("APPROVED")` path, approved product draft publishing into live products/categories/default variants, approved content draft publishing into live fanpage posts, `IMPORTED` draft status, all-locale public path/home cache revalidation, localized dashboard approve-and-publish copy, audit logging, and the `quality:import-approval-publishing` validator.
 - AI Media Suggestions Hardening exists through `AiMediaJob`, server-only AI media client calls, authenticated product-scoped suggestion APIs, completed-job output validation before image selection, public product/home cache revalidation, Persian-first product edit UI, `docs/AI_MEDIA_SERVICE.md`, deployed unauthenticated smoke coverage, and the `quality:ai-media` validator. This phase remains MOCK/service-backed and does not copy generated images to durable Blob storage.
 - Export Downloads exists through protected `GET /api/dashboard/exports/jobs/[jobId]/download`, completed-job checks, private no-store attachment responses, lightweight export job list responses, Persian-first dashboard download actions, and the `quality:export-downloads` validator.
+- Deployed Import/Export Smoke exists through `scripts/e2e/deployed-import-export-smoke.mjs`, validating deployed auth, organization resolution, draft-first manual text imports, rejection instead of publishing, JSON/CSV export job creation, and protected export downloads against a real deployment.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -181,6 +182,7 @@ pnpm run db:migrate:neon:dry-run
 | P79 | Import Approval Publishing with review-gated live product/category/variant and fanpage post creation. |
 | P80 | AI Media Suggestions Hardening with server-mediated product image suggestion jobs and selection guardrails. |
 | P81 | Export Downloads with protected CSV/JSON attachment responses for completed export jobs. |
+| P82 | Deployed Import/Export Smoke with real deployment auth, draft-only import verification, and export download checks. |
 
 ## Current route/API inventory
 
@@ -295,7 +297,7 @@ Deferred:
 - Custom-domain smoke tests are deployment/data dependent. Current reference configuration uses `CUSTOM_DOMAIN_SMOKE_BASE_URL=https://www.khalae.ir`, `CUSTOM_DOMAIN_SMOKE_PLATFORM_URL=https://www.bazar-baz.ir`, and `CUSTOM_DOMAIN_SMOKE_SHOP_SLUG=ahmad`.
 - Shop owners cannot self-serve custom-domain management yet; P60/P67 keep domain management SUPER_ADMIN-only.
 - Vercel domain automation must remain dry-run-safe by default and must never hardcode tokens or project/team secrets.
-- P68-P81 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation/downloads, review-gated import publishing, and AI media suggestion hardening are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
+- P68-P82 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation/downloads, review-gated import publishing, AI media suggestion hardening, and deployed import/export smoke coverage are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
 
 ## Clean release rules
 
@@ -334,16 +336,13 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-Post-P81 deployed import/export verification and storage polish
+Post-P82 export artifact storage polish
 ```
 
 Scope:
 
-1. Run deployed smoke coverage for Import Hub and Export Hub with a real admin organization.
-2. Verify the P78 migration is applied on the target database before using `/dashboard/exports`.
-3. Verify P79 approval publishing on a real shop organization with product and fanpage drafts.
-4. Verify P80 AI media service configuration and unauthenticated deployed smoke routes before enabling it for sellers.
-5. Move generated export artifacts to Blob storage if payload sizes need to exceed the current stored snapshot model.
-6. Keep Persian (`fa`) as the primary UX/SEO language for the next polish pass.
+1. Move generated export artifacts to Blob storage if payload sizes need to exceed the current stored snapshot model.
+2. Keep protected dashboard download routes as the only access path for private export artifacts.
+3. Keep Persian (`fa`) as the primary UX/SEO language for the next polish pass.
 
-See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, and `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads.
+See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, and `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification.

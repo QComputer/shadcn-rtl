@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-28._
 
-This roadmap is ordered for risk reduction. Phases 18-81 are historical/completed hardening and growth work. The integrated Import Hub and Export Hub roadmap is implemented through Phase 81.
+This roadmap is ordered for risk reduction. Phases 18-82 are historical/completed hardening and growth work. The integrated Import Hub and Export Hub roadmap is implemented through Phase 82.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P81 - Export Downloads**.
+- Completed through **P82 - Deployed Import/Export Smoke**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -17,10 +17,10 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-Post-P81 deployed import/export verification and storage polish
+Post-P82 export artifact storage polish
 ```
 
-Next work should verify deployed import/export flows with real organization data, then move generated export artifacts to Blob storage if payload sizes exceed the current stored snapshot model.
+Next work should move generated export artifacts to Blob storage if payload sizes exceed the current stored snapshot model.
 
 Immediate validation target:
 
@@ -29,6 +29,7 @@ pnpm run quality:export-hub-foundation
 pnpm run quality:import-approval-publishing
 pnpm run quality:ai-media
 pnpm run quality:export-downloads
+pnpm run quality:deployed-import-export-smoke
 pnpm run quality:local
 pnpm prisma generate
 pnpm run typecheck
@@ -53,6 +54,7 @@ Completed integrated phases:
 | P79 | Import approval publishing. |
 | P80 | AI media suggestions hardening. |
 | P81 | Protected export downloads. |
+| P82 | Deployed import/export smoke. |
 
 Safety constraints for all Import Hub phases:
 

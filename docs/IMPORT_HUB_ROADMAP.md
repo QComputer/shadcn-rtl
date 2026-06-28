@@ -86,6 +86,8 @@ Scope:
 
 ## Phase 71 - AI/Text Product Extraction Foundation
 
+Status: Implemented in P71.
+
 Goal: add provider-neutral extraction from pasted text, beginning with deterministic/rule-based parsing.
 
 Scope:

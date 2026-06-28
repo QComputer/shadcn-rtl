@@ -13,6 +13,10 @@ import {
 } from "@/lib/import-hub/normalizers"
 import { parseManualInstagramContent } from "@/lib/import-hub/instagram-manual-parser"
 import { parseProductSpreadsheet } from "@/lib/import-hub/spreadsheet-parser"
+import {
+  externalTextExtractionEnabled,
+  getProductTextExtractionProvider,
+} from "@/lib/import-hub/text-extraction-provider"
 import type {
   CreateImportJobInput,
   ImportJobListOptions,
@@ -120,7 +124,7 @@ export class ImportHubService {
     const consentText = input.consentText?.trim() || null
     const displayName = this.getSourceDisplayName(type, normalizedUrl, inputFilename)
     const spreadsheetType = type === "CSV" || type === "EXCEL" ? type : null
-    const parsedProductDrafts = spreadsheetType
+    const parsedSpreadsheetProductDrafts = spreadsheetType
       ? parseProductSpreadsheet({
           type: spreadsheetType,
           fileContent: input.fileContent,
@@ -128,6 +132,14 @@ export class ImportHubService {
           maxRows: 500,
         })
       : []
+    const textExtractionProvider = getProductTextExtractionProvider()
+    const parsedTextProductDrafts = type === "MANUAL_TEXT" && inputText
+      ? textExtractionProvider.extractProducts({
+          text: inputText,
+          maxLines: 200,
+        })
+      : []
+    const parsedProductDrafts = [...parsedSpreadsheetProductDrafts, ...parsedTextProductDrafts]
     const parsedContentDrafts = type === "INSTAGRAM"
       ? [parseManualInstagramContent({
           sourceUrl: input.inputUrl,
@@ -137,8 +149,11 @@ export class ImportHubService {
       : []
     const totalDraftCount = parsedProductDrafts.length + parsedContentDrafts.length
 
-    if (spreadsheetType && parsedProductDrafts.length === 0) {
+    if (spreadsheetType && parsedSpreadsheetProductDrafts.length === 0) {
       throw new ApiError(400, "CSV/Excel import did not contain product rows")
+    }
+    if (type === "MANUAL_TEXT" && inputText && parsedTextProductDrafts.length === 0) {
+      throw new ApiError(400, "Manual text import did not contain product-like lines")
     }
     if (type === "INSTAGRAM" && !normalizedUrl) {
       throw new ApiError(400, "Instagram import requires a seller-provided post URL")
@@ -150,7 +165,13 @@ export class ImportHubService {
       throw new ApiError(400, "Instagram import requires a pasted caption or seller-approved media reference")
     }
 
-    const summary = this.buildSummary(parsedProductDrafts.length, parsedContentDrafts.length, type, Boolean(spreadsheetType))
+    const summary = this.buildSummary(
+      parsedProductDrafts.length,
+      parsedContentDrafts.length,
+      type,
+      Boolean(spreadsheetType),
+      parsedTextProductDrafts.length > 0,
+    )
 
     const job = await prisma.$transaction(async (tx) => {
       const source = await tx.externalImportSource.create({
@@ -167,12 +188,15 @@ export class ImportHubService {
           metadata: {
             phase: parsedContentDrafts.length > 0
               ? "P70_MANUAL_INSTAGRAM_FANPAGE_IMPORT"
-              : spreadsheetType
+              : parsedTextProductDrafts.length > 0
+                ? "P71_TEXT_PRODUCT_EXTRACTION"
+                : spreadsheetType
                 ? "P69_CSV_EXCEL_PRODUCT_IMPORTER"
                 : "P68_FOUNDATION",
             draftFirst: true,
             remotePreviewOnly: true,
             blobCopyRequiresReview: true,
+            externalTextExtractionEnabled: externalTextExtractionEnabled(),
           },
         },
       })
@@ -212,11 +236,13 @@ export class ImportHubService {
             imageUrl: draft.imageUrl,
             sourceUrl: draft.sourceUrl,
             sourceExternalId: draft.rowNumber.toString(),
-            sourceMetadata: {
-              type,
-              rowNumber: draft.rowNumber,
-              remoteImagePreviewOnly: Boolean(draft.imageUrl),
-            },
+            sourceMetadata: "sourceMetadata" in draft
+              ? draft.sourceMetadata
+              : {
+                  type,
+                  rowNumber: draft.rowNumber,
+                  remoteImagePreviewOnly: Boolean(draft.imageUrl),
+                },
             rawData: draft.rawData,
             warnings: draft.warnings,
             errors: draft.errors,
@@ -263,11 +289,14 @@ export class ImportHubService {
         consentConfirmed: job.consentConfirmed,
         importerEnabled: parsedContentDrafts.length > 0
           ? "manual-instagram-content-drafts"
-          : spreadsheetType
+          : parsedTextProductDrafts.length > 0
+            ? "local-rule-based-text-product-extractor"
+            : spreadsheetType
             ? "spreadsheet-draft-parser"
             : false,
         productDraftCount: parsedProductDrafts.length,
         contentDraftCount: parsedContentDrafts.length,
+        externalTextExtractionEnabled: externalTextExtractionEnabled(),
       },
       userId: input.actorUserId,
       organizationId: organization.id,
@@ -378,6 +407,7 @@ export class ImportHubService {
     contentDraftCount = 0,
     type: ExternalImportSourceType = "UNKNOWN",
     spreadsheetImporterEnabled = false,
+    textImporterEnabled = false,
   ): ImportJobSummary {
     if (contentDraftCount > 0 && type === "INSTAGRAM") {
       return {
@@ -396,6 +426,17 @@ export class ImportHubService {
         draftFirst: true,
         importerEnabled: "spreadsheet-draft-parser",
         message: "Spreadsheet rows were parsed into product drafts. Publishing remains disabled until seller review.",
+        productDraftCount,
+        contentDraftCount,
+      }
+    }
+
+    if (productDraftCount > 0 && type === "MANUAL_TEXT" && textImporterEnabled) {
+      return {
+        phase: "P71_TEXT_PRODUCT_EXTRACTION",
+        draftFirst: true,
+        importerEnabled: "local-rule-based-text-product-extractor",
+        message: "Pasted text was parsed by the local rule-based extractor into product drafts. External AI calls remain disabled.",
         productDraftCount,
         contentDraftCount,
       }

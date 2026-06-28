@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-28._
 
-This roadmap is ordered for risk reduction. Phases 18-70 are historical/completed hardening and growth work. The current integrated next track is the Import Hub roadmap, continuing at Phase 71.
+This roadmap is ordered for risk reduction. Phases 18-71 are historical/completed hardening and growth work. The current integrated next track is the Import Hub roadmap, continuing at Phase 72.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P70 - Manual Instagram Fanpage Import**.
+- Completed through **P71 - AI/Text Product Extraction Foundation**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -17,15 +17,15 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P71 - AI/Text Product Extraction Foundation
+P72 - Image/PDF Menu Import Foundation
 ```
 
-P71 should add provider-neutral text extraction with deterministic Persian-first parsing and dry-run defaults. AI provider calls must remain disabled until credentials and explicit enable flags exist.
+P72 should add image/PDF menu intake metadata and dry-run fake OCR fixtures without enabling real OCR dependencies by default.
 
-Immediate P71 validation target:
+Immediate P72 validation target:
 
 ```powershell
-pnpm run quality:text-product-extraction
+pnpm run quality:image-pdf-menu-import
 pnpm prisma generate
 pnpm run typecheck
 pnpm run build
@@ -35,7 +35,6 @@ Follow-on phases:
 
 | Phase | Focus |
 | --- | --- |
-| P71 | AI/text product extraction foundation, rule-based first. |
 | P72 | Image/PDF menu import foundation, dry-run fake OCR first. |
 | P73 | Snappfood URL import MVP, cautious one-time import with fallback. |
 | P74 | Snappmarket URL import MVP, cautious one-time import with fallback. |

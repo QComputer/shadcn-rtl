@@ -71,6 +71,10 @@ type ImportedProductDraft = {
   imageUrl?: string | null
   warnings?: string[] | null
   errors?: string[] | null
+  sourceMetadata?: {
+    confidence?: number
+    provider?: string
+  } | null
 }
 
 type ImportedContentDraft = {
@@ -749,6 +753,11 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
                           )}
                           {Array.isArray(draft.warnings) && draft.warnings.length > 0 && (
                             <span className="text-xs text-muted-foreground">{draft.warnings.join(", ")}</span>
+                          )}
+                          {typeof draft.sourceMetadata?.confidence === "number" && (
+                            <span className="text-xs text-muted-foreground">
+                              {Math.round(draft.sourceMetadata.confidence * 100)}%
+                            </span>
                           )}
                         </div>
                       </td>

@@ -140,6 +140,11 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     requiresOrgMembership: true,
   },
 
+  "/dashboard/imports": {
+    allowedRoles: ORG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+  },
+
   "/dashboard/orders": {
     allowedRoles: ORG_MANAGEMENT_ROLES,
     requiresOrgMembership: true,

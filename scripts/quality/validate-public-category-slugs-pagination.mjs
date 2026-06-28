@@ -44,7 +44,12 @@ for (const rel of [
   expectFile(rel);
 }
 
-expectIncludes("prisma/schema.prisma", "slug           String?", "category models include nullable slug fields");
+add(
+  "category models include nullable slug fields",
+  /model\s+ProductCategory\s*{[^}]*\bslug\s+String\?/.test(read("prisma/schema.prisma")) &&
+    /model\s+ServiceCategory\s*{[^}]*\bslug\s+String\?/.test(read("prisma/schema.prisma")),
+  "slug String?",
+);
 expectIncludes("prisma/schema.prisma", "@@index([organizationId, slug])", "category slug indexes are declared");
 expectIncludes("lib/category-slugs.ts", "normalizeCategorySlug", "shared slug normalizer exists");
 expectIncludes("lib/category-slugs.ts", "buildUniqueCategorySlug", "shared slug uniqueness helper exists");

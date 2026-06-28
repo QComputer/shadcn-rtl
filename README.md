@@ -81,6 +81,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 66 | Deployed custom-domain smoke | Source/deployed smoke | `pnpm run quality:custom-domain-smoke` / `pnpm run e2e:custom-domain-smoke` |
 | 66A | Platform default Persian locale | Source/deployed smoke | `pnpm run quality:platform-default-locale` / `pnpm run e2e:platform-default-locale` |
 | 67 | Shop-domain dashboard UX polish | Source-validated | `pnpm run quality:shop-domain-ux` |
+| 68 | Import Hub Foundation | Source-validated | `pnpm run quality:import-hub-foundation` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -125,6 +126,7 @@ pnpm run quality:custom-domain-default-locale
 pnpm run quality:custom-domain-smoke
 pnpm run quality:platform-default-locale
 pnpm run quality:shop-domain-ux
+pnpm run quality:import-hub-foundation
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -243,11 +245,11 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P67 - Shop-domain dashboard UX polish**.
+Latest completed implementation phase: **P68 - Import Hub Foundation**.
 
-Recommended next phase: **P68 - Import Hub Foundation**.
+Recommended next phase: **P69 - CSV/Excel Product Importer**.
 
-The active roadmap is `docs/IMPORT_HUB_ROADMAP.md`. P68 should add the Import Hub model/service/API/dashboard shell with source detection, consent capture, draft-first review, and a focused `quality:import-hub-foundation` validator. It must not add real scraping, real external provider calls, or auto-publishing.
+The active roadmap is `docs/IMPORT_HUB_ROADMAP.md`. P69 should parse seller-owned CSV/XLSX files into `ImportedProductDraft` rows with row-level warnings/errors and review-before-import behavior. It must stay draft-first and must not publish products or copy remote images without explicit seller approval.
 
 ## Historical validator anchors
 

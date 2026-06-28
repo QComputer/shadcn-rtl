@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-28._
 
-This roadmap is ordered for risk reduction. Phases 18-67 are historical/completed hardening and growth work. The current integrated next track is the Import Hub roadmap, beginning at Phase 68.
+This roadmap is ordered for risk reduction. Phases 18-68 are historical/completed hardening and growth work. The current integrated next track is the Import Hub roadmap, continuing at Phase 69.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P67 - Shop-domain dashboard UX polish**.
+- Completed through **P68 - Import Hub Foundation**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -17,15 +17,15 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P68 - Import Hub Foundation
+P69 - CSV/Excel Product Importer
 ```
 
-P68 should add the central import models, services, dashboard shell, APIs, source detection, consent capture, draft-first review workflow, and `quality:import-hub-foundation` validator. It must not add real scraping or auto-publishing.
+P69 should parse seller-owned CSV/XLSX files into `ImportedProductDraft` rows with row-level warnings/errors and review-before-import actions. It must stay draft-first and must not publish products or copy remote images without explicit seller approval.
 
 Immediate P68 validation target:
 
 ```powershell
-pnpm run quality:import-hub-foundation
+pnpm run quality:csv-excel-importer
 pnpm prisma generate
 pnpm run typecheck
 pnpm run build

@@ -4,7 +4,7 @@ Date: 2026-06-28
 
 ## Current validated baseline
 
-The current working baseline after P67 overlays is source-validator green.
+The current working baseline after P68 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -46,6 +46,7 @@ pnpm run quality:custom-domain-default-locale
 pnpm run quality:custom-domain-smoke
 pnpm run quality:platform-default-locale
 pnpm run quality:shop-domain-ux
+pnpm run quality:import-hub-foundation
 ```
 
 Clean handoff gate introduced in P33:
@@ -95,6 +96,7 @@ pnpm run db:migrate:neon:dry-run
 - Custom-domain SEO hardening exists through tenant-aware robots/sitemap output, platform-to-primary-custom-domain redirects for indexable shop pages, transactional-route redirect exclusions, and `quality:custom-domain-seo`.
 - Custom-domain and platform no-locale visits default to Persian (`fa`) through the current proxy behavior, with `quality:custom-domain-default-locale`, `quality:platform-default-locale`, `e2e:custom-domain-smoke`, and `e2e:platform-default-locale`.
 - Dashboard organizations is a SUPER_ADMIN-only localized route at `/{locale}/dashboard/organizations`, backed by hardened `/api/organizations` access and validated by `quality:dashboard-organizations-published`.
+- Import Hub Foundation exists through external import source/job/draft models, consent-based intake, source detection, draft review APIs, localized `/dashboard/imports` UI, and the `quality:import-hub-foundation` validator. P68 does not perform scraping, real external provider calls, Blob copying, product creation, or fanpage publishing.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -151,6 +153,7 @@ pnpm run db:migrate:neon:dry-run
 | P65 | Custom-domain default `fa` locale routing. |
 | P66/P66A | Deployed custom-domain smoke coverage and platform no-locale default `fa` routing. |
 | P67 | Shop-domain dashboard UX polish and focused validator. |
+| P68 | Import Hub Foundation with consent-based intake, source/job/draft models, dashboard UI, APIs, and validator. |
 
 ## Current route/API inventory
 
@@ -198,6 +201,11 @@ Important currently implemented surfaces:
 /api/dashboard/shop-domains/[id]/provision
 /api/dashboard/shop-domains/[id]/status
 /api/organizations
+/{locale}/dashboard/imports
+/api/dashboard/imports/jobs
+/api/dashboard/imports/jobs/[jobId]
+/api/dashboard/imports/jobs/[jobId]/cancel
+/api/dashboard/imports/jobs/[jobId]/review
 ```
 
 ## Current fanpage status
@@ -260,7 +268,7 @@ Deferred:
 - Custom-domain smoke tests are deployment/data dependent. Current reference configuration uses `CUSTOM_DOMAIN_SMOKE_BASE_URL=https://www.khalae.ir`, `CUSTOM_DOMAIN_SMOKE_PLATFORM_URL=https://www.bazar-baz.ir`, and `CUSTOM_DOMAIN_SMOKE_SHOP_SLUG=ahmad`.
 - Shop owners cannot self-serve custom-domain management yet; P60/P67 keep domain management SUPER_ADMIN-only.
 - Vercel domain automation must remain dry-run-safe by default and must never hardcode tokens or project/team secrets.
-- Third-party import features are not implemented yet. Future Import Hub work must be seller-initiated, consent-based, draft-first, auditable, rate-limited, and review-before-publish.
+- P68 Import Hub intake is implemented, but third-party import parsers are not. Future importer phases must remain seller-initiated, consent-based, draft-first, auditable, rate-limited, and review-before-publish.
 
 ## Clean release rules
 
@@ -299,15 +307,15 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P68 - Import Hub Foundation
+P69 - CSV/Excel Product Importer
 ```
 
 Scope:
 
-1. Add central Import Hub infrastructure without real external scraping/importing.
-2. Introduce external source/job/draft models, source detection, normalizers, and dashboard/API shells.
-3. Require explicit seller confirmation for third-party URLs and save all imported material as drafts.
-4. Preserve source URL/metadata and show remote image previews before any Blob copy.
-5. Validate with `quality:import-hub-foundation`, `pnpm prisma generate`, `pnpm run typecheck`, and `pnpm run build`.
+1. Parse seller-uploaded CSV/XLSX files with size/type limits.
+2. Normalize product names, prices, stock, categories, descriptions, and image URLs into `ImportedProductDraft` rows.
+3. Keep imported rows draft-first with row-level warnings/errors and review-before-import actions.
+4. Do not publish products or copy remote images until explicit seller approval.
+5. Validate with a focused `quality:csv-excel-importer` gate, `pnpm prisma generate`, `pnpm run typecheck`, and `pnpm run build`.
 
 See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap and safety rules.

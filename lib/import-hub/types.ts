@@ -1,0 +1,59 @@
+import type {
+  ExternalImportJobStatus,
+  ExternalImportSourceType,
+  ImportedDraftStatus,
+} from "@prisma/client"
+
+export const importSourceTypes = [
+  "INSTAGRAM",
+  "TELEGRAM",
+  "SNAP_FOOD",
+  "SNAP_MARKET",
+  "CSV",
+  "EXCEL",
+  "PDF",
+  "IMAGE_MENU",
+  "MANUAL_URL",
+  "MANUAL_TEXT",
+  "UNKNOWN",
+] as const satisfies readonly ExternalImportSourceType[]
+
+export const reviewableDraftStatuses = [
+  "APPROVED",
+  "REJECTED",
+] as const satisfies readonly ImportedDraftStatus[]
+
+export type ImportJobSummary = {
+  phase: "P68_FOUNDATION"
+  draftFirst: true
+  importerEnabled: false
+  message: string
+  productDraftCount: number
+  contentDraftCount: number
+}
+
+export type CreateImportJobInput = {
+  organizationId: string
+  actorUserId: string
+  sourceType?: ExternalImportSourceType | null
+  inputUrl?: string | null
+  inputText?: string | null
+  inputFilename?: string | null
+  consentConfirmed: boolean
+  consentText?: string | null
+}
+
+export type ReviewImportDraftsInput = {
+  jobId: string
+  organizationId: string
+  actorUserId: string
+  status: (typeof reviewableDraftStatuses)[number]
+  productDraftIds?: string[]
+  contentDraftIds?: string[]
+}
+
+export type ImportJobListOptions = {
+  organizationId?: string | null
+  status?: ExternalImportJobStatus | null
+  take?: number
+}

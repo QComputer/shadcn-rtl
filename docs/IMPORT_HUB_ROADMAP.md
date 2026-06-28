@@ -22,6 +22,8 @@ Persian (`fa`) is the main product language and default first-visit locale. Impo
 
 ## Phase 68 - Import Hub Foundation
 
+Status: Implemented in P68.
+
 Goal: create central import infrastructure without performing real external imports.
 
 Scope:

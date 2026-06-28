@@ -24,9 +24,9 @@ export const reviewableDraftStatuses = [
 ] as const satisfies readonly ImportedDraftStatus[]
 
 export type ImportJobSummary = {
-  phase: "P68_FOUNDATION"
+  phase: "P68_FOUNDATION" | "P69_CSV_EXCEL_PRODUCT_IMPORTER" | "P70_MANUAL_INSTAGRAM_FANPAGE_IMPORT"
   draftFirst: true
-  importerEnabled: false
+  importerEnabled: false | "spreadsheet-draft-parser" | "manual-instagram-content-drafts"
   message: string
   productDraftCount: number
   contentDraftCount: number
@@ -41,6 +41,7 @@ export type CreateImportJobInput = {
   inputFilename?: string | null
   fileContent?: string | null
   fileBase64?: string | null
+  mediaReferences?: string[] | null
   consentConfirmed: boolean
   consentText?: string | null
 }

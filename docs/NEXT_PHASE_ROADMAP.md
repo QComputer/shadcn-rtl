@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-28._
 
-This roadmap is ordered for risk reduction. Phases 18-69 are historical/completed hardening and growth work. The current integrated next track is the Import Hub roadmap, continuing at Phase 70.
+This roadmap is ordered for risk reduction. Phases 18-70 are historical/completed hardening and growth work. The current integrated next track is the Import Hub roadmap, continuing at Phase 71.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P69 - CSV/Excel Product Importer**.
+- Completed through **P70 - Manual Instagram Fanpage Import**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -17,15 +17,15 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P70 - Manual Instagram Fanpage Import
+P71 - AI/Text Product Extraction Foundation
 ```
 
-P70 should accept seller-provided Instagram URLs, captions, and approved media references into `ImportedContentDraft` rows. It must stay consent-based, draft-first, and must not scrape private content or publish fanpage posts.
+P71 should add provider-neutral text extraction with deterministic Persian-first parsing and dry-run defaults. AI provider calls must remain disabled until credentials and explicit enable flags exist.
 
-Immediate P68 validation target:
+Immediate P71 validation target:
 
 ```powershell
-pnpm run quality:manual-instagram-import
+pnpm run quality:text-product-extraction
 pnpm prisma generate
 pnpm run typecheck
 pnpm run build
@@ -35,8 +35,6 @@ Follow-on phases:
 
 | Phase | Focus |
 | --- | --- |
-| P69 | CSV/Excel product importer, draft-first. |
-| P70 | Manual Instagram fanpage import, consent-based. |
 | P71 | AI/text product extraction foundation, rule-based first. |
 | P72 | Image/PDF menu import foundation, dry-run fake OCR first. |
 | P73 | Snappfood URL import MVP, cautious one-time import with fallback. |

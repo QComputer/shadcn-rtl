@@ -83,6 +83,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 67 | Shop-domain dashboard UX polish | Source-validated | `pnpm run quality:shop-domain-ux` |
 | 68 | Import Hub Foundation | Source-validated | `pnpm run quality:import-hub-foundation` |
 | 69 | CSV/Excel Product Importer | Source-validated | `pnpm run quality:csv-excel-importer` |
+| 70 | Manual Instagram Fanpage Import | Source-validated | `pnpm run quality:manual-instagram-import` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -129,6 +130,7 @@ pnpm run quality:platform-default-locale
 pnpm run quality:shop-domain-ux
 pnpm run quality:import-hub-foundation
 pnpm run quality:csv-excel-importer
+pnpm run quality:manual-instagram-import
 pnpm run release:stage
 pnpm run quality:release-staged
 ```
@@ -247,12 +249,12 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P69 - CSV/Excel Product Importer**.
+Latest completed implementation phase: **P70 - Manual Instagram Fanpage Import**.
 
-Recommended next phase: **P70 - Manual Instagram Fanpage Import**.
+Recommended next phase: **P71 - AI/Text Product Extraction Foundation**.
 
-The active roadmap is `docs/IMPORT_HUB_ROADMAP.md`. P70 should accept seller-provided Instagram URLs, captions, and approved media references into `ImportedContentDraft` rows. It must stay consent-based, draft-first, and must not scrape private content or publish fanpage posts.
+The active roadmap is `docs/IMPORT_HUB_ROADMAP.md`. P71 should add provider-neutral text extraction with deterministic Persian-first parsing and dry-run defaults. AI provider calls must remain disabled until credentials and explicit enable flags exist.
 
 ## Historical validator anchors
 
-The source tree keeps focused validators for these retained phases: P37 dashboard navigation and localized shell copy, P38 dashboard role navigation, P39 dashboard route parity, P40 dashboard route authorization, P41 dashboard route guard smoke, P42 Customer Club foundation, P43 in-app notification inbox, P44 Customer Segments, P45 Campaign Builder, P46 Loyalty Points and Coupons, P47 Web Push Opt-In Foundation, P68 Import Hub Foundation, and P69 CSV/Excel Product Importer.
+The source tree keeps focused validators for these retained phases: P37 dashboard navigation and localized shell copy, P38 dashboard role navigation, P39 dashboard route parity, P40 dashboard route authorization, P41 dashboard route guard smoke, P42 Customer Club foundation, P43 in-app notification inbox, P44 Customer Segments, P45 Campaign Builder, P46 Loyalty Points and Coupons, P47 Web Push Opt-In Foundation, P68 Import Hub Foundation, P69 CSV/Excel Product Importer, and P70 Manual Instagram Fanpage Import.

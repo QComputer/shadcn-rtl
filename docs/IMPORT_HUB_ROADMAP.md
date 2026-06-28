@@ -73,6 +73,8 @@ Scope:
 
 ## Phase 70 - Manual Instagram Fanpage Import
 
+Status: Implemented in P70.
+
 Goal: support manual Instagram post import into fanpage drafts.
 
 Scope:

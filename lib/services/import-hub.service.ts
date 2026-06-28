@@ -11,6 +11,7 @@ import {
   normalizeImportFilename,
   normalizeImportText,
 } from "@/lib/import-hub/normalizers"
+import { parseManualInstagramContent } from "@/lib/import-hub/instagram-manual-parser"
 import { parseProductSpreadsheet } from "@/lib/import-hub/spreadsheet-parser"
 import type {
   CreateImportJobInput,
@@ -127,12 +128,29 @@ export class ImportHubService {
           maxRows: 500,
         })
       : []
+    const parsedContentDrafts = type === "INSTAGRAM"
+      ? [parseManualInstagramContent({
+          sourceUrl: input.inputUrl,
+          caption: inputText,
+          mediaReferences: input.mediaReferences,
+        })]
+      : []
+    const totalDraftCount = parsedProductDrafts.length + parsedContentDrafts.length
 
     if (spreadsheetType && parsedProductDrafts.length === 0) {
       throw new ApiError(400, "CSV/Excel import did not contain product rows")
     }
+    if (type === "INSTAGRAM" && !normalizedUrl) {
+      throw new ApiError(400, "Instagram import requires a seller-provided post URL")
+    }
+    if (type === "INSTAGRAM" && normalizedUrl && !/instagram\.com|instagr\.am/i.test(normalizedUrl)) {
+      throw new ApiError(400, "Instagram import requires a valid Instagram post URL")
+    }
+    if (type === "INSTAGRAM" && !inputText && parsedContentDrafts[0]?.sourceMetadata.mediaReferences.length === 0) {
+      throw new ApiError(400, "Instagram import requires a pasted caption or seller-approved media reference")
+    }
 
-    const summary = this.foundationSummary(parsedProductDrafts.length, 0)
+    const summary = this.buildSummary(parsedProductDrafts.length, parsedContentDrafts.length, type, Boolean(spreadsheetType))
 
     const job = await prisma.$transaction(async (tx) => {
       const source = await tx.externalImportSource.create({
@@ -147,7 +165,11 @@ export class ImportHubService {
           consentText,
           createdByUserId: input.actorUserId,
           metadata: {
-            phase: "P68_FOUNDATION",
+            phase: parsedContentDrafts.length > 0
+              ? "P70_MANUAL_INSTAGRAM_FANPAGE_IMPORT"
+              : spreadsheetType
+                ? "P69_CSV_EXCEL_PRODUCT_IMPORTER"
+                : "P68_FOUNDATION",
             draftFirst: true,
             remotePreviewOnly: true,
             blobCopyRequiresReview: true,
@@ -168,7 +190,7 @@ export class ImportHubService {
           consentText,
           requestedByUserId: input.actorUserId,
           startedAt: new Date(),
-          completedAt: parsedProductDrafts.length > 0 ? null : new Date(),
+          completedAt: totalDraftCount > 0 ? null : new Date(),
           summary: summary as unknown as Prisma.InputJsonObject,
         },
         include: importJobInclude,
@@ -203,6 +225,26 @@ export class ImportHubService {
         })
       }
 
+      if (parsedContentDrafts.length > 0) {
+        await tx.importedContentDraft.createMany({
+          data: parsedContentDrafts.map((draft) => ({
+            organizationId: organization.id,
+            jobId: job.id,
+            sourceId: source.id,
+            status: "DRAFT",
+            title: draft.title,
+            body: draft.body,
+            mediaUrl: draft.mediaUrl,
+            mediaType: draft.mediaType,
+            sourceUrl: draft.sourceUrl,
+            sourceExternalId: draft.sourceExternalId,
+            sourceMetadata: draft.sourceMetadata,
+            rawData: draft.rawData,
+            warnings: draft.warnings,
+          })),
+        })
+      }
+
       return tx.externalImportJob.findUniqueOrThrow({
         where: { id: job.id },
         include: importJobInclude,
@@ -219,8 +261,13 @@ export class ImportHubService {
         type,
         status: job.status,
         consentConfirmed: job.consentConfirmed,
-        importerEnabled: spreadsheetType ? "spreadsheet-draft-parser" : false,
+        importerEnabled: parsedContentDrafts.length > 0
+          ? "manual-instagram-content-drafts"
+          : spreadsheetType
+            ? "spreadsheet-draft-parser"
+            : false,
         productDraftCount: parsedProductDrafts.length,
+        contentDraftCount: parsedContentDrafts.length,
       },
       userId: input.actorUserId,
       organizationId: organization.id,
@@ -326,14 +373,39 @@ export class ImportHubService {
     return this.getJob(input.jobId, input.organizationId)
   }
 
-  private foundationSummary(productDraftCount = 0, contentDraftCount = 0): ImportJobSummary {
+  private buildSummary(
+    productDraftCount = 0,
+    contentDraftCount = 0,
+    type: ExternalImportSourceType = "UNKNOWN",
+    spreadsheetImporterEnabled = false,
+  ): ImportJobSummary {
+    if (contentDraftCount > 0 && type === "INSTAGRAM") {
+      return {
+        phase: "P70_MANUAL_INSTAGRAM_FANPAGE_IMPORT",
+        draftFirst: true,
+        importerEnabled: "manual-instagram-content-drafts",
+        message: "Manual Instagram content was saved as fanpage drafts. Publishing remains disabled until seller review.",
+        productDraftCount,
+        contentDraftCount,
+      }
+    }
+
+    if (productDraftCount > 0 && spreadsheetImporterEnabled) {
+      return {
+        phase: "P69_CSV_EXCEL_PRODUCT_IMPORTER",
+        draftFirst: true,
+        importerEnabled: "spreadsheet-draft-parser",
+        message: "Spreadsheet rows were parsed into product drafts. Publishing remains disabled until seller review.",
+        productDraftCount,
+        contentDraftCount,
+      }
+    }
+
     return {
       phase: "P68_FOUNDATION",
       draftFirst: true,
       importerEnabled: false,
-      message: productDraftCount > 0
-        ? "Spreadsheet rows were parsed into product drafts. Publishing remains disabled until seller review."
-        : "Import intake was recorded. Real external parsing and publishing are disabled in this foundation phase.",
+      message: "Import intake was recorded. Real external parsing and publishing are disabled in this foundation phase.",
       productDraftCount,
       contentDraftCount,
     }

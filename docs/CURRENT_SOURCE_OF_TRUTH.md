@@ -4,7 +4,7 @@ Date: 2026-06-28
 
 ## Current validated baseline
 
-The current working baseline after P69 overlays is source-validator green.
+The current working baseline after P70 overlays is source-validator green.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -99,6 +99,7 @@ pnpm run db:migrate:neon:dry-run
 - Dashboard organizations is a SUPER_ADMIN-only localized route at `/{locale}/dashboard/organizations`, backed by hardened `/api/organizations` access and validated by `quality:dashboard-organizations-published`.
 - Import Hub Foundation exists through external import source/job/draft models, consent-based intake, source detection, draft review APIs, localized `/dashboard/imports` UI, and the `quality:import-hub-foundation` validator. P68 does not perform scraping, real external provider calls, Blob copying, product creation, or fanpage publishing.
 - CSV/Excel Product Importer exists through `xlsx` parsing, `lib/import-hub/spreadsheet-parser.ts`, file intake on `/dashboard/imports`, row-level `ImportedProductDraft` creation, draft approval/rejection UI, and the `quality:csv-excel-importer` validator. P69 does not create live products, categories, inventory movements, or Blob image copies.
+- Manual Instagram Fanpage Import exists through `lib/import-hub/instagram-manual-parser.ts`, seller-provided Instagram URL/caption/media reference intake, `ImportedContentDraft` creation, draft approval/rejection UI, and the `quality:manual-instagram-import` validator. P70 does not scrape Instagram, call Instagram APIs, copy media to Blob, or publish fanpage posts.
 - Driver support includes driver orders dashboard, order driver/assignment APIs, and driver location API.
 - Clean release packaging is now a first-class workflow through `scripts/release/create-clean-source.mjs`.
 
@@ -157,6 +158,7 @@ pnpm run db:migrate:neon:dry-run
 | P67 | Shop-domain dashboard UX polish and focused validator. |
 | P68 | Import Hub Foundation with consent-based intake, source/job/draft models, dashboard UI, APIs, and validator. |
 | P69 | CSV/Excel Product Importer with draft-only product row parsing and review UI. |
+| P70 | Manual Instagram Fanpage Import with draft-only content parsing and review UI. |
 
 ## Current route/API inventory
 
@@ -271,7 +273,7 @@ Deferred:
 - Custom-domain smoke tests are deployment/data dependent. Current reference configuration uses `CUSTOM_DOMAIN_SMOKE_BASE_URL=https://www.khalae.ir`, `CUSTOM_DOMAIN_SMOKE_PLATFORM_URL=https://www.bazar-baz.ir`, and `CUSTOM_DOMAIN_SMOKE_SHOP_SLUG=ahmad`.
 - Shop owners cannot self-serve custom-domain management yet; P60/P67 keep domain management SUPER_ADMIN-only.
 - Vercel domain automation must remain dry-run-safe by default and must never hardcode tokens or project/team secrets.
-- P68 Import Hub intake is implemented, but third-party import parsers are not. Future importer phases must remain seller-initiated, consent-based, draft-first, auditable, rate-limited, and review-before-publish.
+- P68-P70 Import Hub intake, spreadsheet parsing, and manual Instagram content drafts are implemented. Future importer phases must remain seller-initiated, consent-based, draft-first, auditable, rate-limited, and review-before-publish.
 
 ## Clean release rules
 
@@ -310,15 +312,15 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P70 - Manual Instagram Fanpage Import
+P71 - AI/Text Product Extraction Foundation
 ```
 
 Scope:
 
-1. Accept seller-provided Instagram URLs, pasted captions, and approved media references.
-2. Save imported material as `ImportedContentDraft` rows, not published fanpage posts.
-3. Preserve source URL, consent confirmation, and source metadata for review.
-4. Avoid private/unauthorized scraping and do not call Instagram APIs without explicit provider enablement.
-5. Validate with a focused `quality:manual-instagram-import` gate, `pnpm prisma generate`, `pnpm run typecheck`, and `pnpm run build`.
+1. Build a provider-neutral extraction boundary with dry-run defaults.
+2. Add deterministic Persian/Arabic/English product-like line parsing for pasted text.
+3. Save extracted items as `ImportedProductDraft` rows with confidence and warnings.
+4. Keep AI provider calls disabled until credentials and explicit enable flags exist.
+5. Validate with a focused P71 quality gate, `pnpm prisma generate`, `pnpm run typecheck`, and `pnpm run build`.
 
 See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap and safety rules.

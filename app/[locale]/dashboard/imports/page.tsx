@@ -55,6 +55,7 @@ type ImportJob = {
     contentDrafts: number
   }
   productDrafts?: ImportedProductDraft[]
+  contentDrafts?: ImportedContentDraft[]
 }
 
 type ImportedProductDraft = {
@@ -72,6 +73,23 @@ type ImportedProductDraft = {
   errors?: string[] | null
 }
 
+type ImportedContentDraft = {
+  id: string
+  status: "DRAFT" | "APPROVED" | "REJECTED" | "IMPORTED" | "MERGED"
+  title?: string | null
+  body?: string | null
+  mediaUrl?: string | null
+  mediaType?: string | null
+  sourceUrl?: string | null
+  warnings?: string[] | null
+  sourceMetadata?: {
+    hashtags?: string[]
+    mentions?: string[]
+    likelyProductMentions?: string[]
+    mediaReferences?: string[]
+  } | null
+}
+
 type OrganizationOption = {
   id: string
   name: string
@@ -87,6 +105,7 @@ type ImportHubCopy = {
   url: string
   text: string
   file: string
+  mediaReferences: string
   consent: string
   create: string
   refresh: string
@@ -104,6 +123,10 @@ type ImportHubCopy = {
   category: string
   price: string
   stock: string
+  content: string
+  caption: string
+  media: string
+  hints: string
   sourceLabels: Record<SourceType, string>
   statuses: Record<JobStatus, string>
 }
@@ -117,6 +140,7 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     url: "نشانی منبع",
     text: "متن یا کپشن",
     file: "نام فایل",
+    mediaReferences: "نشانی رسانه‌های تاییدشده",
     consent: "تایید می‌کنم این صفحه یا محتوا متعلق به کسب‌وکار من است یا اجازه استفاده از آن را دارم.",
     create: "ثبت واردسازی",
     refresh: "تازه‌سازی",
@@ -134,6 +158,10 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     category: "دسته",
     price: "قیمت",
     stock: "موجودی",
+    content: "پیش‌نویس محتوا",
+    caption: "کپشن",
+    media: "رسانه",
+    hints: "نشانه‌ها",
     sourceLabels: {
       INSTAGRAM: "اینستاگرام",
       TELEGRAM: "تلگرام",
@@ -163,6 +191,7 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     url: "Source URL",
     text: "Text or caption",
     file: "File name",
+    mediaReferences: "Approved media references",
     consent: "I confirm this page or content belongs to my business or I have permission to use it.",
     create: "Create import",
     refresh: "Refresh",
@@ -180,6 +209,10 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     category: "Category",
     price: "Price",
     stock: "Stock",
+    content: "Content draft",
+    caption: "Caption",
+    media: "Media",
+    hints: "Hints",
     sourceLabels: {
       INSTAGRAM: "Instagram",
       TELEGRAM: "Telegram",
@@ -209,6 +242,7 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     url: "رابط المصدر",
     text: "النص أو الوصف",
     file: "اسم الملف",
+    mediaReferences: "روابط الوسائط المعتمدة",
     consent: "أؤكد أن هذه الصفحة أو المحتوى يخص عملي أو لدي إذن باستخدامه.",
     create: "إنشاء استيراد",
     refresh: "تحديث",
@@ -226,6 +260,10 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     category: "الفئة",
     price: "السعر",
     stock: "المخزون",
+    content: "مسودة محتوى",
+    caption: "الوصف",
+    media: "وسائط",
+    hints: "إشارات",
     sourceLabels: {
       INSTAGRAM: "إنستغرام",
       TELEGRAM: "تلغرام",
@@ -295,6 +333,7 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
   const [inputFilename, setInputFilename] = useState("")
   const [fileContent, setFileContent] = useState("")
   const [fileBase64, setFileBase64] = useState("")
+  const [mediaReferencesText, setMediaReferencesText] = useState("")
   const [consentConfirmed, setConsentConfirmed] = useState(false)
   const [jobs, setJobs] = useState<ImportJob[]>([])
   const [selectedJob, setSelectedJob] = useState<ImportJob | null>(null)
@@ -305,6 +344,14 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
   const selectedOrganization = useMemo(
     () => organizations.find((organization) => organization.id === organizationId) ?? null,
     [organizationId, organizations],
+  )
+  const mediaReferences = useMemo(
+    () => mediaReferencesText
+      .split(/\r?\n/)
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .slice(0, 10),
+    [mediaReferencesText],
   )
 
   const fetchOrganizations = useCallback(async (signal?: AbortSignal) => {
@@ -388,6 +435,7 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
           inputFilename,
           fileContent,
           fileBase64,
+          mediaReferences,
           consentConfirmed,
           consentText: copy.consent,
         }),
@@ -398,6 +446,7 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
       setInputFilename("")
       setFileContent("")
       setFileBase64("")
+      setMediaReferencesText("")
       setConsentConfirmed(false)
       await fetchJobs(organizationId)
     } catch (err) {
@@ -428,13 +477,16 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
 
   async function reviewDrafts(status: "APPROVED" | "REJECTED") {
     if (!selectedJob) return
-    const draftIds = (selectedJob.productDrafts ?? [])
+    const productDraftIds = (selectedJob.productDrafts ?? [])
+      .filter((draft) => draft.status === "DRAFT")
+      .map((draft) => draft.id)
+    const contentDraftIds = (selectedJob.contentDrafts ?? [])
       .filter((draft) => draft.status === "DRAFT")
       .map((draft) => draft.id)
     const response = await fetch(`/api/dashboard/imports/jobs/${selectedJob.id}/review`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status, productDraftIds: draftIds }),
+      body: JSON.stringify({ status, productDraftIds, contentDraftIds }),
     })
     if (!response.ok) {
       setError(await readError(response, copy.error))
@@ -468,7 +520,7 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
     }
   }
 
-  const hasInput = Boolean(inputUrl.trim() || inputText.trim() || inputFilename.trim() || fileContent || fileBase64)
+  const hasInput = Boolean(inputUrl.trim() || inputText.trim() || inputFilename.trim() || fileContent || fileBase64 || mediaReferences.length > 0)
 
   return (
     <div className="space-y-6">
@@ -539,6 +591,16 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
             <div className="space-y-2">
               <label className="text-sm font-medium">{copy.text}</label>
               <Textarea value={inputText} onChange={(event) => setInputText(event.target.value)} rows={5} />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{copy.mediaReferences}</label>
+              <Textarea
+                value={mediaReferencesText}
+                onChange={(event) => setMediaReferencesText(event.target.value)}
+                rows={3}
+                dir="ltr"
+              />
             </div>
 
             <div className="space-y-2">
@@ -634,7 +696,10 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
               <Button
                 type="button"
                 size="sm"
-                disabled={!selectedJob.productDrafts?.some((draft) => draft.status === "DRAFT")}
+                disabled={
+                  !selectedJob.productDrafts?.some((draft) => draft.status === "DRAFT") &&
+                  !selectedJob.contentDrafts?.some((draft) => draft.status === "DRAFT")
+                }
                 onClick={() => reviewDrafts("APPROVED")}
               >
                 {copy.approve}
@@ -643,15 +708,19 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
                 type="button"
                 size="sm"
                 variant="outline"
-                disabled={!selectedJob.productDrafts?.some((draft) => draft.status === "DRAFT")}
+                disabled={
+                  !selectedJob.productDrafts?.some((draft) => draft.status === "DRAFT") &&
+                  !selectedJob.contentDrafts?.some((draft) => draft.status === "DRAFT")
+                }
                 onClick={() => reviewDrafts("REJECTED")}
               >
                 {copy.reject}
               </Button>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-sm">
+            {(selectedJob.productDrafts ?? []).length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-sm">
                 <thead>
                   <tr className="border-b text-muted-foreground">
                     <th className="px-2 py-2 text-start">{copy.row}</th>
@@ -686,8 +755,57 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
+                </table>
+              </div>
+            )}
+
+            {(selectedJob.contentDrafts ?? []).length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-sm">
+                  <thead>
+                    <tr className="border-b text-muted-foreground">
+                      <th className="px-2 py-2 text-start">{copy.content}</th>
+                      <th className="px-2 py-2 text-start">{copy.caption}</th>
+                      <th className="px-2 py-2 text-start">{copy.media}</th>
+                      <th className="px-2 py-2 text-start">{copy.hints}</th>
+                      <th className="px-2 py-2 text-start">{copy.review}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(selectedJob.contentDrafts ?? []).map((draft) => {
+                      const hints = [
+                        ...(draft.sourceMetadata?.hashtags ?? []),
+                        ...(draft.sourceMetadata?.likelyProductMentions ?? []),
+                      ].slice(0, 8)
+                      return (
+                        <tr key={draft.id} className="border-b last:border-0 align-top">
+                          <td className="px-2 py-2">{draft.title || copy.content}</td>
+                          <td className="max-w-[320px] px-2 py-2">
+                            <div className="line-clamp-4 whitespace-pre-wrap">{draft.body || "-"}</div>
+                            {draft.sourceUrl && <div className="mt-1 break-all text-xs text-muted-foreground">{draft.sourceUrl}</div>}
+                          </td>
+                          <td className="max-w-[220px] break-all px-2 py-2">
+                            {draft.mediaUrl || "-"}
+                            {draft.mediaType && <div className="mt-1 text-xs text-muted-foreground">{draft.mediaType}</div>}
+                          </td>
+                          <td className="px-2 py-2">{hints.length > 0 ? hints.join(", ") : "-"}</td>
+                          <td className="px-2 py-2">
+                            <div className="flex flex-col gap-1">
+                              <Badge variant={draft.status === "DRAFT" ? "secondary" : draft.status === "APPROVED" ? "default" : "outline"}>
+                                {draft.status}
+                              </Badge>
+                              {Array.isArray(draft.warnings) && draft.warnings.length > 0 && (
+                                <span className="text-xs text-muted-foreground">{draft.warnings.join(", ")}</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

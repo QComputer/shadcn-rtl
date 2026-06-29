@@ -1,3 +1,11 @@
+self.addEventListener("install", () => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener("push", (event) => {
   let payload = {
     title: "Bazar Baz",
@@ -16,8 +24,8 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title || "Bazar Baz", {
       body: payload.body || "",
-      icon: "/favicon.ico",
-      badge: "/favicon.ico",
+      icon: "/pwa-icon.svg",
+      badge: "/pwa-maskable-icon.svg",
       data: { url: payload.url || "/" },
     }),
   );

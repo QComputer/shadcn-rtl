@@ -57,10 +57,10 @@ add("personal public PDF is not present in tracked source", !trackedExisting.inc
 add(".env files are not present in tracked source", !trackedExisting.some((file) => file === ".env" || (file.startsWith(".env.") && file !== ".env.example")))
 add("active seed script remains tracked", tracked.includes("prisma/seed.ts"))
 add("duplicate client Providers wrapper removed", !exists("components/providers.tsx"))
-add("README keeps P95 source cleanup in current progression", /\| 95 \| Source Cleanup and Current-State Verification/.test(readme) && /Latest completed implementation phase:\s+\*\*P96 - Open Fields and Workflow Completion Audit\*\*/.test(readme))
-add("README recommends P97 after P96", /Recommended next phase:\s+\*\*P97 - PWA foundation and install experience\*\*/.test(readme))
-add("roadmap keeps P95 complete in P96 progression", /\| P95 \| Source cleanup and current-state verification\. \|/.test(roadmap) && /Completed through \*\*P96 - Open Fields and Workflow Completion Audit\*\*/.test(roadmap))
-add("source of truth keeps P95 source cleanup while naming P96 baseline", /Source Cleanup and Current-State Verification exists/.test(sourceOfTruth) && /after P96 open-fields audit and workflow completion/.test(sourceOfTruth))
+add("README keeps P95 source cleanup in current progression", /\| 95 \| Source Cleanup and Current-State Verification/.test(readme) && /Latest completed implementation phase:\s+\*\*P97 - PWA foundation and install experience\*\*/.test(readme))
+add("README recommends P98 after P97", /Recommended next phase:\s+\*\*P98 - Offline shell, caching, and PWA quality gates\*\*/.test(readme))
+add("roadmap keeps P95 complete in P97 progression", /\| P95 \| Source cleanup and current-state verification\. \|/.test(roadmap) && /Completed through \*\*P97 - PWA foundation and install experience\*\*/.test(roadmap))
+add("source of truth keeps P95 source cleanup while naming P97 baseline", /Source Cleanup and Current-State Verification exists/.test(sourceOfTruth) && /after P97 PWA foundation and install experience/.test(sourceOfTruth))
 
 const scripts = packageJson.scripts || {}
 const documentedScriptNames = new Set()

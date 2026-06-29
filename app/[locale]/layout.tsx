@@ -7,6 +7,7 @@ import { getDictionary } from "@/lib/dictionary"
 import { AuthProvider } from "@/hooks/use-auth";
 import { LocaleProvider } from "@/components/locale-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { PwaInstallManager } from "@/components/pwa-install-manager";
 import Link from "next/link";
 import { Building2, ShoppingBag, Calendar, ArrowLeft, ArrowRight, Phone } from "lucide-react"
 import { toPersianDigits } from "@/lib/persian";
@@ -15,6 +16,8 @@ import { getCanonicalUrl, getPublicBaseUrl } from "@/lib/seo";
 
 export const metadata: Metadata = {
   metadataBase: getPublicBaseUrl(),
+  applicationName: "Bazar Baz",
+  manifest: "/manifest.webmanifest",
   title: {
     default: "بازارباز - پلتفرم تجارت الکترونیک و رزو آنلاین نوبت",
     template: "%s | بازارباز"
@@ -39,6 +42,18 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     images: [getCanonicalUrl("/og-image")],
+  },
+  icons: {
+    icon: [{ url: "/pwa-icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/pwa-icon.svg", type: "image/svg+xml" }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Bazar Baz",
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: {
+    telephone: false,
   },
 };
 
@@ -89,6 +104,7 @@ export default async function LocaleLayout({
               <ErrorBoundary>
                 <ThemeProvider defaultTheme="dark" storageKey="shadcn-rtl-theme">
                   {children}
+                  <PwaInstallManager enabled={process.env.PWA_ENABLED !== "false"} locale={locale} />
                 </ThemeProvider>
               </ErrorBoundary>
             </AuthProvider>

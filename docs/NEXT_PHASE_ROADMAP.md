@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-29._
 
-This roadmap is ordered for risk reduction. Phases 18-96 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, and open-fields audit roadmap is implemented through Phase 96.
+This roadmap is ordered for risk reduction. Phases 18-97 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, and PWA foundation roadmap is implemented through Phase 97.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P96 - Open Fields and Workflow Completion Audit**.
+- Completed through **P97 - PWA foundation and install experience**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -19,10 +19,10 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P97 - PWA foundation and install experience
+P98 - Offline shell, caching, and PWA quality gates
 ```
 
-Next work should add the installable PWA foundation before offline, Web Push delivery, and SMS implementation.
+Next work should add the offline shell and caching quality gates before Web Push delivery and SMS implementation.
 
 Immediate validation target:
 
@@ -43,6 +43,7 @@ pnpm run quality:ai-media-cost-rollback
 pnpm run quality:ai-media-seller-state-ux
 pnpm run quality:source-baseline
 pnpm run quality:open-fields-audit
+pnpm run quality:pwa-foundation
 pnpm run quality:export-downloads
 pnpm run quality:deployed-import-export-smoke
 pnpm run quality:local
@@ -84,12 +85,12 @@ Completed integrated phases:
 | P94 | AI media seller-facing paid provider state UX. |
 | P95 | Source cleanup and current-state verification. |
 | P96 | Open fields and workflow completion audit. |
+| P97 | PWA foundation and install experience. |
 
 Upcoming platform phases should be treated as incremental hardening against the actual implementation already present in the repo:
 
 | Phase | Focus |
 | --- | --- |
-| P97 | PWA foundation and install experience. |
 | P98 | Offline shell, caching, and PWA quality gates. |
 | P99 | Notification domain model and preferences. |
 | P100 | Web Push notification service. |

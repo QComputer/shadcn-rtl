@@ -4,7 +4,7 @@ Date: 2026-06-29
 
 ## Current validated baseline
 
-The current working baseline after P96 open-fields audit and workflow completion is source-validator green after the P96 validation gate.
+The current working baseline after P97 PWA foundation and install experience is source-validator green after the P97 validation gate.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -124,6 +124,7 @@ pnpm run db:migrate:neon:dry-run
 - AI Media Seller-Facing Paid Provider State UX exists through `components/dashboard/ai-media-provider-state.tsx`, product edit/new status and usage fetches, Persian-first disabled/MOCK/approved/budget-exhausted/rollback-paused messages, generation disabling when the seller state is not startable, and the `quality:ai-media-seller-state-ux` validator.
 - Source Cleanup and Current-State Verification exists through placeholder-only `.env.example` SMS/Web Push/PWA variables, removal of tracked local DB and personal public PDF artifacts, removal of the unused duplicate provider wrapper, env alias validation for the new dry-run placeholders, source-baseline security checks, and the `quality:source-baseline` validator.
 - Open Fields and Workflow Completion Audit exists through shared payment/booking-settings validators, organization `[id]` to slug resolution for booking settings, schema-validated payment settings updates, editable dashboard `paymentCondition` controls, localized FA/EN/AR copy, and the `quality:open-fields-audit` validator.
+- PWA Foundation and Install Experience exists through `app/manifest.ts`, SVG PWA icons, locale-layout manifest/install metadata, a guarded global install prompt manager, shared `/web-push-sw.js` registration, service-worker install/activate lifecycle handlers, Persian-first `/fa` start URL, and the `quality:pwa-foundation` validator.
 - Export Downloads exists through protected `GET /api/dashboard/exports/jobs/[jobId]/download`, completed-job checks, private no-store attachment responses, lightweight export job list responses, Persian-first dashboard download actions, and the `quality:export-downloads` validator.
 - Deployed Import/Export Smoke exists through `scripts/e2e/deployed-import-export-smoke.mjs`, validating deployed auth, organization resolution, draft-first manual text imports, rejection instead of publishing, JSON/CSV export job creation, and protected export downloads against a real deployment.
 - P83 Project State Reconciliation exists through `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md`, which marks older Phase-18 handoff guidance as historical and reconciles the post-P82 local AI media commits with the current roadmap.
@@ -212,6 +213,7 @@ pnpm run db:migrate:neon:dry-run
 | P94 | AI Media Seller-Facing Paid Provider State UX for disabled, MOCK, approved, exhausted, and rollback-paused states. |
 | P95 | Source Cleanup and Current-State Verification before open-field, PWA, Push, and SMS phases. |
 | P96 | Open Fields and Workflow Completion Audit before PWA, Push, and SMS phases. |
+| P97 | PWA foundation and install experience before offline, Push, and SMS phases. |
 
 ## Current route/API inventory
 
@@ -327,7 +329,7 @@ Deferred:
 - Custom-domain smoke tests are deployment/data dependent. Current reference configuration uses `CUSTOM_DOMAIN_SMOKE_BASE_URL=https://www.khalae.ir`, `CUSTOM_DOMAIN_SMOKE_PLATFORM_URL=https://www.bazar-baz.ir`, and `CUSTOM_DOMAIN_SMOKE_SHOP_SLUG=ahmad`.
 - Shop owners cannot self-serve custom-domain management yet; P60/P67 keep domain management SUPER_ADMIN-only.
 - Vercel domain automation must remain dry-run-safe by default and must never hardcode tokens or project/team secrets.
-- P68-P96 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation/downloads, review-gated import publishing, AI media suggestion hardening, deployed import/export smoke coverage, project-state reconciliation, AI media health-gate hardening, AI media MOCK-flow acceptance, AI media durable-storage acceptance, AI media long-running job UX, AI media usage controls, import-to-AI-media bridge, deployed AI media rollout gate, AI media rollout evidence archive, AI media paid-provider controls, AI media cost/rollback guardrails, AI media seller-facing paid-provider state UX, source cleanup/current-state verification, and open-fields workflow audit are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
+- P68-P97 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation/downloads, review-gated import publishing, AI media suggestion hardening, deployed import/export smoke coverage, project-state reconciliation, AI media health-gate hardening, AI media MOCK-flow acceptance, AI media durable-storage acceptance, AI media long-running job UX, AI media usage controls, import-to-AI-media bridge, deployed AI media rollout gate, AI media rollout evidence archive, AI media paid-provider controls, AI media cost/rollback guardrails, AI media seller-facing paid-provider state UX, source cleanup/current-state verification, open-fields workflow audit, and PWA foundation are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
 
 ## Clean release rules
 
@@ -367,13 +369,13 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P97 - PWA foundation and install experience
+P98 - Offline shell, caching, and PWA quality gates
 ```
 
 Scope:
 
-1. Add the installable PWA foundation without changing the app's first-visit Persian behavior.
-2. Add manifest, icons, service-worker registration guardrails, and install-state UX.
-3. Keep offline caching and Web Push delivery for P98-P100.
+1. Add an offline shell and cache strategy without changing the app's first-visit Persian behavior.
+2. Keep dashboard, checkout, booking, and payment data network-first or no-store to avoid stale transactional state.
+3. Add PWA quality gates before Web Push delivery and SMS phases.
 
-See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` for the roadmap reconciliation, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md` for the AI media health gate, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md` for product suggestion MOCK-flow acceptance, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md` for durable selected-image storage, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md` for long-running job UX, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md` for usage and quota controls, `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md` for import-to-AI-media workflow integration, `docs/PHASE_90_DEPLOYED_AI_MEDIA_ROLLOUT_GATE.md` for deployed Bazar Baz AI media rollout validation, `docs/PHASE_91_AI_MEDIA_ROLLOUT_EVIDENCE.md` for operator-safe rollout evidence retention, `docs/PHASE_92_AI_MEDIA_PAID_PROVIDER_CONTROLS.md` for explicit paid-provider controls, `docs/PHASE_93_AI_MEDIA_COST_ROLLBACK.md` for cost telemetry and rollback guardrails, `docs/PHASE_94_AI_MEDIA_SELLER_STATE_UX.md` for seller-facing AI media state UX, `docs/PHASE_95_SOURCE_CLEANUP_VERIFICATION.md` for source cleanup and security verification, and `docs/PHASE_96_OPEN_FIELDS_AUDIT.md` for open-fields workflow audit.
+See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` for the roadmap reconciliation, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md` for the AI media health gate, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md` for product suggestion MOCK-flow acceptance, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md` for durable selected-image storage, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md` for long-running job UX, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md` for usage and quota controls, `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md` for import-to-AI-media workflow integration, `docs/PHASE_90_DEPLOYED_AI_MEDIA_ROLLOUT_GATE.md` for deployed Bazar Baz AI media rollout validation, `docs/PHASE_91_AI_MEDIA_ROLLOUT_EVIDENCE.md` for operator-safe rollout evidence retention, `docs/PHASE_92_AI_MEDIA_PAID_PROVIDER_CONTROLS.md` for explicit paid-provider controls, `docs/PHASE_93_AI_MEDIA_COST_ROLLBACK.md` for cost telemetry and rollback guardrails, `docs/PHASE_94_AI_MEDIA_SELLER_STATE_UX.md` for seller-facing AI media state UX, `docs/PHASE_95_SOURCE_CLEANUP_VERIFICATION.md` for source cleanup and security verification, `docs/PHASE_96_OPEN_FIELDS_AUDIT.md` for open-fields workflow audit, and `docs/PHASE_97_PWA_FOUNDATION.md` for PWA install foundation.

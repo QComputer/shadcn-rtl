@@ -40,6 +40,7 @@
     "quality:source-baseline": "node scripts/quality/validate-source-baseline.mjs",
     "quality:open-fields-audit": "node scripts/quality/validate-open-fields-audit.mjs",
     "quality:pwa-foundation": "node scripts/quality/validate-pwa-foundation.mjs",
+    "quality:pwa-offline-shell": "node scripts/quality/validate-pwa-offline-shell.mjs",
     "e2e:deployed:phase11": "node scripts/e2e/deployed-phase11-health.mjs",
     "smoke:deployed:health": "node scripts/e2e/deployed-phase11-health.mjs",
     "e2e:deployed:phase12": "node scripts/e2e/deployed-phase12-messaging.mjs",

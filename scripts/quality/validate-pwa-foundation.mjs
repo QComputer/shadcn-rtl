@@ -46,13 +46,13 @@ add("install manager does not request notification permission", !/Notification\.
 
 add("service worker has lifecycle handlers", /addEventListener\("install"/.test(serviceWorker) && /skipWaiting\(\)/.test(serviceWorker) && /addEventListener\("activate"/.test(serviceWorker) && /clients\.claim\(\)/.test(serviceWorker))
 add("service worker keeps web-push handlers", /addEventListener\("push"/.test(serviceWorker) && /showNotification/.test(serviceWorker) && /addEventListener\("notificationclick"/.test(serviceWorker))
-add("service worker does not add offline caching in P97", !/caches\.open|cache\.addAll|addEventListener\("fetch"/.test(serviceWorker))
+add("P98 offline cache remains guarded", /addEventListener\("fetch"/.test(serviceWorker) ? /request\.mode === "navigate"/.test(serviceWorker) && /shouldBypassCache/.test(serviceWorker) : !/caches\.open|cache\.addAll/.test(serviceWorker))
 
 add("package exposes P97 validator", /"quality:pwa-foundation":\s*"node scripts\/quality\/validate-pwa-foundation\.mjs"/.test(packageJson))
 add("project validator references P97 validator", /validate-pwa-foundation\.mjs/.test(validateProject) && /P97 PWA foundation validator passes/.test(validateProject))
-add("README marks P97 latest and P98 next", /Latest completed implementation phase:\s+\*\*P97 - PWA foundation and install experience\*\*/.test(readme) && /Recommended next phase:\s+\*\*P98 - Offline shell, caching, and PWA quality gates\*\*/.test(readme))
-add("roadmap marks P97 complete and P98 next", /Completed through \*\*P97 - PWA foundation and install experience\*\*/.test(roadmap) && /P98 - Offline shell, caching, and PWA quality gates/.test(roadmap))
-add("source of truth names P97 baseline", /after P97 PWA foundation and install experience/.test(sourceOfTruth))
+add("README keeps P97 complete while marking P98 latest and P99 next", /\| 97 \| PWA foundation and install experience/.test(readme) && /Latest completed implementation phase:\s+\*\*P98 - Offline shell, caching, and PWA quality gates\*\*/.test(readme) && /Recommended next phase:\s+\*\*P99 - Notification domain model and preferences\*\*/.test(readme))
+add("roadmap keeps P97 complete while marking P98 baseline", /\| P97 \| PWA foundation and install experience\. \|/.test(roadmap) && /Completed through \*\*P98 - Offline shell, caching, and PWA quality gates\*\*/.test(roadmap) && /P99 - Notification domain model and preferences/.test(roadmap))
+add("source of truth keeps P97 foundation while naming P98 baseline", /PWA Foundation and Install Experience exists/.test(sourceOfTruth) && /after P98 offline shell, caching, and PWA quality gates/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

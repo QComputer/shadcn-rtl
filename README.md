@@ -111,6 +111,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 95 | Source Cleanup and Current-State Verification | Source/security cleanup | `pnpm run quality:source-baseline` |
 | 96 | Open Fields and Workflow Completion Audit | Source/workflow audit | `pnpm run quality:open-fields-audit` |
 | 97 | PWA foundation and install experience | Source/PWA install | `pnpm run quality:pwa-foundation` |
+| 98 | Offline shell, caching, and PWA quality gates | Source/PWA offline | `pnpm run quality:pwa-offline-shell` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -176,6 +177,7 @@ pnpm run quality:ai-media-seller-state-ux
 pnpm run quality:source-baseline
 pnpm run quality:open-fields-audit
 pnpm run quality:pwa-foundation
+pnpm run quality:pwa-offline-shell
 pnpm run quality:export-downloads
 pnpm run quality:deployed-import-export-smoke
 pnpm run release:stage
@@ -317,12 +319,12 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P97 - PWA foundation and install experience**.
+Latest completed implementation phase: **P98 - Offline shell, caching, and PWA quality gates**.
 
-Recommended next phase: **P98 - Offline shell, caching, and PWA quality gates**.
+Recommended next phase: **P99 - Notification domain model and preferences**.
 
-The active roadmap is `docs/IMPORT_HUB_ROADMAP.md` plus `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md`, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md`, `docs/PHASE_81_EXPORT_DOWNLOADS.md`, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md`, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md`, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md`, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md`, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md`, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md`, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md`, `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md`, `docs/PHASE_90_DEPLOYED_AI_MEDIA_ROLLOUT_GATE.md`, `docs/PHASE_91_AI_MEDIA_ROLLOUT_EVIDENCE.md`, `docs/PHASE_92_AI_MEDIA_PAID_PROVIDER_CONTROLS.md`, `docs/PHASE_93_AI_MEDIA_COST_ROLLBACK.md`, `docs/PHASE_94_AI_MEDIA_SELLER_STATE_UX.md`, `docs/PHASE_95_SOURCE_CLEANUP_VERIFICATION.md`, `docs/PHASE_96_OPEN_FIELDS_AUDIT.md`, and `docs/PHASE_97_PWA_FOUNDATION.md`. P68-P97 are implemented. Next work should add offline shell and caching gates before Web Push delivery and SMS phases.
+The active roadmap is `docs/IMPORT_HUB_ROADMAP.md` plus `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md`, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md`, `docs/PHASE_81_EXPORT_DOWNLOADS.md`, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md`, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md`, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md`, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md`, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md`, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md`, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md`, `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md`, `docs/PHASE_90_DEPLOYED_AI_MEDIA_ROLLOUT_GATE.md`, `docs/PHASE_91_AI_MEDIA_ROLLOUT_EVIDENCE.md`, `docs/PHASE_92_AI_MEDIA_PAID_PROVIDER_CONTROLS.md`, `docs/PHASE_93_AI_MEDIA_COST_ROLLBACK.md`, `docs/PHASE_94_AI_MEDIA_SELLER_STATE_UX.md`, `docs/PHASE_95_SOURCE_CLEANUP_VERIFICATION.md`, `docs/PHASE_96_OPEN_FIELDS_AUDIT.md`, `docs/PHASE_97_PWA_FOUNDATION.md`, and `docs/PHASE_98_PWA_OFFLINE_SHELL.md`. P68-P98 are implemented. Next work should add notification preferences before Web Push delivery and SMS phases.
 
 ## Historical validator anchors
 
-The source tree keeps focused validators for these retained phases: P37 dashboard navigation and localized shell copy, P38 dashboard role navigation, P39 dashboard route parity, P40 dashboard route authorization, P41 dashboard route guard smoke, P42 Customer Club foundation, P43 in-app notification inbox, P44 Customer Segments, P45 Campaign Builder, P46 Loyalty Points and Coupons, P47 Web Push Opt-In Foundation, P68 Import Hub Foundation, P69 CSV/Excel Product Importer, P70 Manual Instagram Fanpage Import, P71 AI/Text Product Extraction Foundation, P72 Image/PDF Menu Import Foundation, P73 Snappfood URL Import MVP, P74 Snappmarket URL Import MVP, P75 Telegram Post Import, P76 External Source Mapping and Re-import Diff, P77 Import Hub Audit, Limits, and Plan Readiness, P78 Export Hub Foundation, P79 Import Approval Publishing, P80 AI Media Suggestions Hardening, P81 Export Downloads, P82 Deployed Import/Export Smoke, P83 Project State Reconciliation, P84 AI Media Health Gate, P85 AI Media MOCK Flow, P86 AI Media Durable Storage, P87 AI Media Long-Running Job UX, P88 AI Media Usage Controls, P89 Import AI Media Bridge, P90 Deployed AI Media Rollout Gate, P91 AI Media Rollout Evidence Archive, P92 AI Media Paid Provider Controls, P93 AI Media Cost Telemetry and Rollback Guardrails, P94 AI Media Seller-Facing Paid Provider State UX, P95 Source Cleanup and Current-State Verification, P96 Open Fields and Workflow Completion Audit, and P97 PWA foundation and install experience.
+The source tree keeps focused validators for these retained phases: P37 dashboard navigation and localized shell copy, P38 dashboard role navigation, P39 dashboard route parity, P40 dashboard route authorization, P41 dashboard route guard smoke, P42 Customer Club foundation, P43 in-app notification inbox, P44 Customer Segments, P45 Campaign Builder, P46 Loyalty Points and Coupons, P47 Web Push Opt-In Foundation, P68 Import Hub Foundation, P69 CSV/Excel Product Importer, P70 Manual Instagram Fanpage Import, P71 AI/Text Product Extraction Foundation, P72 Image/PDF Menu Import Foundation, P73 Snappfood URL Import MVP, P74 Snappmarket URL Import MVP, P75 Telegram Post Import, P76 External Source Mapping and Re-import Diff, P77 Import Hub Audit, Limits, and Plan Readiness, P78 Export Hub Foundation, P79 Import Approval Publishing, P80 AI Media Suggestions Hardening, P81 Export Downloads, P82 Deployed Import/Export Smoke, P83 Project State Reconciliation, P84 AI Media Health Gate, P85 AI Media MOCK Flow, P86 AI Media Durable Storage, P87 AI Media Long-Running Job UX, P88 AI Media Usage Controls, P89 Import AI Media Bridge, P90 Deployed AI Media Rollout Gate, P91 AI Media Rollout Evidence Archive, P92 AI Media Paid Provider Controls, P93 AI Media Cost Telemetry and Rollback Guardrails, P94 AI Media Seller-Facing Paid Provider State UX, P95 Source Cleanup and Current-State Verification, P96 Open Fields and Workflow Completion Audit, P97 PWA foundation and install experience, and P98 Offline shell, caching, and PWA quality gates.

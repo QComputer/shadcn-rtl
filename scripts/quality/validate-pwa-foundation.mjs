@@ -50,9 +50,9 @@ add("P98 offline cache remains guarded", /addEventListener\("fetch"/.test(servic
 
 add("package exposes P97 validator", /"quality:pwa-foundation":\s*"node scripts\/quality\/validate-pwa-foundation\.mjs"/.test(packageJson))
 add("project validator references P97 validator", /validate-pwa-foundation\.mjs/.test(validateProject) && /P97 PWA foundation validator passes/.test(validateProject))
-add("README keeps P97 complete while marking P101 latest and P102 next", /\| 97 \| PWA foundation and install experience/.test(readme) && /Latest completed implementation phase:\s+\*\*P101 - SMS provider abstraction and sms.ir integration\*\*/.test(readme) && /Recommended next phase:\s+\*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(readme))
-add("roadmap keeps P97 complete while marking P101 baseline", /\| P97 \| PWA foundation and install experience\. \|/.test(roadmap) && /Completed through \*\*P101 - SMS provider abstraction and sms.ir integration\*\*/.test(roadmap))
-add("source of truth keeps P97 foundation while naming P101 baseline", /PWA Foundation and Install Experience exists/.test(sourceOfTruth) && /after P101 SMS provider abstraction and sms.ir integration/.test(sourceOfTruth))
+add("README keeps P97 complete while marking P102 latest and P103 next", /\| 97 \| PWA foundation and install experience/.test(readme) && /Latest completed implementation phase:\s+\*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(readme) && /Recommended next phase:\s+\*\*P103 - Admin\/operator notification dashboard\*\*/.test(readme))
+add("roadmap keeps P97 complete while marking P102 baseline", /\| P97 \| PWA foundation and install experience\. \|/.test(roadmap) && /Completed through \*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(roadmap))
+add("source of truth keeps P97 foundation while naming P102 baseline", /PWA Foundation and Install Experience exists/.test(sourceOfTruth) && /after P102 Notification templates, routing, and delivery policies/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

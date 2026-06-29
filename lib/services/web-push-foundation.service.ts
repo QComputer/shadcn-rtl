@@ -41,10 +41,15 @@ type UnsubscribeInput = {
 
 type DryRunSendInput = {
   organizationId: string
-  actorUserId: string
+  actorUserId?: string | null
   title: string
   body: string
   dryRun?: boolean
+}
+
+type CustomerPushSendInput = DryRunSendInput & {
+  customerId: string
+  preferenceKind?: "marketing" | "transactional"
 }
 
 type ActivePushSubscription = {
@@ -481,6 +486,169 @@ export class WebPushFoundationService {
       activeSubscriptionCount,
       activeCustomerCount,
       preferenceSkippedCustomerCount,
+      title: input.title,
+      body: input.body,
+    }
+  }
+
+  async sendToCustomer(input: CustomerPushSendInput) {
+    await this.requireOrganizationById(input.organizationId)
+    await this.requireCustomer(input.customerId)
+    const config = getWebPushRuntimeConfig()
+    const subscriptions = await prisma.pushSubscription.findMany({
+      where: {
+        organizationId: input.organizationId,
+        customerId: input.customerId,
+        isActive: true,
+        customer: {
+          isActive: true,
+          deletedAt: null,
+        },
+      },
+      select: {
+        id: true,
+        customerId: true,
+        endpoint: true,
+        p256dh: true,
+        auth: true,
+      },
+    })
+    const allowed = await notificationPreferencesService.isCustomerDeliveryAllowed({
+      organizationId: input.organizationId,
+      customerId: input.customerId,
+      channel: "WEB_PUSH",
+      kind: input.preferenceKind || "transactional",
+    })
+
+    if (!allowed) {
+      return {
+        dryRun: Boolean(input.dryRun),
+        provider: config.provider,
+        configured: config.configured,
+        realSendEnabled: config.realSendEnabled,
+        recipientCount: 0,
+        subscriptionCount: 0,
+        successCount: 0,
+        failureCount: 0,
+        removedCount: 0,
+        preferenceSkippedCustomerCount: 1,
+        skipped: true,
+        title: input.title,
+        body: input.body,
+      }
+    }
+
+    if (input.dryRun) {
+      return {
+        dryRun: true,
+        provider: config.provider,
+        configured: config.configured,
+        realSendEnabled: config.realSendEnabled,
+        recipientCount: subscriptions.length > 0 ? 1 : 0,
+        subscriptionCount: subscriptions.length,
+        successCount: 0,
+        failureCount: 0,
+        removedCount: 0,
+        preferenceSkippedCustomerCount: 0,
+        title: input.title,
+        body: input.body,
+      }
+    }
+
+    if (!config.realSendEnabled) {
+      throw new ApiError(409, "Real Web Push sending is disabled; use dryRun=true")
+    }
+
+    const privateKey = process.env.WEB_PUSH_VAPID_PRIVATE_KEY || ""
+    const subject = process.env.WEB_PUSH_VAPID_SUBJECT || ""
+
+    if (!privateKey || !subject) {
+      throw new ApiError(409, "VAPID is not configured")
+    }
+
+    let successCount = 0
+    let failureCount = 0
+    let removedCount = 0
+
+    webpush.setVapidDetails(subject, config.publicKey, privateKey)
+    const payload = JSON.stringify({ title: input.title, body: input.body })
+
+    for (const subscription of subscriptions) {
+      const delivery = await prisma.webPushDelivery.create({
+        data: {
+          organizationId: input.organizationId,
+          customerId: input.customerId,
+          subscriptionId: subscription.id,
+          actorUserId: input.actorUserId,
+          title: input.title,
+          body: input.body,
+          provider: config.provider,
+          dryRun: false,
+          status: "PENDING",
+        },
+        select: { id: true },
+      })
+
+      try {
+        await webpush.sendNotification(
+          {
+            endpoint: subscription.endpoint,
+            keys: { p256dh: subscription.p256dh, auth: subscription.auth },
+          },
+          payload,
+          { TTL: 60 }
+        )
+        await prisma.webPushDelivery.update({
+          where: { id: delivery.id },
+          data: { status: "SENT", sentAt: new Date(), error: null },
+        })
+        successCount++
+      } catch (err) {
+        failureCount++
+        const statusCode = (err as { statusCode?: number }).statusCode
+        const errorMessage = err instanceof Error ? err.message : "Web Push delivery failed"
+        if (statusCode === 404 || statusCode === 410) {
+          await prisma.pushSubscription.updateMany({
+            where: { id: subscription.id, isActive: true },
+            data: { isActive: false, unsubscribedAt: new Date() },
+          })
+          removedCount++
+        }
+        await prisma.webPushDelivery.update({
+          where: { id: delivery.id },
+          data: { status: "FAILED", error: errorMessage },
+        })
+      }
+    }
+
+    await writeAuditLog({
+      action: "CREATE",
+      entityType: "PushSubscription",
+      entityId: input.organizationId,
+      description: "Customer Web Push delivery completed",
+      newValue: {
+        provider: config.provider,
+        recipientCount: subscriptions.length > 0 ? 1 : 0,
+        subscriptionCount: subscriptions.length,
+        successCount,
+        failureCount,
+        removedCount,
+      },
+      userId: input.actorUserId,
+      organizationId: input.organizationId,
+    })
+
+    return {
+      dryRun: false,
+      provider: config.provider,
+      configured: config.configured,
+      realSendEnabled: config.realSendEnabled,
+      recipientCount: subscriptions.length > 0 ? 1 : 0,
+      subscriptionCount: subscriptions.length,
+      successCount,
+      failureCount,
+      removedCount,
+      preferenceSkippedCustomerCount: 0,
       title: input.title,
       body: input.body,
     }

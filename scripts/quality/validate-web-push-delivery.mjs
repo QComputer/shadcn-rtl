@@ -60,9 +60,9 @@ for (const locale of ["fa", "en", "ar"]) {
 
 add("package exposes P100 validator", /"quality:web-push-delivery":\s*"node scripts\/quality\/validate-web-push-delivery\.mjs"/.test(packageJson))
 add("project validator references P100 validator", /validate-web-push-delivery\.mjs/.test(validateProject) && /P100 Web Push delivery validator passes/.test(validateProject))
-add("README keeps P100 complete while marking P101 latest and P102 next", /\| 100 \| Web Push notification service/.test(readme) && /Latest completed implementation phase:\s+\*\*P101 - SMS provider abstraction and sms\.ir integration\*\*/.test(readme) && /Recommended next phase:\s+\*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(readme))
-add("roadmap keeps P100 complete while marking P101 baseline", /\| P100 \| Web Push notification service\. \|/.test(roadmap) && /Completed through \*\*P101 - SMS provider abstraction and sms\.ir integration\*\*/.test(roadmap))
-add("source of truth names P101 baseline and keeps P100 summary", /after P101 SMS provider abstraction and sms\.ir integration/.test(sourceOfTruth) && /Web Push notification service exists/.test(sourceOfTruth))
+add("README keeps P100 complete while marking P102 latest and P103 next", /\| 100 \| Web Push notification service/.test(readme) && /Latest completed implementation phase:\s+\*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(readme) && /Recommended next phase:\s+\*\*P103 - Admin\/operator notification dashboard\*\*/.test(readme))
+add("roadmap keeps P100 complete while marking P102 baseline", /\| P100 \| Web Push notification service\. \|/.test(roadmap) && /Completed through \*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(roadmap))
+add("source of truth names P102 baseline and keeps P100 summary", /after P102 Notification templates, routing, and delivery policies/.test(sourceOfTruth) && /Web Push notification service exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

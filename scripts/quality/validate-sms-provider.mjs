@@ -65,9 +65,9 @@ add("env validator keeps SMS dry-run safeguards", /SMS_PROVIDER/.test(envValidat
 add(".env.example keeps placeholder-only SMS config", /SMS_PROVIDER=DRY_RUN/.test(envExample) && /SMS_DRY_RUN=true/.test(envExample) && /^SMS_IR_API_KEY=$/m.test(envExample) && /^SMS_IR_LINE_NUMBER=$/m.test(envExample))
 add("package exposes P101 validator", /"quality:sms-provider":\s*"node scripts\/quality\/validate-sms-provider\.mjs"/.test(packageJson))
 add("project validator references P101 validator", /validate-sms-provider\.mjs/.test(validateProject) && /P101 SMS provider validator passes/.test(validateProject))
-add("README marks P101 latest and P102 next", /Latest completed implementation phase:\s+\*\*P101 - SMS provider abstraction and sms\.ir integration\*\*/.test(readme) && /Recommended next phase:\s+\*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(readme))
-add("roadmap marks P101 complete and P102 next", /Completed through \*\*P101 - SMS provider abstraction and sms\.ir integration\*\*/.test(roadmap) && /P102 - Notification templates, routing, and delivery policies/.test(roadmap))
-add("source of truth names P101 baseline", /after P101 SMS provider abstraction and sms\.ir integration/.test(sourceOfTruth) && /SMS provider abstraction exists/.test(sourceOfTruth))
+add("README keeps P101 complete while marking P102 latest and P103 next", /\| 101 \| SMS provider abstraction and sms\.ir integration/.test(readme) && /Latest completed implementation phase:\s+\*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(readme) && /Recommended next phase:\s+\*\*P103 - Admin\/operator notification dashboard\*\*/.test(readme))
+add("roadmap keeps P101 complete while marking P102 baseline", /\| P101 \| SMS provider abstraction and sms\.ir integration\. \|/.test(roadmap) && /Completed through \*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(roadmap))
+add("source of truth names P102 baseline", /after P102 Notification templates, routing, and delivery policies/.test(sourceOfTruth) && /SMS provider abstraction exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

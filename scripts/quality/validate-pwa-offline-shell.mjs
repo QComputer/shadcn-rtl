@@ -43,9 +43,9 @@ add("service worker keeps web push handlers", /addEventListener\("push"/.test(se
 add("package exposes P98 validator", /"quality:pwa-offline-shell":\s*"node scripts\/quality\/validate-pwa-offline-shell\.mjs"/.test(packageJson))
 add("project validator references P98 validator", /validate-pwa-offline-shell\.mjs/.test(validateProject) && /P98 PWA offline shell validator passes/.test(validateProject))
 add("P97 validator tolerates P98 offline cache", /P98 offline cache remains guarded/.test(p97Validator))
-add("README keeps P98 complete while marking P102 latest and P103 next", /\| 98 \| Offline shell, caching, and PWA quality gates/.test(readme) && /Latest completed implementation phase:\s+\*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(readme) && /Recommended next phase:\s+\*\*P103 - Admin\/operator notification dashboard\*\*/.test(readme))
-add("roadmap marks P98 complete in P102 progression", /\| P98 \| Offline shell, caching, and PWA quality gates\. \|/.test(roadmap) && /Completed through \*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(roadmap))
-add("source of truth names P102 baseline while keeping P98 offline shell", /Offline Shell, Caching, and PWA Quality Gates exist/.test(sourceOfTruth) && /after P102 Notification templates, routing, and delivery policies/.test(sourceOfTruth))
+add("README keeps P98 complete while marking P103 latest and P104 next", /\| 98 \| Offline shell, caching, and PWA quality gates/.test(readme) && /Latest completed implementation phase:\s+\*\*P103 - Admin\/operator notification dashboard\*\*/.test(readme) && /Recommended next phase:\s+\*\*P104 - Deployed PWA, Push, and SMS smoke gates\*\*/.test(readme))
+add("roadmap marks P98 complete in P103 progression", /\| P98 \| Offline shell, caching, and PWA quality gates\. \|/.test(roadmap) && /Completed through \*\*P103 - Admin\/operator notification dashboard\*\*/.test(roadmap))
+add("source of truth names P103 baseline while keeping P98 offline shell", /Offline Shell, Caching, and PWA Quality Gates exist/.test(sourceOfTruth) && /after P103 Admin\/operator notification dashboard/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

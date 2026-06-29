@@ -45,6 +45,7 @@
     "quality:web-push-delivery": "node scripts/quality/validate-web-push-delivery.mjs",
     "quality:sms-provider": "node scripts/quality/validate-sms-provider.mjs",
     "quality:notification-routing": "node scripts/quality/validate-notification-routing.mjs",
+    "quality:notification-operations": "node scripts/quality/validate-notification-operations.mjs",
     "e2e:deployed:phase11": "node scripts/e2e/deployed-phase11-health.mjs",
     "smoke:deployed:health": "node scripts/e2e/deployed-phase11-health.mjs",
     "e2e:deployed:phase12": "node scripts/e2e/deployed-phase12-messaging.mjs",

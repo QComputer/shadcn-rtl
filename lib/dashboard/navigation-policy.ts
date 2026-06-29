@@ -12,6 +12,7 @@ export type SidebarRoleContext = {
 export type DashboardNavigationKey =
   | "overview"
   | "notifications"
+  | "notificationOperations"
   | "appointments"
   | "calendar"
   | "orders"
@@ -36,6 +37,7 @@ export type DashboardNavigationGroupKey = "operations" | "catalog" | "teamAndSet
 export const DASHBOARD_NAVIGATION_ITEMS = {
   overview: "",
   notifications: "/notifications",
+  notificationOperations: "/notification-operations",
   appointments: "/appointments",
   calendar: "/calendar",
   orders: "/orders",
@@ -59,7 +61,7 @@ export const DASHBOARD_NAVIGATION_ITEMS = {
 export const DASHBOARD_NAVIGATION_GROUPS = [
   {
     key: "operations",
-    items: ["overview", "notifications", "appointments", "calendar", "orders", "driverOrders"],
+    items: ["overview", "notifications", "notificationOperations", "appointments", "calendar", "orders", "driverOrders"],
   },
   {
     key: "catalog",
@@ -82,6 +84,7 @@ const ADMIN_MANAGER_ROLES = ["SUPER_ADMIN", "ADMIN", "MANAGER"] as const satisfi
 export const ROLE_NAVIGATION_POLICY = {
   overview: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF", "DRIVER", "USER"],
   notifications: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF", "DRIVER", "USER"],
+  notificationOperations: ALL_OPERATIONS_ROLES,
   appointments: ALL_OPERATIONS_ROLES,
   calendar: ALL_OPERATIONS_ROLES,
   orders: ALL_OPERATIONS_ROLES,
@@ -105,6 +108,7 @@ export const ROLE_NAVIGATION_POLICY = {
 export const DASHBOARD_ROUTE_POLICY = {
   "": ROLE_NAVIGATION_POLICY.overview,
   "/notifications": ROLE_NAVIGATION_POLICY.notifications,
+  "/notification-operations": ROLE_NAVIGATION_POLICY.notificationOperations,
   "/appointments": ROLE_NAVIGATION_POLICY.appointments,
   "/appointments/[id]": ROLE_NAVIGATION_POLICY.appointments,
   "/appointments/[id]/edit": ROLE_NAVIGATION_POLICY.appointments,

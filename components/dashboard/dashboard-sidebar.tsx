@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useSession } from "next-auth/react"
 import {
+  Activity,
   BarChart3,
   Bell,
   Building2,
@@ -72,6 +73,7 @@ interface DashboardSidebarWithDictProps {
 const NAVIGATION_ICONS = {
   overview: LayoutDashboard,
   notifications: Bell,
+  notificationOperations: Activity,
   appointments: ClipboardList,
   calendar: CalendarDays,
   orders: ShoppingCart,
@@ -117,6 +119,7 @@ const roleAwareNavigationCopy = {
     items: {
       overview: "نمای کلی",
       notifications: "اعلان‌ها",
+      notificationOperations: "پایش اعلان‌ها",
       appointments: "نوبت‌ها",
       calendar: "تقویم",
       orders: "سفارش‌ها",
@@ -160,6 +163,7 @@ const roleAwareNavigationCopy = {
     items: {
       overview: "Overview",
       notifications: "Notifications",
+      notificationOperations: "Notification ops",
       appointments: "Appointments",
       calendar: "Calendar",
       orders: "Orders",
@@ -203,6 +207,7 @@ const roleAwareNavigationCopy = {
     items: {
       overview: "نظرة عامة",
       notifications: "الإشعارات",
+      notificationOperations: "مراقبة الإشعارات",
       appointments: "المواعيد",
       calendar: "التقويم",
       orders: "الطلبات",

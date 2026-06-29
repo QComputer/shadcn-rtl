@@ -43,9 +43,9 @@ add("Web Push service exposes single-customer delivery", /sendToCustomer/.test(w
 add("single-customer Web Push records delivery attempts and cleans invalid subscriptions", /webPushDelivery\.create/.test(webPush) && /statusCode === 404 \|\| statusCode === 410/.test(webPush))
 add("package exposes P102 validator", /"quality:notification-routing":\s*"node scripts\/quality\/validate-notification-routing\.mjs"/.test(packageJson))
 add("project validator references P102 validator", /validate-notification-routing\.mjs/.test(validateProject) && /P102 notification routing validator passes/.test(validateProject))
-add("README marks P102 latest and P103 next", /Latest completed implementation phase:\s+\*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(readme) && /Recommended next phase:\s+\*\*P103 - Admin\/operator notification dashboard\*\*/.test(readme))
-add("roadmap marks P102 complete and P103 next", /Completed through \*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(roadmap) && /P103 - Admin\/operator notification dashboard/.test(roadmap))
-add("source of truth names P102 baseline", /after P102 Notification templates, routing, and delivery policies/.test(sourceOfTruth) && /Notification routing exists/.test(sourceOfTruth))
+add("README keeps P102 complete while marking P103 latest and P104 next", /\| 102 \| Notification templates, routing, and delivery policies/.test(readme) && /Latest completed implementation phase:\s+\*\*P103 - Admin\/operator notification dashboard\*\*/.test(readme) && /Recommended next phase:\s+\*\*P104 - Deployed PWA, Push, and SMS smoke gates\*\*/.test(readme))
+add("roadmap marks P102 complete in P103 progression", /\| P102 \| Notification templates, routing, and delivery policies\. \|/.test(roadmap) && /Completed through \*\*P103 - Admin\/operator notification dashboard\*\*/.test(roadmap))
+add("source of truth names P103 baseline", /after P103 Admin\/operator notification dashboard/.test(sourceOfTruth) && /Notification routing exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

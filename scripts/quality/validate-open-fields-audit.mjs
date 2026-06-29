@@ -57,9 +57,9 @@ for (const locale of ["fa", "en", "ar"]) {
   add(`${locale} dictionary has payment condition copy`, /"paymentCondition"\s*:/.test(dictionary) && /"paymentConditionDescription"\s*:/.test(dictionary))
 }
 
-add("README keeps P96 complete while marking P102 latest and P103 next", /\| 96 \| Open Fields and Workflow Completion Audit/.test(readme) && /Latest completed implementation phase:\s+\*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(readme) && /Recommended next phase:\s+\*\*P103 - Admin\/operator notification dashboard\*\*/.test(readme))
-add("roadmap keeps P96 complete while marking P102 baseline", /\| P96 \| Open fields and workflow completion audit\. \|/.test(roadmap) && /Completed through \*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(roadmap))
-add("source of truth keeps P96 audit while naming P102 baseline", /Open Fields and Workflow Completion Audit exists/.test(sourceOfTruth) && /after P102 Notification templates, routing, and delivery policies/.test(sourceOfTruth))
+add("README keeps P96 complete while marking P103 latest and P104 next", /\| 96 \| Open Fields and Workflow Completion Audit/.test(readme) && /Latest completed implementation phase:\s+\*\*P103 - Admin\/operator notification dashboard\*\*/.test(readme) && /Recommended next phase:\s+\*\*P104 - Deployed PWA, Push, and SMS smoke gates\*\*/.test(readme))
+add("roadmap keeps P96 complete while marking P103 baseline", /\| P96 \| Open fields and workflow completion audit\. \|/.test(roadmap) && /Completed through \*\*P103 - Admin\/operator notification dashboard\*\*/.test(roadmap))
+add("source of truth keeps P96 audit while naming P103 baseline", /Open Fields and Workflow Completion Audit exists/.test(sourceOfTruth) && /after P103 Admin\/operator notification dashboard/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

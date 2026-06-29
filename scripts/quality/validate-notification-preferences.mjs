@@ -77,9 +77,9 @@ add("shop profile passes locale to opt-in component", /<WebPushOptIn\s+organizat
 
 add("package exposes P99 validator", /"quality:notification-preferences":\s*"node scripts\/quality\/validate-notification-preferences\.mjs"/.test(packageJson))
 add("project validator references P99 validator", /validate-notification-preferences\.mjs/.test(validateProject) && /P99 notification preferences validator passes/.test(validateProject))
-add("README keeps P99 complete while marking P102 latest and P103 next", /\| 99 \| Notification domain model and preferences/.test(readme) && /Latest completed implementation phase:\s+\*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(readme) && /Recommended next phase:\s+\*\*P103 - Admin\/operator notification dashboard\*\*/.test(readme))
-add("roadmap marks P99 complete in P102 progression", /\| P99 \| Notification domain model and preferences\. \|/.test(roadmap) && /Completed through \*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(roadmap))
-add("source of truth names P102 baseline", /after P102 Notification templates, routing, and delivery policies/.test(sourceOfTruth) && /Notification domain model and preferences exists/.test(sourceOfTruth))
+add("README keeps P99 complete while marking P103 latest and P104 next", /\| 99 \| Notification domain model and preferences/.test(readme) && /Latest completed implementation phase:\s+\*\*P103 - Admin\/operator notification dashboard\*\*/.test(readme) && /Recommended next phase:\s+\*\*P104 - Deployed PWA, Push, and SMS smoke gates\*\*/.test(readme))
+add("roadmap marks P99 complete in P103 progression", /\| P99 \| Notification domain model and preferences\. \|/.test(roadmap) && /Completed through \*\*P103 - Admin\/operator notification dashboard\*\*/.test(roadmap))
+add("source of truth names P103 baseline", /after P103 Admin\/operator notification dashboard/.test(sourceOfTruth) && /Notification domain model and preferences exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

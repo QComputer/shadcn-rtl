@@ -4,7 +4,7 @@ Date: 2026-06-29
 
 ## Current validated baseline
 
-The current working baseline after P88 AI media usage controls is source-validator green after the P88 validation gate.
+The current working baseline after P89 import-to-AI-media bridge is source-validator green after the P89 validation gate.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -116,6 +116,7 @@ pnpm run db:migrate:neon:dry-run
 - AI Media Durable Storage Acceptance exists through validated remote image MIME/signature checks before Blob writes, oversized remote image rejection, explicit `storageStatus` selection metadata, remote fallback warnings, public path/home revalidation after selected URL replacement, and the `quality:ai-media-durable-storage` validator.
 - AI Media Long-Running Job UX exists through cleanup-safe bounded polling, local `AiMediaJob` snapshot fallback when Render checks are unavailable, latest product job recovery, provider/timestamp/status display, retry/continue/cancel seller controls, an organization-scoped cancel route, and the `quality:ai-media-long-running-ux` validator.
 - AI Media Usage Controls exist through `AiMediaUsageEvent`, daily organization quota checks before job creation, usage events for job lifecycle/selection/cancel actions, authenticated `/api/dashboard/ai-media/usage`, explicit `paidGenerationEnabled: false`, and the `quality:ai-media-usage-controls` validator.
+- Import-to-AI-Media Bridge exists through `ImportedProductDraft.importedProductId`, AI-media prompt context stored only after approved drafts become `IMPORTED`, product edit AI prompt fallback from imported context, import row `تصویر AI` links, and the `quality:import-ai-media-bridge` validator.
 - Export Downloads exists through protected `GET /api/dashboard/exports/jobs/[jobId]/download`, completed-job checks, private no-store attachment responses, lightweight export job list responses, Persian-first dashboard download actions, and the `quality:export-downloads` validator.
 - Deployed Import/Export Smoke exists through `scripts/e2e/deployed-import-export-smoke.mjs`, validating deployed auth, organization resolution, draft-first manual text imports, rejection instead of publishing, JSON/CSV export job creation, and protected export downloads against a real deployment.
 - P83 Project State Reconciliation exists through `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md`, which marks older Phase-18 handoff guidance as historical and reconciles the post-P82 local AI media commits with the current roadmap.
@@ -196,6 +197,7 @@ pnpm run db:migrate:neon:dry-run
 | P86 | AI Media Durable Storage Acceptance with validated remote image copy and explicit storage metadata. |
 | P87 | AI Media Long-Running Job UX with local status fallback, resume polling, and cancel affordances. |
 | P88 | AI Media Usage Logs, Quotas, and Audit Controls before paid generation. |
+| P89 | Import Draft Product to AI Image Suggestion Bridge after approval publishing. |
 
 ## Current route/API inventory
 
@@ -311,7 +313,7 @@ Deferred:
 - Custom-domain smoke tests are deployment/data dependent. Current reference configuration uses `CUSTOM_DOMAIN_SMOKE_BASE_URL=https://www.khalae.ir`, `CUSTOM_DOMAIN_SMOKE_PLATFORM_URL=https://www.bazar-baz.ir`, and `CUSTOM_DOMAIN_SMOKE_SHOP_SLUG=ahmad`.
 - Shop owners cannot self-serve custom-domain management yet; P60/P67 keep domain management SUPER_ADMIN-only.
 - Vercel domain automation must remain dry-run-safe by default and must never hardcode tokens or project/team secrets.
-- P68-P88 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation/downloads, review-gated import publishing, AI media suggestion hardening, deployed import/export smoke coverage, project-state reconciliation, AI media health-gate hardening, AI media MOCK-flow acceptance, AI media durable-storage acceptance, AI media long-running job UX, and AI media usage controls are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
+- P68-P89 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation/downloads, review-gated import publishing, AI media suggestion hardening, deployed import/export smoke coverage, project-state reconciliation, AI media health-gate hardening, AI media MOCK-flow acceptance, AI media durable-storage acceptance, AI media long-running job UX, AI media usage controls, and import-to-AI-media bridge are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
 
 ## Clean release rules
 
@@ -350,14 +352,14 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P89 - Import draft product to AI image suggestion workflow integration
+P90 - Deployed AI media rollout gate through Bazar Baz
 ```
 
 Scope:
 
-1. Let approved/imported product drafts enter the existing AI image suggestion workflow after they become live products.
-2. Preserve draft-first import safety; do not generate media for unapproved drafts.
-3. Carry import source context into seller prompt defaults where helpful.
-4. Keep all AI media generation behind the existing dashboard product access and usage quota controls.
+1. Run a deployed Bazar Baz rollout gate that verifies dashboard route protection, AI media readiness, usage controls, and MOCK provider behavior.
+2. Keep real paid generation disabled unless explicitly enabled in a later rollout.
+3. Verify selected images still become durable Blob URLs when Blob is configured.
+4. Capture operator-safe rollout evidence without exposing secrets.
 
-See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` for the roadmap reconciliation, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md` for the AI media health gate, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md` for product suggestion MOCK-flow acceptance, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md` for durable selected-image storage, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md` for long-running job UX, and `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md` for usage and quota controls.
+See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` for the roadmap reconciliation, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md` for the AI media health gate, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md` for product suggestion MOCK-flow acceptance, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md` for durable selected-image storage, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md` for long-running job UX, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md` for usage and quota controls, and `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md` for import-to-AI-media workflow integration.

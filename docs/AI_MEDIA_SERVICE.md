@@ -197,6 +197,13 @@ The response includes daily job/selection counts, remaining daily quota, recent 
 - `units` — counted usage unit
 - `metadata` — non-secret event context
 
+Imported product drafts connect to AI media only after approval:
+
+- `ImportedProductDraft.importedProductId` stores the live product id created by import publishing.
+- `sourceMetadata.aiMediaSuggestion.promptDefault` stores Persian-first context from the approved draft.
+- `AiMediaService.createJob()` uses that prompt only as a fallback when the seller did not type a prompt.
+- Unapproved `DRAFT` rows are never used for AI media generation.
+
 ## Smoke Tests
 
 Run the quality gate:
@@ -219,9 +226,10 @@ The deployed smoke verifies Bazar Baz route protection plus Render `/health`, `/
 1. **Durable storage (BZ-AI-02 / P86)**: When `BLOB_READ_WRITE_TOKEN` is configured, selected images are copied from Render's temporary local storage into Vercel Blob before being saved to the product. The product image URL is then the durable Blob URL. If Blob is not configured, or Blob copy fails, the ephemeral Render URL is used as an explicit fallback.
 2. **Long-running UX (P87)**: If Render polling is slow or temporarily unavailable, the dashboard can show the latest local job status and let the seller continue polling, cancel, or retry.
 3. **Usage controls (P88)**: Job creation is blocked when the organization reaches the daily AI media job limit. Paid generation remains disabled until a later rollout phase.
-4. **Remote image validation**: Remote images are accepted only when content type and image signature pass the same upload checks used for direct image uploads.
-5. **No OpenAI/premium provider is called** in this phase.
-6. **Do not commit `.env`** files containing real secrets.
+4. **Import bridge (P89)**: Imported draft context is available only after review approval creates a live product.
+5. **Remote image validation**: Remote images are accepted only when content type and image signature pass the same upload checks used for direct image uploads.
+6. **No OpenAI/premium provider is called** in this phase.
+7. **Do not commit `.env`** files containing real secrets.
 
 ### Environment Variables for Durable Storage
 
@@ -250,3 +258,4 @@ If `BLOB_READ_WRITE_TOKEN` is missing, the system falls back to the ephemeral Re
 - Optional remote readiness checks cover Render `/health` and `/ready`
 - Long-running job UI shows last-known status, timestamps, continue, retry, and cancel controls
 - Usage controls record tenant-scoped job/selection events and enforce daily job quota before Render calls
+- Imported products can open the existing product edit AI workflow only after draft approval/import

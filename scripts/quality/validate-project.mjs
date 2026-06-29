@@ -430,6 +430,11 @@ if (exists("scripts/quality/validate-ai-media-usage-controls.mjs")) {
   result.status === 0 ? ok("P88 AI media usage controls validator passes") : fail("P88 AI media usage controls validator passes", result.stderr || result.stdout);
 }
 
+if (exists("scripts/quality/validate-import-ai-media-bridge.mjs")) {
+  const result = spawnSync(process.execPath, ["scripts/quality/validate-import-ai-media-bridge.mjs"], { cwd: root, encoding: "utf8" });
+  result.status === 0 ? ok("P89 import AI media bridge validator passes") : fail("P89 import AI media bridge validator passes", result.stderr || result.stdout);
+}
+
 if (exists("scripts/quality/validate-export-downloads.mjs")) {
   const result = spawnSync(process.execPath, ["scripts/quality/validate-export-downloads.mjs"], { cwd: root, encoding: "utf8" });
   result.status === 0 ? ok("P81 export downloads validator passes") : fail("P81 export downloads validator passes", result.stderr || result.stdout);

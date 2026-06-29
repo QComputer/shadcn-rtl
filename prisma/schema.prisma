@@ -1319,6 +1319,7 @@ model ImportedProductDraft {
   reviewedByUserId String?
   reviewedAt       DateTime?
   importedAt       DateTime?
+  importedProductId String?
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
@@ -1333,6 +1334,7 @@ model ImportedProductDraft {
   @@index([sourceId])
   @@index([reviewedByUserId])
   @@index([sourceExternalId])
+  @@index([importedProductId])
 }
 
 model ImportedContentDraft {

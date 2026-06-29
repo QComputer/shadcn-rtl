@@ -75,6 +75,14 @@ function startOfUtcDay(date = new Date()) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
 
+function getImportedProductAiMediaPrompt(sourceMetadata: unknown) {
+  if (!sourceMetadata || typeof sourceMetadata !== "object" || Array.isArray(sourceMetadata)) return null;
+  const aiMediaSuggestion = (sourceMetadata as Record<string, unknown>).aiMediaSuggestion;
+  if (!aiMediaSuggestion || typeof aiMediaSuggestion !== "object" || Array.isArray(aiMediaSuggestion)) return null;
+  const promptDefault = (aiMediaSuggestion as Record<string, unknown>).promptDefault;
+  return typeof promptDefault === "string" && promptDefault.trim().length > 0 ? promptDefault : null;
+}
+
 function revalidateAiSelectedProductImage(organizationSlug: string, productSlugOrId: string) {
   try {
     for (const locale of supportedLocales) {
@@ -222,6 +230,32 @@ export class AiMediaService {
     return summary;
   }
 
+  private async getImportedProductAiMediaContext(productId: string, organizationId: string) {
+    const draft = await prisma.importedProductDraft.findFirst({
+      where: {
+        organizationId,
+        importedProductId: productId,
+        status: "IMPORTED",
+      },
+      orderBy: { importedAt: "desc" },
+      select: {
+        id: true,
+        sourceUrl: true,
+        sourceExternalId: true,
+        sourceMetadata: true,
+      },
+    });
+
+    if (!draft) return null;
+
+    return {
+      draftId: draft.id,
+      sourceUrl: draft.sourceUrl,
+      sourceExternalId: draft.sourceExternalId,
+      promptDefault: getImportedProductAiMediaPrompt(draft.sourceMetadata),
+    };
+  }
+
   async createJob(
     productId: string,
     organizationId: string,
@@ -262,6 +296,8 @@ export class AiMediaService {
     }
 
     await this.assertCanCreateJob(product.organizationId);
+    const importedAiMediaContext = await this.getImportedProductAiMediaContext(product.id, product.organizationId);
+    const sellerPrompt = options.seller_prompt?.trim() || importedAiMediaContext?.promptDefault || null;
 
     const remoteRequest: AiMediaCreateJobRequest = {
       organization_id: product.organizationId,
@@ -270,7 +306,7 @@ export class AiMediaService {
       product_title: product.name,
       category: product.category?.name || "unknown",
       description: product.description || undefined,
-      seller_prompt: options.seller_prompt ?? null,
+      seller_prompt: sellerPrompt,
       brand: {
         shop_name: product.organization?.name ?? null,
         logo_url: null,
@@ -316,6 +352,10 @@ export class AiMediaService {
         count: remoteRequest.count,
         aspect_ratio: remoteRequest.aspect_ratio,
         style_preset: remoteRequest.style_preset,
+        importedProductDraftId: importedAiMediaContext?.draftId ?? null,
+        importedSourceUrl: importedAiMediaContext?.sourceUrl ?? null,
+        importedSourceExternalId: importedAiMediaContext?.sourceExternalId ?? null,
+        sellerPromptSource: options.seller_prompt?.trim() ? "seller" : importedAiMediaContext?.promptDefault ? "imported-product-draft" : "none",
       },
     });
 

@@ -42,7 +42,7 @@ add("usage route supports SUPER_ADMIN organization query", /session\.user\.role 
 add("package exposes P88 usage controls validator", /"quality:ai-media-usage-controls":\s*"node scripts\/quality\/validate-ai-media-usage-controls\.mjs"/.test(packageJson))
 add("AI media docs describe usage endpoint and quotas", /\/api\/dashboard\/ai-media\/usage/.test(aiMediaDocs) && /AI_MEDIA_DAILY_JOB_LIMIT/.test(aiMediaDocs))
 add("source of truth names P88 usage controls", /P88/.test(sourceOfTruth) && /(Usage Logs|usage logs|usage controls)/.test(sourceOfTruth))
-add("roadmap advances next phase to P89", /P89 - Import draft product to AI image suggestion workflow integration/.test(roadmap) || /P89 \| Import draft product to AI image suggestion workflow integration/.test(roadmap))
+add("roadmap includes P89 import AI media bridge follow-up", /P89 - Import draft product to AI image suggestion workflow integration/.test(roadmap) || /P89 \| Import draft product to AI image suggestion workflow integration/.test(roadmap) || /P89 \| Import draft product to AI image suggestion bridge/.test(roadmap))
 
 console.table(results)
 const failed = results.filter((result) => !result.ok)

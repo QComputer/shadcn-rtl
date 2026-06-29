@@ -105,6 +105,59 @@ function revalidateImportedFanpagePages(organizationSlug: string) {
   revalidateTag("home-page", "max")
 }
 
+function asJsonObject(value: Prisma.JsonValue | null | undefined): Prisma.InputJsonObject {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {}
+  return { ...(value as Record<string, Prisma.JsonValue>) }
+}
+
+function buildImportedProductAiMediaPrompt(draft: {
+  name: string | null
+  categoryName: string | null
+  description: string | null
+  sourceUrl: string | null
+  sourceExternalId: string | null
+}) {
+  const parts = [
+    "زمینه واردات محصول برای تولید تصویر:",
+    draft.name ? `نام محصول: ${draft.name}` : null,
+    draft.categoryName ? `دسته‌بندی: ${draft.categoryName}` : null,
+    draft.description ? `توضیح فروشنده/منبع: ${draft.description}` : null,
+    draft.sourceUrl ? `منبع واردات: ${draft.sourceUrl}` : null,
+    draft.sourceExternalId ? `شناسه منبع: ${draft.sourceExternalId}` : null,
+    "تصویر باید مناسب فروشگاه، واضح، قابل اعتماد و بدون متن اضافه روی تصویر باشد.",
+  ]
+
+  return parts.filter(Boolean).join("\n")
+}
+
+function withImportedProductAiMediaMetadata(
+  draft: {
+    id: string
+    name: string | null
+    categoryName: string | null
+    description: string | null
+    sourceUrl: string | null
+    sourceExternalId: string | null
+    sourceMetadata: Prisma.JsonValue | null
+  },
+  product: { id: string; slug: string | null },
+): Prisma.InputJsonObject {
+  const metadata = asJsonObject(draft.sourceMetadata)
+  return {
+    ...metadata,
+    aiMediaSuggestion: {
+      enabledAfterImport: true,
+      draftId: draft.id,
+      productId: product.id,
+      productSlug: product.slug,
+      sourceUrl: draft.sourceUrl,
+      sourceExternalId: draft.sourceExternalId,
+      promptDefault: buildImportedProductAiMediaPrompt(draft),
+      generatedOnlyAfterImportApproval: true,
+    },
+  }
+}
+
 export class ImportHubService {
   async listJobs(options: ImportJobListOptions = {}) {
     return prisma.externalImportJob.findMany({
@@ -793,6 +846,8 @@ export class ImportHubService {
             reviewedByUserId: input.actorUserId,
             reviewedAt,
             importedAt: reviewedAt,
+            importedProductId: product.id,
+            sourceMetadata: withImportedProductAiMediaMetadata(draft, product),
           },
         })
         productSlugs.push(product.slug)

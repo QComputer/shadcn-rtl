@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { AlertTriangle, CheckCircle2, FileInput, RefreshCw, XCircle } from "lucide-react"
+import { AlertTriangle, CheckCircle2, FileInput, RefreshCw, Sparkles, XCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -82,6 +82,11 @@ type ImportedProductDraft = {
   sourceMetadata?: {
     confidence?: number
     provider?: string
+    aiMediaSuggestion?: {
+      productId?: string
+      productSlug?: string | null
+      promptDefault?: string
+    }
     reimport?: ReimportMetadata
   } | null
 }
@@ -906,6 +911,14 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
                                 ? ` - ${copy.diff}: ${draft.sourceMetadata.reimport.diffSummary.changedFields.join(", ")}`
                                 : ""}
                             </span>
+                          )}
+                          {draft.status === "IMPORTED" && draft.sourceMetadata?.aiMediaSuggestion?.productId && (
+                            <Link href={`/${locale}/dashboard/products/${draft.sourceMetadata.aiMediaSuggestion.productId}`}>
+                              <Button type="button" size="sm" variant="outline" className="mt-1 gap-1">
+                                <Sparkles className="size-3.5" />
+                                تصویر AI
+                              </Button>
+                            </Link>
                           )}
                         </div>
                       </td>

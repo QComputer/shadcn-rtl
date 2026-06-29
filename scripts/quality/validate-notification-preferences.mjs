@@ -77,9 +77,9 @@ add("shop profile passes locale to opt-in component", /<WebPushOptIn\s+organizat
 
 add("package exposes P99 validator", /"quality:notification-preferences":\s*"node scripts\/quality\/validate-notification-preferences\.mjs"/.test(packageJson))
 add("project validator references P99 validator", /validate-notification-preferences\.mjs/.test(validateProject) && /P99 notification preferences validator passes/.test(validateProject))
-add("README marks P100 latest and P101 next", /Latest completed implementation phase:\s+\*\*P100 - Web Push notification service\*\*/.test(readme) && /Recommended next phase:\s+\*\*P101 - SMS provider abstraction and sms.ir integration\*\*/.test(readme))
-add("roadmap marks P99 complete and P101 next", /\| P99 \| Notification domain model and preferences\. \|/.test(roadmap) && /Completed through \*\*P100 - Web Push notification service\*\*/.test(roadmap) && /P101 - SMS provider abstraction and sms.ir integration/.test(roadmap))
-add("source of truth names P100 baseline", /after P100 Web Push notification service/.test(sourceOfTruth) && /Notification domain model and preferences exists/.test(sourceOfTruth))
+add("README keeps P99 complete while marking P101 latest and P102 next", /\| 99 \| Notification domain model and preferences/.test(readme) && /Latest completed implementation phase:\s+\*\*P101 - SMS provider abstraction and sms.ir integration\*\*/.test(readme) && /Recommended next phase:\s+\*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(readme))
+add("roadmap marks P99 complete in P101 progression", /\| P99 \| Notification domain model and preferences\. \|/.test(roadmap) && /Completed through \*\*P101 - SMS provider abstraction and sms.ir integration\*\*/.test(roadmap))
+add("source of truth names P101 baseline", /after P101 SMS provider abstraction and sms.ir integration/.test(sourceOfTruth) && /Notification domain model and preferences exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

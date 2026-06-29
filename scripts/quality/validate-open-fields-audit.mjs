@@ -57,9 +57,9 @@ for (const locale of ["fa", "en", "ar"]) {
   add(`${locale} dictionary has payment condition copy`, /"paymentCondition"\s*:/.test(dictionary) && /"paymentConditionDescription"\s*:/.test(dictionary))
 }
 
-add("README keeps P96 complete while marking P100 latest and P101 next", /\| 96 \| Open Fields and Workflow Completion Audit/.test(readme) && /Latest completed implementation phase:\s+\*\*P100 - Web Push notification service\*\*/.test(readme) && /Recommended next phase:\s+\*\*P101 - SMS provider abstraction and sms.ir integration\*\*/.test(readme))
-add("roadmap keeps P96 complete while marking P100 baseline", /\| P96 \| Open fields and workflow completion audit\. \|/.test(roadmap) && /Completed through \*\*P100 - Web Push notification service\*\*/.test(roadmap) && /P101 - SMS provider abstraction and sms.ir integration/.test(roadmap))
-add("source of truth keeps P96 audit while naming P100 baseline", /Open Fields and Workflow Completion Audit exists/.test(sourceOfTruth) && /after P100 Web Push notification service/.test(sourceOfTruth))
+add("README keeps P96 complete while marking P101 latest and P102 next", /\| 96 \| Open Fields and Workflow Completion Audit/.test(readme) && /Latest completed implementation phase:\s+\*\*P101 - SMS provider abstraction and sms.ir integration\*\*/.test(readme) && /Recommended next phase:\s+\*\*P102 - Notification templates, routing, and delivery policies\*\*/.test(readme))
+add("roadmap keeps P96 complete while marking P101 baseline", /\| P96 \| Open fields and workflow completion audit\. \|/.test(roadmap) && /Completed through \*\*P101 - SMS provider abstraction and sms.ir integration\*\*/.test(roadmap))
+add("source of truth keeps P96 audit while naming P101 baseline", /Open Fields and Workflow Completion Audit exists/.test(sourceOfTruth) && /after P101 SMS provider abstraction and sms.ir integration/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

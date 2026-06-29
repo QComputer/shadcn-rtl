@@ -17,6 +17,13 @@ type PreferenceUpdateInput = {
   source?: string
 }
 
+type DeliveryAllowedInput = {
+  organizationId: string
+  customerId: string
+  channel: NotificationChannel
+  kind: "marketing" | "transactional"
+}
+
 function defaultMarketingEnabled(channel: NotificationChannel) {
   return channel === "IN_APP"
 }
@@ -151,6 +158,30 @@ export class NotificationPreferencesService {
     const byCustomer = new Map(preferences.map((preference) => [preference.customerId, preference.marketingEnabled]))
 
     return customerIds.filter((customerId) => byCustomer.get(customerId) ?? defaultMarketingEnabled(channel))
+  }
+
+  async isCustomerDeliveryAllowed(input: DeliveryAllowedInput) {
+    assertSupportedChannel(input.channel)
+
+    const preference = await prisma.notificationPreference.findUnique({
+      where: {
+        organizationId_customerId_channel: {
+          organizationId: input.organizationId,
+          customerId: input.customerId,
+          channel: input.channel,
+        },
+      },
+      select: {
+        marketingEnabled: true,
+        transactionalEnabled: true,
+      },
+    })
+
+    if (input.kind === "marketing") {
+      return preference?.marketingEnabled ?? defaultMarketingEnabled(input.channel)
+    }
+
+    return preference?.transactionalEnabled ?? true
   }
 
   private async requireOrganizationBySlug(slug: string) {

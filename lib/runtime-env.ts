@@ -21,6 +21,10 @@ export type RuntimeEnvValidation = {
     webPushDryRun: boolean;
     webPushPublicKeyConfigured: boolean;
     webPushRealSendEnabled: boolean;
+    smsProvider: string;
+    smsDryRun: boolean;
+    smsIrConfigured: boolean;
+    smsRealSendEnabled: boolean;
     aiMediaServiceEnabled: boolean;
     aiMediaServiceUrlConfigured: boolean;
     aiMediaServiceInternalKeyConfigured: boolean;
@@ -143,6 +147,46 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
     }
   }
 
+  const smsProvider = (process.env.SMS_PROVIDER || "dry_run").trim().toLowerCase().replaceAll("-", "_");
+  const smsDryRun = process.env.SMS_DRY_RUN !== "false";
+  const smsIrLineConfigured = hasValue(process.env.SMS_IR_LINE_NUMBER) || hasValue(process.env.SMS_IR_LINE);
+  const smsIrConfigured = hasValue(process.env.SMS_IR_API_KEY) && smsIrLineConfigured;
+  const smsRealSendEnabled = smsProvider === "sms_ir" && !smsDryRun;
+
+  if (!["dry_run", "sms_ir"].includes(smsProvider)) {
+    issues.push({
+      name: "SMS_PROVIDER",
+      severity: "error",
+      message: "SMS_PROVIDER must be either dry_run or sms_ir.",
+    });
+  }
+
+  if (smsRealSendEnabled) {
+    if (!hasValue(process.env.SMS_IR_API_KEY)) {
+      issues.push({
+        name: "SMS_IR_API_KEY",
+        severity: "error",
+        message: "SMS_IR_API_KEY is required when real SMS.ir sending is enabled.",
+      });
+    }
+
+    if (!smsIrLineConfigured) {
+      issues.push({
+        name: "SMS_IR_LINE_NUMBER",
+        severity: "error",
+        message: "SMS_IR_LINE_NUMBER or SMS_IR_LINE is required when real SMS.ir sending is enabled.",
+      });
+    }
+
+    if (!isProduction) {
+      issues.push({
+        name: "SMS_DRY_RUN",
+        severity: "warning",
+        message: "Real SMS sending is enabled outside production. Keep SMS_DRY_RUN=true for local, test, CI, and deployed smoke tests.",
+      });
+    }
+  }
+
   const aiMediaServiceEnabled = process.env.AI_MEDIA_SERVICE_ENABLED === "true";
   const aiMediaServiceUrlConfigured = isProbablyUrl(process.env.AI_MEDIA_SERVICE_URL);
   const aiMediaServiceInternalKeyConfigured = hasValue(process.env.AI_MEDIA_SERVICE_INTERNAL_KEY);
@@ -214,6 +258,10 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
       webPushDryRun,
       webPushPublicKeyConfigured: hasValue(process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY),
       webPushRealSendEnabled,
+      smsProvider,
+      smsDryRun,
+      smsIrConfigured,
+      smsRealSendEnabled,
       aiMediaServiceEnabled,
       aiMediaServiceUrlConfigured,
       aiMediaServiceInternalKeyConfigured,

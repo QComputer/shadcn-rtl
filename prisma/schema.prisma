@@ -197,6 +197,13 @@ enum WebPushDeliveryStatus {
   SKIPPED
 }
 
+enum SmsDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
 enum ExternalImportSourceType {
   INSTAGRAM
   TELEGRAM
@@ -311,6 +318,7 @@ model Organization {
   notificationPermissionEvents NotificationPermissionEvent[]
   notificationPreferences      NotificationPreference[]
   webPushDeliveries            WebPushDelivery[]
+  smsDeliveries                SmsDelivery[]
   fanpagePosts                 FanpagePost[]
   notifications                Notification[]
   locations                    Location[]
@@ -458,6 +466,8 @@ model User {
   notificationPreferences       NotificationPreference[]      @relation("CustomerNotificationPreferences")
   webPushDeliveries             WebPushDelivery[]             @relation("CustomerWebPushDeliveries")
   actorWebPushDeliveries        WebPushDelivery[]             @relation("ActorWebPushDeliveries")
+  smsDeliveries                 SmsDelivery[]                 @relation("CustomerSmsDeliveries")
+  actorSmsDeliveries            SmsDelivery[]                 @relation("ActorSmsDeliveries")
   passwordResets                PasswordReset[]
   emailVerifications            EmailVerification[]
   auditLogs                     AuditLog[]
@@ -1744,6 +1754,36 @@ model WebPushDelivery {
   @@index([customerId, createdAt])
   @@index([subscriptionId])
   @@index([actorUserId])
+}
+
+model SmsDelivery {
+  id                String            @id @default(cuid())
+  organizationId    String
+  customerId        String
+  actorUserId       String?
+  phoneMasked       String
+  purpose           String
+  message           String            @db.Text
+  provider          String            @default("dry_run")
+  dryRun            Boolean           @default(true)
+  status            SmsDeliveryStatus @default(PENDING)
+  externalMessageId String?
+  externalPackId    String?
+  providerStatus    Int?
+  providerMessage   String?
+  error             String?
+  sentAt            DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     User         @relation("CustomerSmsDeliveries", fields: [customerId], references: [id], onDelete: Cascade)
+  actor        User?        @relation("ActorSmsDeliveries", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, createdAt])
+  @@index([customerId, createdAt])
+  @@index([actorUserId])
+  @@index([purpose, createdAt])
 }
 
 model Conversation {

@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-29._
 
-This roadmap is ordered for risk reduction. Phases 18-100 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, and Web Push delivery roadmap is implemented through Phase 100.
+This roadmap is ordered for risk reduction. Phases 18-101 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, and SMS provider roadmap is implemented through Phase 101.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P100 - Web Push notification service**.
+- Completed through **P101 - SMS provider abstraction and sms.ir integration**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -19,10 +19,10 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P101 - SMS provider abstraction and sms.ir integration
+P102 - Notification templates, routing, and delivery policies
 ```
 
-Next work should add SMS provider abstraction and sms.ir integration behind explicit dry-run and rollout gates.
+Next work should connect notification templates, routing, and channel delivery policies to the existing in-app, Web Push, and SMS foundations.
 
 Immediate validation target:
 
@@ -47,6 +47,7 @@ pnpm run quality:pwa-foundation
 pnpm run quality:pwa-offline-shell
 pnpm run quality:notification-preferences
 pnpm run quality:web-push-delivery
+pnpm run quality:sms-provider
 pnpm run quality:export-downloads
 pnpm run quality:deployed-import-export-smoke
 pnpm run quality:local
@@ -92,12 +93,12 @@ Completed integrated phases:
 | P98 | Offline shell, caching, and PWA quality gates. |
 | P99 | Notification domain model and preferences. |
 | P100 | Web Push notification service. |
+| P101 | SMS provider abstraction and sms.ir integration. |
 
 Upcoming platform phases should be treated as incremental hardening against the actual implementation already present in the repo:
 
 | Phase | Focus |
 | --- | --- |
-| P101 | SMS provider abstraction and sms.ir integration. |
 | P102 | Notification templates, routing, and delivery policies. |
 | P103 | Admin/operator notification dashboard. |
 | P104 | Deployed PWA, Push, and SMS smoke gates. |

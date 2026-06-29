@@ -32,7 +32,7 @@ add("AiMediaUsageEvent migration exists", exists("prisma/migrations/202606290087
 add("usage event indexes are tenant and audit friendly", /@@index\(\[organizationId, createdAt\]\)/.test(schema) && /@@index\(\[jobId\]\)/.test(schema) && /@@index\(\[action\]\)/.test(schema))
 add("service defines AI media usage actions", /type AiMediaUsageAction =/.test(service) && /JOB_CREATED/.test(service) && /IMAGE_SELECTED/.test(service))
 add("service reads quota from server env with safe defaults", /AI_MEDIA_DAILY_JOB_LIMIT/.test(service) && /DEFAULT_DAILY_AI_MEDIA_JOB_LIMIT/.test(service))
-add("service exposes usage summary", /getUsageSummary/.test(service) && /remainingDailyJobs/.test(service) && /paidGenerationEnabled: false/.test(service))
+add("service exposes usage summary", /getUsageSummary/.test(service) && /remainingDailyJobs/.test(service) && /paidGenerationEnabled:\s*paidProvider\.enabled/.test(service) && /paidProvider/.test(service))
 add("service blocks create when quota is exhausted", /assertCanCreateJob/.test(service) && /AI media daily generation quota exceeded/.test(service) && /await this\.assertCanCreateJob/.test(service))
 add("service records job creation usage", /action: "JOB_CREATED"/.test(service) && /recordUsageEvent/.test(service))
 add("service records terminal job usage", /JOB_COMPLETED/.test(service) && /JOB_FAILED/.test(service) && /JOB_CANCELED/.test(service) && /dedupeByJobAndAction/.test(service))

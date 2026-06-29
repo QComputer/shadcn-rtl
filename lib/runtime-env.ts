@@ -24,6 +24,8 @@ export type RuntimeEnvValidation = {
     aiMediaServiceEnabled: boolean;
     aiMediaServiceUrlConfigured: boolean;
     aiMediaServiceInternalKeyConfigured: boolean;
+    aiMediaPaidProviderRequested: boolean;
+    aiMediaPaidProviderConfigured: boolean;
   };
 };
 
@@ -143,6 +145,20 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
   const aiMediaServiceEnabled = process.env.AI_MEDIA_SERVICE_ENABLED === "true";
   const aiMediaServiceUrlConfigured = isProbablyUrl(process.env.AI_MEDIA_SERVICE_URL);
   const aiMediaServiceInternalKeyConfigured = hasValue(process.env.AI_MEDIA_SERVICE_INTERNAL_KEY);
+  const aiMediaPaidProviderRequested = process.env.AI_MEDIA_PAID_PROVIDER_ENABLED === "true";
+  const aiMediaPaidProviderApproved = process.env.AI_MEDIA_PAID_PROVIDER_APPROVED === "true";
+  const aiMediaPaidProviderApprovedBy = hasValue(process.env.AI_MEDIA_PAID_PROVIDER_APPROVED_BY);
+  const aiMediaPaidProviderApprovedAt = hasValue(process.env.AI_MEDIA_PAID_PROVIDER_APPROVED_AT)
+    && !Number.isNaN(new Date(process.env.AI_MEDIA_PAID_PROVIDER_APPROVED_AT as string).getTime());
+  const aiMediaPaidProviderDailyLimit = Number.parseInt(process.env.AI_MEDIA_PAID_PROVIDER_DAILY_COST_LIMIT_CENTS || "", 10);
+  const aiMediaPaidProviderMonthlyBudget = Number.parseInt(process.env.AI_MEDIA_PAID_PROVIDER_MONTHLY_BUDGET_CENTS || "", 10);
+  const aiMediaPaidProviderHasDailyLimit = Number.isFinite(aiMediaPaidProviderDailyLimit) && aiMediaPaidProviderDailyLimit > 0;
+  const aiMediaPaidProviderHasMonthlyBudget = Number.isFinite(aiMediaPaidProviderMonthlyBudget) && aiMediaPaidProviderMonthlyBudget > 0;
+  const aiMediaPaidProviderConfigured = aiMediaPaidProviderApproved
+    && aiMediaPaidProviderApprovedBy
+    && aiMediaPaidProviderApprovedAt
+    && aiMediaPaidProviderHasDailyLimit
+    && aiMediaPaidProviderHasMonthlyBudget;
 
   if (aiMediaServiceEnabled) {
     if (!aiMediaServiceUrlConfigured) {
@@ -159,6 +175,14 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
         message: "AI_MEDIA_SERVICE_INTERNAL_KEY is required when AI_MEDIA_SERVICE_ENABLED is true.",
       });
     }
+  }
+
+  if (aiMediaPaidProviderRequested && !aiMediaPaidProviderConfigured) {
+    issues.push({
+      name: "AI_MEDIA_PAID_PROVIDER_ENABLED",
+      severity: "error",
+      message: "Paid AI media requires approval metadata and positive daily/monthly cost guardrails.",
+    });
   }
 
   return {
@@ -179,6 +203,8 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
       aiMediaServiceEnabled,
       aiMediaServiceUrlConfigured,
       aiMediaServiceInternalKeyConfigured,
+      aiMediaPaidProviderRequested,
+      aiMediaPaidProviderConfigured,
     },
   };
 }

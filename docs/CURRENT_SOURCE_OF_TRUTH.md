@@ -4,7 +4,7 @@ Date: 2026-06-29
 
 ## Current validated baseline
 
-The current working baseline after P91 AI media rollout evidence archive is source-validator green after the P91 validation gate.
+The current working baseline after P92 AI media paid-provider controls is source-validator green after the P92 validation gate.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -119,6 +119,7 @@ pnpm run db:migrate:neon:dry-run
 - Import-to-AI-Media Bridge exists through `ImportedProductDraft.importedProductId`, AI-media prompt context stored only after approved drafts become `IMPORTED`, product edit AI prompt fallback from imported context, import row `تصویر AI` links, and the `quality:import-ai-media-bridge` validator.
 - Deployed AI Media Rollout Gate exists through `scripts/e2e/deployed-ai-media-smoke.mjs`, authenticated Bazar Baz status and usage checks, unauthenticated protected-route guards, optional direct Render MOCK checks, optional Blob-backed selection probe, and the `quality:deployed-ai-media-rollout` validator.
 - AI Media Rollout Evidence Archive exists through sanitized `test-results/deployed-ai-media-rollout/evidence.json`, `scripts/release/archive-ai-media-rollout-evidence.mjs`, `.release/ai-media-rollout-evidence` archives, `REVIEW.md`, explicit paid-provider enablement checklist, and the `quality:ai-media-rollout-evidence` validator.
+- AI Media Paid Provider Controls exist through server-only `getAiMediaPaidProviderStatus()`, explicit approval and cost-guardrail env prerequisites, runtime-env validation, secret-safe status/usage API policy summaries, deployed smoke assertions that paid generation stays disabled by default, and the `quality:ai-media-paid-provider-controls` validator.
 - Export Downloads exists through protected `GET /api/dashboard/exports/jobs/[jobId]/download`, completed-job checks, private no-store attachment responses, lightweight export job list responses, Persian-first dashboard download actions, and the `quality:export-downloads` validator.
 - Deployed Import/Export Smoke exists through `scripts/e2e/deployed-import-export-smoke.mjs`, validating deployed auth, organization resolution, draft-first manual text imports, rejection instead of publishing, JSON/CSV export job creation, and protected export downloads against a real deployment.
 - P83 Project State Reconciliation exists through `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md`, which marks older Phase-18 handoff guidance as historical and reconciles the post-P82 local AI media commits with the current roadmap.
@@ -202,6 +203,7 @@ pnpm run db:migrate:neon:dry-run
 | P89 | Import Draft Product to AI Image Suggestion Bridge after approval publishing. |
 | P90 | Deployed AI Media Rollout Gate through Bazar Baz readiness, usage, and optional MOCK/Blob probes. |
 | P91 | AI Media Rollout Evidence Archive with sanitized rollout evidence and review checklist. |
+| P92 | AI Media Paid Provider Controls with explicit approval and cost guardrails defaulting off. |
 
 ## Current route/API inventory
 
@@ -317,7 +319,7 @@ Deferred:
 - Custom-domain smoke tests are deployment/data dependent. Current reference configuration uses `CUSTOM_DOMAIN_SMOKE_BASE_URL=https://www.khalae.ir`, `CUSTOM_DOMAIN_SMOKE_PLATFORM_URL=https://www.bazar-baz.ir`, and `CUSTOM_DOMAIN_SMOKE_SHOP_SLUG=ahmad`.
 - Shop owners cannot self-serve custom-domain management yet; P60/P67 keep domain management SUPER_ADMIN-only.
 - Vercel domain automation must remain dry-run-safe by default and must never hardcode tokens or project/team secrets.
-- P68-P91 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation/downloads, review-gated import publishing, AI media suggestion hardening, deployed import/export smoke coverage, project-state reconciliation, AI media health-gate hardening, AI media MOCK-flow acceptance, AI media durable-storage acceptance, AI media long-running job UX, AI media usage controls, import-to-AI-media bridge, deployed AI media rollout gate, and AI media rollout evidence archive are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
+- P68-P92 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation/downloads, review-gated import publishing, AI media suggestion hardening, deployed import/export smoke coverage, project-state reconciliation, AI media health-gate hardening, AI media MOCK-flow acceptance, AI media durable-storage acceptance, AI media long-running job UX, AI media usage controls, import-to-AI-media bridge, deployed AI media rollout gate, AI media rollout evidence archive, and AI media paid-provider controls are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
 
 ## Clean release rules
 
@@ -357,14 +359,14 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P92 - Explicit Paid AI Media Provider Enablement Controls
+P93 - AI Media Cost Telemetry and Rollback Guardrails
 ```
 
 Scope:
 
-1. Add explicit server-side paid-provider enablement flags that default off.
-2. Require quota/cost guardrails and operator approval before paid generation can run.
-3. Keep Bazar Baz Persian-first seller UX clear about MOCK, disabled, and paid-provider states.
-4. Preserve rollback and evidence requirements from P91.
+1. Record provider cost/usage telemetry for paid-provider dry-run readiness.
+2. Add rollback guardrails that can disable paid media quickly without code changes.
+3. Keep seller-facing Persian UX clear when the paid provider is paused or rolled back.
+4. Extend P91 evidence archives with cost and rollback status when real paid generation is approved later.
 
-See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` for the roadmap reconciliation, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md` for the AI media health gate, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md` for product suggestion MOCK-flow acceptance, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md` for durable selected-image storage, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md` for long-running job UX, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md` for usage and quota controls, `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md` for import-to-AI-media workflow integration, `docs/PHASE_90_DEPLOYED_AI_MEDIA_ROLLOUT_GATE.md` for deployed Bazar Baz AI media rollout validation, and `docs/PHASE_91_AI_MEDIA_ROLLOUT_EVIDENCE.md` for operator-safe rollout evidence retention.
+See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` for the roadmap reconciliation, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md` for the AI media health gate, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md` for product suggestion MOCK-flow acceptance, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md` for durable selected-image storage, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md` for long-running job UX, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md` for usage and quota controls, `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md` for import-to-AI-media workflow integration, `docs/PHASE_90_DEPLOYED_AI_MEDIA_ROLLOUT_GATE.md` for deployed Bazar Baz AI media rollout validation, `docs/PHASE_91_AI_MEDIA_ROLLOUT_EVIDENCE.md` for operator-safe rollout evidence retention, and `docs/PHASE_92_AI_MEDIA_PAID_PROVIDER_CONTROLS.md` for explicit paid-provider controls.

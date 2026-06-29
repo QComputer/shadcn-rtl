@@ -24,6 +24,12 @@ Health checks:
 | `AI_MEDIA_SERVICE_TIMEOUT_MS` | No | Request timeout in ms (default: `60000`) |
 | `AI_MEDIA_DAILY_JOB_LIMIT` | No | Per-organization daily AI media job creation limit (default: `25`) |
 | `AI_MEDIA_DAILY_SELECTION_LIMIT` | No | Per-organization daily selected-image audit limit (default: `50`) |
+| `AI_MEDIA_PAID_PROVIDER_ENABLED` | No | Must be `true` to request paid-provider enablement; defaults off |
+| `AI_MEDIA_PAID_PROVIDER_APPROVED` | No | Must be `true` with the fields below before paid provider can be enabled |
+| `AI_MEDIA_PAID_PROVIDER_APPROVED_BY` | No | Operator or approval reference for paid-provider rollout |
+| `AI_MEDIA_PAID_PROVIDER_APPROVED_AT` | No | Valid approval timestamp for paid-provider rollout |
+| `AI_MEDIA_PAID_PROVIDER_DAILY_COST_LIMIT_CENTS` | No | Positive daily cost guardrail required for paid-provider rollout |
+| `AI_MEDIA_PAID_PROVIDER_MONTHLY_BUDGET_CENTS` | No | Positive monthly budget guardrail required for paid-provider rollout |
 
 **Security rules:**
 - `AI_MEDIA_SERVICE_INTERNAL_KEY` must never be exposed through `NEXT_PUBLIC_*` variables.
@@ -152,6 +158,8 @@ GET /api/dashboard/ai-media/usage?organizationId={organizationId}
 ```
 
 The response includes daily job/selection counts, remaining daily quota, recent `AiMediaUsageEvent` rows, and `paidGenerationEnabled: false`.
+
+`paidGenerationEnabled` is derived from the server-only paid-provider policy. It remains false unless paid-provider enablement is explicitly requested and all approval/cost guardrail variables are valid.
 
 ## Deployed Rollout Gate
 

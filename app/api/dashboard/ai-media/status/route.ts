@@ -4,12 +4,14 @@ import {
   checkAiMediaServiceReadiness,
   getAiMediaServiceConfigStatus,
 } from "@/lib/services/ai-media-service-client";
+import { getAiMediaPaidProviderStatus } from "@/lib/services/ai-media-paid-provider";
 
 export async function GET(request: NextRequest) {
   try {
     await requireAuthSession();
 
     const status = getAiMediaServiceConfigStatus();
+    const paidProvider = getAiMediaPaidProviderStatus();
     const shouldCheckRemote = request.nextUrl.searchParams.get("check") === "1";
     const remote = shouldCheckRemote ? await checkAiMediaServiceReadiness() : null;
 
@@ -22,6 +24,7 @@ export async function GET(request: NextRequest) {
         internalKeyConfigured: status.internalKeyConfigured,
         timeoutMs: status.timeoutMs,
       },
+      paidProvider,
       remote: remote
         ? {
             ok: remote.ok,

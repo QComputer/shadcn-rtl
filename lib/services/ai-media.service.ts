@@ -15,6 +15,7 @@ import { hasPermission } from "@/lib/types";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { copyRemoteImageToBlob } from "@/lib/media-storage";
 import { shouldUseVercelBlob } from "@/lib/blob-storage";
+import { getAiMediaPaidProviderStatus } from "@/lib/services/ai-media-paid-provider";
 
 type AiSelectedImageStorageStatus = "blob" | "remote-unconfigured" | "remote-fallback";
 type AiMediaUsageAction = "JOB_CREATED" | "JOB_COMPLETED" | "JOB_FAILED" | "JOB_CANCELED" | "IMAGE_SELECTED";
@@ -45,7 +46,8 @@ export type AiMediaUsageSummary = {
   imageSelectionCount: number;
   remainingDailyJobs: number;
   remainingDailySelections: number;
-  paidGenerationEnabled: false;
+  paidGenerationEnabled: boolean;
+  paidProvider: ReturnType<typeof getAiMediaPaidProviderStatus>;
   canCreateJob: boolean;
   events: Array<{
     id: string;
@@ -208,6 +210,8 @@ export class AiMediaService {
       },
     });
 
+    const paidProvider = getAiMediaPaidProviderStatus();
+
     return {
       dateStart: counts.dateStart,
       dailyJobLimit: quota.dailyJobLimit,
@@ -216,7 +220,8 @@ export class AiMediaService {
       imageSelectionCount: counts.imageSelectionCount,
       remainingDailyJobs: Math.max(0, quota.dailyJobLimit - counts.jobCreateCount),
       remainingDailySelections: Math.max(0, quota.dailySelectionLimit - counts.imageSelectionCount),
-      paidGenerationEnabled: false,
+      paidGenerationEnabled: paidProvider.enabled,
+      paidProvider,
       canCreateJob: counts.jobCreateCount < quota.dailyJobLimit,
       events,
     };

@@ -346,7 +346,10 @@ await check("dashboard AI media status is secret-safe", async () => {
     throw new Error("status response appears to expose secret material");
   }
   if (requireBazarReady && !status.ready) throw new Error("Bazar Baz AI media status is not ready");
-  return `ready=${status.ready} remote=${status.remote?.ok ?? "not-checked"}`;
+  if (!status.paidProvider || status.paidProvider.enabled !== false) {
+    throw new Error("paid provider must remain disabled in status response");
+  }
+  return `ready=${status.ready} remote=${status.remote?.ok ?? "not-checked"} paid=${status.paidProvider.enabled}`;
 });
 
 await check("dashboard AI media usage is quota-shaped and paid generation disabled", async () => {
@@ -357,6 +360,7 @@ await check("dashboard AI media usage is quota-shaped and paid generation disabl
     if (typeof usage[key] !== "number") throw new Error(`usage.${key} must be number`);
   }
   if (usage.paidGenerationEnabled !== false) throw new Error("paid generation must remain disabled in rollout gate");
+  if (!usage.paidProvider || usage.paidProvider.enabled !== false) throw new Error("paid provider policy must remain disabled in usage response");
   if (!Array.isArray(usage.events)) throw new Error("usage.events must be an array");
   return `jobs=${usage.jobCreateCount}/${usage.dailyJobLimit} selections=${usage.imageSelectionCount}/${usage.dailySelectionLimit}`;
 });

@@ -168,6 +168,18 @@ The response includes daily job/selection counts, remaining daily quota, recent 
 
 The response also includes `costTelemetry` with daily/monthly estimated cost, configured daily/monthly guardrails, remaining budget, and rollback pause status. Cost telemetry is an operator guardrail, not a payment ledger.
 
+## Seller-Facing State UX
+
+Product edit and product creation pages use the secret-safe status and usage responses to show Persian-first seller states:
+
+- disabled
+- MOCK/آزمایشی
+- approved/active
+- budget or quota exhausted
+- rollback paused
+
+The dashboard state panel is intentionally action-oriented for sellers. It does not expose provider environment variables, approval metadata, raw estimated job costs, or internal rollback policy details.
+
 ## Deployed Rollout Gate
 
 Use the P90 rollout gate before enabling broader AI media access on Bazar Baz:

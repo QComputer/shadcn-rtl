@@ -34,6 +34,11 @@ import { useSession } from "next-auth/react"
 import { isRTL } from "@/lib/i18n"
 import { FieldLabel } from "@/components/ui/field"
 import { SlugPreviewActions } from "@/components/dashboard/slug-preview-actions"
+import {
+  AiMediaProviderState,
+  type AiMediaStatusResponse,
+  type AiMediaUsageSummary,
+} from "@/components/dashboard/ai-media-provider-state"
 
 interface ProductVariant {
   id?: string
@@ -113,6 +118,9 @@ export default function NewProductPage({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isActive, setIsActive] = useState(true)
   const [aiFeatureEnabled, setAiFeatureEnabled] = useState(false)
+  const [aiStatus, setAiStatus] = useState<AiMediaStatusResponse | null>(null)
+  const [aiUsage, setAiUsage] = useState<AiMediaUsageSummary>(null)
+  const [aiStateLoading, setAiStateLoading] = useState(false)
 
    const [images, setImages] = useState<ImageRecord[]>([]);
     const [isDragging, setIsDragging] = useState(false);
@@ -169,16 +177,29 @@ export default function NewProductPage({
 
     let active = true
 
-    fetch("/api/dashboard/ai-media/status")
-      .then(async (res) => {
-        if (!res.ok) return { enabled: false }
-        return res.json()
+    setAiStateLoading(true)
+    Promise.all([
+      fetch("/api/dashboard/ai-media/status")
+        .then(async (res) => {
+          if (!res.ok) return { enabled: false }
+          return res.json()
+        })
+        .catch(() => ({ enabled: false })),
+      fetch("/api/dashboard/ai-media/usage")
+        .then(async (res) => {
+          if (!res.ok) return { usage: null }
+          return res.json()
+        })
+        .catch(() => ({ usage: null })),
+    ])
+      .then(([statusData, usageData]) => {
+        if (!active) return
+        setAiStatus(statusData)
+        setAiUsage(usageData.usage || null)
+        setAiFeatureEnabled(Boolean(statusData.enabled))
       })
-      .then((data) => {
-        if (active) setAiFeatureEnabled(Boolean(data.enabled))
-      })
-      .catch(() => {
-        if (active) setAiFeatureEnabled(false)
+      .finally(() => {
+        if (active) setAiStateLoading(false)
       })
 
     return () => {
@@ -421,7 +442,7 @@ export default function NewProductPage({
                 >
                   <X/>
                 </Button>
-                {aiFeatureEnabled && (
+                {(aiFeatureEnabled || aiStatus || aiStateLoading) && (
                   <div className="mr-2 flex flex-col gap-1">
                     <Button type="button" variant="secondary" disabled className="gap-2">
                       <Sparkles className="h-4 w-4" />
@@ -434,6 +455,17 @@ export default function NewProductPage({
                 )}
             
           </div>
+          {(aiStatus || aiStateLoading) && (
+            <div className="md:col-span-2">
+              <AiMediaProviderState
+                status={aiStatus}
+                usage={aiUsage}
+                loading={aiStateLoading}
+                locale={locale}
+                productSaved={false}
+              />
+            </div>
+          )}
           </div>
            {/* --------------- Name */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

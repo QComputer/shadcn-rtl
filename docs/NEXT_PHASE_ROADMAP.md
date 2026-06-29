@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-29._
 
-This roadmap is ordered for risk reduction. Phases 18-93 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, and AI media hardening roadmap is implemented through Phase 93.
+This roadmap is ordered for risk reduction. Phases 18-94 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, and AI media hardening roadmap is implemented through Phase 94.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P93 - AI Media Cost Telemetry and Rollback Guardrails**.
+- Completed through **P94 - AI Media Seller-Facing Paid Provider State UX**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -19,10 +19,10 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P94 - AI Media Seller-Facing Paid Provider State UX
+P95 - AI Media Paid Provider Operator Runbook and Deployed UX Smoke
 ```
 
-Next work should expose Persian-first seller-facing AI media state for MOCK, disabled, approved, budget-exhausted, and rollback-paused modes without exposing internal policy details.
+Next work should add operator-facing launch/runbook guidance and a deployed smoke that verifies the seller-facing AI media state UX against the live app.
 
 Immediate validation target:
 
@@ -40,6 +40,7 @@ pnpm run quality:deployed-ai-media-rollout
 pnpm run quality:ai-media-rollout-evidence
 pnpm run quality:ai-media-paid-provider-controls
 pnpm run quality:ai-media-cost-rollback
+pnpm run quality:ai-media-seller-state-ux
 pnpm run quality:export-downloads
 pnpm run quality:deployed-import-export-smoke
 pnpm run quality:local
@@ -78,12 +79,13 @@ Completed integrated phases:
 | P91 | AI media rollout evidence archive. |
 | P92 | AI media paid-provider controls. |
 | P93 | AI media cost telemetry and rollback guardrails. |
+| P94 | AI media seller-facing paid provider state UX. |
 
 Upcoming AI media phases should be treated as audits/hardening against the actual implementation already present in the repo:
 
 | Phase | Focus |
 | --- | --- |
-| P94 | AI media seller-facing paid provider state UX. |
+| P95 | AI media paid provider operator runbook and deployed UX smoke. |
 
 Safety constraints for all Import Hub phases:
 

@@ -272,6 +272,29 @@ export const updateOrganizationSettingsSchema = z.object({
   settings: z.any().optional(),
 });
 
+export const updatePaymentSettingsSchema = z.object({
+  cardOwnerName: z.string().trim().max(200).nullable().optional(),
+  cardNumber: z.string().trim().max(32).nullable().optional(),
+  paymentCondition: z.boolean().default(false),
+  paymentMethodInt: z.coerce.number().int().min(0).max(2).default(0),
+  settings: z.any().optional(),
+});
+
+export const updateBookingSettingsSchema = z.object({
+  slotDuration: z.coerce.number().int().positive().max(1440).optional(),
+  bufferBefore: z.coerce.number().int().min(0).max(1440).optional(),
+  bufferAfter: z.coerce.number().int().min(0).max(1440).optional(),
+  minBookingNotice: z.coerce.number().int().min(0).max(525600).optional(),
+  maxBookingAdvance: z.coerce.number().int().positive().max(1051200).optional(),
+  maxAppointmentsPerDay: z.coerce.number().int().positive().max(1000).nullable().optional(),
+  allowCancellation: z.boolean().optional(),
+  cancellationDeadline: z.coerce.number().int().min(0).max(525600).optional(),
+  requirePhone: z.boolean().optional(),
+  requireEmail: z.boolean().optional(),
+  requireName: z.boolean().optional(),
+  autoConfirm: z.boolean().optional(),
+});
+
 // AI Media validators
 export const createAiMediaJobSchema = z.object({
   count: z.number().int().min(1).max(6).default(3),
@@ -347,6 +370,8 @@ export type CreateReviewInput = z.infer<typeof createReviewSchema>;
 export type CreatePromotionInput = z.infer<typeof createPromotionSchema>;
 export type UpdatePromotionInput = z.infer<typeof updatePromotionSchema>;
 export type UpdateOrganizationSettingsInput = z.infer<typeof updateOrganizationSettingsSchema>;
+export type UpdatePaymentSettingsInput = z.infer<typeof updatePaymentSettingsSchema>;
+export type UpdateBookingSettingsInput = z.infer<typeof updateBookingSettingsSchema>;
 export type CreateAiMediaJobInput = z.infer<typeof createAiMediaJobSchema>;
 export type SelectAiMediaImageInput = z.infer<typeof selectAiMediaImageSchema>;
 export type PaginationParams = z.infer<typeof paginationSchema>;

@@ -167,7 +167,9 @@
     "today": "Today",
     "cardNumber": "Card number",
     "cardOwnerName": "Cardholder name",
-    "paymentMethod": "Payment method"
+    "paymentMethod": "Payment method",
+    "paymentCondition": "Optional prepayment prompt",
+    "paymentConditionDescription": "Show the public order payment text as an optional prepayment request."
   },
   "product": {
     "title": "Product",

@@ -38,6 +38,7 @@
     "smoke:deployed:auth": "node scripts/e2e/deployed-phase10-auth-security.mjs",
     "health:env": "node scripts/quality/validate-env.mjs",
     "quality:source-baseline": "node scripts/quality/validate-source-baseline.mjs",
+    "quality:open-fields-audit": "node scripts/quality/validate-open-fields-audit.mjs",
     "e2e:deployed:phase11": "node scripts/e2e/deployed-phase11-health.mjs",
     "smoke:deployed:health": "node scripts/e2e/deployed-phase11-health.mjs",
     "e2e:deployed:phase12": "node scripts/e2e/deployed-phase12-messaging.mjs",

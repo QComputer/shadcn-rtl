@@ -7,7 +7,7 @@ export interface BookingSettingsInput {
   bufferAfter?: number;
   minBookingNotice?: number;
   maxBookingAdvance?: number;
-  maxAppointmentsPerDay?: number;
+  maxAppointmentsPerDay?: number | null;
   allowCancellation?: boolean;
   cancellationDeadline?: number;
   requirePhone?: boolean;
@@ -58,11 +58,11 @@ export class BookingSettingsService {
    * Validate if a booking is allowed based on settings
    */
   async validateBooking(
-    organizationId: string,
+    organizationSlug: string,
     appointmentTime: Date,
     existingAppointmentsCount: number,
   ): Promise<{ valid: boolean; error?: string }> {
-    const settings = await this.getForOrganization(organizationId);
+    const settings = await this.getForOrganization(organizationSlug);
     const now = new Date();
 
     // Check minimum booking notice
@@ -101,10 +101,10 @@ export class BookingSettingsService {
    * Check if cancellation is allowed
    */
   async canCancel(
-    organizationId: string,
+    organizationSlug: string,
     appointmentTime: Date,
   ): Promise<{ canCancel: boolean; error?: string }> {
-    const settings = await this.getForOrganization(organizationId);
+    const settings = await this.getForOrganization(organizationSlug);
 
     if (!settings.allowCancellation) {
       return {
@@ -130,10 +130,10 @@ export class BookingSettingsService {
    * Get effective slot duration (considering buffer times)
    */
   async getEffectiveSlotDuration(
-    organizationId: string,
+    organizationSlug: string,
     serviceDuration: number,
   ): Promise<number> {
-    const settings = await this.getForOrganization(organizationId);
+    const settings = await this.getForOrganization(organizationSlug);
 
     // Use the larger of: service duration, or configured slot duration
     const baseDuration = Math.max(serviceDuration, settings.slotDuration);

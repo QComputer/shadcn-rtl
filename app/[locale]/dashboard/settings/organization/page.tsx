@@ -63,7 +63,7 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   const [cardNumber, setCardNumber] = useState<string>("")
   const [cardOwnerName, setCardOwnerName] = useState<string>("")
   const [paymentMethodInt, setPaymentMethodInt] = useState<string>("0")
-  const [paymentCondition, setPaymenCondition] = useState(false)
+  const [paymentCondition, setPaymentCondition] = useState(false)
   function paymentMethodDict (int: string) {
     if (int=="0") return "پرداخت نقدی و انتقال"
     else if (int=="1") return "فقط پرداخت از طریق انتقال"
@@ -103,7 +103,7 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
        setBusinessHours(settings.organization.businessHours)
       //setPaymentSettings(settings.organization.paymentSettings)
       settings.organization?.paymentSettings?.paymentMethodInt && setPaymentMethodInt(settings.organization.paymentSettings.paymentMethodInt.toString())
-      settings.organization?.paymentSettings?.paymentCondition && setPaymenCondition(settings.organization.paymentSettings.paymentCondition)
+      if (typeof settings.organization?.paymentSettings?.paymentCondition === "boolean") setPaymentCondition(settings.organization.paymentSettings.paymentCondition)
       settings.organization?.paymentSettings?.cardNumber && setCardNumber(settings.organization.paymentSettings.cardNumber)
       settings.organization?.paymentSettings?.cardOwnerName && setCardOwnerName(settings.organization.paymentSettings.cardOwnerName)
       setIsOpen(settings.organization?.isOpen || false)
@@ -291,7 +291,7 @@ const handleOpen = async (e: React.FormEvent) => {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          paymentCondition: false,
+          paymentCondition,
           paymentMethodInt: Number(paymentMethodInt),
           cardOwnerName,
           cardNumber,
@@ -304,10 +304,10 @@ const handleOpen = async (e: React.FormEvent) => {
       }
       
       const updatedPaymentSettings = await response.json()
-      setPaymentMethodInt(updatedPaymentSettings.paymentMethodInt)
-      setPaymenCondition(updatedPaymentSettings.paymentCondition)
-      setCardNumber(updatedPaymentSettings.cardNumber)
-      setCardOwnerName(updatedPaymentSettings.cardOwnerName)
+      setPaymentMethodInt(String(updatedPaymentSettings.paymentMethodInt ?? 0))
+      setPaymentCondition(Boolean(updatedPaymentSettings.paymentCondition))
+      setCardNumber(updatedPaymentSettings.cardNumber || "")
+      setCardOwnerName(updatedPaymentSettings.cardOwnerName || "")
       setSuccess(t("common.success"))
 
     } catch (err) {
@@ -555,6 +555,17 @@ const handleOpen = async (e: React.FormEvent) => {
                   ))}
                 </SelectContent>
               </Select>
+                </div>
+                <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="payment-condition">{t("organization.paymentCondition")}</Label>
+                    <p className="text-xs text-muted-foreground">{t("organization.paymentConditionDescription")}</p>
+                  </div>
+                  <Switch
+                    id="payment-condition"
+                    checked={paymentCondition}
+                    onCheckedChange={setPaymentCondition}
+                  />
                 </div>
                 
               </div>

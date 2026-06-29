@@ -104,6 +104,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 88 | AI Media Usage Logs, Quotas, and Audit Controls | Source-validated | `pnpm run quality:ai-media-usage-controls` |
 | 89 | Import Draft Product to AI Image Suggestion Bridge | Source-validated | `pnpm run quality:import-ai-media-bridge` |
 | 90 | Deployed AI Media Rollout Gate | Source/deployed smoke | `pnpm run quality:deployed-ai-media-rollout` / `pnpm run e2e:deployed:ai-media` |
+| 91 | AI Media Rollout Evidence Archive | Tooling/docs | `pnpm run quality:ai-media-rollout-evidence` / `pnpm run release:ai-media-rollout-evidence` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -162,6 +163,7 @@ pnpm run quality:export-hub-foundation
 pnpm run quality:import-approval-publishing
 pnpm run quality:ai-media
 pnpm run quality:deployed-ai-media-rollout
+pnpm run quality:ai-media-rollout-evidence
 pnpm run quality:export-downloads
 pnpm run quality:deployed-import-export-smoke
 pnpm run release:stage
@@ -198,6 +200,14 @@ pnpm run e2e:deployed:ai-media
 ```
 
 By default, the suite does not mutate catalog images. Set `AI_MEDIA_SERVICE_URL` and `AI_MEDIA_SERVICE_INTERNAL_KEY` to include direct Render MOCK job checks. Set `DEPLOYED_AI_MEDIA_SELECTION_PRODUCT_ID` for an operator-approved product image selection probe, and add `DEPLOYED_AI_MEDIA_REQUIRE_BLOB_SELECTION=1` when Blob durability must be enforced.
+
+Archive operator-safe AI media rollout evidence after a deployed gate run:
+
+```powershell
+pnpm run release:ai-media-rollout-evidence
+```
+
+The archive is written under `.release/ai-media-rollout-evidence/<timestamp>` with sanitized `evidence.json`, `manifest.json`, and `REVIEW.md`. Keep it with external release records if needed; do not commit it.
 
 ## Deployed slug SEO validation
 
@@ -295,12 +305,12 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P90 - Deployed AI Media Rollout Gate**.
+Latest completed implementation phase: **P91 - AI Media Rollout Evidence Archive**.
 
-Recommended next phase: **P91 - AI Media Operator Evidence Archive and Paid-Provider Enablement Plan**.
+Recommended next phase: **P92 - Explicit Paid AI Media Provider Enablement Controls**.
 
-The active roadmap is `docs/IMPORT_HUB_ROADMAP.md` plus `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md`, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md`, `docs/PHASE_81_EXPORT_DOWNLOADS.md`, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md`, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md`, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md`, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md`, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md`, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md`, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md`, `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md`, and `docs/PHASE_90_DEPLOYED_AI_MEDIA_ROLLOUT_GATE.md`. P68-P90 are implemented. Next AI media work should focus on operator evidence retention and explicit paid-provider enablement controls.
+The active roadmap is `docs/IMPORT_HUB_ROADMAP.md` plus `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md`, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md`, `docs/PHASE_81_EXPORT_DOWNLOADS.md`, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md`, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md`, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md`, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md`, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md`, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md`, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md`, `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md`, `docs/PHASE_90_DEPLOYED_AI_MEDIA_ROLLOUT_GATE.md`, and `docs/PHASE_91_AI_MEDIA_ROLLOUT_EVIDENCE.md`. P68-P91 are implemented. Next AI media work should focus on explicit paid-provider enablement controls.
 
 ## Historical validator anchors
 
-The source tree keeps focused validators for these retained phases: P37 dashboard navigation and localized shell copy, P38 dashboard role navigation, P39 dashboard route parity, P40 dashboard route authorization, P41 dashboard route guard smoke, P42 Customer Club foundation, P43 in-app notification inbox, P44 Customer Segments, P45 Campaign Builder, P46 Loyalty Points and Coupons, P47 Web Push Opt-In Foundation, P68 Import Hub Foundation, P69 CSV/Excel Product Importer, P70 Manual Instagram Fanpage Import, P71 AI/Text Product Extraction Foundation, P72 Image/PDF Menu Import Foundation, P73 Snappfood URL Import MVP, P74 Snappmarket URL Import MVP, P75 Telegram Post Import, P76 External Source Mapping and Re-import Diff, P77 Import Hub Audit, Limits, and Plan Readiness, P78 Export Hub Foundation, P79 Import Approval Publishing, P80 AI Media Suggestions Hardening, P81 Export Downloads, P82 Deployed Import/Export Smoke, P83 Project State Reconciliation, P84 AI Media Health Gate, P85 AI Media MOCK Flow, P86 AI Media Durable Storage, P87 AI Media Long-Running Job UX, P88 AI Media Usage Controls, P89 Import AI Media Bridge, and P90 Deployed AI Media Rollout Gate.
+The source tree keeps focused validators for these retained phases: P37 dashboard navigation and localized shell copy, P38 dashboard role navigation, P39 dashboard route parity, P40 dashboard route authorization, P41 dashboard route guard smoke, P42 Customer Club foundation, P43 in-app notification inbox, P44 Customer Segments, P45 Campaign Builder, P46 Loyalty Points and Coupons, P47 Web Push Opt-In Foundation, P68 Import Hub Foundation, P69 CSV/Excel Product Importer, P70 Manual Instagram Fanpage Import, P71 AI/Text Product Extraction Foundation, P72 Image/PDF Menu Import Foundation, P73 Snappfood URL Import MVP, P74 Snappmarket URL Import MVP, P75 Telegram Post Import, P76 External Source Mapping and Re-import Diff, P77 Import Hub Audit, Limits, and Plan Readiness, P78 Export Hub Foundation, P79 Import Approval Publishing, P80 AI Media Suggestions Hardening, P81 Export Downloads, P82 Deployed Import/Export Smoke, P83 Project State Reconciliation, P84 AI Media Health Gate, P85 AI Media MOCK Flow, P86 AI Media Durable Storage, P87 AI Media Long-Running Job UX, P88 AI Media Usage Controls, P89 Import AI Media Bridge, P90 Deployed AI Media Rollout Gate, and P91 AI Media Rollout Evidence Archive.

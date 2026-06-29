@@ -166,6 +166,12 @@ pnpm run e2e:deployed:ai-media
 
 The default gate verifies authenticated dashboard readiness, usage quotas, unauthenticated route protection, and paid generation remaining disabled. Direct Render MOCK checks run only when `AI_MEDIA_SERVICE_URL` and `AI_MEDIA_SERVICE_INTERNAL_KEY` are provided. Durable selection is intentionally optional and requires `DEPLOYED_AI_MEDIA_SELECTION_PRODUCT_ID`; add `DEPLOYED_AI_MEDIA_REQUIRE_BLOB_SELECTION=1` when Blob storage must be enforced.
 
+The gate writes sanitized operator evidence to `test-results/deployed-ai-media-rollout/evidence.json`. Archive it for external release records with:
+
+```powershell
+pnpm run release:ai-media-rollout-evidence
+```
+
 ## UI Flow
 
 ### Edit product form

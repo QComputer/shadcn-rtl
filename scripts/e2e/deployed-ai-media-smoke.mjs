@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import fs from "node:fs";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
 
 const configuredBaseUrl = (process.env.DEPLOYED_URL || process.env.NEXT_PUBLIC_DEPLOYED_APP_URL || "").replace(/\/$/, "");
 const username = process.env.DEPLOYED_USERNAME || process.env.DEPLOYED_USER || "Amir";
@@ -9,6 +12,7 @@ const aiInternalKey = process.env.AI_MEDIA_SERVICE_INTERNAL_KEY || "";
 const requireBazarReady = process.env.DEPLOYED_AI_MEDIA_REQUIRE_READY === "1";
 const selectionProductId = process.env.DEPLOYED_AI_MEDIA_SELECTION_PRODUCT_ID || "";
 const requireBlobSelection = process.env.DEPLOYED_AI_MEDIA_REQUIRE_BLOB_SELECTION === "1";
+const evidenceDir = process.env.DEPLOYED_AI_MEDIA_EVIDENCE_DIR || "test-results/deployed-ai-media-rollout";
 
 if (!configuredBaseUrl) {
   console.error("DEPLOYED_URL is required, for example: DEPLOYED_URL=https://bazar-baz.ir pnpm run e2e:deployed:ai-media");
@@ -17,6 +21,47 @@ if (!configuredBaseUrl) {
 
 let baseUrl = configuredBaseUrl;
 const results = [];
+
+function currentGitCommit() {
+  const result = spawnSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" });
+  return result.status === 0 ? result.stdout.trim() : "unknown";
+}
+
+function redactEvidence(value) {
+  if (typeof value !== "string") return value;
+  let redacted = value.replaceAll(password, "[redacted-password]");
+  if (aiInternalKey) redacted = redacted.replaceAll(aiInternalKey, "[redacted-ai-key]");
+  return redacted.replace(/(AI_MEDIA_SERVICE_INTERNAL_KEY|BLOB_READ_WRITE_TOKEN|DATABASE_URL)=\S+/g, "$1=[redacted]");
+}
+
+function writeEvidence() {
+  const output = {
+    generatedAt: new Date().toISOString(),
+    gitCommit: currentGitCommit(),
+    configuredBaseUrl,
+    canonicalBaseUrl: baseUrl,
+    locale,
+    checks: results.map((result) => ({
+      name: result.name,
+      ok: result.ok,
+      detail: redactEvidence(result.detail || ""),
+    })),
+    summary: {
+      total: results.length,
+      passed: results.filter((result) => result.ok).length,
+      failed: results.filter((result) => !result.ok).length,
+      paidGenerationEnabled: false,
+      directRenderChecked: Boolean(aiServiceUrl && aiInternalKey),
+      selectionProbeRan: Boolean(selectionProductId),
+      blobSelectionRequired: requireBlobSelection,
+    },
+  };
+
+  fs.mkdirSync(evidenceDir, { recursive: true });
+  const evidencePath = path.join(evidenceDir, "evidence.json");
+  fs.writeFileSync(evidencePath, `${JSON.stringify(output, null, 2)}\n`);
+  return evidencePath;
+}
 
 class CookieJar {
   constructor() {
@@ -388,6 +433,8 @@ await check("optional Bazar Baz product selection probe returns durable image st
 });
 
 console.table(results);
+const evidencePath = writeEvidence();
+console.log(`Operator-safe evidence written to ${evidencePath}`);
 const failed = results.filter((result) => !result.ok);
 if (failed.length) {
   console.error(`\n${failed.length} check(s) failed`);

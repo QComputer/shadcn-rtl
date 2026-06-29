@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-29._
 
-This roadmap is ordered for risk reduction. Phases 18-90 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, and AI media hardening roadmap is implemented through Phase 90.
+This roadmap is ordered for risk reduction. Phases 18-91 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, and AI media hardening roadmap is implemented through Phase 91.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P90 - Deployed AI Media Rollout Gate**.
+- Completed through **P91 - AI Media Rollout Evidence Archive**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -19,10 +19,10 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P91 - AI Media Operator Evidence Archive and Paid-Provider Enablement Plan
+P92 - Explicit Paid AI Media Provider Enablement Controls
 ```
 
-Next work should persist operator-safe rollout evidence and define explicit paid-provider enablement controls before real paid generation is allowed.
+Next work should add explicit paid-provider enablement controls that default off and keep real paid generation blocked until operator approval, quota/cost limits, and rollback evidence are in place.
 
 Immediate validation target:
 
@@ -37,6 +37,7 @@ pnpm run quality:ai-media-long-running-ux
 pnpm run quality:ai-media-usage-controls
 pnpm run quality:import-ai-media-bridge
 pnpm run quality:deployed-ai-media-rollout
+pnpm run quality:ai-media-rollout-evidence
 pnpm run quality:export-downloads
 pnpm run quality:deployed-import-export-smoke
 pnpm run quality:local
@@ -72,12 +73,13 @@ Completed integrated phases:
 | P88 | AI media usage logs, quotas, and audit controls. |
 | P89 | Import draft product to AI image suggestion bridge. |
 | P90 | Deployed AI media rollout gate through Bazar Baz. |
+| P91 | AI media rollout evidence archive. |
 
 Upcoming AI media phases should be treated as audits/hardening against the actual implementation already present in the repo:
 
 | Phase | Focus |
 | --- | --- |
-| P91 | AI media operator evidence archive and paid-provider enablement plan. |
+| P92 | Explicit paid AI media provider enablement controls. |
 
 Safety constraints for all Import Hub phases:
 

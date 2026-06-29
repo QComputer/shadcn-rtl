@@ -50,9 +50,9 @@ add("P98 offline cache remains guarded", /addEventListener\("fetch"/.test(servic
 
 add("package exposes P97 validator", /"quality:pwa-foundation":\s*"node scripts\/quality\/validate-pwa-foundation\.mjs"/.test(packageJson))
 add("project validator references P97 validator", /validate-pwa-foundation\.mjs/.test(validateProject) && /P97 PWA foundation validator passes/.test(validateProject))
-add("README keeps P97 complete while marking P103 latest and P104 next", /\| 97 \| PWA foundation and install experience/.test(readme) && /Latest completed implementation phase:\s+\*\*P103 - Admin\/operator notification dashboard\*\*/.test(readme) && /Recommended next phase:\s+\*\*P104 - Deployed PWA, Push, and SMS smoke gates\*\*/.test(readme))
-add("roadmap keeps P97 complete while marking P103 baseline", /\| P97 \| PWA foundation and install experience\. \|/.test(roadmap) && /Completed through \*\*P103 - Admin\/operator notification dashboard\*\*/.test(roadmap))
-add("source of truth keeps P97 foundation while naming P103 baseline", /PWA Foundation and Install Experience exists/.test(sourceOfTruth) && /after P103 Admin\/operator notification dashboard/.test(sourceOfTruth))
+add("README keeps P97 complete while marking P104 latest and P105 next", /\| 97 \| PWA foundation and install experience/.test(readme) && /Latest completed implementation phase:\s+\*\*P104 - Deployed PWA, Push, and SMS smoke gates\*\*/.test(readme) && /Recommended next phase:\s+\*\*P105 - Production rollout runbook\*\*/.test(readme))
+add("roadmap keeps P97 complete while marking P104 baseline", /\| P97 \| PWA foundation and install experience\. \|/.test(roadmap) && /Completed through \*\*P104 - Deployed PWA, Push, and SMS smoke gates\*\*/.test(roadmap))
+add("source of truth keeps P97 foundation while naming P104 baseline", /PWA Foundation and Install Experience exists/.test(sourceOfTruth) && /after P104 Deployed PWA, Push, and SMS smoke gates/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

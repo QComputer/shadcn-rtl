@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-29._
 
-This roadmap is ordered for risk reduction. Phases 18-103 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, and notification operations dashboard roadmap is implemented through Phase 103.
+This roadmap is ordered for risk reduction. Phases 18-104 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, and deployed PWA/Push/SMS smoke roadmap is implemented through Phase 104.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P103 - Admin/operator notification dashboard**.
+- Completed through **P104 - Deployed PWA, Push, and SMS smoke gates**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -19,10 +19,10 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P104 - Deployed PWA, Push, and SMS smoke gates
+P105 - Production rollout runbook
 ```
 
-Next work should add deployed smoke coverage for the PWA install/offline path, Web Push opt-in/dry-run delivery path, and SMS dry-run/provider-readiness path.
+Next work should add the production rollout runbook for provider enablement, monitoring, rollback, evidence retention, and operator release steps.
 
 Immediate validation target:
 
@@ -50,6 +50,7 @@ pnpm run quality:web-push-delivery
 pnpm run quality:sms-provider
 pnpm run quality:notification-routing
 pnpm run quality:notification-operations
+pnpm run quality:deployed-pwa-push-sms
 pnpm run quality:export-downloads
 pnpm run quality:deployed-import-export-smoke
 pnpm run quality:local
@@ -98,12 +99,12 @@ Completed integrated phases:
 | P101 | SMS provider abstraction and sms.ir integration. |
 | P102 | Notification templates, routing, and delivery policies. |
 | P103 | Admin/operator notification dashboard. |
+| P104 | Deployed PWA, Push, and SMS smoke gates. |
 
 Upcoming platform phases should be treated as incremental hardening against the actual implementation already present in the repo:
 
 | Phase | Focus |
 | --- | --- |
-| P104 | Deployed PWA, Push, and SMS smoke gates. |
 | P105 | Production rollout runbook. |
 
 Safety constraints for all Import Hub phases:

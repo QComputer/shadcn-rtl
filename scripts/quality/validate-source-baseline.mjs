@@ -57,10 +57,10 @@ add("personal public PDF is not present in tracked source", !trackedExisting.inc
 add(".env files are not present in tracked source", !trackedExisting.some((file) => file === ".env" || (file.startsWith(".env.") && file !== ".env.example")))
 add("active seed script remains tracked", tracked.includes("prisma/seed.ts"))
 add("duplicate client Providers wrapper removed", !exists("components/providers.tsx"))
-add("README keeps P95 source cleanup in current progression", /\| 95 \| Source Cleanup and Current-State Verification/.test(readme) && /Latest completed implementation phase:\s+\*\*P103 - Admin\/operator notification dashboard\*\*/.test(readme))
-add("README recommends P104 after P103", /Recommended next phase:\s+\*\*P104 - Deployed PWA, Push, and SMS smoke gates\*\*/.test(readme))
-add("roadmap keeps P95 complete in P103 progression", /\| P95 \| Source cleanup and current-state verification\. \|/.test(roadmap) && /Completed through \*\*P103 - Admin\/operator notification dashboard\*\*/.test(roadmap))
-add("source of truth keeps P95 source cleanup while naming P103 baseline", /Source Cleanup and Current-State Verification exists/.test(sourceOfTruth) && /after P103 Admin\/operator notification dashboard/.test(sourceOfTruth))
+add("README keeps P95 source cleanup in current progression", /\| 95 \| Source Cleanup and Current-State Verification/.test(readme) && /Latest completed implementation phase:\s+\*\*P104 - Deployed PWA, Push, and SMS smoke gates\*\*/.test(readme))
+add("README recommends P105 after P104", /Recommended next phase:\s+\*\*P105 - Production rollout runbook\*\*/.test(readme))
+add("roadmap keeps P95 complete in P104 progression", /\| P95 \| Source cleanup and current-state verification\. \|/.test(roadmap) && /Completed through \*\*P104 - Deployed PWA, Push, and SMS smoke gates\*\*/.test(roadmap))
+add("source of truth keeps P95 source cleanup while naming P104 baseline", /Source Cleanup and Current-State Verification exists/.test(sourceOfTruth) && /after P104 Deployed PWA, Push, and SMS smoke gates/.test(sourceOfTruth))
 
 const scripts = packageJson.scripts || {}
 const documentedScriptNames = new Set()

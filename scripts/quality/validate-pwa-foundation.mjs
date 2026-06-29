@@ -50,9 +50,9 @@ add("P98 offline cache remains guarded", /addEventListener\("fetch"/.test(servic
 
 add("package exposes P97 validator", /"quality:pwa-foundation":\s*"node scripts\/quality\/validate-pwa-foundation\.mjs"/.test(packageJson))
 add("project validator references P97 validator", /validate-pwa-foundation\.mjs/.test(validateProject) && /P97 PWA foundation validator passes/.test(validateProject))
-add("README keeps P97 complete while marking P99 latest and P100 next", /\| 97 \| PWA foundation and install experience/.test(readme) && /Latest completed implementation phase:\s+\*\*P99 - Notification domain model and preferences\*\*/.test(readme) && /Recommended next phase:\s+\*\*P100 - Web Push notification service\*\*/.test(readme))
-add("roadmap keeps P97 complete while marking P99 baseline", /\| P97 \| PWA foundation and install experience\. \|/.test(roadmap) && /Completed through \*\*P99 - Notification domain model and preferences\*\*/.test(roadmap) && /P100 - Web Push notification service/.test(roadmap))
-add("source of truth keeps P97 foundation while naming P99 baseline", /PWA Foundation and Install Experience exists/.test(sourceOfTruth) && /after P99 notification domain model and preferences/.test(sourceOfTruth))
+add("README keeps P97 complete while marking P100 latest and P101 next", /\| 97 \| PWA foundation and install experience/.test(readme) && /Latest completed implementation phase:\s+\*\*P100 - Web Push notification service\*\*/.test(readme) && /Recommended next phase:\s+\*\*P101 - SMS provider abstraction and sms.ir integration\*\*/.test(readme))
+add("roadmap keeps P97 complete while marking P100 baseline", /\| P97 \| PWA foundation and install experience\. \|/.test(roadmap) && /Completed through \*\*P100 - Web Push notification service\*\*/.test(roadmap) && /P101 - SMS provider abstraction and sms.ir integration/.test(roadmap))
+add("source of truth keeps P97 foundation while naming P100 baseline", /PWA Foundation and Install Experience exists/.test(sourceOfTruth) && /after P100 Web Push notification service/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

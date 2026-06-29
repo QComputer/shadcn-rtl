@@ -47,6 +47,14 @@ type DryRunSendInput = {
   dryRun?: boolean
 }
 
+type ActivePushSubscription = {
+  id: string
+  customerId: string
+  endpoint: string
+  p256dh: string
+  auth: string
+}
+
 export function getWebPushRuntimeConfig() {
   const provider = process.env.WEB_PUSH_PROVIDER || "dry_run"
   const dryRun = process.env.WEB_PUSH_DRY_RUN !== "false" || provider === "dry_run"
@@ -116,7 +124,7 @@ export class WebPushFoundationService {
   async listDashboard(organizationId: string) {
     await this.requireOrganizationById(organizationId)
 
-    const [activeCount, totalCount, subscriptions, permissionEvents] = await Promise.all([
+    const [activeCount, totalCount, subscriptions, permissionEvents, recentDeliveries, eligibleCustomerIds] = await Promise.all([
       prisma.pushSubscription.count({ where: { organizationId, isActive: true } }),
       prisma.pushSubscription.count({ where: { organizationId } }),
       prisma.pushSubscription.findMany({
@@ -165,15 +173,49 @@ export class WebPushFoundationService {
           },
         },
       }),
+      prisma.webPushDelivery.findMany({
+        where: { organizationId },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        select: {
+          id: true,
+          customerId: true,
+          subscriptionId: true,
+          title: true,
+          provider: true,
+          dryRun: true,
+          status: true,
+          error: true,
+          sentAt: true,
+          createdAt: true,
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+            },
+          },
+        },
+      }),
+      notificationPreferencesService.listMarketingEligibleCustomerIds(organizationId, "WEB_PUSH"),
     ])
+    const eligibleCustomerSet = new Set(eligibleCustomerIds)
+    const activeCustomerIds = new Set(subscriptions.filter((subscription) => subscription.isActive).map((subscription) => subscription.customer.id))
+    const eligibleActiveCustomerCount = [...activeCustomerIds].filter((customerId) => eligibleCustomerSet.has(customerId)).length
 
     return {
       config: getWebPushRuntimeConfig(),
       activeCount,
       totalCount,
       inactiveCount: Math.max(totalCount - activeCount, 0),
+      eligibleCustomerCount: eligibleActiveCustomerCount,
+      preferenceSkippedCustomerCount: Math.max(activeCustomerIds.size - eligibleActiveCustomerCount, 0),
       subscriptions,
       permissionEvents,
+      recentDeliveries,
     }
   }
 
@@ -300,26 +342,8 @@ export class WebPushFoundationService {
   async send(input: DryRunSendInput) {
     await this.requireOrganizationById(input.organizationId)
     const config = getWebPushRuntimeConfig()
-
-    const subscriptions = await prisma.pushSubscription.findMany({
-      where: {
-        organizationId: input.organizationId,
-        isActive: true,
-        customer: {
-          isActive: true,
-          deletedAt: null,
-        },
-      },
-      select: {
-        id: true,
-        customerId: true,
-        endpoint: true,
-        p256dh: true,
-        auth: true,
-      },
-    })
-
-    const recipientCount = new Set(subscriptions.map((subscription) => subscription.customerId)).size
+    const deliveryPlan = await this.getEligibleDeliveryPlan(input.organizationId)
+    const { subscriptions, recipientCount, activeSubscriptionCount, activeCustomerCount, preferenceSkippedCustomerCount } = deliveryPlan
 
     if (!input.dryRun) {
       if (!config.realSendEnabled) {
@@ -341,6 +365,21 @@ export class WebPushFoundationService {
       const payload = JSON.stringify({ title: input.title, body: input.body })
 
       for (const subscription of subscriptions) {
+        const delivery = await prisma.webPushDelivery.create({
+          data: {
+            organizationId: input.organizationId,
+            customerId: subscription.customerId,
+            subscriptionId: subscription.id,
+            actorUserId: input.actorUserId,
+            title: input.title,
+            body: input.body,
+            provider: config.provider,
+            dryRun: false,
+            status: "PENDING",
+          },
+          select: { id: true },
+        })
+
         try {
           await webpush.sendNotification(
             {
@@ -350,10 +389,15 @@ export class WebPushFoundationService {
             payload,
             { TTL: 60 }
           )
+          await prisma.webPushDelivery.update({
+            where: { id: delivery.id },
+            data: { status: "SENT", sentAt: new Date(), error: null },
+          })
           successCount++
         } catch (err) {
           failureCount++
           const statusCode = (err as { statusCode?: number }).statusCode
+          const errorMessage = err instanceof Error ? err.message : "Web Push delivery failed"
           if (statusCode === 404 || statusCode === 410) {
             await prisma.pushSubscription.updateMany({
               where: { id: subscription.id, isActive: true },
@@ -361,6 +405,10 @@ export class WebPushFoundationService {
             })
             removedCount++
           }
+          await prisma.webPushDelivery.update({
+            where: { id: delivery.id },
+            data: { status: "FAILED", error: errorMessage },
+          })
         }
       }
 
@@ -374,6 +422,9 @@ export class WebPushFoundationService {
           provider: config.provider,
           recipientCount,
           subscriptionCount: subscriptions.length,
+          activeSubscriptionCount,
+          activeCustomerCount,
+          preferenceSkippedCustomerCount,
           successCount,
           failureCount,
           removedCount,
@@ -390,6 +441,9 @@ export class WebPushFoundationService {
         realSendEnabled: config.realSendEnabled,
         recipientCount,
         subscriptionCount: subscriptions.length,
+        activeSubscriptionCount,
+        activeCustomerCount,
+        preferenceSkippedCustomerCount,
         successCount,
         failureCount,
         removedCount,
@@ -408,6 +462,9 @@ export class WebPushFoundationService {
         provider: config.provider,
         recipientCount,
         subscriptionCount: subscriptions.length,
+        activeSubscriptionCount,
+        activeCustomerCount,
+        preferenceSkippedCustomerCount,
         configured: config.configured,
       },
       userId: input.actorUserId,
@@ -421,8 +478,46 @@ export class WebPushFoundationService {
       realSendEnabled: config.realSendEnabled,
       recipientCount,
       subscriptionCount: subscriptions.length,
+      activeSubscriptionCount,
+      activeCustomerCount,
+      preferenceSkippedCustomerCount,
       title: input.title,
       body: input.body,
+    }
+  }
+
+  private async getEligibleDeliveryPlan(organizationId: string) {
+    const [subscriptions, eligibleCustomerIds] = await Promise.all([
+      prisma.pushSubscription.findMany({
+        where: {
+          organizationId,
+          isActive: true,
+          customer: {
+            isActive: true,
+            deletedAt: null,
+          },
+        },
+        select: {
+          id: true,
+          customerId: true,
+          endpoint: true,
+          p256dh: true,
+          auth: true,
+        },
+      }),
+      notificationPreferencesService.listMarketingEligibleCustomerIds(organizationId, "WEB_PUSH"),
+    ])
+    const eligibleCustomerSet = new Set(eligibleCustomerIds)
+    const activeCustomerIds = new Set(subscriptions.map((subscription) => subscription.customerId))
+    const eligibleSubscriptions: ActivePushSubscription[] = subscriptions.filter((subscription) => eligibleCustomerSet.has(subscription.customerId))
+    const eligibleRecipientIds = new Set(eligibleSubscriptions.map((subscription) => subscription.customerId))
+
+    return {
+      subscriptions: eligibleSubscriptions,
+      recipientCount: eligibleRecipientIds.size,
+      activeSubscriptionCount: subscriptions.length,
+      activeCustomerCount: activeCustomerIds.size,
+      preferenceSkippedCustomerCount: Math.max(activeCustomerIds.size - eligibleRecipientIds.size, 0),
     }
   }
 

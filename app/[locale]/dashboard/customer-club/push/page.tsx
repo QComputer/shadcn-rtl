@@ -40,6 +40,20 @@ type PermissionEventItem = {
   customer?: CustomerSummary | null
 }
 
+type WebPushDeliveryItem = {
+  id: string
+  customerId: string
+  subscriptionId?: string | null
+  title: string
+  provider: string
+  dryRun: boolean
+  status: "PENDING" | "SENT" | "FAILED" | "SKIPPED"
+  error?: string | null
+  sentAt?: string | null
+  createdAt: string
+  customer?: CustomerSummary | null
+}
+
 type PushDashboardResponse = {
   config: {
     provider: string
@@ -53,8 +67,11 @@ type PushDashboardResponse = {
   activeCount: number
   totalCount: number
   inactiveCount: number
+  eligibleCustomerCount: number
+  preferenceSkippedCustomerCount: number
   subscriptions: PushSubscriptionItem[]
   permissionEvents: PermissionEventItem[]
+  recentDeliveries: WebPushDeliveryItem[]
 }
 
 type WebPushCopy = {
@@ -67,6 +84,8 @@ type WebPushCopy = {
   activeSubscriptions: string
   inactiveSubscriptions: string
   totalSubscriptions: string
+  eligibleRecipients: string
+  skippedByPreference: string
   config: string
   vapidPublic: string
   vapidPrivate: string
@@ -79,21 +98,30 @@ type WebPushCopy = {
   notificationTitle: string
   notificationBody: string
   previewSend: string
+  sendNow: string
   dryRunResult: string
+  realSendResult: string
   subscriptions: string
   permissionEvents: string
+  deliveryHistory: string
   emptySubscriptions: string
   emptyEvents: string
+  emptyDeliveries: string
   customer: string
   status: string
   lastSeen: string
+  sentAt: string
   endpoint: string
   active: string
   inactive: string
+  delivered: string
+  failed: string
+  removed: string
   campaigns: string
   members: string
   safetyNote: string
   states: Record<PermissionEventItem["state"], string>
+  deliveryStates: Record<WebPushDeliveryItem["status"], string>
 }
 
 const defaultCopy: WebPushCopy = {
@@ -106,6 +134,8 @@ const defaultCopy: WebPushCopy = {
   activeSubscriptions: "Active subscriptions",
   inactiveSubscriptions: "Inactive",
   totalSubscriptions: "Total",
+  eligibleRecipients: "Eligible recipients",
+  skippedByPreference: "Skipped by preference",
   config: "Configuration",
   vapidPublic: "VAPID public key",
   vapidPrivate: "VAPID private key",
@@ -118,26 +148,40 @@ const defaultCopy: WebPushCopy = {
   notificationTitle: "Notification title",
   notificationBody: "Notification body",
   previewSend: "Preview send",
+  sendNow: "Send now",
   dryRunResult: "Dry-run result",
+  realSendResult: "Real send complete",
   subscriptions: "Subscriptions",
   permissionEvents: "Permission events",
+  deliveryHistory: "Delivery history",
   emptySubscriptions: "No push subscriptions yet",
   emptyEvents: "No permission events yet",
+  emptyDeliveries: "No Web Push deliveries yet",
   customer: "Customer",
   status: "Status",
   lastSeen: "Last seen",
+  sentAt: "Sent at",
   endpoint: "Endpoint",
   active: "Active",
   inactive: "Inactive",
+  delivered: "Delivered",
+  failed: "Failed",
+  removed: "Removed",
   campaigns: "Campaigns",
   members: "Members",
-  safetyNote: "P47 stores consent and supports dry-run previews. Real Web Push delivery remains behind explicit environment flags.",
+  safetyNote: "P100 sends only to customers with active subscriptions and enabled Web Push preferences. Real delivery remains behind explicit environment flags.",
   states: {
     PROMPT: "Prompt",
     GRANTED: "Granted",
     DENIED: "Denied",
     UNSUPPORTED: "Unsupported",
     REVOKED: "Revoked",
+  },
+  deliveryStates: {
+    PENDING: "Pending",
+    SENT: "Sent",
+    FAILED: "Failed",
+    SKIPPED: "Skipped",
   },
 }
 
@@ -217,6 +261,8 @@ export default function WebPushDashboardPage({ params }: { params: Promise<{ loc
     active: data?.activeCount ?? 0,
     inactive: data?.inactiveCount ?? 0,
     total: data?.totalCount ?? 0,
+    eligible: data?.eligibleCustomerCount ?? 0,
+    skippedByPreference: data?.preferenceSkippedCustomerCount ?? 0,
   }), [data])
 
   const refresh = async () => {
@@ -251,9 +297,9 @@ export default function WebPushDashboardPage({ params }: { params: Promise<{ loc
       if (!response.ok) throw new Error(await readError(response, dryRun ? "Dry-run push failed" : "Real push failed"))
       const result = await response.json()
       if (dryRun) {
-        setNotice(`${copy.dryRunResult}: ${formatCount(result.recipientCount ?? 0, locale)} customers, ${formatCount(result.subscriptionCount ?? 0, locale)} subscriptions`)
+        setNotice(`${copy.dryRunResult}: ${formatCount(result.recipientCount ?? 0, locale)} customers, ${formatCount(result.subscriptionCount ?? 0, locale)} subscriptions, ${formatCount(result.preferenceSkippedCustomerCount ?? 0, locale)} skipped`)
       } else {
-        setNotice(`Real send complete: ${formatCount(result.recipientCount ?? 0, locale)} customers, ${formatCount(result.successCount ?? 0, locale)} delivered, ${formatCount(result.failureCount ?? 0, locale)} failed, ${formatCount(result.removedCount ?? 0, locale)} removed`)
+        setNotice(`${copy.realSendResult}: ${formatCount(result.recipientCount ?? 0, locale)} customers, ${formatCount(result.successCount ?? 0, locale)} ${copy.delivered}, ${formatCount(result.failureCount ?? 0, locale)} ${copy.failed}, ${formatCount(result.removedCount ?? 0, locale)} ${copy.removed}`)
       }
       await fetchPush()
     } catch (err) {
@@ -318,7 +364,7 @@ export default function WebPushDashboardPage({ params }: { params: Promise<{ loc
         </Card>
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -345,6 +391,24 @@ export default function WebPushDashboardPage({ params }: { params: Promise<{ loc
             </CardTitle>
           </CardHeader>
           <CardContent className="text-3xl font-bold">{formatCount(stats.total, locale)}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Send className="h-4 w-4" />
+              {copy.eligibleRecipients}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-3xl font-bold">{formatCount(stats.eligible, locale)}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground">
+              <BellOff className="h-4 w-4" />
+              {copy.skippedByPreference}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-3xl font-bold">{formatCount(stats.skippedByPreference, locale)}</CardContent>
         </Card>
       </div>
 
@@ -399,6 +463,31 @@ export default function WebPushDashboardPage({ params }: { params: Promise<{ loc
               )}
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{copy.deliveryHistory}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {data?.recentDeliveries.length ? data.recentDeliveries.map((delivery) => (
+                <div key={delivery.id} className="rounded-md border p-3 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="font-medium">{getDisplayName(delivery.customer)}</div>
+                    <Badge variant={delivery.status === "SENT" ? "default" : delivery.status === "FAILED" ? "destructive" : "secondary"}>
+                      {copy.deliveryStates[delivery.status] ?? delivery.status}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-sm">{delivery.title}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {delivery.provider} - {copy.sentAt}: {new Date(delivery.sentAt ?? delivery.createdAt).toLocaleString(locale)}
+                  </p>
+                  {delivery.error && <p className="mt-2 text-xs text-destructive">{delivery.error}</p>}
+                </div>
+              )) : (
+                <p className="text-sm text-muted-foreground">{copy.emptyDeliveries}</p>
+              )}
+            </CardContent>
+          </Card>
         </section>
 
         <aside className="space-y-6">
@@ -437,7 +526,7 @@ export default function WebPushDashboardPage({ params }: { params: Promise<{ loc
                 </label>
                 <Button type="submit" disabled={busy || !organizationId || !title.trim() || !body.trim()}>
                   <Send className="h-4 w-4" />
-                  {dryRun ? copy.previewSend : "Send now"}
+                  {dryRun ? copy.previewSend : copy.sendNow}
                 </Button>
               </form>
             </CardContent>

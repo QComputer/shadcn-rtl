@@ -57,9 +57,9 @@ for (const locale of ["fa", "en", "ar"]) {
   add(`${locale} dictionary has payment condition copy`, /"paymentCondition"\s*:/.test(dictionary) && /"paymentConditionDescription"\s*:/.test(dictionary))
 }
 
-add("README keeps P96 complete while marking P99 latest and P100 next", /\| 96 \| Open Fields and Workflow Completion Audit/.test(readme) && /Latest completed implementation phase:\s+\*\*P99 - Notification domain model and preferences\*\*/.test(readme) && /Recommended next phase:\s+\*\*P100 - Web Push notification service\*\*/.test(readme))
-add("roadmap keeps P96 complete while marking P99 baseline", /\| P96 \| Open fields and workflow completion audit\. \|/.test(roadmap) && /Completed through \*\*P99 - Notification domain model and preferences\*\*/.test(roadmap) && /P100 - Web Push notification service/.test(roadmap))
-add("source of truth keeps P96 audit while naming P99 baseline", /Open Fields and Workflow Completion Audit exists/.test(sourceOfTruth) && /after P99 notification domain model and preferences/.test(sourceOfTruth))
+add("README keeps P96 complete while marking P100 latest and P101 next", /\| 96 \| Open Fields and Workflow Completion Audit/.test(readme) && /Latest completed implementation phase:\s+\*\*P100 - Web Push notification service\*\*/.test(readme) && /Recommended next phase:\s+\*\*P101 - SMS provider abstraction and sms.ir integration\*\*/.test(readme))
+add("roadmap keeps P96 complete while marking P100 baseline", /\| P96 \| Open fields and workflow completion audit\. \|/.test(roadmap) && /Completed through \*\*P100 - Web Push notification service\*\*/.test(roadmap) && /P101 - SMS provider abstraction and sms.ir integration/.test(roadmap))
+add("source of truth keeps P96 audit while naming P100 baseline", /Open Fields and Workflow Completion Audit exists/.test(sourceOfTruth) && /after P100 Web Push notification service/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

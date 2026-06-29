@@ -4,7 +4,7 @@ Date: 2026-06-29
 
 ## Current validated baseline
 
-The current working baseline after P99 notification domain model and preferences is source-validator green after the P99 validation gate.
+The current working baseline after P100 Web Push notification service is source-validator green after the P100 validation gate.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -49,6 +49,7 @@ pnpm run quality:shop-domain-ux
 pnpm run quality:import-hub-foundation
 pnpm run quality:csv-excel-importer
 pnpm run quality:notification-preferences
+pnpm run quality:web-push-delivery
 ```
 
 Clean handoff gate introduced in P33:
@@ -128,6 +129,7 @@ pnpm run db:migrate:neon:dry-run
 - PWA Foundation and Install Experience exists through `app/manifest.ts`, SVG PWA icons, locale-layout manifest/install metadata, a guarded global install prompt manager, shared `/web-push-sw.js` registration, service-worker install/activate lifecycle handlers, Persian-first `/fa` start URL, and the `quality:pwa-foundation` validator.
 - Offline Shell, Caching, and PWA Quality Gates exist through `public/offline.html`, versioned static service-worker caching, network-first navigation fallback, cache-first static PWA/Next assets, explicit network-only bypasses for API/uploads/dashboard/checkout/booking/order/payment/customer-state routes, and the `quality:pwa-offline-shell` validator.
 - Notification domain model and preferences exists through `NotificationChannel`, `NotificationPreference`, authenticated customer preference APIs, `notificationPreferencesService`, Web Push opt-in synchronization, Persian-first public preference controls, and the `quality:notification-preferences` validator.
+- Web Push notification service exists through `WebPushDelivery`, preference-aware recipient planning, real delivery attempt logging, invalid subscription cleanup, dashboard delivery history, environment-gated real sends, and the `quality:web-push-delivery` validator.
 - Export Downloads exists through protected `GET /api/dashboard/exports/jobs/[jobId]/download`, completed-job checks, private no-store attachment responses, lightweight export job list responses, Persian-first dashboard download actions, and the `quality:export-downloads` validator.
 - Deployed Import/Export Smoke exists through `scripts/e2e/deployed-import-export-smoke.mjs`, validating deployed auth, organization resolution, draft-first manual text imports, rejection instead of publishing, JSON/CSV export job creation, and protected export downloads against a real deployment.
 - P83 Project State Reconciliation exists through `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md`, which marks older Phase-18 handoff guidance as historical and reconciles the post-P82 local AI media commits with the current roadmap.
@@ -219,6 +221,7 @@ pnpm run db:migrate:neon:dry-run
 | P97 | PWA foundation and install experience before offline, Push, and SMS phases. |
 | P98 | Offline shell, caching, and PWA quality gates before notification delivery phases. |
 | P99 | Notification domain model and preferences before preference-aware delivery phases. |
+| P100 | Web Push notification service before SMS provider phases. |
 
 ## Current route/API inventory
 
@@ -334,7 +337,7 @@ Deferred:
 - Custom-domain smoke tests are deployment/data dependent. Current reference configuration uses `CUSTOM_DOMAIN_SMOKE_BASE_URL=https://www.khalae.ir`, `CUSTOM_DOMAIN_SMOKE_PLATFORM_URL=https://www.bazar-baz.ir`, and `CUSTOM_DOMAIN_SMOKE_SHOP_SLUG=ahmad`.
 - Shop owners cannot self-serve custom-domain management yet; P60/P67 keep domain management SUPER_ADMIN-only.
 - Vercel domain automation must remain dry-run-safe by default and must never hardcode tokens or project/team secrets.
-- P68-P99 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation/downloads, review-gated import publishing, AI media suggestion hardening, deployed import/export smoke coverage, project-state reconciliation, AI media health-gate hardening, AI media MOCK-flow acceptance, AI media durable-storage acceptance, AI media long-running job UX, AI media usage controls, import-to-AI-media bridge, deployed AI media rollout gate, AI media rollout evidence archive, AI media paid-provider controls, AI media cost/rollback guardrails, AI media seller-facing paid-provider state UX, source cleanup/current-state verification, open-fields workflow audit, PWA foundation, offline shell quality gates, and notification preferences are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
+- P68-P100 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation/downloads, review-gated import publishing, AI media suggestion hardening, deployed import/export smoke coverage, project-state reconciliation, AI media health-gate hardening, AI media MOCK-flow acceptance, AI media durable-storage acceptance, AI media long-running job UX, AI media usage controls, import-to-AI-media bridge, deployed AI media rollout gate, AI media rollout evidence archive, AI media paid-provider controls, AI media cost/rollback guardrails, AI media seller-facing paid-provider state UX, source cleanup/current-state verification, open-fields workflow audit, PWA foundation, offline shell quality gates, notification preferences, and Web Push delivery are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
 
 ## Clean release rules
 
@@ -374,13 +377,13 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P100 - Web Push notification service
+P101 - SMS provider abstraction and sms.ir integration
 ```
 
 Scope:
 
-1. Send real Web Push notifications only to customers with active subscriptions and enabled Web Push preferences.
-2. Keep dry-run, feature-flag, and VAPID gates explicit.
-3. Record delivery outcomes and invalid-subscription cleanup before SMS phases.
+1. Add a server-only SMS provider abstraction with dry-run as the default provider.
+2. Integrate sms.ir only behind explicit environment configuration.
+3. Reuse notification preferences before any real SMS delivery path.
 
-See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` for the roadmap reconciliation, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md` for the AI media health gate, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md` for product suggestion MOCK-flow acceptance, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md` for durable selected-image storage, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md` for long-running job UX, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md` for usage and quota controls, `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md` for import-to-AI-media workflow integration, `docs/PHASE_90_DEPLOYED_AI_MEDIA_ROLLOUT_GATE.md` for deployed Bazar Baz AI media rollout validation, `docs/PHASE_91_AI_MEDIA_ROLLOUT_EVIDENCE.md` for operator-safe rollout evidence retention, `docs/PHASE_92_AI_MEDIA_PAID_PROVIDER_CONTROLS.md` for explicit paid-provider controls, `docs/PHASE_93_AI_MEDIA_COST_ROLLBACK.md` for cost telemetry and rollback guardrails, `docs/PHASE_94_AI_MEDIA_SELLER_STATE_UX.md` for seller-facing AI media state UX, `docs/PHASE_95_SOURCE_CLEANUP_VERIFICATION.md` for source cleanup and security verification, `docs/PHASE_96_OPEN_FIELDS_AUDIT.md` for open-fields workflow audit, `docs/PHASE_97_PWA_FOUNDATION.md` for PWA install foundation, `docs/PHASE_98_PWA_OFFLINE_SHELL.md` for PWA offline shell quality gates, and `docs/PHASE_99_NOTIFICATION_PREFERENCES.md` for notification preference policy.
+See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` for the roadmap reconciliation, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md` for the AI media health gate, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md` for product suggestion MOCK-flow acceptance, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md` for durable selected-image storage, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md` for long-running job UX, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md` for usage and quota controls, `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md` for import-to-AI-media workflow integration, `docs/PHASE_90_DEPLOYED_AI_MEDIA_ROLLOUT_GATE.md` for deployed Bazar Baz AI media rollout validation, `docs/PHASE_91_AI_MEDIA_ROLLOUT_EVIDENCE.md` for operator-safe rollout evidence retention, `docs/PHASE_92_AI_MEDIA_PAID_PROVIDER_CONTROLS.md` for explicit paid-provider controls, `docs/PHASE_93_AI_MEDIA_COST_ROLLBACK.md` for cost telemetry and rollback guardrails, `docs/PHASE_94_AI_MEDIA_SELLER_STATE_UX.md` for seller-facing AI media state UX, `docs/PHASE_95_SOURCE_CLEANUP_VERIFICATION.md` for source cleanup and security verification, `docs/PHASE_96_OPEN_FIELDS_AUDIT.md` for open-fields workflow audit, `docs/PHASE_97_PWA_FOUNDATION.md` for PWA install foundation, `docs/PHASE_98_PWA_OFFLINE_SHELL.md` for PWA offline shell quality gates, `docs/PHASE_99_NOTIFICATION_PREFERENCES.md` for notification preference policy, and `docs/PHASE_100_WEB_PUSH_DELIVERY.md` for preference-aware Web Push delivery.

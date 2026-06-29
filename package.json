@@ -42,6 +42,7 @@
     "quality:pwa-foundation": "node scripts/quality/validate-pwa-foundation.mjs",
     "quality:pwa-offline-shell": "node scripts/quality/validate-pwa-offline-shell.mjs",
     "quality:notification-preferences": "node scripts/quality/validate-notification-preferences.mjs",
+    "quality:web-push-delivery": "node scripts/quality/validate-web-push-delivery.mjs",
     "e2e:deployed:phase11": "node scripts/e2e/deployed-phase11-health.mjs",
     "smoke:deployed:health": "node scripts/e2e/deployed-phase11-health.mjs",
     "e2e:deployed:phase12": "node scripts/e2e/deployed-phase12-messaging.mjs",

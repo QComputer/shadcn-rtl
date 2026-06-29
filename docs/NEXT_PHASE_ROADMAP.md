@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-29._
 
-This roadmap is ordered for risk reduction. Phases 18-99 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, and notification preference roadmap is implemented through Phase 99.
+This roadmap is ordered for risk reduction. Phases 18-100 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, and Web Push delivery roadmap is implemented through Phase 100.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P99 - Notification domain model and preferences**.
+- Completed through **P100 - Web Push notification service**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -19,10 +19,10 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P100 - Web Push notification service
+P101 - SMS provider abstraction and sms.ir integration
 ```
 
-Next work should add preference-aware Web Push delivery before SMS implementation.
+Next work should add SMS provider abstraction and sms.ir integration behind explicit dry-run and rollout gates.
 
 Immediate validation target:
 
@@ -46,6 +46,7 @@ pnpm run quality:open-fields-audit
 pnpm run quality:pwa-foundation
 pnpm run quality:pwa-offline-shell
 pnpm run quality:notification-preferences
+pnpm run quality:web-push-delivery
 pnpm run quality:export-downloads
 pnpm run quality:deployed-import-export-smoke
 pnpm run quality:local
@@ -90,12 +91,12 @@ Completed integrated phases:
 | P97 | PWA foundation and install experience. |
 | P98 | Offline shell, caching, and PWA quality gates. |
 | P99 | Notification domain model and preferences. |
+| P100 | Web Push notification service. |
 
 Upcoming platform phases should be treated as incremental hardening against the actual implementation already present in the repo:
 
 | Phase | Focus |
 | --- | --- |
-| P100 | Web Push notification service. |
 | P101 | SMS provider abstraction and sms.ir integration. |
 | P102 | Notification templates, routing, and delivery policies. |
 | P103 | Admin/operator notification dashboard. |

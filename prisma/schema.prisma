@@ -190,6 +190,13 @@ enum PushPermissionState {
   REVOKED
 }
 
+enum WebPushDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
 enum ExternalImportSourceType {
   INSTAGRAM
   TELEGRAM
@@ -303,6 +310,7 @@ model Organization {
   pushSubscriptions            PushSubscription[]
   notificationPermissionEvents NotificationPermissionEvent[]
   notificationPreferences      NotificationPreference[]
+  webPushDeliveries            WebPushDelivery[]
   fanpagePosts                 FanpagePost[]
   notifications                Notification[]
   locations                    Location[]
@@ -448,6 +456,8 @@ model User {
   pushSubscriptions             PushSubscription[]            @relation("CustomerPushSubscriptions")
   notificationPermissionEvents  NotificationPermissionEvent[] @relation("CustomerNotificationPermissionEvents")
   notificationPreferences       NotificationPreference[]      @relation("CustomerNotificationPreferences")
+  webPushDeliveries             WebPushDelivery[]             @relation("CustomerWebPushDeliveries")
+  actorWebPushDeliveries        WebPushDelivery[]             @relation("ActorWebPushDeliveries")
   passwordResets                PasswordReset[]
   emailVerifications            EmailVerification[]
   auditLogs                     AuditLog[]
@@ -1658,6 +1668,7 @@ model PushSubscription {
   organization     Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   customer         User                          @relation("CustomerPushSubscriptions", fields: [customerId], references: [id], onDelete: Cascade)
   permissionEvents NotificationPermissionEvent[]
+  deliveries       WebPushDelivery[]
 
   @@unique([organizationId, customerId, endpoint])
   @@index([organizationId, customerId, isActive])
@@ -1706,6 +1717,33 @@ model NotificationPreference {
   @@index([organizationId, customerId])
   @@index([customerId, channel])
   @@index([organizationId, channel, marketingEnabled])
+}
+
+model WebPushDelivery {
+  id             String                @id @default(cuid())
+  organizationId String
+  customerId     String
+  subscriptionId String?
+  actorUserId    String?
+  title          String
+  body           String
+  provider       String                @default("dry_run")
+  dryRun         Boolean               @default(false)
+  status         WebPushDeliveryStatus @default(PENDING)
+  error          String?
+  sentAt         DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     User              @relation("CustomerWebPushDeliveries", fields: [customerId], references: [id], onDelete: Cascade)
+  subscription PushSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  actor        User?             @relation("ActorWebPushDeliveries", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, createdAt])
+  @@index([customerId, createdAt])
+  @@index([subscriptionId])
+  @@index([actorUserId])
 }
 
 model Conversation {

@@ -77,9 +77,9 @@ add("shop profile passes locale to opt-in component", /<WebPushOptIn\s+organizat
 
 add("package exposes P99 validator", /"quality:notification-preferences":\s*"node scripts\/quality\/validate-notification-preferences\.mjs"/.test(packageJson))
 add("project validator references P99 validator", /validate-notification-preferences\.mjs/.test(validateProject) && /P99 notification preferences validator passes/.test(validateProject))
-add("README marks P99 latest and P100 next", /Latest completed implementation phase:\s+\*\*P99 - Notification domain model and preferences\*\*/.test(readme) && /Recommended next phase:\s+\*\*P100 - Web Push notification service\*\*/.test(readme))
-add("roadmap marks P99 complete and P100 next", /Completed through \*\*P99 - Notification domain model and preferences\*\*/.test(roadmap) && /P100 - Web Push notification service/.test(roadmap))
-add("source of truth names P99 baseline", /after P99 notification domain model and preferences/.test(sourceOfTruth) && /Notification domain model and preferences exists/.test(sourceOfTruth))
+add("README marks P100 latest and P101 next", /Latest completed implementation phase:\s+\*\*P100 - Web Push notification service\*\*/.test(readme) && /Recommended next phase:\s+\*\*P101 - SMS provider abstraction and sms.ir integration\*\*/.test(readme))
+add("roadmap marks P99 complete and P101 next", /\| P99 \| Notification domain model and preferences\. \|/.test(roadmap) && /Completed through \*\*P100 - Web Push notification service\*\*/.test(roadmap) && /P101 - SMS provider abstraction and sms.ir integration/.test(roadmap))
+add("source of truth names P100 baseline", /after P100 Web Push notification service/.test(sourceOfTruth) && /Notification domain model and preferences exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

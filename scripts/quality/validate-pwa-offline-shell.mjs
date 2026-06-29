@@ -43,9 +43,9 @@ add("service worker keeps web push handlers", /addEventListener\("push"/.test(se
 add("package exposes P98 validator", /"quality:pwa-offline-shell":\s*"node scripts\/quality\/validate-pwa-offline-shell\.mjs"/.test(packageJson))
 add("project validator references P98 validator", /validate-pwa-offline-shell\.mjs/.test(validateProject) && /P98 PWA offline shell validator passes/.test(validateProject))
 add("P97 validator tolerates P98 offline cache", /P98 offline cache remains guarded/.test(p97Validator))
-add("README keeps P98 complete while marking P99 latest and P100 next", /\| 98 \| Offline shell, caching, and PWA quality gates/.test(readme) && /Latest completed implementation phase:\s+\*\*P99 - Notification domain model and preferences\*\*/.test(readme) && /Recommended next phase:\s+\*\*P100 - Web Push notification service\*\*/.test(readme))
-add("roadmap marks P98 complete and P100 next", /\| P98 \| Offline shell, caching, and PWA quality gates\. \|/.test(roadmap) && /Completed through \*\*P99 - Notification domain model and preferences\*\*/.test(roadmap) && /P100 - Web Push notification service/.test(roadmap))
-add("source of truth names P99 baseline while keeping P98 offline shell", /Offline Shell, Caching, and PWA Quality Gates exist/.test(sourceOfTruth) && /after P99 notification domain model and preferences/.test(sourceOfTruth))
+add("README keeps P98 complete while marking P100 latest and P101 next", /\| 98 \| Offline shell, caching, and PWA quality gates/.test(readme) && /Latest completed implementation phase:\s+\*\*P100 - Web Push notification service\*\*/.test(readme) && /Recommended next phase:\s+\*\*P101 - SMS provider abstraction and sms.ir integration\*\*/.test(readme))
+add("roadmap marks P98 complete and P101 next", /\| P98 \| Offline shell, caching, and PWA quality gates\. \|/.test(roadmap) && /Completed through \*\*P100 - Web Push notification service\*\*/.test(roadmap) && /P101 - SMS provider abstraction and sms.ir integration/.test(roadmap))
+add("source of truth names P100 baseline while keeping P98 offline shell", /Offline Shell, Caching, and PWA Quality Gates exist/.test(sourceOfTruth) && /after P100 Web Push notification service/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

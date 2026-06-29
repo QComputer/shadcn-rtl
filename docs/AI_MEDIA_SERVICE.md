@@ -153,6 +153,19 @@ GET /api/dashboard/ai-media/usage?organizationId={organizationId}
 
 The response includes daily job/selection counts, remaining daily quota, recent `AiMediaUsageEvent` rows, and `paidGenerationEnabled: false`.
 
+## Deployed Rollout Gate
+
+Use the P90 rollout gate before enabling broader AI media access on Bazar Baz:
+
+```powershell
+$env:DEPLOYED_URL="https://bazar-baz.ir"
+$env:DEPLOYED_USERNAME="Amir"
+$env:DEPLOYED_PASSWORD="<password>"
+pnpm run e2e:deployed:ai-media
+```
+
+The default gate verifies authenticated dashboard readiness, usage quotas, unauthenticated route protection, and paid generation remaining disabled. Direct Render MOCK checks run only when `AI_MEDIA_SERVICE_URL` and `AI_MEDIA_SERVICE_INTERNAL_KEY` are provided. Durable selection is intentionally optional and requires `DEPLOYED_AI_MEDIA_SELECTION_PRODUCT_ID`; add `DEPLOYED_AI_MEDIA_REQUIRE_BLOB_SELECTION=1` when Blob storage must be enforced.
+
 ## UI Flow
 
 ### Edit product form

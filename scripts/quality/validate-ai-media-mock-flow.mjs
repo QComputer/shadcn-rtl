@@ -39,7 +39,7 @@ add("select AI route remains authenticated and product scoped", /requireProductA
 add("service sends MOCK defaults for product suggestions", /count: options\.count \?\? 3/.test(service) && /style_preset: options\.style_preset \?\? "LIGHT_MENU_PHOTO"/.test(service))
 add("service validates selected image against completed owned job", /status !== "COMPLETED"/.test(service) && /Selected image must match/.test(service))
 add("schemas keep MOCK flow bounded", /\.min\(1\)\.max\(6\)/.test(validators) && /seller_prompt: z\.string\(\)\.max\(1000\)/.test(validators))
-add("deployed smoke blocks unauthenticated dashboard status", /Unauthenticated AI media status is blocked/.test(deployedSmoke) && /\/api\/dashboard\/ai-media\/status/.test(deployedSmoke))
+add("deployed smoke blocks unauthenticated dashboard status", /unauthenticated AI media status is blocked/i.test(deployedSmoke) && /\/api\/dashboard\/ai-media\/status/.test(deployedSmoke))
 add("deployed smoke can complete direct MOCK job when key exists", /Render AI media service can complete a MOCK job when key is provided/.test(deployedSmoke) && /expected MOCK \/local-output\/ URLs/.test(deployedSmoke))
 add("package exposes P85 MOCK flow validator", /"quality:ai-media-mock-flow":\s*"node scripts\/quality\/validate-ai-media-mock-flow\.mjs"/.test(packageJson))
 add("source of truth names P85 MOCK flow", /P85/.test(sourceOfTruth) && /MOCK[- ]flow/.test(sourceOfTruth))

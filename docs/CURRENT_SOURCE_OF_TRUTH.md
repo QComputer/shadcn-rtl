@@ -4,7 +4,7 @@ Date: 2026-06-29
 
 ## Current validated baseline
 
-The current working baseline after P89 import-to-AI-media bridge is source-validator green after the P89 validation gate.
+The current working baseline after P90 deployed AI media rollout gate is source-validator green after the P90 validation gate.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -110,13 +110,14 @@ pnpm run db:migrate:neon:dry-run
 - Export Hub Foundation exists through the `ExportJob` model/migration, `lib/services/export-hub.service.ts`, organization-scoped export job APIs, localized `/dashboard/exports` UI, dashboard navigation/access policy, CSV/JSON payload generation for products/categories/orders/customers/fanpage posts, audit logging, and the `quality:export-hub-foundation` validator.
 - Import Approval Publishing exists through the approval-to-live `ImportHubService.reviewDrafts("APPROVED")` path, approved product draft publishing into live products/categories/default variants, approved content draft publishing into live fanpage posts, `IMPORTED` draft status, all-locale public path/home cache revalidation, localized dashboard approve-and-publish copy, audit logging, and the `quality:import-approval-publishing` validator.
 - AI Media Suggestions Hardening exists through `AiMediaJob`, server-only AI media client calls, authenticated product-scoped suggestion APIs, completed-job output validation before image selection, public product/home cache revalidation, Persian-first product edit UI, `docs/AI_MEDIA_SERVICE.md`, deployed unauthenticated smoke coverage, and the `quality:ai-media` validator. Bazar Baz calls only the deployed Render AI media service and does not call local workers directly.
-- AI selected-image durability exists through `lib/media-storage.ts` and `AiMediaService.selectImage()`: selected AI outputs are copied to Vercel Blob when `BLOB_READ_WRITE_TOKEN` is configured, with the remote Render URL used as a documented fallback. Real paid AI generation, usage quotas, and admin rollout controls are not implemented yet.
+- AI selected-image durability exists through `lib/media-storage.ts` and `AiMediaService.selectImage()`: selected AI outputs are copied to Vercel Blob when `BLOB_READ_WRITE_TOKEN` is configured, with the remote Render URL used as a documented fallback. Real paid AI generation remains disabled; usage quotas and deployed rollout guards are implemented.
 - AI Media Health Gate exists through `getAiMediaServiceConfigStatus()`, `checkAiMediaServiceReadiness()`, authenticated `/api/dashboard/ai-media/status`, optional `?check=1` Render `/health` and `/ready` probes, secret-safe readiness responses, timeout normalization, and the `quality:ai-media-health-gate` validator.
 - AI Media MOCK Flow Acceptance exists through dashboard-access-gated status checks, product edit MOCK job creation/polling, `outputs`/`output_images` compatibility, retryable no-output and non-terminal error states, API-returned selected image URL application, authenticated deployed-smoke expectations, and the `quality:ai-media-mock-flow` validator.
 - AI Media Durable Storage Acceptance exists through validated remote image MIME/signature checks before Blob writes, oversized remote image rejection, explicit `storageStatus` selection metadata, remote fallback warnings, public path/home revalidation after selected URL replacement, and the `quality:ai-media-durable-storage` validator.
 - AI Media Long-Running Job UX exists through cleanup-safe bounded polling, local `AiMediaJob` snapshot fallback when Render checks are unavailable, latest product job recovery, provider/timestamp/status display, retry/continue/cancel seller controls, an organization-scoped cancel route, and the `quality:ai-media-long-running-ux` validator.
 - AI Media Usage Controls exist through `AiMediaUsageEvent`, daily organization quota checks before job creation, usage events for job lifecycle/selection/cancel actions, authenticated `/api/dashboard/ai-media/usage`, explicit `paidGenerationEnabled: false`, and the `quality:ai-media-usage-controls` validator.
 - Import-to-AI-Media Bridge exists through `ImportedProductDraft.importedProductId`, AI-media prompt context stored only after approved drafts become `IMPORTED`, product edit AI prompt fallback from imported context, import row `تصویر AI` links, and the `quality:import-ai-media-bridge` validator.
+- Deployed AI Media Rollout Gate exists through `scripts/e2e/deployed-ai-media-smoke.mjs`, authenticated Bazar Baz status and usage checks, unauthenticated protected-route guards, optional direct Render MOCK checks, optional Blob-backed selection probe, and the `quality:deployed-ai-media-rollout` validator.
 - Export Downloads exists through protected `GET /api/dashboard/exports/jobs/[jobId]/download`, completed-job checks, private no-store attachment responses, lightweight export job list responses, Persian-first dashboard download actions, and the `quality:export-downloads` validator.
 - Deployed Import/Export Smoke exists through `scripts/e2e/deployed-import-export-smoke.mjs`, validating deployed auth, organization resolution, draft-first manual text imports, rejection instead of publishing, JSON/CSV export job creation, and protected export downloads against a real deployment.
 - P83 Project State Reconciliation exists through `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md`, which marks older Phase-18 handoff guidance as historical and reconciles the post-P82 local AI media commits with the current roadmap.
@@ -198,6 +199,7 @@ pnpm run db:migrate:neon:dry-run
 | P87 | AI Media Long-Running Job UX with local status fallback, resume polling, and cancel affordances. |
 | P88 | AI Media Usage Logs, Quotas, and Audit Controls before paid generation. |
 | P89 | Import Draft Product to AI Image Suggestion Bridge after approval publishing. |
+| P90 | Deployed AI Media Rollout Gate through Bazar Baz readiness, usage, and optional MOCK/Blob probes. |
 
 ## Current route/API inventory
 
@@ -313,7 +315,7 @@ Deferred:
 - Custom-domain smoke tests are deployment/data dependent. Current reference configuration uses `CUSTOM_DOMAIN_SMOKE_BASE_URL=https://www.khalae.ir`, `CUSTOM_DOMAIN_SMOKE_PLATFORM_URL=https://www.bazar-baz.ir`, and `CUSTOM_DOMAIN_SMOKE_SHOP_SLUG=ahmad`.
 - Shop owners cannot self-serve custom-domain management yet; P60/P67 keep domain management SUPER_ADMIN-only.
 - Vercel domain automation must remain dry-run-safe by default and must never hardcode tokens or project/team secrets.
-- P68-P89 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation/downloads, review-gated import publishing, AI media suggestion hardening, deployed import/export smoke coverage, project-state reconciliation, AI media health-gate hardening, AI media MOCK-flow acceptance, AI media durable-storage acceptance, AI media long-running job UX, AI media usage controls, and import-to-AI-media bridge are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
+- P68-P90 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation/downloads, review-gated import publishing, AI media suggestion hardening, deployed import/export smoke coverage, project-state reconciliation, AI media health-gate hardening, AI media MOCK-flow acceptance, AI media durable-storage acceptance, AI media long-running job UX, AI media usage controls, import-to-AI-media bridge, and deployed AI media rollout gate are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
 
 ## Clean release rules
 
@@ -352,14 +354,14 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P90 - Deployed AI media rollout gate through Bazar Baz
+P91 - AI Media Operator Evidence Archive and Paid-Provider Enablement Plan
 ```
 
 Scope:
 
-1. Run a deployed Bazar Baz rollout gate that verifies dashboard route protection, AI media readiness, usage controls, and MOCK provider behavior.
-2. Keep real paid generation disabled unless explicitly enabled in a later rollout.
-3. Verify selected images still become durable Blob URLs when Blob is configured.
-4. Capture operator-safe rollout evidence without exposing secrets.
+1. Persist operator-safe AI media rollout evidence without secrets.
+2. Define explicit paid-provider enablement controls before real paid generation is allowed.
+3. Keep Bazar Baz Persian-first seller UX and quota reporting aligned with production rollout status.
+4. Require an operator-approved product for any live image-selection evidence.
 
-See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` for the roadmap reconciliation, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md` for the AI media health gate, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md` for product suggestion MOCK-flow acceptance, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md` for durable selected-image storage, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md` for long-running job UX, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md` for usage and quota controls, and `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md` for import-to-AI-media workflow integration.
+See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` for the roadmap reconciliation, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md` for the AI media health gate, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md` for product suggestion MOCK-flow acceptance, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md` for durable selected-image storage, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md` for long-running job UX, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md` for usage and quota controls, `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md` for import-to-AI-media workflow integration, and `docs/PHASE_90_DEPLOYED_AI_MEDIA_ROLLOUT_GATE.md` for deployed Bazar Baz AI media rollout validation.

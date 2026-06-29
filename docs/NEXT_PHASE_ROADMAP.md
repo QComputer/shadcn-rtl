@@ -2,13 +2,14 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-29._
 
-This roadmap is ordered for risk reduction. Phases 18-105 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, and production rollout roadmap is implemented through Phase 105.
+This roadmap is ordered for risk reduction. Phases 18-106 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, and source acceptance/secretless packaging roadmap is implemented through Phase 106.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P105 - Production rollout runbook**.
+- Completed through **P106 - PWA/Push/SMS source acceptance and secretless packaging gate**.
+- Creative Studio work must not start until P106 is green.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -19,10 +20,10 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-No active next phase
+P107 - Creative Studio integration planning for main Bazar Baz
 ```
 
-The current integrated roadmap is complete after P105. Future implementation work should start from a new scoped roadmap.
+Next work should plan the Creative Studio integration without adding UI or product features until the planning scope is explicit.
 
 Immediate validation target:
 
@@ -52,6 +53,8 @@ pnpm run quality:notification-routing
 pnpm run quality:notification-operations
 pnpm run quality:deployed-pwa-push-sms
 pnpm run quality:production-rollout
+pnpm run quality:pwa-push-sms-acceptance
+pnpm run quality:clean-source
 pnpm run quality:export-downloads
 pnpm run quality:deployed-import-export-smoke
 pnpm run quality:local
@@ -102,12 +105,13 @@ Completed integrated phases:
 | P103 | Admin/operator notification dashboard. |
 | P104 | Deployed PWA, Push, and SMS smoke gates. |
 | P105 | Production rollout runbook. |
+| P106 | PWA/Push/SMS source acceptance and secretless packaging gate. |
 
 Upcoming platform phases should be treated as incremental hardening against the actual implementation already present in the repo:
 
 | Phase | Focus |
 | --- | --- |
-| None | Current integrated roadmap complete after P105. |
+| P107 | Creative Studio integration planning for main Bazar Baz. |
 
 Safety constraints for all Import Hub phases:
 

@@ -57,10 +57,10 @@ add("personal public PDF is not present in tracked source", !trackedExisting.inc
 add(".env files are not present in tracked source", !trackedExisting.some((file) => file === ".env" || (file.startsWith(".env.") && file !== ".env.example")))
 add("active seed script remains tracked", tracked.includes("prisma/seed.ts"))
 add("duplicate client Providers wrapper removed", !exists("components/providers.tsx"))
-add("README keeps P95 source cleanup in current progression", /\| 95 \| Source Cleanup and Current-State Verification/.test(readme) && /Latest completed implementation phase:\s+\*\*P105 - Production rollout runbook\*\*/.test(readme))
-add("README marks integrated roadmap complete", /No active next phase; current integrated roadmap is complete/.test(readme))
-add("roadmap keeps P95 complete in P105 progression", /\| P95 \| Source cleanup and current-state verification\. \|/.test(roadmap) && /Completed through \*\*P105 - Production rollout runbook\*\*/.test(roadmap))
-add("source of truth keeps P95 source cleanup while naming P105 baseline", /Source Cleanup and Current-State Verification exists/.test(sourceOfTruth) && /after P105 Production rollout runbook/.test(sourceOfTruth))
+add("README keeps P95 source cleanup in current progression", /\| 95 \| Source Cleanup and Current-State Verification/.test(readme) && /Latest completed implementation phase:\s+\*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(readme))
+add("README recommends P107 after P106", /Recommended next phase:\s+\*\*P107 - Creative Studio integration planning for main Bazar Baz\*\*/.test(readme))
+add("roadmap keeps P95 complete in P106 progression", /\| P95 \| Source cleanup and current-state verification\. \|/.test(roadmap) && /Completed through \*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(roadmap))
+add("source of truth keeps P95 source cleanup while naming P106 baseline", /Source Cleanup and Current-State Verification exists/.test(sourceOfTruth) && /after P106 PWA\/Push\/SMS source acceptance/.test(sourceOfTruth))
 
 const scripts = packageJson.scripts || {}
 const documentedScriptNames = new Set()
@@ -93,7 +93,7 @@ for (const file of tracked) {
     const match = content.match(pattern)
     if (!match) continue
     const value = match[1].trim()
-    if (value && !/^["']?["']?$/.test(value) && !/^replace-with/i.test(value)) {
+    if (value && !/^["']?["']?$/.test(value) && !/^replace-with/i.test(value) && !/^<[^>]+>$/.test(value)) {
       secretFindings.push(`${file}:${name}`)
     }
   }

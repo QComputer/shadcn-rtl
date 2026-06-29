@@ -61,14 +61,16 @@ type ActivePushSubscription = {
 }
 
 export function getWebPushRuntimeConfig() {
+  const enabled = process.env.WEB_PUSH_ENABLED === "true"
   const provider = process.env.WEB_PUSH_PROVIDER || "dry_run"
   const dryRun = process.env.WEB_PUSH_DRY_RUN !== "false" || provider === "dry_run"
   const publicKey = process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY || ""
   const privateKey = process.env.WEB_PUSH_VAPID_PRIVATE_KEY || ""
   const subject = process.env.WEB_PUSH_VAPID_SUBJECT || ""
-  const realSendEnabled = process.env.WEB_PUSH_REAL_SEND_ENABLED === "true" && !dryRun && provider !== "dry_run"
+  const realSendEnabled = enabled && process.env.WEB_PUSH_REAL_SEND_ENABLED === "true" && !dryRun && provider !== "dry_run"
 
   return {
+    enabled,
     provider,
     dryRun,
     publicKey,

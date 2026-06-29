@@ -16,6 +16,9 @@ export type SmsRuntimeConfig = {
   provider: SmsProviderName
   dryRun: boolean
   baseUrl: string
+  allowRealSms: boolean
+  operatorTargetConfirmed: boolean
+  usernameConfigured: boolean
   apiKeyConfigured: boolean
   lineNumberConfigured: boolean
   verifyTemplateConfigured: boolean

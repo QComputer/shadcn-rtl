@@ -73,6 +73,8 @@ function normalizeProvider(value) {
 
 const smsProvider = normalizeProvider(process.env.SMS_PROVIDER || "dry_run");
 const smsDryRun = process.env.SMS_DRY_RUN !== "false";
+const smsAllowRealSend = process.env.DEPLOYED_ALLOW_REAL_SMS === "1";
+const smsOperatorTargetConfirmed = hasValue(process.env.DEPLOYED_SMS_TARGET_MOBILE) || process.env.SMS_REAL_SEND_OPERATOR_CONFIRMED === "1";
 const allowedSmsProviders = new Set(["dry_run", "sms_ir"]);
 
 if (!allowedSmsProviders.has(smsProvider)) {
@@ -80,6 +82,18 @@ if (!allowedSmsProviders.has(smsProvider)) {
 }
 
 if (smsProvider === "sms_ir" && !smsDryRun) {
+  if (!smsAllowRealSend) {
+    add("DEPLOYED_ALLOW_REAL_SMS", "error", "DEPLOYED_ALLOW_REAL_SMS=1 is required when SMS_PROVIDER=sms_ir and SMS_DRY_RUN=false.");
+  }
+
+  if (!smsOperatorTargetConfirmed) {
+    add("DEPLOYED_SMS_TARGET_MOBILE", "error", "Set DEPLOYED_SMS_TARGET_MOBILE or SMS_REAL_SEND_OPERATOR_CONFIRMED=1 before real SMS sends.");
+  }
+
+  if (!hasValue(process.env.SMS_IR_USERNAME)) {
+    add("SMS_IR_USERNAME", "error", "SMS_IR_USERNAME is required when SMS_PROVIDER=sms_ir and SMS_DRY_RUN=false.");
+  }
+
   if (!hasValue(process.env.SMS_IR_API_KEY)) {
     add("SMS_IR_API_KEY", "error", "SMS_IR_API_KEY is required when SMS_PROVIDER=sms_ir and SMS_DRY_RUN=false.");
   }
@@ -98,6 +112,7 @@ if (smsProvider === "sms_ir" && smsDryRun && !hasValue(process.env.SMS_IR_LINE_N
 }
 
 const webPushProvider = normalizeProvider(process.env.WEB_PUSH_PROVIDER || "dry_run");
+const webPushEnabled = process.env.WEB_PUSH_ENABLED === "true";
 const webPushDryRun = process.env.WEB_PUSH_DRY_RUN !== "false";
 const webPushRealSendEnabled = process.env.WEB_PUSH_REAL_SEND_ENABLED === "true";
 const allowedWebPushProviders = new Set(["dry_run", "web_push"]);
@@ -113,6 +128,10 @@ if (!webPushPublicKeyConfigured) {
 }
 
 if (webPushProvider === "web_push" && webPushRealSendEnabled && !webPushDryRun) {
+  if (!webPushEnabled) {
+    add("WEB_PUSH_ENABLED", "error", "WEB_PUSH_ENABLED=true is required when real Web Push is enabled.");
+  }
+
   if (!webPushPublicKeyConfigured) {
     add("WEB_PUSH_VAPID_PUBLIC_KEY", "error", "WEB_PUSH_VAPID_PUBLIC_KEY or NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY is required when real Web Push is enabled.");
   }

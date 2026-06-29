@@ -72,6 +72,9 @@ const forbiddenDirs = [
   "db-backups/",
   "New Folder/",
   "signaling-server/",
+  "build/",
+  "dist/",
+  "out/",
 ];
 
 for (const dir of forbiddenDirs) {

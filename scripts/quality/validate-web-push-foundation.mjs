@@ -72,7 +72,7 @@ add("service writes GRANTED permission events", /notificationPermissionEvent\.cr
 add("service records denied unsupported revoked states", /recordPermissionEvent/.test(service) && /PushPermissionState/.test(service) && /state:\s*"REVOKED"/.test(service));
 add("service unsubscribes by updateMany", /unsubscribe/.test(service) && /pushSubscription\.updateMany/.test(service) && /isActive:\s*false/.test(service));
 add("service dry-run send counts subscriptions", /dryRun/.test(service) && /recipientCount/.test(service) && /subscriptionCount/.test(service));
-add("real push is feature-flag gated", /WEB_PUSH_REAL_SEND_ENABLED/.test(service));
+add("real push is feature-flag gated", /WEB_PUSH_ENABLED/.test(service) && /WEB_PUSH_REAL_SEND_ENABLED/.test(service));
 add("service performs real provider delivery", /webpush\.setVapidDetails|vapidDetails/.test(service));
 add("service writes audit log for dry-run", /writeAuditLog/.test(service) && /Web Push dry-run delivery previewed/.test(service));
 
@@ -99,7 +99,7 @@ add("route policy maps push", /"\/customer-club\/push":\s*ROLE_NAVIGATION_POLICY
 add("legacy access-control maps push", /"\/dashboard\/customer-club\/push"/.test(accessControl));
 add("customer club members page links push", /customer-club\/push/.test(membersPage) && /Web Push/.test(membersPage));
 
-add("env validator checks web push provider", /WEB_PUSH_PROVIDER/.test(envValidator) && /dry_run/.test(envValidator) && /web_push/.test(envValidator));
+add("env validator checks web push provider", /WEB_PUSH_PROVIDER/.test(envValidator) && /WEB_PUSH_ENABLED=true is required/.test(envValidator) && /dry_run/.test(envValidator) && /web_push/.test(envValidator));
 add("env validator checks VAPID keys", /NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY/.test(envValidator) && /WEB_PUSH_VAPID_PRIVATE_KEY/.test(envValidator) && /WEB_PUSH_VAPID_SUBJECT/.test(envValidator));
 add("runtime env summarizes web push", /webPushProvider/.test(runtimeEnv) && /webPushPublicKeyConfigured/.test(runtimeEnv));
 

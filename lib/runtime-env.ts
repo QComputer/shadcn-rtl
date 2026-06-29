@@ -18,11 +18,14 @@ export type RuntimeEnvValidation = {
     authTrustHost: string | null;
     googleOAuthConfigured: boolean;
     webPushProvider: string;
+    webPushEnabled: boolean;
     webPushDryRun: boolean;
     webPushPublicKeyConfigured: boolean;
     webPushRealSendEnabled: boolean;
     smsProvider: string;
     smsDryRun: boolean;
+    smsAllowRealSend: boolean;
+    smsOperatorTargetConfirmed: boolean;
     smsIrConfigured: boolean;
     smsRealSendEnabled: boolean;
     aiMediaServiceEnabled: boolean;
@@ -102,6 +105,7 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
   }
 
   const webPushProvider = process.env.WEB_PUSH_PROVIDER || "dry_run";
+  const webPushEnabled = process.env.WEB_PUSH_ENABLED === "true";
   const webPushDryRun = process.env.WEB_PUSH_DRY_RUN !== "false";
   const webPushRealSendEnabled = process.env.WEB_PUSH_REAL_SEND_ENABLED === "true";
 
@@ -122,6 +126,14 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
   }
 
   if (webPushProvider === "web_push" && webPushRealSendEnabled && !webPushDryRun) {
+    if (!webPushEnabled) {
+      issues.push({
+        name: "WEB_PUSH_ENABLED",
+        severity: "error",
+        message: "WEB_PUSH_ENABLED=true is required when real Web Push is enabled.",
+      });
+    }
+
     if (!hasValue(process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY)) {
       issues.push({
         name: "NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY",
@@ -149,9 +161,13 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
 
   const smsProvider = (process.env.SMS_PROVIDER || "dry_run").trim().toLowerCase().replaceAll("-", "_");
   const smsDryRun = process.env.SMS_DRY_RUN !== "false";
+  const smsAllowRealSend = process.env.DEPLOYED_ALLOW_REAL_SMS === "1";
+  const smsOperatorTargetConfirmed = hasValue(process.env.DEPLOYED_SMS_TARGET_MOBILE)
+    || process.env.SMS_REAL_SEND_OPERATOR_CONFIRMED === "1";
+  const smsIrUsernameConfigured = hasValue(process.env.SMS_IR_USERNAME);
   const smsIrLineConfigured = hasValue(process.env.SMS_IR_LINE_NUMBER) || hasValue(process.env.SMS_IR_LINE);
-  const smsIrConfigured = hasValue(process.env.SMS_IR_API_KEY) && smsIrLineConfigured;
-  const smsRealSendEnabled = smsProvider === "sms_ir" && !smsDryRun;
+  const smsIrConfigured = smsIrUsernameConfigured && hasValue(process.env.SMS_IR_API_KEY) && smsIrLineConfigured;
+  const smsRealSendEnabled = smsProvider === "sms_ir" && !smsDryRun && smsAllowRealSend && smsOperatorTargetConfirmed && smsIrConfigured;
 
   if (!["dry_run", "sms_ir"].includes(smsProvider)) {
     issues.push({
@@ -161,7 +177,31 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
     });
   }
 
-  if (smsRealSendEnabled) {
+  if (smsProvider === "sms_ir" && !smsDryRun) {
+    if (!smsAllowRealSend) {
+      issues.push({
+        name: "DEPLOYED_ALLOW_REAL_SMS",
+        severity: "error",
+        message: "DEPLOYED_ALLOW_REAL_SMS=1 is required when real SMS.ir sending is enabled.",
+      });
+    }
+
+    if (!smsOperatorTargetConfirmed) {
+      issues.push({
+        name: "DEPLOYED_SMS_TARGET_MOBILE",
+        severity: "error",
+        message: "Set DEPLOYED_SMS_TARGET_MOBILE or SMS_REAL_SEND_OPERATOR_CONFIRMED=1 before enabling real SMS.ir sending.",
+      });
+    }
+
+    if (!hasValue(process.env.SMS_IR_USERNAME)) {
+      issues.push({
+        name: "SMS_IR_USERNAME",
+        severity: "error",
+        message: "SMS_IR_USERNAME is required when real SMS.ir sending is enabled.",
+      });
+    }
+
     if (!hasValue(process.env.SMS_IR_API_KEY)) {
       issues.push({
         name: "SMS_IR_API_KEY",
@@ -255,11 +295,14 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
       authTrustHost: process.env.AUTH_TRUST_HOST || null,
       googleOAuthConfigured: hasGoogleClientId && hasGoogleClientSecret,
       webPushProvider,
+      webPushEnabled,
       webPushDryRun,
       webPushPublicKeyConfigured: hasValue(process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY),
       webPushRealSendEnabled,
       smsProvider,
       smsDryRun,
+      smsAllowRealSend,
+      smsOperatorTargetConfirmed,
       smsIrConfigured,
       smsRealSendEnabled,
       aiMediaServiceEnabled,

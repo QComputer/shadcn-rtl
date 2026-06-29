@@ -50,9 +50,9 @@ add("P98 offline cache remains guarded", /addEventListener\("fetch"/.test(servic
 
 add("package exposes P97 validator", /"quality:pwa-foundation":\s*"node scripts\/quality\/validate-pwa-foundation\.mjs"/.test(packageJson))
 add("project validator references P97 validator", /validate-pwa-foundation\.mjs/.test(validateProject) && /P97 PWA foundation validator passes/.test(validateProject))
-add("README keeps P97 complete while marking P105 latest", /\| 97 \| PWA foundation and install experience/.test(readme) && /Latest completed implementation phase:\s+\*\*P105 - Production rollout runbook\*\*/.test(readme) && /No active next phase; current integrated roadmap is complete/.test(readme))
-add("roadmap keeps P97 complete while marking P105 baseline", /\| P97 \| PWA foundation and install experience\. \|/.test(roadmap) && /Completed through \*\*P105 - Production rollout runbook\*\*/.test(roadmap))
-add("source of truth keeps P97 foundation while naming P105 baseline", /PWA Foundation and Install Experience exists/.test(sourceOfTruth) && /after P105 Production rollout runbook/.test(sourceOfTruth))
+add("README keeps P97 complete while marking P106 latest", /\| 97 \| PWA foundation and install experience/.test(readme) && /Latest completed implementation phase:\s+\*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(readme) && /P107 - Creative Studio integration planning/.test(readme))
+add("roadmap keeps P97 complete while marking P106 baseline", /\| P97 \| PWA foundation and install experience\. \|/.test(roadmap) && /Completed through \*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(roadmap))
+add("source of truth keeps P97 foundation while naming P106 baseline", /PWA Foundation and Install Experience exists/.test(sourceOfTruth) && /after P106 PWA\/Push\/SMS source acceptance/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

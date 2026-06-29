@@ -23,6 +23,7 @@
 
 # production
 /build
+/dist/
 
 # misc
 .DS_Store
@@ -47,6 +48,7 @@ next-env.d.ts
 
 /lib/generated/prisma
 /prisma/dev.db
+/dev.db
 
 /public/uploads
 /uploads
@@ -73,4 +75,5 @@ next-env.d.ts
 # local/generated runtime artifacts
 /.vercel/
 *.sqlite
+*.sqlite3
 *.db

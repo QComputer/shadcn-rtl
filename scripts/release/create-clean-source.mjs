@@ -41,6 +41,7 @@ const blockedDirs = new Set([
   "New Folder",
   "signaling-server",
   "build",
+  "dist",
   "out",
 ]);
 
@@ -130,7 +131,7 @@ function createZip() {
       "-ExecutionPolicy",
       "Bypass",
       "-Command",
-      `Compress-Archive -LiteralPath '${sourceGlob.replaceAll("'", "''")}' -DestinationPath '${zipOut.replaceAll("'", "''")}' -Force`,
+      `Compress-Archive -Path '${sourceGlob.replaceAll("'", "''")}' -DestinationPath '${zipOut.replaceAll("'", "''")}' -Force`,
     ]);
     return;
   }

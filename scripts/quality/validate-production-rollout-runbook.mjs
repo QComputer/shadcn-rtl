@@ -43,9 +43,9 @@ add("archive script refuses obvious secrets", /Refusing to archive PWA\/Push\/SM
 add("release notes include PWA Push SMS rollout evidence", /PWA Push SMS Rollout Evidence/.test(releaseTemplate) && /Rollback owner/.test(releaseTemplate))
 add("package exposes P105 quality and release scripts", /"quality:production-rollout":\s*"node scripts\/quality\/validate-production-rollout-runbook\.mjs"/.test(packageJson) && /"release:pwa-push-sms-rollout-evidence":\s*"node scripts\/release\/archive-pwa-push-sms-rollout-evidence\.mjs"/.test(packageJson))
 add("project validator references P105 validator", /validate-production-rollout-runbook\.mjs/.test(validateProject) && /P105 production rollout runbook validator passes/.test(validateProject))
-add("README marks P105 latest and roadmap complete", /Latest completed implementation phase:\s+\*\*P105 - Production rollout runbook\*\*/.test(readme) && /No active next phase; current integrated roadmap is complete/.test(readme))
-add("roadmap marks P105 complete", /Completed through \*\*P105 - Production rollout runbook\*\*/.test(roadmap) && /No active next phase/.test(roadmap) && /\| P105 \| Production rollout runbook\. \|/.test(roadmap))
-add("source of truth names P105 baseline", /after P105 Production rollout runbook/.test(sourceOfTruth) && /Production rollout runbook exists/.test(sourceOfTruth))
+add("README keeps P105 complete while marking P106 latest", /\| 105 \| Production rollout runbook/.test(readme) && /Latest completed implementation phase:\s+\*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(readme) && /P107 - Creative Studio integration planning/.test(readme))
+add("roadmap keeps P105 complete in P106 progression", /\| P105 \| Production rollout runbook\. \|/.test(roadmap) && /Completed through \*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(roadmap))
+add("source of truth names P106 baseline while keeping P105 runbook", /after P106 PWA\/Push\/SMS source acceptance/.test(sourceOfTruth) && /Production rollout runbook exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

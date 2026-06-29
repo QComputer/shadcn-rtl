@@ -17,7 +17,7 @@ export class SmsIrProvider implements SmsProvider {
     const config = getSmsRuntimeConfig()
     const lineNumber = getSmsIrLineNumber()
     if (!config.realSendEnabled) throw new ApiError(409, "Real SMS sending is disabled; use dry-run mode")
-    if (!config.apiKeyConfigured || !lineNumber) throw new ApiError(409, "SMS.ir is not configured")
+    if (!config.allowRealSms || !config.operatorTargetConfirmed || !config.usernameConfigured || !config.apiKeyConfigured || !lineNumber) throw new ApiError(409, "SMS.ir is not configured")
 
     return this.request("/v1/send/bulk", {
       lineNumber,
@@ -30,7 +30,7 @@ export class SmsIrProvider implements SmsProvider {
   async sendVerifyCode(input: SmsSendVerifyCodeInput): Promise<SmsSendResult> {
     const config = getSmsRuntimeConfig()
     if (!config.realSendEnabled) throw new ApiError(409, "Real SMS sending is disabled; use dry-run mode")
-    if (!config.apiKeyConfigured) throw new ApiError(409, "SMS.ir is not configured")
+    if (!config.allowRealSms || !config.operatorTargetConfirmed || !config.usernameConfigured || !config.apiKeyConfigured) throw new ApiError(409, "SMS.ir is not configured")
 
     return this.request("/v1/send/verify", {
       mobile: input.to,

@@ -47,7 +47,7 @@ add("service lists recent deliveries for dashboard", /webPushDelivery\.findMany/
 add("service creates delivery attempt rows before real send", /webPushDelivery\.create/.test(service) && /status:\s*"PENDING"/.test(service))
 add("service updates delivery rows after success and failure", /webPushDelivery\.update[\s\S]*status:\s*"SENT"/.test(service) && /webPushDelivery\.update[\s\S]*status:\s*"FAILED"/.test(service))
 add("service cleans invalid subscriptions", /statusCode === 404 \|\| statusCode === 410/.test(service) && /isActive:\s*false/.test(service) && /removedCount/.test(service))
-add("service keeps real send feature-flag gated", /WEB_PUSH_REAL_SEND_ENABLED/.test(service) && /Real Web Push sending is disabled/.test(service))
+add("service keeps real send feature-flag gated", /WEB_PUSH_ENABLED/.test(service) && /WEB_PUSH_REAL_SEND_ENABLED/.test(service) && /Real Web Push sending is disabled/.test(service))
 add("service audit logs include preference policy counts", /preferenceSkippedCustomerCount/.test(service) && /activeSubscriptionCount/.test(service))
 
 add("dashboard page shows delivery history and eligibility counts", /eligibleCustomerCount/.test(dashboardPage) && /preferenceSkippedCustomerCount/.test(dashboardPage) && /recentDeliveries/.test(dashboardPage) && /deliveryHistory/.test(dashboardPage))
@@ -60,9 +60,9 @@ for (const locale of ["fa", "en", "ar"]) {
 
 add("package exposes P100 validator", /"quality:web-push-delivery":\s*"node scripts\/quality\/validate-web-push-delivery\.mjs"/.test(packageJson))
 add("project validator references P100 validator", /validate-web-push-delivery\.mjs/.test(validateProject) && /P100 Web Push delivery validator passes/.test(validateProject))
-add("README keeps P100 complete while marking P105 latest", /\| 100 \| Web Push notification service/.test(readme) && /Latest completed implementation phase:\s+\*\*P105 - Production rollout runbook\*\*/.test(readme) && /No active next phase; current integrated roadmap is complete/.test(readme))
-add("roadmap keeps P100 complete while marking P105 baseline", /\| P100 \| Web Push notification service\. \|/.test(roadmap) && /Completed through \*\*P105 - Production rollout runbook\*\*/.test(roadmap))
-add("source of truth names P105 baseline and keeps P100 summary", /after P105 Production rollout runbook/.test(sourceOfTruth) && /Web Push notification service exists/.test(sourceOfTruth))
+add("README keeps P100 complete while marking P106 latest", /\| 100 \| Web Push notification service/.test(readme) && /Latest completed implementation phase:\s+\*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(readme) && /P107 - Creative Studio integration planning/.test(readme))
+add("roadmap keeps P100 complete while marking P106 baseline", /\| P100 \| Web Push notification service\. \|/.test(roadmap) && /Completed through \*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(roadmap))
+add("source of truth names P106 baseline and keeps P100 summary", /after P106 PWA\/Push\/SMS source acceptance/.test(sourceOfTruth) && /Web Push notification service exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

@@ -19,6 +19,9 @@ interface ImageRecord {
   url: string;
   filename: string;
 }
+
+const MapLocationPicker = dynamic(() => import("@/components/ui/map-location-picker"), { ssr: false })
+
 export default function OrganizationSettingsPage({ params }: { params: Promise<{ locale: string }> }) {
   const resolvedParams = use(params)
   const locale = resolvedParams.locale || "fa"
@@ -56,9 +59,6 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   
   const [lat, setLat] = useState<number | undefined>(undefined)
   const [lng, setLng] = useState<number | undefined>(undefined)
-
-  // Dynamic import of MapLocationPicker to avoid SSR issues
-  const MapLocationPicker = dynamic(() => import("@/components/ui/map-location-picker"), { ssr: false })
 
   const [cardNumber, setCardNumber] = useState<string>("")
   const [cardOwnerName, setCardOwnerName] = useState<string>("")

@@ -37,7 +37,7 @@ add("new product page fetches usage for seller state", /\/api\/dashboard\/ai-med
 add("package exposes P94 validator", /"quality:ai-media-seller-state-ux":\s*"node scripts\/quality\/validate-ai-media-seller-state-ux\.mjs"/.test(packageJson))
 add("project validator references P94 validator", /validate-ai-media-seller-state-ux\.mjs/.test(validateProject) && /P94 AI media seller state UX validator passes/.test(validateProject))
 add("P94 documentation exists", exists("docs/PHASE_94_AI_MEDIA_SELLER_STATE_UX.md"))
-add("roadmap marks P94 complete and P95 next", /Completed through \*\*P94 - AI Media Seller-Facing Paid Provider State UX\*\*/.test(roadmap) && /P95 - AI Media Paid Provider Operator Runbook and Deployed UX Smoke/.test(roadmap))
+add("roadmap keeps P94 complete in current progression", /\| P94 \| AI media seller-facing paid provider state UX\. \|/.test(roadmap) && /Completed through \*\*P95 - Source Cleanup and Current-State Verification\*\*/.test(roadmap) && /P96 - Open Fields and Workflow Completion Audit/.test(roadmap))
 
 const failed = checks.filter((check) => !check.pass)
 

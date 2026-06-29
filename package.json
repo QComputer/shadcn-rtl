@@ -37,6 +37,7 @@
     "e2e:deployed:phase10": "node scripts/e2e/deployed-phase10-auth-security.mjs",
     "smoke:deployed:auth": "node scripts/e2e/deployed-phase10-auth-security.mjs",
     "health:env": "node scripts/quality/validate-env.mjs",
+    "quality:source-baseline": "node scripts/quality/validate-source-baseline.mjs",
     "e2e:deployed:phase11": "node scripts/e2e/deployed-phase11-health.mjs",
     "smoke:deployed:health": "node scripts/e2e/deployed-phase11-health.mjs",
     "e2e:deployed:phase12": "node scripts/e2e/deployed-phase12-messaging.mjs",

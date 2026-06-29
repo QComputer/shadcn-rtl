@@ -67,12 +67,16 @@ if (hasGoogleClientId !== hasGoogleClientSecret) {
 }
 
 
-const smsProvider = process.env.SMS_PROVIDER || "dry_run";
+function normalizeProvider(value) {
+  return (value || "").trim().toLowerCase().replaceAll("-", "_");
+}
+
+const smsProvider = normalizeProvider(process.env.SMS_PROVIDER || "dry_run");
 const smsDryRun = process.env.SMS_DRY_RUN !== "false";
 const allowedSmsProviders = new Set(["dry_run", "sms_ir"]);
 
 if (!allowedSmsProviders.has(smsProvider)) {
-  add("SMS_PROVIDER", "error", "SMS_PROVIDER must be either dry_run or sms_ir.");
+  add("SMS_PROVIDER", "error", "SMS_PROVIDER must be either DRY_RUN/dry_run or SMS_IR/sms_ir.");
 }
 
 if (smsProvider === "sms_ir" && !smsDryRun) {
@@ -80,8 +84,8 @@ if (smsProvider === "sms_ir" && !smsDryRun) {
     add("SMS_IR_API_KEY", "error", "SMS_IR_API_KEY is required when SMS_PROVIDER=sms_ir and SMS_DRY_RUN=false.");
   }
 
-  if (!hasValue(process.env.SMS_IR_LINE_NUMBER)) {
-    add("SMS_IR_LINE_NUMBER", "error", "SMS_IR_LINE_NUMBER is required when SMS_PROVIDER=sms_ir and SMS_DRY_RUN=false.");
+  if (!hasValue(process.env.SMS_IR_LINE_NUMBER) && !hasValue(process.env.SMS_IR_LINE)) {
+    add("SMS_IR_LINE", "error", "SMS_IR_LINE or SMS_IR_LINE_NUMBER is required when SMS_PROVIDER=sms_ir and SMS_DRY_RUN=false.");
   }
 
   if (process.env.NODE_ENV !== "production") {
@@ -89,34 +93,36 @@ if (smsProvider === "sms_ir" && !smsDryRun) {
   }
 }
 
-if (smsProvider === "sms_ir" && smsDryRun && !hasValue(process.env.SMS_IR_LINE_NUMBER)) {
-  add("SMS_IR_LINE_NUMBER", "warning", "SMS_IR_LINE_NUMBER is not required for dry-run mode, but set it in production secret storage before disabling SMS_DRY_RUN.");
+if (smsProvider === "sms_ir" && smsDryRun && !hasValue(process.env.SMS_IR_LINE_NUMBER) && !hasValue(process.env.SMS_IR_LINE)) {
+  add("SMS_IR_LINE", "warning", "SMS_IR_LINE is not required for dry-run mode, but set it in production secret storage before disabling SMS_DRY_RUN.");
 }
 
-const webPushProvider = process.env.WEB_PUSH_PROVIDER || "dry_run";
+const webPushProvider = normalizeProvider(process.env.WEB_PUSH_PROVIDER || "dry_run");
 const webPushDryRun = process.env.WEB_PUSH_DRY_RUN !== "false";
 const webPushRealSendEnabled = process.env.WEB_PUSH_REAL_SEND_ENABLED === "true";
 const allowedWebPushProviders = new Set(["dry_run", "web_push"]);
+const webPushPublicKeyConfigured = hasValue(process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY) || hasValue(process.env.WEB_PUSH_VAPID_PUBLIC_KEY);
+const webPushSubjectConfigured = hasValue(process.env.WEB_PUSH_VAPID_SUBJECT) || hasValue(process.env.WEB_PUSH_SUBJECT);
 
 if (!allowedWebPushProviders.has(webPushProvider)) {
   add("WEB_PUSH_PROVIDER", "error", "WEB_PUSH_PROVIDER must be either dry_run or web_push.");
 }
 
-if (!hasValue(process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY)) {
-  add("NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY", "warning", "Set NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY before enabling browser Web Push opt-in.");
+if (!webPushPublicKeyConfigured) {
+  add("WEB_PUSH_VAPID_PUBLIC_KEY", "warning", "Set WEB_PUSH_VAPID_PUBLIC_KEY or NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY before enabling browser Web Push opt-in.");
 }
 
 if (webPushProvider === "web_push" && webPushRealSendEnabled && !webPushDryRun) {
-  if (!hasValue(process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY)) {
-    add("NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY", "error", "NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY is required when real Web Push is enabled.");
+  if (!webPushPublicKeyConfigured) {
+    add("WEB_PUSH_VAPID_PUBLIC_KEY", "error", "WEB_PUSH_VAPID_PUBLIC_KEY or NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY is required when real Web Push is enabled.");
   }
 
   if (!hasValue(process.env.WEB_PUSH_VAPID_PRIVATE_KEY)) {
     add("WEB_PUSH_VAPID_PRIVATE_KEY", "error", "WEB_PUSH_VAPID_PRIVATE_KEY is required when real Web Push is enabled.");
   }
 
-  if (!hasValue(process.env.WEB_PUSH_VAPID_SUBJECT)) {
-    add("WEB_PUSH_VAPID_SUBJECT", "error", "WEB_PUSH_VAPID_SUBJECT is required when real Web Push is enabled.");
+  if (!webPushSubjectConfigured) {
+    add("WEB_PUSH_SUBJECT", "error", "WEB_PUSH_SUBJECT or WEB_PUSH_VAPID_SUBJECT is required when real Web Push is enabled.");
   }
 
   if (process.env.NODE_ENV !== "production") {

@@ -16,8 +16,6 @@ import {
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  let imageRecord: { url: string; filename: string; pathname: string } | null = null;
-
   try {
     const session = await requireAuthSession();
     requireRole(session, ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"]);

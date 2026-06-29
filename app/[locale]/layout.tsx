@@ -113,9 +113,7 @@ export default async function LocaleLayout({
               <a referrerPolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=6010025&Code=PIS9oHglTwxwasymJaZx3w3cO1wbPvA7'>
                 <img referrerPolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=6010025&Code=PIS9oHglTwxwasymJaZx3w3cO1wbPvA7' alt='' className='cursor:pointer' slot='PIS9oHglTwxwasymJaZx3w3cO1wbPvA7'/>
               </a>
-              <p className="text-sm text-muted-foreground">
-                <Link href='/myResume.pdf'>درمورد ما</Link>
-              </p>
+              <p className="text-sm text-muted-foreground">بازار باز</p>
             </div>
           </div>
         </footer>

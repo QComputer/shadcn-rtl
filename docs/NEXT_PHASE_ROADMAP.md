@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-29._
 
-This roadmap is ordered for risk reduction. Phases 18-94 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, and AI media hardening roadmap is implemented through Phase 94.
+This roadmap is ordered for risk reduction. Phases 18-95 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, and source cleanup roadmap is implemented through Phase 95.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P94 - AI Media Seller-Facing Paid Provider State UX**.
+- Completed through **P95 - Source Cleanup and Current-State Verification**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -19,10 +19,10 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P95 - AI Media Paid Provider Operator Runbook and Deployed UX Smoke
+P96 - Open Fields and Workflow Completion Audit
 ```
 
-Next work should add operator-facing launch/runbook guidance and a deployed smoke that verifies the seller-facing AI media state UX against the live app.
+Next work should audit and safely complete open/missing workflow fields before PWA, Web Push, and SMS implementation.
 
 Immediate validation target:
 
@@ -41,6 +41,7 @@ pnpm run quality:ai-media-rollout-evidence
 pnpm run quality:ai-media-paid-provider-controls
 pnpm run quality:ai-media-cost-rollback
 pnpm run quality:ai-media-seller-state-ux
+pnpm run quality:source-baseline
 pnpm run quality:export-downloads
 pnpm run quality:deployed-import-export-smoke
 pnpm run quality:local
@@ -80,12 +81,22 @@ Completed integrated phases:
 | P92 | AI media paid-provider controls. |
 | P93 | AI media cost telemetry and rollback guardrails. |
 | P94 | AI media seller-facing paid provider state UX. |
+| P95 | Source cleanup and current-state verification. |
 
 Upcoming AI media phases should be treated as audits/hardening against the actual implementation already present in the repo:
 
 | Phase | Focus |
 | --- | --- |
-| P95 | AI media paid provider operator runbook and deployed UX smoke. |
+| P96 | Open fields and workflow completion audit. |
+| P97 | PWA foundation and install experience. |
+| P98 | Offline shell, caching, and PWA quality gates. |
+| P99 | Notification domain model and preferences. |
+| P100 | Web Push notification service. |
+| P101 | SMS provider abstraction and sms.ir integration. |
+| P102 | Notification templates, routing, and delivery policies. |
+| P103 | Admin/operator notification dashboard. |
+| P104 | Deployed PWA, Push, and SMS smoke gates. |
+| P105 | Production rollout runbook. |
 
 Safety constraints for all Import Hub phases:
 

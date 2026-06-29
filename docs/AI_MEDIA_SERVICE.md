@@ -30,6 +30,11 @@ Health checks:
 | `AI_MEDIA_PAID_PROVIDER_APPROVED_AT` | No | Valid approval timestamp for paid-provider rollout |
 | `AI_MEDIA_PAID_PROVIDER_DAILY_COST_LIMIT_CENTS` | No | Positive daily cost guardrail required for paid-provider rollout |
 | `AI_MEDIA_PAID_PROVIDER_MONTHLY_BUDGET_CENTS` | No | Positive monthly budget guardrail required for paid-provider rollout |
+| `AI_MEDIA_PAID_PROVIDER_ESTIMATED_JOB_COST_CENTS` | No | Positive estimated cost per generated job for rollout telemetry |
+| `AI_MEDIA_PAID_PROVIDER_ROLLBACK_PAUSED` | No | Set to `true` to pause paid-provider job creation without code changes |
+| `AI_MEDIA_PAID_PROVIDER_ROLLBACK_REASON` | No | Required when rollback pause is active |
+| `AI_MEDIA_PAID_PROVIDER_ROLLBACK_BY` | No | Optional operator/reference for rollback pause |
+| `AI_MEDIA_PAID_PROVIDER_ROLLBACK_AT` | No | Optional valid timestamp for rollback pause |
 
 **Security rules:**
 - `AI_MEDIA_SERVICE_INTERNAL_KEY` must never be exposed through `NEXT_PUBLIC_*` variables.
@@ -160,6 +165,8 @@ GET /api/dashboard/ai-media/usage?organizationId={organizationId}
 The response includes daily job/selection counts, remaining daily quota, recent `AiMediaUsageEvent` rows, and `paidGenerationEnabled: false`.
 
 `paidGenerationEnabled` is derived from the server-only paid-provider policy. It remains false unless paid-provider enablement is explicitly requested and all approval/cost guardrail variables are valid.
+
+The response also includes `costTelemetry` with daily/monthly estimated cost, configured daily/monthly guardrails, remaining budget, and rollback pause status. Cost telemetry is an operator guardrail, not a payment ledger.
 
 ## Deployed Rollout Gate
 

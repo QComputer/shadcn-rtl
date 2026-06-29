@@ -4,12 +4,20 @@ type AiMediaPaidProviderStatus = {
   requested: boolean;
   enabled: boolean;
   configured: boolean;
+  telemetryMode: "disabled" | "estimate";
   approvalRequired: true;
   approved: boolean;
   approvedBy: string | null;
   approvedAt: string | null;
   dailyCostLimitCents: number | null;
   monthlyBudgetCents: number | null;
+  estimatedJobCostCents: number;
+  rollback: {
+    paused: boolean;
+    reason: string | null;
+    by: string | null;
+    at: string | null;
+  };
   issues: string[];
 };
 
@@ -37,6 +45,15 @@ export function getAiMediaPaidProviderStatus(): AiMediaPaidProviderStatus {
   const approvedAt = normalizedDate(process.env.AI_MEDIA_PAID_PROVIDER_APPROVED_AT);
   const dailyCostLimitCents = positiveInt(process.env.AI_MEDIA_PAID_PROVIDER_DAILY_COST_LIMIT_CENTS);
   const monthlyBudgetCents = positiveInt(process.env.AI_MEDIA_PAID_PROVIDER_MONTHLY_BUDGET_CENTS);
+  const estimatedJobCostCents = positiveInt(process.env.AI_MEDIA_PAID_PROVIDER_ESTIMATED_JOB_COST_CENTS) ?? 0;
+  const rollbackPaused = process.env.AI_MEDIA_PAID_PROVIDER_ROLLBACK_PAUSED === "true";
+  const rollbackReason = hasValue(process.env.AI_MEDIA_PAID_PROVIDER_ROLLBACK_REASON)
+    ? process.env.AI_MEDIA_PAID_PROVIDER_ROLLBACK_REASON!.trim()
+    : null;
+  const rollbackBy = hasValue(process.env.AI_MEDIA_PAID_PROVIDER_ROLLBACK_BY)
+    ? process.env.AI_MEDIA_PAID_PROVIDER_ROLLBACK_BY!.trim()
+    : null;
+  const rollbackAt = normalizedDate(process.env.AI_MEDIA_PAID_PROVIDER_ROLLBACK_AT);
   const issues: string[] = [];
 
   if (requested) {
@@ -45,20 +62,30 @@ export function getAiMediaPaidProviderStatus(): AiMediaPaidProviderStatus {
     if (!approvedAt) issues.push("AI_MEDIA_PAID_PROVIDER_APPROVED_AT must be a valid date");
     if (!dailyCostLimitCents) issues.push("AI_MEDIA_PAID_PROVIDER_DAILY_COST_LIMIT_CENTS must be positive");
     if (!monthlyBudgetCents) issues.push("AI_MEDIA_PAID_PROVIDER_MONTHLY_BUDGET_CENTS must be positive");
+    if (!estimatedJobCostCents) issues.push("AI_MEDIA_PAID_PROVIDER_ESTIMATED_JOB_COST_CENTS must be positive");
+    if (rollbackPaused && !rollbackReason) issues.push("AI_MEDIA_PAID_PROVIDER_ROLLBACK_REASON is required when rollback is paused");
   }
 
-  const configured = approved && Boolean(approvedBy && approvedAt && dailyCostLimitCents && monthlyBudgetCents);
+  const configured = approved && Boolean(approvedBy && approvedAt && dailyCostLimitCents && monthlyBudgetCents && estimatedJobCostCents);
 
   return {
     requested,
-    enabled: requested && configured,
+    enabled: requested && configured && !rollbackPaused,
     configured,
+    telemetryMode: requested && configured ? "estimate" : "disabled",
     approvalRequired: true,
     approved,
     approvedBy,
     approvedAt,
     dailyCostLimitCents,
     monthlyBudgetCents,
+    estimatedJobCostCents,
+    rollback: {
+      paused: rollbackPaused,
+      reason: rollbackReason,
+      by: rollbackBy,
+      at: rollbackAt,
+    },
     issues,
   };
 }

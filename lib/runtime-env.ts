@@ -26,6 +26,7 @@ export type RuntimeEnvValidation = {
     aiMediaServiceInternalKeyConfigured: boolean;
     aiMediaPaidProviderRequested: boolean;
     aiMediaPaidProviderConfigured: boolean;
+    aiMediaPaidProviderRollbackPaused: boolean;
   };
 };
 
@@ -152,13 +153,18 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
     && !Number.isNaN(new Date(process.env.AI_MEDIA_PAID_PROVIDER_APPROVED_AT as string).getTime());
   const aiMediaPaidProviderDailyLimit = Number.parseInt(process.env.AI_MEDIA_PAID_PROVIDER_DAILY_COST_LIMIT_CENTS || "", 10);
   const aiMediaPaidProviderMonthlyBudget = Number.parseInt(process.env.AI_MEDIA_PAID_PROVIDER_MONTHLY_BUDGET_CENTS || "", 10);
+  const aiMediaPaidProviderEstimatedJobCost = Number.parseInt(process.env.AI_MEDIA_PAID_PROVIDER_ESTIMATED_JOB_COST_CENTS || "", 10);
   const aiMediaPaidProviderHasDailyLimit = Number.isFinite(aiMediaPaidProviderDailyLimit) && aiMediaPaidProviderDailyLimit > 0;
   const aiMediaPaidProviderHasMonthlyBudget = Number.isFinite(aiMediaPaidProviderMonthlyBudget) && aiMediaPaidProviderMonthlyBudget > 0;
+  const aiMediaPaidProviderHasEstimatedJobCost = Number.isFinite(aiMediaPaidProviderEstimatedJobCost) && aiMediaPaidProviderEstimatedJobCost > 0;
+  const aiMediaPaidProviderRollbackPaused = process.env.AI_MEDIA_PAID_PROVIDER_ROLLBACK_PAUSED === "true";
+  const aiMediaPaidProviderRollbackReasonConfigured = hasValue(process.env.AI_MEDIA_PAID_PROVIDER_ROLLBACK_REASON);
   const aiMediaPaidProviderConfigured = aiMediaPaidProviderApproved
     && aiMediaPaidProviderApprovedBy
     && aiMediaPaidProviderApprovedAt
     && aiMediaPaidProviderHasDailyLimit
-    && aiMediaPaidProviderHasMonthlyBudget;
+    && aiMediaPaidProviderHasMonthlyBudget
+    && aiMediaPaidProviderHasEstimatedJobCost;
 
   if (aiMediaServiceEnabled) {
     if (!aiMediaServiceUrlConfigured) {
@@ -185,6 +191,14 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
     });
   }
 
+  if (aiMediaPaidProviderRequested && aiMediaPaidProviderRollbackPaused && !aiMediaPaidProviderRollbackReasonConfigured) {
+    issues.push({
+      name: "AI_MEDIA_PAID_PROVIDER_ROLLBACK_REASON",
+      severity: "error",
+      message: "A rollback reason is required when the paid AI media provider is paused.",
+    });
+  }
+
   return {
     ok: issues.every((issue) => issue.severity !== "error"),
     issues,
@@ -205,6 +219,7 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
       aiMediaServiceInternalKeyConfigured,
       aiMediaPaidProviderRequested,
       aiMediaPaidProviderConfigured,
+      aiMediaPaidProviderRollbackPaused,
     },
   };
 }

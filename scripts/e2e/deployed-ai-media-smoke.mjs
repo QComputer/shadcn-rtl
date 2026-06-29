@@ -21,6 +21,7 @@ if (!configuredBaseUrl) {
 
 let baseUrl = configuredBaseUrl;
 const results = [];
+let latestCostTelemetry = null;
 
 function currentGitCommit() {
   const result = spawnSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" });
@@ -54,6 +55,7 @@ function writeEvidence() {
       directRenderChecked: Boolean(aiServiceUrl && aiInternalKey),
       selectionProbeRan: Boolean(selectionProductId),
       blobSelectionRequired: requireBlobSelection,
+      costTelemetry: latestCostTelemetry,
     },
   };
 
@@ -361,7 +363,12 @@ await check("dashboard AI media usage is quota-shaped and paid generation disabl
   }
   if (usage.paidGenerationEnabled !== false) throw new Error("paid generation must remain disabled in rollout gate");
   if (!usage.paidProvider || usage.paidProvider.enabled !== false) throw new Error("paid provider policy must remain disabled in usage response");
+  if (!usage.costTelemetry || typeof usage.costTelemetry.dailyEstimatedCostCents !== "number") {
+    throw new Error("usage response must include AI media cost telemetry");
+  }
+  if (usage.costTelemetry.rollbackPaused !== false) throw new Error("paid provider rollback should not be paused in default rollout gate");
   if (!Array.isArray(usage.events)) throw new Error("usage.events must be an array");
+  latestCostTelemetry = usage.costTelemetry;
   return `jobs=${usage.jobCreateCount}/${usage.dailyJobLimit} selections=${usage.imageSelectionCount}/${usage.dailySelectionLimit}`;
 });
 

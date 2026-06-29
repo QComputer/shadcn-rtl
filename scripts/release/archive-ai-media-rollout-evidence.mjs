@@ -52,6 +52,8 @@ Deployment: ${archive.deployedBaseUrl}
 - [ ] Authenticated Bazar Baz AI media status is ready or the rollout exception is documented.
 - [ ] Usage summary is available and quota-shaped.
 - [ ] \`paidGenerationEnabled\` is false unless an explicit paid-provider rollout has been approved.
+- [ ] Cost telemetry is present and daily/monthly estimated costs are within approved guardrails.
+- [ ] Rollback status is reviewed; paid provider is paused only with a documented reason.
 - [ ] Unauthenticated dashboard AI media routes are blocked.
 - [ ] Direct Render MOCK checks are present when service URL/key values were intentionally provided.
 - [ ] Blob-backed image selection evidence is present only for an operator-approved product.

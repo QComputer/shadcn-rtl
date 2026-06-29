@@ -48,6 +48,16 @@ export type AiMediaUsageSummary = {
   remainingDailySelections: number;
   paidGenerationEnabled: boolean;
   paidProvider: ReturnType<typeof getAiMediaPaidProviderStatus>;
+  costTelemetry: {
+    mode: "disabled" | "estimate";
+    dailyEstimatedCostCents: number;
+    monthlyEstimatedCostCents: number;
+    dailyCostLimitCents: number | null;
+    monthlyBudgetCents: number | null;
+    remainingDailyCostCents: number | null;
+    remainingMonthlyBudgetCents: number | null;
+    rollbackPaused: boolean;
+  };
   canCreateJob: boolean;
   events: Array<{
     id: string;
@@ -75,6 +85,18 @@ function getAiMediaUsageQuota() {
 
 function startOfUtcDay(date = new Date()) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+function startOfUtcMonth(date = new Date()) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+}
+
+function estimatedCostFromMetadata(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return 0;
+  const estimatedCostCents = (metadata as Record<string, unknown>).estimatedCostCents;
+  return typeof estimatedCostCents === "number" && Number.isFinite(estimatedCostCents) && estimatedCostCents > 0
+    ? estimatedCostCents
+    : 0;
 }
 
 function getImportedProductAiMediaPrompt(sourceMetadata: unknown) {
@@ -191,6 +213,44 @@ export class AiMediaService {
     return { dateStart, jobCreateCount, imageSelectionCount };
   }
 
+  private async getCostTelemetry(organizationId: string, paidProvider: ReturnType<typeof getAiMediaPaidProviderStatus>) {
+    const [dailyEvents, monthlyEvents] = await Promise.all([
+      prisma.aiMediaUsageEvent.findMany({
+        where: {
+          organizationId,
+          action: "JOB_CREATED",
+          createdAt: { gte: startOfUtcDay() },
+        },
+        select: { metadata: true },
+      }),
+      prisma.aiMediaUsageEvent.findMany({
+        where: {
+          organizationId,
+          action: "JOB_CREATED",
+          createdAt: { gte: startOfUtcMonth() },
+        },
+        select: { metadata: true },
+      }),
+    ]);
+    const dailyEstimatedCostCents = dailyEvents.reduce((sum, event) => sum + estimatedCostFromMetadata(event.metadata), 0);
+    const monthlyEstimatedCostCents = monthlyEvents.reduce((sum, event) => sum + estimatedCostFromMetadata(event.metadata), 0);
+
+    return {
+      mode: paidProvider.telemetryMode,
+      dailyEstimatedCostCents,
+      monthlyEstimatedCostCents,
+      dailyCostLimitCents: paidProvider.dailyCostLimitCents,
+      monthlyBudgetCents: paidProvider.monthlyBudgetCents,
+      remainingDailyCostCents: paidProvider.dailyCostLimitCents === null
+        ? null
+        : Math.max(0, paidProvider.dailyCostLimitCents - dailyEstimatedCostCents),
+      remainingMonthlyBudgetCents: paidProvider.monthlyBudgetCents === null
+        ? null
+        : Math.max(0, paidProvider.monthlyBudgetCents - monthlyEstimatedCostCents),
+      rollbackPaused: paidProvider.rollback.paused,
+    };
+  }
+
   async getUsageSummary(organizationId: string): Promise<AiMediaUsageSummary> {
     const quota = getAiMediaUsageQuota();
     const counts = await this.getDailyUsageCounts(organizationId);
@@ -211,6 +271,7 @@ export class AiMediaService {
     });
 
     const paidProvider = getAiMediaPaidProviderStatus();
+    const costTelemetry = await this.getCostTelemetry(organizationId, paidProvider);
 
     return {
       dateStart: counts.dateStart,
@@ -222,6 +283,7 @@ export class AiMediaService {
       remainingDailySelections: Math.max(0, quota.dailySelectionLimit - counts.imageSelectionCount),
       paidGenerationEnabled: paidProvider.enabled,
       paidProvider,
+      costTelemetry,
       canCreateJob: counts.jobCreateCount < quota.dailyJobLimit,
       events,
     };
@@ -231,6 +293,15 @@ export class AiMediaService {
     const summary = await this.getUsageSummary(organizationId);
     if (!summary.canCreateJob) {
       throw new ApiError(429, "AI media daily generation quota exceeded");
+    }
+    if (summary.paidProvider.rollback.paused) {
+      throw new ApiError(503, "AI media paid provider rollout is paused");
+    }
+    if (summary.paidProvider.enabled && summary.costTelemetry.remainingDailyCostCents !== null && summary.costTelemetry.remainingDailyCostCents <= 0) {
+      throw new ApiError(429, "AI media daily cost limit exceeded");
+    }
+    if (summary.paidProvider.enabled && summary.costTelemetry.remainingMonthlyBudgetCents !== null && summary.costTelemetry.remainingMonthlyBudgetCents <= 0) {
+      throw new ApiError(429, "AI media monthly budget exceeded");
     }
     return summary;
   }
@@ -301,6 +372,7 @@ export class AiMediaService {
     }
 
     await this.assertCanCreateJob(product.organizationId);
+    const paidProvider = getAiMediaPaidProviderStatus();
     const importedAiMediaContext = await this.getImportedProductAiMediaContext(product.id, product.organizationId);
     const sellerPrompt = options.seller_prompt?.trim() || importedAiMediaContext?.promptDefault || null;
 
@@ -357,6 +429,10 @@ export class AiMediaService {
         count: remoteRequest.count,
         aspect_ratio: remoteRequest.aspect_ratio,
         style_preset: remoteRequest.style_preset,
+        estimatedCostCents: paidProvider.enabled ? paidProvider.estimatedJobCostCents : 0,
+        costTelemetryMode: paidProvider.telemetryMode,
+        paidProviderEnabled: paidProvider.enabled,
+        rollbackPaused: paidProvider.rollback.paused,
         importedProductDraftId: importedAiMediaContext?.draftId ?? null,
         importedSourceUrl: importedAiMediaContext?.sourceUrl ?? null,
         importedSourceExternalId: importedAiMediaContext?.sourceExternalId ?? null,

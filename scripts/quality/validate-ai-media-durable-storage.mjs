@@ -34,7 +34,7 @@ add("select route returns durable storage metadata", /storedDurably: result\.sto
 add("product edit UI applies API-returned durable URL", /const selectedImageUrl = data\.imageUrl \|\| imageUrl/.test(editPage) && /setImagePreview\(selectedImageUrl\)/.test(editPage))
 add("package exposes P86 durable storage validator", /"quality:ai-media-durable-storage":\s*"node scripts\/quality\/validate-ai-media-durable-storage\.mjs"/.test(packageJson))
 add("source of truth names P86 durable storage", /P86/.test(sourceOfTruth) && /Durable Storage/.test(sourceOfTruth))
-add("roadmap advances next phase to P87", /P87 - Long-running\/local-worker-compatible job state UX/.test(roadmap) || /P87 \| Long-running\/local-worker-compatible job state UX/.test(roadmap))
+add("roadmap includes P87 long-running UX follow-up", /P87 - Long-running\/local-worker-compatible job state UX/.test(roadmap) || /P87 \| Long-running\/local-worker-compatible job state UX/.test(roadmap) || /P87 \| AI media long-running job UX/.test(roadmap))
 
 console.table(results)
 const failed = results.filter((result) => !result.ok)

@@ -3,6 +3,36 @@ import { jsonError, requireAuthSession, requireProductAccess } from "@/lib/api-g
 import { aiMediaService } from "@/lib/services/ai-media.service";
 import { createAiMediaJobSchema } from "@/lib/validators";
 
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ productId: string }> },
+) {
+  try {
+    const session = await requireAuthSession();
+    const { productId } = await params;
+
+    const product = await requireProductAccess(session, productId, ["ADMIN", "MANAGER"]);
+    const localJob = await aiMediaService.getLatestProductJob(product.id, product.organizationId);
+
+    return NextResponse.json({
+      job: localJob
+        ? {
+            job_id: localJob.jobId,
+            status: localJob.status,
+            provider: localJob.provider,
+            created_at: localJob.createdAt.toISOString(),
+            updated_at: localJob.updatedAt.toISOString(),
+            error_message: localJob.errorMessage,
+            outputs: localJob.outputs,
+          }
+        : null,
+      local: localJob,
+    });
+  } catch (error) {
+    return jsonError(error, "Failed to load AI media job");
+  }
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ productId: string }> },

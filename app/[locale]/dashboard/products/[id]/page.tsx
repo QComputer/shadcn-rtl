@@ -1,9 +1,9 @@
 "use client"
 // TOODO: add deleting a Variant 
-import { useState, useEffect, use } from "react"
+import { useState, useEffect, use, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowRight, Save, Loader2, Trash2, ArrowLeft, Plus, ChevronLeftIcon, ChevronRightIcon, X, Sparkles } from "lucide-react"
+import { ArrowRight, Save, Loader2, Trash2, ArrowLeft, Plus, ChevronLeftIcon, ChevronRightIcon, X, Sparkles, Clock, RotateCcw, Ban } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -44,6 +44,38 @@ import { useDashboardAccess } from "@/hooks/use-auth"
 import { useSession } from "next-auth/react"
 import { isRTL } from "@/lib/i18n"
 import { SlugPreviewActions } from "@/components/dashboard/slug-preview-actions"
+
+const AI_JOB_POLL_INTERVAL_MS = 3000
+const AI_JOB_MAX_POLL_ATTEMPTS = 90
+
+type AiJobOutput = { url: string }
+
+type AiJobSnapshot = {
+  job_id?: string
+  status?: string | null
+  provider?: string | null
+  created_at?: string | null
+  updated_at?: string | null
+  error_message?: string | null
+  outputs?: AiJobOutput[] | null
+  output_images?: string[] | null
+}
+
+type AiLocalJobSnapshot = {
+  jobId?: string
+  status?: string | null
+  provider?: string | null
+  createdAt?: string | null
+  updatedAt?: string | null
+  errorMessage?: string | null
+  outputs?: AiJobOutput[] | null
+}
+
+type AiJobApiResponse = {
+  job?: AiJobSnapshot | null
+  local?: AiLocalJobSnapshot | null
+  remoteUnavailable?: boolean
+}
 
 
 interface ProductVariant {
@@ -150,13 +182,21 @@ export default function EditProductPage({
   const [aiDialogOpen, setAiDialogOpen] = useState(false)
   const [aiJobId, setAiJobId] = useState<string | null>(null)
   const [aiJobStatus, setAiJobStatus] = useState<string | null>(null)
+  const [aiJobProvider, setAiJobProvider] = useState<string | null>(null)
+  const [aiJobCreatedAt, setAiJobCreatedAt] = useState<string | null>(null)
+  const [aiJobUpdatedAt, setAiJobUpdatedAt] = useState<string | null>(null)
   const [aiOutputs, setAiOutputs] = useState<Array<{ url: string }>>([])
   const [aiLoading, setAiLoading] = useState(false)
   const [aiPolling, setAiPolling] = useState(false)
+  const [aiPollAttempts, setAiPollAttempts] = useState(0)
+  const [aiRemoteUnavailable, setAiRemoteUnavailable] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
   const [aiSelectedImage, setAiSelectedImage] = useState<string | null>(null)
   const [aiSelectedIndex, setAiSelectedIndex] = useState<number | null>(null)
   const [aiConfirming, setAiConfirming] = useState(false)
+  const [aiCanceling, setAiCanceling] = useState(false)
+  const aiPollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const aiPollRunIdRef = useRef(0)
     
     // Upload function
   async function uploadFile(file: File) {
@@ -296,6 +336,64 @@ export default function EditProductPage({
     ? `/${locale}/shop/${product.organizationSlug}/product/${productSlugSegment}`
     : null
 
+  const clearAiPollingTimer = () => {
+    aiPollRunIdRef.current += 1
+    if (aiPollTimerRef.current) {
+      clearTimeout(aiPollTimerRef.current)
+      aiPollTimerRef.current = null
+    }
+  }
+
+  const isAiJobInFlight = (status: string | null) => status === "QUEUED" || status === "PROCESSING"
+
+  const normalizeAiOutputs = (job?: AiJobSnapshot | AiLocalJobSnapshot | null): AiJobOutput[] => {
+    if (!job) return []
+    if (Array.isArray(job.outputs)) {
+      return job.outputs.filter((output) => output && typeof output.url === "string")
+    }
+    if ("output_images" in job && Array.isArray(job.output_images)) {
+      return job.output_images.map((url) => ({ url }))
+    }
+    return []
+  }
+
+  const formatAiTimestamp = (value: string | null) => {
+    if (!value) return "ثبت نشده"
+    try {
+      return new Intl.DateTimeFormat(locale, {
+        dateStyle: "short",
+        timeStyle: "short",
+      }).format(new Date(value))
+    } catch {
+      return value
+    }
+  }
+
+  const applyAiJobSnapshot = (data: AiJobApiResponse) => {
+    const job = data.job
+    const local = data.local
+    const nextJobId = job?.job_id || local?.jobId || null
+    const nextStatus = job?.status || local?.status || null
+    const nextProvider = job?.provider || local?.provider || null
+    const nextCreatedAt = job?.created_at || local?.createdAt || null
+    const nextUpdatedAt = job?.updated_at || local?.updatedAt || null
+    const outputs = normalizeAiOutputs(job).length > 0 ? normalizeAiOutputs(job) : normalizeAiOutputs(local)
+
+    if (nextJobId) setAiJobId(nextJobId)
+    setAiJobStatus(nextStatus)
+    setAiJobProvider(nextProvider)
+    setAiJobCreatedAt(nextCreatedAt)
+    setAiJobUpdatedAt(nextUpdatedAt)
+    setAiRemoteUnavailable(Boolean(data.remoteUnavailable))
+    if (outputs.length > 0) setAiOutputs(outputs)
+    if (nextStatus === "FAILED") setAiError(job?.error_message || local?.errorMessage || "در تولید تصویر خطا رخ داد.")
+    if (nextStatus === "CANCELED") setAiError("درخواست تصویر لغو شد.")
+  }
+
+  useEffect(() => {
+    return () => clearAiPollingTimer()
+  }, [])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -386,12 +484,18 @@ export default function EditProductPage({
       return
     }
 
+    clearAiPollingTimer()
     setAiLoading(true)
     setAiError(null)
     setAiOutputs([])
     setAiSelectedImage(null)
     setAiSelectedIndex(null)
     setAiJobStatus(null)
+    setAiJobProvider(null)
+    setAiJobCreatedAt(null)
+    setAiJobUpdatedAt(null)
+    setAiRemoteUnavailable(false)
+    setAiPollAttempts(0)
 
     try {
       const response = await fetch(`/api/dashboard/products/${productId}/ai-image-suggestions`, {
@@ -412,6 +516,11 @@ export default function EditProductPage({
 
       const data = await response.json()
       setAiJobId(data.job_id)
+      setAiJobStatus(data.status || "QUEUED")
+      setAiJobProvider(data.provider || null)
+      setAiJobCreatedAt(new Date().toISOString())
+      setAiJobUpdatedAt(new Date().toISOString())
+      setAiLoading(false)
       setAiPolling(true)
       pollAiJob(data.job_id)
     } catch (err) {
@@ -420,60 +529,70 @@ export default function EditProductPage({
     }
   }
 
-  const pollAiJob = async (jobId: string) => {
+  const pollAiJob = (jobId: string) => {
+    clearAiPollingTimer()
     setAiPolling(true)
-    const maxAttempts = 60
+    setAiLoading(false)
+    setAiError(null)
+    setAiRemoteUnavailable(false)
+    setAiPollAttempts(0)
+
+    const runId = aiPollRunIdRef.current
     let attempts = 0
 
-    const interval = setInterval(async () => {
+    const stopPolling = (message?: string) => {
+      if (aiPollRunIdRef.current !== runId) return
+      if (aiPollTimerRef.current) {
+        clearTimeout(aiPollTimerRef.current)
+        aiPollTimerRef.current = null
+      }
+      setAiPolling(false)
+      setAiLoading(false)
+      if (message) setAiError(message)
+    }
+
+    const pollOnce = async () => {
+      if (aiPollRunIdRef.current !== runId) return
       attempts++
+      setAiPollAttempts(attempts)
       try {
         const response = await fetch(`/api/dashboard/ai-image-suggestions/${jobId}`)
         if (!response.ok) {
-          throw new Error("Failed to poll job")
+          const data = await response.json().catch(() => ({}))
+          throw new Error(data.error || "Failed to poll job")
         }
         const data = await response.json()
-        const status = data.job?.status
-        setAiJobStatus(status)
-
-        const outputs = Array.isArray(data.job?.outputs)
-          ? data.job.outputs
-          : Array.isArray(data.job?.output_images)
-            ? data.job.output_images.map((url: string) => ({ url }))
-            : []
+        applyAiJobSnapshot(data)
+        const status = data.job?.status || data.local?.status || null
+        const outputs = normalizeAiOutputs(data.job).length > 0
+          ? normalizeAiOutputs(data.job)
+          : normalizeAiOutputs(data.local)
 
         if (status === "COMPLETED") {
-          clearInterval(interval)
-          setAiPolling(false)
-          setAiLoading(false)
           if (outputs.length > 0) {
             setAiOutputs(outputs)
+            stopPolling()
           } else {
-            setAiError("تصویر پیشنهادی برای این درخواست برنگشت. دوباره تلاش کنید.")
+            stopPolling("تصویر پیشنهادی برای این درخواست برنگشت. دوباره تلاش کنید.")
           }
         } else if (status === "FAILED") {
-          clearInterval(interval)
-          setAiPolling(false)
-          setAiLoading(false)
-          setAiError(data.job?.error_message || "AI suggestion failed")
+          stopPolling(data.job?.error_message || data.local?.errorMessage || "در تولید تصویر خطا رخ داد.")
         } else if (status === "CANCELED") {
-          clearInterval(interval)
-          setAiPolling(false)
-          setAiLoading(false)
-          setAiError("Job was canceled")
-        } else if (attempts >= maxAttempts) {
-          clearInterval(interval)
-          setAiPolling(false)
-          setAiLoading(false)
-          setAiError("AI suggestion timed out. Please try again.")
+          stopPolling("درخواست تصویر لغو شد.")
+        } else if (attempts >= AI_JOB_MAX_POLL_ATTEMPTS) {
+          stopPolling("درخواست تصویر هنوز در صف یا در حال پردازش است. کمی بعد ادامه دهید، آن را لغو کنید، یا درخواست تازه بسازید.")
+        } else {
+          if (data.remoteUnavailable) {
+            setAiError("ارتباط با سرویس تصویر کند یا موقتاً قطع است؛ آخرین وضعیت ذخیره‌شده نمایش داده می‌شود.")
+          }
+          aiPollTimerRef.current = setTimeout(pollOnce, AI_JOB_POLL_INTERVAL_MS)
         }
       } catch (err) {
-        clearInterval(interval)
-        setAiPolling(false)
-        setAiLoading(false)
-        setAiError(err instanceof Error ? err.message : "Failed to poll job")
+        stopPolling(err instanceof Error ? err.message : "Failed to poll job")
       }
-    }, 2000)
+    }
+
+    void pollOnce()
   }
 
   const handleAiSelectImage = async (imageUrl: string, outputIndex: number) => {
@@ -520,13 +639,75 @@ export default function EditProductPage({
   }
 
   const retryAiJob = () => {
+    clearAiPollingTimer()
     setAiError(null)
     setAiOutputs([])
     setAiSelectedImage(null)
     setAiSelectedIndex(null)
     setAiJobStatus(null)
     setAiJobId(null)
+    setAiJobProvider(null)
+    setAiJobCreatedAt(null)
+    setAiJobUpdatedAt(null)
+    setAiRemoteUnavailable(false)
+    setAiPollAttempts(0)
     createAiJob()
+  }
+
+  const recoverLatestAiJob = async () => {
+    setAiLoading(true)
+    setAiError(null)
+    try {
+      const response = await fetch(`/api/dashboard/products/${productId}/ai-image-suggestions`)
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to recover AI media job")
+      }
+      const data = await response.json()
+      if (!data.job && !data.local) {
+        setAiError("درخواست قبلی برای این محصول پیدا نشد.")
+        return
+      }
+      applyAiJobSnapshot(data)
+      const recoveredJobId = data.job?.job_id || data.local?.jobId
+      const recoveredStatus = data.job?.status || data.local?.status || null
+      if (recoveredJobId && isAiJobInFlight(recoveredStatus)) {
+        pollAiJob(recoveredJobId)
+      }
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "Failed to recover AI media job")
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  const cancelAiJob = async () => {
+    if (!aiJobId) {
+      setAiError("شناسه درخواست تصویر پیدا نشد.")
+      return
+    }
+
+    setAiCanceling(true)
+    try {
+      const response = await fetch(`/api/dashboard/ai-image-suggestions/${aiJobId}/cancel`, {
+        method: "POST",
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to cancel AI media job")
+      }
+      const data = await response.json()
+      clearAiPollingTimer()
+      applyAiJobSnapshot({ job: data.job, remoteUnavailable: false })
+      setAiJobStatus("CANCELED")
+      setAiPolling(false)
+      setAiLoading(false)
+      setAiError("درخواست تصویر لغو شد.")
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "Failed to cancel AI media job")
+    } finally {
+      setAiCanceling(false)
+    }
   }
 
   
@@ -1213,12 +1394,39 @@ export default function EditProductPage({
             <DialogTitle>پیشنهاد تصویر با AI</DialogTitle>
             <DialogDescription>
               {aiLoading && !aiPolling && "در حال ایجاد درخواست تصویر..."}
-              {aiPolling && "در حال تولید تصاویر..."}
+              {aiPolling && "در حال پیگیری درخواست تصویر..."}
               {aiJobStatus === "COMPLETED" && "تصاویر پیشنهادی آماده است"}
               {aiJobStatus === "FAILED" && "خطا در تولید تصویر"}
               {aiError && aiJobStatus !== "FAILED" && aiError}
             </DialogDescription>
           </DialogHeader>
+
+          {(aiJobId || aiJobStatus) && (
+            <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={aiJobStatus === "COMPLETED" ? "default" : aiJobStatus === "FAILED" ? "destructive" : "secondary"}>
+                  {aiJobStatus || "نامشخص"}
+                </Badge>
+                {aiJobProvider && <Badge variant="outline">{aiJobProvider}</Badge>}
+                {aiRemoteUnavailable && <Badge variant="secondary">آخرین وضعیت محلی</Badge>}
+              </div>
+              <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-3.5 w-3.5" />
+                  ایجاد: {formatAiTimestamp(aiJobCreatedAt)}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-3.5 w-3.5" />
+                  آخرین بروزرسانی: {formatAiTimestamp(aiJobUpdatedAt)}
+                </div>
+              </div>
+              {aiPolling && (
+                <p className="text-xs text-muted-foreground">
+                  تلاش {toPersianDigits(aiPollAttempts)} از {toPersianDigits(AI_JOB_MAX_POLL_ATTEMPTS)}. اگر سرویس تصویر کند باشد، این صفحه آخرین وضعیت ذخیره‌شده را نگه می‌دارد.
+                </p>
+              )}
+            </div>
+          )}
 
           {aiLoading && !aiPolling && (
             <div className="flex items-center justify-center py-12">
@@ -1227,10 +1435,16 @@ export default function EditProductPage({
           )}
 
           {aiPolling && (
-            <div className="flex items-center justify-center py-12">
+            <div className="flex items-center justify-center py-8">
               <div className="text-center space-y-4">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto" />
-                <p className="text-sm text-muted-foreground">در حال تولید تصاویر پیشنهادی...</p>
+                <p className="text-sm text-muted-foreground">در حال تولید یا پیگیری تصاویر پیشنهادی...</p>
+                {aiJobId && isAiJobInFlight(aiJobStatus) && (
+                  <Button type="button" variant="outline" size="sm" onClick={cancelAiJob} disabled={aiCanceling}>
+                    {aiCanceling ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Ban className="h-4 w-4 ml-2" />}
+                    لغو درخواست
+                  </Button>
+                )}
               </div>
             </div>
           )}
@@ -1275,9 +1489,23 @@ export default function EditProductPage({
           {aiError && aiJobStatus !== "FAILED" && (
             <div className="text-center py-8 space-y-4">
               <p className="text-destructive">{aiError}</p>
-              <Button type="button" variant="outline" onClick={retryAiJob}>
-                تلاش مجدد
-              </Button>
+              <div className="flex flex-wrap justify-center gap-2">
+                {aiJobId && isAiJobInFlight(aiJobStatus) && (
+                  <Button type="button" variant="outline" onClick={() => pollAiJob(aiJobId)}>
+                    <RotateCcw className="h-4 w-4 ml-2" />
+                    ادامه پیگیری
+                  </Button>
+                )}
+                {aiJobId && isAiJobInFlight(aiJobStatus) && (
+                  <Button type="button" variant="outline" onClick={cancelAiJob} disabled={aiCanceling}>
+                    {aiCanceling ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Ban className="h-4 w-4 ml-2" />}
+                    لغو درخواست
+                  </Button>
+                )}
+                <Button type="button" variant="outline" onClick={retryAiJob}>
+                  تلاش مجدد
+                </Button>
+              </div>
             </div>
           )}
 
@@ -1302,14 +1530,20 @@ export default function EditProductPage({
           )}
 
           {!aiLoading && !aiPolling && aiJobStatus !== "COMPLETED" && aiJobStatus !== "FAILED" && !aiError && (
-            <div className="text-center py-8">
+            <div className="text-center py-8 space-y-3">
               <p className="text-sm text-muted-foreground mb-4">
                 با استفاده از هوش مصنوعی، ۳ تصویر پیشنهادی برای محصول شما تولید می‌شود.
               </p>
-              <Button type="button" onClick={createAiJob} disabled={aiLoading || aiPolling}>
-                <Sparkles className="h-4 w-4 ml-2" />
-                شروع تولید تصاویر
-              </Button>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button type="button" onClick={createAiJob} disabled={aiLoading || aiPolling}>
+                  <Sparkles className="h-4 w-4 ml-2" />
+                  شروع تولید تصاویر
+                </Button>
+                <Button type="button" variant="outline" onClick={recoverLatestAiJob} disabled={aiLoading || aiPolling}>
+                  <RotateCcw className="h-4 w-4 ml-2" />
+                  ادامه آخرین درخواست
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>

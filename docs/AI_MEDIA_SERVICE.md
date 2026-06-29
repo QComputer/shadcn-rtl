@@ -50,15 +50,21 @@ Request body:
 Response:
 ```json
 {
-  "success": true,
-  "imageUrl": "https://...",
-  "storedDurably": true,
-  "storageStatus": "blob"
+  "job_id": "string",
+  "status": "QUEUED",
+  "provider": "MOCK",
+  "local_job_id": "string"
 }
 ```
 
-- `storedDurably` is `true` when the image was copied to Vercel Blob, `false` when falling back to the remote URL.
-- `storageStatus` is `blob`, `remote-unconfigured`, or `remote-fallback`.
+### Recover latest product job
+
+```http
+GET /api/dashboard/products/{productId}/ai-image-suggestions
+Authorization: required (ADMIN, MANAGER)
+```
+
+Returns the latest local `AiMediaJob` snapshot for the product. The dashboard uses this for long-running job recovery without calling worker internals.
 
 ### Poll job status
 
@@ -78,9 +84,21 @@ Response:
       { "url": "https://..." }
     ]
   },
-  "local": { ... }
+  "local": { "...": "last-known local AiMediaJob snapshot" },
+  "remoteUnavailable": false
 }
 ```
+
+If the Render status check is temporarily unavailable, Bazar Baz returns `remoteUnavailable: true` and a remote-compatible `job` object built from the local `AiMediaJob` row.
+
+### Cancel job
+
+```http
+POST /api/dashboard/ai-image-suggestions/{jobId}/cancel
+Authorization: required (ADMIN, MANAGER)
+```
+
+Cancel is allowed only for `QUEUED` or `PROCESSING` jobs and remains organization-scoped through the local job row.
 
 ### Select image
 
@@ -127,11 +145,12 @@ With `check=1`, Bazar Baz probes the deployed Render `/health` and `/ready` endp
 3. Seller clicks the button → a dialog opens.
 4. Seller clicks **شروع تولید تصاویر**.
 5. Bazar Baz creates a job on the AI media service.
-6. UI polls until `COMPLETED`, `FAILED`, or `CANCELED`.
-7. On completion, 3 suggestion cards are shown.
-8. Seller clicks **انتخاب تصویر** on a card.
-9. Seller confirms in the browser dialog.
-10. The product image preview updates.
+6. UI polls with bounded timeout scheduling until `COMPLETED`, `FAILED`, or `CANCELED`.
+7. For long-running jobs, the dialog shows last-known status, provider, creation/update times, retry, continue, and cancel controls.
+8. On completion, 3 suggestion cards are shown.
+9. Seller clicks **انتخاب تصویر** on a card.
+10. Seller confirms in the browser dialog.
+11. The product image preview updates.
 
 ### New product form
 - The AI button is shown as **disabled** on the new product form.
@@ -171,9 +190,10 @@ The deployed smoke verifies Bazar Baz route protection plus Render `/health`, `/
 ## Important Warnings
 
 1. **Durable storage (BZ-AI-02 / P86)**: When `BLOB_READ_WRITE_TOKEN` is configured, selected images are copied from Render's temporary local storage into Vercel Blob before being saved to the product. The product image URL is then the durable Blob URL. If Blob is not configured, or Blob copy fails, the ephemeral Render URL is used as an explicit fallback.
-2. **Remote image validation**: Remote images are accepted only when content type and image signature pass the same upload checks used for direct image uploads.
-3. **No OpenAI/premium provider is called** in this phase.
-4. **Do not commit `.env`** files containing real secrets.
+2. **Long-running UX (P87)**: If Render polling is slow or temporarily unavailable, the dashboard can show the latest local job status and let the seller continue polling, cancel, or retry.
+3. **Remote image validation**: Remote images are accepted only when content type and image signature pass the same upload checks used for direct image uploads.
+4. **No OpenAI/premium provider is called** in this phase.
+5. **Do not commit `.env`** files containing real secrets.
 
 ### Environment Variables for Durable Storage
 
@@ -200,3 +220,4 @@ If `BLOB_READ_WRITE_TOKEN` is missing, the system falls back to the ephemeral Re
 - No OpenAI/premium provider is called
 - Dashboard status remains authenticated and secret-safe
 - Optional remote readiness checks cover Render `/health` and `/ready`
+- Long-running job UI shows last-known status, timestamps, continue, retry, and cancel controls

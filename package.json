@@ -131,6 +131,7 @@
     "quality:ai-media-health-gate": "node scripts/quality/validate-ai-media-health-gate.mjs",
     "quality:ai-media-mock-flow": "node scripts/quality/validate-ai-media-mock-flow.mjs",
     "quality:ai-media-durable-storage": "node scripts/quality/validate-ai-media-durable-storage.mjs",
+    "quality:ai-media-long-running-ux": "node scripts/quality/validate-ai-media-long-running-ux.mjs",
     "test:ai-media": "npx tsx scripts/quality/validate-ai-media.mts",
     "quality:ai-media-client": "node scripts/quality/validate-ai-media.mjs",
     "quality:ai-media-mock": "node scripts/quality/validate-ai-media.mjs",

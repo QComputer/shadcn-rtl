@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-29._
 
-This roadmap is ordered for risk reduction. Phases 18-86 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, and AI media hardening roadmap is implemented through Phase 86.
+This roadmap is ordered for risk reduction. Phases 18-87 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, and AI media hardening roadmap is implemented through Phase 87.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P86 - AI Media Durable Storage Acceptance**.
+- Completed through **P87 - AI Media Long-Running Job UX**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -19,10 +19,10 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P87 - Long-running/local-worker-compatible job state UX
+P88 - Usage logs, quotas, and audit controls before paid generation
 ```
 
-Next work should improve dashboard UX for long-running AI jobs: queued/processing recovery, clear retry/cancel affordances, last-known local status, and seller-facing timeout copy while Bazar Baz continues to call only Render.
+Next work should add tenant-scoped usage logs, quota checks, and admin audit controls before any paid AI generation rollout.
 
 Immediate validation target:
 
@@ -33,6 +33,7 @@ pnpm run quality:ai-media
 pnpm run quality:ai-media-health-gate
 pnpm run quality:ai-media-mock-flow
 pnpm run quality:ai-media-durable-storage
+pnpm run quality:ai-media-long-running-ux
 pnpm run quality:export-downloads
 pnpm run quality:deployed-import-export-smoke
 pnpm run quality:local
@@ -64,12 +65,12 @@ Completed integrated phases:
 | P84 | AI media health gate audit. |
 | P85 | AI media MOCK flow acceptance. |
 | P86 | AI media durable storage acceptance. |
+| P87 | AI media long-running job UX. |
 
 Upcoming AI media phases should be treated as audits/hardening against the actual implementation already present in the repo:
 
 | Phase | Focus |
 | --- | --- |
-| P87 | Long-running/local-worker-compatible job state UX. |
 | P88 | Usage logs, quotas, and audit controls before paid generation. |
 | P89 | Import draft product to AI image suggestion workflow integration. |
 | P90 | Deployed AI media rollout gate through Bazar Baz. |

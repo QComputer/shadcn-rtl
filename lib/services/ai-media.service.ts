@@ -14,8 +14,24 @@ import { hasPermission } from "@/lib/types";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { copyRemoteImageToBlob } from "@/lib/media-storage";
 import { shouldUseVercelBlob } from "@/lib/blob-storage";
+import type { AiMediaJobOutput } from "@/lib/services/ai-media-service-client";
 
 type AiSelectedImageStorageStatus = "blob" | "remote-unconfigured" | "remote-fallback";
+
+export type AiMediaLocalJob = {
+  id: string;
+  jobId: string;
+  organizationId: string;
+  productId: string;
+  requestedByUserId: string;
+  status: string;
+  provider: string;
+  errorMessage: string | null;
+  inputs: Record<string, unknown> | null;
+  outputs: AiMediaJobOutput[];
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 function revalidateAiSelectedProductImage(organizationSlug: string, productSlugOrId: string) {
   try {
@@ -31,6 +47,33 @@ function revalidateAiSelectedProductImage(organizationSlug: string, productSlugO
 
 function normalizeOutputs(job: AiMediaJob) {
   return job.outputs ?? job.output_images?.map((url) => ({ url })) ?? [];
+}
+
+function normalizeStoredOutputs(outputs: unknown): AiMediaJobOutput[] {
+  if (!Array.isArray(outputs)) return [];
+  return outputs
+    .filter((output): output is Record<string, unknown> => Boolean(output) && typeof output === "object")
+    .filter((output) => typeof output.url === "string")
+    .map((output) => ({
+      ...output,
+      url: String(output.url),
+    })) as AiMediaJobOutput[];
+}
+
+export function localAiMediaJobToRemoteJob(job: AiMediaLocalJob): AiMediaJob {
+  return {
+    job_id: job.jobId,
+    status: job.status as AiMediaJob["status"],
+    provider: job.provider,
+    organization_id: job.organizationId,
+    product_id: job.productId,
+    requested_by_user_id: job.requestedByUserId,
+    created_at: job.createdAt.toISOString(),
+    updated_at: job.updatedAt.toISOString(),
+    error_message: job.errorMessage ?? undefined,
+    inputs: job.inputs ?? undefined,
+    outputs: job.outputs,
+  };
 }
 
 export class AiMediaService {
@@ -150,18 +193,40 @@ export class AiMediaService {
     }
   }
 
-  async getLocalJob(jobId: string): Promise<{
-    id: string;
-    jobId: string;
-    organizationId: string;
-    productId: string;
-    status: string;
-    provider: string;
-    inputs: Record<string, unknown> | null;
-    outputs: Record<string, unknown> | null;
-    createdAt: Date;
-    updatedAt: Date;
-  } | null> {
+  async getJobStatus(jobId: string): Promise<{
+    job: AiMediaJob;
+    local: AiMediaLocalJob;
+    remoteUnavailable: boolean;
+    remoteError?: string;
+  }> {
+    const localJob = await this.getLocalJob(jobId);
+    if (!localJob) {
+      throw new ApiError(404, "Job not found");
+    }
+
+    try {
+      const remoteJob = await this.getJobById(jobId);
+      const refreshedLocalJob = await this.getLocalJob(jobId);
+      return {
+        job: remoteJob,
+        local: refreshedLocalJob ?? localJob,
+        remoteUnavailable: false,
+      };
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        throw error;
+      }
+
+      return {
+        job: localAiMediaJobToRemoteJob(localJob),
+        local: localJob,
+        remoteUnavailable: true,
+        remoteError: error instanceof Error ? error.message : "AI media service is temporarily unavailable",
+      };
+    }
+  }
+
+  async getLocalJob(jobId: string): Promise<AiMediaLocalJob | null> {
     const job = await prisma.aiMediaJob.findFirst({
       where: { jobId },
       select: {
@@ -169,8 +234,10 @@ export class AiMediaService {
         jobId: true,
         organizationId: true,
         productId: true,
+        requestedByUserId: true,
         status: true,
         provider: true,
+        errorMessage: true,
         inputs: true,
         outputs: true,
         createdAt: true,
@@ -183,7 +250,36 @@ export class AiMediaService {
     return {
       ...job,
       inputs: (job.inputs as Record<string, unknown>) ?? null,
-      outputs: (job.outputs as Record<string, unknown>) ?? null,
+      outputs: normalizeStoredOutputs(job.outputs),
+    };
+  }
+
+  async getLatestProductJob(productId: string, organizationId: string): Promise<AiMediaLocalJob | null> {
+    const job = await prisma.aiMediaJob.findFirst({
+      where: { productId, organizationId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        jobId: true,
+        organizationId: true,
+        productId: true,
+        requestedByUserId: true,
+        status: true,
+        provider: true,
+        errorMessage: true,
+        inputs: true,
+        outputs: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!job) return null;
+
+    return {
+      ...job,
+      inputs: (job.inputs as Record<string, unknown>) ?? null,
+      outputs: normalizeStoredOutputs(job.outputs),
     };
   }
 
@@ -275,6 +371,10 @@ export class AiMediaService {
 
     if (localJob.organizationId !== organizationId) {
       throw new ApiError(403, "Forbidden");
+    }
+
+    if (!["QUEUED", "PROCESSING"].includes(localJob.status)) {
+      throw new ApiError(400, "Only queued or processing AI media jobs can be canceled");
     }
 
     try {

@@ -22,11 +22,12 @@ export async function GET(
       throw new ApiError(403, "Forbidden");
     }
 
-    const remoteJob = await aiMediaService.getJobById(jobId);
+    const status = await aiMediaService.getJobStatus(jobId);
 
     return NextResponse.json({
-      job: remoteJob,
-      local: localJob,
+      job: status.job,
+      local: status.local,
+      remoteUnavailable: status.remoteUnavailable,
     });
   } catch (error) {
     return jsonError(error, "Failed to load AI media job");

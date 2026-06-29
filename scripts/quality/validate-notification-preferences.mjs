@@ -77,9 +77,9 @@ add("shop profile passes locale to opt-in component", /<WebPushOptIn\s+organizat
 
 add("package exposes P99 validator", /"quality:notification-preferences":\s*"node scripts\/quality\/validate-notification-preferences\.mjs"/.test(packageJson))
 add("project validator references P99 validator", /validate-notification-preferences\.mjs/.test(validateProject) && /P99 notification preferences validator passes/.test(validateProject))
-add("README keeps P99 complete while marking P104 latest and P105 next", /\| 99 \| Notification domain model and preferences/.test(readme) && /Latest completed implementation phase:\s+\*\*P104 - Deployed PWA, Push, and SMS smoke gates\*\*/.test(readme) && /Recommended next phase:\s+\*\*P105 - Production rollout runbook\*\*/.test(readme))
-add("roadmap marks P99 complete in P104 progression", /\| P99 \| Notification domain model and preferences\. \|/.test(roadmap) && /Completed through \*\*P104 - Deployed PWA, Push, and SMS smoke gates\*\*/.test(roadmap))
-add("source of truth names P104 baseline", /after P104 Deployed PWA, Push, and SMS smoke gates/.test(sourceOfTruth) && /Notification domain model and preferences exists/.test(sourceOfTruth))
+add("README keeps P99 complete while marking P105 latest", /\| 99 \| Notification domain model and preferences/.test(readme) && /Latest completed implementation phase:\s+\*\*P105 - Production rollout runbook\*\*/.test(readme) && /No active next phase; current integrated roadmap is complete/.test(readme))
+add("roadmap marks P99 complete in P105 progression", /\| P99 \| Notification domain model and preferences\. \|/.test(roadmap) && /Completed through \*\*P105 - Production rollout runbook\*\*/.test(roadmap))
+add("source of truth names P105 baseline", /after P105 Production rollout runbook/.test(sourceOfTruth) && /Notification domain model and preferences exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

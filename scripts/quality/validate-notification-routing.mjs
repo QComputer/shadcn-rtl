@@ -43,9 +43,9 @@ add("Web Push service exposes single-customer delivery", /sendToCustomer/.test(w
 add("single-customer Web Push records delivery attempts and cleans invalid subscriptions", /webPushDelivery\.create/.test(webPush) && /statusCode === 404 \|\| statusCode === 410/.test(webPush))
 add("package exposes P102 validator", /"quality:notification-routing":\s*"node scripts\/quality\/validate-notification-routing\.mjs"/.test(packageJson))
 add("project validator references P102 validator", /validate-notification-routing\.mjs/.test(validateProject) && /P102 notification routing validator passes/.test(validateProject))
-add("README keeps P102 complete while marking P104 latest and P105 next", /\| 102 \| Notification templates, routing, and delivery policies/.test(readme) && /Latest completed implementation phase:\s+\*\*P104 - Deployed PWA, Push, and SMS smoke gates\*\*/.test(readme) && /Recommended next phase:\s+\*\*P105 - Production rollout runbook\*\*/.test(readme))
-add("roadmap marks P102 complete in P104 progression", /\| P102 \| Notification templates, routing, and delivery policies\. \|/.test(roadmap) && /Completed through \*\*P104 - Deployed PWA, Push, and SMS smoke gates\*\*/.test(roadmap))
-add("source of truth names P104 baseline", /after P104 Deployed PWA, Push, and SMS smoke gates/.test(sourceOfTruth) && /Notification routing exists/.test(sourceOfTruth))
+add("README keeps P102 complete while marking P105 latest", /\| 102 \| Notification templates, routing, and delivery policies/.test(readme) && /Latest completed implementation phase:\s+\*\*P105 - Production rollout runbook\*\*/.test(readme) && /No active next phase; current integrated roadmap is complete/.test(readme))
+add("roadmap marks P102 complete in P105 progression", /\| P102 \| Notification templates, routing, and delivery policies\. \|/.test(roadmap) && /Completed through \*\*P105 - Production rollout runbook\*\*/.test(roadmap))
+add("source of truth names P105 baseline", /after P105 Production rollout runbook/.test(sourceOfTruth) && /Notification routing exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

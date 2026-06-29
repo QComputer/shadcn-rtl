@@ -65,9 +65,9 @@ add("env validator keeps SMS dry-run safeguards", /SMS_PROVIDER/.test(envValidat
 add(".env.example keeps placeholder-only SMS config", /SMS_PROVIDER=DRY_RUN/.test(envExample) && /SMS_DRY_RUN=true/.test(envExample) && /^SMS_IR_API_KEY=$/m.test(envExample) && /^SMS_IR_LINE_NUMBER=$/m.test(envExample))
 add("package exposes P101 validator", /"quality:sms-provider":\s*"node scripts\/quality\/validate-sms-provider\.mjs"/.test(packageJson))
 add("project validator references P101 validator", /validate-sms-provider\.mjs/.test(validateProject) && /P101 SMS provider validator passes/.test(validateProject))
-add("README keeps P101 complete while marking P104 latest and P105 next", /\| 101 \| SMS provider abstraction and sms\.ir integration/.test(readme) && /Latest completed implementation phase:\s+\*\*P104 - Deployed PWA, Push, and SMS smoke gates\*\*/.test(readme) && /Recommended next phase:\s+\*\*P105 - Production rollout runbook\*\*/.test(readme))
-add("roadmap keeps P101 complete while marking P104 baseline", /\| P101 \| SMS provider abstraction and sms\.ir integration\. \|/.test(roadmap) && /Completed through \*\*P104 - Deployed PWA, Push, and SMS smoke gates\*\*/.test(roadmap))
-add("source of truth names P104 baseline", /after P104 Deployed PWA, Push, and SMS smoke gates/.test(sourceOfTruth) && /SMS provider abstraction exists/.test(sourceOfTruth))
+add("README keeps P101 complete while marking P105 latest", /\| 101 \| SMS provider abstraction and sms\.ir integration/.test(readme) && /Latest completed implementation phase:\s+\*\*P105 - Production rollout runbook\*\*/.test(readme) && /No active next phase; current integrated roadmap is complete/.test(readme))
+add("roadmap keeps P101 complete while marking P105 baseline", /\| P101 \| SMS provider abstraction and sms\.ir integration\. \|/.test(roadmap) && /Completed through \*\*P105 - Production rollout runbook\*\*/.test(roadmap))
+add("source of truth names P105 baseline", /after P105 Production rollout runbook/.test(sourceOfTruth) && /SMS provider abstraction exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

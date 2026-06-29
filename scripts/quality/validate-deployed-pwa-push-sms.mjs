@@ -41,9 +41,9 @@ add("smoke keeps mutating dry-run send optional", /DEPLOYED_PWA_PUSH_SMS_ENABLE_
 add("smoke writes redacted evidence", /DEPLOYED_PWA_PUSH_SMS_EVIDENCE_DIR/.test(smoke) && /evidence\.json/.test(smoke) && /redacted-password/.test(smoke))
 add("package exposes P104 scripts", /"e2e:deployed:pwa-push-sms":\s*"node scripts\/e2e\/deployed-pwa-push-sms-smoke\.mjs"/.test(packageJson) && /"quality:deployed-pwa-push-sms":\s*"node scripts\/quality\/validate-deployed-pwa-push-sms\.mjs"/.test(packageJson))
 add("project validator references P104 validator", /validate-deployed-pwa-push-sms\.mjs/.test(validateProject) && /P104 deployed PWA Push SMS validator passes/.test(validateProject))
-add("README marks P104 latest and P105 next", /Latest completed implementation phase:\s+\*\*P104 - Deployed PWA, Push, and SMS smoke gates\*\*/.test(readme) && /Recommended next phase:\s+\*\*P105 - Production rollout runbook\*\*/.test(readme))
-add("roadmap marks P104 complete and P105 next", /Completed through \*\*P104 - Deployed PWA, Push, and SMS smoke gates\*\*/.test(roadmap) && /P105 - Production rollout runbook/.test(roadmap))
-add("source of truth names P104 baseline", /after P104 Deployed PWA, Push, and SMS smoke gates/.test(sourceOfTruth) && /Deployed PWA, Push, and SMS smoke exists/.test(sourceOfTruth))
+add("README keeps P104 complete while marking P105 latest", /P104 deployed PWA\/Push\/SMS smoke gates/.test(readme) && /Latest completed implementation phase:\s+\*\*P105 - Production rollout runbook\*\*/.test(readme) && /No active next phase; current integrated roadmap is complete/.test(readme))
+add("roadmap marks P104 complete in P105 progression", /\| P104 \| Deployed PWA, Push, and SMS smoke gates\. \|/.test(roadmap) && /Completed through \*\*P105 - Production rollout runbook\*\*/.test(roadmap))
+add("source of truth names P105 baseline while keeping P104 smoke", /after P105 Production rollout runbook/.test(sourceOfTruth) && /Deployed PWA, Push, and SMS smoke exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

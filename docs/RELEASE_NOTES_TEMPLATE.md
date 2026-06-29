@@ -22,6 +22,16 @@ Production URL:
 - Uploaded/static social preview candidate reviewed:
 - Notes on stale deployed sitemap/category candidates:
 
+## PWA Push SMS Rollout Evidence
+
+- Evidence archive:
+- Persian-first PWA smoke reviewed:
+- Notification operations dashboard reviewed:
+- Release owner:
+- Monitoring owner:
+- Rollback owner:
+- Approved audience/channels:
+
 ## Database And Deployment Notes
 
 - Migrations:

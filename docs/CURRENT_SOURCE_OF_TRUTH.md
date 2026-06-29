@@ -4,7 +4,7 @@ Date: 2026-06-29
 
 ## Current validated baseline
 
-The current working baseline after P104 Deployed PWA, Push, and SMS smoke gates is source-validator green after the P104 validation gate.
+The current working baseline after P105 Production rollout runbook is source-validator green after the P105 validation gate.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -54,6 +54,7 @@ pnpm run quality:sms-provider
 pnpm run quality:notification-routing
 pnpm run quality:notification-operations
 pnpm run quality:deployed-pwa-push-sms
+pnpm run quality:production-rollout
 ```
 
 Clean handoff gate introduced in P33:
@@ -138,6 +139,7 @@ pnpm run db:migrate:neon:dry-run
 - Notification routing exists through Persian-first reusable templates, per-template delivery policies, `notificationRouterService`, single-customer Web Push delivery, SMS/in-app/Web Push service boundaries, channel preference checks, dry-run route previews, audit logging, and the `quality:notification-routing` validator.
 - Notification operations dashboard exists through `notificationOperationsService`, guarded `/api/dashboard/notification-operations`, localized `/dashboard/notification-operations`, operator-role navigation, in-app/Web Push/SMS delivery counts, provider readiness badges, recent delivery rows, and the `quality:notification-operations` validator.
 - Deployed PWA, Push, and SMS smoke exists through `scripts/e2e/deployed-pwa-push-sms-smoke.mjs`, `e2e:deployed:pwa-push-sms`, Persian default-locale/manifest/offline/service-worker checks, dashboard/customer notification readiness checks, dry-run provider safety assertions, redacted evidence, and the `quality:deployed-pwa-push-sms` validator.
+- Production rollout runbook exists through `docs/PHASE_105_PRODUCTION_ROLLOUT_RUNBOOK.md`, explicit PWA/Web Push/SMS provider enablement stages, notification-operations monitoring and rollback checklists, PWA/Push/SMS evidence archiving, release-note ownership fields, and the `quality:production-rollout` validator.
 - Export Downloads exists through protected `GET /api/dashboard/exports/jobs/[jobId]/download`, completed-job checks, private no-store attachment responses, lightweight export job list responses, Persian-first dashboard download actions, and the `quality:export-downloads` validator.
 - Deployed Import/Export Smoke exists through `scripts/e2e/deployed-import-export-smoke.mjs`, validating deployed auth, organization resolution, draft-first manual text imports, rejection instead of publishing, JSON/CSV export job creation, and protected export downloads against a real deployment.
 - P83 Project State Reconciliation exists through `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md`, which marks older Phase-18 handoff guidance as historical and reconciles the post-P82 local AI media commits with the current roadmap.
@@ -234,6 +236,7 @@ pnpm run db:migrate:neon:dry-run
 | P102 | Notification templates, routing, and delivery policies before admin/operator dashboards. |
 | P103 | Admin/operator notification dashboard before deployed PWA, Push, and SMS smoke gates. |
 | P104 | Deployed PWA, Push, and SMS smoke gates before production rollout runbooks. |
+| P105 | Production rollout runbook completing the current integrated roadmap. |
 
 ## Current route/API inventory
 
@@ -354,7 +357,7 @@ Deferred:
 - Custom-domain smoke tests are deployment/data dependent. Current reference configuration uses `CUSTOM_DOMAIN_SMOKE_BASE_URL=https://www.khalae.ir`, `CUSTOM_DOMAIN_SMOKE_PLATFORM_URL=https://www.bazar-baz.ir`, and `CUSTOM_DOMAIN_SMOKE_SHOP_SLUG=ahmad`.
 - Shop owners cannot self-serve custom-domain management yet; P60/P67 keep domain management SUPER_ADMIN-only.
 - Vercel domain automation must remain dry-run-safe by default and must never hardcode tokens or project/team secrets.
-- P68-P104 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation/downloads, review-gated import publishing, AI media suggestion hardening, deployed import/export smoke coverage, project-state reconciliation, AI media health-gate hardening, AI media MOCK-flow acceptance, AI media durable-storage acceptance, AI media long-running job UX, AI media usage controls, import-to-AI-media bridge, deployed AI media rollout gate, AI media rollout evidence archive, AI media paid-provider controls, AI media cost/rollback guardrails, AI media seller-facing paid-provider state UX, source cleanup/current-state verification, open-fields workflow audit, PWA foundation, offline shell quality gates, notification preferences, Web Push delivery, SMS provider abstraction, notification routing, notification operations dashboard, and deployed PWA/Push/SMS smoke gates are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
+- P68-P105 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation/downloads, review-gated import publishing, AI media suggestion hardening, deployed import/export smoke coverage, project-state reconciliation, AI media health-gate hardening, AI media MOCK-flow acceptance, AI media durable-storage acceptance, AI media long-running job UX, AI media usage controls, import-to-AI-media bridge, deployed AI media rollout gate, AI media rollout evidence archive, AI media paid-provider controls, AI media cost/rollback guardrails, AI media seller-facing paid-provider state UX, source cleanup/current-state verification, open-fields workflow audit, PWA foundation, offline shell quality gates, notification preferences, Web Push delivery, SMS provider abstraction, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke gates, and production rollout runbook are implemented. Future importer/exporter phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports, auditable, rate-limited, and review-before-publish.
 
 ## Clean release rules
 
@@ -377,6 +380,7 @@ node_modules/
 test-results/deployed-social-preview/
 /.release/social-preview-evidence/
 /.release/ai-media-rollout-evidence/
+/.release/pwa-push-sms-rollout-evidence/
 test-results/
 playwright-report/
 coverage/
@@ -394,13 +398,9 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P105 - Production rollout runbook
+No active next phase
 ```
 
-Scope:
+The current integrated roadmap is complete after P105. Future implementation work should start from a new scoped roadmap.
 
-1. Document provider enablement and rollback steps for PWA, Web Push, SMS, and notification operations.
-2. Define production monitoring, evidence retention, and incident response checklist.
-3. Keep real-send enablement explicit, reversible, and tied to operator sign-off.
-
-See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` for the roadmap reconciliation, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md` for the AI media health gate, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md` for product suggestion MOCK-flow acceptance, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md` for durable selected-image storage, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md` for long-running job UX, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md` for usage and quota controls, `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md` for import-to-AI-media workflow integration, `docs/PHASE_90_DEPLOYED_AI_MEDIA_ROLLOUT_GATE.md` for deployed Bazar Baz AI media rollout validation, `docs/PHASE_91_AI_MEDIA_ROLLOUT_EVIDENCE.md` for operator-safe rollout evidence retention, `docs/PHASE_92_AI_MEDIA_PAID_PROVIDER_CONTROLS.md` for explicit paid-provider controls, `docs/PHASE_93_AI_MEDIA_COST_ROLLBACK.md` for cost telemetry and rollback guardrails, `docs/PHASE_94_AI_MEDIA_SELLER_STATE_UX.md` for seller-facing AI media state UX, `docs/PHASE_95_SOURCE_CLEANUP_VERIFICATION.md` for source cleanup and security verification, `docs/PHASE_96_OPEN_FIELDS_AUDIT.md` for open-fields workflow audit, `docs/PHASE_97_PWA_FOUNDATION.md` for PWA install foundation, `docs/PHASE_98_PWA_OFFLINE_SHELL.md` for PWA offline shell quality gates, `docs/PHASE_99_NOTIFICATION_PREFERENCES.md` for notification preference policy, `docs/PHASE_100_WEB_PUSH_DELIVERY.md` for preference-aware Web Push delivery, `docs/PHASE_101_SMS_PROVIDER.md` for SMS provider abstraction, `docs/PHASE_102_NOTIFICATION_ROUTING.md` for template routing, `docs/PHASE_103_NOTIFICATION_OPERATIONS_DASHBOARD.md` for the operator dashboard, and `docs/PHASE_104_DEPLOYED_PWA_PUSH_SMS_SMOKE.md` for deployed smoke gates.
+See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` for the roadmap reconciliation, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md` for the AI media health gate, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md` for product suggestion MOCK-flow acceptance, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md` for durable selected-image storage, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md` for long-running job UX, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md` for usage and quota controls, `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md` for import-to-AI-media workflow integration, `docs/PHASE_90_DEPLOYED_AI_MEDIA_ROLLOUT_GATE.md` for deployed Bazar Baz AI media rollout validation, `docs/PHASE_91_AI_MEDIA_ROLLOUT_EVIDENCE.md` for operator-safe rollout evidence retention, `docs/PHASE_92_AI_MEDIA_PAID_PROVIDER_CONTROLS.md` for explicit paid-provider controls, `docs/PHASE_93_AI_MEDIA_COST_ROLLBACK.md` for cost telemetry and rollback guardrails, `docs/PHASE_94_AI_MEDIA_SELLER_STATE_UX.md` for seller-facing AI media state UX, `docs/PHASE_95_SOURCE_CLEANUP_VERIFICATION.md` for source cleanup and security verification, `docs/PHASE_96_OPEN_FIELDS_AUDIT.md` for open-fields workflow audit, `docs/PHASE_97_PWA_FOUNDATION.md` for PWA install foundation, `docs/PHASE_98_PWA_OFFLINE_SHELL.md` for PWA offline shell quality gates, `docs/PHASE_99_NOTIFICATION_PREFERENCES.md` for notification preference policy, `docs/PHASE_100_WEB_PUSH_DELIVERY.md` for preference-aware Web Push delivery, `docs/PHASE_101_SMS_PROVIDER.md` for SMS provider abstraction, `docs/PHASE_102_NOTIFICATION_ROUTING.md` for template routing, `docs/PHASE_103_NOTIFICATION_OPERATIONS_DASHBOARD.md` for the operator dashboard, `docs/PHASE_104_DEPLOYED_PWA_PUSH_SMS_SMOKE.md` for deployed smoke gates, and `docs/PHASE_105_PRODUCTION_ROLLOUT_RUNBOOK.md` for production rollout operations.

@@ -49,6 +49,8 @@
     "e2e:deployed:pwa-push-sms": "node scripts/e2e/deployed-pwa-push-sms-smoke.mjs",
     "smoke:deployed:pwa-push-sms": "node scripts/e2e/deployed-pwa-push-sms-smoke.mjs",
     "quality:deployed-pwa-push-sms": "node scripts/quality/validate-deployed-pwa-push-sms.mjs",
+    "quality:production-rollout": "node scripts/quality/validate-production-rollout-runbook.mjs",
+    "release:pwa-push-sms-rollout-evidence": "node scripts/release/archive-pwa-push-sms-rollout-evidence.mjs",
     "e2e:deployed:phase11": "node scripts/e2e/deployed-phase11-health.mjs",
     "smoke:deployed:health": "node scripts/e2e/deployed-phase11-health.mjs",
     "e2e:deployed:phase12": "node scripts/e2e/deployed-phase12-messaging.mjs",

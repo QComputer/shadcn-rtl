@@ -52,11 +52,13 @@ Response:
 {
   "success": true,
   "imageUrl": "https://...",
-  "storedDurably": true
+  "storedDurably": true,
+  "storageStatus": "blob"
 }
 ```
 
 - `storedDurably` is `true` when the image was copied to Vercel Blob, `false` when falling back to the remote URL.
+- `storageStatus` is `blob`, `remote-unconfigured`, or `remote-fallback`.
 
 ### Poll job status
 
@@ -168,8 +170,8 @@ The deployed smoke verifies Bazar Baz route protection plus Render `/health`, `/
 
 ## Important Warnings
 
-1. **Durable storage (BZ-AI-02)**: When `BLOB_READ_WRITE_TOKEN` is configured, selected images are copied from Render's temporary local storage into Vercel Blob before being saved to the product. The product image URL is then the durable Blob URL. If Blob is not configured, the ephemeral Render URL is used as a fallback.
-2. **Next phase**: If using Blob storage, no further action is needed for image durability. If not using Blob, implement durable object storage before production use.
+1. **Durable storage (BZ-AI-02 / P86)**: When `BLOB_READ_WRITE_TOKEN` is configured, selected images are copied from Render's temporary local storage into Vercel Blob before being saved to the product. The product image URL is then the durable Blob URL. If Blob is not configured, or Blob copy fails, the ephemeral Render URL is used as an explicit fallback.
+2. **Remote image validation**: Remote images are accepted only when content type and image signature pass the same upload checks used for direct image uploads.
 3. **No OpenAI/premium provider is called** in this phase.
 4. **Do not commit `.env`** files containing real secrets.
 

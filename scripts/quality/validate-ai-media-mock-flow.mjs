@@ -43,7 +43,7 @@ add("deployed smoke blocks unauthenticated dashboard status", /Unauthenticated A
 add("deployed smoke can complete direct MOCK job when key exists", /Render AI media service can complete a MOCK job when key is provided/.test(deployedSmoke) && /expected MOCK \/local-output\/ URLs/.test(deployedSmoke))
 add("package exposes P85 MOCK flow validator", /"quality:ai-media-mock-flow":\s*"node scripts\/quality\/validate-ai-media-mock-flow\.mjs"/.test(packageJson))
 add("source of truth names P85 MOCK flow", /P85/.test(sourceOfTruth) && /MOCK[- ]flow/.test(sourceOfTruth))
-add("roadmap advances next phase to P86", /P86 - Durable selected image storage acceptance\/hardening/.test(roadmap) || /P86 \| Durable selected image storage acceptance\/hardening/.test(roadmap))
+add("roadmap includes P86 durable storage follow-up", /P86 - Durable selected image storage acceptance\/hardening/.test(roadmap) || /P86 \| AI media durable storage acceptance/.test(roadmap))
 
 console.table(results)
 const failed = results.filter((result) => !result.ok)

@@ -78,6 +78,10 @@ export function createStoredImageFilename(mimeType: string, purpose = "image") {
   return `${Date.now()}-${randomUUID()}-${safePurpose}.${extension}`;
 }
 
+function normalizeImageContentType(contentType: string) {
+  return contentType.split(";")[0]?.trim().toLowerCase() || "application/octet-stream";
+}
+
 export async function writeStoredImage(filename: string, buffer: Buffer, access: "PUBLIC" | "PRIVATE" = "PRIVATE") {
   const pathname = getBlobPathname(filename);
   const blob = await uploadToBlob(pathname, buffer, getMimeTypeFromFilename(filename), access);
@@ -100,13 +104,16 @@ export async function copyRemoteImageToBlob(
     throw new ApiError(502, `Failed to fetch remote image: ${response.status}`);
   }
 
-  const contentType = response.headers.get("content-type") || "application/octet-stream";
+  const contentLength = Number.parseInt(response.headers.get("content-length") || "0", 10);
+  if (Number.isFinite(contentLength) && contentLength > MAX_IMAGE_UPLOAD_BYTES) {
+    throw new ApiError(413, "Remote image size is invalid");
+  }
+
+  const contentType = normalizeImageContentType(response.headers.get("content-type") || "application/octet-stream");
   const arrayBuffer = await response.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  if (!(buffer.length > 0 && buffer.length <= MAX_IMAGE_UPLOAD_BYTES)) {
-    throw new ApiError(413, "Remote image size is invalid");
-  }
+  validateImageBuffer(buffer, contentType, buffer.length);
 
   const filename = createStoredImageFilename(contentType, `${purpose}-${Date.now()}`);
   return writeStoredImage(filename, buffer, "PUBLIC");

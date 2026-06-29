@@ -15,6 +15,8 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { copyRemoteImageToBlob } from "@/lib/media-storage";
 import { shouldUseVercelBlob } from "@/lib/blob-storage";
 
+type AiSelectedImageStorageStatus = "blob" | "remote-unconfigured" | "remote-fallback";
+
 function revalidateAiSelectedProductImage(organizationSlug: string, productSlugOrId: string) {
   try {
     for (const locale of supportedLocales) {
@@ -191,7 +193,12 @@ export class AiMediaService {
     jobId: string | undefined,
     imageUrl: string,
     outputIndex: number,
-  ): Promise<{ success: boolean; imageUrl: string; storedDurably: boolean }> {
+  ): Promise<{
+    success: boolean;
+    imageUrl: string;
+    storedDurably: boolean;
+    storageStatus: AiSelectedImageStorageStatus;
+  }> {
     let job;
 
     if (jobId) {
@@ -228,17 +235,22 @@ export class AiMediaService {
 
     let durableUrl = imageUrl;
     let storedDurably = false;
+    let storageStatus: AiSelectedImageStorageStatus = "remote-unconfigured";
 
     if (shouldUseVercelBlob()) {
       try {
         const result = await copyRemoteImageToBlob(imageUrl, `ai-media-${productId}`);
         durableUrl = result.url;
         storedDurably = true;
+        storageStatus = "blob";
       } catch (error) {
         console.error("[AiMediaService] Failed to copy remote image to blob, falling back to remote URL:", error);
         durableUrl = imageUrl;
         storedDurably = false;
+        storageStatus = "remote-fallback";
       }
+    } else {
+      console.warn("[AiMediaService] BLOB_READ_WRITE_TOKEN is not configured; selected AI image will use the remote service URL.");
     }
 
     const product = await prisma.product.update({
@@ -249,7 +261,7 @@ export class AiMediaService {
 
     revalidateAiSelectedProductImage(product.organizationSlug, product.slug || product.id);
 
-    return { success: true, imageUrl: durableUrl, storedDurably };
+    return { success: true, imageUrl: durableUrl, storedDurably, storageStatus };
   }
 
   async cancelJob(jobId: string, organizationId: string): Promise<AiMediaJob> {

@@ -28,6 +28,7 @@ export async function POST(
       success: true,
       imageUrl: result.imageUrl,
       storedDurably: result.storedDurably,
+      storageStatus: result.storageStatus,
     });
   } catch (error) {
     return jsonError(error, "Failed to select AI image");

@@ -22,6 +22,8 @@ Health checks:
 | `AI_MEDIA_SERVICE_URL` | Yes (server-only) | Base URL of the AI media service |
 | `AI_MEDIA_SERVICE_INTERNAL_KEY` | Yes (server-only) | Internal key sent as `X-BazarBaz-AI-Key` header |
 | `AI_MEDIA_SERVICE_TIMEOUT_MS` | No | Request timeout in ms (default: `60000`) |
+| `AI_MEDIA_DAILY_JOB_LIMIT` | No | Per-organization daily AI media job creation limit (default: `25`) |
+| `AI_MEDIA_DAILY_SELECTION_LIMIT` | No | Per-organization daily selected-image audit limit (default: `50`) |
 
 **Security rules:**
 - `AI_MEDIA_SERVICE_INTERNAL_KEY` must never be exposed through `NEXT_PUBLIC_*` variables.
@@ -136,6 +138,21 @@ Authorization: required
 
 With `check=1`, Bazar Baz probes the deployed Render `/health` and `/ready` endpoints from the server and returns sanitized check statuses.
 
+### Usage and audit summary
+
+```http
+GET /api/dashboard/ai-media/usage
+Authorization: required (ADMIN, MANAGER)
+```
+
+SUPER_ADMIN can inspect a specific tenant with:
+
+```http
+GET /api/dashboard/ai-media/usage?organizationId={organizationId}
+```
+
+The response includes daily job/selection counts, remaining daily quota, recent `AiMediaUsageEvent` rows, and `paidGenerationEnabled: false`.
+
 ## UI Flow
 
 ### Edit product form
@@ -170,6 +187,16 @@ With `check=1`, Bazar Baz probes the deployed Render `/health` and `/ready` endp
 - `inputs` — request payload
 - `outputs` — response outputs when completed
 
+`AiMediaUsageEvent` stores tenant-scoped usage and audit rows:
+
+- `organizationId` — owner organization
+- `productId` — related product when available
+- `jobId` — related AI media job when available
+- `requestedByUserId` — actor when available
+- `action` — `JOB_CREATED`, `JOB_COMPLETED`, `JOB_FAILED`, `JOB_CANCELED`, or `IMAGE_SELECTED`
+- `units` — counted usage unit
+- `metadata` — non-secret event context
+
 ## Smoke Tests
 
 Run the quality gate:
@@ -191,9 +218,10 @@ The deployed smoke verifies Bazar Baz route protection plus Render `/health`, `/
 
 1. **Durable storage (BZ-AI-02 / P86)**: When `BLOB_READ_WRITE_TOKEN` is configured, selected images are copied from Render's temporary local storage into Vercel Blob before being saved to the product. The product image URL is then the durable Blob URL. If Blob is not configured, or Blob copy fails, the ephemeral Render URL is used as an explicit fallback.
 2. **Long-running UX (P87)**: If Render polling is slow or temporarily unavailable, the dashboard can show the latest local job status and let the seller continue polling, cancel, or retry.
-3. **Remote image validation**: Remote images are accepted only when content type and image signature pass the same upload checks used for direct image uploads.
-4. **No OpenAI/premium provider is called** in this phase.
-5. **Do not commit `.env`** files containing real secrets.
+3. **Usage controls (P88)**: Job creation is blocked when the organization reaches the daily AI media job limit. Paid generation remains disabled until a later rollout phase.
+4. **Remote image validation**: Remote images are accepted only when content type and image signature pass the same upload checks used for direct image uploads.
+5. **No OpenAI/premium provider is called** in this phase.
+6. **Do not commit `.env`** files containing real secrets.
 
 ### Environment Variables for Durable Storage
 
@@ -221,3 +249,4 @@ If `BLOB_READ_WRITE_TOKEN` is missing, the system falls back to the ephemeral Re
 - Dashboard status remains authenticated and secret-safe
 - Optional remote readiness checks cover Render `/health` and `/ready`
 - Long-running job UI shows last-known status, timestamps, continue, retry, and cancel controls
+- Usage controls record tenant-scoped job/selection events and enforce daily job quota before Render calls

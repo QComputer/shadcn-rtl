@@ -3,6 +3,7 @@ import {
   AiMediaServiceError,
   type AiMediaCreateJobRequest,
   type AiMediaJob,
+  type AiMediaJobOutput,
   createAiMediaJob,
   getAiMediaJob,
   cancelAiMediaJob,
@@ -14,9 +15,12 @@ import { hasPermission } from "@/lib/types";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { copyRemoteImageToBlob } from "@/lib/media-storage";
 import { shouldUseVercelBlob } from "@/lib/blob-storage";
-import type { AiMediaJobOutput } from "@/lib/services/ai-media-service-client";
 
 type AiSelectedImageStorageStatus = "blob" | "remote-unconfigured" | "remote-fallback";
+type AiMediaUsageAction = "JOB_CREATED" | "JOB_COMPLETED" | "JOB_FAILED" | "JOB_CANCELED" | "IMAGE_SELECTED";
+
+const DEFAULT_DAILY_AI_MEDIA_JOB_LIMIT = 25;
+const DEFAULT_DAILY_AI_MEDIA_SELECTION_LIMIT = 50;
 
 export type AiMediaLocalJob = {
   id: string;
@@ -32,6 +36,44 @@ export type AiMediaLocalJob = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+export type AiMediaUsageSummary = {
+  dateStart: Date;
+  dailyJobLimit: number;
+  dailySelectionLimit: number;
+  jobCreateCount: number;
+  imageSelectionCount: number;
+  remainingDailyJobs: number;
+  remainingDailySelections: number;
+  paidGenerationEnabled: false;
+  canCreateJob: boolean;
+  events: Array<{
+    id: string;
+    action: string;
+    jobId: string | null;
+    productId: string | null;
+    provider: string | null;
+    status: string | null;
+    units: number;
+    createdAt: Date;
+  }>;
+};
+
+function parsePositiveInt(value: string | undefined, fallback: number) {
+  const parsed = Number.parseInt(value || "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function getAiMediaUsageQuota() {
+  return {
+    dailyJobLimit: parsePositiveInt(process.env.AI_MEDIA_DAILY_JOB_LIMIT, DEFAULT_DAILY_AI_MEDIA_JOB_LIMIT),
+    dailySelectionLimit: parsePositiveInt(process.env.AI_MEDIA_DAILY_SELECTION_LIMIT, DEFAULT_DAILY_AI_MEDIA_SELECTION_LIMIT),
+  };
+}
+
+function startOfUtcDay(date = new Date()) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
 
 function revalidateAiSelectedProductImage(organizationSlug: string, productSlugOrId: string) {
   try {
@@ -77,6 +119,109 @@ export function localAiMediaJobToRemoteJob(job: AiMediaLocalJob): AiMediaJob {
 }
 
 export class AiMediaService {
+  private async recordUsageEvent(input: {
+    organizationId: string;
+    productId?: string | null;
+    jobId?: string | null;
+    requestedByUserId?: string | null;
+    action: AiMediaUsageAction;
+    provider?: string | null;
+    status?: string | null;
+    units?: number;
+    metadata?: Record<string, unknown> | null;
+    dedupeByJobAndAction?: boolean;
+  }) {
+    if (input.dedupeByJobAndAction && input.jobId) {
+      const existing = await prisma.aiMediaUsageEvent.findFirst({
+        where: {
+          organizationId: input.organizationId,
+          jobId: input.jobId,
+          action: input.action,
+        },
+        select: { id: true },
+      });
+
+      if (existing) return existing;
+    }
+
+    return prisma.aiMediaUsageEvent.create({
+      data: {
+        organizationId: input.organizationId,
+        productId: input.productId ?? null,
+        jobId: input.jobId ?? null,
+        requestedByUserId: input.requestedByUserId ?? null,
+        action: input.action,
+        provider: input.provider ?? null,
+        status: input.status ?? null,
+        units: input.units ?? 1,
+        metadata: input.metadata ? JSON.parse(JSON.stringify(input.metadata)) : undefined,
+      },
+    });
+  }
+
+  private async getDailyUsageCounts(organizationId: string) {
+    const dateStart = startOfUtcDay();
+    const [jobCreateCount, imageSelectionCount] = await Promise.all([
+      prisma.aiMediaUsageEvent.count({
+        where: {
+          organizationId,
+          action: "JOB_CREATED",
+          createdAt: { gte: dateStart },
+        },
+      }),
+      prisma.aiMediaUsageEvent.count({
+        where: {
+          organizationId,
+          action: "IMAGE_SELECTED",
+          createdAt: { gte: dateStart },
+        },
+      }),
+    ]);
+
+    return { dateStart, jobCreateCount, imageSelectionCount };
+  }
+
+  async getUsageSummary(organizationId: string): Promise<AiMediaUsageSummary> {
+    const quota = getAiMediaUsageQuota();
+    const counts = await this.getDailyUsageCounts(organizationId);
+    const events = await prisma.aiMediaUsageEvent.findMany({
+      where: { organizationId },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        action: true,
+        jobId: true,
+        productId: true,
+        provider: true,
+        status: true,
+        units: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      dateStart: counts.dateStart,
+      dailyJobLimit: quota.dailyJobLimit,
+      dailySelectionLimit: quota.dailySelectionLimit,
+      jobCreateCount: counts.jobCreateCount,
+      imageSelectionCount: counts.imageSelectionCount,
+      remainingDailyJobs: Math.max(0, quota.dailyJobLimit - counts.jobCreateCount),
+      remainingDailySelections: Math.max(0, quota.dailySelectionLimit - counts.imageSelectionCount),
+      paidGenerationEnabled: false,
+      canCreateJob: counts.jobCreateCount < quota.dailyJobLimit,
+      events,
+    };
+  }
+
+  async assertCanCreateJob(organizationId: string) {
+    const summary = await this.getUsageSummary(organizationId);
+    if (!summary.canCreateJob) {
+      throw new ApiError(429, "AI media daily generation quota exceeded");
+    }
+    return summary;
+  }
+
   async createJob(
     productId: string,
     organizationId: string,
@@ -115,6 +260,8 @@ export class AiMediaService {
     if (product.organizationId !== organizationId) {
       throw new ApiError(403, "Forbidden");
     }
+
+    await this.assertCanCreateJob(product.organizationId);
 
     const remoteRequest: AiMediaCreateJobRequest = {
       organization_id: product.organizationId,
@@ -157,6 +304,21 @@ export class AiMediaService {
       },
     });
 
+    await this.recordUsageEvent({
+      organizationId: product.organizationId,
+      productId: product.id,
+      jobId: remoteResponse.job_id,
+      requestedByUserId,
+      action: "JOB_CREATED",
+      provider: remoteResponse.provider,
+      status: remoteResponse.status,
+      metadata: {
+        count: remoteRequest.count,
+        aspect_ratio: remoteRequest.aspect_ratio,
+        style_preset: remoteRequest.style_preset,
+      },
+    });
+
     return {
       job: await this.getJobById(remoteResponse.job_id),
       localJobId: localJob.id,
@@ -166,7 +328,7 @@ export class AiMediaService {
   async getJobById(jobId: string): Promise<AiMediaJob> {
     const localJob = await prisma.aiMediaJob.findFirst({
       where: { jobId },
-      select: { id: true, organizationId: true },
+      select: { id: true, organizationId: true, productId: true, requestedByUserId: true },
     });
 
     if (!localJob) {
@@ -184,6 +346,19 @@ export class AiMediaService {
           outputs: normalizeOutputs(remoteJob) as unknown as object,
         },
       });
+      if (remoteJob.status === "COMPLETED" || remoteJob.status === "FAILED" || remoteJob.status === "CANCELED") {
+        await this.recordUsageEvent({
+          organizationId: localJob.organizationId,
+          productId: localJob.productId,
+          jobId,
+          requestedByUserId: localJob.requestedByUserId,
+          action: remoteJob.status === "COMPLETED" ? "JOB_COMPLETED" : remoteJob.status === "FAILED" ? "JOB_FAILED" : "JOB_CANCELED",
+          provider: remoteJob.provider,
+          status: remoteJob.status,
+          units: 1,
+          dedupeByJobAndAction: true,
+        });
+      }
       return remoteJob;
     } catch (error) {
       if (error instanceof AiMediaServiceError) {
@@ -300,7 +475,7 @@ export class AiMediaService {
     if (jobId) {
       job = await prisma.aiMediaJob.findFirst({
         where: { jobId, organizationId, productId },
-        select: { id: true, status: true, outputs: true },
+        select: { id: true, status: true, provider: true, outputs: true },
       });
       if (!job) throw new ApiError(404, "AI media job not found");
       if (job.status !== "COMPLETED") {
@@ -310,7 +485,7 @@ export class AiMediaService {
       job = await prisma.aiMediaJob.findFirst({
         where: { organizationId, productId, status: "COMPLETED" },
         orderBy: { createdAt: "desc" },
-        select: { id: true, status: true, outputs: true },
+        select: { id: true, jobId: true, status: true, provider: true, outputs: true },
       });
       if (!job) throw new ApiError(404, "No completed AI media job found for this product");
     }
@@ -355,6 +530,20 @@ export class AiMediaService {
       select: { id: true, slug: true, organizationSlug: true },
     });
 
+    await this.recordUsageEvent({
+      organizationId,
+      productId,
+      jobId: jobId ?? ("jobId" in job ? job.jobId : null),
+      action: "IMAGE_SELECTED",
+      provider: job.provider,
+      status: storageStatus,
+      metadata: {
+        outputIndex,
+        storedDurably,
+        storageStatus,
+      },
+    });
+
     revalidateAiSelectedProductImage(product.organizationSlug, product.slug || product.id);
 
     return { success: true, imageUrl: durableUrl, storedDurably, storageStatus };
@@ -382,6 +571,16 @@ export class AiMediaService {
       await prisma.aiMediaJob.update({
         where: { id: localJob.id },
         data: { status: "CANCELED" },
+      });
+      await this.recordUsageEvent({
+        organizationId: localJob.organizationId,
+        productId: localJob.productId,
+        jobId,
+        requestedByUserId: localJob.requestedByUserId,
+        action: "JOB_CANCELED",
+        provider: localJob.provider,
+        status: "CANCELED",
+        dedupeByJobAndAction: true,
       });
       return result.job;
     } catch (error) {

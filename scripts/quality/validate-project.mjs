@@ -425,6 +425,11 @@ if (exists("scripts/quality/validate-ai-media-long-running-ux.mjs")) {
   result.status === 0 ? ok("P87 AI media long-running UX validator passes") : fail("P87 AI media long-running UX validator passes", result.stderr || result.stdout);
 }
 
+if (exists("scripts/quality/validate-ai-media-usage-controls.mjs")) {
+  const result = spawnSync(process.execPath, ["scripts/quality/validate-ai-media-usage-controls.mjs"], { cwd: root, encoding: "utf8" });
+  result.status === 0 ? ok("P88 AI media usage controls validator passes") : fail("P88 AI media usage controls validator passes", result.stderr || result.stdout);
+}
+
 if (exists("scripts/quality/validate-export-downloads.mjs")) {
   const result = spawnSync(process.execPath, ["scripts/quality/validate-export-downloads.mjs"], { cwd: root, encoding: "utf8" });
   result.status === 0 ? ok("P81 export downloads validator passes") : fail("P81 export downloads validator passes", result.stderr || result.stdout);

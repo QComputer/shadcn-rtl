@@ -1276,6 +1276,25 @@ model AiMediaJob {
   @@index([status])
 }
 
+model AiMediaUsageEvent {
+  id                String   @id @default(cuid())
+  organizationId    String
+  productId         String?
+  jobId             String?
+  requestedByUserId String?
+  action            String
+  provider          String?
+  status            String?
+  units             Int      @default(1)
+  metadata          Json?
+  createdAt         DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([organizationId, createdAt])
+  @@index([jobId])
+  @@index([action])
+}
+
 model ImportedProductDraft {
   id               String              @id @default(cuid())
   organizationId   String

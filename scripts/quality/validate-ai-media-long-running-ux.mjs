@@ -45,7 +45,7 @@ add("edit UI exposes seller cancel affordance", /cancelAiJob/.test(editPage) && 
 add("edit UI includes Persian timeout copy for slow jobs", /درخواست تصویر هنوز در صف یا در حال پردازش است/.test(editPage))
 add("package exposes P87 long-running UX validator", /"quality:ai-media-long-running-ux":\s*"node scripts\/quality\/validate-ai-media-long-running-ux\.mjs"/.test(packageJson))
 add("source of truth names P87 long-running UX", /P87/.test(sourceOfTruth) && /(Long-Running|long-running)/.test(sourceOfTruth))
-add("roadmap advances next phase to P88", /P88 - Usage logs, quotas, and audit controls/.test(roadmap) || /P88 \| Usage logs, quotas, and audit controls/.test(roadmap))
+add("roadmap includes P88 usage controls follow-up", /P88 - Usage logs, quotas, and audit controls/.test(roadmap) || /P88 \| Usage logs, quotas, and audit controls/.test(roadmap) || /P88 \| AI media usage logs, quotas, and audit controls/.test(roadmap))
 
 console.table(results)
 const failed = results.filter((result) => !result.ok)

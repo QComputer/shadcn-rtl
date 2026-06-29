@@ -1,6 +1,7 @@
 import { ApiError } from "@/lib/api-guards"
 import { writeAuditLog } from "@/lib/audit-log"
 import { prisma } from "@/lib/db"
+import { notificationPreferencesService } from "@/lib/services/notification-preferences.service"
 import webpush from "web-push"
 import type { PushPermissionState } from "@prisma/client"
 
@@ -98,6 +99,7 @@ export class WebPushFoundationService {
     ])
 
     const activeSubscriptions = subscriptions.filter((subscription) => subscription.isActive)
+    const preferences = await notificationPreferencesService.getCustomerPreferences(organizationSlug, customerId)
 
     return {
       organization,
@@ -107,6 +109,7 @@ export class WebPushFoundationService {
       activeSubscriptionCount: activeSubscriptions.length,
       subscriptions,
       lastPermissionEvent,
+      preferences,
     }
   }
 
@@ -217,6 +220,13 @@ export class WebPushFoundationService {
       },
     })
 
+    await notificationPreferencesService.setWebPushOptIn({
+      organizationSlug: input.organizationSlug,
+      customerId: input.customerId,
+      enabled: true,
+      source: input.source || "PUBLIC_SHOP",
+    })
+
     return subscription
   }
 
@@ -224,7 +234,7 @@ export class WebPushFoundationService {
     const organization = await this.requireOrganizationBySlug(input.organizationSlug)
     await this.requireCustomer(input.customerId)
 
-    return prisma.notificationPermissionEvent.create({
+    const event = await prisma.notificationPermissionEvent.create({
       data: {
         organizationId: organization.id,
         customerId: input.customerId,
@@ -234,6 +244,17 @@ export class WebPushFoundationService {
         userAgent: input.userAgent || null,
       },
     })
+
+    if (input.state === "DENIED" || input.state === "UNSUPPORTED" || input.state === "REVOKED") {
+      await notificationPreferencesService.setWebPushOptIn({
+        organizationSlug: input.organizationSlug,
+        customerId: input.customerId,
+        enabled: false,
+        source: input.source || "PUBLIC_SHOP",
+      })
+    }
+
+    return event
   }
 
   async unsubscribe(input: UnsubscribeInput) {
@@ -264,6 +285,13 @@ export class WebPushFoundationService {
         source: input.source || "PUBLIC_SHOP",
         userAgent: input.userAgent || null,
       },
+    })
+
+    await notificationPreferencesService.setWebPushOptIn({
+      organizationSlug: input.organizationSlug,
+      customerId: input.customerId,
+      enabled: false,
+      source: input.source || "PUBLIC_SHOP",
     })
 
     return { updated: result.count }

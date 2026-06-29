@@ -218,7 +218,7 @@ export default function ShopProfilePage({
 
        <section className="pb-8">
          <div className="container mx-auto px-4">
-           <WebPushOptIn organizationSlug={profile.slug} organizationName={profile.name} />
+           <WebPushOptIn organizationSlug={profile.slug} organizationName={profile.name} locale={locale} />
          </div>
        </section>
      </div>

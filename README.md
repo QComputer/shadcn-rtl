@@ -98,6 +98,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 82 | Deployed Import/Export Smoke | Source/deployed smoke | `pnpm run quality:deployed-import-export-smoke` / `pnpm run e2e:deployed:import-export` |
 | 83 | Project State Reconciliation and AI Media Readiness | Docs/validation | `pnpm run quality:local` |
 | 84 | AI Media Health Gate Audit | Source-validated | `pnpm run quality:ai-media-health-gate` |
+| 85 | AI Media MOCK Flow Acceptance | Source-validated | `pnpm run quality:ai-media-mock-flow` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
 
 ## Current validation checklist
@@ -275,12 +276,12 @@ tsconfig.tsbuildinfo
 
 ## Current recommended next phase
 
-Latest completed implementation phase: **P84 - AI Media Health Gate Audit**.
+Latest completed implementation phase: **P85 - AI Media MOCK Flow Acceptance**.
 
-Recommended next phase: **P85 - Product image suggestion MOCK flow acceptance/hardening**.
+Recommended next phase: **P86 - Durable selected image storage acceptance/hardening**.
 
-The active roadmap is `docs/IMPORT_HUB_ROADMAP.md` plus `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md`, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md`, `docs/PHASE_81_EXPORT_DOWNLOADS.md`, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md`, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md`, and `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md`. P68-P84 are implemented. Local AI media commits after P82 already added the server-mediated product suggestion flow and durable selected-image Blob copy when `BLOB_READ_WRITE_TOKEN` is configured, so P85-P86 should be treated as acceptance/hardening phases against the actual implementation rather than greenfield rebuilds.
+The active roadmap is `docs/IMPORT_HUB_ROADMAP.md` plus `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md`, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md`, `docs/PHASE_81_EXPORT_DOWNLOADS.md`, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md`, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md`, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md`, and `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md`. P68-P85 are implemented. Local AI media commits after P82 already added the server-mediated product suggestion flow and durable selected-image Blob copy when `BLOB_READ_WRITE_TOKEN` is configured, so P86 should be treated as acceptance/hardening against the actual implementation rather than a greenfield rebuild.
 
 ## Historical validator anchors
 
-The source tree keeps focused validators for these retained phases: P37 dashboard navigation and localized shell copy, P38 dashboard role navigation, P39 dashboard route parity, P40 dashboard route authorization, P41 dashboard route guard smoke, P42 Customer Club foundation, P43 in-app notification inbox, P44 Customer Segments, P45 Campaign Builder, P46 Loyalty Points and Coupons, P47 Web Push Opt-In Foundation, P68 Import Hub Foundation, P69 CSV/Excel Product Importer, P70 Manual Instagram Fanpage Import, P71 AI/Text Product Extraction Foundation, P72 Image/PDF Menu Import Foundation, P73 Snappfood URL Import MVP, P74 Snappmarket URL Import MVP, P75 Telegram Post Import, P76 External Source Mapping and Re-import Diff, P77 Import Hub Audit, Limits, and Plan Readiness, P78 Export Hub Foundation, P79 Import Approval Publishing, P80 AI Media Suggestions Hardening, P81 Export Downloads, P82 Deployed Import/Export Smoke, P83 Project State Reconciliation, and P84 AI Media Health Gate.
+The source tree keeps focused validators for these retained phases: P37 dashboard navigation and localized shell copy, P38 dashboard role navigation, P39 dashboard route parity, P40 dashboard route authorization, P41 dashboard route guard smoke, P42 Customer Club foundation, P43 in-app notification inbox, P44 Customer Segments, P45 Campaign Builder, P46 Loyalty Points and Coupons, P47 Web Push Opt-In Foundation, P68 Import Hub Foundation, P69 CSV/Excel Product Importer, P70 Manual Instagram Fanpage Import, P71 AI/Text Product Extraction Foundation, P72 Image/PDF Menu Import Foundation, P73 Snappfood URL Import MVP, P74 Snappmarket URL Import MVP, P75 Telegram Post Import, P76 External Source Mapping and Re-import Diff, P77 Import Hub Audit, Limits, and Plan Readiness, P78 Export Hub Foundation, P79 Import Approval Publishing, P80 AI Media Suggestions Hardening, P81 Export Downloads, P82 Deployed Import/Export Smoke, P83 Project State Reconciliation, P84 AI Media Health Gate, and P85 AI Media MOCK Flow.

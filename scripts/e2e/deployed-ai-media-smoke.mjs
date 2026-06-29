@@ -44,13 +44,9 @@ function expectStatus(status, allowed) {
   }
 }
 
-addCheck("AI media status endpoint returns enabled=false when feature is off", async () => {
+addCheck("Unauthenticated AI media status is blocked", async () => {
   const res = await request("/api/dashboard/ai-media/status");
-  expectStatus(res.status, [200]);
-  const data = await res.json();
-  if (typeof data.enabled !== "boolean") {
-    throw new Error(`expected enabled to be boolean, got ${typeof data.enabled}`);
-  }
+  expectStatus(res.status, [401]);
 });
 
 addCheck("Render AI media service health is green when URL is provided", async () => {

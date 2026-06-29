@@ -214,11 +214,26 @@ export default function EditProductPage({
   }, [locale])
 
   useEffect(() => {
+    if (!hasAccess || accessLoading) return
+
+    let active = true
+
     fetch("/api/dashboard/ai-media/status")
-      .then(res => res.json())
-      .then(data => setAiFeatureEnabled(data.enabled))
-      .catch(() => setAiFeatureEnabled(false))
-  }, [])
+      .then(async (res) => {
+        if (!res.ok) return { enabled: false }
+        return res.json()
+      })
+      .then(data => {
+        if (active) setAiFeatureEnabled(Boolean(data.enabled))
+      })
+      .catch(() => {
+        if (active) setAiFeatureEnabled(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [hasAccess, accessLoading])
 
   useEffect(()=>{
   //console.log(newVariant);
@@ -366,6 +381,11 @@ export default function EditProductPage({
   }
 
   const createAiJob = async () => {
+    if (!aiFeatureEnabled) {
+      setAiError("پیشنهاد تصویر AI در حال حاضر فعال نیست.")
+      return
+    }
+
     setAiLoading(true)
     setAiError(null)
     setAiOutputs([])
@@ -416,11 +436,21 @@ export default function EditProductPage({
         const status = data.job?.status
         setAiJobStatus(status)
 
-        if (status === "COMPLETED" && data.job?.outputs) {
+        const outputs = Array.isArray(data.job?.outputs)
+          ? data.job.outputs
+          : Array.isArray(data.job?.output_images)
+            ? data.job.output_images.map((url: string) => ({ url }))
+            : []
+
+        if (status === "COMPLETED") {
           clearInterval(interval)
           setAiPolling(false)
           setAiLoading(false)
-          setAiOutputs(data.job.outputs)
+          if (outputs.length > 0) {
+            setAiOutputs(outputs)
+          } else {
+            setAiError("تصویر پیشنهادی برای این درخواست برنگشت. دوباره تلاش کنید.")
+          }
         } else if (status === "FAILED") {
           clearInterval(interval)
           setAiPolling(false)
@@ -447,10 +477,16 @@ export default function EditProductPage({
   }
 
   const handleAiSelectImage = async (imageUrl: string, outputIndex: number) => {
+    if (!aiJobId) {
+      setAiError("شناسه درخواست تصویر پیدا نشد. دوباره تلاش کنید.")
+      return
+    }
+
     setAiSelectedImage(imageUrl)
     const confirmed = window.confirm("آیا می‌خواهید این تصویر را به عنوان تصویر اصلی محصول انتخاب کنید؟")
     if (!confirmed) {
       setAiSelectedImage(null)
+      setAiSelectedIndex(null)
       return
     }
 
@@ -467,8 +503,12 @@ export default function EditProductPage({
         throw new Error(data.error || "Failed to select image")
       }
 
-      setImage(imageUrl)
-      setImagePreview(imageUrl)
+      const data = await response.json()
+      const selectedImageUrl = data.imageUrl || imageUrl
+
+      setImage(selectedImageUrl)
+      setImagePreview(selectedImageUrl)
+      setProduct((current) => current ? { ...current, image: selectedImageUrl } : current)
       setAiDialogOpen(false)
       setAiSelectedImage(null)
       setAiSelectedIndex(null)
@@ -1232,6 +1272,15 @@ export default function EditProductPage({
             </div>
           )}
 
+          {aiError && aiJobStatus !== "FAILED" && (
+            <div className="text-center py-8 space-y-4">
+              <p className="text-destructive">{aiError}</p>
+              <Button type="button" variant="outline" onClick={retryAiJob}>
+                تلاش مجدد
+              </Button>
+            </div>
+          )}
+
           {aiJobStatus === "COMPLETED" && aiSelectedImage && aiSelectedIndex !== null && (
             <DialogFooter>
               <Button
@@ -1257,7 +1306,7 @@ export default function EditProductPage({
               <p className="text-sm text-muted-foreground mb-4">
                 با استفاده از هوش مصنوعی، ۳ تصویر پیشنهادی برای محصول شما تولید می‌شود.
               </p>
-              <Button type="button" onClick={createAiJob} disabled={aiLoading}>
+              <Button type="button" onClick={createAiJob} disabled={aiLoading || aiPolling}>
                 <Sparkles className="h-4 w-4 ml-2" />
                 شروع تولید تصاویر
               </Button>

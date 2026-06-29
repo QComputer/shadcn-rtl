@@ -165,11 +165,26 @@ export default function NewProductPage({
   }, [locale])
 
   useEffect(() => {
+    if (!hasAccess || accessLoading) return
+
+    let active = true
+
     fetch("/api/dashboard/ai-media/status")
-      .then((res) => res.json())
-      .then((data) => setAiFeatureEnabled(Boolean(data.enabled)))
-      .catch(() => setAiFeatureEnabled(false))
-  }, [])
+      .then(async (res) => {
+        if (!res.ok) return { enabled: false }
+        return res.json()
+      })
+      .then((data) => {
+        if (active) setAiFeatureEnabled(Boolean(data.enabled))
+      })
+      .catch(() => {
+        if (active) setAiFeatureEnabled(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [hasAccess, accessLoading])
 
   // Fetch categories and staff members
   useEffect(() => {

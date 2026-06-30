@@ -261,6 +261,47 @@ enum ExportDataType {
   FANPAGE_POSTS
 }
 
+enum CreativeStudioTargetType {
+  PRODUCT
+  CAMPAIGN
+  FANPAGE_POST
+  ORGANIZATION_BRAND
+  IMPORTED_MEDIA
+}
+
+enum CreativeStudioAssetType {
+  PRODUCT_IMAGE
+  CAMPAIGN_IMAGE
+  FANPAGE_IMAGE
+  LOGO
+  COVER
+  OG_IMAGE
+  IMPORT_MEDIA
+}
+
+enum CreativeStudioJobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELED
+}
+
+enum CreativeStudioAssetStatus {
+  DRAFT
+  SELECTED
+  APPLIED
+  REJECTED
+}
+
+enum CreativeStudioUsageAction {
+  JOB_CREATED
+  JOB_CANCELED
+  ASSET_DRAFTED
+  ASSET_SELECTED
+  ASSET_APPLIED
+}
+
 // --- CORE MODELS ---
 
 model TimeInterval {
@@ -1322,6 +1363,86 @@ model AiMediaUsageEvent {
   @@index([organizationId, createdAt])
   @@index([jobId])
   @@index([action])
+}
+
+model CreativeStudioJob {
+  id                  String                   @id @default(cuid())
+  organizationId      String
+  targetType          CreativeStudioTargetType
+  targetId            String?
+  requestedByUserId   String?
+  status              CreativeStudioJobStatus  @default(QUEUED)
+  provider            String                   @default("MOCK")
+  prompt              String?                  @db.Text
+  inputs              Json?
+  outputCount         Int                      @default(0)
+  errorMessage        String?
+  costEstimateCents   Int                      @default(0)
+  paidProviderEnabled Boolean                  @default(false)
+  rollbackPaused      Boolean                  @default(false)
+  completedAt         DateTime?
+  canceledAt          DateTime?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+
+  assets      CreativeStudioAsset[]
+  usageEvents CreativeStudioUsageEvent[]
+
+  @@index([organizationId])
+  @@index([organizationId, status, createdAt])
+  @@index([targetType, targetId])
+  @@index([requestedByUserId])
+}
+
+model CreativeStudioAsset {
+  id             String                    @id @default(cuid())
+  organizationId String
+  jobId          String
+  assetType      CreativeStudioAssetType
+  status         CreativeStudioAssetStatus @default(DRAFT)
+  draftUrl       String?
+  storedUrl      String?
+  sourceUrl      String?
+  mimeType       String?
+  width          Int?
+  height         Int?
+  sourceMetadata Json?
+  appliedAt      DateTime?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  job         CreativeStudioJob          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  usageEvents CreativeStudioUsageEvent[]
+
+  @@index([organizationId])
+  @@index([jobId])
+  @@index([organizationId, status, createdAt])
+  @@index([assetType])
+}
+
+model CreativeStudioUsageEvent {
+  id                String                    @id @default(cuid())
+  organizationId    String
+  jobId             String?
+  assetId           String?
+  requestedByUserId String?
+  action            CreativeStudioUsageAction
+  provider          String?
+  targetType        CreativeStudioTargetType?
+  targetId          String?
+  units             Int                       @default(1)
+  metadata          Json?
+  createdAt         DateTime                  @default(now())
+
+  job   CreativeStudioJob?   @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  asset CreativeStudioAsset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([organizationId, createdAt])
+  @@index([jobId])
+  @@index([assetId])
+  @@index([action])
+  @@index([targetType, targetId])
 }
 
 model ImportedProductDraft {

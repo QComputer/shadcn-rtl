@@ -317,6 +317,26 @@ export const paginationSchema = z.object({
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
 
+export const createCreativeStudioJobSchema = z.object({
+  organizationId: z.string().cuid().optional(),
+  targetType: z.enum(["PRODUCT", "CAMPAIGN", "FANPAGE_POST", "ORGANIZATION_BRAND", "IMPORTED_MEDIA"]),
+  targetId: z.string().cuid().optional().nullable(),
+  assetType: z.enum(["PRODUCT_IMAGE", "CAMPAIGN_IMAGE", "FANPAGE_IMAGE", "LOGO", "COVER", "OG_IMAGE", "IMPORT_MEDIA"]),
+  prompt: z.string().trim().max(1000).optional().nullable(),
+  sourceUrl: z.string().url().optional().nullable(),
+  count: z.number().int().min(1).max(4).default(1),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const creativeStudioJobFilterSchema = z.object({
+  organizationId: z.string().cuid().optional(),
+  status: z.enum(["QUEUED", "PROCESSING", "COMPLETED", "FAILED", "CANCELED"]).optional(),
+}).merge(paginationSchema);
+
+export const applyCreativeStudioAssetSchema = z.object({
+  applyToTarget: z.literal(false).default(false),
+});
+
 export const organizationFilterSchema = z.object({
   type: z.enum(["SHOP", "APPOINTMENT"]).optional(),
   isActive: z.boolean().optional(),
@@ -374,4 +394,7 @@ export type UpdatePaymentSettingsInput = z.infer<typeof updatePaymentSettingsSch
 export type UpdateBookingSettingsInput = z.infer<typeof updateBookingSettingsSchema>;
 export type CreateAiMediaJobInput = z.infer<typeof createAiMediaJobSchema>;
 export type SelectAiMediaImageInput = z.infer<typeof selectAiMediaImageSchema>;
+export type CreateCreativeStudioJobInput = z.infer<typeof createCreativeStudioJobSchema>;
+export type CreativeStudioJobFilterInput = z.infer<typeof creativeStudioJobFilterSchema>;
+export type ApplyCreativeStudioAssetInput = z.infer<typeof applyCreativeStudioAssetSchema>;
 export type PaginationParams = z.infer<typeof paginationSchema>;

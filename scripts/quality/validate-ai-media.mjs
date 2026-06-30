@@ -57,12 +57,13 @@ add("package exposes AI media validators", /"quality:ai-media":\s*"node scripts\
 add("AI media docs exist", exists("docs/AI_MEDIA_SERVICE.md"))
 
 const pnpmEntrypoint = process.env.npm_execpath
+const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm"
 const typecheck = pnpmEntrypoint
   ? spawnSync(process.execPath, [pnpmEntrypoint, "run", "typecheck"], {
       cwd: root,
       encoding: "utf8",
     })
-  : spawnSync("pnpm", ["run", "typecheck"], {
+  : spawnSync(pnpmCommand, ["run", "typecheck"], {
   cwd: root,
   encoding: "utf8",
     })

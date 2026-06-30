@@ -46,9 +46,9 @@ add("navigation includes notification operations item", /notificationOperations/
 add("sidebar exposes notification operations icon and copy", /notificationOperations:\s*Activity/.test(sidebar) && /پایش اعلان‌ها/.test(sidebar) && /Notification ops/.test(sidebar))
 add("package exposes P103 validator", /"quality:notification-operations":\s*"node scripts\/quality\/validate-notification-operations\.mjs"/.test(packageJson))
 add("project validator references P103 validator", /validate-notification-operations\.mjs/.test(validateProject) && /P103 notification operations validator passes/.test(validateProject))
-add("README keeps P103 complete while marking P107 latest", /\| 103 \| Admin\/operator notification dashboard/.test(readme) && /Latest completed implementation phase:\s+\*\*P107 - Creative Studio integration planning for main Bazar Baz\*\*/.test(readme) && /P108 - Creative Studio server foundation/.test(readme))
-add("roadmap marks P103 complete in P107 progression", /\| P103 \| Admin\/operator notification dashboard\. \|/.test(roadmap) && /Completed through \*\*P107 - Creative Studio integration planning for main Bazar Baz\*\*/.test(roadmap))
-add("source of truth names P107 baseline", /after P107 Creative Studio integration planning/.test(sourceOfTruth) && /Notification operations dashboard exists/.test(sourceOfTruth))
+add("README keeps P103 complete while marking P108 latest", /\| 103 \| Admin\/operator notification dashboard/.test(readme) && /Latest completed implementation phase:\s+\*\*P108 - Creative Studio server foundation\*\*/.test(readme) && /P109 - Creative Studio dashboard shell and read-only job review/.test(readme))
+add("roadmap marks P103 complete in P108 progression", /\| P103 \| Admin\/operator notification dashboard\. \|/.test(roadmap) && /Completed through \*\*P108 - Creative Studio server foundation\*\*/.test(roadmap))
+add("source of truth names P108 baseline", /after P108 Creative Studio server foundation/.test(sourceOfTruth) && /Notification operations dashboard exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

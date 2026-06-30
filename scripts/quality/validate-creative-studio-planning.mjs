@@ -43,13 +43,13 @@ add("P107 recommends P108 server foundation", /P108 - Creative Studio server fou
 add("existing AI media client is server-only", /import "server-only"/.test(aiMediaClient) && /X-BazarBaz-AI-Key/.test(aiMediaClient))
 add("existing AI media service is product and organization scoped", /hasPermission\(userRole, "product:update"\)/.test(aiMediaService) && /organizationId/.test(aiMediaService) && /aiMediaUsageEvent/.test(aiMediaService))
 add("existing runtime keeps paid provider guardrails", /AI_MEDIA_PAID_PROVIDER_APPROVED/.test(runtimeEnv) && /AI_MEDIA_PAID_PROVIDER_ROLLBACK_PAUSED/.test(runtimeEnv) && /Paid AI media requires approval metadata/.test(runtimeEnv))
-add("P107 does not add Creative Studio UI or API yet", !exists("app/[locale]/dashboard/creative-studio") && !exists("app/api/dashboard/creative-studio") && !/model\s+CreativeStudio/.test(exists("prisma/schema.prisma") ? read("prisma/schema.prisma") : ""))
+add("P107 remains a planning-only document", /does not add:[\s\S]*Creative Studio dashboard routes/.test(doc) && /does not add:[\s\S]*Prisma models or migrations/.test(doc))
 
 add("package exposes P107 validator", /"quality:creative-studio-planning":\s*"node scripts\/quality\/validate-creative-studio-planning\.mjs"/.test(packageJson))
 add("project validator references P107 validator", /validate-creative-studio-planning\.mjs/.test(validateProject) && /P107 Creative Studio planning validator passes/.test(validateProject))
-add("README marks P107 latest", /Latest completed implementation phase:\s+\*\*P107 - Creative Studio integration planning for main Bazar Baz\*\*/.test(readme) && /Recommended next phase:\s+\*\*P108 - Creative Studio server foundation\*\*/.test(readme))
-add("roadmap marks P107 complete", /Completed through \*\*P107 - Creative Studio integration planning for main Bazar Baz\*\*/.test(roadmap) && /\| P107 \| Creative Studio integration planning for main Bazar Baz\. \|/.test(roadmap) && /\| P108 \| Creative Studio server foundation\. \|/.test(roadmap))
-add("source of truth names P107 baseline", /after P107 Creative Studio integration planning/.test(sourceOfTruth) && /Creative Studio integration planning exists/.test(sourceOfTruth) && /P108 - Creative Studio server foundation/.test(sourceOfTruth))
+add("README keeps P107 complete while marking P108 latest", /Latest completed implementation phase:\s+\*\*P108 - Creative Studio server foundation\*\*/.test(readme) && /Recommended next phase:\s+\*\*P109 - Creative Studio dashboard shell and read-only job review\*\*/.test(readme))
+add("roadmap keeps P107 complete in P108 progression", /Completed through \*\*P108 - Creative Studio server foundation\*\*/.test(roadmap) && /\| P107 \| Creative Studio integration planning for main Bazar Baz\. \|/.test(roadmap) && /\| P108 \| Creative Studio server foundation\. \|/.test(roadmap))
+add("source of truth names P108 baseline while keeping P107 planning", /after P108 Creative Studio server foundation/.test(sourceOfTruth) && /Creative Studio integration planning exists/.test(sourceOfTruth) && /Creative Studio server foundation exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

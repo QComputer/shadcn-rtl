@@ -43,9 +43,9 @@ add("Web Push service exposes single-customer delivery", /sendToCustomer/.test(w
 add("single-customer Web Push records delivery attempts and cleans invalid subscriptions", /webPushDelivery\.create/.test(webPush) && /statusCode === 404 \|\| statusCode === 410/.test(webPush))
 add("package exposes P102 validator", /"quality:notification-routing":\s*"node scripts\/quality\/validate-notification-routing\.mjs"/.test(packageJson))
 add("project validator references P102 validator", /validate-notification-routing\.mjs/.test(validateProject) && /P102 notification routing validator passes/.test(validateProject))
-add("README keeps P102 complete while marking P106 latest", /\| 102 \| Notification templates, routing, and delivery policies/.test(readme) && /Latest completed implementation phase:\s+\*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(readme) && /P107 - Creative Studio integration planning/.test(readme))
-add("roadmap marks P102 complete in P106 progression", /\| P102 \| Notification templates, routing, and delivery policies\. \|/.test(roadmap) && /Completed through \*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(roadmap))
-add("source of truth names P106 baseline", /after P106 PWA\/Push\/SMS source acceptance/.test(sourceOfTruth) && /Notification routing exists/.test(sourceOfTruth))
+add("README keeps P102 complete while marking P107 latest", /\| 102 \| Notification templates, routing, and delivery policies/.test(readme) && /Latest completed implementation phase:\s+\*\*P107 - Creative Studio integration planning for main Bazar Baz\*\*/.test(readme) && /P108 - Creative Studio server foundation/.test(readme))
+add("roadmap marks P102 complete in P107 progression", /\| P102 \| Notification templates, routing, and delivery policies\. \|/.test(roadmap) && /Completed through \*\*P107 - Creative Studio integration planning for main Bazar Baz\*\*/.test(roadmap))
+add("source of truth names P107 baseline", /after P107 Creative Studio integration planning/.test(sourceOfTruth) && /Notification routing exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

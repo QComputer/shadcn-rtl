@@ -60,9 +60,9 @@ for (const locale of ["fa", "en", "ar"]) {
 
 add("package exposes P100 validator", /"quality:web-push-delivery":\s*"node scripts\/quality\/validate-web-push-delivery\.mjs"/.test(packageJson))
 add("project validator references P100 validator", /validate-web-push-delivery\.mjs/.test(validateProject) && /P100 Web Push delivery validator passes/.test(validateProject))
-add("README keeps P100 complete while marking P106 latest", /\| 100 \| Web Push notification service/.test(readme) && /Latest completed implementation phase:\s+\*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(readme) && /P107 - Creative Studio integration planning/.test(readme))
-add("roadmap keeps P100 complete while marking P106 baseline", /\| P100 \| Web Push notification service\. \|/.test(roadmap) && /Completed through \*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(roadmap))
-add("source of truth names P106 baseline and keeps P100 summary", /after P106 PWA\/Push\/SMS source acceptance/.test(sourceOfTruth) && /Web Push notification service exists/.test(sourceOfTruth))
+add("README keeps P100 complete while marking P107 latest", /\| 100 \| Web Push notification service/.test(readme) && /Latest completed implementation phase:\s+\*\*P107 - Creative Studio integration planning for main Bazar Baz\*\*/.test(readme) && /P108 - Creative Studio server foundation/.test(readme))
+add("roadmap keeps P100 complete while marking P107 baseline", /\| P100 \| Web Push notification service\. \|/.test(roadmap) && /Completed through \*\*P107 - Creative Studio integration planning for main Bazar Baz\*\*/.test(roadmap))
+add("source of truth names P107 baseline and keeps P100 summary", /after P107 Creative Studio integration planning/.test(sourceOfTruth) && /Web Push notification service exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

@@ -41,9 +41,9 @@ add("smoke keeps mutating dry-run send optional", /DEPLOYED_PWA_PUSH_SMS_ENABLE_
 add("smoke writes redacted evidence", /DEPLOYED_PWA_PUSH_SMS_EVIDENCE_DIR/.test(smoke) && /evidence\.json/.test(smoke) && /redacted-password/.test(smoke))
 add("package exposes P104 scripts", /"e2e:deployed:pwa-push-sms":\s*"node scripts\/e2e\/deployed-pwa-push-sms-smoke\.mjs"/.test(packageJson) && /"quality:deployed-pwa-push-sms":\s*"node scripts\/quality\/validate-deployed-pwa-push-sms\.mjs"/.test(packageJson))
 add("project validator references P104 validator", /validate-deployed-pwa-push-sms\.mjs/.test(validateProject) && /P104 deployed PWA Push SMS validator passes/.test(validateProject))
-add("README keeps P104 complete while marking P106 latest", /P104 deployed PWA\/Push\/SMS smoke gates/.test(readme) && /Latest completed implementation phase:\s+\*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(readme) && /P107 - Creative Studio integration planning/.test(readme))
-add("roadmap marks P104 complete in P106 progression", /\| P104 \| Deployed PWA, Push, and SMS smoke gates\. \|/.test(roadmap) && /Completed through \*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(roadmap))
-add("source of truth names P106 baseline while keeping P104 smoke", /after P106 PWA\/Push\/SMS source acceptance/.test(sourceOfTruth) && /Deployed PWA, Push, and SMS smoke exists/.test(sourceOfTruth))
+add("README keeps P104 complete while marking P107 latest", /P104 deployed PWA\/Push\/SMS smoke gates/.test(readme) && /Latest completed implementation phase:\s+\*\*P107 - Creative Studio integration planning for main Bazar Baz\*\*/.test(readme) && /P108 - Creative Studio server foundation/.test(readme))
+add("roadmap marks P104 complete in P107 progression", /\| P104 \| Deployed PWA, Push, and SMS smoke gates\. \|/.test(roadmap) && /Completed through \*\*P107 - Creative Studio integration planning for main Bazar Baz\*\*/.test(roadmap))
+add("source of truth names P107 baseline while keeping P104 smoke", /after P107 Creative Studio integration planning/.test(sourceOfTruth) && /Deployed PWA, Push, and SMS smoke exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

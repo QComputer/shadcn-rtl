@@ -2,14 +2,14 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-29._
 
-This roadmap is ordered for risk reduction. Phases 18-106 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, and source acceptance/secretless packaging roadmap is implemented through Phase 106.
+This roadmap is ordered for risk reduction. Phases 18-107 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, source acceptance/secretless packaging, and Creative Studio planning roadmap is implemented through Phase 107.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P106 - PWA/Push/SMS source acceptance and secretless packaging gate**.
-- Creative Studio work must not start until P106 is green.
+- Completed through **P107 - Creative Studio integration planning for main Bazar Baz**.
+- Creative Studio implementation must start with P108 server foundation before UI/product feature work.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -20,10 +20,10 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P107 - Creative Studio integration planning for main Bazar Baz
+P108 - Creative Studio server foundation
 ```
 
-Next work should plan the Creative Studio integration without adding UI or product features until the planning scope is explicit.
+Next work should add the narrow Creative Studio server foundation described in P107 without broad dashboard UI or public product behavior.
 
 Immediate validation target:
 
@@ -55,6 +55,7 @@ pnpm run quality:deployed-pwa-push-sms
 pnpm run quality:production-rollout
 pnpm run quality:pwa-push-sms-acceptance
 pnpm run quality:clean-source
+pnpm run quality:creative-studio-planning
 pnpm run quality:export-downloads
 pnpm run quality:deployed-import-export-smoke
 pnpm run quality:local
@@ -106,12 +107,13 @@ Completed integrated phases:
 | P104 | Deployed PWA, Push, and SMS smoke gates. |
 | P105 | Production rollout runbook. |
 | P106 | PWA/Push/SMS source acceptance and secretless packaging gate. |
+| P107 | Creative Studio integration planning for main Bazar Baz. |
 
 Upcoming platform phases should be treated as incremental hardening against the actual implementation already present in the repo:
 
 | Phase | Focus |
 | --- | --- |
-| P107 | Creative Studio integration planning for main Bazar Baz. |
+| P108 | Creative Studio server foundation. |
 
 Safety constraints for all Import Hub phases:
 

@@ -66,9 +66,9 @@ add("env validator keeps SMS dry-run safeguards", /SMS_PROVIDER/.test(envValidat
 add(".env.example keeps placeholder-only SMS config", /SMS_PROVIDER=DRY_RUN/.test(envExample) && /SMS_DRY_RUN=true/.test(envExample) && /DEPLOYED_ALLOW_REAL_SMS=0/.test(envExample) && /^SMS_IR_API_KEY=$/m.test(envExample) && /^SMS_IR_LINE_NUMBER=$/m.test(envExample))
 add("package exposes P101 validator", /"quality:sms-provider":\s*"node scripts\/quality\/validate-sms-provider\.mjs"/.test(packageJson))
 add("project validator references P101 validator", /validate-sms-provider\.mjs/.test(validateProject) && /P101 SMS provider validator passes/.test(validateProject))
-add("README keeps P101 complete while marking P106 latest", /\| 101 \| SMS provider abstraction and sms\.ir integration/.test(readme) && /Latest completed implementation phase:\s+\*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(readme) && /P107 - Creative Studio integration planning/.test(readme))
-add("roadmap keeps P101 complete while marking P106 baseline", /\| P101 \| SMS provider abstraction and sms\.ir integration\. \|/.test(roadmap) && /Completed through \*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(roadmap))
-add("source of truth names P106 baseline", /after P106 PWA\/Push\/SMS source acceptance/.test(sourceOfTruth) && /SMS provider abstraction exists/.test(sourceOfTruth))
+add("README keeps P101 complete while marking P107 latest", /\| 101 \| SMS provider abstraction and sms\.ir integration/.test(readme) && /Latest completed implementation phase:\s+\*\*P107 - Creative Studio integration planning for main Bazar Baz\*\*/.test(readme) && /P108 - Creative Studio server foundation/.test(readme))
+add("roadmap keeps P101 complete while marking P107 baseline", /\| P101 \| SMS provider abstraction and sms\.ir integration\. \|/.test(roadmap) && /Completed through \*\*P107 - Creative Studio integration planning for main Bazar Baz\*\*/.test(roadmap))
+add("source of truth names P107 baseline", /after P107 Creative Studio integration planning/.test(sourceOfTruth) && /SMS provider abstraction exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

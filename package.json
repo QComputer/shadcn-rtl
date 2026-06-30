@@ -55,6 +55,7 @@
     "release:pwa-push-sms-acceptance-evidence": "node scripts/release/pwa-push-sms-acceptance-evidence.mjs",
     "release:clean-source": "node scripts/release/create-clean-source.mjs --zip --out dist/bazar-baz-clean-source --zip-out dist/bazar-baz-clean-source.zip",
     "quality:clean-source": "node scripts/quality/verify-clean-source.mjs",
+    "quality:creative-studio-planning": "node scripts/quality/validate-creative-studio-planning.mjs",
     "e2e:deployed:phase11": "node scripts/e2e/deployed-phase11-health.mjs",
     "smoke:deployed:health": "node scripts/e2e/deployed-phase11-health.mjs",
     "e2e:deployed:phase12": "node scripts/e2e/deployed-phase12-messaging.mjs",

@@ -77,9 +77,9 @@ add("shop profile passes locale to opt-in component", /<WebPushOptIn\s+organizat
 
 add("package exposes P99 validator", /"quality:notification-preferences":\s*"node scripts\/quality\/validate-notification-preferences\.mjs"/.test(packageJson))
 add("project validator references P99 validator", /validate-notification-preferences\.mjs/.test(validateProject) && /P99 notification preferences validator passes/.test(validateProject))
-add("README keeps P99 complete while marking P106 latest", /\| 99 \| Notification domain model and preferences/.test(readme) && /Latest completed implementation phase:\s+\*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(readme) && /P107 - Creative Studio integration planning/.test(readme))
-add("roadmap marks P99 complete in P106 progression", /\| P99 \| Notification domain model and preferences\. \|/.test(roadmap) && /Completed through \*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(roadmap))
-add("source of truth names P106 baseline", /after P106 PWA\/Push\/SMS source acceptance/.test(sourceOfTruth) && /Notification domain model and preferences exists/.test(sourceOfTruth))
+add("README keeps P99 complete while marking P107 latest", /\| 99 \| Notification domain model and preferences/.test(readme) && /Latest completed implementation phase:\s+\*\*P107 - Creative Studio integration planning for main Bazar Baz\*\*/.test(readme) && /P108 - Creative Studio server foundation/.test(readme))
+add("roadmap marks P99 complete in P107 progression", /\| P99 \| Notification domain model and preferences\. \|/.test(roadmap) && /Completed through \*\*P107 - Creative Studio integration planning for main Bazar Baz\*\*/.test(roadmap))
+add("source of truth names P107 baseline", /after P107 Creative Studio integration planning/.test(sourceOfTruth) && /Notification domain model and preferences exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

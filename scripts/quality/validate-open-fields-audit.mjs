@@ -57,9 +57,9 @@ for (const locale of ["fa", "en", "ar"]) {
   add(`${locale} dictionary has payment condition copy`, /"paymentCondition"\s*:/.test(dictionary) && /"paymentConditionDescription"\s*:/.test(dictionary))
 }
 
-add("README keeps P96 complete while marking P106 latest", /\| 96 \| Open Fields and Workflow Completion Audit/.test(readme) && /Latest completed implementation phase:\s+\*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(readme) && /P107 - Creative Studio integration planning/.test(readme))
-add("roadmap keeps P96 complete while marking P106 baseline", /\| P96 \| Open fields and workflow completion audit\. \|/.test(roadmap) && /Completed through \*\*P106 - PWA\/Push\/SMS source acceptance and secretless packaging gate\*\*/.test(roadmap))
-add("source of truth keeps P96 audit while naming P106 baseline", /Open Fields and Workflow Completion Audit exists/.test(sourceOfTruth) && /after P106 PWA\/Push\/SMS source acceptance/.test(sourceOfTruth))
+add("README keeps P96 complete while marking P107 latest", /\| 96 \| Open Fields and Workflow Completion Audit/.test(readme) && /Latest completed implementation phase:\s+\*\*P107 - Creative Studio integration planning for main Bazar Baz\*\*/.test(readme) && /P108 - Creative Studio server foundation/.test(readme))
+add("roadmap keeps P96 complete while marking P107 baseline", /\| P96 \| Open fields and workflow completion audit\. \|/.test(roadmap) && /Completed through \*\*P107 - Creative Studio integration planning for main Bazar Baz\*\*/.test(roadmap))
+add("source of truth keeps P96 audit while naming P107 baseline", /Open Fields and Workflow Completion Audit exists/.test(sourceOfTruth) && /after P107 Creative Studio integration planning/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

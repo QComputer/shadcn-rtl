@@ -30,7 +30,7 @@ const sourceOfTruth = read("docs/CURRENT_SOURCE_OF_TRUTH.md");
 add("P111 phase document exists and is implemented", /Status: implemented/.test(doc) && /P111/.test(doc));
 add("readiness helper is server-only", /import "server-only"/.test(helper));
 add("readiness helper uses existing AI media service config", /getAiMediaServiceConfigStatus/.test(helper) && /checkAiMediaServiceReadiness/.test(helper) && /getAiMediaPaidProviderStatus/.test(helper));
-add("readiness helper keeps generation disabled", /generationRequestEnabled:\s*false/.test(helper) && /generationUiEnabled:\s*false/.test(helper));
+add("readiness helper gates generation through product-image readiness", /productImageGenerationEnabled/.test(helper) && /generationRequestEnabled:\s*productImageGenerationEnabled/.test(helper) && /generationUiEnabled:\s*productImageGenerationEnabled/.test(helper));
 add("readiness helper blocks direct browser worker calls", /browserWorkerCallsAllowed:\s*false/.test(helper) && /serverOnly:\s*true/.test(helper));
 add("readiness helper declares no new providers", /noNewProviders:\s*true/.test(helper) && /upstream:\s*"AI_MEDIA_SERVICE"/.test(helper));
 add("readiness contract is product-image only", /PRODUCT/.test(helper) && /PRODUCT_IMAGE/.test(helper) && /product\.image/.test(helper) && /ORGANIZATION_BRAND/.test(helper) && /FANPAGE_POST/.test(helper) && /CAMPAIGN/.test(helper) && /IMPORTED_MEDIA/.test(helper));
@@ -40,12 +40,12 @@ add("readiness helper returns secret-safe blockers", /AI_MEDIA_SERVICE_INTERNAL_
 add("Creative Studio status embeds generation readiness", /getCreativeStudioGenerationReadiness/.test(service) && /generationReadiness/.test(service));
 add("status route supports explicit check=1 only", /searchParams\.get\("check"\) === "1"/.test(statusRoute) && /checkGenerationReadiness/.test(statusRoute));
 add("dashboard shows Persian readiness card", /آمادگی تولید/.test(page) && /دروازه آمادگی تولید/.test(page) && /فرم تولید/.test(page));
-add("dashboard still has no generation form or start button", !/createCreativeStudioJob/.test(page) && !/شروع تولید/.test(page) && !/startGeneration/.test(page));
+add("dashboard still blocks direct browser worker calls", !/fetch\([^)]*\/v1\/product-image-suggestions\/jobs/.test(page) && !/process\.env/.test(page) && !/AI_MEDIA_SERVICE_INTERNAL_KEY/.test(page));
 add("package exposes P111 validator", /"quality:creative-studio-generation-readiness":\s*"node scripts\/quality\/validate-creative-studio-generation-readiness\.mjs"/.test(packageJson));
 add("quality local references P111 validator", /validate-creative-studio-generation-readiness\.mjs/.test(validateProject) && /P111 Creative Studio generation readiness validator passes/.test(validateProject));
-add("README marks P111 complete and P112 next", /Latest completed implementation phase:\s+\*\*P111 - Creative Studio generation readiness gate and AI-service contract sync\*\*/.test(readme) && /Recommended next phase:\s+\*\*P112 - Creative Studio product-image generation request controls and long-running job UX\*\*/.test(readme));
-add("roadmap marks P111 complete and P112 next", /Completed through \*\*P111 - Creative Studio generation readiness gate and AI-service contract sync\*\*/.test(roadmap) && /\| P111 \| Creative Studio generation readiness gate and AI-service contract sync\. \|/.test(roadmap) && /\| P112 \| Creative Studio product-image generation request controls and long-running job UX\. \|/.test(roadmap));
-add("source of truth names P111 baseline", /after P111 Creative Studio generation readiness gate and AI-service contract sync/.test(sourceOfTruth) && /Creative Studio generation readiness exists/.test(sourceOfTruth));
+add("README marks P112 complete and P113 next", /Latest completed implementation phase:\s+\*\*P112 - Creative Studio product-image generation request controls and long-running job UX\*\*/.test(readme) && /Recommended next phase:\s+\*\*P113 - Creative Studio generated-asset selection polish and deployed acceptance\*\*/.test(readme));
+add("roadmap marks P112 complete and P113 next", /Completed through \*\*P112 - Creative Studio product-image generation request controls and long-running job UX\*\*/.test(roadmap) && /\| P111 \| Creative Studio generation readiness gate and AI-service contract sync\. \|/.test(roadmap) && /\| P112 \| Creative Studio product-image generation request controls and long-running job UX\. \|/.test(roadmap));
+add("source of truth names P111 baseline", /after P112 Creative Studio product-image generation request controls and long-running job UX/.test(sourceOfTruth) && /Creative Studio generation readiness exists/.test(sourceOfTruth));
 
 const failed = checks.filter((check) => !check.pass);
 for (const check of checks) {

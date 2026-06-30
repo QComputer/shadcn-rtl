@@ -8,9 +8,9 @@ import {
 import { getAiMediaPaidProviderStatus } from "@/lib/services/ai-media-paid-provider";
 
 export type CreativeStudioGenerationReadiness = {
-  phase: "P111";
-  generationRequestEnabled: false;
-  generationUiEnabled: false;
+  phase: "P112";
+  generationRequestEnabled: boolean;
+  generationUiEnabled: boolean;
   browserWorkerCallsAllowed: false;
   serverOnly: true;
   noNewProviders: true;
@@ -54,7 +54,7 @@ export type CreativeStudioGenerationReadiness = {
     };
   };
   blockers: string[];
-  nextPhase: "P112 - Creative Studio product-image generation request controls and long-running job UX";
+  nextPhase: "P113 - Creative Studio generated-asset selection polish and deployed acceptance";
 };
 
 export async function getCreativeStudioGenerationReadiness(options: { checkRemote?: boolean } = {}): Promise<CreativeStudioGenerationReadiness> {
@@ -68,11 +68,12 @@ export async function getCreativeStudioGenerationReadiness(options: { checkRemot
   if (!service.internalKeyConfigured) blockers.push("AI_MEDIA_SERVICE_INTERNAL_KEY is not configured");
   if (paidProvider.rollback.paused) blockers.push("AI media paid-provider rollout is paused");
   if (remote && !remote.ok) blockers.push("AI media service remote readiness check failed");
+  const productImageGenerationEnabled = service.ready && !paidProvider.rollback.paused;
 
   return {
-    phase: "P111",
-    generationRequestEnabled: false,
-    generationUiEnabled: false,
+    phase: "P112",
+    generationRequestEnabled: productImageGenerationEnabled,
+    generationUiEnabled: productImageGenerationEnabled,
     browserWorkerCallsAllowed: false,
     serverOnly: true,
     noNewProviders: true,
@@ -110,6 +111,6 @@ export async function getCreativeStudioGenerationReadiness(options: { checkRemot
       },
     },
     blockers,
-    nextPhase: "P112 - Creative Studio product-image generation request controls and long-running job UX",
+    nextPhase: "P113 - Creative Studio generated-asset selection polish and deployed acceptance",
   };
 }

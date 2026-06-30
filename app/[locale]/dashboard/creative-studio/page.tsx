@@ -1,11 +1,14 @@
 "use client"
 
-import { use, useCallback, useEffect, useState } from "react"
+import { use, useCallback, useEffect, useRef, useState } from "react"
 import { useSession } from "next-auth/react"
 import {
   AlertTriangle,
+  Ban,
+  Clock,
   Eye,
   ImageIcon,
+  Play,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -15,7 +18,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +32,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { toPersianDigits } from "@/lib/persian"
+
+const GENERATION_POLL_INTERVAL_MS = 3000
+const GENERATION_MAX_POLL_ATTEMPTS = 90
 
 type CreativeStudioJobStatus = "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELED"
 type CreativeStudioAssetStatus = "DRAFT" | "SELECTED" | "APPLIED" | "REJECTED"
@@ -40,6 +48,14 @@ type OrganizationOption = {
   name: string
   slug: string
   type: string
+}
+
+type ProductOption = {
+  id: string
+  name: string
+  slug?: string | null
+  image?: string | null
+  category?: { id: string; name: string } | null
 }
 
 type CreativeStudioStatus = {
@@ -60,9 +76,9 @@ type CreativeStudioStatus = {
     noPublicAssetMutation: boolean
   }
   generationReadiness?: {
-    phase: "P111"
-    generationRequestEnabled: false
-    generationUiEnabled: false
+    phase: "P111" | "P112"
+    generationRequestEnabled: boolean
+    generationUiEnabled: boolean
     browserWorkerCallsAllowed: false
     serverOnly: true
     noNewProviders: true
@@ -221,6 +237,26 @@ type CreativeStudioCopy = {
   serverOnly: string
   browserCalls: string
   readinessBlockers: string
+  generationForm: string
+  product: string
+  productPlaceholder: string
+  generationPrompt: string
+  generationPromptPlaceholder: string
+  imageCount: string
+  aspectRatio: string
+  stylePreset: string
+  startGeneration: string
+  startingGeneration: string
+  generationStarted: string
+  generationFailed: string
+  generationInProgress: string
+  generationComplete: string
+  continuePolling: string
+  cancelGeneration: string
+  cancelingGeneration: string
+  pollingAttempts: string
+  remoteUnavailable: string
+  noProductSelected: string
   statuses: Record<CreativeStudioJobStatus | CreativeStudioAssetStatus, string>
   targetTypes: Record<CreativeStudioTargetType, string>
   assetTypes: Record<CreativeStudioAssetType, string>
@@ -291,6 +327,26 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     serverOnly: "فقط سمت سرور",
     browserCalls: "فراخوانی مستقیم مرورگر",
     readinessBlockers: "موانع آمادگی",
+    generationForm: "ساخت تصویر محصول",
+    product: "محصول",
+    productPlaceholder: "یک محصول را انتخاب کنید",
+    generationPrompt: "توضیح تکمیلی",
+    generationPromptPlaceholder: "مثلا: نور طبیعی، پس‌زمینه ساده، تمرکز روی بسته‌بندی",
+    imageCount: "تعداد تصویر",
+    aspectRatio: "نسبت تصویر",
+    stylePreset: "سبک",
+    startGeneration: "شروع تولید",
+    startingGeneration: "در حال شروع...",
+    generationStarted: "درخواست تولید تصویر محصول ثبت شد.",
+    generationFailed: "ثبت درخواست تولید تصویر ناموفق بود.",
+    generationInProgress: "در حال تولید تصویر",
+    generationComplete: "تصاویر پیشنهادی آماده بررسی هستند.",
+    continuePolling: "ادامه پیگیری",
+    cancelGeneration: "لغو تولید",
+    cancelingGeneration: "در حال لغو...",
+    pollingAttempts: "تعداد پیگیری",
+    remoteUnavailable: "ارتباط با سرویس تصویر موقتا در دسترس نیست؛ آخرین وضعیت ذخیره‌شده نمایش داده می‌شود.",
+    noProductSelected: "برای شروع تولید، ابتدا محصول را انتخاب کنید.",
     statuses: {
       QUEUED: "در صف",
       PROCESSING: "در حال پردازش",
@@ -389,6 +445,26 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     serverOnly: "Server-only",
     browserCalls: "Direct browser calls",
     readinessBlockers: "Readiness blockers",
+    generationForm: "Product image generation",
+    product: "Product",
+    productPlaceholder: "Select a product",
+    generationPrompt: "Extra direction",
+    generationPromptPlaceholder: "Example: natural light, simple background, focus on packaging",
+    imageCount: "Image count",
+    aspectRatio: "Aspect ratio",
+    stylePreset: "Style",
+    startGeneration: "Start generation",
+    startingGeneration: "Starting...",
+    generationStarted: "Product image generation request was created.",
+    generationFailed: "Could not create product image generation request.",
+    generationInProgress: "Image generation in progress",
+    generationComplete: "Suggested images are ready for review.",
+    continuePolling: "Continue polling",
+    cancelGeneration: "Cancel generation",
+    cancelingGeneration: "Canceling...",
+    pollingAttempts: "Polling attempts",
+    remoteUnavailable: "The image service is temporarily unavailable; the latest stored status is shown.",
+    noProductSelected: "Select a product before starting generation.",
     statuses: {
       QUEUED: "Queued",
       PROCESSING: "Processing",
@@ -487,6 +563,26 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     serverOnly: "الخادم فقط",
     browserCalls: "استدعاءات المتصفح المباشرة",
     readinessBlockers: "عوائق الجاهزية",
+    generationForm: "توليد صورة المنتج",
+    product: "المنتج",
+    productPlaceholder: "اختر منتجا",
+    generationPrompt: "توجيه إضافي",
+    generationPromptPlaceholder: "مثال: إضاءة طبيعية، خلفية بسيطة، تركيز على التغليف",
+    imageCount: "عدد الصور",
+    aspectRatio: "نسبة الصورة",
+    stylePreset: "النمط",
+    startGeneration: "بدء التوليد",
+    startingGeneration: "جار البدء...",
+    generationStarted: "تم إنشاء طلب توليد صورة المنتج.",
+    generationFailed: "تعذر إنشاء طلب توليد صورة المنتج.",
+    generationInProgress: "توليد الصورة قيد التنفيذ",
+    generationComplete: "الصور المقترحة جاهزة للمراجعة.",
+    continuePolling: "متابعة التحقق",
+    cancelGeneration: "إلغاء التوليد",
+    cancelingGeneration: "جار الإلغاء...",
+    pollingAttempts: "عدد محاولات التحقق",
+    remoteUnavailable: "خدمة الصور غير متاحة مؤقتا؛ يتم عرض آخر حالة محفوظة.",
+    noProductSelected: "اختر منتجا قبل بدء التوليد.",
     statuses: {
       QUEUED: "في الانتظار",
       PROCESSING: "قيد المعالجة",
@@ -539,6 +635,10 @@ function statusVariant(status: CreativeStudioJobStatus | CreativeStudioAssetStat
   if (status === "COMPLETED" || status === "APPLIED" || status === "SELECTED") return "default"
   if (status === "CANCELED") return "outline"
   return "secondary"
+}
+
+function isJobInFlight(status: CreativeStudioJobStatus | string | null | undefined) {
+  return status === "QUEUED" || status === "PROCESSING"
 }
 
 function getAssetPublicUrl(asset: CreativeStudioAsset) {
@@ -612,6 +712,18 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
   const [usage, setUsage] = useState<CreativeStudioUsage | null>(null)
   const [jobs, setJobs] = useState<CreativeStudioJob[]>([])
   const [selectedJob, setSelectedJob] = useState<CreativeStudioJob | null>(null)
+  const [products, setProducts] = useState<ProductOption[]>([])
+  const [selectedProductId, setSelectedProductId] = useState("")
+  const [generationPrompt, setGenerationPrompt] = useState("")
+  const [generationCount, setGenerationCount] = useState("3")
+  const [generationAspectRatio, setGenerationAspectRatio] = useState("1:1")
+  const [generationStylePreset, setGenerationStylePreset] = useState("LIGHT_MENU_PHOTO")
+  const [generationSubmitting, setGenerationSubmitting] = useState(false)
+  const [generationPollingJobId, setGenerationPollingJobId] = useState<string | null>(null)
+  const [generationCancelingJobId, setGenerationCancelingJobId] = useState<string | null>(null)
+  const [generationPollAttempts, setGenerationPollAttempts] = useState(0)
+  const generationPollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const generationPollRunIdRef = useRef(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pendingApply, setPendingApply] = useState<{
@@ -622,6 +734,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
   const [confirmationText, setConfirmationText] = useState("")
   const [applyingAssetId, setApplyingAssetId] = useState<string | null>(null)
   const [applyNotice, setApplyNotice] = useState<{ type: "success" | "error"; message: string; warnings?: string[] } | null>(null)
+  const [generationNotice, setGenerationNotice] = useState<{ type: "success" | "error"; message: string } | null>(null)
 
   const fetchOrganizations = useCallback(async (signal?: AbortSignal) => {
     if (isSuperAdmin) {
@@ -651,6 +764,28 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
     setOrganizationId(option?.id || "")
     return option?.id || ""
   }, [copy.error, isSuperAdmin, organizationId])
+
+  const fetchProductsForOrganization = useCallback(async (orgId: string, signal?: AbortSignal) => {
+    if (!orgId) {
+      setProducts([])
+      setSelectedProductId("")
+      return
+    }
+
+    const params = new URLSearchParams({
+      pageSize: "100",
+      isActive: "true",
+      organizationId: orgId,
+    })
+    const response = await fetch(`/api/products?${params.toString()}`, { cache: "no-store", signal })
+    if (!response.ok) throw new Error(await readError(response, copy.error))
+    const data = await response.json()
+    const nextProducts = (data.data ?? []) as ProductOption[]
+    setProducts(nextProducts)
+    setSelectedProductId((current) => current && nextProducts.some((product) => product.id === current)
+      ? current
+      : nextProducts[0]?.id || "")
+  }, [copy.error])
 
   const loadOverview = useCallback(async (orgId: string, signal?: AbortSignal) => {
     const query = orgId ? `?organizationId=${encodeURIComponent(orgId)}` : ""
@@ -691,6 +826,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
     setError(null)
     try {
       const orgId = explicitOrganizationId || await fetchOrganizations(signal)
+      await fetchProductsForOrganization(orgId, signal)
       await loadOverview(orgId, signal)
       if (selectedJob?.organizationId === orgId) {
         await loadJob(selectedJob.id, orgId, signal)
@@ -700,7 +836,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
     } finally {
       if (!signal?.aborted) setLoading(false)
     }
-  }, [copy.error, fetchOrganizations, loadOverview, selectedJob?.id, selectedJob?.organizationId])
+  }, [copy.error, fetchOrganizations, fetchProductsForOrganization, loadOverview, selectedJob?.id, selectedJob?.organizationId])
 
   useEffect(() => {
     if (sessionStatus === "loading") return
@@ -709,11 +845,154 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
     return () => controller.abort()
   }, [refresh, sessionStatus])
 
+  useEffect(() => {
+    return () => {
+      generationPollRunIdRef.current += 1
+      if (generationPollTimerRef.current) {
+        clearTimeout(generationPollTimerRef.current)
+        generationPollTimerRef.current = null
+      }
+    }
+  }, [])
+
   async function selectOrganization(nextOrganizationId: string) {
+    generationPollRunIdRef.current += 1
+    if (generationPollTimerRef.current) {
+      clearTimeout(generationPollTimerRef.current)
+      generationPollTimerRef.current = null
+    }
     setOrganizationId(nextOrganizationId)
     setSelectedJob(null)
     setApplyNotice(null)
+    setGenerationNotice(null)
+    setGenerationPollingJobId(null)
+    setGenerationPollAttempts(0)
     await refresh(undefined, nextOrganizationId)
+  }
+
+  async function startProductImageGeneration() {
+    if (!selectedProductId) {
+      setGenerationNotice({ type: "error", message: copy.noProductSelected })
+      return
+    }
+
+    setGenerationSubmitting(true)
+    setGenerationNotice(null)
+    setApplyNotice(null)
+    try {
+      const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ""
+      const response = await fetch(`/api/dashboard/creative-studio/jobs${query}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          organizationId,
+          targetType: "PRODUCT",
+          targetId: selectedProductId,
+          assetType: "PRODUCT_IMAGE",
+          prompt: generationPrompt.trim() || undefined,
+          count: Number.parseInt(generationCount, 10),
+          aspect_ratio: generationAspectRatio,
+          style_preset: generationStylePreset,
+          metadata: {
+            p112Request: true,
+            requestedFrom: "creative-studio-dashboard",
+          },
+        }),
+      })
+      if (!response.ok) throw new Error(await readError(response, copy.generationFailed))
+      const data = await response.json()
+      const job = data.job as CreativeStudioJob
+      setGenerationNotice({ type: "success", message: copy.generationStarted })
+      await loadOverview(organizationId)
+      await loadJob(job.id, organizationId)
+      if (isJobInFlight(job.status)) {
+        pollCreativeStudioJob(job.id)
+      }
+    } catch (err) {
+      setGenerationNotice({ type: "error", message: err instanceof Error ? err.message : copy.generationFailed })
+    } finally {
+      setGenerationSubmitting(false)
+    }
+  }
+
+  function pollCreativeStudioJob(jobId: string) {
+    generationPollRunIdRef.current += 1
+    if (generationPollTimerRef.current) {
+      clearTimeout(generationPollTimerRef.current)
+      generationPollTimerRef.current = null
+    }
+
+    const runId = generationPollRunIdRef.current
+    let attempts = 0
+    setGenerationPollingJobId(jobId)
+    setGenerationPollAttempts(0)
+
+    const stopPolling = (message?: string, type: "success" | "error" = "success") => {
+      if (generationPollRunIdRef.current !== runId) return
+      if (generationPollTimerRef.current) {
+        clearTimeout(generationPollTimerRef.current)
+        generationPollTimerRef.current = null
+      }
+      setGenerationPollingJobId(null)
+      if (message) setGenerationNotice({ type, message })
+    }
+
+    const pollOnce = async () => {
+      if (generationPollRunIdRef.current !== runId) return
+      attempts += 1
+      setGenerationPollAttempts(attempts)
+      try {
+        await loadOverview(organizationId)
+        const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ""
+        const response = await fetch(`/api/dashboard/creative-studio/jobs/${encodeURIComponent(jobId)}${query}`, {
+          cache: "no-store",
+        })
+        if (!response.ok) throw new Error(await readError(response, copy.error))
+        const data = await response.json()
+        const job = data.job as CreativeStudioJob
+        setSelectedJob(job)
+        if (job.status === "COMPLETED") {
+          stopPolling(copy.generationComplete)
+        } else if (job.status === "FAILED") {
+          stopPolling(job.prompt ? copy.generationFailed : copy.generationFailed, "error")
+        } else if (job.status === "CANCELED") {
+          stopPolling(copy.cancelGeneration, "error")
+        } else if (attempts >= GENERATION_MAX_POLL_ATTEMPTS) {
+          stopPolling(copy.remoteUnavailable, "error")
+        } else {
+          generationPollTimerRef.current = setTimeout(pollOnce, GENERATION_POLL_INTERVAL_MS)
+        }
+      } catch (err) {
+        stopPolling(err instanceof Error ? err.message : copy.remoteUnavailable, "error")
+      }
+    }
+
+    void pollOnce()
+  }
+
+  async function cancelGenerationJob(jobId: string) {
+    setGenerationCancelingJobId(jobId)
+    setGenerationNotice(null)
+    try {
+      const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ""
+      const response = await fetch(`/api/dashboard/creative-studio/jobs/${encodeURIComponent(jobId)}/cancel${query}`, {
+        method: "POST",
+      })
+      if (!response.ok) throw new Error(await readError(response, copy.generationFailed))
+      generationPollRunIdRef.current += 1
+      if (generationPollTimerRef.current) {
+        clearTimeout(generationPollTimerRef.current)
+        generationPollTimerRef.current = null
+      }
+      setGenerationPollingJobId(null)
+      setGenerationNotice({ type: "success", message: copy.cancelGeneration })
+      await loadOverview(organizationId)
+      await loadJob(jobId, organizationId)
+    } catch (err) {
+      setGenerationNotice({ type: "error", message: err instanceof Error ? err.message : copy.generationFailed })
+    } finally {
+      setGenerationCancelingJobId(null)
+    }
   }
 
   async function applyPendingAsset() {
@@ -757,6 +1036,12 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
 
   const isReadOnlyPublicMutationBlocked = status?.policy.noPublicAssetMutation === true
   const isDraftOnly = status?.policy.draftOnly === true
+  const generationReady = Boolean(
+    status?.generationReadiness?.generationRequestEnabled &&
+    status.generationReadiness.generationUiEnabled &&
+    status.generationReadiness.service.ready &&
+    status.canCreateJob
+  )
 
   return (
     <div className="space-y-6">
@@ -806,6 +1091,16 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
               ))}
             </div>
           ) : null}
+        </div>
+      )}
+
+      {generationNotice && (
+        <div className={`rounded-md border p-3 text-sm ${
+          generationNotice.type === "success"
+            ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-700"
+            : "border-destructive/40 bg-destructive/5 text-destructive"
+        }`}>
+          {generationNotice.message}
         </div>
       )}
 
@@ -923,6 +1218,112 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Sparkles className="size-4" />
+                {copy.generationForm}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 lg:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_120px_140px_180px]">
+                <div className="space-y-2">
+                  <Label>{copy.product}</Label>
+                  <Select value={selectedProductId} onValueChange={setSelectedProductId} disabled={!generationReady || products.length === 0 || generationSubmitting}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={copy.productPlaceholder} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {products.map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>{copy.generationPrompt}</Label>
+                  <Textarea
+                    value={generationPrompt}
+                    onChange={(event) => setGenerationPrompt(event.target.value)}
+                    placeholder={copy.generationPromptPlaceholder}
+                    rows={1}
+                    disabled={!generationReady || generationSubmitting}
+                    className="min-h-10 resize-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{copy.imageCount}</Label>
+                  <Select value={generationCount} onValueChange={setGenerationCount} disabled={!generationReady || generationSubmitting}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1</SelectItem>
+                      <SelectItem value="2">2</SelectItem>
+                      <SelectItem value="3">3</SelectItem>
+                      <SelectItem value="4">4</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>{copy.aspectRatio}</Label>
+                  <Select value={generationAspectRatio} onValueChange={setGenerationAspectRatio} disabled={!generationReady || generationSubmitting}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1:1">1:1</SelectItem>
+                      <SelectItem value="4:5">4:5</SelectItem>
+                      <SelectItem value="16:9">16:9</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>{copy.stylePreset}</Label>
+                  <Select value={generationStylePreset} onValueChange={setGenerationStylePreset} disabled={!generationReady || generationSubmitting}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="LIGHT_MENU_PHOTO">LIGHT_MENU_PHOTO</SelectItem>
+                      <SelectItem value="STUDIO_PRODUCT">STUDIO_PRODUCT</SelectItem>
+                      <SelectItem value="MARKETPLACE_CLEAN">MARKETPLACE_CLEAN</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <Badge variant={generationReady ? "default" : "outline"}>
+                    {generationReady ? copy.policyYes : copy.policyNo}
+                  </Badge>
+                  <span>{copy.remaining}: {formatNumber(status?.limits.remainingDailyJobs, locale)}</span>
+                  {generationPollingJobId ? (
+                    <span>{copy.pollingAttempts}: {formatNumber(generationPollAttempts, locale)}</span>
+                  ) : null}
+                </div>
+                <Button
+                  type="button"
+                  onClick={startProductImageGeneration}
+                  disabled={!generationReady || !selectedProductId || generationSubmitting}
+                  className="w-full sm:w-auto"
+                >
+                  {generationSubmitting ? <RefreshCw className="size-4 animate-spin" /> : <Play className="size-4" />}
+                  {generationSubmitting ? copy.startingGeneration : copy.startGeneration}
+                </Button>
+              </div>
+              {!generationReady ? (
+                <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700">
+                  {status?.generationReadiness?.blockers.length
+                    ? `${copy.readinessBlockers}: ${status.generationReadiness.blockers.join(" | ")}`
+                    : copy.generationDisabled}
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
           <div className="grid gap-4 xl:grid-cols-[minmax(320px,520px)_1fr]">
             <Card>
               <CardHeader>
@@ -977,7 +1378,46 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
                         <Badge variant={statusVariant(selectedJob.status)}>{copy.statuses[selectedJob.status]}</Badge>
                         <Badge variant="outline">{copy.targetTypes[selectedJob.targetType]}</Badge>
                         <Badge variant="outline">{selectedJob.provider}</Badge>
+                        {isJobInFlight(selectedJob.status) ? (
+                          <Badge variant="secondary" className="gap-1">
+                            <Clock className="size-3" />
+                            {copy.generationInProgress}
+                          </Badge>
+                        ) : selectedJob.status === "COMPLETED" && selectedJob.assets?.length ? (
+                          <Badge variant="default">{copy.generationComplete}</Badge>
+                        ) : null}
                       </div>
+                      {isJobInFlight(selectedJob.status) ? (
+                        <div className="flex flex-col gap-2 rounded-md border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="text-xs text-muted-foreground">
+                            {generationPollingJobId === selectedJob.id
+                              ? `${copy.pollingAttempts}: ${formatNumber(generationPollAttempts, locale)}`
+                              : copy.generationInProgress}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => pollCreativeStudioJob(selectedJob.id)}
+                              disabled={generationPollingJobId === selectedJob.id}
+                            >
+                              <RefreshCw className={`size-4 ${generationPollingJobId === selectedJob.id ? "animate-spin" : ""}`} />
+                              {copy.continuePolling}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => cancelGenerationJob(selectedJob.id)}
+                              disabled={generationCancelingJobId === selectedJob.id}
+                            >
+                              <Ban className="size-4" />
+                              {generationCancelingJobId === selectedJob.id ? copy.cancelingGeneration : copy.cancelGeneration}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : null}
                       <div className="grid gap-3 text-sm sm:grid-cols-2">
                         <div>
                           <div className="text-xs text-muted-foreground">{copy.selectedJob}</div>

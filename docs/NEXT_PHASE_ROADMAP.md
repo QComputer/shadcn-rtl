@@ -2,14 +2,14 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-29._
 
-This roadmap is ordered for risk reduction. Phases 18-111 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, source acceptance/secretless packaging, Creative Studio planning, Creative Studio server foundation, Creative Studio dashboard review, Creative Studio apply controls, and Creative Studio generation readiness roadmap is implemented through Phase 111.
+This roadmap is ordered for risk reduction. Phases 18-112 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, source acceptance/secretless packaging, Creative Studio planning, Creative Studio server foundation, Creative Studio dashboard review, Creative Studio apply controls, Creative Studio generation readiness, and Creative Studio product-image generation roadmap is implemented through Phase 112.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P111 - Creative Studio generation readiness gate and AI-service contract sync**.
-- Creative Studio generation work must continue with a P112 product-image request-control and long-running job UX phase before broader provider UI.
+- Completed through **P112 - Creative Studio product-image generation request controls and long-running job UX**.
+- Creative Studio generation work must continue with a P113 generated-asset selection polish and deployed acceptance phase before broader provider UI.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -20,10 +20,10 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P112 - Creative Studio product-image generation request controls and long-running job UX
+P113 - Creative Studio generated-asset selection polish and deployed acceptance
 ```
 
-Next work should add seller-facing product-image generation request controls against the existing AI media service contract, while keeping broad provider expansion and public auto-apply out of scope.
+Next work should harden generated-asset selection polish and deployed acceptance around the product-image Creative Studio workflow, while keeping broad provider expansion and public auto-apply out of scope.
 
 Immediate validation target:
 
@@ -60,6 +60,7 @@ pnpm run quality:creative-studio-foundation
 pnpm run quality:creative-studio-dashboard
 pnpm run quality:creative-studio-apply-controls
 pnpm run quality:creative-studio-generation-readiness
+pnpm run quality:creative-studio-product-image-generation
 pnpm run quality:export-downloads
 pnpm run quality:deployed-import-export-smoke
 pnpm run quality:local
@@ -116,12 +117,13 @@ Completed integrated phases:
 | P109 | Creative Studio dashboard shell and read-only job review. |
 | P110 | Creative Studio apply controls and cache-safe public asset updates. |
 | P111 | Creative Studio generation readiness gate and AI-service contract sync. |
+| P112 | Creative Studio product-image generation request controls and long-running job UX. |
 
 Upcoming platform phases should be treated as incremental hardening against the actual implementation already present in the repo:
 
 | Phase | Focus |
 | --- | --- |
-| P112 | Creative Studio product-image generation request controls and long-running job UX. |
+| P113 | Creative Studio generated-asset selection polish and deployed acceptance. |
 
 Safety constraints for all Import Hub phases:
 

@@ -325,7 +325,20 @@ export const createCreativeStudioJobSchema = z.object({
   prompt: z.string().trim().max(1000).optional().nullable(),
   sourceUrl: z.string().url().optional().nullable(),
   count: z.number().int().min(1).max(4).default(1),
+  aspect_ratio: z.string().trim().max(20).default("1:1"),
+  style_preset: z.string().trim().max(80).default("LIGHT_MENU_PHOTO"),
   metadata: z.record(z.string(), z.unknown()).optional(),
+}).superRefine((input, context) => {
+  if (input.targetType === "PRODUCT" && input.assetType === "PRODUCT_IMAGE") {
+    if (!input.targetId) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["targetId"],
+        message: "Product target is required for Creative Studio product image generation",
+      });
+    }
+    return;
+  }
 });
 
 export const creativeStudioJobFilterSchema = z.object({

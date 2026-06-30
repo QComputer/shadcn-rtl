@@ -4,9 +4,9 @@ Date: 2026-06-29
 
 ## Current validated baseline
 
-The current working baseline after P108 Creative Studio server foundation is source-validator green after the P108 validation gate.
+The current working baseline after P109 Creative Studio dashboard shell and read-only job review is source-validator green after the P109 validation gate.
 
-P108 adds the narrow Creative Studio server foundation: organization-scoped job ownership, draft asset records, usage/audit events, status/usage/job APIs, access checks, and MOCK-provider-safe validation. Public product, campaign, fanpage, logo, and cover mutation remains deferred.
+P109 adds a Persian-first Creative Studio dashboard review surface over the P108 server foundation. The dashboard is read-only and does not create jobs, call apply endpoints, mutate public media, or enable real providers.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -61,6 +61,7 @@ pnpm run quality:pwa-push-sms-acceptance
 pnpm run quality:clean-source
 pnpm run quality:creative-studio-planning
 pnpm run quality:creative-studio-foundation
+pnpm run quality:creative-studio-dashboard
 ```
 
 Clean handoff gate introduced in P33:
@@ -140,6 +141,7 @@ pnpm run db:migrate:neon:dry-run
 - PWA Foundation and Install Experience exists through `app/manifest.ts`, SVG PWA icons, locale-layout manifest/install metadata, a guarded global install prompt manager, shared `/web-push-sw.js` registration, service-worker install/activate lifecycle handlers, Persian-first `/fa` start URL, and the `quality:pwa-foundation` validator.
 - Creative Studio integration planning exists through `docs/PHASE_107_CREATIVE_STUDIO_INTEGRATION_PLANNING.md` and `quality:creative-studio-planning`, defining a planning-only server boundary, consent model, access policy, candidate server data model, API plan, Persian-first UX constraints, and rollout gates.
 - Creative Studio server foundation exists through `CreativeStudioJob`, `CreativeStudioAsset`, and `CreativeStudioUsageEvent` schema/migration, `creative-studio.service.ts`, dashboard-only status/usage/job/apply-intent APIs, MOCK-only draft asset creation, audit/usage events, organization/role/target access checks, and the `quality:creative-studio-foundation` validator. P108 does not mutate public assets or call real providers.
+- Creative Studio dashboard review exists through localized `/dashboard/creative-studio`, dashboard navigation/route policy, read-only status/usage/job/detail fetches, organization-context review for SUPER_ADMIN, Persian-first copy, and the `quality:creative-studio-dashboard` validator. P109 does not expose generation or public apply controls.
 - Offline Shell, Caching, and PWA Quality Gates exist through `public/offline.html`, versioned static service-worker caching, network-first navigation fallback, cache-first static PWA/Next assets, explicit network-only bypasses for API/uploads/dashboard/checkout/booking/order/payment/customer-state routes, and the `quality:pwa-offline-shell` validator.
 - Notification domain model and preferences exists through `NotificationChannel`, `NotificationPreference`, authenticated customer preference APIs, `notificationPreferencesService`, Web Push opt-in synchronization, Persian-first public preference controls, and the `quality:notification-preferences` validator.
 - Web Push notification service exists through `WebPushDelivery`, preference-aware recipient planning, real delivery attempt logging, invalid subscription cleanup, dashboard delivery history, environment-gated real sends, and the `quality:web-push-delivery` validator.
@@ -249,6 +251,7 @@ pnpm run db:migrate:neon:dry-run
 | P106 | PWA/Push/SMS acceptance and secretless packaging gate before Creative Studio planning. |
 | P107 | Creative Studio integration planning before server foundation work. |
 | P108 | Creative Studio server foundation before dashboard shell or public asset application. |
+| P109 | Creative Studio dashboard shell and read-only job review before public asset application. |
 
 ## Current route/API inventory
 
@@ -306,6 +309,13 @@ Important currently implemented surfaces:
 /api/dashboard/imports/jobs/[jobId]
 /api/dashboard/imports/jobs/[jobId]/cancel
 /api/dashboard/imports/jobs/[jobId]/review
+/{locale}/dashboard/creative-studio
+/api/dashboard/creative-studio/status
+/api/dashboard/creative-studio/usage
+/api/dashboard/creative-studio/jobs
+/api/dashboard/creative-studio/jobs/[jobId]
+/api/dashboard/creative-studio/jobs/[jobId]/cancel
+/api/dashboard/creative-studio/assets/[assetId]/apply
 ```
 
 ## Current fanpage status
@@ -369,7 +379,7 @@ Deferred:
 - Custom-domain smoke tests are deployment/data dependent. Current reference configuration uses `CUSTOM_DOMAIN_SMOKE_BASE_URL=https://www.khalae.ir`, `CUSTOM_DOMAIN_SMOKE_PLATFORM_URL=https://www.bazar-baz.ir`, and `CUSTOM_DOMAIN_SMOKE_SHOP_SLUG=ahmad`.
 - Shop owners cannot self-serve custom-domain management yet; P60/P67 keep domain management SUPER_ADMIN-only.
 - Vercel domain automation must remain dry-run-safe by default and must never hardcode tokens or project/team secrets.
-- P68-P108 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation/downloads, review-gated import publishing, AI media suggestion hardening, deployed import/export smoke coverage, project-state reconciliation, AI media health-gate hardening, AI media MOCK-flow acceptance, AI media durable-storage acceptance, AI media long-running job UX, AI media usage controls, import-to-AI-media bridge, deployed AI media rollout gate, AI media rollout evidence archive, AI media paid-provider controls, AI media cost/rollback guardrails, AI media seller-facing paid-provider state UX, source cleanup/current-state verification, open-fields workflow audit, PWA foundation, offline shell quality gates, notification preferences, Web Push delivery, SMS provider abstraction, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke gates, production rollout runbook, source acceptance/secretless packaging gate, Creative Studio integration planning, and Creative Studio server foundation are implemented. Future importer/exporter and Creative Studio phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports and generated assets, auditable, rate-limited, and review-before-publish/apply.
+- P68-P109 Import Hub intake, spreadsheet parsing, manual Instagram content drafts, dry-run text product extraction, dry-run image/PDF menu fixtures, cautious Snappfood/Snappmarket fallback import, manual Telegram post import, external source re-import diff decisions, import audit/limit guardrails, Export Hub foundation/downloads, review-gated import publishing, AI media suggestion hardening, deployed import/export smoke coverage, project-state reconciliation, AI media health-gate hardening, AI media MOCK-flow acceptance, AI media durable-storage acceptance, AI media long-running job UX, AI media usage controls, import-to-AI-media bridge, deployed AI media rollout gate, AI media rollout evidence archive, AI media paid-provider controls, AI media cost/rollback guardrails, AI media seller-facing paid-provider state UX, source cleanup/current-state verification, open-fields workflow audit, PWA foundation, offline shell quality gates, notification preferences, Web Push delivery, SMS provider abstraction, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke gates, production rollout runbook, source acceptance/secretless packaging gate, Creative Studio integration planning, Creative Studio server foundation, and Creative Studio dashboard review are implemented. Future importer/exporter and Creative Studio phases must remain seller-initiated, consent-based where external sources are involved, draft-first for imports and generated assets, auditable, rate-limited, and review-before-publish/apply.
 
 ## Clean release rules
 
@@ -410,9 +420,9 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-P109 - Creative Studio dashboard shell and read-only job review
+P110 - Creative Studio apply controls and cache-safe public asset updates
 ```
 
-P109 should implement only a narrow Persian-first dashboard shell for Creative Studio status, usage, job list/detail, and draft asset review backed by the P108 APIs. Do not apply generated assets to public products, campaigns, fanpage posts, logos, or covers in this phase.
+P110 should add explicit seller/operator apply controls for selected Creative Studio draft assets, with target-specific authorization, audit events, all-locale cache revalidation, rollback-friendly metadata, and public image validation.
 
-See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` for the roadmap reconciliation, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md` for the AI media health gate, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md` for product suggestion MOCK-flow acceptance, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md` for durable selected-image storage, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md` for long-running job UX, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md` for usage and quota controls, `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md` for import-to-AI-media workflow integration, `docs/PHASE_90_DEPLOYED_AI_MEDIA_ROLLOUT_GATE.md` for deployed Bazar Baz AI media rollout validation, `docs/PHASE_91_AI_MEDIA_ROLLOUT_EVIDENCE.md` for operator-safe rollout evidence retention, `docs/PHASE_92_AI_MEDIA_PAID_PROVIDER_CONTROLS.md` for explicit paid-provider controls, `docs/PHASE_93_AI_MEDIA_COST_ROLLBACK.md` for cost telemetry and rollback guardrails, `docs/PHASE_94_AI_MEDIA_SELLER_STATE_UX.md` for seller-facing AI media state UX, `docs/PHASE_95_SOURCE_CLEANUP_VERIFICATION.md` for source cleanup and security verification, `docs/PHASE_96_OPEN_FIELDS_AUDIT.md` for open-fields workflow audit, `docs/PHASE_97_PWA_FOUNDATION.md` for PWA install foundation, `docs/PHASE_98_PWA_OFFLINE_SHELL.md` for PWA offline shell quality gates, `docs/PHASE_99_NOTIFICATION_PREFERENCES.md` for notification preference policy, `docs/PHASE_100_WEB_PUSH_DELIVERY.md` for preference-aware Web Push delivery, `docs/PHASE_101_SMS_PROVIDER.md` for SMS provider abstraction, `docs/PHASE_102_NOTIFICATION_ROUTING.md` for template routing, `docs/PHASE_103_NOTIFICATION_OPERATIONS_DASHBOARD.md` for the operator dashboard, `docs/PHASE_104_DEPLOYED_PWA_PUSH_SMS_SMOKE.md` for deployed smoke gates, `docs/PHASE_105_PRODUCTION_ROLLOUT_RUNBOOK.md` for production rollout operations, `docs/PHASE_106_PWA_PUSH_SMS_ACCEPTANCE_GATE.md` for the acceptance and packaging gate, `docs/PHASE_107_CREATIVE_STUDIO_INTEGRATION_PLANNING.md` for the Creative Studio planning contract, and `docs/PHASE_108_CREATIVE_STUDIO_SERVER_FOUNDATION.md` for the Creative Studio server foundation.
+See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` for the roadmap reconciliation, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md` for the AI media health gate, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md` for product suggestion MOCK-flow acceptance, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md` for durable selected-image storage, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md` for long-running job UX, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md` for usage and quota controls, `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md` for import-to-AI-media workflow integration, `docs/PHASE_90_DEPLOYED_AI_MEDIA_ROLLOUT_GATE.md` for deployed Bazar Baz AI media rollout validation, `docs/PHASE_91_AI_MEDIA_ROLLOUT_EVIDENCE.md` for operator-safe rollout evidence retention, `docs/PHASE_92_AI_MEDIA_PAID_PROVIDER_CONTROLS.md` for explicit paid-provider controls, `docs/PHASE_93_AI_MEDIA_COST_ROLLBACK.md` for cost telemetry and rollback guardrails, `docs/PHASE_94_AI_MEDIA_SELLER_STATE_UX.md` for seller-facing AI media state UX, `docs/PHASE_95_SOURCE_CLEANUP_VERIFICATION.md` for source cleanup and security verification, `docs/PHASE_96_OPEN_FIELDS_AUDIT.md` for open-fields workflow audit, `docs/PHASE_97_PWA_FOUNDATION.md` for PWA install foundation, `docs/PHASE_98_PWA_OFFLINE_SHELL.md` for PWA offline shell quality gates, `docs/PHASE_99_NOTIFICATION_PREFERENCES.md` for notification preference policy, `docs/PHASE_100_WEB_PUSH_DELIVERY.md` for preference-aware Web Push delivery, `docs/PHASE_101_SMS_PROVIDER.md` for SMS provider abstraction, `docs/PHASE_102_NOTIFICATION_ROUTING.md` for template routing, `docs/PHASE_103_NOTIFICATION_OPERATIONS_DASHBOARD.md` for the operator dashboard, `docs/PHASE_104_DEPLOYED_PWA_PUSH_SMS_SMOKE.md` for deployed smoke gates, `docs/PHASE_105_PRODUCTION_ROLLOUT_RUNBOOK.md` for production rollout operations, `docs/PHASE_106_PWA_PUSH_SMS_ACCEPTANCE_GATE.md` for the acceptance and packaging gate, `docs/PHASE_107_CREATIVE_STUDIO_INTEGRATION_PLANNING.md` for the Creative Studio planning contract, `docs/PHASE_108_CREATIVE_STUDIO_SERVER_FOUNDATION.md` for the Creative Studio server foundation, and `docs/PHASE_109_CREATIVE_STUDIO_DASHBOARD_REVIEW.md` for the Creative Studio dashboard review surface.

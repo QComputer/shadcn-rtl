@@ -66,9 +66,9 @@ add("env validator keeps SMS dry-run safeguards", /SMS_PROVIDER/.test(envValidat
 add(".env.example keeps placeholder-only SMS config", /SMS_PROVIDER=DRY_RUN/.test(envExample) && /SMS_DRY_RUN=true/.test(envExample) && /DEPLOYED_ALLOW_REAL_SMS=0/.test(envExample) && /^SMS_IR_API_KEY=$/m.test(envExample) && /^SMS_IR_LINE_NUMBER=$/m.test(envExample))
 add("package exposes P101 validator", /"quality:sms-provider":\s*"node scripts\/quality\/validate-sms-provider\.mjs"/.test(packageJson))
 add("project validator references P101 validator", /validate-sms-provider\.mjs/.test(validateProject) && /P101 SMS provider validator passes/.test(validateProject))
-add("README keeps P101 complete while marking P108 latest", /\| 101 \| SMS provider abstraction and sms\.ir integration/.test(readme) && /Latest completed implementation phase:\s+\*\*P108 - Creative Studio server foundation\*\*/.test(readme) && /P109 - Creative Studio dashboard shell and read-only job review/.test(readme))
-add("roadmap keeps P101 complete while marking P108 baseline", /\| P101 \| SMS provider abstraction and sms\.ir integration\. \|/.test(roadmap) && /Completed through \*\*P108 - Creative Studio server foundation\*\*/.test(roadmap))
-add("source of truth names P108 baseline", /after P108 Creative Studio server foundation/.test(sourceOfTruth) && /SMS provider abstraction exists/.test(sourceOfTruth))
+add("README keeps P101 complete while marking P109 latest", /\| 101 \| SMS provider abstraction and sms\.ir integration/.test(readme) && /Latest completed implementation phase:\s+\*\*P109 - Creative Studio dashboard shell and read-only job review\*\*/.test(readme) && /P110 - Creative Studio apply controls and cache-safe public asset updates/.test(readme))
+add("roadmap keeps P101 complete while marking P109 baseline", /\| P101 \| SMS provider abstraction and sms\.ir integration\. \|/.test(roadmap) && /Completed through \*\*P109 - Creative Studio dashboard shell and read-only job review\*\*/.test(roadmap))
+add("source of truth names P109 baseline", /after P109 Creative Studio dashboard shell and read-only job review/.test(sourceOfTruth) && /SMS provider abstraction exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

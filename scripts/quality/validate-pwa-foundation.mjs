@@ -50,9 +50,9 @@ add("P98 offline cache remains guarded", /addEventListener\("fetch"/.test(servic
 
 add("package exposes P97 validator", /"quality:pwa-foundation":\s*"node scripts\/quality\/validate-pwa-foundation\.mjs"/.test(packageJson))
 add("project validator references P97 validator", /validate-pwa-foundation\.mjs/.test(validateProject) && /P97 PWA foundation validator passes/.test(validateProject))
-add("README keeps P97 complete while marking P108 latest", /\| 97 \| PWA foundation and install experience/.test(readme) && /Latest completed implementation phase:\s+\*\*P108 - Creative Studio server foundation\*\*/.test(readme) && /P109 - Creative Studio dashboard shell and read-only job review/.test(readme))
-add("roadmap keeps P97 complete while marking P108 baseline", /\| P97 \| PWA foundation and install experience\. \|/.test(roadmap) && /Completed through \*\*P108 - Creative Studio server foundation\*\*/.test(roadmap))
-add("source of truth keeps P97 foundation while naming P108 baseline", /PWA Foundation and Install Experience exists/.test(sourceOfTruth) && /after P108 Creative Studio server foundation/.test(sourceOfTruth))
+add("README keeps P97 complete while marking P109 latest", /\| 97 \| PWA foundation and install experience/.test(readme) && /Latest completed implementation phase:\s+\*\*P109 - Creative Studio dashboard shell and read-only job review\*\*/.test(readme) && /P110 - Creative Studio apply controls and cache-safe public asset updates/.test(readme))
+add("roadmap keeps P97 complete while marking P109 baseline", /\| P97 \| PWA foundation and install experience\. \|/.test(roadmap) && /Completed through \*\*P109 - Creative Studio dashboard shell and read-only job review\*\*/.test(roadmap))
+add("source of truth keeps P97 foundation while naming P109 baseline", /PWA Foundation and Install Experience exists/.test(sourceOfTruth) && /after P109 Creative Studio dashboard shell and read-only job review/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

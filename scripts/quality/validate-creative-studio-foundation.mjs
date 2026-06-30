@@ -68,9 +68,9 @@ add("apply route keeps public mutation false", /publicMutation:\s*false/.test(re
 
 add("package exposes P108 validator", /"quality:creative-studio-foundation":\s*"node scripts\/quality\/validate-creative-studio-foundation\.mjs"/.test(packageJson))
 add("project validator references P108 validator", /validate-creative-studio-foundation\.mjs/.test(validateProject) && /P108 Creative Studio foundation validator passes/.test(validateProject))
-add("README marks P108 latest", /Latest completed implementation phase:\s+\*\*P108 - Creative Studio server foundation\*\*/.test(readme) && /Recommended next phase:\s+\*\*P109 - Creative Studio dashboard shell and read-only job review\*\*/.test(readme))
-add("roadmap marks P108 complete", /Completed through \*\*P108 - Creative Studio server foundation\*\*/.test(roadmap) && /\| P108 \| Creative Studio server foundation\. \|/.test(roadmap) && /\| P109 \| Creative Studio dashboard shell and read-only job review\. \|/.test(roadmap))
-add("source of truth names P108 baseline", /after P108 Creative Studio server foundation/.test(sourceOfTruth) && /Creative Studio server foundation exists/.test(sourceOfTruth))
+add("README marks P109 latest", /Latest completed implementation phase:\s+\*\*P109 - Creative Studio dashboard shell and read-only job review\*\*/.test(readme) && /Recommended next phase:\s+\*\*P110 - Creative Studio apply controls and cache-safe public asset updates\*\*/.test(readme))
+add("roadmap marks P108 complete", /Completed through \*\*P109 - Creative Studio dashboard shell and read-only job review\*\*/.test(roadmap) && /\| P108 \| Creative Studio server foundation\. \|/.test(roadmap) && /\| P109 \| Creative Studio dashboard shell and read-only job review\. \|/.test(roadmap))
+add("source of truth names P109 baseline", /after P109 Creative Studio dashboard shell and read-only job review/.test(sourceOfTruth) && /Creative Studio server foundation exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

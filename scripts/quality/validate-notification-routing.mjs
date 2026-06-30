@@ -43,9 +43,9 @@ add("Web Push service exposes single-customer delivery", /sendToCustomer/.test(w
 add("single-customer Web Push records delivery attempts and cleans invalid subscriptions", /webPushDelivery\.create/.test(webPush) && /statusCode === 404 \|\| statusCode === 410/.test(webPush))
 add("package exposes P102 validator", /"quality:notification-routing":\s*"node scripts\/quality\/validate-notification-routing\.mjs"/.test(packageJson))
 add("project validator references P102 validator", /validate-notification-routing\.mjs/.test(validateProject) && /P102 notification routing validator passes/.test(validateProject))
-add("README keeps P102 complete while marking P108 latest", /\| 102 \| Notification templates, routing, and delivery policies/.test(readme) && /Latest completed implementation phase:\s+\*\*P108 - Creative Studio server foundation\*\*/.test(readme) && /P109 - Creative Studio dashboard shell and read-only job review/.test(readme))
-add("roadmap marks P102 complete in P108 progression", /\| P102 \| Notification templates, routing, and delivery policies\. \|/.test(roadmap) && /Completed through \*\*P108 - Creative Studio server foundation\*\*/.test(roadmap))
-add("source of truth names P108 baseline", /after P108 Creative Studio server foundation/.test(sourceOfTruth) && /Notification routing exists/.test(sourceOfTruth))
+add("README keeps P102 complete while marking P109 latest", /\| 102 \| Notification templates, routing, and delivery policies/.test(readme) && /Latest completed implementation phase:\s+\*\*P109 - Creative Studio dashboard shell and read-only job review\*\*/.test(readme) && /P110 - Creative Studio apply controls and cache-safe public asset updates/.test(readme))
+add("roadmap marks P102 complete in P109 progression", /\| P102 \| Notification templates, routing, and delivery policies\. \|/.test(roadmap) && /Completed through \*\*P109 - Creative Studio dashboard shell and read-only job review\*\*/.test(roadmap))
+add("source of truth names P109 baseline", /after P109 Creative Studio dashboard shell and read-only job review/.test(sourceOfTruth) && /Notification routing exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

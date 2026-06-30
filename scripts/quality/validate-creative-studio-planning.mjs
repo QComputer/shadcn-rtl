@@ -47,9 +47,9 @@ add("P107 remains a planning-only document", /does not add:[\s\S]*Creative Studi
 
 add("package exposes P107 validator", /"quality:creative-studio-planning":\s*"node scripts\/quality\/validate-creative-studio-planning\.mjs"/.test(packageJson))
 add("project validator references P107 validator", /validate-creative-studio-planning\.mjs/.test(validateProject) && /P107 Creative Studio planning validator passes/.test(validateProject))
-add("README keeps P107 complete while marking P108 latest", /Latest completed implementation phase:\s+\*\*P108 - Creative Studio server foundation\*\*/.test(readme) && /Recommended next phase:\s+\*\*P109 - Creative Studio dashboard shell and read-only job review\*\*/.test(readme))
-add("roadmap keeps P107 complete in P108 progression", /Completed through \*\*P108 - Creative Studio server foundation\*\*/.test(roadmap) && /\| P107 \| Creative Studio integration planning for main Bazar Baz\. \|/.test(roadmap) && /\| P108 \| Creative Studio server foundation\. \|/.test(roadmap))
-add("source of truth names P108 baseline while keeping P107 planning", /after P108 Creative Studio server foundation/.test(sourceOfTruth) && /Creative Studio integration planning exists/.test(sourceOfTruth) && /Creative Studio server foundation exists/.test(sourceOfTruth))
+add("README keeps P107 complete while marking P109 latest", /Latest completed implementation phase:\s+\*\*P109 - Creative Studio dashboard shell and read-only job review\*\*/.test(readme) && /Recommended next phase:\s+\*\*P110 - Creative Studio apply controls and cache-safe public asset updates\*\*/.test(readme))
+add("roadmap keeps P107 complete in P109 progression", /Completed through \*\*P109 - Creative Studio dashboard shell and read-only job review\*\*/.test(roadmap) && /\| P107 \| Creative Studio integration planning for main Bazar Baz\. \|/.test(roadmap) && /\| P108 \| Creative Studio server foundation\. \|/.test(roadmap))
+add("source of truth names P109 baseline while keeping P107 planning", /after P109 Creative Studio dashboard shell and read-only job review/.test(sourceOfTruth) && /Creative Studio integration planning exists/.test(sourceOfTruth) && /Creative Studio server foundation exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

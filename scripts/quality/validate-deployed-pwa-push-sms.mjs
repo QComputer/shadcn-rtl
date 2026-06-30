@@ -41,9 +41,9 @@ add("smoke keeps mutating dry-run send optional", /DEPLOYED_PWA_PUSH_SMS_ENABLE_
 add("smoke writes redacted evidence", /DEPLOYED_PWA_PUSH_SMS_EVIDENCE_DIR/.test(smoke) && /evidence\.json/.test(smoke) && /redacted-password/.test(smoke))
 add("package exposes P104 scripts", /"e2e:deployed:pwa-push-sms":\s*"node scripts\/e2e\/deployed-pwa-push-sms-smoke\.mjs"/.test(packageJson) && /"quality:deployed-pwa-push-sms":\s*"node scripts\/quality\/validate-deployed-pwa-push-sms\.mjs"/.test(packageJson))
 add("project validator references P104 validator", /validate-deployed-pwa-push-sms\.mjs/.test(validateProject) && /P104 deployed PWA Push SMS validator passes/.test(validateProject))
-add("README keeps P104 complete while marking P109 latest", /P104 deployed PWA\/Push\/SMS smoke gates/.test(readme) && /Latest completed implementation phase:\s+\*\*P109 - Creative Studio dashboard shell and read-only job review\*\*/.test(readme) && /P110 - Creative Studio apply controls and cache-safe public asset updates/.test(readme))
-add("roadmap marks P104 complete in P109 progression", /\| P104 \| Deployed PWA, Push, and SMS smoke gates\. \|/.test(roadmap) && /Completed through \*\*P109 - Creative Studio dashboard shell and read-only job review\*\*/.test(roadmap))
-add("source of truth names P109 baseline while keeping P104 smoke", /after P109 Creative Studio dashboard shell and read-only job review/.test(sourceOfTruth) && /Deployed PWA, Push, and SMS smoke exists/.test(sourceOfTruth))
+add("README keeps P104 complete while marking P109 latest", /P104 deployed PWA\/Push\/SMS smoke gates/.test(readme) && /Latest completed implementation phase:\s+\*\*P110 - Creative Studio apply controls and cache-safe public asset updates\*\*/.test(readme) && /P111 - Creative Studio generation readiness gate and AI-service contract sync/.test(readme))
+add("roadmap marks P104 complete in P109 progression", /\| P104 \| Deployed PWA, Push, and SMS smoke gates\. \|/.test(roadmap) && /Completed through \*\*P110 - Creative Studio apply controls and cache-safe public asset updates\*\*/.test(roadmap))
+add("source of truth names P109 baseline while keeping P104 smoke", /after P110 Creative Studio apply controls and cache-safe public asset updates/.test(sourceOfTruth) && /Deployed PWA, Push, and SMS smoke exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

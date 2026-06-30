@@ -57,20 +57,20 @@ add("service enforces paid-provider rollback and quotas", /getAiMediaPaidProvide
 add("service enforces target access", /assertTargetAccess/.test(service) && /hasPermission\(role, "product:update"\)/.test(service) && /campaign\.findFirst/.test(service) && /fanpagePost\.findFirst/.test(service))
 add("service writes job asset and usage rows", /creativeStudioJob\.create/.test(service) && /creativeStudioAsset\.create/.test(service) && /creativeStudioUsageEvent/.test(service))
 add("service writes audit logs", /writeAuditLog/.test(service) && /CreativeStudioJob/.test(service) && /CreativeStudioAsset/.test(service))
-add("service does not mutate public target assets", !/prisma\.product\.update/.test(service) && !/prisma\.organization\.update/.test(service) && !/revalidatePath/.test(service) && !/revalidateTag/.test(service))
-add("asset apply records intent only", /applyToTarget !== false/.test(service) && /recordedOnly:\s*true/.test(service) && /publicMutation:\s*false/.test(service))
+add("service preserves P108 recorded-only apply path", /if \(!input\.applyToTarget\)/.test(service) && /recordedOnly:\s*true/.test(service) && /publicMutation:\s*false/.test(service))
+add("P110 owns explicit public mutation controls", /resolveCreativeStudioApplyTarget/.test(service) && /assertPublicSafeAssetUrl/.test(service) && /revalidateCreativeStudioPublicTarget/.test(service))
 
 add("validators define Creative Studio schemas", /createCreativeStudioJobSchema/.test(validators) && /creativeStudioJobFilterSchema/.test(validators) && /applyCreativeStudioAssetSchema/.test(validators))
 add("routes exist", routeFiles.every((file) => exists(file)), routeFiles.filter((file) => !exists(file)).join(", "))
 add("routes require dashboard auth and organization access", /requireCreativeStudioOrganization/.test(routes) && /requireAuthSession/.test(read("app/api/dashboard/creative-studio/_helpers.ts")) && /requireOrgAccess/.test(read("app/api/dashboard/creative-studio/_helpers.ts")))
 add("routes expose status usage jobs cancel and apply", /creativeStudioService\.getStatus/.test(routes) && /getUsageSummary/.test(routes) && /createJob/.test(routes) && /cancelJob/.test(routes) && /recordAssetApplication/.test(routes))
-add("apply route keeps public mutation false", /publicMutation:\s*false/.test(read("app/api/dashboard/creative-studio/assets/[assetId]/apply/route.ts")))
+add("apply route delegates public mutation policy to service", /recordAssetApplication/.test(read("app/api/dashboard/creative-studio/assets/[assetId]/apply/route.ts")) && /session\.user\.role/.test(read("app/api/dashboard/creative-studio/assets/[assetId]/apply/route.ts")))
 
 add("package exposes P108 validator", /"quality:creative-studio-foundation":\s*"node scripts\/quality\/validate-creative-studio-foundation\.mjs"/.test(packageJson))
 add("project validator references P108 validator", /validate-creative-studio-foundation\.mjs/.test(validateProject) && /P108 Creative Studio foundation validator passes/.test(validateProject))
-add("README marks P109 latest", /Latest completed implementation phase:\s+\*\*P109 - Creative Studio dashboard shell and read-only job review\*\*/.test(readme) && /Recommended next phase:\s+\*\*P110 - Creative Studio apply controls and cache-safe public asset updates\*\*/.test(readme))
-add("roadmap marks P108 complete", /Completed through \*\*P109 - Creative Studio dashboard shell and read-only job review\*\*/.test(roadmap) && /\| P108 \| Creative Studio server foundation\. \|/.test(roadmap) && /\| P109 \| Creative Studio dashboard shell and read-only job review\. \|/.test(roadmap))
-add("source of truth names P109 baseline", /after P109 Creative Studio dashboard shell and read-only job review/.test(sourceOfTruth) && /Creative Studio server foundation exists/.test(sourceOfTruth))
+add("README marks P110 latest", /Latest completed implementation phase:\s+\*\*P110 - Creative Studio apply controls and cache-safe public asset updates\*\*/.test(readme) && /Recommended next phase:\s+\*\*P111 - Creative Studio generation readiness gate and AI-service contract sync\*\*/.test(readme))
+add("roadmap keeps P108 complete in P110 progression", /Completed through \*\*P110 - Creative Studio apply controls and cache-safe public asset updates\*\*/.test(roadmap) && /\| P108 \| Creative Studio server foundation\. \|/.test(roadmap) && /\| P110 \| Creative Studio apply controls and cache-safe public asset updates\. \|/.test(roadmap))
+add("source of truth names P110 baseline", /after P110 Creative Studio apply controls and cache-safe public asset updates/.test(sourceOfTruth) && /Creative Studio server foundation exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

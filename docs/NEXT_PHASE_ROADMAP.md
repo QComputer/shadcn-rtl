@@ -2,14 +2,14 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-29._
 
-This roadmap is ordered for risk reduction. Phases 18-109 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, source acceptance/secretless packaging, Creative Studio planning, Creative Studio server foundation, and Creative Studio dashboard review roadmap is implemented through Phase 109.
+This roadmap is ordered for risk reduction. Phases 18-110 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, source acceptance/secretless packaging, Creative Studio planning, Creative Studio server foundation, Creative Studio dashboard review, and Creative Studio apply controls roadmap is implemented through Phase 110.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P109 - Creative Studio dashboard shell and read-only job review**.
-- Creative Studio public asset application must start with P110 apply controls and cache-safe updates.
+- Completed through **P110 - Creative Studio apply controls and cache-safe public asset updates**.
+- Creative Studio generation work must start with a P111 readiness gate and AI-service contract sync before any new provider UI.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -20,10 +20,10 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P110 - Creative Studio apply controls and cache-safe public asset updates
+P111 - Creative Studio generation readiness gate and AI-service contract sync
 ```
 
-Next work should add explicit apply controls for selected Creative Studio draft assets with target-specific authorization, audit events, all-locale cache revalidation, and rollback-friendly metadata.
+Next work should reconcile the main app with the AI-service contract before adding broad Creative Studio generation controls or provider calls.
 
 Immediate validation target:
 
@@ -58,6 +58,7 @@ pnpm run quality:clean-source
 pnpm run quality:creative-studio-planning
 pnpm run quality:creative-studio-foundation
 pnpm run quality:creative-studio-dashboard
+pnpm run quality:creative-studio-apply-controls
 pnpm run quality:export-downloads
 pnpm run quality:deployed-import-export-smoke
 pnpm run quality:local
@@ -112,12 +113,13 @@ Completed integrated phases:
 | P107 | Creative Studio integration planning for main Bazar Baz. |
 | P108 | Creative Studio server foundation. |
 | P109 | Creative Studio dashboard shell and read-only job review. |
+| P110 | Creative Studio apply controls and cache-safe public asset updates. |
 
 Upcoming platform phases should be treated as incremental hardening against the actual implementation already present in the repo:
 
 | Phase | Focus |
 | --- | --- |
-| P110 | Creative Studio apply controls and cache-safe public asset updates. |
+| P111 | Creative Studio generation readiness gate and AI-service contract sync. |
 
 Safety constraints for all Import Hub phases:
 

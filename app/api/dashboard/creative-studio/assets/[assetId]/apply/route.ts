@@ -13,19 +13,18 @@ export async function POST(request: NextRequest, context: CreativeStudioAssetRou
     const { assetId } = await context.params;
     const body = await request.json().catch(() => ({}));
     const input = applyCreativeStudioAssetSchema.parse(body);
-    const { session, organizationId } = await requireCreativeStudioOrganization();
+    const requestedOrganizationId = request.nextUrl.searchParams.get("organizationId") || input.organizationId;
+    const { session, organizationId } = await requireCreativeStudioOrganization(requestedOrganizationId);
     const result = await creativeStudioService.recordAssetApplication(
       assetId,
       organizationId,
       session.user.id,
+      session.user.role,
       input,
     );
 
-    return NextResponse.json({
-      ...result,
-      publicMutation: false,
-    });
+    return NextResponse.json(result);
   } catch (error) {
-    return jsonError(error, "Failed to record Creative Studio asset application");
+    return jsonError(error, "Failed to apply Creative Studio asset");
   }
 }

@@ -333,8 +333,37 @@ export const creativeStudioJobFilterSchema = z.object({
   status: z.enum(["QUEUED", "PROCESSING", "COMPLETED", "FAILED", "CANCELED"]).optional(),
 }).merge(paginationSchema);
 
+export const creativeStudioApplyTargetFieldSchema = z.enum([
+  "product.image",
+  "organization.logo",
+  "organization.coverImage",
+  "fanpagePost.image",
+]);
+
 export const applyCreativeStudioAssetSchema = z.object({
-  applyToTarget: z.literal(false).default(false),
+  organizationId: z.string().cuid().optional(),
+  applyToTarget: z.boolean().default(false),
+  targetField: creativeStudioApplyTargetFieldSchema.optional(),
+  confirmationText: z.string().trim().max(80).optional(),
+  confirmed: z.boolean().optional(),
+}).superRefine((input, context) => {
+  if (!input.applyToTarget) return;
+
+  if (!input.targetField) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["targetField"],
+      message: "Target field is required when applying a Creative Studio asset",
+    });
+  }
+
+  if (input.confirmed !== true && input.confirmationText !== "اعمال شود") {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["confirmationText"],
+      message: "Confirmation text is required when applying a Creative Studio asset",
+    });
+  }
 });
 
 export const organizationFilterSchema = z.object({

@@ -14,7 +14,18 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { toPersianDigits } from "@/lib/persian"
 
 type CreativeStudioJobStatus = "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELED"
@@ -22,6 +33,7 @@ type CreativeStudioAssetStatus = "DRAFT" | "SELECTED" | "APPLIED" | "REJECTED"
 type CreativeStudioTargetType = "PRODUCT" | "CAMPAIGN" | "FANPAGE_POST" | "ORGANIZATION_BRAND" | "IMPORTED_MEDIA"
 type CreativeStudioAssetType = "PRODUCT_IMAGE" | "CAMPAIGN_IMAGE" | "FANPAGE_IMAGE" | "LOGO" | "COVER" | "OG_IMAGE" | "IMPORT_MEDIA"
 type CreativeStudioUsageAction = "JOB_CREATED" | "JOB_CANCELED" | "ASSET_DRAFTED" | "ASSET_SELECTED" | "ASSET_APPLIED"
+type CreativeStudioApplyTargetField = "product.image" | "organization.logo" | "organization.coverImage" | "fanpagePost.image"
 
 type OrganizationOption = {
   id: string
@@ -77,10 +89,29 @@ type CreativeStudioAsset = {
   assetType: CreativeStudioAssetType
   status: CreativeStudioAssetStatus
   sourceUrl?: string | null
-  finalUrl?: string | null
+  draftUrl?: string | null
+  storedUrl?: string | null
   sourceMetadata?: Record<string, unknown> | null
   createdAt: string
   appliedAt?: string | null
+}
+
+type CreativeStudioApplyResponse = {
+  applied: boolean
+  recordedOnly: boolean
+  publicMutation: boolean
+  appliedUrl?: string | null
+  previousValue?: string | null
+  target?: {
+    type: CreativeStudioTargetType
+    id: string
+    field: CreativeStudioApplyTargetField
+  }
+  revalidation?: {
+    attempted: boolean
+    paths: string[]
+    warnings: string[]
+  }
 }
 
 type CreativeStudioJob = {
@@ -129,6 +160,28 @@ type CreativeStudioCopy = {
   noSelection: string
   policyYes: string
   policyNo: string
+  applyPublic: string
+  applyOnProduct: string
+  applyAsLogo: string
+  applyAsCover: string
+  applyOnFanpage: string
+  applyUnavailable: string
+  publicUrlRequired: string
+  unsupportedAsset: string
+  alreadyApplied: string
+  confirmationTitle: string
+  confirmationDescription: string
+  confirmationPlaceholder: string
+  confirmationRequired: string
+  applying: string
+  applySuccess: string
+  applyFailed: string
+  targetField: string
+  previousImage: string
+  currentImage: string
+  appliedUrl: string
+  cacheUpdated: string
+  cacheWarning: string
   statuses: Record<CreativeStudioJobStatus | CreativeStudioAssetStatus, string>
   targetTypes: Record<CreativeStudioTargetType, string>
   assetTypes: Record<CreativeStudioAssetType, string>
@@ -167,6 +220,28 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     noSelection: "برای دیدن جزئیات، یک درخواست را انتخاب کنید.",
     policyYes: "فعال",
     policyNo: "غیرفعال",
+    applyPublic: "اعمال روی هدف عمومی",
+    applyOnProduct: "اعمال روی محصول",
+    applyAsLogo: "اعمال به‌عنوان لوگو",
+    applyAsCover: "اعمال به‌عنوان کاور",
+    applyOnFanpage: "اعمال روی پست فن‌پیج",
+    applyUnavailable: "قابل اعمال نیست",
+    publicUrlRequired: "این دارایی هنوز URL عمومی قابل استفاده ندارد.",
+    unsupportedAsset: "این نوع دارایی در این فاز قابل اعمال نیست.",
+    alreadyApplied: "این دارایی قبلا اعمال شده است.",
+    confirmationTitle: "تایید اعمال دارایی",
+    confirmationDescription: "این تغییر روی صفحه عمومی فروشگاه دیده می‌شود. برای تایید، عبارت «اعمال شود» را وارد کنید.",
+    confirmationPlaceholder: "اعمال شود",
+    confirmationRequired: "برای اعمال، عبارت «اعمال شود» را وارد کنید.",
+    applying: "در حال اعمال...",
+    applySuccess: "دارایی با موفقیت روی هدف عمومی اعمال شد.",
+    applyFailed: "اعمال دارایی ناموفق بود.",
+    targetField: "فیلد هدف",
+    previousImage: "تصویر قبلی",
+    currentImage: "تصویر فعلی",
+    appliedUrl: "URL اعمال‌شده",
+    cacheUpdated: "کش صفحات عمومی پس از اعمال به‌روزرسانی می‌شود.",
+    cacheWarning: "هشدار به‌روزرسانی کش",
     statuses: {
       QUEUED: "در صف",
       PROCESSING: "در حال پردازش",
@@ -233,6 +308,28 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     noSelection: "Select a job to review its details.",
     policyYes: "Enabled",
     policyNo: "Disabled",
+    applyPublic: "Apply to public target",
+    applyOnProduct: "Apply to product",
+    applyAsLogo: "Apply as logo",
+    applyAsCover: "Apply as cover",
+    applyOnFanpage: "Apply to fanpage post",
+    applyUnavailable: "Cannot apply",
+    publicUrlRequired: "This asset does not have a public URL yet.",
+    unsupportedAsset: "This asset type cannot be applied in this phase.",
+    alreadyApplied: "This asset has already been applied.",
+    confirmationTitle: "Confirm asset application",
+    confirmationDescription: "This change will be visible on the public shop page. To confirm, enter “اعمال شود”.",
+    confirmationPlaceholder: "اعمال شود",
+    confirmationRequired: "Enter “اعمال شود” to apply.",
+    applying: "Applying...",
+    applySuccess: "Asset applied to the public target.",
+    applyFailed: "Asset application failed.",
+    targetField: "Target field",
+    previousImage: "Previous image",
+    currentImage: "Current image",
+    appliedUrl: "Applied URL",
+    cacheUpdated: "Public page cache is refreshed after apply.",
+    cacheWarning: "Cache warning",
     statuses: {
       QUEUED: "Queued",
       PROCESSING: "Processing",
@@ -299,6 +396,28 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     noSelection: "اختر طلبا لمراجعة تفاصيله.",
     policyYes: "مفعل",
     policyNo: "غير مفعل",
+    applyPublic: "تطبيق على الهدف العام",
+    applyOnProduct: "تطبيق على المنتج",
+    applyAsLogo: "تطبيق كشعار",
+    applyAsCover: "تطبيق كغلاف",
+    applyOnFanpage: "تطبيق على منشور الصفحة",
+    applyUnavailable: "غير قابل للتطبيق",
+    publicUrlRequired: "لا يحتوي هذا الأصل على رابط عام قابل للاستخدام بعد.",
+    unsupportedAsset: "هذا النوع من الأصول غير قابل للتطبيق في هذه المرحلة.",
+    alreadyApplied: "تم تطبيق هذا الأصل مسبقا.",
+    confirmationTitle: "تأكيد تطبيق الأصل",
+    confirmationDescription: "سيظهر هذا التغيير في صفحة المتجر العامة. للتأكيد، أدخل «اعمال شود».",
+    confirmationPlaceholder: "اعمال شود",
+    confirmationRequired: "أدخل «اعمال شود» للتطبيق.",
+    applying: "جار التطبيق...",
+    applySuccess: "تم تطبيق الأصل على الهدف العام.",
+    applyFailed: "فشل تطبيق الأصل.",
+    targetField: "حقل الهدف",
+    previousImage: "الصورة السابقة",
+    currentImage: "الصورة الحالية",
+    appliedUrl: "الرابط المطبق",
+    cacheUpdated: "يتم تحديث كاش الصفحات العامة بعد التطبيق.",
+    cacheWarning: "تحذير الكاش",
     statuses: {
       QUEUED: "في الانتظار",
       PROCESSING: "قيد المعالجة",
@@ -353,6 +472,48 @@ function statusVariant(status: CreativeStudioJobStatus | CreativeStudioAssetStat
   return "secondary"
 }
 
+function getAssetPublicUrl(asset: CreativeStudioAsset) {
+  return asset.storedUrl || asset.draftUrl || asset.sourceUrl || null
+}
+
+function getP110Application(asset: CreativeStudioAsset) {
+  const application = asset.sourceMetadata?.p110Application
+  return application && typeof application === "object" && !Array.isArray(application)
+    ? application as {
+        targetField?: CreativeStudioApplyTargetField
+        previousValue?: string | null
+        appliedUrl?: string | null
+        publicMutation?: boolean
+        cacheRevalidation?: { warnings?: string[]; paths?: string[] }
+      }
+    : null
+}
+
+function getApplyOption(job: CreativeStudioJob, asset: CreativeStudioAsset, copy: CreativeStudioCopy) {
+  let targetField: CreativeStudioApplyTargetField | null = null
+  let label = copy.applyPublic
+
+  if (job.targetType === "PRODUCT" && asset.assetType === "PRODUCT_IMAGE") {
+    targetField = "product.image"
+    label = copy.applyOnProduct
+  } else if (job.targetType === "ORGANIZATION_BRAND" && asset.assetType === "LOGO") {
+    targetField = "organization.logo"
+    label = copy.applyAsLogo
+  } else if (job.targetType === "ORGANIZATION_BRAND" && asset.assetType === "COVER") {
+    targetField = "organization.coverImage"
+    label = copy.applyAsCover
+  } else if (job.targetType === "FANPAGE_POST" && asset.assetType === "FANPAGE_IMAGE") {
+    targetField = "fanpagePost.image"
+    label = copy.applyOnFanpage
+  }
+
+  if (!targetField) return { targetField: null, label: copy.applyUnavailable, disabledReason: copy.unsupportedAsset }
+  if (asset.status === "APPLIED") return { targetField, label, disabledReason: copy.alreadyApplied }
+  if (!getAssetPublicUrl(asset)) return { targetField, label, disabledReason: copy.publicUrlRequired }
+
+  return { targetField, label, disabledReason: null }
+}
+
 async function readError(response: Response, fallback: string) {
   try {
     const data = await response.json()
@@ -384,6 +545,14 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
   const [selectedJob, setSelectedJob] = useState<CreativeStudioJob | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [pendingApply, setPendingApply] = useState<{
+    asset: CreativeStudioAsset
+    targetField: CreativeStudioApplyTargetField
+    label: string
+  } | null>(null)
+  const [confirmationText, setConfirmationText] = useState("")
+  const [applyingAssetId, setApplyingAssetId] = useState<string | null>(null)
+  const [applyNotice, setApplyNotice] = useState<{ type: "success" | "error"; message: string; warnings?: string[] } | null>(null)
 
   const fetchOrganizations = useCallback(async (signal?: AbortSignal) => {
     if (isSuperAdmin) {
@@ -474,7 +643,47 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
   async function selectOrganization(nextOrganizationId: string) {
     setOrganizationId(nextOrganizationId)
     setSelectedJob(null)
+    setApplyNotice(null)
     await refresh(undefined, nextOrganizationId)
+  }
+
+  async function applyPendingAsset() {
+    if (!pendingApply || !selectedJob) return
+    if (confirmationText.trim() !== "اعمال شود") {
+      setApplyNotice({ type: "error", message: copy.confirmationRequired })
+      return
+    }
+
+    setApplyingAssetId(pendingApply.asset.id)
+    setApplyNotice(null)
+    try {
+      const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ""
+      const response = await fetch(`/api/dashboard/creative-studio/assets/${encodeURIComponent(pendingApply.asset.id)}/apply${query}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          organizationId,
+          applyToTarget: true,
+          targetField: pendingApply.targetField,
+          confirmationText: confirmationText.trim(),
+        }),
+      })
+      if (!response.ok) throw new Error(await readError(response, copy.applyFailed))
+      const result = await response.json() as CreativeStudioApplyResponse
+      setApplyNotice({
+        type: "success",
+        message: result.publicMutation ? copy.applySuccess : copy.cacheUpdated,
+        warnings: result.revalidation?.warnings ?? [],
+      })
+      setPendingApply(null)
+      setConfirmationText("")
+      await loadOverview(organizationId)
+      await loadJob(selectedJob.id, organizationId)
+    } catch (err) {
+      setApplyNotice({ type: "error", message: err instanceof Error ? err.message : copy.applyFailed })
+    } finally {
+      setApplyingAssetId(null)
+    }
   }
 
   const isReadOnlyPublicMutationBlocked = status?.policy.noPublicAssetMutation === true
@@ -511,6 +720,23 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
         <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {applyNotice && (
+        <div className={`rounded-md border p-3 text-sm ${
+          applyNotice.type === "success"
+            ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-700"
+            : "border-destructive/40 bg-destructive/5 text-destructive"
+        }`}>
+          <div>{applyNotice.message}</div>
+          {applyNotice.warnings?.length ? (
+            <div className="mt-2 space-y-1 text-xs">
+              {applyNotice.warnings.map((warning) => (
+                <div key={warning}>{copy.cacheWarning}: {warning}</div>
+              ))}
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -669,16 +895,60 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
                     <CardContent>
                       {selectedJob.assets?.length ? (
                         <div className="grid gap-3 sm:grid-cols-2">
-                          {selectedJob.assets.map((asset) => (
-                            <div key={asset.id} className="rounded-md border p-3">
-                              <div className="flex items-center justify-between gap-2">
-                                <Badge variant={statusVariant(asset.status)}>{copy.statuses[asset.status]}</Badge>
-                                <span className="text-xs text-muted-foreground">{formatDate(asset.createdAt, locale)}</span>
+                          {selectedJob.assets.map((asset) => {
+                            const applyOption = getApplyOption(selectedJob, asset, copy)
+                            const application = getP110Application(asset)
+                            const publicUrl = getAssetPublicUrl(asset)
+                            return (
+                              <div key={asset.id} className="rounded-md border p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <Badge variant={statusVariant(asset.status)}>{copy.statuses[asset.status]}</Badge>
+                                  <span className="text-xs text-muted-foreground">{formatDate(asset.createdAt, locale)}</span>
+                                </div>
+                                <div className="mt-3 text-sm font-medium">{copy.assetTypes[asset.assetType]}</div>
+                                <div className="mt-1 break-all text-xs text-muted-foreground">{publicUrl || asset.id}</div>
+                                {publicUrl ? (
+                                  <div className="mt-3 overflow-hidden rounded-md border bg-muted/20">
+                                    <img src={publicUrl} alt={copy.assetTypes[asset.assetType]} className="h-32 w-full object-cover" />
+                                  </div>
+                                ) : null}
+                                <div className="mt-3 rounded-md bg-muted/30 p-2 text-xs text-muted-foreground">
+                                  <div>{copy.targetField}: {applyOption.targetField ?? "-"}</div>
+                                  <div>{copy.cacheUpdated}</div>
+                                </div>
+                                {application?.publicMutation ? (
+                                  <div className="mt-3 space-y-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2 text-xs">
+                                    <div className="font-medium text-emerald-700">{copy.publicMutation}: {copy.policyYes}</div>
+                                    <div className="break-all">{copy.appliedUrl}: {application.appliedUrl ?? "-"}</div>
+                                    {application.previousValue ? (
+                                      <div className="break-all">{copy.previousImage}: {application.previousValue}</div>
+                                    ) : null}
+                                    {application.cacheRevalidation?.warnings?.length ? (
+                                      <div className="text-amber-700">{copy.cacheWarning}: {application.cacheRevalidation.warnings.join(" | ")}</div>
+                                    ) : null}
+                                  </div>
+                                ) : null}
+                                <div className="mt-3">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    className="w-full"
+                                    disabled={Boolean(applyOption.disabledReason) || applyingAssetId === asset.id}
+                                    onClick={() => {
+                                      if (!applyOption.targetField) return
+                                      setConfirmationText("")
+                                      setPendingApply({ asset, targetField: applyOption.targetField, label: applyOption.label })
+                                    }}
+                                  >
+                                    {applyingAssetId === asset.id ? copy.applying : applyOption.label}
+                                  </Button>
+                                  {applyOption.disabledReason ? (
+                                    <div className="mt-2 text-xs text-muted-foreground">{applyOption.disabledReason}</div>
+                                  ) : null}
+                                </div>
                               </div>
-                              <div className="mt-3 text-sm font-medium">{copy.assetTypes[asset.assetType]}</div>
-                              <div className="mt-1 break-all text-xs text-muted-foreground">{asset.sourceUrl || asset.finalUrl || asset.id}</div>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       ) : (
                         <div className="py-8 text-center text-sm text-muted-foreground">{copy.empty}</div>
@@ -711,6 +981,54 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
           </div>
         </>
       )}
+
+      <AlertDialog open={Boolean(pendingApply)} onOpenChange={(open) => {
+        if (!open && !applyingAssetId) {
+          setPendingApply(null)
+          setConfirmationText("")
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{copy.confirmationTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{copy.confirmationDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          {pendingApply && (
+            <div className="space-y-3">
+              <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                <div className="font-medium">{pendingApply.label}</div>
+                <div className="mt-1 break-all text-xs text-muted-foreground">
+                  {copy.targetField}: {pendingApply.targetField}
+                </div>
+                <div className="mt-1 break-all text-xs text-muted-foreground">
+                  {copy.currentImage}: {getAssetPublicUrl(pendingApply.asset) ?? "-"}
+                </div>
+              </div>
+              <Input
+                value={confirmationText}
+                onChange={(event) => setConfirmationText(event.target.value)}
+                placeholder={copy.confirmationPlaceholder}
+                disabled={Boolean(applyingAssetId)}
+              />
+              {confirmationText && confirmationText.trim() !== "اعمال شود" ? (
+                <div className="text-xs text-destructive">{copy.confirmationRequired}</div>
+              ) : null}
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={Boolean(applyingAssetId)}>{copy.policyNo}</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={confirmationText.trim() !== "اعمال شود" || Boolean(applyingAssetId)}
+              onClick={(event) => {
+                event.preventDefault()
+                applyPendingAsset()
+              }}
+            >
+              {applyingAssetId ? copy.applying : copy.applyPublic}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

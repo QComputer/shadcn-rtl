@@ -1,6 +1,12 @@
 import { ApiError } from "@/lib/api-guards";
 import { writeAuditLog } from "@/lib/audit-log";
 import { prisma } from "@/lib/db";
+import {
+  revalidateCreativeStudioPublicTarget,
+  type CreativeStudioApplyTargetField,
+  type CreativeStudioRevalidationInput,
+  type CreativeStudioRevalidationResult,
+} from "@/lib/services/creative-studio-cache-revalidation";
 import { getAiMediaPaidProviderStatus } from "@/lib/services/ai-media-paid-provider";
 import type {
   ApplyCreativeStudioAssetInput,
@@ -17,6 +23,7 @@ import type {
 import { hasPermission } from "@/lib/types";
 
 const DEFAULT_DAILY_CREATIVE_STUDIO_JOB_LIMIT = 25;
+const PRIVATE_IPV4_PATTERNS = [/^10\./, /^127\./, /^0\./, /^192\.168\./, /^169\.254\./, /^172\.(1[6-9]|2\d|3[0-1])\./];
 
 function parsePositiveInt(value: string | undefined, fallback: number) {
   const parsed = Number.parseInt(value || "", 10);
@@ -34,6 +41,68 @@ function getDailyJobLimit() {
 function compactMetadata(metadata: unknown): Prisma.InputJsonObject {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return {};
   return JSON.parse(JSON.stringify(metadata)) as Prisma.InputJsonObject;
+}
+
+function metadataObject(metadata: unknown): Prisma.InputJsonObject {
+  return compactMetadata(metadata);
+}
+
+function getPublicAssetUrl(asset: { storedUrl?: string | null; draftUrl?: string | null; sourceUrl?: string | null }) {
+  return asset.storedUrl || asset.draftUrl || asset.sourceUrl || null;
+}
+
+function isPrivateIpv4(hostname: string) {
+  return PRIVATE_IPV4_PATTERNS.some((pattern) => pattern.test(hostname));
+}
+
+function assertPublicSafeAssetUrl(url: string | null) {
+  if (!url) throw new ApiError(400, "Creative Studio asset does not have a public URL to apply");
+
+  if (url.startsWith("/uploads/")) return url;
+  if (url.startsWith("//")) throw new ApiError(400, "Protocol-relative asset URLs are not allowed");
+  if (url.startsWith("/")) throw new ApiError(400, "Only /uploads relative asset URLs can be applied");
+
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new ApiError(400, "Creative Studio asset URL is invalid");
+  }
+
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    throw new ApiError(400, "Creative Studio asset URL must be public http(s)");
+  }
+  if (parsed.username || parsed.password) {
+    throw new ApiError(400, "Creative Studio asset URL must not include credentials");
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+  if (
+    hostname === "localhost" ||
+    hostname === "0.0.0.0" ||
+    hostname === "::1" ||
+    hostname.endsWith(".local") ||
+    isPrivateIpv4(hostname)
+  ) {
+    throw new ApiError(400, "Creative Studio asset URL must not point to a private host");
+  }
+
+  return url;
+}
+
+function resolveCreativeStudioApplyTarget(
+  targetType: CreativeStudioTargetType,
+  assetType: CreativeStudioAssetType,
+  targetField: CreativeStudioApplyTargetField | undefined,
+) {
+  if (!targetField) throw new ApiError(400, "Creative Studio apply target field is required");
+
+  if (targetType === "PRODUCT" && assetType === "PRODUCT_IMAGE" && targetField === "product.image") return targetField;
+  if (targetType === "ORGANIZATION_BRAND" && assetType === "LOGO" && targetField === "organization.logo") return targetField;
+  if (targetType === "ORGANIZATION_BRAND" && assetType === "COVER" && targetField === "organization.coverImage") return targetField;
+  if (targetType === "FANPAGE_POST" && assetType === "FANPAGE_IMAGE" && targetField === "fanpagePost.image") return targetField;
+
+  throw new ApiError(400, "Unsupported Creative Studio apply target");
 }
 
 export class CreativeStudioService {
@@ -56,8 +125,8 @@ export class CreativeStudioService {
       policy: {
         sellerInitiated: true,
         draftOnly: true,
-        applyEndpointRecordsOnly: true,
-        noPublicAssetMutation: true,
+        applyEndpointRecordsOnly: false,
+        noPublicAssetMutation: false,
       },
     };
   }
@@ -345,47 +414,240 @@ export class CreativeStudioService {
     assetId: string,
     organizationId: string,
     requestedByUserId: string,
+    role: UserRole,
     input: ApplyCreativeStudioAssetInput,
   ) {
-    if (input.applyToTarget !== false) {
-      throw new ApiError(400, "P108 records Creative Studio application intent only");
-    }
-
     const asset = await prisma.creativeStudioAsset.findFirst({
       where: { id: assetId, organizationId },
       include: { job: true },
     });
     if (!asset) throw new ApiError(404, "Creative Studio asset not found");
 
-    const updated = await prisma.creativeStudioAsset.update({
-      where: { id: asset.id },
-      data: {
-        status: "APPLIED",
-        appliedAt: new Date(),
-        sourceMetadata: {
-          ...(asset.sourceMetadata && typeof asset.sourceMetadata === "object" && !Array.isArray(asset.sourceMetadata)
-            ? asset.sourceMetadata as Prisma.InputJsonObject
-            : {}),
-          p108Application: {
-            recordedOnly: true,
-            publicMutation: false,
-          },
-        } satisfies Prisma.InputJsonObject,
+    if (!input.applyToTarget) {
+      const updated = await prisma.creativeStudioAsset.update({
+        where: { id: asset.id },
+        data: {
+          status: "APPLIED",
+          appliedAt: new Date(),
+          sourceMetadata: {
+            ...metadataObject(asset.sourceMetadata),
+            p108Application: {
+              recordedOnly: true,
+              publicMutation: false,
+            },
+          } satisfies Prisma.InputJsonObject,
+        },
+      });
+
+      await prisma.creativeStudioUsageEvent.create({
+        data: {
+          organizationId,
+          jobId: asset.jobId,
+          assetId: asset.id,
+          requestedByUserId,
+          action: "ASSET_APPLIED",
+          provider: asset.job.provider,
+          targetType: asset.job.targetType,
+          targetId: asset.job.targetId,
+          metadata: { recordedOnly: true, publicMutation: false },
+        },
+      });
+
+      await writeAuditLog({
+        action: "UPDATE",
+        entityType: "CreativeStudioAsset",
+        entityId: asset.id,
+        userId: requestedByUserId,
+        organizationId,
+        previousValue: { status: asset.status },
+        newValue: { status: updated.status, recordedOnly: true, publicMutation: false },
+      });
+
+      return {
+        asset: updated,
+        applied: false,
+        recordedOnly: true,
+        publicMutation: false,
+      };
+    }
+
+    const targetField = resolveCreativeStudioApplyTarget(asset.job.targetType, asset.assetType, input.targetField);
+    const publicAssetUrl = assertPublicSafeAssetUrl(getPublicAssetUrl(asset));
+    const appliedAt = new Date();
+    const baseMetadata = metadataObject(asset.sourceMetadata);
+    let target:
+      | {
+          entityType: "Product";
+          id: string;
+          previousValue: string | null;
+          organizationSlug: string;
+          revalidationInput: CreativeStudioRevalidationInput;
+        }
+      | {
+          entityType: "Organization";
+          id: string;
+          previousValue: string | null;
+          organizationSlug: string;
+          revalidationInput: CreativeStudioRevalidationInput;
+        }
+      | {
+          entityType: "FanpagePost";
+          id: string;
+          previousValue: string | null;
+          organizationSlug: string;
+          revalidationInput: CreativeStudioRevalidationInput;
+        };
+
+    if (targetField === "product.image") {
+      if (!hasPermission(role, "product:update")) throw new ApiError(403, "Forbidden");
+      if (!asset.job.targetId) throw new ApiError(400, "Creative Studio product target is required");
+      const product = await prisma.product.findFirst({
+        where: { id: asset.job.targetId, organizationId, deletedAt: null },
+        select: {
+          id: true,
+          slug: true,
+          image: true,
+          organizationSlug: true,
+          category: { select: { id: true, slug: true } },
+        },
+      });
+      if (!product) throw new ApiError(404, "Product target not found");
+      target = {
+        entityType: "Product",
+        id: product.id,
+        previousValue: product.image,
+        organizationSlug: product.organizationSlug,
+        revalidationInput: {
+          targetField,
+          organizationSlug: product.organizationSlug,
+          productSlugOrId: product.slug || product.id,
+          categorySlugOrId: product.category?.slug || product.category?.id || null,
+        },
+      };
+    } else if (targetField === "organization.logo" || targetField === "organization.coverImage") {
+      if (!hasPermission(role, "settings:manage")) throw new ApiError(403, "Forbidden");
+      const organization = await prisma.organization.findFirst({
+        where: { id: organizationId, deletedAt: null },
+        select: { id: true, slug: true, logo: true, coverImage: true },
+      });
+      if (!organization) throw new ApiError(404, "Organization target not found");
+      target = {
+        entityType: "Organization",
+        id: organization.id,
+        previousValue: targetField === "organization.logo" ? organization.logo : organization.coverImage,
+        organizationSlug: organization.slug,
+        revalidationInput: { targetField, organizationSlug: organization.slug },
+      };
+    } else {
+      if (!["SUPER_ADMIN", "ADMIN", "MANAGER"].includes(role)) throw new ApiError(403, "Forbidden");
+      if (!asset.job.targetId) throw new ApiError(400, "Creative Studio fanpage post target is required");
+      const post = await prisma.fanpagePost.findFirst({
+        where: { id: asset.job.targetId, organizationId, deletedAt: null },
+        select: {
+          id: true,
+          image: true,
+          organization: { select: { slug: true } },
+        },
+      });
+      if (!post) throw new ApiError(404, "Fanpage post target not found");
+      target = {
+        entityType: "FanpagePost",
+        id: post.id,
+        previousValue: post.image,
+        organizationSlug: post.organization.slug,
+        revalidationInput: { targetField, organizationSlug: post.organization.slug },
+      };
+    }
+
+    const applicationMetadata = {
+      publicMutation: true,
+      targetField,
+      targetId: target.id,
+      previousValue: target.previousValue,
+      appliedUrl: publicAssetUrl,
+      appliedAt: appliedAt.toISOString(),
+      rollbackHint: {
+        targetField,
+        previousValue: target.previousValue,
       },
+      cacheRevalidation: {
+        attempted: false,
+        paths: [],
+        warnings: [],
+      },
+    } satisfies Prisma.InputJsonObject;
+
+    const updated = await prisma.$transaction(async (tx) => {
+      if (targetField === "product.image") {
+        await tx.product.update({ where: { id: target.id }, data: { image: publicAssetUrl } });
+      } else if (targetField === "organization.logo") {
+        await tx.organization.update({ where: { id: target.id }, data: { logo: publicAssetUrl } });
+      } else if (targetField === "organization.coverImage") {
+        await tx.organization.update({ where: { id: target.id }, data: { coverImage: publicAssetUrl } });
+      } else {
+        await tx.fanpagePost.update({ where: { id: target.id }, data: { image: publicAssetUrl } });
+      }
+
+      const appliedAsset = await tx.creativeStudioAsset.update({
+        where: { id: asset.id },
+        data: {
+          status: "APPLIED",
+          appliedAt,
+          sourceMetadata: {
+            ...baseMetadata,
+            p110Application: applicationMetadata,
+          } satisfies Prisma.InputJsonObject,
+        },
+      });
+
+      await tx.creativeStudioUsageEvent.create({
+        data: {
+          organizationId,
+          jobId: asset.jobId,
+          assetId: asset.id,
+          requestedByUserId,
+          action: "ASSET_APPLIED",
+          provider: asset.job.provider,
+          targetType: asset.job.targetType,
+          targetId: asset.job.targetId,
+          metadata: {
+            publicMutation: true,
+            targetField,
+            targetId: target.id,
+            previousValuePresent: Boolean(target.previousValue),
+            cacheRevalidation: {
+              attempted: true,
+              paths: [],
+            },
+          },
+        },
+      });
+
+      return appliedAsset;
     });
 
-    await prisma.creativeStudioUsageEvent.create({
-      data: {
-        organizationId,
-        jobId: asset.jobId,
-        assetId: asset.id,
-        requestedByUserId,
-        action: "ASSET_APPLIED",
-        provider: asset.job.provider,
-        targetType: asset.job.targetType,
-        targetId: asset.job.targetId,
-        metadata: { recordedOnly: true, publicMutation: false },
+    const revalidation = revalidateCreativeStudioPublicTarget(target.revalidationInput);
+    const finalMetadata = {
+      ...baseMetadata,
+      p110Application: {
+        ...applicationMetadata,
+        cacheRevalidation: revalidation,
       },
+    } satisfies Prisma.InputJsonObject;
+    const finalAsset = await prisma.creativeStudioAsset.update({
+      where: { id: updated.id },
+      data: { sourceMetadata: finalMetadata },
+    });
+
+    await writeAuditLog({
+      action: "UPDATE",
+      entityType: target.entityType,
+      entityId: target.id,
+      userId: requestedByUserId,
+      organizationId,
+      organizationSlug: target.organizationSlug,
+      previousValue: { [targetField]: target.previousValue },
+      newValue: { [targetField]: publicAssetUrl, assetId: asset.id, publicMutation: true },
     });
 
     await writeAuditLog({
@@ -394,11 +656,30 @@ export class CreativeStudioService {
       entityId: asset.id,
       userId: requestedByUserId,
       organizationId,
+      organizationSlug: target.organizationSlug,
       previousValue: { status: asset.status },
-      newValue: { status: updated.status, recordedOnly: true, publicMutation: false },
+      newValue: {
+        status: finalAsset.status,
+        targetField,
+        appliedUrl: publicAssetUrl,
+        publicMutation: true,
+      },
     });
 
-    return { asset: updated, recordedOnly: true };
+    return {
+      asset: finalAsset,
+      applied: true,
+      recordedOnly: false,
+      publicMutation: true,
+      target: {
+        type: asset.job.targetType,
+        id: target.id,
+        field: targetField,
+      },
+      appliedUrl: publicAssetUrl,
+      previousValue: target.previousValue,
+      revalidation: revalidation satisfies CreativeStudioRevalidationResult,
+    };
   }
 }
 

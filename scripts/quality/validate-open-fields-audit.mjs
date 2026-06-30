@@ -57,9 +57,9 @@ for (const locale of ["fa", "en", "ar"]) {
   add(`${locale} dictionary has payment condition copy`, /"paymentCondition"\s*:/.test(dictionary) && /"paymentConditionDescription"\s*:/.test(dictionary))
 }
 
-add("README keeps P96 complete while marking P109 latest", /\| 96 \| Open Fields and Workflow Completion Audit/.test(readme) && /Latest completed implementation phase:\s+\*\*P110 - Creative Studio apply controls and cache-safe public asset updates\*\*/.test(readme) && /P111 - Creative Studio generation readiness gate and AI-service contract sync/.test(readme))
-add("roadmap keeps P96 complete while marking P109 baseline", /\| P96 \| Open fields and workflow completion audit\. \|/.test(roadmap) && /Completed through \*\*P110 - Creative Studio apply controls and cache-safe public asset updates\*\*/.test(roadmap))
-add("source of truth keeps P96 audit while naming P109 baseline", /Open Fields and Workflow Completion Audit exists/.test(sourceOfTruth) && /after P110 Creative Studio apply controls and cache-safe public asset updates/.test(sourceOfTruth))
+add("README keeps P96 complete while marking P109 latest", /\| 96 \| Open Fields and Workflow Completion Audit/.test(readme) && /Latest completed implementation phase:\s+\*\*P111 - Creative Studio generation readiness gate and AI-service contract sync\*\*/.test(readme) && /P112 - Creative Studio product-image generation request controls and long-running job UX/.test(readme))
+add("roadmap keeps P96 complete while marking P109 baseline", /\| P96 \| Open fields and workflow completion audit\. \|/.test(roadmap) && /Completed through \*\*P111 - Creative Studio generation readiness gate and AI-service contract sync\*\*/.test(roadmap))
+add("source of truth keeps P96 audit while naming P109 baseline", /Open Fields and Workflow Completion Audit exists/.test(sourceOfTruth) && /after P111 Creative Studio generation readiness gate and AI-service contract sync/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

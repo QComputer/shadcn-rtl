@@ -7,6 +7,7 @@ import {
   type CreativeStudioRevalidationInput,
   type CreativeStudioRevalidationResult,
 } from "@/lib/services/creative-studio-cache-revalidation";
+import { getCreativeStudioGenerationReadiness } from "@/lib/services/creative-studio-generation-readiness";
 import { getAiMediaPaidProviderStatus } from "@/lib/services/ai-media-paid-provider";
 import type {
   ApplyCreativeStudioAssetInput,
@@ -106,9 +107,12 @@ function resolveCreativeStudioApplyTarget(
 }
 
 export class CreativeStudioService {
-  async getStatus(organizationId: string) {
+  async getStatus(organizationId: string, options: { checkGenerationReadiness?: boolean } = {}) {
     const usage = await this.getUsageSummary(organizationId);
     const paidProvider = getAiMediaPaidProviderStatus();
+    const generationReadiness = await getCreativeStudioGenerationReadiness({
+      checkRemote: options.checkGenerationReadiness,
+    });
 
     return {
       enabled: true,
@@ -117,6 +121,7 @@ export class CreativeStudioService {
       planningGate: "P107",
       serverFoundation: "P108",
       paidProvider,
+      generationReadiness,
       canCreateJob: usage.canCreateJob && !paidProvider.rollback.paused,
       limits: {
         dailyJobLimit: usage.dailyJobLimit,

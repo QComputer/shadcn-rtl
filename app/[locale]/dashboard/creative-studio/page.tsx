@@ -59,6 +59,35 @@ type CreativeStudioStatus = {
     applyEndpointRecordsOnly: boolean
     noPublicAssetMutation: boolean
   }
+  generationReadiness?: {
+    phase: "P111"
+    generationRequestEnabled: false
+    generationUiEnabled: false
+    browserWorkerCallsAllowed: false
+    serverOnly: true
+    noNewProviders: true
+    service: {
+      enabled: boolean
+      configured: boolean
+      ready: boolean
+      urlConfigured: boolean
+      internalKeyConfigured: boolean
+      timeoutMs: number
+    }
+    remote: {
+      ok: boolean
+      checked: boolean
+      checks: Array<{ endpoint: string; ok: boolean; status: number | null; code?: string }>
+    } | null
+    contract: {
+      version: string
+      createEndpoint: string
+      supportedTargets: Array<{ targetType: CreativeStudioTargetType; assetType: CreativeStudioAssetType; targetField: CreativeStudioApplyTargetField }>
+      unsupportedTargets: CreativeStudioTargetType[]
+    }
+    blockers: string[]
+    nextPhase: string
+  }
 }
 
 type CreativeStudioUsageEvent = {
@@ -182,6 +211,16 @@ type CreativeStudioCopy = {
   appliedUrl: string
   cacheUpdated: string
   cacheWarning: string
+  readiness: string
+  generationGate: string
+  generationDisabled: string
+  aiServiceReady: string
+  contractVersion: string
+  supportedGeneration: string
+  unsupportedGeneration: string
+  serverOnly: string
+  browserCalls: string
+  readinessBlockers: string
   statuses: Record<CreativeStudioJobStatus | CreativeStudioAssetStatus, string>
   targetTypes: Record<CreativeStudioTargetType, string>
   assetTypes: Record<CreativeStudioAssetType, string>
@@ -242,6 +281,16 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     appliedUrl: "URL اعمال‌شده",
     cacheUpdated: "کش صفحات عمومی پس از اعمال به‌روزرسانی می‌شود.",
     cacheWarning: "هشدار به‌روزرسانی کش",
+    readiness: "آمادگی تولید",
+    generationGate: "دروازه آمادگی تولید",
+    generationDisabled: "در این فاز فرم تولید یا فراخوانی ارائه‌دهنده فعال نیست.",
+    aiServiceReady: "آمادگی سرویس AI",
+    contractVersion: "نسخه قرارداد",
+    supportedGeneration: "هدف‌های پشتیبانی‌شده",
+    unsupportedGeneration: "هدف‌های خارج از این فاز",
+    serverOnly: "فقط سمت سرور",
+    browserCalls: "فراخوانی مستقیم مرورگر",
+    readinessBlockers: "موانع آمادگی",
     statuses: {
       QUEUED: "در صف",
       PROCESSING: "در حال پردازش",
@@ -330,6 +379,16 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     appliedUrl: "Applied URL",
     cacheUpdated: "Public page cache is refreshed after apply.",
     cacheWarning: "Cache warning",
+    readiness: "Generation readiness",
+    generationGate: "Generation readiness gate",
+    generationDisabled: "This phase does not enable generation forms or provider calls.",
+    aiServiceReady: "AI service readiness",
+    contractVersion: "Contract version",
+    supportedGeneration: "Supported targets",
+    unsupportedGeneration: "Out of scope targets",
+    serverOnly: "Server-only",
+    browserCalls: "Direct browser calls",
+    readinessBlockers: "Readiness blockers",
     statuses: {
       QUEUED: "Queued",
       PROCESSING: "Processing",
@@ -418,6 +477,16 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     appliedUrl: "الرابط المطبق",
     cacheUpdated: "يتم تحديث كاش الصفحات العامة بعد التطبيق.",
     cacheWarning: "تحذير الكاش",
+    readiness: "جاهزية التوليد",
+    generationGate: "بوابة جاهزية التوليد",
+    generationDisabled: "لا تفعل هذه المرحلة نماذج التوليد أو استدعاءات المزود.",
+    aiServiceReady: "جاهزية خدمة AI",
+    contractVersion: "نسخة العقد",
+    supportedGeneration: "الأهداف المدعومة",
+    unsupportedGeneration: "الأهداف خارج النطاق",
+    serverOnly: "الخادم فقط",
+    browserCalls: "استدعاءات المتصفح المباشرة",
+    readinessBlockers: "عوائق الجاهزية",
     statuses: {
       QUEUED: "في الانتظار",
       PROCESSING: "قيد المعالجة",
@@ -796,6 +865,63 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ShieldCheck className="size-4" />
+                {copy.generationGate}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 lg:grid-cols-3">
+              <div className="space-y-2 rounded-md border p-3 text-sm">
+                <div className="font-medium">{copy.readiness}</div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">{copy.aiServiceReady}</span>
+                  <Badge variant={status?.generationReadiness?.service.ready ? "default" : "outline"}>
+                    {status?.generationReadiness?.service.ready ? copy.policyYes : copy.policyNo}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">{copy.serverOnly}</span>
+                  <Badge variant={status?.generationReadiness?.serverOnly ? "default" : "destructive"}>
+                    {status?.generationReadiness?.serverOnly ? copy.policyYes : copy.policyNo}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">{copy.browserCalls}</span>
+                  <Badge variant={status?.generationReadiness?.browserWorkerCallsAllowed ? "destructive" : "outline"}>
+                    {status?.generationReadiness?.browserWorkerCallsAllowed ? copy.policyYes : copy.policyNo}
+                  </Badge>
+                </div>
+              </div>
+              <div className="space-y-2 rounded-md border p-3 text-sm">
+                <div className="font-medium">{copy.contractVersion}</div>
+                <div className="break-all text-xs text-muted-foreground">
+                  {status?.generationReadiness?.contract.version ?? "ai-media-product-image-suggestions-v1"}
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  {status?.generationReadiness?.contract.createEndpoint ?? "/v1/product-image-suggestions/jobs"}
+                </div>
+                <div className="pt-2 text-xs">{copy.generationDisabled}</div>
+              </div>
+              <div className="space-y-2 rounded-md border p-3 text-sm">
+                <div className="font-medium">{copy.supportedGeneration}</div>
+                <div className="text-xs text-muted-foreground">
+                  {status?.generationReadiness?.contract.supportedTargets.map((target) => `${copy.targetTypes[target.targetType]} / ${copy.assetTypes[target.assetType]} / ${target.targetField}`).join("، ") || "PRODUCT / PRODUCT_IMAGE / product.image"}
+                </div>
+                <div className="pt-2 font-medium">{copy.unsupportedGeneration}</div>
+                <div className="text-xs text-muted-foreground">
+                  {status?.generationReadiness?.contract.unsupportedTargets.map((target) => copy.targetTypes[target]).join("، ") || copy.policyNo}
+                </div>
+                {status?.generationReadiness?.blockers.length ? (
+                  <div className="pt-2 text-xs text-amber-700">
+                    {copy.readinessBlockers}: {status.generationReadiness.blockers.join(" | ")}
+                  </div>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
 
           <div className="grid gap-4 xl:grid-cols-[minmax(320px,520px)_1fr]">
             <Card>

@@ -2,13 +2,13 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-29._
 
-This roadmap is ordered for risk reduction. Phases 18-119 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, source acceptance/secretless packaging, Creative Studio planning, Creative Studio server foundation, Creative Studio dashboard review, Creative Studio apply controls, Creative Studio generation readiness, Creative Studio product-image generation, Creative Studio generated-asset selection, Creative Studio organization-brand readiness, Creative Studio organization-brand request controls, Creative Studio organization-brand acceptance, Creative Studio organization-brand provider rollout gate, Creative Studio organization-brand provider execution, and Creative Studio provider result ingestion roadmap is implemented through Phase 119.
+This roadmap is ordered for risk reduction. Phases 18-119 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, source acceptance/secretless packaging, Creative Studio planning, Creative Studio server foundation, Creative Studio dashboard review, Creative Studio apply controls, Creative Studio generation readiness, Creative Studio product-image generation, Creative Studio generated-asset selection, Creative Studio organization-brand readiness, Creative Studio organization-brand request controls, Creative Studio organization-brand acceptance, Creative Studio organization-brand provider rollout gate, Creative Studio organization-brand provider execution, Creative Studio provider result ingestion, and P120A operational order notifications roadmap is implemented through Phase 120A.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P119 - Creative Studio provider result ingestion and review stabilization**.
+- Completed through **P120A - Operational order notifications and admin order controls for shop staff**.
 - Creative Studio generation work must continue with the P120 reviewed asset apply and rollback workflow phase.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
@@ -68,6 +68,8 @@ pnpm run quality:creative-studio-organization-brand-acceptance
 pnpm run quality:creative-studio-organization-brand-provider-rollout
 pnpm run quality:creative-studio-organization-brand-provider-execution
 pnpm run quality:creative-studio-provider-result-ingestion
+pnpm run quality:order-operational-notifications
+pnpm run quality:admin-order-controls
 pnpm run quality:export-downloads
 pnpm run quality:deployed-import-export-smoke
 pnpm run quality:local
@@ -132,11 +134,7 @@ Completed integrated phases:
 | P117 | Creative Studio organization-brand provider execution rollout gate. |
 | P118 | Creative Studio organization-brand provider execution implementation. |
 | P119 | Creative Studio provider result ingestion and review stabilization. |
-
-Upcoming platform phases should be treated as incremental hardening against the actual implementation already present in the repo:
-
-| Phase | Focus |
-| --- | --- |
+| P120A | Operational order notifications and admin order controls for shop staff. |
 | P120 | Creative Studio reviewed asset apply and rollback workflow. |
 
 Safety constraints for all Import Hub phases:

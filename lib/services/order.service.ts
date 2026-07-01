@@ -5,10 +5,7 @@ import type { CreateOrderInput, UpdateOrderStatusInput } from "@/lib/validators"
 import { hasPermission, type UserRole } from "@/lib/types";
 import { Decimal } from "@prisma/client/runtime/library";
 import { InventoryMovementReason, OrderStatus, PaymentMethod, PaymentStatus, OrderType, type InventoryMovementReason as InventoryMovementReasonType, type Prisma } from "@prisma/client";
-// TODO: Notifications:
-//        1.Accepting Order: setting EstEndTime for preparation by shop admin, setting EstEndTime for pickup and delivery by shop admin, 
-//        2.Changing Order Status: notify 
-//        3.Delivered
+import { operationalNotificationRouter } from "@/lib/notifications/operational-router";
 
 const ALLOWED_ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING: ["PLACED", "ACCEPTED", "CANCELLED"],
@@ -483,57 +480,69 @@ export class OrderService {
         data: { estimatedEndTime: deliveryEstimatedEndTime },
       });
 
-      const newOrder = await tx.order.create({
-        data: {
-          orderNumber,
-          type: orderData.type,
-          status: "PENDING",
-          subtotal,
-          deliveryFee,
-          discount,
-          total,
-          deliveryAddress: orderData.deliveryAddress,
-          deliveryLat: data.deliveryLat ?? undefined,
-          deliveryLng: data.deliveryLng ?? undefined,
-          notes: orderData.notes,
-          organizationSlug,
-          publicTrackingToken,
-          customerId,
-          preparationProgressId: preparationProgress.id,
-          pickupProgressId: pickupProgress.id,
-          deliveryProgressId: deliveryProgress.id,
-          promotionId,
-          promotionCode,
-          paymentMethod: data.paymentMethod,
-          items: {
-            create: orderItems,
-          },
+const newOrder = await tx.order.create({
+         data: {
+           orderNumber,
+           type: orderData.type,
+           status: "PENDING",
+           subtotal,
+           deliveryFee,
+           discount,
+           total,
+           deliveryAddress: orderData.deliveryAddress,
+           deliveryLat: data.deliveryLat ?? undefined,
+           deliveryLng: data.deliveryLng ?? undefined,
+           notes: orderData.notes,
+           organizationSlug,
+           publicTrackingToken,
+           customerId,
+           preparationProgressId: preparationProgress.id,
+           pickupProgressId: pickupProgress.id,
+           deliveryProgressId: deliveryProgress.id,
+           promotionId,
+           promotionCode,
+           paymentMethod: data.paymentMethod,
+           items: {
+             create: orderItems,
+           },
+         },
+         include: {
+           items: {
+             include: {
+               product: true,
+               variant: true,
+             },
+           },
+           customer: {
+             select: {
+               id: true,
+               name: true,
+               email: true,
+               firstName: true,
+               lastName: true,
+             },
+           },
+           organization: {
+             select: {
+               id: true,
+               name: true,
+               slug: true,
+             },
+           },
+         },
+       });
+
+      // Create in-app notifications for operational staff (inside transaction for consistency)
+      await operationalNotificationRouter.notifyOrderCreatedForStaff({
+        prisma: tx,
+        organizationId: newOrder.organization.id,
+        order: {
+          orderNumber: newOrder.orderNumber,
+          total: toMoneyNumber(newOrder.total),
+          type: newOrder.type,
+          customerName: newOrder.customer?.firstName || newOrder.customer?.name || null,
         },
-        include: {
-          items: {
-            include: {
-              product: true,
-              variant: true,
-            },
-          },
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-            },
-          },
-          organization: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              members: true,
-            },
-          },
-        },
+        actorUserId: customerId,
       });
 
       await this.decrementOrderInventory(tx, {
@@ -570,17 +579,18 @@ export class OrderService {
         data: { status: "ACTIVE" },
       });
 
-      await Promise.all(
-        newOrder.organization.members.map((member) =>
-          tx.notification.create({
-            data: {
-              targetUserId: member.userId,
-              context: "سفارش جدید ثبت شد",
-              seen: false,
-            },
-          }),
-        ),
-      );
+      // Web Push attempt happens after transaction in non-blocking manner
+      operationalNotificationRouter.attemptStaffWebPush({
+        organizationId: newOrder.organization.id,
+        order: {
+          orderNumber: newOrder.orderNumber,
+          total: toMoneyNumber(newOrder.total),
+          type: newOrder.type,
+        },
+        actorUserId: customerId,
+      }).catch((err) => {
+        console.error("[order-service] Web Push notification failed (non-blocking)", err instanceof Error ? err.message : String(err));
+      });
 
       return newOrder;
     });
@@ -720,57 +730,68 @@ const deliveryFee = await this.getDeliveryFee(organizationSlug, data.type);
         data: { estimatedEndTime: deliveryEstimatedEndTime },
       });
 
-      const newOrder = await tx.order.create({
-        data: {
-          orderNumber,
-          type: orderData.type,
-          status: "PENDING",
-          subtotal,
-          deliveryFee,
-          discount,
-          total,
-          deliveryAddress: orderData.deliveryAddress,
-          deliveryLat: data.deliveryLat ?? undefined,
-          deliveryLng: data.deliveryLng ?? undefined,
-          notes: orderData.notes,
-          organizationSlug,
-          publicTrackingToken,
-          guestCustomerId: guestCustomer.id,
-          preparationProgressId: preparationProgress.id,
-          pickupProgressId: pickupProgress.id,
-          deliveryProgressId: deliveryProgress.id,
-          promotionId,
-          promotionCode,
-          paymentMethod: data.paymentMethod,
-          items: {
-            create: orderItems,
-          },
-        },
-        include: {
-          items: {
-            include: {
-              product: true,
-              variant: true,
-            },
-          },
-          guestCustomer: {
-            select: {
-              id: true,
-              name: true,
-              phone: true,
-            },
-          },
-          organization: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              members: true,
-            },
-          },
-        },
-      });
+const newOrder = await tx.order.create({
+         data: {
+           orderNumber,
+           type: orderData.type,
+           status: "PENDING",
+           subtotal,
+           deliveryFee,
+           discount,
+           total,
+           deliveryAddress: orderData.deliveryAddress,
+           deliveryLat: data.deliveryLat ?? undefined,
+           deliveryLng: data.deliveryLng ?? undefined,
+           notes: orderData.notes,
+           organizationSlug,
+           publicTrackingToken,
+           guestCustomerId: guestCustomer.id,
+           preparationProgressId: preparationProgress.id,
+           pickupProgressId: pickupProgress.id,
+           deliveryProgressId: deliveryProgress.id,
+           promotionId,
+           promotionCode,
+           paymentMethod: data.paymentMethod,
+           items: {
+             create: orderItems,
+           },
+         },
+         include: {
+           items: {
+             include: {
+               product: true,
+               variant: true,
+             },
+           },
+           guestCustomer: {
+             select: {
+               id: true,
+               name: true,
+               phone: true,
+             },
+           },
+           organization: {
+             select: {
+               id: true,
+               name: true,
+               slug: true,
+             },
+           },
+         },
+       });
 
+      // Create in-app notifications for operational staff (inside transaction for consistency)
+      await operationalNotificationRouter.notifyOrderCreatedForStaff({
+        prisma: tx,
+        organizationId: newOrder.organization.id,
+        order: {
+          orderNumber: newOrder.orderNumber,
+          total: toMoneyNumber(newOrder.total),
+          type: newOrder.type,
+          customerName: guestCustomer?.name || null,
+        },
+        actorUserId: null,
+      });
 
       await this.decrementOrderInventory(tx, {
         orderId: newOrder.id,
@@ -805,17 +826,18 @@ const deliveryFee = await this.getDeliveryFee(organizationSlug, data.type);
         data: { status: "ACTIVE" },
       });
 
-      await Promise.all(
-        newOrder.organization.members.map((member) =>
-          tx.notification.create({
-            data: {
-              targetUserId: member.userId,
-              context: "سفارش جدید ثبت شد",
-              seen: false,
-            },
-          }),
-        ),
-      );
+      // Web Push attempt happens after transaction in non-blocking manner
+      operationalNotificationRouter.attemptStaffWebPush({
+        organizationId: newOrder.organization.id,
+        order: {
+          orderNumber: newOrder.orderNumber,
+          total: toMoneyNumber(newOrder.total),
+          type: newOrder.type,
+        },
+        actorUserId: null,
+      }).catch((_err) => {
+        // Non-blocking - already logged inside the method
+      });
 
       return newOrder;
     });

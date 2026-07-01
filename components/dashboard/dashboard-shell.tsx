@@ -8,6 +8,7 @@ import { DashboardAccessBoundary } from "@/components/dashboard/dashboard-access
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import { DashboardSidebarWithDict } from "@/components/dashboard/dashboard-sidebar"
 import { DashboardRouteAccessBoundary } from "@/components/dashboard/dashboard-route-access-boundary"
+import { DashboardPushOptIn } from "@/components/dashboard/dashboard-push-opt-in"
 import type { SupportedLocale } from "@/lib/i18n"
 
 type DashboardNotification = {
@@ -163,6 +164,9 @@ export function DashboardShell({ children, locale }: DashboardShellProps) {
 
               <div className="hidden border-b px-6 py-2 lg:block">
                 <DashboardBreadcrumb locale={locale} />
+                <div className="mt-4">
+                  <DashboardPushOptIn />
+                </div>
               </div>
 
               <main

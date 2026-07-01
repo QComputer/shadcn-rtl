@@ -132,6 +132,60 @@ export class NotificationPreferencesService {
     })
   }
 
+  async getDashboardPreferences(organizationId: string, userId: string) {
+    const preferences = await prisma.notificationPreference.findMany({
+      where: { organizationId, customerId: userId },
+      orderBy: { channel: "asc" },
+    })
+    const byChannel = new Map(preferences.map((preference) => [preference.channel, preference]))
+
+    return NOTIFICATION_CHANNELS.map((channel) => {
+      const preference = byChannel.get(channel)
+      return {
+        id: preference?.id ?? null,
+        channel,
+        marketingEnabled: preference?.marketingEnabled ?? false,
+        transactionalEnabled: preference?.transactionalEnabled ?? true,
+        quietHoursStart: preference?.quietHoursStart ?? null,
+        quietHoursEnd: preference?.quietHoursEnd ?? null,
+        locale: preference?.locale ?? "fa",
+        persisted: Boolean(preference),
+        updatedAt: preference?.updatedAt ?? null,
+      }
+    })
+  }
+
+  async setDashboardWebPushOptIn(input: {
+    organizationId: string
+    userId: string
+    enabled: boolean
+    source?: string
+  }) {
+    return prisma.notificationPreference.upsert({
+      where: {
+        organizationId_customerId_channel: {
+          organizationId: input.organizationId,
+          customerId: input.userId,
+          channel: "WEB_PUSH",
+        },
+      },
+      update: {
+        marketingEnabled: input.enabled,
+        transactionalEnabled: input.enabled,
+        source: input.source || "DASHBOARD",
+      },
+      create: {
+        organizationId: input.organizationId,
+        customerId: input.userId,
+        channel: "WEB_PUSH",
+        marketingEnabled: input.enabled,
+        transactionalEnabled: input.enabled,
+        locale: "fa",
+        source: input.source || "DASHBOARD",
+      },
+    })
+  }
+
   async listMarketingEligibleCustomerIds(organizationId: string, channel: NotificationChannel) {
     assertSupportedChannel(channel)
 

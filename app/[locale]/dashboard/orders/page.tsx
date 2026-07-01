@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, use } from "react"
-import dayjs, { Dayjs } from "dayjs";
+import dayjs, { Dayjs } from "dayjs"
 
 import {
   Search,
@@ -25,6 +25,7 @@ import {
   X,
   Delete,
   Check,
+  Send,
 } from "lucide-react"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -124,6 +125,28 @@ const statusConfig: Record<string, { label: string; icon: typeof Clock; color: s
   CANCELLED: { label: "لغو شده", icon: XCircle, color: "bg-red-500", variant: "destructive" },
   RECEIVED: { label: "دریافت شده", icon: CheckCircle, color: "bg-green-800", variant: "outline" },
   REFUNDED: { label: "بازپرداخت شده", icon: XCircle, color: "bg-orange-500", variant: "destructive" },
+}
+
+const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+  PENDING: ["ACCEPTED", "CANCELLED"],
+  PLACED: ["ACCEPTED", "CANCELLED"],
+  ACCEPTED: ["PREPARING", "CANCELLED"],
+  PREPARING: ["READY", "CANCELLED"],
+  READY: ["PICKED_UP", "DELIVERED", "CANCELLED"],
+  PICKED_UP: ["DELIVERED", "CANCELLED"],
+  DELIVERED: [],
+  CANCELLED: [],
+  REFUNDED: [],
+  RECEIVED: ["REFUNDED"],
+}
+
+const TRANSITION_LABELS: Record<string, string> = {
+  ACCEPTED: "قبول سفارش",
+  PREPARING: "شروع آماده‌سازی",
+  READY: "آماده شد",
+  PICKED_UP: "پیکاپ شد",
+  DELIVERED: "تحویل شد",
+  CANCELLED: "لغو سفارش",
 }
 
 
@@ -618,7 +641,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
             <DialogTitle>جزئیات سفارش {selectedOrder?.orderNumber}</DialogTitle>
           </DialogHeader>
           
-          {selectedOrder && (
+{selectedOrder && (
             <div className="space-y-5">
               {/* Status */}
               <div className="flex items-center justify-between">
@@ -628,27 +651,36 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                     {statusConfig[selectedOrder.status].label}
                   </Badge>
                 </div>
-                
-                {/* Quick Status Update */}
-                <Select 
-                  value={selectedOrder.status} 
-                  onValueChange={(value) => handleUpdateStatus(selectedOrder.id, value)}
-                  disabled={updating}
-                >
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(statusConfig).map(([key, config]) => (
-                      <SelectItem key={locale+key} value={key}>
-                        {config.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
-        
+              {/* Allowed Status Transitions */}
+              <div className="space-y-2">
+                <span className="text-sm text-muted-foreground">انتقال وضعیت:</span>
+                <div className="flex flex-wrap gap-2">
+                  {ALLOWED_TRANSITIONS[selectedOrder.status]?.map((nextStatus) => (
+                    <Button
+                      key={nextStatus}
+                      variant="outline"
+                      size="sm"
+                      disabled={updating}
+                      onClick={() => handleUpdateStatus(selectedOrder.id, nextStatus)}
+                    >
+                      {TRANSITION_LABELS[nextStatus]}
+                    </Button>
+                  ))}
+                  {selectedOrder.status !== "CANCELLED" && selectedOrder.status !== "REFUNDED" && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={updating}
+                      onClick={() => handleUpdateStatus(selectedOrder.id, "CANCELLED")}
+                    >
+                      لغو سفارش
+                    </Button>
+                  )}
+                </div>
+              </div>
+
               {/* Customer Info */}
               <Card>
                 <CardHeader className="pb-2">
@@ -658,9 +690,11 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-1 text-sm">
-                  {selectedOrder.customer?.firstName && <p>نام : {selectedOrder.customer.firstName}</p>}
-                  {selectedOrder.customer?.lastName && <p>نام خانوادگی : {selectedOrder.customer.name}</p>}
-                  {selectedOrder.guestCustomer?.name && <p>نام کاربر میهمان : {selectedOrder.guestCustomer.name}</p>}
+                  {selectedOrder.customer?.phone && <p>تلفن: {selectedOrder.customer.phone}</p>}
+                  {selectedOrder.customer?.firstName && <p>نام: {selectedOrder.customer.firstName} {selectedOrder.customer.lastName || ""}</p>}
+                  {selectedOrder.customer?.lastName && !selectedOrder.customer?.firstName && <p>نام خانوادگی: {selectedOrder.customer.lastName}</p>}
+                  {selectedOrder.guestCustomer?.name && <p>نام کاربر میهمان: {selectedOrder.guestCustomer.name}</p>}
+                  {selectedOrder.guestCustomer?.phone && <p>تلفن میهمان: {selectedOrder.guestCustomer.phone}</p>}
                 </CardContent>
               </Card>
 
@@ -701,61 +735,60 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                 </CardFooter>
               </Card>
 
-              {/* Driver Assignment */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Truck className="h-4 w-4" />
-                    choosing a driver
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {selectedOrder.assignedDriver ? (
-                    <div className="flex items-center justify-between rounded-md border px-3 py-2">
-                      <div>
-                        <p className="text-sm font-medium">
-                          {selectedOrder.assignedDriver.firstName || selectedOrder.assignedDriver.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">driver assigned</p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={assigningDriver}
-                        onClick={() => assignDriver(selectedOrder.id, "")}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">No driver assigned yet</p>
-                  )}
+{/* Driver Assignment */}
+               <Card>
+                 <CardHeader className="pb-2">
+                   <CardTitle className="text-sm flex items-center gap-2">
+                     <Truck className="h-4 w-4" />
+                     راننده
+                   </CardTitle>
+                 </CardHeader>
+                 <CardContent className="space-y-3">
+                   {selectedOrder.assignedDriver ? (
+                     <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                       <div>
+                         <p className="text-sm font-medium">
+                           {selectedOrder.assignedDriver.firstName || selectedOrder.assignedDriver.name}
+                         </p>
+                       </div>
+                       <Button
+                         variant="outline"
+                         size="sm"
+                         disabled={assigningDriver}
+                         onClick={() => assignDriver(selectedOrder.id, "")}
+                       >
+                         حذف پیک
+                       </Button>
+                     </div>
+                   ) : (
+                     <p className="text-xs text-muted-foreground">راننده‌ای اختصاص نیافته</p>
+                   )}
 
-                  <div className="flex gap-2">
-                    <Select
-                      disabled={assigningDriver}
-                      onValueChange={(value) => {
-                        if (!selectedOrder) return
-                        assignDriver(selectedOrder.id, value)
-                      }}
-                    >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="assign driver" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {drivers.length === 0 && (
-                          <SelectItem value="none" disabled>
-                            No registered Driver
-                          </SelectItem>
-                        )}
-                        {drivers.map((driver) => (
-                          <SelectItem key={driver.id} value={driver.id}>
-                            {driver.firstName || driver.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+<div className="flex gap-2">
+                     <Select
+                       disabled={assigningDriver}
+                       onValueChange={(value) => {
+                         if (!selectedOrder) return
+                         assignDriver(selectedOrder.id, value)
+                       }}
+                     >
+                       <SelectTrigger className="flex-1">
+                         <SelectValue placeholder="انتخاب پیک" />
+                       </SelectTrigger>
+                       <SelectContent>
+                         {drivers.length === 0 && (
+                           <SelectItem value="none" disabled>
+                             راننده‌ای ثبت نشده
+                           </SelectItem>
+                         )}
+                         {drivers.map((driver) => (
+                           <SelectItem key={driver.id} value={driver.id}>
+                             {driver.firstName || driver.name}
+                           </SelectItem>
+                         ))}
+                       </SelectContent>
+                     </Select>
+                   </div>
                 </CardContent>
               </Card>
 

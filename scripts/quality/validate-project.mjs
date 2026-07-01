@@ -339,12 +339,30 @@ if (exists("scripts/quality/validate-creative-studio-organization-brand-readines
     }
   }
 
-  if (exists("scripts/quality/validate-creative-studio-provider-result-ingestion.mjs")) {
+if (exists("scripts/quality/validate-creative-studio-provider-result-ingestion.mjs")) {
     const result = spawnSync(process.execPath, ["scripts/quality/validate-creative-studio-provider-result-ingestion.mjs"], { cwd: root, encoding: "utf8" });
     if (result.status === 0) {
       ok("P119 Creative Studio provider result ingestion validator passes");
     } else {
       fail("P119 Creative Studio provider result ingestion validator passes", result.stderr || result.stdout);
+    }
+  }
+
+  if (exists("scripts/quality/validate-order-operational-notifications.mjs")) {
+    const result = spawnSync(process.execPath, ["scripts/quality/validate-order-operational-notifications.mjs"], { cwd: root, encoding: "utf8" });
+    if (result.status === 0) {
+      ok("P120A order operational notifications validator passes");
+    } else {
+      fail("P120A order operational notifications validator passes", result.stderr || result.stdout);
+    }
+  }
+
+  if (exists("scripts/quality/validate-admin-order-controls.mjs")) {
+    const result = spawnSync(process.execPath, ["scripts/quality/validate-admin-order-controls.mjs"], { cwd: root, encoding: "utf8" });
+    if (result.status === 0) {
+      ok("P120A admin order controls validator passes");
+    } else {
+      fail("P120A admin order controls validator passes", result.stderr || result.stdout);
     }
   }
 

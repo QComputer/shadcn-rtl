@@ -106,6 +106,10 @@ type CreativeStudioStatus = {
       targetType: "ORGANIZATION_BRAND"
       generationRequestEnabled: false
       generationUiEnabled: false
+      requestControlsPhase?: "P115"
+      requestControlsEnabled?: boolean
+      providerExecutionEnabled?: boolean
+      requestOnlyJobPersistence?: boolean
       providerContractReady: false
       selectionStillRequired: true
       applyStillRequiresConfirmation: true
@@ -267,6 +271,15 @@ type CreativeStudioCopy = {
   plannedBrandTargets: string
   brandGenerationDisabled: string
   applyStillManual: string
+  brandRequestForm: string
+  brandAsset: string
+  brandPromptPlaceholder: string
+  requestOnlyMode: string
+  providerExecution: string
+  startBrandRequest: string
+  startingBrandRequest: string
+  brandRequestStarted: string
+  brandRequestFailed: string
   generationForm: string
   product: string
   productPlaceholder: string
@@ -369,8 +382,17 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     logoCoverReadiness: "آمادگی لوگو و کاور",
     providerContract: "قرارداد ارائه‌دهنده",
     plannedBrandTargets: "هدف‌های برند برنامه‌ریزی‌شده",
-    brandGenerationDisabled: "تولید لوگو و کاور در این فاز فقط آماده‌سازی شده و فرم عملیاتی فعال نیست.",
+    brandGenerationDisabled: "اجرای ارائه‌دهنده برای لوگو و کاور هنوز فعال نیست؛ درخواست فقط به‌صورت پیش‌نویس داخلی ثبت می‌شود.",
     applyStillManual: "اعمال عمومی همچنان با انتخاب داخلی و تایید جداگانه انجام می‌شود.",
+    brandRequestForm: "درخواست لوگو و کاور",
+    brandAsset: "دارایی برند",
+    brandPromptPlaceholder: "مثلا: لوگوی مینیمال با حس محلی، کاور روشن برای صفحه فروشگاه",
+    requestOnlyMode: "ثبت درخواست داخلی",
+    providerExecution: "اجرای ارائه‌دهنده",
+    startBrandRequest: "ثبت درخواست برند",
+    startingBrandRequest: "در حال ثبت...",
+    brandRequestStarted: "درخواست لوگو/کاور به‌صورت پیش‌نویس داخلی ثبت شد.",
+    brandRequestFailed: "ثبت درخواست لوگو/کاور ناموفق بود.",
     generationForm: "ساخت تصویر محصول",
     product: "محصول",
     productPlaceholder: "یک محصول را انتخاب کنید",
@@ -501,8 +523,17 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     logoCoverReadiness: "Logo and cover readiness",
     providerContract: "Provider contract",
     plannedBrandTargets: "Planned brand targets",
-    brandGenerationDisabled: "Logo and cover generation is readiness-only in this phase; the operational form remains disabled.",
+    brandGenerationDisabled: "Logo and cover provider execution is still disabled; requests are recorded as internal drafts only.",
     applyStillManual: "Public apply still requires internal selection and separate confirmation.",
+    brandRequestForm: "Logo and cover requests",
+    brandAsset: "Brand asset",
+    brandPromptPlaceholder: "Example: minimal logo with local warmth, bright cover for the shop page",
+    requestOnlyMode: "Internal request record",
+    providerExecution: "Provider execution",
+    startBrandRequest: "Record brand request",
+    startingBrandRequest: "Recording...",
+    brandRequestStarted: "Logo/cover request was recorded as an internal draft.",
+    brandRequestFailed: "Could not record logo/cover request.",
     generationForm: "Product image generation",
     product: "Product",
     productPlaceholder: "Select a product",
@@ -633,8 +664,17 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     logoCoverReadiness: "جاهزية الشعار والغلاف",
     providerContract: "عقد المزود",
     plannedBrandTargets: "أهداف العلامة المخططة",
-    brandGenerationDisabled: "توليد الشعار والغلاف في هذه المرحلة للجاهزية فقط؛ لا يزال النموذج التشغيلي معطلا.",
+    brandGenerationDisabled: "تنفيذ مزود الشعار والغلاف لا يزال معطلا؛ يتم تسجيل الطلبات كمسودات داخلية فقط.",
     applyStillManual: "يتطلب التطبيق العام اختيارا داخليا وتأكيدا منفصلا.",
+    brandRequestForm: "طلبات الشعار والغلاف",
+    brandAsset: "أصل العلامة",
+    brandPromptPlaceholder: "مثال: شعار بسيط بطابع محلي، غلاف مضيء لصفحة المتجر",
+    requestOnlyMode: "سجل طلب داخلي",
+    providerExecution: "تنفيذ المزود",
+    startBrandRequest: "تسجيل طلب العلامة",
+    startingBrandRequest: "جار التسجيل...",
+    brandRequestStarted: "تم تسجيل طلب الشعار/الغلاف كمسودة داخلية.",
+    brandRequestFailed: "تعذر تسجيل طلب الشعار/الغلاف.",
     generationForm: "توليد صورة المنتج",
     product: "المنتج",
     productPlaceholder: "اختر منتجا",
@@ -799,6 +839,11 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
   const [generationAspectRatio, setGenerationAspectRatio] = useState("1:1")
   const [generationStylePreset, setGenerationStylePreset] = useState("LIGHT_MENU_PHOTO")
   const [generationSubmitting, setGenerationSubmitting] = useState(false)
+  const [brandAssetType, setBrandAssetType] = useState<"LOGO" | "COVER">("LOGO")
+  const [brandPrompt, setBrandPrompt] = useState("")
+  const [brandCount, setBrandCount] = useState("2")
+  const [brandStylePreset, setBrandStylePreset] = useState("BRAND_CLEAN")
+  const [brandSubmitting, setBrandSubmitting] = useState(false)
   const [generationPollingJobId, setGenerationPollingJobId] = useState<string | null>(null)
   const [generationCancelingJobId, setGenerationCancelingJobId] = useState<string | null>(null)
   const [generationPollAttempts, setGenerationPollAttempts] = useState(0)
@@ -996,6 +1041,45 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
     }
   }
 
+  async function startOrganizationBrandGeneration() {
+    setBrandSubmitting(true)
+    setGenerationNotice(null)
+    setApplyNotice(null)
+    try {
+      const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ""
+      const response = await fetch(`/api/dashboard/creative-studio/jobs${query}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          organizationId,
+          targetType: "ORGANIZATION_BRAND",
+          assetType: brandAssetType,
+          prompt: brandPrompt.trim() || undefined,
+          count: Number.parseInt(brandCount, 10),
+          aspect_ratio: brandAssetType === "LOGO" ? "1:1" : "16:9",
+          style_preset: brandStylePreset,
+          metadata: {
+            p115BrandGeneration: true,
+            requestControlsOnly: true,
+            providerExecutionEnabled: false,
+            requestedFrom: "creative-studio-dashboard",
+            targetField: brandAssetType === "LOGO" ? "organization.logo" : "organization.coverImage",
+          },
+        }),
+      })
+      if (!response.ok) throw new Error(await readError(response, copy.brandRequestFailed))
+      const data = await response.json()
+      const job = data.job as CreativeStudioJob
+      setGenerationNotice({ type: "success", message: copy.brandRequestStarted })
+      await loadOverview(organizationId)
+      await loadJob(job.id, organizationId)
+    } catch (err) {
+      setGenerationNotice({ type: "error", message: err instanceof Error ? err.message : copy.brandRequestFailed })
+    } finally {
+      setBrandSubmitting(false)
+    }
+  }
+
   function pollCreativeStudioJob(jobId: string) {
     generationPollRunIdRef.current += 1
     if (generationPollTimerRef.current) {
@@ -1149,6 +1233,11 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
     status.generationReadiness.service.ready &&
     status.canCreateJob
   )
+  const brandRequestControlsReady = Boolean(
+    status?.generationReadiness?.organizationBrandPlan?.requestControlsEnabled &&
+    status.canCreateJob
+  )
+  const brandProviderExecutionEnabled = Boolean(status?.generationReadiness?.organizationBrandPlan?.providerExecutionEnabled)
 
   return (
     <div className="space-y-6">
@@ -1441,6 +1530,94 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
                   {status?.generationReadiness?.blockers.length
                     ? `${copy.readinessBlockers}: ${status.generationReadiness.blockers.join(" | ")}`
                     : copy.generationDisabled}
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ImageIcon className="size-4" />
+                {copy.brandRequestForm}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 lg:grid-cols-[180px_minmax(220px,1fr)_120px_180px]">
+                <div className="space-y-2">
+                  <Label>{copy.brandAsset}</Label>
+                  <Select value={brandAssetType} onValueChange={(value) => setBrandAssetType(value as "LOGO" | "COVER")} disabled={!brandRequestControlsReady || brandSubmitting}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="LOGO">{copy.assetTypes.LOGO}</SelectItem>
+                      <SelectItem value="COVER">{copy.assetTypes.COVER}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>{copy.generationPrompt}</Label>
+                  <Textarea
+                    value={brandPrompt}
+                    onChange={(event) => setBrandPrompt(event.target.value)}
+                    placeholder={copy.brandPromptPlaceholder}
+                    rows={1}
+                    disabled={!brandRequestControlsReady || brandSubmitting}
+                    className="min-h-10 resize-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{copy.imageCount}</Label>
+                  <Select value={brandCount} onValueChange={setBrandCount} disabled={!brandRequestControlsReady || brandSubmitting}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1</SelectItem>
+                      <SelectItem value="2">2</SelectItem>
+                      <SelectItem value="3">3</SelectItem>
+                      <SelectItem value="4">4</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>{copy.stylePreset}</Label>
+                  <Select value={brandStylePreset} onValueChange={setBrandStylePreset} disabled={!brandRequestControlsReady || brandSubmitting}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="BRAND_CLEAN">BRAND_CLEAN</SelectItem>
+                      <SelectItem value="LOCAL_MARKET">LOCAL_MARKET</SelectItem>
+                      <SelectItem value="PREMIUM_MINIMAL">PREMIUM_MINIMAL</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <Badge variant={brandRequestControlsReady ? "default" : "outline"}>
+                    {copy.requestOnlyMode}: {brandRequestControlsReady ? copy.policyYes : copy.policyNo}
+                  </Badge>
+                  <Badge variant={brandProviderExecutionEnabled ? "default" : "outline"}>
+                    {copy.providerExecution}: {brandProviderExecutionEnabled ? copy.policyYes : copy.policyNo}
+                  </Badge>
+                  <span>{copy.aspectRatio}: {brandAssetType === "LOGO" ? "1:1" : "16:9"}</span>
+                </div>
+                <Button
+                  type="button"
+                  onClick={startOrganizationBrandGeneration}
+                  disabled={!brandRequestControlsReady || brandSubmitting}
+                  className="w-full sm:w-auto"
+                >
+                  {brandSubmitting ? <RefreshCw className="size-4 animate-spin" /> : <Play className="size-4" />}
+                  {brandSubmitting ? copy.startingBrandRequest : copy.startBrandRequest}
+                </Button>
+              </div>
+              {!brandProviderExecutionEnabled ? (
+                <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700">
+                  {copy.brandGenerationDisabled}
                 </div>
               ) : null}
             </CardContent>

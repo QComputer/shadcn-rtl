@@ -63,6 +63,7 @@
     "quality:creative-studio-product-image-generation": "node scripts/quality/validate-creative-studio-product-image-generation.mjs",
     "quality:creative-studio-generated-asset-selection": "node scripts/quality/validate-creative-studio-generated-asset-selection.mjs",
     "quality:creative-studio-organization-brand-readiness": "node scripts/quality/validate-creative-studio-organization-brand-readiness.mjs",
+    "quality:creative-studio-organization-brand-request-controls": "node scripts/quality/validate-creative-studio-organization-brand-request-controls.mjs",
     "e2e:deployed:creative-studio": "node scripts/e2e/deployed-creative-studio-generated-assets.mjs",
     "smoke:deployed:creative-studio": "node scripts/e2e/deployed-creative-studio-generated-assets.mjs",
     "e2e:deployed:phase11": "node scripts/e2e/deployed-phase11-health.mjs",

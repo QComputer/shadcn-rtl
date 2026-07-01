@@ -79,6 +79,18 @@ function isProductImageGenerationInput(input: CreateCreativeStudioJobInput) {
   return input.targetType === "PRODUCT" && input.assetType === "PRODUCT_IMAGE" && Boolean(input.targetId);
 }
 
+function isOrganizationBrandGenerationInput(input: CreateCreativeStudioJobInput) {
+  return input.targetType === "ORGANIZATION_BRAND" && ["LOGO", "COVER"].includes(input.assetType);
+}
+
+function getOrganizationBrandTargetField(assetType: CreateCreativeStudioJobInput["assetType"]) {
+  return assetType === "LOGO" ? "organization.logo" : "organization.coverImage";
+}
+
+function getOrganizationBrandAspectRatio(assetType: CreateCreativeStudioJobInput["assetType"], metadata: unknown, inputAspectRatio?: string | null) {
+  return inputAspectRatio || getStringMetadata(metadata, "aspect_ratio") || (assetType === "LOGO" ? "1:1" : "16:9");
+}
+
 function isProductImageGenerationJob(job: {
   targetType: CreativeStudioTargetType;
   provider: string;
@@ -408,6 +420,9 @@ export class CreativeStudioService {
     if (isProductImageGenerationInput(input)) {
       return this.createProductImageGenerationJob(organizationId, requestedByUserId, role, input);
     }
+    if (isOrganizationBrandGenerationInput(input)) {
+      return this.createOrganizationBrandGenerationRequest(organizationId, requestedByUserId, role, input);
+    }
 
     await this.assertTargetAccess(organizationId, role, input);
     const { paidProvider } = await this.assertCanCreate(organizationId);
@@ -497,6 +512,135 @@ export class CreativeStudioService {
         targetId: result.job.targetId,
         assetId: result.asset.id,
         provider: "MOCK",
+        publicMutation: false,
+      },
+    });
+
+    return result;
+  }
+
+  private async createOrganizationBrandGenerationRequest(
+    organizationId: string,
+    requestedByUserId: string,
+    role: UserRole,
+    input: CreateCreativeStudioJobInput,
+  ) {
+    await this.assertTargetAccess(organizationId, role, input);
+    const { paidProvider } = await this.assertCanCreate(organizationId);
+    const prompt = input.prompt?.trim() || null;
+    const metadata = compactMetadata(input.metadata);
+    const targetField = getOrganizationBrandTargetField(input.assetType);
+    const aspectRatio = getOrganizationBrandAspectRatio(input.assetType, metadata, input.aspect_ratio);
+    const stylePreset = input.style_preset || getStringMetadata(metadata, "style_preset") || "BRAND_CLEAN";
+
+    const sourceMetadata = {
+      ...metadata,
+      p115BrandGeneration: {
+        contract: "creative-studio-organization-brand-v1",
+        requestControlsOnly: true,
+        providerExecutionEnabled: false,
+        providerContractReady: false,
+        draftOnly: true,
+        publicMutation: false,
+        targetField,
+        aspect_ratio: aspectRatio,
+        style_preset: stylePreset,
+        applyStillRequiresConfirmation: true,
+      },
+    } satisfies Prisma.InputJsonObject;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const job = await tx.creativeStudioJob.create({
+        data: {
+          organizationId,
+          targetType: "ORGANIZATION_BRAND",
+          targetId: null,
+          requestedByUserId,
+          status: "COMPLETED",
+          provider: "MOCK",
+          prompt,
+          inputs: {
+            assetType: input.assetType,
+            count: input.count,
+            aspect_ratio: aspectRatio,
+            style_preset: stylePreset,
+            metadata,
+            p115BrandGeneration: sourceMetadata.p115BrandGeneration,
+          } satisfies Prisma.InputJsonObject,
+          outputCount: 1,
+          costEstimateCents: 0,
+          paidProviderEnabled: paidProvider.enabled,
+          rollbackPaused: paidProvider.rollback.paused,
+          completedAt: new Date(),
+        },
+      });
+
+      const asset = await tx.creativeStudioAsset.create({
+        data: {
+          organizationId,
+          jobId: job.id,
+          assetType: input.assetType as CreativeStudioAssetType,
+          status: "DRAFT",
+          sourceMetadata,
+        },
+      });
+
+      await tx.creativeStudioUsageEvent.createMany({
+        data: [
+          {
+            organizationId,
+            jobId: job.id,
+            requestedByUserId,
+            action: "JOB_CREATED",
+            provider: "MOCK",
+            targetType: "ORGANIZATION_BRAND",
+            targetId: null,
+            metadata: {
+              assetType: input.assetType,
+              count: input.count,
+              targetField,
+              aspect_ratio: aspectRatio,
+              style_preset: stylePreset,
+              p115BrandGeneration: true,
+              providerExecutionEnabled: false,
+            },
+          },
+          {
+            organizationId,
+            jobId: job.id,
+            assetId: asset.id,
+            requestedByUserId,
+            action: "ASSET_DRAFTED",
+            provider: "MOCK",
+            targetType: "ORGANIZATION_BRAND",
+            targetId: null,
+            metadata: {
+              targetField,
+              requestControlsOnly: true,
+              publicMutation: false,
+              applyStillRequiresConfirmation: true,
+            },
+          },
+        ],
+      });
+
+      return { job, asset };
+    });
+
+    await writeAuditLog({
+      action: "CREATE",
+      entityType: "CreativeStudioJob",
+      entityId: result.job.id,
+      userId: requestedByUserId,
+      organizationId,
+      newValue: {
+        targetType: result.job.targetType,
+        assetType: result.asset.assetType,
+        assetId: result.asset.id,
+        provider: "MOCK",
+        targetField,
+        requestControlsOnly: true,
+        providerExecutionEnabled: false,
         publicMutation: false,
       },
     });

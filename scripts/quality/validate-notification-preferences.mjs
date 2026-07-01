@@ -77,9 +77,9 @@ add("shop profile passes locale to opt-in component", /<WebPushOptIn\s+organizat
 
 add("package exposes P99 validator", /"quality:notification-preferences":\s*"node scripts\/quality\/validate-notification-preferences\.mjs"/.test(packageJson))
 add("project validator references P99 validator", /validate-notification-preferences\.mjs/.test(validateProject) && /P99 notification preferences validator passes/.test(validateProject))
-add("README keeps P99 complete while marking P109 latest", /\| 99 \| Notification domain model and preferences/.test(readme) && /Latest completed implementation phase:\s+\*\*P114 - Creative Studio organization-brand generation planning and readiness gate\*\*/.test(readme) && /P115 - Creative Studio organization logo and cover generation request controls/.test(readme))
-add("roadmap marks P99 complete in P109 progression", /\| P99 \| Notification domain model and preferences\. \|/.test(roadmap) && /Completed through \*\*P114 - Creative Studio organization-brand generation planning and readiness gate\*\*/.test(roadmap))
-add("source of truth names P109 baseline", /after P114 Creative Studio organization-brand generation planning and readiness gate/.test(sourceOfTruth) && /Notification domain model and preferences exists/.test(sourceOfTruth))
+add("README keeps P99 complete while marking P109 latest", /\| 99 \| Notification domain model and preferences/.test(readme) && /Latest completed implementation phase:\s+\*\*P115 - Creative Studio organization logo and cover generation request controls\*\*/.test(readme) && /P116 - Creative Studio organization logo and cover generated-asset acceptance/.test(readme))
+add("roadmap marks P99 complete in P109 progression", /\| P99 \| Notification domain model and preferences\. \|/.test(roadmap) && /Completed through \*\*P115 - Creative Studio organization logo and cover generation request controls\*\*/.test(roadmap))
+add("source of truth names P109 baseline", /after P115 Creative Studio organization logo and cover generation request controls/.test(sourceOfTruth) && /Notification domain model and preferences exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

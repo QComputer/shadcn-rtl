@@ -50,9 +50,9 @@ add("P98 offline cache remains guarded", /addEventListener\("fetch"/.test(servic
 
 add("package exposes P97 validator", /"quality:pwa-foundation":\s*"node scripts\/quality\/validate-pwa-foundation\.mjs"/.test(packageJson))
 add("project validator references P97 validator", /validate-pwa-foundation\.mjs/.test(validateProject) && /P97 PWA foundation validator passes/.test(validateProject))
-add("README keeps P97 complete while marking P109 latest", /\| 97 \| PWA foundation and install experience/.test(readme) && /Latest completed implementation phase:\s+\*\*P114 - Creative Studio organization-brand generation planning and readiness gate\*\*/.test(readme) && /P115 - Creative Studio organization logo and cover generation request controls/.test(readme))
-add("roadmap keeps P97 complete while marking P109 baseline", /\| P97 \| PWA foundation and install experience\. \|/.test(roadmap) && /Completed through \*\*P114 - Creative Studio organization-brand generation planning and readiness gate\*\*/.test(roadmap))
-add("source of truth keeps P97 foundation while naming P109 baseline", /PWA Foundation and Install Experience exists/.test(sourceOfTruth) && /after P114 Creative Studio organization-brand generation planning and readiness gate/.test(sourceOfTruth))
+add("README keeps P97 complete while marking P109 latest", /\| 97 \| PWA foundation and install experience/.test(readme) && /Latest completed implementation phase:\s+\*\*P115 - Creative Studio organization logo and cover generation request controls\*\*/.test(readme) && /P116 - Creative Studio organization logo and cover generated-asset acceptance/.test(readme))
+add("roadmap keeps P97 complete while marking P109 baseline", /\| P97 \| PWA foundation and install experience\. \|/.test(roadmap) && /Completed through \*\*P115 - Creative Studio organization logo and cover generation request controls\*\*/.test(roadmap))
+add("source of truth keeps P97 foundation while naming P109 baseline", /PWA Foundation and Install Experience exists/.test(sourceOfTruth) && /after P115 Creative Studio organization logo and cover generation request controls/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

@@ -60,9 +60,9 @@ for (const locale of ["fa", "en", "ar"]) {
 
 add("package exposes P100 validator", /"quality:web-push-delivery":\s*"node scripts\/quality\/validate-web-push-delivery\.mjs"/.test(packageJson))
 add("project validator references P100 validator", /validate-web-push-delivery\.mjs/.test(validateProject) && /P100 Web Push delivery validator passes/.test(validateProject))
-add("README keeps P100 complete while marking P109 latest", /\| 100 \| Web Push notification service/.test(readme) && /Latest completed implementation phase:\s+\*\*P114 - Creative Studio organization-brand generation planning and readiness gate\*\*/.test(readme) && /P115 - Creative Studio organization logo and cover generation request controls/.test(readme))
-add("roadmap keeps P100 complete while marking P109 baseline", /\| P100 \| Web Push notification service\. \|/.test(roadmap) && /Completed through \*\*P114 - Creative Studio organization-brand generation planning and readiness gate\*\*/.test(roadmap))
-add("source of truth names P109 baseline and keeps P100 summary", /after P114 Creative Studio organization-brand generation planning and readiness gate/.test(sourceOfTruth) && /Web Push notification service exists/.test(sourceOfTruth))
+add("README keeps P100 complete while marking P109 latest", /\| 100 \| Web Push notification service/.test(readme) && /Latest completed implementation phase:\s+\*\*P115 - Creative Studio organization logo and cover generation request controls\*\*/.test(readme) && /P116 - Creative Studio organization logo and cover generated-asset acceptance/.test(readme))
+add("roadmap keeps P100 complete while marking P109 baseline", /\| P100 \| Web Push notification service\. \|/.test(roadmap) && /Completed through \*\*P115 - Creative Studio organization logo and cover generation request controls\*\*/.test(roadmap))
+add("source of truth names P109 baseline and keeps P100 summary", /after P115 Creative Studio organization logo and cover generation request controls/.test(sourceOfTruth) && /Web Push notification service exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

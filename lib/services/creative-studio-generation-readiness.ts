@@ -58,6 +58,10 @@ export type CreativeStudioGenerationReadiness = {
     targetType: "ORGANIZATION_BRAND";
     generationRequestEnabled: false;
     generationUiEnabled: false;
+    requestControlsPhase: "P115";
+    requestControlsEnabled: true;
+    providerExecutionEnabled: false;
+    requestOnlyJobPersistence: true;
     providerContractReady: false;
     selectionStillRequired: true;
     applyStillRequiresConfirmation: true;
@@ -89,7 +93,7 @@ export type CreativeStudioGenerationReadiness = {
     blockers: string[];
   };
   blockers: string[];
-  nextPhase: "P115 - Creative Studio organization logo and cover generation request controls";
+  nextPhase: "P116 - Creative Studio organization logo and cover generated-asset acceptance";
 };
 
 export async function getCreativeStudioGenerationReadiness(options: { checkRemote?: boolean } = {}): Promise<CreativeStudioGenerationReadiness> {
@@ -106,7 +110,7 @@ export async function getCreativeStudioGenerationReadiness(options: { checkRemot
   const productImageGenerationEnabled = service.ready && !paidProvider.rollback.paused;
   const organizationBrandBlockers = [
     "Organization brand provider contract is not implemented",
-    "Organization logo/cover generation UI remains disabled",
+    "Organization logo/cover provider execution remains disabled",
     "Public logo/cover apply still requires selected asset and confirmation",
   ];
 
@@ -155,6 +159,10 @@ export async function getCreativeStudioGenerationReadiness(options: { checkRemot
       targetType: "ORGANIZATION_BRAND",
       generationRequestEnabled: false,
       generationUiEnabled: false,
+      requestControlsPhase: "P115",
+      requestControlsEnabled: true,
+      providerExecutionEnabled: false,
+      requestOnlyJobPersistence: true,
       providerContractReady: false,
       selectionStillRequired: true,
       applyStillRequiresConfirmation: true,
@@ -194,6 +202,6 @@ export async function getCreativeStudioGenerationReadiness(options: { checkRemot
       blockers: organizationBrandBlockers,
     },
     blockers,
-    nextPhase: "P115 - Creative Studio organization logo and cover generation request controls",
+    nextPhase: "P116 - Creative Studio organization logo and cover generated-asset acceptance",
   };
 }

@@ -6,6 +6,7 @@ import {
   type AiMediaServiceReadiness,
 } from "@/lib/services/ai-media-service-client";
 import { getAiMediaPaidProviderStatus } from "@/lib/services/ai-media-paid-provider";
+import { getOrganizationBrandProviderStatus } from "@/lib/services/creative-studio-organization-brand-provider";
 
 export type CreativeStudioGenerationReadiness = {
   phase: "P112";
@@ -16,6 +17,7 @@ export type CreativeStudioGenerationReadiness = {
   noNewProviders: true;
   service: ReturnType<typeof getAiMediaServiceConfigStatus>;
   paidProvider: ReturnType<typeof getAiMediaPaidProviderStatus>;
+  organizationBrandProvider: ReturnType<typeof getOrganizationBrandProviderStatus>;
   remote: Pick<AiMediaServiceReadiness, "ok" | "checked" | "checks"> | null;
   contract: {
     version: "ai-media-product-image-suggestions-v1";
@@ -60,9 +62,13 @@ export type CreativeStudioGenerationReadiness = {
     generationUiEnabled: false;
     requestControlsPhase: "P115";
     requestControlsEnabled: true;
-    providerExecutionEnabled: false;
+    providerExecutionGatePhase: "P117";
+    providerExecutionRequested: boolean;
+    providerExecutionConfigured: boolean;
+    providerExecutionEnabled: boolean;
     requestOnlyJobPersistence: true;
-    providerContractReady: false;
+    providerContractReady: boolean;
+    rolloutGate: ReturnType<typeof getOrganizationBrandProviderStatus>;
     selectionStillRequired: true;
     applyStillRequiresConfirmation: true;
     publicAutoApplyAllowed: false;
@@ -89,16 +95,20 @@ export type CreativeStudioGenerationReadiness = {
       | "selected-candidate-review"
       | "manual-apply-confirmation"
       | "all-locale-cache-revalidation"
+      | "provider-execution-approval"
+      | "provider-rollback-control"
+      | "secret-safe-status"
     >;
     blockers: string[];
   };
   blockers: string[];
-  nextPhase: "P116 - Creative Studio organization logo and cover generated-asset acceptance";
+  nextPhase: "P118 - Creative Studio organization-brand provider execution implementation";
 };
 
 export async function getCreativeStudioGenerationReadiness(options: { checkRemote?: boolean } = {}): Promise<CreativeStudioGenerationReadiness> {
   const service = getAiMediaServiceConfigStatus();
   const paidProvider = getAiMediaPaidProviderStatus();
+  const organizationBrandProvider = getOrganizationBrandProviderStatus();
   const remote = options.checkRemote ? await checkAiMediaServiceReadiness() : null;
   const blockers: string[] = [];
 
@@ -109,8 +119,10 @@ export async function getCreativeStudioGenerationReadiness(options: { checkRemot
   if (remote && !remote.ok) blockers.push("AI media service remote readiness check failed");
   const productImageGenerationEnabled = service.ready && !paidProvider.rollback.paused;
   const organizationBrandBlockers = [
-    "Organization brand provider contract is not implemented",
-    "Organization logo/cover provider execution remains disabled",
+    ...(organizationBrandProvider.requested ? [] : ["Organization brand provider execution rollout is not requested"]),
+    ...organizationBrandProvider.issues
+      .filter((issue) => issue !== "not-requested")
+      .map((issue) => `Organization brand provider gate issue: ${issue}`),
     "Public logo/cover apply still requires selected asset and confirmation",
   ];
 
@@ -123,6 +135,7 @@ export async function getCreativeStudioGenerationReadiness(options: { checkRemot
     noNewProviders: true,
     service,
     paidProvider,
+    organizationBrandProvider,
     remote: remote
       ? {
           ok: remote.ok,
@@ -161,9 +174,13 @@ export async function getCreativeStudioGenerationReadiness(options: { checkRemot
       generationUiEnabled: false,
       requestControlsPhase: "P115",
       requestControlsEnabled: true,
-      providerExecutionEnabled: false,
+      providerExecutionGatePhase: "P117",
+      providerExecutionRequested: organizationBrandProvider.requested,
+      providerExecutionConfigured: organizationBrandProvider.configured,
+      providerExecutionEnabled: organizationBrandProvider.providerExecutionEnabled,
       requestOnlyJobPersistence: true,
-      providerContractReady: false,
+      providerContractReady: organizationBrandProvider.providerContractReady,
+      rolloutGate: organizationBrandProvider,
       selectionStillRequired: true,
       applyStillRequiresConfirmation: true,
       publicAutoApplyAllowed: false,
@@ -198,10 +215,13 @@ export async function getCreativeStudioGenerationReadiness(options: { checkRemot
         "selected-candidate-review",
         "manual-apply-confirmation",
         "all-locale-cache-revalidation",
+        "provider-execution-approval",
+        "provider-rollback-control",
+        "secret-safe-status",
       ],
       blockers: organizationBrandBlockers,
     },
     blockers,
-    nextPhase: "P116 - Creative Studio organization logo and cover generated-asset acceptance",
+    nextPhase: "P118 - Creative Studio organization-brand provider execution implementation",
   };
 }

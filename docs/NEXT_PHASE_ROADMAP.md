@@ -8,8 +8,8 @@ This roadmap is ordered for risk reduction. Phases 18-116 are historical/complet
 
 Current baseline:
 
-- Completed through **P116 - Creative Studio organization logo and cover generated-asset acceptance**.
-- Creative Studio generation work must continue with the P117 organization-brand provider execution rollout gate before broader provider UI.
+- Completed through **P117 - Creative Studio organization-brand provider execution rollout gate**.
+- Creative Studio generation work must continue with the P118 organization-brand provider execution implementation after the explicit rollout gate.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -20,7 +20,7 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P117 - Creative Studio organization-brand provider execution rollout gate
+P118 - Creative Studio organization-brand provider execution implementation
 ```
 
 Next work should add the organization-brand provider execution rollout gate, while keeping public auto-apply out of scope.
@@ -126,12 +126,13 @@ Completed integrated phases:
 | P114 | Creative Studio organization-brand generation planning and readiness gate. |
 | P115 | Creative Studio organization logo and cover generation request controls. |
 | P116 | Creative Studio organization logo and cover generated-asset acceptance. |
+| P117 | Creative Studio organization-brand provider execution rollout gate. |
 
 Upcoming platform phases should be treated as incremental hardening against the actual implementation already present in the repo:
 
 | Phase | Focus |
 | --- | --- |
-| P117 | Creative Studio organization-brand provider execution rollout gate. |
+| P118 | Creative Studio organization-brand provider execution implementation. |
 
 Safety constraints for all Import Hub phases:
 

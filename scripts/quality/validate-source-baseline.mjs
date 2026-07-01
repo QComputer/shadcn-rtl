@@ -51,16 +51,17 @@ for (const line of requiredEnvPlaceholders) {
 add("SMS API key placeholder is empty", /^SMS_IR_API_KEY=$/m.test(envExample))
 add("Vercel token placeholder is empty", /^VERCEL_ACCESS_TOKEN=$/m.test(envExample))
 add("AI media internal key placeholder is empty", /^AI_MEDIA_SERVICE_INTERNAL_KEY=$/m.test(envExample))
+add("Creative Studio organization brand internal key placeholder is empty", /^CREATIVE_STUDIO_ORGANIZATION_BRAND_INTERNAL_KEY=$/m.test(envExample))
 add(".env.example is tracked", tracked.includes(".env.example"))
 add("local DB is not present in tracked source", !trackedExisting.includes("prisma/dev.db"))
 add("personal public PDF is not present in tracked source", !trackedExisting.includes("public/myResume.pdf"))
 add(".env files are not present in tracked source", !trackedExisting.some((file) => file === ".env" || (file.startsWith(".env.") && file !== ".env.example")))
 add("active seed script remains tracked", tracked.includes("prisma/seed.ts"))
 add("duplicate client Providers wrapper removed", !exists("components/providers.tsx"))
-add("README keeps P95 source cleanup in current progression", /\| 95 \| Source Cleanup and Current-State Verification/.test(readme) && /Latest completed implementation phase:\s+\*\*P116 - Creative Studio organization logo and cover generated-asset acceptance\*\*/.test(readme))
-add("README recommends P108 after P107", /Recommended next phase:\s+\*\*P117 - Creative Studio organization-brand provider execution rollout gate\*\*/.test(readme))
-add("roadmap keeps P95 complete in P109 progression", /\| P95 \| Source cleanup and current-state verification\. \|/.test(roadmap) && /Completed through \*\*P116 - Creative Studio organization logo and cover generated-asset acceptance\*\*/.test(roadmap))
-add("source of truth keeps P95 source cleanup while naming P109 baseline", /Source Cleanup and Current-State Verification exists/.test(sourceOfTruth) && /after P116 Creative Studio organization logo and cover generated-asset acceptance/.test(sourceOfTruth))
+add("README keeps P95 source cleanup in current progression", /\| 95 \| Source Cleanup and Current-State Verification/.test(readme) && /Latest completed implementation phase:\s+\*\*P117 - Creative Studio organization-brand provider execution rollout gate\*\*/.test(readme))
+add("README recommends P108 after P107", /Recommended next phase:\s+\*\*P118 - Creative Studio organization-brand provider execution implementation\*\*/.test(readme))
+add("roadmap keeps P95 complete in P109 progression", /\| P95 \| Source cleanup and current-state verification\. \|/.test(roadmap) && /Completed through \*\*P117 - Creative Studio organization-brand provider execution rollout gate\*\*/.test(roadmap))
+add("source of truth keeps P95 source cleanup while naming P109 baseline", /Source Cleanup and Current-State Verification exists/.test(sourceOfTruth) && /after P117 Creative Studio organization-brand provider execution rollout gate/.test(sourceOfTruth))
 
 const scripts = packageJson.scripts || {}
 const documentedScriptNames = new Set()
@@ -78,6 +79,7 @@ const textExtensions = new Set([".env.example", ".json", ".js", ".mjs", ".ts", "
 const secretAssignmentPatterns = [
   { name: "SMS_IR_API_KEY", pattern: /^[ \t]*SMS_IR_API_KEY[ \t]*=[ \t]*([^\r\n]*)$/m },
   { name: "AI_MEDIA_SERVICE_INTERNAL_KEY", pattern: /^[ \t]*AI_MEDIA_SERVICE_INTERNAL_KEY[ \t]*=[ \t]*([^\r\n]*)$/m },
+  { name: "CREATIVE_STUDIO_ORGANIZATION_BRAND_INTERNAL_KEY", pattern: /^[ \t]*CREATIVE_STUDIO_ORGANIZATION_BRAND_INTERNAL_KEY[ \t]*=[ \t]*([^\r\n]*)$/m },
   { name: "VERCEL_ACCESS_TOKEN", pattern: /^[ \t]*VERCEL_ACCESS_TOKEN[ \t]*=[ \t]*([^\r\n]*)$/m },
   { name: "RENDER secret", pattern: /^[ \t]*RENDER_[A-Z0-9_]*(?:SECRET|KEY|TOKEN)[ \t]*=[ \t]*([^\r\n]*)$/m },
 ]

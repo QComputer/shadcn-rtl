@@ -108,9 +108,25 @@ type CreativeStudioStatus = {
       generationUiEnabled: false
       requestControlsPhase?: "P115"
       requestControlsEnabled?: boolean
+      providerExecutionGatePhase?: "P117"
+      providerExecutionRequested?: boolean
+      providerExecutionConfigured?: boolean
       providerExecutionEnabled?: boolean
       requestOnlyJobPersistence?: boolean
-      providerContractReady: false
+      providerContractReady: boolean
+      rolloutGate?: {
+        phase: "P117"
+        requested: boolean
+        configured: boolean
+        providerExecutionEnabled: boolean
+        providerContractReady: boolean
+        serviceUrlConfigured: boolean
+        internalKeyConfigured: boolean
+        approvalRequired: true
+        approved: boolean
+        rollback: { paused: boolean; reason: string | null; by: string | null; at: string | null }
+        issues: string[]
+      }
       selectionStillRequired: true
       applyStillRequiresConfirmation: true
       publicAutoApplyAllowed: false
@@ -268,6 +284,12 @@ type CreativeStudioCopy = {
   brandGenerationPlan: string
   logoCoverReadiness: string
   providerContract: string
+  providerRolloutGate: string
+  providerRequested: string
+  providerConfigured: string
+  providerApproved: string
+  rollbackPaused: string
+  rolloutIssues: string
   plannedBrandTargets: string
   brandGenerationDisabled: string
   applyStillManual: string
@@ -381,6 +403,12 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     brandGenerationPlan: "برنامه تولید برند سازمان",
     logoCoverReadiness: "آمادگی لوگو و کاور",
     providerContract: "قرارداد ارائه‌دهنده",
+    providerRolloutGate: "دروازه انتشار ارائه‌دهنده",
+    providerRequested: "درخواست انتشار",
+    providerConfigured: "پیکربندی کامل",
+    providerApproved: "تایید عملیاتی",
+    rollbackPaused: "توقف اضطراری",
+    rolloutIssues: "موارد دروازه انتشار",
     plannedBrandTargets: "هدف‌های برند برنامه‌ریزی‌شده",
     brandGenerationDisabled: "اجرای ارائه‌دهنده برای لوگو و کاور هنوز فعال نیست؛ درخواست فقط به‌صورت پیش‌نویس داخلی ثبت می‌شود.",
     applyStillManual: "اعمال عمومی همچنان با انتخاب داخلی و تایید جداگانه انجام می‌شود.",
@@ -522,6 +550,12 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     brandGenerationPlan: "Organization brand generation plan",
     logoCoverReadiness: "Logo and cover readiness",
     providerContract: "Provider contract",
+    providerRolloutGate: "Provider rollout gate",
+    providerRequested: "Rollout requested",
+    providerConfigured: "Configuration complete",
+    providerApproved: "Operational approval",
+    rollbackPaused: "Rollback paused",
+    rolloutIssues: "Rollout gate issues",
     plannedBrandTargets: "Planned brand targets",
     brandGenerationDisabled: "Logo and cover provider execution is still disabled; requests are recorded as internal drafts only.",
     applyStillManual: "Public apply still requires internal selection and separate confirmation.",
@@ -663,6 +697,12 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     brandGenerationPlan: "خطة توليد علامة المؤسسة",
     logoCoverReadiness: "جاهزية الشعار والغلاف",
     providerContract: "عقد المزود",
+    providerRolloutGate: "بوابة طرح المزود",
+    providerRequested: "طلب الطرح",
+    providerConfigured: "اكتمال الإعداد",
+    providerApproved: "الموافقة التشغيلية",
+    rollbackPaused: "إيقاف التراجع",
+    rolloutIssues: "مشكلات بوابة الطرح",
     plannedBrandTargets: "أهداف العلامة المخططة",
     brandGenerationDisabled: "تنفيذ مزود الشعار والغلاف لا يزال معطلا؛ يتم تسجيل الطلبات كمسودات داخلية فقط.",
     applyStillManual: "يتطلب التطبيق العام اختيارا داخليا وتأكيدا منفصلا.",
@@ -1060,7 +1100,11 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
           style_preset: brandStylePreset,
           metadata: {
             p115BrandGeneration: true,
+            p117OrganizationBrandProviderGate: true,
             requestControlsOnly: true,
+            providerExecutionGateOnly: true,
+            providerExecutionRequested: status?.generationReadiness?.organizationBrandPlan?.providerExecutionRequested ?? false,
+            providerExecutionConfigured: status?.generationReadiness?.organizationBrandPlan?.providerExecutionConfigured ?? false,
             providerExecutionEnabled: false,
             requestedFrom: "creative-studio-dashboard",
             targetField: brandAssetType === "LOGO" ? "organization.logo" : "organization.coverImage",
@@ -1237,7 +1281,14 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
     status?.generationReadiness?.organizationBrandPlan?.requestControlsEnabled &&
     status.canCreateJob
   )
-  const brandProviderExecutionEnabled = Boolean(status?.generationReadiness?.organizationBrandPlan?.providerExecutionEnabled)
+  const brandPlan = status?.generationReadiness?.organizationBrandPlan
+  const brandRolloutGate = brandPlan?.rolloutGate
+  const brandProviderExecutionEnabled = Boolean(brandPlan?.providerExecutionEnabled)
+  const brandProviderRequested = Boolean(brandPlan?.providerExecutionRequested ?? brandRolloutGate?.requested)
+  const brandProviderConfigured = Boolean(brandPlan?.providerExecutionConfigured ?? brandRolloutGate?.configured)
+  const brandProviderApproved = Boolean(brandRolloutGate?.approved)
+  const brandRollbackPaused = Boolean(brandRolloutGate?.rollback?.paused)
+  const brandRolloutIssues = brandRolloutGate?.issues ?? brandPlan?.blockers ?? []
 
   return (
     <div className="space-y-6">
@@ -1416,13 +1467,45 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
                 <div className="text-xs text-muted-foreground">{copy.logoCoverReadiness}</div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-muted-foreground">{copy.providerContract}</span>
-                  <Badge variant={status?.generationReadiness?.organizationBrandPlan?.providerContractReady ? "default" : "outline"}>
-                    {status?.generationReadiness?.organizationBrandPlan?.providerContractReady ? copy.policyYes : copy.policyNo}
+                  <Badge variant={brandPlan?.providerContractReady ? "default" : "outline"}>
+                    {brandPlan?.providerContractReady ? copy.policyYes : copy.policyNo}
                   </Badge>
                 </div>
-                <div className="pt-1 text-xs text-muted-foreground">
-                  {copy.plannedBrandTargets}: {status?.generationReadiness?.organizationBrandPlan?.supportedAssets.map((asset) => `${copy.assetTypes[asset.assetType]} / ${asset.targetField} / ${asset.recommendedAspectRatio}`).join("، ") || `${copy.assetTypes.LOGO} / ${copy.assetTypes.COVER}`}
+                <div className="pt-2 font-medium">{copy.providerRolloutGate}</div>
+                <div className="grid gap-2 text-xs">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">{copy.providerRequested}</span>
+                    <Badge variant={brandProviderRequested ? "default" : "outline"}>
+                      {brandProviderRequested ? copy.policyYes : copy.policyNo}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">{copy.providerConfigured}</span>
+                    <Badge variant={brandProviderConfigured ? "default" : "outline"}>
+                      {brandProviderConfigured ? copy.policyYes : copy.policyNo}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">{copy.providerApproved}</span>
+                    <Badge variant={brandProviderApproved ? "default" : "outline"}>
+                      {brandProviderApproved ? copy.policyYes : copy.policyNo}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">{copy.rollbackPaused}</span>
+                    <Badge variant={brandRollbackPaused ? "destructive" : "outline"}>
+                      {brandRollbackPaused ? copy.policyYes : copy.policyNo}
+                    </Badge>
+                  </div>
                 </div>
+                <div className="pt-1 text-xs text-muted-foreground">
+                  {copy.plannedBrandTargets}: {brandPlan?.supportedAssets.map((asset) => `${copy.assetTypes[asset.assetType]} / ${asset.targetField} / ${asset.recommendedAspectRatio}`).join("، ") || `${copy.assetTypes.LOGO} / ${copy.assetTypes.COVER}`}
+                </div>
+                {brandRolloutIssues.length ? (
+                  <div className="text-xs text-amber-700">
+                    {copy.rolloutIssues}: {brandRolloutIssues.join(" | ")}
+                  </div>
+                ) : null}
                 <div className="text-xs text-muted-foreground">{copy.applyStillManual}</div>
                 <div className="rounded-md bg-muted/30 p-2 text-xs text-muted-foreground">{copy.brandGenerationDisabled}</div>
               </div>
@@ -1602,6 +1685,12 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
                   </Badge>
                   <Badge variant={brandProviderExecutionEnabled ? "default" : "outline"}>
                     {copy.providerExecution}: {brandProviderExecutionEnabled ? copy.policyYes : copy.policyNo}
+                  </Badge>
+                  <Badge variant={brandProviderRequested ? "default" : "outline"}>
+                    {copy.providerRequested}: {brandProviderRequested ? copy.policyYes : copy.policyNo}
+                  </Badge>
+                  <Badge variant={brandProviderConfigured ? "default" : "outline"}>
+                    {copy.providerConfigured}: {brandProviderConfigured ? copy.policyYes : copy.policyNo}
                   </Badge>
                   <span>{copy.aspectRatio}: {brandAssetType === "LOGO" ? "1:1" : "16:9"}</span>
                 </div>

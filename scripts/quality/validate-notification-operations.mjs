@@ -46,9 +46,9 @@ add("navigation includes notification operations item", /notificationOperations/
 add("sidebar exposes notification operations icon and copy", /notificationOperations:\s*Activity/.test(sidebar) && /پایش اعلان‌ها/.test(sidebar) && /Notification ops/.test(sidebar))
 add("package exposes P103 validator", /"quality:notification-operations":\s*"node scripts\/quality\/validate-notification-operations\.mjs"/.test(packageJson))
 add("project validator references P103 validator", /validate-notification-operations\.mjs/.test(validateProject) && /P103 notification operations validator passes/.test(validateProject))
-add("README keeps P103 complete while marking P109 latest", /\| 103 \| Admin\/operator notification dashboard/.test(readme) && /Latest completed implementation phase:\s+\*\*P116 - Creative Studio organization logo and cover generated-asset acceptance\*\*/.test(readme) && /P117 - Creative Studio organization-brand provider execution rollout gate/.test(readme))
-add("roadmap marks P103 complete in P109 progression", /\| P103 \| Admin\/operator notification dashboard\. \|/.test(roadmap) && /Completed through \*\*P116 - Creative Studio organization logo and cover generated-asset acceptance\*\*/.test(roadmap))
-add("source of truth names P109 baseline", /after P116 Creative Studio organization logo and cover generated-asset acceptance/.test(sourceOfTruth) && /Notification operations dashboard exists/.test(sourceOfTruth))
+add("README keeps P103 complete while marking P109 latest", /\| 103 \| Admin\/operator notification dashboard/.test(readme) && /Latest completed implementation phase:\s+\*\*P117 - Creative Studio organization-brand provider execution rollout gate\*\*/.test(readme) && /P118 - Creative Studio organization-brand provider execution implementation/.test(readme))
+add("roadmap marks P103 complete in P109 progression", /\| P103 \| Admin\/operator notification dashboard\. \|/.test(roadmap) && /Completed through \*\*P117 - Creative Studio organization-brand provider execution rollout gate\*\*/.test(roadmap))
+add("source of truth names P109 baseline", /after P117 Creative Studio organization-brand provider execution rollout gate/.test(sourceOfTruth) && /Notification operations dashboard exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

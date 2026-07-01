@@ -34,6 +34,9 @@ export type RuntimeEnvValidation = {
     aiMediaPaidProviderRequested: boolean;
     aiMediaPaidProviderConfigured: boolean;
     aiMediaPaidProviderRollbackPaused: boolean;
+    organizationBrandProviderRequested: boolean;
+    organizationBrandProviderConfigured: boolean;
+    organizationBrandProviderRollbackPaused: boolean;
   };
 };
 
@@ -283,6 +286,43 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
     });
   }
 
+  const organizationBrandProviderRequested = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_ENABLED === "true";
+  const organizationBrandServiceUrlConfigured = isProbablyUrl(process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_SERVICE_URL);
+  const organizationBrandInternalKeyConfigured = hasValue(process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_INTERNAL_KEY);
+  const organizationBrandProviderApproved = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_APPROVED === "true";
+  const organizationBrandProviderApprovedBy = hasValue(process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_APPROVED_BY);
+  const organizationBrandProviderApprovedAt = hasValue(process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_APPROVED_AT)
+    && !Number.isNaN(new Date(process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_APPROVED_AT as string).getTime());
+  const organizationBrandDailyJobLimit = Number.parseInt(process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_DAILY_JOB_LIMIT || "", 10);
+  const organizationBrandEstimatedJobCost = Number.parseInt(process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_ESTIMATED_JOB_COST_CENTS || "", 10);
+  const organizationBrandHasDailyJobLimit = Number.isFinite(organizationBrandDailyJobLimit) && organizationBrandDailyJobLimit > 0;
+  const organizationBrandHasEstimatedJobCost = Number.isFinite(organizationBrandEstimatedJobCost) && organizationBrandEstimatedJobCost > 0;
+  const organizationBrandProviderRollbackPaused = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_ROLLBACK_PAUSED === "true";
+  const organizationBrandProviderRollbackReasonConfigured = hasValue(process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_ROLLBACK_REASON);
+  const organizationBrandProviderConfigured = organizationBrandServiceUrlConfigured
+    && organizationBrandInternalKeyConfigured
+    && organizationBrandProviderApproved
+    && organizationBrandProviderApprovedBy
+    && organizationBrandProviderApprovedAt
+    && organizationBrandHasDailyJobLimit
+    && organizationBrandHasEstimatedJobCost;
+
+  if (organizationBrandProviderRequested && !organizationBrandProviderConfigured) {
+    issues.push({
+      name: "CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_ENABLED",
+      severity: "error",
+      message: "Organization brand provider rollout requires a valid service URL, internal key, approval metadata, and positive job/cost limits.",
+    });
+  }
+
+  if (organizationBrandProviderRequested && organizationBrandProviderRollbackPaused && !organizationBrandProviderRollbackReasonConfigured) {
+    issues.push({
+      name: "CREATIVE_STUDIO_ORGANIZATION_BRAND_ROLLBACK_REASON",
+      severity: "error",
+      message: "A rollback reason is required when the organization brand provider rollout is paused.",
+    });
+  }
+
   return {
     ok: issues.every((issue) => issue.severity !== "error"),
     issues,
@@ -311,6 +351,9 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
       aiMediaPaidProviderRequested,
       aiMediaPaidProviderConfigured,
       aiMediaPaidProviderRollbackPaused,
+      organizationBrandProviderRequested,
+      organizationBrandProviderConfigured,
+      organizationBrandProviderRollbackPaused,
     },
   };
 }

@@ -9,6 +9,7 @@ import {
 } from "@/lib/services/creative-studio-cache-revalidation";
 import { getCreativeStudioGenerationReadiness } from "@/lib/services/creative-studio-generation-readiness";
 import { getAiMediaPaidProviderStatus } from "@/lib/services/ai-media-paid-provider";
+import { getOrganizationBrandProviderStatus } from "@/lib/services/creative-studio-organization-brand-provider";
 import { aiMediaService } from "@/lib/services/ai-media.service";
 import type { AiMediaJobOutput } from "@/lib/services/ai-media-service-client";
 import type {
@@ -212,6 +213,7 @@ export class CreativeStudioService {
     const generationReadiness = await getCreativeStudioGenerationReadiness({
       checkRemote: options.checkGenerationReadiness,
     });
+    const organizationBrandProvider = generationReadiness.organizationBrandProvider;
 
     return {
       enabled: true,
@@ -220,6 +222,7 @@ export class CreativeStudioService {
       planningGate: "P107",
       serverFoundation: "P108",
       paidProvider,
+      organizationBrandProvider,
       generationReadiness,
       canCreateJob: usage.canCreateJob && !paidProvider.rollback.paused,
       limits: {
@@ -537,6 +540,7 @@ export class CreativeStudioService {
   ) {
     await this.assertTargetAccess(organizationId, role, input);
     const { paidProvider } = await this.assertCanCreate(organizationId);
+    const organizationBrandProvider = getOrganizationBrandProviderStatus();
     const prompt = input.prompt?.trim() || null;
     const metadata = compactMetadata(input.metadata);
     const targetField = getOrganizationBrandTargetField(input.assetType);
@@ -548,8 +552,15 @@ export class CreativeStudioService {
       p115BrandGeneration: {
         contract: "creative-studio-organization-brand-v1",
         requestControlsOnly: true,
+        providerExecutionGatePhase: "P117",
+        providerExecutionGateOnly: true,
+        providerExecutionRequested: organizationBrandProvider.requested,
+        providerExecutionConfigured: organizationBrandProvider.configured,
         providerExecutionEnabled: false,
-        providerContractReady: false,
+        providerExecutionReadyButNotExecuted: organizationBrandProvider.providerExecutionEnabled,
+        providerContractReady: organizationBrandProvider.providerContractReady,
+        rolloutPaused: organizationBrandProvider.rollback.paused,
+        rolloutIssues: organizationBrandProvider.issues,
         draftOnly: true,
         publicMutation: false,
         targetField,
@@ -576,6 +587,17 @@ export class CreativeStudioService {
             style_preset: stylePreset,
             metadata,
             p115BrandGeneration: sourceMetadata.p115BrandGeneration,
+            p117OrganizationBrandProviderGate: {
+              phase: "P117",
+              providerExecutionGateOnly: true,
+              providerExecutionRequested: organizationBrandProvider.requested,
+              providerExecutionConfigured: organizationBrandProvider.configured,
+              providerExecutionEnabled: false,
+              providerExecutionReadyButNotExecuted: organizationBrandProvider.providerExecutionEnabled,
+              providerContractReady: organizationBrandProvider.providerContractReady,
+              rollbackPaused: organizationBrandProvider.rollback.paused,
+              issues: organizationBrandProvider.issues,
+            },
           } satisfies Prisma.InputJsonObject,
           outputCount: 1,
           costEstimateCents: 0,
@@ -612,7 +634,13 @@ export class CreativeStudioService {
               aspect_ratio: aspectRatio,
               style_preset: stylePreset,
               p115BrandGeneration: true,
+              p117OrganizationBrandProviderGate: true,
+              providerExecutionGateOnly: true,
+              providerExecutionRequested: organizationBrandProvider.requested,
+              providerExecutionConfigured: organizationBrandProvider.configured,
               providerExecutionEnabled: false,
+              providerExecutionReadyButNotExecuted: organizationBrandProvider.providerExecutionEnabled,
+              rolloutPaused: organizationBrandProvider.rollback.paused,
             },
           },
           {
@@ -650,7 +678,12 @@ export class CreativeStudioService {
         provider: "MOCK",
         targetField,
         requestControlsOnly: true,
+        providerExecutionGatePhase: "P117",
+        providerExecutionGateOnly: true,
+        providerExecutionRequested: organizationBrandProvider.requested,
+        providerExecutionConfigured: organizationBrandProvider.configured,
         providerExecutionEnabled: false,
+        providerExecutionReadyButNotExecuted: organizationBrandProvider.providerExecutionEnabled,
         publicMutation: false,
       },
     });

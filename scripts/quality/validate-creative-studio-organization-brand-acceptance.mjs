@@ -33,7 +33,7 @@ const roadmap = read("docs/NEXT_PHASE_ROADMAP.md");
 const sourceOfTruth = read("docs/CURRENT_SOURCE_OF_TRUTH.md");
 
 add("P116 phase document exists and is implemented", /Status: implemented/.test(doc) && /P116/.test(doc) && /generated-asset acceptance/.test(doc));
-add("organization brand provider execution remains out of scope", /providerExecutionEnabled:\s*false/.test(readiness) && /providerContractReady:\s*false/.test(readiness) && !/\/v1\/organization-brand\/jobs/.test(service));
+add("organization brand provider execution remains out of scope", /providerExecutionGatePhase:\s*"P117"/.test(readiness) && /publicAutoApplyAllowed:\s*false/.test(readiness) && !/\/v1\/organization-brand\/jobs/.test(service));
 add("schema keeps logo and cover as the only organization brand assets", /targetType === "ORGANIZATION_BRAND"/.test(validators) && /\["LOGO", "COVER"\]\.includes\(input\.assetType\)/.test(validators));
 add("service exposes selected-target metadata helpers", /getNestedMetadataRecord/.test(service) && /getSelectedTargetField/.test(service) && /p113Selection/.test(service));
 add("service requires organization brand selection before public apply", /asset\.job\.targetType === "ORGANIZATION_BRAND"/.test(service) && /asset\.status !== "SELECTED"/.test(service) && /must be selected before public apply/.test(service));
@@ -48,9 +48,9 @@ add("deployed smoke creates a safe request-only logo job", /organization logo re
 add("deployed smoke verifies select and apply rejection without public mutation", /draft brand asset without URL should not select/.test(smoke) && /unselected\/no-url brand asset should not apply/.test(smoke) && /publicMutation === false/.test(smoke));
 add("package exposes P116 validator", /"quality:creative-studio-organization-brand-acceptance":\s*"node scripts\/quality\/validate-creative-studio-organization-brand-acceptance\.mjs"/.test(packageJson));
 add("quality local references P116 validator", /validate-creative-studio-organization-brand-acceptance\.mjs/.test(validateProject) && /P116 Creative Studio organization brand acceptance validator passes/.test(validateProject));
-add("README marks P116 complete and P117 next", /Latest completed implementation phase:\s+\*\*P116 - Creative Studio organization logo and cover generated-asset acceptance\*\*/.test(readme) && /Recommended next phase:\s+\*\*P117 - Creative Studio organization-brand provider execution rollout gate\*\*/.test(readme));
-add("roadmap marks P116 complete and P117 next", /Completed through \*\*P116 - Creative Studio organization logo and cover generated-asset acceptance\*\*/.test(roadmap) && /\| P116 \| Creative Studio organization logo and cover generated-asset acceptance\. \|/.test(roadmap) && /\| P117 \| Creative Studio organization-brand provider execution rollout gate\. \|/.test(roadmap));
-add("source of truth names P116 baseline", /after P116 Creative Studio organization logo and cover generated-asset acceptance/.test(sourceOfTruth) && /Creative Studio organization logo and cover generated-asset acceptance exists/.test(sourceOfTruth));
+add("README marks P116 complete and P117 next", /Latest completed implementation phase:\s+\*\*P117 - Creative Studio organization-brand provider execution rollout gate\*\*/.test(readme) && /Recommended next phase:\s+\*\*P118 - Creative Studio organization-brand provider execution implementation\*\*/.test(readme));
+add("roadmap marks P116 complete and P117 next", /Completed through \*\*P117 - Creative Studio organization-brand provider execution rollout gate\*\*/.test(roadmap) && /\| P116 \| Creative Studio organization logo and cover generated-asset acceptance\. \|/.test(roadmap) && /\| P117 \| Creative Studio organization-brand provider execution rollout gate\. \|/.test(roadmap));
+add("source of truth names P116 baseline", /after P117 Creative Studio organization-brand provider execution rollout gate/.test(sourceOfTruth) && /Creative Studio organization logo and cover generated-asset acceptance exists/.test(sourceOfTruth));
 
 for (const check of checks) {
   console.log(`${check.pass ? "PASS" : "FAIL"} ${check.name}`);

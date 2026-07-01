@@ -240,7 +240,12 @@ async function main() {
     assert(status.policy?.noPublicAssetMutation === false, "apply controls should remain explicit, not automatic");
     const brandPlan = status.generationReadiness.organizationBrandPlan;
     assert(brandPlan?.requestControlsEnabled === true, "organization brand request controls should be enabled");
+    assert(brandPlan?.providerExecutionGatePhase === "P117", "organization brand rollout gate should be P117");
+    assert(brandPlan?.rolloutGate?.phase === "P117", "organization brand rollout gate status missing");
+    assert(brandPlan.rolloutGate.providerContract === "creative-studio-organization-brand-v1", "organization brand provider contract mismatch");
     assert(brandPlan?.providerExecutionEnabled === false, "organization brand provider execution should stay disabled");
+    assert(brandPlan?.providerExecutionConfigured === false, "organization brand provider should not be configured in smoke");
+    assert(brandPlan?.rolloutGate?.providerExecutionEnabled === false, "organization brand rollout gate should not execute in smoke");
     assert(brandPlan?.selectionStillRequired === true, "organization brand acceptance must require selection");
     assert(brandPlan?.applyStillRequiresConfirmation === true, "organization brand acceptance must require confirmation");
     assert(brandPlan?.publicAutoApplyAllowed === false, "organization brand auto-apply must stay disabled");
@@ -282,10 +287,13 @@ async function main() {
         count: 1,
         aspect_ratio: "1:1",
         style_preset: "BRAND_CLEAN",
-        prompt: "P116 deployed smoke logo acceptance guard",
+        prompt: "P117 deployed smoke logo rollout gate guard",
         metadata: {
           p116DeployedSmoke: true,
+          p117DeployedSmoke: true,
+          p117OrganizationBrandProviderGate: true,
           requestControlsOnly: true,
+          providerExecutionGateOnly: true,
           providerExecutionEnabled: false,
           targetField: "organization.logo",
         },
@@ -296,6 +304,7 @@ async function main() {
     const asset = createResult.json.asset;
     assert(job?.targetType === "ORGANIZATION_BRAND", "brand job targetType mismatch");
     assert(job?.status === "COMPLETED", "request-only brand job should complete locally");
+    assert(job?.provider === "MOCK", "brand rollout gate must not call a real provider");
     assert(asset?.assetType === "LOGO", "brand asset type mismatch");
     assert(asset?.status === "DRAFT", "brand asset should start as draft");
     assert(!asset?.draftUrl && !asset?.storedUrl && !asset?.sourceUrl, "request-only asset should not expose a public URL");

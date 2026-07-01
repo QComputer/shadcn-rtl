@@ -68,9 +68,9 @@ add("apply route delegates public mutation policy to service", /recordAssetAppli
 
 add("package exposes P108 validator", /"quality:creative-studio-foundation":\s*"node scripts\/quality\/validate-creative-studio-foundation\.mjs"/.test(packageJson))
 add("project validator references P108 validator", /validate-creative-studio-foundation\.mjs/.test(validateProject) && /P108 Creative Studio foundation validator passes/.test(validateProject))
-add("README marks P110 latest", /Latest completed implementation phase:\s+\*\*P115 - Creative Studio organization logo and cover generation request controls\*\*/.test(readme) && /Recommended next phase:\s+\*\*P116 - Creative Studio organization logo and cover generated-asset acceptance\*\*/.test(readme))
-add("roadmap keeps P108 complete in P110 progression", /Completed through \*\*P115 - Creative Studio organization logo and cover generation request controls\*\*/.test(roadmap) && /\| P108 \| Creative Studio server foundation\. \|/.test(roadmap) && /\| P110 \| Creative Studio apply controls and cache-safe public asset updates\. \|/.test(roadmap))
-add("source of truth names P110 baseline", /after P115 Creative Studio organization logo and cover generation request controls/.test(sourceOfTruth) && /Creative Studio server foundation exists/.test(sourceOfTruth))
+add("README marks P110 latest", /Latest completed implementation phase:\s+\*\*P116 - Creative Studio organization logo and cover generated-asset acceptance\*\*/.test(readme) && /Recommended next phase:\s+\*\*P117 - Creative Studio organization-brand provider execution rollout gate\*\*/.test(readme))
+add("roadmap keeps P108 complete in P110 progression", /Completed through \*\*P116 - Creative Studio organization logo and cover generated-asset acceptance\*\*/.test(roadmap) && /\| P108 \| Creative Studio server foundation\. \|/.test(roadmap) && /\| P110 \| Creative Studio apply controls and cache-safe public asset updates\. \|/.test(roadmap))
+add("source of truth names P110 baseline", /after P116 Creative Studio organization logo and cover generated-asset acceptance/.test(sourceOfTruth) && /Creative Studio server foundation exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

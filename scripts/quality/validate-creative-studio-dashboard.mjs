@@ -44,9 +44,9 @@ add("sidebar exposes Creative Studio navigation", /WandSparkles/.test(sidebar) &
 add("job detail preserves organization context", /NextRequest/.test(jobRoute) && /searchParams\.get\("organizationId"\)/.test(jobRoute) && /requireCreativeStudioOrganization\(requestedOrganizationId\)/.test(jobRoute))
 add("package exposes P109 validator", /"quality:creative-studio-dashboard":\s*"node scripts\/quality\/validate-creative-studio-dashboard\.mjs"/.test(packageJson))
 add("project validator references P109 validator", /validate-creative-studio-dashboard\.mjs/.test(validateProject) && /P109 Creative Studio dashboard validator passes/.test(validateProject))
-add("README marks P110 latest", /Latest completed implementation phase:\s+\*\*P115 - Creative Studio organization logo and cover generation request controls\*\*/.test(readme) && /Recommended next phase:\s+\*\*P116 - Creative Studio organization logo and cover generated-asset acceptance\*\*/.test(readme))
-add("roadmap keeps P109 complete in P110 progression", /Completed through \*\*P115 - Creative Studio organization logo and cover generation request controls\*\*/.test(roadmap) && /\| P109 \| Creative Studio dashboard shell and read-only job review\. \|/.test(roadmap) && /\| P110 \| Creative Studio apply controls and cache-safe public asset updates\. \|/.test(roadmap))
-add("source of truth names P110 baseline", /after P115 Creative Studio organization logo and cover generation request controls/.test(sourceOfTruth) && /Creative Studio dashboard review exists/.test(sourceOfTruth))
+add("README marks P110 latest", /Latest completed implementation phase:\s+\*\*P116 - Creative Studio organization logo and cover generated-asset acceptance\*\*/.test(readme) && /Recommended next phase:\s+\*\*P117 - Creative Studio organization-brand provider execution rollout gate\*\*/.test(readme))
+add("roadmap keeps P109 complete in P110 progression", /Completed through \*\*P116 - Creative Studio organization logo and cover generated-asset acceptance\*\*/.test(roadmap) && /\| P109 \| Creative Studio dashboard shell and read-only job review\. \|/.test(roadmap) && /\| P110 \| Creative Studio apply controls and cache-safe public asset updates\. \|/.test(roadmap))
+add("source of truth names P110 baseline", /after P116 Creative Studio organization logo and cover generated-asset acceptance/.test(sourceOfTruth) && /Creative Studio dashboard review exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

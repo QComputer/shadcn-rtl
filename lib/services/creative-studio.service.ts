@@ -61,6 +61,16 @@ function getStringMetadata(metadata: unknown, key: string) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
+function getNestedMetadataRecord(metadata: unknown, key: string) {
+  const value = metadataRecord(metadata)[key];
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function getSelectedTargetField(metadata: unknown) {
+  const selection = getNestedMetadataRecord(metadata, "p113Selection");
+  return typeof selection.targetField === "string" ? selection.targetField : null;
+}
+
 function getRemoteJobIdFromInputs(inputs: unknown) {
   return getStringMetadata(metadataRecord(inputs).p112Generation, "remoteJobId");
 }
@@ -1048,6 +1058,15 @@ export class CreativeStudioService {
     const publicAssetUrl = assertPublicSafeAssetUrl(getPublicAssetUrl(asset));
     const appliedAt = new Date();
     const baseMetadata = metadataObject(asset.sourceMetadata);
+    if (asset.job.targetType === "ORGANIZATION_BRAND") {
+      if (asset.status !== "SELECTED") {
+        throw new ApiError(400, "Organization logo and cover assets must be selected before public apply");
+      }
+      const selectedTargetField = getSelectedTargetField(baseMetadata);
+      if (selectedTargetField !== targetField) {
+        throw new ApiError(400, "Selected organization brand target does not match the requested apply target");
+      }
+    }
     let target:
       | {
           entityType: "Product";
@@ -1188,6 +1207,7 @@ export class CreativeStudioService {
             targetField,
             targetId: target.id,
             previousValuePresent: Boolean(target.previousValue),
+            p116OrganizationBrandAcceptance: asset.job.targetType === "ORGANIZATION_BRAND",
             cacheRevalidation: {
               attempted: true,
               paths: [],
@@ -1206,6 +1226,15 @@ export class CreativeStudioService {
         ...applicationMetadata,
         cacheRevalidation: revalidation,
       },
+      ...(asset.job.targetType === "ORGANIZATION_BRAND"
+        ? {
+            p116OrganizationBrandAcceptance: {
+              selectedBeforeApply: true,
+              targetField,
+              publicMutation: true,
+            },
+          }
+        : {}),
     } satisfies Prisma.InputJsonObject;
     const finalAsset = await prisma.creativeStudioAsset.update({
       where: { id: updated.id },

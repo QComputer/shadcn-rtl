@@ -2,14 +2,14 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-29._
 
-This roadmap is ordered for risk reduction. Phases 18-115 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, source acceptance/secretless packaging, Creative Studio planning, Creative Studio server foundation, Creative Studio dashboard review, Creative Studio apply controls, Creative Studio generation readiness, Creative Studio product-image generation, Creative Studio generated-asset selection, Creative Studio organization-brand readiness, and Creative Studio organization-brand request controls roadmap is implemented through Phase 115.
+This roadmap is ordered for risk reduction. Phases 18-116 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, source acceptance/secretless packaging, Creative Studio planning, Creative Studio server foundation, Creative Studio dashboard review, Creative Studio apply controls, Creative Studio generation readiness, Creative Studio product-image generation, Creative Studio generated-asset selection, Creative Studio organization-brand readiness, Creative Studio organization-brand request controls, and Creative Studio organization-brand acceptance roadmap is implemented through Phase 116.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P115 - Creative Studio organization logo and cover generation request controls**.
-- Creative Studio generation work must continue with P116 organization logo and cover generated-asset acceptance before broader provider UI.
+- Completed through **P116 - Creative Studio organization logo and cover generated-asset acceptance**.
+- Creative Studio generation work must continue with the P117 organization-brand provider execution rollout gate before broader provider UI.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -20,10 +20,10 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P116 - Creative Studio organization logo and cover generated-asset acceptance
+P117 - Creative Studio organization-brand provider execution rollout gate
 ```
 
-Next work should add acceptance/deployed verification around organization logo/cover generated assets, while keeping broad provider expansion and public auto-apply out of scope.
+Next work should add the organization-brand provider execution rollout gate, while keeping public auto-apply out of scope.
 
 Immediate validation target:
 
@@ -64,6 +64,7 @@ pnpm run quality:creative-studio-product-image-generation
 pnpm run quality:creative-studio-generated-asset-selection
 pnpm run quality:creative-studio-organization-brand-readiness
 pnpm run quality:creative-studio-organization-brand-request-controls
+pnpm run quality:creative-studio-organization-brand-acceptance
 pnpm run quality:export-downloads
 pnpm run quality:deployed-import-export-smoke
 pnpm run quality:local
@@ -124,12 +125,13 @@ Completed integrated phases:
 | P113 | Creative Studio generated-asset selection polish and deployed acceptance. |
 | P114 | Creative Studio organization-brand generation planning and readiness gate. |
 | P115 | Creative Studio organization logo and cover generation request controls. |
+| P116 | Creative Studio organization logo and cover generated-asset acceptance. |
 
 Upcoming platform phases should be treated as incremental hardening against the actual implementation already present in the repo:
 
 | Phase | Focus |
 | --- | --- |
-| P116 | Creative Studio organization logo and cover generated-asset acceptance. |
+| P117 | Creative Studio organization-brand provider execution rollout gate. |
 
 Safety constraints for all Import Hub phases:
 

@@ -238,6 +238,12 @@ async function main() {
     assert(status.generationReadiness.browserWorkerCallsAllowed === false, "browser worker calls must remain blocked");
     assert(status.policy?.draftOnly === true, "Creative Studio should remain draft-first");
     assert(status.policy?.noPublicAssetMutation === false, "apply controls should remain explicit, not automatic");
+    const brandPlan = status.generationReadiness.organizationBrandPlan;
+    assert(brandPlan?.requestControlsEnabled === true, "organization brand request controls should be enabled");
+    assert(brandPlan?.providerExecutionEnabled === false, "organization brand provider execution should stay disabled");
+    assert(brandPlan?.selectionStillRequired === true, "organization brand acceptance must require selection");
+    assert(brandPlan?.applyStillRequiresConfirmation === true, "organization brand acceptance must require confirmation");
+    assert(brandPlan?.publicAutoApplyAllowed === false, "organization brand auto-apply must stay disabled");
     assertNoSecrets(status, "Creative Studio status");
     return `phase=${status.generationReadiness.phase} remaining=${status.limits?.remainingDailyJobs}`;
   });
@@ -264,6 +270,59 @@ async function main() {
     assert([404, 400].includes(result.response.status), `expected safe rejection, got ${result.response.status}`);
     assertNoSecrets(result.json, "Creative Studio select rejection");
     return `status=${result.response.status}`;
+  });
+
+  await check("organization logo request acceptance stays draft-first and non-mutating", async () => {
+    const createResult = await requestJson(session, "/api/dashboard/creative-studio/jobs", {
+      method: "POST",
+      body: JSON.stringify({
+        organizationId: session.organizationId,
+        targetType: "ORGANIZATION_BRAND",
+        assetType: "LOGO",
+        count: 1,
+        aspect_ratio: "1:1",
+        style_preset: "BRAND_CLEAN",
+        prompt: "P116 deployed smoke logo acceptance guard",
+        metadata: {
+          p116DeployedSmoke: true,
+          requestControlsOnly: true,
+          providerExecutionEnabled: false,
+          targetField: "organization.logo",
+        },
+      }),
+    });
+    assert(createResult.response.status === 201, `brand request status=${createResult.response.status}`);
+    const job = createResult.json.job;
+    const asset = createResult.json.asset;
+    assert(job?.targetType === "ORGANIZATION_BRAND", "brand job targetType mismatch");
+    assert(job?.status === "COMPLETED", "request-only brand job should complete locally");
+    assert(asset?.assetType === "LOGO", "brand asset type mismatch");
+    assert(asset?.status === "DRAFT", "brand asset should start as draft");
+    assert(!asset?.draftUrl && !asset?.storedUrl && !asset?.sourceUrl, "request-only asset should not expose a public URL");
+    assert(createResult.json.publicMutation === false, "brand request must not mutate public organization images");
+
+    const selectResult = await requestJson(session, `/api/dashboard/creative-studio/assets/${encodeURIComponent(asset.id)}/select?organizationId=${encodeURIComponent(session.organizationId)}`, {
+      method: "POST",
+      body: JSON.stringify({ organizationId: session.organizationId, targetField: "organization.logo" }),
+    });
+    assert(selectResult.response.status === 400, `draft brand asset without URL should not select, got ${selectResult.response.status}`);
+    assert(/public URL/i.test(selectResult.json?.error || ""), "select rejection should explain public URL requirement");
+
+    const applyResult = await requestJson(session, `/api/dashboard/creative-studio/assets/${encodeURIComponent(asset.id)}/apply?organizationId=${encodeURIComponent(session.organizationId)}`, {
+      method: "POST",
+      body: JSON.stringify({
+        organizationId: session.organizationId,
+        applyToTarget: true,
+        targetField: "organization.logo",
+        confirmationText: "اعمال شود",
+      }),
+    });
+    assert(applyResult.response.status === 400, `unselected/no-url brand asset should not apply, got ${applyResult.response.status}`);
+    assert(/public URL|selected before public apply/i.test(applyResult.json?.error || ""), "apply rejection should mention acceptance guard");
+    assertNoSecrets(createResult.json, "Creative Studio brand request");
+    assertNoSecrets(selectResult.json, "Creative Studio brand select rejection");
+    assertNoSecrets(applyResult.json, "Creative Studio brand apply rejection");
+    return `job=${job.id} asset=${asset.id} select=${selectResult.response.status} apply=${applyResult.response.status}`;
   });
 
   const evidencePath = writeEvidence();

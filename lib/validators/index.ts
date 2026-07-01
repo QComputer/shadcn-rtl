@@ -339,6 +339,17 @@ export const createCreativeStudioJobSchema = z.object({
     }
     return;
   }
+
+  if (input.targetType === "ORGANIZATION_BRAND") {
+    if (!["LOGO", "COVER"].includes(input.assetType)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["assetType"],
+        message: "Organization brand Creative Studio jobs only support logo or cover assets",
+      });
+    }
+    return;
+  }
 });
 
 export const creativeStudioJobFilterSchema = z.object({

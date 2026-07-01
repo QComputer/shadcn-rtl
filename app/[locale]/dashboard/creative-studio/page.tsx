@@ -101,6 +101,30 @@ type CreativeStudioStatus = {
       supportedTargets: Array<{ targetType: CreativeStudioTargetType; assetType: CreativeStudioAssetType; targetField: CreativeStudioApplyTargetField }>
       unsupportedTargets: CreativeStudioTargetType[]
     }
+    organizationBrandPlan?: {
+      phase: "P114"
+      targetType: "ORGANIZATION_BRAND"
+      generationRequestEnabled: false
+      generationUiEnabled: false
+      providerContractReady: false
+      selectionStillRequired: true
+      applyStillRequiresConfirmation: true
+      publicAutoApplyAllowed: false
+      supportedAssets: Array<{
+        assetType: "LOGO" | "COVER"
+        targetField: "organization.logo" | "organization.coverImage"
+        recommendedAspectRatio: "1:1" | "16:9"
+        publicApplyPath: string
+      }>
+      requiredProviderContract: {
+        version: string
+        createEndpoint: string
+        statusEndpoint: string
+        cancelEndpoint: string
+      }
+      readinessChecklist: string[]
+      blockers: string[]
+    }
     blockers: string[]
     nextPhase: string
   }
@@ -237,6 +261,12 @@ type CreativeStudioCopy = {
   serverOnly: string
   browserCalls: string
   readinessBlockers: string
+  brandGenerationPlan: string
+  logoCoverReadiness: string
+  providerContract: string
+  plannedBrandTargets: string
+  brandGenerationDisabled: string
+  applyStillManual: string
   generationForm: string
   product: string
   productPlaceholder: string
@@ -335,6 +365,12 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     serverOnly: "فقط سمت سرور",
     browserCalls: "فراخوانی مستقیم مرورگر",
     readinessBlockers: "موانع آمادگی",
+    brandGenerationPlan: "برنامه تولید برند سازمان",
+    logoCoverReadiness: "آمادگی لوگو و کاور",
+    providerContract: "قرارداد ارائه‌دهنده",
+    plannedBrandTargets: "هدف‌های برند برنامه‌ریزی‌شده",
+    brandGenerationDisabled: "تولید لوگو و کاور در این فاز فقط آماده‌سازی شده و فرم عملیاتی فعال نیست.",
+    applyStillManual: "اعمال عمومی همچنان با انتخاب داخلی و تایید جداگانه انجام می‌شود.",
     generationForm: "ساخت تصویر محصول",
     product: "محصول",
     productPlaceholder: "یک محصول را انتخاب کنید",
@@ -461,6 +497,12 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     serverOnly: "Server-only",
     browserCalls: "Direct browser calls",
     readinessBlockers: "Readiness blockers",
+    brandGenerationPlan: "Organization brand generation plan",
+    logoCoverReadiness: "Logo and cover readiness",
+    providerContract: "Provider contract",
+    plannedBrandTargets: "Planned brand targets",
+    brandGenerationDisabled: "Logo and cover generation is readiness-only in this phase; the operational form remains disabled.",
+    applyStillManual: "Public apply still requires internal selection and separate confirmation.",
     generationForm: "Product image generation",
     product: "Product",
     productPlaceholder: "Select a product",
@@ -587,6 +629,12 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     serverOnly: "الخادم فقط",
     browserCalls: "استدعاءات المتصفح المباشرة",
     readinessBlockers: "عوائق الجاهزية",
+    brandGenerationPlan: "خطة توليد علامة المؤسسة",
+    logoCoverReadiness: "جاهزية الشعار والغلاف",
+    providerContract: "عقد المزود",
+    plannedBrandTargets: "أهداف العلامة المخططة",
+    brandGenerationDisabled: "توليد الشعار والغلاف في هذه المرحلة للجاهزية فقط؛ لا يزال النموذج التشغيلي معطلا.",
+    applyStillManual: "يتطلب التطبيق العام اختيارا داخليا وتأكيدا منفصلا.",
     generationForm: "توليد صورة المنتج",
     product: "المنتج",
     productPlaceholder: "اختر منتجا",
@@ -1227,7 +1275,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
                 {copy.generationGate}
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4 lg:grid-cols-3">
+            <CardContent className="grid gap-4 lg:grid-cols-4">
               <div className="space-y-2 rounded-md border p-3 text-sm">
                 <div className="font-medium">{copy.readiness}</div>
                 <div className="flex items-center justify-between gap-3">
@@ -1273,6 +1321,21 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
                     {copy.readinessBlockers}: {status.generationReadiness.blockers.join(" | ")}
                   </div>
                 ) : null}
+              </div>
+              <div className="space-y-2 rounded-md border p-3 text-sm">
+                <div className="font-medium">{copy.brandGenerationPlan}</div>
+                <div className="text-xs text-muted-foreground">{copy.logoCoverReadiness}</div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">{copy.providerContract}</span>
+                  <Badge variant={status?.generationReadiness?.organizationBrandPlan?.providerContractReady ? "default" : "outline"}>
+                    {status?.generationReadiness?.organizationBrandPlan?.providerContractReady ? copy.policyYes : copy.policyNo}
+                  </Badge>
+                </div>
+                <div className="pt-1 text-xs text-muted-foreground">
+                  {copy.plannedBrandTargets}: {status?.generationReadiness?.organizationBrandPlan?.supportedAssets.map((asset) => `${copy.assetTypes[asset.assetType]} / ${asset.targetField} / ${asset.recommendedAspectRatio}`).join("، ") || `${copy.assetTypes.LOGO} / ${copy.assetTypes.COVER}`}
+                </div>
+                <div className="text-xs text-muted-foreground">{copy.applyStillManual}</div>
+                <div className="rounded-md bg-muted/30 p-2 text-xs text-muted-foreground">{copy.brandGenerationDisabled}</div>
               </div>
             </CardContent>
           </Card>

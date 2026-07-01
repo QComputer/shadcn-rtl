@@ -43,9 +43,9 @@ add("service worker keeps web push handlers", /addEventListener\("push"/.test(se
 add("package exposes P98 validator", /"quality:pwa-offline-shell":\s*"node scripts\/quality\/validate-pwa-offline-shell\.mjs"/.test(packageJson))
 add("project validator references P98 validator", /validate-pwa-offline-shell\.mjs/.test(validateProject) && /P98 PWA offline shell validator passes/.test(validateProject))
 add("P97 validator tolerates P98 offline cache", /P98 offline cache remains guarded/.test(p97Validator))
-add("README keeps P98 complete while marking P109 latest", /\| 98 \| Offline shell, caching, and PWA quality gates/.test(readme) && /Latest completed implementation phase:\s+\*\*P113 - Creative Studio generated-asset selection polish and deployed acceptance\*\*/.test(readme) && /P114 - Creative Studio organization-brand generation planning and readiness gate/.test(readme))
-add("roadmap marks P98 complete in P109 progression", /\| P98 \| Offline shell, caching, and PWA quality gates\. \|/.test(roadmap) && /Completed through \*\*P113 - Creative Studio generated-asset selection polish and deployed acceptance\*\*/.test(roadmap))
-add("source of truth names P109 baseline while keeping P98 offline shell", /Offline Shell, Caching, and PWA Quality Gates exist/.test(sourceOfTruth) && /after P113 Creative Studio generated-asset selection polish and deployed acceptance/.test(sourceOfTruth))
+add("README keeps P98 complete while marking P109 latest", /\| 98 \| Offline shell, caching, and PWA quality gates/.test(readme) && /Latest completed implementation phase:\s+\*\*P114 - Creative Studio organization-brand generation planning and readiness gate\*\*/.test(readme) && /P115 - Creative Studio organization logo and cover generation request controls/.test(readme))
+add("roadmap marks P98 complete in P109 progression", /\| P98 \| Offline shell, caching, and PWA quality gates\. \|/.test(roadmap) && /Completed through \*\*P114 - Creative Studio organization-brand generation planning and readiness gate\*\*/.test(roadmap))
+add("source of truth names P109 baseline while keeping P98 offline shell", /Offline Shell, Caching, and PWA Quality Gates exist/.test(sourceOfTruth) && /after P114 Creative Studio organization-brand generation planning and readiness gate/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

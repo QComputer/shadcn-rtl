@@ -352,6 +352,16 @@ export const createCreativeStudioJobSchema = z.object({
   }
 });
 
+export const executeOrganizationBrandProviderSchema = z.object({
+  organizationId: z.string().cuid().optional(),
+  assetType: z.enum(["LOGO", "COVER"]),
+  prompt: z.string().trim().max(1000).optional().nullable(),
+  locale: z.enum(["fa", "en", "ar"]).default("fa"),
+  dryRun: z.boolean().optional(),
+  count: z.number().int().min(1).max(4).default(1),
+  style_preset: z.string().trim().max(80).default("BRAND_CLEAN"),
+});
+
 export const creativeStudioJobFilterSchema = z.object({
   organizationId: z.string().cuid().optional(),
   status: z.enum(["QUEUED", "PROCESSING", "COMPLETED", "FAILED", "CANCELED"]).optional(),

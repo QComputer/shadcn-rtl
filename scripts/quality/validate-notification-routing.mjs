@@ -43,9 +43,9 @@ add("Web Push service exposes single-customer delivery", /sendToCustomer/.test(w
 add("single-customer Web Push records delivery attempts and cleans invalid subscriptions", /webPushDelivery\.create/.test(webPush) && /statusCode === 404 \|\| statusCode === 410/.test(webPush))
 add("package exposes P102 validator", /"quality:notification-routing":\s*"node scripts\/quality\/validate-notification-routing\.mjs"/.test(packageJson))
 add("project validator references P102 validator", /validate-notification-routing\.mjs/.test(validateProject) && /P102 notification routing validator passes/.test(validateProject))
-add("README keeps P102 complete while marking P109 latest", /\| 102 \| Notification templates, routing, and delivery policies/.test(readme) && /Latest completed implementation phase:\s+\*\*P117 - Creative Studio organization-brand provider execution rollout gate\*\*/.test(readme) && /P118 - Creative Studio organization-brand provider execution implementation/.test(readme))
-add("roadmap marks P102 complete in P109 progression", /\| P102 \| Notification templates, routing, and delivery policies\. \|/.test(roadmap) && /Completed through \*\*P117 - Creative Studio organization-brand provider execution rollout gate\*\*/.test(roadmap))
-add("source of truth names P109 baseline", /after P117 Creative Studio organization-brand provider execution rollout gate/.test(sourceOfTruth) && /Notification routing exists/.test(sourceOfTruth))
+add("README keeps P102 complete while marking P109 latest", /\| 102 \| Notification templates, routing, and delivery policies/.test(readme) && /Latest completed implementation phase:\s+\*\*P118 - Creative Studio organization-brand provider execution implementation\*\*/.test(readme) && /P119 - Creative Studio provider execution smoke and generated asset ingestion/.test(readme))
+add("roadmap marks P102 complete in P109 progression", /\| P102 \| Notification templates, routing, and delivery policies\. \|/.test(roadmap) && /Completed through \*\*P118 - Creative Studio organization-brand provider execution implementation\*\*/.test(roadmap))
+add("source of truth names P109 baseline", /after P118 Creative Studio organization-brand provider execution implementation/.test(sourceOfTruth) && /Notification routing exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

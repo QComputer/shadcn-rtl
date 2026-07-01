@@ -43,9 +43,9 @@ add("archive script refuses obvious secrets", /Refusing to archive PWA\/Push\/SM
 add("release notes include PWA Push SMS rollout evidence", /PWA Push SMS Rollout Evidence/.test(releaseTemplate) && /Rollback owner/.test(releaseTemplate))
 add("package exposes P105 quality and release scripts", /"quality:production-rollout":\s*"node scripts\/quality\/validate-production-rollout-runbook\.mjs"/.test(packageJson) && /"release:pwa-push-sms-rollout-evidence":\s*"node scripts\/release\/archive-pwa-push-sms-rollout-evidence\.mjs"/.test(packageJson))
 add("project validator references P105 validator", /validate-production-rollout-runbook\.mjs/.test(validateProject) && /P105 production rollout runbook validator passes/.test(validateProject))
-add("README keeps P105 complete while marking P109 latest", /\| 105 \| Production rollout runbook/.test(readme) && /Latest completed implementation phase:\s+\*\*P117 - Creative Studio organization-brand provider execution rollout gate\*\*/.test(readme) && /P118 - Creative Studio organization-brand provider execution implementation/.test(readme))
-add("roadmap keeps P105 complete in P109 progression", /\| P105 \| Production rollout runbook\. \|/.test(roadmap) && /Completed through \*\*P117 - Creative Studio organization-brand provider execution rollout gate\*\*/.test(roadmap))
-add("source of truth names P109 baseline while keeping P105 runbook", /after P117 Creative Studio organization-brand provider execution rollout gate/.test(sourceOfTruth) && /Production rollout runbook exists/.test(sourceOfTruth))
+add("README keeps P105 complete while marking P109 latest", /\| 105 \| Production rollout runbook/.test(readme) && /Latest completed implementation phase:\s+\*\*P118 - Creative Studio organization-brand provider execution implementation\*\*/.test(readme) && /P119 - Creative Studio provider execution smoke and generated asset ingestion/.test(readme))
+add("roadmap keeps P105 complete in P109 progression", /\| P105 \| Production rollout runbook\. \|/.test(roadmap) && /Completed through \*\*P118 - Creative Studio organization-brand provider execution implementation\*\*/.test(roadmap))
+add("source of truth names P109 baseline while keeping P105 runbook", /after P118 Creative Studio organization-brand provider execution implementation/.test(sourceOfTruth) && /Production rollout runbook exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

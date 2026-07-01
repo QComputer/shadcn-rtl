@@ -65,6 +65,9 @@ export type CreativeStudioGenerationReadiness = {
     providerExecutionGatePhase: "P117";
     providerExecutionRequested: boolean;
     providerExecutionConfigured: boolean;
+    providerExecutionExplicitlyEnabled: boolean;
+    providerExecutionDryRun: boolean;
+    providerExecutionMode: "disabled" | "dry-run" | "provider-requested";
     providerExecutionEnabled: boolean;
     requestOnlyJobPersistence: true;
     providerContractReady: boolean;
@@ -102,7 +105,7 @@ export type CreativeStudioGenerationReadiness = {
     blockers: string[];
   };
   blockers: string[];
-  nextPhase: "P118 - Creative Studio organization-brand provider execution implementation";
+  nextPhase: "P119 - Creative Studio provider execution smoke and generated asset ingestion";
 };
 
 export async function getCreativeStudioGenerationReadiness(options: { checkRemote?: boolean } = {}): Promise<CreativeStudioGenerationReadiness> {
@@ -177,6 +180,9 @@ export async function getCreativeStudioGenerationReadiness(options: { checkRemot
       providerExecutionGatePhase: "P117",
       providerExecutionRequested: organizationBrandProvider.requested,
       providerExecutionConfigured: organizationBrandProvider.configured,
+      providerExecutionExplicitlyEnabled: organizationBrandProvider.executionRequested,
+      providerExecutionDryRun: organizationBrandProvider.dryRun,
+      providerExecutionMode: organizationBrandProvider.executionMode,
       providerExecutionEnabled: organizationBrandProvider.providerExecutionEnabled,
       requestOnlyJobPersistence: true,
       providerContractReady: organizationBrandProvider.providerContractReady,
@@ -222,6 +228,6 @@ export async function getCreativeStudioGenerationReadiness(options: { checkRemot
       blockers: organizationBrandBlockers,
     },
     blockers,
-    nextPhase: "P118 - Creative Studio organization-brand provider execution implementation",
+    nextPhase: "P119 - Creative Studio provider execution smoke and generated asset ingestion",
   };
 }

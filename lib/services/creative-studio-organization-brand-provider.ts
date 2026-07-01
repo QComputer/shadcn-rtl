@@ -2,6 +2,8 @@ import "server-only";
 
 type OrganizationBrandProviderIssue =
   | "not-requested"
+  | "execution-not-requested"
+  | "dry-run-enabled"
   | "service-url-missing"
   | "internal-key-missing"
   | "approval-missing"
@@ -33,13 +35,27 @@ function isProbablyUrl(value: string | undefined) {
   }
 }
 
+function getServiceUrl() {
+  return process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_SERVICE_URL
+    || process.env.AI_MEDIA_SERVICE_BASE_URL
+    || process.env.AI_MEDIA_SERVICE_URL;
+}
+
+function getInternalKey() {
+  return process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_INTERNAL_KEY
+    || process.env.AI_MEDIA_SERVICE_INTERNAL_KEY;
+}
+
 export type OrganizationBrandProviderStatus = {
   phase: "P117";
   providerContract: "creative-studio-organization-brand-v1";
-  executionMode: "disabled" | "rollout-gated";
+  executionMode: "disabled" | "dry-run" | "provider-requested";
   requested: boolean;
   enabled: boolean;
   configured: boolean;
+  executionRequested: boolean;
+  dryRun: boolean;
+  dryRunSupported: true;
   providerExecutionEnabled: boolean;
   providerContractReady: boolean;
   serviceUrlConfigured: boolean;
@@ -61,8 +77,10 @@ export type OrganizationBrandProviderStatus = {
 
 export function getOrganizationBrandProviderStatus(): OrganizationBrandProviderStatus {
   const requested = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_ENABLED === "true";
-  const serviceUrlConfigured = isProbablyUrl(process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_SERVICE_URL);
-  const internalKeyConfigured = hasValue(process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_INTERNAL_KEY);
+  const executionRequested = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_EXECUTION_ENABLED === "true";
+  const dryRun = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_DRY_RUN !== "false";
+  const serviceUrlConfigured = isProbablyUrl(getServiceUrl());
+  const internalKeyConfigured = hasValue(getInternalKey());
   const approved = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_APPROVED === "true";
   const approvedBy = hasValue(process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_APPROVED_BY)
     ? process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_APPROVED_BY!.trim()
@@ -85,6 +103,8 @@ export function getOrganizationBrandProviderStatus(): OrganizationBrandProviderS
 
   const issues: OrganizationBrandProviderIssue[] = [];
   if (!requested) issues.push("not-requested");
+  if (requested && !executionRequested) issues.push("execution-not-requested");
+  if (requested && executionRequested && dryRun) issues.push("dry-run-enabled");
   if (requested && !serviceUrlConfigured) issues.push("service-url-missing");
   if (requested && !internalKeyConfigured) issues.push("internal-key-missing");
   if (requested && !approved) issues.push("approval-missing");
@@ -101,15 +121,19 @@ export function getOrganizationBrandProviderStatus(): OrganizationBrandProviderS
     && Boolean(dailyJobLimit)
     && Boolean(estimatedJobCostCents);
   const enabled = requested && configured && !rollbackPaused;
+  const providerExecutionEnabled = enabled && executionRequested && !dryRun;
 
   return {
     phase: "P117",
     providerContract: "creative-studio-organization-brand-v1",
-    executionMode: enabled ? "rollout-gated" : "disabled",
+    executionMode: providerExecutionEnabled ? "provider-requested" : requested && executionRequested && dryRun ? "dry-run" : "disabled",
     requested,
     enabled,
     configured,
-    providerExecutionEnabled: enabled,
+    executionRequested,
+    dryRun,
+    dryRunSupported: true,
+    providerExecutionEnabled,
     providerContractReady: enabled,
     serviceUrlConfigured,
     internalKeyConfigured,

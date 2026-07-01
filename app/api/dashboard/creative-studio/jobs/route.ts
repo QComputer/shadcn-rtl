@@ -34,7 +34,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       job: result.job,
       asset: result.asset,
-      provider: "MOCK",
+      provider: result.job.provider,
+      execution: "execution" in result ? result.execution : undefined,
       publicMutation: false,
     }, { status: 201 });
   } catch (error) {

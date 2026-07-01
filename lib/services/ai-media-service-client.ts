@@ -23,6 +23,34 @@ export interface AiMediaCreateJobRequest {
   style_preset?: string;
 }
 
+export interface AiMediaOrganizationBrandJobRequest {
+  requestType: "ORGANIZATION_BRAND";
+  organizationId: string;
+  requestedByUserId: string;
+  target: {
+    type: "ORGANIZATION_BRAND";
+    assetType: "LOGO" | "COVER";
+  };
+  locale: "fa" | "en" | "ar";
+  prompt?: string | null;
+  brandContext: {
+    organizationName: string;
+    organizationSlug: string;
+    businessType: string;
+    locale: "fa" | "en" | "ar";
+  };
+  mode: "DRAFT_ONLY";
+  count?: number;
+  aspect_ratio?: string;
+  style_preset?: string;
+  metadata: {
+    source: "bazar-baz";
+    phase: "P118";
+    publicAutoApply: false;
+    [key: string]: unknown;
+  };
+}
+
 export interface AiMediaJobOutput {
   url: string;
   mime_type?: string;
@@ -55,6 +83,8 @@ export interface AiMediaCreateJobResponse {
   job_id: string;
   status: string;
   provider: string;
+  outputs?: AiMediaJobOutput[];
+  output_images?: string[];
 }
 
 export class AiMediaServiceError extends Error {
@@ -111,9 +141,10 @@ function normalizeTimeoutMs(value: string | undefined) {
 }
 
 function getAiMediaConfig() {
+  const serviceUrl = process.env.AI_MEDIA_SERVICE_BASE_URL || process.env.AI_MEDIA_SERVICE_URL;
   return {
     enabled: process.env.AI_MEDIA_SERVICE_ENABLED === "true",
-    url: process.env.AI_MEDIA_SERVICE_URL?.replace(/\/$/, "") || null,
+    url: serviceUrl?.replace(/\/$/, "") || null,
     internalKey: process.env.AI_MEDIA_SERVICE_INTERNAL_KEY || null,
     timeoutMs: normalizeTimeoutMs(process.env.AI_MEDIA_SERVICE_TIMEOUT_MS),
   };
@@ -182,6 +213,13 @@ async function aiMediaFetch(input: string, init: RequestInit = {}): Promise<Resp
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+async function sanitizedErrorText(response: Response) {
+  const text = await response.text().catch(() => "Unknown error");
+  return text
+    .replace(/(x-bazarbaz-ai-key|internal[_-]?key|api[_-]?key|token|secret|password)["':=\s]+[^"',\s}]+/gi, "$1=[redacted]")
+    .slice(0, 300);
 }
 
 async function probeAiMediaEndpoint(endpoint: "/health" | "/ready", expectedText: string): Promise<AiMediaReadinessCheck> {
@@ -255,7 +293,45 @@ export async function createAiMediaJob(request: AiMediaCreateJobRequest): Promis
   });
 
   if (!response.ok) {
-    const text = await response.text().catch(() => "Unknown error");
+    const text = await sanitizedErrorText(response);
+    throw new AiMediaServiceError(response.status, `AI media service returned ${response.status}: ${text}`);
+  }
+
+  return response.json();
+}
+
+export async function createOrganizationBrandGenerationJob(request: AiMediaOrganizationBrandJobRequest): Promise<AiMediaCreateJobResponse> {
+  const config = assertConfigured();
+  const response = await aiMediaFetch(`${config.url}/v1/organization-brand/jobs`, {
+    method: "POST",
+    body: JSON.stringify({
+      ...request,
+      count: request.count ?? 1,
+      aspect_ratio: request.aspect_ratio ?? (request.target.assetType === "LOGO" ? "1:1" : "16:9"),
+      style_preset: request.style_preset ?? "BRAND_CLEAN",
+      metadata: {
+        ...request.metadata,
+        publicAutoApply: false,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await sanitizedErrorText(response);
+    throw new AiMediaServiceError(response.status, `AI media service returned ${response.status}: ${text}`);
+  }
+
+  return response.json();
+}
+
+export async function getOrganizationBrandGenerationJob(jobId: string): Promise<AiMediaJob> {
+  const config = assertConfigured();
+  const response = await aiMediaFetch(`${config.url}/v1/organization-brand/jobs/${encodeURIComponent(jobId)}`, {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    const text = await sanitizedErrorText(response);
     throw new AiMediaServiceError(response.status, `AI media service returned ${response.status}: ${text}`);
   }
 
@@ -269,7 +345,7 @@ export async function getAiMediaJob(jobId: string): Promise<AiMediaJob> {
   });
 
   if (!response.ok) {
-    const text = await response.text().catch(() => "Unknown error");
+    const text = await sanitizedErrorText(response);
     throw new AiMediaServiceError(response.status, `AI media service returned ${response.status}: ${text}`);
   }
 
@@ -283,7 +359,7 @@ export async function cancelAiMediaJob(jobId: string): Promise<{ job: AiMediaJob
   });
 
   if (!response.ok) {
-    const text = await response.text().catch(() => "Unknown error");
+    const text = await sanitizedErrorText(response);
     throw new AiMediaServiceError(response.status, `AI media service returned ${response.status}: ${text}`);
   }
 

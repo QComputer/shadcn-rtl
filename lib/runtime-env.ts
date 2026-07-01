@@ -36,6 +36,8 @@ export type RuntimeEnvValidation = {
     aiMediaPaidProviderRollbackPaused: boolean;
     organizationBrandProviderRequested: boolean;
     organizationBrandProviderConfigured: boolean;
+    organizationBrandProviderExecutionRequested: boolean;
+    organizationBrandProviderDryRun: boolean;
     organizationBrandProviderRollbackPaused: boolean;
   };
 };
@@ -287,8 +289,14 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
   }
 
   const organizationBrandProviderRequested = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_ENABLED === "true";
-  const organizationBrandServiceUrlConfigured = isProbablyUrl(process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_SERVICE_URL);
-  const organizationBrandInternalKeyConfigured = hasValue(process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_INTERNAL_KEY);
+  const organizationBrandProviderExecutionRequested = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_EXECUTION_ENABLED === "true";
+  const organizationBrandProviderDryRun = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_DRY_RUN !== "false";
+  const organizationBrandServiceUrlConfigured = isProbablyUrl(
+    process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_SERVICE_URL || process.env.AI_MEDIA_SERVICE_BASE_URL || process.env.AI_MEDIA_SERVICE_URL,
+  );
+  const organizationBrandInternalKeyConfigured = hasValue(
+    process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_INTERNAL_KEY || process.env.AI_MEDIA_SERVICE_INTERNAL_KEY,
+  );
   const organizationBrandProviderApproved = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_APPROVED === "true";
   const organizationBrandProviderApprovedBy = hasValue(process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_APPROVED_BY);
   const organizationBrandProviderApprovedAt = hasValue(process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_APPROVED_AT)
@@ -312,6 +320,22 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
       name: "CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_ENABLED",
       severity: "error",
       message: "Organization brand provider rollout requires a valid service URL, internal key, approval metadata, and positive job/cost limits.",
+    });
+  }
+
+  if (organizationBrandProviderExecutionRequested && !organizationBrandProviderRequested) {
+    issues.push({
+      name: "CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_EXECUTION_ENABLED",
+      severity: "error",
+      message: "Organization brand provider execution requires CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_ENABLED=true.",
+    });
+  }
+
+  if (organizationBrandProviderExecutionRequested && !organizationBrandProviderDryRun && !organizationBrandProviderConfigured) {
+    issues.push({
+      name: "CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_DRY_RUN",
+      severity: "error",
+      message: "Real organization brand provider execution requires complete configuration before dry-run can be disabled.",
     });
   }
 
@@ -353,6 +377,8 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
       aiMediaPaidProviderRollbackPaused,
       organizationBrandProviderRequested,
       organizationBrandProviderConfigured,
+      organizationBrandProviderExecutionRequested,
+      organizationBrandProviderDryRun,
       organizationBrandProviderRollbackPaused,
     },
   };

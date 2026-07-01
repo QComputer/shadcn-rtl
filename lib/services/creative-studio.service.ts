@@ -11,7 +11,13 @@ import { getCreativeStudioGenerationReadiness } from "@/lib/services/creative-st
 import { getAiMediaPaidProviderStatus } from "@/lib/services/ai-media-paid-provider";
 import { getOrganizationBrandProviderStatus } from "@/lib/services/creative-studio-organization-brand-provider";
 import { aiMediaService } from "@/lib/services/ai-media.service";
-import type { AiMediaJobOutput } from "@/lib/services/ai-media-service-client";
+import {
+  AiMediaServiceError,
+  createOrganizationBrandGenerationJob,
+  getOrganizationBrandGenerationJob,
+  type AiMediaJobOutput,
+  type AiMediaOrganizationBrandJobRequest,
+} from "@/lib/services/ai-media-service-client";
 import type {
   ApplyCreativeStudioAssetInput,
   CreateCreativeStudioJobInput,
@@ -76,6 +82,10 @@ function getRemoteJobIdFromInputs(inputs: unknown) {
   return getStringMetadata(metadataRecord(inputs).p112Generation, "remoteJobId");
 }
 
+function getRemoteOrganizationBrandJobIdFromInputs(inputs: unknown) {
+  return getStringMetadata(metadataRecord(inputs).p118OrganizationBrandProviderExecution, "remoteJobId");
+}
+
 function normalizeAiMediaOutputs(job: { outputs?: AiMediaJobOutput[] | null; output_images?: string[] | null }): AiMediaJobOutput[] {
   if (Array.isArray(job.outputs) && job.outputs.length > 0) {
     return job.outputs.filter((output) => output && typeof output.url === "string");
@@ -108,6 +118,14 @@ function isProductImageGenerationJob(job: {
   inputs: Prisma.JsonValue | null;
 }) {
   return job.targetType === "PRODUCT" && job.provider !== "MOCK" && Boolean(getRemoteJobIdFromInputs(job.inputs));
+}
+
+function isOrganizationBrandProviderExecutionJob(job: {
+  targetType: CreativeStudioTargetType;
+  provider: string;
+  inputs: Prisma.JsonValue | null;
+}) {
+  return job.targetType === "ORGANIZATION_BRAND" && job.provider !== "MOCK" && Boolean(getRemoteOrganizationBrandJobIdFromInputs(job.inputs));
 }
 
 async function createUsageEventOnce(input: {
@@ -304,9 +322,12 @@ export class CreativeStudioService {
       prisma.creativeStudioJob.count({ where }),
     ]);
 
-    const syncableJobs = jobs.filter((job) => ["QUEUED", "PROCESSING"].includes(job.status) && isProductImageGenerationJob(job));
+    const syncableJobs = jobs.filter((job) => ["QUEUED", "PROCESSING"].includes(job.status) && (isProductImageGenerationJob(job) || isOrganizationBrandProviderExecutionJob(job)));
     if (syncableJobs.length > 0) {
-      await Promise.all(syncableJobs.map((job) => this.syncProductImageGenerationJob(job.id, organizationId).catch(() => null)));
+      await Promise.all(syncableJobs.map((job) => {
+        if (isOrganizationBrandProviderExecutionJob(job)) return this.syncOrganizationBrandGenerationJob(job.id, organizationId).catch(() => null);
+        return this.syncProductImageGenerationJob(job.id, organizationId).catch(() => null);
+      }));
       const refreshedJobs = await prisma.creativeStudioJob.findMany({
         where,
         orderBy: { createdAt: "desc" },
@@ -346,8 +367,9 @@ export class CreativeStudioService {
       },
     });
     if (!job) throw new ApiError(404, "Creative Studio job not found");
-    if (["QUEUED", "PROCESSING"].includes(job.status) && isProductImageGenerationJob(job)) {
-      await this.syncProductImageGenerationJob(job.id, organizationId);
+    if (["QUEUED", "PROCESSING"].includes(job.status) && (isProductImageGenerationJob(job) || isOrganizationBrandProviderExecutionJob(job))) {
+      if (isOrganizationBrandProviderExecutionJob(job)) await this.syncOrganizationBrandGenerationJob(job.id, organizationId);
+      else await this.syncProductImageGenerationJob(job.id, organizationId);
       job = await prisma.creativeStudioJob.findFirst({
         where: { id: jobId, organizationId },
         include: {
@@ -532,6 +554,59 @@ export class CreativeStudioService {
     return result;
   }
 
+  async requestOrganizationBrandProviderExecution(
+    organizationId: string,
+    requestedByUserId: string,
+    role: UserRole,
+    input: {
+      assetType: "LOGO" | "COVER";
+      prompt?: string | null;
+      locale: "fa" | "en" | "ar";
+      dryRun?: boolean;
+      count?: number;
+      style_preset?: string;
+    },
+  ) {
+    const targetField = getOrganizationBrandTargetField(input.assetType);
+    const result = await this.createOrganizationBrandGenerationRequest(organizationId, requestedByUserId, role, {
+      targetType: "ORGANIZATION_BRAND",
+      assetType: input.assetType,
+      targetId: null,
+      prompt: input.prompt ?? null,
+      count: input.count ?? 1,
+      aspect_ratio: input.assetType === "LOGO" ? "1:1" : "16:9",
+      style_preset: input.style_preset ?? "BRAND_CLEAN",
+      metadata: {
+        p118OrganizationBrandProviderExecution: {
+          phase: "P118",
+          locale: input.locale,
+          dryRun: input.dryRun === true,
+          publicAutoApply: false,
+          targetField,
+        },
+      },
+    });
+
+    const remoteJobId = getRemoteOrganizationBrandJobIdFromInputs(result.job.inputs);
+    const mode = result.execution?.mode ?? "disabled";
+
+    return {
+      job: result.job,
+      asset: result.asset,
+      execution: {
+        mode,
+        publicAutoApply: false,
+        providerJobId: remoteJobId,
+        creativeStudioJobId: result.job.id,
+        warnings: mode === "disabled"
+          ? ["provider execution is disabled"]
+          : mode === "dry-run"
+            ? ["dry-run is active; no external provider request was sent"]
+            : [],
+      },
+    };
+  }
+
   private async createOrganizationBrandGenerationRequest(
     organizationId: string,
     requestedByUserId: string,
@@ -541,11 +616,58 @@ export class CreativeStudioService {
     await this.assertTargetAccess(organizationId, role, input);
     const { paidProvider } = await this.assertCanCreate(organizationId);
     const organizationBrandProvider = getOrganizationBrandProviderStatus();
+    const organization = await prisma.organization.findFirst({
+      where: { id: organizationId },
+      select: { id: true, name: true, slug: true, type: true, locale: true },
+    });
+    if (!organization) throw new ApiError(404, "Organization not found");
     const prompt = input.prompt?.trim() || null;
     const metadata = compactMetadata(input.metadata);
+    const p118Metadata = getNestedMetadataRecord(metadata, "p118OrganizationBrandProviderExecution");
+    const requestedLocale = typeof p118Metadata.locale === "string" && ["fa", "en", "ar"].includes(p118Metadata.locale)
+      ? (p118Metadata.locale as "fa" | "en" | "ar")
+      : typeof metadata.locale === "string" && ["fa", "en", "ar"].includes(metadata.locale)
+        ? (metadata.locale as "fa" | "en" | "ar")
+        : "fa";
+    const requestDryRun = p118Metadata.dryRun === true || metadata.dryRun === true;
     const targetField = getOrganizationBrandTargetField(input.assetType);
     const aspectRatio = getOrganizationBrandAspectRatio(input.assetType, metadata, input.aspect_ratio);
     const stylePreset = input.style_preset || getStringMetadata(metadata, "style_preset") || "BRAND_CLEAN";
+    const canCallProvider = organizationBrandProvider.providerExecutionEnabled && !requestDryRun;
+    const executionMode = canCallProvider
+      ? "provider-requested"
+      : organizationBrandProvider.requested && organizationBrandProvider.executionRequested && (organizationBrandProvider.dryRun || requestDryRun)
+        ? "dry-run"
+        : "disabled";
+    const providerName = executionMode === "provider-requested" ? "AI_MEDIA_SERVICE" : executionMode === "dry-run" ? "DRY_RUN" : "MOCK";
+    const remoteRequest: AiMediaOrganizationBrandJobRequest = {
+      requestType: "ORGANIZATION_BRAND",
+      organizationId,
+      requestedByUserId,
+      target: {
+        type: "ORGANIZATION_BRAND",
+        assetType: input.assetType as "LOGO" | "COVER",
+      },
+      locale: requestedLocale,
+      prompt,
+      brandContext: {
+        organizationName: organization.name,
+        organizationSlug: organization.slug,
+        businessType: organization.type,
+        locale: requestedLocale,
+      },
+      mode: "DRAFT_ONLY",
+      count: input.count,
+      aspect_ratio: aspectRatio,
+      style_preset: stylePreset,
+      metadata: {
+        source: "bazar-baz",
+        phase: "P118",
+        publicAutoApply: false,
+        targetField,
+      },
+    };
+    const remoteRequestMetadata = compactMetadata(remoteRequest);
 
     const sourceMetadata = {
       ...metadata,
@@ -568,7 +690,145 @@ export class CreativeStudioService {
         style_preset: stylePreset,
         applyStillRequiresConfirmation: true,
       },
+      p118OrganizationBrandProviderExecution: {
+        phase: "P118",
+        mode: executionMode,
+        dryRun: executionMode === "dry-run",
+        providerExecutionEnabled: canCallProvider,
+        providerExecutionRequested: organizationBrandProvider.executionRequested,
+        publicAutoApply: false,
+        draftOnly: true,
+        directGpuCall: false,
+        directWorkerCall: false,
+        targetField,
+        locale: requestedLocale,
+      },
     } satisfies Prisma.InputJsonObject;
+
+    if (canCallProvider) {
+      const created = await prisma.$transaction(async (tx) => {
+        const job = await tx.creativeStudioJob.create({
+          data: {
+            organizationId,
+            targetType: "ORGANIZATION_BRAND",
+            targetId: null,
+            requestedByUserId,
+            status: "QUEUED",
+            provider: providerName,
+            prompt,
+            inputs: {
+              assetType: input.assetType,
+              count: input.count,
+              aspect_ratio: aspectRatio,
+              style_preset: stylePreset,
+              metadata,
+              p115BrandGeneration: sourceMetadata.p115BrandGeneration,
+              p117OrganizationBrandProviderGate: {
+                phase: "P117",
+                providerExecutionGateOnly: false,
+                providerExecutionRequested: organizationBrandProvider.requested,
+                providerExecutionConfigured: organizationBrandProvider.configured,
+                providerExecutionEnabled: organizationBrandProvider.providerExecutionEnabled,
+                providerExecutionReadyButNotExecuted: false,
+                providerContractReady: organizationBrandProvider.providerContractReady,
+                rollbackPaused: organizationBrandProvider.rollback.paused,
+                issues: organizationBrandProvider.issues,
+              },
+              p118OrganizationBrandProviderExecution: {
+                ...sourceMetadata.p118OrganizationBrandProviderExecution,
+                requestPayload: remoteRequestMetadata,
+              },
+            } satisfies Prisma.InputJsonObject,
+            outputCount: 0,
+            costEstimateCents: organizationBrandProvider.estimatedJobCostCents ?? 0,
+            paidProviderEnabled: paidProvider.enabled,
+            rollbackPaused: paidProvider.rollback.paused || organizationBrandProvider.rollback.paused,
+          },
+        });
+
+        await tx.creativeStudioUsageEvent.create({
+          data: {
+            organizationId,
+            jobId: job.id,
+            requestedByUserId,
+            action: "JOB_CREATED",
+            provider: providerName,
+            targetType: "ORGANIZATION_BRAND",
+            targetId: null,
+            metadata: {
+              assetType: input.assetType,
+              count: input.count,
+              targetField,
+              aspect_ratio: aspectRatio,
+              style_preset: stylePreset,
+              p118OrganizationBrandProviderExecution: true,
+              executionMode,
+              publicMutation: false,
+            },
+          },
+        });
+
+        return { job, asset: null };
+      });
+
+      try {
+        const remoteResponse = await createOrganizationBrandGenerationJob(remoteRequest);
+        await prisma.creativeStudioJob.update({
+          where: { id: created.job.id },
+          data: {
+            status: remoteResponse.status as CreativeStudioJobStatus,
+            provider: remoteResponse.provider,
+            inputs: {
+              ...(metadataObject(created.job.inputs)),
+              p118OrganizationBrandProviderExecution: {
+                ...(getNestedMetadataRecord(created.job.inputs, "p118OrganizationBrandProviderExecution")),
+                remoteJobId: remoteResponse.job_id,
+                providerStatus: remoteResponse.status,
+                provider: remoteResponse.provider,
+              },
+            } satisfies Prisma.InputJsonObject,
+            outputCount: normalizeAiMediaOutputs(remoteResponse).length,
+            completedAt: remoteResponse.status === "COMPLETED" ? new Date() : null,
+            canceledAt: remoteResponse.status === "CANCELED" ? new Date() : null,
+          },
+        });
+        await this.syncOrganizationBrandGenerationJob(created.job.id, organizationId).catch(() => null);
+      } catch (error) {
+        const message = error instanceof AiMediaServiceError ? error.message : "Failed to create organization brand provider job";
+        await prisma.creativeStudioJob.update({
+          where: { id: created.job.id },
+          data: {
+            status: "FAILED",
+            errorMessage: message,
+            completedAt: new Date(),
+          },
+        });
+        throw new ApiError(error instanceof AiMediaServiceError ? error.status : 502, message);
+      }
+
+      const refreshed = await prisma.creativeStudioJob.findFirst({
+        where: { id: created.job.id, organizationId },
+        include: { assets: { orderBy: { createdAt: "desc" } } },
+      });
+
+      await writeAuditLog({
+        action: "CREATE",
+        entityType: "CreativeStudioJob",
+        entityId: created.job.id,
+        userId: requestedByUserId,
+        organizationId,
+        newValue: {
+          targetType: "ORGANIZATION_BRAND",
+          assetType: input.assetType,
+          provider: providerName,
+          targetField,
+          executionMode,
+          publicMutation: false,
+        },
+      });
+
+      return { job: refreshed ?? created.job, asset: refreshed?.assets?.[0] ?? null, execution: { mode: executionMode, publicAutoApply: false } };
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       const job = await tx.creativeStudioJob.create({
@@ -578,7 +838,7 @@ export class CreativeStudioService {
           targetId: null,
           requestedByUserId,
           status: "COMPLETED",
-          provider: "MOCK",
+          provider: providerName,
           prompt,
           inputs: {
             assetType: input.assetType,
@@ -598,6 +858,7 @@ export class CreativeStudioService {
               rollbackPaused: organizationBrandProvider.rollback.paused,
               issues: organizationBrandProvider.issues,
             },
+            p118OrganizationBrandProviderExecution: sourceMetadata.p118OrganizationBrandProviderExecution,
           } satisfies Prisma.InputJsonObject,
           outputCount: 1,
           costEstimateCents: 0,
@@ -622,10 +883,10 @@ export class CreativeStudioService {
           {
             organizationId,
             jobId: job.id,
-            requestedByUserId,
-            action: "JOB_CREATED",
-            provider: "MOCK",
-            targetType: "ORGANIZATION_BRAND",
+          requestedByUserId,
+          action: "JOB_CREATED",
+          provider: providerName,
+          targetType: "ORGANIZATION_BRAND",
             targetId: null,
             metadata: {
               assetType: input.assetType,
@@ -640,6 +901,9 @@ export class CreativeStudioService {
               providerExecutionConfigured: organizationBrandProvider.configured,
               providerExecutionEnabled: false,
               providerExecutionReadyButNotExecuted: organizationBrandProvider.providerExecutionEnabled,
+              p118OrganizationBrandProviderExecution: true,
+              executionMode,
+              dryRun: executionMode === "dry-run",
               rolloutPaused: organizationBrandProvider.rollback.paused,
             },
           },
@@ -649,7 +913,7 @@ export class CreativeStudioService {
             assetId: asset.id,
             requestedByUserId,
             action: "ASSET_DRAFTED",
-            provider: "MOCK",
+            provider: providerName,
             targetType: "ORGANIZATION_BRAND",
             targetId: null,
             metadata: {
@@ -657,6 +921,8 @@ export class CreativeStudioService {
               requestControlsOnly: true,
               publicMutation: false,
               applyStillRequiresConfirmation: true,
+              p118OrganizationBrandProviderExecution: true,
+              executionMode,
             },
           },
         ],
@@ -676,6 +942,7 @@ export class CreativeStudioService {
         assetType: result.asset.assetType,
         assetId: result.asset.id,
         provider: "MOCK",
+        executionProvider: providerName,
         targetField,
         requestControlsOnly: true,
         providerExecutionGatePhase: "P117",
@@ -684,11 +951,13 @@ export class CreativeStudioService {
         providerExecutionConfigured: organizationBrandProvider.configured,
         providerExecutionEnabled: false,
         providerExecutionReadyButNotExecuted: organizationBrandProvider.providerExecutionEnabled,
+        p118OrganizationBrandProviderExecution: true,
+        executionMode,
         publicMutation: false,
       },
     });
 
-    return result;
+    return { ...result, execution: { mode: executionMode, publicAutoApply: false } };
   }
 
   private async createProductImageGenerationJob(
@@ -891,6 +1160,108 @@ export class CreativeStudioService {
         targetType: localJob.targetType,
         targetId: localJob.targetId,
         metadata: { remoteJobId, p112Generation: true },
+      });
+    }
+
+    return updated;
+  }
+
+  private async syncOrganizationBrandGenerationJob(jobId: string, organizationId: string) {
+    const localJob = await prisma.creativeStudioJob.findFirst({
+      where: { id: jobId, organizationId, targetType: "ORGANIZATION_BRAND" },
+      include: { assets: true },
+    });
+    if (!localJob) throw new ApiError(404, "Creative Studio job not found");
+
+    const remoteJobId = getRemoteOrganizationBrandJobIdFromInputs(localJob.inputs);
+    if (!remoteJobId) return localJob;
+
+    const remoteJob = await getOrganizationBrandGenerationJob(remoteJobId);
+    const outputs = normalizeAiMediaOutputs(remoteJob);
+    const nextStatus = remoteJob.status as CreativeStudioJobStatus;
+    const now = new Date();
+    const assetType = getStringMetadata(localJob.inputs, "assetType") === "COVER" ? "COVER" : "LOGO";
+    const targetField = getOrganizationBrandTargetField(assetType);
+
+    const updated = await prisma.creativeStudioJob.update({
+      where: { id: localJob.id },
+      data: {
+        status: nextStatus,
+        provider: remoteJob.provider,
+        errorMessage: remoteJob.error_message ?? null,
+        outputCount: outputs.length,
+        completedAt: nextStatus === "COMPLETED" ? localJob.completedAt ?? now : localJob.completedAt,
+        canceledAt: nextStatus === "CANCELED" ? localJob.canceledAt ?? now : localJob.canceledAt,
+      },
+      include: { assets: true },
+    });
+
+    if (nextStatus === "COMPLETED" && outputs.length > 0) {
+      for (const [index, output] of outputs.entries()) {
+        const existing = await prisma.creativeStudioAsset.findFirst({
+          where: { jobId: localJob.id, sourceUrl: output.url },
+          select: { id: true },
+        });
+        if (existing) continue;
+
+        const asset = await prisma.creativeStudioAsset.create({
+          data: {
+            organizationId,
+            jobId: localJob.id,
+            assetType,
+            status: "DRAFT",
+            sourceUrl: output.url,
+            draftUrl: output.url,
+            mimeType: output.mime_type ?? null,
+            width: output.width ?? null,
+            height: output.height ?? null,
+            sourceMetadata: {
+              p118OrganizationBrandProviderExecution: {
+                remoteJobId,
+                outputIndex: index,
+                promptUsed: output.prompt_used ?? null,
+                seed: output.seed ?? null,
+                draftOnly: true,
+                publicMutation: false,
+                publicAutoApply: false,
+                targetField,
+              },
+            } satisfies Prisma.InputJsonObject,
+          },
+        });
+
+        await createUsageEventOnce({
+          organizationId,
+          jobId: localJob.id,
+          assetId: asset.id,
+          requestedByUserId: localJob.requestedByUserId,
+          action: "ASSET_DRAFTED",
+          provider: remoteJob.provider,
+          targetType: localJob.targetType,
+          targetId: localJob.targetId,
+          metadata: {
+            remoteJobId,
+            outputIndex: index,
+            sourceUrl: output.url,
+            p118OrganizationBrandProviderExecution: true,
+            publicMutation: false,
+            publicAutoApply: false,
+            targetField,
+          },
+        });
+      }
+    }
+
+    if (nextStatus === "CANCELED") {
+      await createUsageEventOnce({
+        organizationId,
+        jobId: localJob.id,
+        requestedByUserId: localJob.requestedByUserId,
+        action: "JOB_CANCELED",
+        provider: remoteJob.provider,
+        targetType: localJob.targetType,
+        targetId: localJob.targetId,
+        metadata: { remoteJobId, p118OrganizationBrandProviderExecution: true },
       });
     }
 

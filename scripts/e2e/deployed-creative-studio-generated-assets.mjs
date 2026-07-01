@@ -243,6 +243,8 @@ async function main() {
     assert(brandPlan?.providerExecutionGatePhase === "P117", "organization brand rollout gate should be P117");
     assert(brandPlan?.rolloutGate?.phase === "P117", "organization brand rollout gate status missing");
     assert(brandPlan.rolloutGate.providerContract === "creative-studio-organization-brand-v1", "organization brand provider contract mismatch");
+    assert(["disabled", "dry-run", "provider-requested"].includes(brandPlan.providerExecutionMode), "organization brand execution mode missing");
+    assert(brandPlan?.providerExecutionDryRun === true, "organization brand dry-run should default on");
     assert(brandPlan?.providerExecutionEnabled === false, "organization brand provider execution should stay disabled");
     assert(brandPlan?.providerExecutionConfigured === false, "organization brand provider should not be configured in smoke");
     assert(brandPlan?.rolloutGate?.providerExecutionEnabled === false, "organization brand rollout gate should not execute in smoke");
@@ -278,33 +280,29 @@ async function main() {
   });
 
   await check("organization logo request acceptance stays draft-first and non-mutating", async () => {
-    const createResult = await requestJson(session, "/api/dashboard/creative-studio/jobs", {
+    const createResult = await requestJson(session, "/api/dashboard/creative-studio/organization-brand/execute", {
       method: "POST",
       body: JSON.stringify({
         organizationId: session.organizationId,
-        targetType: "ORGANIZATION_BRAND",
         assetType: "LOGO",
         count: 1,
-        aspect_ratio: "1:1",
         style_preset: "BRAND_CLEAN",
+        locale: "fa",
+        dryRun: true,
         prompt: "P117 deployed smoke logo rollout gate guard",
-        metadata: {
-          p116DeployedSmoke: true,
-          p117DeployedSmoke: true,
-          p117OrganizationBrandProviderGate: true,
-          requestControlsOnly: true,
-          providerExecutionGateOnly: true,
-          providerExecutionEnabled: false,
-          targetField: "organization.logo",
-        },
       }),
     });
     assert(createResult.response.status === 201, `brand request status=${createResult.response.status}`);
     const job = createResult.json.job;
     const asset = createResult.json.asset;
+    const execution = createResult.json.execution;
+    assert(createResult.json.ok === true, "brand execution route should return ok=true");
+    assert(["disabled", "dry-run"].includes(execution?.mode), `brand execution mode should be disabled/dry-run, got ${execution?.mode}`);
+    assert(execution?.publicAutoApply === false, "brand execution must not auto-apply");
+    assert(!execution?.providerJobId, "disabled/dry-run brand execution should not return provider job id");
     assert(job?.targetType === "ORGANIZATION_BRAND", "brand job targetType mismatch");
     assert(job?.status === "COMPLETED", "request-only brand job should complete locally");
-    assert(job?.provider === "MOCK", "brand rollout gate must not call a real provider");
+    assert(["MOCK", "DRY_RUN"].includes(job?.provider), "brand rollout gate must not call a real provider");
     assert(asset?.assetType === "LOGO", "brand asset type mismatch");
     assert(asset?.status === "DRAFT", "brand asset should start as draft");
     assert(!asset?.draftUrl && !asset?.storedUrl && !asset?.sourceUrl, "request-only asset should not expose a public URL");

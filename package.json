@@ -66,6 +66,7 @@
     "quality:creative-studio-organization-brand-request-controls": "node scripts/quality/validate-creative-studio-organization-brand-request-controls.mjs",
     "quality:creative-studio-organization-brand-acceptance": "node scripts/quality/validate-creative-studio-organization-brand-acceptance.mjs",
     "quality:creative-studio-organization-brand-provider-rollout": "node scripts/quality/validate-creative-studio-organization-brand-provider-rollout.mjs",
+    "quality:creative-studio-organization-brand-provider-execution": "node scripts/quality/validate-creative-studio-organization-brand-provider-execution.mjs",
     "e2e:deployed:creative-studio": "node scripts/e2e/deployed-creative-studio-generated-assets.mjs",
     "smoke:deployed:creative-studio": "node scripts/e2e/deployed-creative-studio-generated-assets.mjs",
     "e2e:deployed:phase11": "node scripts/e2e/deployed-phase11-health.mjs",

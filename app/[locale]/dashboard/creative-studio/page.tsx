@@ -111,6 +111,9 @@ type CreativeStudioStatus = {
       providerExecutionGatePhase?: "P117"
       providerExecutionRequested?: boolean
       providerExecutionConfigured?: boolean
+      providerExecutionExplicitlyEnabled?: boolean
+      providerExecutionDryRun?: boolean
+      providerExecutionMode?: "disabled" | "dry-run" | "provider-requested"
       providerExecutionEnabled?: boolean
       requestOnlyJobPersistence?: boolean
       providerContractReady: boolean
@@ -118,6 +121,9 @@ type CreativeStudioStatus = {
         phase: "P117"
         requested: boolean
         configured: boolean
+        executionRequested: boolean
+        dryRun: boolean
+        executionMode: "disabled" | "dry-run" | "provider-requested"
         providerExecutionEnabled: boolean
         providerContractReady: boolean
         serviceUrlConfigured: boolean
@@ -298,6 +304,18 @@ type CreativeStudioCopy = {
   brandPromptPlaceholder: string
   requestOnlyMode: string
   providerExecution: string
+  providerExecutionMode: string
+  providerExecutionDisabled: string
+  providerExecutionDryRun: string
+  providerExecutionReady: string
+  brandExecutionTitle: string
+  logoGeneration: string
+  coverGeneration: string
+  draftOnlyGenerated: string
+  autoApplyDisabled: string
+  providerRequestSent: string
+  dryRunActive: string
+  providerGateDisabled: string
   startBrandRequest: string
   startingBrandRequest: string
   brandRequestStarted: string
@@ -417,6 +435,18 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     brandPromptPlaceholder: "مثلا: لوگوی مینیمال با حس محلی، کاور روشن برای صفحه فروشگاه",
     requestOnlyMode: "ثبت درخواست داخلی",
     providerExecution: "اجرای ارائه‌دهنده",
+    providerExecutionMode: "حالت اجرا",
+    providerExecutionDisabled: "غیرفعال",
+    providerExecutionDryRun: "آزمایشی",
+    providerExecutionReady: "آماده ارسال",
+    brandExecutionTitle: "اجرای تولید برند سازمانی",
+    logoGeneration: "تولید لوگو",
+    coverGeneration: "تولید کاور",
+    draftOnlyGenerated: "فقط پیش‌نویس ساخته می‌شود",
+    autoApplyDisabled: "اعمال خودکار روی صفحه عمومی غیرفعال است",
+    providerRequestSent: "درخواست به سرویس تولید تصویر ارسال شد",
+    dryRunActive: "حالت آزمایشی فعال است؛ درخواست خارجی ارسال نشد",
+    providerGateDisabled: "درگاه ارائه‌دهنده هنوز فعال نیست",
     startBrandRequest: "ثبت درخواست برند",
     startingBrandRequest: "در حال ثبت...",
     brandRequestStarted: "درخواست لوگو/کاور به‌صورت پیش‌نویس داخلی ثبت شد.",
@@ -564,6 +594,18 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     brandPromptPlaceholder: "Example: minimal logo with local warmth, bright cover for the shop page",
     requestOnlyMode: "Internal request record",
     providerExecution: "Provider execution",
+    providerExecutionMode: "Execution mode",
+    providerExecutionDisabled: "Disabled",
+    providerExecutionDryRun: "Dry-run",
+    providerExecutionReady: "Ready to send",
+    brandExecutionTitle: "Organization brand generation execution",
+    logoGeneration: "Generate logo",
+    coverGeneration: "Generate cover",
+    draftOnlyGenerated: "Only a draft is generated",
+    autoApplyDisabled: "Automatic public-page apply is disabled",
+    providerRequestSent: "Request was sent to the image generation service",
+    dryRunActive: "Dry-run is active; no external request was sent",
+    providerGateDisabled: "Provider gate is not active yet",
     startBrandRequest: "Record brand request",
     startingBrandRequest: "Recording...",
     brandRequestStarted: "Logo/cover request was recorded as an internal draft.",
@@ -711,6 +753,18 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     brandPromptPlaceholder: "مثال: شعار بسيط بطابع محلي، غلاف مضيء لصفحة المتجر",
     requestOnlyMode: "سجل طلب داخلي",
     providerExecution: "تنفيذ المزود",
+    providerExecutionMode: "وضع التنفيذ",
+    providerExecutionDisabled: "معطل",
+    providerExecutionDryRun: "اختباري",
+    providerExecutionReady: "جاهز للإرسال",
+    brandExecutionTitle: "تنفيذ توليد علامة المؤسسة",
+    logoGeneration: "توليد الشعار",
+    coverGeneration: "توليد الغلاف",
+    draftOnlyGenerated: "يتم إنشاء مسودة فقط",
+    autoApplyDisabled: "التطبيق التلقائي على الصفحة العامة معطل",
+    providerRequestSent: "تم إرسال الطلب إلى خدمة توليد الصور",
+    dryRunActive: "الوضع الاختباري فعال؛ لم يتم إرسال طلب خارجي",
+    providerGateDisabled: "بوابة المزود غير مفعلة بعد",
     startBrandRequest: "تسجيل طلب العلامة",
     startingBrandRequest: "جار التسجيل...",
     brandRequestStarted: "تم تسجيل طلب الشعار/الغلاف كمسودة داخلية.",
@@ -1086,37 +1140,35 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
     setGenerationNotice(null)
     setApplyNotice(null)
     try {
-      const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ""
-      const response = await fetch(`/api/dashboard/creative-studio/jobs${query}`, {
+      const response = await fetch("/api/dashboard/creative-studio/organization-brand/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           organizationId,
-          targetType: "ORGANIZATION_BRAND",
           assetType: brandAssetType,
           prompt: brandPrompt.trim() || undefined,
           count: Number.parseInt(brandCount, 10),
-          aspect_ratio: brandAssetType === "LOGO" ? "1:1" : "16:9",
           style_preset: brandStylePreset,
-          metadata: {
-            p115BrandGeneration: true,
-            p117OrganizationBrandProviderGate: true,
-            requestControlsOnly: true,
-            providerExecutionGateOnly: true,
-            providerExecutionRequested: status?.generationReadiness?.organizationBrandPlan?.providerExecutionRequested ?? false,
-            providerExecutionConfigured: status?.generationReadiness?.organizationBrandPlan?.providerExecutionConfigured ?? false,
-            providerExecutionEnabled: false,
-            requestedFrom: "creative-studio-dashboard",
-            targetField: brandAssetType === "LOGO" ? "organization.logo" : "organization.coverImage",
-          },
+          locale,
+          dryRun: true,
         }),
       })
       if (!response.ok) throw new Error(await readError(response, copy.brandRequestFailed))
       const data = await response.json()
       const job = data.job as CreativeStudioJob
-      setGenerationNotice({ type: "success", message: copy.brandRequestStarted })
+      setGenerationNotice({
+        type: "success",
+        message: data.execution?.mode === "provider-requested"
+          ? copy.providerRequestSent
+          : data.execution?.mode === "dry-run"
+            ? copy.dryRunActive
+            : copy.brandRequestStarted,
+      })
       await loadOverview(organizationId)
       await loadJob(job.id, organizationId)
+      if (isJobInFlight(job.status)) {
+        pollCreativeStudioJob(job.id)
+      }
     } catch (err) {
       setGenerationNotice({ type: "error", message: err instanceof Error ? err.message : copy.brandRequestFailed })
     } finally {
@@ -1286,9 +1338,17 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
   const brandProviderExecutionEnabled = Boolean(brandPlan?.providerExecutionEnabled)
   const brandProviderRequested = Boolean(brandPlan?.providerExecutionRequested ?? brandRolloutGate?.requested)
   const brandProviderConfigured = Boolean(brandPlan?.providerExecutionConfigured ?? brandRolloutGate?.configured)
+  const brandProviderExecutionRequested = Boolean(brandPlan?.providerExecutionExplicitlyEnabled ?? brandRolloutGate?.executionRequested)
+  const brandProviderDryRun = Boolean(brandPlan?.providerExecutionDryRun ?? brandRolloutGate?.dryRun)
+  const brandProviderExecutionMode = brandPlan?.providerExecutionMode ?? brandRolloutGate?.executionMode ?? "disabled"
   const brandProviderApproved = Boolean(brandRolloutGate?.approved)
   const brandRollbackPaused = Boolean(brandRolloutGate?.rollback?.paused)
   const brandRolloutIssues = brandRolloutGate?.issues ?? brandPlan?.blockers ?? []
+  const brandExecutionModeLabel = brandProviderExecutionMode === "provider-requested"
+    ? copy.providerExecutionReady
+    : brandProviderExecutionMode === "dry-run"
+      ? copy.providerExecutionDryRun
+      : copy.providerExecutionDisabled
 
   return (
     <div className="space-y-6">
@@ -1686,8 +1746,14 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
                   <Badge variant={brandProviderExecutionEnabled ? "default" : "outline"}>
                     {copy.providerExecution}: {brandProviderExecutionEnabled ? copy.policyYes : copy.policyNo}
                   </Badge>
+                  <Badge variant={brandProviderExecutionMode === "provider-requested" ? "default" : "outline"}>
+                    {copy.providerExecutionMode}: {brandExecutionModeLabel}
+                  </Badge>
                   <Badge variant={brandProviderRequested ? "default" : "outline"}>
                     {copy.providerRequested}: {brandProviderRequested ? copy.policyYes : copy.policyNo}
+                  </Badge>
+                  <Badge variant={brandProviderExecutionRequested ? "default" : "outline"}>
+                    {copy.brandExecutionTitle}: {brandProviderExecutionRequested ? copy.policyYes : copy.policyNo}
                   </Badge>
                   <Badge variant={brandProviderConfigured ? "default" : "outline"}>
                     {copy.providerConfigured}: {brandProviderConfigured ? copy.policyYes : copy.policyNo}
@@ -1706,9 +1772,15 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
               </div>
               {!brandProviderExecutionEnabled ? (
                 <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700">
-                  {copy.brandGenerationDisabled}
+                  {brandProviderExecutionMode === "dry-run" ? copy.dryRunActive : copy.providerGateDisabled}
                 </div>
               ) : null}
+              <div className="grid gap-2 rounded-md bg-muted/30 p-3 text-xs text-muted-foreground sm:grid-cols-2">
+                <span>{brandAssetType === "LOGO" ? copy.logoGeneration : copy.coverGeneration}</span>
+                <span>{copy.draftOnlyGenerated}</span>
+                <span>{copy.autoApplyDisabled}</span>
+                <span>{copy.applyStillManual}</span>
+              </div>
             </CardContent>
           </Card>
 

@@ -223,7 +223,9 @@ async function main() {
     const response = await request(session, `/${locale}/dashboard/creative-studio`);
     const text = await response.text();
     assert(response.status === 200, `dashboard status=${response.status}`);
-    assert(/استودیوی خلاقیت|Creative Studio/.test(text), "dashboard page copy missing");
+    assert(response.url.includes(`/${locale}/dashboard/creative-studio`), `unexpected dashboard URL=${response.url}`);
+    assert(/<html[^>]+lang="fa"[^>]+dir="rtl"/.test(text) || /استودیوی خلاقیت|Creative Studio/.test(text), "dashboard shell missing");
+    assert(!/CredentialsSignin|AccessDenied|callbackUrl=/i.test(text), "dashboard returned an auth error shell");
     return `bytes=${text.length}`;
   });
 

@@ -60,9 +60,9 @@ for (const locale of ["fa", "en", "ar"]) {
 
 add("package exposes P100 validator", /"quality:web-push-delivery":\s*"node scripts\/quality\/validate-web-push-delivery\.mjs"/.test(packageJson))
 add("project validator references P100 validator", /validate-web-push-delivery\.mjs/.test(validateProject) && /P100 Web Push delivery validator passes/.test(validateProject))
-add("README keeps P100 complete while marking P109 latest", /\| 100 \| Web Push notification service/.test(readme) && /Latest completed implementation phase:\s+\*\*P112 - Creative Studio product-image generation request controls and long-running job UX\*\*/.test(readme) && /P113 - Creative Studio generated-asset selection polish and deployed acceptance/.test(readme))
-add("roadmap keeps P100 complete while marking P109 baseline", /\| P100 \| Web Push notification service\. \|/.test(roadmap) && /Completed through \*\*P112 - Creative Studio product-image generation request controls and long-running job UX\*\*/.test(roadmap))
-add("source of truth names P109 baseline and keeps P100 summary", /after P112 Creative Studio product-image generation request controls and long-running job UX/.test(sourceOfTruth) && /Web Push notification service exists/.test(sourceOfTruth))
+add("README keeps P100 complete while marking P109 latest", /\| 100 \| Web Push notification service/.test(readme) && /Latest completed implementation phase:\s+\*\*P113 - Creative Studio generated-asset selection polish and deployed acceptance\*\*/.test(readme) && /P114 - Creative Studio organization-brand generation planning and readiness gate/.test(readme))
+add("roadmap keeps P100 complete while marking P109 baseline", /\| P100 \| Web Push notification service\. \|/.test(roadmap) && /Completed through \*\*P113 - Creative Studio generated-asset selection polish and deployed acceptance\*\*/.test(roadmap))
+add("source of truth names P109 baseline and keeps P100 summary", /after P113 Creative Studio generated-asset selection polish and deployed acceptance/.test(sourceOfTruth) && /Web Push notification service exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

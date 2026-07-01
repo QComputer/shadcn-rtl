@@ -379,6 +379,11 @@ export const applyCreativeStudioAssetSchema = z.object({
   }
 });
 
+export const selectCreativeStudioAssetSchema = z.object({
+  organizationId: z.string().cuid().optional(),
+  targetField: creativeStudioApplyTargetFieldSchema.optional(),
+});
+
 export const organizationFilterSchema = z.object({
   type: z.enum(["SHOP", "APPOINTMENT"]).optional(),
   isActive: z.boolean().optional(),
@@ -439,4 +444,5 @@ export type SelectAiMediaImageInput = z.infer<typeof selectAiMediaImageSchema>;
 export type CreateCreativeStudioJobInput = z.infer<typeof createCreativeStudioJobSchema>;
 export type CreativeStudioJobFilterInput = z.infer<typeof creativeStudioJobFilterSchema>;
 export type ApplyCreativeStudioAssetInput = z.infer<typeof applyCreativeStudioAssetSchema>;
+export type SelectCreativeStudioAssetInput = z.infer<typeof selectCreativeStudioAssetSchema>;
 export type PaginationParams = z.infer<typeof paginationSchema>;

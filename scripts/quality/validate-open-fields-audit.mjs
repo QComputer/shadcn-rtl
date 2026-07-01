@@ -57,9 +57,9 @@ for (const locale of ["fa", "en", "ar"]) {
   add(`${locale} dictionary has payment condition copy`, /"paymentCondition"\s*:/.test(dictionary) && /"paymentConditionDescription"\s*:/.test(dictionary))
 }
 
-add("README keeps P96 complete while marking P109 latest", /\| 96 \| Open Fields and Workflow Completion Audit/.test(readme) && /Latest completed implementation phase:\s+\*\*P112 - Creative Studio product-image generation request controls and long-running job UX\*\*/.test(readme) && /P113 - Creative Studio generated-asset selection polish and deployed acceptance/.test(readme))
-add("roadmap keeps P96 complete while marking P109 baseline", /\| P96 \| Open fields and workflow completion audit\. \|/.test(roadmap) && /Completed through \*\*P112 - Creative Studio product-image generation request controls and long-running job UX\*\*/.test(roadmap))
-add("source of truth keeps P96 audit while naming P109 baseline", /Open Fields and Workflow Completion Audit exists/.test(sourceOfTruth) && /after P112 Creative Studio product-image generation request controls and long-running job UX/.test(sourceOfTruth))
+add("README keeps P96 complete while marking P109 latest", /\| 96 \| Open Fields and Workflow Completion Audit/.test(readme) && /Latest completed implementation phase:\s+\*\*P113 - Creative Studio generated-asset selection polish and deployed acceptance\*\*/.test(readme) && /P114 - Creative Studio organization-brand generation planning and readiness gate/.test(readme))
+add("roadmap keeps P96 complete while marking P109 baseline", /\| P96 \| Open fields and workflow completion audit\. \|/.test(roadmap) && /Completed through \*\*P113 - Creative Studio generated-asset selection polish and deployed acceptance\*\*/.test(roadmap))
+add("source of truth keeps P96 audit while naming P109 baseline", /Open Fields and Workflow Completion Audit exists/.test(sourceOfTruth) && /after P113 Creative Studio generated-asset selection polish and deployed acceptance/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

@@ -68,9 +68,9 @@ add("apply route delegates public mutation policy to service", /recordAssetAppli
 
 add("package exposes P108 validator", /"quality:creative-studio-foundation":\s*"node scripts\/quality\/validate-creative-studio-foundation\.mjs"/.test(packageJson))
 add("project validator references P108 validator", /validate-creative-studio-foundation\.mjs/.test(validateProject) && /P108 Creative Studio foundation validator passes/.test(validateProject))
-add("README marks P110 latest", /Latest completed implementation phase:\s+\*\*P112 - Creative Studio product-image generation request controls and long-running job UX\*\*/.test(readme) && /Recommended next phase:\s+\*\*P113 - Creative Studio generated-asset selection polish and deployed acceptance\*\*/.test(readme))
-add("roadmap keeps P108 complete in P110 progression", /Completed through \*\*P112 - Creative Studio product-image generation request controls and long-running job UX\*\*/.test(roadmap) && /\| P108 \| Creative Studio server foundation\. \|/.test(roadmap) && /\| P110 \| Creative Studio apply controls and cache-safe public asset updates\. \|/.test(roadmap))
-add("source of truth names P110 baseline", /after P112 Creative Studio product-image generation request controls and long-running job UX/.test(sourceOfTruth) && /Creative Studio server foundation exists/.test(sourceOfTruth))
+add("README marks P110 latest", /Latest completed implementation phase:\s+\*\*P113 - Creative Studio generated-asset selection polish and deployed acceptance\*\*/.test(readme) && /Recommended next phase:\s+\*\*P114 - Creative Studio organization-brand generation planning and readiness gate\*\*/.test(readme))
+add("roadmap keeps P108 complete in P110 progression", /Completed through \*\*P113 - Creative Studio generated-asset selection polish and deployed acceptance\*\*/.test(roadmap) && /\| P108 \| Creative Studio server foundation\. \|/.test(roadmap) && /\| P110 \| Creative Studio apply controls and cache-safe public asset updates\. \|/.test(roadmap))
+add("source of truth names P110 baseline", /after P113 Creative Studio generated-asset selection polish and deployed acceptance/.test(sourceOfTruth) && /Creative Studio server foundation exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

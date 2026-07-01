@@ -257,6 +257,14 @@ type CreativeStudioCopy = {
   pollingAttempts: string
   remoteUnavailable: string
   noProductSelected: string
+  generatedReview: string
+  selectAsset: string
+  selectingAsset: string
+  selectedAsset: string
+  selectSuccess: string
+  selectFailed: string
+  selectionNoMutation: string
+  selectBeforeApply: string
   statuses: Record<CreativeStudioJobStatus | CreativeStudioAssetStatus, string>
   targetTypes: Record<CreativeStudioTargetType, string>
   assetTypes: Record<CreativeStudioAssetType, string>
@@ -347,6 +355,14 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     pollingAttempts: "تعداد پیگیری",
     remoteUnavailable: "ارتباط با سرویس تصویر موقتا در دسترس نیست؛ آخرین وضعیت ذخیره‌شده نمایش داده می‌شود.",
     noProductSelected: "برای شروع تولید، ابتدا محصول را انتخاب کنید.",
+    generatedReview: "بررسی و انتخاب خروجی‌ها",
+    selectAsset: "انتخاب این تصویر",
+    selectingAsset: "در حال انتخاب...",
+    selectedAsset: "تصویر انتخاب‌شده",
+    selectSuccess: "تصویر پیشنهادی انتخاب شد؛ اعمال عمومی هنوز نیازمند تایید جداگانه است.",
+    selectFailed: "انتخاب تصویر پیشنهادی ناموفق بود.",
+    selectionNoMutation: "انتخاب فقط برای مرور داخلی است و صفحه عمومی را تغییر نمی‌دهد.",
+    selectBeforeApply: "ابتدا گزینه مناسب را انتخاب کنید، سپس در صورت تایید آن را اعمال کنید.",
     statuses: {
       QUEUED: "در صف",
       PROCESSING: "در حال پردازش",
@@ -465,6 +481,14 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     pollingAttempts: "Polling attempts",
     remoteUnavailable: "The image service is temporarily unavailable; the latest stored status is shown.",
     noProductSelected: "Select a product before starting generation.",
+    generatedReview: "Review and select outputs",
+    selectAsset: "Select this image",
+    selectingAsset: "Selecting...",
+    selectedAsset: "Selected image",
+    selectSuccess: "Suggested image was selected; public apply still requires separate confirmation.",
+    selectFailed: "Could not select suggested image.",
+    selectionNoMutation: "Selection is internal review only and does not change the public page.",
+    selectBeforeApply: "Select the best option first, then apply it when confirmed.",
     statuses: {
       QUEUED: "Queued",
       PROCESSING: "Processing",
@@ -583,6 +607,14 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     pollingAttempts: "عدد محاولات التحقق",
     remoteUnavailable: "خدمة الصور غير متاحة مؤقتا؛ يتم عرض آخر حالة محفوظة.",
     noProductSelected: "اختر منتجا قبل بدء التوليد.",
+    generatedReview: "مراجعة واختيار المخرجات",
+    selectAsset: "اختر هذه الصورة",
+    selectingAsset: "جار الاختيار...",
+    selectedAsset: "الصورة المختارة",
+    selectSuccess: "تم اختيار الصورة المقترحة؛ ما زال النشر العام يحتاج إلى تأكيد منفصل.",
+    selectFailed: "تعذر اختيار الصورة المقترحة.",
+    selectionNoMutation: "الاختيار للمراجعة الداخلية فقط ولا يغير الصفحة العامة.",
+    selectBeforeApply: "اختر الخيار الأنسب أولا، ثم طبقه عند التأكيد.",
     statuses: {
       QUEUED: "في الانتظار",
       PROCESSING: "قيد المعالجة",
@@ -733,6 +765,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
   } | null>(null)
   const [confirmationText, setConfirmationText] = useState("")
   const [applyingAssetId, setApplyingAssetId] = useState<string | null>(null)
+  const [selectingAssetId, setSelectingAssetId] = useState<string | null>(null)
   const [applyNotice, setApplyNotice] = useState<{ type: "success" | "error"; message: string; warnings?: string[] } | null>(null)
   const [generationNotice, setGenerationNotice] = useState<{ type: "success" | "error"; message: string } | null>(null)
 
@@ -992,6 +1025,32 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
       setGenerationNotice({ type: "error", message: err instanceof Error ? err.message : copy.generationFailed })
     } finally {
       setGenerationCancelingJobId(null)
+    }
+  }
+
+  async function selectGeneratedAsset(asset: CreativeStudioAsset) {
+    if (!selectedJob) return
+    const applyOption = getApplyOption(selectedJob, asset, copy)
+    setSelectingAssetId(asset.id)
+    setApplyNotice(null)
+    try {
+      const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ""
+      const response = await fetch(`/api/dashboard/creative-studio/assets/${encodeURIComponent(asset.id)}/select${query}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          organizationId,
+          targetField: applyOption.targetField ?? undefined,
+        }),
+      })
+      if (!response.ok) throw new Error(await readError(response, copy.selectFailed))
+      setApplyNotice({ type: "success", message: copy.selectSuccess })
+      await loadOverview(organizationId)
+      await loadJob(selectedJob.id, organizationId)
+    } catch (err) {
+      setApplyNotice({ type: "error", message: err instanceof Error ? err.message : copy.selectFailed })
+    } finally {
+      setSelectingAssetId(null)
     }
   }
 
@@ -1455,8 +1514,9 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-base">
                         <ImageIcon className="size-4" />
-                        {copy.assets}
+                        {copy.generatedReview}
                       </CardTitle>
+                      <p className="text-xs text-muted-foreground">{copy.selectBeforeApply}</p>
                     </CardHeader>
                     <CardContent>
                       {selectedJob.assets?.length ? (
@@ -1465,22 +1525,31 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
                             const applyOption = getApplyOption(selectedJob, asset, copy)
                             const application = getP110Application(asset)
                             const publicUrl = getAssetPublicUrl(asset)
+                            const isSelectedAsset = asset.status === "SELECTED"
                             return (
-                              <div key={asset.id} className="rounded-md border p-3">
+                              <div
+                                key={asset.id}
+                                className={`rounded-md border p-3 ${
+                                  isSelectedAsset ? "border-emerald-500/60 bg-emerald-500/5" : ""
+                                }`}
+                              >
                                 <div className="flex items-center justify-between gap-2">
-                                  <Badge variant={statusVariant(asset.status)}>{copy.statuses[asset.status]}</Badge>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <Badge variant={statusVariant(asset.status)}>{copy.statuses[asset.status]}</Badge>
+                                    {isSelectedAsset ? <Badge variant="default">{copy.selectedAsset}</Badge> : null}
+                                  </div>
                                   <span className="text-xs text-muted-foreground">{formatDate(asset.createdAt, locale)}</span>
                                 </div>
                                 <div className="mt-3 text-sm font-medium">{copy.assetTypes[asset.assetType]}</div>
                                 <div className="mt-1 break-all text-xs text-muted-foreground">{publicUrl || asset.id}</div>
                                 {publicUrl ? (
                                   <div className="mt-3 overflow-hidden rounded-md border bg-muted/20">
-                                    <img src={publicUrl} alt={copy.assetTypes[asset.assetType]} className="h-32 w-full object-cover" />
+                                    <img src={publicUrl} alt={copy.assetTypes[asset.assetType]} className="h-44 w-full object-cover" />
                                   </div>
                                 ) : null}
                                 <div className="mt-3 rounded-md bg-muted/30 p-2 text-xs text-muted-foreground">
                                   <div>{copy.targetField}: {applyOption.targetField ?? "-"}</div>
-                                  <div>{copy.cacheUpdated}</div>
+                                  <div>{copy.selectionNoMutation}</div>
                                 </div>
                                 {application?.publicMutation ? (
                                   <div className="mt-3 space-y-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2 text-xs">
@@ -1495,6 +1564,21 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
                                   </div>
                                 ) : null}
                                 <div className="mt-3">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={isSelectedAsset ? "secondary" : "outline"}
+                                    className="mb-2 w-full"
+                                    disabled={asset.status === "APPLIED" || !publicUrl || selectingAssetId === asset.id}
+                                    onClick={() => selectGeneratedAsset(asset)}
+                                  >
+                                    <ShieldCheck className="size-4" />
+                                    {selectingAssetId === asset.id
+                                      ? copy.selectingAsset
+                                      : isSelectedAsset
+                                        ? copy.selectedAsset
+                                        : copy.selectAsset}
+                                  </Button>
                                   <Button
                                     type="button"
                                     size="sm"

@@ -15,6 +15,7 @@ import type {
   ApplyCreativeStudioAssetInput,
   CreateCreativeStudioJobInput,
   CreativeStudioJobFilterInput,
+  SelectCreativeStudioAssetInput,
 } from "@/lib/validators";
 import type {
   CreativeStudioAssetType,
@@ -90,7 +91,7 @@ async function createUsageEventOnce(input: {
   organizationId: string;
   jobId: string;
   requestedByUserId?: string | null;
-  action: "JOB_CREATED" | "JOB_CANCELED" | "ASSET_DRAFTED";
+  action: "JOB_CREATED" | "JOB_CANCELED" | "ASSET_DRAFTED" | "ASSET_SELECTED";
   provider?: string | null;
   targetType?: CreativeStudioTargetType | null;
   targetId?: string | null;
@@ -739,6 +740,103 @@ export class CreativeStudioService {
     });
 
     return updated;
+  }
+
+  async selectAsset(
+    assetId: string,
+    organizationId: string,
+    requestedByUserId: string,
+    role: UserRole,
+    input: SelectCreativeStudioAssetInput = {},
+  ) {
+    const asset = await prisma.creativeStudioAsset.findFirst({
+      where: { id: assetId, organizationId },
+      include: { job: true },
+    });
+    if (!asset) throw new ApiError(404, "Creative Studio asset not found");
+    if (asset.status === "APPLIED") throw new ApiError(400, "Applied Creative Studio assets cannot be re-selected");
+    if (!getPublicAssetUrl(asset)) throw new ApiError(400, "Creative Studio asset does not have a public URL to select");
+
+    if (asset.job.targetType === "PRODUCT" && !hasPermission(role, "product:update")) throw new ApiError(403, "Forbidden");
+    if (asset.job.targetType === "ORGANIZATION_BRAND" && !hasPermission(role, "settings:manage")) throw new ApiError(403, "Forbidden");
+    if (asset.job.targetType === "FANPAGE_POST" && !["SUPER_ADMIN", "ADMIN", "MANAGER"].includes(role)) throw new ApiError(403, "Forbidden");
+
+    const targetField = input.targetField
+      ? resolveCreativeStudioApplyTarget(asset.job.targetType, asset.assetType, input.targetField)
+      : null;
+    const selectedAt = new Date();
+    const baseMetadata = metadataObject(asset.sourceMetadata);
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.creativeStudioAsset.updateMany({
+        where: {
+          organizationId,
+          jobId: asset.jobId,
+          status: "SELECTED",
+          id: { not: asset.id },
+        },
+        data: { status: "DRAFT" },
+      });
+
+      const selected = await tx.creativeStudioAsset.update({
+        where: { id: asset.id },
+        data: {
+          status: "SELECTED",
+          sourceMetadata: {
+            ...baseMetadata,
+            p113Selection: {
+              selectedAt: selectedAt.toISOString(),
+              selectedByUserId: requestedByUserId,
+              targetField,
+              publicMutation: false,
+              applyStillRequiresConfirmation: true,
+            },
+          } satisfies Prisma.InputJsonObject,
+        },
+      });
+
+      await tx.creativeStudioUsageEvent.create({
+        data: {
+          organizationId,
+          jobId: asset.jobId,
+          assetId: asset.id,
+          requestedByUserId,
+          action: "ASSET_SELECTED",
+          provider: asset.job.provider,
+          targetType: asset.job.targetType,
+          targetId: asset.job.targetId,
+          metadata: {
+            targetField,
+            publicMutation: false,
+            p113Selection: true,
+          },
+        },
+      });
+
+      return selected;
+    });
+
+    await writeAuditLog({
+      action: "UPDATE",
+      entityType: "CreativeStudioAsset",
+      entityId: asset.id,
+      userId: requestedByUserId,
+      organizationId,
+      previousValue: { status: asset.status },
+      newValue: {
+        status: updated.status,
+        targetField,
+        publicMutation: false,
+        applyStillRequiresConfirmation: true,
+      },
+    });
+
+    return {
+      asset: updated,
+      selected: true,
+      publicMutation: false,
+      targetField,
+    };
   }
 
   async recordAssetApplication(

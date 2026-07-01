@@ -47,9 +47,9 @@ add("P107 remains a planning-only document", /does not add:[\s\S]*Creative Studi
 
 add("package exposes P107 validator", /"quality:creative-studio-planning":\s*"node scripts\/quality\/validate-creative-studio-planning\.mjs"/.test(packageJson))
 add("project validator references P107 validator", /validate-creative-studio-planning\.mjs/.test(validateProject) && /P107 Creative Studio planning validator passes/.test(validateProject))
-add("README keeps P107 complete while marking P109 latest", /Latest completed implementation phase:\s+\*\*P118 - Creative Studio organization-brand provider execution implementation\*\*/.test(readme) && /Recommended next phase:\s+\*\*P119 - Creative Studio provider execution smoke and generated asset ingestion\*\*/.test(readme))
-add("roadmap keeps P107 complete in P109 progression", /Completed through \*\*P118 - Creative Studio organization-brand provider execution implementation\*\*/.test(roadmap) && /\| P107 \| Creative Studio integration planning for main Bazar Baz\. \|/.test(roadmap) && /\| P108 \| Creative Studio server foundation\. \|/.test(roadmap))
-add("source of truth names P109 baseline while keeping P107 planning", /after P118 Creative Studio organization-brand provider execution implementation/.test(sourceOfTruth) && /Creative Studio integration planning exists/.test(sourceOfTruth) && /Creative Studio server foundation exists/.test(sourceOfTruth))
+add("README keeps P107 complete while marking P109 latest", /Latest completed implementation phase:\s+\*\*P119 - Creative Studio provider result ingestion and review stabilization\*\*/.test(readme) && /Recommended next phase:\s+\*\*P120 - Creative Studio reviewed asset apply and rollback workflow\*\*/.test(readme))
+add("roadmap keeps P107 complete in P109 progression", /Completed through \*\*P119 - Creative Studio provider result ingestion and review stabilization\*\*/.test(roadmap) && /\| P107 \| Creative Studio integration planning for main Bazar Baz\. \|/.test(roadmap) && /\| P108 \| Creative Studio server foundation\. \|/.test(roadmap))
+add("source of truth names P109 baseline while keeping P107 planning", /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth) && /Creative Studio integration planning exists/.test(sourceOfTruth) && /Creative Studio server foundation exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

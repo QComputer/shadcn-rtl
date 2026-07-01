@@ -279,6 +279,38 @@ async function main() {
     return `status=${result.response.status}`;
   });
 
+  await check("internal provider ingestion rejects unauthenticated unsafe outputs", async () => {
+    const missingSecret = await requestJson(session, "/api/internal/creative-studio/provider-results/organization-brand", {
+      method: "POST",
+      body: JSON.stringify({
+        organizationId: session.organizationId,
+        creativeStudioJobId: "cm00000000000000000000000",
+        providerJobId: "provider-smoke-missing-secret",
+        targetType: "ORGANIZATION_BRAND",
+        status: "SUCCEEDED",
+        outputs: [{ assetType: "LOGO", url: "file:///tmp/logo.png" }],
+      }),
+    });
+    assert([401, 503].includes(missingSecret.response.status), `expected internal route auth/config rejection, got ${missingSecret.response.status}`);
+
+    const invalidSecret = await requestJson(session, "/api/internal/creative-studio/provider-results/organization-brand", {
+      method: "POST",
+      headers: { "x-creative-studio-provider-key": "invalid-smoke-secret" },
+      body: JSON.stringify({
+        organizationId: session.organizationId,
+        creativeStudioJobId: "cm00000000000000000000000",
+        providerJobId: "provider-smoke-invalid-secret",
+        targetType: "ORGANIZATION_BRAND",
+        status: "SUCCEEDED",
+        outputs: [{ assetType: "COVER", url: "http://127.0.0.1:8188/view?filename=cover.png" }],
+      }),
+    });
+    assert([401, 503].includes(invalidSecret.response.status), `expected invalid secret rejection, got ${invalidSecret.response.status}`);
+    assertNoSecrets(missingSecret.json, "Creative Studio internal ingestion missing secret");
+    assertNoSecrets(invalidSecret.json, "Creative Studio internal ingestion invalid secret");
+    return `missing=${missingSecret.response.status} invalid=${invalidSecret.response.status}`;
+  });
+
   await check("organization logo request acceptance stays draft-first and non-mutating", async () => {
     const createResult = await requestJson(session, "/api/dashboard/creative-studio/organization-brand/execute", {
       method: "POST",
@@ -308,6 +340,14 @@ async function main() {
     assert(!asset?.draftUrl && !asset?.storedUrl && !asset?.sourceUrl, "request-only asset should not expose a public URL");
     assert(createResult.json.publicMutation === false, "brand request must not mutate public organization images");
 
+    const refreshResult = await requestJson(session, `/api/dashboard/creative-studio/jobs/${encodeURIComponent(job.id)}/refresh-provider-result?organizationId=${encodeURIComponent(session.organizationId)}`, {
+      method: "POST",
+    });
+    assert(refreshResult.response.ok, `refresh provider result status=${refreshResult.response.status}`);
+    assert(refreshResult.json?.publicAutoApply === false, "refresh provider result must not auto-apply");
+    assert(Array.isArray(refreshResult.json?.assets), "refresh provider result should return current assets");
+    assertNoSecrets(refreshResult.json, "Creative Studio provider result refresh");
+
     const selectResult = await requestJson(session, `/api/dashboard/creative-studio/assets/${encodeURIComponent(asset.id)}/select?organizationId=${encodeURIComponent(session.organizationId)}`, {
       method: "POST",
       body: JSON.stringify({ organizationId: session.organizationId, targetField: "organization.logo" }),
@@ -326,10 +366,19 @@ async function main() {
     });
     assert(applyResult.response.status === 400, `unselected/no-url brand asset should not apply, got ${applyResult.response.status}`);
     assert(/public URL|selected before public apply/i.test(applyResult.json?.error || ""), "apply rejection should mention acceptance guard");
+
+    const rejectResult = await requestJson(session, `/api/dashboard/creative-studio/assets/${encodeURIComponent(asset.id)}/reject?organizationId=${encodeURIComponent(session.organizationId)}`, {
+      method: "POST",
+    });
+    assert(rejectResult.response.ok, `reject generated asset status=${rejectResult.response.status}`);
+    assert(rejectResult.json?.publicAutoApply === false, "reject generated asset must not auto-apply");
+    assert(rejectResult.json?.publicMutation === false, "reject generated asset must not mutate public images");
     assertNoSecrets(createResult.json, "Creative Studio brand request");
+    assertNoSecrets(refreshResult.json, "Creative Studio brand provider refresh");
     assertNoSecrets(selectResult.json, "Creative Studio brand select rejection");
     assertNoSecrets(applyResult.json, "Creative Studio brand apply rejection");
-    return `job=${job.id} asset=${asset.id} select=${selectResult.response.status} apply=${applyResult.response.status}`;
+    assertNoSecrets(rejectResult.json, "Creative Studio brand reject");
+    return `job=${job.id} asset=${asset.id} refresh=${refreshResult.response.status} select=${selectResult.response.status} apply=${applyResult.response.status} reject=${rejectResult.response.status}`;
   });
 
   const evidencePath = writeEvidence();

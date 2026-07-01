@@ -60,9 +60,9 @@ for (const locale of ["fa", "en", "ar"]) {
 
 add("package exposes P100 validator", /"quality:web-push-delivery":\s*"node scripts\/quality\/validate-web-push-delivery\.mjs"/.test(packageJson))
 add("project validator references P100 validator", /validate-web-push-delivery\.mjs/.test(validateProject) && /P100 Web Push delivery validator passes/.test(validateProject))
-add("README keeps P100 complete while marking P109 latest", /\| 100 \| Web Push notification service/.test(readme) && /Latest completed implementation phase:\s+\*\*P118 - Creative Studio organization-brand provider execution implementation\*\*/.test(readme) && /P119 - Creative Studio provider execution smoke and generated asset ingestion/.test(readme))
-add("roadmap keeps P100 complete while marking P109 baseline", /\| P100 \| Web Push notification service\. \|/.test(roadmap) && /Completed through \*\*P118 - Creative Studio organization-brand provider execution implementation\*\*/.test(roadmap))
-add("source of truth names P109 baseline and keeps P100 summary", /after P118 Creative Studio organization-brand provider execution implementation/.test(sourceOfTruth) && /Web Push notification service exists/.test(sourceOfTruth))
+add("README keeps P100 complete while marking P109 latest", /\| 100 \| Web Push notification service/.test(readme) && /Latest completed implementation phase:\s+\*\*P119 - Creative Studio provider result ingestion and review stabilization\*\*/.test(readme) && /P120 - Creative Studio reviewed asset apply and rollback workflow/.test(readme))
+add("roadmap keeps P100 complete while marking P109 baseline", /\| P100 \| Web Push notification service\. \|/.test(roadmap) && /Completed through \*\*P119 - Creative Studio provider result ingestion and review stabilization\*\*/.test(roadmap))
+add("source of truth names P109 baseline and keeps P100 summary", /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth) && /Web Push notification service exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

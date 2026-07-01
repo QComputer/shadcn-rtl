@@ -2,6 +2,12 @@ import { ApiError } from "@/lib/api-guards";
 import { writeAuditLog } from "@/lib/audit-log";
 import { prisma } from "@/lib/db";
 import {
+  stableCreativeStudioProviderOutputKey,
+  validateCreativeStudioProviderResult,
+  type CreativeStudioProviderResult,
+  type CreativeStudioProviderResultStatus,
+} from "@/lib/validators/creative-studio-provider-output";
+import {
   revalidateCreativeStudioPublicTarget,
   type CreativeStudioApplyTargetField,
   type CreativeStudioRevalidationInput,
@@ -15,6 +21,7 @@ import {
   AiMediaServiceError,
   createOrganizationBrandGenerationJob,
   getOrganizationBrandGenerationJob,
+  getOrganizationBrandGenerationResult,
   type AiMediaJobOutput,
   type AiMediaOrganizationBrandJobRequest,
 } from "@/lib/services/ai-media-service-client";
@@ -84,6 +91,18 @@ function getRemoteJobIdFromInputs(inputs: unknown) {
 
 function getRemoteOrganizationBrandJobIdFromInputs(inputs: unknown) {
   return getStringMetadata(metadataRecord(inputs).p118OrganizationBrandProviderExecution, "remoteJobId");
+}
+
+function getP119OutputKey(metadata: unknown) {
+  return getStringMetadata(metadataRecord(metadata).p119ProviderResult, "outputKey");
+}
+
+function mapProviderResultStatusToJobStatus(status: CreativeStudioProviderResultStatus): CreativeStudioJobStatus {
+  if (status === "SUCCEEDED") return "COMPLETED";
+  if (status === "FAILED") return "FAILED";
+  if (status === "CANCELLED") return "CANCELED";
+  if (status === "RUNNING") return "PROCESSING";
+  return "QUEUED";
 }
 
 function normalizeAiMediaOutputs(job: { outputs?: AiMediaJobOutput[] | null; output_images?: string[] | null }): AiMediaJobOutput[] {
@@ -1166,84 +1185,115 @@ export class CreativeStudioService {
     return updated;
   }
 
-  private async syncOrganizationBrandGenerationJob(jobId: string, organizationId: string) {
+  async ingestOrganizationBrandProviderResult(input: {
+    organizationId: string;
+    creativeStudioJobId: string;
+    providerJobId: string;
+    targetType: CreativeStudioTargetType;
+    result: CreativeStudioProviderResult | unknown;
+    requestedByUserId?: string | null;
+    source?: "internal-webhook" | "dashboard-refresh" | "polling";
+  }) {
+    if (input.targetType !== "ORGANIZATION_BRAND") {
+      throw new ApiError(400, "Only organization brand provider results are supported");
+    }
+
     const localJob = await prisma.creativeStudioJob.findFirst({
-      where: { id: jobId, organizationId, targetType: "ORGANIZATION_BRAND" },
+      where: { id: input.creativeStudioJobId, organizationId: input.organizationId, targetType: "ORGANIZATION_BRAND" },
       include: { assets: true },
     });
     if (!localJob) throw new ApiError(404, "Creative Studio job not found");
 
     const remoteJobId = getRemoteOrganizationBrandJobIdFromInputs(localJob.inputs);
-    if (!remoteJobId) return localJob;
+    if (!remoteJobId) throw new ApiError(400, "Creative Studio job does not have a provider job id");
+    if (remoteJobId !== input.providerJobId) throw new ApiError(400, "Provider job id does not match Creative Studio job metadata");
 
-    const remoteJob = await getOrganizationBrandGenerationJob(remoteJobId);
-    const outputs = normalizeAiMediaOutputs(remoteJob);
-    const nextStatus = remoteJob.status as CreativeStudioJobStatus;
+    const result = validateCreativeStudioProviderResult(input.result);
+    if (result.providerJobId !== remoteJobId) throw new ApiError(400, "Provider result job id mismatch");
+
+    const nextStatus = mapProviderResultStatusToJobStatus(result.status);
     const now = new Date();
     const assetType = getStringMetadata(localJob.inputs, "assetType") === "COVER" ? "COVER" : "LOGO";
     const targetField = getOrganizationBrandTargetField(assetType);
-
-    const updated = await prisma.creativeStudioJob.update({
-      where: { id: localJob.id },
-      data: {
-        status: nextStatus,
-        provider: remoteJob.provider,
-        errorMessage: remoteJob.error_message ?? null,
-        outputCount: outputs.length,
-        completedAt: nextStatus === "COMPLETED" ? localJob.completedAt ?? now : localJob.completedAt,
-        canceledAt: nextStatus === "CANCELED" ? localJob.canceledAt ?? now : localJob.canceledAt,
-      },
-      include: { assets: true },
+    const existingAssets = await prisma.creativeStudioAsset.findMany({
+      where: { jobId: localJob.id },
+      select: { id: true, assetType: true, sourceUrl: true, sourceMetadata: true },
     });
+    const existingKeys = new Set(existingAssets.map((asset) => getP119OutputKey(asset.sourceMetadata)).filter(Boolean));
+    const existingUrls = new Set(existingAssets.map((asset) => `${asset.assetType}:${asset.sourceUrl || ""}`).filter((value) => !value.endsWith(":")));
+    const createdAssetIds: string[] = [];
 
-    if (nextStatus === "COMPLETED" && outputs.length > 0) {
-      for (const [index, output] of outputs.entries()) {
-        const existing = await prisma.creativeStudioAsset.findFirst({
-          where: { jobId: localJob.id, sourceUrl: output.url },
-          select: { id: true },
+    if (nextStatus === "COMPLETED") {
+      for (const [index, output] of (result.outputs ?? []).entries()) {
+        if (output.assetType !== assetType) {
+          throw new ApiError(400, "Provider output asset type does not match Creative Studio job asset type");
+        }
+        const outputKey = stableCreativeStudioProviderOutputKey({
+          providerJobId: remoteJobId,
+          providerAssetId: output.providerAssetId,
+          checksum: output.checksum,
+          url: output.url,
+          assetType: output.assetType,
         });
-        if (existing) continue;
+        if (existingKeys.has(outputKey) || existingUrls.has(`${output.assetType}:${output.url}`)) continue;
 
         const asset = await prisma.creativeStudioAsset.create({
           data: {
-            organizationId,
+            organizationId: input.organizationId,
             jobId: localJob.id,
-            assetType,
+            assetType: output.assetType,
             status: "DRAFT",
             sourceUrl: output.url,
             draftUrl: output.url,
-            mimeType: output.mime_type ?? null,
+            mimeType: output.mimeType ?? null,
             width: output.width ?? null,
             height: output.height ?? null,
             sourceMetadata: {
               p118OrganizationBrandProviderExecution: {
                 remoteJobId,
                 outputIndex: index,
-                promptUsed: output.prompt_used ?? null,
-                seed: output.seed ?? null,
                 draftOnly: true,
                 publicMutation: false,
                 publicAutoApply: false,
                 targetField,
               },
+              p119ProviderResult: {
+                phase: "P119",
+                outputKey,
+                providerJobId: remoteJobId,
+                providerAssetId: output.providerAssetId ?? null,
+                checksum: output.checksum ?? null,
+                promptUsed: output.promptUsed ?? null,
+                seed: output.seed ?? null,
+                providerMetadata: compactMetadata(output.providerMetadata),
+                reviewStatus: "READY_FOR_REVIEW",
+                draftOnly: true,
+                publicMutation: false,
+                publicAutoApply: false,
+                targetField,
+                ingestionSource: input.source ?? "internal-webhook",
+                ingestedAt: now.toISOString(),
+              },
             } satisfies Prisma.InputJsonObject,
           },
         });
+        createdAssetIds.push(asset.id);
 
         await createUsageEventOnce({
-          organizationId,
+          organizationId: input.organizationId,
           jobId: localJob.id,
           assetId: asset.id,
-          requestedByUserId: localJob.requestedByUserId,
+          requestedByUserId: input.requestedByUserId ?? localJob.requestedByUserId,
           action: "ASSET_DRAFTED",
-          provider: remoteJob.provider,
+          provider: localJob.provider,
           targetType: localJob.targetType,
           targetId: localJob.targetId,
           metadata: {
+            p119ProviderResult: true,
+            outputKey,
             remoteJobId,
             outputIndex: index,
             sourceUrl: output.url,
-            p118OrganizationBrandProviderExecution: true,
             publicMutation: false,
             publicAutoApply: false,
             targetField,
@@ -1252,20 +1302,150 @@ export class CreativeStudioService {
       }
     }
 
+    const outputCount = await prisma.creativeStudioAsset.count({ where: { jobId: localJob.id } });
+    const updated = await prisma.creativeStudioJob.update({
+      where: { id: localJob.id },
+      data: {
+        status: nextStatus,
+        errorMessage: result.error?.message ?? null,
+        outputCount,
+        completedAt: nextStatus === "COMPLETED" ? localJob.completedAt ?? now : localJob.completedAt,
+        canceledAt: nextStatus === "CANCELED" ? localJob.canceledAt ?? now : localJob.canceledAt,
+        inputs: {
+          ...metadataObject(localJob.inputs),
+          p119ProviderResult: {
+            phase: "P119",
+            providerJobId: remoteJobId,
+            providerStatus: result.status,
+            createdAssetIds,
+            outputCount,
+            publicMutation: false,
+            publicAutoApply: false,
+            refreshedAt: now.toISOString(),
+          },
+        } satisfies Prisma.InputJsonObject,
+      },
+      include: { assets: { orderBy: { createdAt: "desc" } }, usageEvents: { orderBy: { createdAt: "desc" }, take: 10 } },
+    });
+
     if (nextStatus === "CANCELED") {
       await createUsageEventOnce({
-        organizationId,
+        organizationId: input.organizationId,
         jobId: localJob.id,
-        requestedByUserId: localJob.requestedByUserId,
+        requestedByUserId: input.requestedByUserId ?? localJob.requestedByUserId,
         action: "JOB_CANCELED",
-        provider: remoteJob.provider,
+        provider: localJob.provider,
         targetType: localJob.targetType,
         targetId: localJob.targetId,
-        metadata: { remoteJobId, p118OrganizationBrandProviderExecution: true },
+        metadata: { remoteJobId, p119ProviderResult: true },
       });
     }
 
-    return updated;
+    await writeAuditLog({
+      action: "UPDATE",
+      entityType: "CreativeStudioJob",
+      entityId: localJob.id,
+      userId: input.requestedByUserId ?? localJob.requestedByUserId,
+      organizationId: input.organizationId,
+      previousValue: { status: localJob.status, outputCount: localJob.outputCount },
+      newValue: {
+        status: updated.status,
+        providerStatus: result.status,
+        createdAssets: createdAssetIds.length,
+        publicMutation: false,
+        publicAutoApply: false,
+      },
+    });
+
+    return {
+      job: updated,
+      assets: updated.assets,
+      createdAssets: createdAssetIds.length,
+      updatedJobStatus: updated.status,
+      providerStatus: result.status,
+      publicAutoApply: false,
+      warnings: [] as string[],
+    };
+  }
+
+  async refreshOrganizationBrandProviderResult(
+    jobId: string,
+    organizationId: string,
+    requestedByUserId: string,
+    role: UserRole,
+  ) {
+    if (!hasPermission(role, "settings:manage")) throw new ApiError(403, "Forbidden");
+    const job = await prisma.creativeStudioJob.findFirst({
+      where: { id: jobId, organizationId, targetType: "ORGANIZATION_BRAND" },
+      include: { assets: { orderBy: { createdAt: "desc" } }, usageEvents: { orderBy: { createdAt: "desc" }, take: 10 } },
+    });
+    if (!job) throw new ApiError(404, "Creative Studio job not found");
+
+    const remoteJobId = getRemoteOrganizationBrandJobIdFromInputs(job.inputs);
+    if (!remoteJobId) {
+      return {
+        ok: true,
+        job,
+        assets: job.assets,
+        providerStatus: job.provider === "DRY_RUN" ? "DRY_RUN" : "PENDING",
+        publicAutoApply: false,
+        warnings: ["No provider job id is recorded for this draft-only request"],
+      };
+    }
+
+    const pollingEnabled = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_POLLING_ENABLED === "true";
+    const dryRunResultEnabled = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_RESULTS_ENABLED === "true"
+      && process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_RESULT_DRY_RUN !== "false";
+    if (!pollingEnabled && !dryRunResultEnabled) {
+      return {
+        ok: true,
+        job,
+        assets: job.assets,
+        providerStatus: "PENDING",
+        publicAutoApply: false,
+        warnings: ["Provider result polling is disabled"],
+      };
+    }
+
+    const result = await getOrganizationBrandGenerationResult(remoteJobId);
+    const ingested = await this.ingestOrganizationBrandProviderResult({
+      organizationId,
+      creativeStudioJobId: job.id,
+      providerJobId: remoteJobId,
+      targetType: "ORGANIZATION_BRAND",
+      result,
+      requestedByUserId,
+      source: "dashboard-refresh",
+    });
+
+    return {
+      ok: true,
+      job: ingested.job,
+      assets: ingested.assets,
+      providerStatus: ingested.providerStatus,
+      publicAutoApply: false,
+      warnings: ingested.warnings,
+    };
+  }
+
+  private async syncOrganizationBrandGenerationJob(jobId: string, organizationId: string) {
+    const localJob = await prisma.creativeStudioJob.findFirst({
+      where: { id: jobId, organizationId, targetType: "ORGANIZATION_BRAND" },
+    });
+    if (!localJob) throw new ApiError(404, "Creative Studio job not found");
+    const remoteJobId = getRemoteOrganizationBrandJobIdFromInputs(localJob.inputs);
+    if (!remoteJobId) return localJob;
+    const result = await getOrganizationBrandGenerationResult(remoteJobId);
+    const ingested = await this.ingestOrganizationBrandProviderResult({
+      organizationId,
+      creativeStudioJobId: localJob.id,
+      providerJobId: remoteJobId,
+      targetType: "ORGANIZATION_BRAND",
+      result,
+      requestedByUserId: localJob.requestedByUserId,
+      source: "polling",
+    });
+    return ingested.job;
   }
 
   async cancelJob(jobId: string, organizationId: string, requestedByUserId: string) {
@@ -1313,6 +1493,7 @@ export class CreativeStudioService {
     });
     if (!asset) throw new ApiError(404, "Creative Studio asset not found");
     if (asset.status === "APPLIED") throw new ApiError(400, "Applied Creative Studio assets cannot be re-selected");
+    if (asset.status === "REJECTED") throw new ApiError(400, "Rejected Creative Studio assets cannot be selected");
     if (!getPublicAssetUrl(asset)) throw new ApiError(400, "Creative Studio asset does not have a public URL to select");
 
     if (asset.job.targetType === "PRODUCT" && !hasPermission(role, "product:update")) throw new ApiError(403, "Forbidden");
@@ -1394,6 +1575,86 @@ export class CreativeStudioService {
       selected: true,
       publicMutation: false,
       targetField,
+    };
+  }
+
+  async rejectAsset(
+    assetId: string,
+    organizationId: string,
+    requestedByUserId: string,
+    role: UserRole,
+  ) {
+    const asset = await prisma.creativeStudioAsset.findFirst({
+      where: { id: assetId, organizationId },
+      include: { job: true },
+    });
+    if (!asset) throw new ApiError(404, "Creative Studio asset not found");
+    if (asset.status === "APPLIED") throw new ApiError(400, "Applied Creative Studio assets cannot be rejected");
+
+    if (asset.job.targetType === "PRODUCT" && !hasPermission(role, "product:update")) throw new ApiError(403, "Forbidden");
+    if (asset.job.targetType === "ORGANIZATION_BRAND" && !hasPermission(role, "settings:manage")) throw new ApiError(403, "Forbidden");
+    if (asset.job.targetType === "FANPAGE_POST" && !["SUPER_ADMIN", "ADMIN", "MANAGER"].includes(role)) throw new ApiError(403, "Forbidden");
+
+    const rejectedAt = new Date();
+    const updated = await prisma.creativeStudioAsset.update({
+      where: { id: asset.id },
+      data: {
+        status: "REJECTED",
+        sourceMetadata: {
+          ...metadataObject(asset.sourceMetadata),
+          p119AssetReview: {
+            phase: "P119",
+            reviewStatus: "REJECTED",
+            rejectedAt: rejectedAt.toISOString(),
+            rejectedByUserId: requestedByUserId,
+            publicMutation: false,
+            publicAutoApply: false,
+          },
+        } satisfies Prisma.InputJsonObject,
+      },
+    });
+
+    await prisma.creativeStudioUsageEvent.create({
+      data: {
+        organizationId,
+        jobId: asset.jobId,
+        assetId: asset.id,
+        requestedByUserId,
+        action: "ASSET_SELECTED",
+        provider: asset.job.provider,
+        targetType: asset.job.targetType,
+        targetId: asset.job.targetId,
+        units: 0,
+        metadata: {
+          p119AssetReview: true,
+          reviewStatus: "REJECTED",
+          publicMutation: false,
+          publicAutoApply: false,
+        },
+      },
+    });
+
+    await writeAuditLog({
+      action: "UPDATE",
+      entityType: "CreativeStudioAsset",
+      entityId: asset.id,
+      userId: requestedByUserId,
+      organizationId,
+      previousValue: { status: asset.status },
+      newValue: {
+        status: updated.status,
+        reviewStatus: "REJECTED",
+        publicMutation: false,
+        publicAutoApply: false,
+      },
+    });
+
+    return {
+      asset: updated,
+      rejected: true,
+      archived: true,
+      publicMutation: false,
+      publicAutoApply: false,
     };
   }
 

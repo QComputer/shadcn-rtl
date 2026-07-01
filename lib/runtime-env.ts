@@ -38,6 +38,9 @@ export type RuntimeEnvValidation = {
     organizationBrandProviderConfigured: boolean;
     organizationBrandProviderExecutionRequested: boolean;
     organizationBrandProviderDryRun: boolean;
+    organizationBrandProviderResultsEnabled: boolean;
+    organizationBrandProviderResultDryRun: boolean;
+    organizationBrandProviderPollingEnabled: boolean;
     organizationBrandProviderRollbackPaused: boolean;
   };
 };
@@ -291,6 +294,9 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
   const organizationBrandProviderRequested = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_ENABLED === "true";
   const organizationBrandProviderExecutionRequested = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_EXECUTION_ENABLED === "true";
   const organizationBrandProviderDryRun = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_DRY_RUN !== "false";
+  const organizationBrandProviderResultsEnabled = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_RESULTS_ENABLED === "true";
+  const organizationBrandProviderResultDryRun = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_RESULT_DRY_RUN !== "false";
+  const organizationBrandProviderPollingEnabled = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_POLLING_ENABLED === "true";
   const organizationBrandServiceUrlConfigured = isProbablyUrl(
     process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_SERVICE_URL || process.env.AI_MEDIA_SERVICE_BASE_URL || process.env.AI_MEDIA_SERVICE_URL,
   );
@@ -328,6 +334,22 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
       name: "CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_EXECUTION_ENABLED",
       severity: "error",
       message: "Organization brand provider execution requires CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_ENABLED=true.",
+    });
+  }
+
+  if ((organizationBrandProviderResultsEnabled || organizationBrandProviderPollingEnabled) && !organizationBrandProviderExecutionRequested) {
+    issues.push({
+      name: "CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_RESULTS_ENABLED",
+      severity: "error",
+      message: "Organization brand provider result ingestion/polling requires provider execution to be explicitly enabled.",
+    });
+  }
+
+  if (organizationBrandProviderResultsEnabled && !organizationBrandProviderResultDryRun && !organizationBrandProviderConfigured) {
+    issues.push({
+      name: "CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_RESULT_DRY_RUN",
+      severity: "error",
+      message: "Real organization brand provider results require complete configuration before result dry-run can be disabled.",
     });
   }
 
@@ -379,6 +401,9 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
       organizationBrandProviderConfigured,
       organizationBrandProviderExecutionRequested,
       organizationBrandProviderDryRun,
+      organizationBrandProviderResultsEnabled,
+      organizationBrandProviderResultDryRun,
+      organizationBrandProviderPollingEnabled,
       organizationBrandProviderRollbackPaused,
     },
   };

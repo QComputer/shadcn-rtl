@@ -68,9 +68,9 @@ add("apply route delegates public mutation policy to service", /recordAssetAppli
 
 add("package exposes P108 validator", /"quality:creative-studio-foundation":\s*"node scripts\/quality\/validate-creative-studio-foundation\.mjs"/.test(packageJson))
 add("project validator references P108 validator", /validate-creative-studio-foundation\.mjs/.test(validateProject) && /P108 Creative Studio foundation validator passes/.test(validateProject))
-add("README marks P110 latest", /Latest completed implementation phase:\s+\*\*P118 - Creative Studio organization-brand provider execution implementation\*\*/.test(readme) && /Recommended next phase:\s+\*\*P119 - Creative Studio provider execution smoke and generated asset ingestion\*\*/.test(readme))
-add("roadmap keeps P108 complete in P110 progression", /Completed through \*\*P118 - Creative Studio organization-brand provider execution implementation\*\*/.test(roadmap) && /\| P108 \| Creative Studio server foundation\. \|/.test(roadmap) && /\| P110 \| Creative Studio apply controls and cache-safe public asset updates\. \|/.test(roadmap))
-add("source of truth names P110 baseline", /after P118 Creative Studio organization-brand provider execution implementation/.test(sourceOfTruth) && /Creative Studio server foundation exists/.test(sourceOfTruth))
+add("README marks P110 latest", /Latest completed implementation phase:\s+\*\*P119 - Creative Studio provider result ingestion and review stabilization\*\*/.test(readme) && /Recommended next phase:\s+\*\*P120 - Creative Studio reviewed asset apply and rollback workflow\*\*/.test(readme))
+add("roadmap keeps P108 complete in P110 progression", /Completed through \*\*P119 - Creative Studio provider result ingestion and review stabilization\*\*/.test(roadmap) && /\| P108 \| Creative Studio server foundation\. \|/.test(roadmap) && /\| P110 \| Creative Studio apply controls and cache-safe public asset updates\. \|/.test(roadmap))
+add("source of truth names P110 baseline", /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth) && /Creative Studio server foundation exists/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

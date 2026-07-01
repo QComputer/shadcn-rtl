@@ -1,4 +1,8 @@
 import "server-only";
+import {
+  validateCreativeStudioProviderResult,
+  type CreativeStudioProviderResult,
+} from "@/lib/validators/creative-studio-provider-output";
 
 export type AiMediaProvider = "MOCK" | "OPENAI" | "STABILITY" | string;
 
@@ -336,6 +340,96 @@ export async function getOrganizationBrandGenerationJob(jobId: string): Promise<
   }
 
   return response.json();
+}
+
+function mapOrganizationBrandJobToProviderResult(job: AiMediaJob): CreativeStudioProviderResult {
+  const status = job.status === "COMPLETED"
+    ? "SUCCEEDED"
+    : job.status === "FAILED"
+      ? "FAILED"
+      : job.status === "CANCELED"
+        ? "CANCELLED"
+        : job.status === "PROCESSING"
+          ? "RUNNING"
+          : "PENDING";
+
+  return validateCreativeStudioProviderResult({
+    providerJobId: job.job_id,
+    status,
+    outputs: normalizeAiMediaJobOutputs(job).map((output) => ({
+      assetType: job.inputs?.assetType === "COVER" || job.inputs?.asset_type === "COVER" ? "COVER" : "LOGO",
+      url: output.url,
+      mimeType: output.mime_type,
+      width: output.width,
+      height: output.height,
+      promptUsed: output.prompt_used,
+      seed: output.seed,
+    })),
+    error: job.error_message ? { message: job.error_message } : undefined,
+    metadata: {
+      provider: job.provider,
+      source: "ai-media-service",
+    },
+  });
+}
+
+function normalizeAiMediaJobOutputs(job: { outputs?: AiMediaJobOutput[] | null; output_images?: string[] | null }): AiMediaJobOutput[] {
+  if (Array.isArray(job.outputs) && job.outputs.length > 0) {
+    return job.outputs.filter((output) => output && typeof output.url === "string");
+  }
+  if (Array.isArray(job.output_images)) {
+    return job.output_images.filter((url): url is string => typeof url === "string").map((url) => ({ url }));
+  }
+  return [];
+}
+
+export async function getOrganizationBrandGenerationResult(providerJobId: string): Promise<CreativeStudioProviderResult> {
+  if (!providerJobId?.trim()) {
+    throw new AiMediaServiceError(400, "Provider job id is required");
+  }
+
+  const resultsEnabled = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_RESULTS_ENABLED === "true";
+  const dryRun = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_RESULT_DRY_RUN !== "false";
+  if (!resultsEnabled) {
+    return validateCreativeStudioProviderResult({
+      providerJobId,
+      status: dryRun ? "PENDING" : "PENDING",
+      outputs: [],
+      metadata: {
+        resultsEnabled: false,
+        dryRun,
+        publicAutoApply: false,
+      },
+    });
+  }
+
+  if (dryRun) {
+    return validateCreativeStudioProviderResult({
+      providerJobId,
+      status: "SUCCEEDED",
+      outputs: [],
+      metadata: {
+        dryRun: true,
+        resultsEnabled: true,
+        publicAutoApply: false,
+      },
+    });
+  }
+
+  const config = assertConfigured();
+  const response = await aiMediaFetch(`${config.url}/v1/organization-brand/jobs/${encodeURIComponent(providerJobId)}/result`, {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    const text = await sanitizedErrorText(response);
+    throw new AiMediaServiceError(response.status, `AI media service returned ${response.status}: ${text}`);
+  }
+
+  const raw = await response.json();
+  if (raw?.providerJobId) return validateCreativeStudioProviderResult(raw);
+  if (raw?.job) return mapOrganizationBrandJobToProviderResult(raw.job as AiMediaJob);
+  return validateCreativeStudioProviderResult(raw);
 }
 
 export async function getAiMediaJob(jobId: string): Promise<AiMediaJob> {

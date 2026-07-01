@@ -12,6 +12,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Sparkles,
+  XCircle,
   WandSparkles,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -186,6 +187,9 @@ type CreativeStudioAsset = {
   sourceUrl?: string | null
   draftUrl?: string | null
   storedUrl?: string | null
+  mimeType?: string | null
+  width?: number | null
+  height?: number | null
   sourceMetadata?: Record<string, unknown> | null
   createdAt: string
   appliedAt?: string | null
@@ -217,6 +221,8 @@ type CreativeStudioJob = {
   status: CreativeStudioJobStatus
   provider: string
   prompt?: string | null
+  inputs?: Record<string, unknown> | null
+  errorMessage?: string | null
   outputCount: number
   createdAt: string
   completedAt?: string | null
@@ -348,6 +354,20 @@ type CreativeStudioCopy = {
   selectFailed: string
   selectionNoMutation: string
   selectBeforeApply: string
+  providerResultTitle: string
+  refreshProviderResult: string
+  refreshingProviderResult: string
+  providerResultPending: string
+  providerResultRunning: string
+  providerResultReady: string
+  providerResultFailed: string
+  providerResultDryRun: string
+  reviewOnly: string
+  publicAutoApplyWarning: string
+  rejectOutput: string
+  rejectingOutput: string
+  rejectSuccess: string
+  rejectFailed: string
   statuses: Record<CreativeStudioJobStatus | CreativeStudioAssetStatus, string>
   targetTypes: Record<CreativeStudioTargetType, string>
   assetTypes: Record<CreativeStudioAssetType, string>
@@ -479,6 +499,20 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     selectFailed: "انتخاب تصویر پیشنهادی ناموفق بود.",
     selectionNoMutation: "انتخاب فقط برای مرور داخلی است و صفحه عمومی را تغییر نمی‌دهد.",
     selectBeforeApply: "ابتدا گزینه مناسب را انتخاب کنید، سپس در صورت تایید آن را اعمال کنید.",
+    providerResultTitle: "نتیجه تولید",
+    refreshProviderResult: "بررسی نتیجه تولید",
+    refreshingProviderResult: "در حال بررسی نتیجه...",
+    providerResultPending: "در انتظار تولید",
+    providerResultRunning: "در حال تولید",
+    providerResultReady: "آماده بررسی",
+    providerResultFailed: "ناموفق",
+    providerResultDryRun: "حالت آزمایشی",
+    reviewOnly: "فقط برای بررسی",
+    publicAutoApplyWarning: "اعمال خودکار روی صفحه عمومی غیرفعال است؛ این تصویر هنوز روی لوگو یا کاور عمومی اعمال نشده است.",
+    rejectOutput: "رد کردن خروجی",
+    rejectingOutput: "در حال رد کردن...",
+    rejectSuccess: "خروجی برای بررسی رد و بایگانی شد.",
+    rejectFailed: "رد کردن خروجی ناموفق بود.",
     statuses: {
       QUEUED: "در صف",
       PROCESSING: "در حال پردازش",
@@ -638,6 +672,20 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     selectFailed: "Could not select suggested image.",
     selectionNoMutation: "Selection is internal review only and does not change the public page.",
     selectBeforeApply: "Select the best option first, then apply it when confirmed.",
+    providerResultTitle: "Generation result",
+    refreshProviderResult: "Check generation result",
+    refreshingProviderResult: "Checking result...",
+    providerResultPending: "Waiting for generation",
+    providerResultRunning: "Generating",
+    providerResultReady: "Ready for review",
+    providerResultFailed: "Failed",
+    providerResultDryRun: "Dry-run",
+    reviewOnly: "Review only",
+    publicAutoApplyWarning: "Automatic public-page apply is disabled; this image has not changed the public logo or cover.",
+    rejectOutput: "Reject output",
+    rejectingOutput: "Rejecting...",
+    rejectSuccess: "Output was rejected and archived for review.",
+    rejectFailed: "Could not reject output.",
     statuses: {
       QUEUED: "Queued",
       PROCESSING: "Processing",
@@ -797,6 +845,20 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     selectFailed: "تعذر اختيار الصورة المقترحة.",
     selectionNoMutation: "الاختيار للمراجعة الداخلية فقط ولا يغير الصفحة العامة.",
     selectBeforeApply: "اختر الخيار الأنسب أولا، ثم طبقه عند التأكيد.",
+    providerResultTitle: "نتيجة التوليد",
+    refreshProviderResult: "فحص نتيجة التوليد",
+    refreshingProviderResult: "جار فحص النتيجة...",
+    providerResultPending: "بانتظار التوليد",
+    providerResultRunning: "قيد التوليد",
+    providerResultReady: "جاهز للمراجعة",
+    providerResultFailed: "فشل",
+    providerResultDryRun: "اختباري",
+    reviewOnly: "للمراجعة فقط",
+    publicAutoApplyWarning: "التطبيق التلقائي على الصفحة العامة معطل؛ لم تتغير صورة الشعار أو الغلاف العامة.",
+    rejectOutput: "رفض المخرج",
+    rejectingOutput: "جار الرفض...",
+    rejectSuccess: "تم رفض المخرج وأرشفته للمراجعة.",
+    rejectFailed: "تعذر رفض المخرج.",
     statuses: {
       QUEUED: "في الانتظار",
       PROCESSING: "قيد المعالجة",
@@ -872,6 +934,35 @@ function getP110Application(asset: CreativeStudioAsset) {
     : null
 }
 
+function getP119ProviderResult(asset: CreativeStudioAsset) {
+  const result = asset.sourceMetadata?.p119ProviderResult
+  return result && typeof result === "object" && !Array.isArray(result)
+    ? result as {
+        providerJobId?: string
+        providerAssetId?: string | null
+        outputKey?: string
+        reviewStatus?: string
+        targetField?: CreativeStudioApplyTargetField
+      }
+    : null
+}
+
+function getJobProviderStatus(job: CreativeStudioJob | null, copy: CreativeStudioCopy) {
+  const result = job?.inputs?.p119ProviderResult
+  const status = result && typeof result === "object" && !Array.isArray(result)
+    ? (result as { providerStatus?: string }).providerStatus
+    : null
+  if (job?.provider === "DRY_RUN") return copy.providerResultDryRun
+  if (status === "SUCCEEDED") return copy.providerResultReady
+  if (status === "RUNNING") return copy.providerResultRunning
+  if (status === "FAILED") return copy.providerResultFailed
+  if (status === "PENDING") return copy.providerResultPending
+  if (job?.status === "COMPLETED" && job.assets?.length) return copy.providerResultReady
+  if (job?.status === "FAILED") return copy.providerResultFailed
+  if (isJobInFlight(job?.status)) return copy.providerResultRunning
+  return copy.providerResultPending
+}
+
 function getApplyOption(job: CreativeStudioJob, asset: CreativeStudioAsset, copy: CreativeStudioCopy) {
   let targetField: CreativeStudioApplyTargetField | null = null
   let label = copy.applyPublic
@@ -892,6 +983,7 @@ function getApplyOption(job: CreativeStudioJob, asset: CreativeStudioAsset, copy
 
   if (!targetField) return { targetField: null, label: copy.applyUnavailable, disabledReason: copy.unsupportedAsset }
   if (asset.status === "APPLIED") return { targetField, label, disabledReason: copy.alreadyApplied }
+  if (asset.status === "REJECTED") return { targetField, label, disabledReason: copy.rejectOutput }
   if (!getAssetPublicUrl(asset)) return { targetField, label, disabledReason: copy.publicUrlRequired }
 
   return { targetField, label, disabledReason: null }
@@ -953,6 +1045,8 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
   const [confirmationText, setConfirmationText] = useState("")
   const [applyingAssetId, setApplyingAssetId] = useState<string | null>(null)
   const [selectingAssetId, setSelectingAssetId] = useState<string | null>(null)
+  const [refreshingProviderJobId, setRefreshingProviderJobId] = useState<string | null>(null)
+  const [rejectingAssetId, setRejectingAssetId] = useState<string | null>(null)
   const [applyNotice, setApplyNotice] = useState<{ type: "success" | "error"; message: string; warnings?: string[] } | null>(null)
   const [generationNotice, setGenerationNotice] = useState<{ type: "success" | "error"; message: string } | null>(null)
 
@@ -1256,6 +1350,33 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
     }
   }
 
+  async function refreshProviderResult(jobId: string) {
+    setRefreshingProviderJobId(jobId)
+    setGenerationNotice(null)
+    try {
+      const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ""
+      const response = await fetch(`/api/dashboard/creative-studio/jobs/${encodeURIComponent(jobId)}/refresh-provider-result${query}`, {
+        method: "POST",
+      })
+      if (!response.ok) throw new Error(await readError(response, copy.remoteUnavailable))
+      const result = await response.json() as {
+        job: CreativeStudioJob
+        providerStatus?: string
+        warnings?: string[]
+      }
+      setSelectedJob(result.job)
+      await loadOverview(organizationId)
+      const message = result.warnings?.length
+        ? `${getJobProviderStatus(result.job, copy)}: ${result.warnings.join(" | ")}`
+        : getJobProviderStatus(result.job, copy)
+      setGenerationNotice({ type: "success", message })
+    } catch (err) {
+      setGenerationNotice({ type: "error", message: err instanceof Error ? err.message : copy.remoteUnavailable })
+    } finally {
+      setRefreshingProviderJobId(null)
+    }
+  }
+
   async function selectGeneratedAsset(asset: CreativeStudioAsset) {
     if (!selectedJob) return
     const applyOption = getApplyOption(selectedJob, asset, copy)
@@ -1279,6 +1400,26 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
       setApplyNotice({ type: "error", message: err instanceof Error ? err.message : copy.selectFailed })
     } finally {
       setSelectingAssetId(null)
+    }
+  }
+
+  async function rejectGeneratedAsset(asset: CreativeStudioAsset) {
+    if (!selectedJob) return
+    setRejectingAssetId(asset.id)
+    setApplyNotice(null)
+    try {
+      const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ""
+      const response = await fetch(`/api/dashboard/creative-studio/assets/${encodeURIComponent(asset.id)}/reject${query}`, {
+        method: "POST",
+      })
+      if (!response.ok) throw new Error(await readError(response, copy.rejectFailed))
+      setApplyNotice({ type: "success", message: copy.rejectSuccess })
+      await loadOverview(organizationId)
+      await loadJob(selectedJob.id, organizationId)
+    } catch (err) {
+      setApplyNotice({ type: "error", message: err instanceof Error ? err.message : copy.rejectFailed })
+    } finally {
+      setRejectingAssetId(null)
     }
   }
 
@@ -1838,6 +1979,9 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
                         <Badge variant={statusVariant(selectedJob.status)}>{copy.statuses[selectedJob.status]}</Badge>
                         <Badge variant="outline">{copy.targetTypes[selectedJob.targetType]}</Badge>
                         <Badge variant="outline">{selectedJob.provider}</Badge>
+                        {selectedJob.targetType === "ORGANIZATION_BRAND" ? (
+                          <Badge variant="secondary">{copy.providerResultTitle}: {getJobProviderStatus(selectedJob, copy)}</Badge>
+                        ) : null}
                         {isJobInFlight(selectedJob.status) ? (
                           <Badge variant="secondary" className="gap-1">
                             <Clock className="size-3" />
@@ -1847,6 +1991,24 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
                           <Badge variant="default">{copy.generationComplete}</Badge>
                         ) : null}
                       </div>
+                      {selectedJob.targetType === "ORGANIZATION_BRAND" ? (
+                        <div className="flex flex-col gap-2 rounded-md border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="space-y-1 text-xs text-muted-foreground">
+                            <div className="font-medium text-foreground">{copy.providerResultTitle}</div>
+                            <div>{copy.publicAutoApplyWarning}</div>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => refreshProviderResult(selectedJob.id)}
+                            disabled={refreshingProviderJobId === selectedJob.id}
+                          >
+                            <RefreshCw className={`size-4 ${refreshingProviderJobId === selectedJob.id ? "animate-spin" : ""}`} />
+                            {refreshingProviderJobId === selectedJob.id ? copy.refreshingProviderResult : copy.refreshProviderResult}
+                          </Button>
+                        </div>
+                      ) : null}
                       {isJobInFlight(selectedJob.status) ? (
                         <div className="flex flex-col gap-2 rounded-md border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="text-xs text-muted-foreground">
@@ -1925,19 +2087,23 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
                           {selectedJob.assets.map((asset) => {
                             const applyOption = getApplyOption(selectedJob, asset, copy)
                             const application = getP110Application(asset)
+                            const providerResult = getP119ProviderResult(asset)
                             const publicUrl = getAssetPublicUrl(asset)
                             const isSelectedAsset = asset.status === "SELECTED"
+                            const isRejectedAsset = asset.status === "REJECTED"
                             return (
                               <div
                                 key={asset.id}
                                 className={`rounded-md border p-3 ${
-                                  isSelectedAsset ? "border-emerald-500/60 bg-emerald-500/5" : ""
+                                  isSelectedAsset ? "border-emerald-500/60 bg-emerald-500/5" : isRejectedAsset ? "opacity-70" : ""
                                 }`}
                               >
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="flex flex-wrap items-center gap-2">
                                     <Badge variant={statusVariant(asset.status)}>{copy.statuses[asset.status]}</Badge>
                                     {isSelectedAsset ? <Badge variant="default">{copy.selectedAsset}</Badge> : null}
+                                    {selectedJob.targetType === "ORGANIZATION_BRAND" ? <Badge variant="outline">{copy.reviewOnly}</Badge> : null}
+                                    {providerResult?.providerJobId ? <Badge variant="secondary">{copy.providerResultTitle}</Badge> : null}
                                   </div>
                                   <span className="text-xs text-muted-foreground">{formatDate(asset.createdAt, locale)}</span>
                                 </div>
@@ -1950,8 +2116,14 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
                                 ) : null}
                                 <div className="mt-3 rounded-md bg-muted/30 p-2 text-xs text-muted-foreground">
                                   <div>{copy.targetField}: {applyOption.targetField ?? "-"}</div>
+                                  {providerResult?.targetField ? <div>{copy.providerResultTitle}: {providerResult.targetField}</div> : null}
                                   <div>{copy.selectionNoMutation}</div>
                                 </div>
+                                {selectedJob.targetType === "ORGANIZATION_BRAND" ? (
+                                  <div className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-xs text-amber-700">
+                                    {copy.publicAutoApplyWarning}
+                                  </div>
+                                ) : null}
                                 {application?.publicMutation ? (
                                   <div className="mt-3 space-y-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2 text-xs">
                                     <div className="font-medium text-emerald-700">{copy.publicMutation}: {copy.policyYes}</div>
@@ -1970,7 +2142,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
                                     size="sm"
                                     variant={isSelectedAsset ? "secondary" : "outline"}
                                     className="mb-2 w-full"
-                                    disabled={asset.status === "APPLIED" || !publicUrl || selectingAssetId === asset.id}
+                                    disabled={asset.status === "APPLIED" || asset.status === "REJECTED" || !publicUrl || selectingAssetId === asset.id}
                                     onClick={() => selectGeneratedAsset(asset)}
                                   >
                                     <ShieldCheck className="size-4" />
@@ -1995,6 +2167,19 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
                                   </Button>
                                   {applyOption.disabledReason ? (
                                     <div className="mt-2 text-xs text-muted-foreground">{applyOption.disabledReason}</div>
+                                  ) : null}
+                                  {asset.status !== "APPLIED" && asset.status !== "REJECTED" ? (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="mt-2 w-full"
+                                      disabled={rejectingAssetId === asset.id}
+                                      onClick={() => rejectGeneratedAsset(asset)}
+                                    >
+                                      <XCircle className="size-4" />
+                                      {rejectingAssetId === asset.id ? copy.rejectingOutput : copy.rejectOutput}
+                                    </Button>
                                   ) : null}
                                 </div>
                               </div>

@@ -2,14 +2,14 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-06-29._
 
-This roadmap is ordered for risk reduction. Phases 18-118 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, source acceptance/secretless packaging, Creative Studio planning, Creative Studio server foundation, Creative Studio dashboard review, Creative Studio apply controls, Creative Studio generation readiness, Creative Studio product-image generation, Creative Studio generated-asset selection, Creative Studio organization-brand readiness, Creative Studio organization-brand request controls, Creative Studio organization-brand acceptance, Creative Studio organization-brand provider rollout gate, and Creative Studio organization-brand provider execution roadmap is implemented through Phase 118.
+This roadmap is ordered for risk reduction. Phases 18-119 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, source acceptance/secretless packaging, Creative Studio planning, Creative Studio server foundation, Creative Studio dashboard review, Creative Studio apply controls, Creative Studio generation readiness, Creative Studio product-image generation, Creative Studio generated-asset selection, Creative Studio organization-brand readiness, Creative Studio organization-brand request controls, Creative Studio organization-brand acceptance, Creative Studio organization-brand provider rollout gate, Creative Studio organization-brand provider execution, and Creative Studio provider result ingestion roadmap is implemented through Phase 119.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P118 - Creative Studio organization-brand provider execution implementation**.
-- Creative Studio generation work must continue with the P119 provider execution smoke and generated asset ingestion phase.
+- Completed through **P119 - Creative Studio provider result ingestion and review stabilization**.
+- Creative Studio generation work must continue with the P120 reviewed asset apply and rollback workflow phase.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -20,7 +20,7 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P119 - Creative Studio provider execution smoke and generated asset ingestion
+P120 - Creative Studio reviewed asset apply and rollback workflow
 ```
 
 Next work should validate provider execution smoke and stabilize generated asset ingestion, while keeping public auto-apply out of scope.
@@ -67,6 +67,7 @@ pnpm run quality:creative-studio-organization-brand-request-controls
 pnpm run quality:creative-studio-organization-brand-acceptance
 pnpm run quality:creative-studio-organization-brand-provider-rollout
 pnpm run quality:creative-studio-organization-brand-provider-execution
+pnpm run quality:creative-studio-provider-result-ingestion
 pnpm run quality:export-downloads
 pnpm run quality:deployed-import-export-smoke
 pnpm run quality:local
@@ -130,12 +131,13 @@ Completed integrated phases:
 | P116 | Creative Studio organization logo and cover generated-asset acceptance. |
 | P117 | Creative Studio organization-brand provider execution rollout gate. |
 | P118 | Creative Studio organization-brand provider execution implementation. |
+| P119 | Creative Studio provider result ingestion and review stabilization. |
 
 Upcoming platform phases should be treated as incremental hardening against the actual implementation already present in the repo:
 
 | Phase | Focus |
 | --- | --- |
-| P119 | Creative Studio provider execution smoke and generated asset ingestion. |
+| P120 | Creative Studio reviewed asset apply and rollback workflow. |
 
 Safety constraints for all Import Hub phases:
 

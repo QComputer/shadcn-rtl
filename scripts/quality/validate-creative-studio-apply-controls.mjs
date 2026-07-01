@@ -47,9 +47,9 @@ add("cache helper revalidates all locales and home tag", /supportedLocales/.test
 add("dashboard includes Persian apply controls and confirmation copy", /اعمال روی هدف عمومی/.test(page) && /اعمال شود/.test(page) && /AlertDialog/.test(page) && /method:\s*"POST"/.test(page) && /targetField/.test(page));
 add("package exposes P110 validator", /"quality:creative-studio-apply-controls":\s*"node scripts\/quality\/validate-creative-studio-apply-controls\.mjs"/.test(packageJson));
 add("quality local references P110 validator", /validate-creative-studio-apply-controls\.mjs/.test(validateProject) && /P110 Creative Studio apply controls validator passes/.test(validateProject));
-add("README marks P110 complete and P111 next", /Latest completed implementation phase:\s+\*\*P118 - Creative Studio organization-brand provider execution implementation\*\*/.test(readme) && /Recommended next phase:\s+\*\*P119 - Creative Studio provider execution smoke and generated asset ingestion\*\*/.test(readme));
-add("roadmap marks P110 complete and P111 next", /Completed through \*\*P118 - Creative Studio organization-brand provider execution implementation\*\*/.test(roadmap) && /\| P110 \| Creative Studio apply controls and cache-safe public asset updates\. \|/.test(roadmap) && /\| P111 \| Creative Studio generation readiness gate and AI-service contract sync\. \|/.test(roadmap));
-add("source of truth names P110 baseline", /after P118 Creative Studio organization-brand provider execution implementation/.test(sourceOfTruth) && /Creative Studio apply controls exist/.test(sourceOfTruth));
+add("README marks P110 complete and P111 next", /Latest completed implementation phase:\s+\*\*P119 - Creative Studio provider result ingestion and review stabilization\*\*/.test(readme) && /Recommended next phase:\s+\*\*P120 - Creative Studio reviewed asset apply and rollback workflow\*\*/.test(readme));
+add("roadmap marks P110 complete and P111 next", /Completed through \*\*P119 - Creative Studio provider result ingestion and review stabilization\*\*/.test(roadmap) && /\| P110 \| Creative Studio apply controls and cache-safe public asset updates\. \|/.test(roadmap) && /\| P111 \| Creative Studio generation readiness gate and AI-service contract sync\. \|/.test(roadmap));
+add("source of truth names P110 baseline", /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth) && /Creative Studio apply controls exist/.test(sourceOfTruth));
 
 const failed = checks.filter((check) => !check.pass);
 for (const check of checks) {

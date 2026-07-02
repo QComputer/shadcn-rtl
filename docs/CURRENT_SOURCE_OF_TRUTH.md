@@ -4,7 +4,7 @@ Date: 2026-06-29
 
 ## Current validated baseline
 
-The current working baseline after P119 Creative Studio provider result ingestion and review stabilization is source-validator green after the P119 validation gate.
+The current working baseline after P120A Operational order notifications and admin order controls is source-validator green after the P119 validation gate.
 
 P119 adds server-mediated provider result polling and internal result ingestion for organization-brand logo/cover outputs. Ingested outputs become draft/review-only Creative Studio assets with provider metadata, dashboard refresh/reject controls, and audit/usage events; public auto-apply remains disabled and `Organization.logo` / `Organization.coverImage` are not mutated by ingestion.
 

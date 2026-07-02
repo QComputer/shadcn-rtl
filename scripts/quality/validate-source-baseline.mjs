@@ -60,7 +60,7 @@ add("active seed script remains tracked", tracked.includes("prisma/seed.ts"))
 add("duplicate client Providers wrapper removed", !exists("components/providers.tsx"))
 add("README keeps P95 source cleanup in current progression", /\| 95 \| Source Cleanup and Current-State Verification/.test(readme) && /Latest completed implementation phase:\s+\*\*P119 - Creative Studio provider result ingestion and review stabilization\*\*/.test(readme))
 add("README recommends P108 after P107", /Recommended next phase:\s+\*\*P120 - Creative Studio reviewed asset apply and rollback workflow\*\*/.test(readme))
-add("roadmap keeps P95 complete in P109 progression", /\| P95 \| Source cleanup and current-state verification\. \|/.test(roadmap) && /Completed through \*\*P119 - Creative Studio provider result ingestion and review stabilization\*\*/.test(roadmap))
+add("roadmap keeps P95 complete in P109 progression", /\| P95 \| Source cleanup and current-state verification\. \|/.test(roadmap) && /Completed through \*\*P120A - Operational order notifications and admin order controls for shop staff\*\*/.test(roadmap))
 add("source of truth keeps P95 source cleanup while naming P109 baseline", /Source Cleanup and Current-State Verification exists/.test(sourceOfTruth) && /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth))
 
 const scripts = packageJson.scripts || {}

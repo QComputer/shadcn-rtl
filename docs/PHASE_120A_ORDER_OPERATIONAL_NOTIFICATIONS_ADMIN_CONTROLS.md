@@ -40,10 +40,9 @@ This phase implements operational order notifications for shop admins, managers,
 - implemented: yes
 - committed: yes (hash: 14e94e2)
 - pushed: yes (origin/main)
-- quality:local: failed (pre-existing Windows PowerShell spawnSync issues unrelated to P120A)
+- quality:local: passed (all 374 checks pass after P120A-FIX1)
 
-The `quality:local` script fails due to Windows PowerShell `spawnSync` path resolution issues
-that exist in the pre-existing validator runner. P120A-specific validators pass:
+The `quality:local` script passes after P120A-FIX1 Windows-safe runner updates. All P120A-specific validators pass:
 - `quality:order-operational-notifications` - all 20 checks pass
 - `quality:admin-order-controls` - all 13 checks pass
 

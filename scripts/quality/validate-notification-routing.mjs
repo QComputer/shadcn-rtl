@@ -44,7 +44,7 @@ add("single-customer Web Push records delivery attempts and cleans invalid subsc
 add("package exposes P102 validator", /"quality:notification-routing":\s*"node scripts\/quality\/validate-notification-routing\.mjs"/.test(packageJson))
 add("project validator references P102 validator", /validate-notification-routing\.mjs/.test(validateProject) && /P102 notification routing validator passes/.test(validateProject))
 add("README keeps P102 complete while marking P109 latest", /\| 102 \| Notification templates, routing, and delivery policies/.test(readme) && /Latest completed implementation phase:\s+\*\*P119 - Creative Studio provider result ingestion and review stabilization\*\*/.test(readme) && /P120 - Creative Studio reviewed asset apply and rollback workflow/.test(readme))
-add("roadmap marks P102 complete in P109 progression", /\| P102 \| Notification templates, routing, and delivery policies\. \|/.test(roadmap) && /Completed through \*\*P119 - Creative Studio provider result ingestion and review stabilization\*\*/.test(roadmap))
+add("roadmap marks P102 complete in P109 progression", /\| P102 \| Notification templates, routing, and delivery policies\. \|/.test(roadmap) && /Completed through \*\*P120A - Operational order notifications and admin order controls for shop staff\*\*/.test(roadmap))
 add("source of truth names P109 baseline", /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth) && /Notification routing exists/.test(sourceOfTruth))
 
 for (const check of checks) {

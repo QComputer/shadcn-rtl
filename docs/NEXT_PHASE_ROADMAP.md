@@ -139,6 +139,8 @@ Completed integrated phases:
 
 Safety constraints for all Import Hub phases:
 
+These phases are completed through **P119 - Creative Studio provider result ingestion and review stabilization** and continue through **P120A**.
+
 1. Imports are seller-initiated and consent-based.
 2. External URL imports require explicit seller confirmation of ownership or permission.
 3. Imported items stay as drafts until reviewed and approved.

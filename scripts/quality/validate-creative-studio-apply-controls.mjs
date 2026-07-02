@@ -48,7 +48,7 @@ add("dashboard includes Persian apply controls and confirmation copy", /اعما
 add("package exposes P110 validator", /"quality:creative-studio-apply-controls":\s*"node scripts\/quality\/validate-creative-studio-apply-controls\.mjs"/.test(packageJson));
 add("quality local references P110 validator", /validate-creative-studio-apply-controls\.mjs/.test(validateProject) && /P110 Creative Studio apply controls validator passes/.test(validateProject));
 add("README marks P110 complete and P111 next", /Latest completed implementation phase:\s+\*\*P119 - Creative Studio provider result ingestion and review stabilization\*\*/.test(readme) && /Recommended next phase:\s+\*\*P120 - Creative Studio reviewed asset apply and rollback workflow\*\*/.test(readme));
-add("roadmap marks P110 complete and P111 next", /Completed through \*\*P119 - Creative Studio provider result ingestion and review stabilization\*\*/.test(roadmap) && /\| P110 \| Creative Studio apply controls and cache-safe public asset updates\. \|/.test(roadmap) && /\| P111 \| Creative Studio generation readiness gate and AI-service contract sync\. \|/.test(roadmap));
+add("roadmap marks P110 complete and P111 next", /Completed through \*\*P120A - Operational order notifications and admin order controls for shop staff\*\*/.test(roadmap) && /\| P110 \| Creative Studio apply controls and cache-safe public asset updates\. \|/.test(roadmap) && /\| P111 \| Creative Studio generation readiness gate and AI-service contract sync\. \|/.test(roadmap));
 add("source of truth names P110 baseline", /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth) && /Creative Studio apply controls exist/.test(sourceOfTruth));
 
 const failed = checks.filter((check) => !check.pass);

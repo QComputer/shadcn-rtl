@@ -88,5 +88,5 @@ P120A operational staff notifications are preserved:
 ## Known Limitations
 
 - Guest customers cannot receive real SMS in P120B; schema migration would be required to link `SmsDelivery` to `GuestCustomer`
-- Notification delivery retry/backoff is not implemented — planned for P120C
+- Notification delivery retry/backoff metadata and retry eligibility policy were added in P120C, but actual retry execution/resend is deferred to a future phase
 - Customer-facing notification templates are minimal; richer template variants can be added in later phases

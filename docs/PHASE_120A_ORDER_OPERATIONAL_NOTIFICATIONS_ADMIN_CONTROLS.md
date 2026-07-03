@@ -96,3 +96,4 @@ Excluded:
 - Customer order lifecycle notifications (status change, payment change) are not implemented - planned for P120B
 - Order history/payment events visible through existing status history tables
 - No real SMS sending for admin notifications (by design)
+- Guest customer notifications through SMS are not implemented - planned for P120B

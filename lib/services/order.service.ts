@@ -6,6 +6,7 @@ import { hasPermission, type UserRole } from "@/lib/types";
 import { Decimal } from "@prisma/client/runtime/library";
 import { InventoryMovementReason, OrderStatus, PaymentMethod, PaymentStatus, OrderType, type InventoryMovementReason as InventoryMovementReasonType, type Prisma } from "@prisma/client";
 import { operationalNotificationRouter } from "@/lib/notifications/operational-router";
+import { customerOrderLifecycleRouter } from "@/lib/notifications/customer-order-lifecycle-router";
 
 const ALLOWED_ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING: ["PLACED", "ACCEPTED", "CANCELLED"],
@@ -1351,17 +1352,40 @@ if (!org?.slug) return
       }
     }
 
+    const nextStatus = data.status as OrderStatus;
+
     const order = await prisma.$transaction(async (tx) => {
       const existingOrder = await tx.order.findUnique({
         where: { id },
-        include: { items: true },
+        include: {
+          items: true,
+          customer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              name: true,
+            },
+          },
+          guestCustomer: {
+            select: {
+              id: true,
+              phone: true,
+            },
+          },
+          organization: {
+            select: {
+              id: true,
+              slug: true,
+            },
+          },
+        },
       });
 
       if (!existingOrder) {
         throw new Error("Order not found");
       }
 
-      const nextStatus = data.status as OrderStatus;
       assertAllowedStatusTransition(existingOrder.status, nextStatus);
 
       const shouldRestoreInventory =
@@ -1398,11 +1422,32 @@ if (!org?.slug) return
         });
       }
 
-      return updatedOrder;
+      return {
+        order: updatedOrder,
+        orderNumber: existingOrder.orderNumber,
+        previousStatus: existingOrder.status,
+        customerId: existingOrder.customerId,
+        guestCustomerId: existingOrder.guestCustomerId,
+        guestCustomer: existingOrder.guestCustomer,
+        organization: existingOrder.organization,
+      };
+    });
+
+    customerOrderLifecycleRouter.notifyOrderStatusChangedSafe({
+      organizationId: order.organization.id,
+      orderNumber: order.orderNumber,
+      previousStatus: order.previousStatus,
+      newStatus: nextStatus,
+      customerId: order.customerId,
+      guestCustomerId: order.guestCustomerId,
+      guestPhone: order.guestCustomer?.phone || null,
+      actorUserId: userId,
+    }).catch((err) => {
+      console.error("[order-service] customer order status notification failed (non-blocking)", err instanceof Error ? err.message : String(err));
     });
 
     revalidatePath(`/dashboard/orders/${id}`);
-    return order;
+    return order.order;
   }
 
   async updateEstimatedEndTime(
@@ -1431,15 +1476,32 @@ if (!org?.slug) return
     },
     actorUserId: string,
   ) {
-    const order = await prisma.$transaction(async (tx) => {
+    const nextStatus = input.status;
+
+    const result = await prisma.$transaction(async (tx) => {
       const existingOrder = await tx.order.findUnique({
         where: { id: orderId },
         select: {
           id: true,
+          orderNumber: true,
           total: true,
           paymentStatus: true,
           paymentMethod: true,
           paymentId: true,
+          customerId: true,
+          guestCustomerId: true,
+          guestCustomer: {
+            select: {
+              id: true,
+              phone: true,
+            },
+          },
+          organization: {
+            select: {
+              id: true,
+              slug: true,
+            },
+          },
         },
       });
 
@@ -1447,7 +1509,6 @@ if (!org?.slug) return
         throw new Error("Order not found");
       }
 
-      const nextStatus = input.status;
       const paidAt = nextStatus === "COMPLETED" ? new Date() : null;
 
       const updatedOrder = await tx.order.update({
@@ -1487,11 +1548,32 @@ if (!org?.slug) return
         createdById: actorUserId,
       });
 
-      return updatedOrder;
+      return {
+        order: updatedOrder,
+        orderNumber: existingOrder.orderNumber,
+        previousStatus: existingOrder.paymentStatus,
+        customerId: existingOrder.customerId,
+        guestCustomerId: existingOrder.guestCustomerId,
+        guestCustomer: existingOrder.guestCustomer,
+        organization: existingOrder.organization,
+      };
+    });
+
+    customerOrderLifecycleRouter.notifyPaymentStatusChangedSafe({
+      organizationId: result.organization.id,
+      orderNumber: result.orderNumber,
+      previousStatus: result.previousStatus,
+      newStatus: nextStatus,
+      customerId: result.customerId,
+      guestCustomerId: result.guestCustomerId,
+      guestPhone: result.guestCustomer?.phone || null,
+      actorUserId,
+    }).catch((err) => {
+      console.error("[order-service] customer payment status notification failed (non-blocking)", err instanceof Error ? err.message : String(err));
     });
 
     revalidatePath(`/dashboard/orders/${orderId}`);
-    return order;
+    return result.order;
   }
 
   async assignDriver(orderId: string, driverId: string, userRole: UserRole) {

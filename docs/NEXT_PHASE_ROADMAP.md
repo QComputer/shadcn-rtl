@@ -2,14 +2,14 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-07-03._
 
-This roadmap is ordered for risk reduction. Phases 18-119 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, source acceptance/secretless packaging, Creative Studio planning, Creative Studio server foundation, Creative Studio dashboard review, Creative Studio apply controls, Creative Studio generation readiness, Creative Studio product-image generation, Creative Studio generated-asset selection, Creative Studio organization-brand readiness, Creative Studio organization-brand request controls, Creative Studio organization-brand acceptance, Creative Studio organization-brand provider rollout gate, Creative Studio organization-brand provider execution, Creative Studio provider result ingestion, and P120 Creative Studio reviewed asset apply and rollback workflow is implemented through Phase 120.
+This roadmap is ordered for risk reduction. Phases 18-119 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, source acceptance/secretless packaging, Creative Studio planning, Creative Studio server foundation, Creative Studio dashboard review, Creative Studio apply controls, Creative Studio generation readiness, Creative Studio product-image generation, Creative Studio generated-asset selection, Creative Studio organization-brand readiness, Creative Studio organization-brand request controls, Creative Studio organization-brand acceptance, Creative Studio organization-brand provider rollout gate, Creative Studio organization-brand provider execution, Creative Studio provider result ingestion, and P120 Creative Studio reviewed asset apply and rollback workflow, P120A operational order notifications and admin order controls, and P120B customer order lifecycle notifications and guest SMS dry-run review is implemented through Phase 120.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P120 - Creative Studio reviewed asset apply and rollback workflow**.
-- Creative Studio generation work continues with the P120B customer order lifecycle notifications and guest SMS dry-run review phase.
+- Completed through **P120B - Customer order lifecycle notifications and guest SMS dry-run review**.
+- Creative Studio generation work continues with the P120C notification delivery observability and retry review phase.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -20,10 +20,10 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P120B - Customer order lifecycle notifications and guest SMS dry-run review
+P120C - Notification delivery observability and retry review
 ```
 
-Next work should stabilize order lifecycle notifications and review the guest SMS dry-run path, while keeping provider execution and creative-studio apply controls safe.
+Next work should add retry/backoff for notification delivery, improve observability for in-app/Web Push/SMS outcomes, and keep customer notification routing safe and tenant-scoped.
 
 Immediate validation target:
 
@@ -134,12 +134,13 @@ Completed integrated phases:
 | P117 | Creative Studio organization-brand provider execution rollout gate. |
 | P118 | Creative Studio organization-brand provider execution implementation. |
 | P119 | Creative Studio provider result ingestion and review stabilization. |
-| P120A | Operational order notifications and admin order controls for shop staff. |
 | P120 | Creative Studio reviewed asset apply and rollback workflow. |
+| P120A | Operational order notifications and admin order controls for shop staff. |
+| P120B | Customer order lifecycle notifications and guest SMS dry-run review. |
 
 Safety constraints for all Import Hub phases:
 
-These phases are completed through **P120 - Creative Studio reviewed asset apply and rollback workflow**.
+These phases are completed through **P120B - Customer order lifecycle notifications and guest SMS dry-run review**.
 
 1. Imports are seller-initiated and consent-based.
 2. External URL imports require explicit seller confirmation of ownership or permission.

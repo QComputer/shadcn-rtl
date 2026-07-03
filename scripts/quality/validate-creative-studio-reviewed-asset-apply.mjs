@@ -66,7 +66,7 @@ add("reject/archive preserved", /rejectGeneratedAsset|رد کردن/.test(page))
 add("package exposes P120 validator", /"quality:creative-studio-reviewed-asset-apply":\s*"node scripts\/quality\/validate-creative-studio-reviewed-asset-apply\.mjs"/.test(packageJson));
 add("quality local references P120 validator", /validate-creative-studio-reviewed-asset-apply\.mjs/.test(validateProject));
 
-add("README marks P120B next", /Recommended next phase:\s+\*\*P120B - Customer order lifecycle notifications and guest SMS dry-run review\*\*/.test(readme));
+add("README marks P120B next", /Recommended next phase:\s+\*\*P120C - Notification delivery observability and retry review\*\*/.test(readme));
 add("roadmap marks P120 next", /\| P120 \| Creative Studio reviewed asset apply and rollback workflow\. \|/.test(roadmap));
 add("source of truth keeps P119 baseline", /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth));
 

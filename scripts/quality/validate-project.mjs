@@ -402,6 +402,24 @@ if (exists("scripts/quality/validate-creative-studio-provider-result-ingestion.m
     }
   }
 
+  if (exists("scripts/quality/validate-sms-ir-provider-completion.mjs")) {
+    const result = spawnSync(process.execPath, ["scripts/quality/validate-sms-ir-provider-completion.mjs"], { cwd: root, encoding: "utf8" });
+    if (result.status === 0) {
+      ok("P120D SMS.ir provider completion validator passes");
+    } else {
+      fail("P120D SMS.ir provider completion validator passes", result.stderr || result.stdout);
+    }
+  }
+
+  if (exists("scripts/quality/validate-sms-real-send-gates.mjs")) {
+    const result = spawnSync(process.execPath, ["scripts/quality/validate-sms-real-send-gates.mjs"], { cwd: root, encoding: "utf8" });
+    if (result.status === 0) {
+      ok("P120D SMS real-send gates validator passes");
+    } else {
+      fail("P120D SMS real-send gates validator passes", result.stderr || result.stdout);
+    }
+  }
+
   if (exists("scripts/quality/validate-creative-studio-reviewed-asset-apply.mjs")) {
     const result = spawnSync(process.execPath, ["scripts/quality/validate-creative-studio-reviewed-asset-apply.mjs"], { cwd: root, encoding: "utf8" });
     if (result.status === 0) {

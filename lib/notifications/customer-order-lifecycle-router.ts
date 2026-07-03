@@ -3,6 +3,7 @@ import { deliveryAttemptRecorder } from "@/lib/notifications/delivery-attempt-re
 import { prisma } from "@/lib/db"
 import { notificationRouterService } from "@/lib/notifications/router"
 import { getOrderStatusLabel, getPaymentStatusLabel } from "@/lib/notifications/status-labels"
+import { smsService } from "@/lib/sms"
 import type { NotificationTemplateKey } from "@/lib/notifications/templates"
 import type { UserRole } from "@prisma/client"
 
@@ -119,6 +120,17 @@ export class CustomerOrderLifecycleRouter {
           organizationId,
         })
 
+        await smsService.sendTextToPhone({
+          organizationId,
+          actorUserId,
+          to: normalizedPhone,
+          message: `Guest order status update: ${orderNumber}`,
+          purpose: "order_status_updated",
+          dryRun: true,
+          guestCustomerId,
+          orderId: orderId || null,
+        })
+
         await recordGuestSmsDryRun({
           organizationId,
           orderId: orderId || null,
@@ -173,6 +185,17 @@ export class CustomerOrderLifecycleRouter {
           },
           userId: actorUserId || undefined,
           organizationId,
+        })
+
+        await smsService.sendTextToPhone({
+          organizationId,
+          actorUserId,
+          to: normalizedPhone,
+          message: `Guest payment status update: ${orderNumber}`,
+          purpose: "payment_status_updated",
+          dryRun: true,
+          guestCustomerId,
+          orderId: orderId || null,
         })
 
         await recordGuestSmsDryRun({

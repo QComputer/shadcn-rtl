@@ -1921,7 +1921,7 @@ model WebPushDelivery {
 model SmsDelivery {
   id                String            @id @default(cuid())
   organizationId    String
-  customerId        String
+  customerId        String?
   actorUserId       String?
   phoneMasked       String
   purpose           String
@@ -1939,7 +1939,7 @@ model SmsDelivery {
   updatedAt         DateTime          @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  customer     User         @relation("CustomerSmsDeliveries", fields: [customerId], references: [id], onDelete: Cascade)
+  customer     User?        @relation("CustomerSmsDeliveries", fields: [customerId], references: [id], onDelete: SetNull)
   actor        User?        @relation("ActorSmsDeliveries", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, status, createdAt])

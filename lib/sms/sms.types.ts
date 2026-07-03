@@ -38,6 +38,7 @@ export type SmsSendResult = {
   error?: string
   skipped?: boolean
   deliveryId?: string
+  cost?: number
 }
 
 export type SmsSendTextInput = {
@@ -58,6 +59,9 @@ export type SmsSendVerifyCodeInput = {
 export interface SmsProvider {
   sendText(input: SmsSendTextInput): Promise<SmsSendResult>
   sendVerifyCode(input: SmsSendVerifyCodeInput): Promise<SmsSendResult>
+  sendBulk?(input: { to: string[]; message: string; purpose: string; correlationId?: string }): Promise<SmsSendResult>
+  sendLikeToLike?(input: { to: string[]; messages: string[]; purpose: string; correlationId?: string }): Promise<SmsSendResult>
+  getLines?(input?: { pageSize?: number }): Promise<{ ok: boolean; lines?: number[]; error?: string }>
 }
 
 export function maskPhoneNumber(value: string) {

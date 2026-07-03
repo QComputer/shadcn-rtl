@@ -53,7 +53,10 @@ add("SMS runtime config defaults to dry-run", /normalizeSmsProvider/.test(smsPro
 add("SMS runtime config recognizes sms.ir env", /SMS_IR_USERNAME/.test(smsProvider) && /SMS_IR_API_KEY/.test(smsProvider) && /SMS_IR_LINE_NUMBER/.test(smsProvider) && /SMS_IR_BASE_URL/.test(smsProvider))
 add("SMS real send requires explicit rollout approval and target", /DEPLOYED_ALLOW_REAL_SMS/.test(smsProvider) && /DEPLOYED_SMS_TARGET_MOBILE/.test(smsProvider) && /SMS_REAL_SEND_OPERATOR_CONFIRMED/.test(smsProvider) && /usernameConfigured/.test(smsProvider))
 add("dry-run provider does not call external services", /class SmsDryRunProvider/.test(dryRunProvider) && /provider:\s*"dry_run"/.test(dryRunProvider) && !/fetch\(/.test(dryRunProvider))
-add("sms.ir provider uses REST API key header and send endpoints", /class SmsIrProvider/.test(smsIrProvider) && /"X-API-KEY"/.test(smsIrProvider) && /\/v1\/send\/bulk/.test(smsIrProvider) && /\/v1\/send\/verify/.test(smsIrProvider))
+add("sms.ir provider uses REST API key header and send endpoints", (() => {
+  const client = exists("lib/sms/sms-ir-client.server.ts") ? read("lib/sms/sms-ir-client.server.ts") : ""
+  return /class SmsIrProvider/.test(smsIrProvider) && /"X-API-KEY"/.test(smsIrProvider) && (/\/v1\/send\/bulk/.test(smsIrProvider) || /\/v1\/send\/bulk/.test(client)) && /\/v1\/send\/verify/.test(smsIrProvider)
+})())
 add("sms.ir provider refuses when real sending disabled or unconfigured", /Real SMS sending is disabled/.test(smsIrProvider) && /SMS\.ir is not configured/.test(smsIrProvider))
 add("SMS service creates provider through single boundary", /createSmsProvider/.test(smsIndex) && /new SmsIrProvider/.test(smsIndex) && /new SmsDryRunProvider/.test(smsIndex))
 add("SMS service checks preferences before delivery", /isCustomerDeliveryAllowed/.test(preferences) && /channel:\s*"SMS"/.test(smsIndex) && /preferenceKind/.test(smsIndex))

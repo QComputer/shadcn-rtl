@@ -1,15 +1,15 @@
 # Bazar Baz — Recommended Next Phase Roadmap
 
-_Last updated from source inspection and roadmap reconciliation: 2026-06-29._
+_Last updated from source inspection and roadmap reconciliation: 2026-07-03._
 
-This roadmap is ordered for risk reduction. Phases 18-119 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, source acceptance/secretless packaging, Creative Studio planning, Creative Studio server foundation, Creative Studio dashboard review, Creative Studio apply controls, Creative Studio generation readiness, Creative Studio product-image generation, Creative Studio generated-asset selection, Creative Studio organization-brand readiness, Creative Studio organization-brand request controls, Creative Studio organization-brand acceptance, Creative Studio organization-brand provider rollout gate, Creative Studio organization-brand provider execution, Creative Studio provider result ingestion, and P120A operational order notifications roadmap is implemented through Phase 120A.
+This roadmap is ordered for risk reduction. Phases 18-119 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, source acceptance/secretless packaging, Creative Studio planning, Creative Studio server foundation, Creative Studio dashboard review, Creative Studio apply controls, Creative Studio generation readiness, Creative Studio product-image generation, Creative Studio generated-asset selection, Creative Studio organization-brand readiness, Creative Studio organization-brand request controls, Creative Studio organization-brand acceptance, Creative Studio organization-brand provider rollout gate, Creative Studio organization-brand provider execution, Creative Studio provider result ingestion, and P120 Creative Studio reviewed asset apply and rollback workflow is implemented through Phase 120.
 
 ## Current integrated roadmap
 
 Current baseline:
 
-- Completed through **P120A - Operational order notifications and admin order controls for shop staff**.
-- Creative Studio generation work must continue with the P120 reviewed asset apply and rollback workflow phase.
+- Completed through **P120 - Creative Studio reviewed asset apply and rollback workflow**.
+- Creative Studio generation work continues with the P120B customer order lifecycle notifications and guest SMS dry-run review phase.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -20,10 +20,10 @@ Current baseline:
 Recommended next phase:
 
 ```txt
-P120 - Creative Studio reviewed asset apply and rollback workflow
+P120B - Customer order lifecycle notifications and guest SMS dry-run review
 ```
 
-Next work should validate provider execution smoke and stabilize generated asset ingestion, while keeping public auto-apply out of scope.
+Next work should stabilize order lifecycle notifications and review the guest SMS dry-run path, while keeping provider execution and creative-studio apply controls safe.
 
 Immediate validation target:
 
@@ -139,7 +139,7 @@ Completed integrated phases:
 
 Safety constraints for all Import Hub phases:
 
-These phases are completed through **P119 - Creative Studio provider result ingestion and review stabilization** and continue through **P120A**.
+These phases are completed through **P120 - Creative Studio reviewed asset apply and rollback workflow**.
 
 1. Imports are seller-initiated and consent-based.
 2. External URL imports require explicit seller confirmation of ownership or permission.

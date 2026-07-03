@@ -43,8 +43,8 @@ add("service worker keeps web push handlers", /addEventListener\("push"/.test(se
 add("package exposes P98 validator", /"quality:pwa-offline-shell":\s*"node scripts\/quality\/validate-pwa-offline-shell\.mjs"/.test(packageJson))
 add("project validator references P98 validator", /validate-pwa-offline-shell\.mjs/.test(validateProject) && /P98 PWA offline shell validator passes/.test(validateProject))
 add("P97 validator tolerates P98 offline cache", /P98 offline cache remains guarded/.test(p97Validator))
-add("README keeps P98 complete while marking P109 latest", /\| 98 \| Offline shell, caching, and PWA quality gates/.test(readme) && /Latest completed implementation phase:\s+\*\*P119 - Creative Studio provider result ingestion and review stabilization\*\*/.test(readme) && /P120 - Creative Studio reviewed asset apply and rollback workflow/.test(readme))
-add("roadmap marks P98 complete in P109 progression", /\| P98 \| Offline shell, caching, and PWA quality gates\. \|/.test(roadmap) && /Completed through \*\*P120A - Operational order notifications and admin order controls for shop staff\*\*/.test(roadmap))
+add("README keeps P98 complete while marking P109 latest", /\| 98 \| Offline shell, caching, and PWA quality gates/.test(readme) && /Latest completed implementation phase:\s+\*\*P120 - Creative Studio reviewed asset apply and rollback workflow\*\*/.test(readme) && /P120B - Customer order lifecycle notifications and guest SMS dry-run review/.test(readme))
+add("roadmap marks P98 complete in P109 progression", /\| P98 \| Offline shell, caching, and PWA quality gates\. \|/.test(roadmap) && /Completed through \*\*P120 - Creative Studio reviewed asset apply and rollback workflow\*\*/.test(roadmap))
 add("source of truth names P109 baseline while keeping P98 offline shell", /Offline Shell, Caching, and PWA Quality Gates exist/.test(sourceOfTruth) && /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth))
 
 for (const check of checks) {

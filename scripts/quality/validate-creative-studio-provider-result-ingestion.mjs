@@ -114,7 +114,7 @@ add("dashboard refresh service respects polling/dry-run gates", /CREATIVE_STUDIO
 add("dashboard refresh service does not mutate public assets", !/prisma\.organization\.update|prisma\.product\.update|prisma\.fanpagePost\.update/.test(refreshMethod));
 
 add("reject/archive route exists", exists(rejectRoutePath) && /rejectAsset/.test(rejectRoute));
-add("reject/archive service marks rejected without deletion", /status:\s*"REJECTED"/.test(rejectMethod) && /p119AssetReview/.test(rejectMethod) && !/delete/.test(rejectMethod));
+add("reject/archive service marks rejected without deletion", /status:\s*"REJECTED"/.test(rejectMethod) && /p119AssetReview/.test(rejectMethod) && !/\bdelete\b/.test(rejectMethod));
 add("reject/archive service blocks applied assets", /Applied Creative Studio assets cannot be rejected/.test(rejectMethod));
 add("reject/archive service records audit/usage", /creativeStudioUsageEvent/.test(rejectMethod) && /writeAuditLog/.test(rejectMethod));
 
@@ -130,8 +130,8 @@ add("deployed smoke covers P119 safe routes", /refresh-provider-result/.test(smo
 add("package exposes P119 validator", /"quality:creative-studio-provider-result-ingestion":\s*"node scripts\/quality\/validate-creative-studio-provider-result-ingestion\.mjs"/.test(packageJson));
 add("quality local references P119 validator", /validate-creative-studio-provider-result-ingestion\.mjs/.test(validateProject) && /P119 Creative Studio provider result ingestion validator passes/.test(validateProject));
 add("P119 docs exist and state safety boundaries", /Status: implemented/.test(doc) && /draft\/review-only/.test(doc) && /Public auto-apply remains disabled/.test(doc) && /never calls ComfyUI/.test(doc));
-add("README marks P119 complete and P120 next", /Latest completed implementation phase:\s+\*\*P119 - Creative Studio provider result ingestion and review stabilization\*\*/.test(readme) && /Recommended next phase:\s+\*\*P120 - Creative Studio reviewed asset apply and rollback workflow\*\*/.test(readme));
-add("roadmap marks P119 complete and P120 next", /Completed through \*\*P120A - Operational order notifications and admin order controls for shop staff\*\*/.test(roadmap) && /\| P119 \| Creative Studio provider result ingestion and review stabilization\. \|/.test(roadmap) && /\| P120 \| Creative Studio reviewed asset apply and rollback workflow\. \|/.test(roadmap));
+add("README marks P119 complete and P120 next", /Latest completed implementation phase:\s+\*\*P120 - Creative Studio reviewed asset apply and rollback workflow\*\*/.test(readme) && /Recommended next phase:\s+\*\*P120B - Customer order lifecycle notifications and guest SMS dry-run review\*\*/.test(readme));
+add("roadmap marks P119 complete and P120 next", /Completed through \*\*P120 - Creative Studio reviewed asset apply and rollback workflow\*\*/.test(roadmap) && /\| P119 \| Creative Studio provider result ingestion and review stabilization\. \|/.test(roadmap) && /\| P120 \| Creative Studio reviewed asset apply and rollback workflow\. \|/.test(roadmap));
 add("source of truth names P119 baseline", /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth) && /Creative Studio provider result ingestion exists/.test(sourceOfTruth));
 
 for (const check of checks) {

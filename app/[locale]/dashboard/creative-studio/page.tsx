@@ -14,6 +14,7 @@ import {
   Sparkles,
   XCircle,
   WandSparkles,
+  ArrowLeft,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -193,6 +194,11 @@ type CreativeStudioAsset = {
   sourceMetadata?: Record<string, unknown> | null
   createdAt: string
   appliedAt?: string | null
+  job?: {
+    targetType: CreativeStudioTargetType
+    targetId?: string | null
+    provider?: string | null
+  }
 }
 
 type CreativeStudioApplyResponse = {
@@ -277,6 +283,10 @@ type CreativeStudioCopy = {
   applying: string
   applySuccess: string
   applyFailed: string
+  rollbackAsset: string
+  rollingBackAsset: string
+  rollbackSuccess: string
+  rollbackFailed: string
   targetField: string
   previousImage: string
   currentImage: string
@@ -415,13 +425,17 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     publicUrlRequired: "این دارایی هنوز URL عمومی قابل استفاده ندارد.",
     unsupportedAsset: "این نوع دارایی در این فاز قابل اعمال نیست.",
     alreadyApplied: "این دارایی قبلا اعمال شده است.",
-    confirmationTitle: "تایید اعمال دارایی",
-    confirmationDescription: "این تغییر روی صفحه عمومی فروشگاه دیده می‌شود. برای تایید، عبارت «اعمال شود» را وارد کنید.",
+    confirmationTitle: "تأیید اعمال روی صفحه عمومی",
+    confirmationDescription: "این تصویر پس از تأیید روی صفحه عمومی فروشگاه نمایش داده می‌شود. این کار خودکار نیست و فقط با تأیید شما انجام می‌شود.",
     confirmationPlaceholder: "اعمال شود",
     confirmationRequired: "برای اعمال، عبارت «اعمال شود» را وارد کنید.",
     applying: "در حال اعمال...",
     applySuccess: "دارایی با موفقیت روی هدف عمومی اعمال شد.",
     applyFailed: "اعمال دارایی ناموفق بود.",
+    rollbackAsset: "بازگردانی تصویر قبلی",
+    rollingBackAsset: "در حال بازگردانی...",
+    rollbackSuccess: "تصویر قبلی با موفقیت بازگردانی شد.",
+    rollbackFailed: "بازگردانی تصویر قبلی ناموفق بود.",
     targetField: "فیلد هدف",
     previousImage: "تصویر قبلی",
     currentImage: "تصویر فعلی",
@@ -595,6 +609,10 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     applying: "Applying...",
     applySuccess: "Asset applied to the public target.",
     applyFailed: "Asset application failed.",
+    rollbackAsset: "Rollback to previous image",
+    rollingBackAsset: "Rolling back...",
+    rollbackSuccess: "Previous image has been restored.",
+    rollbackFailed: "Rollback failed.",
     targetField: "Target field",
     previousImage: "Previous image",
     currentImage: "Current image",
@@ -768,6 +786,10 @@ const copyByLocale: Record<string, CreativeStudioCopy> = {
     applying: "جار التطبيق...",
     applySuccess: "تم تطبيق الأصل على الهدف العام.",
     applyFailed: "فشل تطبيق الأصل.",
+    rollbackAsset: "استعادة الصورة السابقة",
+    rollingBackAsset: "جارٍ الاستعادة...",
+    rollbackSuccess: "تم استعادة الصورة السابقة بنجاح.",
+    rollbackFailed: "فشلت الاستعادة.",
     targetField: "حقل الهدف",
     previousImage: "الصورة السابقة",
     currentImage: "الصورة الحالية",
@@ -930,8 +952,16 @@ function getP110Application(asset: CreativeStudioAsset) {
         appliedUrl?: string | null
         publicMutation?: boolean
         cacheRevalidation?: { warnings?: string[]; paths?: string[] }
+        rollbackHint?: { targetField?: CreativeStudioApplyTargetField; previousValue?: string | null }
       }
     : null
+}
+
+function hasRollbackMetadata(asset: CreativeStudioAsset) {
+  const application = getP110Application(asset);
+  if (!application) return false;
+  const rollbackHint = application.rollbackHint;
+  return Boolean(rollbackHint && typeof rollbackHint.previousValue === "string");
 }
 
 function getP119ProviderResult(asset: CreativeStudioAsset) {
@@ -1047,6 +1077,8 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
   const [selectingAssetId, setSelectingAssetId] = useState<string | null>(null)
   const [refreshingProviderJobId, setRefreshingProviderJobId] = useState<string | null>(null)
   const [rejectingAssetId, setRejectingAssetId] = useState<string | null>(null)
+  const [rollingBackAssetId, setRollingBackAssetId] = useState<string | null>(null)
+  const [rollbackNotice, setRollbackNotice] = useState<{ type: "success" | "error"; message: string } | null>(null)
   const [applyNotice, setApplyNotice] = useState<{ type: "success" | "error"; message: string; warnings?: string[] } | null>(null)
   const [generationNotice, setGenerationNotice] = useState<{ type: "success" | "error"; message: string } | null>(null)
 
@@ -1462,6 +1494,26 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
     }
   }
 
+  async function rollbackAppliedAsset(asset: CreativeStudioAsset) {
+    if (asset.job?.targetType !== "ORGANIZATION_BRAND") return
+    setRollingBackAssetId(asset.id)
+    setRollbackNotice(null)
+    try {
+      const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ""
+      const response = await fetch(`/api/dashboard/creative-studio/assets/${encodeURIComponent(asset.id)}/rollback${query}`, {
+        method: "POST",
+      })
+      if (!response.ok) throw new Error(await readError(response, copy.rollbackFailed))
+      setRollbackNotice({ type: "success", message: copy.rollbackSuccess })
+      await loadOverview(organizationId)
+      await loadJob(selectedJob.id, organizationId)
+    } catch (err) {
+      setRollbackNotice({ type: "error", message: err instanceof Error ? err.message : copy.rollbackFailed })
+    } finally {
+      setRollingBackAssetId(null)
+    }
+  }
+
   const isReadOnlyPublicMutationBlocked = status?.policy.noPublicAssetMutation === true
   const isDraftOnly = status?.policy.draftOnly === true
   const generationReady = Boolean(
@@ -1539,6 +1591,16 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
               ))}
             </div>
           ) : null}
+        </div>
+      )}
+
+      {rollbackNotice && (
+        <div className={`rounded-md border p-3 text-sm $
+          rollbackNotice.type === "success"
+            ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-700"
+            : "border-destructive/40 bg-destructive/5 text-destructive"
+        }`}>
+          <div>{rollbackNotice.message}</div>
         </div>
       )}
 
@@ -2167,6 +2229,19 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
                                   </Button>
                                   {applyOption.disabledReason ? (
                                     <div className="mt-2 text-xs text-muted-foreground">{applyOption.disabledReason}</div>
+                                  ) : null}
+                                  {asset.status === "APPLIED" && hasRollbackMetadata(asset) ? (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="mt-2 w-full"
+                                      disabled={rollingBackAssetId === asset.id}
+                                      onClick={() => rollbackAppliedAsset(asset)}
+                                    >
+                                      <ArrowLeft className="size-4" />
+                                      {rollingBackAssetId === asset.id ? copy.rollingBackAsset : copy.rollbackAsset}
+                                    </Button>
                                   ) : null}
                                   {asset.status !== "APPLIED" && asset.status !== "REJECTED" ? (
                                     <Button

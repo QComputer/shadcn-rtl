@@ -366,6 +366,15 @@ if (exists("scripts/quality/validate-creative-studio-provider-result-ingestion.m
     }
   }
 
+  if (exists("scripts/quality/validate-creative-studio-reviewed-asset-apply.mjs")) {
+    const result = spawnSync(process.execPath, ["scripts/quality/validate-creative-studio-reviewed-asset-apply.mjs"], { cwd: root, encoding: "utf8" });
+    if (result.status === 0) {
+      ok("P120 Creative Studio reviewed asset apply validator passes");
+    } else {
+      fail("P120 Creative Studio reviewed asset apply validator passes", result.stderr || result.stdout);
+    }
+  }
+
   if (exists("scripts/quality/validate-api-service-safety.mjs")) {
   const result = spawnSync(process.execPath, ["scripts/quality/validate-api-service-safety.mjs"], { cwd: root, encoding: "utf8" });
   result.status === 0 ? ok("P20 API/service safety validator passes") : fail("P20 API/service safety validator passes", result.stderr || result.stdout);

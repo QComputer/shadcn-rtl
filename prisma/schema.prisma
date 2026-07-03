@@ -300,6 +300,7 @@ enum CreativeStudioUsageAction {
   ASSET_DRAFTED
   ASSET_SELECTED
   ASSET_APPLIED
+  ASSET_ROLLED_BACK
 }
 
 // --- CORE MODELS ---

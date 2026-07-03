@@ -1,4 +1,4 @@
-import { ApiError } from "@/lib/api-guards";
+﻿import { ApiError } from "@/lib/api-guards";
 import { writeAuditLog } from "@/lib/audit-log";
 import { prisma } from "@/lib/db";
 import {
@@ -209,6 +209,9 @@ function assertPublicSafeAssetUrl(url: string | null) {
 
   if (!["http:", "https:"].includes(parsed.protocol)) {
     throw new ApiError(400, "Creative Studio asset URL must be public http(s)");
+  }
+  if (parsed.protocol === "file:") {
+    throw new ApiError(400, "Creative Studio asset URL must not use file://");
   }
   if (parsed.username || parsed.password) {
     throw new ApiError(400, "Creative Studio asset URL must not include credentials");
@@ -1655,6 +1658,125 @@ export class CreativeStudioService {
       archived: true,
       publicMutation: false,
       publicAutoApply: false,
+    };
+  }
+
+  async rollbackAssetApplication(
+    assetId: string,
+    organizationId: string,
+    requestedByUserId: string,
+    role: UserRole,
+  ) {
+    const asset = await prisma.creativeStudioAsset.findFirst({
+      where: { id: assetId, organizationId, status: "APPLIED" },
+      include: { job: true },
+    });
+    if (!asset) throw new ApiError(404, "Applied Creative Studio asset not found");
+
+    if (asset.job.targetType !== "ORGANIZATION_BRAND") {
+      throw new ApiError(400, "Only organization brand assets can be rolled back in this phase");
+    }
+    if (!hasPermission(role, "settings:manage")) throw new ApiError(403, "Forbidden");
+
+    const application = getNestedMetadataRecord(asset.sourceMetadata, "p110Application");
+    const rollbackHint = getNestedMetadataRecord(application, "rollbackHint");
+    const previousValue = typeof rollbackHint.previousValue === "string" ? rollbackHint.previousValue : null;
+    const targetField = typeof rollbackHint.targetField === "string" ? rollbackHint.targetField : null;
+    if (!targetField || !["organization.logo", "organization.coverImage"].includes(targetField)) {
+      throw new ApiError(400, "Rollback target is missing or unsupported");
+    }
+
+    const organization = await prisma.organization.findFirst({
+      where: { id: organizationId, deletedAt: null },
+      select: { id: true, slug: true, logo: true, coverImage: true },
+    });
+    if (!organization) throw new ApiError(404, "Organization not found");
+
+    const rolledBackAt = new Date();
+    const updated = await prisma.$transaction(async (tx) => {
+      if (targetField === "organization.logo") {
+        await tx.organization.update({ where: { id: organization.id }, data: { logo: previousValue } });
+      } else if (targetField === "organization.coverImage") {
+        await tx.organization.update({ where: { id: organization.id }, data: { coverImage: previousValue } });
+      } else {
+        throw new ApiError(400, "Unsupported rollback target");
+      }
+
+      const rolledAsset = await tx.creativeStudioAsset.update({
+        where: { id: asset.id },
+        data: {
+          status: "SELECTED",
+          appliedAt: null,
+          sourceMetadata: {
+            ...metadataObject(asset.sourceMetadata),
+            p120Rollback: {
+              phase: "P120",
+              rolledBackAt: rolledBackAt.toISOString(),
+              restoredPreviousValue: previousValue,
+              targetField,
+            },
+          } satisfies Prisma.InputJsonObject,
+        },
+      });
+
+      await tx.creativeStudioUsageEvent.create({
+        data: {
+          organizationId,
+          jobId: asset.jobId,
+          assetId: asset.id,
+          requestedByUserId,
+          action: "ASSET_ROLLED_BACK",
+          provider: asset.job.provider,
+          targetType: asset.job.targetType,
+          targetId: asset.job.targetId,
+          metadata: {
+            targetField,
+            previousValue,
+            publicMutation: true,
+            rollbackPhase: "P120",
+          },
+        },
+      });
+
+      return rolledAsset;
+    });
+
+    const revalidation = revalidateCreativeStudioPublicTarget({
+      targetField: targetField as "organization.logo" | "organization.coverImage",
+      organizationSlug: organization.slug,
+    });
+
+    await writeAuditLog({
+      action: "UPDATE",
+      entityType: "Organization",
+      entityId: organization.id,
+      userId: requestedByUserId,
+      organizationId,
+      organizationSlug: organization.slug,
+      previousValue: { [targetField]: previousValue },
+      newValue: { [targetField]: previousValue, rolledBackFromAssetId: asset.id },
+    });
+
+    await writeAuditLog({
+      action: "UPDATE",
+      entityType: "CreativeStudioAsset",
+      entityId: asset.id,
+      userId: requestedByUserId,
+      organizationId,
+      organizationSlug: organization.slug,
+      previousValue: { status: asset.status, appliedAt: asset.appliedAt },
+      newValue: { status: updated.status, rolledBack: true, publicMutation: true },
+    });
+
+    return {
+      asset: updated,
+      rolledBack: true,
+      target: {
+        type: asset.job.targetType,
+        field: targetField,
+        previousValue,
+      },
+      revalidation,
     };
   }
 

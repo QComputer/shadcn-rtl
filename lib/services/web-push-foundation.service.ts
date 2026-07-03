@@ -1,5 +1,6 @@
 import { ApiError } from "@/lib/api-guards"
 import { writeAuditLog } from "@/lib/audit-log"
+import { deliveryAttemptRecorder } from "@/lib/notifications/delivery-attempt-recorder"
 import { prisma } from "@/lib/db"
 import { notificationPreferencesService } from "@/lib/services/notification-preferences.service"
 import webpush from "web-push"
@@ -478,6 +479,21 @@ export class WebPushFoundationService {
       organizationId: input.organizationId,
     })
 
+    await deliveryAttemptRecorder.record({
+      organizationId: input.organizationId,
+      targetUserId: null,
+      orderId: null,
+      guestCustomerId: null,
+      notificationId: null,
+      channel: "WEB_PUSH",
+      purpose: "ORDER_CREATED_STAFF",
+      status: "DRY_RUN",
+      dryRun: true,
+      retryable: false,
+      metadata: { recipientCount, subscriptionCount: subscriptions.length },
+      actorUserId: input.actorUserId || null,
+    })
+
     return {
       dryRun: true,
       provider: config.provider,
@@ -523,6 +539,20 @@ export class WebPushFoundationService {
     })
 
     if (!allowed) {
+      await deliveryAttemptRecorder.record({
+        organizationId: input.organizationId,
+        targetUserId: input.customerId,
+        orderId: null,
+        guestCustomerId: null,
+        notificationId: null,
+        channel: "WEB_PUSH",
+        purpose: input.preferenceKind === "marketing" ? "MARKETING_BROADCAST" : "ORDER_STATUS_CUSTOMER",
+        status: "SKIPPED",
+        dryRun: Boolean(input.dryRun),
+        retryable: false,
+        lastErrorText: "WEB_PUSH preference is disabled",
+        actorUserId: input.actorUserId || null,
+      })
       return {
         dryRun: Boolean(input.dryRun),
         provider: config.provider,
@@ -541,6 +571,19 @@ export class WebPushFoundationService {
     }
 
     if (input.dryRun) {
+      await deliveryAttemptRecorder.record({
+        organizationId: input.organizationId,
+        targetUserId: input.customerId,
+        orderId: null,
+        guestCustomerId: null,
+        notificationId: null,
+        channel: "WEB_PUSH",
+        purpose: input.preferenceKind === "marketing" ? "MARKETING_BROADCAST" : "ORDER_STATUS_CUSTOMER",
+        status: "DRY_RUN",
+        dryRun: true,
+        retryable: false,
+        actorUserId: input.actorUserId || null,
+      })
       return {
         dryRun: true,
         provider: config.provider,
@@ -604,6 +647,19 @@ export class WebPushFoundationService {
           where: { id: delivery.id },
           data: { status: "SENT", sentAt: new Date(), error: null },
         })
+        await deliveryAttemptRecorder.record({
+          organizationId: input.organizationId,
+          targetUserId: input.customerId,
+          orderId: null,
+          guestCustomerId: null,
+          notificationId: null,
+          channel: "WEB_PUSH",
+          purpose: input.preferenceKind === "marketing" ? "MARKETING_BROADCAST" : "ORDER_STATUS_CUSTOMER",
+          status: "SENT",
+          dryRun: false,
+          retryable: false,
+          actorUserId: input.actorUserId || null,
+        })
         successCount++
       } catch (err) {
         failureCount++
@@ -619,6 +675,20 @@ export class WebPushFoundationService {
         await prisma.webPushDelivery.update({
           where: { id: delivery.id },
           data: { status: "FAILED", error: errorMessage },
+        })
+        await deliveryAttemptRecorder.record({
+          organizationId: input.organizationId,
+          targetUserId: input.customerId,
+          orderId: null,
+          guestCustomerId: null,
+          notificationId: null,
+          channel: "WEB_PUSH",
+          purpose: input.preferenceKind === "marketing" ? "MARKETING_BROADCAST" : "ORDER_STATUS_CUSTOMER",
+          status: "FAILED",
+          dryRun: false,
+          retryable: true,
+          lastErrorText: errorMessage,
+          actorUserId: input.actorUserId || null,
         })
       }
     }

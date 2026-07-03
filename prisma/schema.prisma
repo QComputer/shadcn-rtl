@@ -204,6 +204,46 @@ enum SmsDeliveryStatus {
   SKIPPED
 }
 
+enum NotificationDeliveryAttemptStatus {
+  QUEUED
+  SENT
+  DRY_RUN
+  SKIPPED
+  FAILED
+  RETRY_SCHEDULED
+  RETRY_EXHAUSTED
+}
+
+model NotificationDeliveryAttempt {
+  id                String                     @id @default(cuid())
+  organizationId    String
+  targetUserId      String?
+  orderId           String?
+  guestCustomerId    String?
+  notificationId     String?
+
+  channel           String
+  purpose           String
+  status            NotificationDeliveryAttemptStatus @default(QUEUED)
+  dryRun            Boolean                    @default(false)
+  retryable         Boolean                    @default(false)
+  retryCount        Int                         @default(0)
+  nextRetryAt       DateTime?
+  lastErrorCode     String?
+  lastErrorText     String?
+  providerMessageId String?
+  metadata          Json?
+
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+
+  @@index([organizationId, status, createdAt])
+  @@index([targetUserId])
+  @@index([orderId])
+  @@index([guestCustomerId])
+  @@index([notificationId])
+}
+
 enum ExternalImportSourceType {
   INSTAGRAM
   TELEGRAM

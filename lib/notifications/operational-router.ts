@@ -1,4 +1,5 @@
 import { writeAuditLog } from "@/lib/audit-log"
+import { deliveryAttemptRecorder } from "@/lib/notifications/delivery-attempt-recorder"
 import { prisma } from "@/lib/db"
 import { getWebPushRuntimeConfig, webPushFoundationService } from "@/lib/services/web-push-foundation.service"
 import type { Prisma, UserRole } from "@prisma/client"
@@ -72,6 +73,21 @@ export class OperationalNotificationRouter {
         type: "ORDER_CREATED",
         seen: false,
       })),
+    })
+
+    await deliveryAttemptRecorder.record({
+      organizationId,
+      targetUserId: null,
+      orderId: null,
+      guestCustomerId: null,
+      notificationId: null,
+      channel: "IN_APP",
+      purpose: "ORDER_CREATED_STAFF",
+      status: "SENT",
+      dryRun: false,
+      retryable: false,
+      metadata: { recipientCount: recipientIds.length, orderNumber: order.orderNumber },
+      actorUserId: actorUserId || null,
     })
 
     await writeAuditLog({
@@ -169,6 +185,20 @@ export class OperationalNotificationRouter {
             where: { id: delivery.id },
             data: { status: "FAILED", error: err instanceof Error ? err.message : String(err) },
           })
+          await deliveryAttemptRecorder.record({
+            organizationId,
+            targetUserId: subscription.customerId,
+            orderId: null,
+            guestCustomerId: null,
+            notificationId: null,
+            channel: "WEB_PUSH",
+            purpose: "ORDER_CREATED_STAFF",
+            status: "FAILED",
+            dryRun: false,
+            retryable: true,
+            lastErrorText: err instanceof Error ? err.message : String(err),
+            actorUserId: actorUserId || null,
+          })
           return null
         })
 
@@ -176,6 +206,19 @@ export class OperationalNotificationRouter {
           await prisma.webPushDelivery.update({
             where: { id: delivery.id },
             data: { status: "SENT", sentAt: new Date() },
+          })
+          await deliveryAttemptRecorder.record({
+            organizationId,
+            targetUserId: subscription.customerId,
+            orderId: null,
+            guestCustomerId: null,
+            notificationId: null,
+            channel: "WEB_PUSH",
+            purpose: "ORDER_CREATED_STAFF",
+            status: "SENT",
+            dryRun: false,
+            retryable: false,
+            actorUserId: actorUserId || null,
           })
         }
       } catch (err) {

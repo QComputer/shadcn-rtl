@@ -7,6 +7,20 @@ import { smsService } from "@/lib/sms"
 const WEB_PUSH_STATUSES: WebPushDeliveryStatus[] = ["PENDING", "SENT", "FAILED", "SKIPPED"]
 const SMS_STATUSES: SmsDeliveryStatus[] = ["PENDING", "SENT", "FAILED", "SKIPPED"]
 
+type DeliveryAttemptRow = {
+  id: string
+  channel: string
+  purpose: string
+  status: string
+  dryRun: boolean
+  retryable: boolean
+  retryCount: number
+  nextRetryAt: string | null
+  lastErrorText: string | null
+  createdAt: string
+  targetUser: { id: string; name: string; firstName: string | null; lastName: string | null; email: string | null; phone: string | null } | null
+}
+
 function emptyStatusCounts<T extends string>(statuses: readonly T[]) {
   return Object.fromEntries(statuses.map((status) => [status, 0])) as Record<T, number>
 }
@@ -32,6 +46,7 @@ export class NotificationOperationsService {
       recentWebPush,
       smsStatusRows,
       recentSms,
+      recentAttempts,
     ] = await Promise.all([
       prisma.notification.count({ where: { organizationId } }),
       prisma.notification.count({ where: { organizationId, seen: false } }),
@@ -150,6 +165,24 @@ export class NotificationOperationsService {
           },
         },
       }),
+      prisma.notificationDeliveryAttempt.findMany({
+        where: { organizationId },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        select: {
+          id: true,
+          channel: true,
+          purpose: true,
+          status: true,
+          dryRun: true,
+          retryable: true,
+          retryCount: true,
+          nextRetryAt: true,
+          lastErrorText: true,
+          createdAt: true,
+          targetUserId: true,
+        },
+      }),
     ])
 
     return {
@@ -170,6 +203,7 @@ export class NotificationOperationsService {
         inApp: recentInApp,
         webPush: recentWebPush,
         sms: recentSms,
+        attempts: recentAttempts,
       },
     }
   }

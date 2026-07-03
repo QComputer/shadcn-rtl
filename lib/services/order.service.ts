@@ -1435,6 +1435,7 @@ if (!org?.slug) return
 
     customerOrderLifecycleRouter.notifyOrderStatusChangedSafe({
       organizationId: order.organization.id,
+      orderId: order.order.id,
       orderNumber: order.orderNumber,
       previousStatus: order.previousStatus,
       newStatus: nextStatus,
@@ -1561,6 +1562,7 @@ if (!org?.slug) return
 
     customerOrderLifecycleRouter.notifyPaymentStatusChangedSafe({
       organizationId: result.organization.id,
+      orderId: result.order.id,
       orderNumber: result.orderNumber,
       previousStatus: result.previousStatus,
       newStatus: nextStatus,

@@ -50,6 +50,8 @@
     "quality:admin-order-controls": "node scripts/quality/validate-admin-order-controls.mjs",
     "quality:customer-order-lifecycle-notifications": "node scripts/quality/validate-customer-order-lifecycle-notifications.mjs",
     "quality:guest-sms-dry-run": "node scripts/quality/validate-guest-sms-dry-run.mjs",
+    "quality:notification-delivery-observability": "node scripts/quality/validate-notification-delivery-observability.mjs",
+    "quality:notification-retry-policy": "node scripts/quality/validate-notification-retry-policy.mjs",
     "e2e:deployed:pwa-push-sms": "node scripts/e2e/deployed-pwa-push-sms-smoke.mjs",
     "smoke:deployed:pwa-push-sms": "node scripts/e2e/deployed-pwa-push-sms-smoke.mjs",
     "quality:deployed-pwa-push-sms": "node scripts/quality/validate-deployed-pwa-push-sms.mjs",

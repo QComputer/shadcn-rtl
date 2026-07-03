@@ -10,6 +10,7 @@ import {
 import { notificationPreferencesService } from "@/lib/services/notification-preferences.service"
 import { webPushFoundationService } from "@/lib/services/web-push-foundation.service"
 import { smsService } from "@/lib/sms"
+import { deliveryAttemptRecorder } from "@/lib/notifications/delivery-attempt-recorder"
 
 type RouteCustomerNotificationInput = {
   organizationId: string
@@ -46,14 +47,29 @@ export class NotificationRouterService {
       }
 
       if (channel === "IN_APP") {
-        results.push(await this.sendInApp({
+        const result = await this.sendInApp({
           organizationId: organization.id,
           customerId: customer.id,
           actorUserId: input.actorUserId,
           context: template.body,
           type: template.inAppType,
           preferenceKind: policy.preferenceKind,
-        }))
+        })
+        results.push(result)
+        await deliveryAttemptRecorder.record({
+          organizationId: organization.id,
+          targetUserId: customer.id,
+          orderId: null,
+          guestCustomerId: null,
+          notificationId: result.notificationId || null,
+          channel,
+          purpose: input.templateKey,
+          status: result.status === "sent" ? "SENT" : result.status === "skipped" ? "SKIPPED" : "FAILED",
+          dryRun: false,
+          retryable: result.status === "failed",
+          lastErrorText: result.error || null,
+          actorUserId: input.actorUserId || null,
+        })
       }
 
       if (channel === "WEB_PUSH") {
@@ -67,13 +83,42 @@ export class NotificationRouterService {
             preferenceKind: policy.preferenceKind,
             dryRun: false,
           })
+          const pushStatus = result.skipped ? "SKIPPED" : result.failureCount > 0 && result.successCount === 0 ? "FAILED" : "SENT"
           results.push({
             channel,
-            status: result.skipped ? "skipped" : result.failureCount > 0 && result.successCount === 0 ? "failed" : "sent",
+            status: pushStatus === "SENT" ? "sent" : pushStatus === "SKIPPED" ? "skipped" : "failed",
             error: result.skipped ? "WEB_PUSH preference is disabled" : undefined,
+          })
+          await deliveryAttemptRecorder.record({
+            organizationId: organization.id,
+            targetUserId: customer.id,
+            orderId: null,
+            guestCustomerId: null,
+            notificationId: null,
+            channel,
+            purpose: input.templateKey,
+            status: pushStatus,
+            dryRun: false,
+            retryable: pushStatus === "FAILED",
+            lastErrorText: result.skipped ? "WEB_PUSH preference is disabled" : undefined,
+            actorUserId: input.actorUserId || null,
           })
         } catch (error) {
           results.push({ channel, status: "failed", error: error instanceof Error ? error.message : "Web Push delivery failed" })
+          await deliveryAttemptRecorder.record({
+            organizationId: organization.id,
+            targetUserId: customer.id,
+            orderId: null,
+            guestCustomerId: null,
+            notificationId: null,
+            channel,
+            purpose: input.templateKey,
+            status: "FAILED",
+            dryRun: false,
+            retryable: true,
+            lastErrorText: error instanceof Error ? error.message : "Web Push delivery failed",
+            actorUserId: input.actorUserId || null,
+          })
         }
       }
 
@@ -95,8 +140,37 @@ export class NotificationRouterService {
             deliveryId: result.deliveryId,
             error: result.error,
           })
+          await deliveryAttemptRecorder.record({
+            organizationId: organization.id,
+            targetUserId: customer.id,
+            orderId: null,
+            guestCustomerId: null,
+            notificationId: null,
+            channel,
+            purpose: input.templateKey,
+            status: result.skipped ? "SKIPPED" : result.ok ? "SENT" : "FAILED",
+            dryRun: false,
+            retryable: !result.skipped && !result.ok,
+            lastErrorText: result.error || null,
+            providerMessageId: result.deliveryId || null,
+            actorUserId: input.actorUserId || null,
+          })
         } catch (error) {
           results.push({ channel, status: "failed", error: error instanceof Error ? error.message : "SMS delivery failed" })
+          await deliveryAttemptRecorder.record({
+            organizationId: organization.id,
+            targetUserId: customer.id,
+            orderId: null,
+            guestCustomerId: null,
+            notificationId: null,
+            channel,
+            purpose: input.templateKey,
+            status: "FAILED",
+            dryRun: false,
+            retryable: true,
+            lastErrorText: error instanceof Error ? error.message : "SMS delivery failed",
+            actorUserId: input.actorUserId || null,
+          })
         }
       }
     }

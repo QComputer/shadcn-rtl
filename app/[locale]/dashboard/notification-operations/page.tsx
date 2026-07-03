@@ -73,6 +73,20 @@ type SmsDelivery = {
   actor: Person | null
 }
 
+type DeliveryAttempt = {
+  id: string
+  channel: string
+  purpose: string
+  status: string
+  dryRun: boolean
+  retryable: boolean
+  retryCount: number
+  nextRetryAt: string | null
+  lastErrorText: string | null
+  createdAt: string
+  targetUserId: string | null
+}
+
 type NotificationOperationsDashboard = {
   config: {
     webPush: {
@@ -107,6 +121,7 @@ type NotificationOperationsDashboard = {
     inApp: InAppDelivery[]
     webPush: WebPushDelivery[]
     sms: SmsDelivery[]
+    attempts: DeliveryAttempt[]
   }
 }
 
@@ -135,12 +150,20 @@ const copy = {
     recentInApp: "آخرین اعلان‌های درون‌برنامه‌ای",
     recentWebPush: "آخرین ارسال‌های وب‌پوش",
     recentSms: "آخرین ارسال‌های پیامک",
+    recentAttempts: "آخرین تلاش‌های ارسال اعلان",
     recipient: "گیرنده",
     actor: "اقدام‌کننده",
     system: "سیستم",
     status: "وضعیت",
     createdAt: "زمان ثبت",
     sentAt: "زمان ارسال",
+    retryable: "قابل تلاش مجدد",
+    retryCount: "تعداد تلاش مجدد",
+    nextRetry: "تلاش بعدی",
+    targetType: "نوع گیرنده",
+    customer: "مشتری",
+    staff: "پرسنل",
+    guest: "مهمان",
     details: "جزئیات",
     copied: "وضعیت تازه شد",
   },
@@ -168,12 +191,20 @@ const copy = {
     recentInApp: "Recent in-app notifications",
     recentWebPush: "Recent web push deliveries",
     recentSms: "Recent SMS deliveries",
+    recentAttempts: "Recent notification delivery attempts",
     recipient: "Recipient",
     actor: "Actor",
     system: "System",
     status: "Status",
     createdAt: "Created",
     sentAt: "Sent",
+    retryable: "Retryable",
+    retryCount: "Retry count",
+    nextRetry: "Next retry",
+    targetType: "Target type",
+    customer: "Customer",
+    staff: "Staff",
+    guest: "Guest",
     details: "Details",
     copied: "Status refreshed",
   },
@@ -201,22 +232,34 @@ const copy = {
     recentInApp: "أحدث إشعارات التطبيق",
     recentWebPush: "أحدث إرسال ويب بوش",
     recentSms: "أحدث إرسال رسائل نصية",
+    recentAttempts: "أحدث محاولات إرسال الإشعارات",
     recipient: "المستلم",
     actor: "المنفذ",
     system: "النظام",
     status: "الحالة",
     createdAt: "وقت الإنشاء",
     sentAt: "وقت الإرسال",
+    retryable: "قابل لإعادة المحاولة",
+    retryCount: "عدد المحاولات",
+    nextRetry: "المحاولة التالية",
+    targetType: "نوع المستلم",
+    customer: "عميل",
+    staff: "موظف",
+    guest: "ضيف",
     details: "التفاصيل",
     copied: "تم تحديث الحالة",
   },
 } satisfies Record<Locale, Record<string, string>>
 
-const statusCopy: Record<DeliveryStatus, { labelKey: string; variant: BadgeVariant; icon: typeof CheckCircle2 }> = {
+const statusCopy: Record<string, { labelKey: string; variant: BadgeVariant; icon: typeof CheckCircle2 }> = {
   PENDING: { labelKey: "pending", variant: "secondary", icon: Clock3 },
   SENT: { labelKey: "sent", variant: "default", icon: CheckCircle2 },
   FAILED: { labelKey: "failed", variant: "destructive", icon: XCircle },
   SKIPPED: { labelKey: "skipped", variant: "outline", icon: AlertTriangle },
+  DRY_RUN: { labelKey: "dryRun", variant: "secondary", icon: Clock3 },
+  QUEUED: { labelKey: "queued", variant: "secondary", icon: Clock3 },
+  RETRY_SCHEDULED: { labelKey: "retryScheduled", variant: "outline", icon: Clock3 },
+  RETRY_EXHAUSTED: { labelKey: "retryExhausted", variant: "destructive", icon: XCircle },
 }
 
 function asLocale(value: string): Locale {
@@ -549,6 +592,42 @@ export default function NotificationOperationsPage({ params }: { params: Promise
                       <div className="text-sm text-muted-foreground md:text-end">
                         <p>{t.createdAt}: {formatDate(notification.createdAt)}</p>
                         <p>{t.sentAt}: {formatDate(notification.readAt)}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold">{t.recentAttempts}</h2>
+            {!dashboard.recent.attempts || dashboard.recent.attempts.length === 0 ? (
+              <EmptyState text={t.empty} />
+            ) : (
+              <div className="overflow-hidden rounded-lg border">
+                <div className="divide-y">
+                  {dashboard.recent.attempts.map((attempt) => (
+                    <article key={attempt.id} className="grid gap-3 p-4 md:grid-cols-[1.5fr_1fr_auto] md:items-center">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate font-medium">{attempt.purpose}</p>
+                          <StatusBadge status={attempt.status as DeliveryStatus} locale={locale} />
+                          <Badge variant="outline">{attempt.channel}</Badge>
+                          {attempt.dryRun ? <Badge variant="secondary">{t.dryRun}</Badge> : null}
+                          {attempt.retryable ? <Badge variant="outline">{t.retryable}</Badge> : null}
+                        </div>
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                          {attempt.lastErrorText || `تعداد تلاش مجدد: ${attempt.retryCount}`}
+                        </p>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        <p>{t.recipient}: {attempt.targetUserId || "-"}</p>
+                        <p>{t.retryCount}: {attempt.retryCount}</p>
+                      </div>
+                      <div className="text-sm text-muted-foreground md:text-end">
+                        <p>{t.createdAt}: {formatDate(attempt.createdAt)}</p>
+                        <p>{t.nextRetry}: {formatDate(attempt.nextRetryAt)}</p>
                       </div>
                     </article>
                   ))}

@@ -7,6 +7,7 @@ import { SmsIrProvider } from "@/lib/sms/sms-ir-provider"
 import { getSmsRuntimeConfig } from "@/lib/sms/sms-provider"
 import type { SmsPreferenceKind, SmsProvider, SmsPurpose, SmsSendResult } from "@/lib/sms/sms.types"
 import { maskPhoneNumber } from "@/lib/sms/sms.types"
+import { deliveryAttemptRecorder } from "@/lib/notifications/delivery-attempt-recorder"
 
 type SendCustomerSmsInput = {
   organizationId: string
@@ -109,6 +110,22 @@ export class SmsService {
         error: result.error ?? null,
         sentAt: result.ok ? new Date() : null,
       },
+    })
+
+    await deliveryAttemptRecorder.record({
+      organizationId: organization.id,
+      targetUserId: customer.id,
+      orderId: null,
+      guestCustomerId: null,
+      notificationId: null,
+      channel: "SMS",
+      purpose: input.purpose,
+      status: result.ok ? "SENT" : "FAILED",
+      dryRun: config.dryRun,
+      retryable: !result.ok && !config.dryRun,
+      lastErrorText: result.error || null,
+      providerMessageId: result.messageId != null ? String(result.messageId) : null,
+      actorUserId: input.actorUserId || null,
     })
 
     await writeAuditLog({

@@ -13,7 +13,7 @@ function check(name, fn) {
     console.log(`✓ ${name}`);
   } catch (error) {
     checks.push({ name, ok: false, detail: error?.message || String(error) });
-    console.error(`✗ ${name}`);
+    console.error(`�— ${name}`);
     console.error(error);
   }
 }
@@ -25,7 +25,7 @@ async function checkAsync(name, fn) {
     console.log(`✓ ${name}`);
   } catch (error) {
     checks.push({ name, ok: false, detail: error?.message || String(error) });
-    console.error(`✗ ${name}`);
+    console.error(`�— ${name}`);
     console.error(error);
   }
 }

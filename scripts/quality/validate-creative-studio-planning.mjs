@@ -47,8 +47,8 @@ add("P107 remains a planning-only document", /does not add:[\s\S]*Creative Studi
 
 add("package exposes P107 validator", /"quality:creative-studio-planning":\s*"node scripts\/quality\/validate-creative-studio-planning\.mjs"/.test(packageJson))
 add("project validator references P107 validator", /validate-creative-studio-planning\.mjs/.test(validateProject) && /P107 Creative Studio planning validator passes/.test(validateProject))
-add("README keeps P107 complete while marking P109 latest", /Latest completed implementation phase:\s+\*\*P120B - Customer order lifecycle notifications and guest SMS dry-run review\*\*/.test(readme) && /Recommended next phase:\s+\*\*P120C - Notification delivery observability and retry review\*\*/.test(readme))
-add("roadmap keeps P107 complete in P109 progression", /Completed through \*\*P120B - Customer order lifecycle notifications and guest SMS dry-run review\*\*/.test(roadmap) && /\| P107 \| Creative Studio integration planning for main Bazar Baz\. \|/.test(roadmap) && /\| P108 \| Creative Studio server foundation\. \|/.test(roadmap))
+add("README keeps P107 complete while marking P109 latest", /Latest completed implementation phase:\s+\*\*P120D - SMS.ir provider completion\*\*/.test(readme) && /Recommended next phase:\s+\*\*P120E — SMS delivery reports and provider reconciliation\*\*/.test(readme))
+add("roadmap keeps P107 complete in P109 progression", /Completed through \*\*P120D - SMS.ir provider completion\*\*/.test(roadmap) && /\| P107 \| Creative Studio integration planning for main Bazar Baz\. \|/.test(roadmap) && /\| P108 \| Creative Studio server foundation\. \|/.test(roadmap))
 add("source of truth names P109 baseline while keeping P107 planning", /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth) && /Creative Studio integration planning exists/.test(sourceOfTruth) && /Creative Studio server foundation exists/.test(sourceOfTruth))
 
 for (const check of checks) {

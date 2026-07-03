@@ -1,0 +1,31 @@
+﻿
+> bazar-baz@0.1.0 quality:creative-studio-organization-brand-provider-rollout C:\Users\disso\Project\shadcn-rtl
+> node scripts/quality/validate-creative-studio-organization-brand-provider-rollout.mjs
+
+PASS P117 phase document exists and is implemented
+PASS organization brand provider helper is server-only and secret-safe
+PASS provider helper exposes explicit rollout gate envs
+PASS provider helper requires approval, limits, and rollback controls
+FAIL readiness exposes P117 rollout gate without public auto-apply
+PASS readiness keeps manual selection and confirmation in the checklist
+PASS service records P117 gate metadata and keeps execution behind explicit P118 controls
+PASS dashboard renders P117 rollout state for admins
+PASS dashboard posts through server-mediated route without provider secrets
+PASS runtime env validates organization brand rollout gate
+PASS .env.example documents safe organization brand rollout placeholders
+PASS source baseline scans the new internal key placeholder
+PASS deployed smoke verifies P117 rollout gate and P118 dry-run behavior
+PASS package exposes P117 validator
+PASS quality local references P117 validator
+PASS README marks current P119 baseline and P120 next
+PASS roadmap keeps P117 complete through P119 baseline
+PASS source of truth keeps P117 rollout gate in current baseline
+node.exe : 
+At C:\nvm4w\nodejs\pnpm.ps1:16 char:5
++     & "$basedir/node$exe"  "$basedir/node_modules/corepack/dist/pnpm. ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+1 Creative Studio organization brand provider rollout validation check(s) failed.
+ΓÇëELIFECYCLEΓÇë Command failed with exit code 1.

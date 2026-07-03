@@ -105,7 +105,7 @@ export type CreativeStudioGenerationReadiness = {
     blockers: string[];
   };
   blockers: string[];
-  nextPhase: "P120C - Notification delivery observability and retry review";
+    nextPhase: "P120E — SMS delivery reports and provider reconciliation";
 };
 
 export async function getCreativeStudioGenerationReadiness(options: { checkRemote?: boolean } = {}): Promise<CreativeStudioGenerationReadiness> {
@@ -228,6 +228,6 @@ export async function getCreativeStudioGenerationReadiness(options: { checkRemot
       blockers: organizationBrandBlockers,
     },
     blockers,
-    nextPhase: "P120C - Notification delivery observability and retry review",
+    nextPhase: "P120E — SMS delivery reports and provider reconciliation",
   };
 }

@@ -43,8 +43,8 @@ add("archive script refuses obvious secrets", /Refusing to archive PWA\/Push\/SM
 add("release notes include PWA Push SMS rollout evidence", /PWA Push SMS Rollout Evidence/.test(releaseTemplate) && /Rollback owner/.test(releaseTemplate))
 add("package exposes P105 quality and release scripts", /"quality:production-rollout":\s*"node scripts\/quality\/validate-production-rollout-runbook\.mjs"/.test(packageJson) && /"release:pwa-push-sms-rollout-evidence":\s*"node scripts\/release\/archive-pwa-push-sms-rollout-evidence\.mjs"/.test(packageJson))
 add("project validator references P105 validator", /validate-production-rollout-runbook\.mjs/.test(validateProject) && /P105 production rollout runbook validator passes/.test(validateProject))
-add("README keeps P105 complete while marking P109 latest", /\| 105 \| Production rollout runbook/.test(readme) && /Latest completed implementation phase:\s+\*\*P120B - Customer order lifecycle notifications and guest SMS dry-run review\*\*/.test(readme) && /P120C - Notification delivery observability and retry review/.test(readme))
-add("roadmap keeps P105 complete in P109 progression", /\| P105 \| Production rollout runbook\. \|/.test(roadmap) && /Completed through \*\*P120B - Customer order lifecycle notifications and guest SMS dry-run review\*\*/.test(roadmap))
+add("README keeps P105 complete while marking P109 latest", /\| 105 \| Production rollout runbook/.test(readme) && /Latest completed implementation phase:\s+\*\*P120D - SMS.ir provider completion\*\*/.test(readme) && /P120E — SMS delivery reports and provider reconciliation/.test(readme))
+add("roadmap keeps P105 complete in P109 progression", /\| P105 \| Production rollout runbook\. \|/.test(roadmap) && /Completed through \*\*P120D - SMS.ir provider completion\*\*/.test(roadmap))
 add("source of truth names P109 baseline while keeping P105 runbook", /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth) && /Production rollout runbook exists/.test(sourceOfTruth))
 
 for (const check of checks) {

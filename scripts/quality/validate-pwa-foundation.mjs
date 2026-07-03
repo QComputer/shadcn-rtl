@@ -50,8 +50,8 @@ add("P98 offline cache remains guarded", /addEventListener\("fetch"/.test(servic
 
 add("package exposes P97 validator", /"quality:pwa-foundation":\s*"node scripts\/quality\/validate-pwa-foundation\.mjs"/.test(packageJson))
 add("project validator references P97 validator", /validate-pwa-foundation\.mjs/.test(validateProject) && /P97 PWA foundation validator passes/.test(validateProject))
-add("README keeps P97 complete while marking P109 latest", /\| 97 \| PWA foundation and install experience/.test(readme) && /Latest completed implementation phase:\s+\*\*P120B - Customer order lifecycle notifications and guest SMS dry-run review\*\*/.test(readme) && /P120C - Notification delivery observability and retry review/.test(readme))
-add("roadmap keeps P97 complete while marking P109 baseline", /\| P97 \| PWA foundation and install experience\. \|/.test(roadmap) && /Completed through \*\*P120B - Customer order lifecycle notifications and guest SMS dry-run review\*\*/.test(roadmap))
+add("README keeps P97 complete while marking P109 latest", /\| 97 \| PWA foundation and install experience/.test(readme) && /Latest completed implementation phase:\s+\*\*P120D - SMS.ir provider completion\*\*/.test(readme) && /P120E — SMS delivery reports and provider reconciliation/.test(readme))
+add("roadmap keeps P97 complete while marking P109 baseline", /\| P97 \| PWA foundation and install experience\. \|/.test(roadmap) && /Completed through \*\*P120D - SMS.ir provider completion\*\*/.test(roadmap))
 add("source of truth keeps P97 foundation while naming P109 baseline", /PWA Foundation and Install Experience exists/.test(sourceOfTruth) && /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth))
 
 for (const check of checks) {

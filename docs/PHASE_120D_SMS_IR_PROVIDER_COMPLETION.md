@@ -1,6 +1,8 @@
 # P120D — SMS.ir Provider Completion
 
-_Last updated: 2026-07-03._
+_Last updated: 2026-07-04._
+
+P120D is accepted only after P120D-FIX2 leaves `quality:local` green.
 
 ## Goal
 
@@ -129,5 +131,6 @@ Added validators:
 - Build passes
 - `quality:sms-ir-provider-completion` passes
 - `quality:sms-real-send-gates` passes
+- `quality:local` is green after FIX2
 - Existing notification validators (`quality:guest-sms-dry-run`, `quality:customer-order-lifecycle-notifications`, `quality:notification-delivery-observability`, `quality:notification-routing`, `quality:notification-operations`) pass
 - Real SMS remains disabled by default

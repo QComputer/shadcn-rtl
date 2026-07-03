@@ -44,8 +44,8 @@ add("sidebar exposes Creative Studio navigation", /WandSparkles/.test(sidebar) &
 add("job detail preserves organization context", /NextRequest/.test(jobRoute) && /searchParams\.get\("organizationId"\)/.test(jobRoute) && /requireCreativeStudioOrganization\(requestedOrganizationId\)/.test(jobRoute))
 add("package exposes P109 validator", /"quality:creative-studio-dashboard":\s*"node scripts\/quality\/validate-creative-studio-dashboard\.mjs"/.test(packageJson))
 add("project validator references P109 validator", /validate-creative-studio-dashboard\.mjs/.test(validateProject) && /P109 Creative Studio dashboard validator passes/.test(validateProject))
-add("README marks P110 latest", /Latest completed implementation phase:\s+\*\*P120B - Customer order lifecycle notifications and guest SMS dry-run review\*\*/.test(readme) && /Recommended next phase:\s+\*\*P120C - Notification delivery observability and retry review\*\*/.test(readme))
-add("roadmap keeps P109 complete in P110 progression", /Completed through \*\*P120B - Customer order lifecycle notifications and guest SMS dry-run review\*\*/.test(roadmap) && /\| P109 \| Creative Studio dashboard shell and read-only job review\. \|/.test(roadmap) && /\| P110 \| Creative Studio apply controls and cache-safe public asset updates\. \|/.test(roadmap))
+add("README marks P110 latest", /Latest completed implementation phase:\s+\*\*P120D - SMS.ir provider completion\*\*/.test(readme) && /Recommended next phase:\s+\*\*P120E — SMS delivery reports and provider reconciliation\*\*/.test(readme))
+add("roadmap keeps P109 complete in P110 progression", /Completed through \*\*P120D - SMS.ir provider completion\*\*/.test(roadmap) && /\| P109 \| Creative Studio dashboard shell and read-only job review\. \|/.test(roadmap) && /\| P110 \| Creative Studio apply controls and cache-safe public asset updates\. \|/.test(roadmap))
 add("source of truth names P110 baseline", /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth) && /Creative Studio dashboard review exists/.test(sourceOfTruth))
 
 for (const check of checks) {

@@ -64,7 +64,7 @@ check("package exposes quality script", pkg.scripts?.["quality:shop-domain-admin
 const failed = checks.filter((item) => !item.ok);
 
 for (const item of checks) {
-  console.log(`${item.ok ? "✓" : "✗"} ${item.name}`);
+  console.log(`${item.ok ? "✓" : "�—"} ${item.name}`);
 }
 
 if (failed.length > 0) {

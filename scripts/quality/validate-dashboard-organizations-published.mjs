@@ -45,7 +45,7 @@ check(sidebar.includes('organizations: "سازمان‌ها"') && sidebar.includ
 
 const failed = checks.filter((item) => !item.ok);
 if (failed.length > 0) {
-  for (const item of failed) console.error(`✗ ${item.message}`);
+  for (const item of failed) console.error(`�— ${item.message}`);
   throw new Error(`Dashboard organizations publish validation failed: ${failed.length} issue(s)`);
 }
 

@@ -65,9 +65,9 @@ export function getWebPushRuntimeConfig() {
   const enabled = process.env.WEB_PUSH_ENABLED === "true"
   const provider = process.env.WEB_PUSH_PROVIDER || "dry_run"
   const dryRun = process.env.WEB_PUSH_DRY_RUN !== "false" || provider === "dry_run"
-  const publicKey = process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY || ""
-  const privateKey = process.env.WEB_PUSH_VAPID_PRIVATE_KEY || ""
-  const subject = process.env.WEB_PUSH_VAPID_SUBJECT || ""
+  const publicKey = (process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY || "").trim()
+  const privateKey = (process.env.WEB_PUSH_VAPID_PRIVATE_KEY || "").trim()
+  const subject = (process.env.WEB_PUSH_VAPID_SUBJECT || "").trim()
   const realSendEnabled = enabled && process.env.WEB_PUSH_REAL_SEND_ENABLED === "true" && !dryRun && provider !== "dry_run"
 
   return {
@@ -75,10 +75,10 @@ export function getWebPushRuntimeConfig() {
     provider,
     dryRun,
     publicKey,
-    publicKeyConfigured: publicKey.trim().length > 0,
-    privateKeyConfigured: privateKey.trim().length > 0,
-    subjectConfigured: subject.trim().length > 0,
-    configured: publicKey.trim().length > 0 && privateKey.trim().length > 0 && subject.trim().length > 0,
+    publicKeyConfigured: publicKey.length > 0,
+    privateKeyConfigured: privateKey.length > 0,
+    subjectConfigured: subject.length > 0,
+    configured: publicKey.length > 0 && privateKey.length > 0 && subject.length > 0,
     realSendEnabled,
   }
 }

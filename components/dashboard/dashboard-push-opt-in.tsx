@@ -161,11 +161,13 @@ export function DashboardPushOptIn() {
         throw new Error("Failed to subscribe")
       }
     } catch (err) {
-      if (err instanceof Error && err.message.includes("Permission denied")) {
+      const message = err instanceof Error ? err.message : String(err)
+      if (message.includes("Permission denied")) {
         setPermissionState("denied")
         toast.error(c.permissionDenied)
       } else {
-        toast.error(c.error)
+        const safeMessage = message.length > 180 ? `${message.slice(0, 177)}...` : message
+        toast.error(`${c.error}: ${safeMessage}`)
       }
     } finally {
       setLoading(false)

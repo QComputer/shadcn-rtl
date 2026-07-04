@@ -48,6 +48,13 @@ function assertWebPushDiagnostics() {
     addCheck("status exposes vapidPrivateKeyConfigured", /vapidPrivateKeyConfigured/.test(content))
     addCheck("status does not expose private key value", !/WEB_PUSH_VAPID_PRIVATE_KEY/.test(content))
   }
+
+  const envExample = ".env.example"
+  if (exists(envExample)) {
+    const content = read(envExample)
+    addCheck(".env.example has NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY placeholder", /NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY=/.test(content))
+    addCheck(".env.example has WEB_PUSH_VAPID_PRIVATE_KEY placeholder", /WEB_PUSH_VAPID_PRIVATE_KEY=/.test(content))
+  }
 }
 
 function assertNoClientKeyExposure() {

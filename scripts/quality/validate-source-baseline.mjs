@@ -58,9 +58,9 @@ add("personal public PDF is not present in tracked source", !trackedExisting.inc
 add(".env files are not present in tracked source", !trackedExisting.some((file) => file === ".env" || (file.startsWith(".env.") && file !== ".env.example")))
 add("active seed script remains tracked", tracked.includes("prisma/seed.ts"))
 add("duplicate client Providers wrapper removed", !exists("components/providers.tsx"))
-add("README keeps P95 source cleanup in current progression", /\| 95 \| Source Cleanup and Current-State Verification/.test(readme) && /Latest completed implementation phase:\s+\*\*P120D - SMS.ir provider completion\*\*/.test(readme))
-add("README recommends P108 after P107", readme.includes("Recommended next phase:") && readme.includes("P120E — SMS delivery reports and provider reconciliation"))
-add("roadmap keeps P95 complete in P109 progression", /\| P95 \| Source cleanup and current-state verification\. \|/.test(roadmap) && /Completed through \*\*P120D - SMS.ir provider completion\*\*/.test(roadmap))
+add("README keeps P95 source cleanup in current progression", /\| 95 \| Source Cleanup and Current-State Verification/.test(readme) && /Latest completed implementation phase:\s+\*\*P120F - SMS\.ir official report endpoint integration\*\*/.test(readme))
+add("README recommends P121 after P120F", readme.includes("Recommended next phase:") && readme.includes("P121 — Creative Studio product image apply workflow with rollback"))
+add("roadmap keeps P95 complete in P120F progression", /\| P95 \| Source cleanup and current-state verification\. \|/.test(roadmap) && /Completed through \*\*P120F - SMS\.ir official report endpoint integration\*\*/.test(roadmap))
 add("source of truth keeps P95 source cleanup while naming P109 baseline", /Source Cleanup and Current-State Verification exists/.test(sourceOfTruth) && /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth))
 
 const scripts = packageJson.scripts || {}

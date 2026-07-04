@@ -18,6 +18,7 @@ const FORBIDDEN_CONSOLE_PATTERNS = [
   /SMS_IR_API_KEY/i,
   /VAPID_PRIVATE_KEY/i,
   /api\.sms\.ir/i,
+  /applicationServerKey is not valid/i,
 ]
 
 const FORBIDDEN_RESPONSE_PATTERNS = [
@@ -37,8 +38,8 @@ const FORBIDDEN_HTML_PATTERNS = [
 
 let baseUrl = configuredBaseUrl
 const results = []
-let consoleErrors: string[] = []
-let networkRequests: string[] = []
+let consoleErrors = []
+let networkRequests = []
 
 function currentGitCommit() {
   const result = require("child_process").spawnSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" })

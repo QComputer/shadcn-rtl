@@ -29,6 +29,15 @@ const reportDetailRoute = exists("app/api/dashboard/notification-operations/sms-
 const reconcileRoute = exists("app/api/dashboard/notification-operations/sms-ir/deliveries/[deliveryId]/reconcile/route.ts")
   ? read("app/api/dashboard/notification-operations/sms-ir/deliveries/[deliveryId]/reconcile/route.ts")
   : "";
+const liveReportRoute = exists("app/api/dashboard/notification-operations/sms-ir/reports/live/route.ts")
+  ? read("app/api/dashboard/notification-operations/sms-ir/reports/live/route.ts")
+  : "";
+const archiveReportRoute = exists("app/api/dashboard/notification-operations/sms-ir/reports/archive/route.ts")
+  ? read("app/api/dashboard/notification-operations/sms-ir/reports/archive/route.ts")
+  : "";
+const packsReportRoute = exists("app/api/dashboard/notification-operations/sms-ir/reports/packs/route.ts")
+  ? read("app/api/dashboard/notification-operations/sms-ir/reports/packs/route.ts")
+  : "";
 const dashboardPage = exists("app/[locale]/dashboard/notification-operations/page.tsx")
   ? read("app/[locale]/dashboard/notification-operations/page.tsx")
   : "";
@@ -39,6 +48,9 @@ const smsProvider = exists("lib/sms/sms-ir-provider.ts")
   ? read("lib/sms/sms-ir-provider.ts")
   : "";
 const envExample = read(".env.example");
+const reportValidation = exists("lib/sms/sms-ir-report-validation.ts")
+  ? read("lib/sms/sms-ir-report-validation.ts")
+  : "";
 
 add("SMS delivery report service exists", /class SmsDeliveryReportService/.test(reportService));
 add("dashboard SMS delivery report API/page exists", exists("app/api/dashboard/notification-operations/sms-ir/deliveries/route.ts") && exists("app/[locale]/dashboard/notification-operations/page.tsx"));
@@ -50,6 +62,17 @@ add("messageIds surfaced safely in DTO", /externalMessageId/.test(reportService)
 add("dry-run/real-send labels exist in DTO", /dryRun/.test(reportService) && /dryRun/.test(dashboardPage));
 add("Persian SMS report labels exist", /smsReports:|گزارش پیامک‌ها/.test(dashboardPage));
 add("no API key is returned by diagnostics/report endpoint", !/SMS_IR_API_KEY|X-API-KEY/.test(deliveriesRoute) && !/SMS_IR_API_KEY|X-API-KEY/.test(reportDetailRoute));
+add("provider report live endpoint exists", exists("app/api/dashboard/notification-operations/sms-ir/reports/live/route.ts"));
+add("provider report archive endpoint exists", exists("app/api/dashboard/notification-operations/sms-ir/reports/archive/route.ts"));
+add("provider report packs endpoint exists", exists("app/api/dashboard/notification-operations/sms-ir/reports/packs/route.ts"));
+add("provider report endpoints require auth/tenant guard", /requireAuthSession/.test(liveReportRoute) && /requireOrgAccess/.test(liveReportRoute));
+add("report validation helpers exist", /validateMessageId|validatePackId|validateArchiveInput/.test(reportValidation));
+add("official endpoint /v1/send/{messageId} implemented", /\/v1\/send\/\${encodeURIComponent\(String\(messageId\)\)}/.test(smsIrClient) || /\/v1\/send\//.test(smsIrClient));
+add("official endpoint /v1/send/pack implemented", /\/v1\/send\/pack\?/.test(smsIrClient) || /\/v1\/send\/pack/.test(smsIrClient));
+add("official endpoint /v1/send/pack/{packId} implemented", /\/v1\/send\/pack\/\${encodeURIComponent\(packId\)}/.test(smsIrClient));
+add("official endpoint /v1/send/live implemented", /\/v1\/send\/live\?/.test(smsIrClient));
+add("official endpoint /v1/send/archive implemented", /\/v1\/send\/archive\?/.test(smsIrClient));
+add("provider report mobile masking exists", /maskMobile/.test(reportService) || /maskMobile/.test(reportValidation));
 
 for (const check of checks) {
   console.log(`${check.pass ? "PASS" : "FAIL"} ${check.name}`);

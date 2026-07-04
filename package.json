@@ -56,6 +56,7 @@
     "quality:sms-real-send-gates": "node scripts/quality/validate-sms-real-send-gates.mjs",
     "quality:sms-delivery-reports": "node scripts/quality/validate-sms-delivery-reports.mjs",
     "quality:sms-provider-reconciliation": "node scripts/quality/validate-sms-provider-reconciliation.mjs",
+    "quality:sms-provider-report-endpoints": "node scripts/quality/validate-sms-provider-report-endpoints.mjs",
     "e2e:deployed:pwa-push-sms": "node scripts/e2e/deployed-pwa-push-sms-smoke.mjs",
     "smoke:deployed:pwa-push-sms": "node scripts/e2e/deployed-pwa-push-sms-smoke.mjs",
     "quality:deployed-pwa-push-sms": "node scripts/quality/validate-deployed-pwa-push-sms.mjs",

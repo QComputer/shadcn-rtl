@@ -34,8 +34,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      providerReportAvailable: false,
-      reason: "SMS_IR_REPORT_ENDPOINT_NOT_CONFIGURED",
       data: rows,
     })
   } catch (error) {

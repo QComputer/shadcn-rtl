@@ -31,6 +31,9 @@ const smsIrProvider = exists("lib/sms/sms-ir-provider.ts")
   : "";
 const smsIndex = exists("lib/sms/index.ts") ? read("lib/sms/index.ts") : "";
 const packageJson = read("package.json");
+const reportValidation = exists("lib/sms/sms-ir-report-validation.ts")
+  ? read("lib/sms/sms-ir-report-validation.ts")
+  : "";
 
 add("reconciliation service exists", /class SmsDeliveryReportService/.test(reportService));
 add("reconcile route is POST-only", /POST/.test(reconcileRoute) && /Method Not Allowed/.test(reconcileRoute));
@@ -39,8 +42,13 @@ add("provider report unavailable/docs-required state exists", /SMS_IR_REPORT_END
 add("provider fetch uses server-only client if implemented", /validateServerOnly/.test(smsIrClient) || !/fetch.*sms\.ir/.test(smsIrProvider));
 add("SMS_IR_API_KEY is server-only", !/process\.env\.SMS_IR_API_KEY/.test(reportService.replace(/\/\*.*?\*\//gs, "").replace(/\/\/.*$/gm, "")) || /server-only/.test(smsIrClient));
 add("reconciliation does not send SMS", !/sendText|sendBulk|sendLikeToLike/.test(reconcileRoute));
-add("reconciliation does not mutate order status/payment status", /orderStatus|paymentStatus/.test(reconcileRoute) === false);
+add("reconciliation does not mutate order status/payment status", !/orderStatus|paymentStatus/.test(reconcileRoute));
 add("provider raw metadata is sanitized/truncated if stored", /sanitizeText|truncate|slice\(0/.test(reportService));
+add("reconcile by messageId implemented", /getMessageReport/.test(reportService));
+add("reconcile by packId implemented", /getPackReport/.test(reportService));
+add("internal reconciliation fallback preserved", /reconcileFromInternalState/.test(reportService));
+add("provider report failures are safe", /catch.*error|Failed to fetch message report|Provider report fetch failed/.test(reportService));
+add("report validation helpers exist", /validateMessageId|validatePackId|validateArchiveInput/.test(reportValidation));
 add("package exposes P120E reconciliation validator", /quality:sms-provider-reconciliation/.test(packageJson));
 
 for (const check of checks) {

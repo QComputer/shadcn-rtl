@@ -438,6 +438,15 @@ if (exists("scripts/quality/validate-creative-studio-provider-result-ingestion.m
     }
   }
 
+  if (exists("scripts/quality/validate-sms-provider-report-endpoints.mjs")) {
+    const result = spawnSync(process.execPath, ["scripts/quality/validate-sms-provider-report-endpoints.mjs"], { cwd: root, encoding: "utf8" });
+    if (result.status === 0) {
+      ok("P120F SMS provider report endpoints validator passes");
+    } else {
+      fail("P120F SMS provider report endpoints validator passes", result.stderr || result.stdout);
+    }
+  }
+
   if (exists("scripts/quality/validate-creative-studio-reviewed-asset-apply.mjs")) {
     const result = spawnSync(process.execPath, ["scripts/quality/validate-creative-studio-reviewed-asset-apply.mjs"], { cwd: root, encoding: "utf8" });
     if (result.status === 0) {

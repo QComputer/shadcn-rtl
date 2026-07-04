@@ -152,6 +152,12 @@ type SmsReportRow = {
   customerName: string | null
   reconciliationStatus: string | null
   providerReportAvailable: boolean
+  providerDeliveryState: number | null
+  providerDeliveryDateTime: string | null
+  providerCost: number | null
+  providerLineNumber: string | null
+  providerMessageText: string | null
+  providerMobileMasked: string | null
 }
 
 const copy = {
@@ -212,6 +218,19 @@ const copy = {
     unknown: "نامشخص",
     reconcilePostOnly: "تطبیق فقط از طریق POST قابل استفاده است",
     noReports: "هنوز گزارش پیامکی ثبت نشده است.",
+    deliveryStateLabel: "وضعیت تحویل",
+    deliveryDateTimeLabel: "زمان تحویل",
+    providerLineNumberLabel: "شماره خط ارائه‌دهنده",
+    providerMessageTextLabel: "متن پیام ارائه‌دهنده",
+    providerMobileLabel: "شماره مقصد ارائه‌دهنده",
+    reconcileWithProvider: "تطبیق با گزارش ارائه‌دهنده",
+    fetchProviderReport: "دریافت گزارش پیامک",
+    reportByMessageId: "گزارش پیامک بر اساس شناسه",
+    reportPack: "گزارش مجموعه ارسال",
+    reportLive: "گزارش ارسال‌های امروز",
+    reportArchive: "گزارش ارسال‌های آرشیو",
+    providerDelivered: "گزارش ارائه‌دهنده دریافت شد",
+    providerFailed: "گزارش ارائه‌دهنده ناموفق بود",
   },
   en: {
     title: "Notification ops",
@@ -270,6 +289,19 @@ const copy = {
     unknown: "Unknown",
     reconcilePostOnly: "Reconcile is POST-only",
     noReports: "No SMS reports yet.",
+    deliveryStateLabel: "Delivery status",
+    deliveryDateTimeLabel: "Delivery time",
+    providerLineNumberLabel: "Provider line number",
+    providerMessageTextLabel: "Provider message text",
+    providerMobileLabel: "Provider mobile",
+    reconcileWithProvider: "Reconcile with provider report",
+    fetchProviderReport: "Fetch SMS report",
+    reportByMessageId: "SMS report by ID",
+    reportPack: "Send pack report",
+    reportLive: "Today's send reports",
+    reportArchive: "Archived send reports",
+    providerDelivered: "Provider report delivered",
+    providerFailed: "Provider report failed",
   },
   ar: {
     title: "مراقبة الإشعارات",
@@ -328,6 +360,19 @@ const copy = {
     unknown: "غير معروف",
     reconcilePostOnly: "التطبيق متاح عبر POST فقط",
     noReports: "لا توجد تقارير رسائل نصية بعد.",
+    deliveryStateLabel: "حالة التوصيل",
+    deliveryDateTimeLabel: "وقت التوصيل",
+    providerLineNumberLabel: "رقم خط المزود",
+    providerMessageTextLabel: "نص رسالة المزود",
+    providerMobileLabel: "رقم هاتف المزود",
+    reconcileWithProvider: "التطبيق مع تقرير المزود",
+    fetchProviderReport: "جلب تقرير الرسائل النصية",
+    reportByMessageId: "تقرير الرسائل النصية حسب المعرف",
+    reportPack: "تقرير مجموعة الإرسال",
+    reportLive: "تقارير إرسال اليوم",
+    reportArchive: "تقارير الإرسال المؤرشف",
+    providerDelivered: "تقرير المزود تم الاستلام",
+    providerFailed: "تقرير المزود فشل",
   },
 } satisfies Record<Locale, Record<string, string>>
 
@@ -757,46 +802,68 @@ export default function NotificationOperationsPage({ params }: { params: Promise
                 <div className="divide-y">
                   {reports.map((report) => (
                     <article key={report.id} className="grid gap-3 p-4 md:grid-cols-[1.5fr_1fr_auto] md:items-center">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="truncate font-medium">{report.purpose}</p>
-                          <StatusBadge status={report.status} locale={locale} />
-                          <Badge variant={report.dryRun ? "secondary" : "default"}>
-                            {report.dryRun ? t.dryRun : t.live}
-                          </Badge>
-                          {report.providerStatus != null && (
-                            <Badge variant="outline">
-                              {t.providerStatusLabel}: {report.providerStatus}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                          {report.error || report.providerMessage || report.message}
-                        </p>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          {report.externalPackId && <span>{t.packId}: {report.externalPackId}</span>}
-                          {report.externalMessageId && <span>{t.messageId}: {report.externalMessageId}</span>}
-                          <span className="flex items-center gap-1">
-                            <span className="rounded bg-muted px-1.5 py-0.5 font-mono">
-                              {report.reconciliationStatus || "internal"}
-                            </span>
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        <p>{t.maskedPhoneLabel}: {report.phoneMasked}</p>
-                        <p>{t.recipient}: {report.customerName || report.customerId || "-"}</p>
-                        <p>{t.actor}: {report.actorName || t.system}</p>
-                      </div>
-                      <div className="text-sm text-muted-foreground md:text-end">
-                        <p>{t.createdAt}: {formatDate(report.createdAt)}</p>
-                        <p>{t.sentAt}: {formatDate(report.sentAt)}</p>
-                        {report.providerReportAvailable ? (
-                          <p className="text-xs">{t.providerReport}: {t.providerReport}</p>
-                        ) : (
-                          <p className="text-xs">{t.providerReportUnavailable}</p>
-                        )}
-                      </div>
+                       <div className="min-w-0">
+                         <div className="flex flex-wrap items-center gap-2">
+                           <p className="truncate font-medium">{report.purpose}</p>
+                           <StatusBadge status={report.status} locale={locale} />
+                           <Badge variant={report.dryRun ? "secondary" : "default"}>
+                             {report.dryRun ? t.dryRun : t.live}
+                           </Badge>
+                           {report.providerStatus != null && (
+                             <Badge variant="outline">
+                               {t.providerStatusLabel}: {report.providerStatus}
+                             </Badge>
+                           )}
+                           {report.providerDeliveryState != null && (
+                             <Badge variant={report.providerDeliveryState === 1 ? "default" : "destructive"}>
+                               {t.deliveryStateLabel}: {report.providerDeliveryState}
+                             </Badge>
+                           )}
+                         </div>
+                         <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                           {report.error || report.providerMessage || report.message}
+                         </p>
+                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                           {report.externalPackId && <span>{t.packId}: {report.externalPackId}</span>}
+                           {report.externalMessageId && <span>{t.messageId}: {report.externalMessageId}</span>}
+                           <span className="flex items-center gap-1">
+                             <span className="rounded bg-muted px-1.5 py-0.5 font-mono">
+                               {report.reconciliationStatus || "internal"}
+                             </span>
+                           </span>
+                           {report.providerDeliveryDateTime && (
+                             <span>{t.deliveryDateTimeLabel}: {formatDate(report.providerDeliveryDateTime)}</span>
+                           )}
+                           {report.providerCost != null && (
+                             <span>{t.cost}: {report.providerCost}</span>
+                           )}
+                           {report.providerLineNumber && (
+                             <span>LINE: {report.providerLineNumber}</span>
+                           )}
+                         </div>
+                         {report.providerMessageText && (
+                           <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                             {t.providerMessageTextLabel}: {report.providerMessageText}
+                           </p>
+                         )}
+                       </div>
+                       <div className="text-sm text-muted-foreground">
+                         <p>{t.maskedPhoneLabel}: {report.phoneMasked}</p>
+                         {report.providerMobileMasked && (
+                           <p>{t.providerMobileLabel}: {report.providerMobileMasked}</p>
+                         )}
+                         <p>{t.recipient}: {report.customerName || report.customerId || "-"}</p>
+                         <p>{t.actor}: {report.actorName || t.system}</p>
+                       </div>
+                       <div className="text-sm text-muted-foreground md:text-end">
+                         <p>{t.createdAt}: {formatDate(report.createdAt)}</p>
+                         <p>{t.sentAt}: {formatDate(report.sentAt)}</p>
+                         {report.providerReportAvailable ? (
+                           <p className="text-xs text-emerald-600">{t.providerDelivered}</p>
+                         ) : (
+                           <p className="text-xs">{t.providerReportUnavailable}</p>
+                         )}
+                       </div>
                     </article>
                   ))}
                 </div>

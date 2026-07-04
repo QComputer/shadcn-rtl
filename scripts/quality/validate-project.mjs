@@ -420,6 +420,24 @@ if (exists("scripts/quality/validate-creative-studio-provider-result-ingestion.m
     }
   }
 
+  if (exists("scripts/quality/validate-sms-delivery-reports.mjs")) {
+    const result = spawnSync(process.execPath, ["scripts/quality/validate-sms-delivery-reports.mjs"], { cwd: root, encoding: "utf8" });
+    if (result.status === 0) {
+      ok("P120E SMS delivery reports validator passes");
+    } else {
+      fail("P120E SMS delivery reports validator passes", result.stderr || result.stdout);
+    }
+  }
+
+  if (exists("scripts/quality/validate-sms-provider-reconciliation.mjs")) {
+    const result = spawnSync(process.execPath, ["scripts/quality/validate-sms-provider-reconciliation.mjs"], { cwd: root, encoding: "utf8" });
+    if (result.status === 0) {
+      ok("P120E SMS provider reconciliation validator passes");
+    } else {
+      fail("P120E SMS provider reconciliation validator passes", result.stderr || result.stdout);
+    }
+  }
+
   if (exists("scripts/quality/validate-creative-studio-reviewed-asset-apply.mjs")) {
     const result = spawnSync(process.execPath, ["scripts/quality/validate-creative-studio-reviewed-asset-apply.mjs"], { cwd: root, encoding: "utf8" });
     if (result.status === 0) {

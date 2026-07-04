@@ -54,6 +54,8 @@
     "quality:notification-retry-policy": "node scripts/quality/validate-notification-retry-policy.mjs",
     "quality:sms-ir-provider-completion": "node scripts/quality/validate-sms-ir-provider-completion.mjs",
     "quality:sms-real-send-gates": "node scripts/quality/validate-sms-real-send-gates.mjs",
+    "quality:sms-delivery-reports": "node scripts/quality/validate-sms-delivery-reports.mjs",
+    "quality:sms-provider-reconciliation": "node scripts/quality/validate-sms-provider-reconciliation.mjs",
     "e2e:deployed:pwa-push-sms": "node scripts/e2e/deployed-pwa-push-sms-smoke.mjs",
     "smoke:deployed:pwa-push-sms": "node scripts/e2e/deployed-pwa-push-sms-smoke.mjs",
     "quality:deployed-pwa-push-sms": "node scripts/quality/validate-deployed-pwa-push-sms.mjs",

@@ -204,6 +204,8 @@ pnpm run quality:web-push-delivery
 pnpm run quality:sms-provider
 pnpm run quality:notification-routing
 pnpm run quality:notification-operations
+pnpm run quality:sms-delivery-reports
+pnpm run quality:sms-provider-reconciliation
 pnpm run quality:deployed-pwa-push-sms
 pnpm run quality:production-rollout
 pnpm run quality:pwa-push-sms-acceptance

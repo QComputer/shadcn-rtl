@@ -71,6 +71,12 @@ type SmsDelivery = {
   createdAt: string
   customer: Person
   actor: Person | null
+  externalPackId: string | null
+  externalMessageId: string | null
+  actorName: string | null
+  customerName: string | null
+  reconciliationStatus: string | null
+  providerReportAvailable: boolean
 }
 
 type DeliveryAttempt = {
@@ -125,6 +131,29 @@ type NotificationOperationsDashboard = {
   }
 }
 
+type SmsReportRow = {
+  id: string
+  phoneMasked: string
+  purpose: string
+  message: string
+  provider: string
+  dryRun: boolean
+  status: DeliveryStatus
+  providerStatus: number | null
+  providerMessage: string | null
+  error: string | null
+  sentAt: string | null
+  createdAt: string
+  updatedAt: string
+  externalPackId: string | null
+  externalMessageId: string | null
+  actorName: string | null
+  customerId: string | null
+  customerName: string | null
+  reconciliationStatus: string | null
+  providerReportAvailable: boolean
+}
+
 const copy = {
   fa: {
     title: "پایش اعلان‌ها",
@@ -166,6 +195,23 @@ const copy = {
     guest: "مهمان",
     details: "جزئیات",
     copied: "وضعیت تازه شد",
+    smsReports: "گزارش پیامک‌ها",
+    smsReport: "گزارش تحویل پیامک",
+    packId: "شناسه بسته ارسال",
+    messageId: "شناسه پیامک",
+    cost: "هزینه ارسال",
+    providerStatusLabel: "وضعیت ارائه‌دهنده",
+    lastProviderCheck: "آخرین بررسی گزارش",
+    reconciliationStatusLabel: "وضعیت تطبیق",
+    reconcile: "تطبیق داخلی",
+    providerReport: "گزارش ارائه‌دهنده",
+    providerReportUnavailable: "گزارش ارائه‌دهنده هنوز پیکربندی نشده است",
+    maskedPhone: "شماره مقصد",
+    maskedPhoneLabel: "شماره مقصد ماسک شده",
+    liveSend: "ارسال واقعی",
+    unknown: "نامشخص",
+    reconcilePostOnly: "تطبیق فقط از طریق POST قابل استفاده است",
+    noReports: "هنوز گزارش پیامکی ثبت نشده است.",
   },
   en: {
     title: "Notification ops",
@@ -207,6 +253,23 @@ const copy = {
     guest: "Guest",
     details: "Details",
     copied: "Status refreshed",
+    smsReports: "SMS reports",
+    smsReport: "SMS delivery report",
+    packId: "Send pack ID",
+    messageId: "Message ID",
+    cost: "Send cost",
+    providerStatusLabel: "Provider status",
+    lastProviderCheck: "Last provider report check",
+    reconciliationStatusLabel: "Reconciliation status",
+    reconcile: "Reconcile",
+    providerReport: "Provider report",
+    providerReportUnavailable: "Provider report is not configured yet",
+    maskedPhone: "Destination number",
+    maskedPhoneLabel: "Masked destination number",
+    liveSend: "Live send",
+    unknown: "Unknown",
+    reconcilePostOnly: "Reconcile is POST-only",
+    noReports: "No SMS reports yet.",
   },
   ar: {
     title: "مراقبة الإشعارات",
@@ -248,6 +311,23 @@ const copy = {
     guest: "ضيف",
     details: "التفاصيل",
     copied: "تم تحديث الحالة",
+    smsReports: "تقارير الرسائل النصية",
+    smsReport: "تقرير تسليم الرسائل النصية",
+    packId: "معرف حزمة الإرسال",
+    messageId: "معرف الرسالة",
+    cost: "تكلفة الإرسال",
+    providerStatusLabel: "حالة المزود",
+    lastProviderCheck: "آخر فحص لتقرير المزود",
+    reconciliationStatusLabel: "حالة التطبيق",
+    reconcile: "تطبيق داخلي",
+    providerReport: "تقرير المزود",
+    providerReportUnavailable: "تقرير المزود غير مهيأ بعد",
+    maskedPhone: "الرقم المستهدف",
+    maskedPhoneLabel: "الرقم المستهدف المقنع",
+    liveSend: "إرسال فعلي",
+    unknown: "غير معروف",
+    reconcilePostOnly: "التطبيق متاح عبر POST فقط",
+    noReports: "لا توجد تقارير رسائل نصية بعد.",
   },
 } satisfies Record<Locale, Record<string, string>>
 
@@ -375,6 +455,8 @@ export default function NotificationOperationsPage({ params }: { params: Promise
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reports, setReports] = useState<SmsReportRow[]>([])
+  const [reportsLoading, setReportsLoading] = useState(true)
 
   const dateFormatter = useMemo(
     () =>
@@ -413,13 +495,30 @@ export default function NotificationOperationsPage({ params }: { params: Promise
     [t.copied, t.error],
   )
 
+  const loadReports = useCallback(async () => {
+    try {
+      const response = await fetch("/api/dashboard/notification-operations/sms-ir/deliveries", { cache: "no-store" })
+      const payload = await response.json().catch(() => ({ ok: false, data: [] }))
+      if (response.ok && payload.ok) {
+        setReports(payload.data || [])
+      } else {
+        setReports([])
+      }
+    } catch (_loadError) {
+      setReports([])
+    } finally {
+      setReportsLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       void loadDashboard(false)
+      void loadReports()
     }, 0)
 
     return () => window.clearTimeout(timeout)
-  }, [loadDashboard])
+  }, [loadDashboard, loadReports])
 
   if (loading) {
     return (
@@ -628,6 +727,75 @@ export default function NotificationOperationsPage({ params }: { params: Promise
                       <div className="text-sm text-muted-foreground md:text-end">
                         <p>{t.createdAt}: {formatDate(attempt.createdAt)}</p>
                         <p>{t.nextRetry}: {formatDate(attempt.nextRetryAt)}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold">{t.smsReports}</h2>
+              {!reportsLoading && reports.length > 0 && (
+                <Badge variant="outline">
+                  {reports.filter((r) => r.dryRun).length} / {reports.length} {t.dryRun}
+                </Badge>
+              )}
+            </div>
+            {reportsLoading ? (
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <Skeleton className="h-24" />
+                <Skeleton className="h-24" />
+                <Skeleton className="h-24" />
+              </div>
+            ) : reports.length === 0 ? (
+              <EmptyState text={t.noReports} />
+            ) : (
+              <div className="overflow-hidden rounded-lg border">
+                <div className="divide-y">
+                  {reports.map((report) => (
+                    <article key={report.id} className="grid gap-3 p-4 md:grid-cols-[1.5fr_1fr_auto] md:items-center">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate font-medium">{report.purpose}</p>
+                          <StatusBadge status={report.status} locale={locale} />
+                          <Badge variant={report.dryRun ? "secondary" : "default"}>
+                            {report.dryRun ? t.dryRun : t.live}
+                          </Badge>
+                          {report.providerStatus != null && (
+                            <Badge variant="outline">
+                              {t.providerStatusLabel}: {report.providerStatus}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                          {report.error || report.providerMessage || report.message}
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          {report.externalPackId && <span>{t.packId}: {report.externalPackId}</span>}
+                          {report.externalMessageId && <span>{t.messageId}: {report.externalMessageId}</span>}
+                          <span className="flex items-center gap-1">
+                            <span className="rounded bg-muted px-1.5 py-0.5 font-mono">
+                              {report.reconciliationStatus || "internal"}
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        <p>{t.maskedPhoneLabel}: {report.phoneMasked}</p>
+                        <p>{t.recipient}: {report.customerName || report.customerId || "-"}</p>
+                        <p>{t.actor}: {report.actorName || t.system}</p>
+                      </div>
+                      <div className="text-sm text-muted-foreground md:text-end">
+                        <p>{t.createdAt}: {formatDate(report.createdAt)}</p>
+                        <p>{t.sentAt}: {formatDate(report.sentAt)}</p>
+                        {report.providerReportAvailable ? (
+                          <p className="text-xs">{t.providerReport}: {t.providerReport}</p>
+                        ) : (
+                          <p className="text-xs">{t.providerReportUnavailable}</p>
+                        )}
                       </div>
                     </article>
                   ))}

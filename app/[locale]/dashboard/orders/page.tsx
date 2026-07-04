@@ -639,6 +639,9 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>جزئیات سفارش {selectedOrder?.orderNumber}</DialogTitle>
+            <DialogDescription>
+              مشاهده و مدیریت وضعیت سفارش انتخاب‌شده
+            </DialogDescription>
           </DialogHeader>
           
 {selectedOrder && (

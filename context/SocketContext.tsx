@@ -41,7 +41,24 @@ interface SocketContextType {
 }
 
 // --- Configuration ---
-const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_SIGNALING_SERVER_URL || 'http://localhost:4001';
+const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_SIGNALING_SERVER_URL || ""
+const isProduction = process.env.NODE_ENV === "production"
+
+function isSafePublicRealtimeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false
+    const hostname = parsed.hostname.toLowerCase()
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0") return false
+    if (hostname.startsWith("192.168.") || hostname.startsWith("10.") || hostname.startsWith("172.")) return false
+    return true
+  } catch {
+    return false
+  }
+}
+
+const effectiveSocketUrl = SOCKET_SERVER_URL
+const shouldConnect = effectiveSocketUrl.trim().length > 0 && (!isProduction || isSafePublicRealtimeUrl(effectiveSocketUrl))
 
 const SocketContext = createContext<SocketContextType | null>(null);
 
@@ -63,58 +80,53 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
   const { data: session, status } = useSession();
 
   useEffect(() => {
-    if (status === 'authenticated' && session?.user?.id) {
-      if (!socketRef.current) { // Initialize only once
-        socketRef.current = io(SOCKET_SERVER_URL);
+    if (status === "authenticated" && session?.user?.id && shouldConnect) {
+      if (!socketRef.current) {
+        socketRef.current = io(effectiveSocketUrl)
 
-        socketRef.current.on('connect', () => {
-          setIsConnected(true);
-          console.log('Socket connected');
-          session?.user?.id && socketRef.current?.emit('identify', session?.user?.id as string);
-        });
+        socketRef.current.on("connect", () => {
+          setIsConnected(true)
+          console.log("Socket connected")
+          session?.user?.id && socketRef.current?.emit("identify", session?.user?.id as string)
+        })
 
-        socketRef.current.on('disconnect', () => {
-          setIsConnected(false);
-          console.log('Socket disconnected');
-        });
+        socketRef.current.on("disconnect", () => {
+          setIsConnected(false)
+          console.log("Socket disconnected")
+        })
 
-        socketRef.current.on('connect_error', () => {
-          console.error('Socket connection error:');
-        });
+        socketRef.current.on("connect_error", () => {
+          console.error("Socket connection error:")
+        })
       }
 
-      // Ensure socket is connected and identified if it exists
       if (socketRef.current.connected && session?.user?.id) {
-         if (socketRef.current.id) { // Check if socket has an ID (means connected)
-            setIsConnected(true);
-            // Re-identify if userId changes or if socket was disconnected/reconnected
-            if (socketRef.current.disconnected) {
-                socketRef.current.connect(); // Attempt to reconnect if disconnected
-            }
-            socketRef.current.emit('identify', session.user.id);
-         }
+        if (socketRef.current.id) {
+          setIsConnected(true)
+          if (socketRef.current.disconnected) {
+            socketRef.current.connect()
+          }
+          socketRef.current.emit("identify", session.user.id)
+        }
       } else {
-         // If socket exists but is not connected, try connecting
-         socketRef.current.connect();
+        socketRef.current.connect()
       }
 
-      // Clean up on component unmount or auth status change
       return () => {
         if (socketRef.current && !socketRef.current.disconnected) {
-          socketRef.current.disconnect();
+          socketRef.current.disconnect()
         }
-        socketRef.current = null; // Clear the ref
-        setIsConnected(false);
-      };
-    } else {
-      // If not authenticated or loading, ensure socket is disconnected
-      if (socketRef.current && !socketRef.current.disconnected) {
-        socketRef.current.disconnect();
+        socketRef.current = null
+        setIsConnected(false)
       }
-      socketRef.current = null; // Clear the ref
-      setIsConnected(false);
+    } else {
+      if (socketRef.current && !socketRef.current.disconnected) {
+        socketRef.current.disconnect()
+      }
+      socketRef.current = null
+      setIsConnected(false)
     }
-  }, [status, session]); // Re-run effect if auth status or session changes
+  }, [status, session])
 
   const value: SocketContextType = {
     socket: socketRef.current,

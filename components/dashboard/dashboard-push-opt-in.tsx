@@ -34,13 +34,19 @@ const copy = {
     enable: "فعال‌سازی اعلان مرورگر داشبورد",
     disable: "غیرفعال‌سازی اعلان مرورگر داشبورد",
     description: "برای دریافت اعلان سفارش‌های جدید حتی وقتی داشبورد باز نیست، اعلان مرورگر را فعال کنید.",
-    unsupported: "مرورگر شما از اعلان مرورگر پشتیبانی نمی‌کند",
-    permissionDenied: "درخواست اعلان مرورگر رد شد. لطفاً در تنظیمات مرورگر خود اجازه دهید.",
-    subscribed: "اعلان مرورگر داشبورد فعال است",
-    unsubscribed: "اعلان مرورگر داشبورد غیرفعال است",
-    error: "خطا در مدیریت اعلان مرورگر",
+    unsupported: "اعلان مرورگر در این مرورگر پشتیبانی نمی‌شود",
+    insecureContext: "اتصال امن HTTPS برای فعال‌سازی اعلان مرورگر لازم است",
+    serviceWorkerUnavailable: "Service Worker در این مرورگر فعال نیست",
+    pushApiUnavailable: "Push API در این مرورگر فعال نیست",
+    notificationApiUnavailable: "Notification API در این مرورگر فعال نیست",
+    permissionDenied: "مجوز اعلان قبلاً رد شده است. لطفاً در تنظیمات مرورگر خود اجازه دهید.",
+    permissionPrompt: "برای فعال‌سازی اعلان، اجازه مرورگر لازم است",
+    notConfigured: "کلید عمومی اعلان تنظیم نشده است",
+    subscribed: "اعلان مرورگر فعال است",
+    unsubscribed: "اعلان مرورگر غیرفعال است",
+    active: "اعلان مرورگر فعال است",
     dryRun: "حالت آزمایشی - اعلان‌ها ارسال نمی‌شوند",
-    notConfigured: "سرور اعلان مرورگر پیکربندی نشده است",
+    error: "خطا در مدیریت اعلان مرورگر",
   },
 }
 
@@ -73,9 +79,32 @@ export function DashboardPushOptIn() {
     }
   }
 
+  const [capabilityError, setCapabilityError] = useState<string | null>(null)
+
   const checkPermission = async () => {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    setCapabilityError(null)
+
+    if (!("serviceWorker" in navigator)) {
       setPermissionState("unsupported")
+      setCapabilityError(c.serviceWorkerUnavailable)
+      return
+    }
+
+    if (!("PushManager" in window)) {
+      setPermissionState("unsupported")
+      setCapabilityError(c.pushApiUnavailable)
+      return
+    }
+
+    if (!("Notification" in window)) {
+      setPermissionState("unsupported")
+      setCapabilityError(c.notificationApiUnavailable)
+      return
+    }
+
+    if (!window.isSecureContext) {
+      setPermissionState("unsupported")
+      setCapabilityError(c.insecureContext)
       return
     }
 
@@ -83,7 +112,7 @@ export function DashboardPushOptIn() {
       const permission = await navigator.permissions.query({ name: "push" as PermissionName })
       setPermissionState(permission.state as "granted" | "denied" | "default")
     } catch {
-      setPermissionState("unsupported")
+      setPermissionState("default")
     }
   }
 
@@ -98,6 +127,11 @@ export function DashboardPushOptIn() {
     try {
       if (!("serviceWorker" in navigator)) {
         toast.error(c.unsupported)
+        return
+      }
+
+      if (!("Notification" in window)) {
+        toast.error(c.notificationApiUnavailable)
         return
       }
 
@@ -179,7 +213,7 @@ export function DashboardPushOptIn() {
         <CardContent className="p-4">
           <div className="flex items-center gap-3 text-muted-foreground">
             <BellOff className="h-5 w-5" />
-            <span className="text-sm">{c.unsupported}</span>
+            <span className="text-sm">{capabilityError || c.unsupported}</span>
           </div>
         </CardContent>
       </Card>
@@ -211,8 +245,17 @@ export function DashboardPushOptIn() {
         {status?.config.dryRun && !isSubscribed && (
           <p className="text-xs text-amber-600">{c.dryRun}</p>
         )}
+        {!status?.config.publicKeyConfigured && (
+          <p className="text-xs text-destructive">{c.notConfigured}</p>
+        )}
         {permissionState === "denied" && (
           <p className="text-xs text-destructive">{c.permissionDenied}</p>
+        )}
+        {permissionState === "default" && !isSubscribed && (
+          <p className="text-xs text-muted-foreground">{c.permissionPrompt}</p>
+        )}
+        {isSubscribed && (
+          <p className="text-xs text-emerald-600">{c.active}</p>
         )}
       </CardContent>
     </Card>

@@ -447,6 +447,33 @@ if (exists("scripts/quality/validate-creative-studio-provider-result-ingestion.m
     }
   }
 
+  if (exists("scripts/quality/validate-realtime-production-config.mjs")) {
+    const result = spawnSync(process.execPath, ["scripts/quality/validate-realtime-production-config.mjs"], { cwd: root, encoding: "utf8" });
+    if (result.status === 0) {
+      ok("NOTIFOPS-DEPLOY-FIX1 realtime production config validator passes");
+    } else {
+      fail("NOTIFOPS-DEPLOY-FIX1 realtime production config validator passes", result.stderr || result.stdout);
+    }
+  }
+
+  if (exists("scripts/quality/validate-web-push-capability-detection.mjs")) {
+    const result = spawnSync(process.execPath, ["scripts/quality/validate-web-push-capability-detection.mjs"], { cwd: root, encoding: "utf8" });
+    if (result.status === 0) {
+      ok("NOTIFOPS-DEPLOY-FIX1 web push capability detection validator passes");
+    } else {
+      fail("NOTIFOPS-DEPLOY-FIX1 web push capability detection validator passes", result.stderr || result.stdout);
+    }
+  }
+
+  if (exists("scripts/quality/validate-notification-ops-deployed-safety.mjs")) {
+    const result = spawnSync(process.execPath, ["scripts/quality/validate-notification-ops-deployed-safety.mjs"], { cwd: root, encoding: "utf8" });
+    if (result.status === 0) {
+      ok("NOTIFOPS-DEPLOY-FIX1 notification ops deployed safety validator passes");
+    } else {
+      fail("NOTIFOPS-DEPLOY-FIX1 notification ops deployed safety validator passes", result.stderr || result.stdout);
+    }
+  }
+
   if (exists("scripts/quality/validate-creative-studio-reviewed-asset-apply.mjs")) {
     const result = spawnSync(process.execPath, ["scripts/quality/validate-creative-studio-reviewed-asset-apply.mjs"], { cwd: root, encoding: "utf8" });
     if (result.status === 0) {

@@ -617,7 +617,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
           </div>
 
           {/* Charts Section - SHOP */}
-          {isShopOrg && !isCustomer && !isDriver && dashboardData?.salesData && (
+          {mounted && isShopOrg && !isCustomer && !isDriver && dashboardData?.salesData && (
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Sales Chart */}
               <Card className="lg:col-span-2">
@@ -664,7 +664,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
               </Card>
 
               {/* Orders by Status */}
-              {dashboardData.ordersByStatus && dashboardData.ordersByStatus.length > 0 && (
+              {mounted && dashboardData.ordersByStatus && dashboardData.ordersByStatus.length > 0 && (
                <Link href={`/${locale}/dashboard/orders`}>
                 <Card>
                   <CardHeader>

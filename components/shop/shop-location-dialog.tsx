@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { MapPin } from "lucide-react";
 import { getDictionary, getDictValue } from "@/lib/dictionary";
 
@@ -29,6 +29,9 @@ export function ShopLocationDialog({ lat, lng, name, locale }: ShopLocationDialo
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{t("organization.location") || "موقعیت فروشگاه"}</DialogTitle>
+          <DialogDescription>
+            {name || "فروشگاه"}
+          </DialogDescription>
         </DialogHeader>
         <div className="h-[400px] w-full mt-4">
           <MapLocationView lat={lat} lng={lng} label={name || "فروشگاه"} />

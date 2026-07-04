@@ -134,6 +134,13 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 118 | Creative Studio organization-brand provider execution implementation | Source/deployed execution gate | `pnpm run quality:creative-studio-organization-brand-provider-execution` / `pnpm run e2e:deployed:creative-studio` |
 | 119 | Creative Studio provider result ingestion and review stabilization | Source/deployed review gate | `pnpm run quality:creative-studio-provider-result-ingestion` / `pnpm run e2e:deployed:creative-studio` |
 | C-F | Map, driver dashboard, admin driver/order enhancements | Done | See phase docs |
+| 120A | Operational order notifications and admin controls | Source-validated | `pnpm run quality:order-operational-notifications` |
+| 120B | Customer order lifecycle notifications and guest SMS dry-run | Source-validated | `pnpm run quality:customer-order-lifecycle-notifications` / `pnpm run quality:guest-sms-dry-run` |
+| 120C | Notification delivery observability and retry eligibility | Source-validated | `pnpm run quality:notification-delivery-observability` / `pnpm run quality:notification-retry-policy` |
+| 120D | SMS.ir provider completion | Source-validated | `pnpm run quality:sms-ir-provider-completion` / `pnpm run quality:sms-real-send-gates` |
+| 120E | SMS delivery reports and provider reconciliation | Source-validated | `pnpm run quality:sms-delivery-reports` / `pnpm run quality:sms-provider-reconciliation` |
+| 120F | SMS.ir official report endpoint integration | Source-validated | `pnpm run quality:sms-provider-report-endpoints` |
+| NOTIFOPS-DEPLOY-FIX1 | Deployed notification operations hardening | Source/deployed smoke | `pnpm run quality:realtime-production-config` / `pnpm run quality:web-push-capability-detection` / `pnpm run quality:notification-ops-deployed-safety` / `pnpm run e2e:deployed:notification-operations` |
 
 ## Current validation checklist
 

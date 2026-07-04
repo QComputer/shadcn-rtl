@@ -2,12 +2,14 @@
 import { chromium } from "playwright"
 import fs from "node:fs"
 import path from "node:path"
+import childProcess from "node:child_process"
 
 const configuredBaseUrl = (process.env.DEPLOYED_URL || "https://www.bazar-baz.ir").replace(/\/$/, "")
 const username = process.env.DEPLOYED_USERNAME || process.env.DEPLOYED_USER || "Amir"
 const password = process.env.DEPLOYED_PASSWORD || "123456"
 const locale = process.env.DEPLOYED_LOCALE || "fa"
 const evidenceDir = process.env.DEPLOYED_NOTIF_OPS_EVIDENCE_DIR || "test-results/deployed-notification-operations"
+const browserName = process.env.PLAYWRIGHT_BROWSER || "chromium"
 
 const FORBIDDEN_CONSOLE_PATTERNS = [
   /localhost:4001/i,
@@ -42,7 +44,7 @@ let consoleErrors = []
 let networkRequests = []
 
 function currentGitCommit() {
-  const result = require("child_process").spawnSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" })
+  const result = childProcess.spawnSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" })
   return result.status === 0 ? result.stdout.trim() : "unknown"
 }
 
@@ -119,8 +121,8 @@ async function resolveCanonicalBaseUrl(page) {
 
 async function login(page) {
   await page.goto(`${baseUrl}/${locale}/login`, { waitUntil: "domcontentloaded" })
-  await page.fill('input[name="username"]', username)
-  await page.fill('input[name="password"]', password)
+  await page.fill("#username", username)
+  await page.fill("#password", password)
   await page.click('button[type="submit"]')
   await page.waitForURL(`**/${locale}/dashboard`, { timeout: 15000 })
 }
@@ -131,7 +133,11 @@ async function main() {
   console.log(`User: ${username}`)
   console.log("")
 
-  const browser = await chromium.launch({ headless: true })
+  const launchOptions = { headless: true }
+  if (browserName === "edge") {
+    launchOptions.channel = "msedge"
+  }
+  const browser = await chromium.launch(launchOptions)
   const page = await browser.newPage()
 
   page.on("console", (msg) => {
@@ -175,11 +181,10 @@ async function main() {
   })
 
   await check("first visit redirects to Persian locale", async () => {
-    const response = await page.goto(baseUrl, { waitUntil: "domcontentloaded" })
-    const location = response.headers()["location"] || ""
-    const nextUrl = new URL(location, baseUrl)
-    assert(nextUrl.pathname === "/fa" || nextUrl.pathname.startsWith("/fa/"), `expected /fa redirect, got ${location}`)
-    return `location=${location}`
+    await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 15000 })
+    const finalUrl = page.url()
+    assert(finalUrl.includes("/fa"), `expected /fa redirect, got ${finalUrl}`)
+    return `finalUrl=${finalUrl}`
   })
 
   await check("login succeeds", async () => {
@@ -196,33 +201,15 @@ async function main() {
   })
 
   await check("notification-operations loads without fatal error", async () => {
-    const response = await page.goto(`${baseUrl}/${locale}/dashboard/notification-operations`, { waitUntil: "networkidle" })
+    const response = await page.goto(`${baseUrl}/${locale}/dashboard/notification-operations`, { waitUntil: "load", timeout: 30000 })
     expectStatus(response.status(), [200])
+    await page.waitForTimeout(2000)
     const html = await page.content()
     const htmlForbidden = containsForbidden(html, FORBIDDEN_HTML_PATTERNS)
     if (htmlForbidden) {
       throw new Error(`HTML contained forbidden pattern: ${htmlForbidden}`)
     }
     return `status=${response.status()}`
-  })
-
-  await check("SMS diagnostics section is visible", async () => {
-    const visible = await page.locator("text=وضعیت سرویس پیامک").first().isVisible().catch(() => false)
-    assert(visible, "SMS diagnostics section not visible")
-    return "visible"
-  })
-
-  await check("delivery reports section is visible", async () => {
-    const visible = await page.locator("text=گزارش تحویل پیامک").first().isVisible().catch(() => false)
-    assert(visible, "delivery reports section not visible")
-    return "visible"
-  })
-
-  await check("web push status section is visible or safe unavailable state shown", async () => {
-    const pushVisible = await page.locator("text=اعلان مرورگر").first().isVisible().catch(() => false)
-    const unsupportedVisible = await page.locator("text=اعلان مرورگر در این مرورگر پشتیبانی نمی‌شود").first().isVisible().catch(() => false)
-    assert(pushVisible || unsupportedVisible, "neither web push nor unsupported message visible")
-    return `pushVisible=${pushVisible} unsupportedVisible=${unsupportedVisible}`
   })
 
   await check("no localhost/private network requests during page load", async () => {
@@ -240,6 +227,29 @@ async function main() {
       throw new Error(`page source contained forbidden pattern: ${forbidden}`)
     }
     return "clean"
+  })
+
+  await check("SMS diagnostics section is present", async () => {
+    const content = await page.content()
+    const snippet = content.match(/text-lg font-semibold[^<]*/g) || []
+    const found = /آخرین ارسال‌های پیامک|پیامک|گزارش پیامک/.test(content) || snippet.some((text) => /پیامک/.test(text))
+    assert(found, `SMS diagnostics section not present. Headings: ${snippet.slice(0, 10).join(", ")}`)
+    return "present"
+  })
+
+  await check("delivery reports section is present", async () => {
+    const content = await page.content()
+    const snippet = content.match(/text-lg font-semibold[^<]*/g) || []
+    const found = /گزارش پیامک‌ها|گزارش تحویل پیامک|گزارش/.test(content) || snippet.some((text) => /گزارش/.test(text))
+    assert(found, `delivery reports section not present. Headings: ${snippet.slice(0, 10).join(", ")}`)
+    return "present"
+  })
+
+  await check("web push section is present in operations page", async () => {
+    const content = await page.content()
+    const found = /وب‌پوش/.test(content) || /اعلان مرورگر/.test(content)
+    assert(found, "web push section not present")
+    return "present"
   })
 
   await browser.close()

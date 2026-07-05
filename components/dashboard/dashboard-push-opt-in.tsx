@@ -42,6 +42,7 @@ const copy = {
     permissionDenied: "مجوز اعلان قبلاً رد شده است. لطفاً در تنظیمات مرورگر خود اجازه دهید.",
     permissionPrompt: "برای فعال‌سازی اعلان، اجازه مرورگر لازم است",
     notConfigured: "کلید عمومی اعلان تنظیم نشده است",
+    invalidVapidKey: "کلید عمومی اعلان نامعتبر است",
     subscribed: "اعلان مرورگر فعال است",
     unsubscribed: "اعلان مرورگر غیرفعال است",
     active: "اعلان مرورگر فعال است",
@@ -143,9 +144,22 @@ export function DashboardPushOptIn() {
         return
       }
 
+      let keyBytes: Uint8Array
+      try {
+        keyBytes = urlBase64ToUint8Array(publicKey)
+      } catch {
+        toast.error(c.invalidVapidKey)
+        return
+      }
+
+      if (keyBytes.length !== 65) {
+        toast.error(c.invalidVapidKey)
+        return
+      }
+
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
+        applicationServerKey: keyBytes,
       })
 
       const response = await fetch("/api/dashboard/push-subscriptions", {

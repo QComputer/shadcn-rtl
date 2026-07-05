@@ -9,8 +9,8 @@ This roadmap is ordered for risk reduction. Phases 18-119 are historical/complet
 Current baseline:
 
 - Completed through **P120F - SMS.ir official report endpoint integration** and **NOTIFOPS-DEPLOY-FIX1** deployed notification operations hardening.
-- B2B repositioning baseline: **BB-B2B-P00**, **BB-B2B-P01**, **BB-B2B-P02**, and **BB-B2B-P03** completed. Public route policy, decision matrix, content architecture, and Persian-first B2B homepage landing implemented in `app/[locale]/page.tsx`.
-- Next B2B recommended phase: **BB-B2B-P04 — Demo Business Portfolio and Seed Strategy**.
+- B2B repositioning baseline: **BB-B2B-P00**, **BB-B2B-P01**, **BB-B2B-P02**, **BB-B2B-P03**, and **BB-B2B-P04** completed. Public route policy, decision matrix, content architecture, Persian-first B2B homepage landing, and curated demo business portfolio implemented.
+- Next B2B recommended phase: **BB-B2B-P05 — Public Discovery Restriction and Demo-Only APIs**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -19,7 +19,7 @@ Current baseline:
 Recommended next B2B phase:
 
 ```txt
-BB-B2B-P04 — Demo Business Portfolio and Seed Strategy
+BB-B2B-P05 — Public Discovery Restriction and Demo-Only APIs
 ```
 
 P120D added server-only sms.ir REST client, bulk/like-to-like sends, Iranian mobile normalization, schedule validation, dry-run default, explicit real-send gates, dashboard diagnostics, and delivery observability for transactional messages. Real send remains disabled by default.
@@ -27,6 +27,7 @@ P120D added server-only sms.ir REST client, bulk/like-to-like sends, Iranian mob
 Immediate validation target:
 
 ```powershell
+pnpm run quality:b2b-demo-business-portfolio
 pnpm run quality:b2b-homepage-landing
 pnpm run quality:b2b-persian-content-architecture
 pnpm run quality:b2b-public-route-policy
@@ -35,7 +36,6 @@ pnpm run db:generate
 pnpm run db:validate
 pnpm run typecheck
 pnpm run build
-pnpm run quality:local
 ```
 
 Completed integrated phases:
@@ -106,6 +106,8 @@ Completed integrated phases:
 | BB-B2B-P01 | Public surface policy and route audit with marketplace discovery restriction plan. |
 | BB-B2B-P02 | Persian B2B content architecture with `lib/content/b2b-homepage-content.ts`, feature messaging, and demo business messaging. |
 | BB-B2B-P03 | Persian-first B2B homepage landing replacing marketplace-style homepage with static business-oriented sections. |
+| BB-B2B-P04 | Curated demo business portfolio and seed strategy with explicit demo labels and dry-run safety policy. |
+| BB-B2B-P05 | Public discovery restriction and demo-only APIs. |
 
 Safety constraints for all Import Hub phases:
 

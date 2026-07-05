@@ -145,6 +145,8 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | BB-B2B-P01 | Public surface policy and route audit with marketplace discovery restriction plan | Docs/source audit | `pnpm run quality:b2b-public-route-policy` |
 | BB-B2B-P02 | Persian B2B content architecture with homepage content, feature messaging, and demo business messaging | Docs/source | `pnpm run quality:b2b-persian-content-architecture` |
 | BB-B2B-P03 | Persian-first B2B homepage landing replacing marketplace-style homepage | Source/UI | `pnpm run quality:b2b-homepage-landing` |
+| BB-B2B-P04 | Curated demo business portfolio and seed strategy with explicit demo labels and dry-run safety policy | Source/docs | `pnpm run quality:b2b-demo-business-portfolio` |
+| BB-B2B-P05 | Public discovery restriction and demo-only APIs | Source/API | `pnpm run quality:b2b-public-route-policy` |
 
 ## Current validation checklist
 
@@ -383,7 +385,8 @@ tsconfig.tsbuildinfo
 
 Latest completed implementation phase: **P120F - SMS.ir official report endpoint integration** and **NOTIFOPS-DEPLOY-FIX1**.
 B2B repositioning homepage landing completed: **BB-B2B-P03** (Persian-first B2B landing page, static business-oriented sections, and theme-dependent RTL layout implemented in `app/[locale]/page.tsx`).
-Recommended next B2B phase: **BB-B2B-P04 — Demo Business Portfolio and Seed Strategy**.
+B2B repositioning demo portfolio completed: **BB-B2B-P04** (curated demo business portfolio at `app/[locale]/demo/page.tsx`, explicit demo labels, and dry-run seed safety policy documented).
+Recommended next B2B phase: **BB-B2B-P05 — Public Discovery Restriction and Demo-Only APIs**.
 
 The active roadmap is `docs/NEXT_PHASE_ROADMAP.md`.
 

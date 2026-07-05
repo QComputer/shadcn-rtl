@@ -35,7 +35,7 @@ export default async function HomePage({
 
   return (
     <div className="min-h-screen bg-background">
-      <B2BHero content={content.hero} isRTL={isRTL} locale={locale} />
+      <B2BHero content={content.hero} isRTL={isRTL} locale={locale} demoHref={`/${locale}/demo`} />
 
       <main>
         <section className="py-16 md:py-24">

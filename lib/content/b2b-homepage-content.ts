@@ -355,3 +355,11 @@ export const b2bHomepageContent = {
 }
 
 export type B2BHomepageContent = typeof b2bHomepageContent
+
+export const b2bNextPhase = {
+  current: "BB-B2B-P03",
+  next: "BB-B2B-P04",
+  nextName: "Demo Business Portfolio and Seed Strategy",
+  afterNext: "BB-B2B-P05",
+  afterNextName: "Public Discovery Restriction and Demo-Only APIs",
+}

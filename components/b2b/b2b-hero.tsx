@@ -11,7 +11,7 @@ type HeroContent = {
   secondaryCta: string
 }
 
-export function B2BHero({ content, isRTL, locale }: { content: HeroContent; isRTL: boolean; locale: Locale }) {
+export function B2BHero({ content, isRTL, locale, demoHref = `/${locale}/demo` }: { content: HeroContent; isRTL: boolean; locale: Locale; demoHref?: string }) {
   return (
     <section className="relative overflow-hidden border-b bg-gradient-to-br from-primary/10 via-background to-secondary/20">
       <div className="absolute inset-0 -z-10 opacity-60 [background:radial-gradient(circle_at_top_left,hsl(var(--primary)/.22),transparent_34%),radial-gradient(circle_at_bottom_right,hsl(var(--primary)/.12),transparent_32%)]" />
@@ -31,7 +31,7 @@ export function B2BHero({ content, isRTL, locale }: { content: HeroContent; isRT
             <Link href={`/${locale}/register/organization`}>
               <Button size="lg" className="rounded-xl">{content.primaryCta}</Button>
             </Link>
-            <Link href="#demo">
+            <Link href={demoHref}>
               <Button size="lg" variant="outline" className="rounded-xl bg-background/60">{content.secondaryCta}</Button>
             </Link>
           </div>

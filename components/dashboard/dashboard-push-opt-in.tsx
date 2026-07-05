@@ -159,7 +159,7 @@ export function DashboardPushOptIn() {
 
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: keyBytes,
+        applicationServerKey: keyBytes as unknown as BufferSource,
       })
 
       const response = await fetch("/api/dashboard/push-subscriptions", {

@@ -241,7 +241,7 @@ export function WebPushOptIn({ organizationSlug, organizationName, locale = "fa"
       const existingSubscription = await registration.pushManager.getSubscription()
       const subscription = existingSubscription ?? await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
+        applicationServerKey: urlBase64ToUint8Array(publicKey) as unknown as BufferSource,
       })
 
       const response = await fetch("/api/customer/push-subscriptions", {

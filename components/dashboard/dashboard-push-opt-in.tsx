@@ -152,11 +152,6 @@ export function DashboardPushOptIn() {
         return
       }
 
-      if (keyBytes.length !== 65) {
-        toast.error(c.invalidVapidKey)
-        return
-      }
-
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: keyBytes as unknown as BufferSource,

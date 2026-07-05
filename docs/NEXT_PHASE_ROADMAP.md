@@ -8,25 +8,18 @@ This roadmap is ordered for risk reduction. Phases 18-119 are historical/complet
 
 Current baseline:
 
-- Completed through **P120F - SMS.ir official report endpoint integration** and **NOTIFOPS-DEPLOY-FIX1** deployed notification operations hardening (no localhost socket leak, improved Web Push capability detection, safe realtime gating).
-- Next recommended phase: **P121 — Creative Studio product image apply workflow with rollback** (or continue with product phases if Creative Studio is not the immediate priority).
+- Completed through **P120F - SMS.ir official report endpoint integration** and **NOTIFOPS-DEPLOY-FIX1** deployed notification operations hardening.
+- B2B repositioning baseline: **BB-B2B-P00** and **BB-B2B-P01** completed. Public route policy and decision matrix documented in `docs/b2b-public-repositioning/`.
+- Next B2B recommended phase: **BB-B2B-P02 — Persian B2B Content Architecture**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
-- `docs/IMPORT_HUB_ROADMAP.md` is the active P68-P78 implementation plan.
-- Local post-P82 AI media commits already include the server-mediated product suggestion flow and selected-image Vercel Blob copy when `BLOB_READ_WRITE_TOKEN` is configured.
-- `docs/AI_HANDOFF_PROJECT_CONTEXT.md` is historical and stale; do not restart at Phase 18.
+- `docs/b2b-public-repositioning/PUBLIC_ROUTE_POLICY.md` is the authoritative public route policy for B2B positioning.
 
-Recommended next phase:
+Recommended next B2B phase:
 
 ```txt
-P120E — SMS delivery reports and provider reconciliation
-```
-
-Alternative:
-
-```txt
-P121 — Creative Studio product image apply workflow with rollback
+BB-B2B-P02 — Persian B2B Content Architecture
 ```
 
 P120D added server-only sms.ir REST client, bulk/like-to-like sends, Iranian mobile normalization, schedule validation, dry-run default, explicit real-send gates, dashboard diagnostics, and delivery observability for transactional messages. Real send remains disabled by default.

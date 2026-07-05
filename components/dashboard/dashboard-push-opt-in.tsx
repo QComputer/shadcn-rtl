@@ -144,13 +144,8 @@ export function DashboardPushOptIn() {
         return
       }
 
-      let keyBytes: Uint8Array
-      try {
-        keyBytes = urlBase64ToUint8Array(publicKey)
-      } catch {
-        toast.error(c.invalidVapidKey)
-        return
-      }
+      const keyBytes = urlBase64ToUint8Array(publicKey)
+      console.debug("[WebPush] publicKey length:", publicKey.length, "decoded bytes:", keyBytes.length, "first 5 bytes:", Array.from(keyBytes.slice(0, 5)))
 
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
@@ -171,9 +166,12 @@ export function DashboardPushOptIn() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
+      console.error("[WebPush] subscribe error:", message, err)
       if (message.includes("Permission denied")) {
         setPermissionState("denied")
         toast.error(c.permissionDenied)
+      } else if (message.includes("invalidVapidKey") || message.includes("applicationServerKey is not valid")) {
+        toast.error(c.invalidVapidKey)
       } else {
         const safeMessage = message.length > 180 ? `${message.slice(0, 177)}...` : message
         toast.error(`${c.error}: ${safeMessage}`)
@@ -206,9 +204,9 @@ export function DashboardPushOptIn() {
   }
 
   function urlBase64ToUint8Array(base64String: string) {
-    const padding = "=".repeat((4 - (base64String.length % 4)) % 4)
-    const base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/")
-    const rawData = window.atob(base64)
+    const normalized = base64String.replace(/-/g, "+").replace(/_/g, "/")
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4)
+    const rawData = window.atob(padded)
     const arr = new Uint8Array(rawData.length)
     for (let i = 0; i < rawData.length; ++i) {
       arr[i] = rawData.charCodeAt(i)

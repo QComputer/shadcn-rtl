@@ -88,6 +88,7 @@ Create complete Persian content architecture for the Bazar Baz public homepage a
 
 - **BB-B2B-P03** is the next phase: Homepage B2B Landing Implementation
 - P03 will implement the B2B homepage UI using this content architecture
+- **BB-B2B-P04** — Demo Business Portfolio and Seed Strategy
 
 ## Out of Scope
 

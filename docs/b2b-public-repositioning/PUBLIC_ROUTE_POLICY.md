@@ -99,5 +99,5 @@ Public APIs are classified as:
 
 ## Next Phase
 
-- BB-B2B-P02 is the next B2B phase: Persian B2B Content Architecture
-- BB-B2B-P03 will implement the B2B homepage landing based on P02 content
+- BB-B2B-P03 is completed: Persian-first B2B homepage landing in `app/[locale]/page.tsx`
+- **BB-B2B-P04** — Demo Business Portfolio and Seed Strategy

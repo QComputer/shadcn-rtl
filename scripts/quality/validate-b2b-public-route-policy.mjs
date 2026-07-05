@@ -47,7 +47,7 @@ if (policy.length > 0) {
   add("Policy mentions business owner as buyer", /business owner| Iranian businesses|B2B.*business/i.test(policy))
   add("Policy mentions public discovery reduction", /public discovery|marketplace.*restrict|reduce.*discovery/i.test(policy))
   add("Policy mentions demo business portfolio", /demo.*portfolio|portfolio.*demo|curated demo/i.test(policy))
-  add("Policy references P02 as next B2B phase", /P02|BB-B2B-P02/i.test(policy))
+  add("Policy references P03/P04 as current/next B2B phase", /P03|P04|BB-B2B-P03|BB-B2B-P04/i.test(policy))
 }
 
 if (matrix.length > 0) {

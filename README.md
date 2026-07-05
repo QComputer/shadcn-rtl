@@ -141,6 +141,10 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | 120E | SMS delivery reports and provider reconciliation | Source-validated | `pnpm run quality:sms-delivery-reports` / `pnpm run quality:sms-provider-reconciliation` |
 | 120F | SMS.ir official report endpoint integration | Source-validated | `pnpm run quality:sms-provider-report-endpoints` |
 | NOTIFOPS-DEPLOY-FIX1 | Deployed notification operations hardening | Source/deployed smoke | `pnpm run quality:realtime-production-config` / `pnpm run quality:web-push-capability-detection` / `pnpm run quality:notification-ops-deployed-safety` / `pnpm run e2e:deployed:notification-operations` |
+| BB-B2B-P00 | B2B repositioning baseline: route policy, decision matrix, and public surface audit | Docs/source audit | `pnpm run quality:b2b-public-route-policy` |
+| BB-B2B-P01 | Public surface policy and route audit with marketplace discovery restriction plan | Docs/source audit | `pnpm run quality:b2b-public-route-policy` |
+| BB-B2B-P02 | Persian B2B content architecture with homepage content, feature messaging, and demo business messaging | Docs/source | `pnpm run quality:b2b-persian-content-architecture` |
+| BB-B2B-P03 | Persian-first B2B homepage landing replacing marketplace-style homepage | Source/UI | `pnpm run quality:b2b-homepage-landing` |
 
 ## Current validation checklist
 
@@ -378,9 +382,8 @@ tsconfig.tsbuildinfo
 ## Current roadmap status
 
 Latest completed implementation phase: **P120F - SMS.ir official report endpoint integration** and **NOTIFOPS-DEPLOY-FIX1**.
-Latest completed implementation phase: **P120F - SMS.ir official report endpoint integration** and **NOTIFOPS-DEPLOY-FIX1**.
-B2B repositioning content architecture completed: **BB-B2B-P02** (Persian homepage content, feature messaging, and demo business messaging documented in `docs/b2b-public-repositioning/`).
-Recommended next B2B phase: **BB-B2B-P03 — Homepage B2B Landing Implementation**.
+B2B repositioning homepage landing completed: **BB-B2B-P03** (Persian-first B2B landing page, static business-oriented sections, and theme-dependent RTL layout implemented in `app/[locale]/page.tsx`).
+Recommended next B2B phase: **BB-B2B-P04 — Demo Business Portfolio and Seed Strategy**.
 
 The active roadmap is `docs/NEXT_PHASE_ROADMAP.md`.
 

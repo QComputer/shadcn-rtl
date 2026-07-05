@@ -62,6 +62,7 @@
     "quality:notification-ops-deployed-safety": "node scripts/quality/validate-notification-ops-deployed-safety.mjs",
     "quality:b2b-public-route-policy": "node scripts/quality/validate-b2b-public-route-policy.mjs",
     "quality:b2b-persian-content-architecture": "node scripts/quality/validate-b2b-persian-content-architecture.mjs",
+    "quality:b2b-homepage-landing": "node scripts/quality/validate-b2b-homepage-landing.mjs",
     "e2e:deployed:pwa-push-sms": "node scripts/e2e/deployed-pwa-push-sms-smoke.mjs",
     "smoke:deployed:pwa-push-sms": "node scripts/e2e/deployed-pwa-push-sms-smoke.mjs",
     "e2e:deployed:sms-notif-ops": "node scripts/e2e/deployed-sms-notif-ops.mjs",

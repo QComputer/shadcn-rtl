@@ -8,7 +8,7 @@ The current working baseline after P119 Creative Studio provider result ingestio
 
 P119 adds server-mediated provider result polling and internal result ingestion for organization-brand logo/cover outputs. Ingested outputs become draft/review-only Creative Studio assets with provider metadata, dashboard refresh/reject controls, and audit/usage events; public auto-apply remains disabled and `Organization.logo` / `Organization.coverImage` are not mutated by ingestion.
 
-B2B repositioning baseline: BB-B2B-P00 and BB-B2B-P01 completed. Public route policy and decision matrix are documented in `docs/b2b-public-repositioning/`. BB-B2B-P02 Persian B2B content architecture is completed with `lib/content/b2b-homepage-content.ts` and supporting docs.
+B2B repositioning baseline: BB-B2B-P00, BB-B2B-P01, BB-B2B-P02, and BB-B2B-P03 completed. Public route policy and decision matrix are documented in `docs/b2b-public-repositioning/`. BB-B2B-P03 replaces the marketplace-like homepage with a Persian-first B2B landing page in `app/[locale]/page.tsx`. Next B2B phase: BB-B2B-P04 — Demo Business Portfolio and Seed Strategy.
 
 Minimum target-machine gate for any implementation phase:
 

@@ -9,8 +9,8 @@ This roadmap is ordered for risk reduction. Phases 18-119 are historical/complet
 Current baseline:
 
 - Completed through **P120F - SMS.ir official report endpoint integration** and **NOTIFOPS-DEPLOY-FIX1** deployed notification operations hardening.
-- B2B repositioning baseline: **BB-B2B-P00** and **BB-B2B-P01** completed. Public route policy and decision matrix documented in `docs/b2b-public-repositioning/`.
-- Next B2B recommended phase: **BB-B2B-P02 — Persian B2B Content Architecture**.
+- B2B repositioning baseline: **BB-B2B-P00**, **BB-B2B-P01**, **BB-B2B-P02**, and **BB-B2B-P03** completed. Public route policy, decision matrix, content architecture, and Persian-first B2B homepage landing implemented in `app/[locale]/page.tsx`.
+- Next B2B recommended phase: **BB-B2B-P04 — Demo Business Portfolio and Seed Strategy**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -19,7 +19,7 @@ Current baseline:
 Recommended next B2B phase:
 
 ```txt
-BB-B2B-P03 — Homepage B2B Landing Implementation
+BB-B2B-P04 — Demo Business Portfolio and Seed Strategy
 ```
 
 P120D added server-only sms.ir REST client, bulk/like-to-like sends, Iranian mobile normalization, schedule validation, dry-run default, explicit real-send gates, dashboard diagnostics, and delivery observability for transactional messages. Real send remains disabled by default.
@@ -27,54 +27,15 @@ P120D added server-only sms.ir REST client, bulk/like-to-like sends, Iranian mob
 Immediate validation target:
 
 ```powershell
-pnpm run quality:export-hub-foundation
-pnpm run quality:import-approval-publishing
-pnpm run quality:ai-media
-pnpm run quality:ai-media-health-gate
-pnpm run quality:ai-media-mock-flow
-pnpm run quality:ai-media-durable-storage
-pnpm run quality:ai-media-long-running-ux
-pnpm run quality:ai-media-usage-controls
-pnpm run quality:import-ai-media-bridge
-pnpm run quality:deployed-ai-media-rollout
-pnpm run quality:ai-media-rollout-evidence
-pnpm run quality:ai-media-paid-provider-controls
-pnpm run quality:ai-media-cost-rollback
-pnpm run quality:ai-media-seller-state-ux
+pnpm run quality:b2b-homepage-landing
+pnpm run quality:b2b-persian-content-architecture
+pnpm run quality:b2b-public-route-policy
 pnpm run quality:source-baseline
-pnpm run quality:open-fields-audit
-pnpm run quality:pwa-foundation
-pnpm run quality:pwa-offline-shell
-pnpm run quality:notification-preferences
-pnpm run quality:web-push-delivery
-pnpm run quality:sms-provider
-pnpm run quality:notification-routing
-pnpm run quality:notification-operations
-pnpm run quality:deployed-pwa-push-sms
-pnpm run quality:production-rollout
-pnpm run quality:pwa-push-sms-acceptance
-pnpm run quality:clean-source
-pnpm run quality:creative-studio-planning
-pnpm run quality:creative-studio-foundation
-pnpm run quality:creative-studio-dashboard
-pnpm run quality:creative-studio-apply-controls
-pnpm run quality:creative-studio-generation-readiness
-pnpm run quality:creative-studio-product-image-generation
-pnpm run quality:creative-studio-generated-asset-selection
-pnpm run quality:creative-studio-organization-brand-readiness
-pnpm run quality:creative-studio-organization-brand-request-controls
-pnpm run quality:creative-studio-organization-brand-acceptance
-pnpm run quality:creative-studio-organization-brand-provider-rollout
-pnpm run quality:creative-studio-organization-brand-provider-execution
-pnpm run quality:creative-studio-provider-result-ingestion
-pnpm run quality:order-operational-notifications
-pnpm run quality:admin-order-controls
-pnpm run quality:export-downloads
-pnpm run quality:deployed-import-export-smoke
-pnpm run quality:local
-pnpm prisma generate
+pnpm run db:generate
+pnpm run db:validate
 pnpm run typecheck
 pnpm run build
+pnpm run quality:local
 ```
 
 Completed integrated phases:
@@ -138,6 +99,13 @@ Completed integrated phases:
 | P120B | Customer order lifecycle notifications and guest SMS dry-run review. |
 | P120C | Notification delivery observability and retry eligibility metadata. |
 | P120D | SMS.ir provider completion with server-only REST client, bulk/like-to-like sends, and explicit real-send gates. |
+| P120E | SMS delivery reports and provider reconciliation. |
+| P120F | SMS.ir official report endpoint integration. |
+| NOTIFOPS-DEPLOY-FIX1 | Deployed notification operations hardening. |
+| BB-B2B-P00 | B2B repositioning baseline: route policy, decision matrix, and public surface audit. |
+| BB-B2B-P01 | Public surface policy and route audit with marketplace discovery restriction plan. |
+| BB-B2B-P02 | Persian B2B content architecture with `lib/content/b2b-homepage-content.ts`, feature messaging, and demo business messaging. |
+| BB-B2B-P03 | Persian-first B2B homepage landing replacing marketplace-style homepage with static business-oriented sections. |
 
 Safety constraints for all Import Hub phases:
 

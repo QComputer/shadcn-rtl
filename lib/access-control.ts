@@ -226,12 +226,17 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     requiredOrgType: ["APPOINTMENT"],
   },
 
-  "/dashboard/service-categories": {
-    allowedRoles: ORG_MANAGEMENT_ROLES,
-    requiresOrgMembership: true,
-    requiredOrgType: ["APPOINTMENT"],
-  },
-}
+   "/dashboard/service-categories": {
+     allowedRoles: ORG_MANAGEMENT_ROLES,
+     requiresOrgMembership: true,
+     requiredOrgType: ["APPOINTMENT"],
+   },
+
+   "/dashboard/notification-operations": {
+     allowedRoles: ORG_MANAGEMENT_ROLES,
+     requiresOrgMembership: true,
+   },
+ }
 
 export function listDashboardRoutePatterns(): string[] {
   return Object.keys(dashboardRouteConfig).sort()

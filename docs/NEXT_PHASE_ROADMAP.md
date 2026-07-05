@@ -19,7 +19,7 @@ Current baseline:
 Recommended next B2B phase:
 
 ```txt
-BB-B2B-P02 — Persian B2B Content Architecture
+BB-B2B-P03 — Homepage B2B Landing Implementation
 ```
 
 P120D added server-only sms.ir REST client, bulk/like-to-like sends, Iranian mobile normalization, schedule validation, dry-run default, explicit real-send gates, dashboard diagnostics, and delivery observability for transactional messages. Real send remains disabled by default.

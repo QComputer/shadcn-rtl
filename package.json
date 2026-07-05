@@ -61,6 +61,7 @@
     "quality:web-push-capability-detection": "node scripts/quality/validate-web-push-capability-detection.mjs",
     "quality:notification-ops-deployed-safety": "node scripts/quality/validate-notification-ops-deployed-safety.mjs",
     "quality:b2b-public-route-policy": "node scripts/quality/validate-b2b-public-route-policy.mjs",
+    "quality:b2b-persian-content-architecture": "node scripts/quality/validate-b2b-persian-content-architecture.mjs",
     "e2e:deployed:pwa-push-sms": "node scripts/e2e/deployed-pwa-push-sms-smoke.mjs",
     "smoke:deployed:pwa-push-sms": "node scripts/e2e/deployed-pwa-push-sms-smoke.mjs",
     "e2e:deployed:sms-notif-ops": "node scripts/e2e/deployed-sms-notif-ops.mjs",

@@ -1,12 +1,14 @@
 # Current Source of Truth — Bazar Baz
 
-Date: 2026-06-29
+Date: 2026-07-05
 
 ## Current validated baseline
 
 The current working baseline after P119 Creative Studio provider result ingestion and review stabilization is source-validator green after the P119 validation gate.
 
 P119 adds server-mediated provider result polling and internal result ingestion for organization-brand logo/cover outputs. Ingested outputs become draft/review-only Creative Studio assets with provider metadata, dashboard refresh/reject controls, and audit/usage events; public auto-apply remains disabled and `Organization.logo` / `Organization.coverImage` are not mutated by ingestion.
+
+B2B repositioning baseline: BB-B2B-P00 and BB-B2B-P01 completed. Public route policy and decision matrix are documented in `docs/b2b-public-repositioning/`. BB-B2B-P02 Persian B2B content architecture is completed with `lib/content/b2b-homepage-content.ts` and supporting docs.
 
 Minimum target-machine gate for any implementation phase:
 

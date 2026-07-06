@@ -86,8 +86,8 @@ export default async function PricingPage({
                   <Link href={`/${locale}/request-demo`}>
                     <Button size="lg" className="rounded-xl">{content.ctaRequestDemo}</Button>
                   </Link>
-                  <Link href={`/${locale}/contact`}>
-                    <Button size="lg" variant="outline" className="rounded-xl bg-background/60">{content.ctaConsultation}</Button>
+                  <Link href={`/${locale}/features`}>
+                    <Button size="lg" variant="outline" className="rounded-xl bg-background/60">مشاهده امکانات</Button>
                   </Link>
                 </div>
               </CardContent>

@@ -58,6 +58,31 @@ export default async function RequestDemoPage({
                 <RequestDemoForm locale={locale} content={content} />
               </CardContent>
             </Card>
+
+            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">امکانات پلتفرم</CardTitle>
+                  <CardDescription>با قابلیت‌های بازارباز بیشتر آشنا شوید.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href={`/${locale}/features`}>
+                    <Button variant="outline" className="w-full">مشاهده امکانات</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">داشبورد مدیریتی</CardTitle>
+                  <CardDescription>نحوه کار پنل مدیریت بازارباز را ببینید.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href={`/${locale}/dashboard-showcase`}>
+                    <Button variant="outline" className="w-full">مشاهده داشبورد</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </main>

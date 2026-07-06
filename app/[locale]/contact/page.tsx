@@ -112,8 +112,8 @@ export default async function ContactPage({
                   <Link href={`/${locale}/request-demo`}>
                     <Button size="lg" className="rounded-xl">{content.ctaRequestDemo}</Button>
                   </Link>
-                  <Link href={`/${locale}/login`}>
-                    <Button size="lg" variant="outline" className="rounded-xl bg-background/60">{content.ctaLogin}</Button>
+                  <Link href={`/${locale}/features`}>
+                    <Button size="lg" variant="outline" className="rounded-xl bg-background/60">امکانات پلتفرم</Button>
                   </Link>
                 </div>
               </CardContent>

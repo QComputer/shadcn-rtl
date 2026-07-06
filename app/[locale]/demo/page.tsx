@@ -49,8 +49,11 @@ export default async function DemoPage({
                 <Link href={`/${locale}/request-demo`}>
                   <Button size="lg" className="rounded-xl">درخواست دمو</Button>
                 </Link>
-                <Link href={`/${locale}/login`}>
-                  <Button size="lg" variant="outline" className="rounded-xl bg-background/60">ورود به داشبورد</Button>
+                <Link href={`/${locale}/features`}>
+                  <Button size="lg" variant="outline" className="rounded-xl bg-background/60">مشاهده امکانات</Button>
+                </Link>
+                <Link href={`/${locale}/dashboard-showcase`}>
+                  <Button size="lg" variant="outline" className="rounded-xl bg-background/60">داشبورد بازارباز</Button>
                 </Link>
               </div>
           </div>

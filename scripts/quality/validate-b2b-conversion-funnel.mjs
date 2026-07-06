@@ -23,6 +23,7 @@ function add(name, ok, detail = "") {
 }
 
 const requestDemoPage = read("app/[locale]/request-demo/page.tsx")
+const requestDemoForm = read("app/[locale]/request-demo/form.tsx")
 const contactPage = read("app/[locale]/contact/page.tsx")
 const pricingPage = read("app/[locale]/pricing/page.tsx")
 const homepage = read("app/[locale]/page.tsx")
@@ -36,13 +37,14 @@ add("request-demo page exists", requestDemoPage.length > 0)
 add("contact page exists", contactPage.length > 0)
 add("pricing page exists", pricingPage.length > 0)
 
-if (requestDemoPage.length > 0) {
-  add("request-demo page exists with form structure", /request-demo|requestDemo|درخواست دمو/.test(requestDemoPage))
-  add("request-demo page has form fields", /fullName|businessName|phone|city|consent/.test(requestDemoPage))
-  add("request-demo page has consent checkbox", /consent/.test(requestDemoPage))
-  add("request-demo page does not send real SMS", !/sms\.ir|sendSMS|real SMS/.test(requestDemoPage))
-  add("request-demo page does not expose secrets", !/SMS_IR_API_KEY|VAPID|apiKey/.test(requestDemoPage))
-  add("request-demo page has success state", /successTitle|ثبت شد|submitted/.test(requestDemoPage))
+if (requestDemoPage.length > 0 || requestDemoForm.length > 0) {
+  const requestDemoSource = requestDemoPage + requestDemoForm
+  add("request-demo page exists with form structure", /request-demo|requestDemo|درخواست دمو/.test(requestDemoSource))
+  add("request-demo page has form fields", /fullName|businessName|phone|city|consent/.test(requestDemoSource))
+  add("request-demo page has consent checkbox", /consent/.test(requestDemoSource))
+  add("request-demo page does not send real SMS", !/sms\.ir|sendSMS|real SMS/.test(requestDemoSource))
+  add("request-demo page does not expose secrets", !/SMS_IR_API_KEY|VAPID|apiKey/.test(requestDemoSource))
+  add("request-demo page has success state", /successTitle|ثبت شد|submitted/.test(requestDemoSource))
 }
 
 if (contactPage.length > 0) {
@@ -50,7 +52,7 @@ if (contactPage.length > 0) {
   add("contact page has suitable business types", /فروشگاه|رستوران|داروخانه|مطب/.test(contactPage) || /suitableItems|suitableFor/.test(contactPage))
   add("contact page has onboarding path", /مسیر پیشنهادی|onboarding/.test(contactPage))
   add("contact page links to request-demo", /\/request-demo/.test(contactPage))
-  add("contact page links to dashboard login", /\/login/.test(contactPage))
+  add("contact page links to features or dashboard login", /\/features|\/login/.test(contactPage))
 }
 
 if (pricingPage.length > 0) {

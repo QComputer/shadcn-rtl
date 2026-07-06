@@ -6,6 +6,8 @@ import { B2BDemoPreview } from "@/components/b2b/b2b-demo-preview"
 import { B2BHowItWorks } from "@/components/b2b/b2b-how-it-works"
 import { B2BFaq } from "@/components/b2b/b2b-faq"
 import { B2BFinalCta } from "@/components/b2b/b2b-cta"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
 type Locale = "fa" | "en" | "ar"
 
@@ -73,6 +75,21 @@ export default async function HomePage({
         </section>
 
         <B2BCapabilities capabilities={content.capabilities} />
+
+        <section className="py-12 md:py-16">
+          <div className="container mx-auto px-4">
+            <div className="mx-auto max-w-3xl text-center">
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                <Link href={`/${locale}/features`}>
+                  <Button size="lg" variant="outline" className="rounded-xl bg-background/60">مشاهده همه امکانات</Button>
+                </Link>
+                <Link href={`/${locale}/dashboard-showcase`}>
+                  <Button size="lg" variant="outline" className="rounded-xl bg-background/60">داشبورد مدیریتی</Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <B2BIndustries industries={content.industries} />
 

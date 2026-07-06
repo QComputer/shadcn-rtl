@@ -10,7 +10,7 @@ Current baseline:
 
 - Completed through **P120F - SMS.ir official report endpoint integration** and **NOTIFOPS-DEPLOY-FIX1** deployed notification operations hardening.
 - B2B repositioning baseline: **BB-B2B-P00**, **BB-B2B-P01**, **BB-B2B-P02**, **BB-B2B-P03**, **BB-B2B-P04**, **BB-B2B-P05**, **BB-B2B-P06**, and **BB-B2B-P07** completed. Public route policy, decision matrix, content architecture, Persian-first B2B homepage landing, curated demo business portfolio, public discovery restriction policy, conversion funnel pages, and feature/dashboard showcase pages implemented.
-- Next B2B recommended phase: **BB-B2B-P08 — SEO, Trust, Legal, Analytics Hardening**.
+- Next B2B recommended phase: **BB-B2B-P09 — Deployed Acceptance and Handoff**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.

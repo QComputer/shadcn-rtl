@@ -69,6 +69,7 @@
     "quality:b2b-dashboard-showcase": "node scripts/quality/validate-b2b-dashboard-showcase.mjs",
     "quality:b2b-seo-trust-legal": "node scripts/quality/validate-b2b-seo-trust-legal.mjs",
     "e2e:deployed:pwa-push-sms": "node scripts/e2e/deployed-pwa-push-sms-smoke.mjs",
+    "e2e:deployed:b2b-public-surface": "node scripts/e2e/deployed-b2b-public-surface.mjs",
     "smoke:deployed:pwa-push-sms": "node scripts/e2e/deployed-pwa-push-sms-smoke.mjs",
     "e2e:deployed:sms-notif-ops": "node scripts/e2e/deployed-sms-notif-ops.mjs",
     "smoke:deployed:sms-notif-ops": "node scripts/e2e/deployed-sms-notif-ops.mjs",

@@ -149,7 +149,8 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | BB-B2B-P05 | Public discovery restriction and demo-only API policy with preserved tenant direct routes | Source/docs | `pnpm run quality:b2b-public-discovery-restriction` |
 | BB-B2B-P06 | Conversion funnel pages for request-demo, contact, and onboarding flows | Source/docs | `pnpm run quality:b2b-conversion-funnel` |
 | BB-B2B-P07 | Dashboard showcase and feature pages for B2B public surface | Source/docs | `pnpm run quality:b2b-dashboard-showcase` |
-| BB-B2B-P08 | SEO, trust, legal, and analytics hardening for B2B public surface | Future phase | Future phase |
+| BB-B2B-P08 | SEO, trust, legal, and analytics hardening for B2B public surface | Source/docs | `pnpm run quality:b2b-seo-trust-legal` |
+| BB-B2B-P09 | Deployed acceptance and handoff for B2B public surface | Source/deployed smoke | `pnpm run e2e:deployed:b2b-public-surface` |
 
 ## Current validation checklist
 
@@ -392,7 +393,9 @@ B2B repositioning demo portfolio completed: **BB-B2B-P04** (curated demo busines
 B2B repositioning public discovery restriction completed: **BB-B2B-P05** (public discovery restriction matrix, demo-only API policy, and preserved tenant direct route policy documented).
 B2B repositioning conversion funnel completed: **BB-B2B-P06** (request-demo, contact, and pricing pages implemented with safe B2B copy and CTAs).
 B2B repositioning feature/showcase pages completed: **BB-B2B-P07** (`app/[locale]/features/page.tsx` and `app/[locale]/dashboard-showcase/page.tsx` implemented with public-safe B2B feature explanations).
-Recommended next B2B phase: **BB-B2B-P08 — SEO, Trust, Legal, Analytics Hardening**.
+B2B repositioning SEO/trust/legal/analytics hardening completed: **BB-B2B-P08** (`app/[locale]/trust/page.tsx`, `app/[locale]/privacy/page.tsx`, `app/[locale]/terms/page.tsx`, footer legal links, and analytics policy documented).
+B2B repositioning deployed acceptance and handoff completed: **BB-B2B-P09** (non-browser HTTP production smoke at `scripts/e2e/deployed-b2b-public-surface.mjs`, all 10 public B2B pages verified live at https://www.bazar-baz.ir, final handoff docs created).
+Recommended next B2B phase: **BB-B2B-P10 — Request-demo Lead Storage and Admin Review**.
 
 The active roadmap is `docs/NEXT_PHASE_ROADMAP.md`.
 

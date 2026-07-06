@@ -45,14 +45,14 @@ export default async function DemoPage({
             <p className="text-lg leading-8 text-muted-foreground sm:text-xl">
               این نمونه‌ها فقط برای آشنایی صاحبان کسب‌وکار با پلتفرم بازارباز ساخته شده‌اند و با کسب‌وکارهای واقعی یا مشتریان عمومی مرتبط نیستند.
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-4">
-              <Link href={`/${locale}/register/organization`}>
-                <Button size="lg" className="rounded-xl">درخواست دمو</Button>
-              </Link>
-              <Link href={`/${locale}/login`}>
-                <Button size="lg" variant="outline" className="rounded-xl bg-background/60">ورود به داشبورد</Button>
-              </Link>
-            </div>
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                <Link href={`/${locale}/request-demo`}>
+                  <Button size="lg" className="rounded-xl">درخواست دمو</Button>
+                </Link>
+                <Link href={`/${locale}/login`}>
+                  <Button size="lg" variant="outline" className="rounded-xl bg-background/60">ورود به داشبورد</Button>
+                </Link>
+              </div>
           </div>
         </div>
       </section>

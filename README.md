@@ -147,7 +147,8 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 | BB-B2B-P03 | Persian-first B2B homepage landing replacing marketplace-style homepage | Source/UI | `pnpm run quality:b2b-homepage-landing` |
 | BB-B2B-P04 | Curated demo business portfolio and seed strategy with explicit demo labels and dry-run safety policy | Source/docs | `pnpm run quality:b2b-demo-business-portfolio` |
 | BB-B2B-P05 | Public discovery restriction and demo-only API policy with preserved tenant direct routes | Source/docs | `pnpm run quality:b2b-public-discovery-restriction` |
-| BB-B2B-P06 | Conversion funnel pages for request-demo, contact, and onboarding flows | Source/docs | Future phase |
+| BB-B2B-P06 | Conversion funnel pages for request-demo, contact, and onboarding flows | Source/docs | `pnpm run quality:b2b-conversion-funnel` |
+| BB-B2B-P07 | Dashboard showcase and feature pages for B2B public surface | Future phase | Future phase |
 
 ## Current validation checklist
 
@@ -388,7 +389,8 @@ Latest completed implementation phase: **P120F - SMS.ir official report endpoint
 B2B repositioning homepage landing completed: **BB-B2B-P03** (Persian-first B2B landing page, static business-oriented sections, and theme-dependent RTL layout implemented in `app/[locale]/page.tsx`).
 B2B repositioning demo portfolio completed: **BB-B2B-P04** (curated demo business portfolio at `app/[locale]/demo/page.tsx`, explicit demo labels, and dry-run seed safety policy documented).
 B2B repositioning public discovery restriction completed: **BB-B2B-P05** (public discovery restriction matrix, demo-only API policy, and preserved tenant direct route policy documented).
-Recommended next B2B phase: **BB-B2B-P06 — Conversion Funnel Pages**.
+B2B repositioning conversion funnel completed: **BB-B2B-P06** (request-demo, contact, and pricing pages implemented with safe B2B copy and CTAs).
+Recommended next B2B phase: **BB-B2B-P07 — Dashboard Showcase and Feature Pages**.
 
 The active roadmap is `docs/NEXT_PHASE_ROADMAP.md`.
 

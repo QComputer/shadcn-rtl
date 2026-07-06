@@ -65,6 +65,7 @@
     "quality:b2b-homepage-landing": "node scripts/quality/validate-b2b-homepage-landing.mjs",
     "quality:b2b-demo-business-portfolio": "node scripts/quality/validate-b2b-demo-business-portfolio.mjs",
     "quality:b2b-public-discovery-restriction": "node scripts/quality/validate-b2b-public-discovery-restriction.mjs",
+    "quality:b2b-conversion-funnel": "node scripts/quality/validate-b2b-conversion-funnel.mjs",
     "e2e:deployed:pwa-push-sms": "node scripts/e2e/deployed-pwa-push-sms-smoke.mjs",
     "smoke:deployed:pwa-push-sms": "node scripts/e2e/deployed-pwa-push-sms-smoke.mjs",
     "e2e:deployed:sms-notif-ops": "node scripts/e2e/deployed-sms-notif-ops.mjs",

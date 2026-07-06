@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 
 type Locale = "fa" | "en" | "ar"
 
-export function B2BFinalCta({ isRTL, locale }: { isRTL: boolean; locale: Locale }) {
+export function B2BFinalCta({ isRTL, locale, primaryHref = `/${locale}/request-demo` }: { isRTL: boolean; locale: Locale; primaryHref?: string }) {
   return (
     <section className="py-16 md:py-24">
       <div className="container mx-auto px-4">
@@ -13,7 +13,7 @@ export function B2BFinalCta({ isRTL, locale }: { isRTL: boolean; locale: Locale 
             همین حالا کسب‌وکار خود را به بازارباز اضافه کنید و از امکانات پلتفرم بهره‌مند شوید.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-            <Link href={`/${locale}/register/organization`}>
+            <Link href={primaryHref}>
               <Button size="lg" className="rounded-xl">درخواست دمو</Button>
             </Link>
             <Link href={`/${locale}/login`}>

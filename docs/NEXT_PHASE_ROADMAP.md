@@ -9,8 +9,8 @@ This roadmap is ordered for risk reduction. Phases 18-119 are historical/complet
 Current baseline:
 
 - Completed through **P120F - SMS.ir official report endpoint integration** and **NOTIFOPS-DEPLOY-FIX1** deployed notification operations hardening.
-- B2B repositioning baseline: **BB-B2B-P00**, **BB-B2B-P01**, **BB-B2B-P02**, **BB-B2B-P03**, **BB-B2B-P04**, and **BB-B2B-P05** completed. Public route policy, decision matrix, content architecture, Persian-first B2B homepage landing, curated demo business portfolio, and public discovery restriction policy implemented.
-- Next B2B recommended phase: **BB-B2B-P06 — Conversion Funnel Pages**.
+- B2B repositioning baseline: **BB-B2B-P00**, **BB-B2B-P01**, **BB-B2B-P02**, **BB-B2B-P03**, **BB-B2B-P04**, **BB-B2B-P05**, and **BB-B2B-P06** completed. Public route policy, decision matrix, content architecture, Persian-first B2B homepage landing, curated demo business portfolio, public discovery restriction policy, and conversion funnel pages implemented.
+- Next B2B recommended phase: **BB-B2B-P07 — Dashboard Showcase and Feature Pages**.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -19,7 +19,7 @@ Current baseline:
 Recommended next B2B phase:
 
 ```txt
-BB-B2B-P06 — Conversion Funnel Pages
+BB-B2B-P07 — Dashboard Showcase and Feature Pages
 ```
 
 P120D added server-only sms.ir REST client, bulk/like-to-like sends, Iranian mobile normalization, schedule validation, dry-run default, explicit real-send gates, dashboard diagnostics, and delivery observability for transactional messages. Real send remains disabled by default.
@@ -27,6 +27,7 @@ P120D added server-only sms.ir REST client, bulk/like-to-like sends, Iranian mob
 Immediate validation target:
 
 ```powershell
+pnpm run quality:b2b-conversion-funnel
 pnpm run quality:b2b-public-discovery-restriction
 pnpm run quality:b2b-demo-business-portfolio
 pnpm run quality:b2b-homepage-landing
@@ -109,6 +110,8 @@ Completed integrated phases:
 | BB-B2B-P03 | Persian-first B2B homepage landing replacing marketplace-style homepage with static business-oriented sections. |
 | BB-B2B-P04 | Curated demo business portfolio and seed strategy with explicit demo labels and dry-run safety policy. |
 | BB-B2B-P05 | Public discovery restriction and demo-only API policy with preserved tenant direct routes. |
+| BB-B2B-P06 | Conversion funnel pages for request-demo, contact, and onboarding flows. |
+| BB-B2B-P07 | Dashboard showcase and feature pages for B2B public surface. |
 | BB-B2B-P06 | Conversion funnel pages for request-demo, contact, and onboarding flows. |
 
 Safety constraints for all Import Hub phases:

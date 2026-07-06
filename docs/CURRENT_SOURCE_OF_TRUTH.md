@@ -8,7 +8,7 @@ The current working baseline after P119 Creative Studio provider result ingestio
 
 P119 adds server-mediated provider result polling and internal result ingestion for organization-brand logo/cover outputs. Ingested outputs become draft/review-only Creative Studio assets with provider metadata, dashboard refresh/reject controls, and audit/usage events; public auto-apply remains disabled and `Organization.logo` / `Organization.coverImage` are not mutated by ingestion.
 
-B2B repositioning baseline: BB-B2B-P00, BB-B2B-P01, BB-B2B-P02, BB-B2B-P03, BB-B2B-P04, and BB-B2B-P05 completed. Public route policy and decision matrix are documented in `docs/b2b-public-repositioning/`. BB-B2B-P03 replaces the marketplace-like homepage with a Persian-first B2B landing page in `app/[locale]/page.tsx`. BB-B2B-P04 adds curated demo business portfolio and seed strategy. BB-B2B-P05 documents public discovery restriction and demo-only API policy. Next B2B phase: BB-B2B-P06 — Conversion Funnel Pages.
+B2B repositioning baseline: BB-B2B-P00, BB-B2B-P01, BB-B2B-P02, BB-B2B-P03, BB-B2B-P04, BB-B2B-P05, and BB-B2B-P06 completed. Public route policy and decision matrix are documented in `docs/b2b-public-repositioning/`. BB-B2B-P03 replaces the marketplace-like homepage with a Persian-first B2B landing page in `app/[locale]/page.tsx`. BB-B2B-P04 adds curated demo business portfolio and seed strategy. BB-B2B-P05 documents public discovery restriction and demo-only API policy. BB-B2B-P06 adds conversion funnel pages (request-demo, contact, pricing). Next B2B phase: BB-B2B-P07 — Dashboard Showcase and Feature Pages.
 
 Minimum target-machine gate for any implementation phase:
 

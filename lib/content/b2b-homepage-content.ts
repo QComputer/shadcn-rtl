@@ -316,10 +316,10 @@ export const b2bHomepageContent = {
     footer: {
       tagline: "بازارباز — پلتفرم مدیریت و ارتباط مستقیم کسب‌وکارهای ایرانی با مشتریان.",
       links: [
-        { label: "درباره ما", href: "/about" },
-        { label: "قوانین و مقررات", href: "/terms" },
-        { label: "حریم خصوصی", href: "/privacy" },
+        { label: "نمونه‌ها", href: "/demo" },
+        { label: "تعرفه‌ها", href: "/pricing" },
         { label: "تماس با ما", href: "/contact" },
+        { label: "درخواست دمو", href: "/request-demo" },
       ],
       copyright: "© 2026 بازارباز. تمامی حقوق محفوظ است.",
     },

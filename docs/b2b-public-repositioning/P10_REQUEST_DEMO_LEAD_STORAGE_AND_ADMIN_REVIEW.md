@@ -23,19 +23,23 @@ Turn the UI-only request-demo form into a safe, server-side lead capture workflo
 - No unsafe casts, `any`, `@ts-ignore`, or validator weakening was used.
 - The Export Hub foundation validator (`quality:export-hub-foundation`) continues to pass.
 
-## FIX3 — Authenticated Production Acceptance
+## FIX4 — Authenticated Production Acceptance (BLOCKED)
 
-- Updated `scripts/e2e/deployed-request-demo-leads.mjs` to perform authenticated read-only checks:
-  - Platform-admin login via `/api/auth/signin`
-  - GET `/api/dashboard/request-demo-leads` with session cookie
-  - GET `/fa/dashboard/request-demo-leads` dashboard page
-  - Safety scans for sensitive leaks and full phone exposure
-- Authenticated production smoke **could not be executed** because platform-admin SUPER_ADMIN credentials are unavailable in this environment.
-- Demo seed credentials (`superadmin` / `123456`) were tested and rejected by the production credentials provider.
+- Created read-only inventory script `scripts/ops/inspect-production-platform-admins.mjs`.
+- Executed inventory against production via `DATABASE_URL_UNPOOLED`.
+- **Result:** 1 active SUPER_ADMIN account exists in production.
+  - Account ID: `cmo8eoeyo000ajmnkw26stri5`
+  - Login identifier: phone number starting with `091***`
+  - Role: `SUPER_ADMIN`
+  - Enabled: yes
+  - Last login: 2026-06-29
+- **Blocker:** Valid production SUPER_ADMIN credentials are unavailable in this environment.
+- **Required action:** Explicit user authorization is required before performing a password reset or credential disclosure.
+- The deployed smoke script (`scripts/e2e/deployed-request-demo-leads.mjs`) was updated with authenticated checks but cannot complete without valid credentials.
+- No password reset was performed.
+- No account was created.
+- No valid production lead was created.
 - All source validators, typecheck, and build pass.
-- Production migrations are applied and verified.
-- Public smoke (page load, invalid POST, unauthenticated admin API block) passes.
-- **P10 remains blocked on authenticated platform-admin production verification.**
 
 ## Current Acceptance Status
 
@@ -50,7 +54,7 @@ Turn the UI-only request-demo form into a safe, server-side lead capture workflo
 | Unauthenticated admin API block | PASS |
 | Production migrations applied | PASS |
 | RequestDemoLead table exists | PASS |
-| Authenticated admin lead-list API | **BLOCKED — credentials unavailable** |
+| Authenticated admin lead-list API | **BLOCKED — active SUPER_ADMIN exists, credentials unavailable** |
 | Tenant-admin platform-lead access | Source-only (enforced by code + validator) |
 
 ## What Is Preserved

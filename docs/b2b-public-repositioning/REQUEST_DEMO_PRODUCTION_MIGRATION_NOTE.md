@@ -87,19 +87,21 @@ For environments where `prisma migrate deploy` cannot reach the database directl
 node scripts/ops/apply-p10-migrations.mjs
 ```
 
-## FIX3 — Authenticated Production Verification Status
+## FIX4 — Authenticated Production Verification Status
 
-The deployed smoke script (`scripts/e2e/deployed-request-demo-leads.mjs`) was updated to support authenticated platform-admin checks:
+The deployed smoke script (`scripts/e2e/deployed-request-demo-leads.mjs`) was updated to support authenticated platform-admin checks. However, as of FIX4:
 
-1. GET `/fa/request-demo` — returns 200, Persian B2B copy, consent UI
-2. Invalid POST `/api/request-demo` — returns 4xx, generic error, no sensitive leaks
-3. Unauthenticated GET `/api/dashboard/request-demo-leads` — returns 401
-4. Authenticated GET `/api/dashboard/request-demo-leads` — **requires valid SUPER_ADMIN credentials**
-5. Authenticated GET `/fa/dashboard/request-demo-leads` — **requires valid SUPER_ADMIN credentials**
+- Production inventory confirmed 1 active SUPER_ADMIN account exists.
+- Valid credentials for that account are **not available** in the development environment.
+- Demo seed credentials (`superadmin` / `123456`) are not valid in production.
+- **P10 acceptance is blocked pending credentialed access.**
 
-**Current status:** Authenticated checks could not be executed because platform-admin SUPER_ADMIN credentials are unavailable. Demo seed credentials (`superadmin` / `123456`) were rejected by the production credentials provider.
+Required next action:
+- Obtain valid production SUPER_ADMIN credentials through secure channels, OR
+- Explicitly authorize a one-time password reset for the existing production SUPER_ADMIN account.
 
-**P10 acceptance is blocked on this authenticated production verification.** All other acceptance criteria pass.
+Do not create a new SUPER_ADMIN without explicit authorization.
+Do not reset the password without explicit authorization.
 
 This script:
 - Uses `DATABASE_URL_UNPOOLED` (Direct Neon connection) to apply both migrations idempotently

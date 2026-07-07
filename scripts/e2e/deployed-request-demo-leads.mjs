@@ -24,7 +24,7 @@ function assertEnv(name, value) {
 }
 
 function hasSensitiveLeak(text) {
-  return /SMS_IR_API_KEY|VAPID_PRIVATE|DATABASE_URL|localhost:4001|socket\.io/i.test(text)
+  return /SMS_IR_API_KEY|VAPID_PRIVATE|DATABASE_URL|AUTH_SECRET|NEXTAUTH_SECRET|localhost:4001|socket\.io/i.test(text)
 }
 
 function hasFullPhone(text) {
@@ -37,6 +37,7 @@ async function requestDemoSmoke() {
   assertEnv("DEPLOYED_ADMIN_PASSWORD", ADMIN_PASSWORD)
 
   const results = []
+  let sessionToken = null
 
   async function check(name, fn) {
     try {
@@ -73,25 +74,6 @@ async function requestDemoSmoke() {
     return true
   })
 
-  await check("valid public POST returns generic success", async () => {
-    const res = await fetch(`${BASE_URL}/api/request-demo`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fullName: "تست",
-        businessName: "کافه تستی",
-        businessType: "shop",
-        phone: "09123456789",
-        consentAccepted: true,
-      }),
-    })
-    if (res.status !== 201) throw new Error(`Expected 201, got ${res.status}`)
-    const data = await res.json()
-    if (!data.message || !data.leadId) throw new Error("Missing generic success fields")
-    if (hasSensitiveLeak(JSON.stringify(data))) throw new Error("Sensitive leak in success")
-    return true
-  })
-
   await check("unauthenticated admin API blocked", async () => {
     const res = await fetch(`${BASE_URL}/api/dashboard/request-demo-leads`)
     if (res.status < 400) throw new Error(`Expected 4xx, got ${res.status}`)
@@ -115,8 +97,37 @@ async function requestDemoSmoke() {
     const match = setCookie.match(/next-auth\.session-token=([^;]+)/) || setCookie.match(/__Secure-next-auth\.session-token=([^;]+)/)
     if (!match) throw new Error("No session cookie in login response")
 
-    const sessionToken = decodeURIComponent(match[1])
-    return sessionToken
+    sessionToken = decodeURIComponent(match[1])
+    return true
+  })
+
+  await check("authenticated admin lead-list API returns 200", async () => {
+    if (!sessionToken) throw new Error("No session token from login")
+    const res = await fetch(`${BASE_URL}/api/dashboard/request-demo-leads`, {
+      headers: {
+        cookie: `next-auth.session-token=${sessionToken}`,
+      },
+    })
+    if (res.status !== 200) throw new Error(`Expected 200, got ${res.status}`)
+    const text = await res.text()
+    if (hasSensitiveLeak(text)) throw new Error("Sensitive leak in lead list")
+    if (hasFullPhone(text)) throw new Error("Full phone number exposed in lead list")
+    const data = JSON.parse(text)
+    if (!Array.isArray(data.items)) throw new Error("Missing items array in lead list")
+    return true
+  })
+
+  await check("authenticated admin dashboard page accessible", async () => {
+    if (!sessionToken) throw new Error("No session token from login")
+    const res = await fetch(`${BASE_URL}/fa/dashboard/request-demo-leads`, {
+      headers: {
+        cookie: `next-auth.session-token=${sessionToken}`,
+      },
+    })
+    if (res.status < 200 || res.status >= 500) throw new Error(`Expected 2xx/3xx, got ${res.status}`)
+    const html = await res.text()
+    if (hasSensitiveLeak(html)) throw new Error("Sensitive leak in dashboard page")
+    return true
   })
 
   const failed = results.filter((r) => !r.ok)

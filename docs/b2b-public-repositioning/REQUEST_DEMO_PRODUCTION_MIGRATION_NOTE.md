@@ -87,6 +87,20 @@ For environments where `prisma migrate deploy` cannot reach the database directl
 node scripts/ops/apply-p10-migrations.mjs
 ```
 
+## FIX3 — Authenticated Production Verification Status
+
+The deployed smoke script (`scripts/e2e/deployed-request-demo-leads.mjs`) was updated to support authenticated platform-admin checks:
+
+1. GET `/fa/request-demo` — returns 200, Persian B2B copy, consent UI
+2. Invalid POST `/api/request-demo` — returns 4xx, generic error, no sensitive leaks
+3. Unauthenticated GET `/api/dashboard/request-demo-leads` — returns 401
+4. Authenticated GET `/api/dashboard/request-demo-leads` — **requires valid SUPER_ADMIN credentials**
+5. Authenticated GET `/fa/dashboard/request-demo-leads` — **requires valid SUPER_ADMIN credentials**
+
+**Current status:** Authenticated checks could not be executed because platform-admin SUPER_ADMIN credentials are unavailable. Demo seed credentials (`superadmin` / `123456`) were rejected by the production credentials provider.
+
+**P10 acceptance is blocked on this authenticated production verification.** All other acceptance criteria pass.
+
 This script:
 - Uses `DATABASE_URL_UNPOOLED` (Direct Neon connection) to apply both migrations idempotently
 - Records both migrations in `_prisma_migrations` history

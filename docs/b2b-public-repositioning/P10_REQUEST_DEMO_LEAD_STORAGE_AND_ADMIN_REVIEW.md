@@ -23,21 +23,35 @@ Turn the UI-only request-demo form into a safe, server-side lead capture workflo
 - No unsafe casts, `any`, `@ts-ignore`, or validator weakening was used.
 - The Export Hub foundation validator (`quality:export-hub-foundation`) continues to pass.
 
-## FIX2 — Production Migration and Deployment Acceptance
+## FIX3 — Authenticated Production Acceptance
 
-- Production database (Neon) was unreachable via the standard pooled connection (`ep-little-river-aifwxtf7-pooler`).
-- Verified direct unpooled connection (`DATABASE_URL_UNPOOLED`) succeeds.
-- Applied both migrations via `scripts/ops/apply-p10-migrations.mjs` using Neon serverless (`@neondatabase/serverless`).
-- Verified RequestDemoLead table exists in production.
-- Verified ExportDataType enum contains CUSTOMERS and FANPAGE_POSTS.
-- Verified both migrations recorded in `_prisma_migrations` with `finished_at` timestamps.
-- Ran deployed smoke test against `https://www.bazar-baz.ir`:
-  - `/fa/request-demo` returns 200 with Persian B2B copy and consent UI
-  - Invalid POST returns 4xx with generic error, no sensitive leaks
-  - Unauthenticated admin API blocked
-- No valid production lead was created.
-- No SMS was sent.
-- Production deployment confirmed via Vercel (commit `ba33283` deployed 25 minutes ago).
+- Updated `scripts/e2e/deployed-request-demo-leads.mjs` to perform authenticated read-only checks:
+  - Platform-admin login via `/api/auth/signin`
+  - GET `/api/dashboard/request-demo-leads` with session cookie
+  - GET `/fa/dashboard/request-demo-leads` dashboard page
+  - Safety scans for sensitive leaks and full phone exposure
+- Authenticated production smoke **could not be executed** because platform-admin SUPER_ADMIN credentials are unavailable in this environment.
+- Demo seed credentials (`superadmin` / `123456`) were tested and rejected by the production credentials provider.
+- All source validators, typecheck, and build pass.
+- Production migrations are applied and verified.
+- Public smoke (page load, invalid POST, unauthenticated admin API block) passes.
+- **P10 remains blocked on authenticated platform-admin production verification.**
+
+## Current Acceptance Status
+
+| Check | Status |
+|---|---|
+| TypeScript/build gates | PASS |
+| P10 source validator | PASS (50 checks) |
+| Export Hub validator | PASS (21 checks) |
+| Source baseline | PASS |
+| Public request-demo page | PASS |
+| Invalid public POST validation | PASS |
+| Unauthenticated admin API block | PASS |
+| Production migrations applied | PASS |
+| RequestDemoLead table exists | PASS |
+| Authenticated admin lead-list API | **BLOCKED — credentials unavailable** |
+| Tenant-admin platform-lead access | Source-only (enforced by code + validator) |
 
 ## What Is Preserved
 

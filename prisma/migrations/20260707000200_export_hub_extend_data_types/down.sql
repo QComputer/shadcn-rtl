@@ -1,0 +1,4 @@
+-- Rollback BB-B2B-P10-FIX1: remove CUSTOMERS and FANPAGE_POSTS from ExportDataType.
+
+ALTER TYPE "ExportDataType" DROP VALUE 'FANPAGE_POSTS';
+ALTER TYPE "ExportDataType" DROP VALUE 'CUSTOMERS';

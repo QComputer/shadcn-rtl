@@ -13,6 +13,15 @@ Turn the UI-only request-demo form into a safe, server-side lead capture workflo
 - Created SUPER_ADMIN-only dashboard page `app/[locale]/dashboard/request-demo-leads/` with lead list, masked phone numbers, and detail/edit dialog.
 - Added dashboard navigation item `درخواست‌های دمو` visible only to SUPER_ADMIN.
 - Updated `access-control.ts`, `navigation-policy.ts`, and `dashboard-sidebar.tsx` to include the new route.
+- Created a new `Table` UI component to satisfy the admin review page dependency (the project previously lacked `components/ui/table.tsx`).
+
+## FIX1 — TypeScript/build gate repair
+
+- Restored `pnpm run typecheck` and `pnpm run build` to exit 0.
+- Root cause: `lib/export-hub/types.ts` listed `CUSTOMERS` and `FANPAGE_POSTS` in `exportDataTypes`, but the Prisma `ExportDataType` enum only contained `PRODUCTS`, `PRODUCT_CATEGORIES`, and `ORDERS`.
+- Fix: added `CUSTOMERS` and `FANPAGE_POSTS` to the canonical `ExportDataType` enum in `prisma/schema.prisma` and created migration `20260707000200_export_hub_extend_data_types`.
+- No unsafe casts, `any`, `@ts-ignore`, or validator weakening was used.
+- The Export Hub foundation validator (`quality:export-hub-foundation`) continues to pass.
 
 ## What Is Preserved
 

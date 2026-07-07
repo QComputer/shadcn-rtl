@@ -297,6 +297,8 @@ enum ExportDataType {
   PRODUCTS
   PRODUCT_CATEGORIES
   ORDERS
+  CUSTOMERS
+  FANPAGE_POSTS
 }
 
 enum RequestDemoLeadStatus {

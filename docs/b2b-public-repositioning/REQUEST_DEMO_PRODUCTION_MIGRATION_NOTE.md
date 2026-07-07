@@ -24,19 +24,50 @@ Or if using Neon specifically:
 pnpm run db:migrate:neon
 ```
 
+## FIX1 — ExportDataType Correction
+
+A subsequent fix (BB-B2B-P10-FIX1) added `CUSTOMERS` and `FANPAGE_POSTS` to the `ExportDataType` enum via migration `20260707000200_export_hub_extend_data_types`.
+
+Apply this migration to production as well:
+
+```powershell
+pnpm run db:migrate
+```
+
 ## Rollback
 
-The migration includes a `down.sql` that drops the enum and table. To rollback:
+To rollback the request-demo lead migration:
 
 ```powershell
 npx prisma migrate resolve --rolled-back 20260707000100_request_demo_lead_storage
+```
+
+To rollback the ExportDataType extension:
+
+```powershell
+npx prisma migrate resolve --rolled-back 20260707000200_export_hub_extend_data_types
 ```
 
 Then manually revert the Prisma schema changes if needed.
 
 ## Safety
 
-- This migration is additive only (CREATE TABLE, CREATE TYPE).
+- Both migrations are additive only (CREATE TABLE, CREATE TYPE, ALTER TYPE ADD VALUE).
 - No existing data is modified.
 - No existing tables are altered.
 - The new table has foreign key constraints with `ON DELETE SET NULL`.
+
+## Verification
+
+After applying migrations, verify with:
+
+```sql
+SELECT to_regclass('public."RequestDemoLead"');
+SELECT 'CUSTOMERS'::"ExportDataType";
+SELECT 'FANPAGE_POSTS'::"ExportDataType";
+```
+
+Expected results:
+- `public."RequestDemoLead"`
+- `CUSTOMERS`
+- `FANPAGE_POSTS`

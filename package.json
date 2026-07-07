@@ -208,7 +208,8 @@
     "e2e:deployed:ai-media": "node scripts/e2e/deployed-ai-media-smoke.mjs",
     "smoke:deployed:ai-media": "node scripts/e2e/deployed-ai-media-smoke.mjs",
     "quality:creative-studio-reviewed-asset-apply": "node scripts/quality/validate-creative-studio-reviewed-asset-apply.mjs",
-    "quality:b2b-request-demo-leads": "node scripts/quality/validate-b2b-request-demo-leads.mjs"
+    "quality:b2b-request-demo-leads": "node scripts/quality/validate-b2b-request-demo-leads.mjs",
+    "e2e:deployed:request-demo-leads": "node scripts/e2e/deployed-request-demo-leads.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

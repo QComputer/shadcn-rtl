@@ -21,6 +21,8 @@ export function RequestDemoForm({ locale, content }: { locale: Locale; content: 
     consent: false,
   })
   const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const target = e.target
@@ -28,15 +30,47 @@ export function RequestDemoForm({ locale, content }: { locale: Locale; content: 
       ...prev,
       [target.name]: target.type === "checkbox" ? (target as HTMLInputElement).checked : target.value,
     }))
+    setError(null)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
+
     if (!formData.consent) {
-      alert("لطفاً تأییدیه را بزنید.")
+      setError("لطفاً تأییدیه را بزنید.")
       return
     }
-    setSubmitted(true)
+
+    setLoading(true)
+    try {
+      const response = await fetch("/api/request-demo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: formData.fullName.trim(),
+          businessName: formData.businessName.trim(),
+          businessType: formData.businessType,
+          phone: formData.phone.trim(),
+          city: formData.city.trim(),
+          preferredContactTime: formData.preferredContactTime.trim(),
+          needSummary: formData.description.trim(),
+          consentAccepted: formData.consent,
+        }),
+      })
+
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        throw new Error(data.error || "خطا در ثبت درخواست")
+      }
+
+      setSubmitted(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "ثبت درخواست انجام نشد. لطفاً اطلاعات را بررسی کنید و دوباره تلاش کنید.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (submitted) {
@@ -58,14 +92,19 @@ export function RequestDemoForm({ locale, content }: { locale: Locale; content: 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {error && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="fullName">{content.fields.fullName}</Label>
-          <Input id="fullName" name="fullName" required value={formData.fullName} onChange={handleChange} />
+          <Input id="fullName" name="fullName" required value={formData.fullName} onChange={handleChange} disabled={loading} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="businessName">{content.fields.businessName}</Label>
-          <Input id="businessName" name="businessName" required value={formData.businessName} onChange={handleChange} />
+          <Input id="businessName" name="businessName" required value={formData.businessName} onChange={handleChange} disabled={loading} />
         </div>
       </div>
 
@@ -78,6 +117,7 @@ export function RequestDemoForm({ locale, content }: { locale: Locale; content: 
             required
             value={formData.businessType}
             onChange={handleChange}
+            disabled={loading}
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
           >
             <option value="">انتخاب کنید</option>
@@ -94,18 +134,18 @@ export function RequestDemoForm({ locale, content }: { locale: Locale; content: 
         </div>
         <div className="space-y-2">
           <Label htmlFor="phone">{content.fields.phone}</Label>
-          <Input id="phone" name="phone" type="tel" required value={formData.phone} onChange={handleChange} />
+          <Input id="phone" name="phone" type="tel" required value={formData.phone} onChange={handleChange} disabled={loading} />
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="city">{content.fields.city}</Label>
-          <Input id="city" name="city" value={formData.city} onChange={handleChange} />
+          <Input id="city" name="city" value={formData.city} onChange={handleChange} disabled={loading} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="preferredContactTime">{content.fields.preferredContactTime}</Label>
-          <Input id="preferredContactTime" name="preferredContactTime" value={formData.preferredContactTime} onChange={handleChange} />
+          <Input id="preferredContactTime" name="preferredContactTime" value={formData.preferredContactTime} onChange={handleChange} disabled={loading} />
         </div>
       </div>
 
@@ -117,6 +157,7 @@ export function RequestDemoForm({ locale, content }: { locale: Locale; content: 
           rows={4}
           value={formData.description}
           onChange={handleChange}
+          disabled={loading}
           className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
         />
       </div>
@@ -129,6 +170,7 @@ export function RequestDemoForm({ locale, content }: { locale: Locale; content: 
           required
           checked={formData.consent}
           onChange={handleChange}
+          disabled={loading}
           className="mt-1 h-4 w-4 shrink-0"
         />
         <Label htmlFor="consent" className="text-sm leading-relaxed">
@@ -136,8 +178,8 @@ export function RequestDemoForm({ locale, content }: { locale: Locale; content: 
         </Label>
       </div>
 
-      <Button type="submit" className="w-full" size="lg">
-        {content.submit}
+      <Button type="submit" className="w-full" size="lg" disabled={loading}>
+        {loading ? "در حال ثبت…" : content.submit}
       </Button>
     </form>
   )

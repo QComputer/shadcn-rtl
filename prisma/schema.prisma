@@ -297,8 +297,15 @@ enum ExportDataType {
   PRODUCTS
   PRODUCT_CATEGORIES
   ORDERS
-  CUSTOMERS
-  FANPAGE_POSTS
+}
+
+enum RequestDemoLeadStatus {
+  NEW
+  REVIEWED
+  CONTACTED
+  QUALIFIED
+  REJECTED
+  ARCHIVED
 }
 
 enum CreativeStudioTargetType {
@@ -564,6 +571,7 @@ model User {
 
   denies        Deny[]
   orderMessages OrderMessage[]
+  reviewedLeads RequestDemoLead[] @relation("LeadReviewerRelation")
 
   @@index([email])
   @@index([name])
@@ -2159,4 +2167,43 @@ model AuditLog {
   @@index([organizationSlug])
   @@index([action])
   @@index([createdAt])
+}
+
+model RequestDemoLead {
+  id                   String               @id @default(cuid())
+  status               RequestDemoLeadStatus @default(NEW)
+  source               String?              @default("request-demo")
+  locale               String               @default("fa")
+
+  // Contact info
+  fullName             String               @db.Text
+  businessName         String               @db.Text
+  businessType         String               @db.Text
+  phone                String
+  city                 String?              @db.Text
+
+  // Preferences
+  preferredContactTime String?              @db.Text
+  needSummary          String?              @db.Text
+
+  // Consent
+  consentAccepted      Boolean              @default(false)
+
+  // Abuse / metadata
+  ipHash               String?
+  userAgentHash        String?
+
+  // Review
+  reviewedAt           DateTime?
+  reviewedById         String?
+  reviewedBy           User?                @relation("LeadReviewerRelation", fields: [reviewedById], references: [id], onDelete: SetNull)
+  adminNote            String?              @db.Text
+
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  @@index([status, createdAt])
+  @@index([source])
+  @@index([createdAt])
+  @@index([reviewedById])
 }

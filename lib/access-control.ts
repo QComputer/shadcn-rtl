@@ -233,10 +233,13 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
    },
 
    "/dashboard/notification-operations": {
-     allowedRoles: ORG_MANAGEMENT_ROLES,
-     requiresOrgMembership: true,
-   },
- }
+      allowedRoles: ORG_MANAGEMENT_ROLES,
+      requiresOrgMembership: true,
+    },
+   "/dashboard/request-demo-leads": {
+      allowedRoles: ["SUPER_ADMIN"],
+    },
+  }
 
 export function listDashboardRoutePatterns(): string[] {
   return Object.keys(dashboardRouteConfig).sort()

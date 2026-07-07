@@ -1,6 +1,6 @@
 # Current Source of Truth — Bazar Baz
 
-Date: 2026-07-05
+Date: 2026-07-07
 
 ## Current validated baseline
 
@@ -8,7 +8,7 @@ The current working baseline after P119 Creative Studio provider result ingestio
 
 P119 adds server-mediated provider result polling and internal result ingestion for organization-brand logo/cover outputs. Ingested outputs become draft/review-only Creative Studio assets with provider metadata, dashboard refresh/reject controls, and audit/usage events; public auto-apply remains disabled and `Organization.logo` / `Organization.coverImage` are not mutated by ingestion.
 
-B2B repositioning baseline: BB-B2B-P00, BB-B2B-P01, BB-B2B-P02, BB-B2B-P03, BB-B2B-P04, BB-B2B-P05, BB-B2B-P06, BB-B2B-P07, BB-B2B-P08, and BB-B2B-P09 completed. Public route policy and decision matrix are documented in `docs/b2b-public-repositioning/`. BB-B2B-P03 replaces the marketplace-like homepage with a Persian-first B2B landing page in `app/[locale]/page.tsx`. BB-B2B-P04 adds curated demo business portfolio and seed strategy. BB-B2B-P05 documents public discovery restriction and demo-only API policy. BB-B2B-P06 adds conversion funnel pages (request-demo, contact, pricing). BB-B2B-P07 adds feature pages (`app/[locale]/features/page.tsx`) and dashboard showcase (`app/[locale]/dashboard-showcase/page.tsx`). BB-B2B-P08 adds trust/legal/SEO/analytics hardening pages (`app/[locale]/trust/page.tsx`, `app/[locale]/privacy/page.tsx`, `app/[locale]/terms/page.tsx`) and footer legal links. BB-B2B-P09 adds a non-browser HTTP production smoke (`scripts/e2e/deployed-b2b-public-surface.mjs` + `e2e:deployed:b2b-public-surface`) and final handoff docs; production (https://www.bazar-baz.ir) verified with all 10 public B2B pages returning 200 and no marketplace discovery. Latest accepted commit: `b35032f`. Production acceptance: PASSED via HTTP smoke. Quality caveat: 25 known legacy validators remain classified as unrelated to the B2B roadmap and are not part of B2B acceptance. Next B2B phase: BB-B2B-P10 — Request-demo Lead Storage and Admin Review.
+B2B repositioning baseline: BB-B2B-P00, BB-B2B-P01, BB-B2B-P02, BB-B2B-P03, BB-B2B-P04, BB-B2B-P05, BB-B2B-P06, BB-B2B-P07, BB-B2B-P08, BB-B2B-P09, and BB-B2B-P10 completed. Public route policy and decision matrix are documented in `docs/b2b-public-repositioning/`. BB-B2B-P03 replaces the marketplace-like homepage with a Persian-first B2B landing page in `app/[locale]/page.tsx`. BB-B2B-P04 adds curated demo business portfolio and seed strategy. BB-B2B-P05 documents public discovery restriction and demo-only API policy. BB-B2B-P06 adds conversion funnel pages (request-demo, contact, pricing). BB-B2B-P07 adds feature pages (`app/[locale]/features/page.tsx`) and dashboard showcase (`app/[locale]/dashboard-showcase/page.tsx`). BB-B2B-P08 adds trust/legal/SEO/analytics hardening pages (`app/[locale]/trust/page.tsx`, `app/[locale]/privacy/page.tsx`, `app/[locale]/terms/page.tsx`) and footer legal links. BB-B2B-P09 adds a non-browser HTTP production smoke (`scripts/e2e/deployed-b2b-public-surface.mjs` + `e2e:deployed:b2b-public-surface`) and final handoff docs; production (https://www.bazar-baz.ir) verified with all 10 public B2B pages returning 200 and no marketplace discovery. BB-B2B-P10 adds request-demo lead storage, server-side validation, SUPER_ADMIN-only admin review page, and dashboard navigation. Latest accepted commit: `ea9689e`. Production acceptance: PASSED via HTTP smoke. Quality caveat: 25 known legacy validators remain classified as unrelated to the B2B roadmap and are not part of B2B acceptance. Next B2B phase: BB-B2B-P11 — Tenant Custom-domain Onboarding Flow.
 
 Minimum target-machine gate for any implementation phase:
 
@@ -67,13 +67,14 @@ pnpm run quality:creative-studio-dashboard
 pnpm run quality:creative-studio-apply-controls
 pnpm run quality:creative-studio-generation-readiness
 pnpm run quality:creative-studio-product-image-generation
-pnpm run quality:creative-studio-generated-asset-selection
-pnpm run quality:creative-studio-organization-brand-readiness
-pnpm run quality:creative-studio-organization-brand-request-controls
-pnpm run quality:creative-studio-organization-brand-acceptance
-pnpm run quality:creative-studio-organization-brand-provider-rollout
-pnpm run quality:creative-studio-organization-brand-provider-execution
-pnpm run quality:creative-studio-provider-result-ingestion
+  pnpm run quality:creative-studio-generated-asset-selection
+  pnpm run quality:creative-studio-organization-brand-readiness
+  pnpm run quality:creative-studio-organization-brand-request-controls
+  pnpm run quality:creative-studio-organization-brand-acceptance
+  pnpm run quality:creative-studio-organization-brand-provider-rollout
+  pnpm run quality:creative-studio-organization-brand-provider-execution
+  pnpm run quality:creative-studio-provider-result-ingestion
+  pnpm run quality:b2b-request-demo-leads
 ```
 
 Clean handoff gate introduced in P33:

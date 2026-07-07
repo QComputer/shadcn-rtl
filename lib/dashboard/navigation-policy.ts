@@ -32,6 +32,7 @@ export type DashboardNavigationKey =
   | "organizations"
   | "shopDomains"
   | "users"
+  | "requestDemoLeads"
 
 export type DashboardNavigationGroupKey = "operations" | "catalog" | "teamAndSettings" | "platformAdmin"
 
@@ -58,6 +59,7 @@ export const DASHBOARD_NAVIGATION_ITEMS = {
   organizations: "/organizations",
   shopDomains: "/shop-domains",
   users: "/users",
+  requestDemoLeads: "/request-demo-leads",
 } as const satisfies Record<DashboardNavigationKey, string>
 
 export const DASHBOARD_NAVIGATION_GROUPS = [
@@ -75,7 +77,7 @@ export const DASHBOARD_NAVIGATION_GROUPS = [
   },
   {
     key: "platformAdmin",
-    items: ["organizations", "shopDomains", "users"],
+    items: ["organizations", "shopDomains", "users", "requestDemoLeads"],
   },
 ] as const satisfies readonly { key: DashboardNavigationGroupKey; items: readonly DashboardNavigationKey[] }[]
 
@@ -106,6 +108,7 @@ export const ROLE_NAVIGATION_POLICY = {
   organizations: ["SUPER_ADMIN"],
   shopDomains: ["SUPER_ADMIN"],
   users: ["SUPER_ADMIN"],
+  requestDemoLeads: ["SUPER_ADMIN"],
 } as const satisfies Record<DashboardNavigationKey, readonly DashboardRole[]>
 
 export const DASHBOARD_ROUTE_POLICY = {
@@ -146,6 +149,7 @@ export const DASHBOARD_ROUTE_POLICY = {
   "/organizations/new": ROLE_NAVIGATION_POLICY.organizations,
   "/shop-domains": ROLE_NAVIGATION_POLICY.shopDomains,
   "/users": ROLE_NAVIGATION_POLICY.users,
+  "/request-demo-leads": ROLE_NAVIGATION_POLICY.requestDemoLeads,
 } as const satisfies Record<string, readonly DashboardRole[]>
 
 export function normalizeDashboardRole(role: string | null | undefined): DashboardRole | null {

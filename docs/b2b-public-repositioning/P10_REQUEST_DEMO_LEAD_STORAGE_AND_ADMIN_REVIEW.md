@@ -23,6 +23,22 @@ Turn the UI-only request-demo form into a safe, server-side lead capture workflo
 - No unsafe casts, `any`, `@ts-ignore`, or validator weakening was used.
 - The Export Hub foundation validator (`quality:export-hub-foundation`) continues to pass.
 
+## FIX2 — Production Migration and Deployment Acceptance
+
+- Production database (Neon) was unreachable via the standard pooled connection (`ep-little-river-aifwxtf7-pooler`).
+- Verified direct unpooled connection (`DATABASE_URL_UNPOOLED`) succeeds.
+- Applied both migrations via `scripts/ops/apply-p10-migrations.mjs` using Neon serverless (`@neondatabase/serverless`).
+- Verified RequestDemoLead table exists in production.
+- Verified ExportDataType enum contains CUSTOMERS and FANPAGE_POSTS.
+- Verified both migrations recorded in `_prisma_migrations` with `finished_at` timestamps.
+- Ran deployed smoke test against `https://www.bazar-baz.ir`:
+  - `/fa/request-demo` returns 200 with Persian B2B copy and consent UI
+  - Invalid POST returns 4xx with generic error, no sensitive leaks
+  - Unauthenticated admin API blocked
+- No valid production lead was created.
+- No SMS was sent.
+- Production deployment confirmed via Vercel (commit `ba33283` deployed 25 minutes ago).
+
 ## What Is Preserved
 
 - No SMS is sent from the request-demo workflow.

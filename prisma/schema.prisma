@@ -22,13 +22,25 @@ enum DomainType {
   CUSTOM
 }
 
+enum DomainKind {
+  APEX
+  SUBDOMAIN
+}
+
+enum DomainProvider {
+  VERCEL
+}
+
 enum DomainStatus {
-  PENDING
+  REQUESTED
+  PROVIDER_PENDING
   DNS_REQUIRED
   VERIFYING
   ACTIVE
-  FAILED
+  ERROR
   DISABLED
+  REMOVAL_PENDING
+  REMOVED
 }
 
 enum UserRole {
@@ -440,29 +452,53 @@ model Organization {
 }
 
 model OrganizationDomain {
-  id             String       @id @default(cuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id                    String    @id @default(cuid())
+  organizationId        String
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  domain           String       @unique
-  normalizedDomain String       @unique
-  type             DomainType   @default(CUSTOM)
-  status           DomainStatus @default(PENDING)
-  isPrimary        Boolean      @default(false)
+  domain                String       @unique
+  normalizedDomain      String       @unique
+  kind                  DomainKind   @default(SUBDOMAIN)
+  provider              DomainProvider @default(VERCEL)
+  type                  DomainType   @default(CUSTOM)
+  status                DomainStatus @default(REQUESTED)
+  isPrimary             Boolean      @default(false)
+
+  providerVerified      Boolean      @default(false)
+  dnsConfigured         Boolean      @default(false)
+  sslReady              Boolean      @default(false)
 
   vercelProjectDomainId String?
-  verificationToken     String?
-  verifiedAt            DateTime?
-  lastCheckedAt         DateTime?
-  failureReason         String?
+  verificationType      String?
+  verificationDomain    String?
+  verificationValue     String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  lastCheckedAt         DateTime?
+  verifiedAt            DateTime?
+  activatedAt           DateTime?
+  disabledAt            DateTime?
+  removedAt             DateTime?
+  reviewedAt            DateTime?
+  failureReason         String?
+  lastErrorCode         String?
+  lastErrorMessage      String?
+
+  createdById           String?
+  updatedById           String?
+  reviewedById          String?
+  createdBy             User?        @relation("DomainCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy             User?        @relation("DomainUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  reviewedBy            User?        @relation("DomainReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  deletedAt             DateTime?
 
   @@index([organizationId])
   @@index([status])
   @@index([isPrimary])
   @@index([organizationId, status])
+  @@index([normalizedDomain, status])
 }
 
 model Deny {
@@ -562,6 +598,9 @@ model User {
   passwordResets                PasswordReset[]
   emailVerifications            EmailVerification[]
   auditLogs                     AuditLog[]
+  createdDomains                OrganizationDomain[] @relation("DomainCreatedBy")
+  updatedDomains                OrganizationDomain[] @relation("DomainUpdatedBy")
+  reviewedDomains               OrganizationDomain[] @relation("DomainReviewedBy")
   conversationParticipants      ConversationParticipant[]
   businessHours                 BusinessHour[]
   uploadedImages                Image[]                       @relation("UploadedImages")

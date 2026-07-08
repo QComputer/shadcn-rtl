@@ -2,10 +2,11 @@ export const customDomainLocales = ["fa", "en", "ar"] as const;
 export type CustomDomainLocale = (typeof customDomainLocales)[number];
 export const defaultCustomDomainLocale: CustomDomainLocale = "fa";
 
-export type ResolvedCustomDomainShop = {
+export type ResolvedCustomDomain = {
   slug: string;
   locale: CustomDomainLocale;
   organizationId: string;
+  organizationType: "SHOP" | "APPOINTMENT";
 };
 
 const DEFAULT_PLATFORM_HOSTS = [

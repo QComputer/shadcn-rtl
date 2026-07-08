@@ -282,7 +282,7 @@ export async function PATCH(request: NextRequest) {
       });
     });
 
-    if (nextStatus !== "FAILED" && body.failureReason === undefined && domain.failureReason) {
+    if (nextStatus !== "ERROR" && body.failureReason === undefined && domain.failureReason) {
       await prisma.organizationDomain.update({
         where: { id: domain.id },
         data: { failureReason: null },

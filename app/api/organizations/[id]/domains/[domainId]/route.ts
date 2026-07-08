@@ -5,7 +5,7 @@ import { ApiError, jsonError, requireAuthSession } from "@/lib/api-guards";
 import { requireSuperAdmin } from "@/lib/shop-domain-admin";
 
 const updateDomainSchema = z.object({
-  status: z.enum(["PENDING", "DNS_REQUIRED", "VERIFYING", "ACTIVE", "FAILED", "DISABLED"]).optional(),
+  status: z.enum(["REQUESTED", "PROVIDER_PENDING", "DNS_REQUIRED", "VERIFYING", "ACTIVE", "ERROR", "DISABLED", "REMOVAL_PENDING", "REMOVED"]).optional(),
   isPrimary: z.boolean().optional(),
   failureReason: z.string().trim().max(1000).nullable().optional(),
   verificationToken: z.string().trim().max(500).nullable().optional(),

@@ -21,7 +21,7 @@ export type VercelDomainAutomationResult = {
   action: "add" | "check" | "remove";
   domain: string;
   verified: boolean;
-  status: "ACTIVE" | "VERIFYING" | "DNS_REQUIRED" | "FAILED";
+  status: "ACTIVE" | "VERIFYING" | "DNS_REQUIRED" | "ERROR";
   message: string;
   projectId?: string | null;
   verificationToken?: string | null;
@@ -81,7 +81,12 @@ export function getVercelDomainAutomationState() {
     dryRun: isVercelDomainAutomationDryRun(),
     projectConfigured: Boolean(process.env.VERCEL_PROJECT_ID?.trim()),
     teamConfigured: Boolean(process.env.VERCEL_TEAM_ID?.trim() || process.env.VERCEL_TEAM_SLUG?.trim()),
+    realMutationsEnabled: isVercelRealMutationEnabled(),
   };
+}
+
+function isVercelRealMutationEnabled() {
+  return isTruthyEnv(process.env.CUSTOM_DOMAIN_REAL_MUTATION_ENABLED);
 }
 
 function getVercelQueryString() {
@@ -124,6 +129,15 @@ function getVerificationToken(records: VercelVerificationRecord[]) {
 
 function isApexDomain(domain: string) {
   return domain.split(".").length === 2;
+}
+
+function assertVercelDomainMutationAllowed() {
+  if (!isVercelRealMutationEnabled()) {
+    throw new ApiError(
+      403,
+      "Provider mutations are disabled by default. Set CUSTOM_DOMAIN_REAL_MUTATION_ENABLED=true to enable.",
+    );
+  }
 }
 
 export function getRecommendedVercelDnsRecords(domainInput: string, verification: VercelVerificationRecord[] = []): VercelDnsRecord[] {
@@ -244,6 +258,8 @@ export async function addProjectDomainToVercel(domainInput: string): Promise<Ver
   if (!domain) throw new ApiError(400, "Domain is required");
   if (isVercelDomainAutomationDryRun()) return dryRunResult("add", domain);
 
+  assertVercelDomainMutationAllowed();
+
   const { response, body } = await vercelFetch(getDomainEndpoint(), {
     method: "POST",
     body: JSON.stringify({ name: domain }),
@@ -256,7 +272,7 @@ export async function addProjectDomainToVercel(domainInput: string): Promise<Ver
       action: "add",
       domain,
       verified: false,
-      status: "FAILED",
+      status: "ERROR",
       message: errorMessageFromBody(body, `Vercel rejected domain provisioning with status ${response.status}.`),
       verification: [],
       verificationToken: null,
@@ -273,6 +289,8 @@ export async function verifyProjectDomainOnVercel(domainInput: string): Promise<
   if (!domain) throw new ApiError(400, "Domain is required");
   if (isVercelDomainAutomationDryRun()) return dryRunResult("check", domain);
 
+  assertVercelDomainMutationAllowed();
+
   const { response, body } = await vercelFetch(getDomainEndpoint(domain, "verify"), {
     method: "POST",
   });
@@ -284,7 +302,7 @@ export async function verifyProjectDomainOnVercel(domainInput: string): Promise<
       action: "check",
       domain,
       verified: false,
-      status: "FAILED",
+      status: "ERROR",
       message: errorMessageFromBody(body, `Vercel domain verification failed with status ${response.status}.`),
       verification: [],
       verificationToken: null,
@@ -301,6 +319,8 @@ export async function removeProjectDomainFromVercel(domainInput: string): Promis
   if (!domain) throw new ApiError(400, "Domain is required");
   if (isVercelDomainAutomationDryRun()) return dryRunResult("remove", domain);
 
+  assertVercelDomainMutationAllowed();
+
   const projectIdOrName = getProjectIdOrName();
   const url = `${VERCEL_API_BASE_URL}/v9/projects/${projectIdOrName}/domains/${encodeURIComponent(domain)}${getVercelQueryString()}`;
   const { response, body } = await vercelFetch(url, { method: "DELETE" });
@@ -312,7 +332,7 @@ export async function removeProjectDomainFromVercel(domainInput: string): Promis
       action: "remove",
       domain,
       verified: false,
-      status: "FAILED",
+      status: "ERROR",
       message: errorMessageFromBody(body, `Vercel domain removal failed with status ${response.status}.`),
       verification: [],
       verificationToken: null,

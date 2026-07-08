@@ -3,12 +3,15 @@ import { ApiError, requireRole, type SessionWithUser } from "@/lib/api-guards";
 import { normalizeDomainHost } from "@/lib/custom-domain-routing";
 
 export const shopDomainStatusSchema = z.enum([
-  "PENDING",
+  "REQUESTED",
+  "PROVIDER_PENDING",
   "DNS_REQUIRED",
   "VERIFYING",
   "ACTIVE",
-  "FAILED",
+  "ERROR",
   "DISABLED",
+  "REMOVAL_PENDING",
+  "REMOVED",
 ]);
 
 export const createShopDomainSchema = z.object({

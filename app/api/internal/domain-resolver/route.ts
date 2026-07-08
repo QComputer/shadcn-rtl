@@ -12,6 +12,13 @@ function toSupportedLocale(value: string | null | undefined): CustomDomainLocale
   return supportedLocales.has(value as CustomDomainLocale) ? (value as CustomDomainLocale) : "fa";
 }
 
+export type ResolvedCustomDomain = {
+  slug: string;
+  locale: CustomDomainLocale;
+  organizationId: string;
+  organizationType: "SHOP" | "APPOINTMENT";
+};
+
 export async function GET(request: NextRequest) {
   const resolverSecret = getResolverSecret();
 
@@ -52,7 +59,6 @@ export async function GET(request: NextRequest) {
   if (
     !domain ||
     domain.status !== "ACTIVE" ||
-    domain.organization.type !== "SHOP" ||
     !domain.organization.isActive ||
     domain.organization.deletedAt
   ) {
@@ -63,5 +69,6 @@ export async function GET(request: NextRequest) {
     slug: domain.organization.slug,
     locale: toSupportedLocale(domain.organization.locale),
     organizationId: domain.organization.id,
+    organizationType: domain.organization.type,
   });
 }

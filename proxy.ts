@@ -10,7 +10,7 @@ import {
   parseShopPlatformPath,
   splitLocalePrefix,
   isSeoIndexableShopSubPath,
-  type ResolvedCustomDomainShop,
+  type ResolvedCustomDomain,
 } from "@/lib/custom-domain-routing";
 
 // Supported locales - Persian is the default (primary native language)
@@ -86,10 +86,10 @@ export function isRTL(locale: Locale): boolean {
 }
 
 
-async function resolveShopForCustomDomain(
+async function resolveTenantForCustomDomain(
   request: NextRequest,
   normalizedHost: string,
-): Promise<ResolvedCustomDomainShop | null> {
+): Promise<ResolvedCustomDomain | null> {
   const resolverUrl = new URL("/api/internal/domain-resolver", request.url);
   resolverUrl.searchParams.set("host", normalizedHost);
 
@@ -102,7 +102,7 @@ async function resolveShopForCustomDomain(
 
   if (!response.ok) return null;
 
-  const data = (await response.json().catch(() => null)) as ResolvedCustomDomainShop | null;
+  const data = (await response.json().catch(() => null)) as ResolvedCustomDomain | null;
   if (!data?.slug || !data.organizationId) return null;
 
   return data;
@@ -131,15 +131,16 @@ async function resolvePrimaryDomainForShop(
 function buildTenantRewriteHeaders(
   request: NextRequest,
   normalizedHost: string,
-  shop: ResolvedCustomDomainShop,
+  tenant: ResolvedCustomDomain,
   locale: Locale,
   publicPath: string,
 ) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-bazar-custom-domain", "true");
   requestHeaders.set("x-bazar-tenant-domain", normalizedHost);
-  requestHeaders.set("x-bazar-tenant-slug", shop.slug);
-  requestHeaders.set("x-bazar-tenant-organization-id", shop.organizationId);
+  requestHeaders.set("x-bazar-tenant-slug", tenant.slug);
+  requestHeaders.set("x-bazar-tenant-organization-id", tenant.organizationId);
+  requestHeaders.set("x-bazar-tenant-organization-type", tenant.organizationType);
   requestHeaders.set("x-bazar-tenant-public-base-url", getRequestOrigin(request));
   requestHeaders.set("x-bazar-tenant-public-locale", locale);
   requestHeaders.set("x-bazar-tenant-public-path", publicPath);
@@ -165,23 +166,18 @@ export async function proxy(request: NextRequest) {
   const hostHeader = request.headers.get("host") || request.nextUrl.host;
   const normalizedHost = normalizeDomainHost(hostHeader);
 
-  // Custom shop domains are public storefront domains. They bypass the platform
-  // locale redirect and are rewritten to /[locale]/shop/[slug] internally.
   if (!isPlatformHost(normalizedHost) && !isCustomDomainBypassPath(pathname)) {
-    const shop = await resolveShopForCustomDomain(request, normalizedHost);
+    const tenant = await resolveTenantForCustomDomain(request, normalizedHost);
 
-    if (!shop) {
+    if (!tenant) {
       const notConfiguredUrl = request.nextUrl.clone();
       notConfiguredUrl.pathname = `/${defaultLocale}/domain-not-configured`;
       return withSecurityHeaders(NextResponse.rewrite(notConfiguredUrl));
     }
 
-    // Tenant custom domains must be Persian-first. Do not derive the default
-    // locale from browser language for bare custom-domain visits, because the
-    // overwhelming majority of shop visitors are expected to be Persian.
-    // Explicit locale prefixes such as /en/... and /ar/... still work.
     const tenantPathLocale = splitLocalePrefix(pathname).locale;
     const localeForTenant = tenantPathLocale || defaultLocale;
+
     if (pathname === "/sitemap.xml" || pathname === "/robots.txt") {
       const internalUrl = request.nextUrl.clone();
       internalUrl.pathname = pathname === "/sitemap.xml"
@@ -190,48 +186,82 @@ export async function proxy(request: NextRequest) {
       const requestHeaders = buildTenantRewriteHeaders(
         request,
         normalizedHost,
-        shop,
+        tenant,
         localeForTenant,
         pathname,
       );
       return withSecurityHeaders(NextResponse.rewrite(internalUrl, { request: { headers: requestHeaders } }));
     }
 
-    const platformPath = getShopSubPathFromPlatformPath(pathname, shop.slug);
-    if (platformPath) {
-      const cleanUrl = request.nextUrl.clone();
-      cleanUrl.pathname = buildTenantPublicPath(platformPath.locale, platformPath.subPath);
-      return withSecurityHeaders(NextResponse.redirect(cleanUrl, 308));
+    if (tenant.organizationType === "SHOP") {
+      const platformPath = getShopSubPathFromPlatformPath(pathname, tenant.slug);
+      if (platformPath) {
+        const cleanUrl = request.nextUrl.clone();
+        cleanUrl.pathname = buildTenantPublicPath(platformPath.locale, platformPath.subPath);
+        return withSecurityHeaders(NextResponse.redirect(cleanUrl, 308));
+      }
+
+      const splitPath = splitLocalePrefix(pathname);
+      const locale = splitPath.locale || defaultLocale;
+      const rewrittenUrl = request.nextUrl.clone();
+      rewrittenUrl.pathname = buildShopPlatformPath({
+        locale,
+        slug: tenant.slug,
+        publicPathname: pathname,
+      });
+
+      const requestHeaders = buildTenantRewriteHeaders(
+        request,
+        normalizedHost,
+        tenant,
+        locale,
+        buildTenantPublicPath(locale, splitPath.pathnameWithoutLocale),
+      );
+
+      const response = NextResponse.rewrite(rewrittenUrl, {
+        request: { headers: requestHeaders },
+      });
+      response.headers.set("x-locale", locale);
+      response.headers.set("x-direction", localeConfig[locale].dir);
+      response.cookies.set("locale", locale, {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365,
+        httpOnly: false,
+      });
+      return withSecurityHeaders(response);
     }
 
-    const splitPath = splitLocalePrefix(pathname);
-    const locale = splitPath.locale || defaultLocale;
-    const rewrittenUrl = request.nextUrl.clone();
-    rewrittenUrl.pathname = buildShopPlatformPath({
-      locale,
-      slug: shop.slug,
-      publicPathname: pathname,
-    });
+    if (tenant.organizationType === "APPOINTMENT") {
+      const appointmentBasePath = `/${tenantPathLocale || defaultLocale}/appointment/${tenant.slug}`;
+      const publicPath = buildTenantPublicPath(tenantPathLocale || defaultLocale, pathname);
 
-    const requestHeaders = buildTenantRewriteHeaders(
-      request,
-      normalizedHost,
-      shop,
-      locale,
-      buildTenantPublicPath(locale, splitPath.pathnameWithoutLocale),
-    );
+      const rewrittenUrl = request.nextUrl.clone();
+      rewrittenUrl.pathname = `${appointmentBasePath}/${pathname.split("/").filter(Boolean).slice(1).join("/") || ""}`.replace(/\/$/, "") || "/";
 
-    const response = NextResponse.rewrite(rewrittenUrl, {
-      request: { headers: requestHeaders },
-    });
-    response.headers.set("x-locale", locale);
-    response.headers.set("x-direction", localeConfig[locale].dir);
-    response.cookies.set("locale", locale, {
-      path: "/",
-      maxAge: 60 * 60 * 24 * 365,
-      httpOnly: false,
-    });
-    return withSecurityHeaders(response);
+      const requestHeaders = buildTenantRewriteHeaders(
+        request,
+        normalizedHost,
+        tenant,
+        tenantPathLocale || defaultLocale,
+        publicPath,
+      );
+
+      const response = NextResponse.rewrite(rewrittenUrl, {
+        request: { headers: requestHeaders },
+      });
+      response.headers.set("x-locale", tenantPathLocale || defaultLocale);
+      response.headers.set("x-direction", localeConfig[tenantPathLocale || defaultLocale].dir);
+      response.cookies.set("locale", tenantPathLocale || defaultLocale, {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365,
+        httpOnly: false,
+      });
+      return withSecurityHeaders(response);
+    }
+
+    const notConfiguredUrl = request.nextUrl.clone();
+    notConfiguredUrl.pathname = `/${defaultLocale}/domain-not-configured`;
+    return withSecurityHeaders(NextResponse.rewrite(notConfiguredUrl));
   }
 
   // If a shop has an active primary custom domain, redirect indexable public

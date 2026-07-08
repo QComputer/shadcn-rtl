@@ -7,21 +7,28 @@ import {
   type CustomDomainLocale,
 } from "@/lib/custom-domain-routing";
 
-export type ShopTenantSeoContext = {
+export type TenantSeoContext = {
   isCustomDomain: boolean;
   baseUrl?: string;
   path: string;
   alternatePath: (locale: CustomDomainLocale) => string;
 };
 
-async function getPrimaryShopDomainBaseUrl(slug: string) {
+const ORGANIZATION_PATHS = {
+  SHOP: (slug: string, subPath: string) => `/shop/${slug}${subPath === "/" ? "" : subPath}`,
+  APPOINTMENT: (slug: string, subPath: string) => `/appointment/${slug}${subPath === "/" ? "" : subPath}`,
+} as const;
+
+type OrganizationPathBuilder = (slug: string, subPath: string) => string;
+
+async function getPrimaryDomainBaseUrl(slug: string, type: "SHOP" | "APPOINTMENT") {
   const domain = await prisma.organizationDomain.findFirst({
     where: {
       status: "ACTIVE",
       isPrimary: true,
       organization: {
         slug,
-        type: "SHOP",
+        type,
         isActive: true,
         deletedAt: null,
       },
@@ -32,11 +39,12 @@ async function getPrimaryShopDomainBaseUrl(slug: string) {
   return domain?.normalizedDomain ? `https://${domain.normalizedDomain}` : undefined;
 }
 
-export async function getShopTenantSeoContext(input: {
+export async function getTenantSeoContext(input: {
   locale: string;
   slug: string;
   subPath?: string;
-}): Promise<ShopTenantSeoContext> {
+  organizationType: "SHOP" | "APPOINTMENT";
+}): Promise<TenantSeoContext> {
   const headerList = await headers();
   const headerSlug = headerList.get("x-bazar-tenant-slug");
   const customDomainEnabled = headerList.get("x-bazar-custom-domain") === "true";
@@ -55,7 +63,9 @@ export async function getShopTenantSeoContext(input: {
     };
   }
 
-  const primaryDomainBaseUrl = await getPrimaryShopDomainBaseUrl(input.slug);
+  const primaryDomainBaseUrl = await getPrimaryDomainBaseUrl(input.slug, input.organizationType);
+
+  const pathBuilder: OrganizationPathBuilder = ORGANIZATION_PATHS[input.organizationType] ?? ORGANIZATION_PATHS.SHOP;
 
   if (primaryDomainBaseUrl) {
     return {
@@ -68,7 +78,15 @@ export async function getShopTenantSeoContext(input: {
 
   return {
     isCustomDomain: false,
-    path: `/${locale}/shop/${input.slug}${subPath === "/" ? "" : subPath}`,
-    alternatePath: (nextLocale) => `/${nextLocale}/shop/${input.slug}${subPath === "/" ? "" : subPath}`,
+    path: pathBuilder(input.slug, subPath),
+    alternatePath: (nextLocale) => pathBuilder(input.slug, `/${nextLocale}${subPath}`),
   };
+}
+
+export async function getShopTenantSeoContext(input: {
+  locale: string;
+  slug: string;
+  subPath?: string;
+}): Promise<TenantSeoContext> {
+  return getTenantSeoContext({ ...input, organizationType: "SHOP" });
 }

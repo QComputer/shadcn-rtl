@@ -11,6 +11,7 @@ import { PwaInstallManager } from "@/components/pwa-install-manager";
 import Link from "next/link";
 import { Building2 } from "lucide-react"
 import { getCanonicalUrl, getPublicBaseUrl } from "@/lib/seo";
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 
 export const metadata: Metadata = {
@@ -109,6 +110,7 @@ export default async function LocaleLayout({
             </AuthProvider>
           </LocaleProvider>
         </SessionProvider>
+        <SpeedInsights />
         {/* Footer */}
         <footer className="bg-muted/50 py-12 mt-12">
           <div className="container mx-auto px-4">

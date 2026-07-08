@@ -12,9 +12,9 @@
  * Does not print credentials or full phone numbers.
  */
 
-const BASE_URL = (process.env.DEPLOYED_URL || "").replace(/\/+$/, "")
-const ADMIN_USERNAME = process.env.DEPLOYED_ADMIN_USERNAME
-const ADMIN_PASSWORD = process.env.DEPLOYED_ADMIN_PASSWORD
+const baseUrl = (process.env.DEPLOYED_URL || "").replace(/\/+$/, "")
+const adminUsername = process.env.DEPLOYED_ADMIN_USERNAME
+const adminPassword = process.env.DEPLOYED_ADMIN_PASSWORD
 
 function assertEnv(name, value) {
   if (!value) {
@@ -32,12 +32,39 @@ function hasFullPhone(text) {
 }
 
 async function requestDemoSmoke() {
-  assertEnv("DEPLOYED_URL", BASE_URL)
-  assertEnv("DEPLOYED_ADMIN_USERNAME", ADMIN_USERNAME)
-  assertEnv("DEPLOYED_ADMIN_PASSWORD", ADMIN_PASSWORD)
+  assertEnv("DEPLOYED_URL", baseUrl)
+  assertEnv("DEPLOYED_ADMIN_USERNAME", adminUsername)
+  assertEnv("DEPLOYED_ADMIN_PASSWORD", adminPassword)
 
   const results = []
-  let sessionToken = null
+  const cookieJar = {}
+
+  async function withCookies(url, options = {}) {
+    const cookieHeader = Object.entries(cookieJar)
+      .map(([name, value]) => `${name}=${value}`)
+      .join("; ")
+
+    const res = await fetch(url, {
+      ...(options || {}),
+      headers: {
+        ...(options.headers || {}),
+        cookie: cookieHeader,
+      },
+    })
+
+    const setCookie = res.headers.get("set-cookie")
+    if (setCookie) {
+      for (const cookie of setCookie.split(",")) {
+        const [nameValue] = cookie.split(";")
+        const [name, value] = nameValue.trim().split("=")
+        if (name && value) {
+          cookieJar[name] = value
+        }
+      }
+    }
+
+    return res
+  }
 
   async function check(name, fn) {
     try {
@@ -51,7 +78,7 @@ async function requestDemoSmoke() {
   }
 
   await check("request-demo page returns 200", async () => {
-    const res = await fetch(`${BASE_URL}/fa/request-demo`)
+    const res = await withCookies(`${baseUrl}/fa/request-demo`)
     if (res.status !== 200) throw new Error(`Status ${res.status}`)
     const html = await res.text()
     if (!/درخواست دمو/.test(html)) throw new Error("Missing Persian B2B copy")
@@ -60,8 +87,8 @@ async function requestDemoSmoke() {
     return true
   })
 
-  await check("invalid public POST returns 400", async () => {
-    const res = await fetch(`${BASE_URL}/api/request-demo`, {
+  await check("invalid public POST returns 4xx", async () => {
+    const res = await fetch(`${baseUrl}/api/request-demo`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fullName: "", consentAccepted: false }),
@@ -75,39 +102,43 @@ async function requestDemoSmoke() {
   })
 
   await check("unauthenticated admin API blocked", async () => {
-    const res = await fetch(`${BASE_URL}/api/dashboard/request-demo-leads`)
+    const res = await fetch(`${baseUrl}/api/dashboard/request-demo-leads`)
     if (res.status < 400) throw new Error(`Expected 4xx, got ${res.status}`)
     return true
   })
 
   await check("platform-admin login succeeds", async () => {
-    const res = await fetch(`${BASE_URL}/api/auth/signin`, {
+    const csrfRes = await withCookies(`${baseUrl}/api/auth/csrf`)
+    const csrfData = await csrfRes.json()
+    const csrfToken = csrfData.csrfToken
+    if (!csrfToken) throw new Error("No CSRF token")
+
+    const res = await withCookies(`${baseUrl}/api/auth/callback/credentials?json=true`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        username: ADMIN_USERNAME,
-        password: ADMIN_PASSWORD,
+        csrfToken,
+        username: adminUsername,
+        password: adminPassword,
         redirect: "false",
-        callbackUrl: `${BASE_URL}/fa/dashboard/request-demo-leads`,
+        callbackUrl: `${baseUrl}/fa/dashboard/request-demo-leads`,
       }),
+      redirect: "manual",
     })
-    if (res.status >= 400) throw new Error(`Login failed with ${res.status}`)
 
-    const setCookie = res.headers.get("set-cookie") || ""
-    const match = setCookie.match(/next-auth\.session-token=([^;]+)/) || setCookie.match(/__Secure-next-auth\.session-token=([^;]+)/)
-    if (!match) throw new Error("No session cookie in login response")
+    const setCookies = res.headers.get("set-cookie") || ""
+    const hasSessionCookie = setCookies.split(",").some((cookie) => /authjs\.session-token/.test(cookie))
+    if (!hasSessionCookie) {
+      const location = res.headers.get("location")
+      const text = await res.text()
+      throw new Error(`Login did not establish session. Status: ${res.status}. Location: ${location}. Body: ${text.slice(0, 200)}`)
+    }
 
-    sessionToken = decodeURIComponent(match[1])
     return true
   })
 
   await check("authenticated admin lead-list API returns 200", async () => {
-    if (!sessionToken) throw new Error("No session token from login")
-    const res = await fetch(`${BASE_URL}/api/dashboard/request-demo-leads`, {
-      headers: {
-        cookie: `next-auth.session-token=${sessionToken}`,
-      },
-    })
+    const res = await withCookies(`${baseUrl}/api/dashboard/request-demo-leads`)
     if (res.status !== 200) throw new Error(`Expected 200, got ${res.status}`)
     const text = await res.text()
     if (hasSensitiveLeak(text)) throw new Error("Sensitive leak in lead list")
@@ -118,12 +149,7 @@ async function requestDemoSmoke() {
   })
 
   await check("authenticated admin dashboard page accessible", async () => {
-    if (!sessionToken) throw new Error("No session token from login")
-    const res = await fetch(`${BASE_URL}/fa/dashboard/request-demo-leads`, {
-      headers: {
-        cookie: `next-auth.session-token=${sessionToken}`,
-      },
-    })
+    const res = await withCookies(`${baseUrl}/fa/dashboard/request-demo-leads`)
     if (res.status < 200 || res.status >= 500) throw new Error(`Expected 2xx/3xx, got ${res.status}`)
     const html = await res.text()
     if (hasSensitiveLeak(html)) throw new Error("Sensitive leak in dashboard page")

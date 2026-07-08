@@ -23,7 +23,7 @@ Turn the UI-only request-demo form into a safe, server-side lead capture workflo
 - No unsafe casts, `any`, `@ts-ignore`, or validator weakening was used.
 - The Export Hub foundation validator (`quality:export-hub-foundation`) continues to pass.
 
-## FIX4 — Authenticated Production Acceptance (BLOCKED)
+## FIX4 — Authenticated Production Acceptance (COMPLETED)
 
 - Created read-only inventory script `scripts/ops/inspect-production-platform-admins.mjs`.
 - Executed inventory against production via `DATABASE_URL_UNPOOLED`.
@@ -33,12 +33,18 @@ Turn the UI-only request-demo form into a safe, server-side lead capture workflo
   - Role: `SUPER_ADMIN`
   - Enabled: yes
   - Last login: 2026-06-29
-- **Blocker:** Valid production SUPER_ADMIN credentials are unavailable in this environment.
-- **Required action:** Explicit user authorization is required before performing a password reset or credential disclosure.
-- The deployed smoke script (`scripts/e2e/deployed-request-demo-leads.mjs`) was updated with authenticated checks but cannot complete without valid credentials.
-- No password reset was performed.
-- No account was created.
-- No valid production lead was created.
+- **Resolution:** User authorized password reset for existing account via `scripts/ops/reset-production-super-admin-password.mjs`.
+  - Password reset applied using canonical `bcrypt` 12-round hashing.
+  - `failedLoginAttempts` and `lockedUntil` cleared.
+  - No credentials or password hashes were printed.
+- **Verified:** Authenticated SUPER_ADMIN login succeeds with reset credentials.
+- **Verified:** `GET /api/dashboard/request-demo-leads` returns 200 for SUPER_ADMIN.
+- **Verified:** `/fa/dashboard/request-demo-leads` dashboard page is accessible to SUPER_ADMIN.
+- **Verified:** No missing-table or Prisma errors occur.
+- **Verified:** Deployed P10 smoke passes all checks (public page, invalid POST, unauthenticated block, authenticated lead list, dashboard access).
+- No valid production lead was created during acceptance.
+- No lead was modified during acceptance.
+- No SMS/email/CRM side effects occurred.
 - All source validators, typecheck, and build pass.
 
 ## Current Acceptance Status
@@ -54,7 +60,8 @@ Turn the UI-only request-demo form into a safe, server-side lead capture workflo
 | Unauthenticated admin API block | PASS |
 | Production migrations applied | PASS |
 | RequestDemoLead table exists | PASS |
-| Authenticated admin lead-list API | **BLOCKED — active SUPER_ADMIN exists, credentials unavailable** |
+| Authenticated admin lead-list API | PASS |
+| Admin dashboard page accessible | PASS |
 | Tenant-admin platform-lead access | Source-only (enforced by code + validator) |
 
 ## What Is Preserved

@@ -87,27 +87,20 @@ For environments where `prisma migrate deploy` cannot reach the database directl
 node scripts/ops/apply-p10-migrations.mjs
 ```
 
-## FIX4 — Authenticated Production Verification Status
+## FIX4 — Authenticated Production Verification (COMPLETED)
 
-The deployed smoke script (`scripts/e2e/deployed-request-demo-leads.mjs`) was updated to support authenticated platform-admin checks. However, as of FIX4:
-
-- Production inventory confirmed 1 active SUPER_ADMIN account exists.
-- Valid credentials for that account are **not available** in the development environment.
-- Demo seed credentials (`superadmin` / `123456`) are not valid in production.
-- **P10 acceptance is blocked pending credentialed access.**
-
-Required next action:
-- Obtain valid production SUPER_ADMIN credentials through secure channels, OR
-- Explicitly authorize a one-time password reset for the existing production SUPER_ADMIN account.
-
-Do not create a new SUPER_ADMIN without explicit authorization.
-Do not reset the password without explicit authorization.
-
-This script:
-- Uses `DATABASE_URL_UNPOOLED` (Direct Neon connection) to apply both migrations idempotently
-- Records both migrations in `_prisma_migrations` history
-- Verifies table existence, enum values, and migration history
-- Does not expose database credentials in logs
+Production SUPER_ADMIN inventory:
+- 1 active SUPER_ADMIN account exists (ID: `cmo8eoeyo000ajmnkw26stri5`).
+- User explicitly authorized password reset via `scripts/ops/reset-production-super-admin-password.mjs`.
+- Password reset applied using canonical `bcrypt` 12-round hashing. No credentials or hashes were printed.
+- Authenticated deployed P10 smoke verified:
+  - SUPER_ADMIN login succeeds
+  - `GET /api/dashboard/request-demo-leads` returns 200
+  - `/fa/dashboard/request-demo-leads` is accessible
+  - No missing-table or Prisma errors
+  - No secrets or full phone numbers exposed
+- No valid production lead was created or modified during acceptance.
+- No SMS/email/CRM side effects occurred.
 
 ## Actual Production Verification
 
@@ -118,4 +111,4 @@ Production database (Neon) verified on 2026-07-07:
 - Migration `20260707000100_request_demo_lead_storage`: **recorded, finished_at: 2026-07-07T17:12:34.444Z**
 - Migration `20260707000200_export_hub_extend_data_types`: **recorded, finished_at: 2026-07-07T17:12:34.444Z**
 - Lead count: 0 (no test data created)
-- Deployed smoke: **passed** (`/fa/request-demo` returns 200, invalid POST returns 4xx, unauthenticated admin API blocked)
+- Deployed smoke: **passed** (`/fa/request-demo` returns 200, invalid POST returns 4xx, unauthenticated admin API blocked, authenticated SUPER_ADMIN lead-list returns 200)

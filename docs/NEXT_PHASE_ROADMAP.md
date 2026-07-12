@@ -9,7 +9,7 @@ This roadmap is ordered for risk reduction. Phases 18-119 are historical/complet
 Current baseline:
 
 - Completed through **P120F - SMS.ir official report endpoint integration** and **NOTIFOPS-DEPLOY-FIX1** deployed notification operations hardening.
-- B2B repositioning baseline: **BB-B2B-P00**, **BB-B2B-P01**, **BB-B2B-P02**, **BB-B2B-P03**, **BB-B2B-P04**, **BB-B2B-P05**, **BB-B2B-P06**, **BB-B2B-P07**, **BB-B2B-P08**, **BB-B2B-P09**, **BB-B2B-P10**, and **BB-B2B-P11** completed. Public route policy, decision matrix, content architecture, Persian-first B2B homepage landing, curated demo business portfolio, public discovery restriction policy, conversion funnel pages, feature/dashboard showcase pages, trust/legal/SEO/analytics hardening, deployed HTTP production smoke with final handoff docs, request-demo lead storage with SUPER_ADMIN admin review, tenant custom-domain onboarding flow with organization-scoped dashboard, SHOP/APPOINTMENT host-based routing, Vercel provider safety gates, DNS guide, and acceptance evidence implemented. Production (https://www.bazar-baz.ir) verified with all public B2B pages returning 200.
+- B2B repositioning baseline: **BB-B2B-P00**, **BB-B2B-P01**, **BB-B2B-P02**, **BB-B2B-P03**, **BB-B2B-P04**, **BB-B2B-P05**, **BB-B2B-P06**, **BB-B2B-P07**, **BB-B2B-P08**, **BB-B2B-P09**, **BB-B2B-P10**, **BB-B2B-P11**, and **BB-B2B-P12** completed. Public route policy, decision matrix, content architecture, Persian-first B2B homepage landing, curated demo business portfolio, public discovery restriction policy, conversion funnel pages, feature/dashboard showcase pages, trust/legal/SEO/analytics hardening, deployed HTTP production smoke with final handoff docs, request-demo lead storage with SUPER_ADMIN admin review, tenant custom-domain onboarding flow with organization-scoped dashboard, SHOP/APPOINTMENT host-based routing, Vercel provider safety gates, DNS guide, and Persian-first business onboarding wizard implemented. Production (https://www.bazar-baz.ir) verified with all public B2B pages returning 200 through P11.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, shop-domain UX validators, and P11 custom-domain onboarding validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
@@ -18,7 +18,7 @@ Current baseline:
 Recommended next B2B phase:
 
 ```txt
-BB-B2B-P12 — Business Onboarding Wizard
+BB-B2B-P13 — Guided Tenant Provisioning Readiness
 ```
 
 P120D added server-only sms.ir REST client, bulk/like-to-like sends, Iranian mobile normalization, schedule validation, dry-run default, explicit real-send gates, dashboard diagnostics, and delivery observability for transactional messages. Real send remains disabled by default.
@@ -39,6 +39,7 @@ pnpm run db:validate
 pnpm run typecheck
 pnpm run build
 pnpm run quality:b2b-custom-domain-onboarding
+pnpm run quality:b2b-business-onboarding-wizard
 ```
 
 Completed integrated phases:
@@ -114,6 +115,10 @@ Completed integrated phases:
 | BB-B2B-P06 | Conversion funnel pages for request-demo, contact, and onboarding flows. |
 | BB-B2B-P07 | Dashboard showcase and feature pages for B2B public surface. |
 | BB-B2B-P08 | SEO, trust, legal, and analytics hardening for B2B public surface. |
+| BB-B2B-P09 | Deployed B2B public surface acceptance and handoff. |
+| BB-B2B-P10 | Request-demo lead storage with safe public API and SUPER_ADMIN review workflow. |
+| BB-B2B-P11 | Tenant custom-domain onboarding with dashboard flow, host routing, Vercel safety gates, DNS docs, and acceptance evidence. |
+| BB-B2B-P12 | Persian-first business onboarding wizard at `/onboarding` with guided recommendations and safe request-demo lead submission. |
 
 Safety constraints for all Import Hub phases:
 

@@ -83,6 +83,9 @@ export default async function HomePage({
                 <Link href={`/${locale}/features`}>
                   <Button size="lg" variant="outline" className="rounded-xl bg-background/60">مشاهده همه امکانات</Button>
                 </Link>
+                <Link href={`/${locale}/onboarding`}>
+                  <Button size="lg" variant="outline" className="rounded-xl bg-background/60">ویزارد راه‌اندازی</Button>
+                </Link>
                 <Link href={`/${locale}/dashboard-showcase`}>
                   <Button size="lg" variant="outline" className="rounded-xl bg-background/60">داشبورد مدیریتی</Button>
                 </Link>

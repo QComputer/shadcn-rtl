@@ -126,6 +126,7 @@ export default async function LocaleLayout({
                 <Link href={`/${locale}/features`} className="hover:text-foreground transition-colors">امکانات</Link>
                 <Link href={`/${locale}/dashboard-showcase`} className="hover:text-foreground transition-colors">داشبورد</Link>
                 <Link href={`/${locale}/demo`} className="hover:text-foreground transition-colors">نمونه‌ها</Link>
+                <Link href={`/${locale}/onboarding`} className="hover:text-foreground transition-colors">ویزارد راه‌اندازی</Link>
                 <Link href={`/${locale}/pricing`} className="hover:text-foreground transition-colors">تعرفه‌ها</Link>
                 <Link href={`/${locale}/contact`} className="hover:text-foreground transition-colors">تماس</Link>
                 <Link href={`/${locale}/request-demo`} className="hover:text-foreground transition-colors">درخواست دمو</Link>

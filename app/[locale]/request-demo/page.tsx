@@ -82,6 +82,17 @@ export default async function RequestDemoPage({
                   </Link>
                 </CardContent>
               </Card>
+              <Card className="sm:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-base">ویزارد راه‌اندازی</CardTitle>
+                  <CardDescription>اگر هنوز مسیر دقیق شروع را نمی‌دانید، ابتدا نیازهای کسب‌وکار را مرحله‌به‌مرحله مشخص کنید.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href={`/${locale}/onboarding`}>
+                    <Button variant="outline" className="w-full">شروع ویزارد راه‌اندازی</Button>
+                  </Link>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>

@@ -70,12 +70,15 @@ export async function DELETE(
 
     const existing = await prisma.organizationDomain.findFirst({
       where: { id: domainId, organizationId },
-      select: { id: true },
+      select: { id: true, deletedAt: true },
     });
     if (!existing) throw new ApiError(404, "Domain not found");
 
-    await prisma.organizationDomain.delete({ where: { id: domainId } });
-    return NextResponse.json({ success: true });
+    const domain = await prisma.organizationDomain.update({
+      where: { id: domainId },
+      data: { deletedAt: new Date() },
+    });
+    return NextResponse.json({ success: true, domain });
   } catch (error) {
     return jsonError(error, "Failed to delete organization domain");
   }

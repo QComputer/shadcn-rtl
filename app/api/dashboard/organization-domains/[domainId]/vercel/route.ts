@@ -2,13 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/lib/audit-log";
-import { ApiError, jsonError, requireAuthSession, requireOrgAccess } from "@/lib/api-guards";
+import { jsonError, requireAuthSession, requireOrgAccess } from "@/lib/api-guards";
+import { assertDomainOwnership } from "@/lib/domains/domain-authorization.server";
 import {
   addProjectDomainToVercel,
   removeProjectDomainFromVercel,
   verifyProjectDomainOnVercel,
   type VercelDomainAutomationResult,
 } from "@/lib/vercel-domain-automation";
+import { customDomainLocales } from "@/lib/custom-domain-routing";
+import { revalidatePath } from "next/cache";
 
 const organizationDomainActionSchema = z.object({
   action: z.enum(["add", "check", "remove"]),
@@ -40,43 +43,13 @@ function domainUpdateFromVercelResult(result: VercelDomainAutomationResult) {
   };
 }
 
-async function assertDomainOwnership(
-  sessionUserId: string,
-  organizationDomainId: string,
-) {
-  const domain = await prisma.organizationDomain.findUnique({
-    where: { id: organizationDomainId },
-    select: { id: true, organizationId: true, deletedAt: true, domain: true },
-  });
+function revalidateOrganizationPublicPaths(organization: { slug: string; type: string }) {
+  const section = organization.type === "APPOINTMENT" ? "appointment" : "shop";
+  revalidatePath(`/${section}/${organization.slug}`);
 
-  if (!domain || domain.deletedAt) {
-    throw new ApiError(404, "Organization domain not found");
+  for (const locale of customDomainLocales) {
+    revalidatePath(`/${locale}/${section}/${organization.slug}`);
   }
-
-  if (sessionUserId) {
-    const membership = await prisma.organizationMember.findFirst({
-      where: {
-        userId: sessionUserId,
-        organizationId: domain.organizationId,
-        isActive: true,
-        organization: { isActive: true, deletedAt: null },
-      },
-      select: { id: true },
-    });
-
-    if (!membership) {
-      const user = await prisma.user.findUnique({
-        where: { id: sessionUserId },
-        select: { role: true },
-      });
-
-      if (user?.role !== "SUPER_ADMIN") {
-        throw new ApiError(403, "Forbidden");
-      }
-    }
-  }
-
-  return domain;
 }
 
 async function runVercelAction(action: "add" | "check" | "remove", domain: string) {
@@ -94,7 +67,7 @@ export async function POST(
     const { domainId } = await params;
     const body = organizationDomainActionSchema.parse(await request.json());
 
-    const domain = await assertDomainOwnership(session.user.id, domainId);
+    const domain = await assertDomainOwnership(prisma, session.user.id, domainId);
 
     const vercel = await runVercelAction(body.action, domain.domain);
     const updated = await prisma.organizationDomain.update({
@@ -117,6 +90,12 @@ export async function POST(
       organizationId: updated.organizationId,
       ...getClientMeta(request),
     });
+
+    try {
+      revalidateOrganizationPublicPaths(updated.organization);
+    } catch {
+      // Cache revalidation must not break Vercel mutations.
+    }
 
     return NextResponse.json({ domain: updated, vercel });
   } catch (error) {

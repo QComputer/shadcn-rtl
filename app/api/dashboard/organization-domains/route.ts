@@ -3,7 +3,9 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/lib/audit-log";
 import { ApiError, jsonError, requireAuthSession, requireOrgAccess } from "@/lib/api-guards";
-import { normalizeDomainHost, validateRawDomain, normalizeDomainInput, getApexDomainInfo, mapVercelStatusToDomainStatus, getDefaultDomainStatus, isEditableDomainStatus } from "@/lib/domains/domain-normalization.server";
+import { validateRawDomain, normalizeDomainInput, getApexDomainInfo, getDefaultDomainStatus } from "@/lib/domains/domain-normalization.server";
+import { customDomainLocales } from "@/lib/custom-domain-routing";
+import { revalidatePath } from "next/cache";
 
 const createOrganizationDomainSchema = z.object({
   organizationId: z.string().min(1).optional(),
@@ -87,6 +89,15 @@ function buildDomainCreateData(input: {
   };
 }
 
+function revalidateOrganizationPublicPaths(organization: { slug: string; type: string }) {
+  const section = organization.type === "APPOINTMENT" ? "appointment" : "shop";
+  revalidatePath(`/${section}/${organization.slug}`);
+
+  for (const locale of customDomainLocales) {
+    revalidatePath(`/${locale}/${section}/${organization.slug}`);
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAuthSession();
@@ -122,7 +133,7 @@ export async function POST(request: NextRequest) {
     const session = await requireAuthSession();
     const body = createOrganizationDomainSchema.parse(await request.json());
 
-    const normalizedHost = validateRawDomain(body.domain);
+    validateRawDomain(body.domain);
     const normalized = normalizeDomainInput({
       rawDomain: body.domain,
       organizationId: body.organizationId || session.user.organizationId || "",
@@ -193,6 +204,12 @@ export async function POST(request: NextRequest) {
       organizationId: domain.organizationId,
       ...getClientMeta(request),
     });
+
+    try {
+      revalidateOrganizationPublicPaths(domain.organization);
+    } catch {
+      // Cache revalidation must not break domain creation.
+    }
 
     return NextResponse.json({ domain: domainForResponse(domain) }, { status: 201 });
   } catch (error) {

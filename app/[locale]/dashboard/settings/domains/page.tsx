@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useEffect, useMemo, useState } from "react";
-import { Globe2, Loader2, Plus, RefreshCw, Trash2, XCircle, CheckCircle2, AlertTriangle, Copy } from "lucide-react";
+import { Loader2, Plus, RefreshCw, Trash2, CheckCircle2, AlertTriangle, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -205,6 +205,31 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
     }
   }
 
+  async function handleDisableDomain(domain: OrganizationDomain) {
+    if (!confirm(t("dashboard.domains.confirmDisable") || "آیا از غیرفعال کردن این دامنه اطمینان دارید؟")) return;
+
+    setSubmitting(true);
+    try {
+      const response = await fetch(`/api/dashboard/organization-domains/${domain.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "DISABLED" }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to disable domain");
+      }
+
+      toast.success(t("dashboard.domains.disableSuccess") || "دامنه غیرفعال شد");
+      setDomains((current) => current.map((item) => item.id === domain.id ? { ...item, status: "DISABLED" } : item));
+    } catch (disableError) {
+      toast.error(disableError instanceof Error ? disableError.message : "خطا در غیرفعال کردن دامنه");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function handleRemoveDomain(domain: OrganizationDomain) {
     if (!confirm(t("dashboard.domains.confirmRemove") || "آیا از حذف این دامنه اطمینان دارید؟")) return;
 
@@ -339,16 +364,24 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
                         variant="outline"
                         size="sm"
                         onClick={() => handleVerifyDomain(domain)}
-                        disabled={submitting || automationBlocksMutations}
+                        disabled={submitting || automationBlocksMutations || domain.status === "DISABLED" || domain.status === "REMOVED"}
                       >
                         <RefreshCw className="h-4 w-4 ml-1" />
                         بررسی
                       </Button>
                       <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleDisableDomain(domain)}
+                        disabled={submitting || domain.status === "DISABLED" || domain.status === "REMOVED"}
+                      >
+                        غیرفعال
+                      </Button>
+                      <Button
                         variant="destructive"
                         size="sm"
                         onClick={() => handleRemoveDomain(domain)}
-                        disabled={submitting || automationBlocksMutations}
+                        disabled={submitting || automationBlocksMutations || domain.status === "DISABLED" || domain.status === "REMOVED"}
                       >
                         <Trash2 className="h-4 w-4 ml-1" />
                         حذف

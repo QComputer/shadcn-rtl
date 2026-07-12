@@ -1,6 +1,6 @@
 # Bazar Baz — Recommended Next Phase Roadmap
 
-_Last updated from source inspection and roadmap reconciliation: 2026-07-03._
+_Last updated from source inspection and roadmap reconciliation: 2026-07-08._
 
 This roadmap is ordered for risk reduction. Phases 18-119 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, source acceptance/secretless packaging, Creative Studio planning, Creative Studio server foundation, Creative Studio dashboard review, Creative Studio apply controls, Creative Studio generation readiness, Creative Studio product-image generation, Creative Studio generated-asset selection, Creative Studio organization-brand readiness, Creative Studio organization-brand request controls, Creative Studio organization-brand acceptance, Creative Studio organization-brand provider rollout gate, Creative Studio organization-brand provider execution, Creative Studio provider result ingestion, and P120 Creative Studio reviewed asset apply and rollback workflow, P120A operational order notifications and admin order controls, P120B customer order lifecycle notifications and guest SMS dry-run review, P120C notification delivery observability and retry eligibility metadata, P120D SMS.ir provider completion, P120E SMS delivery reports and provider reconciliation, P120F SMS.ir official report endpoint integration, and NOTIFOPS-DEPLOY-FIX1 deployed notification operations hardening are implemented through Phase 120F.
 
@@ -9,17 +9,16 @@ This roadmap is ordered for risk reduction. Phases 18-119 are historical/complet
 Current baseline:
 
 - Completed through **P120F - SMS.ir official report endpoint integration** and **NOTIFOPS-DEPLOY-FIX1** deployed notification operations hardening.
-- B2B repositioning baseline: **BB-B2B-P00**, **BB-B2B-P01**, **BB-B2B-P02**, **BB-B2B-P03**, **BB-B2B-P04**, **BB-B2B-P05**, **BB-B2B-P06**, **BB-B2B-P07**, **BB-B2B-P08**, **BB-B2B-P09**, and **BB-B2B-P10** completed. Public route policy, decision matrix, content architecture, Persian-first B2B homepage landing, curated demo business portfolio, public discovery restriction policy, conversion funnel pages, feature/dashboard showcase pages, trust/legal/SEO/analytics hardening, deployed HTTP production smoke with final handoff docs, and request-demo lead storage with SUPER_ADMIN admin review implemented. Production (https://www.bazar-baz.ir) verified with all 10 public B2B pages returning 200.
-- Next B2B recommended phase: **BB-B2B-P11 — Tenant Custom-domain Onboarding Flow**.
+- B2B repositioning baseline: **BB-B2B-P00**, **BB-B2B-P01**, **BB-B2B-P02**, **BB-B2B-P03**, **BB-B2B-P04**, **BB-B2B-P05**, **BB-B2B-P06**, **BB-B2B-P07**, **BB-B2B-P08**, **BB-B2B-P09**, **BB-B2B-P10**, and **BB-B2B-P11** completed. Public route policy, decision matrix, content architecture, Persian-first B2B homepage landing, curated demo business portfolio, public discovery restriction policy, conversion funnel pages, feature/dashboard showcase pages, trust/legal/SEO/analytics hardening, deployed HTTP production smoke with final handoff docs, request-demo lead storage with SUPER_ADMIN admin review, tenant custom-domain onboarding flow with organization-scoped dashboard, SHOP/APPOINTMENT host-based routing, Vercel provider safety gates, DNS guide, and acceptance evidence implemented. Production (https://www.bazar-baz.ir) verified with all public B2B pages returning 200.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
-- Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, and shop-domain UX validators are part of the baseline.
+- Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, shop-domain UX validators, and P11 custom-domain onboarding validators are part of the baseline.
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
 - `docs/b2b-public-repositioning/PUBLIC_ROUTE_POLICY.md` is the authoritative public route policy for B2B positioning.
 
 Recommended next B2B phase:
 
 ```txt
-BB-B2B-P11 — Tenant Custom-domain Onboarding Flow
+BB-B2B-P12 — Business Onboarding Wizard
 ```
 
 P120D added server-only sms.ir REST client, bulk/like-to-like sends, Iranian mobile normalization, schedule validation, dry-run default, explicit real-send gates, dashboard diagnostics, and delivery observability for transactional messages. Real send remains disabled by default.
@@ -39,6 +38,7 @@ pnpm run db:generate
 pnpm run db:validate
 pnpm run typecheck
 pnpm run build
+pnpm run quality:b2b-custom-domain-onboarding
 ```
 
 Completed integrated phases:

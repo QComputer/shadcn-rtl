@@ -141,7 +141,7 @@ const checks = [
     name: "Domain resolver supports non-shop organization types",
     test: () =>
       includes(
-        "app/api/internal/domain-resolver/route.ts",
+        "lib/domains/domain-resolver.server.ts",
         "organizationType: domain.organization.type",
       ),
   },

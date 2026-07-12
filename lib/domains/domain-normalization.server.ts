@@ -1,5 +1,8 @@
 import { ApiError } from "@/lib/api-guards";
 import { DomainKind, DomainProvider, DomainStatus } from "@prisma/client";
+import { normalizeDomainHost } from "@/lib/custom-domain-routing";
+
+export { normalizeDomainHost };
 
 export type DomainNormalizationInput = {
   rawDomain: string;
@@ -25,25 +28,15 @@ export type ApexDomainInfo = {
   recommendedAlias: string;
 };
 
-export function normalizeDomainHost(value: string | undefined | null): string {
-  const raw = value?.trim();
-  if (!raw) return "";
-
-  const withoutProtocol = raw.replace(/^https?:\/\//i, "");
-  const withoutPath = withoutProtocol.split("/")[0] || withoutProtocol;
-  const withoutPort = withoutPath.split(":")[0] || withoutPath;
-
-  return withoutPort
-    .toLowerCase()
-    .replace(/\.$/, "")
-    .replace(/^www\./, "");
-}
-
 export function validateRawDomain(rawDomain: string): string {
   const normalizedDomain = normalizeDomainHost(rawDomain);
 
   if (!normalizedDomain || normalizedDomain === "localhost" || normalizedDomain.endsWith(".localhost")) {
     throw new ApiError(400, "Invalid custom domain");
+  }
+
+  if (normalizedDomain.includes("*")) {
+    throw new ApiError(400, "Wildcard domains are not supported");
   }
 
   if (/^https?:\/\//i.test(normalizedDomain) || normalizedDomain.includes("/") || normalizedDomain.includes(":")) {
@@ -57,6 +50,10 @@ export function validateRawDomain(rawDomain: string): string {
   const tld = normalizedDomain.split(".").pop() || "";
   if (tld.length < 2 || /^\d+$/.test(tld)) {
     throw new ApiError(400, "Domain must include a valid top-level domain");
+  }
+
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(normalizedDomain)) {
+    throw new ApiError(400, "Domain must not be an IP address");
   }
 
   return normalizedDomain;

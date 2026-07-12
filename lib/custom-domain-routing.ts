@@ -28,15 +28,21 @@ function hostFromUrlLike(value: string | undefined | null) {
   }
 }
 
-export function normalizeDomainHost(value: string | undefined | null) {
-  const raw = value?.trim();
-  if (!raw) return "";
+function urlHostname(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
 
-  const withoutProtocol = raw.replace(/^https?:\/\//i, "");
-  const withoutPath = withoutProtocol.split("/")[0] || withoutProtocol;
-  const withoutPort = withoutPath.split(":")[0] || withoutPath;
+  try {
+    return new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`).hostname;
+  } catch {
+    return trimmed;
+  }
+}
 
-  return withoutPort
+export function normalizeDomainHost(value: string | undefined | null): string {
+  const hostname = urlHostname(value || "");
+
+  return hostname
     .toLowerCase()
     .replace(/\.$/, "")
     .replace(/^www\./, "");
@@ -50,6 +56,7 @@ export function getPlatformHosts() {
     process.env.NEXT_PUBLIC_DEPLOYED_APP_URL,
     process.env.NEXTAUTH_URL,
     process.env.VERCEL_URL,
+    process.env.CUSTOM_DOMAIN_PLATFORM_HOSTS,
     process.env.BAZAR_BAZ_PLATFORM_HOSTS,
   ]) {
     if (!value) continue;

@@ -19,8 +19,12 @@ let getSld: any;
 let getTld: any;
 let normalizeDomainInput: any;
 let addProjectDomainToVercel: any;
+let verifyProjectDomainOnVercel: any;
+let removeProjectDomainFromVercel: any;
 let getVercelDomainAutomationState: any;
 let isVercelDomainAutomationDryRun: any;
+let CUSTOM_DOMAIN_REAL_MUTATION_ACK_VALUE: string;
+let validateShopDomainInput: any;
 let isPlatformHost: any;
 let isCustomDomainBypassPath: any;
 let assertDomainOwnership: any;
@@ -30,10 +34,14 @@ let toSupportedLocale: any;
 // Track env vars the test mutates so they can be restored between cases.
 const ENV_KEYS = [
   "CUSTOM_DOMAIN_REAL_MUTATION_ENABLED",
+  "CUSTOM_DOMAIN_REAL_MUTATION_ACK",
+  "VERCEL_API_TOKEN",
+  "VERCEL_ACCESS_TOKEN",
   "VERCEL_DOMAIN_AUTOMATION_DRY_RUN",
   "VERCEL_PROJECT_ID",
 ];
 const envSnapshot: Record<string, string | undefined> = {};
+const originalFetch = globalThis.fetch;
 
 before(async () => {
   ({ ApiError } = await import("@/lib/api-guards"));
@@ -48,9 +56,13 @@ before(async () => {
   } = await import("@/lib/domains/domain-normalization.server"));
   ({
     addProjectDomainToVercel,
+    verifyProjectDomainOnVercel,
+    removeProjectDomainFromVercel,
     getVercelDomainAutomationState,
     isVercelDomainAutomationDryRun,
+    CUSTOM_DOMAIN_REAL_MUTATION_ACK_VALUE,
   } = await import("@/lib/vercel-domain-automation"));
+  ({ validateShopDomainInput } = await import("@/lib/shop-domain-admin"));
   ({ isPlatformHost, isCustomDomainBypassPath } = await import("@/lib/custom-domain-routing"));
   ({ assertDomainOwnership } = await import("@/lib/domains/domain-authorization.server"));
   ({ resolveActiveTenantForHost, toSupportedLocale } = await import("@/lib/domains/domain-resolver.server"));
@@ -63,11 +75,16 @@ afterEach(() => {
     if (envSnapshot[key] === undefined) delete process.env[key];
     else process.env[key] = envSnapshot[key];
   }
+  globalThis.fetch = originalFetch;
 });
 
 function clearProviderEnv() {
   delete process.env.CUSTOM_DOMAIN_REAL_MUTATION_ENABLED;
+  delete process.env.CUSTOM_DOMAIN_REAL_MUTATION_ACK;
+  delete process.env.VERCEL_API_TOKEN;
+  delete process.env.VERCEL_ACCESS_TOKEN;
   delete process.env.VERCEL_DOMAIN_AUTOMATION_DRY_RUN;
+  delete process.env.VERCEL_PROJECT_ID;
 }
 
 describe("domain normalization", () => {
@@ -81,12 +98,19 @@ describe("domain normalization", () => {
     assert.equal(normalizeDomainHost("example.com."), "example.com");
   });
 
-  it("strips scheme, path and port from a host", () => {
+  it("normalizes scheme, path and port when reading host headers", () => {
     assert.equal(
       normalizeDomainHost("https://MyShop.Example.com:3000/foo/bar"),
       "myshop.example.com",
     );
     assert.equal(normalizeDomainHost("http://example.ir:8080"), "example.ir");
+  });
+
+  it("rejects schemes, paths, queries and ports for submitted domains", () => {
+    assert.throws(() => validateRawDomain("https://example.ir"), (err: any) => err instanceof ApiError && err.status === 400);
+    assert.throws(() => validateRawDomain("example.ir/path"), (err: any) => err instanceof ApiError && err.status === 400);
+    assert.throws(() => validateRawDomain("example.ir?x=1"), (err: any) => err instanceof ApiError && err.status === 400);
+    assert.throws(() => validateRawDomain("example.ir:443"), (err: any) => err instanceof ApiError && err.status === 400);
   });
 
   it("rejects localhost and *.localhost", () => {
@@ -101,6 +125,22 @@ describe("domain normalization", () => {
 
   it("rejects wildcard domains", () => {
     assert.throws(() => validateRawDomain("*.example.com"), (err: any) => err instanceof ApiError && err.status === 400);
+  });
+
+  it("normalizes IDN domains to punycode", () => {
+    assert.equal(validateRawDomain("مثال.ir"), "xn--mgbh0fb.ir");
+  });
+
+  it("rejects platform and reserved hosts", () => {
+    assert.throws(() => validateRawDomain("bazar-baz.ir"), (err: any) => err instanceof ApiError && err.status === 400);
+    assert.throws(() => validateRawDomain("www.bazar-baz.ir"), (err: any) => err instanceof ApiError && err.status === 400);
+  });
+
+  it("uses the strict validator for legacy shop-domain admin inputs", () => {
+    assert.equal(validateShopDomainInput("Shop.Example.ir"), "shop.example.ir");
+    assert.throws(() => validateShopDomainInput("https://shop.example.ir"), (err: any) => err instanceof ApiError && err.status === 400);
+    assert.throws(() => validateShopDomainInput("shop.example.ir/path"), (err: any) => err instanceof ApiError && err.status === 400);
+    assert.throws(() => validateShopDomainInput("bazar-baz.ir"), (err: any) => err instanceof ApiError && err.status === 400);
   });
 
   it("rejects domains with invalid characters", () => {
@@ -152,6 +192,18 @@ describe("provider disabled mode (vercel automation)", () => {
     );
   });
 
+  it("throws ApiError(403) when exact mutation acknowledgement is missing", async () => {
+    clearProviderEnv();
+    process.env.CUSTOM_DOMAIN_REAL_MUTATION_ENABLED = "true";
+    process.env.VERCEL_PROJECT_ID = "prj_test";
+    process.env.VERCEL_API_TOKEN = "secret_token";
+
+    await assert.rejects(
+      () => addProjectDomainToVercel("shop.example.ir"),
+      (err: any) => err instanceof ApiError && err.status === 403 && /CUSTOM_DOMAIN_REAL_MUTATION_ACK/.test(err.message),
+    );
+  });
+
   it("returns a dry-run result when VERCEL_DOMAIN_AUTOMATION_DRY_RUN is set", async () => {
     clearProviderEnv();
     process.env.VERCEL_DOMAIN_AUTOMATION_DRY_RUN = "true";
@@ -173,8 +225,64 @@ describe("provider disabled mode (vercel automation)", () => {
     assert.equal(state.dryRun, false);
 
     process.env.CUSTOM_DOMAIN_REAL_MUTATION_ENABLED = "true";
+    process.env.CUSTOM_DOMAIN_REAL_MUTATION_ACK = CUSTOM_DOMAIN_REAL_MUTATION_ACK_VALUE;
     state = getVercelDomainAutomationState();
     assert.equal(state.realMutationsEnabled, true);
+  });
+
+  it("maps add/check/remove provider responses without exposing raw provider JSON", async () => {
+    clearProviderEnv();
+    process.env.CUSTOM_DOMAIN_REAL_MUTATION_ENABLED = "true";
+    process.env.CUSTOM_DOMAIN_REAL_MUTATION_ACK = CUSTOM_DOMAIN_REAL_MUTATION_ACK_VALUE;
+    process.env.VERCEL_PROJECT_ID = "prj_test";
+    process.env.VERCEL_API_TOKEN = "secret_token";
+
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return new Response(JSON.stringify({
+        projectId: "prj_test",
+        verified: url.includes("/verify"),
+        verification: [{ type: "TXT", domain: "_vercel.shop.example.ir", value: "verify-token" }],
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }) as typeof fetch;
+
+    const add = await addProjectDomainToVercel("shop.example.ir");
+    assert.equal(add.status, "VERIFYING");
+    assert.equal(add.verificationToken, "verify-token");
+    assert.equal("raw" in add, false);
+
+    const check = await verifyProjectDomainOnVercel("shop.example.ir");
+    assert.equal(check.status, "ACTIVE");
+    assert.equal(check.verified, true);
+    assert.equal("raw" in check, false);
+
+    const remove = await removeProjectDomainFromVercel("shop.example.ir");
+    assert.equal(remove.status, "DNS_REQUIRED");
+    assert.equal(remove.verified, false);
+    assert.equal("raw" in remove, false);
+
+    assert.equal(calls.length, 3);
+    assert.equal((calls[0].init.headers as Record<string, string>).Authorization, "Bearer secret_token");
+  });
+
+  it("sanitizes provider errors and does not leak tokens", async () => {
+    clearProviderEnv();
+    process.env.CUSTOM_DOMAIN_REAL_MUTATION_ENABLED = "true";
+    process.env.CUSTOM_DOMAIN_REAL_MUTATION_ACK = CUSTOM_DOMAIN_REAL_MUTATION_ACK_VALUE;
+    process.env.VERCEL_PROJECT_ID = "prj_test";
+    process.env.VERCEL_API_TOKEN = "secret_token";
+
+    globalThis.fetch = (async () => new Response(JSON.stringify({
+      error: { message: "Authorization: Bearer secret_token token=secret_token failed" },
+    }), { status: 429, headers: { "content-type": "application/json" } })) as typeof fetch;
+
+    const result = await addProjectDomainToVercel("shop.example.ir");
+    assert.equal(result.ok, false);
+    assert.equal(result.status, "ERROR");
+    assert.match(result.message, /\[redacted\]/);
+    assert.equal(result.message.includes("secret_token"), false);
+    assert.equal("raw" in result, false);
   });
 });
 
@@ -326,8 +434,19 @@ describe("ACTIVE-only routing (resolveActiveTenantForHost)", () => {
     });
   });
 
+  it("resolves an ACTIVE appointment domain to its tenant", async () => {
+    const prisma = makePrisma("ACTIVE", { type: "APPOINTMENT", slug: "clinic-demo", locale: "fa" });
+    const tenant = await resolveActiveTenantForHost(prisma, "clinic.example.ir");
+    assert.deepEqual(tenant, {
+      slug: "clinic-demo",
+      locale: "fa",
+      organizationId: "org_1",
+      organizationType: "APPOINTMENT",
+    });
+  });
+
   it("returns null for non-ACTIVE statuses", async () => {
-    for (const status of ["VERIFYING", "DNS_REQUIRED", "ERROR", "REQUESTED"]) {
+    for (const status of ["VERIFYING", "DNS_REQUIRED", "ERROR", "REQUESTED", "DISABLED", "REMOVED"]) {
       const prisma = makePrisma(status);
       assert.equal(await resolveActiveTenantForHost(prisma, "shop.example.ir"), null, `status ${status}`);
     }

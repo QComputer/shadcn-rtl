@@ -1,5 +1,18 @@
 # Migration Note
 
+## BB-B2B-P11-FIX1 review status
+
+- Migration path: `prisma/migrations/20260708000100_custom_domain_onboarding/migration.sql`.
+- Source migration added: yes.
+- Production migration required: yes.
+- Production migration applied in P11-FIX1: no.
+- `DROP TABLE` found: no.
+- Destructive column removal found: no.
+- Unrelated schema mutation found: no.
+- Existing rows are handled by status mapping from `PENDING` to `REQUESTED` and `FAILED` to `ERROR`.
+- Enum additions are guarded with `IF NOT EXISTS`.
+- New lifecycle/provider columns are additive.
+
 ## مهاجرت `20260708000100_custom_domain_onboarding`
 
 ### هدف

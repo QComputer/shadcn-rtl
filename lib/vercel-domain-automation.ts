@@ -27,7 +27,6 @@ export type VercelDomainAutomationResult = {
   verificationToken?: string | null;
   verification?: VercelVerificationRecord[];
   dnsRecords: VercelDnsRecord[];
-  raw?: unknown;
 };
 
 type VercelProjectDomainResponse = {
@@ -54,6 +53,7 @@ type VercelApiErrorBody = {
 const VERCEL_API_BASE_URL = "https://api.vercel.com";
 const VERCEL_APEX_A_RECORD = "76.76.21.21";
 const VERCEL_CNAME_RECORD = "cname.vercel-dns.com";
+export const CUSTOM_DOMAIN_REAL_MUTATION_ACK_VALUE = "ENABLE_VERCEL_DOMAIN_MUTATIONS";
 
 function getRequiredEnv(name: string) {
   const value = process.env[name]?.trim();
@@ -72,7 +72,7 @@ export function isVercelDomainAutomationDryRun() {
 }
 
 export function isVercelDomainAutomationConfigured() {
-  return Boolean(process.env.VERCEL_ACCESS_TOKEN?.trim() && process.env.VERCEL_PROJECT_ID?.trim());
+  return Boolean(getOptionalVercelToken() && process.env.VERCEL_PROJECT_ID?.trim());
 }
 
 export function getVercelDomainAutomationState() {
@@ -87,6 +87,22 @@ export function getVercelDomainAutomationState() {
 
 function isVercelRealMutationEnabled() {
   return isTruthyEnv(process.env.CUSTOM_DOMAIN_REAL_MUTATION_ENABLED);
+}
+
+function hasExactRealMutationAck() {
+  return process.env.CUSTOM_DOMAIN_REAL_MUTATION_ACK?.trim() === CUSTOM_DOMAIN_REAL_MUTATION_ACK_VALUE;
+}
+
+function getOptionalVercelToken() {
+  return process.env.VERCEL_API_TOKEN?.trim() || process.env.VERCEL_ACCESS_TOKEN?.trim() || "";
+}
+
+function getVercelToken() {
+  const value = getOptionalVercelToken();
+  if (!value) {
+    throw new ApiError(503, "VERCEL_API_TOKEN is not configured");
+  }
+  return value;
 }
 
 function getVercelQueryString() {
@@ -138,6 +154,13 @@ function assertVercelDomainMutationAllowed() {
       "Provider mutations are disabled by default. Set CUSTOM_DOMAIN_REAL_MUTATION_ENABLED=true to enable.",
     );
   }
+
+  if (!hasExactRealMutationAck()) {
+    throw new ApiError(
+      403,
+      `Provider mutations require CUSTOM_DOMAIN_REAL_MUTATION_ACK=${CUSTOM_DOMAIN_REAL_MUTATION_ACK_VALUE}.`,
+    );
+  }
 }
 
 export function getRecommendedVercelDnsRecords(domainInput: string, verification: VercelVerificationRecord[] = []): VercelDnsRecord[] {
@@ -183,10 +206,18 @@ export function getRecommendedVercelDnsRecords(domainInput: string, verification
 function errorMessageFromBody(body: unknown, fallback: string) {
   if (!body || typeof body !== "object") return fallback;
   const errorBody = body as VercelApiErrorBody;
-  if (typeof errorBody.error === "string" && errorBody.error.trim()) return errorBody.error;
-  if (errorBody.error && typeof errorBody.error === "object" && errorBody.error.message) return errorBody.error.message;
-  if (typeof errorBody.message === "string" && errorBody.message.trim()) return errorBody.message;
-  return fallback;
+  const rawMessage =
+    typeof errorBody.error === "string" && errorBody.error.trim()
+      ? errorBody.error
+      : errorBody.error && typeof errorBody.error === "object" && errorBody.error.message
+        ? errorBody.error.message
+        : typeof errorBody.message === "string" && errorBody.message.trim()
+          ? errorBody.message
+          : fallback;
+
+  return rawMessage
+    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]")
+    .replace(/(token|authorization|api[_-]?key)\s*[:=]\s*["']?[^"'\s,}]+/gi, "$1=[redacted]");
 }
 
 async function readJsonSafe(response: Response) {
@@ -198,7 +229,7 @@ async function readJsonSafe(response: Response) {
 }
 
 async function vercelFetch(url: string, init: RequestInit) {
-  const token = getRequiredEnv("VERCEL_ACCESS_TOKEN");
+  const token = getVercelToken();
   const response = await fetch(url, {
     ...init,
     headers: {
@@ -232,7 +263,6 @@ function resultFromProjectDomainResponse(input: {
     verificationToken: getVerificationToken(verification),
     verification,
     dnsRecords: getRecommendedVercelDnsRecords(input.domain, verification),
-    raw: input.body,
   };
 }
 
@@ -277,7 +307,6 @@ export async function addProjectDomainToVercel(domainInput: string): Promise<Ver
       verification: [],
       verificationToken: null,
       dnsRecords: getRecommendedVercelDnsRecords(domain),
-      raw: body,
     };
   }
 
@@ -307,7 +336,6 @@ export async function verifyProjectDomainOnVercel(domainInput: string): Promise<
       verification: [],
       verificationToken: null,
       dnsRecords: getRecommendedVercelDnsRecords(domain),
-      raw: body,
     };
   }
 
@@ -337,7 +365,6 @@ export async function removeProjectDomainFromVercel(domainInput: string): Promis
       verification: [],
       verificationToken: null,
       dnsRecords: getRecommendedVercelDnsRecords(domain),
-      raw: body,
     };
   }
 
@@ -353,6 +380,5 @@ export async function removeProjectDomainFromVercel(domainInput: string): Promis
     verification: [],
     verificationToken: null,
     dnsRecords: getRecommendedVercelDnsRecords(domain),
-    raw: body,
   };
 }

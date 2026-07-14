@@ -27,6 +27,13 @@ function getClientMeta(request: NextRequest) {
 }
 
 function domainUpdateFromVercelResult(result: VercelDomainAutomationResult) {
+  if (result.dryRun) {
+    return {
+      lastCheckedAt: new Date(),
+      failureReason: result.message,
+    };
+  }
+
   return {
     vercelProjectDomainId: result.action === "remove" ? null : result.projectId || null,
     verificationToken: result.action === "remove" ? null : result.verificationToken || null,

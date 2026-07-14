@@ -9,6 +9,7 @@ This roadmap is ordered for risk reduction. Phases 18-119 are historical/complet
 Current baseline:
 
 - Completed through **P120F - SMS.ir official report endpoint integration** and **NOTIFOPS-DEPLOY-FIX1** deployed notification operations hardening.
+- **BB-B2B-P11-FIX1** source acceptance evidence is complete: P11 custom-domain onboarding is source-accepted, production migration remains pending, provider configuration/real-domain activation remain pending explicit authorization, and no real provider mutation was performed.
 - B2B repositioning baseline: **BB-B2B-P00**, **BB-B2B-P01**, **BB-B2B-P02**, **BB-B2B-P03**, **BB-B2B-P04**, **BB-B2B-P05**, **BB-B2B-P06**, **BB-B2B-P07**, **BB-B2B-P08**, **BB-B2B-P09**, **BB-B2B-P10**, **BB-B2B-P11**, and **BB-B2B-P12** completed. Public route policy, decision matrix, content architecture, Persian-first B2B homepage landing, curated demo business portfolio, public discovery restriction policy, conversion funnel pages, feature/dashboard showcase pages, trust/legal/SEO/analytics hardening, deployed HTTP production smoke with final handoff docs, request-demo lead storage with SUPER_ADMIN admin review, tenant custom-domain onboarding flow with organization-scoped dashboard, SHOP/APPOINTMENT host-based routing, Vercel provider safety gates, DNS guide, and Persian-first business onboarding wizard implemented. Production (https://www.bazar-baz.ir) verified with all public B2B pages returning 200 through P11.
 - Persian (`fa`) is the default first-visit locale for platform and custom-domain visits.
 - Custom-domain storefronts, SUPER_ADMIN domain management, Vercel domain automation, custom-domain SEO, deployed smoke checks, shop-domain UX validators, and P11 custom-domain onboarding validators are part of the baseline.
@@ -118,6 +119,7 @@ Completed integrated phases:
 | BB-B2B-P09 | Deployed B2B public surface acceptance and handoff. |
 | BB-B2B-P10 | Request-demo lead storage with safe public API and SUPER_ADMIN review workflow. |
 | BB-B2B-P11 | Tenant custom-domain onboarding with dashboard flow, host routing, Vercel safety gates, DNS docs, and acceptance evidence. |
+| BB-B2B-P11-FIX1 | Custom-domain onboarding source acceptance evidence, stricter tests, exact provider ACK gate, and production readiness status. |
 | BB-B2B-P12 | Persian-first business onboarding wizard at `/onboarding` with guided recommendations and safe request-demo lead submission. |
 
 Safety constraints for all Import Hub phases:

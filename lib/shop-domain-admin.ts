@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ApiError, requireRole, type SessionWithUser } from "@/lib/api-guards";
-import { normalizeDomainHost } from "@/lib/custom-domain-routing";
+import { validateRawDomain } from "@/lib/domains/domain-normalization.server";
 
 export const shopDomainStatusSchema = z.enum([
   "REQUESTED",
@@ -45,26 +45,12 @@ export function requireSuperAdmin(session: SessionWithUser) {
 }
 
 export function validateShopDomainInput(domain: string) {
-  const normalizedDomain = normalizeDomainHost(domain);
-
-  if (!normalizedDomain || normalizedDomain === "localhost" || normalizedDomain.endsWith(".localhost")) {
-    throw new ApiError(400, "Invalid custom domain");
-  }
-
-  if (/^https?:\/\//i.test(normalizedDomain) || normalizedDomain.includes("/") || normalizedDomain.includes(":")) {
-    throw new ApiError(400, "Domain must be a hostname only, such as example.ir");
-  }
-
-  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i.test(normalizedDomain)) {
+  try {
+    return validateRawDomain(domain);
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
     throw new ApiError(400, "Domain must be a valid hostname, such as example.ir");
   }
-
-  const tld = normalizedDomain.split(".").pop() || "";
-  if (tld.length < 2 || /^\d+$/.test(tld)) {
-    throw new ApiError(400, "Domain must include a valid top-level domain");
-  }
-
-  return normalizedDomain;
 }
 
 export function displayDomainInput(domain: string) {

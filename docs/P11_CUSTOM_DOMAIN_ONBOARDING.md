@@ -1,5 +1,17 @@
 # BB-B2B-P11 — Tenant Custom-domain Onboarding Flow
 
+## Acceptance status
+
+- Source implemented: yes.
+- Source accepted: yes, after BB-B2B-P11-FIX1 evidence.
+- Production migration required: yes.
+- Production migration applied in this task: no.
+- Provider configured in this task: no.
+- Real Vercel mutation authorized/performed: no.
+- Real custom domain activated: no.
+
+See `docs/P11_CUSTOM_DOMAIN_ACCEPTANCE_EVIDENCE.md`.
+
 ## Scope
 Enable authorized businesses to connect custom domains to their tenant experience with secure routing, provider integration, and dashboard management.
 
@@ -13,6 +25,7 @@ Enable authorized businesses to connect custom domains to their tenant experienc
 ### Server
 - New domain normalization utility (`lib/domains/domain-normalization.server.ts`).
 - P11 safety gates added to `lib/vercel-domain-automation.ts` (`assertVercelDomainMutationAllowed`).
+- Real provider mutation requires `CUSTOM_DOMAIN_REAL_MUTATION_ENABLED=true` and exact `CUSTOM_DOMAIN_REAL_MUTATION_ACK=ENABLE_VERCEL_DOMAIN_MUTATIONS`.
 - Dashboard APIs:
   - `GET/POST /api/dashboard/organization-domains`
   - `POST /api/dashboard/organization-domains/[id]/vercel`
@@ -26,7 +39,7 @@ Enable authorized businesses to connect custom domains to their tenant experienc
 - `lib/custom-domain-seo.ts` generalized to `getTenantSeoContext(organizationType)`.
 
 ## Constraints
-- Provider mutations disabled by default; explicit acknowledgment gate (`CUSTOM_DOMAIN_REAL_MUTATION_ENABLED=true`) required.
+- Provider mutations disabled by default; explicit acknowledgment gate (`CUSTOM_DOMAIN_REAL_MUTATION_ENABLED=true` plus exact ACK) required.
 - Do not expose Vercel token.
 - Do not assign/remove real production domains without explicit authorization.
 - Legacy validators preserved.

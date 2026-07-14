@@ -230,6 +230,37 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
     }
   }
 
+  async function handleSetPrimaryDomain(domain: OrganizationDomain) {
+    if (domain.status !== "ACTIVE") {
+      toast.error("فقط دامنه فعال و تأییدشده می‌تواند دامنه اصلی باشد");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const response = await fetch(`/api/dashboard/organization-domains/${domain.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPrimary: true }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to set primary domain");
+      }
+
+      toast.success("دامنه اصلی به‌روزرسانی شد");
+      setDomains((current) => current.map((item) => ({
+        ...item,
+        isPrimary: item.id === domain.id,
+      })));
+    } catch (primaryError) {
+      toast.error(primaryError instanceof Error ? primaryError.message : "خطا در تنظیم دامنه اصلی");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function handleRemoveDomain(domain: OrganizationDomain) {
     if (!confirm(t("dashboard.domains.confirmRemove") || "آیا از حذف این دامنه اطمینان دارید؟")) return;
 
@@ -288,7 +319,7 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-amber-600"><AlertTriangle className="h-5 w-5" /> {t("dashboard.domains.automationMissing") || "اتوماسیون Vercel پیکربندی نشده"}</CardTitle>
-            <CardDescription>{t("dashboard.domains.automationMissingDescription") || "برای ثبت خودکار دامنه، متغیرهای VERCEL_ACCESS_TOKEN و VERCEL_PROJECT_ID را تنظیم کنید."}</CardDescription>
+            <CardDescription>{t("dashboard.domains.automationMissingDescription") || "برای ثبت خودکار دامنه، متغیرهای VERCEL_API_TOKEN و VERCEL_PROJECT_ID را تنظیم کنید."}</CardDescription>
           </CardHeader>
         </Card>
       )}
@@ -297,7 +328,7 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-amber-600"><AlertTriangle className="h-5 w-5" /> {t("dashboard.domains.automationDryRun") || "اتوماسیون در حالت پیش‌نمایش است"}</CardTitle>
-            <CardDescription>{t("dashboard.domains.automationDryRunDescription") || "برای ثبت واقعی دامنه، متغیر CUSTOM_DOMAIN_REAL_MUTATION_ENABLED=true را تنظیم کنید."}</CardDescription>
+            <CardDescription>{t("dashboard.domains.automationDryRunDescription") || "برای ثبت واقعی دامنه، CUSTOM_DOMAIN_REAL_MUTATION_ENABLED=true و CUSTOM_DOMAIN_REAL_MUTATION_ACK=ENABLE_VERCEL_DOMAIN_MUTATIONS لازم است."}</CardDescription>
           </CardHeader>
         </Card>
       )}
@@ -376,6 +407,14 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
                         disabled={submitting || domain.status === "DISABLED" || domain.status === "REMOVED"}
                       >
                         غیرفعال
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSetPrimaryDomain(domain)}
+                        disabled={submitting || domain.isPrimary || domain.status !== "ACTIVE"}
+                      >
+                        دامنه اصلی
                       </Button>
                       <Button
                         variant="destructive"

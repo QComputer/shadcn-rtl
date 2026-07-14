@@ -63,6 +63,13 @@ async function assertDomainAvailable(normalizedDomain: string, currentDomainId?:
 }
 
 function domainUpdateFromVercelResult(result: VercelDomainAutomationResult) {
+  if (result.dryRun) {
+    return {
+      lastCheckedAt: new Date(),
+      failureReason: result.message,
+    };
+  }
+
   return {
     vercelProjectDomainId: result.projectId || null,
     verificationToken: result.verificationToken || null,
@@ -133,6 +140,9 @@ export async function POST(request: NextRequest) {
     const normalizedDomain = validateShopDomainInput(body.domain);
     await assertShopOrganization(body.organizationId);
     await assertDomainAvailable(normalizedDomain);
+    if (body.isPrimary && body.status !== "ACTIVE") {
+      throw new ApiError(400, "Only ACTIVE verified domains can be set as primary");
+    }
 
     const domain = await prisma.$transaction(async (tx) => {
       if (body.isPrimary) {
@@ -238,6 +248,9 @@ export async function PATCH(request: NextRequest) {
     }
 
     const nextStatus = body.status || existing.status;
+    if (body.isPrimary && nextStatus !== "ACTIVE") {
+      throw new ApiError(400, "Only ACTIVE verified domains can be set as primary");
+    }
 
     const domain = await prisma.$transaction(async (tx) => {
       const shouldRemainPrimary = body.isPrimary ?? existing.isPrimary;

@@ -134,6 +134,10 @@ export async function POST(request: NextRequest) {
     const body = createOrganizationDomainSchema.parse(await request.json());
 
     validateRawDomain(body.domain);
+    if (body.isPrimary) {
+      throw new ApiError(400, "Only ACTIVE verified domains can be set as primary");
+    }
+
     const normalized = normalizeDomainInput({
       rawDomain: body.domain,
       organizationId: body.organizationId || session.user.organizationId || "",
@@ -167,20 +171,13 @@ export async function POST(request: NextRequest) {
     }
 
     const domain = await prisma.$transaction(async (tx) => {
-      if (body.isPrimary) {
-        await tx.organizationDomain.updateMany({
-          where: { organizationId },
-          data: { isPrimary: false },
-        });
-      }
-
       const createData = buildDomainCreateData({
         organizationId,
         domain: body.domain,
         normalizedDomain: normalized.normalizedDomain,
         kind: normalized.kind,
         provider: normalized.provider,
-        isPrimary: body.isPrimary,
+        isPrimary: false,
         userId: session.user.id,
       });
 

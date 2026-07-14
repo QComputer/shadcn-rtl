@@ -24,9 +24,12 @@ export async function PATCH(
 
     const existing = await prisma.organizationDomain.findFirst({
       where: { id: domainId, organizationId },
-      select: { id: true },
+      select: { id: true, status: true },
     });
     if (!existing) throw new ApiError(404, "Domain not found");
+    if (body.isPrimary && existing.status !== "ACTIVE" && body.status !== "ACTIVE") {
+      throw new ApiError(400, "Only ACTIVE verified domains can be set as primary");
+    }
 
     const domain = await prisma.$transaction(async (tx) => {
       if (body.isPrimary) {

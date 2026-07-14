@@ -1,6 +1,6 @@
 import { ApiError } from "@/lib/api-guards";
 import { DomainKind, DomainProvider, DomainStatus } from "@prisma/client";
-import { normalizeDomainHost } from "@/lib/custom-domain-routing";
+import { isPlatformHost, normalizeDomainHost } from "@/lib/custom-domain-routing";
 
 export { normalizeDomainHost };
 
@@ -29,18 +29,24 @@ export type ApexDomainInfo = {
 };
 
 export function validateRawDomain(rawDomain: string): string {
+  const raw = rawDomain.trim();
+
+  if (/^https?:\/\//i.test(raw) || /[/?#]/.test(raw) || raw.includes(":")) {
+    throw new ApiError(400, "Domain must be a hostname only, such as example.ir");
+  }
+
   const normalizedDomain = normalizeDomainHost(rawDomain);
 
   if (!normalizedDomain || normalizedDomain === "localhost" || normalizedDomain.endsWith(".localhost")) {
     throw new ApiError(400, "Invalid custom domain");
   }
 
-  if (normalizedDomain.includes("*")) {
-    throw new ApiError(400, "Wildcard domains are not supported");
+  if (isPlatformHost(normalizedDomain)) {
+    throw new ApiError(400, "Platform and reserved hosts cannot be used as custom domains");
   }
 
-  if (/^https?:\/\//i.test(normalizedDomain) || normalizedDomain.includes("/") || normalizedDomain.includes(":")) {
-    throw new ApiError(400, "Domain must be a hostname only, such as example.ir");
+  if (normalizedDomain.includes("*")) {
+    throw new ApiError(400, "Wildcard domains are not supported");
   }
 
   if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i.test(normalizedDomain)) {

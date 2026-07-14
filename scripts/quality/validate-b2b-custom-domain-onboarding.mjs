@@ -97,6 +97,16 @@ const checks = [
       includes("lib/domains/domain-normalization.server.ts", "export function validateRawDomain"),
   },
   {
+    name: "Domain validation rejects platform hosts",
+    test: () =>
+      includes("lib/domains/domain-normalization.server.ts", "isPlatformHost"),
+  },
+  {
+    name: "Domain validation rejects URL-like input",
+    test: () =>
+      includes("lib/domains/domain-normalization.server.ts", "/[/?#]/"),
+  },
+  {
     name: "Domain normalization exports Apex detection",
     test: () =>
       includes("lib/domains/domain-normalization.server.ts", "export function getApexDomainInfo"),
@@ -105,6 +115,23 @@ const checks = [
     name: "Vercel automation has P11 safety gate",
     test: () =>
       includes("lib/vercel-domain-automation.ts", "function assertVercelDomainMutationAllowed"),
+  },
+  {
+    name: "Vercel automation requires exact real-mutation ACK",
+    test: () =>
+      includes("lib/vercel-domain-automation.ts", "CUSTOM_DOMAIN_REAL_MUTATION_ACK_VALUE"),
+  },
+  {
+    name: "Vercel automation supports server-only VERCEL_API_TOKEN",
+    test: () =>
+      includes("lib/vercel-domain-automation.ts", "VERCEL_API_TOKEN"),
+  },
+  {
+    name: "Vercel automation does not expose raw provider payloads",
+    test: () => {
+      const source = read("lib/vercel-domain-automation.ts");
+      add("lib/vercel-domain-automation.ts excludes raw result field", !/\braw\??:|raw:/.test(source));
+    },
   },
   {
     name: "Dashboard organization-domains API exists",
@@ -126,6 +153,16 @@ const checks = [
         "app/api/dashboard/organization-domains/[domainId]/vercel/route.ts",
         "organizationDomainActionSchema",
       ),
+  },
+  {
+    name: "Dashboard primary domain action requires ACTIVE status",
+    test: () =>
+      includes("app/api/dashboard/organization-domains/[domainId]/route.ts", "Only ACTIVE verified domains can be set as primary"),
+  },
+  {
+    name: "Dashboard create route prevents pending primary domains",
+    test: () =>
+      includes("app/api/dashboard/organization-domains/route.ts", "Only ACTIVE verified domains can be set as primary"),
   },
   {
     name: "Dashboard domains settings page exists",
@@ -157,6 +194,31 @@ const checks = [
     name: "Legacy validators preserved",
     test: () =>
       includes("lib/shop-domain-admin.ts", "validateShopDomainInput"),
+  },
+  {
+    name: "Legacy validators use strict submitted-domain validation",
+    test: () =>
+      includes("lib/shop-domain-admin.ts", "validateRawDomain"),
+  },
+  {
+    name: "Legacy Super Admin create route prevents pending primary domains",
+    test: () =>
+      includes("app/api/organizations/[id]/domains/route.ts", "Only ACTIVE verified domains can be set as primary"),
+  },
+  {
+    name: "Shop-domain admin create and update require ACTIVE primary domains",
+    test: () =>
+      includes("app/api/dashboard/shop-domains/route.ts", "Only ACTIVE verified domains can be set as primary"),
+  },
+  {
+    name: "Organization Vercel dry-run does not write provider status as real state",
+    test: () =>
+      includes("app/api/dashboard/organization-domains/[domainId]/vercel/route.ts", "if (result.dryRun)"),
+  },
+  {
+    name: "Shop Vercel dry-run does not write provider status as real state",
+    test: () =>
+      includes("app/api/dashboard/shop-domains/[domainId]/vercel/route.ts", "if (result.dryRun)"),
   },
   {
     name: "P11 documentation exists",
@@ -199,11 +261,14 @@ for (const check of checks) {
 }
 
 const packageJson = JSON.parse(read("package.json"));
+const envExample = read(".env.example");
 add(
   "package.json exposes quality:b2b-custom-domain-onboarding",
   packageJson.scripts?.["quality:b2b-custom-domain-onboarding"] ===
     "node scripts/quality/validate-b2b-custom-domain-onboarding.mjs",
 );
+add(".env.example includes VERCEL_API_TOKEN placeholder", /(^|\n)VERCEL_API_TOKEN=\s*(\n|$)/.test(envExample));
+add(".env.example includes exact ACK placeholder", /(^|\n)CUSTOM_DOMAIN_REAL_MUTATION_ACK=\s*(\n|$)/.test(envExample));
 
 console.table(results);
 const failed = results.filter((result) => !result.ok);

@@ -7,7 +7,13 @@ import { customDomainLocales } from "@/lib/custom-domain-routing";
 import { revalidatePath } from "next/cache";
 
 const updateDomainStatusSchema = z.object({
-  status: z.enum(["DISABLED"]),
+  status: z.enum(["DISABLED"]).optional(),
+  isPrimary: z.boolean().optional(),
+}).refine((value) => (
+  (value.status === "DISABLED" && value.isPrimary === undefined) ||
+  (value.status === undefined && value.isPrimary === true)
+), {
+  message: "Only disabling or setting an ACTIVE domain as primary is supported",
 });
 
 function getClientMeta(request: NextRequest) {
@@ -53,27 +59,55 @@ export async function PATCH(
 
     await requireOrgAccess(session, existing.organizationId, ["ADMIN", "MANAGER"]);
 
-    const updated = await prisma.organizationDomain.update({
-      where: { id: domainId },
-      data: {
-        status: body.status,
-        isPrimary: false,
-        disabledAt: new Date(),
-        lastCheckedAt: new Date(),
-      },
-      include: {
-        organization: {
-          select: { id: true, name: true, slug: true, type: true, isActive: true },
+    const updated = await prisma.$transaction(async (tx) => {
+      if (body.isPrimary) {
+        if (existing.status !== "ACTIVE") {
+          throw new ApiError(400, "Only ACTIVE verified domains can be set as primary");
+        }
+
+        await tx.organizationDomain.updateMany({
+          where: { organizationId: existing.organizationId, id: { not: domainId } },
+          data: { isPrimary: false },
+        });
+
+        return tx.organizationDomain.update({
+          where: { id: domainId },
+          data: {
+            isPrimary: true,
+            lastCheckedAt: new Date(),
+          },
+          include: {
+            organization: {
+              select: { id: true, name: true, slug: true, type: true, isActive: true },
+            },
+          },
+        });
+      }
+
+      return tx.organizationDomain.update({
+        where: { id: domainId },
+        data: {
+          status: "DISABLED",
+          isPrimary: false,
+          disabledAt: new Date(),
+          lastCheckedAt: new Date(),
         },
-      },
+        include: {
+          organization: {
+            select: { id: true, name: true, slug: true, type: true, isActive: true },
+          },
+        },
+      });
     });
 
     await writeAuditLog({
       action: "UPDATE",
       entityType: "OrganizationDomain",
       entityId: updated.id,
-      description: `Domain status set to ${body.status} for ${updated.normalizedDomain}.`,
-      newValue: { status: body.status, isPrimary: updated.isPrimary },
+      description: body.isPrimary
+        ? `Domain set as primary for ${updated.normalizedDomain}.`
+        : `Domain status set to DISABLED for ${updated.normalizedDomain}.`,
+      newValue: { status: updated.status, isPrimary: updated.isPrimary },
       userId: session.user.id,
       organizationId: updated.organizationId,
       ...getClientMeta(request),

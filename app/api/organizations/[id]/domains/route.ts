@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { ApiError, jsonError, requireAuthSession } from "@/lib/api-guards";
 import { requireSuperAdmin } from "@/lib/shop-domain-admin";
-import { normalizeDomainHost } from "@/lib/custom-domain-routing";
+import { validateRawDomain } from "@/lib/domains/domain-normalization.server";
 
 const createDomainSchema = z.object({
   domain: z.string().trim().min(3).max(255),
@@ -11,18 +11,11 @@ const createDomainSchema = z.object({
 });
 
 function normalizeDomainInput(domain: string) {
-  return normalizeDomainHost(domain);
+  return validateRawDomain(domain);
 }
 
 function validateDomain(domain: string) {
-  const normalizedDomain = normalizeDomainInput(domain);
-  if (!normalizedDomain || normalizedDomain === "localhost" || normalizedDomain.endsWith(".localhost")) {
-    throw new ApiError(400, "Invalid custom domain");
-  }
-  if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(normalizedDomain)) {
-    throw new ApiError(400, "Domain must be a valid hostname, such as example.ir");
-  }
-  return normalizedDomain;
+  return normalizeDomainInput(domain);
 }
 
 export async function GET(
@@ -55,6 +48,9 @@ export async function POST(
     const { id: organizationId } = await params;
     const body = createDomainSchema.parse(await request.json());
     const normalizedDomain = validateDomain(body.domain);
+    if (body.isPrimary) {
+      throw new ApiError(400, "Only ACTIVE verified domains can be set as primary");
+    }
 
     const organization = await prisma.organization.findFirst({
       where: { id: organizationId, type: "SHOP", isActive: true, deletedAt: null },
@@ -63,23 +59,14 @@ export async function POST(
 
     if (!organization) throw new ApiError(404, "Shop organization not found");
 
-    const domain = await prisma.$transaction(async (tx) => {
-      if (body.isPrimary) {
-        await tx.organizationDomain.updateMany({
-          where: { organizationId },
-          data: { isPrimary: false },
-        });
-      }
-
-      return tx.organizationDomain.create({
-        data: {
-          organizationId,
-          domain: body.domain.trim().toLowerCase(),
-          normalizedDomain,
-          status: "DNS_REQUIRED",
-          isPrimary: body.isPrimary,
-        },
-      });
+    const domain = await prisma.organizationDomain.create({
+      data: {
+        organizationId,
+        domain: normalizedDomain,
+        normalizedDomain,
+        status: "DNS_REQUIRED",
+        isPrimary: false,
+      },
     });
 
     return NextResponse.json({ domain }, { status: 201 });

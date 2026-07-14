@@ -1,6 +1,12 @@
 # Current Source of Truth — Bazar Baz
 
-Date: 2026-07-07
+Date: 2026-07-15
+
+## 2026-07-15 BB-B2B-P11-FIX1 update
+
+BB-B2B-P11 custom-domain onboarding source is accepted after the P11-FIX1 evidence pass. Source includes organization-scoped custom-domain onboarding, strict domain validation, ACTIVE-only SHOP/APPOINTMENT host routing, exact Vercel mutation acknowledgement gates, provider error sanitization, primary-domain safety, and P11-focused unit coverage. Production migration `20260708000100_custom_domain_onboarding` is required but was not applied by this task. Vercel provider configuration and real custom-domain activation remain pending explicit authorization. No real provider mutation, SMS, payment, or unrelated production mutation was performed.
+
+BB-B2B-P12 Business Onboarding Wizard is present on `main` from a later commit, but this P11-FIX1 update only accepts P11 source evidence. Recommended next phase after P11 source acceptance remains BB-B2B-P12 in environments that have not already applied it; on this branch the roadmap now points beyond P12.
 
 ## Current validated baseline
 

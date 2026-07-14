@@ -1,5 +1,17 @@
 # Provider Safety
 
+## BB-B2B-P11-FIX1 source acceptance
+
+- `VERCEL_API_TOKEN` is the preferred server-only token variable.
+- `VERCEL_ACCESS_TOKEN` is only a legacy fallback and must not be exposed to clients.
+- Real provider mutation is disabled by default.
+- Real provider mutation requires both `CUSTOM_DOMAIN_REAL_MUTATION_ENABLED=true` and exact `CUSTOM_DOMAIN_REAL_MUTATION_ACK=ENABLE_VERCEL_DOMAIN_MUTATIONS`.
+- Provider-disabled mode returns a 403 before any Vercel call.
+- Dry-run mode is explicit and must not be treated as real activation.
+- Raw provider payloads are not returned to the dashboard.
+- Provider error messages are sanitized so bearer tokens, authorization values, token fields, and API key fields are redacted.
+- No real Vercel add/check/remove operation was authorized or performed during P11-FIX1.
+
 ## حفاظت‌های اعمال شده برای Vercel (P11)
 
 - **غیرفعال به طور پیش‌فرض**: در محیط‌های توسعه و سیستمی، تمام فراخوانی‌های سرویس‌دهنده فقط `DRY_RUN` هستند.

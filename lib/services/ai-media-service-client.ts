@@ -125,6 +125,30 @@ export type AiMediaServiceReadiness = {
   checks: AiMediaReadinessCheck[];
 };
 
+export type AiMediaContractOperationSummary = {
+  method: string;
+  operationId: string | null;
+  requestContentTypes: string[];
+  requestSchemaRefs: string[];
+  responseStatuses: string[];
+  responseSchemaRefs: string[];
+};
+
+export type AiMediaContractPathSummary = {
+  path: string;
+  operations: AiMediaContractOperationSummary[];
+};
+
+export type AiMediaServiceContractSummary = {
+  inspected: true;
+  openapi: string | null;
+  title: string | null;
+  version: string | null;
+  paths: AiMediaContractPathSummary[];
+  securitySchemes: string[];
+  schemas: string[];
+};
+
 function hasValue(value: string | null | undefined) {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -224,6 +248,100 @@ async function sanitizedErrorText(response: Response) {
   return text
     .replace(/(x-bazarbaz-ai-key|internal[_-]?key|api[_-]?key|token|secret|password)["':=\s]+[^"',\s}]+/gi, "$1=[redacted]")
     .slice(0, 300);
+}
+
+function collectSchemaRefs(value: unknown, refs = new Set<string>(), depth = 0) {
+  if (!value || depth > 8) return refs;
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectSchemaRefs(item, refs, depth + 1));
+    return refs;
+  }
+  if (typeof value !== "object") return refs;
+
+  const record = value as Record<string, unknown>;
+  const ref = record.$ref;
+  if (typeof ref === "string" && ref.startsWith("#/components/schemas/")) {
+    refs.add(ref.replace("#/components/schemas/", ""));
+  }
+
+  Object.values(record).forEach((nested) => collectSchemaRefs(nested, refs, depth + 1));
+  return refs;
+}
+
+function summarizeOpenApiContract(raw: unknown): AiMediaServiceContractSummary {
+  const input = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+  const info = input.info && typeof input.info === "object" ? input.info as Record<string, unknown> : {};
+  const components = input.components && typeof input.components === "object"
+    ? input.components as Record<string, unknown>
+    : {};
+  const paths = input.paths && typeof input.paths === "object" ? input.paths as Record<string, unknown> : {};
+  const schemas = components.schemas && typeof components.schemas === "object"
+    ? Object.keys(components.schemas as Record<string, unknown>).sort()
+    : [];
+  const securitySchemes = components.securitySchemes && typeof components.securitySchemes === "object"
+    ? Object.keys(components.securitySchemes as Record<string, unknown>).sort()
+    : [];
+
+  const pathSummaries = Object.entries(paths)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([path, pathValue]) => {
+      const pathRecord = pathValue && typeof pathValue === "object" ? pathValue as Record<string, unknown> : {};
+      const operations = Object.entries(pathRecord)
+        .filter(([method, operation]) => /^(get|post|put|patch|delete)$/i.test(method) && operation && typeof operation === "object")
+        .map(([method, operation]) => {
+          const operationRecord = operation as Record<string, unknown>;
+          const requestBody = operationRecord.requestBody && typeof operationRecord.requestBody === "object"
+            ? operationRecord.requestBody as Record<string, unknown>
+            : {};
+          const requestContent = requestBody.content && typeof requestBody.content === "object"
+            ? requestBody.content as Record<string, unknown>
+            : {};
+          const responses = operationRecord.responses && typeof operationRecord.responses === "object"
+            ? operationRecord.responses as Record<string, unknown>
+            : {};
+
+          return {
+            method: method.toUpperCase(),
+            operationId: typeof operationRecord.operationId === "string" ? operationRecord.operationId : null,
+            requestContentTypes: Object.keys(requestContent).sort(),
+            requestSchemaRefs: Array.from(collectSchemaRefs(requestContent)).sort(),
+            responseStatuses: Object.keys(responses).sort(),
+            responseSchemaRefs: Array.from(collectSchemaRefs(responses)).sort(),
+          } satisfies AiMediaContractOperationSummary;
+        })
+        .sort((a, b) => a.method.localeCompare(b.method));
+
+      return { path, operations };
+    });
+
+  return {
+    inspected: true,
+    openapi: typeof input.openapi === "string" ? input.openapi : null,
+    title: typeof info.title === "string" ? info.title : null,
+    version: typeof info.version === "string" ? info.version : null,
+    paths: pathSummaries,
+    securitySchemes,
+    schemas,
+  };
+}
+
+export async function getAiMediaServiceContractSummary(): Promise<AiMediaServiceContractSummary> {
+  const config = assertConfigured();
+  const response = await aiMediaFetch(`${config.url}/openapi.json`, {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    throw new AiMediaServiceError(response.status, "AI media service contract is unavailable");
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    throw new AiMediaServiceError(502, "AI media service contract is not JSON", "INVALID_CONTRACT_CONTENT_TYPE");
+  }
+
+  const raw = await response.json();
+  return summarizeOpenApiContract(raw);
 }
 
 async function probeAiMediaEndpoint(endpoint: "/health" | "/ready", expectedText: string): Promise<AiMediaReadinessCheck> {

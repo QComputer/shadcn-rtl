@@ -43,6 +43,20 @@ Audit caveats:
 
 ## Immediate Next Phase
 
+### BB-AI-MEDIA-ONLINE-MILESTONE-01 - Production Source Synchronization and Secure Online AI Media Integration
+
+Goal: synchronize current `main` to Vercel production and complete a secure, tenant-scoped, server-to-server Creative Studio workflow against the Render-hosted AI Media Service without browser-to-Render calls or real GPU/paid generation.
+
+Status: active milestone before BB-B2B-P14. BB-AI-MEDIA-P00 production source synchronization is complete for commit `84be77efef777875423a9e0a95e984862ef26546`. BB-AI-MEDIA-P01 contract discovery is complete through the SUPER_ADMIN-only Vercel-hosted contract probe. The live Render OpenAPI contract confirms the product-image suggestions job lifecycle, but does not expose the historical organization-brand logo/cover endpoints; organization-brand execution must stay disabled/gated until Bazar Baz is adapted to the live `/v1/creative/...` contract or the service adds explicit organization-brand endpoints.
+
+Safety:
+
+- No production database migration is authorized for this milestone.
+- No tenant provisioning execution.
+- No DNS/provider mutation.
+- No SMS, email, Web Push, payment, or domain-provider side effects.
+- No real GPU/paid generation without separate explicit authorization.
+
 ### BB-B2B-P14 - Transactional Tenant Provisioning Execution
 
 Goal: execute an APPROVED provisioning plan transactionally and idempotently after explicit authorization, creating the organization, settings, owner invitation, membership, and safe defaults without plaintext passwords or partial tenant state.

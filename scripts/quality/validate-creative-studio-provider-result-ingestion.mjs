@@ -130,9 +130,9 @@ add("deployed smoke covers P119 safe routes", /refresh-provider-result/.test(smo
 add("package exposes P119 validator", /"quality:creative-studio-provider-result-ingestion":\s*"node scripts\/quality\/validate-creative-studio-provider-result-ingestion\.mjs"/.test(packageJson));
 add("quality local references P119 validator", /validate-creative-studio-provider-result-ingestion\.mjs/.test(validateProject) && /P119 Creative Studio provider result ingestion validator passes/.test(validateProject));
 add("P119 docs exist and state safety boundaries", /Status: implemented/.test(doc) && /draft\/review-only/.test(doc) && /Public auto-apply remains disabled/.test(doc) && /never calls ComfyUI/.test(doc));
-add("README marks P119 complete and P120 next", /Latest completed implementation phase:\s+\*\*P120D - SMS.ir provider completion\*\*/.test(readme) && /Recommended next phase:\s+\*\*P120E — SMS delivery reports and provider reconciliation\*\*/.test(readme));
-add("roadmap marks P119 complete and P120 next", /Completed through \*\*P120D - SMS.ir provider completion\*\*/.test(roadmap) && /\| P119 \| Creative Studio provider result ingestion and review stabilization\. \|/.test(roadmap) && /\| P120 \| Creative Studio reviewed asset apply and rollback workflow\. \|/.test(roadmap));
-add("source of truth names P119 baseline", /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth) && /Creative Studio provider result ingestion exists/.test(sourceOfTruth));
+add("README preserves completed P119 baseline", /P119 Creative Studio provider result ingestion/.test(readme));
+add("roadmap preserves P119 while tracking current AI media milestone", /BB-AI-MEDIA-ONLINE-MILESTONE-01/.test(roadmap) && /\| P119 \| Creative Studio provider result ingestion and review stabilization\. \|/.test(roadmap) && /\| P120 \| Creative Studio reviewed asset apply and rollback workflow\. \|/.test(roadmap));
+add("source of truth names P119 baseline and current AI media milestone", /BB-AI-MEDIA-ONLINE-MILESTONE-01/.test(sourceOfTruth) && /Creative Studio provider result ingestion exists/.test(sourceOfTruth));
 
 for (const check of checks) {
   console.log(`${check.pass ? "PASS" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`);

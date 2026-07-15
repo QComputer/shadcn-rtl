@@ -2,7 +2,7 @@
 
 Date: 2026-07-15
 
-Status: blocked at Preview isolation gate.
+Status: blocked at Preview isolation recovery gate.
 
 ## Milestone
 
@@ -16,11 +16,12 @@ The lifecycle was not executed because Preview persistence is not isolated from 
 
 - `git status --short`: clean
 - `git branch --show-current`: `main`
-- `git rev-parse HEAD`: `5e932ef903791df4db3bd79d3a21aae5a4cabdcf`
+- `git rev-parse HEAD`: `bfaa0907eee4217d1c083c8f6800c21c427eee3a`
 - `git ls-remote origin main`: matched local HEAD
 - Accepted commits present:
   - `aeafd84 feat(ai-media): add capability registry and lifecycle hardening`
   - `5e932ef feat(settings): show notification policy`
+  - `bfaa090 docs(ai-media): record preview isolation blocker`
 
 ## Deployment Checks
 
@@ -92,3 +93,25 @@ Recommended:
 4. Confirm Render active provider mode is MOCK through server-side diagnostics.
 5. Rerun the isolation gate.
 
+## Isolation Recovery Validation
+
+The recovery run inspected only metadata and source state. It did not create or mutate external resources.
+
+| Check | Result |
+| --- | --- |
+| Current branch is `main` | passed |
+| Working tree clean before recovery | passed |
+| HEAD matches `origin/main` | passed |
+| Production deployment Ready | passed |
+| Vercel Preview deployments discoverable | passed |
+| Neon API variable names present locally | passed |
+| Neon project discovery with `NEON_API_KEY` | failed: `403` |
+| Neon project discovery with `NEON_PROJECT_API_KEY` | failed: `403` |
+| `NEON_PROJECT_ID` available without printing secrets | failed: not present |
+| Preview Neon branch created/reused | skipped: management authorization unavailable |
+| Preview database migration status | skipped: no isolated Preview database URL |
+| Preview Blob store/token creation | skipped: database isolation blocker reached first |
+| Preview AI-media client isolation proof | skipped: database isolation blocker reached first |
+| MOCK lifecycle | skipped: isolation gate did not pass |
+
+No Production row, Blob object, Render job, SMS, email, Web Push, payment, tenant provisioning, or domain provider action was performed.

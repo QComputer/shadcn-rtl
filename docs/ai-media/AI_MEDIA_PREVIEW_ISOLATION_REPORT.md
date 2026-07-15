@@ -2,7 +2,7 @@
 
 Date: 2026-07-15
 
-Phase: BB-AI-MEDIA-P04-P06
+Phase: BB-AI-MEDIA-P04-P06 / BB-AI-MEDIA-P04-P06-ISOLATION-RECOVERY
 
 Status: blocked before lifecycle writes.
 
@@ -21,12 +21,13 @@ No secret value was printed or committed.
 ## Source Continuity
 
 - Branch: `main`
-- Accepted source HEAD: `5e932ef903791df4db3bd79d3a21aae5a4cabdcf`
+- Accepted source HEAD: `bfaa0907eee4217d1c083c8f6800c21c427eee3a`
 - `origin/main`: matched local HEAD during preflight
 - Working tree: clean before the isolation check
 - Accepted commits present:
   - `aeafd84 feat(ai-media): add capability registry and lifecycle hardening`
   - `5e932ef feat(settings): show notification policy`
+  - `bfaa090 docs(ai-media): record preview isolation blocker`
 
 ## Production Deployment
 
@@ -85,3 +86,32 @@ One of the following must be true before lifecycle writes are safe:
 
 The recommended path is a dedicated Neon Preview branch plus Preview-only storage.
 
+## Isolation Recovery Attempt
+
+Date: 2026-07-15
+
+The recovery phase attempted safe metadata discovery before creating any Preview resource.
+
+Result:
+
+- Current branch: `main`
+- Local HEAD: `bfaa0907eee4217d1c083c8f6800c21c427eee3a`
+- `origin/main`: matched local HEAD
+- Working tree: clean
+- Production deployment: Vercel reported `https://www.bazar-baz.ir` as Ready.
+- Latest Vercel deployment list included Ready Preview deployments.
+- Local `.env` contained Neon management variable names, but no values were printed.
+- `NEON_API_KEY` project discovery returned `403`.
+- `NEON_PROJECT_API_KEY` project discovery returned `403`.
+- No `NEON_PROJECT_ID` was found in source-visible configuration.
+
+Decision:
+
+- Stop condition 3 applies: Neon management credentials are unavailable for safe branch discovery/creation.
+- No Neon branch was created.
+- No Vercel Preview database variables were changed.
+- No Blob store/token was created or used.
+- No Render job was created.
+- No lifecycle writes were performed.
+
+The required Preview resource boundary is now documented in `docs/ai-media/AI_MEDIA_PREVIEW_RESOURCE_PLAN.md`.

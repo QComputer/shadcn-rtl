@@ -51,7 +51,7 @@ Status: active milestone before BB-B2B-P14. BB-AI-MEDIA-P00 production source sy
 
 BB-AI-MEDIA-P02/P03 source work is implemented for the confirmed product-image lifecycle: canonical server-only Render client hardening, capability registry, local-before-provider job creation, idempotency/correlation metadata, bounded polling, output URL validation, and fail-closed organization-brand behavior.
 
-BB-AI-MEDIA-P04/P06 Preview MOCK lifecycle is blocked before job creation because Vercel Preview currently shares the production database connection variables. No Preview lifecycle job, provider job, Blob asset, or Creative Studio asset was created. Resume only after Preview uses isolated persistence or after separate explicit production-test-data authorization with cleanup.
+BB-AI-MEDIA-P04/P06 Preview MOCK lifecycle is blocked before job creation because Vercel Preview currently shares the production database connection variables. The 2026-07-15 isolation recovery attempt stopped before resource creation because Neon management discovery returned `403` for both configured key variables and no `NEON_PROJECT_ID` was available. No Preview lifecycle job, provider job, Blob asset, Creative Studio asset, Neon branch, Vercel env mutation, or Production mutation was created. Resume only after Preview uses isolated persistence and a proven Preview AI-media client identity, or after separate explicit production-test-data authorization with cleanup.
 
 Safety:
 

@@ -24,6 +24,29 @@ Current recommended next phase before P14: **DB-NEON-02 - Authorized Pending Pro
 
 Do not proceed to **BB-B2B-P14 - Transactional Tenant Provisioning Execution** until DB-NEON-01 is accepted and pending production migrations are handled through an explicitly authorized database phase.
 
+## 2026-07-15 DB-NEON-02 production migration update
+
+DB-NEON-02 production migration deployment is complete at source commit `a6710fc`. Production Neon now records successful application of:
+
+1. `20260703000100_add_creative_studio_asset_rolled_back`
+2. `20260703000200_notification_delivery_attempt`
+3. `20260703000300_sms_delivery_guest_customer`
+4. `20260708000100_custom_domain_onboarding`
+5. `20260715000100_tenant_provisioning_readiness`
+6. `20260715000200_custom_domain_status_backfill`
+
+The sixth migration was added during DB-NEON-02 clone rehearsal to move custom-domain legacy status backfill into a transaction after the new enum values had committed. Production had 0 legacy `PENDING`/`FAILED` domain rows remaining after deploy.
+
+Post-deploy read-only verification confirmed the production schema is up to date, no unfinished failed migration remains, migration checksums match source, `ASSET_ROLLED_BACK` exists, `NotificationDeliveryAttempt` exists, `SmsDelivery.customerId` is nullable, `OrganizationDomain.providerVerified` exists, and `TenantProvisioningPlan` exists.
+
+Important caveats:
+
+- The short-form final production authorization allowed `pnpm exec prisma migrate deploy`, but did not literally enumerate the sixth migration or explicitly authorize retry behavior after the first generic Prisma schema-engine failure.
+- Vercel deployment metadata showed the latest `a6710fc` production deployment in `ERROR` state; the current READY production deployment was still `f392ee3`. The production database is migrated, but the production application source was not confirmed synchronized to `a6710fc`.
+- `quality:local` was run and failed with 24 existing non-DB issues. Do not claim the global quality suite is green.
+
+Current recommended next operational step: fix/verify Vercel production deployment of `a6710fc`, then re-run deployed smoke. **BB-B2B-P14 - Transactional Tenant Provisioning Execution** remains the recommended product phase only after source deployment sync is restored and a fresh explicit authorization is obtained.
+
 ## Current validated baseline
 
 The current working baseline after P120F/NOTIFOPS and BB-B2B-P12 is source-validator green after the BASELINE-01 validation gate.
@@ -486,9 +509,9 @@ tsconfig.tsbuildinfo
 ## Recommended next phase
 
 ```txt
-DB-NEON-02 - Authorized Pending Production Migration Deployment
+BB-B2B-P14 - Transactional Tenant Provisioning Execution
 ```
 
-DB-NEON-02 should apply verified pending production migrations only after explicit authorization, using direct `DIRECT_URL` through Prisma CLI and without manual edits to `_prisma_migrations`. Expected pending migrations may include P11 custom-domain onboarding and P13 guided tenant provisioning readiness. BB-B2B-P14 remains paused until this database phase is accepted.
+DB-NEON-02 has applied the required production database migrations. Before P14 implementation/execution, resolve the Vercel production source-sync issue for commit `a6710fc`, keep provider/domain activation separate, and obtain explicit P14 execution authorization.
 
 See `docs/IMPORT_HUB_ROADMAP.md` for the integrated P68-P78 roadmap, `docs/PHASE_79_IMPORT_APPROVAL_PUBLISHING.md` for the approval publishing bridge, `docs/PHASE_80_AI_MEDIA_SUGGESTIONS.md` for AI media guardrails, `docs/PHASE_81_EXPORT_DOWNLOADS.md` for protected export downloads, `docs/PHASE_82_DEPLOYED_IMPORT_EXPORT_SMOKE.md` for deployed verification, `docs/PHASE_83_PROJECT_STATE_RECONCILIATION.md` for the roadmap reconciliation, `docs/PHASE_84_AI_MEDIA_HEALTH_GATE.md` for the AI media health gate, `docs/PHASE_85_AI_MEDIA_MOCK_FLOW.md` for product suggestion MOCK-flow acceptance, `docs/PHASE_86_AI_MEDIA_DURABLE_STORAGE.md` for durable selected-image storage, `docs/PHASE_87_AI_MEDIA_LONG_RUNNING_UX.md` for long-running job UX, `docs/PHASE_88_AI_MEDIA_USAGE_CONTROLS.md` for usage and quota controls, `docs/PHASE_89_IMPORT_AI_MEDIA_BRIDGE.md` for import-to-AI-media workflow integration, `docs/PHASE_90_DEPLOYED_AI_MEDIA_ROLLOUT_GATE.md` for deployed Bazar Baz AI media rollout validation, `docs/PHASE_91_AI_MEDIA_ROLLOUT_EVIDENCE.md` for operator-safe rollout evidence retention, `docs/PHASE_92_AI_MEDIA_PAID_PROVIDER_CONTROLS.md` for explicit paid-provider controls, `docs/PHASE_93_AI_MEDIA_COST_ROLLBACK.md` for cost telemetry and rollback guardrails, `docs/PHASE_94_AI_MEDIA_SELLER_STATE_UX.md` for seller-facing AI media state UX, `docs/PHASE_95_SOURCE_CLEANUP_VERIFICATION.md` for source cleanup and security verification, `docs/PHASE_96_OPEN_FIELDS_AUDIT.md` for open-fields workflow audit, `docs/PHASE_97_PWA_FOUNDATION.md` for PWA install foundation, `docs/PHASE_98_PWA_OFFLINE_SHELL.md` for PWA offline shell quality gates, `docs/PHASE_99_NOTIFICATION_PREFERENCES.md` for notification preference policy, `docs/PHASE_100_WEB_PUSH_DELIVERY.md` for preference-aware Web Push delivery, `docs/PHASE_101_SMS_PROVIDER.md` for SMS provider abstraction, `docs/PHASE_102_NOTIFICATION_ROUTING.md` for template routing, `docs/PHASE_103_NOTIFICATION_OPERATIONS_DASHBOARD.md` for the operator dashboard, `docs/PHASE_104_DEPLOYED_PWA_PUSH_SMS_SMOKE.md` for deployed smoke gates, `docs/PHASE_105_PRODUCTION_ROLLOUT_RUNBOOK.md` for production rollout operations, `docs/PHASE_106_PWA_PUSH_SMS_ACCEPTANCE_GATE.md` for the acceptance and packaging gate, `docs/PHASE_107_CREATIVE_STUDIO_INTEGRATION_PLANNING.md` for the Creative Studio planning contract, `docs/PHASE_108_CREATIVE_STUDIO_SERVER_FOUNDATION.md` for the Creative Studio server foundation, `docs/PHASE_109_CREATIVE_STUDIO_DASHBOARD_REVIEW.md` for the Creative Studio dashboard review surface, `docs/PHASE_110_CREATIVE_STUDIO_APPLY_CONTROLS.md` for the Creative Studio apply-controls surface, `docs/PHASE_111_CREATIVE_STUDIO_GENERATION_READINESS.md` for the Creative Studio generation readiness gate, `docs/PHASE_112_CREATIVE_STUDIO_PRODUCT_IMAGE_GENERATION.md` for product-image generation request controls, `docs/PHASE_113_CREATIVE_STUDIO_GENERATED_ASSET_SELECTION.md` for generated-asset selection polish, `docs/PHASE_114_CREATIVE_STUDIO_ORGANIZATION_BRAND_READINESS.md` for organization-brand readiness, `docs/PHASE_115_CREATIVE_STUDIO_ORGANIZATION_BRAND_REQUEST_CONTROLS.md` for organization-brand request controls, `docs/PHASE_116_CREATIVE_STUDIO_ORGANIZATION_BRAND_ACCEPTANCE.md` for organization-brand acceptance, `docs/PHASE_117_CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_ROLLOUT_GATE.md` for organization-brand provider rollout gating, `docs/PHASE_118_CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_EXECUTION.md` for organization-brand provider execution wiring, and `docs/PHASE_119_CREATIVE_STUDIO_PROVIDER_RESULT_INGESTION.md` for provider result ingestion.

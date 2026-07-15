@@ -16,17 +16,19 @@ Current baseline:
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
 - `docs/b2b-public-repositioning/PUBLIC_ROUTE_POLICY.md` is the authoritative public route policy for B2B positioning.
 
-Recommended next B2B phase after P13 source acceptance:
+Recommended next B2B phase after DB-NEON-02 database acceptance:
 
 ```txt
-DB-NEON-02 - Authorized Pending Production Migration Deployment
+BB-B2B-P14 - Transactional Tenant Provisioning Execution
 ```
 
-BB-B2B-P13 Guided Tenant Provisioning Readiness is implemented in source. It creates reviewable, idempotent provisioning plans from request-demo/onboarding leads, validates them with a mutation-free dry run, and supports READY/APPROVED review states without tenant execution. Production migration `20260715000100_tenant_provisioning_readiness` remains pending explicit authorization.
+BB-B2B-P13 Guided Tenant Provisioning Readiness is implemented in source. It creates reviewable, idempotent provisioning plans from request-demo/onboarding leads, validates them with a mutation-free dry run, and supports READY/APPROVED review states without tenant execution. Production migration `20260715000100_tenant_provisioning_readiness` was applied by DB-NEON-02.
 
-DB-NEON-01 makes Neon Serverless the canonical source runtime database architecture. Runtime uses pooled `DATABASE_URL` through Prisma Client and the Neon adapter; Prisma CLI and migration operations use direct `DIRECT_URL`. P14 is paused until DB-NEON-01 is accepted and pending production migrations are handled through DB-NEON-02.
+DB-NEON-01 makes Neon Serverless the canonical source runtime database architecture. Runtime uses pooled `DATABASE_URL` through Prisma Client and the Neon adapter; Prisma CLI and migration operations use direct `DIRECT_URL`.
 
-BB-B2B-P14 - Transactional Tenant Provisioning Execution remains the next B2B product phase after the authorized database migration phase.
+DB-NEON-02 applied six production migrations on 2026-07-15 through commit `a6710fc`, including P11 custom-domain onboarding, P13 tenant provisioning readiness, notification/SMS observability migrations, and the custom-domain status backfill. Production schema verification passed. However, Vercel metadata showed the latest `a6710fc` production deployment in `ERROR` state while the current READY production deployment remained `f392ee3`; fix/verify production source synchronization before executing P14.
+
+BB-B2B-P14 - Transactional Tenant Provisioning Execution remains the next B2B product phase after deployment/source synchronization and fresh explicit execution authorization.
 
 P120D added server-only sms.ir REST client, bulk/like-to-like sends, Iranian mobile normalization, schedule validation, dry-run default, explicit real-send gates, dashboard diagnostics, and delivery observability for transactional messages. Real send remains disabled by default.
 
@@ -129,6 +131,7 @@ Completed integrated phases:
 | BB-B2B-P12 | Persian-first business onboarding wizard at `/onboarding` with guided recommendations and safe request-demo lead submission. |
 | BB-B2B-P13 | Guided tenant provisioning readiness with SUPER_ADMIN-only plans, dry-run validation, READY/APPROVED review, and no tenant execution. |
 | DB-NEON-01 | Neon Serverless canonical runtime architecture with pooled runtime URL, direct CLI URL, redacted health/smoke checks, and no migration application. |
+| DB-NEON-02 | Authorized production migration deployment applying six pending migrations, with Node 20 Prisma CLI, clone rehearsal, post-deploy schema verification, and documented authorization/source-sync caveats. |
 
 Safety constraints for all Import Hub phases:
 

@@ -28,19 +28,33 @@ Goal: make pooled Neon Serverless through the Prisma Neon adapter the canonical 
 
 Status: implemented in source. No production migration was applied.
 
+### DB-NEON-02 - Neon Production Migration Deployment
+
+Goal: apply verified pending production migrations with Node 20 and Prisma CLI using direct `DIRECT_URL`, after clone rehearsal and explicit production authorization.
+
+Status: production database migration completed on 2026-07-15 at source commit `a6710fc`. Six migrations were applied: Creative Studio asset rollback enum recovery, notification delivery attempts, nullable SMS customer linkage, P11 custom-domain onboarding, P13 tenant provisioning readiness, and custom-domain status backfill. Post-deploy schema verification passed with no unfinished failed migrations.
+
+Audit caveats:
+
+- The sixth backfill migration was introduced during DB-NEON-02 rehearsal and was not literally named in the final short-form authorization.
+- The first production deploy attempt failed before applying SQL; retry behavior was not separately named in the authorization.
+- Vercel metadata showed `a6710fc` production deployments in `ERROR` state and the current READY production deployment at `f392ee3`, so production application source synchronization must be fixed before P14 execution.
+- `quality:local` currently fails on existing non-DB issues and must not be reported as green.
+
 ## Immediate Next Phase
 
-### DB-NEON-02 - Authorized Pending Production Migration Deployment
+### BB-B2B-P14 - Transactional Tenant Provisioning Execution
 
-Goal: apply verified pending production migrations only after explicit authorization, using direct `DIRECT_URL` through Prisma CLI and preserving redacted migration evidence.
+Goal: execute an APPROVED provisioning plan transactionally and idempotently after explicit authorization, creating the organization, settings, owner invitation, membership, and safe defaults without plaintext passwords or partial tenant state.
 
 Prerequisites:
 
-- DB-NEON-01 accepted.
-- `pnpm exec prisma migrate status` confirms pending migrations.
-- Operator explicitly authorizes production migration deployment.
+- DB-NEON-02 accepted.
+- Vercel production source is synchronized to `a6710fc` or a later accepted commit.
+- `quality:local` failures are triaged or explicitly waived for P14 scope.
+- Operator explicitly authorizes P14 execution behavior.
 
-Status: next database phase. BB-B2B-P14 remains paused until this phase is accepted.
+Status: next product phase, not yet ready for execution until deployment/source sync and authorization are restored.
 
 ## Next B2B Product Phase After Database Acceptance
 

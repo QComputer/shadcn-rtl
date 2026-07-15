@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Bell, Clock, Globe, Loader2, Lock, Palette, Save, User } from "lucide-react";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
+import { DashboardPushOptIn } from "@/components/dashboard/dashboard-push-opt-in";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -71,6 +72,52 @@ const dayLabels: Record<DayKey, string> = {
   THURSDAY: "پنجشنبه",
   FRIDAY: "جمعه",
 };
+
+const notificationPolicyHighlights = [
+  {
+    title: "اصل حاکم",
+    description: "اعلان‌های تراکنشی برای سفارش، پرداخت و نوبت به صورت پیش‌فرض فعال‌اند؛ پیام‌های بازاریابی فقط از مسیرهای مجاز و ترجیح‌های ثبت‌شده ارسال می‌شوند.",
+  },
+  {
+    title: "کانال‌های مجاز",
+    description: "مسیرهای رسمی پروژه شامل اعلان داخل برنامه، Web Push و SMS است. ایمیل در سیاست فعلی کانال فعال ارسال نیست.",
+  },
+  {
+    title: "ارسال واقعی",
+    description: "Web Push و SMS واقعی پشت پرچم‌های محیطی و تأیید عملیاتی هستند. حالت پیش‌فرض امن، dry-run یا ارسال کنترل‌شده است.",
+  },
+  {
+    title: "سیاست تلاش مجدد",
+    description: "تلاش مجدد فقط برای Web Push و SMS واجد شرایط است؛ اعلان داخل برنامه، dry-run و مسیر مهمان retry واقعی ندارند.",
+  },
+];
+
+const notificationChannelPolicyRows = [
+  {
+    channel: "داخل برنامه",
+    transactional: "فعال",
+    marketing: "فعال به صورت پیش‌فرض",
+    note: "مسیر اصلی اعلان‌های داشبورد، سفارش و پیام‌های عملیاتی.",
+  },
+  {
+    channel: "Web Push",
+    transactional: "فعال پس از اجازه مرورگر",
+    marketing: "نیازمند opt-in",
+    note: "برای داشبورد از کنترل پایین همین صفحه و برای مشتری از تنظیمات عمومی فروشگاه استفاده می‌شود.",
+  },
+  {
+    channel: "SMS",
+    transactional: "فعال از نظر سیاست، وابسته به درگاه",
+    marketing: "نیازمند opt-in",
+    note: "ارسال واقعی فقط با SMS.ir، کلید معتبر، تأیید اپراتور و خروج از dry-run انجام می‌شود.",
+  },
+  {
+    channel: "Email",
+    transactional: "غیرفعال",
+    marketing: "غیرفعال",
+    note: "در سیاست فعلی پروژه کانال ارسال ایمیل فعال نشده است.",
+  },
+];
 
 export default function SettingsPage({ params }: { params: Promise<{ locale: string }> }) {
   const resolvedParams = use(params);
@@ -427,18 +474,60 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
           </Card>
         </TabsContent>
 
-        <TabsContent value="notifications">
+        <TabsContent value="notifications" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>اعلان‌ها</CardTitle>
-              <CardDescription>تنظیمات اعلان‌ها در حال حاضر نمایشی است و به تنظیمات پایدار متصل نشده است.</CardDescription>
+              <CardTitle>سیاست اعلان‌های پروژه</CardTitle>
+              <CardDescription>خلاصه سیاست فعلی Bazar Baz برای اعلان داخل برنامه، Web Push و SMS.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between gap-4"><span>اعلان‌های مرورگر</span><Switch disabled /></div>
-              <div className="flex items-center justify-between gap-4"><span>اعلان‌های ایمیلی</span><Switch disabled /></div>
-              <div className="flex items-center justify-between gap-4"><span>اعلان‌های پیامکی</span><Switch disabled /></div>
+            <CardContent className="space-y-5">
+              <div className="grid gap-3 md:grid-cols-2">
+                {notificationPolicyHighlights.map((item) => (
+                  <div key={item.title} className="rounded-lg border bg-muted/30 p-3">
+                    <p className="text-sm font-medium text-foreground">{item.title}</p>
+                    <p className="mt-1 text-xs leading-6 text-muted-foreground">{item.description}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="overflow-x-auto rounded-lg border">
+                <table className="w-full min-w-[680px] text-sm">
+                  <thead className="bg-muted/50 text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 text-start font-medium">کانال</th>
+                      <th className="px-3 py-2 text-start font-medium">تراکنشی</th>
+                      <th className="px-3 py-2 text-start font-medium">بازاریابی</th>
+                      <th className="px-3 py-2 text-start font-medium">یادداشت اجرایی</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {notificationChannelPolicyRows.map((row) => (
+                      <tr key={row.channel} className="border-t">
+                        <td className="px-3 py-3 font-medium">{row.channel}</td>
+                        <td className="px-3 py-3 text-muted-foreground">{row.transactional}</td>
+                        <td className="px-3 py-3 text-muted-foreground">{row.marketing}</td>
+                        <td className="px-3 py-3 text-muted-foreground">{row.note}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <p className="text-xs leading-6 text-muted-foreground">
+                سیاست فنی فعلی: پیام‌های تراکنشی پیش‌فرض مجاز هستند، پیام‌های بازاریابی Web Push و SMS به opt-in نیاز دارند، retry واقعی حداکثر سه بار با فاصله‌های ۵ دقیقه، ۳۰ دقیقه و ۲ ساعت انجام می‌شود و ارسال واقعی SMS/Web Push بدون پرچم‌های عملیاتی فعال نمی‌شود.
+              </p>
             </CardContent>
           </Card>
+
+          {user?.memberOf ? (
+            <DashboardPushOptIn />
+          ) : (
+            <Card>
+              <CardContent className="py-5 text-sm text-muted-foreground">
+                برای مدیریت اعلان مرورگر داشبورد باید عضو فعال یک سازمان باشید.
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

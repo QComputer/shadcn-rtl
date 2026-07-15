@@ -1,17 +1,15 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useCallback, useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 import { toast } from "react-toastify"
-import { Bell, BellOff } from "lucide-react"
+import { BellOff } from "lucide-react"
 
 type DashboardPushStatus = {
   active: boolean
   subscriptionCount: number
-  subscriptions: Array<{ id: string; isActive: boolean; lastSeenAt: string; createdAt: string; updatedAt: string }>
+  subscriptions: Array<{ id: string; endpoint: string; isActive: boolean; lastSeenAt: string; createdAt: string; updatedAt: string }>
   config: {
     publicKey: string
     publicKeyConfigured: boolean
@@ -63,12 +61,7 @@ export function DashboardPushOptIn() {
 
   const c = getCopy()
 
-  useEffect(() => {
-    setMounted(true)
-    fetchStatus()
-  }, [])
-
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     try {
       const response = await fetch("/api/dashboard/push-subscriptions")
       if (response.ok) {
@@ -78,7 +71,19 @@ export function DashboardPushOptIn() {
     } catch {
       // Silent fail
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    let alive = true
+    queueMicrotask(() => {
+      if (alive) setMounted(true)
+    })
+    void fetchStatus()
+
+    return () => {
+      alive = false
+    }
+  }, [fetchStatus])
 
   const [capabilityError, setCapabilityError] = useState<string | null>(null)
 
@@ -159,7 +164,7 @@ export function DashboardPushOptIn() {
       })
 
       if (response.ok) {
-        setStatus((prev) => prev ? { ...prev, active: true, subscriptionCount: (prev.subscriptionCount || 0) + 1 } : prev)
+        await fetchStatus()
         toast.success(c.subscribed)
       } else {
         throw new Error("Failed to subscribe")
@@ -187,11 +192,11 @@ export function DashboardPushOptIn() {
       const response = await fetch("/api/dashboard/push-subscriptions", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ endpoint: status?.subscriptions?.[0]?.id }),
+        body: JSON.stringify({ endpoint: status?.subscriptions?.[0]?.endpoint }),
       })
 
       if (response.ok) {
-        setStatus((prev) => prev ? { ...prev, active: false, subscriptionCount: 0 } : prev)
+        await fetchStatus()
         toast.success(c.unsubscribed)
       } else {
         throw new Error("Failed to unsubscribe")

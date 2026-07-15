@@ -533,6 +533,17 @@ Current milestone status:
 - `docs/ai-media/RENDER_CAPABILITY_COMPATIBILITY_MATRIX.md` is the current capability decision matrix. Product image is `CONFIRMED`; organization logo and cover are `UNSUPPORTED`; general creative remains `UNKNOWN`.
 - Real GPU/paid generation remains disabled and requires separate explicit authorization.
 
+## 2026-07-16 DB legacy baseline update
+
+The Production migration checksums for `ExportDataType` migrations are mirrored in source:
+
+- `20260628000300_export_hub_foundation`
+- `20260707000200_export_hub_extend_data_types`
+
+The legacy migration chain is checksum-correct but not replayable from an empty database because the foundation migration already contains `CUSTOMERS` and `FANPAGE_POSTS`, and the later extension migration adds those labels again. Applied migrations remain immutable; they must not be edited into `IF NOT EXISTS` variants.
+
+Hermetic AI-media acceptance now uses a guarded local baseline bootstrap for disposable databases only. The bootstrap applies the current Prisma schema locally, marks source migrations as applied locally, and refuses Neon-like or Production-fingerprinted URLs. Production never uses this path.
+
 ## Recommended next phase
 
 ```txt

@@ -7,6 +7,7 @@ BB-AI-MEDIA-P04A-P06A accepts local product-image lifecycle coverage without req
 ## Local Stack
 
 - Disposable local PostgreSQL on `127.0.0.1`.
+- Guarded legacy baseline bootstrap: current Prisma schema is applied locally, then source migration directories are marked applied in the disposable database. This avoids mutating applied historical migrations while acknowledging the known non-replayable legacy enum chain.
 - Contract-faithful local MOCK provider on `127.0.0.1`.
 - Local test storage adapter under `.tmp/ai-media-acceptance/storage`.
 - Synthetic users, organizations, products, jobs, and assets only.
@@ -19,6 +20,8 @@ pnpm run test:ai-media:hermetic
 
 The command runs safety guards, source validators, the local MOCK lifecycle, local storage import, asset finalization, and cleanup.
 
+By default the command creates its own Docker PostgreSQL container, runs `pnpm run db:local-baseline:bootstrap` against that local disposable database only, then removes the container after the lifecycle and concurrency tests.
+
 It also runs the concurrent idempotency matrix:
 
 - 10 simultaneous same-tenant same-key same-payload submissions converge to one local job and one provider job.
@@ -30,6 +33,7 @@ It also runs the concurrent idempotency matrix:
 ## Explicit Non-Events
 
 - No Production database was used.
+- No Production `migrate deploy`, `migrate resolve`, `db push`, or seed command was used.
 - No Production Blob object was listed, uploaded, or deleted.
 - No real Render job was created.
 - No GPU inference ran.

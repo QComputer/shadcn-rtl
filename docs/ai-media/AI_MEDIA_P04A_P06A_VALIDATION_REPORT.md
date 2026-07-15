@@ -4,7 +4,7 @@ Date: 2026-07-15
 
 ## Status
 
-BB-AI-MEDIA-P04A-P06A remains accepted locally. BB-AI-MEDIA-P06A hardening adds a production import-graph boundary, PostgreSQL-backed concurrent idempotency coverage, local UI locale validation, a deployed read-only contract check, and a prepared P07 controlled Production import runbook.
+BB-AI-MEDIA-P04A-P06A is accepted locally when the guarded legacy baseline bootstrap and hermetic AI-media gates pass. BB-AI-MEDIA-P06A hardening adds a production import-graph boundary, PostgreSQL-backed concurrent idempotency coverage, local UI locale validation, a deployed read-only contract check, and a prepared P07 controlled Production import runbook.
 
 ## Confirmed
 
@@ -20,7 +20,8 @@ BB-AI-MEDIA-P04A-P06A remains accepted locally. BB-AI-MEDIA-P06A hardening adds 
 - Production Blob objects listed: no.
 - Production Blob uploads: zero.
 - Production Blob deletions: zero.
-- Local PostgreSQL migrations are current.
+- Local PostgreSQL acceptance uses `db:local-baseline:bootstrap` because the checksum-correct legacy migration ledger is known non-replayable from an empty database.
+- Production migration files that touch `ExportDataType` match Production checksums and remain immutable.
 - Hermetic lifecycle passed with MOCK provider and local storage.
 - Hermetic concurrent idempotency matrix passed with 10-way duplicate submit, payload conflict, cross-tenant same-key isolation, provider accepted/lost-response recovery, and concurrent result ingestion.
 - Real Render/GPU generation remains disabled.
@@ -64,6 +65,9 @@ Passed:
 - `pnpm install --frozen-lockfile`
 - `pnpm run db:generate`
 - `pnpm run db:validate`
+- `pnpm run quality:db-legacy-migration-immutability`
+- `pnpm run quality:db-local-baseline-bootstrap`
+- `pnpm run db:local-baseline:bootstrap` through `pnpm run test:ai-media:hermetic`
 - local `pnpm exec prisma migrate status --schema=prisma/schema.prisma --config=prisma.config.ts`
 - `pnpm run quality:neon-serverless-runtime`
 - `pnpm run test:neon-serverless-runtime`

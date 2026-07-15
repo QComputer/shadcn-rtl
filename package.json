@@ -242,7 +242,10 @@
     "quality:b2b-custom-domain-onboarding": "node scripts/quality/validate-b2b-custom-domain-onboarding.mjs",
     "quality:b2b-business-onboarding-wizard": "node scripts/quality/validate-b2b-business-onboarding-wizard.mjs",
     "quality:b2b-guided-tenant-provisioning-readiness": "node scripts/quality/validate-b2b-guided-tenant-provisioning-readiness.mjs",
-    "e2e:deployed:request-demo-leads": "node scripts/e2e/deployed-request-demo-leads.mjs"
+    "e2e:deployed:request-demo-leads": "node scripts/e2e/deployed-request-demo-leads.mjs",
+    "db:local-baseline:bootstrap": "node scripts/db/local-baseline-bootstrap.mjs",
+    "quality:db-legacy-migration-immutability": "node scripts/quality/validate-db-legacy-migration-immutability.mjs",
+    "quality:db-local-baseline-bootstrap": "node scripts/quality/validate-db-local-baseline-bootstrap.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

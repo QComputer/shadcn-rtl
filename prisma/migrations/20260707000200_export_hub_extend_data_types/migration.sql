@@ -2,5 +2,5 @@
 -- Adds CUSTOMERS and FANPAGE_POSTS to the ExportDataType enum.
 -- No table data changes; existingExportJob rows are unaffected.
 
-ALTER TYPE "ExportDataType" ADD VALUE IF NOT EXISTS 'CUSTOMERS';
-ALTER TYPE "ExportDataType" ADD VALUE IF NOT EXISTS 'FANPAGE_POSTS';
+ALTER TYPE "ExportDataType" ADD VALUE 'CUSTOMERS';
+ALTER TYPE "ExportDataType" ADD VALUE 'FANPAGE_POSTS';

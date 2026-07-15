@@ -414,3 +414,13 @@ npm run build
 ```
 
 If the first two run but later steps fail because dependencies are not installed or env values are missing, fix environment/package issues before any feature phase.
+
+## Active Database Baseline Note
+
+For AI-media hermetic acceptance, do not require full replay of the legacy Production migration ledger from an empty database. The `ExportDataType` ledger is checksum-correct but historically non-replayable. Use the guarded local-only baseline path:
+
+```bash
+pnpm run test:ai-media:hermetic
+```
+
+This provisions disposable local PostgreSQL, runs the guarded baseline bootstrap, and then executes the MOCK lifecycle and idempotency matrix. It must never be used for Production.

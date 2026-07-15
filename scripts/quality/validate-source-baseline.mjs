@@ -59,9 +59,9 @@ add(".env files are not present in tracked source", !trackedExisting.some((file)
 add("active seed script remains tracked", tracked.includes("prisma/seed.ts"))
 add("duplicate client Providers wrapper removed", !exists("components/providers.tsx"))
 add("README keeps P95 source cleanup in current progression", /\| 95 \| Source Cleanup and Current-State Verification/.test(readme) && /Latest completed implementation phase:\s+\*\*P120F - SMS\.ir official report endpoint integration\*\*/.test(readme))
-add("README recommends B2B next phase after P120F", readme.includes("Recommended next B2B phase:") && readme.includes("BB-B2B-P03"))
+add("README recommends current B2B next phase after P12", readme.includes("Recommended next B2B phase:") && readme.includes("BB-B2B-P13"))
 add("roadmap keeps P95 complete in P120F progression", /\| P95 \| Source cleanup and current-state verification\. \|/.test(roadmap) && /Completed through \*\*P120F - SMS\.ir official report endpoint integration\*\*/.test(roadmap))
-add("source of truth keeps P95 source cleanup while naming P109 baseline", /Source Cleanup and Current-State Verification exists/.test(sourceOfTruth) && /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth))
+add("source of truth keeps P95 source cleanup and current P13 direction", /Source Cleanup and Current-State Verification exists/.test(sourceOfTruth) && /P120F - SMS\.ir official report endpoint integration/.test(sourceOfTruth) && /BB-B2B-P13/.test(sourceOfTruth))
 
 const scripts = packageJson.scripts || {}
 const documentedScriptNames = new Set()

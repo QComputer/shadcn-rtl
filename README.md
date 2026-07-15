@@ -394,9 +394,9 @@ B2B repositioning public discovery restriction completed: **BB-B2B-P05** (public
 B2B repositioning conversion funnel completed: **BB-B2B-P06** (request-demo, contact, and pricing pages implemented with safe B2B copy and CTAs).
 B2B repositioning feature/showcase pages completed: **BB-B2B-P07** (`app/[locale]/features/page.tsx` and `app/[locale]/dashboard-showcase/page.tsx` implemented with public-safe B2B feature explanations).
 B2B repositioning SEO/trust/legal/analytics hardening completed: **BB-B2B-P08** (`app/[locale]/trust/page.tsx`, `app/[locale]/privacy/page.tsx`, `app/[locale]/terms/page.tsx`, footer legal links, and analytics policy documented).
-B2B repositioning deployed acceptance and handoff completed: **BB-B2B-P09** (non-browser HTTP production smoke at `scripts/e2e/deployed-b2b-public-surface.mjs`, all 10 public B2B pages verified live at https://www.bazar-baz.ir, final handoff docs created).
-Recommended next B2B phase: **BB-B2B-P10 — Request-demo Lead Storage and Admin Review**.
-
+B2B repositioning deployed acceptance and handoff completed: **BB-B2B-P09** (non-browser HTTP production smoke at `scripts/e2e/deployed-b2b-public-surface.mjs`, all public B2B pages verified live at https://www.bazar-baz.ir, final handoff docs created).
+B2B repositioning source work completed through **BB-B2B-P12** (request-demo lead storage/admin review, tenant custom-domain onboarding source acceptance, and Persian-first business onboarding wizard).
+Recommended next B2B phase: **BB-B2B-P13 - Guided Tenant Provisioning Readiness**.
 The active roadmap is `docs/NEXT_PHASE_ROADMAP.md`.
 
 

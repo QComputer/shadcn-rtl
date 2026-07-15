@@ -124,7 +124,7 @@ Completed integrated phases:
 
 Safety constraints for all Import Hub phases:
 
-These phases are completed through **P120D - SMS.ir provider completion**.
+These phases are completed through **P120F - SMS.ir official report endpoint integration** and **NOTIFOPS-DEPLOY-FIX1**.
 
 1. Imports are seller-initiated and consent-based.
 2. External URL imports require explicit seller confirmation of ownership or permission.

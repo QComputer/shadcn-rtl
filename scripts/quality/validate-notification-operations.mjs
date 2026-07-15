@@ -48,7 +48,7 @@ add("package exposes P103 validator", /"quality:notification-operations":\s*"nod
 add("project validator references P103 validator", /validate-notification-operations\.mjs/.test(validateProject) && /P103 notification operations validator passes/.test(validateProject))
 add("README keeps P103 complete while marking P119/P120F latest", /\| 103 \| Admin\/operator notification dashboard/.test(readme) && /Latest completed implementation phase:\s+\*\*P120F - SMS\.ir official report endpoint integration\*\*/.test(readme) && /NOTIFOPS-DEPLOY-FIX1/.test(readme))
 add("roadmap marks P103 complete in P120F progression", /\| P103 \| Admin\/operator notification dashboard\. \|/.test(roadmap) && /Completed through \*\*P120F - SMS\.ir official report endpoint integration\*\*/.test(roadmap))
-add("source of truth names P109 baseline", /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth) && /Notification operations dashboard exists/.test(sourceOfTruth))
+add("source of truth keeps notification operations and current P13 direction", /Notification operations dashboard exists/.test(sourceOfTruth) && /P120F - SMS\.ir official report endpoint integration/.test(sourceOfTruth) && /BB-B2B-P13/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

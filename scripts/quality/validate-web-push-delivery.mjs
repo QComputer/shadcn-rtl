@@ -60,9 +60,9 @@ for (const locale of ["fa", "en", "ar"]) {
 
 add("package exposes P100 validator", /"quality:web-push-delivery":\s*"node scripts\/quality\/validate-web-push-delivery\.mjs"/.test(packageJson))
 add("project validator references P100 validator", /validate-web-push-delivery\.mjs/.test(validateProject) && /P100 Web Push delivery validator passes/.test(validateProject))
-add("README keeps P100 complete while marking P109 latest", /\| 100 \| Web Push notification service/.test(readme) && /Latest completed implementation phase:\s+\*\*P120D - SMS.ir provider completion\*\*/.test(readme) && /P120E — SMS delivery reports and provider reconciliation/.test(readme))
-add("roadmap keeps P100 complete while marking P109 baseline", /\| P100 \| Web Push notification service\. \|/.test(roadmap) && /Completed through \*\*P120D - SMS.ir provider completion\*\*/.test(roadmap))
-add("source of truth names P109 baseline and keeps P100 summary", /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth) && /Web Push notification service exists/.test(sourceOfTruth))
+add("README keeps P100 complete and current notification baseline", /\| 100 \| Web Push notification service/.test(readme) && /Latest completed implementation phase:\s+\*\*P120F - SMS\.ir official report endpoint integration\*\*/.test(readme) && /NOTIFOPS-DEPLOY-FIX1/.test(readme))
+add("roadmap keeps P100 complete and current B2B next phase", /\| P100 \| Web Push notification service\. \|/.test(roadmap) && /Completed through \*\*P120F - SMS\.ir official report endpoint integration\*\*/.test(roadmap) && /BB-B2B-P13/.test(roadmap))
+add("source of truth keeps Web Push baseline and current P13 direction", /Web Push notification service exists/.test(sourceOfTruth) && /P120F - SMS\.ir official report endpoint integration/.test(sourceOfTruth) && /BB-B2B-P13/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

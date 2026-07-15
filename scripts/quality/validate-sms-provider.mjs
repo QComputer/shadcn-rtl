@@ -69,9 +69,9 @@ add("env validator keeps SMS dry-run safeguards", /SMS_PROVIDER/.test(envValidat
 add(".env.example keeps placeholder-only SMS config", /SMS_PROVIDER=DRY_RUN/.test(envExample) && /SMS_DRY_RUN=true/.test(envExample) && /DEPLOYED_ALLOW_REAL_SMS=0/.test(envExample) && /^SMS_IR_API_KEY=$/m.test(envExample) && /^SMS_IR_LINE_NUMBER=$/m.test(envExample))
 add("package exposes P101 validator", /"quality:sms-provider":\s*"node scripts\/quality\/validate-sms-provider\.mjs"/.test(packageJson))
 add("project validator references P101 validator", /validate-sms-provider\.mjs/.test(validateProject) && /P101 SMS provider validator passes/.test(validateProject))
-add("README keeps P101 complete while marking P109 latest", /\| 101 \| SMS provider abstraction and sms\.ir integration/.test(readme) && /Latest completed implementation phase:\s+\*\*P120D - SMS.ir provider completion\*\*/.test(readme) && /P120E — SMS delivery reports and provider reconciliation/.test(readme))
-add("roadmap keeps P101 complete while marking P109 baseline", /\| P101 \| SMS provider abstraction and sms\.ir integration\. \|/.test(roadmap) && /Completed through \*\*P120D - SMS.ir provider completion\*\*/.test(roadmap))
-add("source of truth names P109 baseline", /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth) && /SMS provider abstraction exists/.test(sourceOfTruth))
+add("README keeps P101 complete and current notification baseline", /\| 101 \| SMS provider abstraction and sms\.ir integration/.test(readme) && /Latest completed implementation phase:\s+\*\*P120F - SMS\.ir official report endpoint integration\*\*/.test(readme) && /NOTIFOPS-DEPLOY-FIX1/.test(readme))
+add("roadmap keeps P101 complete and current B2B next phase", /\| P101 \| SMS provider abstraction and sms\.ir integration\. \|/.test(roadmap) && /Completed through \*\*P120F - SMS\.ir official report endpoint integration\*\*/.test(roadmap) && /BB-B2B-P13/.test(roadmap))
+add("source of truth keeps SMS baseline and current P13 direction", /SMS provider abstraction exists/.test(sourceOfTruth) && /P120F - SMS\.ir official report endpoint integration/.test(sourceOfTruth) && /BB-B2B-P13/.test(sourceOfTruth))
 
 for (const check of checks) {
   console.log(`${check.pass ? "OK" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`)

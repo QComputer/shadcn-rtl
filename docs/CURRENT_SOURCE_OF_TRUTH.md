@@ -2,15 +2,19 @@
 
 Date: 2026-07-15
 
-## 2026-07-15 BB-B2B-P11-FIX1 update
+## 2026-07-15 BASELINE-01 update
 
-BB-B2B-P11 custom-domain onboarding source is accepted after the P11-FIX1 evidence pass. Source includes organization-scoped custom-domain onboarding, strict domain validation, ACTIVE-only SHOP/APPOINTMENT host routing, exact Vercel mutation acknowledgement gates, provider error sanitization, primary-domain safety, and P11-focused unit coverage. Production migration `20260708000100_custom_domain_onboarding` is required but was not applied by this task. Vercel provider configuration and real custom-domain activation remain pending explicit authorization. No real provider mutation, SMS, payment, or unrelated production mutation was performed.
+The current source baseline is accepted through **P120F - SMS.ir official report endpoint integration**, **NOTIFOPS-DEPLOY-FIX1**, and **BB-B2B-P12 - Persian-first business onboarding wizard**. Bazar Baz is positioned as a Persian-first B2B service platform for Iranian businesses, not a marketplace, advertising directory, or public social network.
 
-BB-B2B-P12 Business Onboarding Wizard is present on `main` from a later commit, but this P11-FIX1 update only accepts P11 source evidence. Recommended next phase after P11 source acceptance remains BB-B2B-P12 in environments that have not already applied it; on this branch the roadmap now points beyond P12.
+BB-B2B-P11 custom-domain onboarding source is accepted after the P11-FIX1 evidence pass. Source includes organization-scoped custom-domain onboarding, strict domain validation, ACTIVE-only SHOP/APPOINTMENT host routing, exact Vercel mutation acknowledgement gates, provider error sanitization, primary-domain safety, and P11-focused unit coverage. Production migration `20260708000100_custom_domain_onboarding` is required but has not been applied by this source task. Vercel provider configuration and real custom-domain activation remain pending explicit authorization. No real provider mutation, SMS, payment, or unrelated production mutation was performed.
+
+BB-B2B-P12 Business Onboarding Wizard is accepted in source at commit `0769f3f`. It provides a Persian-first `/[locale]/onboarding` flow, deterministic SHOP/APPOINTMENT/hybrid recommendations, required consent, and safe submission through the established `POST /api/request-demo` lead API. P12 does not create organizations/users, send SMS/email, take payments, or activate custom domains.
+
+Current recommended B2B phase: **BB-B2B-P13 - Guided Tenant Provisioning Readiness**.
 
 ## Current validated baseline
 
-The current working baseline after P119 Creative Studio provider result ingestion and review stabilization is source-validator green after the P119 validation gate.
+The current working baseline after P120F/NOTIFOPS and BB-B2B-P12 is source-validator green after the BASELINE-01 validation gate.
 
 P119 adds server-mediated provider result polling and internal result ingestion for organization-brand logo/cover outputs. Ingested outputs become draft/review-only Creative Studio assets with provider metadata, dashboard refresh/reject controls, and audit/usage events; public auto-apply remains disabled and `Organization.logo` / `Organization.coverImage` are not mutated by ingestion.
 

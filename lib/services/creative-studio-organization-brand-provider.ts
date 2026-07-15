@@ -1,8 +1,11 @@
 import "server-only";
 
+import { getAiMediaCapability } from "@/lib/services/ai-media-capability-registry";
+
 type OrganizationBrandProviderIssue =
   | "not-requested"
   | "execution-not-requested"
+  | "live-contract-unsupported"
   | "dry-run-enabled"
   | "service-url-missing"
   | "internal-key-missing"
@@ -90,6 +93,11 @@ export function getOrganizationBrandProviderStatus(): OrganizationBrandProviderS
     : null;
   const dailyJobLimit = parsePositiveInt(process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_DAILY_JOB_LIMIT);
   const estimatedJobCostCents = parsePositiveInt(process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_ESTIMATED_JOB_COST_CENTS);
+  const logoCapability = getAiMediaCapability("ORGANIZATION_LOGO");
+  const coverCapability = getAiMediaCapability("ORGANIZATION_COVER");
+  const liveContractSupportsBrand = [logoCapability?.status, coverCapability?.status].every((status) =>
+    status === "AVAILABLE" || status === "AVAILABLE_WITH_ADAPTER",
+  );
   const rollbackPaused = process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_ROLLBACK_PAUSED === "true";
   const rollbackReason = hasValue(process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_ROLLBACK_REASON)
     ? process.env.CREATIVE_STUDIO_ORGANIZATION_BRAND_ROLLBACK_REASON!.trim()
@@ -104,6 +112,7 @@ export function getOrganizationBrandProviderStatus(): OrganizationBrandProviderS
   const issues: OrganizationBrandProviderIssue[] = [];
   if (!requested) issues.push("not-requested");
   if (requested && !executionRequested) issues.push("execution-not-requested");
+  if (requested && !liveContractSupportsBrand) issues.push("live-contract-unsupported");
   if (requested && executionRequested && dryRun) issues.push("dry-run-enabled");
   if (requested && !serviceUrlConfigured) issues.push("service-url-missing");
   if (requested && !internalKeyConfigured) issues.push("internal-key-missing");
@@ -120,7 +129,7 @@ export function getOrganizationBrandProviderStatus(): OrganizationBrandProviderS
     && Boolean(approvedAt)
     && Boolean(dailyJobLimit)
     && Boolean(estimatedJobCostCents);
-  const enabled = requested && configured && !rollbackPaused;
+  const enabled = requested && configured && liveContractSupportsBrand && !rollbackPaused;
   const providerExecutionEnabled = enabled && executionRequested && !dryRun;
 
   return {
@@ -134,7 +143,7 @@ export function getOrganizationBrandProviderStatus(): OrganizationBrandProviderS
     dryRun,
     dryRunSupported: true,
     providerExecutionEnabled,
-    providerContractReady: enabled,
+    providerContractReady: enabled && liveContractSupportsBrand,
     serviceUrlConfigured,
     internalKeyConfigured,
     approvalRequired: true,

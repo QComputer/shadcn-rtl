@@ -85,8 +85,8 @@ add("output MIME types are restricted to images", /ALLOWED_MIME_TYPES/.test(vali
 add("provider metadata is sanitized and secret-redacted", /sanitizeCreativeStudioProviderMetadata/.test(validator) && /SECRET_KEY_PATTERN/.test(validator) && /\[redacted\]/.test(validator));
 add("stable output key supports idempotency", /stableCreativeStudioProviderOutputKey/.test(validator) && /providerAssetId/.test(validator) && /checksum/.test(validator) && /sha256/.test(validator));
 
-add("server-only AI media client polls provider results", /import "server-only"/.test(client) && /getOrganizationBrandGenerationResult/.test(client) && /\/v1\/organization-brand\/jobs\/.+\/result/.test(client));
-add("provider result polling validates response shape", /validateCreativeStudioProviderResult/.test(client) && /mapOrganizationBrandJobToProviderResult/.test(client));
+add("server-only AI media client fails closed for unavailable provider results", /import "server-only"/.test(client) && /getOrganizationBrandGenerationResult/.test(client) && /CAPABILITY_UNAVAILABLE/.test(client) && !/fetch\(`?\$\{config\.url\}\/v1\/organization-brand/.test(client));
+add("provider result dry-run validates response shape", /validateCreativeStudioProviderResult/.test(client) && /outputs:\s*\[\]/.test(client));
 add("provider result dry-run mode is supported", /CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_RESULT_DRY_RUN/.test(client) && /dryRun:\s*true/.test(client) && /outputs:\s*\[\]/.test(client));
 add("provider result envs are documented", /CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_RESULTS_ENABLED=false/.test(envExample) && /CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_RESULT_DRY_RUN=true/.test(envExample) && /CREATIVE_STUDIO_ORGANIZATION_BRAND_PROVIDER_POLLING_ENABLED=false/.test(envExample));
 add("runtime env validates result flags", /organizationBrandProviderResultsEnabled/.test(runtimeEnv) && /organizationBrandProviderPollingEnabled/.test(runtimeEnv) && /provider result ingestion\/polling requires provider execution/.test(runtimeEnv));

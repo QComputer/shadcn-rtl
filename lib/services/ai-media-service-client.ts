@@ -25,6 +25,8 @@ export interface AiMediaCreateJobRequest {
   count?: number;
   aspect_ratio?: string;
   style_preset?: string;
+  idempotency_key?: string;
+  correlation_id?: string;
 }
 
 export interface AiMediaOrganizationBrandJobRequest {
@@ -94,13 +96,21 @@ export interface AiMediaCreateJobResponse {
 export class AiMediaServiceError extends Error {
   status: number;
   code?: string;
+  retryAfterMs?: number;
 
-  constructor(status: number, message: string, code?: string) {
+  constructor(status: number, message: string, code?: string, retryAfterMs?: number) {
     super(message);
     this.status = status;
     this.code = code;
+    this.retryAfterMs = retryAfterMs;
   }
 }
+
+type AiMediaFetchOptions = RequestInit & {
+  correlationId?: string;
+  idempotencyKey?: string;
+  retrySafe?: boolean;
+};
 
 export type AiMediaServiceConfigStatus = {
   enabled: boolean;
@@ -163,6 +173,51 @@ function isHttpUrl(value: string | null) {
   }
 }
 
+function assertSafeServiceUrl(value: string) {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new AiMediaServiceError(503, "AI media service URL is invalid", "CONFIG_INVALID_URL");
+  }
+
+  const isLocalhost = ["localhost", "127.0.0.1", "::1"].includes(parsed.hostname);
+  const isTestLike = process.env.NODE_ENV === "test";
+  if (parsed.protocol !== "https:" && !(isTestLike && isLocalhost)) {
+    throw new AiMediaServiceError(503, "AI media service URL must use HTTPS", "CONFIG_INSECURE_URL");
+  }
+
+  return parsed.toString().replace(/\/$/, "");
+}
+
+const PRIVATE_IPV4_PATTERNS = [/^10\./, /^127\./, /^0\./, /^192\.168\./, /^169\.254\./, /^172\.(1[6-9]|2\d|3[0-1])\./];
+
+function isPrivateOutputHost(hostname: string) {
+  const normalized = hostname.toLowerCase();
+  return normalized === "localhost"
+    || normalized === "::1"
+    || normalized === "[::1]"
+    || normalized.endsWith(".localhost")
+    || normalized.endsWith(".local")
+    || PRIVATE_IPV4_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
+export function assertAiMediaOutputUrl(value: string) {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new AiMediaServiceError(502, "AI media service returned an invalid output URL", "INVALID_OUTPUT_URL");
+  }
+  if (parsed.protocol !== "https:" && process.env.NODE_ENV !== "test") {
+    throw new AiMediaServiceError(502, "AI media output URL must use HTTPS", "INVALID_OUTPUT_URL");
+  }
+  if (parsed.username || parsed.password || isPrivateOutputHost(parsed.hostname)) {
+    throw new AiMediaServiceError(502, "AI media output URL is not allowed", "INVALID_OUTPUT_URL");
+  }
+  return parsed.toString();
+}
+
 function normalizeTimeoutMs(value: string | undefined) {
   const timeoutMs = Number.parseInt(value || "60000", 10);
   return Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 60000;
@@ -209,38 +264,79 @@ function assertConfigured(): { enabled: true; url: string; internalKey: string; 
 
   return {
     enabled: true,
-    url: config.url,
+    url: assertSafeServiceUrl(config.url),
     internalKey: config.internalKey,
     timeoutMs: config.timeoutMs,
   };
 }
 
-async function aiMediaFetch(input: string, init: RequestInit = {}): Promise<Response> {
+function parseRetryAfterMs(response: Response) {
+  const retryAfter = response.headers.get("retry-after");
+  if (!retryAfter) return undefined;
+  const seconds = Number.parseInt(retryAfter, 10);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, 2000);
+  const dateMs = new Date(retryAfter).getTime();
+  if (!Number.isNaN(dateMs)) return Math.min(Math.max(0, dateMs - Date.now()), 2000);
+  return undefined;
+}
+
+function isRetryableStatus(status: number) {
+  return status === 429 || status === 502 || status === 503 || status === 504;
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function aiMediaFetch(input: string, init: AiMediaFetchOptions = {}): Promise<Response> {
   const config = assertConfigured();
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), config.timeoutMs);
-
-  try {
-    const response = await fetch(input, {
-      ...init,
-      headers: {
-        ...(init.headers || {}),
-        "Content-Type": "application/json",
-        "X-BazarBaz-AI-Key": config.internalKey,
-      },
-      signal: controller.signal,
-    });
-
-    return response;
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new AiMediaServiceError(504, "AI media service request timed out", "TIMEOUT");
-    }
-    throw new AiMediaServiceError(502, "Failed to reach AI media service", "NETWORK_ERROR");
-  } finally {
-    clearTimeout(timeoutId);
+  if (!input.startsWith(`${config.url}/`)) {
+    throw new AiMediaServiceError(500, "AI media service request target is invalid", "INVALID_SERVICE_TARGET");
   }
+
+  const attempts = init.retrySafe ? 2 : 1;
+  let lastError: AiMediaServiceError | null = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), config.timeoutMs);
+
+    try {
+      const response = await fetch(input, {
+        ...init,
+        headers: {
+          ...(init.headers || {}),
+          "Content-Type": "application/json",
+          "X-BazarBaz-AI-Key": config.internalKey,
+          ...(init.correlationId ? { "X-BazarBaz-Correlation-Id": init.correlationId } : {}),
+          ...(init.idempotencyKey ? { "Idempotency-Key": init.idempotencyKey } : {}),
+        },
+        signal: controller.signal,
+      });
+
+      if (attempt < attempts && isRetryableStatus(response.status)) {
+        await sleep(parseRetryAfterMs(response) ?? 250);
+        continue;
+      }
+
+      return response;
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        lastError = new AiMediaServiceError(504, "AI media service request timed out", "TIMEOUT");
+      } else {
+        lastError = new AiMediaServiceError(502, "Failed to reach AI media service", "NETWORK_ERROR");
+      }
+      if (attempt < attempts) {
+        await sleep(250);
+        continue;
+      }
+      throw lastError;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  throw lastError ?? new AiMediaServiceError(502, "Failed to reach AI media service", "NETWORK_ERROR");
 }
 
 async function sanitizedErrorText(response: Response) {
@@ -325,6 +421,75 @@ function summarizeOpenApiContract(raw: unknown): AiMediaServiceContractSummary {
   };
 }
 
+const AI_MEDIA_JOB_STATUSES = new Set(["QUEUED", "PROCESSING", "COMPLETED", "FAILED", "CANCELED"]);
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function validateOutput(value: unknown): AiMediaJobOutput | null {
+  const output = asRecord(value);
+  if (typeof output.url !== "string" || output.url.trim().length === 0) return null;
+  return {
+    url: assertAiMediaOutputUrl(output.url),
+    mime_type: typeof output.mime_type === "string" ? output.mime_type : undefined,
+    width: typeof output.width === "number" && Number.isFinite(output.width) ? output.width : undefined,
+    height: typeof output.height === "number" && Number.isFinite(output.height) ? output.height : undefined,
+    prompt_used: typeof output.prompt_used === "string" ? output.prompt_used : undefined,
+    seed: typeof output.seed === "number" && Number.isFinite(output.seed) ? output.seed : undefined,
+  };
+}
+
+function validateAiMediaCreateJobResponse(value: unknown): AiMediaCreateJobResponse {
+  const input = asRecord(value);
+  const jobId = typeof input.job_id === "string" ? input.job_id.trim() : "";
+  const status = typeof input.status === "string" ? input.status.trim() : "";
+  const provider = typeof input.provider === "string" ? input.provider.trim() : "";
+
+  if (!jobId || !status || !provider) {
+    throw new AiMediaServiceError(502, "AI media service returned an invalid job response", "INVALID_PROVIDER_RESPONSE");
+  }
+
+  return {
+    job_id: jobId,
+    status,
+    provider,
+    outputs: Array.isArray(input.outputs) ? input.outputs.map(validateOutput).filter((output): output is AiMediaJobOutput => Boolean(output)) : undefined,
+    output_images: Array.isArray(input.output_images)
+      ? input.output_images
+        .filter((url): url is string => typeof url === "string")
+        .map(assertAiMediaOutputUrl)
+      : undefined,
+  };
+}
+
+function validateAiMediaJob(value: unknown): AiMediaJob {
+  const input = asRecord(value);
+  const base = validateAiMediaCreateJobResponse(input);
+  if (!AI_MEDIA_JOB_STATUSES.has(base.status)) {
+    throw new AiMediaServiceError(502, "AI media service returned an unsupported job status", "INVALID_PROVIDER_STATUS");
+  }
+
+  return {
+    job_id: base.job_id,
+    status: base.status as AiMediaJob["status"],
+    provider: base.provider,
+    organization_id: typeof input.organization_id === "string" ? input.organization_id : "",
+    product_id: typeof input.product_id === "string" ? input.product_id : "",
+    requested_by_user_id: typeof input.requested_by_user_id === "string" ? input.requested_by_user_id : "",
+    created_at: typeof input.created_at === "string" ? input.created_at : new Date().toISOString(),
+    updated_at: typeof input.updated_at === "string" ? input.updated_at : new Date().toISOString(),
+    started_at: typeof input.started_at === "string" ? input.started_at : undefined,
+    completed_at: typeof input.completed_at === "string" ? input.completed_at : undefined,
+    failed_at: typeof input.failed_at === "string" ? input.failed_at : undefined,
+    canceled_at: typeof input.canceled_at === "string" ? input.canceled_at : undefined,
+    error_message: typeof input.error_message === "string" ? input.error_message.slice(0, 500) : undefined,
+    inputs: asRecord(input.inputs),
+    outputs: base.outputs,
+    output_images: base.output_images,
+  };
+}
+
 export async function getAiMediaServiceContractSummary(): Promise<AiMediaServiceContractSummary> {
   const config = assertConfigured();
   const response = await aiMediaFetch(`${config.url}/openapi.json`, {
@@ -400,6 +565,9 @@ export async function createAiMediaJob(request: AiMediaCreateJobRequest): Promis
   const config = assertConfigured();
   const response = await aiMediaFetch(`${config.url}/v1/product-image-suggestions/jobs`, {
     method: "POST",
+    correlationId: request.correlation_id,
+    idempotencyKey: request.idempotency_key,
+    retrySafe: false,
     body: JSON.stringify({
       ...request,
       count: request.count ?? 3,
@@ -416,89 +584,20 @@ export async function createAiMediaJob(request: AiMediaCreateJobRequest): Promis
 
   if (!response.ok) {
     const text = await sanitizedErrorText(response);
-    throw new AiMediaServiceError(response.status, `AI media service returned ${response.status}: ${text}`);
+    throw new AiMediaServiceError(response.status, `AI media service returned ${response.status}: ${text}`, "PROVIDER_ERROR", parseRetryAfterMs(response));
   }
 
-  return response.json();
+  return validateAiMediaCreateJobResponse(await response.json());
 }
 
 export async function createOrganizationBrandGenerationJob(request: AiMediaOrganizationBrandJobRequest): Promise<AiMediaCreateJobResponse> {
-  const config = assertConfigured();
-  const response = await aiMediaFetch(`${config.url}/v1/organization-brand/jobs`, {
-    method: "POST",
-    body: JSON.stringify({
-      ...request,
-      count: request.count ?? 1,
-      aspect_ratio: request.aspect_ratio ?? (request.target.assetType === "LOGO" ? "1:1" : "16:9"),
-      style_preset: request.style_preset ?? "BRAND_CLEAN",
-      metadata: {
-        ...request.metadata,
-        publicAutoApply: false,
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await sanitizedErrorText(response);
-    throw new AiMediaServiceError(response.status, `AI media service returned ${response.status}: ${text}`);
-  }
-
-  return response.json();
+  void request;
+  throw new AiMediaServiceError(501, "Organization brand generation is not available in the live AI media contract", "CAPABILITY_UNAVAILABLE");
 }
 
 export async function getOrganizationBrandGenerationJob(jobId: string): Promise<AiMediaJob> {
-  const config = assertConfigured();
-  const response = await aiMediaFetch(`${config.url}/v1/organization-brand/jobs/${encodeURIComponent(jobId)}`, {
-    method: "GET",
-  });
-
-  if (!response.ok) {
-    const text = await sanitizedErrorText(response);
-    throw new AiMediaServiceError(response.status, `AI media service returned ${response.status}: ${text}`);
-  }
-
-  return response.json();
-}
-
-function mapOrganizationBrandJobToProviderResult(job: AiMediaJob): CreativeStudioProviderResult {
-  const status = job.status === "COMPLETED"
-    ? "SUCCEEDED"
-    : job.status === "FAILED"
-      ? "FAILED"
-      : job.status === "CANCELED"
-        ? "CANCELLED"
-        : job.status === "PROCESSING"
-          ? "RUNNING"
-          : "PENDING";
-
-  return validateCreativeStudioProviderResult({
-    providerJobId: job.job_id,
-    status,
-    outputs: normalizeAiMediaJobOutputs(job).map((output) => ({
-      assetType: job.inputs?.assetType === "COVER" || job.inputs?.asset_type === "COVER" ? "COVER" : "LOGO",
-      url: output.url,
-      mimeType: output.mime_type,
-      width: output.width,
-      height: output.height,
-      promptUsed: output.prompt_used,
-      seed: output.seed,
-    })),
-    error: job.error_message ? { message: job.error_message } : undefined,
-    metadata: {
-      provider: job.provider,
-      source: "ai-media-service",
-    },
-  });
-}
-
-function normalizeAiMediaJobOutputs(job: { outputs?: AiMediaJobOutput[] | null; output_images?: string[] | null }): AiMediaJobOutput[] {
-  if (Array.isArray(job.outputs) && job.outputs.length > 0) {
-    return job.outputs.filter((output) => output && typeof output.url === "string");
-  }
-  if (Array.isArray(job.output_images)) {
-    return job.output_images.filter((url): url is string => typeof url === "string").map((url) => ({ url }));
-  }
-  return [];
+  void jobId;
+  throw new AiMediaServiceError(501, "Organization brand generation is not available in the live AI media contract", "CAPABILITY_UNAVAILABLE");
 }
 
 export async function getOrganizationBrandGenerationResult(providerJobId: string): Promise<CreativeStudioProviderResult> {
@@ -534,46 +633,39 @@ export async function getOrganizationBrandGenerationResult(providerJobId: string
     });
   }
 
-  const config = assertConfigured();
-  const response = await aiMediaFetch(`${config.url}/v1/organization-brand/jobs/${encodeURIComponent(providerJobId)}/result`, {
-    method: "GET",
-  });
-
-  if (!response.ok) {
-    const text = await sanitizedErrorText(response);
-    throw new AiMediaServiceError(response.status, `AI media service returned ${response.status}: ${text}`);
-  }
-
-  const raw = await response.json();
-  if (raw?.providerJobId) return validateCreativeStudioProviderResult(raw);
-  if (raw?.job) return mapOrganizationBrandJobToProviderResult(raw.job as AiMediaJob);
-  return validateCreativeStudioProviderResult(raw);
+  throw new AiMediaServiceError(501, "Organization brand result retrieval is not available in the live AI media contract", "CAPABILITY_UNAVAILABLE");
 }
 
 export async function getAiMediaJob(jobId: string): Promise<AiMediaJob> {
   const config = assertConfigured();
   const response = await aiMediaFetch(`${config.url}/v1/product-image-suggestions/jobs/${encodeURIComponent(jobId)}`, {
     method: "GET",
+    retrySafe: true,
   });
 
   if (!response.ok) {
     const text = await sanitizedErrorText(response);
-    throw new AiMediaServiceError(response.status, `AI media service returned ${response.status}: ${text}`);
+    throw new AiMediaServiceError(response.status, `AI media service returned ${response.status}: ${text}`, "PROVIDER_ERROR", parseRetryAfterMs(response));
   }
 
-  return response.json();
+  return validateAiMediaJob(await response.json());
 }
 
 export async function cancelAiMediaJob(jobId: string): Promise<{ job: AiMediaJob }> {
   const config = assertConfigured();
   const response = await aiMediaFetch(`${config.url}/v1/product-image-suggestions/jobs/${encodeURIComponent(jobId)}/cancel`, {
     method: "POST",
+    retrySafe: false,
   });
 
   if (!response.ok) {
     const text = await sanitizedErrorText(response);
-    throw new AiMediaServiceError(response.status, `AI media service returned ${response.status}: ${text}`);
+    throw new AiMediaServiceError(response.status, `AI media service returned ${response.status}: ${text}`, "PROVIDER_ERROR", parseRetryAfterMs(response));
   }
 
-  return response.json();
+  const raw = await response.json();
+  const job = raw && typeof raw === "object" && "job" in raw
+    ? validateAiMediaJob((raw as { job: unknown }).job)
+    : validateAiMediaJob(raw);
+  return { job };
 }

@@ -516,13 +516,15 @@ Current milestone status:
 - BB-AI-MEDIA-P01 is complete: Bazar Baz production can reach Render health/readiness through the authenticated server-side status route, and Vercel Preview contract probing inspected the live OpenAPI metadata without sending generation requests.
 - A SUPER_ADMIN-only contract summary endpoint exists at `/api/dashboard/ai-media/contract`; it returns only sanitized OpenAPI metadata and never returns service credentials or raw response bodies.
 - The live contract confirms the product-image suggestions create/status/cancel lifecycle and does not expose the historical organization-brand logo/cover endpoints. Organization-brand provider execution must remain disabled/gated until the app is adapted to the live `/v1/creative/...` contract or the service adds explicit organization-brand endpoints.
+- BB-AI-MEDIA-P02/P03 source work is implemented for the confirmed product-image path: `AiMediaJob` is created before provider submission, product-image requests carry idempotency and correlation metadata, the canonical client validates responses and output URLs, and organization-brand provider methods fail closed with `CAPABILITY_UNAVAILABLE`.
 - `docs/ai-media/RENDER_SERVICE_CONTRACT.md` records the observed contract status and open questions.
+- `docs/ai-media/RENDER_CAPABILITY_COMPATIBILITY_MATRIX.md` is the current capability decision matrix. Product image is `CONFIRMED`; organization logo and cover are `UNSUPPORTED`; general creative remains `UNKNOWN`.
 - Real GPU/paid generation remains disabled and requires separate explicit authorization.
 
 ## Recommended next phase
 
 ```txt
-BB-AI-MEDIA-P02/P03 - Align the next AI media client/job lifecycle step to the confirmed live contract, with organization-brand blocked until contract resolution
+BB-AI-MEDIA-P04 - Integrate only confirmed AI media capabilities into tenant UI, keeping logo/cover unavailable until service support is proven
 ```
 
 After BB-AI-MEDIA-ONLINE-MILESTONE-01 is accepted, return to **BB-B2B-P14 - Transactional Tenant Provisioning Execution** only with fresh explicit P14 execution authorization. Do not execute tenant provisioning during the AI media milestone.

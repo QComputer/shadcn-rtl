@@ -42,7 +42,8 @@ Current BB-AI-MEDIA status:
 - BB-AI-MEDIA-P00 production source synchronization is complete for commit `84be77efef777875423a9e0a95e984862ef26546`.
 - BB-AI-MEDIA-P01 contract discovery is complete through the SUPER_ADMIN-only Vercel Preview contract probe. Production Bazar Baz can reach Render health/readiness from the server, while the local workspace cannot inspect the Render hostname directly because it resolves to a private `10.x` address.
 - The live OpenAPI contract confirms `/v1/product-image-suggestions/jobs` create/status/cancel endpoints. It does not expose the historical `/v1/organization-brand/...` endpoints used by the currently disabled/gated logo and cover adapter.
-- BB-AI-MEDIA-P02 through P06 must not advance for organization-brand/logo/cover execution until Bazar Baz is adapted to the live `/v1/creative/...` contract or the Render service exposes explicit organization-brand endpoints.
+- BB-AI-MEDIA-P02/P03 source work is implemented for the confirmed product-image contract: canonical server-only client hardening, capability registry, local-before-provider `AiMediaJob` creation, idempotency/correlation metadata, bounded status polling, and fail-closed organization-brand behavior.
+- BB-AI-MEDIA-P04 through P06 must not advance for organization-brand/logo/cover execution until Bazar Baz is adapted to the live `/v1/creative/...` contract or the Render service exposes explicit organization-brand endpoints.
 - Do not send real GPU/paid generation requests. MOCK lifecycle testing is allowed only after the active provider/contract is confirmed safe.
 
 Recommended next B2B phase after BB-AI-MEDIA-ONLINE-MILESTONE-01 and separate P14 authorization:

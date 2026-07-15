@@ -49,6 +49,8 @@ Goal: synchronize current `main` to Vercel production and complete a secure, ten
 
 Status: active milestone before BB-B2B-P14. BB-AI-MEDIA-P00 production source synchronization is complete for commit `84be77efef777875423a9e0a95e984862ef26546`. BB-AI-MEDIA-P01 contract discovery is complete through the SUPER_ADMIN-only Vercel-hosted contract probe. The live Render OpenAPI contract confirms the product-image suggestions job lifecycle, but does not expose the historical organization-brand logo/cover endpoints; organization-brand execution must stay disabled/gated until Bazar Baz is adapted to the live `/v1/creative/...` contract or the service adds explicit organization-brand endpoints.
 
+BB-AI-MEDIA-P02/P03 source work is implemented for the confirmed product-image lifecycle: canonical server-only Render client hardening, capability registry, local-before-provider job creation, idempotency/correlation metadata, bounded polling, output URL validation, and fail-closed organization-brand behavior.
+
 Safety:
 
 - No production database migration is authorized for this milestone.

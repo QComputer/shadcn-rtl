@@ -1065,6 +1065,11 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
   const [generationPollAttempts, setGenerationPollAttempts] = useState(0)
   const generationPollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const generationPollRunIdRef = useRef(0)
+  const generationIdempotencyKeyRef = useRef(
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  )
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pendingApply, setPendingApply] = useState<{
@@ -1239,6 +1244,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
           count: Number.parseInt(generationCount, 10),
           aspect_ratio: generationAspectRatio,
           style_preset: generationStylePreset,
+          idempotency_key: generationIdempotencyKeyRef.current,
           metadata: {
             p112Request: true,
             requestedFrom: "creative-studio-dashboard",
@@ -1248,6 +1254,9 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
       if (!response.ok) throw new Error(await readError(response, copy.generationFailed))
       const data = await response.json()
       const job = data.job as CreativeStudioJob
+      generationIdempotencyKeyRef.current = typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`
       setGenerationNotice({ type: "success", message: copy.generationStarted })
       await loadOverview(organizationId)
       await loadJob(job.id, organizationId)

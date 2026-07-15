@@ -56,6 +56,7 @@ export async function POST(
         aspect_ratio: data.aspect_ratio,
         style_preset: data.style_preset,
         seller_prompt: data.seller_prompt,
+        idempotencyKey: data.idempotency_key,
       },
     );
 

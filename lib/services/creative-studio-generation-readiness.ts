@@ -7,6 +7,7 @@ import {
 } from "@/lib/services/ai-media-service-client";
 import { getAiMediaPaidProviderStatus } from "@/lib/services/ai-media-paid-provider";
 import { getOrganizationBrandProviderStatus } from "@/lib/services/creative-studio-organization-brand-provider";
+import { getAiMediaCapabilitySummary } from "@/lib/services/ai-media-capability-registry";
 
 export type CreativeStudioGenerationReadiness = {
   phase: "P112";
@@ -18,6 +19,7 @@ export type CreativeStudioGenerationReadiness = {
   service: ReturnType<typeof getAiMediaServiceConfigStatus>;
   paidProvider: ReturnType<typeof getAiMediaPaidProviderStatus>;
   organizationBrandProvider: ReturnType<typeof getOrganizationBrandProviderStatus>;
+  capabilities: ReturnType<typeof getAiMediaCapabilitySummary>;
   remote: Pick<AiMediaServiceReadiness, "ok" | "checked" | "checks"> | null;
   contract: {
     version: "ai-media-product-image-suggestions-v1";
@@ -82,14 +84,15 @@ export type CreativeStudioGenerationReadiness = {
       publicApplyPath: "P110 confirmation-gated apply controls";
     }>;
     requiredProviderContract: {
-      version: "creative-studio-organization-brand-v1";
+      version: "unavailable-live-contract";
       upstream: "AI_MEDIA_SERVICE";
-      createEndpoint: "/v1/organization-brand/jobs";
-      statusEndpoint: "/v1/organization-brand/jobs/{jobId}";
-      cancelEndpoint: "/v1/organization-brand/jobs/{jobId}/cancel";
-      requiredCreateFields: Array<"organization_id" | "requested_by_user_id" | "asset_type" | "brand_name">;
-      optionalCreateFields: Array<"brand_description" | "style_preset" | "count" | "aspect_ratio" | "input_images">;
-      outputFields: Array<"job_id" | "status" | "provider" | "outputs" | "output_images">;
+      createEndpoint: null;
+      statusEndpoint: null;
+      cancelEndpoint: null;
+      requiredCreateFields: string[];
+      optionalCreateFields: string[];
+      outputFields: string[];
+      unavailableReason: "live-openapi-does-not-expose-organization-brand-endpoints";
     };
     readinessChecklist: Array<
       | "server-only-provider-calls"
@@ -111,6 +114,7 @@ export type CreativeStudioGenerationReadiness = {
 export async function getCreativeStudioGenerationReadiness(options: { checkRemote?: boolean } = {}): Promise<CreativeStudioGenerationReadiness> {
   const service = getAiMediaServiceConfigStatus();
   const paidProvider = getAiMediaPaidProviderStatus();
+  const capabilities = getAiMediaCapabilitySummary();
   const organizationBrandProvider = getOrganizationBrandProviderStatus();
   const remote = options.checkRemote ? await checkAiMediaServiceReadiness() : null;
   const blockers: string[] = [];
@@ -139,6 +143,7 @@ export async function getCreativeStudioGenerationReadiness(options: { checkRemot
     service,
     paidProvider,
     organizationBrandProvider,
+    capabilities,
     remote: remote
       ? {
           ok: remote.ok,
@@ -205,14 +210,15 @@ export async function getCreativeStudioGenerationReadiness(options: { checkRemot
         },
       ],
       requiredProviderContract: {
-        version: "creative-studio-organization-brand-v1",
+        version: "unavailable-live-contract",
         upstream: "AI_MEDIA_SERVICE",
-        createEndpoint: "/v1/organization-brand/jobs",
-        statusEndpoint: "/v1/organization-brand/jobs/{jobId}",
-        cancelEndpoint: "/v1/organization-brand/jobs/{jobId}/cancel",
-        requiredCreateFields: ["organization_id", "requested_by_user_id", "asset_type", "brand_name"],
-        optionalCreateFields: ["brand_description", "style_preset", "count", "aspect_ratio", "input_images"],
-        outputFields: ["job_id", "status", "provider", "outputs", "output_images"],
+        createEndpoint: null,
+        statusEndpoint: null,
+        cancelEndpoint: null,
+        requiredCreateFields: [],
+        optionalCreateFields: [],
+        outputFields: [],
+        unavailableReason: "live-openapi-does-not-expose-organization-brand-endpoints",
       },
       readinessChecklist: [
         "server-only-provider-calls",

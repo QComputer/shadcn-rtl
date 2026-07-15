@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { createHash, randomUUID } from "node:crypto";
 import {
   AiMediaServiceError,
   type AiMediaCreateJobRequest,
@@ -342,6 +343,7 @@ export class AiMediaService {
       aspect_ratio?: string;
       style_preset?: string;
       seller_prompt?: string | null;
+      idempotencyKey?: string | null;
     } = {},
   ): Promise<{ job: AiMediaJob; localJobId: string }> {
     if (!hasPermission(userRole, "product:update")) {
@@ -394,26 +396,136 @@ export class AiMediaService {
       aspect_ratio: options.aspect_ratio ?? "1:1",
       style_preset: options.style_preset ?? "LIGHT_MENU_PHOTO",
     };
+    const idempotencyKey = options.idempotencyKey?.trim()
+      || createHash("sha256")
+        .update(JSON.stringify({
+          phase: "BB-AI-MEDIA-P02-P03",
+          organizationId: product.organizationId,
+          productId: product.id,
+          requestedByUserId,
+          sellerPrompt,
+          count: remoteRequest.count,
+          aspect_ratio: remoteRequest.aspect_ratio,
+          style_preset: remoteRequest.style_preset,
+        }))
+        .digest("hex");
+    const correlationId = `bb-ai-${randomUUID()}`;
+    remoteRequest.idempotency_key = idempotencyKey;
+    remoteRequest.correlation_id = correlationId;
+
+    const recentJobs = await prisma.aiMediaJob.findMany({
+      where: {
+        organizationId: product.organizationId,
+        productId: product.id,
+        requestedByUserId,
+        status: { in: ["QUEUED", "PROCESSING"] },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    });
+    const duplicate = recentJobs.find((job) => {
+      const inputs = job.inputs && typeof job.inputs === "object" && !Array.isArray(job.inputs)
+        ? job.inputs as Record<string, unknown>
+        : {};
+      const p02 = inputs.p02ProductImageLifecycle && typeof inputs.p02ProductImageLifecycle === "object"
+        ? inputs.p02ProductImageLifecycle as Record<string, unknown>
+        : {};
+      return p02.idempotencyKey === idempotencyKey;
+    });
+
+    if (duplicate) {
+      return {
+        job: localAiMediaJobToRemoteJob({
+          id: duplicate.id,
+          jobId: duplicate.jobId,
+          organizationId: duplicate.organizationId,
+          productId: duplicate.productId,
+          requestedByUserId: duplicate.requestedByUserId,
+          status: duplicate.status,
+          provider: duplicate.provider,
+          errorMessage: duplicate.errorMessage,
+          inputs: (duplicate.inputs as Record<string, unknown>) ?? null,
+          outputs: normalizeStoredOutputs(duplicate.outputs),
+          createdAt: duplicate.createdAt,
+          updatedAt: duplicate.updatedAt,
+        }),
+        localJobId: duplicate.id,
+      };
+    }
+
+    const localJob = await prisma.aiMediaJob.create({
+      data: {
+        jobId: `local-${randomUUID()}`,
+        organizationId: product.organizationId,
+        productId: product.id,
+        requestedByUserId,
+        status: "QUEUED",
+        provider: "AI_MEDIA_SERVICE",
+        inputs: {
+          ...JSON.parse(JSON.stringify(remoteRequest)),
+          p02ProductImageLifecycle: {
+            phase: "BB-AI-MEDIA-P02-P03",
+            idempotencyKey,
+            correlationId,
+            localCreatedBeforeProviderSubmission: true,
+            contract: "ai-media-product-image-suggestions-v1",
+          },
+        },
+      },
+    });
 
     let remoteResponse;
     try {
       remoteResponse = await createAiMediaJob(remoteRequest);
     } catch (error) {
       if (error instanceof AiMediaServiceError) {
-        throw new ApiError(error.status, error.message);
+        await prisma.aiMediaJob.update({
+          where: { id: localJob.id },
+          data: {
+            status: "FAILED",
+            errorMessage: error.code || "AI_MEDIA_PROVIDER_ERROR",
+          },
+        }).catch(() => null);
+        await this.recordUsageEvent({
+          organizationId: product.organizationId,
+          productId: product.id,
+          jobId: localJob.jobId,
+          requestedByUserId,
+          action: "JOB_FAILED",
+          provider: "AI_MEDIA_SERVICE",
+          status: "FAILED",
+          metadata: {
+            idempotencyKey,
+            correlationId,
+            retryable: [429, 502, 503, 504].includes(error.status),
+            errorCode: error.code ?? "AI_MEDIA_PROVIDER_ERROR",
+          },
+          dedupeByJobAndAction: true,
+        });
+        throw new ApiError(error.status, "AI media service submission failed");
       }
       throw new ApiError(502, "Failed to create AI media job");
     }
 
-    const localJob = await prisma.aiMediaJob.create({
+    await prisma.aiMediaJob.update({
+      where: { id: localJob.id },
       data: {
         jobId: remoteResponse.job_id,
-        organizationId: product.organizationId,
-        productId: product.id,
-        requestedByUserId,
         status: remoteResponse.status,
         provider: remoteResponse.provider,
-        inputs: JSON.parse(JSON.stringify(remoteRequest)),
+        outputs: normalizeOutputs(remoteResponse) as unknown as object,
+        inputs: {
+          ...JSON.parse(JSON.stringify(remoteRequest)),
+          p02ProductImageLifecycle: {
+            phase: "BB-AI-MEDIA-P02-P03",
+            idempotencyKey,
+            correlationId,
+            localAiMediaJobId: localJob.id,
+            providerJobId: remoteResponse.job_id,
+            localCreatedBeforeProviderSubmission: true,
+            contract: "ai-media-product-image-suggestions-v1",
+          },
+        },
       },
     });
 
@@ -429,6 +541,9 @@ export class AiMediaService {
         count: remoteRequest.count,
         aspect_ratio: remoteRequest.aspect_ratio,
         style_preset: remoteRequest.style_preset,
+        idempotencyKey,
+        correlationId,
+        localCreatedBeforeProviderSubmission: true,
         estimatedCostCents: paidProvider.enabled ? paidProvider.estimatedJobCostCents : 0,
         costTelemetryMode: paidProvider.telemetryMode,
         paidProviderEnabled: paidProvider.enabled,

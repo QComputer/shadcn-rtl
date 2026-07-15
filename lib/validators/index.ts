@@ -301,6 +301,7 @@ export const createAiMediaJobSchema = z.object({
   aspect_ratio: z.string().default("1:1"),
   style_preset: z.string().default("LIGHT_MENU_PHOTO"),
   seller_prompt: z.string().max(1000).optional().nullable(),
+  idempotency_key: z.string().trim().min(8).max(160).optional(),
 });
 
 export const selectAiMediaImageSchema = z.object({
@@ -327,6 +328,7 @@ export const createCreativeStudioJobSchema = z.object({
   count: z.number().int().min(1).max(4).default(1),
   aspect_ratio: z.string().trim().max(20).default("1:1"),
   style_preset: z.string().trim().max(80).default("LIGHT_MENU_PHOTO"),
+  idempotency_key: z.string().trim().min(8).max(160).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 }).superRefine((input, context) => {
   if (input.targetType === "PRODUCT" && input.assetType === "PRODUCT_IMAGE") {

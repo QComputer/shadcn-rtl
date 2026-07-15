@@ -100,7 +100,7 @@ Other confirmed API groups:
 
 ## Contract Mismatch Found
 
-The current Bazar Baz code still contains disabled/gated organization-brand adapter calls for these legacy paths:
+The historical Bazar Baz code previously contained disabled/gated organization-brand adapter calls for these legacy paths:
 
 ```txt
 /v1/organization-brand/jobs
@@ -108,7 +108,7 @@ The current Bazar Baz code still contains disabled/gated organization-brand adap
 /v1/organization-brand/jobs/{jobId}/result
 ```
 
-The live OpenAPI document does **not** expose those paths. Therefore organization-brand provider execution must remain disabled and must not be treated as production-ready until Bazar Baz is adapted to the live `/v1/creative/...` contract or the service adds explicit organization-brand endpoints.
+The live OpenAPI document does **not** expose those paths. Current Bazar Baz source fails closed for these methods with `CAPABILITY_UNAVAILABLE`; organization-brand provider execution must remain disabled and must not be treated as production-ready until Bazar Baz is adapted to the live `/v1/creative/...` contract or the service adds explicit organization-brand endpoints.
 
 Product-image generation is the only currently confirmed endpoint family that matches the existing Bazar Baz Create/Poll/Cancel job lifecycle.
 

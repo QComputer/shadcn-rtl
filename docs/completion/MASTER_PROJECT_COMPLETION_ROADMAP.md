@@ -51,6 +51,8 @@ Status: active milestone before BB-B2B-P14. BB-AI-MEDIA-P00 production source sy
 
 BB-AI-MEDIA-P02/P03 source work is implemented for the confirmed product-image lifecycle: canonical server-only Render client hardening, capability registry, local-before-provider job creation, idempotency/correlation metadata, bounded polling, output URL validation, and fail-closed organization-brand behavior.
 
+BB-AI-MEDIA-P04/P06 Preview MOCK lifecycle is blocked before job creation because Vercel Preview currently shares the production database connection variables. No Preview lifecycle job, provider job, Blob asset, or Creative Studio asset was created. Resume only after Preview uses isolated persistence or after separate explicit production-test-data authorization with cleanup.
+
 Safety:
 
 - No production database migration is authorized for this milestone.

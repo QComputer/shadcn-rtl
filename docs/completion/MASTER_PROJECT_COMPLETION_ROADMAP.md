@@ -51,7 +51,9 @@ Status: active milestone before BB-B2B-P14. BB-AI-MEDIA-P00 production source sy
 
 BB-AI-MEDIA-P02/P03 source work is implemented for the confirmed product-image lifecycle: canonical server-only Render client hardening, capability registry, local-before-provider job creation, idempotency/correlation metadata, bounded polling, output URL validation, and fail-closed organization-brand behavior.
 
-BB-AI-MEDIA-P04/P06 Preview MOCK lifecycle is blocked before job creation because Vercel Preview currently shares the production database connection variables. The 2026-07-15 isolation recovery attempt stopped before resource creation because Neon management discovery returned `403` for both configured key variables and no `NEON_PROJECT_ID` was available. No Preview lifecycle job, provider job, Blob asset, Creative Studio asset, Neon branch, Vercel env mutation, or Production mutation was created. Resume only after Preview uses isolated persistence and a proven Preview AI-media client identity, or after separate explicit production-test-data authorization with cleanup.
+BB-AI-MEDIA-P04A/P06A app-managed storage acceptance is implemented locally. Source now includes an application-owned storage gateway, server-only production adapter, local-test storage adapter, hermetic environment guard, disposable local PostgreSQL acceptance path, contract-faithful local MOCK provider, and repeatable `pnpm run test:ai-media:hermetic` command. Local acceptance created synthetic jobs/assets and local storage objects only. Codex had no direct Production Blob access, no Production Blob credential was needed, and no Production Blob object was listed, uploaded, or deleted.
+
+BB-AI-MEDIA-P04B/P05B/P06B deployed Preview MOCK lifecycle remains deferred because isolated external Preview resources are not available. Do not request `NEON_PROJECT_ID` again for the completed local acceptance path. Future P07 controlled Production import requires separate authorization and must go through the deployed Bazar Baz application storage gateway only.
 
 Safety:
 

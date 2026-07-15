@@ -1,11 +1,17 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import react from "eslint-plugin-react";
+import reactHooks from "eslint-plugin-react-hooks";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
+    plugins: {
+      react,
+      "react-hooks": reactHooks,
+    },
     rules: {
       // Phase 21A keeps lint executable on the target machine without hiding
       // existing technical debt. These remain visible as warnings and should be
@@ -23,6 +29,7 @@ const eslintConfig = defineConfig([
     ".release/**",
     "out/**",
     "build/**",
+    "dist/**",
     "coverage/**",
     "playwright-report/**",
     "test-results/**",

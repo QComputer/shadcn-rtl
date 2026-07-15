@@ -74,6 +74,7 @@ next-env.d.ts
 
 # local/generated runtime artifacts
 /.vercel/
+/.tmp/
 *.sqlite
 *.sqlite3
 *.db

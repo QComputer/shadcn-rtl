@@ -2,6 +2,14 @@
 
 Date: 2026-07-15
 
+## 2026-07-15 BB-AI-MEDIA-P04A-P06A update
+
+BB-AI-MEDIA-P04A-P06A app-managed storage acceptance is implemented in source. It adds a server-only application storage gateway, a production Vercel Blob adapter isolated behind that gateway, a local-test storage adapter, hermetic environment guards, a local contract-faithful MOCK provider, and a repeatable `pnpm run test:ai-media:hermetic` lifecycle.
+
+The accepted local lifecycle uses disposable local PostgreSQL, synthetic fixtures, local MOCK provider output, and temporary local storage. Codex had no direct Production Blob access, no Production Blob credential was needed, and no Production Blob object was listed, uploaded, or deleted. Production storage is application-managed by the deployed Bazar Baz server only. Deployed Preview acceptance remains deferred, and real Render/GPU generation remains disabled pending separate explicit authorization.
+
+Current recommended AI-media next phase: continue only safe incomplete P04A-P06A validation/documentation gaps, then defer external Preview acceptance until isolated Preview resources exist. Future P07 Production asset import requires separate authorization through the deployed application storage gateway and does not grant direct Blob access.
+
 ## 2026-07-15 BASELINE-01 update
 
 The current source baseline is accepted through **P120F - SMS.ir official report endpoint integration**, **NOTIFOPS-DEPLOY-FIX1**, and **BB-B2B-P12 - Persian-first business onboarding wizard**. Bazar Baz is positioned as a Persian-first B2B service platform for Iranian businesses, not a marketplace, advertising directory, or public social network.

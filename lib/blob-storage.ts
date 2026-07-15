@@ -1,4 +1,8 @@
-import { put, del, get } from "@vercel/blob";
+import {
+  deleteVercelBlobObject,
+  getVercelBlobObject,
+  uploadVercelBlobObject,
+} from "@/lib/storage/vercel-blob-storage";
 
 // Vercel Blob storage - requires BLOB_READ_WRITE_TOKEN in all environments
 export function shouldUseVercelBlob() {
@@ -26,10 +30,7 @@ export async function uploadToBlob(
   const preferredAccess = access === "PUBLIC" ? "public" : "private";
 
   async function putWithAccess(blobAccess: "public" | "private") {
-    const blob = await put(filename, buffer, {
-      contentType,
-      access: blobAccess,
-    });
+    const blob = await uploadVercelBlobObject({ key: filename, buffer, contentType, access: blobAccess });
     return { url: blob.url, access: blobAccess };
   }
 
@@ -55,7 +56,7 @@ export async function deleteFromBlob(pathname: string): Promise<void> {
     throw new Error("BLOB_READ_WRITE_TOKEN environment variable is required for image storage");
   }
 
-  await del(pathname, {});
+  await deleteVercelBlobObject(pathname);
 }
 
 export async function getFromBlob(pathname: string): Promise<{ buffer: Buffer; contentType: string }> {
@@ -63,7 +64,7 @@ export async function getFromBlob(pathname: string): Promise<{ buffer: Buffer; c
     throw new Error("BLOB_READ_WRITE_TOKEN environment variable is required for image storage");
   }
 
-  const result = await get(pathname, { access: "private" });
+  const result = await getVercelBlobObject(pathname);
   if (!result) {
     throw new Error("Blob not found");
   }

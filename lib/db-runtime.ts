@@ -18,11 +18,28 @@ function getRuntimeDatabaseUrl() {
   return databaseUrl;
 }
 
+function shouldUseHermeticLocalRuntime(databaseUrl: string) {
+  return (
+    process.env.NODE_ENV === "test" &&
+    process.env.AI_MEDIA_APPLICATION_STORAGE_ADAPTER === "local-test" &&
+    /(?:localhost|127\.0\.0\.1)/i.test(databaseUrl) &&
+    !/neon/i.test(databaseUrl)
+  );
+}
+
 function createPrismaClient() {
+  const databaseUrl = getRuntimeDatabaseUrl();
+
+  if (shouldUseHermeticLocalRuntime(databaseUrl)) {
+    return new PrismaClient({
+      log: ["error"],
+    });
+  }
+
   neonConfig.webSocketConstructor = ws;
 
   const adapter = new PrismaNeon({
-    connectionString: getRuntimeDatabaseUrl(),
+    connectionString: databaseUrl,
   });
 
   return new PrismaClient({

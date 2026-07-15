@@ -1,6 +1,6 @@
 # Bazar Baz — Recommended Next Phase Roadmap
 
-_Last updated from source inspection and roadmap reconciliation: 2026-07-08._
+_Last updated from source inspection and roadmap reconciliation: 2026-07-15._
 
 This roadmap is ordered for risk reduction. Phases 18-119 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, source acceptance/secretless packaging, Creative Studio planning, Creative Studio server foundation, Creative Studio dashboard review, Creative Studio apply controls, Creative Studio generation readiness, Creative Studio product-image generation, Creative Studio generated-asset selection, Creative Studio organization-brand readiness, Creative Studio organization-brand request controls, Creative Studio organization-brand acceptance, Creative Studio organization-brand provider rollout gate, Creative Studio organization-brand provider execution, Creative Studio provider result ingestion, and P120 Creative Studio reviewed asset apply and rollback workflow, P120A operational order notifications and admin order controls, P120B customer order lifecycle notifications and guest SMS dry-run review, P120C notification delivery observability and retry eligibility metadata, P120D SMS.ir provider completion, P120E SMS delivery reports and provider reconciliation, P120F SMS.ir official report endpoint integration, and NOTIFOPS-DEPLOY-FIX1 deployed notification operations hardening are implemented through Phase 120F.
 
@@ -43,9 +43,18 @@ Current BB-AI-MEDIA status:
 - BB-AI-MEDIA-P01 contract discovery is complete through the SUPER_ADMIN-only Vercel Preview contract probe. Production Bazar Baz can reach Render health/readiness from the server, while the local workspace cannot inspect the Render hostname directly because it resolves to a private `10.x` address.
 - The live OpenAPI contract confirms `/v1/product-image-suggestions/jobs` create/status/cancel endpoints. It does not expose the historical `/v1/organization-brand/...` endpoints used by the currently disabled/gated logo and cover adapter.
 - BB-AI-MEDIA-P02/P03 source work is implemented for the confirmed product-image contract: canonical server-only client hardening, capability registry, local-before-provider `AiMediaJob` creation, idempotency/correlation metadata, bounded status polling, and fail-closed organization-brand behavior.
-- BB-AI-MEDIA-P04/P06 Preview MOCK lifecycle is blocked at the isolation gate: Vercel Preview and Production share the same database connection variables, so Preview lifecycle writes would mutate production rows. A 2026-07-15 isolation recovery attempt stopped before resource creation because Neon management discovery returned `403` for both configured key variables and no `NEON_PROJECT_ID` was available. Do not create AI-media lifecycle test jobs until Preview has a dedicated database/storage target and a proven Preview AI-media client identity, or until separate explicit production-test-data authorization is granted. See `docs/ai-media/AI_MEDIA_PREVIEW_RESOURCE_PLAN.md` and `docs/ai-media/AI_MEDIA_PREVIEW_ISOLATION_REPORT.md`.
+- BB-AI-MEDIA-P04A/P06A local app-managed storage acceptance is implemented: application-owned storage gateway, local storage adapter, local PostgreSQL guard, contract-faithful local MOCK, and `pnpm run test:ai-media:hermetic` are available. The local lifecycle creates synthetic jobs/assets and imports provider bytes through local storage only.
+- BB-AI-MEDIA-P04B/P05B/P06B deployed Preview lifecycle remains deferred. Do not request `NEON_PROJECT_ID` again for P04A-P06A. Do not require direct Production Blob access. External Preview acceptance requires separately isolated Preview persistence/storage.
 - BB-AI-MEDIA-P04 through P06 must not advance for organization-brand/logo/cover execution until Bazar Baz is adapted to the live `/v1/creative/...` contract or the Render service exposes explicit organization-brand endpoints.
 - Do not send real GPU/paid generation requests. MOCK lifecycle testing is allowed only after the active provider/contract is confirmed safe.
+
+Next AI-media action:
+
+```txt
+BB-AI-MEDIA-P07 - One Controlled Production Application-Managed Asset Import
+```
+
+P07 is pending separate explicit authorization and must use the deployed Bazar Baz server storage gateway. It must not grant Codex, Render, GPU workers, browsers, or test harnesses direct Production Blob credentials.
 
 Recommended next B2B phase after BB-AI-MEDIA-ONLINE-MILESTONE-01 and separate P14 authorization:
 

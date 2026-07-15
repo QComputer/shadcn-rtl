@@ -776,6 +776,11 @@ if (exists("scripts/quality/validate-ai-media-seller-state-ux.mjs")) {
   result.status === 0 ? ok("P94 AI media seller state UX validator passes") : fail("P94 AI media seller state UX validator passes", result.stderr || result.stdout);
 }
 
+if (exists("scripts/quality/validate-ai-media-p04a-p06a.mjs")) {
+  const result = spawnSync(process.execPath, ["scripts/quality/validate-ai-media-p04a-p06a.mjs"], { cwd: root, encoding: "utf8" });
+  result.status === 0 ? ok("P04A-P06A AI media application-owned storage validator passes") : fail("P04A-P06A AI media application-owned storage validator passes", result.stderr || result.stdout);
+}
+
 if (exists("scripts/quality/validate-export-downloads.mjs")) {
   const result = spawnSync(process.execPath, ["scripts/quality/validate-export-downloads.mjs"], { cwd: root, encoding: "utf8" });
   result.status === 0 ? ok("P81 export downloads validator passes") : fail("P81 export downloads validator passes", result.stderr || result.stdout);

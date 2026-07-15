@@ -18,6 +18,10 @@ import { getAiMediaPaidProviderStatus } from "@/lib/services/ai-media-paid-provi
 import { getOrganizationBrandProviderStatus } from "@/lib/services/creative-studio-organization-brand-provider";
 import { aiMediaService } from "@/lib/services/ai-media.service";
 import {
+  compensateFailedAssetImport,
+  storeCreativeStudioAssetFromRemote,
+} from "@/lib/storage/application-storage";
+import {
   getOrganizationBrandGenerationResult,
   type AiMediaJobOutput,
   type AiMediaOrganizationBrandJobRequest,
@@ -1007,29 +1011,51 @@ export class CreativeStudioService {
         });
         if (existing) continue;
 
-        const asset = await prisma.creativeStudioAsset.create({
-          data: {
-            organizationId,
-            jobId: localJob.id,
-            assetType: "PRODUCT_IMAGE",
-            status: "DRAFT",
-            sourceUrl: output.url,
-            draftUrl: output.url,
-            mimeType: output.mime_type ?? null,
-            width: output.width ?? null,
-            height: output.height ?? null,
-            sourceMetadata: {
-              p112Generation: {
-                remoteJobId,
-                outputIndex: index,
-                promptUsed: output.prompt_used ?? null,
-                seed: output.seed ?? null,
-                draftOnly: true,
-                publicMutation: false,
-              },
-            } satisfies Prisma.InputJsonObject,
-          },
+        const stored = await storeCreativeStudioAssetFromRemote({
+          organizationId,
+          resultUrl: output.url,
+          purpose: `creative-studio-product-${localJob.targetId || "unknown"}`,
+          access: "public",
         });
+        let asset;
+        try {
+          asset = await prisma.creativeStudioAsset.create({
+            data: {
+              organizationId,
+              jobId: localJob.id,
+              assetType: "PRODUCT_IMAGE",
+              status: "DRAFT",
+              sourceUrl: output.url,
+              draftUrl: stored.url,
+              storedUrl: stored.url,
+              mimeType: output.mime_type ?? stored.mimeType,
+              width: output.width ?? stored.width,
+              height: output.height ?? stored.height,
+              sourceMetadata: {
+                p112Generation: {
+                  remoteJobId,
+                  outputIndex: index,
+                  promptUsed: output.prompt_used ?? null,
+                  seed: output.seed ?? null,
+                  draftOnly: true,
+                  publicMutation: false,
+                },
+                p04aApplicationStorage: {
+                  phase: "BB-AI-MEDIA-P04A-P06A",
+                  provider: stored.provider,
+                  key: stored.key,
+                  checksumSha256: stored.checksumSha256,
+                  sizeBytes: stored.sizeBytes,
+                  applicationManaged: true,
+                  sourceUrlPermanent: false,
+                },
+              } satisfies Prisma.InputJsonObject,
+            },
+          });
+        } catch (error) {
+          await compensateFailedAssetImport({ organizationId, key: stored.key });
+          throw error;
+        }
 
         await createUsageEventOnce({
           organizationId,
@@ -1044,7 +1070,12 @@ export class CreativeStudioService {
             remoteJobId,
             outputIndex: index,
             sourceUrl: output.url,
+            storedUrl: stored.url,
+            storageProvider: stored.provider,
+            storageKey: stored.key,
+            checksumSha256: stored.checksumSha256,
             p112Generation: true,
+            p04aApplicationStorage: true,
             publicMutation: false,
           },
         });

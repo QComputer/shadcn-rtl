@@ -212,7 +212,7 @@ export function assertAiMediaOutputUrl(value: string) {
   if (parsed.protocol !== "https:" && process.env.NODE_ENV !== "test") {
     throw new AiMediaServiceError(502, "AI media output URL must use HTTPS", "INVALID_OUTPUT_URL");
   }
-  if (parsed.username || parsed.password || isPrivateOutputHost(parsed.hostname)) {
+  if (parsed.username || parsed.password || (process.env.NODE_ENV !== "test" && isPrivateOutputHost(parsed.hostname))) {
     throw new AiMediaServiceError(502, "AI media output URL is not allowed", "INVALID_OUTPUT_URL");
   }
   return parsed.toString();

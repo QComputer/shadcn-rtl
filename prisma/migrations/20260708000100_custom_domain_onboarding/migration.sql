@@ -93,16 +93,7 @@ ALTER TABLE "OrganizationDomain"
   ADD COLUMN IF NOT EXISTS "reviewedById" TEXT,
   ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMP(3);
 
--- Step 4: Migrate existing data (PENDING -> REQUESTED, FAILED -> ERROR)
-UPDATE "OrganizationDomain"
-  SET status = 'REQUESTED'
-  WHERE status = 'PENDING';
-
-UPDATE "OrganizationDomain"
-  SET status = 'ERROR'
-  WHERE status = 'FAILED';
-
--- Step 5: Add indexes
+-- Step 4: Add indexes
 CREATE INDEX IF NOT EXISTS "OrganizationDomain_normalizedDomain_status_idx"
   ON "OrganizationDomain"("normalizedDomain", "status");
 

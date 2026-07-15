@@ -1,14 +1,23 @@
 -- Phase P120C: add unified notification delivery attempt observability table.
 
-CREATE TYPE IF NOT EXISTS "NotificationDeliveryAttemptStatus" AS ENUM (
-  'QUEUED',
-  'SENT',
-  'DRY_RUN',
-  'SKIPPED',
-  'FAILED',
-  'RETRY_SCHEDULED',
-  'RETRY_EXHAUSTED'
-);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_type
+    WHERE typname = 'NotificationDeliveryAttemptStatus'
+  ) THEN
+    CREATE TYPE "NotificationDeliveryAttemptStatus" AS ENUM (
+      'QUEUED',
+      'SENT',
+      'DRY_RUN',
+      'SKIPPED',
+      'FAILED',
+      'RETRY_SCHEDULED',
+      'RETRY_EXHAUSTED'
+    );
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS "NotificationDeliveryAttempt" (
   "id" TEXT NOT NULL,

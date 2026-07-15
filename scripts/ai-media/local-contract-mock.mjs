@@ -7,6 +7,7 @@ const port = Number.parseInt(process.env.AI_MEDIA_CONTRACT_MOCK_PORT || "4765", 
 const expectedKey = process.env.AI_MEDIA_SERVICE_INTERNAL_KEY || "local-ai-media-test-key";
 const jobs = new Map();
 const idempotency = new Map();
+const failAfterAcceptOnce = new Set();
 const png = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
   "base64",
@@ -76,7 +77,31 @@ const server = http.createServer(async (req, res) => {
     return res.end(png);
   }
 
+  if (url.pathname === "/test/reset") {
+    jobs.clear();
+    idempotency.clear();
+    failAfterAcceptOnce.clear();
+    return json(res, 200, { ok: true });
+  }
+
+  if (url.pathname === "/test/stats") {
+    return json(res, 200, {
+      jobs: jobs.size,
+      idempotencyKeys: idempotency.size,
+      failAfterAcceptOnce: failAfterAcceptOnce.size,
+      provider: "MOCK",
+    });
+  }
+
   if (req.headers["x-bazarbaz-ai-key"] !== expectedKey) return unauthorized(res);
+
+  if (req.method === "POST" && url.pathname === "/test/fail-after-accept-once") {
+    const body = await readBody(req);
+    const key = typeof body.idempotency_key === "string" ? body.idempotency_key : null;
+    if (!key) return json(res, 400, { detail: "idempotency_key is required" });
+    failAfterAcceptOnce.add(key);
+    return json(res, 200, { ok: true, key });
+  }
 
   if (req.method === "POST" && url.pathname === "/v1/product-image-suggestions/jobs") {
     const body = await readBody(req);
@@ -97,6 +122,10 @@ const server = http.createServer(async (req, res) => {
     };
     jobs.set(jobId, job);
     idempotency.set(key, jobId);
+    if (failAfterAcceptOnce.has(key)) {
+      failAfterAcceptOnce.delete(key);
+      return req.socket.destroy();
+    }
     return json(res, 201, publicJob(job));
   }
 

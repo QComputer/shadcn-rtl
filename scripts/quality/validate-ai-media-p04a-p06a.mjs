@@ -38,11 +38,15 @@ const localAdapter = read("lib/storage/local-test-storage.ts");
 const imageValidation = read("lib/storage/image-validation.ts");
 const aiService = read("lib/services/ai-media.service.ts");
 const creativeService = read("lib/services/creative-studio.service.ts");
+const hermeticLifecycle = read("scripts/e2e/ai-media-hermetic-lifecycle.mts");
+const hermeticConcurrency = read("scripts/e2e/ai-media-hermetic-concurrency.mts");
 const packageJson = read("package.json");
 
 add("application storage gateway exists and is server-only", exists("lib/storage/application-storage.ts") && /import "server-only"/.test(gateway));
 add("gateway exposes narrow creative-studio asset operations", /storeCreativeStudioAsset/.test(gateway) && /removeCreativeStudioAsset/.test(gateway) && /verifyStoredAsset/.test(gateway) && /compensateFailedAssetImport/.test(gateway));
 add("gateway generates organization-scoped storage keys", /creative-studio/.test(gateway) && /normalizeOrganizationId/.test(gateway) && /createApplicationStorageKey/.test(gateway));
+add("gateway does not import or construct local test storage", !/local-test-storage|createLocalTestApplicationStorage/.test(gateway));
+add("local test storage is injected only by hermetic harness", /setApplicationStorageAdapterForTesting/.test(gateway) && /createLocalTestApplicationStorage/.test(hermeticLifecycle) && /setApplicationStorageAdapterForTesting/.test(hermeticLifecycle));
 add("gateway rejects provider result URL risks", /assertFetchableResultUrl/.test(gateway) && /Provider result URL must use HTTPS/.test(gateway) && /isPrivateOutputHost/.test(gateway) && /redirect: "error"/.test(gateway));
 add("gateway validates result bytes before storage", /validateApplicationImageBuffer/.test(gateway) && /content-length/.test(gateway));
 add("image validation enforces MIME signatures size and checksum", /APPLICATION_STORAGE_ALLOWED_IMAGE_TYPES/.test(imageValidation) && /IMAGE_SIGNATURES/.test(imageValidation) && /APPLICATION_STORAGE_MAX_IMAGE_BYTES/.test(imageValidation) && /checksumSha256/.test(imageValidation));
@@ -52,11 +56,15 @@ add("local test adapter is server-only", /import "server-only"/.test(localAdapte
 add("local test adapter cannot activate in production", /NODE_ENV === "production"/.test(localAdapter) && /VERCEL_ENV === "production"/.test(localAdapter));
 add("local test adapter stays inside workspace and prevents traversal", /path\.isAbsolute/.test(localAdapter) && /includes\("\.\."\)/.test(localAdapter) && /startsWith\(root \+ path\.sep\)/.test(localAdapter));
 add("AI-media selection uses application storage gateway", /storeCreativeStudioAssetFromRemote/.test(aiService) && /compensateFailedAssetImport/.test(aiService));
+add("AI-media creation uses PostgreSQL advisory lock idempotency", /pg_advisory_xact_lock/.test(aiService) && /payloadHash/.test(aiService) && /providerIdempotencyKey/.test(aiService));
+add("AI-media selection uses locked idempotent result ingestion", /ai-media-image-selection/.test(aiService) && /IMAGE_SELECTED/.test(aiService) && /newlyStored/.test(aiService));
 add("AI-media selection no longer persists remote fallback", !/remote-unconfigured|remote-fallback|copyRemoteImageToBlob|shouldUseVercelBlob/.test(aiService));
 add("Creative Studio product-image drafts import through application storage", /storeCreativeStudioAssetFromRemote/.test(creativeService) && /p04aApplicationStorage/.test(creativeService) && /sourceUrlPermanent: false/.test(creativeService));
 add("feature code has no direct Blob calls", directBlobInFeature.length === 0, directBlobInFeature.join(", "));
 add("client surfaces do not import storage or Blob credentials", clientBlobMentions.length === 0, clientBlobMentions.join(", "));
 add("package exposes P04A-P06A validators", /quality:ai-media-application-storage-boundary/.test(packageJson) && /quality:ai-media-no-direct-production-blob/.test(packageJson) && /quality:ai-media-hermetic-environment/.test(packageJson));
+add("hermetic acceptance runs lifecycle and concurrency matrix", /ai-media-hermetic-lifecycle\.mts/.test(read("scripts/e2e/ai-media-hermetic-acceptance.mjs")) && /ai-media-hermetic-concurrency\.mts/.test(read("scripts/e2e/ai-media-hermetic-acceptance.mjs")));
+add("concurrency matrix covers duplicate conflict cross-tenant lost-response and ingestion", /sameTenantDuplicate10/.test(hermeticConcurrency) && /payloadConflict/.test(hermeticConcurrency) && /crossTenantSameKey/.test(hermeticConcurrency) && /providerAcceptedResponseLost/.test(hermeticConcurrency) && /concurrentIngestion/.test(hermeticConcurrency));
 
 for (const check of checks) console.log(`${check.pass ? "PASS" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`);
 const failed = checks.filter((check) => !check.pass);

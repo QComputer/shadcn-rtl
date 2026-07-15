@@ -20,4 +20,10 @@ run("pnpm", ["exec", "tsx", "scripts/e2e/ai-media-hermetic-lifecycle.mts"], {
   AI_MEDIA_APPLICATION_STORAGE_ADAPTER: process.env.AI_MEDIA_APPLICATION_STORAGE_ADAPTER || "local-test",
   NODE_OPTIONS: [process.env.NODE_OPTIONS, "--require=./scripts/e2e/register-server-only.cjs"].filter(Boolean).join(" "),
 });
+run("pnpm", ["exec", "tsx", "scripts/e2e/ai-media-hermetic-concurrency.mts"], {
+  ...process.env,
+  NODE_ENV: "test",
+  AI_MEDIA_APPLICATION_STORAGE_ADAPTER: process.env.AI_MEDIA_APPLICATION_STORAGE_ADAPTER || "local-test",
+  NODE_OPTIONS: [process.env.NODE_OPTIONS, "--require=./scripts/e2e/register-server-only.cjs"].filter(Boolean).join(" "),
+});
 console.log("Hermetic AI media acceptance passed.");

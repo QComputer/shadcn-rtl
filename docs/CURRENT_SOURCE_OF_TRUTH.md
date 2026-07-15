@@ -8,7 +8,9 @@ BB-AI-MEDIA-P04A-P06A app-managed storage acceptance is implemented in source. I
 
 The accepted local lifecycle uses disposable local PostgreSQL, synthetic fixtures, local MOCK provider output, and temporary local storage. Codex had no direct Production Blob access, no Production Blob credential was needed, and no Production Blob object was listed, uploaded, or deleted. Production storage is application-managed by the deployed Bazar Baz server only. Deployed Preview acceptance remains deferred, and real Render/GPU generation remains disabled pending separate explicit authorization.
 
-Current recommended AI-media next phase: continue only safe incomplete P04A-P06A validation/documentation gaps, then defer external Preview acceptance until isolated Preview resources exist. Future P07 Production asset import requires separate authorization through the deployed application storage gateway and does not grant direct Blob access.
+BB-AI-MEDIA-P06A hardening removes the local-test storage adapter from the production gateway import graph. Hermetic tests inject the local adapter explicitly in `NODE_ENV=test`; production feature code cannot construct it. The local concurrent idempotency matrix covers 10-way duplicate submit, payload conflict, cross-tenant same-key isolation, provider accepted/lost-response recovery, and concurrent result ingestion with one storage object.
+
+Current recommended AI-media next phase: P07 remains prepared only by `docs/ai-media/AI_MEDIA_P07_CONTROLLED_PRODUCTION_IMPORT_RUNBOOK.md`. Future P07 Production asset import requires separate authorization through the deployed application storage gateway and does not grant direct Blob access.
 
 ## 2026-07-15 BASELINE-01 update
 

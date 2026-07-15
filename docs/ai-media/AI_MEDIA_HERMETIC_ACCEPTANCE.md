@@ -19,6 +19,14 @@ pnpm run test:ai-media:hermetic
 
 The command runs safety guards, source validators, the local MOCK lifecycle, local storage import, asset finalization, and cleanup.
 
+It also runs the concurrent idempotency matrix:
+
+- 10 simultaneous same-tenant same-key same-payload submissions converge to one local job and one provider job.
+- Same tenant/key with a different payload returns a safe conflict.
+- A different organization may reuse the same key without cross-tenant collision.
+- Provider accepted but client response lost is recovered without duplicate provider work.
+- Concurrent result ingestion creates one durable local storage object and one selection event.
+
 ## Explicit Non-Events
 
 - No Production database was used.

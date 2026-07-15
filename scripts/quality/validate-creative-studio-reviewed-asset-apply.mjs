@@ -66,9 +66,9 @@ add("reject/archive preserved", /rejectGeneratedAsset|رد کردن/.test(page))
 add("package exposes P120 validator", /"quality:creative-studio-reviewed-asset-apply":\s*"node scripts\/quality\/validate-creative-studio-reviewed-asset-apply\.mjs"/.test(packageJson));
 add("quality local references P120 validator", /validate-creative-studio-reviewed-asset-apply\.mjs/.test(validateProject));
 
-add("README marks P120B next", /Recommended next phase:\s+\*\*P120E — SMS delivery reports and provider reconciliation\*\*/.test(readme));
+add("README keeps P120F current baseline", /P120F - SMS\.ir official report endpoint integration/.test(readme) || /P120F/.test(readme));
 add("roadmap marks P120 next", /\| P120 \| Creative Studio reviewed asset apply and rollback workflow\. \|/.test(roadmap));
-add("source of truth keeps P119 baseline", /after P119 Creative Studio provider result ingestion and review stabilization/.test(sourceOfTruth));
+add("source of truth keeps P119 baseline", /P119 adds server-mediated provider result polling/.test(sourceOfTruth) || /P119 Creative Studio provider result ingestion/.test(sourceOfTruth));
 
 for (const check of checks) {
   console.log(`${check.pass ? "PASS" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`);

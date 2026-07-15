@@ -44,7 +44,7 @@ add("create route is authenticated and product-scoped", /requireAuthSession/.tes
 add("poll route is authenticated and organization-scoped", /requireAuthSession/.test(pollRoute) && /localJob\.organizationId/.test(pollRoute))
 add("select route is authenticated and product-scoped", /requireAuthSession/.test(selectRoute) && /requireProductAccess/.test(selectRoute))
 add("service enforces product update permission", /hasPermission\(userRole, "product:update"\)/.test(service))
-add("service persists local jobs", /prisma\.aiMediaJob\.create/.test(service))
+add("service persists local jobs", /\.(aiMediaJob)\.create/.test(service))
 add("service syncs remote job status and outputs", /prisma\.aiMediaJob\.update/.test(service) && /outputs:\s*normalizeOutputs/.test(service))
 add("service selects only completed owned outputs", /status !== "COMPLETED"/.test(service) && /Selected image must match/.test(service))
 add("service revalidates public image pages", /revalidateAiSelectedProductImage/.test(service) && /revalidateTag\("home-page", "max"\)/.test(service))

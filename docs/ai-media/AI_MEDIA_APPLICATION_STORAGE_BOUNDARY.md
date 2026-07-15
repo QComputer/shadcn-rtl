@@ -22,6 +22,12 @@ Production storage is application-managed. The deployed Bazar Baz server may use
 
 Codex had no direct Production Blob access during this phase. No Production Blob credential was needed, retrieved, printed, or used. No Production Blob object was listed, uploaded, or deleted.
 
+## Import Graph Hardening
+
+`lib/storage/application-storage.ts` must not import or dynamically import `lib/storage/local-test-storage.ts`. The local adapter is available only through explicit in-memory test injection via `setApplicationStorageAdapterForTesting(...)` while `NODE_ENV=test` and not `VERCEL_ENV=production`.
+
+Hermetic scripts import `createLocalTestApplicationStorage(...)` directly and inject it before importing AI-media services. Production routes and feature code therefore cannot trace or construct the local adapter through the application gateway.
+
 ## Safety Controls
 
 The gateway:
@@ -35,5 +41,6 @@ The gateway:
 - records checksum and safe metadata;
 - supports compensation when database finalization fails;
 - refuses the local adapter in production.
+- refuses environment-selected local storage unless a hermetic test harness injects it.
 
 Provider result URLs are temporary inputs only. They are not persisted as permanent Creative Studio asset URLs after import.

@@ -35,11 +35,23 @@ function selectedAdapterName() {
   return process.env.AI_MEDIA_APPLICATION_STORAGE_ADAPTER || process.env.APPLICATION_STORAGE_ADAPTER || "vercel-blob";
 }
 
+let injectedTestAdapter: ApplicationStorageAdapter | null = null;
+
+export function setApplicationStorageAdapterForTesting(adapter: ApplicationStorageAdapter | null) {
+  if (process.env.NODE_ENV !== "test" || process.env.VERCEL_ENV === "production") {
+    throw new Error("Application storage test adapter injection is only available in non-production test runtime");
+  }
+  injectedTestAdapter = adapter;
+}
+
 export async function getApplicationStorageAdapter(): Promise<ApplicationStorageAdapter> {
+  if (injectedTestAdapter) {
+    return injectedTestAdapter;
+  }
+
   const adapter = selectedAdapterName();
   if (adapter === "local-test") {
-    const { createLocalTestApplicationStorage } = await import("@/lib/storage/local-test-storage");
-    return createLocalTestApplicationStorage();
+    throw new Error("Local test storage must be injected by the hermetic test harness");
   }
   if (adapter === "vercel-blob") {
     const { createVercelBlobApplicationStorage } = await import("@/lib/storage/vercel-blob-storage");

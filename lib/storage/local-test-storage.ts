@@ -11,9 +11,9 @@ function assertLocalTestStorageAllowed() {
 }
 
 function getRoot() {
-  const configured = process.env.AI_MEDIA_LOCAL_STORAGE_ROOT || path.join(/*turbopackIgnore: true*/ process.cwd(), ".tmp", "ai-media-acceptance", "storage");
+  const configured = process.env.AI_MEDIA_LOCAL_STORAGE_ROOT || path.join(process.cwd(), ".tmp", "ai-media-acceptance", "storage");
   const root = path.resolve(configured);
-  const workspace = path.resolve(/*turbopackIgnore: true*/ process.cwd());
+  const workspace = path.resolve(process.cwd());
   if (!root.startsWith(workspace + path.sep)) {
     throw new Error("Local test storage root must stay inside the workspace");
   }

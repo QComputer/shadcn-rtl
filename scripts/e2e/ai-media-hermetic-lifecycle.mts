@@ -128,6 +128,9 @@ async function main() {
   await waitForMock();
 
   const { prisma } = await import("@/lib/db");
+  const { setApplicationStorageAdapterForTesting } = await import("@/lib/storage/application-storage");
+  const { createLocalTestApplicationStorage } = await import("@/lib/storage/local-test-storage");
+  setApplicationStorageAdapterForTesting(createLocalTestApplicationStorage());
   const { aiMediaService } = await import("@/lib/services/ai-media.service");
   const { creativeStudioService } = await import("@/lib/services/creative-studio.service");
 

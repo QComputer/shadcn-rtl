@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import {
   AiMediaServiceError,
   type AiMediaCreateJobRequest,
+  type AiMediaCreateJobResponse,
   type AiMediaJob,
   type AiMediaJobOutput,
   createAiMediaJob,
@@ -122,7 +123,7 @@ function revalidateAiSelectedProductImage(organizationSlug: string, productSlugO
   }
 }
 
-function normalizeOutputs(job: AiMediaJob) {
+function normalizeOutputs(job: AiMediaJob | AiMediaCreateJobResponse) {
   return job.outputs ?? job.output_images?.map((url) => ({ url })) ?? [];
 }
 
@@ -135,6 +136,37 @@ function normalizeStoredOutputs(outputs: unknown): AiMediaJobOutput[] {
       ...output,
       url: String(output.url),
     })) as AiMediaJobOutput[];
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function getProductImageLifecycleMetadata(inputs: unknown) {
+  const p02 = asRecord(asRecord(inputs).p02ProductImageLifecycle);
+  return {
+    idempotencyKey: typeof p02.idempotencyKey === "string" ? p02.idempotencyKey : null,
+    payloadHash: typeof p02.payloadHash === "string" ? p02.payloadHash : null,
+    providerJobId: typeof p02.providerJobId === "string" ? p02.providerJobId : null,
+  };
+}
+
+function createStablePayloadHash(value: unknown) {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function createAdvisoryLockParts(scope: string) {
+  const digest = createHash("sha256").update(scope).digest();
+  return [digest.readInt32BE(0), digest.readInt32BE(4)] as const;
+}
+
+async function acquireAiMediaScopedLock(tx: any, scope: string) {
+  const [first, second] = createAdvisoryLockParts(scope);
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${first}::integer, ${second}::integer)`;
+}
+
+async function acquireAiMediaIdempotencyLock(tx: any, organizationId: string, idempotencyKey: string) {
+  return acquireAiMediaScopedLock(tx, `ai-media-product-image:${organizationId}:${idempotencyKey}`);
 }
 
 export function localAiMediaJobToRemoteJob(job: AiMediaLocalJob): AiMediaJob {
@@ -411,155 +443,208 @@ export class AiMediaService {
           style_preset: remoteRequest.style_preset,
         }))
         .digest("hex");
-    const correlationId = `bb-ai-${randomUUID()}`;
-    remoteRequest.idempotency_key = idempotencyKey;
-    remoteRequest.correlation_id = correlationId;
-
-    const recentJobs = await prisma.aiMediaJob.findMany({
-      where: {
-        organizationId: product.organizationId,
-        productId: product.id,
-        requestedByUserId,
-        status: { in: ["QUEUED", "PROCESSING"] },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 10,
+    const providerIdempotencyKey = createStablePayloadHash({
+      scope: "ai-media-provider-idempotency",
+      organizationId: product.organizationId,
+      idempotencyKey,
     });
-    const duplicate = recentJobs.find((job) => {
-      const inputs = job.inputs && typeof job.inputs === "object" && !Array.isArray(job.inputs)
-        ? job.inputs as Record<string, unknown>
-        : {};
-      const p02 = inputs.p02ProductImageLifecycle && typeof inputs.p02ProductImageLifecycle === "object"
-        ? inputs.p02ProductImageLifecycle as Record<string, unknown>
-        : {};
-      return p02.idempotencyKey === idempotencyKey;
-    });
-
-    if (duplicate) {
-      return {
-        job: localAiMediaJobToRemoteJob({
-          id: duplicate.id,
-          jobId: duplicate.jobId,
-          organizationId: duplicate.organizationId,
-          productId: duplicate.productId,
-          requestedByUserId: duplicate.requestedByUserId,
-          status: duplicate.status,
-          provider: duplicate.provider,
-          errorMessage: duplicate.errorMessage,
-          inputs: (duplicate.inputs as Record<string, unknown>) ?? null,
-          outputs: normalizeStoredOutputs(duplicate.outputs),
-          createdAt: duplicate.createdAt,
-          updatedAt: duplicate.updatedAt,
-        }),
-        localJobId: duplicate.id,
-      };
-    }
-
-    const localJob = await prisma.aiMediaJob.create({
-      data: {
-        jobId: `local-${randomUUID()}`,
-        organizationId: product.organizationId,
-        productId: product.id,
-        requestedByUserId,
-        status: "QUEUED",
-        provider: "AI_MEDIA_SERVICE",
-        inputs: {
-          ...JSON.parse(JSON.stringify(remoteRequest)),
-          p02ProductImageLifecycle: {
-            phase: "BB-AI-MEDIA-P02-P03",
-            idempotencyKey,
-            correlationId,
-            localCreatedBeforeProviderSubmission: true,
-            contract: "ai-media-product-image-suggestions-v1",
-          },
-        },
-      },
-    });
-
-    let remoteResponse;
-    try {
-      remoteResponse = await createAiMediaJob(remoteRequest);
-    } catch (error) {
-      if (error instanceof AiMediaServiceError) {
-        await prisma.aiMediaJob.update({
-          where: { id: localJob.id },
-          data: {
-            status: "FAILED",
-            errorMessage: error.code || "AI_MEDIA_PROVIDER_ERROR",
-          },
-        }).catch(() => null);
-        await this.recordUsageEvent({
-          organizationId: product.organizationId,
-          productId: product.id,
-          jobId: localJob.jobId,
-          requestedByUserId,
-          action: "JOB_FAILED",
-          provider: "AI_MEDIA_SERVICE",
-          status: "FAILED",
-          metadata: {
-            idempotencyKey,
-            correlationId,
-            retryable: [429, 502, 503, 504].includes(error.status),
-            errorCode: error.code ?? "AI_MEDIA_PROVIDER_ERROR",
-          },
-          dedupeByJobAndAction: true,
-        });
-        throw new ApiError(error.status, "AI media service submission failed");
-      }
-      throw new ApiError(502, "Failed to create AI media job");
-    }
-
-    await prisma.aiMediaJob.update({
-      where: { id: localJob.id },
-      data: {
-        jobId: remoteResponse.job_id,
-        status: remoteResponse.status,
-        provider: remoteResponse.provider,
-        outputs: normalizeOutputs(remoteResponse) as unknown as object,
-        inputs: {
-          ...JSON.parse(JSON.stringify(remoteRequest)),
-          p02ProductImageLifecycle: {
-            phase: "BB-AI-MEDIA-P02-P03",
-            idempotencyKey,
-            correlationId,
-            localAiMediaJobId: localJob.id,
-            providerJobId: remoteResponse.job_id,
-            localCreatedBeforeProviderSubmission: true,
-            contract: "ai-media-product-image-suggestions-v1",
-          },
-        },
-      },
-    });
-
-    await this.recordUsageEvent({
+    const payloadHash = createStablePayloadHash({
+      phase: "BB-AI-MEDIA-P06A",
       organizationId: product.organizationId,
       productId: product.id,
-      jobId: remoteResponse.job_id,
       requestedByUserId,
-      action: "JOB_CREATED",
-      provider: remoteResponse.provider,
-      status: remoteResponse.status,
-      metadata: {
-        count: remoteRequest.count,
-        aspect_ratio: remoteRequest.aspect_ratio,
-        style_preset: remoteRequest.style_preset,
-        idempotencyKey,
-        correlationId,
-        localCreatedBeforeProviderSubmission: true,
-        estimatedCostCents: paidProvider.enabled ? paidProvider.estimatedJobCostCents : 0,
-        costTelemetryMode: paidProvider.telemetryMode,
-        paidProviderEnabled: paidProvider.enabled,
-        rollbackPaused: paidProvider.rollback.paused,
-        importedProductDraftId: importedAiMediaContext?.draftId ?? null,
-        importedSourceUrl: importedAiMediaContext?.sourceUrl ?? null,
-        importedSourceExternalId: importedAiMediaContext?.sourceExternalId ?? null,
-        sellerPromptSource: options.seller_prompt?.trim() ? "seller" : importedAiMediaContext?.promptDefault ? "imported-product-draft" : "none",
-      },
+      productTitle: product.name,
+      category: product.category?.name || "unknown",
+      sellerPrompt,
+      count: remoteRequest.count,
+      aspect_ratio: remoteRequest.aspect_ratio,
+      style_preset: remoteRequest.style_preset,
     });
+    const correlationId = `bb-ai-${randomUUID()}`;
+    remoteRequest.idempotency_key = providerIdempotencyKey;
+    remoteRequest.correlation_id = correlationId;
+
+    const serializedRemoteRequest = JSON.parse(JSON.stringify(remoteRequest));
+    const createResult = await prisma.$transaction(async (tx) => {
+      await acquireAiMediaIdempotencyLock(tx, product.organizationId, idempotencyKey);
+
+      const existingJobs = await tx.aiMediaJob.findMany({
+        where: { organizationId: product.organizationId },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      });
+      const duplicate = existingJobs.find((job) => getProductImageLifecycleMetadata(job.inputs).idempotencyKey === idempotencyKey);
+
+      let localJob = duplicate;
+      if (duplicate) {
+        const lifecycle = getProductImageLifecycleMetadata(duplicate.inputs);
+        if (lifecycle.payloadHash && lifecycle.payloadHash !== payloadHash) {
+          throw new ApiError(409, "AI media idempotency key conflicts with a different request payload");
+        }
+        if (!lifecycle.payloadHash && (duplicate.productId !== product.id || duplicate.requestedByUserId !== requestedByUserId)) {
+          throw new ApiError(409, "AI media idempotency key conflicts with a different request payload");
+        }
+        if (duplicate.status !== "FAILED") {
+          return {
+            created: false,
+            remoteResponse: null,
+            localJobId: duplicate.id,
+            jobId: duplicate.jobId,
+            providerError: null,
+          };
+        }
+      } else {
+        localJob = await tx.aiMediaJob.create({
+          data: {
+            jobId: `local-${randomUUID()}`,
+            organizationId: product.organizationId,
+            productId: product.id,
+            requestedByUserId,
+            status: "QUEUED",
+            provider: "AI_MEDIA_SERVICE",
+            inputs: {
+              ...serializedRemoteRequest,
+              p02ProductImageLifecycle: {
+                phase: "BB-AI-MEDIA-P02-P03",
+                idempotencyKey,
+                providerIdempotencyKey,
+                payloadHash,
+                correlationId,
+                localCreatedBeforeProviderSubmission: true,
+                contract: "ai-media-product-image-suggestions-v1",
+              },
+            },
+          },
+        });
+      }
+
+      try {
+        const remoteResponse = await createAiMediaJob(remoteRequest);
+        await tx.aiMediaJob.update({
+          where: { id: localJob.id },
+          data: {
+            jobId: remoteResponse.job_id,
+            status: remoteResponse.status,
+            provider: remoteResponse.provider,
+            errorMessage: null,
+            outputs: normalizeOutputs(remoteResponse) as unknown as object,
+            inputs: {
+              ...serializedRemoteRequest,
+              p02ProductImageLifecycle: {
+                phase: "BB-AI-MEDIA-P02-P03",
+                idempotencyKey,
+                providerIdempotencyKey,
+                payloadHash,
+                correlationId,
+                localAiMediaJobId: localJob.id,
+                providerJobId: remoteResponse.job_id,
+                localCreatedBeforeProviderSubmission: true,
+                contract: "ai-media-product-image-suggestions-v1",
+              },
+            },
+          },
+        });
+
+        return {
+          created: !duplicate,
+          remoteResponse,
+          localJobId: localJob.id,
+          jobId: remoteResponse.job_id,
+          providerError: null,
+        };
+      } catch (error) {
+        if (error instanceof AiMediaServiceError) {
+          await tx.aiMediaJob.update({
+            where: { id: localJob.id },
+            data: {
+              status: "FAILED",
+              errorMessage: error.code || "AI_MEDIA_PROVIDER_ERROR",
+              inputs: {
+                ...serializedRemoteRequest,
+                p02ProductImageLifecycle: {
+                  phase: "BB-AI-MEDIA-P02-P03",
+                  idempotencyKey,
+                  providerIdempotencyKey,
+                  payloadHash,
+                  correlationId,
+                  localAiMediaJobId: localJob.id,
+                  localCreatedBeforeProviderSubmission: true,
+                  retryable: [429, 502, 503, 504].includes(error.status),
+                  contract: "ai-media-product-image-suggestions-v1",
+                },
+              },
+            },
+          }).catch(() => null);
+          return {
+            created: false,
+            remoteResponse: null,
+            localJobId: localJob.id,
+            jobId: localJob.jobId,
+            providerError: {
+              status: error.status,
+              code: error.code ?? "AI_MEDIA_PROVIDER_ERROR",
+              retryable: [429, 502, 503, 504].includes(error.status),
+            },
+          };
+        }
+        throw error;
+      }
+    }, { maxWait: 10000, timeout: 60000 });
+
+    if (createResult.providerError) {
+      await this.recordUsageEvent({
+        organizationId: product.organizationId,
+        productId: product.id,
+        jobId: createResult.jobId,
+        requestedByUserId,
+        action: "JOB_FAILED",
+        provider: "AI_MEDIA_SERVICE",
+        status: "FAILED",
+        metadata: {
+          idempotencyKey,
+          providerIdempotencyKey,
+          correlationId,
+          retryable: createResult.providerError.retryable,
+          errorCode: createResult.providerError.code,
+        },
+        dedupeByJobAndAction: true,
+      });
+      throw new ApiError(createResult.providerError.status, "AI media service submission failed");
+    }
+
+    if (createResult.remoteResponse && createResult.created) {
+      await this.recordUsageEvent({
+        organizationId: product.organizationId,
+        productId: product.id,
+        jobId: createResult.remoteResponse.job_id,
+        requestedByUserId,
+        action: "JOB_CREATED",
+        provider: createResult.remoteResponse.provider,
+        status: createResult.remoteResponse.status,
+        metadata: {
+          count: remoteRequest.count,
+          aspect_ratio: remoteRequest.aspect_ratio,
+          style_preset: remoteRequest.style_preset,
+          idempotencyKey,
+          providerIdempotencyKey,
+          payloadHash,
+          correlationId,
+          localCreatedBeforeProviderSubmission: true,
+          estimatedCostCents: paidProvider.enabled ? paidProvider.estimatedJobCostCents : 0,
+          costTelemetryMode: paidProvider.telemetryMode,
+          paidProviderEnabled: paidProvider.enabled,
+          rollbackPaused: paidProvider.rollback.paused,
+          importedProductDraftId: importedAiMediaContext?.draftId ?? null,
+          importedSourceUrl: importedAiMediaContext?.sourceUrl ?? null,
+          importedSourceExternalId: importedAiMediaContext?.sourceExternalId ?? null,
+          sellerPromptSource: options.seller_prompt?.trim() ? "seller" : importedAiMediaContext?.promptDefault ? "imported-product-draft" : "none",
+        },
+      });
+    }
 
     return {
-      job: await this.getJobById(remoteResponse.job_id),
-      localJobId: localJob.id,
+      job: await this.getJobById(createResult.jobId),
+      localJobId: createResult.localJobId,
     };
   }
 
@@ -742,48 +827,104 @@ export class AiMediaService {
       throw new ApiError(400, "Selected image must match a generated output from this job");
     }
 
-    const stored = await storeCreativeStudioAssetFromRemote({
-      organizationId,
-      resultUrl: imageUrl,
-      purpose: `ai-media-product-${productId}`,
-      access: "public",
-    });
-    const durableUrl = stored.url;
-    const storageStatus: AiSelectedImageStorageStatus = "application-storage";
-
-    let product;
+    const logicalJobId = jobId ?? ("jobId" in job ? job.jobId : null);
+    let storedForCompensation: Awaited<ReturnType<typeof storeCreativeStudioAssetFromRemote>> | null = null;
     try {
-      product = await prisma.product.update({
-        where: { id: productId },
-        data: { image: durableUrl },
-        select: { id: true, slug: true, organizationSlug: true },
-      });
+      const selection = await prisma.$transaction(async (tx) => {
+        await acquireAiMediaScopedLock(tx, `ai-media-image-selection:${organizationId}:${job.id}:${outputIndex}`);
+
+        const currentProduct = await tx.product.findFirst({
+          where: { id: productId, organizationId },
+          select: { id: true, image: true, slug: true, organizationSlug: true },
+        });
+        if (!currentProduct) throw new ApiError(404, "Product not found");
+
+        const recentSelections = await tx.aiMediaUsageEvent.findMany({
+          where: {
+            organizationId,
+            productId,
+            jobId: logicalJobId,
+            action: "IMAGE_SELECTED",
+          },
+          orderBy: { createdAt: "desc" },
+          take: 20,
+        });
+        const existingSelection = recentSelections.find((event) => {
+          const metadata = asRecord(event.metadata);
+          return metadata.outputIndex === outputIndex
+            && metadata.storageStatus === "application-storage"
+            && typeof currentProduct.image === "string"
+            && currentProduct.image.length > 0;
+        });
+
+        if (existingSelection && currentProduct.image) {
+          return {
+            product: currentProduct,
+            durableUrl: currentProduct.image,
+            storedDurably: true,
+            storageStatus: "application-storage" as AiSelectedImageStorageStatus,
+            newlyStored: false,
+          };
+        }
+
+        const stored = await storeCreativeStudioAssetFromRemote({
+          organizationId,
+          resultUrl: imageUrl,
+          purpose: `ai-media-product-${productId}`,
+          access: "public",
+        });
+        storedForCompensation = stored;
+
+        const updatedProduct = await tx.product.update({
+          where: { id: productId },
+          data: { image: stored.url },
+          select: { id: true, image: true, slug: true, organizationSlug: true },
+        });
+
+        await tx.aiMediaUsageEvent.create({
+          data: {
+            organizationId,
+            productId,
+            jobId: logicalJobId,
+            action: "IMAGE_SELECTED",
+            provider: job.provider,
+            status: "application-storage",
+            units: 1,
+            metadata: {
+              outputIndex,
+              storedDurably: true,
+              storageStatus: "application-storage",
+              storageProvider: stored.provider,
+              storageKey: stored.key,
+              checksumSha256: stored.checksumSha256,
+              byteSize: stored.sizeBytes,
+            },
+          },
+        });
+
+        return {
+          product: updatedProduct,
+          durableUrl: stored.url,
+          storedDurably: true,
+          storageStatus: "application-storage" as AiSelectedImageStorageStatus,
+          newlyStored: true,
+        };
+      }, { maxWait: 10000, timeout: 60000 });
+
+      revalidateAiSelectedProductImage(selection.product.organizationSlug, selection.product.slug || selection.product.id);
+
+      return {
+        success: true,
+        imageUrl: selection.durableUrl,
+        storedDurably: selection.storedDurably,
+        storageStatus: selection.storageStatus,
+      };
     } catch (error) {
-      await compensateFailedAssetImport({ organizationId, key: stored.key });
+      if (storedForCompensation) {
+        await compensateFailedAssetImport({ organizationId, key: storedForCompensation.key });
+      }
       throw error;
     }
-
-    await this.recordUsageEvent({
-      organizationId,
-      productId,
-      jobId: jobId ?? ("jobId" in job ? job.jobId : null),
-      action: "IMAGE_SELECTED",
-      provider: job.provider,
-      status: storageStatus,
-      metadata: {
-        outputIndex,
-        storedDurably: true,
-        storageStatus,
-        storageProvider: stored.provider,
-        storageKey: stored.key,
-        checksumSha256: stored.checksumSha256,
-        byteSize: stored.sizeBytes,
-      },
-    });
-
-    revalidateAiSelectedProductImage(product.organizationSlug, product.slug || product.id);
-
-    return { success: true, imageUrl: durableUrl, storedDurably: true, storageStatus };
   }
 
   async cancelJob(jobId: string, organizationId: string): Promise<AiMediaJob> {

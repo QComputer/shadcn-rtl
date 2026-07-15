@@ -4,7 +4,7 @@ Date: 2026-07-15
 
 ## Status
 
-BB-AI-MEDIA-P04A-P06A is accepted locally for application-managed storage and hermetic MOCK lifecycle.
+BB-AI-MEDIA-P04A-P06A remains accepted locally. BB-AI-MEDIA-P06A hardening adds a production import-graph boundary, PostgreSQL-backed concurrent idempotency coverage, local UI locale validation, a deployed read-only contract check, and a prepared P07 controlled Production import runbook.
 
 ## Confirmed
 
@@ -22,8 +22,10 @@ BB-AI-MEDIA-P04A-P06A is accepted locally for application-managed storage and he
 - Production Blob deletions: zero.
 - Local PostgreSQL migrations are current.
 - Hermetic lifecycle passed with MOCK provider and local storage.
+- Hermetic concurrent idempotency matrix passed with 10-way duplicate submit, payload conflict, cross-tenant same-key isolation, provider accepted/lost-response recovery, and concurrent result ingestion.
 - Real Render/GPU generation remains disabled.
 - Deployed Preview acceptance is deferred.
+- Production import graph is source-hardened: `lib/storage/application-storage.ts` no longer imports or constructs the local test adapter. Local test storage is injected only by hermetic test harnesses.
 
 ## Last Hermetic Run
 
@@ -36,6 +38,22 @@ BB-AI-MEDIA-P04A-P06A is accepted locally for application-managed storage and he
   "provider": "MOCK",
   "storage": "LOCAL_TEST",
   "realGpuOperation": false
+}
+```
+
+## Last Concurrent Hermetic Run
+
+```json
+{
+  "ok": true,
+  "sameTenantDuplicate10": "one-job",
+  "payloadConflict": "409",
+  "crossTenantSameKey": "distinct-jobs",
+  "providerAcceptedResponseLost": "recovered-without-duplicate-provider-work",
+  "concurrentIngestion": "one-storage-object",
+  "providerJobs": 1,
+  "storageObjectsCreated": 1,
+  "productionBlobCalls": 0
 }
 ```
 
@@ -63,6 +81,10 @@ Passed:
 - `pnpm run quality:ai-media-creative-studio-ui`
 - `pnpm run quality:ai-media-production-disabled`
 - `pnpm run quality:ai-media-external-preview-deferred`
+- `pnpm run quality:ai-media-production-import-graph`
+- `pnpm run quality:ai-media-concurrent-idempotency`
+- `pnpm run quality:ai-media-locale-ui`
+- `pnpm run quality:ai-media-p07-runbook`
 - `pnpm run quality:ai-media-durable-storage`
 - `pnpm run quality:ai-media-output-security`
 - `pnpm run quality:ai-media-product-image-lifecycle`
@@ -84,10 +106,10 @@ Passed:
 
 Notes:
 
-- `pnpm run lint` passed with 0 errors and 792 existing warnings.
-- `pnpm run build` passed. Turbopack still reported warning traces involving the test-only local storage adapter import graph, but no build-time storage operation, provider write, migration, seed, or external mutation occurred.
+- `pnpm run lint` previously passed with existing warnings; rerun for this hardening phase is tracked in the phase final report.
+- A stale pre-hardening `.next` bundle can still contain old local-adapter traces. The production import-graph validator is intended to be run after a fresh `pnpm run build` for final bundle proof.
 - `quality:ai-media-local-db-guard` fails closed without local database/storage env and passes with the hermetic local env.
-- `pnpm run quality:local` was run and failed with existing broad-suite blockers. The P04A-P06A validator passed inside `quality:local`, and standalone `pnpm run quality:ai-media` passed.
+- `pnpm run quality:local` remains a broad-suite gate with historical blockers outside this phase; classify its output in the final report when rerun.
 
 `quality:local` residual blockers observed:
 
@@ -113,9 +135,8 @@ Notes:
 - P80 aggregate runner spawn issue (`spawnSync pnpm.cmd EINVAL`), while standalone `quality:ai-media` passed
 - P94 AI media seller state UX
 
-## Pending
+## Pending / Deferred
 
-- Full concurrent idempotency matrix.
-- Full browser UI matrix across Persian, English, and Arabic.
+- Full authenticated browser click-through matrix across Persian, English, and Arabic remains a future deployed/local UI E2E enhancement. Source UI locale validation is repeatable through `pnpm run test:ai-media:hermetic:ui`.
 - Deployed Preview MOCK lifecycle after isolated Preview resources exist.
 - One controlled Production import only after separate explicit authorization.

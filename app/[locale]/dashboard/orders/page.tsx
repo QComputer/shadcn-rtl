@@ -52,7 +52,7 @@ import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import { useDashboardAccess, useAuth } from "@/hooks/use-auth"
 import { formatPersianDate, formatRelativePersianTime, formatToman, toPersianDigits } from "@/lib/persian"
-import { GuestCustomer, User } from "@prisma/client"
+import type { ClientGuestCustomer as GuestCustomer, ClientUser as User } from "@/lib/client-model-types"
 
 
 interface OrderItem {

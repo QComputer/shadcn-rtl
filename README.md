@@ -1,6 +1,6 @@
 # Bazar Baz
 
-Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking application built with Next.js 16, React 19, TypeScript, Prisma 6, PostgreSQL, Tailwind CSS, shadcn-style UI components, and NextAuth.
+Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking application built with Next.js 16, React 19, TypeScript, Prisma 6, Neon Serverless PostgreSQL, Tailwind CSS, shadcn-style UI components, and NextAuth.
 
 ## Current baseline
 
@@ -10,6 +10,7 @@ Bazar Baz is a multi-tenant, multi-locale commerce and appointment-booking appli
 - Primary domains: organizations, appointment booking, shop/cart/order/payment, inventory, reviews, follows, fanpage posts, conversations, notifications, driver location, dashboard operations.
 - Current handoff/source-of-truth: `docs/CURRENT_SOURCE_OF_TRUTH.md`.
 - Current route/API/database inventory: `docs/ROUTE_API_DB_SERVICE_INVENTORY.md`.
+- Current database runtime architecture: `docs/database/NEON_SERVERLESS_RUNTIME_ARCHITECTURE.md`.
 
 ## Production-hardening status
 
@@ -227,6 +228,8 @@ pnpm run quality:deployed-pwa-push-sms
 pnpm run quality:production-rollout
 pnpm run quality:pwa-push-sms-acceptance
 pnpm run quality:clean-source
+pnpm run quality:neon-serverless-runtime
+pnpm run test:neon-serverless-runtime
 pnpm run quality:creative-studio-planning
 pnpm run quality:creative-studio-foundation
 pnpm run quality:creative-studio-dashboard
@@ -246,6 +249,8 @@ pnpm run quality:release-staged
 When database URLs and PostgreSQL client tools are available, also run:
 
 ```powershell
+pnpm run db:neon:check
+pnpm exec prisma migrate status
 pnpm run db:drift
 pnpm run db:migrate:neon:dry-run
 ```
@@ -396,7 +401,9 @@ B2B repositioning feature/showcase pages completed: **BB-B2B-P07** (`app/[locale
 B2B repositioning SEO/trust/legal/analytics hardening completed: **BB-B2B-P08** (`app/[locale]/trust/page.tsx`, `app/[locale]/privacy/page.tsx`, `app/[locale]/terms/page.tsx`, footer legal links, and analytics policy documented).
 B2B repositioning deployed acceptance and handoff completed: **BB-B2B-P09** (non-browser HTTP production smoke at `scripts/e2e/deployed-b2b-public-surface.mjs`, all public B2B pages verified live at https://www.bazar-baz.ir, final handoff docs created).
 B2B repositioning source work completed through **BB-B2B-P13** (request-demo lead storage/admin review, tenant custom-domain onboarding source acceptance, Persian-first business onboarding wizard, and guided tenant provisioning readiness).
-Recommended next B2B phase: **BB-B2B-P14 - Transactional Tenant Provisioning Execution**.
+Database architecture phase **DB-NEON-01** makes Neon Serverless the canonical runtime database path: application runtime uses pooled `DATABASE_URL` through the Prisma Neon adapter, while Prisma CLI and migration operations use direct `DIRECT_URL`.
+Recommended next phase before P14: **DB-NEON-02 - Authorized Pending Production Migration Deployment**.
+Do not proceed to **BB-B2B-P14 - Transactional Tenant Provisioning Execution** until DB-NEON-01 is accepted and pending production migrations are handled through an explicitly authorized database phase.
 The active roadmap is `docs/NEXT_PHASE_ROADMAP.md`.
 
 

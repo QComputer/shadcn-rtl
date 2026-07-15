@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Safely migrates data from an old Neon/PostgreSQL database into this project's current DATABASE_URL.
+  Safely migrates data from an old Neon/PostgreSQL database into this project's current direct Neon database URL.
 
 .DESCRIPTION
   This script is intentionally destructive only when -ConfirmReplaceCurrentDb is passed.
@@ -8,7 +8,7 @@
   -SourceDatabaseUrl or the OLD_DATABASE_URL environment variable.
 
   Default flow with -ConfirmReplaceCurrentDb:
-    1. Resolve destination DB from .env: DATABASE_URL_UNPOOLED, otherwise DATABASE_URL.
+    1. Resolve destination DB from .env: DIRECT_URL, otherwise DATABASE_URL_UNPOOLED, otherwise DATABASE_URL.
     2. Backup the current destination DB into ./db-backups.
     3. Dump source DB data only, excluding _prisma_migrations table data.
     4. Drop and recreate destination public schema.
@@ -170,9 +170,12 @@ Assert-Command "psql"
 Assert-Command "pnpm"
 
 if ([string]::IsNullOrWhiteSpace($DestinationDatabaseUrl)) {
+  $destinationFromDirect = Read-DotEnvValue -Path $EnvFile -Name "DIRECT_URL"
   $destinationFromUnpooled = Read-DotEnvValue -Path $EnvFile -Name "DATABASE_URL_UNPOOLED"
   $destinationFromPooled = Read-DotEnvValue -Path $EnvFile -Name "DATABASE_URL"
-  if (-not [string]::IsNullOrWhiteSpace($destinationFromUnpooled)) {
+  if (-not [string]::IsNullOrWhiteSpace($destinationFromDirect)) {
+    $DestinationDatabaseUrl = $destinationFromDirect
+  } elseif (-not [string]::IsNullOrWhiteSpace($destinationFromUnpooled)) {
     $DestinationDatabaseUrl = $destinationFromUnpooled
   } else {
     $DestinationDatabaseUrl = $destinationFromPooled
@@ -180,7 +183,7 @@ if ([string]::IsNullOrWhiteSpace($DestinationDatabaseUrl)) {
 }
 
 Require-ValidDatabaseUrl -Url $SourceDatabaseUrl -Name "SourceDatabaseUrl / OLD_DATABASE_URL"
-Require-ValidDatabaseUrl -Url $DestinationDatabaseUrl -Name "DestinationDatabaseUrl / current .env DATABASE_URL"
+Require-ValidDatabaseUrl -Url $DestinationDatabaseUrl -Name "DestinationDatabaseUrl / current .env DIRECT_URL"
 
 if ($SourceDatabaseUrl -eq $DestinationDatabaseUrl) {
   Fail "Source and destination database URLs are identical. Refusing to continue."

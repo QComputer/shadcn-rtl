@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { GuestCustomer, Organization, PaymentSettings, User } from "@prisma/client";
+import type { ClientGuestCustomer as GuestCustomer, ClientOrganization as Organization, ClientPaymentSettings as PaymentSettings, ClientUser as User } from "@/lib/client-model-types";
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatPersianDate, formatRelativePersianTime, formatToman, toPersianDigits } from "@/lib/persian";
 import { Label } from "@/components/ui/label";

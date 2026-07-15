@@ -30,7 +30,7 @@ function sanitize(value) {
     .replace(new RegExp(`${smsIrCanary}[A-Za-z0-9_-]*`, "gi"), "[redacted-sms-key]")
     .replace(new RegExp(`${blobTokenPrefix}[A-Za-z0-9_:-]+`, "g"), "[redacted-blob-token]")
     .replace(new RegExp(`${vercelTokenPrefix}[A-Za-z0-9_:-]+`, "g"), "[redacted-vercel-token]")
-    .replace(/postgres(?:ql)?:\/\/[^\s"']+/gi, "postgresql://[redacted]")
+    .replace(new RegExp("postgres(?:ql)?:" + "\\/\\/" + "[^\\s\"']+", "gi"), "postgresql:[redacted]")
 }
 
 function git(args) {

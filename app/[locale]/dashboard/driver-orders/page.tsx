@@ -31,7 +31,7 @@ import { useAuth } from "@/hooks/use-auth"
 import dayjs, { Dayjs } from "dayjs"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { GuestCustomer, Organization, User } from "@prisma/client"
+import type { ClientGuestCustomer as GuestCustomer, ClientOrganization as Organization, ClientUser as User } from "@/lib/client-model-types"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 

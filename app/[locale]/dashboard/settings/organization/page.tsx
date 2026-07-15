@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch"
 import dynamic from "next/dynamic"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { useTheme } from "@/hooks/use-theme"
-import { BusinessHour, Organization, OrganizationSettings, PaymentSettings } from "@prisma/client"
+import type { ClientBusinessHour as BusinessHour, ClientOrganization as Organization, ClientOrganizationSettings as OrganizationSettings, ClientPaymentSettings as PaymentSettings } from "@/lib/client-model-types"
 import { ShopStatusBadge } from "@/components/ShopStatusBadge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 

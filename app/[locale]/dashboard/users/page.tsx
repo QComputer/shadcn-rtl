@@ -40,7 +40,7 @@ import { formatPersianDate, toPersianDigits } from "@/lib/persian"
 import { toJalali } from "@/lib/jalali-adapter"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Organization, User } from "@prisma/client"
+import type { ClientOrganization as Organization, ClientUser as User } from "@/lib/client-model-types"
 
 // Sample data
 const roleConfig: Record<string, { label: string; icon: typeof ChessKing; color: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {

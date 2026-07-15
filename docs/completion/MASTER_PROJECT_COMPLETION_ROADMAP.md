@@ -22,7 +22,27 @@ Acceptance:
 
 Status: implemented in source. Production migration remains pending explicit authorization. Execution is not implemented.
 
+### DB-NEON-01 - Neon Serverless Canonical Runtime
+
+Goal: make pooled Neon Serverless through the Prisma Neon adapter the canonical application runtime database path, while preserving direct `DIRECT_URL` for Prisma CLI and migrations.
+
+Status: implemented in source. No production migration was applied.
+
 ## Immediate Next Phase
+
+### DB-NEON-02 - Authorized Pending Production Migration Deployment
+
+Goal: apply verified pending production migrations only after explicit authorization, using direct `DIRECT_URL` through Prisma CLI and preserving redacted migration evidence.
+
+Prerequisites:
+
+- DB-NEON-01 accepted.
+- `pnpm exec prisma migrate status` confirms pending migrations.
+- Operator explicitly authorizes production migration deployment.
+
+Status: next database phase. BB-B2B-P14 remains paused until this phase is accepted.
+
+## Next B2B Product Phase After Database Acceptance
 
 ### BB-B2B-P14 - Transactional Tenant Provisioning Execution
 

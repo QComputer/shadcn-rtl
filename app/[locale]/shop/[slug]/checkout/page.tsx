@@ -35,7 +35,7 @@ import {
   CheckCircle,
   Wallet,
 } from "lucide-react";
-import { OrderType, PaymentSettings, User } from "@prisma/client";
+import type { ClientPaymentSettings as PaymentSettings, ClientUser as User } from "@/lib/client-model-types";
 import { Switch } from "@/components/ui/switch";
 import { getDictionary } from "@/lib/dictionary";
 import { formatToman, toPersianDigits } from "@/lib/persian";

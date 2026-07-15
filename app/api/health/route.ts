@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { validateRuntimeEnvironment } from "@/lib/runtime-env";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 type HealthStatus = "ok" | "degraded";
 

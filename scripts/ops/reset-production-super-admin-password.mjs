@@ -20,9 +20,9 @@ import "dotenv/config"
 import { neon } from "@neondatabase/serverless"
 import bcrypt from "bcryptjs"
 
-const databaseUrl = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL
+const databaseUrl = process.env.DIRECT_URL || process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL
 if (!databaseUrl) {
-  console.error("DATABASE_URL or DATABASE_URL_UNPOOLED is not set")
+  console.error("DIRECT_URL, DATABASE_URL_UNPOOLED, or DATABASE_URL is not set")
   process.exit(1)
 }
 

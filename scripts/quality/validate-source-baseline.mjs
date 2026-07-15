@@ -59,9 +59,9 @@ add(".env files are not present in tracked source", !trackedExisting.some((file)
 add("active seed script remains tracked", tracked.includes("prisma/seed.ts"))
 add("duplicate client Providers wrapper removed", !exists("components/providers.tsx"))
 add("README keeps P95 source cleanup in current progression", /\| 95 \| Source Cleanup and Current-State Verification/.test(readme) && /Latest completed implementation phase:\s+\*\*P120F - SMS\.ir official report endpoint integration\*\*/.test(readme))
-add("README keeps current B2B progression after P13", readme.includes("BB-B2B-P13") && readme.includes("Recommended next B2B phase:") && readme.includes("BB-B2B-P14"))
+add("README keeps current DB-first progression after P13", readme.includes("BB-B2B-P13") && readme.includes("DB-NEON-01") && readme.includes("DB-NEON-02") && readme.includes("BB-B2B-P14"))
 add("roadmap keeps P95 complete in P120F progression", /\| P95 \| Source cleanup and current-state verification\. \|/.test(roadmap) && /Completed through \*\*P120F - SMS\.ir official report endpoint integration\*\*/.test(roadmap))
-add("source of truth keeps P95 cleanup and current P14 direction", /Source Cleanup and Current-State Verification exists/.test(sourceOfTruth) && /P120F - SMS\.ir official report endpoint integration/.test(sourceOfTruth) && /BB-B2B-P13/.test(sourceOfTruth) && /BB-B2B-P14/.test(sourceOfTruth))
+add("source of truth keeps P95 cleanup and current DB-NEON direction", /Source Cleanup and Current-State Verification exists/.test(sourceOfTruth) && /P120F - SMS\.ir official report endpoint integration/.test(sourceOfTruth) && /BB-B2B-P13/.test(sourceOfTruth) && /DB-NEON-01/.test(sourceOfTruth) && /DB-NEON-02/.test(sourceOfTruth))
 
 const scripts = packageJson.scripts || {}
 const documentedScriptNames = new Set()

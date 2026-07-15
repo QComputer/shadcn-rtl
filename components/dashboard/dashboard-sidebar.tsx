@@ -12,6 +12,7 @@ import {
   Globe2,
   Import,
   Inbox,
+  ListChecks,
   CalendarDays,
   ClipboardList,
   LayoutDashboard,
@@ -96,6 +97,7 @@ const NAVIGATION_ICONS = {
   shopDomains: Globe2,
   users: ShieldCheck,
   requestDemoLeads: Inbox,
+  tenantProvisioning: ListChecks,
 } satisfies Record<DashboardNavigationKey, DashboardIcon>
 
 const NAVIGATION_GROUPS: NavigationGroup[] = DASHBOARD_NAVIGATION_GROUPS.map((group) => ({
@@ -144,6 +146,7 @@ const roleAwareNavigationCopy = {
       shopDomains: "دامنه‌های فروشگاه",
       users: "کاربران",
       requestDemoLeads: "درخواست‌های دمو",
+      tenantProvisioning: "آماده‌سازی ایجاد کسب‌وکار",
     },
     roles: {
       SUPER_ADMIN: "مدیر کل",
@@ -190,6 +193,7 @@ const roleAwareNavigationCopy = {
       shopDomains: "Shop domains",
       users: "Users",
       requestDemoLeads: "Demo requests",
+      tenantProvisioning: "Tenant provisioning",
     },
     roles: {
       SUPER_ADMIN: "Super admin",
@@ -236,6 +240,7 @@ const roleAwareNavigationCopy = {
       shopDomains: "نطاقات المتاجر",
       users: "المستخدمون",
       requestDemoLeads: "طلبات العرض التجريبي",
+      tenantProvisioning: "إعداد إنشاء النشاط",
     },
     roles: {
       SUPER_ADMIN: "مدير عام",

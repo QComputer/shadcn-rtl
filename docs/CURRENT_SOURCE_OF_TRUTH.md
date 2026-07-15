@@ -12,6 +12,12 @@ BB-B2B-P12 Business Onboarding Wizard is accepted in source at commit `0769f3f`.
 
 Current recommended B2B phase: **BB-B2B-P13 - Guided Tenant Provisioning Readiness**.
 
+## 2026-07-15 BB-B2B-P13 update
+
+BB-B2B-P13 Guided Tenant Provisioning Readiness is implemented in source. It adds a SUPER_ADMIN-only tenant-provisioning plan model, idempotent plan generation from request-demo/onboarding leads, mutation-free dry-run validation, READY/APPROVED review states, audit events, and dashboard review UI. P13 does not create organizations, users, memberships, subscriptions, invitations, payments, notifications, or custom-domain provider mutations. Production migration `20260715000100_tenant_provisioning_readiness` is required before deployed use and was not applied by this source task.
+
+Current recommended next B2B phase after P13 source acceptance: **BB-B2B-P14 - Transactional Tenant Provisioning Execution**.
+
 ## Current validated baseline
 
 The current working baseline after P120F/NOTIFOPS and BB-B2B-P12 is source-validator green after the BASELINE-01 validation gate.

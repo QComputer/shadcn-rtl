@@ -4,7 +4,7 @@ Date: 2026-07-15
 
 This roadmap starts after BASELINE-01 and BB-B2B-P12 acceptance. It keeps Bazar Baz aligned as a Persian-first B2B service platform and avoids marketplace-first or Creative-Studio-first prioritization.
 
-## Immediate Next Phase
+## Completed Source Phase
 
 ### BB-B2B-P13 - Guided Tenant Provisioning Readiness
 
@@ -19,6 +19,14 @@ Acceptance:
 - Audit trail and safe validation errors.
 - No organization/user creation, SMS/email, payment, or domain mutation.
 - `quality:b2b-guided-tenant-provisioning-readiness` passes.
+
+Status: implemented in source. Production migration remains pending explicit authorization. Execution is not implemented.
+
+## Immediate Next Phase
+
+### BB-B2B-P14 - Transactional Tenant Provisioning Execution
+
+Goal: execute an APPROVED provisioning plan transactionally and idempotently after explicit authorization, creating the organization, settings, owner invitation, membership, and safe defaults without plaintext passwords or partial tenant state.
 
 ## Phase Group A - Tenant Provisioning Execution
 

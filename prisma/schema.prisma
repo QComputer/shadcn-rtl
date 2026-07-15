@@ -227,27 +227,27 @@ enum NotificationDeliveryAttemptStatus {
 }
 
 model NotificationDeliveryAttempt {
-  id                String                     @id @default(cuid())
-  organizationId    String
-  targetUserId      String?
-  orderId           String?
-  guestCustomerId    String?
-  notificationId     String?
+  id              String  @id @default(cuid())
+  organizationId  String
+  targetUserId    String?
+  orderId         String?
+  guestCustomerId String?
+  notificationId  String?
 
   channel           String
   purpose           String
   status            NotificationDeliveryAttemptStatus @default(QUEUED)
-  dryRun            Boolean                    @default(false)
-  retryable         Boolean                    @default(false)
-  retryCount        Int                         @default(0)
+  dryRun            Boolean                           @default(false)
+  retryable         Boolean                           @default(false)
+  retryCount        Int                               @default(0)
   nextRetryAt       DateTime?
   lastErrorCode     String?
   lastErrorText     String?
   providerMessageId String?
   metadata          Json?
 
-  createdAt         DateTime                    @default(now())
-  updatedAt         DateTime                    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([organizationId, status, createdAt])
   @@index([targetUserId])
@@ -320,6 +320,24 @@ enum RequestDemoLeadStatus {
   QUALIFIED
   REJECTED
   ARCHIVED
+}
+
+enum TenantProvisioningPlanStatus {
+  DRAFT
+  VALIDATING
+  NEEDS_REVIEW
+  READY
+  APPROVED
+  EXECUTING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum TenantProvisioningSourceType {
+  REQUEST_DEMO_LEAD
+  ONBOARDING_WIZARD
+  MANUAL
 }
 
 enum CreativeStudioTargetType {
@@ -434,12 +452,12 @@ model Organization {
   staffAvailability            StaffAvailability[]
   bookingSessions              BookingSession[]
   domains                      OrganizationDomain[]
-    externalImportSources        ExternalImportSource[]
-    externalImportJobs           ExternalImportJob[]
-    importedProductDrafts        ImportedProductDraft[]
-    importedContentDrafts        ImportedContentDraft[]
-    exportJobs                   ExportJob[]
-    paymentSettings              PaymentSettings?
+  externalImportSources        ExternalImportSource[]
+  externalImportJobs           ExternalImportJob[]
+  importedProductDrafts        ImportedProductDraft[]
+  importedContentDrafts        ImportedContentDraft[]
+  exportJobs                   ExportJob[]
+  paymentSettings              PaymentSettings?
 
   @@unique([id, slug])
   @@unique([id])
@@ -452,47 +470,47 @@ model Organization {
 }
 
 model OrganizationDomain {
-  id                    String    @id @default(cuid())
-  organizationId        String
-  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  domain                String       @unique
-  normalizedDomain      String       @unique
-  kind                  DomainKind   @default(SUBDOMAIN)
-  provider              DomainProvider @default(VERCEL)
-  type                  DomainType   @default(CUSTOM)
-  status                DomainStatus @default(REQUESTED)
-  isPrimary             Boolean      @default(false)
+  domain           String         @unique
+  normalizedDomain String         @unique
+  kind             DomainKind     @default(SUBDOMAIN)
+  provider         DomainProvider @default(VERCEL)
+  type             DomainType     @default(CUSTOM)
+  status           DomainStatus   @default(REQUESTED)
+  isPrimary        Boolean        @default(false)
 
-  providerVerified      Boolean      @default(false)
-  dnsConfigured         Boolean      @default(false)
-  sslReady              Boolean      @default(false)
+  providerVerified Boolean @default(false)
+  dnsConfigured    Boolean @default(false)
+  sslReady         Boolean @default(false)
 
   vercelProjectDomainId String?
   verificationType      String?
   verificationDomain    String?
   verificationValue     String?
 
-  lastCheckedAt         DateTime?
-  verifiedAt            DateTime?
-  activatedAt           DateTime?
-  disabledAt            DateTime?
-  removedAt             DateTime?
-  reviewedAt            DateTime?
-  failureReason         String?
-  lastErrorCode         String?
-  lastErrorMessage      String?
+  lastCheckedAt    DateTime?
+  verifiedAt       DateTime?
+  activatedAt      DateTime?
+  disabledAt       DateTime?
+  removedAt        DateTime?
+  reviewedAt       DateTime?
+  failureReason    String?
+  lastErrorCode    String?
+  lastErrorMessage String?
 
-  createdById           String?
-  updatedById           String?
-  reviewedById          String?
-  createdBy             User?        @relation("DomainCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  updatedBy             User?        @relation("DomainUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
-  reviewedBy            User?        @relation("DomainReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  createdById  String?
+  updatedById  String?
+  reviewedById String?
+  createdBy    User?   @relation("DomainCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy    User?   @relation("DomainUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  reviewedBy   User?   @relation("DomainReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
 
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  deletedAt             DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([status])
@@ -598,21 +616,24 @@ model User {
   passwordResets                PasswordReset[]
   emailVerifications            EmailVerification[]
   auditLogs                     AuditLog[]
-  createdDomains                OrganizationDomain[] @relation("DomainCreatedBy")
-  updatedDomains                OrganizationDomain[] @relation("DomainUpdatedBy")
-  reviewedDomains               OrganizationDomain[] @relation("DomainReviewedBy")
+  createdDomains                OrganizationDomain[]          @relation("DomainCreatedBy")
+  updatedDomains                OrganizationDomain[]          @relation("DomainUpdatedBy")
+  reviewedDomains               OrganizationDomain[]          @relation("DomainReviewedBy")
   conversationParticipants      ConversationParticipant[]
   businessHours                 BusinessHour[]
   uploadedImages                Image[]                       @relation("UploadedImages")
-    createdImportSources          ExternalImportSource[]        @relation("ExternalImportSourceCreatedBy")
-    requestedImportJobs           ExternalImportJob[]           @relation("ExternalImportJobRequestedBy")
-    requestedExportJobs           ExportJob[]                   @relation("ExportJobRequestedBy")
-    reviewedImportedProductDrafts ImportedProductDraft[]        @relation("ImportedProductDraftReviewedBy")
+  createdImportSources          ExternalImportSource[]        @relation("ExternalImportSourceCreatedBy")
+  requestedImportJobs           ExternalImportJob[]           @relation("ExternalImportJobRequestedBy")
+  requestedExportJobs           ExportJob[]                   @relation("ExportJobRequestedBy")
+  reviewedImportedProductDrafts ImportedProductDraft[]        @relation("ImportedProductDraftReviewedBy")
   reviewedImportedContentDrafts ImportedContentDraft[]        @relation("ImportedContentDraftReviewedBy")
 
-  denies        Deny[]
-  orderMessages OrderMessage[]
-  reviewedLeads RequestDemoLead[] @relation("LeadReviewerRelation")
+  denies                          Deny[]
+  orderMessages                   OrderMessage[]
+  reviewedLeads                   RequestDemoLead[]        @relation("LeadReviewerRelation")
+  createdTenantProvisioningPlans  TenantProvisioningPlan[] @relation("TenantProvisioningPlanCreatedBy")
+  updatedTenantProvisioningPlans  TenantProvisioningPlan[] @relation("TenantProvisioningPlanUpdatedBy")
+  approvedTenantProvisioningPlans TenantProvisioningPlan[] @relation("TenantProvisioningPlanApprovedBy")
 
   @@index([email])
   @@index([name])
@@ -1417,18 +1438,18 @@ model ExportJob {
 }
 
 model AiMediaJob {
-  id                String           @id @default(cuid())
-  jobId             String           @unique
+  id                String   @id @default(cuid())
+  jobId             String   @unique
   organizationId    String
   productId         String
   requestedByUserId String
-  status            String           @default("QUEUED")
-  provider          String           @default("MOCK")
+  status            String   @default("QUEUED")
+  provider          String   @default("MOCK")
   errorMessage      String?
   inputs            Json?
   outputs           Json?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@index([organizationId])
   @@index([productId])
@@ -1536,32 +1557,32 @@ model CreativeStudioUsageEvent {
 }
 
 model ImportedProductDraft {
-  id               String              @id @default(cuid())
-  organizationId   String
-  jobId            String?
-  sourceId         String?
-  status           ImportedDraftStatus @default(DRAFT)
-  name             String?
-  description      String?             @db.Text
-  sku              String?
-  categoryName     String?
-  basePrice        Decimal?            @db.Decimal(12, 2)
-  stock            Int?
-  currency         String              @default("IRR")
-  imageUrl         String?
-  sourceUrl        String?
-  sourceExternalId String?
-  sourceMetadata   Json?
-  rawData          Json?
-  warnings         Json?
-  errors           Json?
-  rowNumber        Int?
-  reviewedByUserId String?
-  reviewedAt       DateTime?
-  importedAt       DateTime?
+  id                String              @id @default(cuid())
+  organizationId    String
+  jobId             String?
+  sourceId          String?
+  status            ImportedDraftStatus @default(DRAFT)
+  name              String?
+  description       String?             @db.Text
+  sku               String?
+  categoryName      String?
+  basePrice         Decimal?            @db.Decimal(12, 2)
+  stock             Int?
+  currency          String              @default("IRR")
+  imageUrl          String?
+  sourceUrl         String?
+  sourceExternalId  String?
+  sourceMetadata    Json?
+  rawData           Json?
+  warnings          Json?
+  errors            Json?
+  rowNumber         Int?
+  reviewedByUserId  String?
+  reviewedAt        DateTime?
+  importedAt        DateTime?
   importedProductId String?
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 
   organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   job          ExternalImportJob?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
@@ -2211,40 +2232,96 @@ model AuditLog {
 }
 
 model RequestDemoLead {
-  id                   String               @id @default(cuid())
-  status               RequestDemoLeadStatus @default(NEW)
-  source               String?              @default("request-demo")
-  locale               String               @default("fa")
+  id     String                @id @default(cuid())
+  status RequestDemoLeadStatus @default(NEW)
+  source String?               @default("request-demo")
+  locale String                @default("fa")
 
   // Contact info
-  fullName             String               @db.Text
-  businessName         String               @db.Text
-  businessType         String               @db.Text
-  phone                String
-  city                 String?              @db.Text
+  fullName     String  @db.Text
+  businessName String  @db.Text
+  businessType String  @db.Text
+  phone        String
+  city         String? @db.Text
 
   // Preferences
-  preferredContactTime String?              @db.Text
-  needSummary          String?              @db.Text
+  preferredContactTime String? @db.Text
+  needSummary          String? @db.Text
 
   // Consent
-  consentAccepted      Boolean              @default(false)
+  consentAccepted Boolean @default(false)
 
   // Abuse / metadata
-  ipHash               String?
-  userAgentHash        String?
+  ipHash        String?
+  userAgentHash String?
 
   // Review
-  reviewedAt           DateTime?
-  reviewedById         String?
-  reviewedBy           User?                @relation("LeadReviewerRelation", fields: [reviewedById], references: [id], onDelete: SetNull)
-  adminNote            String?              @db.Text
+  reviewedAt              DateTime?
+  reviewedById            String?
+  reviewedBy              User?                    @relation("LeadReviewerRelation", fields: [reviewedById], references: [id], onDelete: SetNull)
+  adminNote               String?                  @db.Text
+  tenantProvisioningPlans TenantProvisioningPlan[]
 
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status, createdAt])
   @@index([source])
   @@index([createdAt])
   @@index([reviewedById])
+}
+
+model TenantProvisioningPlan {
+  id                String                       @id @default(cuid())
+  requestDemoLeadId String?
+  sourceType        TenantProvisioningSourceType
+  sourceReference   String?
+
+  status         TenantProvisioningPlanStatus @default(DRAFT)
+  idempotencyKey String                       @unique
+
+  proposedOrganizationType OrganizationType
+  proposedName             String
+  proposedSlug             String
+  proposedDefaultLocale    String           @default("fa")
+  proposedTimezone         String           @default("Asia/Tehran")
+  proposedCurrency         String?
+
+  proposedOwnerName  String?
+  proposedOwnerPhone String?
+  proposedOwnerEmail String?
+
+  proposedPackageId    String?
+  proposedModules      Json?
+  proposedFeatureFlags Json?
+  proposedSettings     Json?
+  proposedDemoContent  Boolean @default(false)
+  proposedCustomDomain String?
+
+  validationVersion Int       @default(0)
+  validationResult  Json?
+  validationErrors  Json?
+  validatedAt       DateTime?
+  readyAt           DateTime?
+  approvedAt        DateTime?
+  cancelledAt       DateTime?
+
+  createdById  String
+  updatedById  String?
+  approvedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  requestDemoLead RequestDemoLead? @relation(fields: [requestDemoLeadId], references: [id], onDelete: SetNull)
+  createdBy       User             @relation("TenantProvisioningPlanCreatedBy", fields: [createdById], references: [id])
+  updatedBy       User?            @relation("TenantProvisioningPlanUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  approvedBy      User?            @relation("TenantProvisioningPlanApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@unique([requestDemoLeadId, sourceType])
+  @@index([requestDemoLeadId])
+  @@index([sourceType, sourceReference])
+  @@index([status, createdAt])
+  @@index([proposedSlug])
+  @@index([createdAt])
 }

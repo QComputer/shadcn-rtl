@@ -16,11 +16,13 @@ Current baseline:
 - `docs/CURRENT_SOURCE_OF_TRUTH.md` is the current handoff source.
 - `docs/b2b-public-repositioning/PUBLIC_ROUTE_POLICY.md` is the authoritative public route policy for B2B positioning.
 
-Recommended next B2B phase:
+Recommended next B2B phase after P13 source acceptance:
 
 ```txt
-BB-B2B-P13 — Guided Tenant Provisioning Readiness
+BB-B2B-P14 - Transactional Tenant Provisioning Execution
 ```
+
+BB-B2B-P13 Guided Tenant Provisioning Readiness is implemented in source. It creates reviewable, idempotent provisioning plans from request-demo/onboarding leads, validates them with a mutation-free dry run, and supports READY/APPROVED review states without tenant execution. Production migration `20260715000100_tenant_provisioning_readiness` remains pending explicit authorization.
 
 P120D added server-only sms.ir REST client, bulk/like-to-like sends, Iranian mobile normalization, schedule validation, dry-run default, explicit real-send gates, dashboard diagnostics, and delivery observability for transactional messages. Real send remains disabled by default.
 
@@ -121,6 +123,7 @@ Completed integrated phases:
 | BB-B2B-P11 | Tenant custom-domain onboarding with dashboard flow, host routing, Vercel safety gates, DNS docs, and acceptance evidence. |
 | BB-B2B-P11-FIX1 | Custom-domain onboarding source acceptance evidence, stricter tests, exact provider ACK gate, and production readiness status. |
 | BB-B2B-P12 | Persian-first business onboarding wizard at `/onboarding` with guided recommendations and safe request-demo lead submission. |
+| BB-B2B-P13 | Guided tenant provisioning readiness with SUPER_ADMIN-only plans, dry-run validation, READY/APPROVED review, and no tenant execution. |
 
 Safety constraints for all Import Hub phases:
 

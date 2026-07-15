@@ -45,25 +45,54 @@ function includesSchema(section, needles) {
   return ok;
 }
 
+function schemaSection(section) {
+  const schema = read("prisma/schema.prisma");
+  const sectionStart = schema.indexOf(section);
+  if (sectionStart === -1) {
+    add(section + " exists", false);
+    return "";
+  }
+
+  add(section + " exists", true);
+
+  const after = schema.slice(sectionStart);
+  const nextSection = after.indexOf("\nmodel ");
+  return nextSection === -1 ? after : after.slice(0, nextSection);
+}
+
+function includesSchemaFields(section, fields) {
+  const sectionContent = schemaSection(section);
+  if (!sectionContent) return false;
+
+  let ok = true;
+  for (const [label, pattern] of fields) {
+    const found = pattern.test(sectionContent);
+    add(`${section} includes ${label}`, found);
+    ok = ok && found;
+  }
+
+  return ok;
+}
+
 const checks = [
   {
     name: "OrganizationDomain model extended with P11 fields",
     test: () =>
-      includesSchema("model OrganizationDomain", [
-        "DomainKind",
-        "DomainProvider",
-        "kind                  DomainKind",
-        "provider              DomainProvider",
-        "providerVerified      Boolean",
-        "dnsConfigured         Boolean",
-        "sslReady              Boolean",
-        "verificationType      String?",
-        "verificationValue     String?",
-        "activatedAt           DateTime?",
-        "reviewedAt            DateTime?",
-        "lastErrorCode         String?",
-        "deletedAt             DateTime?",
-        "createdBy             User?",
+      includesSchemaFields("model OrganizationDomain", [
+        ["DomainKind", /\bDomainKind\b/],
+        ["DomainProvider", /\bDomainProvider\b/],
+        ["kind DomainKind", /\bkind\s+DomainKind\b/],
+        ["provider DomainProvider", /\bprovider\s+DomainProvider\b/],
+        ["providerVerified Boolean", /\bproviderVerified\s+Boolean\b/],
+        ["dnsConfigured Boolean", /\bdnsConfigured\s+Boolean\b/],
+        ["sslReady Boolean", /\bsslReady\s+Boolean\b/],
+        ["verificationType String?", /\bverificationType\s+String\?/],
+        ["verificationValue String?", /\bverificationValue\s+String\?/],
+        ["activatedAt DateTime?", /\bactivatedAt\s+DateTime\?/],
+        ["reviewedAt DateTime?", /\breviewedAt\s+DateTime\?/],
+        ["lastErrorCode String?", /\blastErrorCode\s+String\?/],
+        ["deletedAt DateTime?", /\bdeletedAt\s+DateTime\?/],
+        ["createdBy User?", /\bcreatedBy\s+User\?/],
       ]),
   },
   {

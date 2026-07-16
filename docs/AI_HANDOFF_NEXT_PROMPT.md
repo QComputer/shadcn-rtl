@@ -20,7 +20,7 @@ CURRENT ACCEPTED SOURCE WORK:
 - Pinned Render MOCK contract read-only verification from the Bazar Baz side.
 - Preview MOCK write foundation with app-owned mirror schema/migration source, server-only persistence services, Preview write guard, guarded route skeletons, unit tests, and quality validator.
 - Preview MOCK write E2E source gate with a Preview DB identity guard that allows isolated Preview proof or explicit accepted-risk non-isolated MOCK E2E, server-only Render MOCK create/status service, guarded routes, unit tests, quality validator, and docs.
-- Local Docker MOCK E2E now reaches local Bazar Baz app-owned request/mirror/event creation against a disposable local Postgres container, but Render MOCK product-image creation returns HTTP 500. The app records the failure safely as request `FAILED`, mirror `FAILED_RETRYABLE`, `PROVIDER_ERROR`, with sanitized status payload and no provider job id.
+- Local Docker MOCK E2E now reaches local Bazar Baz app-owned request/mirror/event creation against a disposable local Postgres container, but Render MOCK product-image creation still returns HTTP 500 after reported ai-media-service fix `39168ae167c69aca3c01ae59368323dc5658b88f`. The app records the failure safely as request `FAILED`, mirror `FAILED_RETRYABLE`, `PROVIDER_ERROR`, with sanitized status payload and no provider job id.
 - Pinned Render URL: `https://bazar-baz-ai-media-service.onrender.com`
 - Pinned OpenAPI fingerprint: `8bed184dd79980beacc553308652a44d99590c9705b7d37ab9418f4f83868f91`
 - Pinned OpenAPI counts: 42 paths, 40 schemas.
@@ -56,7 +56,7 @@ TASKS:
 3. Use local Docker Postgres only; do not run hosted Preview or Production migrations.
 4. Confirm the disposable local DB schema remains migrated.
 5. Reproduce the local Docker E2E against `http://127.0.0.1:3100`.
-6. Investigate the deployed Render MOCK create HTTP 500 using read-only contract/source inspection first; mutation is allowed only through the guarded local E2E path.
+6. Investigate whether ai-media-service commit `39168ae167c69aca3c01ae59368323dc5658b88f` is deployed and why the deployed MOCK create path still returns HTTP 500. Use read-only contract/source/log evidence first; mutation is allowed only through the guarded local E2E path.
 7. If Render MOCK job creation succeeds, continue status sync and verify one app-owned provider job mirror.
 8. Keep browser-to-Render direct access forbidden.
 9. Run validation gates and document remaining blockers.

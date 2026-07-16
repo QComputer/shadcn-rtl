@@ -43,6 +43,32 @@ The local Bazar Baz route successfully created app-owned `AiMediaRequest`, `AiMe
 
 `LOCAL_DOCKER_MOCK_E2E` is therefore partial: the local app guard, auth, DB migration, mirror/event creation, and failure recording paths are proven; Render MOCK job creation remains blocked by the deployed coordinator returning 500 for the create mutation.
 
+## Rerun After Service Fix
+
+Phase `BAZAR-BAZ-AI-MEDIA-LOCAL-DOCKER-MOCK-E2E-RERUN-AFTER-SERVICE-FIX-01` was rerun on 2026-07-17 after the ai-media-service source fix was reported at service commit `39168ae167c69aca3c01ae59368323dc5658b88f`.
+
+Result:
+
+- Docker Desktop: available
+- disposable Docker Postgres: created and migrated locally
+- local Bazar app: started at `http://127.0.0.1:3100`
+- Render internal key: available locally to the Bazar server, value not printed
+- local authenticated `SUPER_ADMIN` fixture: created with synthetic data only
+- app-owned `AiMediaRequest`: created
+- app-owned `AiMediaJobMirror`: created
+- app-owned `AiMediaJobEvent`: created
+- Render read-only health/ready: `200`, provider `MOCK`, real generation disabled
+- guarded Render MOCK create through Bazar server: still returned HTTP `500`
+- provider job id stored: no
+- status sync: not reached because no provider job id was returned
+- Blob/storage write: none
+- wallet settlement: none
+- real generation: none
+- hosted Production DB write: none
+- hosted Preview DB write: none
+
+The local app again recorded the provider create failure safely as request `FAILED`, mirror `FAILED_RETRYABLE`, `PROVIDER_ERROR`, with sanitized status payload and no fabricated provider job id.
+
 ## Summary
 
 This phase adds the Bazar Baz source gate for the first Preview-only MOCK AI media write flow.

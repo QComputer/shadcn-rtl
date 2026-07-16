@@ -69,6 +69,43 @@ Result:
 
 The local app again recorded the provider create failure safely as request `FAILED`, mirror `FAILED_RETRYABLE`, `PROVIDER_ERROR`, with sanitized status payload and no fabricated provider job id.
 
+## Final Rerun After Schema Readiness Fix
+
+Phase `BAZAR-BAZ-AI-MEDIA-LOCAL-DOCKER-MOCK-E2E-FINAL-RERUN-01` was rerun on 2026-07-17 after the deployed ai-media-service readiness/schema fix was reported at service commit `81f8c2cf6d95a8eaeaacc6fe45505f29854ad83a`.
+
+Read-only deployed service proof before the E2E:
+
+- `/health`: `200`
+- `/ready`: `200`
+- provider: `MOCK`
+- database: `ok`
+- `coordinatorSchema.ready`: `true`
+- missing coordinator tables: `0`
+- `/diagnostics/version` source commit: `81f8c2cf6d95a8eaeaacc6fe45505f29854ad83a`
+- `mockSafe`: `true`
+- `realGenerationEnabled`: `false`
+- OpenAPI fingerprint: `8bed184dd79980beacc553308652a44d99590c9705b7d37ab9418f4f83868f91`
+
+Local Docker E2E result:
+
+- disposable Docker Postgres: created and migrated locally
+- local Bazar app: started at `http://127.0.0.1:3100`
+- Render internal key: available locally to the Bazar server, value not printed
+- local authenticated `SUPER_ADMIN` fixture: created with synthetic data only
+- app-owned `AiMediaRequest`: created
+- app-owned `AiMediaJobMirror`: created
+- app-owned `AiMediaJobEvent`: created
+- guarded Render MOCK create through Bazar server: still returned HTTP `500`
+- provider job id stored: no
+- status sync: not reached because no provider job id was returned
+- Blob/storage write: none
+- wallet settlement: none
+- real generation: none
+- hosted Production DB write: none
+- hosted Preview DB write: none
+
+The Bazar-side safety behavior remains correct, but the full local Docker MOCK E2E is still not accepted because the deployed create mutation continues to return HTTP `500` even with the reported schema readiness fix.
+
 ## Summary
 
 This phase adds the Bazar Baz source gate for the first Preview-only MOCK AI media write flow.

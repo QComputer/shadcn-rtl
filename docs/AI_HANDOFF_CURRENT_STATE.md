@@ -96,13 +96,14 @@ Date: 2026-07-16
 - Local Docker MOCK E2E is now the preferred intermediate gate before hosted Preview writes. A disposable Docker Postgres database was migrated locally, a synthetic `SUPER_ADMIN` organization fixture was used, and the local Bazar Baz route created app-owned request/mirror/event rows without touching hosted Production or Preview DBs after the Docker-priority update.
 - The local Docker E2E currently reaches Render MOCK submission but the deployed coordinator returns HTTP 500 on product-image job creation. The Bazar app records this failure safely as request `FAILED`, mirror `FAILED_RETRYABLE`, `PROVIDER_ERROR`, with sanitized status payload and no provider job id.
 - Rerun after reported ai-media-service fix `39168ae167c69aca3c01ae59368323dc5658b88f`: Render read-only health/ready stayed green, but guarded Bazar-to-Render MOCK create still returned HTTP 500. The local Docker gate remains partial and no provider job id was stored.
+- Final rerun after deployed ai-media-service schema readiness fix `81f8c2cf6d95a8eaeaacc6fe45505f29854ad83a`: `/ready` reported `coordinatorSchema.ready=true` and `/diagnostics/version` matched the deployed commit, but guarded Bazar-to-Render MOCK create still returned HTTP 500. The local Docker gate remains partial.
 - Production migration execution has not been authorized or run for this phase.
 - Preview migration execution has not been run by source validation unless explicitly recorded in the phase report.
 - Operator-accepted DB resume update: `20260716000100_ai_media_preview_mock_write_foundation` was applied with DB guard mode `ACCEPTED_RISK_NON_ISOLATED_DB` after explicit operator acceptance of temporary DB write risk. Live Preview MOCK E2E remains blocked by missing local `AI_MEDIA_PREVIEW_SESSION_COOKIE` and Vercel SSO-protected Preview access.
 
 ## Current Blockers
 
-- Local Docker MOCK E2E remains partial because the deployed Render MOCK coordinator still returns HTTP 500 for the product-image create mutation after the reported service-side fix.
+- Local Docker MOCK E2E remains partial because the deployed Render MOCK coordinator still returns HTTP 500 for the product-image create mutation after the deployed schema readiness fix.
 - Preview live MOCK write E2E remains pending until local Docker MOCK E2E passes, then the active runtime proves isolated Preview DB identity, or the operator enables the explicit accepted-risk non-isolated MOCK E2E marker, and the explicit E2E flag is set.
 - Preview session/protection-bypass access for running the live E2E against `https://shadcn-kpuh90kko-ahmads-projects-1b4ce1dc.vercel.app`
 - app-owned request/mirror services are source-ready but fail closed by guard

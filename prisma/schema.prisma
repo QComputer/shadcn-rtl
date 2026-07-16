@@ -383,6 +383,86 @@ enum CreativeStudioUsageAction {
   ASSET_ROLLED_BACK
 }
 
+enum AiMediaPlatformRequestStatus {
+  DRAFT
+  QUOTED
+  HOLD_PENDING
+  READY_TO_SUBMIT
+  SUBMITTED
+  FAILED
+  CANCELLED
+}
+
+enum AiMediaPlatformJobState {
+  DRAFT
+  QUOTED
+  HOLD_PENDING
+  READY_TO_SUBMIT
+  SUBMITTED_TO_RENDER
+  QUEUED
+  CLAIMED
+  PROCESSING
+  RESULT_READY
+  IMPORT_PENDING
+  IMPORTED
+  FAILED_RETRYABLE
+  FAILED_FINAL
+  CANCELLED
+  EXPIRED
+  REFUNDED
+}
+
+enum AiMediaPlatformPrivacyLevel {
+  PRIVATE
+  ORGANIZATION
+  SUPER_ADMIN_ONLY
+  ANONYMIZED_NETWORK
+}
+
+enum AiMediaPlatformTargetType {
+  PRODUCT_IMAGE
+  ORGANIZATION_LOGO
+  ORGANIZATION_COVER
+  GENERAL_CREATIVE
+}
+
+enum AiMediaPlatformVisibilityScope {
+  OWNER_ONLY
+  ORGANIZATION
+  SUPER_ADMIN
+  WORKER_SAFE
+}
+
+enum AiMediaPlatformImportStatus {
+  NOT_REQUESTED
+  PENDING
+  VALIDATING
+  IMPORTED
+  FAILED
+  ROLLED_BACK
+}
+
+enum AiMediaSpendHoldState {
+  PLANNED
+  ACTIVE
+  SETTLEMENT_ELIGIBLE
+  RELEASE_ELIGIBLE
+  RELEASED
+  SETTLED
+}
+
+enum AiMediaJobEventAction {
+  REQUEST_DRAFTED
+  QUOTE_CREATED
+  HOLD_PLANNED
+  JOB_MIRRORED
+  STATUS_SYNCED
+  IMPORT_PLANNED
+  ASSET_ACCEPTED
+  SPEND_RELEASE_PLANNED
+  CONTRIBUTION_MIRRORED
+}
+
 // --- CORE MODELS ---
 
 model TimeInterval {
@@ -458,6 +538,14 @@ model Organization {
   importedProductDrafts        ImportedProductDraft[]
   importedContentDrafts        ImportedContentDraft[]
   exportJobs                   ExportJob[]
+  aiMediaRequests              AiMediaRequest[]
+  aiMediaJobMirrors            AiMediaJobMirror[]
+  aiMediaJobEvents             AiMediaJobEvent[]
+  aiMediaImports               AiMediaImport[]
+  aiMediaAssets                AiMediaAsset[]
+  aiMediaUsageQuotes           AiMediaUsageQuote[]
+  aiMediaSpendHolds            AiMediaSpendHold[]
+  workerContributionMirrors    WorkerContributionMirror[]
   paymentSettings              PaymentSettings?
 
   @@unique([id, slug])
@@ -628,6 +716,12 @@ model User {
   requestedExportJobs           ExportJob[]                   @relation("ExportJobRequestedBy")
   reviewedImportedProductDrafts ImportedProductDraft[]        @relation("ImportedProductDraftReviewedBy")
   reviewedImportedContentDrafts ImportedContentDraft[]        @relation("ImportedContentDraftReviewedBy")
+  aiMediaRequests               AiMediaRequest[]             @relation("AiMediaRequestRequestedBy")
+  aiMediaJobMirrors             AiMediaJobMirror[]           @relation("AiMediaJobRequestedBy")
+  aiMediaJobEvents              AiMediaJobEvent[]            @relation("AiMediaJobEventActor")
+  aiMediaAssets                 AiMediaAsset[]               @relation("AiMediaAssetRequestedBy")
+  aiMediaUsageQuotes            AiMediaUsageQuote[]          @relation("AiMediaQuoteRequestedBy")
+  aiMediaSpendHolds             AiMediaSpendHold[]           @relation("AiMediaSpendHoldRequestedBy")
 
   denies                          Deny[]
   orderMessages                   OrderMessage[]
@@ -1475,6 +1569,268 @@ model AiMediaUsageEvent {
   @@index([organizationId, createdAt])
   @@index([jobId])
   @@index([action])
+}
+
+model AiMediaRequest {
+  id                String                       @id @default(cuid())
+  organizationId    String
+  requestedByUserId String
+  targetType        AiMediaPlatformTargetType
+  targetId          String?
+  status            AiMediaPlatformRequestStatus @default(DRAFT)
+  privacyLevel      AiMediaPlatformPrivacyLevel  @default(ORGANIZATION)
+  visibilityScope   AiMediaPlatformVisibilityScope @default(OWNER_ONLY)
+  locale            String                       @default("fa")
+  idempotencyKey    String
+  payloadHash       String
+  promptFingerprint String?
+  sourceFingerprints Json?
+  requestPayload    Json?
+  errorCode         String?
+  errorMessage      String?
+  submittedAt       DateTime?
+  cancelledAt       DateTime?
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
+
+  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedBy     User               @relation("AiMediaRequestRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  jobMirrors      AiMediaJobMirror[]
+  events          AiMediaJobEvent[]
+  imports         AiMediaImport[]
+  assets          AiMediaAsset[]
+  usageQuotes     AiMediaUsageQuote[]
+  spendHolds      AiMediaSpendHold[]
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, requestedByUserId, createdAt])
+  @@index([targetType, targetId])
+  @@index([requestedByUserId])
+}
+
+model AiMediaJobMirror {
+  id                  String                    @id @default(cuid())
+  requestId           String
+  organizationId      String
+  requestedByUserId   String
+  state               AiMediaPlatformJobState   @default(DRAFT)
+  provider            String                    @default("MOCK")
+  providerJobId       String?
+  providerStatus      String?
+  contractFingerprint String?
+  correlationId       String
+  idempotencyKey      String
+  payloadHash         String
+  statusPayload       Json?
+  safeMetadata        Json?
+  errorCode           String?
+  errorMessage        String?
+  submittedAt         DateTime?
+  resultReadyAt       DateTime?
+  importedAt          DateTime?
+  failedAt            DateTime?
+  cancelledAt         DateTime?
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+
+  request        AiMediaRequest              @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  organization   Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedBy    User                        @relation("AiMediaJobRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  events         AiMediaJobEvent[]
+  imports        AiMediaImport[]
+  assets         AiMediaAsset[]
+  spendHolds     AiMediaSpendHold[]
+  contributions  WorkerContributionMirror[]
+
+  @@unique([organizationId, idempotencyKey])
+  @@unique([correlationId])
+  @@unique([provider, providerJobId])
+  @@index([requestId])
+  @@index([organizationId, state, createdAt])
+  @@index([organizationId, requestedByUserId, createdAt])
+  @@index([providerJobId])
+  @@index([requestedByUserId])
+}
+
+model AiMediaJobEvent {
+  id             String                @id @default(cuid())
+  organizationId String
+  requestId      String?
+  mirrorId       String?
+  actorUserId    String?
+  action         AiMediaJobEventAction
+  state          AiMediaPlatformJobState?
+  dedupeKey      String
+  safeMetadata   Json?
+  errorCode      String?
+  createdAt      DateTime              @default(now())
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  request      AiMediaRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  mirror       AiMediaJobMirror? @relation(fields: [mirrorId], references: [id], onDelete: SetNull)
+  actor        User?           @relation("AiMediaJobEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, dedupeKey])
+  @@index([organizationId, createdAt])
+  @@index([requestId])
+  @@index([mirrorId])
+  @@index([actorUserId])
+  @@index([action])
+}
+
+model AiMediaImport {
+  id                String                      @id @default(cuid())
+  organizationId    String
+  requestId         String
+  mirrorId          String
+  status            AiMediaPlatformImportStatus @default(NOT_REQUESTED)
+  outputIndex        Int                         @default(0)
+  resultFingerprint String?
+  validationRisk     String?
+  validationErrors   Json?
+  acceptedAssetId    String?
+  errorCode          String?
+  errorMessage       String?
+  plannedAt          DateTime                    @default(now())
+  importedAt         DateTime?
+  rolledBackAt       DateTime?
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  request      AiMediaRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  mirror       AiMediaJobMirror @relation(fields: [mirrorId], references: [id], onDelete: Cascade)
+  acceptedAsset AiMediaAsset?   @relation("AiMediaImportAcceptedAsset", fields: [acceptedAssetId], references: [id], onDelete: SetNull)
+  assets       AiMediaAsset[]
+
+  @@unique([mirrorId, outputIndex])
+  @@index([organizationId, status, createdAt])
+  @@index([requestId])
+  @@index([mirrorId])
+  @@index([acceptedAssetId])
+}
+
+model AiMediaAsset {
+  id                    String                         @id @default(cuid())
+  organizationId         String
+  requestId              String
+  mirrorId               String
+  importId               String?
+  requestedByUserId      String
+  visibilityScope        AiMediaPlatformVisibilityScope @default(OWNER_ONLY)
+  mimeType               String?
+  width                  Int?
+  height                 Int?
+  storageProvider        String?
+  storageKeyFingerprint  String?
+  checksumSha256         String?
+  byteSize               Int?
+  safeMetadata           Json?
+  acceptedAt             DateTime?
+  deletedAt              DateTime?
+  createdAt              DateTime                       @default(now())
+  updatedAt              DateTime                       @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  request      AiMediaRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  mirror       AiMediaJobMirror @relation(fields: [mirrorId], references: [id], onDelete: Cascade)
+  import       AiMediaImport?   @relation(fields: [importId], references: [id], onDelete: SetNull)
+  requestedBy  User             @relation("AiMediaAssetRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  acceptedImports AiMediaImport[] @relation("AiMediaImportAcceptedAsset")
+
+  @@index([organizationId, visibilityScope, createdAt])
+  @@index([organizationId, requestedByUserId, createdAt])
+  @@index([requestId])
+  @@index([mirrorId])
+  @@index([importId])
+  @@index([requestedByUserId])
+  @@index([checksumSha256])
+}
+
+model AiMediaUsageQuote {
+  id                String   @id @default(cuid())
+  organizationId    String
+  requestId         String
+  requestedByUserId String
+  bazAmount         Int      @default(0)
+  currency          String   @default("BAZ_INTERNAL_CREDIT")
+  policyKey         String
+  idempotencyKey    String
+  expiresAt         DateTime
+  acceptedAt        DateTime?
+  rejectedAt        DateTime?
+  safeMetadata      Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  request      AiMediaRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  requestedBy  User           @relation("AiMediaQuoteRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  spendHolds   AiMediaSpendHold[]
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, requestId])
+  @@index([organizationId, requestedByUserId, createdAt])
+  @@index([expiresAt])
+}
+
+model AiMediaSpendHold {
+  id                    String                @id @default(cuid())
+  organizationId         String
+  requestId              String
+  mirrorId               String?
+  quoteId                String?
+  requestedByUserId      String
+  state                  AiMediaSpendHoldState @default(PLANNED)
+  bazAmount              Int                   @default(0)
+  currency               String                @default("BAZ_INTERNAL_CREDIT")
+  idempotencyKey         String
+  ledgerMutationAllowed  Boolean               @default(false)
+  settlementEligible     Boolean               @default(false)
+  errorCode              String?
+  safeMetadata           Json?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  request      AiMediaRequest    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  mirror       AiMediaJobMirror? @relation(fields: [mirrorId], references: [id], onDelete: SetNull)
+  quote        AiMediaUsageQuote? @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  requestedBy  User              @relation("AiMediaSpendHoldRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, state, createdAt])
+  @@index([requestId])
+  @@index([mirrorId])
+  @@index([quoteId])
+  @@index([requestedByUserId])
+}
+
+model WorkerContributionMirror {
+  id                     String                  @id @default(cuid())
+  organizationId          String
+  mirrorId                String
+  providerContributionId  String
+  workerOpaqueId          String
+  jobState                AiMediaPlatformJobState
+  importedAssetAccepted   Boolean                 @default(false)
+  rewardPolicyKey         String?
+  rewardEligible          Boolean                 @default(false)
+  walletCreditProduced    Boolean                 @default(false)
+  safeFacts               Json?
+  blockerCodes            Json?
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  mirror       AiMediaJobMirror @relation(fields: [mirrorId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, providerContributionId])
+  @@index([organizationId, createdAt])
+  @@index([mirrorId])
+  @@index([workerOpaqueId])
+  @@index([rewardEligible])
 }
 
 model CreativeStudioJob {

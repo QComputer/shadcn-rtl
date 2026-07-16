@@ -3,10 +3,10 @@
 ## Recommended Next Prompt
 
 ```text
-PHASE: BAZAR-BAZ-AI-NETWORK-PREVIEW-MOCK-WRITE-E2E-FOUNDATION-01
+PHASE: BAZAR-BAZ-AI-NETWORK-PREVIEW-MOCK-WRITE-E2E-01
 
 MISSION:
-Build the first Preview-only MOCK write E2E foundation for Bazar Baz AI media, using the pinned Render contract and strict isolated Preview resources. This is the first phase that may authorize AI write flow, and only inside Preview with explicit safeguards.
+Run the first Preview-only MOCK write E2E for Bazar Baz AI media, using the app-owned mirror schema/services and strict isolated Preview resources. Keep the flow MOCK-only and fail closed outside Preview.
 
 BASELINE:
 The repository should be on main at or after `43034edf745fd52c4f9613e342c4ef4f909bfb68`, plus the pinned Render contract read-only verification commit if it has been accepted.
@@ -18,6 +18,7 @@ CURRENT ACCEPTED SOURCE WORK:
 - AI job mirror source design with pure TypeScript helper and validator.
 - AI media platform domain foundation with import planning, Baz spend-hold planning, contribution mirror planning, and schema proposal docs.
 - Pinned Render MOCK contract read-only verification from the Bazar Baz side.
+- Preview MOCK write foundation with app-owned mirror schema/migration source, server-only persistence services, Preview write guard, guarded route skeletons, unit tests, and quality validator.
 - Pinned Render URL: `https://bazar-baz-ai-media-service.onrender.com`
 - Pinned OpenAPI fingerprint: `8bed184dd79980beacc553308652a44d99590c9705b7d37ab9418f4f83868f91`
 - Pinned OpenAPI counts: 42 paths, 40 schemas.
@@ -31,7 +32,7 @@ RULES:
 - Do NOT touch Production Blob/storage.
 - Do NOT change Vercel env.
 - Do NOT run production DB migrations.
-- Do NOT add migrations unless the user starts a separate schema phase with explicit scope.
+- Do NOT add more migrations unless the user starts a separate schema phase with explicit scope.
 - Do NOT write to Production DB.
 - Do NOT call real generation.
 - Do NOT call Render worker claim/result/progress endpoints.
@@ -49,9 +50,11 @@ TASKS:
 1. Inspect baseline with git status, HEAD, and validation scripts.
 2. Re-run the pinned Render read-only checker before enabling any Preview write flow.
 3. Verify isolated Preview DB/storage/AI identity evidence.
-4. Add the smallest Preview-only MOCK write E2E foundation authorized by the phase.
-5. Keep browser-to-Render direct access forbidden.
-6. Run validation gates and document remaining blockers.
+4. Apply the existing AI media mirror migration only to the isolated Preview database if explicitly authorized.
+5. Enable the Preview MOCK write guard only with explicit Preview env flags and evidence.
+6. Exercise one guarded MOCK app-owned request/mirror flow through Bazar Baz server routes.
+7. Keep browser-to-Render direct access forbidden.
+8. Run validation gates and document remaining blockers.
 
 FALLBACK:
 If Render access is not available, do not fake verification. Document the missing read-only evidence and keep write compatibility pending.

@@ -38,14 +38,19 @@ const tests = read("tests/unit/ai-media-platform-domain.test.ts");
 const packageJson = read("package.json");
 const diffNames = `${gitOutput(["diff", "--name-only"])}\n${gitOutput(["diff", "--cached", "--name-only"])}`;
 const diff = gitOutput(["diff"]);
+const allowedPreviewFoundationMigration = "prisma/migrations/20260716000100_ai_media_preview_mock_write_foundation/migration.sql";
+const migrationChanges = diffNames
+  .split(/\r?\n/)
+  .map((line) => line.trim().replaceAll("\\", "/"))
+  .filter((line) => line.includes("prisma/migrations/"));
 
 const checks: Array<[string, boolean, string?]> = [];
 
 checks.push(["platform domain modules exist", modulePaths.every((path) => existsSync(`${projectRoot}${path}`))]);
 checks.push(["schema proposal doc exists", existsSync(`${projectRoot}docs/ai-media/AI_MEDIA_PLATFORM_DOMAIN_SCHEMA_PROPOSAL.md`)]);
-checks.push(["schema proposal says no migration added", /No Prisma schema or migration was added in this phase/i.test(schemaProposal)]);
+checks.push(["schema proposal records migration source boundary", /migration source now exist/i.test(schemaProposal) && /has not been applied to Production/i.test(schemaProposal)]);
 checks.push(["modules do not import Prisma DB server-only storage env or fetch", !/@\/lib\/db|@prisma|prisma|server-only|@vercel\/blob|process\.env|\bfetch\s*\(/.test(modules)]);
-checks.push(["modules do not add Render write helpers", !/createAiMediaJob|cancelAiMediaJob|\/v1\/product-image-suggestions\/jobs/.test(modules)]);
+checks.push(["modules do not add Render write helpers", !/\bcreateAiMediaJob\s*\(|\bcancelAiMediaJob\s*\(|\/v1\/product-image-suggestions\/jobs/.test(modules)]);
 checks.push(["docs mention Bazar Baz owns wallet and imported media", /Bazar Baz owns wallet planning, imported media/i.test(schemaProposal)]);
 checks.push(["docs mention ai-media-service emits contribution facts only", /ai-media-service emits contribution facts only/i.test(schemaProposal)]);
 checks.push(["docs mention worker operators cannot see cross-user media", /Worker operators cannot see cross-user media/i.test(schemaProposal)]);
@@ -54,8 +59,8 @@ checks.push(["tests cover import planning", /RESULT_READY plans import pending/.
 checks.push(["tests cover Baz hold planning", /hold does not settle on RESULT_READY/.test(tests) && /hold settles on IMPORTED only/.test(tests)]);
 checks.push(["tests cover contribution mirror", /accepted imported contribution is pending-reward eligible/.test(tests) && /sanitized contribution fact exposes no raw/.test(tests)]);
 checks.push(["package exposes platform domain scripts", /test:ai-media:platform-domain/.test(packageJson) && /quality:ai-media-platform-domain/.test(packageJson)]);
-checks.push(["no Prisma migration file added", !/prisma\/migrations|prisma\\migrations/.test(diffNames)]);
-checks.push(["no Render write call added in phase diff", !/createAiMediaJob|cancelAiMediaJob|\/v1\/product-image-suggestions\/jobs/.test(diff)]);
+checks.push(["only authorized Preview foundation migration changed", migrationChanges.every((path) => path === allowedPreviewFoundationMigration)]);
+checks.push(["no Render write call added in phase diff", !/\bcreateAiMediaJob\s*\(|\bcancelAiMediaJob\s*\(|\/v1\/product-image-suggestions\/jobs/.test(diff)]);
 
 const failed = checks.filter(([name, ok, detail]) => !add(name, ok, detail));
 

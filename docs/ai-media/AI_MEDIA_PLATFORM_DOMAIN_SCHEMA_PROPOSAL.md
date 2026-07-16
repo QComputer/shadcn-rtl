@@ -1,10 +1,10 @@
 # AI Media Platform Domain Schema Proposal
 
 Date: 2026-07-16
-Phase: BAZAR-BAZ-AI-NETWORK-PLATFORM-DOMAIN-FOUNDATION-01
-Status: Proposal only.
+Phase: BAZAR-BAZ-AI-NETWORK-PREVIEW-MOCK-WRITE-FOUNDATION-01
+Status: Source schema and migration added for the Preview MOCK write foundation.
 
-No Prisma schema or migration was added in this phase. This document describes future tables and rollout risks for a later explicitly authorized schema/migration phase.
+Prisma schema and migration source now exist for the app-owned AI media mirror. The migration has not been applied to Production by this phase. Production writes, Production migrations, Blob writes, real generation, wallet settlement, worker portal, and Super Admin console remain disabled.
 
 ## Ownership
 
@@ -291,9 +291,9 @@ Migration risks:
 
 1. Keep source-only platform domain helpers green.
 2. Pin deployed Render read-only contract compatibility.
-3. Prepare Prisma schema in a separate branch/phase with explicit migration authorization.
-4. Apply to isolated Preview database first.
-5. Add app-owned request/mirror services behind existing tenant guards.
-6. Add application-managed import implementation after storage isolation is verified.
+3. Apply the new Prisma migration only to an isolated Preview database after explicit authorization.
+4. Enable the Preview MOCK write guard only with explicit Preview flags and verified pinned Render evidence.
+5. Run one app-owned Preview MOCK request/mirror flow through Bazar Baz routes.
+6. Add application-managed import execution after storage isolation is verified.
 7. Add Baz ledger/hold mutation only in a separate approved wallet phase.
 8. Add Super Admin and worker portal UI only after authorization and privacy review.

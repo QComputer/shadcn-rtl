@@ -19,7 +19,7 @@ Date: 2026-07-16
 - Baz wallet/ledger later; not implemented yet
 - worker owner portal later; not implemented yet
 - Super Admin network console later; not implemented yet
-- AI media platform domain source design; no DB schema or migration yet
+- AI media platform domain source design plus Preview MOCK write foundation schema/migration source
 - imported media assets through application-managed storage for current product-image selection flow
 - server-side Render integration via `lib/services/ai-media-service-client.ts`
 
@@ -42,13 +42,14 @@ Date: 2026-07-16
 - Preview env verification tooling accepted and committed (`bbdcf0a`)
 - AI job mirror source design accepted and committed (`8a52533`)
 - AI media platform domain foundation accepted and committed (`43034ed`)
-- Bazar-side pinned Render contract read-only tooling is added in this phase once `test:ai-media:render-contract-readonly` and `quality:ai-media-render-contract-readonly` pass
+- Bazar-side pinned Render contract read-only tooling accepted and committed (`cdaa011`)
+- Preview MOCK write foundation is being added in this phase: app-owned mirror schema source, server-only services, fail-closed guard, guarded route skeletons, tests, and docs
 - AI media roadmap docs added under `docs/ai-media/`
 - Existing P02-P06 app-managed storage and import bridges remain in source
 
 ## Current Important Commits
 
-- Current baseline HEAD before Render pinned contract read-only tooling: `43034edf745fd52c4f9613e342c4ef4f909bfb68`
+- Current accepted HEAD before Preview MOCK write foundation: `cdaa01174c26e5b70109e308dea628f7a91e285d`
 - Service-side deployed commit: `7c2381fb7041fcfc9627600240fc203ac5493f55`
 - Service-side docs commit that pinned deployment: `96dd5c4ab80ed14498c46d441502ce48a68e1fbb`
 - Pinned Render URL: `https://bazar-baz-ai-media-service.onrender.com`
@@ -61,7 +62,7 @@ Date: 2026-07-16
 - Browser never calls Render directly.
 - Render credentials are server-only in `lib/services/ai-media-service-client.ts`.
 - No `NEXT_PUBLIC_*` Render secrets in `.env.example` or source.
-- AI write flows remain disabled until Preview isolation and Render compatibility are proven.
+- AI write flows remain disabled in Production. Preview MOCK writes remain fail-closed unless explicit Preview evidence, pinned Render contract evidence, feature flag, provider `MOCK`, real-generation disabled state, and SUPER_ADMIN role are all present.
 - Preview env verification tooling is read-only and accepts redacted/human-provided evidence only.
 - AI job mirror source design is pure TypeScript and documentation only; it performs no DB, Render, Blob, or storage operation.
 - AI platform domain foundation is pure TypeScript and documentation only; import planning performs no storage writes, Baz spend planning performs no ledger/balance mutation, and contribution mirror planning performs no reward settlement.
@@ -85,15 +86,18 @@ Date: 2026-07-16
 - Pinned Render contract evidence verification lives in `lib/ai-media/render-contract-verification.ts`.
 - Live read-only Render quality gate lives in `scripts/quality/validate-ai-media-render-contract-readonly.mts`.
 - Live read-only Render verification currently passes with `/health` 200, `/ready` 200, `/openapi.json` 200, provider `MOCK`, 42 paths, 40 schemas, and matching fingerprint `8bed184dd79980beacc553308652a44d99590c9705b7d37ab9418f4f83868f91`.
-- Future schema fields and rollout risks are proposed in `docs/ai-media/AI_MEDIA_PLATFORM_DOMAIN_SCHEMA_PROPOSAL.md`; no Prisma schema or migration has been added.
-- No general `AiMediaRequest`, `AiMediaJobMirror`, event stream, quote, spend hold, contribution mirror, or wallet ledger schema exists yet.
+- Preview MOCK write foundation schema source now adds `AiMediaRequest`, `AiMediaJobMirror`, `AiMediaJobEvent`, `AiMediaImport`, `AiMediaAsset`, `AiMediaUsageQuote`, `AiMediaSpendHold`, and `WorkerContributionMirror`.
+- Server-only persistence skeletons live in `lib/services/ai-media-platform-request-service.ts`, `lib/services/ai-media-job-mirror-service.ts`, `lib/services/ai-media-import-service.ts`, and `lib/services/ai-media-contribution-mirror-service.ts`.
+- Preview write guard lives in `lib/ai-media/preview-write-guard.ts`.
+- Preview route skeletons live under `app/api/dashboard/ai-media/preview/jobs`.
+- Production migration execution has not been authorized or run for this phase.
 
 ## Current Blockers
 
-- Preview MOCK write E2E remains blocked until explicitly authorized by a separate write-flow phase
+- Preview MOCK write E2E remains blocked until explicitly authorized and run against isolated Preview resources
 - real Preview env evidence with isolated DB/storage/AI identity if Preview write work resumes
-- AI job mirror Prisma schema/migration, pending explicit migration phase
-- app-owned request/mirror services, pending schema phase
+- applying the new AI media mirror migration to isolated Preview DB, pending explicit authorization
+- app-owned request/mirror services are source-ready but fail closed by guard
 - app-managed storage import flow for future general AI media assets
 - Baz ledger and internal spend holds
 - worker portal

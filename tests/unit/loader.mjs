@@ -6,7 +6,9 @@ const HERE = import.meta.dirname;
 const ROOT = pathResolve(HERE, "..", "..");
 
 const STUB_MAP = {
+  "server-only": pathResolve(HERE, "stubs", "server-only.ts"),
   "@/lib/api-guards": pathResolve(HERE, "stubs", "api-guards.ts"),
+  "@/lib/db": pathResolve(HERE, "stubs", "db.ts"),
   "@prisma/client": pathResolve(HERE, "stubs", "prisma-client.ts"),
 };
 

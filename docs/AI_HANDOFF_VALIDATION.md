@@ -20,6 +20,8 @@ pnpm run test:ai-media:platform-domain
 pnpm run quality:ai-media-platform-domain
 pnpm run test:ai-media:render-contract-readonly
 pnpm run quality:ai-media-render-contract-readonly
+pnpm run test:ai-media:preview-write-foundation
+pnpm run quality:ai-media-preview-write-foundation
 pnpm run test:ai-handoff
 pnpm run quality:ai-handoff
 pnpm run typecheck
@@ -44,6 +46,8 @@ git status --short --branch
 - AI media pinned Render contract unit tests are mocked and deterministic.
 - AI media pinned Render contract quality tooling calls only `GET /health`, `GET /ready`, and `GET /openapi.json` on the pinned Render URL, then fails closed on fingerprint, count, provider, or real-generation mismatch.
 - AI media pinned Render contract fingerprinting matches ai-media-service canonicalization: sorted compact `app.openapi()` JSON, UTF-8 SHA-256, and FastAPI/Pydantic `.0` numeric constraint preservation.
+- AI media Preview MOCK write foundation tests use mocked persistence and do not contact Production DB, Preview DB, Blob, Render mutation endpoints, or real generation.
+- AI media Preview MOCK write foundation quality tooling validates schema/migration source, fail-closed guard rules, guarded route skeletons, no browser Render secrets, no Blob writes, docs, and package scripts.
 
 ## Handoff Doc Validation
 

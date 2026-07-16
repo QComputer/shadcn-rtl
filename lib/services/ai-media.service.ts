@@ -20,6 +20,7 @@ import {
   compensateFailedAssetImport,
   storeCreativeStudioAssetFromRemote,
 } from "@/lib/storage/application-storage";
+import { normalizeAiMediaServiceStatusPayload } from "@/lib/ai-media/status";
 
 type AiSelectedImageStorageStatus = "application-storage";
 type AiMediaUsageAction = "JOB_CREATED" | "JOB_COMPLETED" | "JOB_FAILED" | "JOB_CANCELED" | "IMAGE_SELECTED";
@@ -170,9 +171,12 @@ async function acquireAiMediaIdempotencyLock(tx: any, organizationId: string, id
 }
 
 export function localAiMediaJobToRemoteJob(job: AiMediaLocalJob): AiMediaJob {
+  const statusDetails = normalizeAiMediaServiceStatusPayload({ status: job.status });
   return {
     job_id: job.jobId,
-    status: job.status as AiMediaJob["status"],
+    status: statusDetails.legacyStatus,
+    canonical_status: statusDetails.canonicalStatus,
+    status_details: statusDetails,
     provider: job.provider,
     organization_id: job.organizationId,
     product_id: job.productId,

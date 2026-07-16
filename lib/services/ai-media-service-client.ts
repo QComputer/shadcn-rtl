@@ -3,6 +3,12 @@ import {
   validateCreativeStudioProviderResult,
   type CreativeStudioProviderResult,
 } from "@/lib/validators/creative-studio-provider-output";
+import {
+  normalizeAiMediaServiceStatusPayload,
+  type AiMediaCanonicalStatus,
+  type AiMediaLegacyJobStatus,
+  type NormalizedAiMediaStatus,
+} from "@/lib/ai-media/status";
 
 export type AiMediaProvider = "MOCK" | "OPENAI" | "STABILITY" | string;
 
@@ -68,7 +74,9 @@ export interface AiMediaJobOutput {
 
 export interface AiMediaJob {
   job_id: string;
-  status: "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELED";
+  status: AiMediaLegacyJobStatus;
+  canonical_status?: AiMediaCanonicalStatus;
+  status_details?: NormalizedAiMediaStatus;
   provider: AiMediaProvider;
   organization_id: string;
   product_id: string;
@@ -87,7 +95,9 @@ export interface AiMediaJob {
 
 export interface AiMediaCreateJobResponse {
   job_id: string;
-  status: string;
+  status: AiMediaLegacyJobStatus;
+  canonical_status?: AiMediaCanonicalStatus;
+  status_details?: NormalizedAiMediaStatus;
   provider: string;
   outputs?: AiMediaJobOutput[];
   output_images?: string[];
@@ -421,8 +431,6 @@ function summarizeOpenApiContract(raw: unknown): AiMediaServiceContractSummary {
   };
 }
 
-const AI_MEDIA_JOB_STATUSES = new Set(["QUEUED", "PROCESSING", "COMPLETED", "FAILED", "CANCELED"]);
-
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
@@ -443,16 +451,18 @@ function validateOutput(value: unknown): AiMediaJobOutput | null {
 function validateAiMediaCreateJobResponse(value: unknown): AiMediaCreateJobResponse {
   const input = asRecord(value);
   const jobId = typeof input.job_id === "string" ? input.job_id.trim() : "";
-  const status = typeof input.status === "string" ? input.status.trim() : "";
   const provider = typeof input.provider === "string" ? input.provider.trim() : "";
+  const statusDetails = normalizeAiMediaServiceStatusPayload(input);
 
-  if (!jobId || !status || !provider) {
+  if (!jobId || !provider) {
     throw new AiMediaServiceError(502, "AI media service returned an invalid job response", "INVALID_PROVIDER_RESPONSE");
   }
 
   return {
     job_id: jobId,
-    status,
+    status: statusDetails.legacyStatus,
+    canonical_status: statusDetails.canonicalStatus,
+    status_details: statusDetails,
     provider,
     outputs: Array.isArray(input.outputs) ? input.outputs.map(validateOutput).filter((output): output is AiMediaJobOutput => Boolean(output)) : undefined,
     output_images: Array.isArray(input.output_images)
@@ -466,13 +476,12 @@ function validateAiMediaCreateJobResponse(value: unknown): AiMediaCreateJobRespo
 function validateAiMediaJob(value: unknown): AiMediaJob {
   const input = asRecord(value);
   const base = validateAiMediaCreateJobResponse(input);
-  if (!AI_MEDIA_JOB_STATUSES.has(base.status)) {
-    throw new AiMediaServiceError(502, "AI media service returned an unsupported job status", "INVALID_PROVIDER_STATUS");
-  }
 
   return {
     job_id: base.job_id,
-    status: base.status as AiMediaJob["status"],
+    status: base.status,
+    canonical_status: base.canonical_status,
+    status_details: base.status_details,
     provider: base.provider,
     organization_id: typeof input.organization_id === "string" ? input.organization_id : "",
     product_id: typeof input.product_id === "string" ? input.product_id : "",

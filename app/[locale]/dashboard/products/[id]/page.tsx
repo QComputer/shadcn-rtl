@@ -51,6 +51,13 @@ import {
   type AiMediaStatusResponse,
   type AiMediaUsageSummary,
 } from "@/components/dashboard/ai-media-provider-state"
+import {
+  getAiMediaStatusDetailLines,
+  getAiMediaStatusDisplay,
+  isAiMediaStatusInFlight,
+  normalizeAiMediaServiceStatusPayload,
+  type NormalizedAiMediaStatus,
+} from "@/lib/ai-media/status"
 
 const AI_JOB_POLL_INTERVAL_MS = 3000
 const AI_JOB_MAX_POLL_ATTEMPTS = 90
@@ -60,6 +67,8 @@ type AiJobOutput = { url: string }
 type AiJobSnapshot = {
   job_id?: string
   status?: string | null
+  canonical_status?: string | null
+  status_details?: unknown
   provider?: string | null
   created_at?: string | null
   updated_at?: string | null
@@ -71,6 +80,8 @@ type AiJobSnapshot = {
 type AiLocalJobSnapshot = {
   jobId?: string
   status?: string | null
+  canonical_status?: string | null
+  status_details?: unknown
   provider?: string | null
   createdAt?: string | null
   updatedAt?: string | null
@@ -192,6 +203,7 @@ export default function EditProductPage({
   const [aiDialogOpen, setAiDialogOpen] = useState(false)
   const [aiJobId, setAiJobId] = useState<string | null>(null)
   const [aiJobStatus, setAiJobStatus] = useState<string | null>(null)
+  const [aiJobStatusDetails, setAiJobStatusDetails] = useState<NormalizedAiMediaStatus | null>(null)
   const [aiJobProvider, setAiJobProvider] = useState<string | null>(null)
   const [aiJobCreatedAt, setAiJobCreatedAt] = useState<string | null>(null)
   const [aiJobUpdatedAt, setAiJobUpdatedAt] = useState<string | null>(null)
@@ -369,7 +381,15 @@ export default function EditProductPage({
     }
   }
 
-  const isAiJobInFlight = (status: string | null) => status === "QUEUED" || status === "PROCESSING"
+  const getAiStatusDetails = (job?: AiJobSnapshot | AiLocalJobSnapshot | null) => {
+    if (!job) return normalizeAiMediaServiceStatusPayload({ status: aiJobStatus })
+    return normalizeAiMediaServiceStatusPayload({
+      ...job,
+      ...(typeof job.status_details === "object" && job.status_details ? job.status_details : {}),
+    })
+  }
+
+  const isAiJobInFlight = (status: string | null) => Boolean(status) && isAiMediaStatusInFlight({ status })
 
   const normalizeAiOutputs = (job?: AiJobSnapshot | AiLocalJobSnapshot | null): AiJobOutput[] => {
     if (!job) return []
@@ -397,8 +417,9 @@ export default function EditProductPage({
   const applyAiJobSnapshot = (data: AiJobApiResponse) => {
     const job = data.job
     const local = data.local
+    const statusDetails = getAiStatusDetails(job || local || null)
     const nextJobId = job?.job_id || local?.jobId || null
-    const nextStatus = job?.status || local?.status || null
+    const nextStatus = statusDetails.legacyStatus
     const nextProvider = job?.provider || local?.provider || null
     const nextCreatedAt = job?.created_at || local?.createdAt || null
     const nextUpdatedAt = job?.updated_at || local?.updatedAt || null
@@ -406,6 +427,7 @@ export default function EditProductPage({
 
     if (nextJobId) setAiJobId(nextJobId)
     setAiJobStatus(nextStatus)
+    setAiJobStatusDetails(statusDetails)
     setAiJobProvider(nextProvider)
     setAiJobCreatedAt(nextCreatedAt)
     setAiJobUpdatedAt(nextUpdatedAt)
@@ -516,6 +538,7 @@ export default function EditProductPage({
     setAiSelectedImage(null)
     setAiSelectedIndex(null)
     setAiJobStatus(null)
+    setAiJobStatusDetails(null)
     setAiJobProvider(null)
     setAiJobCreatedAt(null)
     setAiJobUpdatedAt(null)
@@ -540,8 +563,10 @@ export default function EditProductPage({
       }
 
       const data = await response.json()
+      const statusDetails = normalizeAiMediaServiceStatusPayload(data)
       setAiJobId(data.job_id)
-      setAiJobStatus(data.status || "QUEUED")
+      setAiJobStatus(statusDetails.legacyStatus)
+      setAiJobStatusDetails(statusDetails)
       setAiJobProvider(data.provider || null)
       setAiJobCreatedAt(new Date().toISOString())
       setAiJobUpdatedAt(new Date().toISOString())
@@ -588,7 +613,7 @@ export default function EditProductPage({
         }
         const data = await response.json()
         applyAiJobSnapshot(data)
-        const status = data.job?.status || data.local?.status || null
+        const status = getAiStatusDetails(data.job || data.local || null).legacyStatus
         const outputs = normalizeAiOutputs(data.job).length > 0
           ? normalizeAiOutputs(data.job)
           : normalizeAiOutputs(data.local)
@@ -670,6 +695,7 @@ export default function EditProductPage({
     setAiSelectedImage(null)
     setAiSelectedIndex(null)
     setAiJobStatus(null)
+    setAiJobStatusDetails(null)
     setAiJobId(null)
     setAiJobProvider(null)
     setAiJobCreatedAt(null)
@@ -695,7 +721,7 @@ export default function EditProductPage({
       }
       applyAiJobSnapshot(data)
       const recoveredJobId = data.job?.job_id || data.local?.jobId
-      const recoveredStatus = data.job?.status || data.local?.status || null
+      const recoveredStatus = getAiStatusDetails(data.job || data.local || null).legacyStatus
       if (recoveredJobId && isAiJobInFlight(recoveredStatus)) {
         pollAiJob(recoveredJobId)
       }
@@ -725,6 +751,7 @@ export default function EditProductPage({
       clearAiPollingTimer()
       applyAiJobSnapshot({ job: data.job, remoteUnavailable: false })
       setAiJobStatus("CANCELED")
+      setAiJobStatusDetails(normalizeAiMediaServiceStatusPayload({ status: "CANCELED" }))
       setAiPolling(false)
       setAiLoading(false)
       setAiError("درخواست تصویر لغو شد.")
@@ -845,6 +872,15 @@ export default function EditProductPage({
       </div>
     )
   }
+
+  const currentAiStatusDetails = aiJobStatusDetails || (aiJobStatus ? normalizeAiMediaServiceStatusPayload({ status: aiJobStatus }) : null)
+  const currentAiStatusDisplay = currentAiStatusDetails ? getAiMediaStatusDisplay(currentAiStatusDetails, locale) : null
+  const currentAiStatusDetailLines = currentAiStatusDetails ? getAiMediaStatusDetailLines(currentAiStatusDetails, locale) : []
+  const currentAiStatusBadgeVariant = currentAiStatusDisplay?.tone === "danger"
+    ? "destructive"
+    : currentAiStatusDisplay?.tone === "success"
+      ? "default"
+      : "secondary"
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
@@ -1430,9 +1466,8 @@ export default function EditProductPage({
             <DialogTitle>پیشنهاد تصویر با AI</DialogTitle>
             <DialogDescription>
               {aiLoading && !aiPolling && "در حال ایجاد درخواست تصویر..."}
-              {aiPolling && "در حال پیگیری درخواست تصویر..."}
-              {aiJobStatus === "COMPLETED" && "تصاویر پیشنهادی آماده است"}
-              {aiJobStatus === "FAILED" && "خطا در تولید تصویر"}
+              {aiPolling && (currentAiStatusDisplay?.description || "در حال پیگیری درخواست تصویر...")}
+              {!aiPolling && currentAiStatusDisplay?.description}
               {aiError && aiJobStatus !== "FAILED" && aiError}
             </DialogDescription>
           </DialogHeader>
@@ -1440,12 +1475,21 @@ export default function EditProductPage({
           {(aiJobId || aiJobStatus) && (
             <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-3">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={aiJobStatus === "COMPLETED" ? "default" : aiJobStatus === "FAILED" ? "destructive" : "secondary"}>
-                  {aiJobStatus || "نامشخص"}
+                <Badge variant={currentAiStatusBadgeVariant}>
+                  {currentAiStatusDisplay?.badgeText || "نامشخص"}
                 </Badge>
                 {aiJobProvider && <Badge variant="outline">{aiJobProvider}</Badge>}
                 {aiRemoteUnavailable && <Badge variant="secondary">آخرین وضعیت محلی</Badge>}
               </div>
+              {currentAiStatusDisplay && (
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <div className="font-medium text-foreground">{currentAiStatusDisplay.label}</div>
+                  <div>{currentAiStatusDisplay.description}</div>
+                  {currentAiStatusDetailLines.map((line) => (
+                    <div key={line}>{line}</div>
+                  ))}
+                </div>
+              )}
               <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
                 <div className="flex items-center gap-2">
                   <Clock className="h-3.5 w-3.5" />

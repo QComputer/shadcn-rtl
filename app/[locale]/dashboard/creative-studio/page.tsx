@@ -34,6 +34,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { toPersianDigits } from "@/lib/persian"
+import { isAiMediaStatusInFlight } from "@/lib/ai-media/status"
 
 const GENERATION_POLL_INTERVAL_MS = 3000
 const GENERATION_MAX_POLL_ATTEMPTS = 90
@@ -936,7 +937,7 @@ function statusVariant(status: CreativeStudioJobStatus | CreativeStudioAssetStat
 }
 
 function isJobInFlight(status: CreativeStudioJobStatus | string | null | undefined) {
-  return status === "QUEUED" || status === "PROCESSING"
+  return Boolean(status) && isAiMediaStatusInFlight({ status })
 }
 
 function getAssetPublicUrl(asset: CreativeStudioAsset) {

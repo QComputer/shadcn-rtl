@@ -12,6 +12,10 @@ pnpm run test:ai-media:pre-p07-status
 pnpm run quality:ai-media-pre-p07-status
 pnpm run test:ai-media:preview-isolation
 pnpm run quality:ai-media-preview-isolation
+pnpm run test:ai-media:preview-env-verification
+pnpm run quality:ai-media-preview-env-verification
+pnpm run test:ai-handoff
+pnpm run quality:ai-handoff
 pnpm run typecheck
 pnpm run lint
 pnpm run build
@@ -28,6 +32,7 @@ git status --short --branch
   build: passed with non-fatal DB connectivity warnings.
   ```
 - No current DB warnings were reported in the last validation report.
+- Preview env verification tooling is source-only. It accepts redacted/operator-provided evidence and does not call Vercel, DB, Blob, Render, or AI write endpoints.
 
 ## Handoff Doc Validation
 

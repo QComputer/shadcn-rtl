@@ -3,21 +3,23 @@
 ## Recommended Next Prompt
 
 ```
-PHASE: BAZAR-BAZ-AI-NETWORK-PREVIEW-ENV-VERIFICATION-READONLY-01
+PHASE: BAZAR-BAZ-AI-NETWORK-RENDER-CONTRACT-PINNING-READONLY-01
 
 MISSION:
-Verify Preview env separation for Bazar Baz AI Media Network using read-only diagnostics only.
+Pin the deployed Render AI media contract using read-only health/readiness/OpenAPI evidence, then decide whether the next source-only phase should be AI job mirror design.
 
 BASELINE:
-The repository should be on main at or after 40d2b2d60e64597fc9628819ebc2458d5749df96.
+The repository should be on main at or after a890a0fb88f718b1e269e519e7d87d4360f7035f, plus the local Preview env verification tooling commit if it has been accepted.
 
 RULES:
+- No write flow is authorized: no AI writes, no Blob writes, no DB writes.
 - Do NOT push.
-- Do NOT deploy unless explicitly authorized.
+- Do NOT deploy.
 - Do NOT change Vercel env.
 - Do NOT run production DB migrations.
 - Do NOT add migrations.
 - Do NOT write to Production DB.
+- Do NOT write to Preview DB.
 - Do NOT write to Blob/storage.
 - Do NOT create AI media jobs.
 - Do NOT call Render write endpoints.
@@ -33,24 +35,19 @@ RULES:
 
 TASKS:
 1. Inspect baseline with git status, HEAD, and validation scripts.
-2. Add a read-only Preview env verification script that:
-   - checks VERCEL_ENV / NODE_ENV classification
-   - verifies Preview DATABASE_URL is not Production
-   - verifies Preview BLOB_READ_WRITE_TOKEN is not Production
-   - verifies Preview AI_MEDIA_SERVICE_URL is not Production
-   - reports findings as diagnostics only
-   - does not mutate anything
-   - does not call external services unless explicitly safe and read-only
-3. Add or update docs with Preview verification results.
-4. Run validation gates.
-5. Commit only if green. Do NOT push.
+2. If operator evidence is available, run Preview env verification tooling with redacted fingerprints only.
+3. Inspect Render health, readiness, and OpenAPI using read-only calls only if credentials/access are available.
+4. Compare deployed contract fingerprint with the expected source contract.
+5. Update docs with read-only findings and remaining blockers.
+6. Run validation gates.
+7. Commit only if green. Do NOT push.
 
 FALLBACK:
 If Vercel/Preview access is not available, do not fake verification.
-Stop and document that human-provided outputs are required.
-Proceed with source-only AI job mirror design docs instead.
+Document that human-provided outputs are required.
+Proceed only with source-safe AI job mirror design docs if asked.
 ```
 
 ## Fallback Note
 
-If KiloCode/AI does not have Vercel/Preview access, do not fake verification. Stop and ask for human-provided outputs. Proceed with source-only AI job mirror design docs instead. No write flow until Preview isolation and Render pinning are proven.
+Preview env verification tooling is available for redacted/human-provided evidence. If KiloCode/AI does not have Vercel/Preview access, do not fake verification. No AI write flow is allowed until Preview isolation and Render pinning are proven.

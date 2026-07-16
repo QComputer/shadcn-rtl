@@ -58,6 +58,14 @@ Source-level validation exists in:
 
 These guards help detect accidental Preview/Production identity mixing before deployment.
 
+Read-only human/operator evidence verification exists in:
+
+- `lib/ai-media/preview-env-verification.ts`
+- `scripts/quality/validate-ai-media-preview-env-verification.mts`
+- `docs/ai-media/AI_MEDIA_PREVIEW_ENV_VERIFICATION_READONLY.md`
+
+This newer gate compares redacted Preview and Production fingerprints side by side. It does not prove real Vercel state unless an operator supplies evidence or grants a separate read-only inspection path.
+
 ## Deployment Safety
 
 - Do not change Vercel environment variables without explicit authorization.

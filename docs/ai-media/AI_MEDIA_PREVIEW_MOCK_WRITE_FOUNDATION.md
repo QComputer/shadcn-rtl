@@ -69,7 +69,7 @@ Guarded routes were added:
 
 The routes require authentication, evaluate the Preview write guard, and return blocked status by default unless the explicit Preview MOCK evidence and flag are present.
 
-The default flow is dry-run/planning. The route code does not call Render mutation endpoints, does not expose Render credentials, and does not write Blob storage.
+In the foundation phase the default flow was dry-run/planning and the route code did not call Render mutation endpoints. The later Preview MOCK write E2E source gate is documented in `docs/ai-media/AI_MEDIA_PREVIEW_MOCK_WRITE_E2E.md`; it permits Render MOCK job creation only after both the Preview write guard and Preview DB identity guard pass. The routes still do not expose Render credentials and do not write Blob storage.
 
 ## Import Planning
 

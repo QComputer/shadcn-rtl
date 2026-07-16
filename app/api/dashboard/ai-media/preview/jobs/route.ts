@@ -6,16 +6,26 @@ import {
   evaluateAiMediaPreviewWriteGuard,
 } from "@/lib/ai-media/preview-write-guard";
 import {
-  buildPreviewMockRequestPlan,
-  createDraftAiMediaRequest,
-} from "@/lib/services/ai-media-platform-request-service";
+  buildAiMediaPreviewDbIdentityEvidenceFromEnv,
+  evaluateAiMediaPreviewDbIdentityGuard,
+} from "@/lib/ai-media/preview-db-identity-guard";
 import {
-  appendAiMediaJobEvent,
-  createAiMediaJobMirror,
-} from "@/lib/services/ai-media-job-mirror-service";
+  buildPreviewMockRequestPlan,
+} from "@/lib/services/ai-media-platform-request-service";
+import { submitPreviewMockAiMediaJob } from "@/lib/services/ai-media-preview-mock-write-service";
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function buildSafety(renderMutation = false) {
+  return {
+    renderMutation,
+    blobWrite: false,
+    productionWrite: false,
+    browserSecretExposure: false,
+    realGeneration: false,
+  };
 }
 
 export async function GET() {
@@ -24,20 +34,19 @@ export async function GET() {
     const guard = evaluateAiMediaPreviewWriteGuard(
       buildAiMediaPreviewWriteGuardEvidenceFromEnv(process.env, session.user.role),
     );
+    const dbGuard = evaluateAiMediaPreviewDbIdentityGuard(
+      buildAiMediaPreviewDbIdentityEvidenceFromEnv(process.env),
+    );
 
     return NextResponse.json({
-      allowed: guard.allowed,
+      allowed: guard.allowed && dbGuard.allowed,
       mode: guard.mode,
       provider: guard.provider,
       realGeneration: guard.realGeneration,
-      blockers: guard.blockers,
-      safety: {
-        renderMutation: false,
-        blobWrite: false,
-        productionWrite: false,
-        browserSecretExposure: false,
-      },
-    }, { status: guard.allowed ? 200 : 403 });
+      blockers: [...guard.blockers, ...dbGuard.blockers],
+      dbIdentity: dbGuard.safeSummary,
+      safety: buildSafety(false),
+    }, { status: guard.allowed && dbGuard.allowed ? 200 : 403 });
   } catch (error) {
     return jsonError(error, "Failed to load AI media Preview write status");
   }
@@ -50,18 +59,17 @@ export async function POST(request: NextRequest) {
     const guard = evaluateAiMediaPreviewWriteGuard(
       buildAiMediaPreviewWriteGuardEvidenceFromEnv(process.env, session.user.role),
     );
+    const dbGuard = evaluateAiMediaPreviewDbIdentityGuard(
+      buildAiMediaPreviewDbIdentityEvidenceFromEnv(process.env),
+    );
 
-    if (!guard.allowed) {
+    if (!guard.allowed || !dbGuard.allowed) {
       return NextResponse.json({
         allowed: false,
         mode: guard.mode,
-        blockers: guard.blockers,
-        safety: {
-          renderMutation: false,
-          blobWrite: false,
-          productionWrite: false,
-          browserSecretExposure: false,
-        },
+        blockers: [...guard.blockers, ...dbGuard.blockers],
+        dbIdentity: dbGuard.safeSummary,
+        safety: buildSafety(false),
       }, { status: 403 });
     }
 
@@ -74,6 +82,10 @@ export async function POST(request: NextRequest) {
     const targetId = typeof body.targetId === "string" ? body.targetId : null;
     const idempotencyKey = typeof body.idempotencyKey === "string" ? body.idempotencyKey : null;
     const dryRun = body.dryRun !== false;
+
+    if (!idempotencyKey?.trim()) {
+      return jsonError(new ApiError(400, "AI media Preview MOCK write requires an idempotency key."));
+    }
 
     const requestInput = {
       organizationId,
@@ -90,56 +102,35 @@ export async function POST(request: NextRequest) {
         allowed: true,
         dryRun: true,
         plan: buildPreviewMockRequestPlan(requestInput),
-        safety: {
-          renderMutation: false,
-          blobWrite: false,
-          productionWrite: false,
-          browserSecretExposure: false,
-        },
+        dbIdentity: dbGuard.safeSummary,
+        safety: buildSafety(false),
       });
     }
 
-    const draft = await createDraftAiMediaRequest(requestInput);
-    const mirror = await createAiMediaJobMirror({
-      requestId: draft.id,
-      organizationId,
-      requestedByUserId: session.user.id,
-      provider: "MOCK",
-      idempotencyKey: draft.idempotencyKey,
-      payloadHash: draft.payloadHash,
-      state: "READY_TO_SUBMIT",
-      safeMetadata: {
-        phase: "BAZAR-BAZ-AI-NETWORK-PREVIEW-MOCK-WRITE-FOUNDATION-01",
-        renderMutation: false,
-      },
-    });
-
-    await appendAiMediaJobEvent({
-      organizationId,
-      requestId: draft.id,
-      mirrorId: mirror.id,
-      actorUserId: session.user.id,
-      action: "JOB_MIRRORED",
-      state: "READY_TO_SUBMIT",
-      dedupeKey: `preview-foundation:${organizationId}:${draft.idempotencyKey}:job-mirrored`,
-      safeMetadata: {
-        provider: "MOCK",
-        renderMutation: false,
-        blobWrite: false,
-      },
+    const submitted = await submitPreviewMockAiMediaJob({
+      ...requestInput,
+      productTitle: typeof payload.productTitle === "string" ? payload.productTitle : null,
+      category: typeof payload.category === "string" ? payload.category : null,
     });
 
     return NextResponse.json({
       allowed: true,
       dryRun: false,
-      request: { id: draft.id, status: draft.status },
-      mirror: { id: mirror.id, state: mirror.state, provider: mirror.provider },
-      safety: {
-        renderMutation: false,
-        blobWrite: false,
-        productionWrite: false,
-        browserSecretExposure: false,
+      request: { id: submitted.request.id, status: submitted.request.status },
+      mirror: {
+        id: submitted.mirror.id,
+        state: submitted.mirror.state,
+        provider: submitted.mirror.provider,
+        providerJobId: submitted.mirror.providerJobId ?? null,
       },
+      provider: {
+        provider: submitted.providerJob.provider,
+        jobId: submitted.providerJob.job_id,
+        status: submitted.providerJob.status,
+      },
+      reused: submitted.reused,
+      dbIdentity: dbGuard.safeSummary,
+      safety: buildSafety(true),
     }, { status: 201 });
   } catch (error) {
     if (error instanceof TypeError) return jsonError(new ApiError(400, "Invalid request body"));

@@ -43,7 +43,8 @@ Date: 2026-07-16
 - AI job mirror source design accepted and committed (`8a52533`)
 - AI media platform domain foundation accepted and committed (`43034ed`)
 - Bazar-side pinned Render contract read-only tooling accepted and committed (`cdaa011`)
-- Preview MOCK write foundation is being added in this phase: app-owned mirror schema source, server-only services, fail-closed guard, guarded route skeletons, tests, and docs
+- Preview MOCK write foundation accepted and committed (`c0a1260`): app-owned mirror schema source, server-only services, fail-closed guard, guarded route skeletons, tests, and docs
+- Preview MOCK write E2E source gate is being added in this phase: hard Preview DB identity guard, guarded Render MOCK create/status flow, tests, validator, and docs
 - AI media roadmap docs added under `docs/ai-media/`
 - Existing P02-P06 app-managed storage and import bridges remain in source
 
@@ -62,7 +63,7 @@ Date: 2026-07-16
 - Browser never calls Render directly.
 - Render credentials are server-only in `lib/services/ai-media-service-client.ts`.
 - No `NEXT_PUBLIC_*` Render secrets in `.env.example` or source.
-- AI write flows remain disabled in Production. Preview MOCK writes remain fail-closed unless explicit Preview evidence, pinned Render contract evidence, feature flag, provider `MOCK`, real-generation disabled state, and SUPER_ADMIN role are all present.
+- AI write flows remain disabled in Production. Preview MOCK writes remain fail-closed unless explicit Preview evidence, pinned Render contract evidence, feature flag, provider `MOCK`, real-generation disabled state, SUPER_ADMIN role, and Preview DB identity proof are all present.
 - Preview env verification tooling is read-only and accepts redacted/human-provided evidence only.
 - AI job mirror source design is pure TypeScript and documentation only; it performs no DB, Render, Blob, or storage operation.
 - AI platform domain foundation is pure TypeScript and documentation only; import planning performs no storage writes, Baz spend planning performs no ledger/balance mutation, and contribution mirror planning performs no reward settlement.
@@ -89,14 +90,16 @@ Date: 2026-07-16
 - Preview MOCK write foundation schema source now adds `AiMediaRequest`, `AiMediaJobMirror`, `AiMediaJobEvent`, `AiMediaImport`, `AiMediaAsset`, `AiMediaUsageQuote`, `AiMediaSpendHold`, and `WorkerContributionMirror`.
 - Server-only persistence skeletons live in `lib/services/ai-media-platform-request-service.ts`, `lib/services/ai-media-job-mirror-service.ts`, `lib/services/ai-media-import-service.ts`, and `lib/services/ai-media-contribution-mirror-service.ts`.
 - Preview write guard lives in `lib/ai-media/preview-write-guard.ts`.
+- Preview DB identity guard lives in `lib/ai-media/preview-db-identity-guard.ts`.
 - Preview route skeletons live under `app/api/dashboard/ai-media/preview/jobs`.
+- Preview MOCK write E2E service lives in `lib/services/ai-media-preview-mock-write-service.ts`. It can call the pinned Render MOCK product-image create/status endpoints only after the route guards pass.
 - Production migration execution has not been authorized or run for this phase.
+- Preview migration execution has not been run by source validation unless explicitly recorded in the phase report.
 
 ## Current Blockers
 
-- Preview MOCK write E2E remains blocked until explicitly authorized and run against isolated Preview resources
-- real Preview env evidence with isolated DB/storage/AI identity if Preview write work resumes
-- applying the new AI media mirror migration to isolated Preview DB, pending explicit authorization
+- Preview live MOCK write E2E remains pending until the active runtime proves isolated Preview DB identity and the operator enables the explicit E2E flag.
+- applying the new AI media mirror migration to isolated Preview DB, pending Preview DB identity proof
 - app-owned request/mirror services are source-ready but fail closed by guard
 - app-managed storage import flow for future general AI media assets
 - Baz ledger and internal spend holds

@@ -30,6 +30,7 @@ const nextPrompt = read("docs/AI_HANDOFF_NEXT_PROMPT.md");
 const validation = read("docs/AI_HANDOFF_VALIDATION.md");
 const renderPinnedContract = read("docs/ai-media/AI_MEDIA_RENDER_PINNED_CONTRACT_READONLY.md");
 const previewWriteFoundation = read("docs/ai-media/AI_MEDIA_PREVIEW_MOCK_WRITE_FOUNDATION.md");
+const previewWriteE2e = read("docs/ai-media/AI_MEDIA_PREVIEW_MOCK_WRITE_E2E.md");
 const snapshotScript = read("scripts/release/create-clean-source.mjs");
 const packageJson = read("package.json");
 
@@ -43,14 +44,18 @@ check("current-state mentions P07 not ready", /P07 not ready/.test(currentState)
 check("validation mentions build/typecheck/source-baseline", /build/.test(validation) && /typecheck/.test(validation) && /source-baseline/.test(validation));
 check("validation mentions pinned Render read-only gate", /test:ai-media:render-contract-readonly/.test(validation) && /quality:ai-media-render-contract-readonly/.test(validation));
 check("validation mentions Preview write foundation gate", /test:ai-media:preview-write-foundation/.test(validation) && /quality:ai-media-preview-write-foundation/.test(validation));
+check("validation mentions Preview MOCK write E2E gate", /test:ai-media:preview-mock-write-e2e/.test(validation) && /quality:ai-media-preview-mock-write-e2e/.test(validation));
 check("next prompt mentions no write flow", /no write flow|no AI writes|no Blob writes/i.test(nextPrompt));
 check("pinned Render contract doc exists", existsSync(`${projectRoot}docs/ai-media/AI_MEDIA_RENDER_PINNED_CONTRACT_READONLY.md`));
 check("pinned Render contract doc records fingerprint counts and MOCK", /8bed184dd79980beacc553308652a44d99590c9705b7d37ab9418f4f83868f91/.test(renderPinnedContract) && /42/.test(renderPinnedContract) && /40/.test(renderPinnedContract) && /MOCK/.test(renderPinnedContract));
 check("pinned Render contract doc preserves read-only boundary", /does not call Render job creation/i.test(renderPinnedContract) && /does not create AI jobs/i.test(renderPinnedContract) && /does not write to Blob\/storage/i.test(renderPinnedContract));
 check("Preview write foundation doc exists", existsSync(`${projectRoot}docs/ai-media/AI_MEDIA_PREVIEW_MOCK_WRITE_FOUNDATION.md`));
 check("Preview write foundation doc preserves disabled boundaries", /Production AI writes/.test(previewWriteFoundation) && /real generation remains disabled/.test(previewWriteFoundation) && /Blob\/storage writes/.test(previewWriteFoundation));
+check("Preview MOCK write E2E doc exists", existsSync(`${projectRoot}docs/ai-media/AI_MEDIA_PREVIEW_MOCK_WRITE_E2E.md`));
+check("Preview MOCK write E2E doc preserves DB guard and Production-disabled boundary", /Preview DB identity guard/.test(previewWriteE2e) && /AI_MEDIA_PREVIEW_WRITE_E2E=1/.test(previewWriteE2e) && /Production AI writes remain disabled/.test(previewWriteE2e));
 check("package exposes pinned Render scripts", /test:ai-media:render-contract-readonly/.test(packageJson) && /quality:ai-media-render-contract-readonly/.test(packageJson));
 check("package exposes Preview write foundation scripts", /test:ai-media:preview-write-foundation/.test(packageJson) && /quality:ai-media-preview-write-foundation/.test(packageJson));
+check("package exposes Preview MOCK write E2E scripts", /test:ai-media:preview-mock-write-e2e/.test(packageJson) && /quality:ai-media-preview-mock-write-e2e/.test(packageJson));
 check("snapshot script exists", existsSync(`${projectRoot}scripts/release/create-clean-source.mjs`));
 check("snapshot script excludes env files", /isEnvFile|\.env/.test(snapshotScript) && /\.env\.example/.test(snapshotScript));
 check("snapshot script excludes node_modules", /node_modules/.test(snapshotScript));

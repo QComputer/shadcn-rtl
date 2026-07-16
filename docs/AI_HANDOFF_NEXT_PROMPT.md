@@ -19,6 +19,7 @@ CURRENT ACCEPTED SOURCE WORK:
 - AI media platform domain foundation with import planning, Baz spend-hold planning, contribution mirror planning, and schema proposal docs.
 - Pinned Render MOCK contract read-only verification from the Bazar Baz side.
 - Preview MOCK write foundation with app-owned mirror schema/migration source, server-only persistence services, Preview write guard, guarded route skeletons, unit tests, and quality validator.
+- Preview MOCK write E2E source gate with hard Preview DB identity guard, server-only Render MOCK create/status service, guarded routes, unit tests, quality validator, and docs.
 - Pinned Render URL: `https://bazar-baz-ai-media-service.onrender.com`
 - Pinned OpenAPI fingerprint: `8bed184dd79980beacc553308652a44d99590c9705b7d37ab9418f4f83868f91`
 - Pinned OpenAPI counts: 42 paths, 40 schemas.
@@ -50,9 +51,9 @@ TASKS:
 1. Inspect baseline with git status, HEAD, and validation scripts.
 2. Re-run the pinned Render read-only checker before enabling any Preview write flow.
 3. Verify isolated Preview DB/storage/AI identity evidence.
-4. Apply the existing AI media mirror migration only to the isolated Preview database if explicitly authorized.
+4. Apply the existing AI media mirror migration only to the isolated Preview database if explicitly authorized and the Preview DB identity guard is green.
 5. Enable the Preview MOCK write guard only with explicit Preview env flags and evidence.
-6. Exercise one guarded MOCK app-owned request/mirror flow through Bazar Baz server routes.
+6. Exercise one guarded MOCK app-owned request/mirror flow through Bazar Baz server routes with `AI_MEDIA_PREVIEW_WRITE_E2E=1`.
 7. Keep browser-to-Render direct access forbidden.
 8. Run validation gates and document remaining blockers.
 

@@ -14,6 +14,8 @@ pnpm run test:ai-media:preview-isolation
 pnpm run quality:ai-media-preview-isolation
 pnpm run test:ai-media:preview-env-verification
 pnpm run quality:ai-media-preview-env-verification
+pnpm run test:ai-media:job-mirror-design
+pnpm run quality:ai-media-job-mirror-design
 pnpm run test:ai-handoff
 pnpm run quality:ai-handoff
 pnpm run typecheck
@@ -33,6 +35,7 @@ git status --short --branch
   ```
 - No current DB warnings were reported in the last validation report.
 - Preview env verification tooling is source-only. It accepts redacted/operator-provided evidence and does not call Vercel, DB, Blob, Render, or AI write endpoints.
+- AI job mirror design tooling is source-only. It validates docs and pure TypeScript helpers only; it does not add migrations or call Vercel, DB, Blob, Render, or AI write endpoints.
 
 ## Handoff Doc Validation
 
@@ -52,8 +55,8 @@ pnpm run release:clean-source
 ```
 
 Expected output locations:
-- `.release/bazar-baz-clean-source/` (staged clean source)
-- `.release/bazar-baz-clean-source.zip` (zipped snapshot)
+- `dist/bazar-baz-clean-source/` (staged clean source)
+- `dist/bazar-baz-clean-source.zip` (zipped snapshot)
 
 The snapshot excludes:
 - node_modules, .next, .vercel, .git

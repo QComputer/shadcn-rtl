@@ -451,10 +451,12 @@ function validateOutput(value: unknown): AiMediaJobOutput | null {
 function validateAiMediaCreateJobResponse(value: unknown): AiMediaCreateJobResponse {
   const input = asRecord(value);
   const jobId = typeof input.job_id === "string" ? input.job_id.trim() : "";
-  const provider = typeof input.provider === "string" ? input.provider.trim() : "";
+  const provider = typeof input.provider === "string" && input.provider.trim().length > 0
+    ? input.provider.trim()
+    : "MOCK";
   const statusDetails = normalizeAiMediaServiceStatusPayload(input);
 
-  if (!jobId || !provider) {
+  if (!jobId) {
     throw new AiMediaServiceError(502, "AI media service returned an invalid job response", "INVALID_PROVIDER_RESPONSE");
   }
 

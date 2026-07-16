@@ -52,6 +52,8 @@ git status --short --branch
 - AI media Preview MOCK write foundation quality tooling validates schema/migration source, fail-closed guard rules, guarded route skeletons, no browser Render secrets, no Blob writes, docs, and package scripts.
 - AI media Preview MOCK write E2E tests are local/source guarded. Live Preview E2E requires `AI_MEDIA_PREVIEW_WRITE_E2E=1`, provider `MOCK`, real generation disabled, and either explicit isolated Preview DB identity proof or `AI_MEDIA_PREVIEW_DB_NON_ISOLATED_WRITE_ACCEPTED=1` reported as accepted-risk non-isolated MOCK E2E.
 - AI media Preview MOCK write E2E quality tooling validates the Preview DB identity guard, server-only Render MOCK create/status path, auth guards, no browser Render secrets, no Blob writes, docs, and package scripts.
+- Local Docker MOCK E2E may be run before hosted Preview writes with `AI_MEDIA_LOCAL_DOCKER_E2E=1` and `AI_MEDIA_PREVIEW_DB_NON_ISOLATED_WRITE_ACCEPTED=1`, but only when `DATABASE_URL` and `DIRECT_URL` point to a disposable localhost PostgreSQL database. This mode does not prove hosted Preview DB isolation.
+- Current local Docker MOCK E2E result: local migration, auth fixture, request/mirror/event creation, and provider failure recording pass; deployed Render MOCK product-image creation returns HTTP 500, so provider job creation and status sync remain blocked.
 
 ## Handoff Doc Validation
 

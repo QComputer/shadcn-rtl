@@ -1,6 +1,12 @@
 import "server-only";
 
-import { createAiMediaJob, getAiMediaJob, type AiMediaJob, type AiMediaCreateJobResponse } from "@/lib/services/ai-media-service-client";
+import {
+  AiMediaServiceError,
+  createAiMediaJob,
+  getAiMediaJob,
+  type AiMediaJob,
+  type AiMediaCreateJobResponse,
+} from "@/lib/services/ai-media-service-client";
 import { buildPreviewMockRenderJobRequest } from "@/lib/ai-media/preview-mock-render-request";
 import { prisma } from "@/lib/db";
 import {
@@ -30,6 +36,26 @@ function providerStatusPayload(job: AiMediaCreateJobResponse | AiMediaJob) {
     output_images: job.output_images ?? [],
     outputs: job.outputs ?? [],
   };
+}
+
+function providerSubmitFailureMetadata(error: unknown) {
+  if (error instanceof AiMediaServiceError) {
+    return {
+      status: error.status,
+      code: error.code ?? "PROVIDER_ERROR",
+      retryAfterMs: error.retryAfterMs ?? null,
+    };
+  }
+
+  return {
+    code: "PROVIDER_ERROR",
+  };
+}
+
+function providerSubmitFailureState(error: unknown) {
+  return error instanceof AiMediaServiceError && error.status >= 400 && error.status < 500 && error.status !== 429
+    ? "FAILED_FINAL" as const
+    : "FAILED_RETRYABLE" as const;
 }
 
 export async function submitPreviewMockAiMediaJob(
@@ -83,7 +109,52 @@ export async function submitPreviewMockAiMediaJob(
     },
   }, db);
 
-  const providerJob = await createAiMediaJob(buildPreviewMockRenderJobRequest(input, mirror.correlationId));
+  let providerJob: AiMediaCreateJobResponse;
+  try {
+    providerJob = await createAiMediaJob(buildPreviewMockRenderJobRequest(input, mirror.correlationId));
+  } catch (error) {
+    const failedState = providerSubmitFailureState(error);
+    const failureMetadata = providerSubmitFailureMetadata(error);
+    const errorCode = failureMetadata.code;
+
+    await client.aiMediaJobMirror.updateMany({
+      where: { id: mirror.id, organizationId: input.organizationId },
+      data: {
+        state: failedState,
+        errorCode,
+        errorMessage: "AI media MOCK provider submission failed before a provider job was created.",
+        failedAt: new Date(),
+        statusPayload: failureMetadata,
+        safeMetadata: {
+          ...(mirror.safeMetadata && typeof mirror.safeMetadata === "object" ? mirror.safeMetadata : {}),
+          providerSubmitFailure: failureMetadata,
+        },
+      },
+    });
+
+    await client.aiMediaRequest.updateMany({
+      where: { id: draft.id, organizationId: input.organizationId },
+      data: {
+        status: "FAILED",
+        errorCode,
+        errorMessage: "AI media MOCK provider submission failed before a provider job was created.",
+      },
+    });
+
+    await appendAiMediaJobEvent({
+      organizationId: input.organizationId,
+      requestId: draft.id,
+      mirrorId: mirror.id,
+      actorUserId: input.requestedByUserId,
+      action: "STATUS_SYNCED",
+      state: failedState,
+      dedupeKey: `preview-e2e:${input.organizationId}:${draft.idempotencyKey}:provider-submit-failed`,
+      safeMetadata: failureMetadata,
+      errorCode,
+    }, db);
+
+    throw error;
+  }
   const statusPayload = providerStatusPayload(providerJob);
   const sync = await updateMirrorFromNormalizedStatus({
     mirrorId: mirror.id,

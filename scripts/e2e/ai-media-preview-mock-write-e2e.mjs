@@ -5,8 +5,12 @@ const REQUIRED_TRUE_FLAGS = [
   "AI_MEDIA_PREVIEW_MOCK_WRITES_ENABLED",
   "AI_MEDIA_PREVIEW_ISOLATION_VERIFIED",
   "AI_MEDIA_RENDER_PINNED_CONTRACT_VERIFIED",
-  "AI_MEDIA_PREVIEW_DB_IDENTITY_VERIFIED",
 ];
+
+function isLocalDockerMockE2e() {
+  return process.env.AI_MEDIA_LOCAL_DOCKER_E2E === "1"
+    && process.env.AI_MEDIA_PREVIEW_DB_NON_ISOLATED_WRITE_ACCEPTED === "1";
+}
 
 function fail(message) {
   console.error(`FAIL ${message}`);
@@ -25,6 +29,18 @@ function assertNoProductionTarget(url) {
   const parsed = new URL(url);
   if (/bazar-baz\.ir$/i.test(parsed.hostname) || parsed.hostname === "www.bazar-baz.ir") {
     throw new Error("Preview live E2E refuses Production host.");
+  }
+}
+
+function assertLocalDockerDatabaseTarget() {
+  for (const name of ["DATABASE_URL", "DIRECT_URL"]) {
+    const value = process.env[name] || "";
+    if (!value) throw new Error(`LOCAL_DOCKER_MOCK_E2E requires ${name}.`);
+    const parsed = new URL(value);
+    const local = parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost";
+    if (!local || /neon/i.test(value)) {
+      throw new Error(`LOCAL_DOCKER_MOCK_E2E refuses non-local ${name}.`);
+    }
   }
 }
 
@@ -57,6 +73,8 @@ async function requestJson(url, init = {}) {
 async function main() {
   const flagsOk = REQUIRED_TRUE_FLAGS.every(requireTrueFlag);
   if (!flagsOk) return;
+  if (!isLocalDockerMockE2e() && !requireTrueFlag("AI_MEDIA_PREVIEW_DB_IDENTITY_VERIFIED")) return;
+  if (isLocalDockerMockE2e()) assertLocalDockerDatabaseTarget();
 
   const baseUrl = process.env.AI_MEDIA_PREVIEW_BASE_URL;
   if (!baseUrl) return fail("AI_MEDIA_PREVIEW_BASE_URL is required.");
@@ -65,11 +83,13 @@ async function main() {
   assertNoProductionTarget(baseUrl);
   const base = new URL(baseUrl);
   const idempotencyKey = `preview-mock-e2e-${Date.now()}`;
+  const organizationId = process.env.AI_MEDIA_PREVIEW_ORGANIZATION_ID || null;
   const createUrl = new URL("/api/dashboard/ai-media/preview/jobs", base);
   const create = await requestJson(createUrl, {
     method: "POST",
     body: JSON.stringify({
       dryRun: false,
+      ...(organizationId ? { organizationId } : {}),
       targetType: "PRODUCT_IMAGE",
       targetId: "preview-product-image",
       idempotencyKey,

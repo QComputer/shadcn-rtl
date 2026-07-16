@@ -3,10 +3,10 @@
 ## Recommended Next Prompt
 
 ```text
-PHASE: BAZAR-BAZ-AI-NETWORK-PREVIEW-MOCK-WRITE-E2E-01
+PHASE: BAZAR-BAZ-AI-NETWORK-LOCAL-DOCKER-MOCK-E2E-RECOVERY-01
 
 MISSION:
-Run the first Preview-only MOCK write E2E for Bazar Baz AI media, using the app-owned mirror schema/services and either isolated Preview DB proof or the explicitly accepted-risk non-isolated MOCK E2E marker. Keep the flow MOCK-only and fail closed outside Preview.
+Resolve the local Docker MOCK E2E blocker before any hosted Preview write. Use disposable local Docker Postgres, the local Bazar Baz app, and the deployed Render MOCK coordinator. Keep the flow MOCK-only and fail closed outside local/test/Preview scope.
 
 BASELINE:
 The repository should be on main at or after `43034edf745fd52c4f9613e342c4ef4f909bfb68`, plus the pinned Render contract read-only verification commit if it has been accepted.
@@ -20,16 +20,19 @@ CURRENT ACCEPTED SOURCE WORK:
 - Pinned Render MOCK contract read-only verification from the Bazar Baz side.
 - Preview MOCK write foundation with app-owned mirror schema/migration source, server-only persistence services, Preview write guard, guarded route skeletons, unit tests, and quality validator.
 - Preview MOCK write E2E source gate with a Preview DB identity guard that allows isolated Preview proof or explicit accepted-risk non-isolated MOCK E2E, server-only Render MOCK create/status service, guarded routes, unit tests, quality validator, and docs.
+- Local Docker MOCK E2E now reaches local Bazar Baz app-owned request/mirror/event creation against a disposable local Postgres container, but Render MOCK product-image creation returns HTTP 500. The app records the failure safely as request `FAILED`, mirror `FAILED_RETRYABLE`, `PROVIDER_ERROR`, with sanitized status payload and no provider job id.
 - Pinned Render URL: `https://bazar-baz-ai-media-service.onrender.com`
 - Pinned OpenAPI fingerprint: `8bed184dd79980beacc553308652a44d99590c9705b7d37ab9418f4f83868f91`
 - Pinned OpenAPI counts: 42 paths, 40 schemas.
 - Render provider expectation: `MOCK`; real generation remains blocked.
 - shadcn-rtl verifier uses the same fingerprint algorithm as ai-media-service: sorted compact `app.openapi()` JSON, UTF-8 SHA-256, and FastAPI/Pydantic `.0` numeric constraint preservation.
+- Operator-accepted DB resume applied migration `20260716000100_ai_media_preview_mock_write_foundation` under `ACCEPTED_RISK_NON_ISOLATED_DB`. Live Preview MOCK E2E is still pending because no local Preview session cookie or Vercel protection bypass value was available.
 
 RULES:
 - No write flow is authorized outside Preview/test/development MOCK-only scope, and accepted-risk non-isolated DB mode must be explicitly marked and reported.
 - Write flow must remain Preview-only and MOCK-only.
 - Do NOT touch Production DB.
+- Do NOT touch hosted Preview DB until the local Docker gate passes and a later phase explicitly authorizes it.
 - Do NOT touch Production Blob/storage.
 - Do NOT change Vercel env.
 - Do NOT run production DB migrations.
@@ -49,21 +52,23 @@ RULES:
 
 TASKS:
 1. Inspect baseline with git status, HEAD, and validation scripts.
-2. Re-run the pinned Render read-only checker before enabling any Preview write flow.
-3. Verify isolated Preview DB/storage/AI identity evidence, or verify the explicit accepted-risk non-isolated MOCK E2E marker.
-4. Apply the existing AI media mirror migration only if explicitly authorized and the Preview DB identity guard is green under one of those paths.
-5. Enable the Preview MOCK write guard only with explicit Preview env flags and evidence.
-6. Exercise one guarded MOCK app-owned request/mirror flow through Bazar Baz server routes with `AI_MEDIA_PREVIEW_WRITE_E2E=1`.
-7. Keep browser-to-Render direct access forbidden.
-8. Run validation gates and document remaining blockers.
+2. Re-run the pinned Render read-only checker before enabling any write flow.
+3. Use local Docker Postgres only; do not run hosted Preview or Production migrations.
+4. Confirm the disposable local DB schema remains migrated.
+5. Reproduce the local Docker E2E against `http://127.0.0.1:3100`.
+6. Investigate the deployed Render MOCK create HTTP 500 using read-only contract/source inspection first; mutation is allowed only through the guarded local E2E path.
+7. If Render MOCK job creation succeeds, continue status sync and verify one app-owned provider job mirror.
+8. Keep browser-to-Render direct access forbidden.
+9. Run validation gates and document remaining blockers.
 
 FALLBACK:
 If Render access is not available, do not fake verification. Document the missing read-only evidence and keep write compatibility pending.
 
 ALTERNATIVE SAFE NEXT PHASES:
-1. Bazar Baz AI platform schema/migration planning only after Preview/Render gates are ready.
-2. App-managed storage import implementation after schema and storage isolation.
-3. Baz ledger implementation after schema planning approval.
+1. Hosted Preview MOCK write E2E only after local Docker MOCK E2E passes.
+2. Bazar Baz AI platform schema/migration planning only after Preview/Render gates are ready.
+3. App-managed storage import implementation after schema and storage isolation.
+4. Baz ledger implementation after schema planning approval.
 ```
 
 ## Fallback Note

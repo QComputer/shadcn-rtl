@@ -166,6 +166,15 @@ describe("AI media Preview MOCK write E2E guard", () => {
     assert.equal(/dryRun/.test(listRoute), true);
   });
 
+  it("live E2E runner keeps local Docker mode on localhost databases only", () => {
+    const runner = readFileSync(new URL("../../scripts/e2e/ai-media-preview-mock-write-e2e.mjs", import.meta.url), "utf8");
+    assert.equal(/AI_MEDIA_LOCAL_DOCKER_E2E/.test(runner), true);
+    assert.equal(/DATABASE_URL/.test(runner), true);
+    assert.equal(/DIRECT_URL/.test(runner), true);
+    assert.equal(/refuses non-local/.test(runner), true);
+    assert.equal(/neon/i.test(runner), true);
+  });
+
   it("status sync route is server-side guarded and does not write Blob or expose secrets", () => {
     const detailRoute = readFileSync(new URL("../../app/api/dashboard/ai-media/preview/jobs/[id]/route.ts", import.meta.url), "utf8");
     assert.equal(/export async function POST/.test(detailRoute), true);
@@ -180,5 +189,11 @@ describe("AI media Preview MOCK write E2E guard", () => {
     assert.equal(/createAiMediaJob/.test(service), true);
     assert.equal(/getAiMediaJob/.test(service), true);
     assert.equal(/@vercel\/blob|BLOB_READ_WRITE_TOKEN|walletCreditProduced:\s*true|ledgerMutationAllowed:\s*true/.test(service), false);
+  });
+
+  it("accepts the deployed create contract where provider is only guaranteed on status reads", () => {
+    const client = readFileSync(new URL("../../lib/services/ai-media-service-client.ts", import.meta.url), "utf8");
+    assert.equal(/input\.provider[\s\S]*:\s*"MOCK"/.test(client), true);
+    assert.equal(/if \(!jobId \|\| !provider\)/.test(client), false);
   });
 });

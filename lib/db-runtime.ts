@@ -19,11 +19,18 @@ function getRuntimeDatabaseUrl() {
 }
 
 function shouldUseHermeticLocalRuntime(databaseUrl: string) {
+  const localDockerE2eEnabled = process.env.AI_MEDIA_LOCAL_DOCKER_E2E === "1";
+  const localPostgresUrl = /(?:localhost|127\.0\.0\.1)/i.test(databaseUrl) && !/neon/i.test(databaseUrl);
+
   return (
-    process.env.NODE_ENV === "test" &&
-    process.env.AI_MEDIA_APPLICATION_STORAGE_ADAPTER === "local-test" &&
-    /(?:localhost|127\.0\.0\.1)/i.test(databaseUrl) &&
-    !/neon/i.test(databaseUrl)
+    localPostgresUrl &&
+    (
+      (
+        process.env.NODE_ENV === "test" &&
+        process.env.AI_MEDIA_APPLICATION_STORAGE_ADAPTER === "local-test"
+      ) ||
+      localDockerE2eEnabled
+    )
   );
 }
 

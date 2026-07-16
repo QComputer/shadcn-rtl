@@ -3,6 +3,46 @@
 Date: 2026-07-16
 Phase: BAZAR-BAZ-AI-MEDIA-PREVIEW-MOCK-WRITE-E2E-01
 
+## Operator-Accepted DB Resume Update
+
+The relaxed DB guard source was accepted in commit `c008412e1178498ee9a2340c0e09b40b007f86f1`.
+
+On 2026-07-16, the operator explicitly accepted temporary DB write risk for this MOCK E2E stage. The migration was run with guard mode `ACCEPTED_RISK_NON_ISOLATED_DB` against the locally configured target DB connection. The guard warning was `accepted-risk non-isolated MOCK E2E`.
+
+Migration result:
+
+- command: `pnpm exec prisma migrate deploy --schema=prisma/schema.prisma`
+- applied migration: `20260716000100_ai_media_preview_mock_write_foundation`
+- post-check: Prisma reported the schema is up to date
+
+Live Preview MOCK E2E was not completed because the required `AI_MEDIA_PREVIEW_SESSION_COOKIE` was not available locally and the Preview deployment remained protected by Vercel SSO. No Render MOCK job, app mirror/event, Blob write, wallet settlement, or real generation was created by this run.
+
+## Local Docker MOCK E2E Update
+
+After the operator made Docker Desktop available, the safer intermediate gate shifted to `LOCAL_DOCKER_MOCK_E2E` before any hosted Preview write.
+
+Local Docker result on 2026-07-16:
+
+- Docker Postgres container: `bazar-baz-ai-media-e2e-postgres`
+- disposable local database: `bazar_baz_ai_media_e2e`
+- local app URL: `http://127.0.0.1:3100`
+- local migration result: schema reached current source after applying migrations to the disposable container
+- local auth fixture: synthetic `SUPER_ADMIN` and synthetic organization only
+- hosted Production DB writes after switching to Docker: none
+- hosted Preview DB writes after switching to Docker: none
+- Blob/storage writes: none
+- real generation: none
+- Production AI jobs: none
+
+The local Bazar Baz route successfully created app-owned `AiMediaRequest`, `AiMediaJobMirror`, and `AiMediaJobEvent` records in the disposable Docker database. The deployed Render MOCK coordinator returned HTTP 500 during product-image job creation, so no provider job id was returned. The Bazar app now records this as:
+
+- request status: `FAILED`
+- mirror state: `FAILED_RETRYABLE`
+- error code: `PROVIDER_ERROR`
+- status payload: sanitized provider status/code only
+
+`LOCAL_DOCKER_MOCK_E2E` is therefore partial: the local app guard, auth, DB migration, mirror/event creation, and failure recording paths are proven; Render MOCK job creation remains blocked by the deployed coordinator returning 500 for the create mutation.
+
 ## Summary
 
 This phase adds the Bazar Baz source gate for the first Preview-only MOCK AI media write flow.
@@ -132,6 +172,15 @@ $env:AI_MEDIA_PREVIEW_DB_IDENTITY_VERIFIED="true"
 Equivalent shell notation: `AI_MEDIA_PREVIEW_WRITE_E2E=1`.
 
 If the active database cannot be proven isolated from Production, live E2E requires the explicit `AI_MEDIA_PREVIEW_DB_NON_ISOLATED_WRITE_ACCEPTED=1` marker and must be reported as `accepted-risk non-isolated MOCK E2E`.
+
+Local Docker MOCK E2E may use the same script with:
+
+```powershell
+$env:AI_MEDIA_LOCAL_DOCKER_E2E="1"
+$env:AI_MEDIA_PREVIEW_DB_NON_ISOLATED_WRITE_ACCEPTED="1"
+```
+
+This mode is valid only when `DATABASE_URL` and `DIRECT_URL` point to a disposable localhost PostgreSQL database, never to Neon or Production.
 
 ## Still Disabled
 

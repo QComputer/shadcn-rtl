@@ -93,13 +93,17 @@ Date: 2026-07-16
 - Preview DB identity guard lives in `lib/ai-media/preview-db-identity-guard.ts`. Identical `DATABASE_URL` and `DIRECT_URL` values inside Preview are warnings only; separation is checked against Production evidence, or the phase must use the explicit accepted-risk non-isolated marker.
 - Preview route skeletons live under `app/api/dashboard/ai-media/preview/jobs`.
 - Preview MOCK write E2E service lives in `lib/services/ai-media-preview-mock-write-service.ts`. It can call the pinned Render MOCK product-image create/status endpoints only after the route guards pass.
+- Local Docker MOCK E2E is now the preferred intermediate gate before hosted Preview writes. A disposable Docker Postgres database was migrated locally, a synthetic `SUPER_ADMIN` organization fixture was used, and the local Bazar Baz route created app-owned request/mirror/event rows without touching hosted Production or Preview DBs after the Docker-priority update.
+- The local Docker E2E currently reaches Render MOCK submission but the deployed coordinator returns HTTP 500 on product-image job creation. The Bazar app records this failure safely as request `FAILED`, mirror `FAILED_RETRYABLE`, `PROVIDER_ERROR`, with sanitized status payload and no provider job id.
 - Production migration execution has not been authorized or run for this phase.
 - Preview migration execution has not been run by source validation unless explicitly recorded in the phase report.
+- Operator-accepted DB resume update: `20260716000100_ai_media_preview_mock_write_foundation` was applied with DB guard mode `ACCEPTED_RISK_NON_ISOLATED_DB` after explicit operator acceptance of temporary DB write risk. Live Preview MOCK E2E remains blocked by missing local `AI_MEDIA_PREVIEW_SESSION_COOKIE` and Vercel SSO-protected Preview access.
 
 ## Current Blockers
 
-- Preview live MOCK write E2E remains pending until the active runtime proves isolated Preview DB identity, or the operator enables the explicit accepted-risk non-isolated MOCK E2E marker, and the explicit E2E flag is set.
-- applying the new AI media mirror migration to isolated Preview DB, pending Preview DB identity proof
+- Local Docker MOCK E2E remains partial because the deployed Render MOCK coordinator returns HTTP 500 for the product-image create mutation.
+- Preview live MOCK write E2E remains pending until local Docker MOCK E2E passes, then the active runtime proves isolated Preview DB identity, or the operator enables the explicit accepted-risk non-isolated MOCK E2E marker, and the explicit E2E flag is set.
+- Preview session/protection-bypass access for running the live E2E against `https://shadcn-kpuh90kko-ahmads-projects-1b4ce1dc.vercel.app`
 - app-owned request/mirror services are source-ready but fail closed by guard
 - app-managed storage import flow for future general AI media assets
 - Baz ledger and internal spend holds
@@ -113,9 +117,10 @@ Date: 2026-07-16
 
 Safe next choices:
 
-1. `BAZAR-BAZ-AI-NETWORK-PREVIEW-MOCK-WRITE-E2E-FOUNDATION-01`: Preview-only MOCK write E2E foundation, but only with explicit write-flow rules and isolated Preview resources.
-2. `BAZAR-BAZ-AI-NETWORK-PLATFORM-SCHEMA-MIGRATION-PLAN-01`: Bazar Baz AI platform schema/migration planning only after Preview/Render gates are ready and migration authorization is explicit.
-3. `BAZAR-BAZ-AI-NETWORK-APP-MANAGED-IMPORT-IMPLEMENTATION-01`: app-managed storage import implementation after schema and storage isolation.
-4. `BAZAR-BAZ-BAZ-LEDGER-FOUNDATION-01`: Baz ledger implementation after schema planning approval.
+1. `BAZAR-BAZ-AI-NETWORK-LOCAL-DOCKER-MOCK-E2E-RECOVERY-01`: resolve the deployed Render MOCK create 500, then rerun the local Docker E2E before hosted Preview writes.
+2. `BAZAR-BAZ-AI-NETWORK-PREVIEW-MOCK-WRITE-E2E-FOUNDATION-01`: Preview-only MOCK write E2E foundation, but only after the local Docker gate passes and explicit write-flow rules plus isolated Preview resources are proven.
+3. `BAZAR-BAZ-AI-NETWORK-PLATFORM-SCHEMA-MIGRATION-PLAN-01`: Bazar Baz AI platform schema/migration planning only after Preview/Render gates are ready and migration authorization is explicit.
+4. `BAZAR-BAZ-AI-NETWORK-APP-MANAGED-IMPORT-IMPLEMENTATION-01`: app-managed storage import implementation after schema and storage isolation.
+5. `BAZAR-BAZ-BAZ-LEDGER-FOUNDATION-01`: Baz ledger implementation after schema planning approval.
 
 Do not activate AI writes, wallet settlement, Render writes, Blob writes, or Production import until separately authorized.

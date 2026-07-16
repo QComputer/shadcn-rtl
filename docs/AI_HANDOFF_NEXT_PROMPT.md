@@ -9,13 +9,14 @@ MISSION:
 Pin the deployed Render AI media contract using read-only health/readiness/OpenAPI evidence, then decide whether the next implementation phase can move from source design to schema planning.
 
 BASELINE:
-The repository should be on main at or after bbdcf0a2705ff8eeaced6be27c21212c84b148d4, plus the local AI job mirror source design commit if it has been accepted.
+The repository should be on main at or after 8a5253322ad43f2ec3ea22265eb7c619b5e2d86e, plus the local AI media platform domain foundation commit if it has been accepted.
 
 CURRENT ACCEPTED SOURCE WORK:
 - PRE-P07 AI media network status mapping.
 - Preview isolation source gate.
 - Preview env verification readonly gate.
 - AI job mirror source design with pure TypeScript helper and validator.
+- AI media platform domain foundation with import planning, Baz spend-hold planning, contribution mirror planning, and schema proposal docs.
 
 RULES:
 - No write flow is authorized: no AI writes, no Blob writes, no DB writes.
@@ -31,7 +32,7 @@ RULES:
 - Do NOT call Render write endpoints.
 - Do NOT expose Render secrets to browser/client code.
 - Do NOT add NEXT_PUBLIC Render secrets.
-- Do NOT implement Baz wallet/ledger.
+- Do NOT implement Baz wallet/ledger or real balance mutation.
 - Do NOT implement worker portal.
 - Do NOT implement Super Admin console.
 - Do NOT implement desktop Control Center.
@@ -52,8 +53,9 @@ If Render access is not available, do not fake verification. Document the missin
 
 ALTERNATIVE SAFE NEXT PHASES:
 1. MOCK-safe Render deployment + deployed fingerprint pinning, if explicitly authorized.
-2. AI job mirror Prisma schema/migration planning only after Preview/Render gates are ready.
-3. App-managed storage import source design if staying source-only.
+2. Bazar Baz AI platform schema/migration planning only after Preview/Render gates are ready.
+3. App-managed storage import implementation after schema and storage isolation.
+4. Baz ledger implementation after schema planning approval.
 ```
 
 ## Fallback Note

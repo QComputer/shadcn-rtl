@@ -44,6 +44,7 @@ export async function GET() {
       provider: guard.provider,
       realGeneration: guard.realGeneration,
       blockers: [...guard.blockers, ...dbGuard.blockers],
+      warnings: dbGuard.warnings,
       dbIdentity: dbGuard.safeSummary,
       safety: buildSafety(false),
     }, { status: guard.allowed && dbGuard.allowed ? 200 : 403 });
@@ -68,6 +69,7 @@ export async function POST(request: NextRequest) {
         allowed: false,
         mode: guard.mode,
         blockers: [...guard.blockers, ...dbGuard.blockers],
+        warnings: dbGuard.warnings,
         dbIdentity: dbGuard.safeSummary,
         safety: buildSafety(false),
       }, { status: 403 });
@@ -103,6 +105,7 @@ export async function POST(request: NextRequest) {
         dryRun: true,
         plan: buildPreviewMockRequestPlan(requestInput),
         dbIdentity: dbGuard.safeSummary,
+        warnings: dbGuard.warnings,
         safety: buildSafety(false),
       });
     }
@@ -130,6 +133,7 @@ export async function POST(request: NextRequest) {
       },
       reused: submitted.reused,
       dbIdentity: dbGuard.safeSummary,
+      warnings: dbGuard.warnings,
       safety: buildSafety(true),
     }, { status: 201 });
   } catch (error) {

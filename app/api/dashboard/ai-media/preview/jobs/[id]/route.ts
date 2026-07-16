@@ -49,6 +49,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         id,
         mode: guard.mode,
         blockers: [...guard.blockers, ...dbGuard.blockers],
+        warnings: dbGuard.warnings,
         dbIdentity: dbGuard.safeSummary,
         safety: buildSafety(false),
       }, { status: 403 });
@@ -94,6 +95,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         rawOutputAvailable: false,
       }),
       dbIdentity: dbGuard.safeSummary,
+      warnings: dbGuard.warnings,
       safety: buildSafety(false),
     });
   } catch (error) {
@@ -118,6 +120,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         id,
         mode: guard.mode,
         blockers: [...guard.blockers, ...dbGuard.blockers],
+        warnings: dbGuard.warnings,
         dbIdentity: dbGuard.safeSummary,
         safety: buildSafety(false),
       }, { status: 403 });
@@ -163,6 +166,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         status: result.providerJob.status,
       } : null,
       dbIdentity: dbGuard.safeSummary,
+      warnings: dbGuard.warnings,
       safety: buildSafety(result.synced),
     });
   } catch (error) {

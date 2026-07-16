@@ -50,7 +50,7 @@ git status --short --branch
 - AI media pinned Render contract fingerprinting matches ai-media-service canonicalization: sorted compact `app.openapi()` JSON, UTF-8 SHA-256, and FastAPI/Pydantic `.0` numeric constraint preservation.
 - AI media Preview MOCK write foundation tests use mocked persistence and do not contact Production DB, Preview DB, Blob, Render mutation endpoints, or real generation.
 - AI media Preview MOCK write foundation quality tooling validates schema/migration source, fail-closed guard rules, guarded route skeletons, no browser Render secrets, no Blob writes, docs, and package scripts.
-- AI media Preview MOCK write E2E tests are local/source guarded. Live Preview E2E requires `AI_MEDIA_PREVIEW_WRITE_E2E=1`, explicit Preview DB identity proof, provider `MOCK`, and real generation disabled.
+- AI media Preview MOCK write E2E tests are local/source guarded. Live Preview E2E requires `AI_MEDIA_PREVIEW_WRITE_E2E=1`, provider `MOCK`, real generation disabled, and either explicit isolated Preview DB identity proof or `AI_MEDIA_PREVIEW_DB_NON_ISOLATED_WRITE_ACCEPTED=1` reported as accepted-risk non-isolated MOCK E2E.
 - AI media Preview MOCK write E2E quality tooling validates the Preview DB identity guard, server-only Render MOCK create/status path, auth guards, no browser Render secrets, no Blob writes, docs, and package scripts.
 
 ## Handoff Doc Validation

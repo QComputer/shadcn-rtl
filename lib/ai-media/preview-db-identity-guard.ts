@@ -10,12 +10,14 @@ export type AiMediaPreviewDbIdentityEvidence = {
   previewDbBranchId?: string | null;
   productionDbBranchId?: string | null;
   explicitPreviewDbIdentityVerified?: boolean;
+  nonIsolatedWriteAccepted?: boolean;
 };
 
 export type AiMediaPreviewDbIdentityDecision = {
   allowed: boolean;
-  mode: "PREVIEW_DB" | "BLOCKED";
+  mode: "PREVIEW_DB" | "ACCEPTED_RISK_NON_ISOLATED_DB" | "BLOCKED";
   blockers: string[];
+  warnings: string[];
   safeSummary: {
     productionBlocked: boolean;
     previewLikeEnvironment: boolean;
@@ -26,6 +28,8 @@ export type AiMediaPreviewDbIdentityDecision = {
     fingerprintsDiffer: boolean | null;
     branchIdsDiffer: boolean | null;
     explicitPreviewDbIdentityVerified: boolean;
+    nonIsolatedWriteAccepted: boolean;
+    acceptedRiskNonIsolated: boolean;
   };
 };
 
@@ -37,6 +41,11 @@ function normalize(value?: string | null) {
 
 function hasValue(value?: string | null) {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function isEnabled(value?: string | null) {
+  const normalized = normalize(value);
+  return normalized === "true" || normalized === "1" || normalized === "yes";
 }
 
 function normalizeComparable(value?: string | null) {
@@ -66,7 +75,7 @@ export function buildAiMediaPreviewDbIdentityEvidenceFromEnv(
   return {
     vercelEnv: env.VERCEL_ENV ?? null,
     nodeEnv: env.NODE_ENV ?? null,
-    featureFlagEnabled: env.AI_MEDIA_PREVIEW_MOCK_WRITES_ENABLED === "true",
+    featureFlagEnabled: isEnabled(env.AI_MEDIA_PREVIEW_MOCK_WRITES_ENABLED),
     databaseUrlPresent: hasValue(databaseUrl),
     directUrlPresent: hasValue(directUrl),
     databaseUrlEqualsDirectUrl: urlEquals(databaseUrl, directUrl),
@@ -74,7 +83,8 @@ export function buildAiMediaPreviewDbIdentityEvidenceFromEnv(
     productionDbFingerprint: env.AI_MEDIA_PRODUCTION_DB_FINGERPRINT ?? null,
     previewDbBranchId: env.AI_MEDIA_PREVIEW_DB_BRANCH_ID ?? null,
     productionDbBranchId: env.AI_MEDIA_PRODUCTION_DB_BRANCH_ID ?? null,
-    explicitPreviewDbIdentityVerified: env.AI_MEDIA_PREVIEW_DB_IDENTITY_VERIFIED === "true",
+    explicitPreviewDbIdentityVerified: isEnabled(env.AI_MEDIA_PREVIEW_DB_IDENTITY_VERIFIED),
+    nonIsolatedWriteAccepted: isEnabled(env.AI_MEDIA_PREVIEW_DB_NON_ISOLATED_WRITE_ACCEPTED),
   };
 }
 
@@ -92,22 +102,43 @@ export function evaluateAiMediaPreviewDbIdentityGuard(
   const fingerprintsDiffer = compareDiffer(evidence.previewDbFingerprint, evidence.productionDbFingerprint);
   const branchIdsDiffer = compareDiffer(evidence.previewDbBranchId, evidence.productionDbBranchId);
   const explicitPreviewDbIdentityVerified = evidence.explicitPreviewDbIdentityVerified === true;
+  const nonIsolatedWriteAccepted = evidence.nonIsolatedWriteAccepted === true;
+  const isolatedPreviewDb = explicitPreviewDbIdentityVerified && fingerprintsDiffer === true && branchIdsDiffer !== false;
+  const acceptedRiskNonIsolated = nonIsolatedWriteAccepted && branchIdsDiffer !== false;
   const blockers: string[] = [];
+  const warnings: string[] = [];
 
   if (productionBlocked) blockers.push("Preview DB writes are disabled in Production.");
   if (!previewLikeEnvironment) blockers.push("Preview DB writes require a Preview, test, or development environment.");
   if (!featureFlagEnabled) blockers.push("Preview DB writes require the Preview MOCK write feature flag.");
   if (!databaseUrlPresent) blockers.push("DATABASE_URL evidence is missing.");
   if (!directUrlPresent) blockers.push("DIRECT_URL evidence is missing.");
-  if (evidence.databaseUrlEqualsDirectUrl === true) blockers.push("DATABASE_URL and DIRECT_URL must not be identical for Preview write proof.");
-  if (fingerprintsDiffer !== true) blockers.push("Preview and Production DB fingerprints must be present and different.");
+  if (evidence.databaseUrlEqualsDirectUrl === true) {
+    warnings.push("DATABASE_URL and DIRECT_URL are identical inside this environment; this is allowed only as Preview-local evidence and is not proof of isolation.");
+  }
   if (branchIdsDiffer === false) blockers.push("Preview and Production DB branch ids must not match.");
-  if (!explicitPreviewDbIdentityVerified) blockers.push("Explicit Preview DB identity verification is missing.");
+  if (!isolatedPreviewDb && !acceptedRiskNonIsolated) {
+    blockers.push("Preview and Production DB fingerprints must be present and different, or accepted-risk non-isolated MOCK E2E must be explicitly marked.");
+  }
+  if (!explicitPreviewDbIdentityVerified && !nonIsolatedWriteAccepted) {
+    blockers.push("Explicit Preview DB identity verification or accepted-risk non-isolated approval is missing.");
+  }
+  if (acceptedRiskNonIsolated && !isolatedPreviewDb) {
+    warnings.push("accepted-risk non-isolated MOCK E2E");
+  }
+
+  const allowed = blockers.length === 0;
+  const mode = allowed
+    ? acceptedRiskNonIsolated && !isolatedPreviewDb
+      ? "ACCEPTED_RISK_NON_ISOLATED_DB"
+      : "PREVIEW_DB"
+    : "BLOCKED";
 
   return {
-    allowed: blockers.length === 0,
-    mode: blockers.length === 0 ? "PREVIEW_DB" : "BLOCKED",
+    allowed,
+    mode,
     blockers,
+    warnings,
     safeSummary: {
       productionBlocked,
       previewLikeEnvironment,
@@ -118,6 +149,8 @@ export function evaluateAiMediaPreviewDbIdentityGuard(
       fingerprintsDiffer,
       branchIdsDiffer,
       explicitPreviewDbIdentityVerified,
+      nonIsolatedWriteAccepted,
+      acceptedRiskNonIsolated: mode === "ACCEPTED_RISK_NON_ISOLATED_DB",
     },
   };
 }

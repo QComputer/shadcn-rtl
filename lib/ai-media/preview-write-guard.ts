@@ -32,6 +32,11 @@ function normalize(value?: string | null) {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
 
+function isEnabled(value?: string | null) {
+  const normalized = normalize(value);
+  return normalized === "true" || normalized === "1" || normalized === "yes";
+}
+
 export function buildAiMediaPreviewWriteGuardEvidenceFromEnv(
   env: NodeJS.ProcessEnv = process.env,
   userRole?: UserRole | string | null,
@@ -39,11 +44,11 @@ export function buildAiMediaPreviewWriteGuardEvidenceFromEnv(
   return {
     vercelEnv: env.VERCEL_ENV ?? null,
     nodeEnv: env.NODE_ENV ?? null,
-    featureFlagEnabled: env.AI_MEDIA_PREVIEW_MOCK_WRITES_ENABLED === "true",
-    previewIsolationVerified: env.AI_MEDIA_PREVIEW_ISOLATION_VERIFIED === "true",
-    pinnedRenderContractVerified: env.AI_MEDIA_RENDER_PINNED_CONTRACT_VERIFIED === "true",
+    featureFlagEnabled: isEnabled(env.AI_MEDIA_PREVIEW_MOCK_WRITES_ENABLED),
+    previewIsolationVerified: isEnabled(env.AI_MEDIA_PREVIEW_ISOLATION_VERIFIED),
+    pinnedRenderContractVerified: isEnabled(env.AI_MEDIA_RENDER_PINNED_CONTRACT_VERIFIED),
     provider: env.AI_MEDIA_PREVIEW_PROVIDER ?? "MOCK",
-    realGenerationEnabled: env.AI_MEDIA_REAL_GENERATION_ENABLED === "true",
+    realGenerationEnabled: isEnabled(env.AI_MEDIA_REAL_GENERATION_ENABLED),
     userRole,
   };
 }

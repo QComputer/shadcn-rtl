@@ -25,6 +25,7 @@ const greenDbEvidence = {
   previewDbBranchId: "br-quiet-union-ai05j3cs",
   productionDbBranchId: "br-small-queen-aii58cw9",
   explicitPreviewDbIdentityVerified: true,
+  nonIsolatedWriteAccepted: false,
 };
 
 describe("AI media Preview MOCK write E2E guard", () => {
@@ -59,11 +60,71 @@ describe("AI media Preview MOCK write E2E guard", () => {
     assert.match(decision.blockers.join("\n"), /branch ids/i);
   });
 
-  it("allows explicit Preview DB identity evidence", () => {
+  it("allows isolated Preview DB identity evidence", () => {
     const decision = evaluateAiMediaPreviewDbIdentityGuard(greenDbEvidence);
     assert.equal(decision.allowed, true);
     assert.equal(decision.mode, "PREVIEW_DB");
     assert.equal(decision.safeSummary.fingerprintsDiffer, true);
+  });
+
+  it("allows isolated Preview DB when Preview URLs are identical with a warning", () => {
+    const decision = evaluateAiMediaPreviewDbIdentityGuard({
+      ...greenDbEvidence,
+      databaseUrlEqualsDirectUrl: true,
+    });
+
+    assert.equal(decision.allowed, true);
+    assert.equal(decision.mode, "PREVIEW_DB");
+    assert.match(decision.warnings.join("\n"), /identical inside this environment/i);
+  });
+
+  it("allows accepted-risk non-isolated MOCK E2E only with explicit marker", () => {
+    const decision = evaluateAiMediaPreviewDbIdentityGuard({
+      ...greenDbEvidence,
+      previewDbFingerprint: null,
+      productionDbFingerprint: null,
+      previewDbBranchId: null,
+      productionDbBranchId: null,
+      explicitPreviewDbIdentityVerified: false,
+      nonIsolatedWriteAccepted: true,
+    });
+
+    assert.equal(decision.allowed, true);
+    assert.equal(decision.mode, "ACCEPTED_RISK_NON_ISOLATED_DB");
+    assert.equal(decision.safeSummary.acceptedRiskNonIsolated, true);
+    assert.match(decision.warnings.join("\n"), /accepted-risk non-isolated MOCK E2E/i);
+  });
+
+  it("blocks unproven Preview DB separation without accepted-risk marker", () => {
+    const decision = evaluateAiMediaPreviewDbIdentityGuard({
+      ...greenDbEvidence,
+      previewDbFingerprint: null,
+      productionDbFingerprint: null,
+      previewDbBranchId: null,
+      productionDbBranchId: null,
+      explicitPreviewDbIdentityVerified: false,
+      nonIsolatedWriteAccepted: false,
+    });
+
+    assert.equal(decision.allowed, false);
+    assert.match(decision.blockers.join("\n"), /accepted-risk non-isolated/i);
+  });
+
+  it("blocks missing pinned Render verification through the write guard", async () => {
+    const { evaluateAiMediaPreviewWriteGuard } = await import("@/lib/ai-media/preview-write-guard");
+    const decision = evaluateAiMediaPreviewWriteGuard({
+      vercelEnv: "preview",
+      nodeEnv: "development",
+      featureFlagEnabled: true,
+      previewIsolationVerified: true,
+      pinnedRenderContractVerified: false,
+      provider: "MOCK",
+      realGenerationEnabled: false,
+      userRole: "SUPER_ADMIN",
+    });
+
+    assert.equal(decision.allowed, false);
+    assert.match(decision.blockers.join("\n"), /Pinned Render MOCK contract/i);
   });
 
   it("does not leak secret-like values through DB guard output", () => {

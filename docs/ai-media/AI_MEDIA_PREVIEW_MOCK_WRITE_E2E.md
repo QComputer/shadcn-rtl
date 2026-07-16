@@ -28,9 +28,9 @@ The Preview write guard in `lib/ai-media/preview-write-guard.ts` requires:
 
 - non-Production environment
 - Preview, test, or development equivalent
-- `AI_MEDIA_PREVIEW_MOCK_WRITES_ENABLED=true`
-- `AI_MEDIA_PREVIEW_ISOLATION_VERIFIED=true`
-- `AI_MEDIA_RENDER_PINNED_CONTRACT_VERIFIED=true`
+- `AI_MEDIA_PREVIEW_MOCK_WRITES_ENABLED=true` or `1`
+- `AI_MEDIA_PREVIEW_ISOLATION_VERIFIED=true` or `1`
+- `AI_MEDIA_RENDER_PINNED_CONTRACT_VERIFIED=true` or `1`
 - provider `MOCK`
 - real generation disabled
 - caller role `SUPER_ADMIN`
@@ -39,18 +39,27 @@ The Preview DB identity guard in `lib/ai-media/preview-db-identity-guard.ts` add
 
 - `DATABASE_URL` present
 - `DIRECT_URL` present
-- `DATABASE_URL` and `DIRECT_URL` are not identical
+- optional branch ids do not match when both are provided
+- either isolated Preview DB proof or explicit accepted-risk non-isolated MOCK E2E approval
+
+Isolated Preview DB proof requires:
+
 - `AI_MEDIA_PREVIEW_DB_FINGERPRINT` present
 - `AI_MEDIA_PRODUCTION_DB_FINGERPRINT` present
 - Preview and Production DB fingerprints differ
-- optional branch ids do not match when both are provided
-- `AI_MEDIA_PREVIEW_DB_IDENTITY_VERIFIED=true`
+- `AI_MEDIA_PREVIEW_DB_IDENTITY_VERIFIED=true` or `1`
 
-The guard returns only safe booleans/classifications and blocker messages. It does not print database URLs or secret values.
+Accepted-risk non-isolated MOCK E2E requires:
+
+- `AI_MEDIA_PREVIEW_DB_NON_ISOLATED_WRITE_ACCEPTED=1` or `true`
+- all non-DB Preview write guards remain green
+- Production still blocked by `VERCEL_ENV=production` or `NODE_ENV=production`
+
+`DATABASE_URL`, `DIRECT_URL`, and `DATABASE_URL_UNPOOLED` being identical inside the same Preview environment is a warning, not a blocker. The guard returns only safe booleans/classifications, warnings, and blocker messages. It does not print database URLs or secret values.
 
 ## Preview Migration Rule
 
-The AI media mirror migration may be applied only to the verified Preview Neon branch after the DB identity guard is green.
+The AI media mirror migration may be applied only after the DB identity guard is green under either isolated Preview DB proof or the explicitly accepted-risk non-isolated MOCK E2E path.
 
 Allowed command after proof:
 
@@ -61,10 +70,9 @@ pnpm prisma migrate deploy
 Required runtime context:
 
 - `VERCEL_ENV=preview` or safe equivalent
-- Preview-only `DATABASE_URL`
-- Preview-only `DIRECT_URL`
-- Preview DB fingerprint differs from Production
-- explicit Preview DB identity verification flag
+- `DATABASE_URL` present
+- `DIRECT_URL` present
+- isolated Preview DB proof, or explicit accepted-risk non-isolated marker
 
 Forbidden:
 
@@ -123,7 +131,7 @@ $env:AI_MEDIA_PREVIEW_DB_IDENTITY_VERIFIED="true"
 
 Equivalent shell notation: `AI_MEDIA_PREVIEW_WRITE_E2E=1`.
 
-Do not run Preview live E2E unless the active database is proven to be the isolated Preview branch.
+If the active database cannot be proven isolated from Production, live E2E requires the explicit `AI_MEDIA_PREVIEW_DB_NON_ISOLATED_WRITE_ACCEPTED=1` marker and must be reported as `accepted-risk non-isolated MOCK E2E`.
 
 ## Still Disabled
 

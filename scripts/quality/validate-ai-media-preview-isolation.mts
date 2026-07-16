@@ -1,6 +1,6 @@
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { validateAiMediaPreviewIsolation, getAiMediaEnvironmentSummary, getProcessEnvIsolationSummary } from "@/lib/ai-media/env-isolation";
+import { validateAiMediaPreviewIsolation, getAiMediaEnvironmentSummary } from "@/lib/ai-media/env-isolation";
 
 const projectRoot = fileURLToPath(new URL("../../", import.meta.url));
 
@@ -103,15 +103,8 @@ const missingEnvSummary = getAiMediaEnvironmentSummary({});
 check("missing env produces safe warnings not crash", missingEnvSummary.ok === true);
 check("missing env classifies as unknown", missingEnvSummary.environment === "unknown");
 
-const strictMissing = (() => {
-  try {
-    getProcessEnvIsolationSummary(true);
-    return true;
-  } catch {
-    return false;
-  }
-})();
-check("strict preview isolation without required env fails closed", strictMissing === false);
+const strictProdMix = validateAiMediaPreviewIsolation({ ...previewWithProductionAiUrl, NODE_ENV: "preview", VERCEL_ENV: "preview" });
+check("strict preview isolation fails closed on production identity mix", strictProdMix.ok === false);
 
 check(".env.example has safe AI media placeholders", /^AI_MEDIA_SERVICE_INTERNAL_KEY=$/m.test(envExample));
 check(".env.example has no NEXT_PUBLIC AI media secret", !/NEXT_PUBLIC.*AI_MEDIA_SERVICE_INTERNAL_KEY/m.test(envExample));

@@ -18,6 +18,8 @@ pnpm run test:ai-media:job-mirror-design
 pnpm run quality:ai-media-job-mirror-design
 pnpm run test:ai-media:platform-domain
 pnpm run quality:ai-media-platform-domain
+pnpm run test:ai-media:render-contract-readonly
+pnpm run quality:ai-media-render-contract-readonly
 pnpm run test:ai-handoff
 pnpm run quality:ai-handoff
 pnpm run typecheck
@@ -39,6 +41,9 @@ git status --short --branch
 - Preview env verification tooling is source-only. It accepts redacted/operator-provided evidence and does not call Vercel, DB, Blob, Render, or AI write endpoints.
 - AI job mirror design tooling is source-only. It validates docs and pure TypeScript helpers only; it does not add migrations or call Vercel, DB, Blob, Render, or AI write endpoints.
 - AI platform domain tooling is source-only. It validates import planning, Baz spend-hold planning, contribution mirror planning, and schema proposal docs only; it does not add migrations, write storage, mutate balances, settle rewards, or call Vercel, DB, Blob, Render, or AI write endpoints.
+- AI media pinned Render contract unit tests are mocked and deterministic.
+- AI media pinned Render contract quality tooling calls only `GET /health`, `GET /ready`, and `GET /openapi.json` on the pinned Render URL, then fails closed on fingerprint, count, provider, or real-generation mismatch.
+- AI media pinned Render contract fingerprinting matches ai-media-service canonicalization: sorted compact `app.openapi()` JSON, UTF-8 SHA-256, and FastAPI/Pydantic `.0` numeric constraint preservation.
 
 ## Handoff Doc Validation
 

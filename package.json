@@ -231,6 +231,8 @@
     "quality:ai-media-job-mirror-design": "npx tsx scripts/quality/validate-ai-media-job-mirror-design.mts",
     "test:ai-media:platform-domain": "npx tsx --test tests/unit/ai-media-platform-domain.test.ts",
     "quality:ai-media-platform-domain": "npx tsx scripts/quality/validate-ai-media-platform-domain-foundation.mts",
+    "test:ai-media:render-contract-readonly": "npx tsx --test tests/unit/ai-media-render-contract-readonly.test.ts",
+    "quality:ai-media-render-contract-readonly": "npx tsx scripts/quality/validate-ai-media-render-contract-readonly.mts",
     "test:ai-media:hermetic": "node scripts/e2e/ai-media-hermetic-acceptance.mjs",
     "test:ai-media:hermetic:ui": "node scripts/quality/validate-ai-media-locale-ui.mjs",
     "quality:import-ai-media-bridge": "node scripts/quality/validate-import-ai-media-bridge.mjs",

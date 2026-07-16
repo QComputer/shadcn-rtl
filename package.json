@@ -233,6 +233,8 @@
     "quality:ai-media-seller-state-ux": "node scripts/quality/validate-ai-media-seller-state-ux.mjs",
     "test:ai-media": "npx tsx scripts/quality/validate-ai-media.mts",
     "test:ai-media:pre-p07-status": "npx tsx scripts/quality/validate-ai-media-pre-p07-status.mts",
+    "test:ai-media:preview-isolation": "npx tsx scripts/quality/validate-ai-media-preview-isolation.mts",
+    "quality:ai-media-preview-isolation": "npx tsx scripts/quality/validate-ai-media-preview-isolation.mts",
     "quality:ai-media-client": "node scripts/quality/validate-ai-media.mjs",
     "quality:ai-media-mock": "node scripts/quality/validate-ai-media.mjs",
     "quality:ai-media-deployed-smoke": "node scripts/e2e/deployed-ai-media-smoke.mjs",

@@ -5,7 +5,7 @@
 ```text
 PHASE: BAZAR-BAZ-AI-NETWORK-LOCAL-DOCKER-MOCK-E2E-RECOVERY-01
 
-STATUS: App-managed MOCK result import (`BAZAR-BAZ-AI-MEDIA-APP-MANAGED-MOCK-RESULT-IMPORT-01`) is complete and committed. Next recommended focus is the local Docker MOCK E2E recovery for end-to-end provider job creation/status sync.
+STATUS: App-managed MOCK result import (`BAZAR-BAZ-AI-MEDIA-APP-MANAGED-MOCK-RESULT-IMPORT-01`) is complete and committed. Local Docker MOCK E2E recovery (`BAZAR-BAZ-AI-NETWORK-LOCAL-DOCKER-MOCK-E2E-RECOVERY-01`) is now implemented and committed: a disposable Docker Postgres + local contract mock E2E for provider job create/status sync, exercising `submitPreviewMockAiMediaJob` + `syncPreviewMockAiMediaJobStatus`, proving one app-owned `AiMediaJobMirror` reaches `RESULT_READY` with a stored provider job id and idempotent reuse, MOCK-only, no Render coordinator, no secrets exposed.
 
 MISSION:
 Resolve the local Docker MOCK E2E blocker before any hosted Preview write. Use disposable local Docker Postgres, the local Bazar Baz app, and the deployed Render MOCK coordinator. Keep the flow MOCK-only and fail closed outside local/test/Preview scope.

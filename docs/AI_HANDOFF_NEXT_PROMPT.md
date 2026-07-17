@@ -5,6 +5,8 @@
 ```text
 PHASE: BAZAR-BAZ-AI-NETWORK-LOCAL-DOCKER-MOCK-E2E-RECOVERY-01
 
+STATUS: App-managed MOCK result import (`BAZAR-BAZ-AI-MEDIA-APP-MANAGED-MOCK-RESULT-IMPORT-01`) is complete and committed. Next recommended focus is the local Docker MOCK E2E recovery for end-to-end provider job creation/status sync.
+
 MISSION:
 Resolve the local Docker MOCK E2E blocker before any hosted Preview write. Use disposable local Docker Postgres, the local Bazar Baz app, and the deployed Render MOCK coordinator. Keep the flow MOCK-only and fail closed outside local/test/Preview scope.
 
@@ -21,6 +23,7 @@ CURRENT ACCEPTED SOURCE WORK:
 - Preview MOCK write foundation with app-owned mirror schema/migration source, server-only persistence services, Preview write guard, guarded route skeletons, unit tests, and quality validator.
 - Preview MOCK write E2E source gate with a Preview DB identity guard that allows isolated Preview proof or explicit accepted-risk non-isolated MOCK E2E, server-only Render MOCK create/status service, guarded routes, unit tests, quality validator, and docs.
 - Local Docker MOCK E2E now reaches local Bazar Baz app-owned request/mirror/event creation against a disposable local Postgres container, but Render MOCK product-image creation still returns HTTP 500 after reported ai-media-service fix `39168ae167c69aca3c01ae59368323dc5658b88f`. The app records the failure safely as request `FAILED`, mirror `FAILED_RETRYABLE`, `PROVIDER_ERROR`, with sanitized status payload and no provider job id.
+- App-managed MOCK result import (`BAZAR-BAZ-AI-MEDIA-APP-MANAGED-MOCK-RESULT-IMPORT-01`) is now implemented and committed: pure provider-result validator, server-only import service, guarded Preview import route, unit tests, quality validator, disposable local Docker import E2E, and docs. It imports a completed MOCK `RESULT_READY` result through the application storage gateway into `AiMediaImport`/`AiMediaAsset` and marks `AiMediaJobMirror` IMPORTED, with idempotent reuse and no Production/hosted-Preview DB, Blob, or browser-secret exposure.
 - Pinned Render URL: `https://bazar-baz-ai-media-service.onrender.com`
 - Pinned OpenAPI fingerprint: `8bed184dd79980beacc553308652a44d99590c9705b7d37ab9418f4f83868f91`
 - Pinned OpenAPI counts: 42 paths, 40 schemas.
@@ -67,7 +70,7 @@ If Render access is not available, do not fake verification. Document the missin
 ALTERNATIVE SAFE NEXT PHASES:
 1. Hosted Preview MOCK write E2E only after local Docker MOCK E2E passes.
 2. Bazar Baz AI platform schema/migration planning only after Preview/Render gates are ready.
-3. App-managed storage import implementation after schema and storage isolation.
+3. App-managed storage import implementation is complete (`BAZAR-BAZ-AI-MEDIA-APP-MANAGED-MOCK-RESULT-IMPORT-01`). Next: harden end-to-end import against the disposable local Docker Postgres E2E.
 4. Baz ledger implementation after schema planning approval.
 ```
 

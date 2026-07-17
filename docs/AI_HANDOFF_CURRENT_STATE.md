@@ -46,6 +46,7 @@ Date: 2026-07-16
 - Preview MOCK write foundation accepted and committed (`c0a1260`): app-owned mirror schema source, server-only services, fail-closed guard, guarded route skeletons, tests, and docs
 - Preview MOCK write E2E source gate is being added in this phase: Preview DB identity guard with isolated and explicit accepted-risk non-isolated modes, guarded Render MOCK create/status flow, tests, validator, and docs
 - AI media roadmap docs added under `docs/ai-media/`
+- App-managed MOCK result import is implemented and committed in this phase: `provider-result-validation.ts`, `ai-media-result-import-service.ts`, guarded import route, unit tests, quality validator, local Docker E2E runner, and docs
 - Existing P02-P06 app-managed storage and import bridges remain in source
 
 ## Current Important Commits
@@ -97,6 +98,7 @@ Date: 2026-07-16
 - The local Docker E2E currently reaches Render MOCK submission but the deployed coordinator returns HTTP 500 on product-image job creation. The Bazar app records this failure safely as request `FAILED`, mirror `FAILED_RETRYABLE`, `PROVIDER_ERROR`, with sanitized status payload and no provider job id.
 - Rerun after reported ai-media-service fix `39168ae167c69aca3c01ae59368323dc5658b88f`: Render read-only health/ready stayed green, but guarded Bazar-to-Render MOCK create still returned HTTP 500. The local Docker gate remains partial and no provider job id was stored.
 - Final rerun after deployed ai-media-service schema readiness fix `81f8c2cf6d95a8eaeaacc6fe45505f29854ad83a`: `/ready` reported `coordinatorSchema.ready=true` and `/diagnostics/version` matched the deployed commit, but guarded Bazar-to-Render MOCK create still returned HTTP 500. The local Docker gate remains partial.
+- App-managed MOCK result import (`BAZAR-BAZ-AI-MEDIA-APP-MANAGED-MOCK-RESULT-IMPORT-01`) is now implemented: a pure provider-result validator (`lib/ai-media/provider-result-validation.ts`), a server-only import service (`lib/services/ai-media-result-import-service.ts`), a guarded Preview import route (`app/api/dashboard/ai-media/preview/jobs/[id]/import/route.ts`), local test storage usage for tests, unit tests, a quality validator, and a disposable local Docker E2E runner. The flow imports a completed `MOCK` `RESULT_READY` result through the application storage gateway into `AiMediaImport` (IMPORTED) + `AiMediaAsset`, then marks `AiMediaJobMirror` IMPORTED. Idempotency returns the canonical asset with no second storage write and no duplicate asset. No Production DB, no hosted Preview DB, no Production Blob, no browser Render secrets, and no Baz wallet mutation.
 - Production migration execution has not been authorized or run for this phase.
 - Preview migration execution has not been run by source validation unless explicitly recorded in the phase report.
 - Operator-accepted DB resume update: `20260716000100_ai_media_preview_mock_write_foundation` was applied with DB guard mode `ACCEPTED_RISK_NON_ISOLATED_DB` after explicit operator acceptance of temporary DB write risk. Live Preview MOCK E2E remains blocked by missing local `AI_MEDIA_PREVIEW_SESSION_COOKIE` and Vercel SSO-protected Preview access.
@@ -107,7 +109,6 @@ Date: 2026-07-16
 - Preview live MOCK write E2E remains pending until local Docker MOCK E2E passes, then the active runtime proves isolated Preview DB identity, or the operator enables the explicit accepted-risk non-isolated MOCK E2E marker, and the explicit E2E flag is set.
 - Preview session/protection-bypass access for running the live E2E against `https://shadcn-kpuh90kko-ahmads-projects-1b4ce1dc.vercel.app`
 - app-owned request/mirror services are source-ready but fail closed by guard
-- app-managed storage import flow for future general AI media assets
 - Baz ledger and internal spend holds
 - worker portal
 - Super Admin console

@@ -81,6 +81,7 @@ function run(command, args, env = process.env) {
     cwd: root,
     env,
     stdio: "inherit",
+    shell: process.platform === "win32",
   });
   if (result.error) {
     console.error(result.error.message);

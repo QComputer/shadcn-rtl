@@ -273,7 +273,12 @@
     "e2e:deployed:request-demo-leads": "node scripts/e2e/deployed-request-demo-leads.mjs",
     "db:local-baseline:bootstrap": "node scripts/db/local-baseline-bootstrap.mjs",
     "quality:db-legacy-migration-immutability": "node scripts/quality/validate-db-legacy-migration-immutability.mjs",
-    "quality:db-local-baseline-bootstrap": "node scripts/quality/validate-db-local-baseline-bootstrap.mjs"
+    "quality:db-local-baseline-bootstrap": "node scripts/quality/validate-db-local-baseline-bootstrap.mjs",
+    "test:db:migration-chain": "node scripts/db/validate-migration-chain.mjs all",
+    "e2e:db:migration-chain-fresh": "node scripts/db/validate-migration-chain.mjs fresh",
+    "e2e:db:migration-chain-upgrade": "node scripts/db/validate-migration-chain.mjs upgrade",
+    "e2e:db:migration-chain-failed": "node scripts/db/validate-migration-chain.mjs failed",
+    "quality:db:migration-chain": "tsx scripts/quality/validate-database-migration-chain.mts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

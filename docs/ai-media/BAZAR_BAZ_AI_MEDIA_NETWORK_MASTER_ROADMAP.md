@@ -480,6 +480,26 @@ Then expand to:
 - limited media types
 - real generation only after explicit authorization
 
+### Phase BB-DB-01 — Database Migration Chain Recovery (Done Locally)
+
+`BAZAR-BAZ-DATABASE-MIGRATION-CHAIN-RECOVERY-01` corrected the conflicting migration
+`20260707000200_export_hub_extend_data_types` in place to a guarded idempotent enum-extension
+pattern. The local migration execution chain is proven (all 52 migrations apply, 0
+active-failed) and the `storageKey` migration (`20260717200000_add_ai_media_asset_storage_key`)
+deploys locally. Production migration has not been run; Production asset-consumption remains
+disabled. Full Prisma schema parity is NOT PROVEN — see next phase.
+
+### Phase BB-DB-02 — Database Normalization (Future, Out of Scope for Recovery)
+
+Reconcile pre-existing schema-vs-migrations drift that is unrelated to the recovery:
+- `ImageAccess` enum variant divergence between migrations and datamodel.
+- `DomainStatus` variant removals/additions between migrations and datamodel.
+- Renamed indexes/constraints between migrations and datamodel.
+
+Goal: re-establish `prisma migrate diff` parity (or an explicit, documented exception list)
+without data loss. Do not combine with Production activation; verify backup and migration
+history first.
+
 ## What `shadcn-rtl` Must Not Do
 
 `shadcn-rtl` must not:

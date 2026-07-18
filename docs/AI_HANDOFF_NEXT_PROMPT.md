@@ -30,6 +30,7 @@ CURRENT ACCEPTED SOURCE WORK:
 - Render provider expectation: `MOCK`; real generation remains blocked.
 - shadcn-rtl verifier uses the same fingerprint algorithm as ai-media-service: sorted compact `app.openapi()` JSON, UTF-8 SHA-256, and FastAPI/Pydantic `.0` numeric constraint preservation.
 - Operator-accepted DB resume applied migration `20260716000100_ai_media_preview_mock_write_foundation` under `ACCEPTED_RISK_NON_ISOLATED_DB`. Live Preview MOCK E2E is still pending because no local Preview session cookie or Vercel protection bypass value was available.
+- Database migration chain recovery (`BAZAR-BAZ-DATABASE-MIGRATION-CHAIN-RECOVERY-01`) is now implemented and committed: the conflicting migration `20260707000200_export_hub_extend_data_types` was corrected in place to a guarded idempotent enum-extension pattern; the migration execution chain is locally proven (all 52 migrations apply, 0 active-failed) and the `storageKey` migration deploys locally. Full Prisma schema parity is NOT PROVEN — unrelated historical drift remains and is documented as a separate future database-normalization phase. Production migration has not been run and Production asset-consumption remains disabled.
 
 RULES:
 - No write flow is authorized outside Preview/test/development MOCK-only scope, and accepted-risk non-isolated DB mode must be explicitly marked and reported.

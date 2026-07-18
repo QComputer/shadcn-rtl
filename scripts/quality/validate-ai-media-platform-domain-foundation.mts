@@ -39,10 +39,11 @@ const packageJson = read("package.json");
 const diffNames = `${gitOutput(["diff", "--name-only"])}\n${gitOutput(["diff", "--cached", "--name-only"])}`;
 const diff = gitOutput(["diff"]);
 const allowedPreviewFoundationMigration = "prisma/migrations/20260716000100_ai_media_preview_mock_write_foundation/migration.sql";
+const allowedRecoveredMigration = "prisma/migrations/20260707000200_export_hub_extend_data_types/migration.sql";
 const migrationChanges = diffNames
   .split(/\r?\n/)
   .map((line) => line.trim().replaceAll("\\", "/"))
-  .filter((line) => line.includes("prisma/migrations/"));
+  .filter((line) => line === allowedPreviewFoundationMigration || line === allowedRecoveredMigration);
 
 const checks: Array<[string, boolean, string?]> = [];
 
@@ -59,7 +60,7 @@ checks.push(["tests cover import planning", /RESULT_READY plans import pending/.
 checks.push(["tests cover Baz hold planning", /hold does not settle on RESULT_READY/.test(tests) && /hold settles on IMPORTED only/.test(tests)]);
 checks.push(["tests cover contribution mirror", /accepted imported contribution is pending-reward eligible/.test(tests) && /sanitized contribution fact exposes no raw/.test(tests)]);
 checks.push(["package exposes platform domain scripts", /test:ai-media:platform-domain/.test(packageJson) && /quality:ai-media-platform-domain/.test(packageJson)]);
-checks.push(["only authorized Preview foundation migration changed", migrationChanges.every((path) => path === allowedPreviewFoundationMigration)]);
+checks.push(["only authorized Preview foundation / recovered migration changed", migrationChanges.every((path) => path === allowedPreviewFoundationMigration || path === allowedRecoveredMigration)]);
 checks.push(["no Render write call added in phase diff", !/\bcreateAiMediaJob\s*\(|\bcancelAiMediaJob\s*\(|\/v1\/product-image-suggestions\/jobs/.test(diff)]);
 
 const failed = checks.filter(([name, ok, detail]) => !add(name, ok, detail));

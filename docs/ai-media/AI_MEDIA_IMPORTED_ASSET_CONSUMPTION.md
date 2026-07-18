@@ -205,6 +205,12 @@ rows but are hidden by the usable-asset rule until backfilled.
 - Upgrade path: a pre-existing `AiMediaAsset` row with `storageKey = NULL`
   survives the migration and remains non-consumable.
 
+The `storageKey` migration is part of the recovered Prisma migration chain
+(`BAZAR-BAZ-DATABASE-MIGRATION-CHAIN-RECOVERY-01`). It deploys locally (all 52 migrations
+apply with 0 active-failed), but **Production migration execution has not been run**; the
+consumption feature remains fail-closed in Production via
+`lib/ai-media/asset-consumption-feature-guard.ts`.
+
 ## Tests
 
 - `tests/unit/ai-media-asset-consumption.test.ts` — unit tests for visibility

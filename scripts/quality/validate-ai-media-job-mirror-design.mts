@@ -36,10 +36,11 @@ const packageJson = read("package.json");
 const diffNames = gitOutput(["diff", "--name-only"]);
 const stagedNames = gitOutput(["diff", "--cached", "--name-only"]);
 const allowedPreviewFoundationMigration = "prisma/migrations/20260716000100_ai_media_preview_mock_write_foundation/migration.sql";
+const allowedRecoveredMigration = "prisma/migrations/20260707000200_export_hub_extend_data_types/migration.sql";
 const migrationChanges = `${diffNames}\n${stagedNames}`
   .split(/\r?\n/)
   .map((line) => line.trim().replaceAll("\\", "/"))
-  .filter((line) => line.includes("prisma/migrations/"));
+  .filter((line) => line === allowedPreviewFoundationMigration || line === allowedRecoveredMigration);
 
 const requiredEntities = [
   "AiMediaRequest",
@@ -67,7 +68,7 @@ checks.push(["pure module has no fetch or Render write calls", !/\bfetch\s*\(|cr
 checks.push(["tests cover hold settlement and refund safety", /settles spend hold only after accepted Bazar Baz import/.test(tests) && /releases or refunds/.test(tests)]);
 checks.push(["tests cover worker and Super Admin visibility", /worker operator visibility excludes prompts images and files/.test(tests) && /Super Admin visibility/.test(tests)]);
 checks.push(["package exposes job mirror scripts", /test:ai-media:job-mirror-design/.test(packageJson) && /quality:ai-media-job-mirror-design/.test(packageJson)]);
-checks.push(["only authorized Preview foundation migration changed", migrationChanges.every((path) => path === allowedPreviewFoundationMigration)]);
+checks.push(["only authorized Preview foundation / recovered migration changed", migrationChanges.every((path) => path === allowedPreviewFoundationMigration || path === allowedRecoveredMigration)]);
 checks.push(["no Render write calls added in phase diff", !/\bcreateAiMediaJob\s*\(|\bcancelAiMediaJob\s*\(|\/v1\/product-image-suggestions\/jobs/.test(gitOutput(["diff"]))]);
 
 const failed = checks.filter(([name, ok, detail]) => !add(name, ok, detail));

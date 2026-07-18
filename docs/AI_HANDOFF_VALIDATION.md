@@ -31,6 +31,8 @@ pnpm run quality:ai-media-local-docker-create-sync
 pnpm run test:ai-media-asset-consumption
 pnpm run quality:ai-media-asset-consumption
 pnpm run e2e:ai-media:local-docker-asset-consumption
+pnpm run test:db:migration-chain
+pnpm run quality:db:migration-chain
 pnpm run test:ai-handoff
 pnpm run quality:ai-handoff
 pnpm run typecheck
@@ -66,6 +68,7 @@ git status --short --branch
 - App-managed result import local Docker E2E (`e2e:ai-media:local-docker-import`) runs only against a disposable Docker Postgres with local test storage; it verifies MOCK RESULT_READY import through the gateway into AiMediaImport/AiMediaAsset and AiMediaJobMirror IMPORTED, idempotency, no duplicate assets, no Blob write, and no real generation.
 - Local Docker MOCK create/status-sync recovery E2E (`e2e:ai-media:local-docker-create-sync`) runs only against a disposable Docker Postgres with the local contract mock (`scripts/ai-media/local-contract-mock.mjs`); it verifies MOCK job create (`submitPreviewMockAiMediaJob`) + status sync (`syncPreviewMockAiMediaJobStatus`), one app-owned `AiMediaJobMirror` reaching `RESULT_READY` with a stored provider job id, idempotent reuse, no Blob write, and no real generation. It does not call the deployed Render coordinator.
 - Local Docker MOCK asset consumption E2E (`e2e:ai-media:local-docker-asset-consumption`) runs only against a disposable Docker Postgres with the local contract mock and local-test storage; it verifies the full create → status-sync → import → asset list/detail/content → cross-tenant rejection path, with no Blob write, no real generation, no wallet settlement, and no Render secret exposure.
+- Database migration chain recovery E2E (`test:db:migration-chain` = fresh + upgrade + failed-state) and quality validator (`quality:db:migration-chain`) run only against disposable local Docker PostgreSQL. They prove the corrected `20260707000200_export_hub_extend_data_types` migration deploys cleanly, the full 52-migration chain applies with 0 active-failed migrations, the `storageKey` migration applies locally, and an authentic Prisma failed-state is recovered via `migrate resolve --rolled-back` + `migrate deploy` with no manual `_prisma_migrations` deletion. They refuse non-local DB URLs and `VERCEL_ENV=production`. Production migration has not been run; full schema parity is NOT PROVEN (unrelated historical drift documented separately).
 
 ## Handoff Doc Validation
 

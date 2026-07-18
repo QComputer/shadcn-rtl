@@ -74,7 +74,7 @@ const requiredModels = [
 const checks: Array<[string, boolean, string?]> = [
   ["Prisma mirror models exist", requiredModels.every((model) => schema.includes(model))],
   ["AI media migration source exists", migration.includes("CREATE TABLE \"AiMediaRequest\"") && migration.includes("CREATE TABLE \"WorkerContributionMirror\"")],
-  ["no existing applied migration edited", !/(^|\n)M\s+prisma[\\/]migrations[\\/](?!20260716000100_ai_media_preview_mock_write_foundation)/.test(changedNames)],
+  ["no existing applied migration edited", !/(^|\n)M\s+prisma[\\/]migrations[\\/](?!20260716000100_ai_media_preview_mock_write_foundation|20260707000200_export_hub_extend_data_types)/.test(changedNames)],
   ["preview write guard exists", guard.includes("evaluateAiMediaPreviewWriteGuard") && guard.includes("productionBlocked")],
   ["guard fails closed in Production", /vercelEnv === "production"|nodeEnv === "production"/.test(guard) && /blockers\.push\("AI media Preview MOCK writes are disabled in Production/.test(guard)],
   ["guard requires feature flag isolation pinned contract MOCK and SUPER_ADMIN", ["featureFlagEnabled", "previewIsolationVerified", "pinnedRenderContractVerified", "providerMock", "privilegedUser"].every((token) => guard.includes(token))],

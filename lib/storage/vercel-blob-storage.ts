@@ -37,7 +37,15 @@ export function createVercelBlobApplicationStorage(): ApplicationStorageAdapter 
       if (!hasBlobToken()) {
         throw new Error("Application storage is not configured");
       }
-      await del(input.key);
+      await del(input.key, {});
+    },
+    async streamContent(input) {
+      if (!hasBlobToken()) {
+        throw new Error("Application storage is not configured");
+      }
+      const blob = await get(input.key, { access: "private" });
+      if (!blob) return null;
+      return blob.stream;
     },
   };
 }

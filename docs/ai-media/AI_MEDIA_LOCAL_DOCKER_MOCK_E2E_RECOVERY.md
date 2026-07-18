@@ -118,3 +118,17 @@ proves the **app-side** create + status-sync path is correct and MOCK-compatible
 by exercising it against the local contract mock. The hosted Render MOCK
 coordinator remains untouched; live Preview MOCK E2E is still gated behind the
 local Docker gate passing first.
+
+## Integration targets
+
+- The **local contract mock** is a deterministic offline regression target. It
+  faithfully implements the pinned Render contract's create/status/cancel
+  endpoints and is used for hermetic E2E.
+- The **deployed Render** coordinator (`https://bazar-baz-ai-media-service.onrender.com`)
+  is a separately verified integration target. Deployed Render read-only
+  verification (`/health`, `/ready`, `/openapi.json`) was completed in an earlier
+  phase with matching fingerprint `8bed184dd79980beacc553308652a44d99590c9705b7d37ab9418f4f83868f91`
+  and 42 paths / 40 schemas.
+- This phase does **not** claim that deployed Render is broken. The local mock
+  coverage exists so that the Bazar app-side create + status-sync path can be
+  validated without depending on external network availability.

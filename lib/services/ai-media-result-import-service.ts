@@ -251,6 +251,7 @@ export async function importResultReadyOutput(
         width: stored.width,
         height: stored.height,
         storageProvider: stored.provider,
+        storageKey: stored.key,
         storageKeyFingerprint,
         checksumSha256: stored.checksumSha256,
         byteSize: stored.sizeBytes,

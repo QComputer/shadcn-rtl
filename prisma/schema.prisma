@@ -1723,6 +1723,7 @@ model AiMediaAsset {
   width                  Int?
   height                 Int?
   storageProvider        String?
+  storageKey             String?
   storageKeyFingerprint  String?
   checksumSha256         String?
   byteSize               Int?
@@ -1744,9 +1745,10 @@ model AiMediaAsset {
   @@index([requestId])
   @@index([mirrorId])
   @@index([importId])
-  @@index([requestedByUserId])
-  @@index([checksumSha256])
-}
+    @@index([requestedByUserId])
+    @@index([checksumSha256])
+    @@index([storageKey])
+  }
 
 model AiMediaUsageQuote {
   id                String   @id @default(cuid())

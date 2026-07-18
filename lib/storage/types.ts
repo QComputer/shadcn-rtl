@@ -34,4 +34,5 @@ export type ApplicationStorageAdapter = {
   store(input: StoreApplicationAssetInput & { key: string; checksumSha256: string; width: number | null; height: number | null }): Promise<StoredApplicationAsset>;
   remove(input: RemoveApplicationAssetInput): Promise<void>;
   verify?(input: RemoveApplicationAssetInput): Promise<boolean>;
+  streamContent?(input: { organizationId: string; key: string; mimeType: string }): Promise<ReadableStream<Uint8Array> | null>;
 };

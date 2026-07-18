@@ -5,7 +5,7 @@
 ```text
 PHASE: BAZAR-BAZ-AI-NETWORK-LOCAL-DOCKER-MOCK-E2E-RECOVERY-01
 
-STATUS: App-managed MOCK result import (`BAZAR-BAZ-AI-MEDIA-APP-MANAGED-MOCK-RESULT-IMPORT-01`) is complete and committed. Local Docker MOCK E2E recovery (`BAZAR-BAZ-AI-NETWORK-LOCAL-DOCKER-MOCK-E2E-RECOVERY-01`) is now implemented and committed: a disposable Docker Postgres + local contract mock E2E for provider job create/status sync, exercising `submitPreviewMockAiMediaJob` + `syncPreviewMockAiMediaJobStatus`, proving one app-owned `AiMediaJobMirror` reaches `RESULT_READY` with a stored provider job id and idempotent reuse, MOCK-only, no Render coordinator, no secrets exposed.
+STATUS: App-managed MOCK result import (`BAZAR-BAZ-AI-MEDIA-APP-MANAGED-MOCK-RESULT-IMPORT-01`) is complete and committed. Local Docker MOCK E2E recovery (`BAZAR-BAZ-AI-NETWORK-LOCAL-DOCKER-MOCK-E2E-RECOVERY-01`) is complete and committed. Imported asset consumption (`BAZAR-BAZ-AI-MEDIA-ASSET-CONSUMPTION-01`) is now implemented and committed: a server-only asset service, selection abstraction, guarded API routes (`/api/dashboard/ai-media/assets`, `/[id]`, `/[id]/content`), a minimal localized dashboard UI, unit tests, local Docker consumption E2E, quality validator, and docs. Only canonical `IMPORTED` assets are exposed, scoped by organization, with no provider URLs, no storage credentials, no browser-to-Render calls, and no Production writes.
 
 MISSION:
 Resolve the local Docker MOCK E2E blocker before any hosted Preview write. Use disposable local Docker Postgres, the local Bazar Baz app, and the deployed Render MOCK coordinator. Keep the flow MOCK-only and fail closed outside local/test/Preview scope.

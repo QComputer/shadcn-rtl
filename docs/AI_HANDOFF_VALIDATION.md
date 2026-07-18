@@ -26,7 +26,11 @@ pnpm run test:ai-media:preview-mock-write-e2e
 pnpm run quality:ai-media-preview-mock-write-e2e
 pnpm run test:ai-media:app-managed-import
 pnpm run quality:ai-media-app-managed-import
+pnpm run e2e:ai-media:local-docker-import
 pnpm run quality:ai-media-local-docker-create-sync
+pnpm run test:ai-media-asset-consumption
+pnpm run quality:ai-media-asset-consumption
+pnpm run e2e:ai-media:local-docker-asset-consumption
 pnpm run test:ai-handoff
 pnpm run quality:ai-handoff
 pnpm run typecheck
@@ -61,6 +65,7 @@ git status --short --branch
 - Current local Docker MOCK E2E result: local migration, auth fixture, request/mirror/event creation, and provider failure recording pass; deployed Render MOCK product-image creation returns HTTP 500, so provider job creation and status sync remain blocked.
 - App-managed result import local Docker E2E (`e2e:ai-media:local-docker-import`) runs only against a disposable Docker Postgres with local test storage; it verifies MOCK RESULT_READY import through the gateway into AiMediaImport/AiMediaAsset and AiMediaJobMirror IMPORTED, idempotency, no duplicate assets, no Blob write, and no real generation.
 - Local Docker MOCK create/status-sync recovery E2E (`e2e:ai-media:local-docker-create-sync`) runs only against a disposable Docker Postgres with the local contract mock (`scripts/ai-media/local-contract-mock.mjs`); it verifies MOCK job create (`submitPreviewMockAiMediaJob`) + status sync (`syncPreviewMockAiMediaJobStatus`), one app-owned `AiMediaJobMirror` reaching `RESULT_READY` with a stored provider job id, idempotent reuse, no Blob write, and no real generation. It does not call the deployed Render coordinator.
+- Local Docker MOCK asset consumption E2E (`e2e:ai-media:local-docker-asset-consumption`) runs only against a disposable Docker Postgres with the local contract mock and local-test storage; it verifies the full create → status-sync → import → asset list/detail/content → cross-tenant rejection path, with no Blob write, no real generation, no wallet settlement, and no Render secret exposure.
 
 ## Handoff Doc Validation
 

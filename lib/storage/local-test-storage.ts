@@ -1,6 +1,7 @@
 import "server-only";
 
-import fs from "node:fs/promises";
+import fs from "node:fs";
+import fsPromises from "node:fs/promises";
 import path from "node:path";
 import type { ApplicationStorageAdapter, StoredApplicationAsset, StoreApplicationAssetInput } from "@/lib/storage/types";
 
@@ -40,8 +41,8 @@ export function createLocalTestApplicationStorage(): ApplicationStorageAdapter {
     async store(input: StoreApplicationAssetInput & { key: string; checksumSha256: string; width: number | null; height: number | null }): Promise<StoredApplicationAsset> {
       assertLocalTestStorageAllowed();
       const { target } = resolveSafeLocalPath(input.key);
-      await fs.mkdir(path.dirname(target), { recursive: true });
-      await fs.writeFile(target, input.buffer, { flag: "wx" });
+      await fsPromises.mkdir(path.dirname(target), { recursive: true });
+      await fsPromises.writeFile(target, input.buffer, { flag: "wx" });
 
       return {
         provider: "local-test",
@@ -59,17 +60,38 @@ export function createLocalTestApplicationStorage(): ApplicationStorageAdapter {
     async remove(input) {
       assertLocalTestStorageAllowed();
       const { target } = resolveSafeLocalPath(input.key);
-      await fs.rm(target, { force: true });
+      await fsPromises.rm(target, { force: true });
     },
     async verify(input) {
       assertLocalTestStorageAllowed();
       const { target } = resolveSafeLocalPath(input.key);
       try {
-        const stat = await fs.stat(target);
+        const stat = await fsPromises.stat(target);
         return stat.isFile();
       } catch {
         return false;
       }
+    },
+    async streamContent(input) {
+      assertLocalTestStorageAllowed();
+      const { target } = resolveSafeLocalPath(input.key);
+      try {
+      const stat = await fsPromises.stat(target);
+      if (!stat.isFile()) return null;
+      const fileStream = fs.createReadStream(target);
+      return new ReadableStream({
+        start(controller) {
+          fileStream.on("data", (chunk) => {
+            const bytes = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
+            controller.enqueue(new Uint8Array(bytes));
+          });
+          fileStream.on("end", () => controller.close());
+          fileStream.on("error", (err) => controller.error(err));
+        },
+      });
+    } catch {
+      return null;
+    }
     },
   };
 }

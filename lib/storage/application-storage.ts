@@ -5,6 +5,7 @@ import path from "node:path";
 import { ApiError } from "@/lib/api-guards";
 import { extensionForApplicationImage, validateApplicationImageBuffer } from "@/lib/storage/image-validation";
 import type { ApplicationStorageAdapter, StoredApplicationAsset, StoreApplicationAssetInput } from "@/lib/storage/types";
+import { getVercelBlobObject } from "@/lib/storage/vercel-blob-storage";
 
 const PRIVATE_IPV4_PATTERNS = [/^10\./, /^127\./, /^0\./, /^192\.168\./, /^169\.254\./, /^172\.(1[6-9]|2\d|3[0-1])\./];
 
@@ -81,6 +82,19 @@ export async function removeCreativeStudioAsset(input: { organizationId: string;
 export async function verifyStoredAsset(input: { organizationId: string; key: string }) {
   const adapter = await getApplicationStorageAdapter();
   return adapter.verify ? adapter.verify(input) : true;
+}
+
+export async function streamApplicationAssetContent(input: { organizationId: string; key: string; mimeType: string }) {
+  const adapter = await getApplicationStorageAdapter();
+  if (adapter.streamContent) {
+    return adapter.streamContent(input);
+  }
+  if (adapter.provider === "vercel-blob") {
+    const blob = await getVercelBlobObject(input.key);
+    if (!blob) return null;
+    return blob.stream;
+  }
+  return null;
 }
 
 function isPrivateOutputHost(hostname: string) {

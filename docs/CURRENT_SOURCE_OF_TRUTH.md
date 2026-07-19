@@ -2,6 +2,23 @@
 
 Date: 2026-07-15
 
+## 2026-07-19 AI media product/service attachment update
+
+`BAZAR-BAZ-AI-MEDIA-PRODUCT-SERVICE-ATTACHMENT-01` is implemented in source.
+It adds nullable Product/Service primary AI-media attachment references,
+entity-scoped dashboard attach/detach APIs, public media streaming routes,
+a Persian-first dashboard asset picker, unit/static validators, and a
+disposable local Docker MOCK E2E gate.
+
+The phase attaches only already imported, Bazar-owned `AiMediaAsset` records.
+It does not store provider URLs or storage keys in Product/Service image fields,
+does not delete assets on replacement, and keeps manual image URLs as fallback.
+Production/hosted Preview DB writes, Production Blob operations, Render real
+generation, wallet/ledger mutation, and P07 import remain out of scope.
+
+Current recommended AI-media next phase:
+`BAZAR-BAZ-AI-MEDIA-ASSET-LIBRARY-LIFECYCLE-01`.
+
 ## 2026-07-19 BB-DB-02 update
 
 `BAZAR-BAZ-DATABASE-SCHEMA-DRIFT-NORMALIZATION-01` normalizes the remaining

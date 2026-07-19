@@ -13,6 +13,7 @@ import { ApiError } from "@/lib/api-guards";
 import { buildUniqueDetailSlug, normalizeDetailSlug } from "@/lib/detail-slugs";
 import { normalizePagination } from "@/lib/pagination";
 import { supportedLocales } from "@/lib/i18n";
+import { canReadAiMediaEntityAttachmentColumns } from "@/lib/services/ai-media-entity-attachment-service";
 
 function revalidateAppointmentServicePages(serviceId: string, organizationSlug: string, segments: Array<string | null | undefined> = []) {
   const uniqueSegments = Array.from(new Set([serviceId, ...segments].filter(Boolean)));
@@ -49,6 +50,7 @@ export class ServiceService {
    * Create a new service
    */
   async create(organizationId: string, data: CreateServiceInput & { serviceProviderId?: string }) {
+    const includeAiMediaAttachment = canReadAiMediaEntityAttachmentColumns();
     // Verify category belongs to the organization
     const category = await prisma.serviceCategory.findFirst({
       where: {
@@ -104,6 +106,7 @@ export class ServiceService {
             name: true,
           },
         },
+        ...(includeAiMediaAttachment ? { aiPrimaryMediaAsset: { select: { id: true } } } : {}),
         serviceProvider: {
           select: {
             id: true,
@@ -125,6 +128,7 @@ export class ServiceService {
    * Get service by ID
    */
   async getById(id: string) {
+    const includeAiMediaAttachment = canReadAiMediaEntityAttachmentColumns();
     return prisma.service.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -178,6 +182,7 @@ export class ServiceService {
     search?: string;
     providerId?: string;
   }) {
+    const includeAiMediaAttachment = canReadAiMediaEntityAttachmentColumns();
     const { categoryId, isActive, search, providerId } = params;
     const pagination = normalizePagination(params, { maxPageSize: 100 });
 
@@ -209,6 +214,7 @@ export class ServiceService {
               name: true,
             },
           },
+          ...(includeAiMediaAttachment ? { aiPrimaryMediaAsset: { select: { id: true } } } : {}),
           serviceProvider: {
             select: {
               id: true,
@@ -293,6 +299,7 @@ export class ServiceService {
     search?: string;
     organizationId?: string;
   }) {
+    const includeAiMediaAttachment = canReadAiMediaEntityAttachmentColumns();
     const { categoryId, isActive, search, organizationId } = params;
     const pagination = normalizePagination(params, { maxPageSize: 100 });
 
@@ -330,6 +337,7 @@ export class ServiceService {
               slug: true,
             },
           },
+          ...(includeAiMediaAttachment ? { aiPrimaryMediaAsset: { select: { id: true } } } : {}),
           serviceProvider: {
             select: {
               id: true,

@@ -36,6 +36,10 @@ Date: 2026-07-16
 
 ## Accepted Local/Project Phases
 
+- Product/service AI-media attachment source gate is implemented in this phase:
+  nullable `Product.aiPrimaryMediaAssetId` and `Service.aiPrimaryMediaAssetId`,
+  entity-scoped attach/detach APIs, safe public media routes, dashboard picker
+  integration, unit/static gates, and disposable local Docker MOCK E2E.
 - PRE-P07 AI media network status mapping accepted and committed (`3ed6367`)
 - Preview isolation source gate accepted and committed (`40d2b2d`)
 - Handoff/snapshot baseline accepted and committed (`a890a0f`)
@@ -103,6 +107,7 @@ Date: 2026-07-16
 - Imported asset consumption (`BAZAR-BAZ-AI-MEDIA-ASSET-CONSUMPTION-01`) is now implemented: a server-only asset service (`lib/services/ai-media-asset-service.ts`), a reusable pure visibility helper (`lib/ai-media/asset-visibility.ts`), a selection abstraction (`lib/services/ai-media-asset-selection-service.ts`), guarded API routes (`/api/dashboard/ai-media/assets`, `/[id]`, `/[id]/content`), a minimal localized dashboard UI (`app/[locale]/dashboard/ai-media/assets/page.tsx`), unit tests, a local Docker consumption E2E, a quality validator, and docs. The flow exposes only canonical `IMPORTED` assets, scoped by organization, with no provider URLs, no storage credentials, no browser-to-Render calls, and no Production writes. Docs in `docs/ai-media/AI_MEDIA_IMPORTED_ASSET_CONSUMPTION.md`.
   - A `storageKey` column was added to `AiMediaAsset` (migration `20260717200000_add_ai_media_asset_storage_key`, nullable, additive) because `storageKeyFingerprint` is a SHA-256 hash and cannot be reversed to serve content. New imports persist `storageKey`; legacy rows without it remain hidden by the usable-asset rule until backfilled. `storageKey` is server-only and never exposed via API or client serialization.
   - A server-only feature guard (`lib/ai-media/asset-consumption-feature-guard.ts`) keeps Production fail-closed before the `storageKey` migration is explicitly approved. The guard runs before any Prisma query in all asset routes/services.
+- Product/service AI-media attachment (`BAZAR-BAZ-AI-MEDIA-PRODUCT-SERVICE-ATTACHMENT-01`) is implemented in source. It links already imported assets to Product and Service primary media via entity references, serves public media through entity-scoped routes, and keeps replacement/detach idempotent without deleting assets or exposing storage keys/provider URLs.
 - Production migration execution has not been authorized or run for this phase.
 - Preview migration execution has not been run by source validation unless explicitly recorded in the phase report.
 - Database migration chain recovery (`BAZAR-BAZ-DATABASE-MIGRATION-CHAIN-RECOVERY-01`) is now implemented: the conflicting migration `20260707000200_export_hub_extend_data_types` was corrected in place to use the repository's guarded idempotent enum-extension pattern (`DO $$ ... IF NOT EXISTS ... pg_enum ...`). The original SQL attempted `ALTER TYPE "ExportDataType" ADD VALUE 'CUSTOMERS'` / `'FANPAGE_POSTS'`, both of which already exist from `20260628000300_export_hub_foundation`, causing PostgreSQL `42710` and Prisma `P3018`/`P3009` failures. The corrected SQL creates no new schema objects and converges to the same final `ExportDataType` enum. Disposable local Docker PostgreSQL proofs (fresh, upgrade, and authentic Prisma failed-state recovery) all pass; `prisma migrate deploy` applies all 52 migrations with 0 active-failed, and the latest `storageKey` migration applies locally. Full Prisma schema parity is NOT PROVEN — unrelated historical drift (ImageAccess/DomainStatus enum variants, renamed indexes) remains and is documented as a separate future database-normalization phase.

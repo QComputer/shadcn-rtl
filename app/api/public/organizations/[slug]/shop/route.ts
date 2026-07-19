@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { canReadAiMediaEntityAttachmentColumns } from "@/lib/services/ai-media-entity-attachment-service";
 
 export async function GET(
   request: NextRequest,
@@ -7,6 +8,7 @@ export async function GET(
 ) {
   try {
     const { slug } = await params;
+    const includeAiMediaAttachment = canReadAiMediaEntityAttachmentColumns();
     const organizationCategories = await prisma.productCategory.findMany({
       where: {
         organizationSlug: slug,
@@ -27,6 +29,7 @@ export async function GET(
             trackInventory: true,
             sortOrder: true,
             image: true,
+            ...(includeAiMediaAttachment ? { aiPrimaryMediaAssetId: true } : {}),
             isActive: true,
             deletedAt: true,
             discountType: true,

@@ -40,6 +40,7 @@ import { ShopStatusBadge } from "@/components/ShopStatusBadge"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { PublicImage } from "@/components/public/public-image"
+import { getProductPrimaryMediaUrl } from "@/lib/ai-media/entity-primary-media"
 
 interface ProductVariant {
   id: string
@@ -59,6 +60,7 @@ interface Product {
   description: string | null
   basePrice: number
   image: string | null
+  aiPrimaryMediaAssetId?: string | null
   images: string[]
   trackInventory: boolean
   discountType: "none" | "percentage" | "fixed" | string | null
@@ -545,7 +547,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
                       <div className="aspect-square bg-muted relative -mt-4 -mb-4">
                       <Link   href={`/${locale}/shop/${slug}/product/${product.slug || product.id}`}>
                       <PublicImage
-                        src={product.image}
+                        src={getProductPrimaryMediaUrl(product)}
                         alt={product.name}
                         kind="product"
                         className="w-full h-full object-cover"
@@ -637,7 +639,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
                                <div className="w-24 h-24 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                           <Link href={`/${locale}/shop/${slug}/product/${product.slug || product.id}`}>
                               <PublicImage
-                                src={product.image}
+                                src={getProductPrimaryMediaUrl(product)}
                                 alt={product.name}
                                 kind="product"
                                 className="w-full h-full object-cover"
@@ -729,7 +731,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
 
 
                 <PublicImage
-                  src={selectedProduct?.image}
+                  src={selectedProduct ? getProductPrimaryMediaUrl(selectedProduct) : null}
                   alt={selectedProduct?.name || "Product image"}
                   kind="product"
                   className="w-full h-full object-cover"

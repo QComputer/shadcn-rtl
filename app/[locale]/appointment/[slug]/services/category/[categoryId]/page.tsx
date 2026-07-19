@@ -18,6 +18,8 @@ import {
 } from "@/lib/seo";
 import { formatToman } from "@/lib/persian";
 import { cn } from "@/lib/utils";
+import { getServicePrimaryMediaUrl } from "@/lib/ai-media/entity-primary-media";
+import { canReadAiMediaEntityAttachmentColumns } from "@/lib/services/ai-media-entity-attachment-service";
 
 const CATEGORY_PAGE_SIZE = 24;
 
@@ -53,6 +55,7 @@ const visibleServiceWhere = {
 };
 
 async function getServiceCategory(slug: string, categoryId: string, pagination: CategoryPagination) {
+  const includeAiMediaAttachment = canReadAiMediaEntityAttachmentColumns();
   return prisma.serviceCategory.findFirst({
     where: {
       OR: [{ id: categoryId }, { slug: categoryId }],
@@ -93,6 +96,7 @@ async function getServiceCategory(slug: string, categoryId: string, pagination: 
           name: true,
           description: true,
           image: true,
+          ...(includeAiMediaAttachment ? { aiPrimaryMediaAssetId: true } : {}),
           price: true,
           duration: true,
           sortOrder: true,
@@ -245,7 +249,9 @@ export default async function ServiceCategoryPage({ params, searchParams }: Serv
 
               return (
                 <Card key={service.id} className="h-full overflow-hidden transition-shadow hover:shadow-md">
-                  {service.image && <img src={service.image} alt={service.name} className="h-44 w-full object-cover" />}
+                  {getServicePrimaryMediaUrl(service) && (
+                    <img src={getServicePrimaryMediaUrl(service) || undefined} alt={service.name} className="h-44 w-full object-cover" />
+                  )}
                   <CardHeader>
                     <CardTitle className="line-clamp-2 text-lg">
                       <Link href={`/${locale}/appointment/${slug}/services/${service.slug || service.id}`} className="hover:text-primary">

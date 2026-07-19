@@ -28,6 +28,7 @@ import {
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatToman, toPersianDigits } from "@/lib/persian"
 import { useCart } from "@/lib/contexts/cart-context"
+import { getProductPrimaryMediaUrl } from "@/lib/ai-media/entity-primary-media"
 
 interface ProductVariant {
   id: string
@@ -43,6 +44,7 @@ interface Product {
   description: string | null
   basePrice: number
   image: string | null
+  aiPrimaryMediaAssetId?: string | null
   images: string[]
   sku: string | null  
 
@@ -234,9 +236,9 @@ export default function ProductDetailPage({
             <div className="space-y-4">
               {/* Main Image */}
               <div className="aspect-square bg-muted rounded-lg overflow-hidden relative">
-                {product.image ? (
+                {getProductPrimaryMediaUrl(product) ? (
                   <img 
-                    src={product.image || undefined} 
+                    src={getProductPrimaryMediaUrl(product) || undefined}
                     alt={product.name}
                     className="w-full h-full object-cover"
                   />

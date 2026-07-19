@@ -25,6 +25,7 @@ import {
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatToman } from "@/lib/persian"
 import { cn } from "@/lib/utils"
+import { getServicePrimaryMediaUrl } from "@/lib/ai-media/entity-primary-media"
 
 interface Service {
   id: string
@@ -34,6 +35,7 @@ interface Service {
   price: number
   duration: number
   image: string | null
+  aiPrimaryMediaAssetId?: string | null
   category: {
     id: string
     slug: string | null
@@ -227,11 +229,11 @@ export default function ServicesPage({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredServices.map(service => (
               <Card key={locale+service.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                {service.image && (
+                {getServicePrimaryMediaUrl(service) && (
                   <div className="h-48 overflow-hidden">
                     <Link href={`/${locale}/appointment/${slug}/services/${service.slug || service.id}`}>
                       <img
-                        src={service.image}
+                        src={getServicePrimaryMediaUrl(service) || undefined}
                         alt={service.name}
                         className="h-full w-full object-cover transition-transform hover:scale-[1.02]"
                       />

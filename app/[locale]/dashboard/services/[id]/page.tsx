@@ -34,6 +34,7 @@ import { formatToman } from "@/lib/persian"
 import { useDashboardAccess } from "@/hooks/use-auth"
 import { useSession } from "next-auth/react"
 import { SlugPreviewActions } from "@/components/dashboard/slug-preview-actions"
+import { AiMediaAssetPicker } from "@/components/ai-media/ai-media-asset-picker"
 
 interface Service {
   id: string
@@ -43,6 +44,7 @@ interface Service {
   price: number
   duration: number
   image: string | null
+  aiPrimaryMediaAssetId?: string | null
   isActive: boolean
   category: {
     id: string
@@ -110,6 +112,7 @@ export default function EditServicePage({
   const [duration, setDuration] = useState("30")
   const [categoryId, setCategoryId] = useState("")
   const [image, setImage] = useState("")
+  const [aiPrimaryMediaAssetId, setAiPrimaryMediaAssetId] = useState<string | null>(null)
   const [isActive, setIsActive] = useState(true)
   const [serviceProviderId, setServiceProviderId] = useState<string | null>(null)
 
@@ -158,6 +161,7 @@ export default function EditServicePage({
       setDuration(serviceData.duration.toString())
       setCategoryId(serviceData.category?.id || "")
       setImage(serviceData.image || "")
+      setAiPrimaryMediaAssetId(serviceData.aiPrimaryMediaAssetId || serviceData.aiPrimaryMediaAsset?.id || null)
       setIsActive(serviceData.isActive)
       setServiceProviderId(serviceData.serviceProvider?.id || null)
       setCategories(categoriesData)
@@ -470,6 +474,17 @@ export default function EditServicePage({
                 placeholder="https://example.com/image.jpg"
               />
             </div>
+
+            <AiMediaAssetPicker
+              entityLabel="تصویر اصلی AI خدمت"
+              attachUrl={`/api/dashboard/services/${serviceId}/ai-media-asset`}
+              initialAssetId={aiPrimaryMediaAssetId}
+              locale={locale}
+              onAttached={(_publicMediaUrl, assetId) => {
+                setAiPrimaryMediaAssetId(assetId)
+                setService((current) => current ? { ...current, aiPrimaryMediaAssetId: assetId } : current)
+              }}
+            />
             
             {/* Service Provider (only visible to ADMIN) */}
             {(session?.user?.role === "ADMIN") && staffMembers.length > 0 && (

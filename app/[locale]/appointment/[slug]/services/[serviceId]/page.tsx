@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatToman } from "@/lib/persian"
+import { getServicePrimaryMediaUrl } from "@/lib/ai-media/entity-primary-media"
 
 interface ServiceData {
   service: {
@@ -26,6 +27,7 @@ interface ServiceData {
     price: number
     duration: number
     image: string | null
+    aiPrimaryMediaAssetId?: string | null
     category: {
       id: string
       name: string
@@ -148,10 +150,10 @@ export default function ServiceDetailPage({
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Service Image */}
-            {service.image && (
+            {getServicePrimaryMediaUrl(service) && (
               <div className="rounded-lg overflow-hidden">
                 <img 
-                  src={service.image} 
+                  src={getServicePrimaryMediaUrl(service) || undefined}
                   alt={service.name}
                   className="w-full h-64 object-cover"
                 />

@@ -58,6 +58,7 @@ import {
   normalizeAiMediaServiceStatusPayload,
   type NormalizedAiMediaStatus,
 } from "@/lib/ai-media/status"
+import { AiMediaAssetPicker } from "@/components/ai-media/ai-media-asset-picker"
 
 const AI_JOB_POLL_INTERVAL_MS = 3000
 const AI_JOB_MAX_POLL_ATTEMPTS = 90
@@ -120,6 +121,7 @@ interface Product {
   basePrice: number
   images: string[]
   image: string | null
+  aiPrimaryMediaAssetId?: string | null
   sku: string | null
   isActive: boolean
   trackInventory: boolean
@@ -167,6 +169,7 @@ export default function EditProductPage({
   const [categoryId, setCategoryId] = useState("")
   const [variantId, setVariantId] = useState("")
   const [image, setImage] = useState("")
+  const [aiPrimaryMediaAssetId, setAiPrimaryMediaAssetId] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [isActive, setIsActive] = useState(true)
   const [basePrice, setBasePrice] = useState("")
@@ -341,6 +344,7 @@ export default function EditProductPage({
       setBasePrice(productData.basePrice.toString())
       setCategoryId(productData.category?.id || "")
       setImage(productData.image || "")
+      setAiPrimaryMediaAssetId(productData.aiPrimaryMediaAssetId || productData.aiPrimaryMediaAsset?.id || null)
       setIsActive(productData.isActive)
       
       setCategories(categoriesData)
@@ -1007,6 +1011,17 @@ export default function EditProductPage({
             )}
             
             </div>
+
+            <AiMediaAssetPicker
+              entityLabel="تصویر اصلی AI محصول"
+              attachUrl={`/api/dashboard/products/${productId}/ai-media-asset`}
+              initialAssetId={aiPrimaryMediaAssetId}
+              locale={locale}
+              onAttached={(_publicMediaUrl, assetId) => {
+                setAiPrimaryMediaAssetId(assetId)
+                setProduct((current) => current ? { ...current, aiPrimaryMediaAssetId: assetId } : current)
+              }}
+            />
             
             {/* Name */}
             <div className="space-y-2 pt-4">

@@ -19,6 +19,8 @@ import {
 import { formatToman } from "@/lib/persian";
 import { cn } from "@/lib/utils";
 import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
+import { getProductPrimaryMediaUrl } from "@/lib/ai-media/entity-primary-media";
+import { canReadAiMediaEntityAttachmentColumns } from "@/lib/services/ai-media-entity-attachment-service";
 
 const CATEGORY_PAGE_SIZE = 24;
 
@@ -58,6 +60,7 @@ const visibleProductWhere = {
 };
 
 async function getShopCategory(slug: string, categoryId: string, pagination: CategoryPagination) {
+  const includeAiMediaAttachment = canReadAiMediaEntityAttachmentColumns();
   return prisma.productCategory.findFirst({
     where: {
       OR: [{ id: categoryId }, { slug: categoryId }],
@@ -99,6 +102,7 @@ async function getShopCategory(slug: string, categoryId: string, pagination: Cat
           name: true,
           description: true,
           image: true,
+          ...(includeAiMediaAttachment ? { aiPrimaryMediaAssetId: true } : {}),
           basePrice: true,
           sortOrder: true,
           trackInventory: true,
@@ -256,7 +260,9 @@ export default async function ShopCategoryPage({ params, searchParams }: ShopCat
             {products.map((product) => (
               <Link key={product.id} href={`/${locale}/shop/${slug}/product/${product.slug || product.id}`}>
                 <Card className="h-full overflow-hidden transition-shadow hover:shadow-md">
-                  {product.image && <img src={product.image} alt={product.name} className="h-44 w-full object-cover" />}
+                  {getProductPrimaryMediaUrl(product) && (
+                    <img src={getProductPrimaryMediaUrl(product) || undefined} alt={product.name} className="h-44 w-full object-cover" />
+                  )}
                   <CardHeader>
                     <CardTitle className="line-clamp-2 text-lg">{product.name}</CardTitle>
                   </CardHeader>

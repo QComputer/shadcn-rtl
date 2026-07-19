@@ -4,7 +4,20 @@ _Last updated from source inspection and roadmap reconciliation: 2026-07-15._
 
 ## 2026-07-19 current override
 
-Current active phase: `BAZAR-BAZ-DATABASE-SCHEMA-DRIFT-NORMALIZATION-01`.
+Current active phase: `BAZAR-BAZ-AI-MEDIA-PRODUCT-SERVICE-ATTACHMENT-01`.
+
+This phase safely attaches already imported application-owned AI media assets to
+Product and Service primary image slots using nullable entity references,
+dashboard attach/detach APIs, public entity-scoped media routes, and local
+Docker MOCK E2E validation. It does not execute P07, real generation, hosted DB
+writes, Production Blob writes, or provider/storage credential exposure.
+
+Next after acceptance:
+`BAZAR-BAZ-AI-MEDIA-ASSET-LIBRARY-LIFECYCLE-01`.
+
+## 2026-07-19 current override
+
+Previous active phase: `BAZAR-BAZ-DATABASE-SCHEMA-DRIFT-NORMALIZATION-01`.
 
 This phase must complete before product/service AI asset attachment. It proves
 complete local Prisma migration/schema parity with disposable Docker PostgreSQL,

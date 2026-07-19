@@ -12,6 +12,7 @@ import { buildUniqueDetailSlug, normalizeDetailSlug } from "@/lib/detail-slugs";
 import { normalizePagination } from "@/lib/pagination";
 import { InventoryMovementReason } from "@prisma/client";
 import { supportedLocales } from "@/lib/i18n";
+import { canReadAiMediaEntityAttachmentColumns } from "@/lib/services/ai-media-entity-attachment-service";
 
 function revalidateShopProductPages(productId: string, organizationSlug: string, segments: Array<string | null | undefined> = []) {
   const uniqueSegments = Array.from(new Set([productId, ...segments].filter(Boolean)));
@@ -167,6 +168,7 @@ export class ProductService {
   }
 
   async getById(id: string) {
+    const includeAiMediaAttachment = canReadAiMediaEntityAttachmentColumns();
     return prisma.product.findFirst({
       where: { id, deletedAt: null },
       select: {
@@ -176,6 +178,7 @@ export class ProductService {
         description: true,
         basePrice: true,
         image: true,
+        ...(includeAiMediaAttachment ? { aiPrimaryMediaAssetId: true } : {}),
         isActive: true,
         trackInventory: true,
         lowStockThreshold: true,
@@ -196,6 +199,7 @@ export class ProductService {
   }
 
   async getBySlug(slug: string, organizationSlug: string) {
+    const includeAiMediaAttachment = canReadAiMediaEntityAttachmentColumns();
     const organization = await prisma.organization.findFirst({
       where: { slug: organizationSlug, deletedAt: null, isActive: true },
       select: { id: true },
@@ -214,6 +218,7 @@ export class ProductService {
       },
       include: {
         category: true,
+        ...(includeAiMediaAttachment ? { aiPrimaryMediaAsset: { select: { id: true } } } : {}),
         variants: {
           where: { deletedAt: null },
           orderBy: { name: "asc" },
@@ -223,6 +228,7 @@ export class ProductService {
   }
 
   async list(params: ProductListParams) {
+    const includeAiMediaAttachment = canReadAiMediaEntityAttachmentColumns();
     const pagination = normalizePagination(params, { maxPageSize: 100 });
     const where = this.buildWhere(params);
 
@@ -234,6 +240,7 @@ export class ProductService {
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
         include: {
           category: true,
+          ...(includeAiMediaAttachment ? { aiPrimaryMediaAsset: { select: { id: true } } } : {}),
           variants: {
             where: { deletedAt: null },
             orderBy: { name: "asc" },
@@ -253,6 +260,7 @@ export class ProductService {
   }
 
   async listAll(params: ProductListParams) {
+    const includeAiMediaAttachment = canReadAiMediaEntityAttachmentColumns();
     const pagination = normalizePagination(params, { maxPageSize: 100 });
     const where = this.buildWhere(params);
 
@@ -265,6 +273,7 @@ export class ProductService {
         include: {
           organization: { select: { id: true, name: true, slug: true } },
           category: true,
+          ...(includeAiMediaAttachment ? { aiPrimaryMediaAsset: { select: { id: true } } } : {}),
           variants: {
             where: { deletedAt: null },
             orderBy: { name: "asc" },

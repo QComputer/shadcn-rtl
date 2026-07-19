@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { canReadAiMediaEntityAttachmentColumns } from "@/lib/services/ai-media-entity-attachment-service";
 
 export async function GET(
   request: NextRequest,
@@ -9,6 +10,7 @@ export async function GET(
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const organizationSlug = searchParams.get("organizationSlug");
+    const includeAiMediaAttachment = canReadAiMediaEntityAttachmentColumns();
 
     // Build the where clause
     const where: Record<string, unknown> = {
@@ -34,7 +36,17 @@ export async function GET(
     // Get product with details
     const product = await prisma.product.findFirst({
       where,
-      include: {
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        description: true,
+        basePrice: true,
+        image: true,
+        ...(includeAiMediaAttachment ? { aiPrimaryMediaAssetId: true } : {}),
+        sku: true,
+        trackInventory: true,
+        lowStockThreshold: true,
         category: {
           select: {
             id: true,
@@ -80,6 +92,7 @@ export async function GET(
         description: product.description,
         basePrice: product.basePrice,
         image: product.image,
+        aiPrimaryMediaAssetId: includeAiMediaAttachment ? product.aiPrimaryMediaAssetId ?? null : null,
         sku: product.sku,
         trackInventory: product.trackInventory,
         lowStockThreshold: product.lowStockThreshold,

@@ -31,6 +31,9 @@ pnpm run quality:ai-media-local-docker-create-sync
 pnpm run test:ai-media-asset-consumption
 pnpm run quality:ai-media-asset-consumption
 pnpm run e2e:ai-media:local-docker-asset-consumption
+pnpm run test:ai-media:product-service-attachment
+pnpm run quality:ai-media-product-service-attachment
+pnpm run e2e:ai-media:local-docker-product-service-attachment
 pnpm run test:db:migration-chain
 pnpm run quality:db:migration-chain
 pnpm run test:db:schema-drift
@@ -66,6 +69,7 @@ git status --short --branch
 - AI media app-managed result import unit tests use mocked/in-memory Prisma and local test storage; they validate provider result validation, storage-gateway import, IMPORTED marking, failure preservation, and idempotent reuse without contacting Production DB, Preview DB, Blob, Render mutation endpoints, or real generation.
 - AI media app-managed result import quality tooling validates the pure validator, server-only import service, storage gateway guards, guarded import route, no browser Render secrets, no Blob writes, no real generation, docs, and package scripts.
 - Local Docker MOCK E2E may be run before hosted Preview writes with `AI_MEDIA_LOCAL_DOCKER_E2E=1` and `AI_MEDIA_PREVIEW_DB_NON_ISOLATED_WRITE_ACCEPTED=1`, but only when `DATABASE_URL` and `DIRECT_URL` point to a disposable localhost PostgreSQL database. This mode does not prove hosted Preview DB isolation.
+- Local Docker MOCK product/service attachment E2E (`e2e:ai-media:local-docker-product-service-attachment`) runs only against disposable localhost PostgreSQL with local-test storage and the local contract mock. It imports synthetic MOCK assets, attaches/replaces Product primary media, attaches/detaches Service primary media, streams public entity media, rejects cross-tenant attachment, and performs no hosted DB write, Production Blob write, real generation, wallet mutation, or P07 import.
 - Current local Docker MOCK E2E result: local migration, auth fixture, request/mirror/event creation, and provider failure recording pass; deployed Render MOCK product-image creation returns HTTP 500, so provider job creation and status sync remain blocked.
 - App-managed result import local Docker E2E (`e2e:ai-media:local-docker-import`) runs only against a disposable Docker Postgres with local test storage; it verifies MOCK RESULT_READY import through the gateway into AiMediaImport/AiMediaAsset and AiMediaJobMirror IMPORTED, idempotency, no duplicate assets, no Blob write, and no real generation.
 - Local Docker MOCK create/status-sync recovery E2E (`e2e:ai-media:local-docker-create-sync`) runs only against a disposable Docker Postgres with the local contract mock (`scripts/ai-media/local-contract-mock.mjs`); it verifies MOCK job create (`submitPreviewMockAiMediaJob`) + status sync (`syncPreviewMockAiMediaJobStatus`), one app-owned `AiMediaJobMirror` reaching `RESULT_READY` with a stored provider job id, idempotent reuse, no Blob write, and no real generation. It does not call the deployed Render coordinator.

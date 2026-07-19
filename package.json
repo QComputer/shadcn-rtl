@@ -278,7 +278,12 @@
     "e2e:db:migration-chain-fresh": "node scripts/db/validate-migration-chain.mjs fresh",
     "e2e:db:migration-chain-upgrade": "node scripts/db/validate-migration-chain.mjs upgrade",
     "e2e:db:migration-chain-failed": "node scripts/db/validate-migration-chain.mjs failed",
-    "quality:db:migration-chain": "tsx scripts/quality/validate-database-migration-chain.mts"
+    "quality:db:migration-chain": "tsx scripts/quality/validate-database-migration-chain.mts",
+    "test:db:schema-drift": "node scripts/db/validate-schema-drift-normalization.mjs all",
+    "quality:db:schema-drift": "tsx scripts/quality/validate-database-schema-drift-normalization.mts",
+    "e2e:db:schema-drift-inspect": "node scripts/db/validate-schema-drift-normalization.mjs inspect",
+    "e2e:db:schema-drift-fresh": "node scripts/db/validate-schema-drift-normalization.mjs fresh",
+    "e2e:db:schema-drift-upgrade": "node scripts/db/validate-schema-drift-normalization.mjs upgrade"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

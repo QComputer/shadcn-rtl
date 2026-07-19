@@ -489,9 +489,10 @@ active-failed) and the `storageKey` migration (`20260717200000_add_ai_media_asse
 deploys locally. Production migration has not been run; Production asset-consumption remains
 disabled. Full Prisma schema parity is NOT PROVEN — see next phase.
 
-### Phase BB-DB-02 — Database Normalization (Future, Out of Scope for Recovery)
+### Phase BB-DB-02 — Database Normalization (Active Source Phase)
 
-Reconcile pre-existing schema-vs-migrations drift that is unrelated to the recovery:
+`BAZAR-BAZ-DATABASE-SCHEMA-DRIFT-NORMALIZATION-01` reconciles pre-existing
+schema-vs-migrations drift that is unrelated to the recovery:
 - `ImageAccess` enum variant divergence between migrations and datamodel.
 - `DomainStatus` variant removals/additions between migrations and datamodel.
 - Renamed indexes/constraints between migrations and datamodel.
@@ -499,6 +500,10 @@ Reconcile pre-existing schema-vs-migrations drift that is unrelated to the recov
 Goal: re-establish `prisma migrate diff` parity (or an explicit, documented exception list)
 without data loss. Do not combine with Production activation; verify backup and migration
 history first.
+
+Source adds `20260719000000_normalize_schema_drift`, local Docker proof tooling,
+and `docs/database/DATABASE_SCHEMA_DRIFT_NORMALIZATION.md`. Acceptance requires
+fresh and upgrade local `migrate deploy` proofs with empty final diffs.
 
 ## What `shadcn-rtl` Must Not Do
 

@@ -2,6 +2,18 @@
 
 Date: 2026-07-15
 
+## 2026-07-19 BB-DB-02 update
+
+`BAZAR-BAZ-DATABASE-SCHEMA-DRIFT-NORMALIZATION-01` normalizes the remaining
+Prisma schema drift after migration-chain recovery. Source adds the forward
+migration `20260719000000_normalize_schema_drift`, local-only Docker proof
+tooling, and `docs/database/DATABASE_SCHEMA_DRIFT_NORMALIZATION.md`.
+
+The phase targets `ImageAccess`, `DomainStatus`, FK/default/timestamp drift, and
+naming-only index drift. It must be accepted only when fresh and upgrade
+`prisma migrate deploy` proofs finish with empty final `prisma migrate diff`
+results. No Production migration is run by this source phase.
+
 ## 2026-07-15 BB-AI-MEDIA-P04A-P06A update
 
 BB-AI-MEDIA-P04A-P06A app-managed storage acceptance is implemented in source. It adds a server-only application storage gateway, a production Vercel Blob adapter isolated behind that gateway, a local-test storage adapter, hermetic environment guards, a local contract-faithful MOCK provider, and a repeatable `pnpm run test:ai-media:hermetic` lifecycle.

@@ -576,12 +576,12 @@ model OrganizationDomain {
   sslReady         Boolean @default(false)
 
   vercelProjectDomainId String?
-  verificationType      String?
-  verificationDomain    String?
-  verificationValue     String?
-
-  lastCheckedAt    DateTime?
+  verificationToken      String?
+  verificationType       String?
+  verificationDomain     String?
+  verificationValue      String?
   verifiedAt       DateTime?
+  lastCheckedAt    DateTime?
   activatedAt      DateTime?
   disabledAt       DateTime?
   removedAt        DateTime?
@@ -605,6 +605,7 @@ model OrganizationDomain {
   @@index([status])
   @@index([isPrimary])
   @@index([organizationId, status])
+  @@index([organizationId, kind])
   @@index([normalizedDomain, status])
 }
 
@@ -1954,6 +1955,7 @@ model ImportedProductDraft {
   @@index([sourceId])
   @@index([reviewedByUserId])
   @@index([sourceExternalId])
+  @@index([rowNumber])
   @@index([importedProductId])
 }
 

@@ -18,10 +18,10 @@ add("bootstrap refuses missing/nonlocal database URLs", /DATABASE_URL is local d
 add("bootstrap rejects Neon and Production endpoint fingerprints", /neon\.tech/.test(bootstrap) && /ep-little-river-aifwxtf7/.test(bootstrap) && /neonauth\.c-4\.us-east-1\.aws\.neon\.tech/.test(bootstrap));
 add("bootstrap requires explicit disposable flag", /LOCAL_BASELINE_BOOTSTRAP_DISPOSABLE/.test(bootstrap));
 add("bootstrap blocks production runtime", /VERCEL_ENV/.test(bootstrap) && /NODE_ENV/.test(bootstrap));
-add("bootstrap uses local schema baseline then local resolve", /prisma", "db", "push"/.test(bootstrap) && /migrate", "resolve"/.test(bootstrap));
-add("bootstrap does not use migrate deploy", !/migrate", "deploy"|migrate deploy/.test(bootstrap));
+add("legacy bootstrap uses local schema baseline then local resolve", /prisma", "db", "push"/.test(bootstrap) && /migrate", "resolve"/.test(bootstrap));
+add("legacy bootstrap does not use migrate deploy", !/migrate", "deploy"|migrate deploy/.test(bootstrap));
 add("bootstrap does not print database URLs", !/DATABASE_URL.*console|DIRECT_URL.*console/.test(bootstrap));
-add("hermetic acceptance invokes bootstrap", /local-baseline-bootstrap\.mjs/.test(hermetic));
+add("hermetic acceptance uses migrate deploy after schema parity", /migrate", "deploy"/.test(hermetic) && /prisma-migrate-deploy/.test(hermetic));
 add("hermetic acceptance provisions disposable Docker Postgres", /docker/.test(hermetic) && /postgres:16-alpine/.test(hermetic));
 add("package exposes DB validators", /quality:db-legacy-migration-immutability/.test(packageJson) && /quality:db-local-baseline-bootstrap/.test(packageJson));
 add("legacy strategy documentation exists", exists("docs/db/LEGACY_MIGRATION_BASELINE_STRATEGY.md"));

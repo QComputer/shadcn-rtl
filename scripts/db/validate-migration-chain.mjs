@@ -83,6 +83,11 @@ function removeDockerDatabase(containerName) {
 const CONFLICTING = "20260707000200_export_hub_extend_data_types";
 const PREVIOUS = "20260707000100_request_demo_lead_storage";
 const STORAGE_KEY = "20260717200000_add_ai_media_asset_storage_key";
+const MIGRATIONS_ROOT = path.join(process.cwd(), "prisma", "migrations");
+const TOTAL_MIGRATION_FOLDERS = fs.readdirSync(MIGRATIONS_ROOT, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .length;
+const NON_CONFLICTING_MIGRATION_FOLDERS = TOTAL_MIGRATION_FOLDERS - 1;
 
 const FIXED_SQL = `-- BB-B2B-P10-FIX1: extend ExportDataType to match existing export-hub implementation.
 -- Adds CUSTOMERS and FANPAGE_POSTS to the ExportDataType enum.
@@ -162,9 +167,9 @@ async function freshPath() {
     run("npx", ["prisma", "migrate", "deploy", "--schema=prisma/schema.prisma"], env);
     const applied = capture("docker", ["exec", db.containerName, "psql", "-U", "postgres", "-d", db.databaseName, "-t", "-A", "-c", `SELECT count(DISTINCT migration_name) FROM _prisma_migrations WHERE finished_at IS NOT NULL;`], { input: "" });
     const failed = capture("docker", ["exec", db.containerName, "psql", "-U", "postgres", "-d", db.databaseName, "-t", "-A", "-c", `SELECT count(*) FROM (SELECT DISTINCT migration_name FROM _prisma_migrations WHERE finished_at IS NULL) AS u;`], { input: "" });
-    if (applied !== "52") fail(`Fresh path: expected 52 applied migrations, got ${applied}`);
+    if (applied !== String(TOTAL_MIGRATION_FOLDERS)) fail(`Fresh path: expected ${TOTAL_MIGRATION_FOLDERS} applied migrations, got ${applied}`);
     if (failed !== "0") fail(`Fresh path: expected 0 failed migrations, got ${failed}`);
-    else ok(`Fresh path: 52 migrations applied, 0 failed`);
+    else ok(`Fresh path: ${TOTAL_MIGRATION_FOLDERS} migrations applied, 0 failed`);
 
     const enumVals = capture("docker", ["exec", db.containerName, "psql", "-U", "postgres", "-d", db.databaseName, "-t", "-A", "-c", `SELECT string_agg(enumlabel, ',' ORDER BY enumsortorder) FROM pg_enum WHERE enumtypid=(SELECT oid FROM pg_type WHERE typname='ExportDataType');`], { input: "" });
     if (enumVals !== "PRODUCTS,PRODUCT_CATEGORIES,ORDERS,CUSTOMERS,FANPAGE_POSTS") fail(`Fresh path: ExportDataType enum unexpected: ${enumVals}`);
@@ -256,8 +261,8 @@ INSERT INTO "AiMediaAsset" (id, "organizationId", "requestId", "mirrorId", "impo
     else ok("Upgrade path: second migrate deploy reports no pending migrations");
 
     const totalApplied = capture("docker", ["exec", db.containerName, "psql", "-U", "postgres", "-d", db.databaseName, "-t", "-A", "-c", `SELECT count(DISTINCT migration_name) FROM _prisma_migrations WHERE finished_at IS NOT NULL AND migration_name NOT LIKE '%.disabled';`], { input: "" });
-    if (totalApplied !== "52") fail(`Upgrade path: expected 52 applied migrations total, got ${totalApplied}`);
-    else ok("Upgrade path: all 52 migrations applied after full chain");
+    if (totalApplied !== String(TOTAL_MIGRATION_FOLDERS)) fail(`Upgrade path: expected ${TOTAL_MIGRATION_FOLDERS} applied migrations total, got ${totalApplied}`);
+    else ok(`Upgrade path: all ${TOTAL_MIGRATION_FOLDERS} migrations applied after full chain`);
   } finally {
     removeDockerDatabase(db.containerName);
     if (asideTarget) restoreConflictingAside(migrationsRoot, asideTarget);
@@ -344,14 +349,14 @@ async function failedStatePath() {
         fail(`Failed-state: expected 0 active-failed migrations, got ${activeFailed}`);
       } else ok("Failed-state: no active-failed migrations after recovery (rolled-back history retained, no manual deletion)");
 
-      // All 52 migration folders must have at least one finished (applied) row.
+      // All non-conflicting migration folders must have at least one finished (applied) row.
       const appliedNames = capture("docker", ["exec", db.containerName, "psql", "-U", "postgres", "-d", db.databaseName, "-t", "-A", "-c", `SELECT count(DISTINCT migration_name) FROM _prisma_migrations WHERE finished_at IS NOT NULL AND migration_name NOT LIKE '%.disabled' AND migration_name <> '${CONFLICTING}';`], { input: "" });
-      const expectedApplied = 51; // all folders except the recovered conflicting one
+      const expectedApplied = NON_CONFLICTING_MIGRATION_FOLDERS; // all folders except the recovered conflicting one
       if (appliedNames !== String(expectedApplied)) {
         const detail = capture("docker", ["exec", db.containerName, "psql", "-U", "postgres", "-d", db.databaseName, "-t", "-A", "-c", `SELECT migration_name, finished_at IS NOT NULL, rolled_back_at IS NOT NULL FROM _prisma_migrations ORDER BY migration_name;`], { input: "" });
         console.error(`Failed-state diagnostic (migration history, no credentials):\n${detail}`);
         fail(`Failed-state: expected ${expectedApplied} non-conflicting applied migration names, got ${appliedNames}`);
-      } else ok("Failed-state: all 51 non-conflicting migrations applied");
+      } else ok(`Failed-state: all ${expectedApplied} non-conflicting migrations applied`);
 
       // No stray `.disabled` migration rows (test-environment cleanliness guard).
       const stray = capture("docker", ["exec", db.containerName, "psql", "-U", "postgres", "-d", db.databaseName, "-t", "-A", "-c", `SELECT count(*) FROM _prisma_migrations WHERE migration_name LIKE '%.disabled';`], { input: "" });

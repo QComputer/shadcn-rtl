@@ -110,6 +110,7 @@ Date: 2026-07-16
   - Production migration has not been run; Production asset-consumption remains disabled via the server-only feature guard.
   - Future Production activation requires migration-history inspection and a verified backup (prerequisites only, not executed).
   - Tooling: `test:db:migration-chain`, `e2e:db:migration-chain-fresh`, `e2e:db:migration-chain-upgrade`, `e2e:db:migration-chain-failed`, `quality:db:migration-chain`. Docs in `docs/database/DATABASE_MIGRATION_CHAIN_RECOVERY.md`.
+- Database schema drift normalization (`BAZAR-BAZ-DATABASE-SCHEMA-DRIFT-NORMALIZATION-01`) is now the active database phase in source. It introduces the forward migration `20260719000000_normalize_schema_drift`, local-only Docker proof tooling, a quality validator, and `docs/database/DATABASE_SCHEMA_DRIFT_NORMALIZATION.md` to normalize `ImageAccess`, `DomainStatus`, FK/default/timestamp drift, and naming-only index drift. Complete Prisma migration/schema parity is proven only after both fresh and upgrade schema-drift gates pass with empty final diffs.
 - Operator-accepted DB resume update: `20260716000100_ai_media_preview_mock_write_foundation` was applied with DB guard mode `ACCEPTED_RISK_NON_ISOLATED_DB` after explicit operator acceptance of temporary DB write risk. Live Preview MOCK E2E remains blocked by missing local `AI_MEDIA_PREVIEW_SESSION_COOKIE` and Vercel SSO-protected Preview access.
 
 ## Current Blockers
@@ -129,10 +130,10 @@ Date: 2026-07-16
 
 Safe next choices:
 
-1. `BAZAR-BAZ-AI-NETWORK-LOCAL-DOCKER-MOCK-E2E-RECOVERY-01`: resolve the deployed Render MOCK create 500, then rerun the local Docker E2E before hosted Preview writes.
-2. `BAZAR-BAZ-AI-NETWORK-PREVIEW-MOCK-WRITE-E2E-FOUNDATION-01`: Preview-only MOCK write E2E foundation, but only after the local Docker gate passes and explicit write-flow rules plus isolated Preview resources are proven.
-3. `BAZAR-BAZ-AI-NETWORK-PLATFORM-SCHEMA-MIGRATION-PLAN-01`: Bazar Baz AI platform schema/migration planning only after Preview/Render gates are ready and migration authorization is explicit.
-4. `BAZAR-BAZ-AI-NETWORK-APP-MANAGED-IMPORT-IMPLEMENTATION-01`: app-managed storage import implementation after schema and storage isolation.
-5. `BAZAR-BAZ-BAZ-LEDGER-FOUNDATION-01`: Baz ledger implementation after schema planning approval.
+1. `BAZAR-BAZ-DATABASE-SCHEMA-DRIFT-NORMALIZATION-01`: finish and accept complete local Prisma migration/schema parity.
+2. `BAZAR-BAZ-AI-MEDIA-PRODUCT-SERVICE-ATTACHMENT-01`: attach imported AI assets to products/services after parity is proven.
+3. `SERVICE-AI-RESULT-EVIDENCE-CONTRACT-01` in `bazar-baz-ai-media-service`: only after attachment requirements identify exact provider-result evidence needs.
+4. AI asset library lifecycle hardening.
+5. End-user MOCK generation workflow.
 
 Do not activate AI writes, wallet settlement, Render writes, Blob writes, or Production import until separately authorized.

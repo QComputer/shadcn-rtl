@@ -76,6 +76,7 @@ function startContractMock() {
     stdio: "ignore",
     detached: true,
   });
+  contractMockProcess.unref();
   const mockUrl = `http://127.0.0.1:${contractMockPort}`;
   for (let attempt = 0; attempt < 40; attempt += 1) {
     const probe = spawnSync("node", ["-e", `fetch(${JSON.stringify(`${mockUrl}/health`)}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))`], { stdio: "ignore" });
@@ -132,7 +133,7 @@ try {
   const mockUrl = startContractMock();
   const env = buildEnv(database.databaseUrl, mockUrl);
 
-  run(process.execPath, ["scripts/db/local-baseline-bootstrap.mjs"], env);
+  runPnpm(["exec", "prisma", "migrate", "deploy", "--schema=prisma/schema.prisma"], env);
   runPnpm(["exec", "tsx", "scripts/e2e/ai-media-local-docker-create-sync-e2e.mts"], env);
 
   console.log("AI media local Docker create/status-sync E2E passed.");

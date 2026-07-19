@@ -117,7 +117,10 @@ END $$;
 
 - Disposable PostgreSQL (Docker `postgres:16-alpine`, `127.0.0.1` only).
 - Normal `prisma migrate deploy` from an empty database.
-- All **52 migrations** apply; **0** active failed migrations.
+- At recovery time, all **52 migrations** applied with **0** active failed migrations.
+- After `BAZAR-BAZ-DATABASE-SCHEMA-DRIFT-NORMALIZATION-01`, the repository chain contains
+  **53 migrations**; the migration-chain validator now derives the expected count from the
+  current `prisma/migrations` folders.
 - `ExportDataType` has exactly the 5 intended labels (no duplicates).
 - `AiMediaAsset.storageKey` exists and is nullable.
 - `AiMediaAsset_storageKey_idx` exists.
@@ -211,3 +214,10 @@ The unrelated historical drift listed above should be reconciled in a dedicated 
 - Normalizes renamed indexes/constraints.
 - Re-establishes full `prisma migrate diff` parity (or an explicit, documented exception
   list) without data loss.
+
+## Follow-up normalization
+
+`BAZAR-BAZ-DATABASE-SCHEMA-DRIFT-NORMALIZATION-01` follows this recovery phase in
+`docs/database/DATABASE_SCHEMA_DRIFT_NORMALIZATION.md`. It adds a new forward
+normalization migration and local-only Docker proof tooling. Production migration
+execution remains a separate authorization step.

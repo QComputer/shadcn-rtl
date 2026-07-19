@@ -118,7 +118,7 @@ try {
     : createDockerDatabase();
   const env = buildHermeticEnv(database.databaseUrl);
 
-  run(process.execPath, ["scripts/db/local-baseline-bootstrap.mjs"], env);
+  runPnpm(["exec", "prisma", "migrate", "deploy", "--schema=prisma/schema.prisma"], env);
   run(process.execPath, ["scripts/quality/validate-ai-media-hermetic-environment.mjs"], env);
   run(process.execPath, ["scripts/quality/validate-ai-media-p04a-p06a.mjs"], env);
   runPnpm(["exec", "tsx", "scripts/e2e/ai-media-hermetic-lifecycle.mts"], env);
@@ -127,7 +127,7 @@ try {
   console.log(JSON.stringify({
     ok: true,
     database: "LOCAL_DISPOSABLE",
-    baseline: "schema-db-push-plus-migrate-resolve",
+    baseline: "prisma-migrate-deploy",
     productionMigrationCommand: false,
     productionBlobCalls: 0,
     liveRenderWrite: false,

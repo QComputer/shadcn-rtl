@@ -199,11 +199,11 @@ adds a nullable `storageKey TEXT` column and an index. It is additive and
 idempotent (`IF NOT EXISTS`). Existing rows without `storageKey` remain valid
 rows but are hidden by the usable-asset rule until backfilled.
 
-`scripts/quality/validate-ai-media-storage-key-migration.mjs` validates both:
+The database migration-chain and schema-drift gates validate both:
 
-- Fresh database: `db push` + migration produces the column + index, nullable.
+- Fresh database: `prisma migrate deploy` produces the column + index, nullable.
 - Upgrade path: a pre-existing `AiMediaAsset` row with `storageKey = NULL`
-  survives the migration and remains non-consumable.
+  survives migration and remains non-consumable.
 
 The `storageKey` migration is part of the recovered Prisma migration chain
 (`BAZAR-BAZ-DATABASE-MIGRATION-CHAIN-RECOVERY-01`). It deploys locally (all 52 migrations

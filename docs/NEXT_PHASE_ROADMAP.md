@@ -2,6 +2,17 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-07-15._
 
+## 2026-07-19 current override
+
+Current active phase: `BAZAR-BAZ-DATABASE-SCHEMA-DRIFT-NORMALIZATION-01`.
+
+This phase must complete before product/service AI asset attachment. It proves
+complete local Prisma migration/schema parity with disposable Docker PostgreSQL,
+normalizing `ImageAccess`, `DomainStatus`, FK/default/timestamp drift, and
+naming-only index drift. No Production migration is included.
+
+Next after acceptance: `BAZAR-BAZ-AI-MEDIA-PRODUCT-SERVICE-ATTACHMENT-01`.
+
 This roadmap is ordered for risk reduction. Phases 18-119 are historical/completed hardening and growth work. The integrated Import Hub, Export Hub, AI media hardening, source cleanup, open-fields audit, PWA foundation/offline, notification preference, Web Push delivery, SMS provider, notification routing, notification operations dashboard, deployed PWA/Push/SMS smoke, production rollout, source acceptance/secretless packaging, Creative Studio planning, Creative Studio server foundation, Creative Studio dashboard review, Creative Studio apply controls, Creative Studio generation readiness, Creative Studio product-image generation, Creative Studio generated-asset selection, Creative Studio organization-brand readiness, Creative Studio organization-brand request controls, Creative Studio organization-brand acceptance, Creative Studio organization-brand provider rollout gate, Creative Studio organization-brand provider execution, Creative Studio provider result ingestion, and P120 Creative Studio reviewed asset apply and rollback workflow, P120A operational order notifications and admin order controls, P120B customer order lifecycle notifications and guest SMS dry-run review, P120C notification delivery observability and retry eligibility metadata, P120D SMS.ir provider completion, P120E SMS delivery reports and provider reconciliation, P120F SMS.ir official report endpoint integration, and NOTIFOPS-DEPLOY-FIX1 deployed notification operations hardening are implemented through Phase 120F.
 
 ## Current integrated roadmap

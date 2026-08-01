@@ -16,7 +16,10 @@ Date: 2026-08-02
 
 ## Root Cause
 
-Category lookup already supported both raw category IDs and canonical category slugs, scoped by organization slug. The broken source path was the public URL contract emitted from shop/category surfaces: shop links and category page redirects/pagination/product links were built as platform paths even when the request was already on a tenant custom domain.
+Category lookup already supported both raw category IDs and canonical category slugs, scoped by organization slug. The broken source path had two parts:
+
+1. Shop links and category page redirects/pagination/product links were built as platform paths even when the request was already on a tenant custom domain.
+2. After the custom-domain proxy rewrote `/category/<percent-encoded-persian-slug>` to the internal shop category route, the category page render path could receive the encoded route segment and compare/query it against the Unicode slug stored in the database. That missed the category and triggered the route's safe 404 fallback.
 
 That caused custom-domain visitors to move through platform-shaped paths such as:
 
@@ -45,6 +48,8 @@ The hotfix adds `lib/shop-public-paths.ts` as the shared source for public shop 
 - non-default custom-domain locale category: `/<locale>/category/<categorySlugOrId>`
 
 The shop root client page now emits custom-domain category and product links when mounted on a custom-domain public path. The server-rendered shop category page now uses the same helper for slug redirects, pagination links, product links, and JSON-LD offer URLs.
+
+The hotfix also decodes public route segments with a non-throwing `decodePublicRouteSegment()` helper before the server category lookup. Invalid encodings are left unchanged and continue to return a safe 404.
 
 ## Canonical URL Behavior
 

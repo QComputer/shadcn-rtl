@@ -10,6 +10,14 @@ function normalizeSubPath(subPath: string) {
   return subPath.startsWith("/") ? subPath : `/${subPath}`;
 }
 
+export function decodePublicRouteSegment(segment: string) {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
 export function buildShopPublicPath(input: {
   locale: string;
   shopSlug: string;

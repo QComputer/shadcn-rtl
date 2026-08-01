@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
 import { getProductPrimaryMediaUrl } from "@/lib/ai-media/entity-primary-media";
 import { canReadAiMediaEntityAttachmentColumns } from "@/lib/services/ai-media-entity-attachment-service";
-import { buildShopCategoryPath, buildShopProductPath } from "@/lib/shop-public-paths";
+import { buildShopCategoryPath, buildShopProductPath, decodePublicRouteSegment } from "@/lib/shop-public-paths";
 
 const CATEGORY_PAGE_SIZE = 24;
 
@@ -140,8 +140,9 @@ function getProductPrice(product: ShopCategoryProduct) {
 
 export async function generateMetadata({ params, searchParams }: ShopCategoryPageProps): Promise<Metadata> {
   const { locale, slug, categoryId } = await params;
+  const categorySegmentParam = decodePublicRouteSegment(categoryId);
   const pagination = getRequestedPagination(await searchParams);
-  const category = await getShopCategory(slug, categoryId, pagination);
+  const category = await getShopCategory(slug, categorySegmentParam, pagination);
 
   if (!category) {
     return { title: "Category Not Found" };
@@ -172,14 +173,15 @@ export async function generateMetadata({ params, searchParams }: ShopCategoryPag
 
 export default async function ShopCategoryPage({ params, searchParams }: ShopCategoryPageProps) {
   const { locale, slug, categoryId } = await params;
+  const categorySegmentParam = decodePublicRouteSegment(categoryId);
   const pagination = getRequestedPagination(await searchParams);
-  const category = await getShopCategory(slug, categoryId, pagination);
+  const category = await getShopCategory(slug, categorySegmentParam, pagination);
 
   if (!category) notFound();
 
   const categorySegment = category.slug || category.id;
   const seoContext = await getShopTenantSeoContext({ locale, slug, subPath: `/category/${categorySegment}${pagination.page > 1 ? `?page=${pagination.page}` : ""}` });
-  if (category.slug && categoryId !== category.slug) {
+  if (category.slug && categorySegmentParam !== category.slug) {
     redirect(categoryPath(locale, slug, category.slug, pagination.page, seoContext.isCustomDomain));
   }
 

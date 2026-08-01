@@ -35,6 +35,7 @@ let isSeoIndexableShopSubPath: any;
 let buildShopCategoryPath: any;
 let buildShopProductPath: any;
 let buildShopPublicPath: any;
+let decodePublicRouteSegment: any;
 let assertDomainOwnership: any;
 let resolveActiveTenantForHost: any;
 let toSupportedLocale: any;
@@ -80,7 +81,7 @@ before(async () => {
     isSeoIndexableShopSubPath,
     parseShopPlatformPath,
   } = await import("@/lib/custom-domain-routing"));
-  ({ buildShopCategoryPath, buildShopProductPath, buildShopPublicPath } = await import("@/lib/shop-public-paths"));
+  ({ buildShopCategoryPath, buildShopProductPath, buildShopPublicPath, decodePublicRouteSegment } = await import("@/lib/shop-public-paths"));
   ({ assertDomainOwnership } = await import("@/lib/domains/domain-authorization.server"));
   ({ resolveActiveTenantForHost, toSupportedLocale } = await import("@/lib/domains/domain-resolver.server"));
 
@@ -440,6 +441,14 @@ describe("host routing helpers", () => {
       }),
       `/fa/shop/chakme/category/${encodedCategorySegment}`,
     );
+  });
+
+  it("decodes percent-encoded Persian category route segments before lookup", () => {
+    assert.equal(
+      decodePublicRouteSegment("%D9%BE%DB%8C%D8%AA%D8%B2%D8%A7-%D8%A7%DB%8C%D8%AA%D8%A7%D9%84%DB%8C%D8%A7%DB%8C%DB%8C-cmo8ht"),
+      "پیتزا-ایتالیایی-cmo8ht",
+    );
+    assert.equal(decodePublicRouteSegment("%E0%A4%A"), "%E0%A4%A");
   });
 
   it("redirects platform-shaped custom-domain category URLs to the tenant canonical path", () => {

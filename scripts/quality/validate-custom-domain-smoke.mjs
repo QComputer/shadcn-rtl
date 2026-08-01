@@ -39,6 +39,9 @@ if (has(smokePath)) {
   addCheck("smoke runner checks explicit AR route", smoke.includes('testExplicitLocale(baseUrl, "ar")'));
   addCheck("smoke runner checks robots.txt", smoke.includes("/robots.txt") && smoke.includes("User-agent"));
   addCheck("smoke runner checks sitemap.xml", smoke.includes("/sitemap.xml") && smoke.includes("<urlset"));
+  addCheck("smoke runner checks custom-domain categories", smoke.includes("testCustomDomainCategoryRoutes") && smoke.includes("/category/"));
+  addCheck("smoke runner discovers category slugs from public shop API", smoke.includes(`/api/public/organizations/`) && smoke.includes("category?.slug || category?.id"));
+  addCheck("smoke runner preserves custom-domain canonical category paths", smoke.includes("leaked platform path"));
   addCheck("smoke runner checks platform redirect", smoke.includes("testPlatformShopRedirect"));
   addCheck("smoke runner checks protected dashboard API", smoke.includes("/api/dashboard/shop-domains"));
   addCheck("smoke runner uses manual redirects for redirect assertions", smoke.includes('redirect: "manual"'));

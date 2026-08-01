@@ -11,6 +11,8 @@ const REQUIRED_ENV = [
 const OPTIONAL_ENV = {
   CUSTOM_DOMAIN_SMOKE_EXPECTED_LOCALE: process.env.CUSTOM_DOMAIN_SMOKE_EXPECTED_LOCALE || "fa",
   CUSTOM_DOMAIN_SMOKE_PRIMARY_HOST: process.env.CUSTOM_DOMAIN_SMOKE_PRIMARY_HOST || "",
+  CUSTOM_DOMAIN_SMOKE_CATEGORY_LIMIT: process.env.CUSTOM_DOMAIN_SMOKE_CATEGORY_LIMIT || "3",
+  CUSTOM_DOMAIN_SMOKE_CATEGORY_SEGMENTS: process.env.CUSTOM_DOMAIN_SMOKE_CATEGORY_SEGMENTS || "",
   CUSTOM_DOMAIN_SMOKE_SKIP_AR: process.env.CUSTOM_DOMAIN_SMOKE_SKIP_AR || "false",
   CUSTOM_DOMAIN_SMOKE_SKIP_EN: process.env.CUSTOM_DOMAIN_SMOKE_SKIP_EN || "false",
 };
@@ -198,6 +200,58 @@ async function testPlatformShopRedirect(platformUrl, shopSlug, baseUrl, primaryH
   pass("platform shop URL redirects to the custom primary domain");
 }
 
+function parseCategorySegments(value) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+async function getCategorySegments(platformUrl, shopSlug) {
+  const configured = parseCategorySegments(OPTIONAL_ENV.CUSTOM_DOMAIN_SMOKE_CATEGORY_SEGMENTS);
+  if (configured.length) return configured;
+
+  const response = await fetchWithTimeout(joinUrl(platformUrl, `/api/public/organizations/${shopSlug}/shop`));
+  assertOkResponse("public shop API for category smoke", response);
+
+  const body = await response.json();
+  const categories = Array.isArray(body?.categories) ? body.categories : [];
+  const limit = Math.max(1, Number(OPTIONAL_ENV.CUSTOM_DOMAIN_SMOKE_CATEGORY_LIMIT) || 3);
+
+  return categories
+    .map((category) => category?.slug || category?.id)
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
+async function testCustomDomainCategoryRoutes(baseUrl, platformUrl, shopSlug) {
+  const categorySegments = await getCategorySegments(platformUrl, shopSlug);
+  if (!categorySegments.length) {
+    info("public shop API returned no categories; skipping custom-domain category assertions.");
+    return;
+  }
+
+  for (const categorySegment of categorySegments) {
+    const customCategoryPath = `/category/${encodeURIComponent(categorySegment)}`;
+    const customResponse = await fetchWithTimeout(joinUrl(baseUrl, customCategoryPath));
+    assertOkResponse(`custom-domain category ${categorySegment}`, customResponse);
+
+    const customFinalPath = new URL(customResponse.url).pathname;
+    if (customFinalPath.includes(`/shop/${shopSlug}/category/`)) {
+      throw new Error(`custom-domain category leaked platform path: ${customResponse.url}`);
+    }
+
+    const platformResponse = await fetchWithTimeout(joinUrl(platformUrl, `/fa/shop/${shopSlug}/category/${encodeURIComponent(categorySegment)}`), {
+      redirect: "manual",
+    });
+    if (![200, 301, 302, 307, 308].includes(platformResponse.status)) {
+      throw new Error(`platform category ${categorySegment} returned ${platformResponse.status}`);
+    }
+  }
+
+  pass("custom-domain category routes are reachable and canonical");
+}
+
 async function testDashboardApiProtected(platformUrl) {
   const response = await fetchWithTimeout(joinUrl(platformUrl, "/api/dashboard/shop-domains"), {
     redirect: "manual",
@@ -244,6 +298,7 @@ async function main() {
     () => testCustomDomainPathDefaultLocale(baseUrl, expectedLocale),
     () => testRobots(baseUrl),
     () => testSitemap(baseUrl),
+    () => testCustomDomainCategoryRoutes(baseUrl, platformUrl, shopSlug),
     () => testPlatformShopRedirect(platformUrl, shopSlug, baseUrl, primaryHost),
     () => testDashboardApiProtected(platformUrl),
   ];

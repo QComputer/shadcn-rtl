@@ -35,13 +35,18 @@ for (const rel of [
 }
 
 includes("prisma/schema.prisma", "model OrganizationDomain", "OrganizationDomain model exists");
-includes("prisma/schema.prisma", "domains           OrganizationDomain[]", "Organization has domain relation");
+add(
+  "Organization has domain relation",
+  /domains\s+OrganizationDomain\[\]/.test(read("prisma/schema.prisma")),
+  "domains OrganizationDomain[]",
+);
 includes("prisma/schema.prisma", "enum DomainStatus", "DomainStatus enum exists");
-includes("proxy.ts", "resolveShopForCustomDomain", "proxy resolves custom-domain shop");
+includes("proxy.ts", "resolveTenantForCustomDomain", "proxy resolves custom-domain tenant");
 includes("proxy.ts", "buildShopPlatformPath", "proxy rewrites clean custom domain paths");
 includes("proxy.ts", "getShopSubPathFromPlatformPath", "proxy redirects leaked /shop slug paths back to clean domain paths");
 includes("app/api/internal/domain-resolver/route.ts", "CUSTOM_DOMAIN_RESOLVER_SECRET", "resolver uses internal secret");
-includes("app/api/internal/domain-resolver/route.ts", "type !== \"SHOP\"", "resolver restricts custom domains to shops");
+includes("lib/domains/domain-resolver.server.ts", "organizationType: domain.organization.type", "resolver returns tenant organization type");
+includes("proxy.ts", "tenant.organizationType === \"SHOP\"", "proxy restricts shop rewrites to shop tenants");
 includes("app/[locale]/shop/[slug]/layout.tsx", "getShopTenantSeoContext", "shop layout uses custom-domain SEO context");
 includes("app/[locale]/shop/[slug]/product/[productId]/layout.tsx", "getShopTenantSeoContext", "product detail uses custom-domain SEO context");
 includes("app/[locale]/shop/[slug]/category/[categoryId]/page.tsx", "getShopTenantSeoContext", "category page uses custom-domain SEO context");

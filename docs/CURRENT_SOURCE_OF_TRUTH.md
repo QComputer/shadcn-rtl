@@ -2,6 +2,30 @@
 
 Date: 2026-07-15
 
+## 2026-08-02 custom-domain category routing hotfix
+
+`BAZAR-BAZ-CUSTOM-DOMAIN-CATEGORY-ROUTING-HOTFIX-01` repairs the public shop
+category URL contract for tenant custom domains. Production reproduction showed
+`https://www.cafechakme.ir/` and the public shop API returning 200 while
+`https://www.cafechakme.ir/category/<persian-category-slug>` returned a 404
+Server Components error page. Vercel logs showed category-path 404s but no
+matching `P2022`, `aiPrimaryMediaAssetId`, `column does not exist`, or
+`PrismaClientKnownRequestError` entry.
+
+The source fix adds `lib/shop-public-paths.ts` as the shared public shop path
+builder. Platform category URLs remain
+`/<locale>/shop/<shopSlug>/category/<categorySlugOrId>`, while default-locale
+custom-domain category URLs are now `/category/<categorySlugOrId>`. The shop
+root client page and server-rendered category page now use this shared helper
+for category links, product links, slug redirects, pagination, and JSON-LD URLs.
+
+No Prisma migration is added. The Product/Service AI-media attachment migration
+`20260719010000_add_ai_media_entity_attachments` remains unauthorized and
+unconfirmed in Production. Category route AI-media field reads remain protected
+by `canReadAiMediaEntityAttachmentColumns()`.
+
+See `docs/hotfixes/CUSTOM_DOMAIN_CATEGORY_ROUTING_HOTFIX.md`.
+
 ## 2026-07-19 AI media product/service attachment update
 
 `BAZAR-BAZ-AI-MEDIA-PRODUCT-SERVICE-ATTACHMENT-01` is implemented in source.

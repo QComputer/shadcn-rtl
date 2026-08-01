@@ -27,6 +27,14 @@ let CUSTOM_DOMAIN_REAL_MUTATION_ACK_VALUE: string;
 let validateShopDomainInput: any;
 let isPlatformHost: any;
 let isCustomDomainBypassPath: any;
+let buildShopPlatformPath: any;
+let buildTenantPublicPath: any;
+let getShopSubPathFromPlatformPath: any;
+let parseShopPlatformPath: any;
+let isSeoIndexableShopSubPath: any;
+let buildShopCategoryPath: any;
+let buildShopProductPath: any;
+let buildShopPublicPath: any;
 let assertDomainOwnership: any;
 let resolveActiveTenantForHost: any;
 let toSupportedLocale: any;
@@ -63,7 +71,16 @@ before(async () => {
     CUSTOM_DOMAIN_REAL_MUTATION_ACK_VALUE,
   } = await import("@/lib/vercel-domain-automation"));
   ({ validateShopDomainInput } = await import("@/lib/shop-domain-admin"));
-  ({ isPlatformHost, isCustomDomainBypassPath } = await import("@/lib/custom-domain-routing"));
+  ({
+    buildShopPlatformPath,
+    buildTenantPublicPath,
+    getShopSubPathFromPlatformPath,
+    isCustomDomainBypassPath,
+    isPlatformHost,
+    isSeoIndexableShopSubPath,
+    parseShopPlatformPath,
+  } = await import("@/lib/custom-domain-routing"));
+  ({ buildShopCategoryPath, buildShopProductPath, buildShopPublicPath } = await import("@/lib/shop-public-paths"));
   ({ assertDomainOwnership } = await import("@/lib/domains/domain-authorization.server"));
   ({ resolveActiveTenantForHost, toSupportedLocale } = await import("@/lib/domains/domain-resolver.server"));
 
@@ -399,6 +416,109 @@ describe("host routing helpers", () => {
     assert.equal(normalizeDomainHost("WWW.Shop.Example.com."), "shop.example.com");
     assert.equal(normalizeDomainHost("www.example.ir"), "example.ir");
     assert.equal(normalizeDomainHost(null), "");
+  });
+
+  it("rewrites clean custom-domain category paths to the internal shop category route", () => {
+    const categorySegment = "پیتزا-ایتالیایی-cmo8ht";
+    assert.equal(
+      buildShopPlatformPath({
+        locale: "fa",
+        slug: "chakme",
+        publicPathname: `/category/${categorySegment}`,
+      }),
+      `/fa/shop/chakme/category/${categorySegment}`,
+    );
+  });
+
+  it("rewrites percent-encoded custom-domain category paths without changing the identifier", () => {
+    const encodedCategorySegment = "%D9%BE%DB%8C%D8%AA%D8%B2%D8%A7-%D8%A7%DB%8C%D8%AA%D8%A7%D9%84%DB%8C%D8%A7%DB%8C%DB%8C-cmo8ht";
+    assert.equal(
+      buildShopPlatformPath({
+        locale: "fa",
+        slug: "chakme",
+        publicPathname: `/category/${encodedCategorySegment}`,
+      }),
+      `/fa/shop/chakme/category/${encodedCategorySegment}`,
+    );
+  });
+
+  it("redirects platform-shaped custom-domain category URLs to the tenant canonical path", () => {
+    const platformPath = getShopSubPathFromPlatformPath("/fa/shop/chakme/category/پیتزا-ایتالیایی-cmo8ht", "chakme");
+    assert.deepEqual(platformPath, {
+      locale: "fa",
+      subPath: "/category/پیتزا-ایتالیایی-cmo8ht",
+    });
+    assert.equal(buildTenantPublicPath(platformPath.locale, platformPath.subPath), "/category/پیتزا-ایتالیایی-cmo8ht");
+  });
+
+  it("keeps non-default custom-domain locales in canonical category paths", () => {
+    assert.equal(
+      buildShopCategoryPath({
+        locale: "en",
+        shopSlug: "chakme",
+        categorySegment: "pizza-cmo8ht",
+        isCustomDomain: true,
+      }),
+      "/en/category/pizza-cmo8ht",
+    );
+  });
+
+  it("preserves category pagination query strings for platform and custom domains", () => {
+    assert.equal(
+      buildShopCategoryPath({
+        locale: "fa",
+        shopSlug: "chakme",
+        categorySegment: "پیتزا-ایتالیایی-cmo8ht",
+        page: 2,
+      }),
+      "/fa/shop/chakme/category/پیتزا-ایتالیایی-cmo8ht?page=2",
+    );
+    assert.equal(
+      buildShopCategoryPath({
+        locale: "fa",
+        shopSlug: "chakme",
+        categorySegment: "پیتزا-ایتالیایی-cmo8ht",
+        isCustomDomain: true,
+        page: 2,
+      }),
+      "/category/پیتزا-ایتالیایی-cmo8ht?page=2",
+    );
+  });
+
+  it("keeps product paths and all-products paths on their current public surface", () => {
+    assert.equal(buildShopPublicPath({ locale: "fa", shopSlug: "chakme", isCustomDomain: true }), "/");
+    assert.equal(buildShopPublicPath({ locale: "fa", shopSlug: "chakme" }), "/fa/shop/chakme");
+    assert.equal(
+      buildShopProductPath({
+        locale: "fa",
+        shopSlug: "chakme",
+        productSegment: "latte-cmo123",
+        isCustomDomain: true,
+      }),
+      "/product/latte-cmo123",
+    );
+    assert.equal(
+      buildShopProductPath({
+        locale: "fa",
+        shopSlug: "chakme",
+        productSegment: "latte-cmo123",
+      }),
+      "/fa/shop/chakme/product/latte-cmo123",
+    );
+  });
+
+  it("recognizes category and product paths as SEO-indexable shop subpaths", () => {
+    assert.equal(isSeoIndexableShopSubPath("/category/پیتزا-ایتالیایی-cmo8ht"), true);
+    assert.equal(isSeoIndexableShopSubPath("/product/latte-cmo123"), true);
+    assert.equal(isSeoIndexableShopSubPath("/checkout"), false);
+  });
+
+  it("parses platform category paths without losing locale, shop slug, or category segment", () => {
+    assert.deepEqual(parseShopPlatformPath("/fa/shop/chakme/category/پیتزا-ایتالیایی-cmo8ht"), {
+      locale: "fa",
+      slug: "chakme",
+      subPath: "/category/پیتزا-ایتالیایی-cmo8ht",
+    });
   });
 });
 

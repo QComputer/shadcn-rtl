@@ -41,6 +41,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { PublicImage } from "@/components/public/public-image"
 import { getProductPrimaryMediaUrl } from "@/lib/ai-media/entity-primary-media"
+import { buildShopCategoryPath, buildShopProductPath, buildShopPublicPath } from "@/lib/shop-public-paths"
 
 interface ProductVariant {
   id: string
@@ -226,6 +227,24 @@ export default function ShopPage({
 
     return products.sort((a, b) => b.sortOrder - a.sortOrder)
   }
+
+  const isCustomDomain = mounted && typeof window !== "undefined"
+    ? !window.location.pathname.startsWith(`/${locale}/shop/${slug}`)
+    : false
+
+  const shopHref = buildShopPublicPath({ locale, shopSlug: slug, isCustomDomain })
+  const categoryHref = (category: ProductCategory) => buildShopCategoryPath({
+    locale,
+    shopSlug: slug,
+    categorySegment: category.slug || category.id,
+    isCustomDomain,
+  })
+  const productHref = (product: Product) => buildShopProductPath({
+    locale,
+    shopSlug: slug,
+    productSegment: product.slug || product.id,
+    isCustomDomain,
+  })
 
   function getTotalProducts() {
   let total = 0;
@@ -487,7 +506,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
           {data.categories.length > 1 && (
             <div className="flex flex-wrap gap-2 mb-6">
               <Link
-                href={`/${locale}/shop/${slug}`}
+                href={shopHref}
                 className={cn(buttonVariants({ variant: "all" == selectedCategory ? "default" : "outline", size: "sm" }))}
               >
                 {"همه"}
@@ -501,7 +520,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
               {data.categories.map((category) => (
                 <Link
                   key={locale+category.id}
-                  href={`/${locale}/shop/${slug}/category/${category.slug || category.id}`}
+                  href={categoryHref(category)}
                   className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
                 >
                   {category.name}
@@ -545,7 +564,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
                     <Card key={locale+product.id} className="hover:shadow-md transition-shadow overflow-hidden h-full">
                       <CardTitle>
                       <div className="aspect-square bg-muted relative -mt-4 -mb-4">
-                      <Link   href={`/${locale}/shop/${slug}/product/${product.slug || product.id}`}>
+                      <Link   href={productHref(product)}>
                       <PublicImage
                         src={getProductPrimaryMediaUrl(product)}
                         alt={product.name}
@@ -637,7 +656,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
                       
                         <div className="flex gap-4">
                                <div className="w-24 h-24 bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                          <Link href={`/${locale}/shop/${slug}/product/${product.slug || product.id}`}>
+                          <Link href={productHref(product)}>
                               <PublicImage
                                 src={getProductPrimaryMediaUrl(product)}
                                 alt={product.name}

@@ -36,6 +36,7 @@ const categoryPages = [
 
 for (const rel of [
   "lib/category-slugs.ts",
+  "lib/shop-public-paths.ts",
   "prisma/migrations/20260627000100_category_slugs/migration.sql",
   "docs/PHASE_51_CATEGORY_SLUGS_PAGINATION.md",
   "docs/PHASE_51_OVERLAY_MANIFEST.md",
@@ -53,6 +54,8 @@ add(
 expectIncludes("prisma/schema.prisma", "@@index([organizationId, slug])", "category slug indexes are declared");
 expectIncludes("lib/category-slugs.ts", "normalizeCategorySlug", "shared slug normalizer exists");
 expectIncludes("lib/category-slugs.ts", "buildUniqueCategorySlug", "shared slug uniqueness helper exists");
+expectIncludes("lib/shop-public-paths.ts", "buildShopCategoryPath", "shared shop category path builder exists");
+expectIncludes("lib/shop-public-paths.ts", "?page=${input.page}", "shared shop category path builder preserves page query");
 expectIncludes("lib/services/category.service.ts", "buildUniqueSlug", "category service generates unique slugs");
 expectIncludes("lib/services/category.service.ts", "revalidateCategoryPublicPages", "category service revalidates public category paths");
 
@@ -63,7 +66,13 @@ for (const rel of categoryPages) {
   expectIncludes(rel, "normalizePagination", `${rel} normalizes page query`);
   expectIncludes(rel, "rel=\"prev\"", `${rel} renders previous pagination link`);
   expectIncludes(rel, "rel=\"next\"", `${rel} renders next pagination link`);
-  expectIncludes(rel, "?page=${page}", `${rel} uses query-string pagination for page 2+`);
+  add(
+    `${rel} uses query-string pagination for page 2+`,
+    read(rel).includes("?page=${page}") ||
+      (rel.includes("/shop/") && read(rel).includes("buildShopCategoryPath")) ||
+      (rel.includes("/appointment/") && read(rel).includes("?page=${page}")),
+    "?page=${page}",
+  );
 }
 
 expectIncludes(

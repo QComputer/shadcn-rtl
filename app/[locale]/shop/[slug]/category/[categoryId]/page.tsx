@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
 import { getProductPrimaryMediaUrl } from "@/lib/ai-media/entity-primary-media";
 import { canReadAiMediaEntityAttachmentColumns } from "@/lib/services/ai-media-entity-attachment-service";
+import { buildShopCategoryPath, buildShopProductPath } from "@/lib/shop-public-paths";
 
 const CATEGORY_PAGE_SIZE = 24;
 
@@ -45,9 +46,14 @@ function getRequestedPagination(searchParams?: { page?: string | string[] }): Ca
   );
 }
 
-function categoryPath(locale: string, shopSlug: string, categorySegment: string, page = 1) {
-  const path = `/${locale}/shop/${shopSlug}/category/${categorySegment}`;
-  return page > 1 ? `${path}?page=${page}` : path;
+function categoryPath(locale: string, shopSlug: string, categorySegment: string, page = 1, isCustomDomain = false) {
+  return buildShopCategoryPath({
+    locale,
+    shopSlug,
+    categorySegment,
+    page,
+    isCustomDomain,
+  });
 }
 
 const visibleProductWhere = {
@@ -172,18 +178,24 @@ export default async function ShopCategoryPage({ params, searchParams }: ShopCat
   if (!category) notFound();
 
   const categorySegment = category.slug || category.id;
+  const seoContext = await getShopTenantSeoContext({ locale, slug, subPath: `/category/${categorySegment}${pagination.page > 1 ? `?page=${pagination.page}` : ""}` });
   if (category.slug && categoryId !== category.slug) {
-    redirect(categoryPath(locale, slug, category.slug, pagination.page));
+    redirect(categoryPath(locale, slug, category.slug, pagination.page, seoContext.isCustomDomain));
   }
 
-  const seoContext = await getShopTenantSeoContext({ locale, slug, subPath: `/category/${categorySegment}${pagination.page > 1 ? `?page=${pagination.page}` : ""}` });
   const path = seoContext.path;
   const products = category.products;
   const totalProducts = category._count.products;
   const totalPages = Math.max(1, Math.ceil(totalProducts / pagination.pageSize));
-  const canonicalCategoryPath = categoryPath(locale, slug, categorySegment);
-  const previousPath = pagination.page > 1 ? categoryPath(locale, slug, categorySegment, pagination.page - 1) : null;
-  const nextPath = pagination.page < totalPages ? categoryPath(locale, slug, categorySegment, pagination.page + 1) : null;
+  const canonicalCategoryPath = categoryPath(locale, slug, categorySegment, 1, seoContext.isCustomDomain);
+  const previousPath = pagination.page > 1 ? categoryPath(locale, slug, categorySegment, pagination.page - 1, seoContext.isCustomDomain) : null;
+  const nextPath = pagination.page < totalPages ? categoryPath(locale, slug, categorySegment, pagination.page + 1, seoContext.isCustomDomain) : null;
+  const productPath = (product: ShopCategoryProduct) => buildShopProductPath({
+    locale,
+    shopSlug: slug,
+    productSegment: product.slug || product.id,
+    isCustomDomain: seoContext.isCustomDomain,
+  });
   const itemListJsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -193,7 +205,7 @@ export default async function ShopCategoryPage({ params, searchParams }: ShopCat
     itemListElement: products.map((product, index) => ({
       "@type": "ListItem",
       position: pagination.skip + index + 1,
-      url: getCanonicalUrl(seoContext.isCustomDomain ? `/product/${product.slug || product.id}` : `/${locale}/shop/${slug}/product/${product.slug || product.id}`, seoContext.baseUrl),
+      url: getCanonicalUrl(productPath(product), seoContext.baseUrl),
       item: {
         "@type": "Product",
         name: product.name,
@@ -203,7 +215,7 @@ export default async function ShopCategoryPage({ params, searchParams }: ShopCat
           "@type": "Offer",
           price: getProductPrice(product),
           priceCurrency: "IRR",
-          url: getCanonicalUrl(seoContext.isCustomDomain ? `/product/${product.slug || product.id}` : `/${locale}/shop/${slug}/product/${product.slug || product.id}`, seoContext.baseUrl),
+          url: getCanonicalUrl(productPath(product), seoContext.baseUrl),
         },
       },
     })),
@@ -258,7 +270,7 @@ export default async function ShopCategoryPage({ params, searchParams }: ShopCat
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {products.map((product) => (
-              <Link key={product.id} href={`/${locale}/shop/${slug}/product/${product.slug || product.id}`}>
+              <Link key={product.id} href={productPath(product)}>
                 <Card className="h-full overflow-hidden transition-shadow hover:shadow-md">
                   {getProductPrimaryMediaUrl(product) && (
                     <img src={getProductPrimaryMediaUrl(product) || undefined} alt={product.name} className="h-44 w-full object-cover" />
@@ -294,7 +306,7 @@ export default async function ShopCategoryPage({ params, searchParams }: ShopCat
             {pagination.page < totalPages - 1 && <span className="text-sm text-muted-foreground">...</span>}
             {totalPages > 1 && (
               <Link
-                href={categoryPath(locale, slug, categorySegment, totalPages)}
+                href={categoryPath(locale, slug, categorySegment, totalPages, seoContext.isCustomDomain)}
                 className={cn(buttonVariants({ variant: pagination.page === totalPages ? "default" : "outline", size: "sm" }))}
               >
                 {totalPages}

@@ -4,11 +4,11 @@ import { streamPublicProductAiMedia } from "@/lib/services/ai-media-entity-attac
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ productId: string }> },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { productId } = await params;
-    const result = await streamPublicProductAiMedia({ productId });
+    const { id } = await params;
+    const result = await streamPublicProductAiMedia({ productId: id });
     if (!result) return NextResponse.json({ error: "Media not found" }, { status: 404 });
 
     return new NextResponse(result.stream as any, {

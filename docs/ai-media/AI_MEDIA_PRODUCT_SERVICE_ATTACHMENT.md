@@ -33,7 +33,7 @@ Public storefront/appointment pages use helper functions:
 
 When an AI asset is attached, public pages point to entity-scoped routes:
 
-- `/api/public/products/[productId]/media`
+- `/api/public/products/[id]/media`
 - `/api/public/services/[serviceId]/media`
 
 Those routes resolve the entity first, require it and its organization to be active, then stream through application-owned storage.

@@ -42,6 +42,14 @@
     "saving": "Saving",
     "deactivate": "Deactivate"
   },
+  "shop": {
+    "categoryFilter": "Category filter",
+    "allProducts": "All products",
+    "noMatchingProducts": "No matching products",
+    "noProducts": "No products available",
+    "adjustFilters": "Adjust filters to see more products",
+    "productsComingSoon": "Products will be added soon"
+  },
   "auth": {
     "login": "Login",
     "logout": "Logout",

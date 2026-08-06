@@ -42,6 +42,14 @@
     "saving": "جارٍ الحفظ",
     "deactivate": "تعطيل"
   },
+  "shop": {
+    "categoryFilter": "تصفية الفئات",
+    "allProducts": "كل المنتجات",
+    "noMatchingProducts": "لم يتم العثور على منتجات",
+    "noProducts": "لا توجد منتجات متاحة",
+    "adjustFilters": "غيّر الفلاتر لرؤية المزيد من المنتجات",
+    "productsComingSoon": "ستتم إضافة المنتجات قريبًا"
+  },
   "auth": {
     "login": "تسجيل الدخول",
     "logout": "تسجيل الخروج",

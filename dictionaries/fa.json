@@ -42,6 +42,14 @@
     "viewAll": "مشاهده همه",
     "deactivate": "غیرفعال کردن"
   },
+  "shop": {
+    "categoryFilter": "فیلتر دسته‌بندی",
+    "allProducts": "همه محصولات",
+    "noMatchingProducts": "محصولی یافت نشد",
+    "noProducts": "محصولی وجود ندارد",
+    "adjustFilters": "لطفاً فیلترها را تغییر دهید",
+    "productsComingSoon": "به زودی محصولات اضافه می‌شوند"
+  },
   "auth": {
     "login": "ورود",
     "logout": "خروج",

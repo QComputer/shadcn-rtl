@@ -41,7 +41,12 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { PublicImage } from "@/components/public/public-image"
 import { getProductPrimaryMediaUrl } from "@/lib/ai-media/entity-primary-media"
-import { buildShopCategoryPath, buildShopProductPath, buildShopPublicPath } from "@/lib/shop-public-paths"
+import { buildShopProductPath } from "@/lib/shop-public-paths"
+import {
+  countVisibleProductsByCategory,
+  getShopMenuProductInventory,
+  getVisibleShopMenuProducts,
+} from "@/lib/shop-menu-filter"
 
 interface ProductVariant {
   id: string
@@ -141,7 +146,7 @@ export default function ShopPage({
 
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState<string>("all")
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<"grid" | "list">("list")
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
@@ -195,50 +200,15 @@ export default function ShopPage({
     return getDictValue(dict, key)
   }
 
-  // Filter products by search and category
   const getFilteredProducts = () => {
     if (!data?.categories) return []
-
-    let products: (Product & { categoryId: string; categoryName: string })[] = []
-
-    data.categories.forEach(category => {
-      category.products.forEach(product => {
-        if (product.trackInventory && getTotalInventory(product) === 0) return
-
-        products.push({
-          ...product,
-          categoryId: category.id,
-          categoryName: category.name,
-        })
-      })
-    })
-
-    if (selectedCategory && selectedCategory !== "all") {
-      products = products.filter(p => p.categoryId === selectedCategory)
-    }
-
-    if (searchQuery) {
-      products = products.filter(p =>
-        p.name.includes(searchQuery) ||
-        p.description?.includes(searchQuery) ||
-        p.categoryName.includes(searchQuery)
-      ).sort((a, b) => b.sortOrder - a.sortOrder)
-    }
-
-    return products.sort((a, b) => b.sortOrder - a.sortOrder)
+    return getVisibleShopMenuProducts(data.categories, { selectedCategoryId, searchQuery })
   }
 
   const isCustomDomain = mounted && typeof window !== "undefined"
     ? !window.location.pathname.startsWith(`/${locale}/shop/${slug}`)
     : false
 
-  const shopHref = buildShopPublicPath({ locale, shopSlug: slug, isCustomDomain })
-  const categoryHref = (category: ProductCategory) => buildShopCategoryPath({
-    locale,
-    shopSlug: slug,
-    categorySegment: category.slug || category.id,
-    isCustomDomain,
-  })
   const productHref = (product: Product) => buildShopProductPath({
     locale,
     shopSlug: slug,
@@ -250,7 +220,7 @@ export default function ShopPage({
   let total = 0;
   if (data) {
     data.categories.map((c)=>{
-    total += c.products.length
+    total += countVisibleProductsByCategory(c)
   })}
   return total
 }
@@ -348,10 +318,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
 
   // Get total inventory (Infinity = unlimited if trackInventory is false)
   const getTotalInventory = (product: Product): number => {
-    if (!product.trackInventory) return Infinity
-    return product.variants?.length > 0
-      ? product.variants.reduce((sum, v) => sum + (v.inventory || 0), 0)
-      : 0
+    return getShopMenuProductInventory(product)
   }
 
   if (!mounted || loading || !data) {
@@ -502,33 +469,39 @@ const getDisplayPrice = (product: Product): PriceInfo => {
             </div>
           </div>
 
-          {/* Categories Quick Links */}
+          {/* Categories */}
           {data.categories.length > 1 && (
-            <div className="flex flex-wrap gap-2 mb-6">
-              <Link
-                href={shopHref}
-                className={cn(buttonVariants({ variant: "all" == selectedCategory ? "default" : "outline", size: "sm" }))}
+            <div className="mb-6 overflow-x-auto pb-2" role="group" aria-label={t("shop.categoryFilter") || "Category filter"}>
+              <div className="flex w-max min-w-full gap-2">
+              <button
+                type="button"
+                aria-pressed={selectedCategoryId === null}
+                onClick={() => setSelectedCategoryId(null)}
+                className={cn(buttonVariants({ variant: selectedCategoryId === null ? "default" : "outline", size: "sm" }), "shrink-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2")}
               >
-                {"همه"}
+                {t("shop.allProducts") || "All products"}
                 <Badge
-                  variant={"all" == selectedCategory ? "default" : "secondary"}
+                  variant={selectedCategoryId === null ? "default" : "secondary"}
                   className="mr-2"
                 >
                   {toPersianDigits(getTotalProducts())}
                 </Badge>
-              </Link>
+              </button>
               {data.categories.map((category) => (
-                <Link
+                <button
+                  type="button"
                   key={locale+category.id}
-                  href={categoryHref(category)}
-                  className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                  aria-pressed={selectedCategoryId === category.id}
+                  onClick={() => setSelectedCategoryId(category.id)}
+                  className={cn(buttonVariants({ variant: selectedCategoryId === category.id ? "default" : "outline", size: "sm" }), "shrink-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2")}
                 >
                   {category.name}
-                  <Badge variant="secondary" className="mr-2">
-                    {toPersianDigits(category.products.length.toString())}
+                  <Badge variant={selectedCategoryId === category.id ? "default" : "secondary"} className="mr-2">
+                    {toPersianDigits(countVisibleProductsByCategory(category).toString())}
                   </Badge>
-                </Link>
+                </button>
               ))}
+              </div>
             </div>
           )}
 
@@ -538,15 +511,15 @@ const getDisplayPrice = (product: Product): PriceInfo => {
               <CardContent className="py-12 text-center">
                 <Package className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">
-                  {searchQuery || selectedCategory !== "all" 
-                    ? "محصولی یافت نشد" 
-                    : "محصولی وجود ندارد"
+                  {searchQuery || selectedCategoryId
+                    ? t("shop.noMatchingProducts") || "No matching products"
+                    : t("shop.noProducts") || "No products available"
                   }
                 </h3>
                 <p className="text-muted-foreground">
-                  {searchQuery || selectedCategory !== "all" 
-                    ? "لطفاً فیلترها را تغییر دهید" 
-                    : "به زودی محصولات اضافه می‌شوند"
+                  {searchQuery || selectedCategoryId
+                    ? t("shop.adjustFilters") || "Adjust filters to see more products"
+                    : t("shop.productsComingSoon") || "Products will be added soon"
                   }
                 </p>
               </CardContent>

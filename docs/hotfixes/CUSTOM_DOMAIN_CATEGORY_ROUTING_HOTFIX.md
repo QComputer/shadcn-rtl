@@ -63,6 +63,23 @@ The hotfix also decodes public route segments with a non-throwing `decodePublicR
 
 Query strings used by category pagination remain `?page=<n>`.
 
+## Follow-up UX Change
+
+`BAZAR-BAZ-SHOP-IN-PAGE-CATEGORY-FILTER-01` keeps these direct category routes
+available for old links, bookmarks, crawlers, and external referrals, but normal
+category clicks inside the shop menu no longer navigate to them. The menu now
+filters products in place on the root shop page with button controls. This does
+not remove the compatibility category route and does not add a database
+migration.
+
+## Follow-up Layout Change
+
+`BAZAR-BAZ-CONTEXT-AWARE-PUBLIC-FOOTER-01` extends the custom-domain route
+contract to public footers. Custom-domain shop pages render the current tenant
+shop footer from safe organization fields and keep footer links tenant-root
+relative, while platform URLs keep locale/shop-slug scoped links. The Bazar Baz
+platform footer is no longer rendered on tenant shop/custom-domain pages.
+
 ## Tenant Isolation
 
 The category route continues to query with:

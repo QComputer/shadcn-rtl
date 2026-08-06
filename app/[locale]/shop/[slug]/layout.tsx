@@ -14,6 +14,8 @@ import { ShopLocationDialog } from "@/components/shop/shop-location-dialog";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildOrganizationJsonLd, buildPublicMetadata, getUploadedOrGeneratedSeoImageUrl } from "@/lib/seo";
 import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
+import { buildShopPublicPath } from "@/lib/shop-public-paths";
+import { TenantFooter } from "@/components/public/tenant-footer";
 
 interface ShopLayoutProps {
   children: React.ReactNode;
@@ -93,9 +95,12 @@ const organization = await prisma.organization.findFirst({
 
   const seoContext = await getShopTenantSeoContext({ locale, slug: organization.slug, subPath: "/" });
   const tenantHref = (subPath = "/") =>
-    seoContext.isCustomDomain
-      ? seoContext.alternatePath(locale as "fa" | "en" | "ar").replace(/\/$/, "") + (subPath === "/" ? "" : subPath) || "/"
-      : `/${locale}/shop/${organization.slug}${subPath === "/" ? "" : subPath}`;
+    buildShopPublicPath({
+      locale,
+      shopSlug: organization.slug,
+      subPath,
+      isCustomDomain: seoContext.isCustomDomain,
+    });
 
   const navItems = [
     { href: tenantHref("/"), label: t("navigation.products") },
@@ -191,6 +196,23 @@ const organization = await prisma.organization.findFirst({
             </CartDrawer>
           </div>
         </nav>
+        <TenantFooter
+          footer={{
+            kind: "shop",
+            locale,
+            name: organization.name || organization.slug,
+            slug: organization.slug,
+            description: organization.description,
+            logo: organization.logo,
+            address: organization.address,
+            phone: organization.phone,
+            email: organization.email,
+            homeHref: tenantHref("/"),
+            profileHref: tenantHref("/profile"),
+            cartHref: tenantHref("/checkout"),
+            poweredByHref: "https://www.bazar-baz.ir",
+          }}
+        />
       </div>
     </CartProvider>
   );

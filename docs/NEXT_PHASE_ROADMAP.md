@@ -2,6 +2,27 @@
 
 _Last updated from source inspection and roadmap reconciliation: 2026-07-15._
 
+## 2026-08-02 public footer override
+
+Current active public-shell phase:
+`BAZAR-BAZ-CONTEXT-AWARE-PUBLIC-FOOTER-01`.
+
+The phase separates platform and tenant public footer ownership. Platform pages
+keep the Bazar Baz footer, shop/custom-domain shop pages use shop-specific
+footer data, appointment/service organization pages use organization footer
+data, and dashboard/auth shells suppress public footers. No database schema
+change or Production migration is included.
+
+## 2026-08-02 shop UX override
+
+Current active product UX phase:
+`BAZAR-BAZ-SHOP-IN-PAGE-CATEGORY-FILTER-01`.
+
+The phase keeps the main public shop page as the interactive menu and changes
+normal category clicks into in-page client-side filters. Direct category URLs
+remain safe compatibility pages for old links and indexing. No database schema
+change or Production migration is included.
+
 ## 2026-07-19 current override
 
 Current active phase: `BAZAR-BAZ-AI-MEDIA-PRODUCT-SERVICE-ATTACHMENT-01`.

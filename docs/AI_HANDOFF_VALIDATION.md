@@ -39,6 +39,12 @@ pnpm run quality:db:migration-chain
 pnpm run test:db:schema-drift
 pnpm run quality:db:schema-drift
 npx tsx --require=./scripts/e2e/register-server-only.cjs --test tests/unit/custom-domain-onboarding.test.ts
+pnpm run test:public-footer:context
+pnpm run quality:public-footer:context
+pnpm run e2e:public-footer:local-docker
+pnpm run test:shop:in-page-category-filter
+pnpm run quality:shop:in-page-category-filter
+pnpm run e2e:shop:local-docker-in-page-category-filter
 pnpm run quality:shop-custom-domains
 pnpm run quality:custom-domain-smoke
 pnpm run quality:public-category-slugs-pagination
@@ -81,6 +87,8 @@ git status --short --branch
 - Database migration chain recovery E2E (`test:db:migration-chain` = fresh + upgrade + failed-state) and quality validator (`quality:db:migration-chain`) run only against disposable local Docker PostgreSQL. They prove the corrected `20260707000200_export_hub_extend_data_types` migration deploys cleanly, the current 53-migration chain applies with 0 active-failed migrations, the `storageKey` migration applies locally, and an authentic Prisma failed-state is recovered via `migrate resolve --rolled-back` + `migrate deploy` with no manual `_prisma_migrations` deletion. They refuse non-local DB URLs and `VERCEL_ENV=production`. Production migration has not been run; complete schema parity is proven locally by the follow-up schema drift normalization gate.
 - Database schema drift normalization E2E (`test:db:schema-drift` = inspect + fresh + upgrade + repeat) and quality validator (`quality:db:schema-drift`) run only against disposable local Docker PostgreSQL. They reproduce the original Prisma diff before normalization, apply the forward migration `20260719000000_normalize_schema_drift`, preserve representative upgrade data, and require empty final `prisma migrate diff` results. They refuse non-local DB URLs and `VERCEL_ENV=production`.
 - Custom-domain category routing hotfix validation is source-only unless the smoke runner is pointed at a local/deployed base URL. The unit tests cover Persian category path generation, encoded category segments, platform-shaped custom-domain redirects, locale preservation, query-string pagination, product paths, SEO-indexable subpaths, and platform path parsing. The smoke runner now fetches public shop categories and verifies custom-domain `/category/<categorySlugOrId>` reachability without database writes.
+- Context-aware public footer validation includes `test:public-footer:context`, `quality:public-footer:context`, and `e2e:public-footer:local-docker`. The unit/static gates validate explicit platform/shop/service/none contexts, tenant-root custom-domain links, platform shop links, safe tenant projections, no client-only footer hiding, no hardcoded tenant, and no Prisma migration. The local Docker/browser E2E uses disposable localhost PostgreSQL and must not be pointed at Production or hosted Preview.
+- Shop in-page category filtering validation includes `test:shop:in-page-category-filter`, `quality:shop:in-page-category-filter`, and `e2e:shop:local-docker-in-page-category-filter`. The unit test covers all-products initial state, category filtering, search/category combination, empty state, cart-state purity, ordering, hidden/sold-out product exclusion, localized Persian/Arabic/English labels, direct category compatibility, encoded Persian slugs, and custom-domain root paths. The local Docker/browser E2E uses a disposable localhost PostgreSQL database and must not be pointed at Production or hosted Preview.
 
 ## Handoff Doc Validation
 

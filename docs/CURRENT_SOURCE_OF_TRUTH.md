@@ -2,6 +2,39 @@
 
 Date: 2026-07-15
 
+## 2026-08-02 context-aware public footer
+
+`BAZAR-BAZ-CONTEXT-AWARE-PUBLIC-FOOTER-01` separates platform and tenant public
+footers. The locale layout now renders the Bazar Baz platform footer only when
+the server-side footer context is `platform`; shop, service/appointment, and app
+shells receive explicit `shop`, `service`, or `none` contexts from `proxy.ts`.
+
+Public shop pages and custom-domain shop rewrites render a shop-specific footer
+from the current active organization projection. Public appointment/service
+organization pages render an organization-specific footer. Dashboard and auth
+surfaces do not receive an unrelated public footer.
+
+No Prisma migration is added. No Production migration, Production DB write,
+Production storage write, AI job, real generation, wallet, ledger, or payment
+mutation is part of this phase. See
+`docs/public/CONTEXT_AWARE_PUBLIC_FOOTER.md`.
+
+## 2026-08-02 shop in-page category filtering
+
+`BAZAR-BAZ-SHOP-IN-PAGE-CATEGORY-FILTER-01` changes the interactive public shop
+menu UX so category controls filter products in place instead of navigating to a
+category route. The main shop page keeps cart/search/view state mounted, stores
+the selected category as client state (`selectedCategoryId: string | null`), and
+derives visible products through `lib/shop-menu-filter.ts`.
+
+Normal category clicks now use accessible buttons with `aria-pressed`; they do
+not call `router.push`, do not change pathname, and do not request
+`/category/...`. Direct category URLs remain safe compatibility/SEO pages and
+still decode percent-encoded Persian slugs.
+
+No Prisma migration is added. No Production migration or Production DB mutation
+is part of this phase. See `docs/shop/SHOP_IN_PAGE_CATEGORY_FILTER.md`.
+
 ## 2026-08-02 custom-domain category routing hotfix
 
 `BAZAR-BAZ-CUSTOM-DOMAIN-CATEGORY-ROUTING-HOTFIX-01` repairs the public shop

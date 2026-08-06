@@ -13,7 +13,8 @@ Accept `BAZAR-BAZ-AI-MEDIA-PRODUCT-SERVICE-ATTACHMENT-01` only after
 `pnpm run test:ai-media:product-service-attachment`,
 `pnpm run quality:ai-media-product-service-attachment`,
 `pnpm run e2e:ai-media:local-docker-product-service-attachment`, typecheck,
-lint, build, source baseline, and AI-media regressions pass.
+lint, build, source baseline, Preview env verification tooling, and AI-media
+regressions pass.
 
 Mission:
 Harden the Creative Studio AI media asset library lifecycle after product and

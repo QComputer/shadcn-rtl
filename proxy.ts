@@ -12,6 +12,7 @@ import {
   isSeoIndexableShopSubPath,
   type ResolvedCustomDomain,
 } from "@/lib/custom-domain-routing";
+import { getPublicFooterContextForPathname, type PublicFooterContext } from "@/lib/public-footer-context";
 
 // Supported locales - Persian is the default (primary native language)
 export const locales = ["fa", "en", "ar"] as const;
@@ -56,6 +57,12 @@ function withSecurityHeaders(response: NextResponse): NextResponse {
     response.headers.set(key, value);
   }
   return response;
+}
+
+function withFooterContext(request: NextRequest, context: PublicFooterContext) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-bazar-public-footer-context", context);
+  return { request: { headers: requestHeaders } };
 }
 
 // ============================================
@@ -144,6 +151,10 @@ function buildTenantRewriteHeaders(
   requestHeaders.set("x-bazar-tenant-public-base-url", getRequestOrigin(request));
   requestHeaders.set("x-bazar-tenant-public-locale", locale);
   requestHeaders.set("x-bazar-tenant-public-path", publicPath);
+  requestHeaders.set(
+    "x-bazar-public-footer-context",
+    tenant.organizationType === "SHOP" ? "shop" : "service",
+  );
   return requestHeaders;
 }
 
@@ -269,7 +280,11 @@ export async function proxy(request: NextRequest) {
   // paths are intentionally excluded so carts/orders remain on their current
   // cookie origin and are noindexed by robots.
   const platformShopPath = parseShopPlatformPath(pathname);
-  if (platformShopPath && isSeoIndexableShopSubPath(platformShopPath.subPath)) {
+  if (
+    platformShopPath &&
+    isSeoIndexableShopSubPath(platformShopPath.subPath) &&
+    request.headers.get("x-bazar-custom-domain") !== "true"
+  ) {
     const primaryDomain = await resolvePrimaryDomainForShop(request, platformShopPath.slug);
 
     if (primaryDomain) {
@@ -293,7 +308,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/auth") ||
     pathname === "/favicon.ico"
   ) {
-    return withSecurityHeaders(NextResponse.next());
+    return withSecurityHeaders(NextResponse.next(withFooterContext(request, getPublicFooterContextForPathname(pathname))));
   }
 
   // Check if pathname already has locale
@@ -333,7 +348,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Non-dashboard routes - just set locale headers
-  const response = NextResponse.next();
+  const response = NextResponse.next(withFooterContext(request, getPublicFooterContextForPathname(pathname)));
   
   // Set headers for downstream use
   response.headers.set("x-locale", locale);

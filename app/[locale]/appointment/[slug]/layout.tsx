@@ -6,6 +6,9 @@ import prisma from "@/lib/db";
 import { getDictionary, getDictValue } from "@/lib/dictionary";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildOrganizationJsonLd, buildPublicMetadata, getUploadedOrGeneratedSeoImageUrl } from "@/lib/seo";
+import { TenantFooter } from "@/components/public/tenant-footer";
+import { buildTenantPublicPath } from "@/lib/custom-domain-routing";
+import { getTenantSeoContext } from "@/lib/custom-domain-seo";
 
 interface OrganizationLayoutProps {
   children: React.ReactNode;
@@ -92,15 +95,28 @@ export default async function OrganizationLayout({ children, params }: Organizat
     notFound();
   }
 
+  const seoContext = await getTenantSeoContext({
+    locale,
+    slug: organization.slug,
+    organizationType: "APPOINTMENT",
+    subPath: "/",
+  });
   const baseOrganizationPath = `/${locale}/appointment/${organization.slug}`;
+  const tenantHref = (subPath = "/") => {
+    if (seoContext.isCustomDomain) {
+      return buildTenantPublicPath(locale, subPath);
+    }
+
+    return `${baseOrganizationPath}${subPath === "/" ? "" : subPath}`;
+  };
   const navItems = [
-    { href: baseOrganizationPath, label: t("navigation.profile") },
-    { href: `${baseOrganizationPath}/fanpage`, label: t("organization.fanpage") },
+    { href: tenantHref("/"), label: t("navigation.profile") },
+    { href: tenantHref("/fanpage"), label: t("organization.fanpage") },
     ...(organization.type === "APPOINTMENT"
       ? [
-          { href: `${baseOrganizationPath}/services`, label: t("navigation.services") },
-          { href: `${baseOrganizationPath}/booking`, label: t("organization.bookNow") },
-          { href: `${baseOrganizationPath}/my-appointments`, label: t("navigation.myAppointments") },
+          { href: tenantHref("/services"), label: t("navigation.services") },
+          { href: tenantHref("/booking"), label: t("organization.bookNow") },
+          { href: tenantHref("/my-appointments"), label: t("navigation.myAppointments") },
         ]
       : [
           { href: `/${locale}/shop/${organization.slug}`, label: t("navigation.products") },
@@ -120,7 +136,7 @@ export default async function OrganizationLayout({ children, params }: Organizat
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-4">
-              <a href={`/${locale}/appointment/${organization.slug}`} className="font-bold text-xl">
+              <a href={tenantHref("/")} className="font-bold text-xl">
                 {organization.name}
               </a>
             </div>
@@ -143,11 +159,24 @@ export default async function OrganizationLayout({ children, params }: Organizat
         {children}
       </main>
 
-      <footer className="border-t py-8 mt-16">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} - {"تمامی حقوق محفوظ است"}</p>
-        </div>
-      </footer>
+      <TenantFooter
+        footer={{
+          kind: "service",
+          locale,
+          name: organization.name,
+          slug: organization.slug,
+          description: organization.description,
+          logo: organization.logo,
+          address: organization.address,
+          phone: organization.phone,
+          email: organization.email,
+          homeHref: tenantHref("/"),
+          profileHref: tenantHref("/"),
+          servicesHref: organization.type === "APPOINTMENT" ? tenantHref("/services") : null,
+          bookingHref: organization.type === "APPOINTMENT" ? tenantHref("/booking") : null,
+          poweredByHref: "https://www.bazar-baz.ir",
+        }}
+      />
     </div>
   );
 }

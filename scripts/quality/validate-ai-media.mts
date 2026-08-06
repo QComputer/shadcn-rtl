@@ -2,6 +2,42 @@ import assert from "node:assert";
 import { describe, it, before } from "node:test";
 import { prisma } from "@/lib/db";
 
+process.env.AI_MEDIA_APPLICATION_STORAGE_ADAPTER = "local-test";
+process.env.AI_MEDIA_LOCAL_STORAGE_ROOT = ".tmp/ai-media-quality-storage";
+
+const originalFetch = globalThis.fetch;
+const tinyPng = Uint8Array.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+  0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+  0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+  0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+  0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41,
+  0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
+  0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00,
+  0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae,
+  0x42, 0x60, 0x82,
+]);
+
+globalThis.fetch = async (input, init) => {
+  const url = input instanceof URL ? input.href : typeof input === "string" ? input : input.url;
+  if (url.startsWith("https://example.com/")) {
+    return new Response(tinyPng, {
+      status: 200,
+      headers: {
+        "content-type": "image/png",
+        "content-length": String(tinyPng.byteLength),
+      },
+    });
+  }
+  return originalFetch(input, init);
+};
+
+before(async () => {
+  const { createLocalTestApplicationStorage } = await import("@/lib/storage/local-test-storage");
+  const { setApplicationStorageAdapterForTesting } = await import("@/lib/storage/application-storage");
+  setApplicationStorageAdapterForTesting(createLocalTestApplicationStorage());
+});
+
 async function createTestJob(overrides: { status?: string; outputs?: Array<{ url: string }> } = {}) {
   return prisma.aiMediaJob.create({
     data: {
@@ -132,8 +168,8 @@ describe("AiMediaService selectImage", () => {
     try {
       const result = await aiMediaService.selectImage("test-org", "test-product", undefined, "https://example.com/new.png", 0);
       assert.strictEqual(result.success, true);
-      assert.strictEqual(result.imageUrl, "https://example.com/new.png");
-      assert.strictEqual(typeof result.storedDurably, "boolean");
+      assert.strictEqual(result.storedDurably, true);
+      assert.ok(result.imageUrl.startsWith("/uploads/creative-studio/test-org/ai-media-product-test-product/"));
     } finally {
       await prisma.aiMediaJob.delete({ where: { id: oldJob.id } });
       await prisma.aiMediaJob.delete({ where: { id: newJob.id } });

@@ -36,6 +36,8 @@ Date: 2026-07-16
 
 ## Accepted Local/Project Phases
 
+- Context-aware public footer (`BAZAR-BAZ-CONTEXT-AWARE-PUBLIC-FOOTER-01`) is implemented in source: platform pages keep the Bazar Baz footer, shop/custom-domain shop pages render a shop footer, appointment/service organization pages render an organization footer, and dashboard/auth shells suppress public footers. No Prisma migration was added.
+- Shop in-page category filtering (`BAZAR-BAZ-SHOP-IN-PAGE-CATEGORY-FILTER-01`) is implemented in source: public shop category controls now filter the already-loaded menu products in place with button/pressed-state controls, preserve the current shop pathname, and keep direct category routes as compatibility pages. No Prisma migration was added.
 - Custom-domain category routing hotfix (`BAZAR-BAZ-CUSTOM-DOMAIN-CATEGORY-ROUTING-HOTFIX-01`) is implemented in source: public shop URL construction is centralized in `lib/shop-public-paths.ts`, custom-domain category links now use `/category/<categorySlugOrId>`, platform category links remain `/<locale>/shop/<slug>/category/<categorySlugOrId>`, and the shop category page uses the shared helper for redirects, pagination, product links, and JSON-LD URLs. No Prisma migration was added.
 - Product/service AI-media attachment source gate is implemented in this phase:
   nullable `Product.aiPrimaryMediaAssetId` and `Service.aiPrimaryMediaAssetId`,

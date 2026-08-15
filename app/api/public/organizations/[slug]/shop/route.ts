@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { canReadAiMediaEntityAttachmentColumns } from "@/lib/services/ai-media-entity-attachment-service";
+import { hasOrganizationCapability } from "@/lib/organization-capabilities";
 
 export async function GET(
   request: NextRequest,
@@ -9,6 +10,34 @@ export async function GET(
   try {
     const { slug } = await params;
     const includeAiMediaAttachment = canReadAiMediaEntityAttachmentColumns();
+    const organization = await prisma.organization.findFirst({
+      where: { slug, isActive: true, deletedAt: null },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        address: true,
+        phone: true,
+        email: true,
+        logo: true,
+        coverImage: true,
+        type: true,
+        isOpen: true,
+        isActive: true,
+        capabilitiesInitializedAt: true,
+        capabilities: { select: { key: true, status: true } },
+      },
+    });
+
+    if (!organization || !hasOrganizationCapability({
+      legacyType: organization.type,
+      capabilitiesInitializedAt: organization.capabilitiesInitializedAt,
+      capabilities: organization.capabilities,
+    }, "SHOP")) {
+      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+    }
+
     const organizationCategories = await prisma.productCategory.findMany({
       where: {
         organizationSlug: slug,
@@ -83,28 +112,6 @@ export async function GET(
       },
     });
 
-    const organization = await prisma.organization.findUnique({
-      where: { slug },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        description: true,
-        address: true,
-        phone: true,
-        email: true,
-        logo: true,
-        coverImage: true,
-        type: true,
-        isOpen: true,
-        isActive: true,
-      },
-    });
-
-    if (!organization) {
-      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
-    }
-
     const paymentSettings = await prisma.paymentSettings.findUnique({
       where: {
         organizationSlug: slug,
@@ -129,8 +136,14 @@ export async function GET(
       deliveryFee: null,
     };
 
+    const {
+      capabilities: _capabilities,
+      capabilitiesInitializedAt: _capabilitiesInitializedAt,
+      ...publicOrganization
+    } = organization;
+
       return NextResponse.json({
-        organization,
+        organization: publicOrganization,
         categories: categories,
         settings: resolvedSettings,
         paymentSettings,

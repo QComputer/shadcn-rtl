@@ -27,6 +27,7 @@ let CUSTOM_DOMAIN_REAL_MUTATION_ACK_VALUE: string;
 let validateShopDomainInput: any;
 let isPlatformHost: any;
 let isCustomDomainBypassPath: any;
+let isCustomDomainApplicationPath: any;
 let buildShopPlatformPath: any;
 let buildTenantPublicPath: any;
 let getShopSubPathFromPlatformPath: any;
@@ -39,6 +40,9 @@ let decodePublicRouteSegment: any;
 let assertDomainOwnership: any;
 let resolveActiveTenantForHost: any;
 let toSupportedLocale: any;
+let rewriteAuthHtmlForCustomDomain: any;
+let rewriteAuthJsonForCustomDomain: any;
+let rewriteAuthLocationForCustomDomain: any;
 
 // Track env vars the test mutates so they can be restored between cases.
 const ENV_KEYS = [
@@ -76,6 +80,7 @@ before(async () => {
     buildShopPlatformPath,
     buildTenantPublicPath,
     getShopSubPathFromPlatformPath,
+    isCustomDomainApplicationPath,
     isCustomDomainBypassPath,
     isPlatformHost,
     isSeoIndexableShopSubPath,
@@ -84,6 +89,11 @@ before(async () => {
   ({ buildShopCategoryPath, buildShopProductPath, buildShopPublicPath, decodePublicRouteSegment } = await import("@/lib/shop-public-paths"));
   ({ assertDomainOwnership } = await import("@/lib/domains/domain-authorization.server"));
   ({ resolveActiveTenantForHost, toSupportedLocale } = await import("@/lib/domains/domain-resolver.server"));
+  ({
+    rewriteAuthHtmlForCustomDomain,
+    rewriteAuthJsonForCustomDomain,
+    rewriteAuthLocationForCustomDomain,
+  } = await import("@/lib/custom-domain-auth"));
 
   for (const key of ENV_KEYS) envSnapshot[key] = process.env[key];
 });
@@ -411,6 +421,38 @@ describe("host routing helpers", () => {
     assert.equal(isCustomDomainBypassPath("/robots.txt"), false);
     assert.equal(isCustomDomainBypassPath("/sitemap.xml"), false);
     assert.equal(isCustomDomainBypassPath("/shop/slug"), false);
+  });
+
+  it("keeps auth and management routes out of storefront rewrites", () => {
+    assert.equal(isCustomDomainApplicationPath("/login"), true);
+    assert.equal(isCustomDomainApplicationPath("/fa/login"), true);
+    assert.equal(isCustomDomainApplicationPath("/register/organization"), true);
+    assert.equal(isCustomDomainApplicationPath("/en/dashboard/orders"), true);
+    assert.equal(isCustomDomainApplicationPath("/profile"), false);
+    assert.equal(isCustomDomainApplicationPath("/order/ORD-1"), false);
+  });
+
+  it("keeps Auth.js sign-out actions and platform callbacks on the custom origin", () => {
+    const customOrigin = "https://shop.example.ir";
+    assert.equal(
+      rewriteAuthHtmlForCustomDomain(
+        '<form action="https://www.bazar-baz.ir/api/auth/signout?callbackUrl=%2F" method="POST">',
+        customOrigin,
+      ),
+      '<form action="https://shop.example.ir/api/auth/signout?callbackUrl=%2F" method="POST">',
+    );
+    assert.equal(
+      rewriteAuthLocationForCustomDomain("https://bazar-baz.ir/", customOrigin),
+      "https://shop.example.ir/",
+    );
+    assert.equal(
+      rewriteAuthLocationForCustomDomain("https://accounts.google.com/oauth", customOrigin),
+      "https://accounts.google.com/oauth",
+    );
+    assert.equal(
+      rewriteAuthJsonForCustomDomain('{"url":"https://www.bazar-baz.ir/dashboard"}', customOrigin),
+      '{"url":"https://shop.example.ir/dashboard"}',
+    );
   });
 
   it("normalizeDomainHost lowercases, strips www and trailing dot", () => {

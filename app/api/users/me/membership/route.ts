@@ -18,6 +18,7 @@ export async function GET() {
       where: {
         userId: session.user.id,
         isActive: true,
+        organization: { isActive: true, deletedAt: null },
       },
       orderBy: { joinedAt: "desc" },
       include: {
@@ -27,6 +28,11 @@ export async function GET() {
             name: true,
             slug: true,
             type: true,
+            capabilitiesInitializedAt: true,
+            capabilities: {
+              where: { status: "ACTIVE" },
+              select: { key: true },
+            },
             isOpen: true,
           },
         },
@@ -39,13 +45,19 @@ export async function GET() {
       organizationName: membership.organization.name,
       organizationSlug: membership.organization.slug,
       organizationType: membership.organization.type,
+      organizationCapabilities: membership.organization.capabilitiesInitializedAt
+        ? membership.organization.capabilities.map((capability) => capability.key)
+        : [membership.organization.type],
       organizationIsOpen: membership.organization.isOpen,
       role: membership.role,
       isActive: membership.isActive,
     }));
 
     return NextResponse.json({
-      membership: normalizedMemberships[0] ?? null,
+      membership:
+        normalizedMemberships.find((membership) => membership.organizationId === session.user.organizationId)
+        ?? normalizedMemberships[0]
+        ?? null,
       memberships: normalizedMemberships,
       message:
         normalizedMemberships.length === 0

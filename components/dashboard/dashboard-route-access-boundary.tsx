@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { useAuth } from "@/hooks/use-auth"
 import type { SupportedLocale } from "@/lib/i18n"
 import {
   getDashboardHref,
@@ -104,16 +104,24 @@ function getRequestedRouteLabel(routePath: string | null, unknownRoute: string) 
 
 export function DashboardRouteAccessBoundary({ children, locale }: DashboardRouteAccessBoundaryProps) {
   const pathname = usePathname()
-  const { data: session, status } = useSession()
-  const role = getDashboardRoleFromUser(session?.user)
-  const decision = getDashboardRouteAccessDecision({ locale, pathname, role })
+  const { user, organizationMembership, isLoading } = useAuth()
+  const role = getDashboardRoleFromUser({
+    role: user?.role,
+    organizationMembershipRole: organizationMembership?.role,
+  })
+  const decision = getDashboardRouteAccessDecision({
+    locale,
+    pathname,
+    role,
+    capabilities: organizationMembership?.organizationCapabilities ?? [],
+  })
   const copy = getRouteAccessCopy(locale)
   const fallbackRef = useRef<HTMLElement>(null)
   const titleId = useId()
   const descriptionId = useId()
   const detailsId = useId()
   const isRtl = locale === "fa" || locale === "ar"
-  const isDenied = status !== "loading" && decision.isDashboardPath && !decision.isAllowed
+  const isDenied = !isLoading && decision.isDashboardPath && !decision.isAllowed
 
   useEffect(() => {
     if (isDenied) {
@@ -121,7 +129,7 @@ export function DashboardRouteAccessBoundary({ children, locale }: DashboardRout
     }
   }, [isDenied])
 
-  if (status === "loading") {
+  if (isLoading) {
     return (
       <div className="flex min-h-[45vh] items-center justify-center px-4 text-center" aria-busy="true" role="status">
         <div className="rounded-2xl border bg-card px-5 py-4 shadow-sm">

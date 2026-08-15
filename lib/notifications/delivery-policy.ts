@@ -14,6 +14,7 @@ const DEFAULT_CHANNELS: Record<NotificationTemplateKey, NotificationDeliveryChan
   appointment_reminder: ["IN_APP", "WEB_PUSH", "SMS"],
   order_created: ["IN_APP", "WEB_PUSH"],
   order_status_updated: ["IN_APP", "WEB_PUSH", "SMS"],
+  order_ready_time_updated: ["IN_APP", "WEB_PUSH"],
   payment_status_updated: ["IN_APP", "WEB_PUSH", "SMS"],
   staff_alert: ["IN_APP", "WEB_PUSH"],
   marketing_broadcast: ["IN_APP", "WEB_PUSH", "SMS"],

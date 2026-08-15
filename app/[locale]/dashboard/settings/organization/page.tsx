@@ -13,6 +13,7 @@ import { useTheme } from "@/hooks/use-theme"
 import type { ClientBusinessHour as BusinessHour, ClientOrganization as Organization, ClientOrganizationSettings as OrganizationSettings, ClientPaymentSettings as PaymentSettings } from "@/lib/client-model-types"
 import { ShopStatusBadge } from "@/components/ShopStatusBadge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { BusinessCapability } from "@/lib/business-capability-registry"
 
 interface ImageRecord {
   id: number;
@@ -47,6 +48,10 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   
   const [organization, setOrganization ] = useState<Organization|null>(null)
   const [settings, setSettings ] = useState<OrganizationSettings|null>(null)
+  const [defaultPreparationMinutes, setDefaultPreparationMinutes] = useState(30)
+  const [savingPreparationSettings, setSavingPreparationSettings] = useState(false)
+  const [capabilities, setCapabilities] = useState<BusinessCapability[]>([])
+  const [savingCapabilities, setSavingCapabilities] = useState(false)
   //const [paymentSettings, setPaymentSettings ] = useState<PaymentSettings|null>(null)
 
   // Form state
@@ -93,7 +98,17 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
       })
 .then(settings => {
        setSettings(settings)
+       setDefaultPreparationMinutes(settings.defaultPreparationMinutes || 30)
        setOrganization(settings.organization)
+       setCapabilities(
+         settings.organization.capabilitiesInitializedAt
+           ? (settings.organization.capabilities || [])
+               .filter((capability: { status: string }) => capability.status === "ACTIVE")
+               .map((capability: { key: BusinessCapability }) => capability.key)
+           : settings.organization.type
+             ? [settings.organization.type]
+             : [],
+       )
        setName(settings.organization.name)
        setAddress(settings.organization.address || "")
        setPhone(settings.organization.phone || "")
@@ -349,6 +364,30 @@ const handleOpen = async (e: React.FormEvent) => {
     }
   }
 
+  const handleSavePreparationSettings = async () => {
+    if (!organization) return
+    setSavingPreparationSettings(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/organizations/${organization.id}/settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ defaultPreparationMinutes }),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || "ثبت زمان پیش‌فرض ناموفق بود")
+      }
+      const updated = await response.json()
+      setSettings(updated)
+      setSuccess("زمان پیش‌فرض آماده‌سازی ذخیره شد")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "ثبت زمان پیش‌فرض ناموفق بود")
+    } finally {
+      setSavingPreparationSettings(false)
+    }
+  }
+
   const handleSaveImages = async () => {
     if (!organization) return
     setSavingImages(true)
@@ -391,6 +430,45 @@ const handleOpen = async (e: React.FormEvent) => {
   const handleThemeChange = (newTheme: string) => {
     setSelectedTheme(newTheme)
     setTheme(newTheme as "light" | "dark" | "system")
+  }
+
+  const toggleCapability = (capability: BusinessCapability) => {
+    setCapabilities((current) =>
+      current.includes(capability)
+        ? current.filter((item) => item !== capability)
+        : [...current, capability],
+    )
+  }
+
+  const handleSaveCapabilities = async () => {
+    if (!organization?.id) return
+    setSavingCapabilities(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const response = await fetch(`/api/organizations/${organization.id}/capabilities`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organizationId: organization.id, capabilities }),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        throw new Error(data?.error || "ذخیره قابلیت‌های کسب‌وکار ناموفق بود")
+      }
+      const data = await response.json()
+      setCapabilities(
+        (data.capabilities || [])
+          .filter((capability: { status: string }) => capability.status === "ACTIVE")
+          .map((capability: { key: BusinessCapability }) => capability.key),
+      )
+      setSuccess("قابلیت‌های کسب‌وکار ذخیره شد")
+      window.dispatchEvent(new Event("organization-capabilities-changed"))
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "ذخیره قابلیت‌های کسب‌وکار ناموفق بود")
+    } finally {
+      setSavingCapabilities(false)
+    }
   }
 
   if (!mounted || loading) {
@@ -450,6 +528,45 @@ const handleOpen = async (e: React.FormEvent) => {
         <Button onClick={handleClose} variant='destructive'>
         بسته
        </Button>
+        </CardFooter>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>قابلیت‌های کسب‌وکار</CardTitle>
+          <CardDescription>
+            هر سازمان می‌تواند فروشگاه، نوبت‌دهی، هر دو یا فعلاً هیچ‌کدام را فعال داشته باشد. غیرفعال‌سازی داده‌های قبلی را حذف نمی‌کند.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          {([
+            { key: "SHOP", title: "فروشگاه", description: "محصولات، سفارش‌ها و عملیات تحویل" },
+            { key: "APPOINTMENT", title: "نوبت‌دهی", description: "خدمات، تقویم و نوبت‌ها" },
+          ] as const).map((capability) => {
+            const active = capabilities.includes(capability.key)
+            return (
+              <button
+                key={capability.key}
+                type="button"
+                aria-pressed={active}
+                onClick={() => toggleCapability(capability.key)}
+                className={`rounded-xl border p-4 text-start transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? "border-primary bg-primary/5" : "bg-background hover:bg-muted/50"}`}
+              >
+                <span className="block font-medium">{capability.title}</span>
+                <span className="mt-1 block text-sm text-muted-foreground">{capability.description}</span>
+                <span className={`mt-3 inline-flex rounded-full px-2 py-1 text-xs ${active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                  {active ? "فعال" : "غیرفعال"}
+                </span>
+              </button>
+            )
+          })}
+        </CardContent>
+        <CardFooter className="flex items-center justify-between gap-4">
+          <p className="text-xs text-muted-foreground">انتخاب نکردن هیچ گزینه‌ای، سازمان را در حالت راه‌اندازی نگه می‌دارد.</p>
+          <Button type="button" onClick={handleSaveCapabilities} disabled={savingCapabilities}>
+            {savingCapabilities ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Save className="me-2 h-4 w-4" />}
+            ذخیره قابلیت‌ها
+          </Button>
         </CardFooter>
       </Card>
 
@@ -581,6 +698,33 @@ const handleOpen = async (e: React.FormEvent) => {
         </Button>
         </div>
         </CardFooter>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>زمان آماده‌سازی سفارش</CardTitle>
+          <CardDescription>اگر برای محصول زمان جداگانه‌ای تعیین نشده باشد، این مقدار استفاده می‌شود.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Label htmlFor="default-preparation-minutes">زمان پیش‌فرض (دقیقه)</Label>
+          <div className="flex max-w-md gap-2">
+            <Input
+              id="default-preparation-minutes"
+              type="number"
+              min={1}
+              max={1440}
+              value={defaultPreparationMinutes}
+              onChange={(event) => setDefaultPreparationMinutes(Number(event.target.value))}
+            />
+            <Button
+              onClick={handleSavePreparationSettings}
+              disabled={savingPreparationSettings || defaultPreparationMinutes < 1}
+            >
+              {savingPreparationSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              ذخیره
+            </Button>
+          </div>
+        </CardContent>
       </Card>
 
       <Card>

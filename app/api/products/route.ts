@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { productService } from "@/lib/services/product.service";
 import { createProductSchema, productFilterSchema } from "@/lib/validators";
-import { prisma } from "@/lib/db";
 import { normalizePagination } from "@/lib/pagination";
 import {
   ApiError,
   jsonError,
   requireAuthSession,
   requireCurrentOrganizationId,
+  getActiveMembership,
 } from "@/lib/api-guards";
+import { requireActiveOrganizationCapability } from "@/lib/organization-capabilities.server";
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,13 +44,16 @@ export async function GET(request: NextRequest) {
       params.isActive = true;
     }
 
-    if (session?.user?.role && session.user.role !== "SUPER_ADMIN") {
-      const membership = await prisma.organizationMember.findFirst({
-        where: { userId: session.user.id, isActive: true },
-        select: { organizationId: true },
-      });
+    if (session?.user?.role && !["SUPER_ADMIN", "CUSTOMER"].includes(session.user.role)) {
+      if (!session.user.organizationId) {
+        throw new ApiError(403, "Forbidden");
+      }
+      const membership = await getActiveMembership(
+        session.user.id,
+        session.user.organizationId,
+      );
 
-      if (!membership) {
+      if (!membership || !membership.organization.isActive || membership.organization.deletedAt) {
         return NextResponse.json({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 });
       }
 
@@ -80,6 +84,7 @@ export async function POST(request: NextRequest) {
       session,
       body.organizationId ?? session.user.organizationId,
     );
+    await requireActiveOrganizationCapability({ organizationId, capability: "SHOP" });
 
     const data = createProductSchema.parse({ ...body, organizationId });
     const product = await productService.create(data, organizationId, session.user.role);

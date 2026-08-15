@@ -80,7 +80,9 @@ interface DashboardStats {
 
 interface UserContext {
   role: string
+  platformRole?: string | null
   organizationType: string | null
+  organizationCapabilities: Array<"SHOP" | "APPOINTMENT">
   organizationId: string | null
   orgMemberRole: string | null
   isTeamMember: boolean
@@ -156,6 +158,8 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
   const [dashboardData, setDashboardData] = useState<{
     title?: string
     organizationType?: string
+    organizationCapabilities?: Array<"SHOP" | "APPOINTMENT">
+    setupRequired?: boolean
     stats: DashboardStats
     salesData?: { name: string; sales: number }[]
     ordersByStatus?: { status: string; label: string; count: number; color: string }[]
@@ -251,11 +255,17 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
   }
 
   const userContext = dashboardData?.userContext
-  const isShopOrg = dashboardData?.organizationType === "SHOP"
-  const isAppointmentOrg = dashboardData?.organizationType === "APPOINTMENT"
+  const organizationCapabilities = dashboardData?.organizationCapabilities
+    ?? userContext?.organizationCapabilities
+    ?? (dashboardData?.organizationType === "SHOP" || dashboardData?.organizationType === "APPOINTMENT"
+      ? [dashboardData.organizationType]
+      : [])
+  const isShopOrg = organizationCapabilities.includes("SHOP")
+  const isAppointmentOrg = organizationCapabilities.includes("APPOINTMENT")
   const isSuperAdmin = userContext?.role === "SUPER_ADMIN"
   const isCustomer = userContext?.role === "CUSTOMER"
   const isDriver = userContext?.role === "DRIVER"
+  const canManageOrganization = userContext?.role === "ADMIN" || userContext?.role === "MANAGER"
 
   return (
     <div className="min-h-screen bg-background">
@@ -308,6 +318,41 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
               </div>
             )}
           </div>
+
+          {dashboardData?.setupRequired && !isSuperAdmin && (
+            <Card className="border-dashed">
+              <CardHeader>
+                <CardTitle>سازمان آماده راه‌اندازی است</CardTitle>
+                <CardDescription>
+                  هنوز قابلیت کسب‌وکاری فعالی انتخاب نشده است. اطلاعات سازمان و اعضا حفظ شده‌اند و می‌توانید فروشگاه، نوبت‌دهی یا هر دو را فعال کنید.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-3">
+                {canManageOrganization && (
+                  <Link href={`/${locale}/dashboard/settings/organization`}>
+                    <Button>
+                      <Settings className="me-2 h-4 w-4" />
+                      افزودن قابلیت کسب‌وکار
+                    </Button>
+                  </Link>
+                )}
+                {canManageOrganization && (
+                  <Link href={`/${locale}/dashboard/members`}>
+                    <Button variant="outline">
+                      <Users className="me-2 h-4 w-4" />
+                      اعضای سازمان
+                    </Button>
+                  </Link>
+                )}
+                <Link href={`/${locale}/dashboard/settings`}>
+                  <Button variant="outline">
+                    <Settings className="me-2 h-4 w-4" />
+                    تنظیمات حساب
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Stats Cards - Role appropriate */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

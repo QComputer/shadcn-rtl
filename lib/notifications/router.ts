@@ -22,6 +22,7 @@ type RouteCustomerNotificationInput = {
   locale?: string
   dryRun?: boolean
   correlationId?: string
+  targetUrl?: string | null
 }
 
 type ChannelResult = {
@@ -82,6 +83,7 @@ export class NotificationRouterService {
             body: template.pushBody,
             preferenceKind: policy.preferenceKind,
             dryRun: false,
+            targetUrl: input.targetUrl,
           })
           const pushStatus = result.skipped ? "SKIPPED" : result.failureCount > 0 && result.successCount === 0 ? "FAILED" : "SENT"
           results.push({
@@ -185,6 +187,7 @@ export class NotificationRouterService {
         channels: policy.channels,
         dryRun: Boolean(input.dryRun),
         results,
+        targetUrl: input.targetUrl || null,
       },
       userId: input.actorUserId || undefined,
       organizationId: organization.id,

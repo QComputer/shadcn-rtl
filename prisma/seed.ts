@@ -1,6 +1,5 @@
 import { PrismaClient, OrganizationType, UserRole, AppointmentStatus, CartStatus, OrderType, OrderStatus, PaymentStatus, PaymentMethod, DayOfWeek } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import {organizationService} from '@/lib/services/organization.service'
 
 // Generate a unique sessionId
 function generateSessionId(name: string): string {
@@ -1081,6 +1080,36 @@ async function main() {
     chakme,
   ];
 
+  // Seed runs after migrations in local/demo environments, so it must preserve
+  // the post-backfill invariant instead of recreating legacy-only tenants.
+  await Promise.all(
+    allOrgs.map(async (organization) => {
+      await prisma.organizationCapability.create({
+        data: {
+          organizationId: organization.id,
+          key: organization.type,
+          status: "ACTIVE",
+          enabledAt: new Date(),
+        },
+      });
+      await prisma.organization.update({
+        where: { id: organization.id },
+        data: { capabilitiesInitializedAt: new Date() },
+      });
+    }),
+  );
+
+  // Membership authorization uses the tenant-scoped role, not the user's global role.
+  // Keep demo fixtures aligned so ADMIN/MANAGER/DRIVER accounts exercise their real paths.
+  await Promise.all(
+    users.map((user) =>
+      prisma.organizationMember.updateMany({
+        where: { userId: user.id },
+        data: { role: user.role },
+      }),
+    ),
+  );
+
   // Note: users[12-14] are CUSTOMERs - no organization membership
 
   console.log("✅ Created organization members with all role combinations\n");
@@ -1894,9 +1923,27 @@ async function main() {
   console.log("✅ Created business hours\n");
 
   // copy businessHours for staff members
-  [healthShop, beautyClinic, dentalClinic].map((org) => {
-    organizationService.copyBusinessHoursToAllStaff(org.id);
-  });
+  for (const organization of [healthShop, beautyClinic, dentalClinic]) {
+    const [hours, members] = await Promise.all([
+      prisma.businessHour.findMany({ where: { organizationId: organization.id, userId: null } }),
+      prisma.organizationMember.findMany({ where: { organizationId: organization.id, isActive: true } }),
+    ]);
+    for (const member of members) {
+      await prisma.businessHour.deleteMany({
+        where: { organizationId: organization.id, userId: member.userId },
+      });
+      await prisma.businessHour.createMany({
+        data: hours.map((hour) => ({
+          organizationId: organization.id,
+          userId: member.userId,
+          day: hour.day,
+          openTime: hour.openTime,
+          closeTime: hour.closeTime,
+          isOpen: hour.isOpen,
+        })),
+      });
+    }
+  }
 
   // ========================================
   // Summary

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { canReadAiMediaEntityAttachmentColumns } from "@/lib/services/ai-media-entity-attachment-service";
+import { hasOrganizationCapability } from "@/lib/organization-capabilities";
 
 export async function GET(
   request: NextRequest,
@@ -13,12 +14,21 @@ export async function GET(
     const includeAiMediaAttachment = canReadAiMediaEntityAttachmentColumns();
 
     // Get organization by slug
-    const organization = await prisma.organization.findUnique({
-      where: { slug, type: "APPOINTMENT", isActive: true },
-      select: { id: true },
+    const organization = await prisma.organization.findFirst({
+      where: { slug, isActive: true, deletedAt: null },
+      select: {
+        id: true,
+        type: true,
+        capabilitiesInitializedAt: true,
+        capabilities: { select: { key: true, status: true } },
+      },
     });
 
-    if (!organization) {
+    if (!organization || !hasOrganizationCapability({
+      legacyType: organization.type,
+      capabilitiesInitializedAt: organization.capabilitiesInitializedAt,
+      capabilities: organization.capabilities,
+    }, "APPOINTMENT")) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 });
     }
 

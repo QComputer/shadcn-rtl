@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useSession } from "next-auth/react"
 import {
   Activity,
   BarChart3,
@@ -41,6 +40,8 @@ import {
 } from "@/components/ui/sheet"
 import type { SupportedLocale } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/use-auth"
+import type { BusinessCapability } from "@/lib/business-capability-registry"
 import {
   DASHBOARD_NAVIGATION_GROUPS,
   DASHBOARD_NAVIGATION_ITEMS,
@@ -266,14 +267,14 @@ function getNavigationCopy(locale: SupportedLocale) {
   return roleAwareNavigationCopy[locale] ?? roleAwareNavigationCopy.fa
 }
 
-function isVisibleForRole(item: NavigationItem, role: DashboardRole) {
-  return isDashboardNavigationItemVisible(item.key, role)
+function isVisibleForRole(item: NavigationItem, role: DashboardRole, capabilities: readonly BusinessCapability[]) {
+  return isDashboardNavigationItemVisible(item.key, role, capabilities)
 }
 
-function getVisibleNavGroups(role: DashboardRole) {
+function getVisibleNavGroups(role: DashboardRole, capabilities: readonly BusinessCapability[]) {
   return NAVIGATION_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => isVisibleForRole(item, role)),
+    items: group.items.filter((item) => isVisibleForRole(item, role, capabilities)),
   })).filter((group) => group.items.length > 0)
 }
 
@@ -289,15 +290,17 @@ function isActivePath(pathname: string | null, locale: SupportedLocale, itemHref
 function SidebarContent({
   locale,
   role,
+  capabilities,
   onNavigate,
 }: {
   locale: SupportedLocale
   role: DashboardRole
+  capabilities: readonly BusinessCapability[]
   onNavigate?: () => void
 }) {
   const pathname = usePathname()
   const copy = getNavigationCopy(locale)
-  const visibleGroups = getVisibleNavGroups(role)
+  const visibleGroups = getVisibleNavGroups(role, capabilities)
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background text-foreground" dir={locale === "fa" || locale === "ar" ? "rtl" : "ltr"}>
@@ -360,9 +363,13 @@ export function DashboardSidebarWithDict({
   isOpen,
   onOpenChange,
 }: DashboardSidebarWithDictProps) {
-  const { data: session } = useSession()
+  const { user, organizationMembership } = useAuth()
   const copy = getNavigationCopy(locale)
-  const role = getDashboardRoleFromUser(session?.user)
+  const role = getDashboardRoleFromUser({
+    role: user?.role,
+    organizationMembershipRole: organizationMembership?.role,
+  })
+  const capabilities = organizationMembership?.organizationCapabilities ?? []
   const isRtl = locale === "fa" || locale === "ar"
 
   if (isMobile) {
@@ -377,7 +384,7 @@ export function DashboardSidebarWithDict({
           <SheetHeader className="sr-only">
             <SheetTitle>{copy.sectionLabel}</SheetTitle>
           </SheetHeader>
-          <SidebarContent locale={locale} role={role} onNavigate={() => onOpenChange?.(false)} />
+          <SidebarContent locale={locale} role={role} capabilities={capabilities} onNavigate={() => onOpenChange?.(false)} />
         </SheetContent>
       </Sheet>
     )
@@ -385,7 +392,7 @@ export function DashboardSidebarWithDict({
 
   return (
     <aside className="sticky top-0 h-screen w-72 border-e" aria-label={copy.sectionLabel}>
-      <SidebarContent locale={locale} role={role} />
+      <SidebarContent locale={locale} role={role} capabilities={capabilities} />
       <Separator className="sr-only" />
     </aside>
   )

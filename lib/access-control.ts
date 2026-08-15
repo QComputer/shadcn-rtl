@@ -24,6 +24,7 @@ export interface UserAccessContext {
   userRole: UserRole
   organizationId?: string
   organizationType?: OrganizationType
+  organizationCapabilities?: OrganizationType[]
 }
 
 export interface AccessCheckResult {
@@ -151,7 +152,7 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
   },
 
   "/dashboard/orders": {
-    allowedRoles: ORG_MANAGEMENT_ROLES,
+    allowedRoles: ["ADMIN", "MANAGER", "STAFF"],
     requiresOrgMembership: true,
     requiredOrgType: ["SHOP"],
   },
@@ -290,18 +291,20 @@ export function checkRouteAccess(route: string, context: UserAccessContext): Acc
   }
 
   if (routeConfig.requiredOrgType) {
-    if (!context.organizationType) {
+    const capabilities = context.organizationCapabilities
+      ?? (context.organizationType ? [context.organizationType] : [])
+    if (capabilities.length === 0) {
       return {
         hasAccess: false,
-        reason: "Organization type is required for this dashboard route",
+        reason: "An active organization capability is required for this dashboard route",
         redirectPath: "/dashboard/settings",
       }
     }
 
-    if (!routeConfig.requiredOrgType.includes(context.organizationType)) {
+    if (!routeConfig.requiredOrgType.some((required) => capabilities.includes(required))) {
       return {
         hasAccess: false,
-        reason: `Organization type ${context.organizationType} is not allowed for ${normalizedRoute}`,
+        reason: `Organization capabilities ${capabilities.join(",") || "none"} are not allowed for ${normalizedRoute}`,
         redirectPath: getRedirectPathForRole(context.userRole),
       }
     }
@@ -358,7 +361,7 @@ export function getRedirectPathForRole(role: UserRole): string {
     case "MANAGER":
       return "/dashboard"
     case "STAFF":
-      return "/dashboard/appointments"
+      return "/dashboard"
     case "DRIVER":
       return "/dashboard/driver-orders"
     case "CUSTOMER":
@@ -538,10 +541,9 @@ export function filterNavItems(items: NavItem[], context: UserAccessContext): Na
     }
 
     if (item.requiredOrgType) {
-      if (!context.organizationType) {
-        return false
-      }
-      if (!item.requiredOrgType.includes(context.organizationType)) {
+      const capabilities = context.organizationCapabilities
+        ?? (context.organizationType ? [context.organizationType] : [])
+      if (!item.requiredOrgType.some((required) => capabilities.includes(required))) {
         return false
       }
     }

@@ -56,6 +56,7 @@ export const createOrganizationSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(200),
   slug: slugSchema,
   type: z.enum(["SHOP", "APPOINTMENT"]).default("SHOP"),
+  capabilities: z.array(z.enum(["SHOP", "APPOINTMENT"])).max(2).optional(),
   description: z.string().max(5000).optional(),
   address: z.string().max(500).optional(),
   phone: phoneSchema.optional(),
@@ -173,6 +174,7 @@ export const createProductSchema = z.object({
   sortOrder: z.number().int().default(0),
   discountType: z.enum(["none", "percentage", "fixed"]).default("none"),
   discountValue: z.number().nonnegative().default(0),
+  preparationMinutes: z.number().int().min(1).max(1440).nullable().optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial().extend({
@@ -270,6 +272,11 @@ export const updateOrganizationSettingsSchema = z.object({
   emailNotifications: z.boolean().default(true),
   smsNotifications: z.boolean().default(false),
   settings: z.any().optional(),
+  defaultPreparationMinutes: z.coerce.number().int().min(1).max(1440).optional(),
+});
+
+export const updatePreparationDefaultsSchema = z.object({
+  defaultPreparationMinutes: z.coerce.number().int().min(1).max(1440),
 });
 
 export const updatePaymentSettingsSchema = z.object({

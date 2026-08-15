@@ -234,7 +234,7 @@ export function DashboardPushOptIn() {
     )
   }
 
-  const isSubscribed = status?.active && status.subscriptionCount > 0
+  const isSubscribed = Boolean(status?.active && status.subscriptionCount > 0)
 
   return (
     <Card>

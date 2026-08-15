@@ -203,3 +203,15 @@ export function isCustomDomainBypassPath(pathname: string) {
     pathname.includes(".")
   );
 }
+
+export function isCustomDomainApplicationPath(pathname: string) {
+  const { pathnameWithoutLocale } = splitLocalePrefix(pathname);
+
+  return (
+    pathnameWithoutLocale === "/login" ||
+    pathnameWithoutLocale === "/register" ||
+    pathnameWithoutLocale.startsWith("/register/") ||
+    pathnameWithoutLocale === "/dashboard" ||
+    pathnameWithoutLocale.startsWith("/dashboard/")
+  );
+}

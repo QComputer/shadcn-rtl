@@ -18,6 +18,38 @@ enum OrganizationType {
   APPOINTMENT
 }
 
+enum OrganizationCapabilityKey {
+  SHOP
+  APPOINTMENT
+}
+
+enum OrganizationCapabilityStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum OrganizationCollaborationStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum OrganizationCollaborationDirection {
+  ONE_WAY
+  TWO_WAY
+}
+
+enum OrganizationCollaborationScopeKey {
+  CUSTOMER_IDENTITY
+  CUSTOMER_PROFILE
+  ORDER_VISIBILITY
+  LOYALTY
+  COURIER
+  EMPLOYEE_SCHEDULE
+  CONTACT_INFORMATION
+}
+
 enum DomainType {
   PLATFORM_SUBDOMAIN
   CUSTOM
@@ -475,22 +507,23 @@ model TimeInterval {
 }
 
 model Organization {
-  id          String           @id @default(cuid())
-  type        OrganizationType
-  locale      String           @default("fa")
-  timezone    String           @default("Asia/Tehran")
-  name        String
-  slug        String           @unique
-  description String? //@db.Text
-  address     String?
-  phone       String?
-  email       String?
-  logo        String?
-  coverImage  String?
-  lat         Float?
-  lng         Float?
-  isActive    Boolean          @default(true)
-  isOpen      Boolean          @default(true)
+  id                        String           @id @default(cuid())
+  type                      OrganizationType
+  locale                    String           @default("fa")
+  timezone                  String           @default("Asia/Tehran")
+  name                      String
+  slug                      String           @unique
+  description               String? //@db.Text
+  address                   String?
+  phone                     String?
+  email                     String?
+  logo                      String?
+  coverImage                String?
+  lat                       Float?
+  lng                       Float?
+  isActive                  Boolean          @default(true)
+  isOpen                    Boolean          @default(true)
+  capabilitiesInitializedAt DateTime?
 
   // Timestamps & Soft Delete
   createdAt DateTime  @default(now())
@@ -499,6 +532,10 @@ model Organization {
 
   // Relations
   members                      OrganizationMember[]
+  capabilities                 OrganizationCapability[]
+  ownedCollaborations          OrganizationCollaboration[]   @relation("CollaborationOwner")
+  partnerCollaborations        OrganizationCollaboration[]   @relation("CollaborationPartner")
+  readyTimeHistory             OrderReadyTimeHistory[]
   businessHours                BusinessHour[]
   serviceCategories            ServiceCategory[]
   services                     Service[]
@@ -558,6 +595,70 @@ model Organization {
   @@index([id])
 }
 
+model OrganizationCapability {
+  id             String                       @id @default(cuid())
+  organizationId String
+  key            OrganizationCapabilityKey
+  status         OrganizationCapabilityStatus @default(ACTIVE)
+  settings       Json?
+  enabledAt      DateTime?
+  disabledAt     DateTime?
+  createdAt      DateTime                     @default(now())
+  updatedAt      DateTime                     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, key])
+  @@index([organizationId, status])
+  @@index([key, status])
+}
+
+model OrganizationCollaboration {
+  id              String                             @id @default(cuid())
+  ownerOrgId      String
+  partnerOrgId    String
+  status          OrganizationCollaborationStatus    @default(PENDING)
+  direction       OrganizationCollaborationDirection @default(TWO_WAY)
+  invitedById     String
+  acceptedById    String?
+  revokedById     String?
+  startsAt        DateTime?
+  endsAt          DateTime?
+  acceptedAt      DateTime?
+  revokedAt       DateTime?
+  retentionPolicy Json?
+  createdAt       DateTime                           @default(now())
+  updatedAt       DateTime                           @updatedAt
+
+  ownerOrg   Organization                     @relation("CollaborationOwner", fields: [ownerOrgId], references: [id], onDelete: Cascade)
+  partnerOrg Organization                     @relation("CollaborationPartner", fields: [partnerOrgId], references: [id], onDelete: Cascade)
+  invitedBy  User                             @relation("CollaborationInvitedBy", fields: [invitedById], references: [id])
+  acceptedBy User?                            @relation("CollaborationAcceptedBy", fields: [acceptedById], references: [id], onDelete: SetNull)
+  revokedBy  User?                            @relation("CollaborationRevokedBy", fields: [revokedById], references: [id], onDelete: SetNull)
+  scopes     OrganizationCollaborationScope[]
+
+  @@unique([ownerOrgId, partnerOrgId])
+  @@index([ownerOrgId, status])
+  @@index([partnerOrgId, status])
+  @@index([createdAt])
+}
+
+model OrganizationCollaborationScope {
+  id              String                            @id @default(cuid())
+  collaborationId String
+  scope           OrganizationCollaborationScopeKey
+  ownerToPartner  Boolean                           @default(false)
+  partnerToOwner  Boolean                           @default(false)
+  writeAccess     Boolean                           @default(false)
+  createdAt       DateTime                          @default(now())
+  updatedAt       DateTime                          @updatedAt
+
+  collaboration OrganizationCollaboration @relation(fields: [collaborationId], references: [id], onDelete: Cascade)
+
+  @@unique([collaborationId, scope])
+  @@index([scope])
+}
+
 model OrganizationDomain {
   id             String       @id @default(cuid())
   organizationId String
@@ -576,19 +677,19 @@ model OrganizationDomain {
   sslReady         Boolean @default(false)
 
   vercelProjectDomainId String?
-  verificationToken      String?
-  verificationType       String?
-  verificationDomain     String?
-  verificationValue      String?
-  verifiedAt       DateTime?
-  lastCheckedAt    DateTime?
-  activatedAt      DateTime?
-  disabledAt       DateTime?
-  removedAt        DateTime?
-  reviewedAt       DateTime?
-  failureReason    String?
-  lastErrorCode    String?
-  lastErrorMessage String?
+  verificationToken     String?
+  verificationType      String?
+  verificationDomain    String?
+  verificationValue     String?
+  verifiedAt            DateTime?
+  lastCheckedAt         DateTime?
+  activatedAt           DateTime?
+  disabledAt            DateTime?
+  removedAt             DateTime?
+  reviewedAt            DateTime?
+  failureReason         String?
+  lastErrorCode         String?
+  lastErrorMessage      String?
 
   createdById  String?
   updatedById  String?
@@ -709,6 +810,10 @@ model User {
   createdDomains                OrganizationDomain[]          @relation("DomainCreatedBy")
   updatedDomains                OrganizationDomain[]          @relation("DomainUpdatedBy")
   reviewedDomains               OrganizationDomain[]          @relation("DomainReviewedBy")
+  invitedCollaborations         OrganizationCollaboration[]   @relation("CollaborationInvitedBy")
+  acceptedCollaborations        OrganizationCollaboration[]   @relation("CollaborationAcceptedBy")
+  revokedCollaborations         OrganizationCollaboration[]   @relation("CollaborationRevokedBy")
+  orderReadyTimeChanges         OrderReadyTimeHistory[]       @relation("OrderReadyTimeChangedBy")
   conversationParticipants      ConversationParticipant[]
   businessHours                 BusinessHour[]
   uploadedImages                Image[]                       @relation("UploadedImages")
@@ -717,12 +822,12 @@ model User {
   requestedExportJobs           ExportJob[]                   @relation("ExportJobRequestedBy")
   reviewedImportedProductDrafts ImportedProductDraft[]        @relation("ImportedProductDraftReviewedBy")
   reviewedImportedContentDrafts ImportedContentDraft[]        @relation("ImportedContentDraftReviewedBy")
-  aiMediaRequests               AiMediaRequest[]             @relation("AiMediaRequestRequestedBy")
-  aiMediaJobMirrors             AiMediaJobMirror[]           @relation("AiMediaJobRequestedBy")
-  aiMediaJobEvents              AiMediaJobEvent[]            @relation("AiMediaJobEventActor")
-  aiMediaAssets                 AiMediaAsset[]               @relation("AiMediaAssetRequestedBy")
-  aiMediaUsageQuotes            AiMediaUsageQuote[]          @relation("AiMediaQuoteRequestedBy")
-  aiMediaSpendHolds             AiMediaSpendHold[]           @relation("AiMediaSpendHoldRequestedBy")
+  aiMediaRequests               AiMediaRequest[]              @relation("AiMediaRequestRequestedBy")
+  aiMediaJobMirrors             AiMediaJobMirror[]            @relation("AiMediaJobRequestedBy")
+  aiMediaJobEvents              AiMediaJobEvent[]             @relation("AiMediaJobEventActor")
+  aiMediaAssets                 AiMediaAsset[]                @relation("AiMediaAssetRequestedBy")
+  aiMediaUsageQuotes            AiMediaUsageQuote[]           @relation("AiMediaQuoteRequestedBy")
+  aiMediaSpendHolds             AiMediaSpendHold[]            @relation("AiMediaSpendHoldRequestedBy")
 
   denies                          Deny[]
   orderMessages                   OrderMessage[]
@@ -834,26 +939,26 @@ model ServiceCategory {
 }
 
 model Service {
-  id          String  @id @default(cuid())
-  name        String
-  slug        String?
-  description String? //@db.Text
-  price       Decimal //@db.Decimal(12, 2)
-  duration    Int // In minutes
-  image       String?
+  id                    String  @id @default(cuid())
+  name                  String
+  slug                  String?
+  description           String? //@db.Text
+  price                 Decimal //@db.Decimal(12, 2)
+  duration              Int // In minutes
+  image                 String?
   aiPrimaryMediaAssetId String?
-  isActive    Boolean @default(true)
-  sortOrder   Int     @default(0)
+  isActive              Boolean @default(true)
+  sortOrder             Int     @default(0)
 
   organizationId    String
   categoryId        String
   serviceProviderId String?
 
-  organization    Organization    @relation(fields: [organizationId], references: [id])
-  category        ServiceCategory @relation(fields: [categoryId], references: [id])
-  serviceProvider User?           @relation("ServiceProviderRelation", fields: [serviceProviderId], references: [id])
-  aiPrimaryMediaAsset AiMediaAsset? @relation("ServiceAiPrimaryMediaAsset", fields: [aiPrimaryMediaAssetId], references: [id], onDelete: SetNull)
-  appointments    Appointment[]
+  organization        Organization    @relation(fields: [organizationId], references: [id])
+  category            ServiceCategory @relation(fields: [categoryId], references: [id])
+  serviceProvider     User?           @relation("ServiceProviderRelation", fields: [serviceProviderId], references: [id])
+  aiPrimaryMediaAsset AiMediaAsset?   @relation("ServiceAiPrimaryMediaAsset", fields: [aiPrimaryMediaAssetId], references: [id], onDelete: SetNull)
+  appointments        Appointment[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -1037,12 +1142,13 @@ model Product {
   description String? //@db.Text
   basePrice   Decimal //@db.Decimal(12, 2)
 
-  image     String?
-  images    Image[]
+  image                 String?
+  images                Image[]
   aiPrimaryMediaAssetId String?
-  sku       String?
-  isActive  Boolean @default(true)
-  sortOrder Int     @default(0)
+  sku                   String?
+  isActive              Boolean @default(true)
+  sortOrder             Int     @default(0)
+  preparationMinutes    Int?
 
   // Inventory management
 
@@ -1058,11 +1164,11 @@ model Product {
   organizationSlug String
   categoryId       String
 
-  organization Organization     @relation(fields: [organizationId, organizationSlug], references: [id, slug])
-  category     ProductCategory  @relation(fields: [categoryId], references: [id])
-  aiPrimaryMediaAsset AiMediaAsset? @relation("ProductAiPrimaryMediaAsset", fields: [aiPrimaryMediaAssetId], references: [id], onDelete: SetNull)
-  variants     ProductVariant[]
-  orderItems   OrderItem[]
+  organization        Organization     @relation(fields: [organizationId, organizationSlug], references: [id, slug])
+  category            ProductCategory  @relation(fields: [categoryId], references: [id])
+  aiPrimaryMediaAsset AiMediaAsset?    @relation("ProductAiPrimaryMediaAsset", fields: [aiPrimaryMediaAssetId], references: [id], onDelete: SetNull)
+  variants            ProductVariant[]
+  orderItems          OrderItem[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -1186,11 +1292,14 @@ model Order {
   total       Decimal //@db.Decimal(12, 2)
 
   // Delivery details
-  deliveryAddress       String?
-  deliveryLat           Decimal?
-  deliveryLng           Decimal?
-  estimatedDeliveryTime DateTime?
-  deliveredAt           DateTime?
+  deliveryAddress            String?
+  deliveryLat                Decimal?
+  deliveryLng                Decimal?
+  estimatedDeliveryTime      DateTime?
+  estimatedReadyAt           DateTime?
+  preparationMinutesSnapshot Int?
+  readyTimeVersion           Int       @default(0)
+  deliveredAt                DateTime?
 
   // Notes
   notes String? //@db.Text
@@ -1214,16 +1323,17 @@ model Order {
   guestCustomerId  String?
   driverId         String?
 
-  organization       Organization         @relation(fields: [organizationSlug], references: [slug])
-  customer           User?                @relation("CustomerOrderRelation", fields: [customerId], references: [id])
-  guestCustomer      GuestCustomer?       @relation(fields: [guestCustomerId], references: [id])
-  assignedDriver     User?                @relation("DriverOrderRelation", fields: [driverId], references: [id])
+  organization       Organization            @relation(fields: [organizationSlug], references: [slug])
+  customer           User?                   @relation("CustomerOrderRelation", fields: [customerId], references: [id])
+  guestCustomer      GuestCustomer?          @relation(fields: [guestCustomerId], references: [id])
+  assignedDriver     User?                   @relation("DriverOrderRelation", fields: [driverId], references: [id])
   items              OrderItem[]
   payment            Payment?
   paymentEvents      PaymentEvent[]
   statusHistory      OrderStatusHistory[]
+  readyTimeHistory   OrderReadyTimeHistory[]
   inventoryMovements InventoryMovement[]
-  promotion          Promotion?           @relation(fields: [promotionId], references: [id])
+  promotion          Promotion?              @relation(fields: [promotionId], references: [id])
   loyaltyLedgers     LoyaltyLedger[]
   couponRedemptions  CouponRedemption[]
 
@@ -1251,11 +1361,33 @@ model Order {
   @@index([pickupProgressId])
   @@index([deliveryProgressId])
   @@index([status])
+  @@index([organizationSlug, estimatedReadyAt])
   @@index([createdAt])
   @@index([deletedAt])
   @@index([orderNumber])
   @@index([publicTrackingToken])
   @@index([promotionId])
+}
+
+model OrderReadyTimeHistory {
+  id                       String    @id @default(cuid())
+  orderId                  String
+  organizationId           String
+  previousEstimatedReadyAt DateTime?
+  estimatedReadyAt         DateTime
+  preparationMinutes       Int
+  reason                   String
+  changedById              String
+  version                  Int
+  createdAt                DateTime  @default(now())
+
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  changedBy    User         @relation("OrderReadyTimeChangedBy", fields: [changedById], references: [id])
+
+  @@unique([orderId, version])
+  @@index([organizationId, createdAt])
+  @@index([changedById, createdAt])
 }
 
 model Progress {
@@ -1579,35 +1711,35 @@ model AiMediaUsageEvent {
 }
 
 model AiMediaRequest {
-  id                String                       @id @default(cuid())
-  organizationId    String
-  requestedByUserId String
-  targetType        AiMediaPlatformTargetType
-  targetId          String?
-  status            AiMediaPlatformRequestStatus @default(DRAFT)
-  privacyLevel      AiMediaPlatformPrivacyLevel  @default(ORGANIZATION)
-  visibilityScope   AiMediaPlatformVisibilityScope @default(OWNER_ONLY)
-  locale            String                       @default("fa")
-  idempotencyKey    String
-  payloadHash       String
-  promptFingerprint String?
+  id                 String                         @id @default(cuid())
+  organizationId     String
+  requestedByUserId  String
+  targetType         AiMediaPlatformTargetType
+  targetId           String?
+  status             AiMediaPlatformRequestStatus   @default(DRAFT)
+  privacyLevel       AiMediaPlatformPrivacyLevel    @default(ORGANIZATION)
+  visibilityScope    AiMediaPlatformVisibilityScope @default(OWNER_ONLY)
+  locale             String                         @default("fa")
+  idempotencyKey     String
+  payloadHash        String
+  promptFingerprint  String?
   sourceFingerprints Json?
-  requestPayload    Json?
-  errorCode         String?
-  errorMessage      String?
-  submittedAt       DateTime?
-  cancelledAt       DateTime?
-  createdAt         DateTime                     @default(now())
-  updatedAt         DateTime                     @updatedAt
+  requestPayload     Json?
+  errorCode          String?
+  errorMessage       String?
+  submittedAt        DateTime?
+  cancelledAt        DateTime?
+  createdAt          DateTime                       @default(now())
+  updatedAt          DateTime                       @updatedAt
 
-  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  requestedBy     User               @relation("AiMediaRequestRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
-  jobMirrors      AiMediaJobMirror[]
-  events          AiMediaJobEvent[]
-  imports         AiMediaImport[]
-  assets          AiMediaAsset[]
-  usageQuotes     AiMediaUsageQuote[]
-  spendHolds      AiMediaSpendHold[]
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedBy  User                @relation("AiMediaRequestRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  jobMirrors   AiMediaJobMirror[]
+  events       AiMediaJobEvent[]
+  imports      AiMediaImport[]
+  assets       AiMediaAsset[]
+  usageQuotes  AiMediaUsageQuote[]
+  spendHolds   AiMediaSpendHold[]
 
   @@unique([organizationId, idempotencyKey])
   @@index([organizationId, status, createdAt])
@@ -1617,12 +1749,12 @@ model AiMediaRequest {
 }
 
 model AiMediaJobMirror {
-  id                  String                    @id @default(cuid())
+  id                  String                  @id @default(cuid())
   requestId           String
   organizationId      String
   requestedByUserId   String
-  state               AiMediaPlatformJobState   @default(DRAFT)
-  provider            String                    @default("MOCK")
+  state               AiMediaPlatformJobState @default(DRAFT)
+  provider            String                  @default("MOCK")
   providerJobId       String?
   providerStatus      String?
   contractFingerprint String?
@@ -1638,17 +1770,17 @@ model AiMediaJobMirror {
   importedAt          DateTime?
   failedAt            DateTime?
   cancelledAt         DateTime?
-  createdAt           DateTime                  @default(now())
-  updatedAt           DateTime                  @updatedAt
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
 
-  request        AiMediaRequest              @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  organization   Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  requestedBy    User                        @relation("AiMediaJobRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
-  events         AiMediaJobEvent[]
-  imports        AiMediaImport[]
-  assets         AiMediaAsset[]
-  spendHolds     AiMediaSpendHold[]
-  contributions  WorkerContributionMirror[]
+  request       AiMediaRequest             @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  organization  Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedBy   User                       @relation("AiMediaJobRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  events        AiMediaJobEvent[]
+  imports       AiMediaImport[]
+  assets        AiMediaAsset[]
+  spendHolds    AiMediaSpendHold[]
+  contributions WorkerContributionMirror[]
 
   @@unique([organizationId, idempotencyKey])
   @@unique([correlationId])
@@ -1661,7 +1793,7 @@ model AiMediaJobMirror {
 }
 
 model AiMediaJobEvent {
-  id             String                @id @default(cuid())
+  id             String                   @id @default(cuid())
   organizationId String
   requestId      String?
   mirrorId       String?
@@ -1671,12 +1803,12 @@ model AiMediaJobEvent {
   dedupeKey      String
   safeMetadata   Json?
   errorCode      String?
-  createdAt      DateTime              @default(now())
+  createdAt      DateTime                 @default(now())
 
-  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  request      AiMediaRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  request      AiMediaRequest?   @relation(fields: [requestId], references: [id], onDelete: SetNull)
   mirror       AiMediaJobMirror? @relation(fields: [mirrorId], references: [id], onDelete: SetNull)
-  actor        User?           @relation("AiMediaJobEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  actor        User?             @relation("AiMediaJobEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@unique([organizationId, dedupeKey])
   @@index([organizationId, createdAt])
@@ -1692,24 +1824,24 @@ model AiMediaImport {
   requestId         String
   mirrorId          String
   status            AiMediaPlatformImportStatus @default(NOT_REQUESTED)
-  outputIndex        Int                         @default(0)
+  outputIndex       Int                         @default(0)
   resultFingerprint String?
-  validationRisk     String?
-  validationErrors   Json?
-  acceptedAssetId    String?
-  errorCode          String?
-  errorMessage       String?
-  plannedAt          DateTime                    @default(now())
-  importedAt         DateTime?
-  rolledBackAt       DateTime?
-  createdAt          DateTime                    @default(now())
-  updatedAt          DateTime                    @updatedAt
+  validationRisk    String?
+  validationErrors  Json?
+  acceptedAssetId   String?
+  errorCode         String?
+  errorMessage      String?
+  plannedAt         DateTime                    @default(now())
+  importedAt        DateTime?
+  rolledBackAt      DateTime?
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
 
-  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  request      AiMediaRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  mirror       AiMediaJobMirror @relation(fields: [mirrorId], references: [id], onDelete: Cascade)
-  acceptedAsset AiMediaAsset?   @relation("AiMediaImportAcceptedAsset", fields: [acceptedAssetId], references: [id], onDelete: SetNull)
-  assets       AiMediaAsset[]
+  organization  Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  request       AiMediaRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  mirror        AiMediaJobMirror @relation(fields: [mirrorId], references: [id], onDelete: Cascade)
+  acceptedAsset AiMediaAsset?    @relation("AiMediaImportAcceptedAsset", fields: [acceptedAssetId], references: [id], onDelete: SetNull)
+  assets        AiMediaAsset[]
 
   @@unique([mirrorId, outputIndex])
   @@index([organizationId, status, createdAt])
@@ -1720,64 +1852,64 @@ model AiMediaImport {
 
 model AiMediaAsset {
   id                    String                         @id @default(cuid())
-  organizationId         String
-  requestId              String
-  mirrorId               String
-  importId               String?
-  requestedByUserId      String
-  visibilityScope        AiMediaPlatformVisibilityScope @default(OWNER_ONLY)
-  mimeType               String?
-  width                  Int?
-  height                 Int?
-  storageProvider        String?
-  storageKey             String?
-  storageKeyFingerprint  String?
-  checksumSha256         String?
-  byteSize               Int?
-  safeMetadata           Json?
-  acceptedAt             DateTime?
-  deletedAt              DateTime?
-  createdAt              DateTime                       @default(now())
-  updatedAt              DateTime                       @updatedAt
+  organizationId        String
+  requestId             String
+  mirrorId              String
+  importId              String?
+  requestedByUserId     String
+  visibilityScope       AiMediaPlatformVisibilityScope @default(OWNER_ONLY)
+  mimeType              String?
+  width                 Int?
+  height                Int?
+  storageProvider       String?
+  storageKey            String?
+  storageKeyFingerprint String?
+  checksumSha256        String?
+  byteSize              Int?
+  safeMetadata          Json?
+  acceptedAt            DateTime?
+  deletedAt             DateTime?
+  createdAt             DateTime                       @default(now())
+  updatedAt             DateTime                       @updatedAt
 
-  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  request      AiMediaRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  mirror       AiMediaJobMirror @relation(fields: [mirrorId], references: [id], onDelete: Cascade)
-  import       AiMediaImport?   @relation(fields: [importId], references: [id], onDelete: SetNull)
-  requestedBy  User             @relation("AiMediaAssetRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
-  acceptedImports AiMediaImport[] @relation("AiMediaImportAcceptedAsset")
-  productPrimaryAttachments Product[] @relation("ProductAiPrimaryMediaAsset")
-  servicePrimaryAttachments Service[] @relation("ServiceAiPrimaryMediaAsset")
+  organization              Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  request                   AiMediaRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  mirror                    AiMediaJobMirror @relation(fields: [mirrorId], references: [id], onDelete: Cascade)
+  import                    AiMediaImport?   @relation(fields: [importId], references: [id], onDelete: SetNull)
+  requestedBy               User             @relation("AiMediaAssetRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  acceptedImports           AiMediaImport[]  @relation("AiMediaImportAcceptedAsset")
+  productPrimaryAttachments Product[]        @relation("ProductAiPrimaryMediaAsset")
+  servicePrimaryAttachments Service[]        @relation("ServiceAiPrimaryMediaAsset")
 
   @@index([organizationId, visibilityScope, createdAt])
   @@index([organizationId, requestedByUserId, createdAt])
   @@index([requestId])
   @@index([mirrorId])
   @@index([importId])
-    @@index([requestedByUserId])
-    @@index([checksumSha256])
-    @@index([storageKey])
-  }
+  @@index([requestedByUserId])
+  @@index([checksumSha256])
+  @@index([storageKey])
+}
 
 model AiMediaUsageQuote {
-  id                String   @id @default(cuid())
+  id                String    @id @default(cuid())
   organizationId    String
   requestId         String
   requestedByUserId String
-  bazAmount         Int      @default(0)
-  currency          String   @default("BAZ_INTERNAL_CREDIT")
+  bazAmount         Int       @default(0)
+  currency          String    @default("BAZ_INTERNAL_CREDIT")
   policyKey         String
   idempotencyKey    String
   expiresAt         DateTime
   acceptedAt        DateTime?
   rejectedAt        DateTime?
   safeMetadata      Json?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  request      AiMediaRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  requestedBy  User           @relation("AiMediaQuoteRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  request      AiMediaRequest     @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  requestedBy  User               @relation("AiMediaQuoteRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
   spendHolds   AiMediaSpendHold[]
 
   @@unique([organizationId, idempotencyKey])
@@ -1788,27 +1920,27 @@ model AiMediaUsageQuote {
 
 model AiMediaSpendHold {
   id                    String                @id @default(cuid())
-  organizationId         String
-  requestId              String
-  mirrorId               String?
-  quoteId                String?
-  requestedByUserId      String
-  state                  AiMediaSpendHoldState @default(PLANNED)
-  bazAmount              Int                   @default(0)
-  currency               String                @default("BAZ_INTERNAL_CREDIT")
-  idempotencyKey         String
-  ledgerMutationAllowed  Boolean               @default(false)
-  settlementEligible     Boolean               @default(false)
-  errorCode              String?
-  safeMetadata           Json?
-  createdAt              DateTime              @default(now())
-  updatedAt              DateTime              @updatedAt
+  organizationId        String
+  requestId             String
+  mirrorId              String?
+  quoteId               String?
+  requestedByUserId     String
+  state                 AiMediaSpendHoldState @default(PLANNED)
+  bazAmount             Int                   @default(0)
+  currency              String                @default("BAZ_INTERNAL_CREDIT")
+  idempotencyKey        String
+  ledgerMutationAllowed Boolean               @default(false)
+  settlementEligible    Boolean               @default(false)
+  errorCode             String?
+  safeMetadata          Json?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
 
-  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  request      AiMediaRequest    @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  mirror       AiMediaJobMirror? @relation(fields: [mirrorId], references: [id], onDelete: SetNull)
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  request      AiMediaRequest     @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  mirror       AiMediaJobMirror?  @relation(fields: [mirrorId], references: [id], onDelete: SetNull)
   quote        AiMediaUsageQuote? @relation(fields: [quoteId], references: [id], onDelete: SetNull)
-  requestedBy  User              @relation("AiMediaSpendHoldRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  requestedBy  User               @relation("AiMediaSpendHoldRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, idempotencyKey])
   @@index([organizationId, state, createdAt])
@@ -1820,19 +1952,19 @@ model AiMediaSpendHold {
 
 model WorkerContributionMirror {
   id                     String                  @id @default(cuid())
-  organizationId          String
-  mirrorId                String
-  providerContributionId  String
-  workerOpaqueId          String
-  jobState                AiMediaPlatformJobState
-  importedAssetAccepted   Boolean                 @default(false)
-  rewardPolicyKey         String?
-  rewardEligible          Boolean                 @default(false)
-  walletCreditProduced    Boolean                 @default(false)
-  safeFacts               Json?
-  blockerCodes            Json?
-  createdAt               DateTime                @default(now())
-  updatedAt               DateTime                @updatedAt
+  organizationId         String
+  mirrorId               String
+  providerContributionId String
+  workerOpaqueId         String
+  jobState               AiMediaPlatformJobState
+  importedAssetAccepted  Boolean                 @default(false)
+  rewardPolicyKey        String?
+  rewardEligible         Boolean                 @default(false)
+  walletCreditProduced   Boolean                 @default(false)
+  safeFacts              Json?
+  blockerCodes           Json?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
 
   organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   mirror       AiMediaJobMirror @relation(fields: [mirrorId], references: [id], onDelete: Cascade)
@@ -2266,6 +2398,8 @@ model PushSubscription {
   id             String    @id @default(cuid())
   organizationId String
   customerId     String
+  recipientRole  UserRole?
+  origin         String
   endpoint       String
   p256dh         String
   auth           String
@@ -2281,8 +2415,9 @@ model PushSubscription {
   permissionEvents NotificationPermissionEvent[]
   deliveries       WebPushDelivery[]
 
-  @@unique([organizationId, customerId, endpoint])
+  @@unique([organizationId, customerId, origin, endpoint])
   @@index([organizationId, customerId, isActive])
+  @@index([organizationId, origin, isActive])
   @@index([customerId, isActive])
   @@index([endpoint])
 }
@@ -2291,6 +2426,7 @@ model NotificationPermissionEvent {
   id             String              @id @default(cuid())
   organizationId String
   customerId     String
+  origin         String?
   subscriptionId String?
   state          PushPermissionState
   source         String              @default("PUBLIC_SHOP")
@@ -2311,6 +2447,7 @@ model NotificationPreference {
   id                   String              @id @default(cuid())
   organizationId       String
   customerId           String
+  recipientRole        UserRole?
   channel              NotificationChannel
   marketingEnabled     Boolean             @default(false)
   transactionalEnabled Boolean             @default(true)
@@ -2331,20 +2468,24 @@ model NotificationPreference {
 }
 
 model WebPushDelivery {
-  id             String                @id @default(cuid())
-  organizationId String
-  customerId     String
-  subscriptionId String?
-  actorUserId    String?
-  title          String
-  body           String
-  provider       String                @default("dry_run")
-  dryRun         Boolean               @default(false)
-  status         WebPushDeliveryStatus @default(PENDING)
-  error          String?
-  sentAt         DateTime?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  id                 String                @id @default(cuid())
+  organizationId     String
+  customerId         String
+  recipientRole      UserRole?
+  subscriptionOrigin String?
+  subscriptionId     String?
+  actorUserId        String?
+  title              String
+  body               String
+  targetUrl          String?
+  deduplicationKey   String?
+  provider           String                @default("dry_run")
+  dryRun             Boolean               @default(false)
+  status             WebPushDeliveryStatus @default(PENDING)
+  error              String?
+  sentAt             DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
 
   organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   customer     User              @relation("CustomerWebPushDeliveries", fields: [customerId], references: [id], onDelete: Cascade)
@@ -2355,6 +2496,7 @@ model WebPushDelivery {
   @@index([customerId, createdAt])
   @@index([subscriptionId])
   @@index([actorUserId])
+  @@index([organizationId, deduplicationKey])
 }
 
 model SmsDelivery {
@@ -2496,12 +2638,13 @@ model OrganizationSettings {
   timeFormat String  @default("24h")
 
   // Business settings
-  minimumOrderAmount Decimal? //@db.Decimal(12, 2)
-  maximumOrderAmount Decimal? //@db.Decimal(12, 2)
-  deliveryRadius     Float?
-  deliveryFee        Float?   @default(50000)
-  enablePickup       Boolean  @default(true)
-  enableDelivery     Boolean  @default(true)
+  minimumOrderAmount        Decimal? //@db.Decimal(12, 2)
+  maximumOrderAmount        Decimal? //@db.Decimal(12, 2)
+  deliveryRadius            Float?
+  deliveryFee               Float?   @default(50000)
+  enablePickup              Boolean  @default(true)
+  enableDelivery            Boolean  @default(true)
+  defaultPreparationMinutes Int      @default(30)
 
   // Notification settings
   emailNotifications Boolean @default(false)

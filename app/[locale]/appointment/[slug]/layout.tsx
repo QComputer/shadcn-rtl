@@ -9,6 +9,7 @@ import { buildOrganizationJsonLd, buildPublicMetadata, getUploadedOrGeneratedSeo
 import { TenantFooter } from "@/components/public/tenant-footer";
 import { buildTenantPublicPath } from "@/lib/custom-domain-routing";
 import { getTenantSeoContext } from "@/lib/custom-domain-seo";
+import { hasOrganizationCapability } from "@/lib/organization-capabilities";
 
 interface OrganizationLayoutProps {
   children: React.ReactNode;
@@ -31,10 +32,12 @@ type OrganizationLayoutData = {
   coverImage: string | null;
   lat: number | null;
   lng: number | null;
+  capabilitiesInitializedAt: Date | null;
+  capabilities: Array<{ key: "SHOP" | "APPOINTMENT"; status: "ACTIVE" | "INACTIVE" }>;
 };
 
 async function getPublicOrganization(slug: string): Promise<OrganizationLayoutData | null> {
-  return prisma.organization.findFirst({
+  const organization = await prisma.organization.findFirst({
     where: {
       slug,
       isActive: true,
@@ -53,8 +56,17 @@ async function getPublicOrganization(slug: string): Promise<OrganizationLayoutDa
       coverImage: true,
       lat: true,
       lng: true,
+      capabilitiesInitializedAt: true,
+      capabilities: { select: { key: true, status: true } },
     },
   });
+  return organization && hasOrganizationCapability({
+    legacyType: organization.type,
+    capabilitiesInitializedAt: organization.capabilitiesInitializedAt,
+    capabilities: organization.capabilities,
+  }, "APPOINTMENT")
+    ? organization
+    : null;
 }
 
 export async function generateMetadata({ params }: OrganizationLayoutProps): Promise<Metadata> {

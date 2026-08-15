@@ -38,9 +38,14 @@ export async function GET(
     const image = await prisma.image.findFirst({
       where: {
         filename: pathname,
+        access: "PUBLIC",
       },
       select: { id: true, url: true },
     });
+
+    if (!image) {
+      return new NextResponse("File not found", { status: 404 });
+    }
 
     // If image has a blob URL, redirect to it
     if (image?.url && image.url.startsWith("http")) {
@@ -69,7 +74,7 @@ export async function GET(
       }
     }
 
-    // For PRIVATE images without blob URL, try to serve from Vercel Blob by pathname
+    // Public records without a direct URL may still use application-managed Blob storage.
     try {
       const { buffer, contentType } = await getFromBlob(pathname);
       return new NextResponse(new Uint8Array(buffer), {

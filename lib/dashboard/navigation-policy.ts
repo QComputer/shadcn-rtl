@@ -1,3 +1,9 @@
+import {
+  requiredCapabilityForDashboardRoute,
+  requiredCapabilityForNavigation,
+  type BusinessCapability,
+} from "@/lib/business-capability-registry"
+
 export const DASHBOARD_ROLES = ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF", "DRIVER", "USER"] as const
 
 export type DashboardRole = (typeof DASHBOARD_ROLES)[number]
@@ -176,9 +182,17 @@ export function getDashboardRoleFromUser(user: SidebarRoleContext | null | undef
   )
 }
 
-export function isDashboardNavigationItemVisible(key: DashboardNavigationKey, role: DashboardRole): boolean {
+export function isDashboardNavigationItemVisible(
+  key: DashboardNavigationKey,
+  role: DashboardRole,
+  capabilities: readonly BusinessCapability[] = [],
+): boolean {
   const allowedRoles: readonly DashboardRole[] = ROLE_NAVIGATION_POLICY[key]
-  return allowedRoles.includes(role) || role === "SUPER_ADMIN"
+  if (!allowedRoles.includes(role) && role !== "SUPER_ADMIN") return false
+  if (role === "SUPER_ADMIN") return true
+
+  const requiredCapability = requiredCapabilityForNavigation(key)
+  return !requiredCapability || capabilities.includes(requiredCapability)
 }
 
 export type DashboardRouteKey = keyof typeof DASHBOARD_ROUTE_POLICY
@@ -190,6 +204,7 @@ export type DashboardRouteAccessDecision = {
   routePath: string | null
   routeKey: DashboardRouteKey | null
   role: DashboardRole
+  requiredCapability: BusinessCapability | null
 }
 
 export function isDashboardRouteAllowed(route: DashboardRouteKey, role: DashboardRole): boolean {
@@ -253,10 +268,12 @@ export function getDashboardRouteAccessDecision({
   locale,
   pathname,
   role,
+  capabilities = [],
 }: {
   locale: string
   pathname: string | null | undefined
   role: DashboardRole
+  capabilities?: readonly BusinessCapability[]
 }): DashboardRouteAccessDecision {
   const routePath = getDashboardRoutePathFromPathname(locale, pathname)
 
@@ -268,17 +285,22 @@ export function getDashboardRouteAccessDecision({
       routePath: null,
       routeKey: null,
       role,
+      requiredCapability: null,
     }
   }
 
   const routeKey = getDashboardRouteKey(routePath)
+  const requiredCapability = requiredCapabilityForDashboardRoute(routePath)
+  const roleAllowed = routeKey !== null ? isDashboardRouteAllowed(routeKey, role) : false
+  const capabilityAllowed = role === "SUPER_ADMIN" || !requiredCapability || capabilities.includes(requiredCapability)
 
   return {
     isDashboardPath: true,
     isKnownRoute: routeKey !== null,
-    isAllowed: routeKey !== null ? isDashboardRouteAllowed(routeKey, role) : false,
+    isAllowed: roleAllowed && capabilityAllowed,
     routePath,
     routeKey,
     role,
+    requiredCapability,
   }
 }

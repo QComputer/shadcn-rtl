@@ -11,6 +11,7 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   allowedDevOrigins: [
     "192.168.1.6",
+    "*.localtest.me",
     process.env.NEXT_PUBLIC_APP_URL || "localhost:3000",
   ],
   async headers() {

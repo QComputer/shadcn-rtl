@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { updateOrganizationSettingsSchema } from "@/lib/validators";
+import { updateOrganizationSettingsSchema, updatePreparationDefaultsSchema } from "@/lib/validators";
 import { ApiError, jsonError, requireAuthSession, resolveManageableOrganizationId } from "@/lib/api-guards";
 import { writeAuditLog } from "@/lib/audit-log";
 
@@ -31,7 +31,7 @@ export async function GET(
       where: { organizationSlug },
       include: {
         organization: {
-          include: { businessHours: true, paymentSettings: true },
+          include: { businessHours: true, paymentSettings: true, capabilities: true },
         },
       },
     });
@@ -42,7 +42,7 @@ export async function GET(
 
     const organization = await prisma.organization.findUnique({
       where: { id: organizationId },
-      include: { businessHours: true, paymentSettings: true },
+      include: { businessHours: true, paymentSettings: true, capabilities: true },
     });
 
     if (!organization) {
@@ -106,5 +106,36 @@ export async function PUT(
   } catch (error) {
     console.error("Error updating settings:", error);
     return jsonError(error, "Internal server error");
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const session = await requireAuthSession();
+    const { id } = await params;
+    const organizationId = await resolveManageableOrganizationId(session, id);
+    const organizationSlug = await getOrganizationSlug(organizationId);
+    const data = updatePreparationDefaultsSchema.parse(await request.json());
+    const settings = await prisma.organizationSettings.upsert({
+      where: { organizationSlug },
+      update: data,
+      create: { organizationSlug, ...data },
+    });
+    await writeAuditLog({
+      action: "UPDATE",
+      entityType: "OrganizationPreparationSettings",
+      entityId: settings.id,
+      description: "Updated default order preparation time",
+      userId: session.user.id,
+      organizationId,
+      organizationSlug,
+      newValue: data,
+    });
+    return NextResponse.json(settings);
+  } catch (error) {
+    return jsonError(error, "Error updating preparation settings");
   }
 }

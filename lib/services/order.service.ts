@@ -7,6 +7,10 @@ import { Decimal } from "@prisma/client/runtime/library";
 import { InventoryMovementReason, OrderStatus, PaymentMethod, PaymentStatus, OrderType, type InventoryMovementReason as InventoryMovementReasonType, type Prisma } from "@prisma/client";
 import { operationalNotificationRouter } from "@/lib/notifications/operational-router";
 import { customerOrderLifecycleRouter } from "@/lib/notifications/customer-order-lifecycle-router";
+import { buildOrderPushTargetUrl } from "@/lib/push-target-url";
+import { requireActiveOrganizationCapability } from "@/lib/organization-capabilities.server";
+import { ApiError } from "@/lib/api-guards";
+import { updateOrderReadyTimeSchema } from "@/lib/validators/tenant-platform";
 
 const ALLOWED_ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING: ["PLACED", "ACCEPTED", "CANCELLED"],
@@ -142,9 +146,8 @@ export class OrderService {
     return new Decimal(settings?.deliveryFee ?? 0);
   }
 
-  private buildProgressEstimates() {
+  private buildProgressEstimates(preparationDuration: number) {
     const now = new Date();
-    const preparationDuration = 15;
     const pickupDuration = 5;
     const deliveryDuration = 10;
 
@@ -163,6 +166,22 @@ export class OrderService {
       pickupEstimatedEndTime,
       deliveryEstimatedEndTime,
     };
+  }
+
+  private async getPreparationMinutes(
+    organizationSlug: string,
+    items: Array<{ variant: { product: { preparationMinutes?: number | null } } }>,
+  ) {
+    const settings = await prisma.organizationSettings.findUnique({
+      where: { organizationSlug },
+      select: { defaultPreparationMinutes: true },
+    });
+    const configured = items
+      .map((item) => item.variant.product.preparationMinutes)
+      .filter((minutes): minutes is number => typeof minutes === "number" && minutes > 0);
+    return configured.length > 0
+      ? Math.max(...configured)
+      : settings?.defaultPreparationMinutes ?? 30;
   }
 
   private generateOrderNumber() {
@@ -377,6 +396,7 @@ export class OrderService {
 
   async create(data: CreateOrderInput, customerId: string) {
     const { organizationSlug, promotionCode, ...orderData } = data;
+    await requireActiveOrganizationCapability({ organizationSlug, capability: "SHOP" });
 
     const cart = await prisma.shopCart.findUnique({
       where: {
@@ -399,11 +419,12 @@ export class OrderService {
       throw new Error("Cart is empty");
     }
 
+    const preparationMinutes = await this.getPreparationMinutes(organizationSlug, cart.items);
     const {
       preparationEstimatedEndTime,
       pickupEstimatedEndTime,
       deliveryEstimatedEndTime,
-    } = this.buildProgressEstimates();
+    } = this.buildProgressEstimates(preparationMinutes);
 
     const order = await prisma.$transaction(async (tx) => {
       const orderNumber = await this.generateUniqueOrderNumber(tx);
@@ -497,6 +518,8 @@ const newOrder = await tx.order.create({
            organizationSlug,
            publicTrackingToken,
            customerId,
+           estimatedReadyAt: preparationEstimatedEndTime,
+           preparationMinutesSnapshot: preparationMinutes,
            preparationProgressId: preparationProgress.id,
            pickupProgressId: pickupProgress.id,
            deliveryProgressId: deliveryProgress.id,
@@ -610,6 +633,8 @@ const newOrder = await tx.order.create({
       ...orderData
     } = data;
 
+    await requireActiveOrganizationCapability({ organizationSlug, capability: "SHOP" });
+
     if (!sessionId) {
       throw new Error("Guest session is required");
     }
@@ -635,11 +660,12 @@ const newOrder = await tx.order.create({
       throw new Error("Cart is empty");
     }
 
+    const preparationMinutes = await this.getPreparationMinutes(organizationSlug, cart.items);
     const {
       preparationEstimatedEndTime,
       pickupEstimatedEndTime,
       deliveryEstimatedEndTime,
-    } = this.buildProgressEstimates();
+    } = this.buildProgressEstimates(preparationMinutes);
 
     const order = await prisma.$transaction(async (tx) => {
       const orderNumber = await this.generateUniqueOrderNumber(tx);
@@ -747,6 +773,8 @@ const newOrder = await tx.order.create({
            organizationSlug,
            publicTrackingToken,
            guestCustomerId: guestCustomer.id,
+           estimatedReadyAt: preparationEstimatedEndTime,
+           preparationMinutesSnapshot: preparationMinutes,
            preparationProgressId: preparationProgress.id,
            pickupProgressId: pickupProgress.id,
            deliveryProgressId: deliveryProgress.id,
@@ -915,6 +943,11 @@ const newOrder = await tx.order.create({
         payment: true,
         paymentEvents: { orderBy: { createdAt: "desc" } },
         statusHistory: { orderBy: { createdAt: "desc" } },
+        readyTimeHistory: {
+          orderBy: { createdAt: "desc" },
+          take: 20,
+          include: { changedBy: { select: { id: true, name: true, firstName: true, lastName: true } } },
+        },
         promotion: true,
       },
     });
@@ -1468,6 +1501,110 @@ if (!org?.slug) return
     return progress;
   }
 
+  async updateReadyTime(
+    id: string,
+    input: { preparationMinutes: number; reason: string; expectedVersion: number },
+    actorUserId: string,
+  ) {
+    const validated = updateOrderReadyTimeSchema.safeParse(input);
+    if (!validated.success) {
+      throw new ApiError(400, validated.error.issues[0]?.message ?? "Invalid ready time update");
+    }
+    input = validated.data;
+    const now = new Date();
+    const estimatedReadyAt = new Date(now.getTime() + input.preparationMinutes * 60_000);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const existing = await tx.order.findFirst({
+        where: { id, deletedAt: null },
+        select: {
+          id: true,
+          orderNumber: true,
+          organizationSlug: true,
+          customerId: true,
+          driverId: true,
+          preparationProgressId: true,
+          estimatedReadyAt: true,
+          readyTimeVersion: true,
+          organization: { select: { id: true, slug: true } },
+        },
+      });
+      if (!existing) throw new Error("Order not found");
+      if (existing.readyTimeVersion !== input.expectedVersion) throw new Error("Order ready time version conflict");
+
+      const nextVersion = existing.readyTimeVersion + 1;
+      const updated = await tx.order.updateMany({
+        where: { id, readyTimeVersion: input.expectedVersion },
+        data: {
+          estimatedReadyAt,
+          preparationMinutesSnapshot: input.preparationMinutes,
+          readyTimeVersion: { increment: 1 },
+        },
+      });
+      if (updated.count !== 1) throw new Error("Order ready time version conflict");
+
+      if (existing.preparationProgressId) {
+        await tx.progress.update({
+          where: { id: existing.preparationProgressId },
+          data: { estimatedEndTime: estimatedReadyAt },
+        });
+      }
+
+      await tx.orderReadyTimeHistory.create({
+        data: {
+          orderId: id,
+          organizationId: existing.organization.id,
+          previousEstimatedReadyAt: existing.estimatedReadyAt,
+          estimatedReadyAt,
+          preparationMinutes: input.preparationMinutes,
+          reason: input.reason,
+          changedById: actorUserId,
+          version: nextVersion,
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          action: "UPDATE",
+          entityType: "OrderReadyTime",
+          entityId: id,
+          description: input.reason,
+          previousValue: { estimatedReadyAt: existing.estimatedReadyAt?.toISOString() ?? null, version: existing.readyTimeVersion },
+          newValue: { estimatedReadyAt: estimatedReadyAt.toISOString(), preparationMinutes: input.preparationMinutes, version: nextVersion },
+          userId: actorUserId,
+          organizationId: existing.organization.id,
+          organizationSlug: existing.organization.slug,
+        },
+      });
+
+      return { ...existing, estimatedReadyAt, preparationMinutesSnapshot: input.preparationMinutes, readyTimeVersion: nextVersion };
+    });
+
+    const recipients = [...new Set([result.customerId, result.driverId].filter((id): id is string => Boolean(id)))];
+    await Promise.all(recipients.map((recipientId) => customerOrderLifecycleRouter.notifyOrderReadyTimeChangedSafe({
+      organizationId: result.organization.id,
+      orderId: result.id,
+      orderNumber: result.orderNumber,
+      estimatedReadyAt,
+      recipientId,
+      actorUserId,
+      targetUrl: buildOrderPushTargetUrl({
+        organizationSlug: result.organization.slug,
+        orderNumber: result.orderNumber,
+        audience: recipientId === result.driverId ? "DRIVER" : "CUSTOMER",
+      }),
+    })));
+
+    try {
+      revalidatePath("/dashboard/orders");
+    } catch (error) {
+      // The database transaction is authoritative; cache invalidation must not turn a committed update into a 500.
+      if (process.env.NODE_ENV !== "test") {
+        console.error("[order-service] ready-time cache revalidation failed", error);
+      }
+    }
+    return this.getById(id);
+  }
+
   async updatePaymentStatus(
     orderId: string,
     input: {
@@ -1729,4 +1866,3 @@ if (!org?.slug) return
 }
 
 export const orderService = new OrderService();
-

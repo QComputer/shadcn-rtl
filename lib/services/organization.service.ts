@@ -25,7 +25,18 @@ export class OrganizationService {
         throw new Error("Slug already exists");
       }
 
-      const organization = await tx.organization.create({ data });
+      const { capabilities, ...organizationData } = data;
+      const effectiveCapabilities = [...new Set(capabilities ?? [data.type])];
+      const organization = await tx.organization.create({
+        data: {
+          ...organizationData,
+          capabilitiesInitializedAt: new Date(),
+          capabilities: {
+            create: effectiveCapabilities.map((key) => ({ key, status: "ACTIVE", enabledAt: new Date() })),
+          },
+        },
+        include: { capabilities: true },
+      });
 
       await tx.organizationSettings.create({
         data: { organizationSlug: organization.slug },
@@ -50,7 +61,18 @@ export class OrganizationService {
         throw new Error("Slug already exists");
       }
 
-      const organization = await tx.organization.create({ data });
+      const { capabilities, ...organizationData } = data;
+      const effectiveCapabilities = [...new Set(capabilities ?? [data.type])];
+      const organization = await tx.organization.create({
+        data: {
+          ...organizationData,
+          capabilitiesInitializedAt: new Date(),
+          capabilities: {
+            create: effectiveCapabilities.map((key) => ({ key, status: "ACTIVE", enabledAt: new Date() })),
+          },
+        },
+        include: { capabilities: true },
+      });
 
       await tx.organizationSettings.create({
         data: { organizationSlug: organization.slug },
@@ -99,6 +121,7 @@ export class OrganizationService {
           },
         },
         businessHours: true,
+        capabilities: true,
         settings: true,
         paymentSettings: true,
       },
@@ -110,6 +133,7 @@ export class OrganizationService {
       where: { slug },
       include: {
         businessHours: true,
+        capabilities: true,
         settings: true,
         paymentSettings: true,
       },
@@ -122,6 +146,8 @@ export class OrganizationService {
       select: {
         id: true,
         type: true,
+        capabilitiesInitializedAt: true,
+        capabilities: { where: { status: "ACTIVE" }, select: { key: true, status: true } },
         name: true,
         slug: true,
         description: true,
@@ -153,7 +179,12 @@ export class OrganizationService {
 
     const where: Record<string, unknown> = {};
 
-    if (type) where.type = type;
+    if (type) {
+      where.OR = [
+        { capabilitiesInitializedAt: null, type },
+        { capabilities: { some: { key: type, status: "ACTIVE" } } },
+      ];
+    }
     if (isActive !== undefined) where.isActive = isActive;
     if (search) {
       where.OR = [

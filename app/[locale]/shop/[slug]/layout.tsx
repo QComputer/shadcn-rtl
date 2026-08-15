@@ -16,6 +16,7 @@ import { buildOrganizationJsonLd, buildPublicMetadata, getUploadedOrGeneratedSeo
 import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
 import { buildShopPublicPath } from "@/lib/shop-public-paths";
 import { TenantFooter } from "@/components/public/tenant-footer";
+import { hasOrganizationCapability } from "@/lib/organization-capabilities";
 
 interface ShopLayoutProps {
   children: React.ReactNode;
@@ -28,11 +29,24 @@ interface ShopLayoutProps {
 export async function generateMetadata({ params }: ShopLayoutProps): Promise<Metadata> {
   const { locale, slug } = await params;
   try {
-const organization = await prisma.organization.findUnique({
-  where: { slug, type: "SHOP"},
-  select: {name: true, slug: true, description: true, logo: true, coverImage: true}
+const organization = await prisma.organization.findFirst({
+  where: { slug, isActive: true, deletedAt: null },
+  select: {
+    name: true,
+    slug: true,
+    type: true,
+    description: true,
+    logo: true,
+    coverImage: true,
+    capabilitiesInitializedAt: true,
+    capabilities: { select: { key: true, status: true } },
+  }
 })
-    if (!organization) {
+    if (!organization || !hasOrganizationCapability({
+      legacyType: organization.type,
+      capabilitiesInitializedAt: organization.capabilitiesInitializedAt,
+      capabilities: organization.capabilities,
+    }, "SHOP")) {
       return {
         title: "Shop Not Found",
       };
@@ -77,6 +91,8 @@ type ShopLayoutOrganization = {
   email: string | null;
   logo: string | null;
   coverImage: string | null;
+  capabilitiesInitializedAt: Date | null;
+  capabilities: Array<{ key: "SHOP" | "APPOINTMENT"; status: "ACTIVE" | "INACTIVE" }>;
 };
 
 export default async function ShopLayout({ children, params }: ShopLayoutProps) {
@@ -85,11 +101,20 @@ export default async function ShopLayout({ children, params }: ShopLayoutProps) 
   const t = (key: string) => getDictValue(dict, key);
 
 const organization = await prisma.organization.findFirst({
-  where: { slug, type: "SHOP", isActive: true, deletedAt: null },
-  select: { id: true, name: true, slug: true, type: true, lat: true, lng: true, description: true, address: true, phone: true, email: true, logo: true, coverImage: true },
+  where: { slug, isActive: true, deletedAt: null },
+  select: {
+    id: true, name: true, slug: true, type: true, lat: true, lng: true,
+    description: true, address: true, phone: true, email: true, logo: true, coverImage: true,
+    capabilitiesInitializedAt: true,
+    capabilities: { select: { key: true, status: true } },
+  },
 }) as ShopLayoutOrganization | null;
 
-  if (!organization?.slug) {
+  if (!organization?.slug || !hasOrganizationCapability({
+    legacyType: organization.type as "SHOP" | "APPOINTMENT",
+    capabilitiesInitializedAt: organization.capabilitiesInitializedAt,
+    capabilities: organization.capabilities,
+  }, "SHOP")) {
     notFound();
   }
 

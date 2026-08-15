@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AppointmentStatus, OrderStatus, OrganizationType } from "@prisma/client";
+import { AppointmentStatus, OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { jsonError, requireAuthSession } from "@/lib/api-guards";
+import { effectiveOrganizationCapabilities } from "@/lib/organization-capabilities";
 
 function startOfToday() {
   const today = new Date();
@@ -60,6 +61,10 @@ async function getActiveMembershipForSession(userId: string, organizationId?: st
           name: true,
           slug: true,
           type: true,
+          capabilitiesInitializedAt: true,
+          capabilities: {
+            select: { key: true, status: true },
+          },
         },
       },
     },
@@ -75,20 +80,31 @@ export async function GET(_request: NextRequest) {
       session.user.organizationId,
     );
     const organization = membership?.organization ?? null;
+    const organizationCapabilities = organization
+      ? effectiveOrganizationCapabilities({
+          legacyType: organization.type,
+          capabilitiesInitializedAt: organization.capabilitiesInitializedAt,
+          capabilities: organization.capabilities,
+        })
+      : [];
+    const effectiveRole = userRole === "SUPER_ADMIN" ? "SUPER_ADMIN" : (membership?.role ?? userRole);
 
     let dashboardData;
 
     if (userRole === "SUPER_ADMIN") {
       dashboardData = await getSuperAdminDashboard();
-    } else if ((userRole === "ADMIN" || userRole === "MANAGER") && organization) {
-      dashboardData = organization.type === OrganizationType.SHOP
-        ? await getShopDashboard(organization.id, organization.slug, organization.name)
-        : await getAppointmentDashboard(organization.id, organization.name);
-    } else if (userRole === "STAFF" && organization) {
-      dashboardData = organization.type === OrganizationType.SHOP
-        ? await getShopStaffDashboard(organization.slug, session.user.id)
-        : await getAppointmentStaffDashboard(organization.id, session.user.id);
-    } else if (userRole === "DRIVER") {
+    } else if ((effectiveRole === "ADMIN" || effectiveRole === "MANAGER") && organization) {
+      dashboardData = await getOrganizationManagementDashboard(
+        organization,
+        organizationCapabilities,
+      );
+    } else if (effectiveRole === "STAFF" && organization) {
+      dashboardData = await getOrganizationStaffDashboard(
+        organization,
+        organizationCapabilities,
+        session.user.id,
+      );
+    } else if (effectiveRole === "DRIVER") {
       dashboardData = await getDriverDashboard(session.user.id);
     } else {
       dashboardData = await getCustomerDashboard(session.user.id);
@@ -97,8 +113,10 @@ export async function GET(_request: NextRequest) {
     return NextResponse.json({
       ...dashboardData,
       userContext: {
-        role: userRole,
+        role: effectiveRole,
+        platformRole: userRole === "SUPER_ADMIN" ? "SUPER_ADMIN" : null,
         organizationType: organization?.type ?? null,
+        organizationCapabilities,
         organizationId: organization?.id ?? null,
         isTeamMember: Boolean(organization),
       },
@@ -106,6 +124,82 @@ export async function GET(_request: NextRequest) {
   } catch (error) {
     return jsonError(error, "Failed to fetch dashboard data");
   }
+}
+
+type DashboardOrganization = NonNullable<Awaited<ReturnType<typeof getActiveMembershipForSession>>>["organization"];
+
+async function getOrganizationManagementDashboard(
+  organization: DashboardOrganization,
+  capabilities: Array<"SHOP" | "APPOINTMENT">,
+) {
+  if (capabilities.length === 0) {
+    const totalMembers = await prisma.organizationMember.count({
+      where: { organizationId: organization.id, isActive: true },
+    });
+    return {
+      title: `راه‌اندازی ${organization.name}`,
+      organizationType: null,
+      organizationCapabilities: capabilities,
+      setupRequired: true,
+      stats: { totalMembers },
+      recentOrders: [],
+      recentAppointments: [],
+    };
+  }
+
+  const [shop, appointment] = await Promise.all([
+    capabilities.includes("SHOP")
+      ? getShopDashboard(organization.id, organization.slug, organization.name)
+      : null,
+    capabilities.includes("APPOINTMENT")
+      ? getAppointmentDashboard(organization.id, organization.name)
+      : null,
+  ]);
+
+  return {
+    ...(shop || {}),
+    ...(appointment || {}),
+    title: `پنل مدیریت ${organization.name}`,
+    organizationType: organization.type,
+    organizationCapabilities: capabilities,
+    stats: { ...(shop?.stats || {}), ...(appointment?.stats || {}) },
+    recentOrders: shop?.recentOrders || [],
+    recentAppointments: appointment?.recentAppointments || [],
+  };
+}
+
+async function getOrganizationStaffDashboard(
+  organization: DashboardOrganization,
+  capabilities: Array<"SHOP" | "APPOINTMENT">,
+  userId: string,
+) {
+  if (capabilities.length === 0) {
+    return {
+      title: `راه‌اندازی ${organization.name}`,
+      organizationType: null,
+      organizationCapabilities: capabilities,
+      setupRequired: true,
+      stats: {},
+      recentOrders: [],
+      recentAppointments: [],
+    };
+  }
+
+  const [shop, appointment] = await Promise.all([
+    capabilities.includes("SHOP") ? getShopStaffDashboard(organization.slug, userId) : null,
+    capabilities.includes("APPOINTMENT") ? getAppointmentStaffDashboard(organization.id, userId) : null,
+  ]);
+
+  return {
+    ...(shop || {}),
+    ...(appointment || {}),
+    title: `پنل کارکنان ${organization.name}`,
+    organizationType: organization.type,
+    organizationCapabilities: capabilities,
+    stats: { ...(shop?.stats || {}), ...(appointment?.stats || {}) },
+    recentOrders: shop?.recentOrders || [],
+    recentAppointments: appointment?.todaySchedule || [],
+  };
 }
 
 async function getSuperAdminDashboard() {

@@ -5,6 +5,7 @@ export type NotificationTemplateKey =
   | "appointment_reminder"
   | "order_created"
   | "order_status_updated"
+  | "order_ready_time_updated"
   | "payment_status_updated"
   | "staff_alert"
   | "marketing_broadcast"
@@ -61,6 +62,13 @@ const TEMPLATES: Record<NotificationTemplateKey, TemplateDefinition> = {
     preferenceKind: "transactional",
     title: "به روزرسانی سفارش",
     body: "وضعیت سفارش {{orderNumber}} به {{status}} تغییر کرد.",
+  },
+  order_ready_time_updated: {
+    inAppType: "ORDER_READY_TIME_UPDATED",
+    smsPurpose: "order_status_updated",
+    preferenceKind: "transactional",
+    title: "زمان آماده‌شدن سفارش",
+    body: "زمان آماده‌شدن سفارش {{orderNumber}} به {{readyAt}} تغییر کرد.",
   },
   payment_status_updated: {
     inAppType: "PAYMENT_STATUS_UPDATED",

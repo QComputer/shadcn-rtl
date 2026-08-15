@@ -43,7 +43,7 @@ function assertSupportedChannel(channel: NotificationChannel) {
 export class NotificationPreferencesService {
   async getCustomerPreferences(organizationSlug: string, customerId: string) {
     const organization = await this.requireOrganizationBySlug(organizationSlug)
-    await this.requireCustomer(customerId)
+    await this.requireRecipient(organization.id, customerId)
 
     const preferences = await prisma.notificationPreference.findMany({
       where: { organizationId: organization.id, customerId },
@@ -75,7 +75,7 @@ export class NotificationPreferencesService {
     assertSupportedChannel(input.channel)
 
     const organization = await this.requireOrganizationBySlug(input.organizationSlug)
-    await this.requireCustomer(input.customerId)
+    const recipient = await this.requireRecipient(organization.id, input.customerId)
 
     const hasQuietHoursStart = Object.prototype.hasOwnProperty.call(input, "quietHoursStart")
     const hasQuietHoursEnd = Object.prototype.hasOwnProperty.call(input, "quietHoursEnd")
@@ -93,6 +93,7 @@ export class NotificationPreferencesService {
         },
       },
       update: {
+        recipientRole: recipient.role,
         ...(input.marketingEnabled !== undefined ? { marketingEnabled: input.marketingEnabled } : {}),
         ...(input.transactionalEnabled !== undefined ? { transactionalEnabled: input.transactionalEnabled } : {}),
         ...(hasQuietHoursStart ? { quietHoursStart } : {}),
@@ -103,6 +104,7 @@ export class NotificationPreferencesService {
       create: {
         organizationId: organization.id,
         customerId: input.customerId,
+        recipientRole: recipient.role,
         channel: input.channel,
         marketingEnabled: input.marketingEnabled ?? defaultMarketingEnabled(input.channel),
         transactionalEnabled: input.transactionalEnabled ?? true,
@@ -161,6 +163,7 @@ export class NotificationPreferencesService {
     enabled: boolean
     source?: string
   }) {
+    const recipient = await this.requireCustomer(input.userId)
     return prisma.notificationPreference.upsert({
       where: {
         organizationId_customerId_channel: {
@@ -170,6 +173,7 @@ export class NotificationPreferencesService {
         },
       },
       update: {
+        recipientRole: recipient.role,
         marketingEnabled: input.enabled,
         transactionalEnabled: input.enabled,
         source: input.source || "DASHBOARD",
@@ -177,6 +181,7 @@ export class NotificationPreferencesService {
       create: {
         organizationId: input.organizationId,
         customerId: input.userId,
+        recipientRole: recipient.role,
         channel: "WEB_PUSH",
         marketingEnabled: input.enabled,
         transactionalEnabled: input.enabled,
@@ -251,11 +256,23 @@ export class NotificationPreferencesService {
   private async requireCustomer(customerId: string) {
     const customer = await prisma.user.findFirst({
       where: { id: customerId, deletedAt: null, isActive: true },
-      select: { id: true },
+      select: { id: true, role: true },
     })
 
     if (!customer) throw new ApiError(404, "Customer not found")
     return customer
+  }
+
+  private async requireRecipient(organizationId: string, userId: string) {
+    const recipient = await this.requireCustomer(userId)
+    if (recipient.role !== "CUSTOMER" && recipient.role !== "SUPER_ADMIN") {
+      const membership = await prisma.organizationMember.findFirst({
+        where: { organizationId, userId, isActive: true },
+        select: { id: true },
+      })
+      if (!membership) throw new ApiError(403, "Recipient is not active in this organization")
+    }
+    return recipient
   }
 }
 

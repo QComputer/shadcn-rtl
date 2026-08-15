@@ -100,6 +100,7 @@ export async function getActiveMembership(
           type: true,
           name: true,
           isActive: true,
+          deletedAt: true,
         },
       },
       user: {
@@ -129,9 +130,20 @@ export async function requireOrgAccess(
     return null;
   }
 
+  if (session.user.organizationId && session.user.organizationId !== organizationId) {
+    throw new ApiError(403, "Tenant context mismatch");
+  }
+
   const membership = await getActiveMembership(userId, organizationId);
   const membershipRole = getMembershipRole(membership);
-  if (!membership || !membership.organization?.isActive || !membershipRole) {
+  if (
+    !membership ||
+    !membership.organization?.isActive ||
+    membership.organization.deletedAt ||
+    !membership.user?.isActive ||
+    membership.user.deletedAt ||
+    !membershipRole
+  ) {
     throw new ApiError(403, "Forbidden");
   }
 
@@ -160,7 +172,14 @@ export async function requireCurrentOrgAdminOrManager(
     session.user.organizationId ?? undefined,
   );
   const membershipRole = getMembershipRole(membership);
-  if (!membership || !membership.organization?.isActive || !membershipRole) {
+  if (
+    !membership ||
+    !membership.organization?.isActive ||
+    membership.organization.deletedAt ||
+    !membership.user?.isActive ||
+    membership.user.deletedAt ||
+    !membershipRole
+  ) {
     throw new ApiError(403, "Forbidden");
   }
 
@@ -213,6 +232,7 @@ export function statusForApiError(error: unknown) {
     if (message.includes("unauthorized")) return 401;
     if (message.includes("forbidden")) return 403;
     if (message.includes("already exists") || message.includes("already a member")) return 409;
+    if (message.includes("version conflict") || message.includes("stale update")) return 409;
     if (message.includes("not available") || message.includes("no longer available")) return 409;
     if (
       message.includes("insufficient") ||

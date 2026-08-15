@@ -123,11 +123,20 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = event.notification.data?.url || "/";
+  let targetUrl = "/";
+  try {
+    const candidate = new URL(event.notification.data?.url || "/", self.location.origin);
+    if (candidate.origin === self.location.origin) {
+      targetUrl = `${candidate.pathname}${candidate.search}${candidate.hash}`;
+    }
+  } catch {
+    targetUrl = "/";
+  }
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
-      const matchingClient = clients.find((client) => client.url === targetUrl);
+      const absoluteTargetUrl = new URL(targetUrl, self.location.origin).href;
+      const matchingClient = clients.find((client) => client.url === absoluteTargetUrl);
       if (matchingClient) return matchingClient.focus();
       return self.clients.openWindow(targetUrl);
     }),

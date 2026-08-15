@@ -6,6 +6,7 @@ import {
   requireAuthSession,
   requireProductAccess,
 } from "@/lib/api-guards";
+import { requireActiveOrganizationCapability } from "@/lib/organization-capabilities.server";
 
 export async function GET(
   request: NextRequest,
@@ -31,7 +32,8 @@ export async function POST(
   try {
     const session = await requireAuthSession();
     const { id } = await params;
-    await requireProductAccess(session, id, ["ADMIN", "MANAGER"]);
+    const product = await requireProductAccess(session, id, ["ADMIN", "MANAGER"]);
+    await requireActiveOrganizationCapability({ organizationId: product.organizationId, capability: "SHOP" });
 
     const body = await request.json();
     const data = createProductVariantSchema.parse(body);

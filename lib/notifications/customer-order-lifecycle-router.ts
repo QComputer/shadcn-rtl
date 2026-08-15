@@ -17,6 +17,7 @@ type NotifyOrderStatusChangedInput = {
   guestCustomerId?: string | null
   guestPhone?: string | null
   actorUserId?: string | null
+  targetUrl?: string | null
 }
 
 type NotifyPaymentStatusChangedInput = {
@@ -29,6 +30,16 @@ type NotifyPaymentStatusChangedInput = {
   guestCustomerId?: string | null
   guestPhone?: string | null
   actorUserId?: string | null
+}
+
+type NotifyOrderReadyTimeChangedInput = {
+  organizationId: string
+  orderId: string
+  orderNumber: string
+  estimatedReadyAt: Date
+  recipientId?: string | null
+  actorUserId?: string | null
+  targetUrl?: string | null
 }
 
 function normalizePhone(value: string | null | undefined): string | null {
@@ -78,6 +89,26 @@ async function recordGuestSmsDryRun(params: {
 }
 
 export class CustomerOrderLifecycleRouter {
+  async notifyOrderReadyTimeChangedSafe(input: NotifyOrderReadyTimeChangedInput): Promise<void> {
+    if (!input.recipientId) return
+    try {
+      await this.routeCustomerNotification({
+        organizationId: input.organizationId,
+        orderId: input.orderId,
+        customerId: input.recipientId,
+        actorUserId: input.actorUserId,
+        templateKey: "order_ready_time_updated",
+        variables: {
+          orderNumber: input.orderNumber,
+          readyAt: input.estimatedReadyAt,
+        },
+        targetUrl: input.targetUrl,
+      })
+    } catch (error) {
+      console.error("[customer-order-lifecycle] ready time notification failed (non-blocking)", error instanceof Error ? error.message : String(error))
+    }
+  }
+
   async notifyOrderStatusChangedSafe(input: NotifyOrderStatusChangedInput): Promise<void> {
     const { organizationId, orderId, orderNumber, previousStatus, newStatus, customerId, guestCustomerId, guestPhone, actorUserId } = input
 
@@ -219,6 +250,7 @@ export class CustomerOrderLifecycleRouter {
     actorUserId?: string | null
     templateKey: NotificationTemplateKey
     variables: Record<string, string | number | Date | null | undefined>
+    targetUrl?: string | null
   }) {
     const result = await notificationRouterService.routeCustomerNotification({
       organizationId: input.organizationId,
@@ -226,6 +258,7 @@ export class CustomerOrderLifecycleRouter {
       actorUserId: input.actorUserId || null,
       templateKey: input.templateKey,
       variables: input.variables,
+      targetUrl: input.targetUrl,
       dryRun: false,
     })
 

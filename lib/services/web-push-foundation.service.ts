@@ -4,7 +4,10 @@ import { deliveryAttemptRecorder } from "@/lib/notifications/delivery-attempt-re
 import { prisma } from "@/lib/db"
 import { notificationPreferencesService } from "@/lib/services/notification-preferences.service"
 import webpush from "web-push"
-import type { PushPermissionState } from "@prisma/client"
+import type { PushPermissionState, UserRole } from "@prisma/client"
+import { adaptPushTargetUrlForOrigin, normalizePushTargetUrl } from "@/lib/push-target-url"
+import { requirePushOriginForOrganization } from "@/lib/push-origin.server"
+import { buildMinimalWebPushPayload } from "@/lib/push-payload"
 
 type BrowserPushSubscription = {
   endpoint?: string
@@ -21,6 +24,7 @@ type SubscribeInput = {
   subscription: BrowserPushSubscription
   userAgent?: string | null
   source?: string
+  origin: string
 }
 
 type PermissionEventInput = {
@@ -30,6 +34,7 @@ type PermissionEventInput = {
   reason?: string | null
   userAgent?: string | null
   source?: string
+  origin: string
 }
 
 type UnsubscribeInput = {
@@ -38,6 +43,7 @@ type UnsubscribeInput = {
   endpoint?: string | null
   userAgent?: string | null
   source?: string
+  origin: string
 }
 
 type DryRunSendInput = {
@@ -46,6 +52,8 @@ type DryRunSendInput = {
   title: string
   body: string
   dryRun?: boolean
+  targetUrl?: string | null
+  deduplicationKey?: string | null
 }
 
 type CustomerPushSendInput = DryRunSendInput & {
@@ -59,6 +67,8 @@ type ActivePushSubscription = {
   endpoint: string
   p256dh: string
   auth: string
+  recipientRole: UserRole | null
+  origin: string
 }
 
 export function getWebPushRuntimeConfig() {
@@ -84,16 +94,19 @@ export function getWebPushRuntimeConfig() {
 }
 
 export class WebPushFoundationService {
-  async getCustomerStatus(organizationSlug: string, customerId: string) {
+  async getCustomerStatus(organizationSlug: string, customerId: string, requestedOrigin: string) {
     const organization = await this.requireOrganizationBySlug(organizationSlug)
+    await this.requireRecipient(organization.id, customerId)
+    const origin = await requirePushOriginForOrganization(organization.id, requestedOrigin)
     const [subscriptions, lastPermissionEvent] = await Promise.all([
       prisma.pushSubscription.findMany({
-        where: { organizationId: organization.id, customerId },
+        where: { organizationId: organization.id, customerId, origin },
         orderBy: { updatedAt: "desc" },
         take: 10,
         select: {
           id: true,
           endpoint: true,
+          origin: true,
           isActive: true,
           lastSeenAt: true,
           unsubscribedAt: true,
@@ -102,7 +115,7 @@ export class WebPushFoundationService {
         },
       }),
       prisma.notificationPermissionEvent.findFirst({
-        where: { organizationId: organization.id, customerId },
+        where: { organizationId: organization.id, customerId, origin },
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
@@ -119,6 +132,7 @@ export class WebPushFoundationService {
 
     return {
       organization,
+      origin,
       config: this.getPublicConfig(),
       active: activeSubscriptions.length > 0,
       subscriptionCount: subscriptions.length,
@@ -229,18 +243,22 @@ export class WebPushFoundationService {
 
   async subscribe(input: SubscribeInput) {
     const organization = await this.requireOrganizationBySlug(input.organizationSlug)
-    await this.requireCustomer(input.customerId)
+    const recipient = await this.requireRecipient(organization.id, input.customerId)
     const normalized = this.normalizeSubscription(input.subscription)
+    const origin = await requirePushOriginForOrganization(organization.id, input.origin)
 
     const subscription = await prisma.pushSubscription.upsert({
       where: {
-        organizationId_customerId_endpoint: {
+        organizationId_customerId_origin_endpoint: {
           organizationId: organization.id,
           customerId: input.customerId,
+          origin,
           endpoint: normalized.endpoint,
         },
       },
       update: {
+        recipientRole: recipient.role,
+        origin,
         p256dh: normalized.p256dh,
         auth: normalized.auth,
         userAgent: input.userAgent || null,
@@ -251,6 +269,8 @@ export class WebPushFoundationService {
       create: {
         organizationId: organization.id,
         customerId: input.customerId,
+        recipientRole: recipient.role,
+        origin,
         endpoint: normalized.endpoint,
         p256dh: normalized.p256dh,
         auth: normalized.auth,
@@ -263,6 +283,7 @@ export class WebPushFoundationService {
       data: {
         organizationId: organization.id,
         customerId: input.customerId,
+        origin,
         subscriptionId: subscription.id,
         state: "GRANTED",
         source: input.source || "PUBLIC_SHOP",
@@ -282,12 +303,14 @@ export class WebPushFoundationService {
 
   async recordPermissionEvent(input: PermissionEventInput) {
     const organization = await this.requireOrganizationBySlug(input.organizationSlug)
-    await this.requireCustomer(input.customerId)
+    await this.requireRecipient(organization.id, input.customerId)
+    const origin = await requirePushOriginForOrganization(organization.id, input.origin)
 
     const event = await prisma.notificationPermissionEvent.create({
       data: {
         organizationId: organization.id,
         customerId: input.customerId,
+        origin,
         state: input.state,
         reason: input.reason || null,
         source: input.source || "PUBLIC_SHOP",
@@ -309,9 +332,12 @@ export class WebPushFoundationService {
 
   async unsubscribe(input: UnsubscribeInput) {
     const organization = await this.requireOrganizationBySlug(input.organizationSlug)
+    await this.requireRecipient(organization.id, input.customerId)
+    const origin = await requirePushOriginForOrganization(organization.id, input.origin)
     const where = {
       organizationId: organization.id,
       customerId: input.customerId,
+      origin,
       isActive: true,
       ...(input.endpoint ? { endpoint: input.endpoint } : {}),
     }
@@ -330,6 +356,7 @@ export class WebPushFoundationService {
       data: {
         organizationId: organization.id,
         customerId: input.customerId,
+        origin,
         state: "REVOKED",
         reason: "Customer unsubscribed",
         source: input.source || "PUBLIC_SHOP",
@@ -337,10 +364,18 @@ export class WebPushFoundationService {
       },
     })
 
+    const remainingActiveSubscriptions = await prisma.pushSubscription.count({
+      where: {
+        organizationId: organization.id,
+        customerId: input.customerId,
+        isActive: true,
+      },
+    })
+
     await notificationPreferencesService.setWebPushOptIn({
       organizationSlug: input.organizationSlug,
       customerId: input.customerId,
-      enabled: false,
+      enabled: remainingActiveSubscriptions > 0,
       source: input.source || "PUBLIC_SHOP",
     })
 
@@ -348,7 +383,7 @@ export class WebPushFoundationService {
   }
 
   async send(input: DryRunSendInput) {
-    await this.requireOrganizationById(input.organizationId)
+    const organization = await this.requireOrganizationById(input.organizationId)
     const config = getWebPushRuntimeConfig()
     const deliveryPlan = await this.getEligibleDeliveryPlan(input.organizationId)
     const { subscriptions, recipientCount, activeSubscriptionCount, activeCustomerCount, preferenceSkippedCustomerCount } = deliveryPlan
@@ -370,17 +405,31 @@ export class WebPushFoundationService {
       let removedCount = 0
 
       webpush.setVapidDetails(subject, config.publicKey, privateKey)
-      const payload = JSON.stringify({ title: input.title, body: input.body })
+      const targetUrl = normalizePushTargetUrl(input.targetUrl)
 
       for (const subscription of subscriptions) {
+        const subscriptionTargetUrl = adaptPushTargetUrlForOrigin({
+          targetUrl,
+          subscriptionOrigin: subscription.origin,
+          organizationSlug: organization.slug,
+        })
+        const payload = buildMinimalWebPushPayload({
+          title: input.title,
+          body: input.body,
+          targetUrl: subscriptionTargetUrl,
+        })
         const delivery = await prisma.webPushDelivery.create({
           data: {
             organizationId: input.organizationId,
             customerId: subscription.customerId,
+            recipientRole: subscription.recipientRole,
+            subscriptionOrigin: subscription.origin,
             subscriptionId: subscription.id,
             actorUserId: input.actorUserId,
             title: input.title,
             body: input.body,
+            targetUrl: subscriptionTargetUrl,
+            deduplicationKey: input.deduplicationKey || null,
             provider: config.provider,
             dryRun: false,
             status: "PENDING",
@@ -510,8 +559,8 @@ export class WebPushFoundationService {
   }
 
   async sendToCustomer(input: CustomerPushSendInput) {
-    await this.requireOrganizationById(input.organizationId)
-    await this.requireCustomer(input.customerId)
+    const organization = await this.requireOrganizationById(input.organizationId)
+    await this.requireRecipient(input.organizationId, input.customerId)
     const config = getWebPushRuntimeConfig()
     const subscriptions = await prisma.pushSubscription.findMany({
       where: {
@@ -529,6 +578,8 @@ export class WebPushFoundationService {
         endpoint: true,
         p256dh: true,
         auth: true,
+        recipientRole: true,
+        origin: true,
       },
     })
     const allowed = await notificationPreferencesService.isCustomerDeliveryAllowed({
@@ -616,17 +667,31 @@ export class WebPushFoundationService {
     let removedCount = 0
 
     webpush.setVapidDetails(subject, config.publicKey, privateKey)
-    const payload = JSON.stringify({ title: input.title, body: input.body })
+    const targetUrl = normalizePushTargetUrl(input.targetUrl)
 
     for (const subscription of subscriptions) {
+      const subscriptionTargetUrl = adaptPushTargetUrlForOrigin({
+        targetUrl,
+        subscriptionOrigin: subscription.origin,
+        organizationSlug: organization.slug,
+      })
+      const payload = buildMinimalWebPushPayload({
+        title: input.title,
+        body: input.body,
+        targetUrl: subscriptionTargetUrl,
+      })
       const delivery = await prisma.webPushDelivery.create({
         data: {
           organizationId: input.organizationId,
           customerId: input.customerId,
+          recipientRole: subscription.recipientRole,
+          subscriptionOrigin: subscription.origin,
           subscriptionId: subscription.id,
           actorUserId: input.actorUserId,
           title: input.title,
           body: input.body,
+          targetUrl: subscriptionTargetUrl,
+          deduplicationKey: input.deduplicationKey || null,
           provider: config.provider,
           dryRun: false,
           status: "PENDING",
@@ -743,6 +808,8 @@ export class WebPushFoundationService {
           endpoint: true,
           p256dh: true,
           auth: true,
+          recipientRole: true,
+          origin: true,
         },
       }),
       notificationPreferencesService.listMarketingEligibleCustomerIds(organizationId, "WEB_PUSH"),
@@ -809,24 +876,31 @@ export class WebPushFoundationService {
         deletedAt: null,
         isActive: true,
       },
-      select: { id: true },
+      select: { id: true, slug: true },
     })
 
     if (!organization) throw new ApiError(404, "Organization not found")
     return organization
   }
 
-  private async requireCustomer(customerId: string) {
+  private async requireRecipient(organizationId: string, customerId: string) {
     const customer = await prisma.user.findFirst({
       where: {
         id: customerId,
         deletedAt: null,
         isActive: true,
       },
-      select: { id: true },
+      select: { id: true, role: true },
     })
 
-    if (!customer) throw new ApiError(404, "Customer not found")
+    if (!customer) throw new ApiError(404, "Recipient not found")
+    if (customer.role !== "CUSTOMER" && customer.role !== "SUPER_ADMIN") {
+      const membership = await prisma.organizationMember.findFirst({
+        where: { organizationId, userId: customerId, isActive: true },
+        select: { id: true },
+      })
+      if (!membership) throw new ApiError(403, "Recipient is not active in this organization")
+    }
     return customer
   }
 }

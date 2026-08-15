@@ -8,6 +8,8 @@ import {
   requireAuthSession,
   requireCurrentOrganizationId,
 } from "@/lib/api-guards";
+import { requireActiveOrganizationCapability } from "@/lib/organization-capabilities.server";
+import { requireTenantContext } from "@/lib/tenant-context";
 
 async function assertProviderBelongsToOrganization(providerId: string | null | undefined, organizationId: string) {
   if (!providerId) return;
@@ -46,13 +48,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (session.user.role !== "SUPER_ADMIN") {
-      const membership = await prisma.organizationMember.findFirst({
-        where: { userId: session.user.id, isActive: true },
-        select: { organizationId: true },
-      });
-      if (!membership) throw new ApiError(403, "Forbidden");
-      if (organizationId && organizationId !== membership.organizationId) throw new ApiError(403, "Forbidden");
-      organizationId = membership.organizationId;
+      if (!session.user.organizationId || (organizationId && organizationId !== session.user.organizationId)) {
+        throw new ApiError(403, "Forbidden");
+      }
+      const context = await requireTenantContext(session, session.user.organizationId, ["ADMIN", "MANAGER", "STAFF"]);
+      organizationId = context.organizationId;
     }
 
     if (!organizationId) throw new ApiError(400, "Organization ID is required");
@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = createServiceSchema.parse(body);
     const organizationId = await requireCurrentOrganizationId(session, body.organizationId ?? session.user.organizationId);
+    await requireActiveOrganizationCapability({ organizationId, capability: "APPOINTMENT" });
 
     await assertCategoryBelongsToOrganization(data.categoryId, organizationId);
     await assertProviderBelongsToOrganization(data.serviceProviderId || session.user.id, organizationId);

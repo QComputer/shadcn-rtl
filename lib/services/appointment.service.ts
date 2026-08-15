@@ -6,6 +6,7 @@ import type {
   UpdateAppointmentInput,
 } from "@/lib/validators";
 import { hasPermission, type UserRole } from "@/lib/types";
+import { requireActiveOrganizationCapability } from "@/lib/organization-capabilities.server";
 
 const ACTIVE_APPOINTMENT_STATUSES = ["PENDING", "CONFIRMED"] as const;
 const TERMINAL_APPOINTMENT_STATUSES = ["COMPLETED", "CANCELLED", "NO_SHOW"] as const;
@@ -291,6 +292,12 @@ export class AppointmentService {
         if (!service) {
           throw new Error("Service not found or not available");
         }
+
+        await requireActiveOrganizationCapability({
+          organizationId: service.organizationId,
+          capability: "APPOINTMENT",
+          db: tx,
+        });
 
         const timezone = service.organization.timezone || "UTC";
         const appointmentDateOnly = parseDateOnly(data.date);

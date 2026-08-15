@@ -27,6 +27,11 @@ export type ClientOrganization = {
   name: string;
   slug?: string;
   type?: "SHOP" | "APPOINTMENT";
+  capabilitiesInitializedAt?: string | null;
+  capabilities?: Array<{
+    key: "SHOP" | "APPOINTMENT";
+    status: "ACTIVE" | "INACTIVE";
+  }>;
   address?: string | null;
   logo?: string | null;
   coverImage?: string | null;
@@ -58,5 +63,6 @@ export type ClientOrganizationSettings = {
   organizationId?: string;
   theme?: string | null;
   locale?: string | null;
+  defaultPreparationMinutes?: number;
   [key: string]: unknown;
 };

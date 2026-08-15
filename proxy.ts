@@ -4,6 +4,7 @@ import {
   buildShopPlatformPath,
   buildTenantPublicPath,
   getShopSubPathFromPlatformPath,
+  isCustomDomainApplicationPath,
   isCustomDomainBypassPath,
   isPlatformHost,
   normalizeDomainHost,
@@ -177,6 +178,16 @@ export async function proxy(request: NextRequest) {
   const hostHeader = request.headers.get("host") || request.nextUrl.host;
   const normalizedHost = normalizeDomainHost(hostHeader);
 
+  if (!isPlatformHost(normalizedHost) && pathname.startsWith("/api/auth")) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-forwarded-host", hostHeader);
+    requestHeaders.set(
+      "x-forwarded-proto",
+      request.headers.get("x-forwarded-proto") || request.nextUrl.protocol.replace(":", "") || "https",
+    );
+    return withSecurityHeaders(NextResponse.next({ request: { headers: requestHeaders } }));
+  }
+
   if (!isPlatformHost(normalizedHost) && !isCustomDomainBypassPath(pathname)) {
     const tenant = await resolveTenantForCustomDomain(request, normalizedHost);
 
@@ -188,6 +199,30 @@ export async function proxy(request: NextRequest) {
 
     const tenantPathLocale = splitLocalePrefix(pathname).locale;
     const localeForTenant = tenantPathLocale || defaultLocale;
+
+    // Authentication and management pages stay on the custom-domain origin,
+    // but they are application routes rather than storefront subpaths.
+    if (isCustomDomainApplicationPath(pathname)) {
+      if (!tenantPathLocale) {
+        const localizedUrl = request.nextUrl.clone();
+        localizedUrl.pathname = `/${defaultLocale}${pathname}`;
+        return withSecurityHeaders(NextResponse.redirect(localizedUrl));
+      }
+
+      const requestHeaders = buildTenantRewriteHeaders(
+        request,
+        normalizedHost,
+        tenant,
+        tenantPathLocale,
+        pathname,
+      );
+      requestHeaders.set("x-bazar-public-footer-context", "none");
+
+      const response = NextResponse.next({ request: { headers: requestHeaders } });
+      response.headers.set("x-locale", tenantPathLocale);
+      response.headers.set("x-direction", localeConfig[tenantPathLocale].dir);
+      return withSecurityHeaders(response);
+    }
 
     if (pathname === "/sitemap.xml" || pathname === "/robots.txt") {
       const internalUrl = request.nextUrl.clone();

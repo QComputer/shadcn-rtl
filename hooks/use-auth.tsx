@@ -29,6 +29,7 @@ export interface OrganizationMembership {
   organizationName: string;
   organizationSlug: string;
   organizationType: OrganizationType;
+  organizationCapabilities: OrganizationType[];
   isActive: boolean;
 }
 
@@ -53,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const [isLoading, setIsLoading] = useState(true)
+  const [isMembershipLoading, setIsMembershipLoading] = useState(false)
   const [organizationMembership, setOrganizationMembership] = useState<OrganizationMembership | null>(null)
 
   useEffect(() => {
@@ -63,10 +65,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Fetch organization membership when user is authenticated
   useEffect(() => {
     if (status === "authenticated" && session?.user?.id) {
-      fetchOrganizationMembership()
+      setIsMembershipLoading(true)
+      fetchOrganizationMembership().finally(() => setIsMembershipLoading(false))
     } else {
       setOrganizationMembership(null)
+      setIsMembershipLoading(false)
     }
+  }, [status, session?.user?.id])
+
+  useEffect(() => {
+    const refreshMembership = () => {
+      if (status !== "authenticated" || !session?.user?.id) return
+      setIsMembershipLoading(true)
+      fetchOrganizationMembership().finally(() => setIsMembershipLoading(false))
+    }
+
+    window.addEventListener("organization-capabilities-changed", refreshMembership)
+    return () => window.removeEventListener("organization-capabilities-changed", refreshMembership)
   }, [status, session?.user?.id])
 
   const fetchOrganizationMembership = async () => {
@@ -104,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     userRole: effectiveRole,
     organizationId: organizationMembership?.organizationId,
     organizationType: organizationMembership?.organizationType,
+    organizationCapabilities: organizationMembership?.organizationCapabilities,
   } : null
 
   const signIn = async (username: string, password: string) => {
@@ -226,7 +242,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user: authUser,
-        isLoading,
+        isLoading: isLoading || isMembershipLoading,
         isAuthenticated: !!authUser,
         signIn,
         signOut,
@@ -361,8 +377,10 @@ export function useFilteredNavItems<T extends { requiredRoles?: UserRole[]; requ
     }
 
     // Check org type requirement
-    if (item.requiredOrgType && accessContext.organizationType) {
-      if (!item.requiredOrgType.includes(accessContext.organizationType)) {
+    if (item.requiredOrgType) {
+      const capabilities = accessContext.organizationCapabilities
+        ?? (accessContext.organizationType ? [accessContext.organizationType] : [])
+      if (!item.requiredOrgType.some((required) => capabilities.includes(required))) {
         return false
       }
     }

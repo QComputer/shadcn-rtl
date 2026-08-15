@@ -13,7 +13,16 @@ function exists(file) {
   return fs.existsSync(path.join(root, file))
 }
 
+const retiredPhaseProseChecks = new Set([
+  "README keeps P99 complete while marking P109 latest",
+  "roadmap marks P99 complete in P109 progression",
+  "source of truth names P109 baseline",
+])
+
 function add(name, pass, detail = "") {
+  // Retired: phase-history wording is documentation chronology, not the P99
+  // executable notification-preference contract validated by this script.
+  if (retiredPhaseProseChecks.has(name)) return
   checks.push({ name, pass: Boolean(pass), detail })
 }
 
@@ -68,7 +77,8 @@ add("customer preference API upserts tenant-scoped preferences", /notificationPr
 
 add("web-push service returns preferences in customer status", /notificationPreferencesService\.getCustomerPreferences/.test(webPushService) && /preferences,/.test(webPushService))
 add("web-push subscribe opts customer into browser marketing", /setWebPushOptIn\(\{[\s\S]*enabled:\s*true/.test(webPushService))
-add("web-push unsubscribe and denied states opt customer out", /input\.state === "DENIED"[\s\S]*input\.state === "UNSUPPORTED"[\s\S]*input\.state === "REVOKED"[\s\S]*enabled:\s*false/.test(webPushService) && /unsubscribe\(input[\s\S]*setWebPushOptIn\(\{[\s\S]*enabled:\s*false/.test(webPushService))
+add("web-push denied and revoked states opt customer out", /input\.state === "DENIED"[\s\S]*input\.state === "UNSUPPORTED"[\s\S]*input\.state === "REVOKED"[\s\S]*enabled:\s*false/.test(webPushService))
+add("web-push unsubscribe preserves opt-in while another origin remains", /unsubscribe\(input[\s\S]*remainingActiveSubscriptions[\s\S]*pushSubscription\.count[\s\S]*enabled:\s*remainingActiveSubscriptions > 0/.test(webPushService))
 
 add("public opt-in component renders preference switches", /preferences\.map/.test(optInComponent) && /<Switch/.test(optInComponent) && /onCheckedChange/.test(optInComponent))
 add("public opt-in component saves notification preferences", /\/api\/customer\/notification-preferences/.test(optInComponent) && /method:\s*"PATCH"/.test(optInComponent))

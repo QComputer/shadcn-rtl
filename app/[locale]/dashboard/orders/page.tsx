@@ -93,6 +93,19 @@ interface Order {
   preparationProgress: Progress | null
   pickupProgress: Progress | null
   deliveryProgress: Progress | null
+  estimatedReadyAt: string | null
+  preparationMinutesSnapshot: number | null
+  readyTimeVersion: number
+  readyTimeHistory?: Array<{
+    id: string
+    estimatedReadyAt: string
+    previousEstimatedReadyAt: string | null
+    preparationMinutes: number
+    reason: string
+    version: number
+    createdAt: string
+    changedBy: { name: string; firstName: string | null; lastName: string | null }
+  }>
 
   assignedDriver: {
     id: string
@@ -171,6 +184,8 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
   const [loading, setLoading] = useState(true)
   const [preparationTime, setPreparationTime] = useState<Dayjs | null>(null)
   const [savingPreparationTime, setSavingPreparationTime] = useState(false)
+  const [preparationMinutes, setPreparationMinutes] = useState(30)
+  const [preparationReason, setPreparationReason] = useState("برآورد اولیه آشپزخانه")
   const [pickupTime, setPickupTime] = useState<Dayjs | null>(null)
   const [savingPickupTime, setSavingPickupTime] = useState(false)
   const [deliveryTime, setDeliveryTime] = useState<Dayjs | null>(null)
@@ -189,6 +204,8 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
     const handleViewOrder = (order: Order) => {
     setSelectedOrder(order)
     setPreparationTime(dayjs(order.preparationProgress?.estimatedEndTime) || null)
+    setPreparationMinutes(order.preparationMinutesSnapshot || 30)
+    setPreparationReason("به‌روزرسانی برآورد آماده‌سازی")
     setPickupTime(dayjs(order.pickupProgress?.estimatedEndTime)|| null)
     setDeliveryTime(dayjs(order.deliveryProgress?.estimatedEndTime)|| null)
     setDetailDialogOpen(true)
@@ -388,34 +405,34 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
     )
   }
 
-  const handleSaveAllEstimatedEndTimes = async ()=>{
+  const handleSavePreparationEstimatedEndTime = async () => {
     if (!selectedOrder) return
-    await handleSavePreparationEstimatedEndTime(selectedOrder.id, preparationTime?.toDate().toISOString())
-    fetchOrders()
-  }
-
-  const handleSavePreparationEstimatedEndTime = async (orderId: string, preparationTime?: string) => {
-    //console.log("setting preparationTime as--->", preparationTime);
     setUpdating(true)    
     setSavingPreparationTime(true)
 
     try {
-      const response = await fetch(`/api/orders/${orderId}`, {
+      const response = await fetch(`/api/orders/${selectedOrder.id}/ready-time`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ estimatedEndTime: preparationTime, type: "PREPARATION" }),
+        body: JSON.stringify({
+          preparationMinutes,
+          reason: preparationReason,
+          expectedVersion: selectedOrder.readyTimeVersion,
+        }),
       })
       
       if (!response.ok) {
-        throw new Error("Failed to update order preparationProgress.estimatedEndTime")
+        const body = await response.json().catch(() => ({}))
+        throw new Error(body.error || "ثبت زمان آماده‌سازی ناموفق بود")
       }
-      
-      // Refresh orders list
+      const updated = await response.json() as Order
+      setSelectedOrder(updated)
+      setPreparationTime(dayjs(updated.estimatedReadyAt))
+      await fetchOrders()
     } catch (err) {
-      console.error("Error updating order preparationProgress.estimatedEndTime:", err)
-      setError(err instanceof Error ? err.message : "Failed to update order preparationProgress.estimatedEndTime")
+      setError(err instanceof Error ? err.message : "ثبت زمان آماده‌سازی ناموفق بود")
     } finally {
       setSavingPreparationTime(false)
       setUpdating(false)
@@ -423,9 +440,9 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
 
   }
   
-  const addToPreparationEstimatedEndTime = async (minutes: number) => {
-    //console.log(`add ${minutes} minutes to preparationTime `, preparationTime);
-    setPreparationTime(preparationTime?.add(minutes, 'minute') || null)
+  const addToPreparationEstimatedEndTime = (minutes: number) => {
+    setPreparationMinutes(minutes)
+    setPreparationTime(dayjs().add(minutes, "minute"))
   }
 
     const addToPickupEstimatedEndTime = async (minutes: number) => {
@@ -589,6 +606,9 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                           <Badge variant={status.variant} className={status.color}>
                             {status.label}
                           </Badge>
+                          {order.estimatedReadyAt && dayjs(order.estimatedReadyAt).isBefore(dayjs()) && !["READY", "PICKED_UP", "DELIVERED", "CANCELLED", "REFUNDED"].includes(order.status) && (
+                            <Badge variant="destructive" className="text-xs">دیرکرد آماده‌سازی</Badge>
+                          )}
                           {order.assignedDriver && (
                             <Badge variant="outline" className="text-xs">
                               پیک: {order.assignedDriver.firstName || order.assignedDriver.name}
@@ -683,6 +703,78 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                   )}
                 </div>
               </div>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Timer className="h-4 w-4" />
+                    زمان آماده‌سازی
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    {[10, 15, 20, 30, 45, 60].map((minutes) => (
+                      <Button
+                        key={minutes}
+                        type="button"
+                        size="sm"
+                        variant={preparationMinutes === minutes ? "default" : "outline"}
+                        onClick={() => addToPreparationEstimatedEndTime(minutes)}
+                      >
+                        {toPersianDigits(minutes.toString())} دقیقه
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="preparation-minutes">مدت سفارشی (دقیقه)</Label>
+                      <Input
+                        id="preparation-minutes"
+                        type="number"
+                        min={1}
+                        max={1440}
+                        value={preparationMinutes}
+                        onChange={(event) => addToPreparationEstimatedEndTime(Number(event.target.value))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="preparation-reason">دلیل تغییر</Label>
+                      <Input
+                        id="preparation-reason"
+                        value={preparationReason}
+                        onChange={(event) => setPreparationReason(event.target.value)}
+                        placeholder="مثلاً شلوغی آشپزخانه"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 rounded-md border p-3 text-sm">
+                    <span>
+                      زمان تخمینی: {preparationTime?.isValid() ? formatPersianDate(preparationTime.toISOString()) : "—"}
+                    </span>
+                    <Button
+                      onClick={handleSavePreparationEstimatedEndTime}
+                      disabled={savingPreparationTime || preparationMinutes < 1 || preparationReason.trim().length < 3}
+                    >
+                      {savingPreparationTime ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      ثبت برآورد
+                    </Button>
+                  </div>
+                  {selectedOrder.readyTimeHistory && selectedOrder.readyTimeHistory.length > 0 && (
+                    <div className="space-y-2 border-t pt-3">
+                      <p className="text-sm font-medium">تاریخچه تغییرات</p>
+                      {selectedOrder.readyTimeHistory.slice(0, 5).map((entry) => (
+                        <div key={entry.id} className="rounded-md bg-muted/50 p-2 text-xs">
+                          <div className="flex justify-between gap-2">
+                            <span>{formatPersianDate(entry.estimatedReadyAt)}</span>
+                            <span>نسخه {toPersianDigits(entry.version.toString())}</span>
+                          </div>
+                          <p className="text-muted-foreground">{entry.reason} — {entry.changedBy.firstName || entry.changedBy.name}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
               {/* Customer Info */}
               <Card>

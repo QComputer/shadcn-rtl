@@ -14,6 +14,11 @@ const nextConfig: NextConfig = {
     "*.localtest.me",
     process.env.NEXT_PUBLIC_APP_URL || "localhost:3000",
   ],
+  logging: {
+    incomingRequests: {
+      ignore: [/^\/api\/integrations\/inoti\/ussd(?:\/|$)/],
+    },
+  },
   async headers() {
     return [
       {

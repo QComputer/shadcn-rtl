@@ -1,0 +1,308 @@
+import "server-only";
+
+import { createHash, timingSafeEqual } from "node:crypto";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { customerOrderLifecycleRouter } from "@/lib/notifications/customer-order-lifecycle-router";
+import { tomanDecimalToRial } from "@/lib/integrations/inoti-ussd/currency";
+import { parseUssdQuery, UssdParseError } from "@/lib/integrations/inoti-ussd/parser";
+import { inotiUssdProvider } from "@/lib/integrations/inoti-ussd/inoti-provider";
+import {
+  prismaUssdIntegrationRepository,
+  type UssdIntegrationRepository,
+} from "@/lib/integrations/inoti-ussd/repository";
+import type {
+  ParsedUssdRequest,
+  ResolvedInotiIntegration,
+  UssdProvider,
+  InotiCredentialProfile,
+} from "@/lib/integrations/inoti-ussd/types";
+import { environmentInotiCredentialProvider } from "@/lib/integrations/inoti-ussd/credentials";
+
+const INVALID_RESPONSE = "درخواست نامعتبر است";
+const UNAVAILABLE_RESPONSE = "سرویس در دسترس نیست";
+const PAYMENT_FAILED_RESPONSE = "تایید پرداخت ناموفق بود";
+
+function getHashPepper() {
+  const pepper = process.env.INOTI_USSD_HASH_PEPPER;
+  if (pepper) return pepper;
+  if (process.env.NODE_ENV === "production") throw new Error("INOTI_USSD_HASH_PEPPER_REQUIRED");
+  return process.env.NEXTAUTH_SECRET || "inoti-ussd-local-test-pepper";
+}
+
+function hashSensitive(value: string) {
+  return createHash("sha256").update(getHashPepper()).update("\0").update(value).digest("hex");
+}
+
+function sameText(left: string, right: string) {
+  const a = Buffer.from(left, "utf8");
+  const b = Buffer.from(right, "utf8");
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+function maskMobile(mobile: string) {
+  return `${mobile.slice(0, 4)}***${mobile.slice(-4)}`;
+}
+
+function paymentCallbackIdentity(integrationId: string, request: ParsedUssdRequest) {
+  return hashSensitive([integrationId, request.sessionId, request.mobile, request.call, request.rrn ?? ""].join("|"));
+}
+
+function statusLabel(status: string) {
+  const labels: Record<string, string> = {
+    PENDING: "در انتظار بررسی",
+    PLACED: "ثبت شده",
+    ACCEPTED: "پذیرفته شده",
+    PREPARING: "در حال آماده‌سازی",
+    READY: "آماده",
+    PICKED_UP: "تحویل پیک",
+    DELIVERED: "ارسال شده",
+    RECEIVED: "تحویل شده",
+    CANCELLED: "لغو شده",
+    REFUNDED: "بازپرداخت شده",
+  };
+  return labels[status] ?? "در حال بررسی";
+}
+
+function limitsAllow(integrationId?: string, sessionHash?: string) {
+  if (!integrationId && !sessionHash && !checkRateLimit({ key: "inoti:global", limit: 600, windowMs: 60_000 }).allowed) return false;
+  if (integrationId && !checkRateLimit({ key: `inoti:integration:${integrationId}`, limit: 120, windowMs: 60_000 }).allowed) return false;
+  if (sessionHash && !checkRateLimit({ key: `inoti:session:${sessionHash}`, limit: 30, windowMs: 60_000 }).allowed) return false;
+  return true;
+}
+
+function normalizeHost(host: string) {
+  return host.toLowerCase().replace(/^www\./, "");
+}
+
+function hostsMatch(requestHost: string, callbackOrigin: string): boolean {
+  const normalizedRequestHost = normalizeHost(requestHost);
+  const normalizedCallbackHost = normalizeHost(new URL(callbackOrigin).host);
+  return normalizedRequestHost === normalizedCallbackHost;
+}
+
+export class InotiUssdWorkflow {
+  constructor(
+    private readonly repository: UssdIntegrationRepository,
+    private readonly provider: UssdProvider,
+    private readonly credentialProvider: { resolveProfile(organizationId: string, profileKey: string | null): Promise<InotiCredentialProfile | null> },
+    private readonly notifyPayment: typeof customerOrderLifecycleRouter.notifyPaymentStatusChangedSafe =
+      customerOrderLifecycleRouter.notifyPaymentStatusChangedSafe.bind(customerOrderLifecycleRouter),
+  ) {}
+
+  async handle(publicIntegrationId: string, requestHost: string | null, searchParams: URLSearchParams): Promise<string> {
+    if (!limitsAllow()) return UNAVAILABLE_RESPONSE;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(publicIntegrationId)) {
+      return INVALID_RESPONSE;
+    }
+
+    const integration = await this.repository.resolveIntegration(publicIntegrationId);
+    if (!integration || integration.status !== "ACTIVE") return UNAVAILABLE_RESPONSE;
+
+    if (integration.callbackOrigin && requestHost && !hostsMatch(requestHost, integration.callbackOrigin)) {
+      return INVALID_RESPONSE;
+    }
+
+    let request: ParsedUssdRequest;
+    try {
+      request = parseUssdQuery(searchParams, integration.codeName);
+    } catch (error) {
+      return error instanceof UssdParseError ? INVALID_RESPONSE : UNAVAILABLE_RESPONSE;
+    }
+
+    const sessionIdHash = hashSensitive(request.sessionId);
+    if (!limitsAllow(integration.id, sessionIdHash)) return UNAVAILABLE_RESPONSE;
+    await this.repository.touchIntegration(integration.id);
+
+    if (request.rrn) return this.handlePaymentCallback(integration, request, sessionIdHash);
+    if (request.segments.length === 2) {
+      const choices = [
+        integration.config.orderStatusEnabled ? "1-وضعیت سفارش" : null,
+        integration.config.paymentEnabled ? "2-پرداخت سفارش" : null,
+      ].filter((value): value is string => Boolean(value));
+      return choices.length ? choices.join("\n") : UNAVAILABLE_RESPONSE;
+    }
+    if (request.segments.length !== 4) return INVALID_RESPONSE;
+
+    const command = request.segments[2];
+    const trackingToken = request.segments[3];
+    if (!trackingToken || trackingToken.length > 64) return INVALID_RESPONSE;
+    if (command === "1") return this.handleOrderStatus(integration, trackingToken);
+    if (command === "2") return this.handlePaymentRequest(integration, request, trackingToken, sessionIdHash);
+    return INVALID_RESPONSE;
+  }
+
+  private async handleOrderStatus(integration: ResolvedInotiIntegration, trackingToken: string) {
+    if (!integration.config.orderStatusEnabled) return UNAVAILABLE_RESPONSE;
+    const order = await this.repository.findOrderByTrackingToken(integration, trackingToken);
+    return order ? `وضعیت سفارش: ${statusLabel(order.status)}` : "سفارش یافت نشد";
+  }
+
+  private async handlePaymentRequest(
+    integration: ResolvedInotiIntegration,
+    request: ParsedUssdRequest,
+    trackingToken: string,
+    sessionIdHash: string,
+  ) {
+    if (!integration.config.paymentEnabled) {
+      return "پرداخت در دسترس نیست";
+    }
+    const credentialProfile = await this.credentialProvider.resolveProfile(integration.organizationId, integration.credentialProfileKey);
+    const readiness = this.provider.getReadiness(credentialProfile);
+    if (!readiness.ready) {
+      return "پرداخت در دسترس نیست";
+    }
+
+    const order = await this.repository.findOrderByTrackingToken(integration, trackingToken);
+    if (!order) return "سفارش یافت نشد";
+    if (order.paymentStatus === "COMPLETED") return "سفارش قبلا پرداخت شده است";
+
+    let amountRial: bigint;
+    try {
+      amountRial = tomanDecimalToRial(order.totalToman);
+    } catch {
+      return "مبلغ سفارش نامعتبر است";
+    }
+    const intent = await this.repository.createOrGetPaymentIntent({
+      integration,
+      order,
+      sessionIdHash,
+      mobileHash: hashSensitive(request.mobile),
+      mobileMasked: maskMobile(request.mobile),
+      amountRial,
+    });
+    if (intent.status === "SETTLED") return "سفارش قبلا پرداخت شده است";
+    if (intent.amountRial !== amountRial) return "مبلغ سفارش نامعتبر است";
+    return `9900|${intent.merchantFactorId}|${intent.amountRial.toString()}`;
+  }
+
+  private async handlePaymentCallback(
+    integration: ResolvedInotiIntegration,
+    request: ParsedUssdRequest,
+    sessionIdHash: string,
+  ) {
+    const credentialProfile = await this.credentialProvider.resolveProfile(integration.organizationId, integration.credentialProfileKey);
+    const readiness = this.provider.getReadiness(credentialProfile);
+    const mobileHash = hashSensitive(request.mobile);
+    const callHash = hashSensitive(request.call);
+    const rrnHash = hashSensitive(request.rrn ?? "");
+    const idempotencyKey = paymentCallbackIdentity(integration.id, request);
+    const factors = request.segments.slice(-2);
+    const merchantFactorId = factors[0] ?? "";
+    const providerFactorId = factors[1] ?? "";
+
+    if (
+      !integration.config.paymentEnabled ||
+      !readiness.ready ||
+      !/^BZ[A-Fa-f0-9]{32}$/.test(merchantFactorId) ||
+      !/^[A-Za-z0-9_-]{1,64}$/.test(providerFactorId)
+    ) {
+      await this.repository.recordCallbackEvent({
+        integration, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
+        outcome: "REJECTED", errorCode: readiness.ready ? "INVALID_PAYMENT_CALLBACK" : readiness.code,
+      });
+      return PAYMENT_FAILED_RESPONSE;
+    }
+
+    const intent = await this.repository.findPaymentIntent(integration.id, merchantFactorId);
+    if (!intent || !sameText(intent.sessionIdHash, sessionIdHash) || !sameText(intent.mobileHash, mobileHash)) {
+      await this.repository.recordCallbackEvent({
+        integration, paymentIntentId: intent?.id, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
+        outcome: "REJECTED", errorCode: "INTENT_CONTEXT_MISMATCH",
+      });
+      return PAYMENT_FAILED_RESPONSE;
+    }
+
+    if (intent.status === "SETTLED") {
+      const exactReplay = intent.providerFactorId && intent.rrn &&
+        sameText(intent.providerFactorId, providerFactorId) &&
+        sameText(intent.rrn, request.rrn ?? "");
+      await this.repository.recordCallbackEvent({
+        integration, paymentIntentId: intent.id, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
+        outcome: exactReplay ? "DUPLICATE" : "REJECTED",
+        errorCode: exactReplay ? null : "SETTLED_INTENT_REPLAY_MISMATCH",
+      });
+      return exactReplay ? "پرداخت تایید شد" : PAYMENT_FAILED_RESPONSE;
+    }
+
+    const verification = await this.provider.verifyPayment(credentialProfile, {
+      codeName: integration.codeName,
+      sessionId: request.sessionId,
+      mobile: request.mobile,
+      amountRial: intent.amountRial,
+      merchantFactorId,
+      providerFactorId,
+      rrn: request.rrn ?? "",
+    });
+    if ("code" in verification) {
+      await this.repository.recordCallbackEvent({
+        integration, paymentIntentId: intent.id, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
+        outcome: "FAILED", errorCode: `PROVIDER_${verification.code}`,
+      });
+      return PAYMENT_FAILED_RESPONSE;
+    }
+
+    const record = verification.record;
+    const verified = record.successful &&
+      sameText(record.sessionId, request.sessionId) &&
+      sameText(record.mobile, request.mobile) &&
+      record.amountRial === intent.amountRial &&
+      sameText(record.merchantFactorId, merchantFactorId) &&
+      sameText(record.providerFactorId, providerFactorId) &&
+      sameText(record.rrn, request.rrn ?? "");
+    if (!verified) {
+      await this.repository.recordCallbackEvent({
+        integration, paymentIntentId: intent.id, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
+        outcome: "REJECTED", errorCode: "PROVIDER_RECORD_MISMATCH",
+      });
+      return PAYMENT_FAILED_RESPONSE;
+    }
+
+    try {
+      const settlement = await this.repository.settleVerifiedPayment({
+        integration,
+        intent,
+        idempotencyKey,
+        sessionIdHash,
+        mobileHash,
+        callHash,
+        rrnHash,
+        rrn: record.rrn,
+        providerFactorId: record.providerFactorId,
+        providerResult: record.result,
+      });
+      if (settlement.notification) {
+        try {
+          await this.notifyPayment({
+            organizationId: settlement.notification.organizationId,
+            orderId: settlement.notification.orderId,
+            orderNumber: settlement.notification.orderNumber,
+            previousStatus: settlement.notification.previousStatus,
+            newStatus: "COMPLETED",
+            customerId: settlement.notification.customerId,
+            guestCustomerId: settlement.notification.guestCustomerId,
+            guestPhone: settlement.notification.guestPhone,
+            actorUserId: null,
+          });
+          await this.repository.markNotificationAttempted(settlement.notification.intentId);
+        } catch {
+          await this.repository.recordCallbackEvent({
+            integration,
+            paymentIntentId: settlement.notification.intentId,
+            idempotencyKey,
+            sessionIdHash,
+            mobileHash,
+            callHash,
+            rrnHash,
+            outcome: "FAILED",
+            errorCode: "NOTIFICATION_FAILED",
+          });
+        }
+      }
+      return "پرداخت تایید شد";
+    } catch {
+      return PAYMENT_FAILED_RESPONSE;
+    }
+  }
+}
+
+export const inotiUssdWorkflow = new InotiUssdWorkflow(prismaUssdIntegrationRepository, inotiUssdProvider, environmentInotiCredentialProvider);

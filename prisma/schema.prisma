@@ -28,6 +28,32 @@ enum OrganizationCapabilityStatus {
   INACTIVE
 }
 
+enum IntegrationProvider {
+  INOTI_USSD
+}
+
+enum OrganizationIntegrationStatus {
+  DRAFT
+  ACTIVE
+  DISABLED
+  REVOKED
+}
+
+enum UssdPaymentIntentStatus {
+  REQUESTED
+  VERIFYING
+  VERIFIED
+  SETTLED
+  REJECTED
+}
+
+enum UssdCallbackOutcome {
+  ACCEPTED
+  REJECTED
+  DUPLICATE
+  FAILED
+}
+
 enum OrganizationCollaborationStatus {
   PENDING
   ACTIVE
@@ -533,6 +559,9 @@ model Organization {
   // Relations
   members                      OrganizationMember[]
   capabilities                 OrganizationCapability[]
+  integrations                 OrganizationIntegration[]
+  ussdPaymentIntents           UssdPaymentIntent[]
+  ussdCallbackEvents           UssdCallbackEvent[]
   ownedCollaborations          OrganizationCollaboration[]   @relation("CollaborationOwner")
   partnerCollaborations        OrganizationCollaboration[]   @relation("CollaborationPartner")
   readyTimeHistory             OrderReadyTimeHistory[]
@@ -611,6 +640,32 @@ model OrganizationCapability {
   @@unique([organizationId, key])
   @@index([organizationId, status])
   @@index([key, status])
+}
+
+model OrganizationIntegration {
+  id                   String                        @id @default(cuid())
+  publicId             String                        @unique @default(uuid())
+  organizationId       String
+  provider             IntegrationProvider
+  status               OrganizationIntegrationStatus @default(DRAFT)
+  codeName             String
+  credentialProfileKey String?
+  configuration        Json?
+  callbackOrigin       String?
+  lastCallbackAt       DateTime?
+  disabledAt           DateTime?
+  revokedAt            DateTime?
+  createdAt            DateTime                      @default(now())
+  updatedAt            DateTime                      @updatedAt
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  paymentIntents UssdPaymentIntent[]
+  callbackEvents UssdCallbackEvent[]
+
+  @@unique([organizationId, provider])
+  @@unique([id, organizationId])
+  @@index([provider, status])
+  @@index([organizationId, status])
 }
 
 model OrganizationCollaboration {
@@ -1330,6 +1385,7 @@ model Order {
   items              OrderItem[]
   payment            Payment?
   paymentEvents      PaymentEvent[]
+  ussdPaymentIntents UssdPaymentIntent[]
   statusHistory      OrderStatusHistory[]
   readyTimeHistory   OrderReadyTimeHistory[]
   inventoryMovements InventoryMovement[]
@@ -1490,6 +1546,64 @@ model PaymentEvent {
   @@index([newStatus])
   @@index([createdAt])
   @@index([createdById])
+}
+
+model UssdPaymentIntent {
+  id                   String                  @id @default(cuid())
+  organizationId       String
+  integrationId        String
+  orderId              String
+  merchantFactorId     String                  @unique
+  amountRial           BigInt
+  sessionIdHash        String
+  mobileHash           String
+  mobileMasked         String
+  status               UssdPaymentIntentStatus @default(REQUESTED)
+  providerFactorId     String?
+  rrn                   String?
+  providerResult       String?
+  verifiedAt           DateTime?
+  settledAt            DateTime?
+  notificationAttemptedAt DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration  OrganizationIntegration @relation(fields: [integrationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  order        Order                   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  callbackEvents UssdCallbackEvent[]
+
+  @@unique([integrationId, orderId, sessionIdHash])
+  @@unique([id, integrationId, organizationId])
+  @@unique([integrationId, providerFactorId])
+  @@unique([integrationId, rrn])
+  @@index([organizationId, status, createdAt])
+  @@index([integrationId, status, createdAt])
+  @@index([orderId, status])
+}
+
+model UssdCallbackEvent {
+  id              String              @id @default(cuid())
+  organizationId  String
+  integrationId   String
+  paymentIntentId String?
+  idempotencyKey  String              @unique
+  sessionIdHash   String
+  mobileHash      String
+  callHash        String
+  rrnHash         String?
+  outcome         UssdCallbackOutcome
+  errorCode       String?
+  createdAt       DateTime            @default(now())
+
+  organization  Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration   OrganizationIntegration @relation(fields: [integrationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  paymentIntent UssdPaymentIntent?      @relation(fields: [paymentIntentId, integrationId, organizationId], references: [id, integrationId, organizationId], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([integrationId, createdAt])
+  @@index([paymentIntentId, createdAt])
+  @@index([outcome, createdAt])
 }
 
 model OrderStatusHistory {

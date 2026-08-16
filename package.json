@@ -27,6 +27,8 @@
     "smoke:deployed:audit": "node scripts/e2e/deployed-phase8-audit-softdelete-notifications.mjs",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
+    "db:migrate:local": "node scripts/db/guard-local-prisma-env.mjs -- pnpm exec prisma migrate deploy",
+    "test:local-prisma-env-guard": "node --test tests/unit/local-prisma-env-guard.test.mjs",
     "db:migrate": "prisma migrate deploy",
     "db:neon:check": "tsx scripts/ops/check-neon-runtime-connectivity.ts",
     "typecheck": "tsc --noEmit --incremental false",

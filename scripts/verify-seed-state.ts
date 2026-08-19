@@ -85,6 +85,7 @@ async function main() {
     ".tmp",
     `seed-state-${runLabel}.json`,
   );
+  fs.mkdirSync(".tmp", { recursive: true });
   fs.writeFileSync(outPath, JSON.stringify(snapshot, null, 2));
   console.log(`=== ${runLabel.toUpperCase()} ===`);
   console.log("organizationCount:", orgCount);

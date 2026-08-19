@@ -186,7 +186,7 @@ export default async function OrganizationLayout({ children, params }: Organizat
           profileHref: tenantHref("/"),
           servicesHref: organization.type === "APPOINTMENT" ? tenantHref("/services") : null,
           bookingHref: organization.type === "APPOINTMENT" ? tenantHref("/booking") : null,
-          poweredByHref: "https://www.bazar-baz.ir",
+          poweredByHref: "https://bazarbaaz.ir",
         }}
       />
     </div>

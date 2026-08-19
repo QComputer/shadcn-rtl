@@ -235,7 +235,7 @@ const organization = await prisma.organization.findFirst({
             homeHref: tenantHref("/"),
             profileHref: tenantHref("/profile"),
             cartHref: tenantHref("/checkout"),
-            poweredByHref: "https://www.bazar-baz.ir",
+            poweredByHref: "https://bazarbaaz.ir",
           }}
         />
       </div>

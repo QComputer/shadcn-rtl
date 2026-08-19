@@ -15,6 +15,7 @@ const DEFAULT_PLATFORM_HOSTS = [
   "bazar-baz.ir",
   "www.bazar-baz.ir",
   "shadcn-rtl.vercel.app",
+  "bazarbaaz.ir",
 ];
 
 function hostFromUrlLike(value: string | undefined | null) {
@@ -74,6 +75,46 @@ export function isPlatformHost(host: string | undefined | null) {
   const normalizedHost = normalizeDomainHost(host);
   if (!normalizedHost) return true;
   return getPlatformHosts().has(normalizedHost);
+}
+
+/**
+ * Canonical public platform domain. `bazarbaaz.ir` (and its `www.` variant,
+ * which normalizes to the apex) is a platform host and must never resolve to a
+ * tenant organization. `www.bazarbaaz.ir`, `bazar-baz.ir`, and `www.bazar-baz.ir`
+ * are non-canonical sources that redirect (308, preserving path/query) to the apex.
+ */
+export const CANONICAL_PLATFORM_HOST = "bazarbaaz.ir";
+
+const PLATFORM_CANONICAL_REDIRECT_SOURCES = new Set([
+  "www.bazarbaaz.ir",
+  "bazar-baz.ir",
+  "www.bazar-baz.ir",
+]);
+
+/**
+ * Returns the canonical platform origin (`https://bazarbaaz.ir`) when the
+ * supplied raw `Host` header is a non-canonical platform host (the `www.`
+ * variant or a legacy `bazar-baz.ir` host), or `null` when the host is already
+ * canonical, is not a canonicalization target, or is a tenant/custom domain.
+ *
+ * Callers issue a `308` redirect to the returned origin, preserving the original
+ * pathname and search. The apex canonical host always returns `null` to avoid a
+ * redirect loop.
+ */
+export function getPlatformCanonicalRedirectTarget(
+  rawHost: string | null | undefined,
+): string | null {
+  if (!rawHost) return null;
+
+  const hostname = rawHost.split(":")[0].replace(/\.$/, "").toLowerCase();
+
+  if (hostname === CANONICAL_PLATFORM_HOST) return null;
+
+  if (PLATFORM_CANONICAL_REDIRECT_SOURCES.has(hostname)) {
+    return `https://${CANONICAL_PLATFORM_HOST}`;
+  }
+
+  return null;
 }
 
 export function isSupportedCustomDomainLocale(value: string | undefined | null): value is CustomDomainLocale {

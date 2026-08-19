@@ -1,5 +1,6 @@
 import { PrismaClient, OrganizationType, UserRole, AppointmentStatus, CartStatus, OrderType, OrderStatus, PaymentStatus, PaymentMethod, DayOfWeek } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { seedSicilyMenu } from "./seed-data/sicily-menu";
 
 // Generate a unique sessionId
 function generateSessionId(name: string): string {
@@ -9,7 +10,11 @@ function generateSessionId(name: string): string {
 const prisma = new PrismaClient();
 const DEMO_PASSWORD = "123456";
 
-async function main() {
+interface SeedContext {
+  sicilyOrgId: string;
+}
+
+async function mainDev(): Promise<SeedContext> {
   console.log("🌱 Starting database seed...\n");
 
   // Clean existing data (in reverse order of dependencies)
@@ -2037,6 +2042,18 @@ async function main() {
   console.log(
     "\n📝 Note: Email is now optional. Users can authenticate using their unique username.",
   );
+
+  return { sicilyOrgId: sicily.id };
+}
+
+async function main() {
+  const context = await mainDev();
+
+  const sicilyOrg = await prisma.organization.findUniqueOrThrow({
+    where: { id: context.sicilyOrgId },
+  });
+
+  await seedSicilyMenu(prisma, sicilyOrg);
 }
 
 main()

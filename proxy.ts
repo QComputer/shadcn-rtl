@@ -3,6 +3,8 @@ import type { NextRequest } from "next/server";
 import {
   buildShopPlatformPath,
   buildTenantPublicPath,
+  getPlatformCanonicalRedirectTarget,
+  CANONICAL_PLATFORM_HOST,
   getShopSubPathFromPlatformPath,
   isCustomDomainApplicationPath,
   isCustomDomainBypassPath,
@@ -177,6 +179,15 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostHeader = request.headers.get("host") || request.nextUrl.host;
   const normalizedHost = normalizeDomainHost(hostHeader);
+
+  const canonicalRedirectTarget = getPlatformCanonicalRedirectTarget(hostHeader);
+  if (canonicalRedirectTarget) {
+    const canonicalUrl = request.nextUrl.clone();
+    canonicalUrl.protocol = "https:";
+    canonicalUrl.host = CANONICAL_PLATFORM_HOST;
+    canonicalUrl.port = "";
+    return withSecurityHeaders(NextResponse.redirect(canonicalUrl, 308));
+  }
 
   if (!isPlatformHost(normalizedHost) && pathname.startsWith("/api/auth")) {
     const requestHeaders = new Headers(request.headers);

@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "بازارباز - پلتفرم مدیریت کسب‌وکار ایرانی",
     description: "پلتفرم مدیریت کسب‌وکار ایرانی: فروشگاه، نوبت‌دهی، مشتریان، باشگاه مشتریان، پیامک، اعلان و داشبورد مدیریتی فارسی.",
-    url: "https://bazar-baz.ir",
+    url: "https://bazarbaaz.ir",
     siteName: "بازارباز",
     images: [
       {

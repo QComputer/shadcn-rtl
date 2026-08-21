@@ -17,6 +17,11 @@ import { requireTenantContext } from "@/lib/tenant-context";
 import { requireActiveOrganizationCapability } from "@/lib/organization-capabilities.server";
 import { isDashboardNavigationItemVisible } from "@/lib/dashboard/navigation-policy";
 import { evaluateOrganizationCollaborationGrant } from "@/lib/collaboration-grants";
+import {
+  listCustomerInteractions,
+  recordCustomerInteraction,
+  resolveCustomerIdentity,
+} from "@/lib/customer-identity/customer-identity.service";
 import { GET as getPublicShop } from "@/app/api/public/organizations/[slug]/shop/route";
 import { GET as getUploadedFile } from "@/app/uploads/[filename]/route";
 import { orderService } from "@/lib/services/order.service";
@@ -428,15 +433,91 @@ describe("explicit tenant context against the disposable local database", () => 
       assert.equal((await listBusinessEventsForOrganization({ organizationId: orgAId })).some((event) => event.id === businessEvent.id), true);
       assert.equal((await listBusinessEventsForOrganization({ organizationId: orgBId })).length, 0);
 
+      const customerIdentity = await resolveCustomerIdentity({
+        organizationId: orgAId,
+        phone: "+989121234567",
+        metadata: { source: "local-test" },
+      });
+      assert.equal(customerIdentity.organizationId, orgAId);
+      assert.equal(customerIdentity.phone, "09121234567");
+      const sameCustomerIdentity = await resolveCustomerIdentity({
+        organizationId: orgAId,
+        phone: "0912-123-4567",
+      });
+      assert.equal(sameCustomerIdentity.id, customerIdentity.id);
+      const otherTenantIdentity = await resolveCustomerIdentity({
+        organizationId: orgBId,
+        phone: "+989121234567",
+      });
+      assert.notEqual(otherTenantIdentity.id, customerIdentity.id);
+      assert.notEqual(otherTenantIdentity.phoneHash, customerIdentity.phoneHash);
+      await assert.rejects(
+        recordBusinessEvent({
+          organizationId: orgBId,
+          customerIdentityId: customerIdentity.id,
+          type: "CUSTOMER_CREATED",
+          payload: { source: "cross-tenant-customer" },
+        }),
+        (error: unknown) => error instanceof ApiError && error.status === 404,
+      );
+      const customerEvent = await recordBusinessEvent({
+        organizationId: orgAId,
+        integrationId: ussd.id,
+        customerIdentityId: customerIdentity.id,
+        type: "CUSTOMER_CREATED",
+        entityType: "CustomerIdentity",
+        entityId: customerIdentity.id,
+        payload: { source: "identity-foundation" },
+      });
+      assert.equal(customerEvent.customerIdentityId, customerIdentity.id);
+      const customerInteraction = await recordCustomerInteraction({
+        organizationId: orgAId,
+        customerIdentityId: customerIdentity.id,
+        integrationId: ussd.id,
+        businessEventId: customerEvent.id,
+        type: "CUSTOMER_CREATED",
+        entityType: "CustomerIdentity",
+        entityId: customerIdentity.id,
+        summary: "Customer identity resolved",
+        metadata: { source: "local-test" },
+      });
+      assert.equal(customerInteraction.customerIdentityId, customerIdentity.id);
+      assert.equal((await listCustomerInteractions({
+        organizationId: orgAId,
+        customerIdentityId: customerIdentity.id,
+      })).length, 1);
+      await assert.rejects(
+        listCustomerInteractions({
+          organizationId: orgBId,
+          customerIdentityId: customerIdentity.id,
+        }),
+        (error: unknown) => error instanceof ApiError && error.status === 404,
+      );
+      await assert.rejects(
+        resolveCustomerIdentity({
+          organizationId: orgAId,
+          phone: "+989121234568",
+          metadata: { accessToken: "must-not-be-stored" },
+        }),
+        /secret reference/,
+      );
+
       const ussdSession = await startUssdSession({
         organizationId: orgAId,
         integrationId: ussd.id,
         sessionIdHash: "a".repeat(64),
+        phone: "+989129999999",
         metadata: { serviceCode: "87788778" },
       });
       assert.equal(ussdSession.organizationId, orgAId);
       assert.equal(ussdSession.integrationId, ussd.id);
+      assert.ok(ussdSession.customerIdentityId);
       assert.equal(ussdSession.status, "STARTED");
+      const ussdCustomerInteractions = await listCustomerInteractions({
+        organizationId: orgAId,
+        customerIdentityId: ussdSession.customerIdentityId,
+      });
+      assert.equal(ussdCustomerInteractions.some((interaction) => interaction.type === "USSD_SESSION_STARTED"), true);
       await assert.rejects(
         startUssdSession({
           organizationId: orgBId,
@@ -514,8 +595,10 @@ describe("explicit tenant context against the disposable local database", () => 
       });
       assert.deepEqual(legacy.capabilityKeys, ["SHOP"]);
     } finally {
+      await prisma.customerInteraction.deleteMany({ where: { organizationId: { in: [orgAId, orgBId, zeroOrgId, legacyOrgId] } } });
       await prisma.businessEvent.deleteMany({ where: { organizationId: { in: [orgAId, orgBId, zeroOrgId, legacyOrgId] } } });
       await prisma.ussdSession.deleteMany({ where: { organizationId: { in: [orgAId, orgBId, zeroOrgId, legacyOrgId] } } });
+      await prisma.customerIdentity.deleteMany({ where: { organizationId: { in: [orgAId, orgBId, zeroOrgId, legacyOrgId] } } });
       await prisma.organizationIntegration.deleteMany({ where: { organizationId: { in: [orgAId, orgBId, zeroOrgId, legacyOrgId] } } });
       await prisma.organization.deleteMany({ where: { id: { in: [orgAId, orgBId, zeroOrgId, legacyOrgId] } } });
     }

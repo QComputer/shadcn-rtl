@@ -2,6 +2,7 @@ import "server-only";
 
 import type { Prisma } from "@prisma/client";
 import { ApiError } from "@/lib/api-guards";
+import { recordCustomerInteraction, resolveCustomerIdentity } from "@/lib/customer-identity/customer-identity.service";
 import prisma from "@/lib/db";
 import { recordBusinessEvent } from "@/lib/integrations/runtime/business-events";
 import { executeIntegrationRuntimeAction } from "@/lib/integrations/runtime/service";
@@ -17,8 +18,10 @@ export async function startUssdSession(input: {
   organizationId: string;
   integrationId: string;
   sessionIdHash: string;
+  customerIdentityId?: string | null;
   customerId?: string | null;
   guestCustomerId?: string | null;
+  phone?: string | null;
   metadata?: unknown;
 }) {
   assertHash(input.sessionIdHash);
@@ -40,6 +43,22 @@ export async function startUssdSession(input: {
     action: "USSD_SESSION_START",
   });
 
+  const customerIdentity = input.customerIdentityId
+    ? await prisma.customerIdentity.findFirst({
+        where: { id: input.customerIdentityId, organizationId: input.organizationId },
+        select: { id: true },
+      })
+    : input.phone || input.customerId || input.guestCustomerId
+      ? await resolveCustomerIdentity({
+          organizationId: input.organizationId,
+          userId: input.customerId,
+          guestCustomerId: input.guestCustomerId,
+          phone: input.phone,
+          metadata: { source: "ussd-session" },
+        })
+      : null;
+  if (input.customerIdentityId && !customerIdentity) throw new ApiError(404, "Customer identity not found");
+
   const metadata = sanitizeIntegrationConfig(input.metadata) as Prisma.InputJsonObject;
   const session = await prisma.ussdSession.upsert({
     where: {
@@ -51,6 +70,7 @@ export async function startUssdSession(input: {
     create: {
       organizationId: input.organizationId,
       integrationId: input.integrationId,
+      customerIdentityId: customerIdentity?.id ?? null,
       sessionIdHash: input.sessionIdHash,
       customerId: input.customerId ?? null,
       guestCustomerId: input.guestCustomerId ?? null,
@@ -60,14 +80,16 @@ export async function startUssdSession(input: {
     },
     update: {
       status: "ACTIVE",
+      customerIdentityId: customerIdentity?.id ?? undefined,
       lastSeenAt: new Date(),
       metadata,
     },
   });
 
-  await recordBusinessEvent({
+  const businessEvent = await recordBusinessEvent({
     organizationId: input.organizationId,
     integrationId: input.integrationId,
+    customerIdentityId: customerIdentity?.id ?? null,
     type: "USSD_SESSION_STARTED",
     entityType: "UssdSession",
     entityId: session.id,
@@ -78,6 +100,20 @@ export async function startUssdSession(input: {
     },
     metadata: { dryRun: true },
   });
+
+  if (customerIdentity) {
+    await recordCustomerInteraction({
+      organizationId: input.organizationId,
+      customerIdentityId: customerIdentity.id,
+      integrationId: input.integrationId,
+      businessEventId: businessEvent.id,
+      type: "USSD_SESSION_STARTED",
+      entityType: "UssdSession",
+      entityId: session.id,
+      summary: "USSD session started",
+      metadata: { dryRun: true },
+    });
+  }
 
   return session;
 }

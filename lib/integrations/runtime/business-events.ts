@@ -26,9 +26,19 @@ async function assertIntegrationBelongsToOrganization(organizationId: string, in
   if (!integration) throw new ApiError(404, "Integration not found");
 }
 
+async function assertCustomerIdentityBelongsToOrganization(organizationId: string, customerIdentityId?: string | null) {
+  if (!customerIdentityId) return;
+  const customerIdentity = await prisma.customerIdentity.findFirst({
+    where: { id: customerIdentityId, organizationId },
+    select: { id: true },
+  });
+  if (!customerIdentity) throw new ApiError(404, "Customer identity not found");
+}
+
 export async function recordBusinessEvent(input: {
   organizationId: string;
   integrationId?: string | null;
+  customerIdentityId?: string | null;
   type: BusinessEventType;
   dedupeKey?: string | null;
   entityType?: string | null;
@@ -39,11 +49,13 @@ export async function recordBusinessEvent(input: {
 }) {
   await assertOrganization(input.organizationId);
   await assertIntegrationBelongsToOrganization(input.organizationId, input.integrationId);
+  await assertCustomerIdentityBelongsToOrganization(input.organizationId, input.customerIdentityId);
 
   return prisma.businessEvent.create({
     data: {
       organizationId: input.organizationId,
       integrationId: input.integrationId ?? null,
+      customerIdentityId: input.customerIdentityId ?? null,
       type: input.type,
       dedupeKey: input.dedupeKey ?? null,
       entityType: input.entityType ?? null,

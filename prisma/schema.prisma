@@ -81,6 +81,22 @@ enum BusinessEventType {
   INTEGRATION_HEALTH_CHECKED
 }
 
+enum CustomerIdentityStatus {
+  ACTIVE
+  MERGED
+  ARCHIVED
+}
+
+enum CustomerInteractionType {
+  CUSTOMER_CREATED
+  ORDER_CREATED
+  APPOINTMENT_CREATED
+  USSD_SESSION_STARTED
+  PAYMENT_COMPLETED
+  CAMPAIGN_CLICKED
+  INTEGRATION_EVENT
+}
+
 enum UssdSessionStatus {
   STARTED
   ACTIVE
@@ -611,6 +627,8 @@ model Organization {
   capabilities                 OrganizationCapability[]
   integrations                 OrganizationIntegration[]
   businessEvents               BusinessEvent[]
+  customerIdentities           CustomerIdentity[]
+  customerInteractions         CustomerInteraction[]
   ussdSessions                 UssdSession[]
   ussdPaymentIntents           UssdPaymentIntent[]
   ussdCallbackEvents           UssdCallbackEvent[]
@@ -721,6 +739,7 @@ model OrganizationIntegration {
   organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   capabilities  OrganizationIntegrationCapability[]
   businessEvents BusinessEvent[]
+  customerInteractions CustomerInteraction[]
   ussdSessions  UssdSession[]
   paymentIntents UssdPaymentIntent[]
   callbackEvents UssdCallbackEvent[]
@@ -751,6 +770,7 @@ model BusinessEvent {
   publicId       String            @unique @default(uuid())
   organizationId String
   integrationId  String?
+  customerIdentityId String?
   type           BusinessEventType
   dedupeKey      String?
   entityType     String?
@@ -762,11 +782,71 @@ model BusinessEvent {
 
   organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   integration  OrganizationIntegration? @relation(fields: [integrationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  customerIdentity CustomerIdentity?    @relation(fields: [customerIdentityId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  customerInteractions CustomerInteraction[]
 
   @@unique([organizationId, dedupeKey])
   @@index([organizationId, type, occurredAt])
   @@index([integrationId, occurredAt])
+  @@index([customerIdentityId, occurredAt])
   @@index([entityType, entityId])
+}
+
+model CustomerIdentity {
+  id                  String                 @id @default(cuid())
+  publicId            String                 @unique @default(uuid())
+  organizationId      String
+  userId              String?
+  guestCustomerId     String?
+  phone               String?
+  phoneHash           String?
+  email               String?
+  externalIdentifiers Json?
+  metadata            Json?
+  status              CustomerIdentityStatus @default(ACTIVE)
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                 User?                 @relation("CustomerIdentityUser", fields: [userId], references: [id], onDelete: SetNull)
+  guestCustomer        GuestCustomer?        @relation(fields: [guestCustomerId], references: [id], onDelete: SetNull)
+  businessEvents       BusinessEvent[]
+  interactions         CustomerInteraction[]
+  ussdSessions         UssdSession[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, phoneHash])
+  @@unique([organizationId, email])
+  @@index([organizationId, status])
+  @@index([organizationId, updatedAt])
+  @@index([userId])
+  @@index([guestCustomerId])
+}
+
+model CustomerInteraction {
+  id                 String                  @id @default(cuid())
+  publicId           String                  @unique @default(uuid())
+  organizationId     String
+  customerIdentityId String
+  integrationId      String?
+  businessEventId    String?
+  type               CustomerInteractionType
+  entityType         String?
+  entityId           String?
+  summary            String?
+  metadata           Json?
+  occurredAt         DateTime                @default(now())
+  createdAt          DateTime                @default(now())
+
+  organization       Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customerIdentity   CustomerIdentity         @relation(fields: [customerIdentityId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  integration        OrganizationIntegration? @relation(fields: [integrationId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  businessEvent      BusinessEvent?           @relation(fields: [businessEventId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, customerIdentityId, occurredAt])
+  @@index([organizationId, type, occurredAt])
+  @@index([integrationId, occurredAt])
+  @@index([businessEventId])
 }
 
 model OrganizationCollaboration {
@@ -985,6 +1065,7 @@ model User {
   aiMediaUsageQuotes            AiMediaUsageQuote[]           @relation("AiMediaQuoteRequestedBy")
   aiMediaSpendHolds             AiMediaSpendHold[]            @relation("AiMediaSpendHoldRequestedBy")
   ussdSessions                  UssdSession[]                 @relation("UssdSessionCustomer")
+  customerIdentities            CustomerIdentity[]            @relation("CustomerIdentityUser")
 
   denies                          Deny[]
   orderMessages                   OrderMessage[]
@@ -1428,6 +1509,7 @@ model GuestCustomer {
   appointments Appointment[]
   orders       Order[]
   ussdSessions UssdSession[]
+  customerIdentities CustomerIdentity[]
 
   createdAt DateTime @default(now())
 
@@ -1656,6 +1738,7 @@ model UssdSession {
   publicId        String            @unique @default(uuid())
   organizationId  String
   integrationId   String
+  customerIdentityId String?
   sessionIdHash   String
   customerId      String?
   guestCustomerId String?
@@ -1670,12 +1753,14 @@ model UssdSession {
 
   organization  Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   integration   OrganizationIntegration @relation(fields: [integrationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  customerIdentity CustomerIdentity?    @relation(fields: [customerIdentityId, organizationId], references: [id, organizationId], onDelete: NoAction)
   customer      User?                   @relation("UssdSessionCustomer", fields: [customerId], references: [id], onDelete: SetNull)
   guestCustomer GuestCustomer?          @relation(fields: [guestCustomerId], references: [id], onDelete: SetNull)
 
   @@unique([integrationId, sessionIdHash])
   @@index([organizationId, status, lastSeenAt])
   @@index([integrationId, status, lastSeenAt])
+  @@index([customerIdentityId, lastSeenAt])
   @@index([customerId, lastSeenAt])
   @@index([guestCustomerId, lastSeenAt])
 }

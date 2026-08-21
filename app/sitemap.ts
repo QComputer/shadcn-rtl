@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import prisma from "@/lib/db";
 import { supportedLocales } from "@/lib/i18n";
 import { getCanonicalUrl } from "@/lib/seo";
+import { hasOrganizationCapability } from "@/lib/organization-capabilities";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         select: {
           slug: true,
           type: true,
+          capabilitiesInitializedAt: true,
+          capabilities: { select: { key: true, status: true } },
           updatedAt: true,
           domains: {
             where: { status: "ACTIVE", isPrimary: true },
@@ -49,7 +52,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           organization: {
             isActive: true,
             deletedAt: null,
-            type: "SHOP",
             domains: { none: { status: "ACTIVE", isPrimary: true } },
           },
           products: { some: { isActive: true, deletedAt: null } },
@@ -58,7 +60,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           id: true,
           slug: true,
           organizationSlug: true,
-          updatedAt: true,
+          updatedAt: true, organization: { select: { type: true, capabilitiesInitializedAt: true, capabilities: { select: { key: true, status: true } } } },
         },
         orderBy: { updatedAt: "desc" },
         take: 1000,
@@ -67,7 +69,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         where: {
           isActive: true,
           deletedAt: null,
-          organization: { isActive: true, deletedAt: null, type: "APPOINTMENT" },
+          organization: { isActive: true, deletedAt: null },
           services: { some: { isActive: true, deletedAt: null } },
         },
         select: {
@@ -75,7 +77,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           slug: true,
           updatedAt: true,
           organization: {
-            select: { slug: true },
+            select: { slug: true, type: true, capabilitiesInitializedAt: true, capabilities: { select: { key: true, status: true } } },
           },
         },
         orderBy: { updatedAt: "desc" },
@@ -88,7 +90,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           organization: {
             isActive: true,
             deletedAt: null,
-            type: "SHOP",
             domains: { none: { status: "ACTIVE", isPrimary: true } },
           },
         },
@@ -96,7 +97,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           id: true,
           slug: true,
           organizationSlug: true,
-          updatedAt: true,
+          updatedAt: true, organization: { select: { type: true, capabilitiesInitializedAt: true, capabilities: { select: { key: true, status: true } } } },
         },
         orderBy: { updatedAt: "desc" },
         take: 1000,
@@ -105,14 +106,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         where: {
           isActive: true,
           deletedAt: null,
-          organization: { isActive: true, deletedAt: null, type: "APPOINTMENT" },
+          organization: { isActive: true, deletedAt: null },
         },
         select: {
           id: true,
           slug: true,
           updatedAt: true,
           organization: {
-            select: { slug: true },
+            select: { slug: true, type: true, capabilitiesInitializedAt: true, capabilities: { select: { key: true, status: true } } },
           },
         },
         orderBy: { updatedAt: "desc" },
@@ -121,7 +122,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ]);
 
     for (const organization of organizations) {
-      if (organization.type === "SHOP") {
+      if (hasOrganizationCapability({ legacyType: organization.type, capabilitiesInitializedAt: organization.capabilitiesInitializedAt, capabilities: organization.capabilities }, "SHOP")) {
         // Shops with active primary custom domains publish their public SEO
         // surface through the tenant-domain sitemap. Keep them out of the
         // platform sitemap to avoid platform/custom-domain duplication.
@@ -137,7 +138,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }
       }
 
-      if (organization.type === "APPOINTMENT") {
+      if (hasOrganizationCapability({ legacyType: organization.type, capabilitiesInitializedAt: organization.capabilitiesInitializedAt, capabilities: organization.capabilities }, "APPOINTMENT")) {
         entries.push(
           ...localizedEntries((locale) => `/${locale}/appointment/${organization.slug}`, organization.updatedAt),
           ...localizedEntries((locale) => `/${locale}/appointment/${organization.slug}/services`, organization.updatedAt),
@@ -149,7 +150,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
     }
 
-    for (const category of productCategories) {
+    for (const category of productCategories.filter((item) => hasOrganizationCapability({ legacyType: item.organization.type, capabilitiesInitializedAt: item.organization.capabilitiesInitializedAt, capabilities: item.organization.capabilities }, "SHOP"))) {
       entries.push(
         ...localizedEntries(
           (locale) => `/${locale}/shop/${category.organizationSlug}/category/${category.slug || category.id}`,
@@ -158,7 +159,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       );
     }
 
-    for (const category of serviceCategories) {
+    for (const category of serviceCategories.filter((item) => hasOrganizationCapability({ legacyType: item.organization.type, capabilitiesInitializedAt: item.organization.capabilitiesInitializedAt, capabilities: item.organization.capabilities }, "APPOINTMENT"))) {
       entries.push(
         ...localizedEntries(
           (locale) => `/${locale}/appointment/${category.organization.slug}/services/category/${category.slug || category.id}`,
@@ -167,7 +168,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       );
     }
 
-    for (const product of products) {
+    for (const product of products.filter((item) => hasOrganizationCapability({ legacyType: item.organization.type, capabilitiesInitializedAt: item.organization.capabilitiesInitializedAt, capabilities: item.organization.capabilities }, "SHOP"))) {
       entries.push(
         ...localizedEntries(
           (locale) => `/${locale}/shop/${product.organizationSlug}/product/${product.slug || product.id}`,
@@ -176,7 +177,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       );
     }
 
-    for (const service of services) {
+    for (const service of services.filter((item) => hasOrganizationCapability({ legacyType: item.organization.type, capabilitiesInitializedAt: item.organization.capabilitiesInitializedAt, capabilities: item.organization.capabilities }, "APPOINTMENT"))) {
       entries.push(
         ...localizedEntries(
           (locale) => `/${locale}/appointment/${service.organization.slug}/services/${service.slug || service.id}`,

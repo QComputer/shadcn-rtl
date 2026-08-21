@@ -7,6 +7,7 @@ export type ResolvedCustomDomain = {
   locale: CustomDomainLocale;
   organizationId: string;
   organizationType: "SHOP" | "APPOINTMENT";
+  capabilities: Array<"SHOP" | "APPOINTMENT">;
 };
 
 const DEFAULT_PLATFORM_HOSTS = [

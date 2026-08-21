@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const organizationCapabilityKeys = ["SHOP", "APPOINTMENT"] as const;
+export const organizationCapabilityKeys = ["SHOP", "APPOINTMENT", "CRM", "USSD", "LOYALTY", "IAM", "ICV", "EBC", "SMS"] as const;
 export const collaborationScopeKeys = [
   "CUSTOMER_IDENTITY",
   "CUSTOMER_PROFILE",
@@ -13,7 +13,7 @@ export const collaborationScopeKeys = [
 
 export const replaceOrganizationCapabilitiesSchema = z.object({
   organizationId: z.string().cuid(),
-  capabilities: z.array(z.enum(organizationCapabilityKeys)).max(2),
+  capabilities: z.array(z.enum(organizationCapabilityKeys)).max(organizationCapabilityKeys.length),
 });
 
 export const createOrganizationCollaborationSchema = z.object({

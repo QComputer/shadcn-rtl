@@ -8,6 +8,7 @@ export type ResolvedCustomDomain = {
   locale: CustomDomainLocale;
   organizationId: string;
   organizationType: "SHOP" | "APPOINTMENT";
+  capabilities: Array<"SHOP" | "APPOINTMENT">;
 };
 
 function getResolverSecret() {

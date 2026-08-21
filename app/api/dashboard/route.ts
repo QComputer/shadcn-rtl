@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AppointmentStatus, OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { jsonError, requireAuthSession } from "@/lib/api-guards";
-import { effectiveOrganizationCapabilities } from "@/lib/organization-capabilities";
+import { organizationPublicRouteCapabilities, type PublicRouteCapability } from "@/lib/organization-capabilities";
 
 function startOfToday() {
   const today = new Date();
@@ -81,7 +81,7 @@ export async function GET(_request: NextRequest) {
     );
     const organization = membership?.organization ?? null;
     const organizationCapabilities = organization
-      ? effectiveOrganizationCapabilities({
+      ? organizationPublicRouteCapabilities({
           legacyType: organization.type,
           capabilitiesInitializedAt: organization.capabilitiesInitializedAt,
           capabilities: organization.capabilities,
@@ -130,7 +130,7 @@ type DashboardOrganization = NonNullable<Awaited<ReturnType<typeof getActiveMemb
 
 async function getOrganizationManagementDashboard(
   organization: DashboardOrganization,
-  capabilities: Array<"SHOP" | "APPOINTMENT">,
+  capabilities: PublicRouteCapability[],
 ) {
   if (capabilities.length === 0) {
     const totalMembers = await prisma.organizationMember.count({
@@ -170,7 +170,7 @@ async function getOrganizationManagementDashboard(
 
 async function getOrganizationStaffDashboard(
   organization: DashboardOrganization,
-  capabilities: Array<"SHOP" | "APPOINTMENT">,
+  capabilities: PublicRouteCapability[],
   userId: string,
 ) {
   if (capabilities.length === 0) {

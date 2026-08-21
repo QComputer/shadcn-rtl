@@ -53,10 +53,11 @@ import type {
 import { reimportResolutionDecisions, reviewableDraftStatuses } from "@/lib/import-hub/types"
 import type { ExternalImportSourceType, Prisma } from "@prisma/client"
 import { revalidatePath, revalidateTag } from "next/cache"
+import { hasOrganizationCapability } from "@/lib/organization-capabilities"
 
 const importJobInclude = {
   organization: {
-    select: { id: true, name: true, slug: true, type: true },
+    select: { id: true, name: true, slug: true, type: true, capabilitiesInitializedAt: true, capabilities: { select: { key: true, status: true } } },
   },
   source: {
     select: {
@@ -675,7 +676,7 @@ export class ImportHubService {
       select: {
         id: true,
         organizationId: true,
-        organization: { select: { id: true, slug: true, type: true } },
+        organization: { select: { id: true, slug: true, type: true, capabilitiesInitializedAt: true, capabilities: { select: { key: true, status: true } } } },
       },
     })
     if (!job) throw new ApiError(404, "Import job not found")
@@ -780,7 +781,11 @@ export class ImportHubService {
           })
         : []
 
-      if (productDrafts.length > 0 && job.organization.type !== "SHOP") {
+      if (productDrafts.length > 0 && !hasOrganizationCapability({
+        legacyType: job.organization.type,
+        capabilitiesInitializedAt: job.organization.capabilitiesInitializedAt,
+        capabilities: job.organization.capabilities,
+      }, "SHOP")) {
         throw new ApiError(400, "Product import publishing requires a shop organization")
       }
 

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { supportedLocales, type SupportedLocale } from "@/lib/i18n";
 import { toPersianDigits } from "@/lib/persian";
 import { cn } from "@/lib/utils";
+import { effectiveOrganizationCapabilities, type CapabilityRecord } from "@/lib/organization-capabilities";
 
 export const dynamic = "force-dynamic";
 
@@ -212,10 +213,10 @@ function buildQuery(params: Record<string, string | number | undefined>) {
   return text ? `?${text}` : "";
 }
 
-function publicOrganizationHref(locale: SupportedLocale, organization: { type: OrganizationType; slug: string }) {
-  return organization.type === "SHOP"
-    ? `/${locale}/shop/${organization.slug}`
-    : `/${locale}/appointment/${organization.slug}`;
+export function publicOrganizationHref(locale: SupportedLocale, organization: { type: OrganizationType; slug: string; capabilitiesInitializedAt?: Date | null; capabilities?: CapabilityRecord[] }) {
+  const capabilities = effectiveOrganizationCapabilities({ legacyType: organization.type, capabilitiesInitializedAt: organization.capabilitiesInitializedAt, capabilities: organization.capabilities });
+  if (capabilities.length !== 1) return `/${locale}/organization/${organization.slug}`;
+  return capabilities[0] === "SHOP" ? `/${locale}/shop/${organization.slug}` : `/${locale}/appointment/${organization.slug}`;
 }
 
 function statusBadgeClass(isActive: boolean) {
@@ -310,6 +311,8 @@ export default async function OrganizationsPage({
         name: true,
         slug: true,
         type: true,
+        capabilitiesInitializedAt: true,
+        capabilities: { select: { key: true, status: true } },
         description: true,
         address: true,
         phone: true,

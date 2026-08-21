@@ -12,6 +12,7 @@ import {
 } from "@/lib/vercel-domain-automation";
 import { customDomainLocales } from "@/lib/custom-domain-routing";
 import { revalidatePath } from "next/cache";
+import { organizationPublicRouteCapabilities, type CapabilityRecord } from "@/lib/organization-capabilities";
 
 const organizationDomainActionSchema = z.object({
   action: z.enum(["add", "check", "remove"]),
@@ -50,12 +51,14 @@ function domainUpdateFromVercelResult(result: VercelDomainAutomationResult) {
   };
 }
 
-function revalidateOrganizationPublicPaths(organization: { slug: string; type: string }) {
-  const section = organization.type === "APPOINTMENT" ? "appointment" : "shop";
-  revalidatePath(`/${section}/${organization.slug}`);
+function revalidateOrganizationPublicPaths(organization: { slug: string; type: "SHOP" | "APPOINTMENT"; capabilitiesInitializedAt: Date | null; capabilities: CapabilityRecord[] }) {
+  const capabilities = organizationPublicRouteCapabilities({ legacyType: organization.type, capabilitiesInitializedAt: organization.capabilitiesInitializedAt, capabilities: organization.capabilities });
+  revalidatePath(`/organization/${organization.slug}`);
+  for (const capability of capabilities) revalidatePath(`/${capability === "SHOP" ? "shop" : "appointment"}/${organization.slug}`);
 
   for (const locale of customDomainLocales) {
-    revalidatePath(`/${locale}/${section}/${organization.slug}`);
+    revalidatePath(`/${locale}/organization/${organization.slug}`);
+    for (const capability of capabilities) revalidatePath(`/${locale}/${capability === "SHOP" ? "shop" : "appointment"}/${organization.slug}`);
   }
 }
 
@@ -82,7 +85,7 @@ export async function POST(
       data: domainUpdateFromVercelResult(vercel),
       include: {
         organization: {
-          select: { id: true, name: true, slug: true, type: true, isActive: true },
+          select: { id: true, name: true, slug: true, type: true, capabilitiesInitializedAt: true, capabilities: { select: { key: true, status: true } }, isActive: true },
         },
       },
     });

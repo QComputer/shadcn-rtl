@@ -21,6 +21,9 @@ import {
 import { evaluateOrganizationCollaborationGrant } from "@/lib/collaboration-grants";
 import { normalizePushOrigin } from "@/lib/push-origin";
 import { buildMinimalWebPushPayload } from "@/lib/push-payload";
+import { resolveActiveTenantForHost } from "@/lib/domains/domain-resolver.server";
+import { isPlatformHost } from "@/lib/custom-domain-routing";
+import { publicOrganizationHref } from "@/app/[locale]/dashboard/organizations/page";
 
 describe("organization capability compatibility", () => {
   it("falls back to the legacy type only before capability initialization", () => {
@@ -50,6 +53,39 @@ describe("organization capability compatibility", () => {
       ...organization,
       capabilities: [{ key: "SHOP", status: "INACTIVE" }],
     }), []);
+  });
+});
+
+describe("custom-domain capability resolution", () => {
+  it("returns every active capability instead of choosing a legacy organization type", async () => {
+    const tenant = await resolveActiveTenantForHost({
+      organizationDomain: { findUnique: async () => ({
+        status: "ACTIVE",
+        organization: {
+          id: "mixed-org", slug: "mixed-demo", locale: "fa", type: "SHOP",
+          isActive: true, deletedAt: null, capabilitiesInitializedAt: new Date(),
+          capabilities: [{ key: "SHOP", status: "ACTIVE" }, { key: "APPOINTMENT", status: "ACTIVE" }],
+        },
+      }) },
+    }, "mixed-demo.ir");
+    assert.deepEqual(tenant?.capabilities, ["SHOP", "APPOINTMENT"]);
+  });
+
+  it("keeps bazarbaaz.ir outside organization-domain resolution", () => {
+    assert.equal(isPlatformHost("bazarbaaz.ir"), true);
+  });
+});
+
+describe("dashboard public organization destinations", () => {
+  const base = { slug: "demo", type: "SHOP" as const };
+  it("routes zero and mixed capability organizations to their shell", () => {
+    assert.equal(publicOrganizationHref("fa", { ...base, capabilitiesInitializedAt: new Date(), capabilities: [] }), "/fa/organization/demo");
+    assert.equal(publicOrganizationHref("fa", { ...base, capabilitiesInitializedAt: new Date(), capabilities: [{ key: "SHOP", status: "ACTIVE" }, { key: "APPOINTMENT", status: "ACTIVE" }] }), "/fa/organization/demo");
+  });
+  it("routes one enabled capability and preserves legacy fallback", () => {
+    assert.equal(publicOrganizationHref("fa", { ...base, capabilitiesInitializedAt: new Date(), capabilities: [{ key: "SHOP", status: "ACTIVE" }] }), "/fa/shop/demo");
+    assert.equal(publicOrganizationHref("fa", { ...base, type: "APPOINTMENT", capabilitiesInitializedAt: new Date(), capabilities: [{ key: "APPOINTMENT", status: "ACTIVE" }] }), "/fa/appointment/demo");
+    assert.equal(publicOrganizationHref("fa", { ...base }), "/fa/shop/demo");
   });
 });
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ApiError, jsonError, requireAuthSession } from "@/lib/api-guards";
 import prisma from "@/lib/db";
 import { requireTenantContext } from "@/lib/tenant-context";
-import { replaceOrganizationCapabilitiesSchema } from "@/lib/validators/tenant-platform";
+import { organizationCapabilityKeys, replaceOrganizationCapabilitiesSchema } from "@/lib/validators/tenant-platform";
 
 export async function GET(
   _request: NextRequest,
@@ -47,7 +47,7 @@ export async function PUT(
     const requested = new Set(parsed.data.capabilities);
     const result = await prisma.$transaction(async (tx) => {
       const previous = await tx.organizationCapability.findMany({ where: { organizationId: id } });
-      for (const key of ["SHOP", "APPOINTMENT"] as const) {
+      for (const key of organizationCapabilityKeys) {
         const active = requested.has(key);
         await tx.organizationCapability.upsert({
           where: { organizationId_key: { organizationId: id, key } },
@@ -70,7 +70,9 @@ export async function PUT(
         where: { id },
         data: {
           capabilitiesInitializedAt: new Date(),
-          ...(parsed.data.capabilities[0] ? { type: parsed.data.capabilities[0] } : {}),
+          ...(parsed.data.capabilities.find((key) => key === "SHOP" || key === "APPOINTMENT")
+            ? { type: parsed.data.capabilities.find((key) => key === "SHOP" || key === "APPOINTMENT") }
+            : {}),
         },
         select: { id: true, slug: true },
       });

@@ -21,6 +21,13 @@ enum OrganizationType {
 enum OrganizationCapabilityKey {
   SHOP
   APPOINTMENT
+  CRM
+  USSD
+  LOYALTY
+  IAM
+  ICV
+  EBC
+  SMS
 }
 
 enum OrganizationCapabilityStatus {
@@ -30,6 +37,24 @@ enum OrganizationCapabilityStatus {
 
 enum IntegrationProvider {
   INOTI_USSD
+  INOTI_IMENU
+  INOTI_ICV
+  INOTI_IAM
+  INOTI_EBC
+  PAYMENT
+  SMS
+  OTHER
+}
+
+enum IntegrationType {
+  IMENU
+  ICV
+  IAM
+  EBC
+  USSD
+  PAYMENT
+  SMS
+  OTHER
 }
 
 enum OrganizationIntegrationStatus {
@@ -647,8 +672,11 @@ model OrganizationIntegration {
   publicId             String                        @unique @default(uuid())
   organizationId       String
   provider             IntegrationProvider
+  type                 IntegrationType               @default(USSD)
   status               OrganizationIntegrationStatus @default(DRAFT)
   codeName             String
+  displayName          String?
+  externalAccountId    String?
   credentialProfileKey String?
   configuration        Json?
   callbackOrigin       String?
@@ -659,13 +687,29 @@ model OrganizationIntegration {
   updatedAt            DateTime                      @updatedAt
 
   organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  capabilities  OrganizationIntegrationCapability[]
   paymentIntents UssdPaymentIntent[]
   callbackEvents UssdCallbackEvent[]
 
   @@unique([organizationId, provider])
   @@unique([id, organizationId])
+  @@index([type, status])
   @@index([provider, status])
   @@index([organizationId, status])
+}
+
+model OrganizationIntegrationCapability {
+  id             String                       @id @default(cuid())
+  organizationId String
+  integrationId  String
+  capabilityKey  OrganizationCapabilityKey
+  createdAt      DateTime                     @default(now())
+  updatedAt      DateTime                     @updatedAt
+
+  integration OrganizationIntegration @relation(fields: [integrationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([integrationId, capabilityKey])
+  @@index([organizationId, capabilityKey])
 }
 
 model OrganizationCollaboration {

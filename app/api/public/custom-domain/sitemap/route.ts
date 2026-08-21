@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { buildTenantPublicPath, customDomainLocales, normalizeDomainHost } from "@/lib/custom-domain-routing";
 import { getCanonicalUrl } from "@/lib/seo";
+import { hasOrganizationCapability } from "@/lib/organization-capabilities";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +77,8 @@ export async function GET(request: Request) {
           id: true,
           slug: true,
           type: true,
+          capabilitiesInitializedAt: true,
+          capabilities: { select: { key: true, status: true } },
           isActive: true,
           deletedAt: true,
           updatedAt: true,
@@ -109,7 +112,11 @@ export async function GET(request: Request) {
   if (
     !domain ||
     domain.status !== "ACTIVE" ||
-    domain.organization.type !== "SHOP" ||
+    !hasOrganizationCapability({
+      legacyType: domain.organization.type,
+      capabilitiesInitializedAt: domain.organization.capabilitiesInitializedAt,
+      capabilities: domain.organization.capabilities,
+    }, "SHOP") ||
     !domain.organization.isActive ||
     domain.organization.deletedAt
   ) {

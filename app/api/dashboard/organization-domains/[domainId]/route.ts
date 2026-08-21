@@ -5,6 +5,7 @@ import { writeAuditLog } from "@/lib/audit-log";
 import { ApiError, jsonError, requireAuthSession, requireOrgAccess } from "@/lib/api-guards";
 import { customDomainLocales } from "@/lib/custom-domain-routing";
 import { revalidatePath } from "next/cache";
+import { organizationPublicRouteCapabilities, type CapabilityRecord } from "@/lib/organization-capabilities";
 
 const updateDomainStatusSchema = z.object({
   status: z.enum(["DISABLED"]).optional(),
@@ -30,12 +31,14 @@ function parseError(error: unknown) {
   return jsonError(error, "Failed to update domain status");
 }
 
-function revalidateOrganizationPublicPaths(organization: { slug: string; type: string }) {
-  const section = organization.type === "APPOINTMENT" ? "appointment" : "shop";
-  revalidatePath(`/${section}/${organization.slug}`);
+function revalidateOrganizationPublicPaths(organization: { slug: string; type: "SHOP" | "APPOINTMENT"; capabilitiesInitializedAt: Date | null; capabilities: CapabilityRecord[] }) {
+  revalidatePath(`/organization/${organization.slug}`);
+  const capabilities = organizationPublicRouteCapabilities({ legacyType: organization.type, capabilitiesInitializedAt: organization.capabilitiesInitializedAt, capabilities: organization.capabilities });
+  for (const section of capabilities.map((capability) => capability === "SHOP" ? "shop" : "appointment")) revalidatePath(`/${section}/${organization.slug}`);
 
   for (const locale of customDomainLocales) {
-    revalidatePath(`/${locale}/${section}/${organization.slug}`);
+    revalidatePath(`/${locale}/organization/${organization.slug}`);
+    for (const section of capabilities.map((capability) => capability === "SHOP" ? "shop" : "appointment")) revalidatePath(`/${locale}/${section}/${organization.slug}`);
   }
 }
 
@@ -78,7 +81,7 @@ export async function PATCH(
           },
           include: {
             organization: {
-              select: { id: true, name: true, slug: true, type: true, isActive: true },
+              select: { id: true, name: true, slug: true, type: true, capabilitiesInitializedAt: true, capabilities: { select: { key: true, status: true } }, isActive: true },
             },
           },
         });
@@ -94,7 +97,7 @@ export async function PATCH(
         },
         include: {
           organization: {
-            select: { id: true, name: true, slug: true, type: true, isActive: true },
+            select: { id: true, name: true, slug: true, type: true, capabilitiesInitializedAt: true, capabilities: { select: { key: true, status: true } }, isActive: true },
           },
         },
       });

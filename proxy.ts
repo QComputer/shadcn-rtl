@@ -151,13 +151,11 @@ function buildTenantRewriteHeaders(
   requestHeaders.set("x-bazar-tenant-slug", tenant.slug);
   requestHeaders.set("x-bazar-tenant-organization-id", tenant.organizationId);
   requestHeaders.set("x-bazar-tenant-organization-type", tenant.organizationType);
+  requestHeaders.set("x-bazar-tenant-capabilities", tenant.capabilities.join(","));
   requestHeaders.set("x-bazar-tenant-public-base-url", getRequestOrigin(request));
   requestHeaders.set("x-bazar-tenant-public-locale", locale);
   requestHeaders.set("x-bazar-tenant-public-path", publicPath);
-  requestHeaders.set(
-    "x-bazar-public-footer-context",
-    tenant.organizationType === "SHOP" ? "shop" : "service",
-  );
+  requestHeaders.set("x-bazar-public-footer-context", "none");
   return requestHeaders;
 }
 
@@ -250,7 +248,56 @@ export async function proxy(request: NextRequest) {
       return withSecurityHeaders(NextResponse.rewrite(internalUrl, { request: { headers: requestHeaders } }));
     }
 
-    if (tenant.organizationType === "SHOP") {
+    const splitPath = splitLocalePrefix(pathname);
+    const locale = splitPath.locale || defaultLocale;
+    const tenantHomeUrl = request.nextUrl.clone();
+    const requestHeaders = buildTenantRewriteHeaders(
+      request,
+      normalizedHost,
+      tenant,
+      locale,
+      buildTenantPublicPath(locale, splitPath.pathnameWithoutLocale),
+    );
+
+    if (splitPath.pathnameWithoutLocale === "/") {
+      tenantHomeUrl.pathname = `/${locale}/organization/${tenant.slug}`;
+      const response = NextResponse.rewrite(tenantHomeUrl, { request: { headers: requestHeaders } });
+      response.headers.set("x-locale", locale);
+      response.headers.set("x-direction", localeConfig[locale].dir);
+      return withSecurityHeaders(response);
+    }
+
+    if (splitPath.pathnameWithoutLocale === "/shop" || splitPath.pathnameWithoutLocale.startsWith("/shop/")) {
+      if (!tenant.capabilities.includes("SHOP")) {
+        const unavailableUrl = request.nextUrl.clone();
+        unavailableUrl.pathname = `/${locale}/not-found`;
+        return withSecurityHeaders(NextResponse.rewrite(unavailableUrl, { request: { headers: requestHeaders } }));
+      }
+      const rewrittenUrl = request.nextUrl.clone();
+      rewrittenUrl.pathname = buildShopPlatformPath({
+        locale,
+        slug: tenant.slug,
+        publicPathname: splitPath.pathnameWithoutLocale.slice("/shop".length) || "/",
+      });
+      return withSecurityHeaders(NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } }));
+    }
+
+    if (["/services", "/booking", "/my-appointments", "/staff", "/appointment"].some((prefix) =>
+      splitPath.pathnameWithoutLocale === prefix || splitPath.pathnameWithoutLocale.startsWith(`${prefix}/`),
+    )) {
+      if (!tenant.capabilities.includes("APPOINTMENT")) {
+        const unavailableUrl = request.nextUrl.clone();
+        unavailableUrl.pathname = `/${locale}/not-found`;
+        return withSecurityHeaders(NextResponse.rewrite(unavailableUrl, { request: { headers: requestHeaders } }));
+      }
+      const rewrittenUrl = request.nextUrl.clone();
+      rewrittenUrl.pathname = `/${locale}/appointment/${tenant.slug}${splitPath.pathnameWithoutLocale}`;
+      return withSecurityHeaders(NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } }));
+    }
+
+    // Preserve indexed shop URLs such as /product/* and /category/* on existing
+    // custom domains while making / the organization-level home.
+    if (tenant.capabilities.includes("SHOP")) {
       const platformPath = getShopSubPathFromPlatformPath(pathname, tenant.slug);
       if (platformPath) {
         const cleanUrl = request.nextUrl.clone();
@@ -258,8 +305,6 @@ export async function proxy(request: NextRequest) {
         return withSecurityHeaders(NextResponse.redirect(cleanUrl, 308));
       }
 
-      const splitPath = splitLocalePrefix(pathname);
-      const locale = splitPath.locale || defaultLocale;
       const rewrittenUrl = request.nextUrl.clone();
       rewrittenUrl.pathname = buildShopPlatformPath({
         locale,
@@ -281,34 +326,6 @@ export async function proxy(request: NextRequest) {
       response.headers.set("x-locale", locale);
       response.headers.set("x-direction", localeConfig[locale].dir);
       response.cookies.set("locale", locale, {
-        path: "/",
-        maxAge: 60 * 60 * 24 * 365,
-        httpOnly: false,
-      });
-      return withSecurityHeaders(response);
-    }
-
-    if (tenant.organizationType === "APPOINTMENT") {
-      const appointmentBasePath = `/${tenantPathLocale || defaultLocale}/appointment/${tenant.slug}`;
-      const publicPath = buildTenantPublicPath(tenantPathLocale || defaultLocale, pathname);
-
-      const rewrittenUrl = request.nextUrl.clone();
-      rewrittenUrl.pathname = `${appointmentBasePath}/${pathname.split("/").filter(Boolean).slice(1).join("/") || ""}`.replace(/\/$/, "") || "/";
-
-      const requestHeaders = buildTenantRewriteHeaders(
-        request,
-        normalizedHost,
-        tenant,
-        tenantPathLocale || defaultLocale,
-        publicPath,
-      );
-
-      const response = NextResponse.rewrite(rewrittenUrl, {
-        request: { headers: requestHeaders },
-      });
-      response.headers.set("x-locale", tenantPathLocale || defaultLocale);
-      response.headers.set("x-direction", localeConfig[tenantPathLocale || defaultLocale].dir);
-      response.cookies.set("locale", tenantPathLocale || defaultLocale, {
         path: "/",
         maxAge: 60 * 60 * 24 * 365,
         httpOnly: false,

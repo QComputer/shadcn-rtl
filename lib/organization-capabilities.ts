@@ -9,6 +9,8 @@ export type CapabilityRecord = {
   status: OrganizationCapabilityStatus;
 };
 
+export type PublicRouteCapability = Extract<OrganizationCapabilityKey, "SHOP" | "APPOINTMENT">;
+
 export function effectiveOrganizationCapabilities(input: {
   legacyType: OrganizationType;
   capabilitiesInitializedAt?: Date | string | null;
@@ -32,9 +34,18 @@ export function hasOrganizationCapability(
   return effectiveOrganizationCapabilities(input).includes(capability);
 }
 
+export function organizationPublicRouteCapabilities(
+  input: Parameters<typeof effectiveOrganizationCapabilities>[0],
+): PublicRouteCapability[] {
+  return effectiveOrganizationCapabilities(input).filter(
+    (capability): capability is PublicRouteCapability => capability === "SHOP" || capability === "APPOINTMENT",
+  );
+}
+
 export function legacyTypeForCapabilities(
   capabilities: OrganizationCapabilityKey[],
   fallback: OrganizationType = "SHOP",
 ): OrganizationType {
-  return capabilities[0] ?? fallback;
+  const legacy = capabilities.find((capability) => capability === "SHOP" || capability === "APPOINTMENT");
+  return legacy ?? fallback;
 }

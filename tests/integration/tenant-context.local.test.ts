@@ -21,6 +21,13 @@ import { GET as getPublicShop } from "@/app/api/public/organizations/[slug]/shop
 import { GET as getUploadedFile } from "@/app/uploads/[filename]/route";
 import { orderService } from "@/lib/services/order.service";
 import { appointmentService } from "@/lib/services/appointment.service";
+import {
+  createOrganizationIntegration,
+  getOrganizationIntegration,
+  listOrganizationIntegrations,
+  sanitizeIntegrationConfig,
+  updateOrganizationIntegrationStatus,
+} from "@/lib/integrations/organization-integrations";
 
 const localDatabaseUrl = new URL(process.env.DATABASE_URL ?? "https://missing.invalid");
 assert.ok(
@@ -99,15 +106,23 @@ describe("explicit tenant context against the disposable local database", () => 
     }
   });
 
-  it("has backfilled every demo tenant into explicit capability mode", async () => {
+  it("seeds explicit zero, single, and mixed capability organization states", async () => {
     const organizations = await prisma.organization.findMany({
       select: { id: true, capabilitiesInitializedAt: true, capabilities: { where: { status: "ACTIVE" } } },
     });
     assert.ok(organizations.length > 0);
     for (const organization of organizations) {
       assert.ok(organization.capabilitiesInitializedAt);
-      assert.equal(organization.capabilities.length, 1);
     }
+    const bySlug = await prisma.organization.findMany({
+      where: { slug: { in: ["zero-capability-demo", "mixed-capability-demo", "sicily", "tikal"] } },
+      select: { slug: true, capabilities: { where: { status: "ACTIVE" }, select: { key: true } } },
+    });
+    const capabilities = new Map(bySlug.map((organization) => [organization.slug, organization.capabilities.map((item) => item.key).sort()]));
+    assert.deepEqual(capabilities.get("zero-capability-demo"), []);
+    assert.deepEqual(capabilities.get("sicily"), ["SHOP"]);
+    assert.deepEqual(capabilities.get("tikal"), ["APPOINTMENT"]);
+    assert.deepEqual(capabilities.get("mixed-capability-demo"), ["APPOINTMENT", "SHOP"]);
   });
 
   it("rejects URL, query, body, and resource tenant overrides even when the user belongs to both organizations", async () => {
@@ -314,5 +329,117 @@ describe("explicit tenant context against the disposable local database", () => 
       scope: "ORDER_VISIBILITY",
       access: "READ",
     }), false);
+  });
+
+  it("manages organization integrations by capability and tenant boundary", async () => {
+    const orgAId = fixtureId("integration_org_a");
+    const orgBId = fixtureId("integration_org_b");
+    const zeroOrgId = fixtureId("integration_zero");
+    const legacyOrgId = fixtureId("integration_legacy");
+    const slugA = fixtureId("integration-a").toLowerCase();
+    const slugB = fixtureId("integration-b").toLowerCase();
+    const zeroSlug = fixtureId("integration-zero").toLowerCase();
+    const legacySlug = fixtureId("integration-legacy").toLowerCase();
+    await prisma.organization.createMany({ data: [
+      { id: orgAId, name: "Integration Tenant A", slug: slugA, type: "SHOP", capabilitiesInitializedAt: new Date() },
+      { id: orgBId, name: "Integration Tenant B", slug: slugB, type: "APPOINTMENT", capabilitiesInitializedAt: new Date() },
+      { id: zeroOrgId, name: "Integration Zero", slug: zeroSlug, type: "SHOP", capabilitiesInitializedAt: new Date() },
+      { id: legacyOrgId, name: "Integration Legacy", slug: legacySlug, type: "SHOP" },
+    ] });
+    await prisma.organizationCapability.createMany({ data: [
+      { id: fixtureId("integration_shop"), organizationId: orgAId, key: "SHOP", status: "ACTIVE", enabledAt: new Date() },
+      { id: fixtureId("integration_ussd"), organizationId: orgAId, key: "USSD", status: "ACTIVE", enabledAt: new Date() },
+      { id: fixtureId("integration_crm"), organizationId: orgAId, key: "CRM", status: "ACTIVE", enabledAt: new Date() },
+      { id: fixtureId("integration_ebc"), organizationId: orgAId, key: "EBC", status: "ACTIVE", enabledAt: new Date() },
+      { id: fixtureId("integration_appointment"), organizationId: orgBId, key: "APPOINTMENT", status: "ACTIVE", enabledAt: new Date() },
+    ] });
+
+    try {
+      assert.throws(
+        () => sanitizeIntegrationConfig({ publicCode: "ok", apiKey: "must-not-be-stored" }),
+        /secret reference/,
+      );
+
+      const imenu = await createOrganizationIntegration({
+        organizationId: orgAId,
+        provider: "INOTI_IMENU",
+        codeName: "imenu-alpha",
+        configuration: { publicCode: "menu-alpha" },
+      });
+      assert.equal(imenu.type, "IMENU");
+      assert.deepEqual(imenu.capabilityKeys, ["SHOP"]);
+      assert.equal(imenu.configuration.publicCode, "menu-alpha");
+      assert.equal(imenu.secret.configured, false);
+
+      const ussd = await createOrganizationIntegration({
+        organizationId: orgAId,
+        provider: "INOTI_USSD",
+        status: "ACTIVE",
+        codeName: "ussd_alpha",
+        credentialProfileKey: "INOTI_DEFAULT",
+        capabilityKeys: ["USSD"],
+        configuration: { serviceCode: "87788778" },
+      });
+      assert.equal(ussd.type, "USSD");
+      assert.deepEqual(ussd.capabilityKeys, ["USSD"]);
+      assert.equal(ussd.secret.configured, true);
+
+      const ebc = await createOrganizationIntegration({
+        organizationId: orgAId,
+        provider: "INOTI_EBC",
+        codeName: "ebc-alpha",
+      });
+      assert.equal(ebc.type, "EBC");
+      assert.deepEqual(ebc.capabilityKeys, ["CRM", "EBC"]);
+
+      assert.equal((await listOrganizationIntegrations(orgAId)).length, 3);
+      assert.equal((await listOrganizationIntegrations(orgBId)).length, 0);
+      await assert.rejects(
+        getOrganizationIntegration({ organizationId: orgBId, integrationId: imenu.id }),
+        (error: unknown) => error instanceof ApiError && error.status === 404,
+      );
+
+      const disabled = await updateOrganizationIntegrationStatus({
+        organizationId: orgAId,
+        integrationId: imenu.id,
+        status: "DISABLED",
+      });
+      assert.equal(disabled.status, "DISABLED");
+      assert.ok(disabled.disabledAt);
+      const enabled = await updateOrganizationIntegrationStatus({
+        organizationId: orgAId,
+        integrationId: imenu.id,
+        status: "ACTIVE",
+      });
+      assert.equal(enabled.status, "ACTIVE");
+      assert.equal(enabled.disabledAt, null);
+
+      await assert.rejects(
+        createOrganizationIntegration({
+          organizationId: orgBId,
+          provider: "INOTI_IMENU",
+          codeName: "imenu-denied",
+        }),
+        (error: unknown) => error instanceof ApiError && error.status === 409,
+      );
+      await assert.rejects(
+        createOrganizationIntegration({
+          organizationId: zeroOrgId,
+          provider: "INOTI_USSD",
+          codeName: "ussd-denied",
+        }),
+        (error: unknown) => error instanceof ApiError && error.status === 409,
+      );
+
+      const legacy = await createOrganizationIntegration({
+        organizationId: legacyOrgId,
+        provider: "INOTI_IMENU",
+        codeName: "legacy-imenu",
+      });
+      assert.deepEqual(legacy.capabilityKeys, ["SHOP"]);
+    } finally {
+      await prisma.organizationIntegration.deleteMany({ where: { organizationId: { in: [orgAId, orgBId, zeroOrgId, legacyOrgId] } } });
+      await prisma.organization.deleteMany({ where: { id: { in: [orgAId, orgBId, zeroOrgId, legacyOrgId] } } });
+    }
   });
 });

@@ -4,6 +4,7 @@ import { writeAuditLog } from "@/lib/audit-log";
 import { ApiError, jsonError, requireAuthSession } from "@/lib/api-guards";
 import { prisma } from "@/lib/db";
 import { requireSuperAdmin, vercelShopDomainActionSchema } from "@/lib/shop-domain-admin";
+import { hasOrganizationCapability } from "@/lib/organization-capabilities";
 import {
   addProjectDomainToVercel,
   removeProjectDomainFromVercel,
@@ -70,6 +71,8 @@ export async function POST(
             name: true,
             slug: true,
             type: true,
+            capabilitiesInitializedAt: true,
+            capabilities: { select: { key: true, status: true } },
             isActive: true,
           },
         },
@@ -80,7 +83,7 @@ export async function POST(
       throw new ApiError(404, "Custom domain not found");
     }
 
-    if (existing.organization.type !== "SHOP") {
+    if (!hasOrganizationCapability({ legacyType: existing.organization.type, capabilitiesInitializedAt: existing.organization.capabilitiesInitializedAt, capabilities: existing.organization.capabilities }, "SHOP")) {
       throw new ApiError(400, "Only shop domains can be synced with Vercel from this tool");
     }
 

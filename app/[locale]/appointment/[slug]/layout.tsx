@@ -10,6 +10,7 @@ import { TenantFooter } from "@/components/public/tenant-footer";
 import { buildTenantPublicPath } from "@/lib/custom-domain-routing";
 import { getTenantSeoContext } from "@/lib/custom-domain-seo";
 import { hasOrganizationCapability } from "@/lib/organization-capabilities";
+import type { CapabilityRecord } from "@/lib/organization-capabilities";
 
 interface OrganizationLayoutProps {
   children: React.ReactNode;
@@ -33,7 +34,7 @@ type OrganizationLayoutData = {
   lat: number | null;
   lng: number | null;
   capabilitiesInitializedAt: Date | null;
-  capabilities: Array<{ key: "SHOP" | "APPOINTMENT"; status: "ACTIVE" | "INACTIVE" }>;
+  capabilities: CapabilityRecord[];
 };
 
 async function getPublicOrganization(slug: string): Promise<OrganizationLayoutData | null> {
@@ -124,7 +125,11 @@ export default async function OrganizationLayout({ children, params }: Organizat
   const navItems = [
     { href: tenantHref("/"), label: t("navigation.profile") },
     { href: tenantHref("/fanpage"), label: t("organization.fanpage") },
-    ...(organization.type === "APPOINTMENT"
+    ...(hasOrganizationCapability({
+      legacyType: organization.type,
+      capabilitiesInitializedAt: organization.capabilitiesInitializedAt,
+      capabilities: organization.capabilities,
+    }, "APPOINTMENT")
       ? [
           { href: tenantHref("/services"), label: t("navigation.services") },
           { href: tenantHref("/booking"), label: t("organization.bookNow") },
@@ -184,8 +189,8 @@ export default async function OrganizationLayout({ children, params }: Organizat
           email: organization.email,
           homeHref: tenantHref("/"),
           profileHref: tenantHref("/"),
-          servicesHref: organization.type === "APPOINTMENT" ? tenantHref("/services") : null,
-          bookingHref: organization.type === "APPOINTMENT" ? tenantHref("/booking") : null,
+          servicesHref: tenantHref("/services"),
+          bookingHref: tenantHref("/booking"),
           poweredByHref: "https://bazarbaaz.ir",
         }}
       />

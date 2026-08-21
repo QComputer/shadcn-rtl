@@ -824,6 +824,33 @@ async function mainDev(): Promise<SeedContext> {
     },
   });
 
+  // Local acceptance fixtures for organization-shell composition. `type` stays
+  // populated for legacy compatibility only; explicit capabilities are seeded
+  // below and are the source of truth once initialized.
+  const zeroCapabilityDemo = await prisma.organization.create({
+    data: {
+      type: OrganizationType.SHOP,
+      locale: "fa",
+      timezone: "Asia/Tehran",
+      name: "دموی سازمان بدون قابلیت",
+      slug: "zero-capability-demo",
+      description: "نمونه محلی برای اعتبارسنجی پوسته سازمان بدون ماژول کسب‌وکار",
+      isActive: true,
+    },
+  });
+
+  const mixedCapabilityDemo = await prisma.organization.create({
+    data: {
+      type: OrganizationType.SHOP,
+      locale: "fa",
+      timezone: "Asia/Tehran",
+      name: "دموی سازمان ترکیبی",
+      slug: "mixed-capability-demo",
+      description: "نمونه محلی با فروشگاه و نوبت‌دهی در یک سازمان",
+      isActive: true,
+    },
+  });
+
   console.log(`✅ Created 6 organizations (2 SHOP, 4 APPOINTMENT)\n`);
 
   // ========================================
@@ -1083,19 +1110,26 @@ async function mainDev(): Promise<SeedContext> {
     lawFirm,
     sicily,
     chakme,
+    zeroCapabilityDemo,
+    mixedCapabilityDemo,
   ];
 
   // Seed runs after migrations in local/demo environments, so it must preserve
   // the post-backfill invariant instead of recreating legacy-only tenants.
   await Promise.all(
     allOrgs.map(async (organization) => {
-      await prisma.organizationCapability.create({
-        data: {
+      const capabilityKeys = organization.id === zeroCapabilityDemo.id
+        ? []
+        : organization.id === mixedCapabilityDemo.id
+          ? [OrganizationType.SHOP, OrganizationType.APPOINTMENT]
+          : [organization.type];
+      await prisma.organizationCapability.createMany({
+        data: capabilityKeys.map((key) => ({
           organizationId: organization.id,
-          key: organization.type,
+          key,
           status: "ACTIVE",
           enabledAt: new Date(),
-        },
+        })),
       });
       await prisma.organization.update({
         where: { id: organization.id },

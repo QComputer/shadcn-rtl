@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { hasOrganizationCapability, type CapabilityRecord } from "@/lib/organization-capabilities";
 
 const MAX_QUERY_LENGTH = 80;
 const MAX_RESULTS_PER_GROUP = 6;
@@ -80,6 +81,8 @@ export async function GET(request: NextRequest) {
           slug: true,
           name: true,
           type: true,
+          capabilitiesInitializedAt: true,
+          capabilities: { select: { key: true, status: true } },
           description: true,
           address: true,
           logo: true,
@@ -95,7 +98,6 @@ export async function GET(request: NextRequest) {
           organization: {
             isActive: true,
             deletedAt: null,
-            type: "SHOP",
           },
           OR: [
             { name: contains },
@@ -116,8 +118,8 @@ export async function GET(request: NextRequest) {
           basePrice: true,
           organization: {
             select: {
-              name: true,
-              slug: true,
+              name: true, slug: true, type: true, capabilitiesInitializedAt: true,
+              capabilities: { select: { key: true, status: true } },
             },
           },
         },
@@ -131,7 +133,6 @@ export async function GET(request: NextRequest) {
           organization: {
             isActive: true,
             deletedAt: null,
-            type: "APPOINTMENT",
           },
           OR: [
             { name: contains },
@@ -152,8 +153,8 @@ export async function GET(request: NextRequest) {
           duration: true,
           organization: {
             select: {
-              name: true,
-              slug: true,
+              name: true, slug: true, type: true, capabilitiesInitializedAt: true,
+              capabilities: { select: { key: true, status: true } },
             },
           },
         },
@@ -162,20 +163,18 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+    const enabled = (organization: { type: "SHOP" | "APPOINTMENT"; capabilitiesInitializedAt: Date | null; capabilities: CapabilityRecord[] }, capability: "SHOP" | "APPOINTMENT") => hasOrganizationCapability({ legacyType: organization.type, capabilitiesInitializedAt: organization.capabilitiesInitializedAt, capabilities: organization.capabilities }, capability);
     const organizationResults: SearchResult[] = organizations.map((organization) => ({
       id: organization.id,
       type: "ORGANIZATION",
       title: organization.name,
       subtitle: organization.description || organization.address,
-href:
-         organization.type === "SHOP"
-           ? `/${locale}/shop/${organization.slug}`
-           : `/${locale}/appointment/${organization.slug}`,
+      href: `/${locale}/organization/${organization.slug}`,
       image: organization.coverImage || organization.logo,
-      organizationName: organization.type === "SHOP" ? "Shop" : "Appointment",
+      organizationName: enabled(organization, "SHOP") ? "Shop" : enabled(organization, "APPOINTMENT") ? "Appointment" : "Organization",
     }));
 
-    const productResults: SearchResult[] = products.map((product) => ({
+    const productResults: SearchResult[] = products.filter((product) => enabled(product.organization, "SHOP")).map((product) => ({
       id: product.id,
       type: "PRODUCT",
       title: product.name,
@@ -186,7 +185,7 @@ href:
       price: decimalToNumber(product.basePrice),
     }));
 
-    const serviceResults: SearchResult[] = services.map((service) => ({
+    const serviceResults: SearchResult[] = services.filter((service) => enabled(service.organization, "APPOINTMENT")).map((service) => ({
       id: service.id,
       type: "SERVICE",
       title: service.name,

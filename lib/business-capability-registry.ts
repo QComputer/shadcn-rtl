@@ -6,6 +6,7 @@ type CapabilityDefinition = {
   dashboardNavigation: readonly string[]
   dashboardRoutes: readonly string[]
   publicSurface: "shop" | "appointment"
+  publicEntryPath: "/shop" | "/services"
 }
 
 /**
@@ -17,11 +18,13 @@ export const BUSINESS_CAPABILITY_REGISTRY = {
     dashboardNavigation: ["orders", "driverOrders", "products", "productCategories"],
     dashboardRoutes: ["/orders", "/driver-orders", "/products", "/product-categories"],
     publicSurface: "shop",
+    publicEntryPath: "/shop",
   },
   APPOINTMENT: {
     dashboardNavigation: ["appointments", "calendar", "services", "serviceCategories"],
     dashboardRoutes: ["/appointments", "/calendar", "/services", "/service-categories"],
     publicSurface: "appointment",
+    publicEntryPath: "/services",
   },
 } as const satisfies Record<BusinessCapability, CapabilityDefinition>
 

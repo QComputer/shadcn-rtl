@@ -24,6 +24,7 @@ import { buildMinimalWebPushPayload } from "@/lib/push-payload";
 import { resolveActiveTenantForHost } from "@/lib/domains/domain-resolver.server";
 import { isPlatformHost } from "@/lib/custom-domain-routing";
 import { publicOrganizationHref } from "@/app/[locale]/dashboard/organizations/page";
+import { getIntegrationAdapter, listIntegrationAdapters } from "@/lib/integrations/runtime/registry";
 
 describe("organization capability compatibility", () => {
   it("falls back to the legacy type only before capability initialization", () => {
@@ -73,6 +74,51 @@ describe("custom-domain capability resolution", () => {
 
   it("keeps bazarbaaz.ir outside organization-domain resolution", () => {
     assert.equal(isPlatformHost("bazarbaaz.ir"), true);
+  });
+});
+
+describe("integration runtime adapter registry", () => {
+  it("resolves every supported provider through the registry", () => {
+    const providers = listIntegrationAdapters().map((adapter) => adapter.provider).sort();
+    assert.deepEqual(providers, [
+      "INOTI_EBC",
+      "INOTI_IAM",
+      "INOTI_ICV",
+      "INOTI_IMENU",
+      "INOTI_USSD",
+      "OTHER",
+      "PAYMENT",
+      "SMS",
+    ]);
+  });
+
+  it("runs dry-run health without external provider calls and blocks disabled runtime", async () => {
+    const adapter = getIntegrationAdapter("INOTI_USSD");
+    assert.equal(adapter.supportedActions.includes("USSD_SESSION_START"), true);
+    const active = await adapter.checkHealth({
+      organizationId: "org-a",
+      integrationId: "integration-a",
+      provider: "INOTI_USSD",
+      status: "ACTIVE",
+      credentialProfileKey: "INOTI_DEFAULT",
+      configuration: { serviceCode: "87788778" },
+      capabilityKeys: ["USSD"],
+    });
+    assert.equal(active.status, "CONNECTED");
+    assert.equal(active.connected, true);
+    assert.equal(active.metadata.dryRun, true);
+
+    const disabled = await adapter.checkHealth({
+      organizationId: "org-a",
+      integrationId: "integration-a",
+      provider: "INOTI_USSD",
+      status: "DISABLED",
+      credentialProfileKey: "INOTI_DEFAULT",
+      configuration: {},
+      capabilityKeys: ["USSD"],
+    });
+    assert.equal(disabled.status, "BLOCKED");
+    assert.equal(disabled.errorCode, "INTEGRATION_NOT_ACTIVE");
   });
 });
 

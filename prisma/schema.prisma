@@ -64,6 +64,31 @@ enum OrganizationIntegrationStatus {
   REVOKED
 }
 
+enum IntegrationHealthStatus {
+  UNKNOWN
+  CONNECTED
+  DISCONNECTED
+  DEGRADED
+  BLOCKED
+}
+
+enum BusinessEventType {
+  ORDER_CREATED
+  CUSTOMER_CREATED
+  PAYMENT_COMPLETED
+  USSD_SESSION_STARTED
+  INTEGRATION_CONNECTED
+  INTEGRATION_HEALTH_CHECKED
+}
+
+enum UssdSessionStatus {
+  STARTED
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  FAILED
+}
+
 enum UssdPaymentIntentStatus {
   REQUESTED
   VERIFYING
@@ -585,6 +610,8 @@ model Organization {
   members                      OrganizationMember[]
   capabilities                 OrganizationCapability[]
   integrations                 OrganizationIntegration[]
+  businessEvents               BusinessEvent[]
+  ussdSessions                 UssdSession[]
   ussdPaymentIntents           UssdPaymentIntent[]
   ussdCallbackEvents           UssdCallbackEvent[]
   ownedCollaborations          OrganizationCollaboration[]   @relation("CollaborationOwner")
@@ -680,6 +707,11 @@ model OrganizationIntegration {
   credentialProfileKey String?
   configuration        Json?
   callbackOrigin       String?
+  healthStatus         IntegrationHealthStatus      @default(UNKNOWN)
+  lastHealthCheckedAt  DateTime?
+  lastHealthErrorCode  String?
+  lastHealthErrorMessage String?
+  healthMetadata       Json?
   lastCallbackAt       DateTime?
   disabledAt           DateTime?
   revokedAt            DateTime?
@@ -688,6 +720,8 @@ model OrganizationIntegration {
 
   organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   capabilities  OrganizationIntegrationCapability[]
+  businessEvents BusinessEvent[]
+  ussdSessions  UssdSession[]
   paymentIntents UssdPaymentIntent[]
   callbackEvents UssdCallbackEvent[]
 
@@ -710,6 +744,29 @@ model OrganizationIntegrationCapability {
 
   @@unique([integrationId, capabilityKey])
   @@index([organizationId, capabilityKey])
+}
+
+model BusinessEvent {
+  id             String            @id @default(cuid())
+  publicId       String            @unique @default(uuid())
+  organizationId String
+  integrationId  String?
+  type           BusinessEventType
+  dedupeKey      String?
+  entityType     String?
+  entityId       String?
+  payload        Json?
+  metadata       Json?
+  occurredAt     DateTime          @default(now())
+  createdAt      DateTime          @default(now())
+
+  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration  OrganizationIntegration? @relation(fields: [integrationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([organizationId, dedupeKey])
+  @@index([organizationId, type, occurredAt])
+  @@index([integrationId, occurredAt])
+  @@index([entityType, entityId])
 }
 
 model OrganizationCollaboration {
@@ -927,6 +984,7 @@ model User {
   aiMediaAssets                 AiMediaAsset[]                @relation("AiMediaAssetRequestedBy")
   aiMediaUsageQuotes            AiMediaUsageQuote[]           @relation("AiMediaQuoteRequestedBy")
   aiMediaSpendHolds             AiMediaSpendHold[]            @relation("AiMediaSpendHoldRequestedBy")
+  ussdSessions                  UssdSession[]                 @relation("UssdSessionCustomer")
 
   denies                          Deny[]
   orderMessages                   OrderMessage[]
@@ -1369,6 +1427,7 @@ model GuestCustomer {
 
   appointments Appointment[]
   orders       Order[]
+  ussdSessions UssdSession[]
 
   createdAt DateTime @default(now())
 
@@ -1590,6 +1649,35 @@ model PaymentEvent {
   @@index([newStatus])
   @@index([createdAt])
   @@index([createdById])
+}
+
+model UssdSession {
+  id              String            @id @default(cuid())
+  publicId        String            @unique @default(uuid())
+  organizationId  String
+  integrationId   String
+  sessionIdHash   String
+  customerId      String?
+  guestCustomerId String?
+  status          UssdSessionStatus @default(STARTED)
+  state           Json?
+  metadata        Json?
+  startedAt       DateTime          @default(now())
+  lastSeenAt      DateTime          @default(now())
+  completedAt     DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  organization  Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration   OrganizationIntegration @relation(fields: [integrationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  customer      User?                   @relation("UssdSessionCustomer", fields: [customerId], references: [id], onDelete: SetNull)
+  guestCustomer GuestCustomer?          @relation(fields: [guestCustomerId], references: [id], onDelete: SetNull)
+
+  @@unique([integrationId, sessionIdHash])
+  @@index([organizationId, status, lastSeenAt])
+  @@index([integrationId, status, lastSeenAt])
+  @@index([customerId, lastSeenAt])
+  @@index([guestCustomerId, lastSeenAt])
 }
 
 model UssdPaymentIntent {

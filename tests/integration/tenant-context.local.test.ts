@@ -28,6 +28,12 @@ import {
   sanitizeIntegrationConfig,
   updateOrganizationIntegrationStatus,
 } from "@/lib/integrations/organization-integrations";
+import {
+  listBusinessEventsForOrganization,
+  recordBusinessEvent,
+} from "@/lib/integrations/runtime/business-events";
+import { checkIntegrationRuntimeHealth } from "@/lib/integrations/runtime/service";
+import { startUssdSession } from "@/lib/integrations/runtime/ussd-sessions";
 
 const localDatabaseUrl = new URL(process.env.DATABASE_URL ?? "https://missing.invalid");
 assert.ok(
@@ -384,6 +390,62 @@ describe("explicit tenant context against the disposable local database", () => 
       assert.deepEqual(ussd.capabilityKeys, ["USSD"]);
       assert.equal(ussd.secret.configured, true);
 
+      const health = await checkIntegrationRuntimeHealth({
+        organizationId: orgAId,
+        integrationId: ussd.id,
+      });
+      assert.equal(health.healthStatus, "CONNECTED");
+      assert.equal(health.connected, true);
+      assert.equal(health.metadata.dryRun, true);
+
+      await assert.rejects(
+        recordBusinessEvent({
+          organizationId: orgAId,
+          integrationId: ussd.id,
+          type: "CUSTOMER_CREATED",
+          payload: { password: "must-not-be-stored" },
+        }),
+        /secret reference/,
+      );
+      await assert.rejects(
+        recordBusinessEvent({
+          organizationId: orgBId,
+          integrationId: ussd.id,
+          type: "CUSTOMER_CREATED",
+          payload: { source: "cross-tenant" },
+        }),
+        (error: unknown) => error instanceof ApiError && error.status === 404,
+      );
+      const businessEvent = await recordBusinessEvent({
+        organizationId: orgAId,
+        integrationId: ussd.id,
+        type: "CUSTOMER_CREATED",
+        entityType: "Customer",
+        entityId: "customer-alpha",
+        payload: { source: "local-test" },
+      });
+      assert.equal(businessEvent.organizationId, orgAId);
+      assert.equal((await listBusinessEventsForOrganization({ organizationId: orgAId })).some((event) => event.id === businessEvent.id), true);
+      assert.equal((await listBusinessEventsForOrganization({ organizationId: orgBId })).length, 0);
+
+      const ussdSession = await startUssdSession({
+        organizationId: orgAId,
+        integrationId: ussd.id,
+        sessionIdHash: "a".repeat(64),
+        metadata: { serviceCode: "87788778" },
+      });
+      assert.equal(ussdSession.organizationId, orgAId);
+      assert.equal(ussdSession.integrationId, ussd.id);
+      assert.equal(ussdSession.status, "STARTED");
+      await assert.rejects(
+        startUssdSession({
+          organizationId: orgBId,
+          integrationId: ussd.id,
+          sessionIdHash: "b".repeat(64),
+        }),
+        (error: unknown) => error instanceof ApiError && error.status === 404,
+      );
+
       const ebc = await createOrganizationIntegration({
         organizationId: orgAId,
         provider: "INOTI_EBC",
@@ -414,6 +476,20 @@ describe("explicit tenant context against the disposable local database", () => 
       assert.equal(enabled.status, "ACTIVE");
       assert.equal(enabled.disabledAt, null);
 
+      await updateOrganizationIntegrationStatus({
+        organizationId: orgAId,
+        integrationId: ussd.id,
+        status: "DISABLED",
+      });
+      await assert.rejects(
+        startUssdSession({
+          organizationId: orgAId,
+          integrationId: ussd.id,
+          sessionIdHash: "c".repeat(64),
+        }),
+        (error: unknown) => error instanceof ApiError && error.status === 409,
+      );
+
       await assert.rejects(
         createOrganizationIntegration({
           organizationId: orgBId,
@@ -438,6 +514,8 @@ describe("explicit tenant context against the disposable local database", () => 
       });
       assert.deepEqual(legacy.capabilityKeys, ["SHOP"]);
     } finally {
+      await prisma.businessEvent.deleteMany({ where: { organizationId: { in: [orgAId, orgBId, zeroOrgId, legacyOrgId] } } });
+      await prisma.ussdSession.deleteMany({ where: { organizationId: { in: [orgAId, orgBId, zeroOrgId, legacyOrgId] } } });
       await prisma.organizationIntegration.deleteMany({ where: { organizationId: { in: [orgAId, orgBId, zeroOrgId, legacyOrgId] } } });
       await prisma.organization.deleteMany({ where: { id: { in: [orgAId, orgBId, zeroOrgId, legacyOrgId] } } });
     }

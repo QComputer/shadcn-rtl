@@ -44,6 +44,7 @@ type Copy = {
   noPrimaryDomain: string;
   publicPage: string;
   domainManager: string;
+  inotiManager: string;
   emptyTitle: string;
   emptyDescription: string;
   showing: string;
@@ -82,6 +83,7 @@ const copyByLocale = {
     noPrimaryDomain: "دامنه اصلی تنظیم نشده",
     publicPage: "صفحه عمومی",
     domainManager: "دامنه‌ها",
+    inotiManager: "iNoti",
     emptyTitle: "سازمانی پیدا نشد",
     emptyDescription: "فیلترها را تغییر دهید یا یک سازمان جدید بسازید.",
     showing: "نمایش",
@@ -118,6 +120,7 @@ const copyByLocale = {
     noPrimaryDomain: "No primary domain configured",
     publicPage: "Public page",
     domainManager: "Domains",
+    inotiManager: "iNoti",
     emptyTitle: "No organizations found",
     emptyDescription: "Change filters or create a new organization.",
     showing: "Showing",
@@ -154,6 +157,7 @@ const copyByLocale = {
     noPrimaryDomain: "لم يتم ضبط نطاق أساسي",
     publicPage: "الصفحة العامة",
     domainManager: "النطاقات",
+    inotiManager: "iNoti",
     emptyTitle: "لم يتم العثور على مؤسسات",
     emptyDescription: "غيّر عوامل التصفية أو أنشئ مؤسسة جديدة.",
     showing: "عرض",
@@ -519,6 +523,12 @@ export default async function OrganizationsPage({
                       className="inline-flex h-8 items-center justify-center rounded-lg border bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       {copy.domainManager}
+                    </Link>
+                    <Link
+                      href={`/${locale}/dashboard/organizations/${organization.id}/integrations/inoti`}
+                      className="inline-flex h-8 items-center justify-center rounded-lg border bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {copy.inotiManager}
                     </Link>
                   </div>
                 </div>

@@ -1,6 +1,9 @@
-import { PrismaClient, OrganizationType, UserRole, AppointmentStatus, CartStatus, OrderType, OrderStatus, PaymentStatus, PaymentMethod, DayOfWeek } from '@prisma/client';
+import { PrismaClient, OrganizationType, OrganizationCapabilityStatus, UserRole, AppointmentStatus, CartStatus, OrderType, OrderStatus, PaymentStatus, PaymentMethod, DayOfWeek } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { DEMO_SHOWCASE_BLUEPRINTS } from "../lib/demo-universe/demo-showcase-blueprints";
 import { seedSicilyMenu } from "./seed-data/sicily-menu";
+import { createOrRefreshPilotWorkspace } from "../lib/pilot-operations/pilot-workspace.service";
+import { generateGrowthRecommendations, upsertBusinessGrowthProfile } from "../lib/growth-intelligence/growth-intelligence.service";
 
 // Generate a unique sessionId
 function generateSessionId(name: string): string {
@@ -9,6 +12,7 @@ function generateSessionId(name: string): string {
 }
 const prisma = new PrismaClient();
 const DEMO_PASSWORD = "123456";
+const demoShowcaseBySlug = new Map(DEMO_SHOWCASE_BLUEPRINTS.map((showcase) => [showcase.organization.slug, showcase]));
 
 interface SeedContext {
   sicilyOrgId: string;
@@ -36,7 +40,23 @@ async function mainDev(): Promise<SeedContext> {
   await prisma.service.deleteMany();
   await prisma.serviceCategory.deleteMany();
   await prisma.bookingSettings.deleteMany();
+  await prisma.paymentSettings.deleteMany();
   await prisma.organizationSettings.deleteMany();
+  await prisma.pilotWorkspace.deleteMany();
+  await prisma.organizationActivationPlan.deleteMany();
+  await prisma.seoContentBrief.deleteMany();
+  await prisma.seoContentRequest.deleteMany();
+  await prisma.growthRecommendation.deleteMany();
+  await prisma.keywordCluster.deleteMany();
+  await prisma.businessGrowthProfile.deleteMany();
+  await prisma.seoOpportunity.deleteMany();
+  await prisma.businessEntityMetadata.deleteMany();
+  await prisma.businessEntityRelation.deleteMany();
+  await prisma.businessEntity.deleteMany();
+  await prisma.organizationClaimRequest.deleteMany();
+  await prisma.organizationInvitation.deleteMany();
+  await prisma.organizationAcquisition.deleteMany();
+  await prisma.organizationCapability.deleteMany();
   await prisma.promotion.deleteMany();
   await prisma.businessHour.deleteMany();
   await prisma.organizationMember.deleteMany();
@@ -851,7 +871,28 @@ async function mainDev(): Promise<SeedContext> {
     },
   });
 
-  console.log(`✅ Created 6 organizations (2 SHOP, 4 APPOINTMENT)\n`);
+  const showcaseOrganizations = await Promise.all(
+    DEMO_SHOWCASE_BLUEPRINTS.map((showcase) =>
+      prisma.organization.create({
+        data: {
+          type: showcase.organization.type,
+          locale: "fa",
+          timezone: "Asia/Tehran",
+          name: showcase.organization.name,
+          slug: showcase.organization.slug,
+          description: showcase.organization.description,
+          address: showcase.organization.address,
+          phone: showcase.organization.phone,
+          email: showcase.organization.email,
+          logo: showcase.organization.logo,
+          coverImage: showcase.organization.coverImage,
+          isActive: true,
+        },
+      }),
+    ),
+  );
+
+  console.log(`✅ Created organizations including ${showcaseOrganizations.length} investor showcase organizations\n`);
 
   // ========================================
   // 3. CREATE ORGANIZATION MEMBERS - All Role Combinations
@@ -1112,6 +1153,7 @@ async function mainDev(): Promise<SeedContext> {
     chakme,
     zeroCapabilityDemo,
     mixedCapabilityDemo,
+    ...showcaseOrganizations,
   ];
 
   // Seed runs after migrations in local/demo environments, so it must preserve
@@ -1122,12 +1164,12 @@ async function mainDev(): Promise<SeedContext> {
         ? []
         : organization.id === mixedCapabilityDemo.id
           ? [OrganizationType.SHOP, OrganizationType.APPOINTMENT]
-          : [organization.type];
+          : demoShowcaseBySlug.get(organization.slug)?.capabilities ?? [organization.type];
       await prisma.organizationCapability.createMany({
         data: capabilityKeys.map((key) => ({
           organizationId: organization.id,
           key,
-          status: "ACTIVE",
+          status: OrganizationCapabilityStatus.ACTIVE,
           enabledAt: new Date(),
         })),
       });
@@ -1159,10 +1201,48 @@ async function mainDev(): Promise<SeedContext> {
   console.log("⚙️ Creating organization settings...");
 
   for (const org of allOrgs) {
+    const showcase = demoShowcaseBySlug.get(org.slug);
+    const demoRoles =
+      showcase
+        ? [...showcase.demoRoles]
+        : org.slug === "sicily"
+        ? ["PLATFORM_ADMIN", "ORGANIZATION_OWNER", "CUSTOMER", "MANAGER", "STAFF", "DRIVER"]
+        : org.slug === "tikal"
+          ? ["ORGANIZATION_OWNER", "CUSTOMER", "MANAGER", "STAFF"]
+          : org.slug === "khoone-food"
+            ? ["ORGANIZATION_OWNER", "CUSTOMER", "MANAGER", "STAFF", "DRIVER"]
+            : null;
+    const demoShowcaseSettings = showcase
+      ? {
+          featured: true,
+          industry: showcase.industry,
+          industryLabel: showcase.industryLabel,
+          tagline: showcase.tagline,
+          capabilities: [...showcase.capabilities],
+          demoRoles: [...showcase.demoRoles],
+          highlights: [...showcase.highlights],
+          roleExperiences: showcase.roleExperiences.map((experience) => ({ ...experience })),
+          storySteps: showcase.storySteps.map((step) => ({ ...step })),
+          ctaLabel: showcase.ctaLabel,
+          artifacts: [...showcase.artifacts],
+        }
+      : null;
     await prisma.organizationSettings.create({
       data: {
         organizationSlug: org.slug,
-        settings: { theme: "light", language: "fa" },
+        settings: {
+          theme: "light",
+          language: "fa",
+          ...(demoRoles
+            ? {
+                demo: {
+                  enabled: true,
+                  roles: demoRoles,
+                  ...(showcase ? { capabilities: [...showcase.capabilities], showcase: demoShowcaseSettings } : {}),
+                },
+              }
+            : {}),
+        },
         currency: "IRR",
         dateFormat: "YYYY/MM/DD",
         timeFormat: "24h",
@@ -1184,7 +1264,13 @@ async function mainDev(): Promise<SeedContext> {
   // ========================================
   console.log("📅 Creating booking settings for appointment organizations...");
 
-  const appointmentOrgs = [beautyClinic, dentalClinic, spaCenter, lawFirm];
+  const appointmentOrgs = [
+    beautyClinic,
+    dentalClinic,
+    spaCenter,
+    lawFirm,
+    ...showcaseOrganizations.filter((organization) => organization.type === OrganizationType.APPOINTMENT),
+  ];
 
   for (const org of appointmentOrgs) {
     await prisma.bookingSettings.create({
@@ -1213,6 +1299,61 @@ async function mainDev(): Promise<SeedContext> {
   console.log(
     `✅ Created booking settings for ${appointmentOrgs.length} appointment organizations\n`,
   );
+
+  console.log("🧾 Creating showcase product catalogs...");
+
+  const showcaseOrgBySlug = new Map(showcaseOrganizations.map((organization) => [organization.slug, organization]));
+  const showcaseProductsBySlug = new Map<string, Array<{ id: string; price: number }>>();
+
+  for (const showcase of DEMO_SHOWCASE_BLUEPRINTS) {
+    const organization = showcaseOrgBySlug.get(showcase.organization.slug);
+    if (!organization || !showcase.products) continue;
+    const createdProducts: Array<{ id: string; price: number }> = [];
+    for (const [categoryIndex, category] of showcase.products.entries()) {
+      const productCategory = await prisma.productCategory.create({
+        data: {
+          organizationId: organization.id,
+          organizationSlug: organization.slug,
+          name: category.category,
+          slug: category.category.toLowerCase().replace(/\s+/g, "-"),
+          description: `${showcase.industryLabel} demo catalog`,
+          sortOrder: categoryIndex + 1,
+          isActive: true,
+        },
+      });
+      for (const [itemIndex, item] of category.items.entries()) {
+        const product = await prisma.product.create({
+          data: {
+            organizationId: organization.id,
+            organizationSlug: organization.slug,
+            categoryId: productCategory.id,
+            name: item.name,
+            slug: item.slug,
+            description: item.description,
+            basePrice: item.price,
+            sku: item.sku,
+            image: `/images/demo/${item.slug}.jpg`,
+            isActive: true,
+            sortOrder: itemIndex + 1,
+            preparationMinutes: organization.slug === "barg-cafe-restaurant" ? 18 : 8,
+          },
+        });
+        await prisma.productVariant.create({
+          data: {
+            productId: product.id,
+            sku: `${item.sku}-STD`,
+            name: "Standard",
+            price: item.price,
+            inventory: 24,
+          },
+        });
+        createdProducts.push({ id: product.id, price: item.price });
+      }
+    }
+    showcaseProductsBySlug.set(organization.slug, createdProducts);
+  }
+
+  console.log("✅ Created showcase product catalogs\n");
 
   const allVariants = await prisma.productVariant.findMany();
   console.log(`✅ Created products with variants\n`);
@@ -1397,6 +1538,40 @@ async function mainDev(): Promise<SeedContext> {
       },
     }),
   ]);
+
+  const showcaseAppointmentServiceIds: string[] = [];
+  for (const showcase of DEMO_SHOWCASE_BLUEPRINTS) {
+    const organization = showcaseOrgBySlug.get(showcase.organization.slug);
+    if (!organization || !showcase.services) continue;
+    for (const [categoryIndex, category] of showcase.services.entries()) {
+      const serviceCategory = await prisma.serviceCategory.create({
+        data: {
+          organizationId: organization.id,
+          name: category.category,
+          slug: category.category.toLowerCase().replace(/\s+/g, "-"),
+          description: `${showcase.industryLabel} demo services`,
+          sortOrder: categoryIndex + 1,
+          isActive: true,
+        },
+      });
+      for (const [itemIndex, item] of category.items.entries()) {
+        const service = await prisma.service.create({
+          data: {
+            organizationId: organization.id,
+            categoryId: serviceCategory.id,
+            name: item.name,
+            slug: item.slug,
+            description: item.description,
+            price: item.price,
+            duration: item.duration,
+            isActive: true,
+            sortOrder: itemIndex + 1,
+          },
+        });
+        showcaseAppointmentServiceIds.push(service.id);
+      }
+    }
+  }
 
   // SPA Services
   const spaCategories = await Promise.all([
@@ -1671,6 +1846,20 @@ async function mainDev(): Promise<SeedContext> {
     },
   });
 
+  if (showcaseAppointmentServiceIds[0]) {
+    await prisma.appointment.create({
+      data: {
+        customerId: users[13].id,
+        serviceId: showcaseAppointmentServiceIds[0],
+        date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+        startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000),
+        endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000 + 30 * 60 * 1000),
+        status: AppointmentStatus.PENDING,
+        notes: "درخواست نمایشی برای مسیر Demo Universe سپیدار",
+      },
+    });
+  }
+
   // SPA Appointments
   await prisma.appointment.create({
     data: {
@@ -1758,7 +1947,101 @@ async function mainDev(): Promise<SeedContext> {
 
   console.log("✅ Created appointments\n");
 
-  console.log("✅ Created orders\n");
+  console.log("🧭 Creating showcase demo scenarios and active orders...");
+
+  for (const showcase of DEMO_SHOWCASE_BLUEPRINTS) {
+    const organization = showcaseOrgBySlug.get(showcase.organization.slug);
+    if (!organization) continue;
+    const scenario = await prisma.demoScenario.upsert({
+      where: { organizationId_key: { organizationId: organization.id, key: "featured-showcase-journey" } },
+      update: {
+        title: showcase.tagline,
+        description: showcase.highlights.join(" | "),
+        isActive: true,
+        metadata: { demoUniverse: true, source: "showcase-seed", industry: showcase.industry },
+      },
+      create: {
+        organizationId: organization.id,
+        key: "featured-showcase-journey",
+        title: showcase.tagline,
+        description: showcase.highlights.join(" | "),
+        metadata: { demoUniverse: true, source: "showcase-seed", industry: showcase.industry },
+      },
+    });
+    for (const step of showcase.storySteps) {
+      await prisma.demoScenarioStep.upsert({
+        where: { scenarioId_key: { scenarioId: scenario.id, key: step.key } },
+        update: {
+          title: step.title,
+          description: step.description,
+          role: step.role,
+          action: step.action,
+          sortOrder: step.sortOrder,
+          metadata: {
+            demoUniverse: true,
+            source: "showcase-seed",
+            businessValue: step.businessValue,
+            relatedCapability: step.relatedCapability,
+            artifact: step.artifact,
+            stage: step.stage,
+          },
+        },
+        create: {
+          scenarioId: scenario.id,
+          key: step.key,
+          title: step.title,
+          description: step.description,
+          role: step.role,
+          action: step.action,
+          sortOrder: step.sortOrder,
+          metadata: {
+            demoUniverse: true,
+            source: "showcase-seed",
+            businessValue: step.businessValue,
+            relatedCapability: step.relatedCapability,
+            artifact: step.artifact,
+            stage: step.stage,
+          },
+        },
+      });
+    }
+  }
+
+  let showcaseOrderCounter = 1;
+  for (const organization of showcaseOrganizations.filter((org) => org.type === OrganizationType.SHOP)) {
+    const products = showcaseProductsBySlug.get(organization.slug) ?? [];
+    if (!products[0]) continue;
+    const status = organization.slug === "barg-cafe-restaurant" ? OrderStatus.READY : OrderStatus.ACCEPTED;
+    const deliveryFee = organization.slug === "barg-cafe-restaurant" ? 500000 : 0;
+    const subtotal = products[0].price;
+    const tax = Math.round(subtotal * 0.09);
+    await prisma.order.create({
+      data: {
+        orderNumber: `SHOWCASE-${String(showcaseOrderCounter++).padStart(4, "0")}`,
+        organizationSlug: organization.slug,
+        type: organization.slug === "barg-cafe-restaurant" ? OrderType.DELIVERY : OrderType.PICK_UP,
+        status,
+        subtotal,
+        deliveryFee,
+        tax,
+        total: subtotal + deliveryFee + tax,
+        paymentMethod: PaymentMethod.CASH,
+        paymentStatus: PaymentStatus.PENDING,
+        deliveryAddress: organization.slug === "barg-cafe-restaurant" ? "نشانی نمایشی مشتری در همان شهر" : null,
+        notes: "سفارش نمایشی برای مسیر Demo Universe",
+        items: {
+          create: [{
+            productId: products[0].id,
+            quantity: 1,
+            price: products[0].price,
+            discount: 0,
+          }],
+        },
+      },
+    });
+  }
+
+  console.log("✅ Created showcase demo scenarios and orders\n");
 
   /*
   // ========================================
@@ -1990,8 +2273,8 @@ async function mainDev(): Promise<SeedContext> {
   console.log("🎉 Database seeding completed successfully!");
   console.log("\n📊 Summary:");
   console.log(`   - ${users.length} users with all role combinations`);
-  console.log(`   - 8 organizations (4 SHOP, 4 APPOINTMENT)`);
-  console.log(`   - 4 booking settings for appointment organizations`);
+  console.log(`   - ${allOrgs.length} organizations including ${showcaseOrganizations.length} investor/customer showcases`);
+  console.log(`   - ${appointmentOrgs.length} booking settings for appointment organizations`);
   /* console.log(
     `   - ${guestCustomers.length} guest customers for guest checkout testing`,
   );*/
@@ -2080,6 +2363,229 @@ async function mainDev(): Promise<SeedContext> {
   return { sicilyOrgId: sicily.id };
 }
 
+async function upsertPilotOrganization(input: {
+  name: string;
+  slug: string;
+  type: OrganizationType;
+  industryKey: "RESTAURANT" | "RETAIL_SHOP" | "FASHION_BOUTIQUE";
+  capabilities: ReadonlyArray<"SHOP" | "APPOINTMENT" | "CRM" | "IAM" | "ICV" | "EBC" | "USSD">;
+  operatorUserId: string;
+  status: "DISCOVERY" | "ONBOARDING" | "CONFIGURATION" | "READY_FOR_LAUNCH";
+  notes: string;
+  seoGrowthPlanner: {
+    businessGoals: string[];
+    targetAudience: string[];
+    preferredKeywords: string[];
+    cityLocation: string;
+  };
+}) {
+  const organization = await prisma.organization.upsert({
+    where: { slug: input.slug },
+    update: {
+      name: input.name,
+      type: input.type,
+      locale: "fa",
+      timezone: "Asia/Tehran",
+      capabilitiesInitializedAt: new Date(),
+    },
+    create: {
+      name: input.name,
+      slug: input.slug,
+      type: input.type,
+      locale: "fa",
+      timezone: "Asia/Tehran",
+      description: `${input.name} پایلوت عملیاتی بازارباز برای آماده‌سازی لانچ محلی.`,
+      address: input.seoGrowthPlanner.cityLocation,
+      phone: "+982100000000",
+      email: `${input.slug}@example.test`,
+      capabilitiesInitializedAt: new Date(),
+    },
+  });
+
+  await prisma.organizationSettings.upsert({
+    where: { organizationSlug: organization.slug },
+    update: {},
+    create: { organizationSlug: organization.slug },
+  });
+  await prisma.paymentSettings.upsert({
+    where: { organizationSlug: organization.slug },
+    update: {},
+    create: { organizationSlug: organization.slug },
+  });
+  await prisma.organizationAcquisition.upsert({
+    where: { organizationId: organization.id },
+    update: { industryKey: input.industryKey, createdByUserId: input.operatorUserId },
+    create: {
+      organizationId: organization.id,
+      sourceType: "BAZARBAAZ_TEAM",
+      industryKey: input.industryKey,
+      createdByUserId: input.operatorUserId,
+      metadata: {
+        pilotSeed: true,
+        selectedCapabilities: input.capabilities,
+        externalProviderCalls: false,
+      },
+    },
+  });
+
+  for (const capability of input.capabilities) {
+    await prisma.organizationCapability.upsert({
+      where: { organizationId_key: { organizationId: organization.id, key: capability } },
+      update: { status: OrganizationCapabilityStatus.ACTIVE, enabledAt: new Date() },
+      create: { organizationId: organization.id, key: capability, status: OrganizationCapabilityStatus.ACTIVE, enabledAt: new Date() },
+    });
+  }
+
+  if (input.type === OrganizationType.SHOP) {
+    const category = await prisma.productCategory.upsert({
+      where: { id: `${input.slug}-pilot-category` },
+      update: { name: input.industryKey === "RESTAURANT" ? "منو" : "کاتالوگ" },
+      create: {
+        id: `${input.slug}-pilot-category`,
+        organizationId: organization.id,
+        organizationSlug: organization.slug,
+        name: input.industryKey === "RESTAURANT" ? "منو" : "کاتالوگ",
+        slug: `${input.slug}-catalog`,
+      },
+    });
+    await prisma.product.upsert({
+      where: { id: `${input.slug}-pilot-product` },
+      update: { name: input.industryKey === "RESTAURANT" ? "آیتم نمونه منو" : "محصول نمونه" },
+      create: {
+        id: `${input.slug}-pilot-product`,
+        organizationId: organization.id,
+        organizationSlug: organization.slug,
+        categoryId: category.id,
+        name: input.industryKey === "RESTAURANT" ? "آیتم نمونه منو" : "محصول نمونه",
+        slug: `${input.slug}-sample`,
+        basePrice: 100000,
+        isActive: true,
+      },
+    });
+  } else {
+    const category = await prisma.serviceCategory.upsert({
+      where: { id: `${input.slug}-pilot-service-category` },
+      update: { name: "خدمات پایلوت" },
+      create: {
+        id: `${input.slug}-pilot-service-category`,
+        organizationId: organization.id,
+        name: "خدمات پایلوت",
+      },
+    });
+    await prisma.service.upsert({
+      where: { id: `${input.slug}-pilot-service` },
+      update: { name: "خدمت نمونه" },
+      create: {
+        id: `${input.slug}-pilot-service`,
+        organizationId: organization.id,
+        categoryId: category.id,
+        name: "خدمت نمونه",
+        price: 100000,
+        duration: 45,
+        isActive: true,
+      },
+    });
+  }
+
+  const workspace = await createOrRefreshPilotWorkspace({
+    organizationId: organization.id,
+    actorUserId: input.operatorUserId,
+    assignedOperatorId: input.operatorUserId,
+    status: input.status,
+    notes: input.notes,
+    seoGrowthPlanner: input.seoGrowthPlanner,
+  });
+
+  await upsertBusinessGrowthProfile({
+    organizationId: organization.id,
+    actorUserId: input.operatorUserId,
+    status: "ACTIVE",
+    primaryGoals: input.seoGrowthPlanner.businessGoals,
+    targetAudience: input.seoGrowthPlanner.targetAudience,
+    preferredKeywords: input.seoGrowthPlanner.preferredKeywords,
+    preferredLocations: [input.seoGrowthPlanner.cityLocation],
+    notes: "Seeded pilot growth intelligence profile; recommendations are local and unpublished.",
+  });
+  await generateGrowthRecommendations({ organizationId: organization.id, actorUserId: input.operatorUserId });
+
+  return workspace;
+}
+
+async function seedPilotWorkspaces() {
+  const operator = await prisma.user.findFirstOrThrow({
+    where: { role: UserRole.SUPER_ADMIN, isActive: true },
+    select: { id: true },
+  });
+
+  const pilots = [
+    {
+      name: "رستوران ایتالیایی ۱۳",
+      slug: "italiano-13",
+      type: OrganizationType.SHOP,
+      industryKey: "RESTAURANT" as const,
+      capabilities: ["SHOP", "CRM", "USSD"] as const,
+      status: "CONFIGURATION" as const,
+      notes: "SNAPPFOOD mock import readiness; no external calls.",
+      seoGrowthPlanner: {
+        businessGoals: ["افزایش سفارش مستقیم", "آماده‌سازی منوی عمومی"],
+        targetAudience: ["مشتریان محلی", "سفارش بیرون‌بر"],
+        preferredKeywords: ["رستوران ایتالیایی", "پیتزا", "پاستا"],
+        cityLocation: "تهران",
+      },
+    },
+    {
+      name: "کافه لئو",
+      slug: "cafe-leo",
+      type: OrganizationType.SHOP,
+      industryKey: "RESTAURANT" as const,
+      capabilities: ["SHOP", "CRM", "IAM"] as const,
+      status: "ONBOARDING" as const,
+      notes: "Website source preparation for https://iran.cafeleo.vip/; crawling disabled.",
+      seoGrowthPlanner: {
+        businessGoals: ["نمایش منو و برند", "آماده‌سازی صفحه محلی"],
+        targetAudience: ["مشتریان کافه", "جستجوی محلی"],
+        preferredKeywords: ["کافه لئو", "منوی کافه", "قهوه"],
+        cityLocation: "تهران",
+      },
+    },
+    {
+      name: "کفش آکا",
+      slug: "aka-shoes",
+      type: OrganizationType.SHOP,
+      industryKey: "RETAIL_SHOP" as const,
+      capabilities: ["SHOP", "CRM", "ICV", "EBC"] as const,
+      status: "DISCOVERY" as const,
+      notes: "Retail catalog and future Instagram/social connector preparation only.",
+      seoGrowthPlanner: {
+        businessGoals: ["آماده‌سازی کاتالوگ کفش", "پیشنهاد محتوای اجتماعی"],
+        targetAudience: ["خریداران کفش", "مشتریان شبکه اجتماعی"],
+        preferredKeywords: ["کفش آکا", "کفش زنانه", "کفش مردانه"],
+        cityLocation: "تهران",
+      },
+    },
+    {
+      name: "سالن آرایشی تیکال",
+      slug: "tikal-pilot",
+      type: OrganizationType.APPOINTMENT,
+      industryKey: "FASHION_BOUTIQUE" as const,
+      capabilities: ["APPOINTMENT", "CRM", "IAM"] as const,
+      status: "ONBOARDING" as const,
+      notes: "Appointment, services, staff, and portfolio readiness.",
+      seoGrowthPlanner: {
+        businessGoals: ["آماده‌سازی رزرو آنلاین", "نمایش خدمات سالن"],
+        targetAudience: ["مشتریان خدمات زیبایی", "رزرو محلی"],
+        preferredKeywords: ["سالن آرایشی تیکال", "رزرو سالن زیبایی", "خدمات زیبایی"],
+        cityLocation: "تهران",
+      },
+    },
+  ];
+
+  for (const pilot of pilots) {
+    await upsertPilotOrganization({ ...pilot, operatorUserId: operator.id });
+  }
+  console.log(`✅ Created ${pilots.length} pilot operations workspaces`);
+}
+
 async function main() {
   const context = await mainDev();
 
@@ -2088,6 +2594,7 @@ async function main() {
   });
 
   await seedSicilyMenu(prisma, sicilyOrg);
+  await seedPilotWorkspaces();
 }
 
 main()

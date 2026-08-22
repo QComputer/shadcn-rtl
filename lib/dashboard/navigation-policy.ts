@@ -32,6 +32,8 @@ export type DashboardNavigationKey =
   | "imports"
   | "exports"
   | "creativeStudio"
+  | "businessActivation"
+  | "reputation"
   | "settings"
   | "organizationSettings"
   | "qrcode"
@@ -40,6 +42,8 @@ export type DashboardNavigationKey =
   | "users"
   | "requestDemoLeads"
   | "tenantProvisioning"
+  | "businessAcquisition"
+  | "pilots"
 
 export type DashboardNavigationGroupKey = "operations" | "catalog" | "teamAndSettings" | "platformAdmin"
 
@@ -60,6 +64,8 @@ export const DASHBOARD_NAVIGATION_ITEMS = {
   imports: "/imports",
   exports: "/exports",
   creativeStudio: "/creative-studio",
+  businessActivation: "/business-activation",
+  reputation: "/reputation",
   settings: "/settings",
   organizationSettings: "/settings/organization",
   qrcode: "/qrcode",
@@ -68,6 +74,8 @@ export const DASHBOARD_NAVIGATION_ITEMS = {
   users: "/users",
   requestDemoLeads: "/request-demo-leads",
   tenantProvisioning: "/tenant-provisioning",
+  businessAcquisition: "/business-acquisition",
+  pilots: "/pilots",
 } as const satisfies Record<DashboardNavigationKey, string>
 
 export const DASHBOARD_NAVIGATION_GROUPS = [
@@ -81,11 +89,11 @@ export const DASHBOARD_NAVIGATION_GROUPS = [
   },
   {
     key: "teamAndSettings",
-    items: ["members", "customerClub", "imports", "exports", "creativeStudio", "settings", "organizationSettings", "qrcode"],
+    items: ["businessActivation", "reputation", "members", "customerClub", "imports", "exports", "creativeStudio", "settings", "organizationSettings", "qrcode"],
   },
   {
     key: "platformAdmin",
-    items: ["organizations", "shopDomains", "users", "requestDemoLeads", "tenantProvisioning"],
+    items: ["organizations", "shopDomains", "users", "requestDemoLeads", "tenantProvisioning", "businessAcquisition", "pilots"],
   },
 ] as const satisfies readonly { key: DashboardNavigationGroupKey; items: readonly DashboardNavigationKey[] }[]
 
@@ -110,6 +118,8 @@ export const ROLE_NAVIGATION_POLICY = {
   imports: MANAGEMENT_ROLES,
   exports: MANAGEMENT_ROLES,
   creativeStudio: MANAGEMENT_ROLES,
+  businessActivation: MANAGEMENT_ROLES,
+  reputation: MANAGEMENT_ROLES,
   settings: MANAGEMENT_ROLES,
   organizationSettings: MANAGEMENT_ROLES,
   qrcode: MANAGEMENT_ROLES,
@@ -118,6 +128,8 @@ export const ROLE_NAVIGATION_POLICY = {
   users: ["SUPER_ADMIN"],
   requestDemoLeads: ["SUPER_ADMIN"],
   tenantProvisioning: ["SUPER_ADMIN"],
+  businessAcquisition: ["SUPER_ADMIN"],
+  pilots: ["SUPER_ADMIN"],
 } as const satisfies Record<DashboardNavigationKey, readonly DashboardRole[]>
 
 export const DASHBOARD_ROUTE_POLICY = {
@@ -151,17 +163,22 @@ export const DASHBOARD_ROUTE_POLICY = {
   "/imports": ROLE_NAVIGATION_POLICY.imports,
   "/exports": ROLE_NAVIGATION_POLICY.exports,
   "/creative-studio": ROLE_NAVIGATION_POLICY.creativeStudio,
+  "/business-activation": ROLE_NAVIGATION_POLICY.businessActivation,
+  "/reputation": ROLE_NAVIGATION_POLICY.reputation,
   "/settings": ROLE_NAVIGATION_POLICY.settings,
   "/settings/organization": ROLE_NAVIGATION_POLICY.organizationSettings,
   "/qrcode": ROLE_NAVIGATION_POLICY.qrcode,
   "/organizations": ROLE_NAVIGATION_POLICY.organizations,
   "/organizations/new": ROLE_NAVIGATION_POLICY.organizations,
+  "/organizations/[id]/integrations/inoti": ROLE_NAVIGATION_POLICY.organizations,
   "/shop-domains": ROLE_NAVIGATION_POLICY.shopDomains,
   "/users": ROLE_NAVIGATION_POLICY.users,
   "/request-demo-leads": ROLE_NAVIGATION_POLICY.requestDemoLeads,
   "/request-demo-leads/[leadId]/provisioning": ROLE_NAVIGATION_POLICY.tenantProvisioning,
   "/tenant-provisioning": ROLE_NAVIGATION_POLICY.tenantProvisioning,
   "/tenant-provisioning/[planId]": ROLE_NAVIGATION_POLICY.tenantProvisioning,
+  "/business-acquisition": ROLE_NAVIGATION_POLICY.businessAcquisition,
+  "/pilots": ROLE_NAVIGATION_POLICY.pilots,
 } as const satisfies Record<string, readonly DashboardRole[]>
 
 export function normalizeDashboardRole(role: string | null | undefined): DashboardRole | null {

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { checkRouteAccess } from "@/lib/access-control";
 import {
@@ -25,6 +26,18 @@ import { resolveActiveTenantForHost } from "@/lib/domains/domain-resolver.server
 import { isPlatformHost } from "@/lib/custom-domain-routing";
 import { publicOrganizationHref } from "@/app/[locale]/dashboard/organizations/page";
 import { getIntegrationAdapter, listIntegrationAdapters } from "@/lib/integrations/runtime/registry";
+import { listInotiServiceMappings } from "@/lib/integrations/inoti-account-management";
+import {
+  calculateReputationScore,
+  listReputationIntegrationReadinessMappings,
+} from "@/lib/customer-reputation/customer-reputation.service";
+import {
+  createAcquisitionOnboardingDraft,
+  getIndustryTemplate,
+  organizationTypeForIndustryCapabilities,
+  persistedCapabilitiesForRecommendations,
+  reviewIndustryCapabilityRecommendations,
+} from "@/lib/business-acquisition/industry-templates";
 
 describe("organization capability compatibility", () => {
   it("falls back to the legacy type only before capability initialization", () => {
@@ -54,6 +67,39 @@ describe("organization capability compatibility", () => {
       ...organization,
       capabilities: [{ key: "SHOP", status: "INACTIVE" }],
     }), []);
+  });
+});
+
+describe("business acquisition industry templates", () => {
+  it("keeps industry recommendations data-driven and maps only concrete platform capabilities", () => {
+    const restaurant = getIndustryTemplate("RESTAURANT");
+
+    assert.deepEqual(restaurant.recommendedCapabilities, ["SHOP", "CRM", "CAMPAIGN", "SEO", "CUSTOMER_ENGAGEMENT"]);
+    assert.deepEqual(persistedCapabilitiesForRecommendations(restaurant.recommendedCapabilities), ["SHOP", "CRM"]);
+    assert.equal(organizationTypeForIndustryCapabilities(["SHOP", "CRM"]), "SHOP");
+  });
+
+  it("lets operators override recommended capabilities without changing the industry template", () => {
+    const review = reviewIndustryCapabilityRecommendations({
+      industryKey: "DENTAL_CLINIC",
+      selectedCapabilities: ["APPOINTMENT", "CRM"],
+    });
+
+    assert.deepEqual(review.recommendedCapabilities, ["APPOINTMENT", "CRM", "SEO"]);
+    assert.deepEqual(review.selectedCapabilities, ["APPOINTMENT", "CRM"]);
+    assert.equal(review.organizationType, "APPOINTMENT");
+  });
+
+  it("marks future acquisition sources as architecture-ready but inactive", () => {
+    const draft = createAcquisitionOnboardingDraft({
+      industryKey: "FASHION_BOUTIQUE",
+      sourceType: "INVITATION_CODE",
+    });
+
+    assert.equal(draft.futureSource, true);
+    assert.equal(draft.activeSource, "BAZARBAAZ_TEAM");
+    assert.equal(draft.industryTemplate.industryKey, "FASHION_BOUTIQUE");
+    assert.deepEqual(draft.suggestedIntegrations, ["iCV", "EBC"]);
   });
 });
 
@@ -120,6 +166,61 @@ describe("integration runtime adapter registry", () => {
     assert.equal(disabled.status, "BLOCKED");
     assert.equal(disabled.errorCode, "INTEGRATION_NOT_ACTIVE");
   });
+
+  it("exposes reusable iNoti service mappings without credential data", () => {
+    const mappings = listInotiServiceMappings();
+    assert.equal(mappings.length, 5);
+    assert.deepEqual(mappings.map((mapping) => mapping.serviceKey).sort(), [
+      "INOTI_EBC",
+      "INOTI_IAM",
+      "INOTI_ICV",
+      "INOTI_IMENU",
+      "INOTI_USSD",
+    ]);
+    assert.equal(mappings.find((mapping) => mapping.serviceKey === "INOTI_IAM")?.mappedGrowthFeatures.includes("SEO readiness"), true);
+    const serialized = JSON.stringify(mappings);
+    assert.equal(/password|apiKey|token|secret/i.test(serialized), false);
+  });
+});
+
+describe("customer trust reputation foundation", () => {
+  it("calculates deterministic reputation scores from transparent factors", () => {
+    assert.equal(calculateReputationScore({
+      averageRating: 5,
+      reviewCount: 25,
+      verifiedReviewRatio: 1,
+      responseRate: 1,
+      recentActivityRatio: 1,
+    }), 100);
+    assert.equal(calculateReputationScore({
+      averageRating: 4,
+      reviewCount: 10,
+      verifiedReviewRatio: 0.8,
+      responseRate: 0.5,
+      recentActivityRatio: 0.4,
+    }), 67);
+  });
+
+  it("maps review data to iAM, EBC, Customer Club, and USSD readiness without provider calls", () => {
+    const mappings = listReputationIntegrationReadinessMappings();
+    assert.deepEqual(mappings.map((mapping) => mapping.target).sort(), ["Customer Club", "EBC", "USSD", "iAM"]);
+    assert.equal(mappings.every((mapping) => mapping.externalProviderCalls === false), true);
+    assert.equal(/password|phone|email|token|secret/i.test(JSON.stringify(mappings)), false);
+    assert.equal(mappings.some((mapping) => /signed review request/i.test(mapping.purpose)), true);
+  });
+
+  it("keeps authenticated review submission behind tenant context", () => {
+    const routeSource = readFileSync("app/api/organizations/[id]/reviews/route.ts", "utf8");
+
+    assert.match(routeSource, /requireTenantContext\(session,\s*id,\s*\["ADMIN",\s*"MANAGER",\s*"STAFF"\]\)/);
+    assert.doesNotMatch(routeSource, /^\s*await requireAuthSession\(\);/m);
+  });
+
+  it("keeps signed public review links outside locale rewriting", () => {
+    const proxySource = readFileSync("proxy.ts", "utf8");
+
+    assert.match(proxySource, /pathname\.startsWith\("\/review"\)/);
+  });
 });
 
 describe("dashboard public organization destinations", () => {
@@ -169,6 +270,118 @@ describe("capability-aware dashboard authorization", () => {
       role: "ADMIN",
       capabilities: [],
     }).isAllowed, false);
+  });
+
+  it("keeps the business acquisition console platform-only", () => {
+    assert.equal(isDashboardNavigationItemVisible("businessAcquisition", "SUPER_ADMIN", []), true);
+    assert.equal(isDashboardNavigationItemVisible("businessAcquisition", "ADMIN", ["SHOP"]), false);
+    assert.equal(getDashboardRouteAccessDecision({
+      locale: "fa",
+      pathname: "/fa/dashboard/business-acquisition",
+      role: "SUPER_ADMIN",
+      capabilities: [],
+    }).isAllowed, true);
+    assert.equal(getDashboardRouteAccessDecision({
+      locale: "fa",
+      pathname: "/fa/dashboard/business-acquisition",
+      role: "ADMIN",
+      capabilities: ["SHOP"],
+    }).isAllowed, false);
+    assert.equal(checkRouteAccess("/fa/dashboard/business-acquisition", {
+      userId: "platform-operator",
+      userRole: "SUPER_ADMIN",
+    }).hasAccess, true);
+    assert.equal(checkRouteAccess("/fa/dashboard/business-acquisition", {
+      userId: "tenant-admin",
+      userRole: "ADMIN",
+      organizationId: "tenant-a",
+      organizationType: "SHOP",
+      organizationCapabilities: ["SHOP"],
+    }).hasAccess, false);
+    assert.equal(isDashboardNavigationItemVisible("pilots", "SUPER_ADMIN", []), true);
+    assert.equal(isDashboardNavigationItemVisible("pilots", "ADMIN", ["SHOP"]), false);
+    assert.equal(getDashboardRouteAccessDecision({
+      locale: "fa",
+      pathname: "/fa/dashboard/pilots",
+      role: "SUPER_ADMIN",
+      capabilities: [],
+    }).isAllowed, true);
+    assert.equal(getDashboardRouteAccessDecision({
+      locale: "fa",
+      pathname: "/fa/dashboard/pilots",
+      role: "ADMIN",
+      capabilities: ["SHOP"],
+    }).isAllowed, false);
+    assert.equal(checkRouteAccess("/fa/dashboard/pilots", {
+      userId: "platform-operator",
+      userRole: "SUPER_ADMIN",
+    }).hasAccess, true);
+    assert.equal(checkRouteAccess("/fa/dashboard/pilots", {
+      userId: "tenant-admin",
+      userRole: "ADMIN",
+      organizationId: "tenant-a",
+      organizationType: "SHOP",
+      organizationCapabilities: ["SHOP"],
+    }).hasAccess, false);
+    assert.equal(getDashboardRouteAccessDecision({
+      locale: "fa",
+      pathname: "/fa/dashboard/organizations/org_1/integrations/inoti",
+      role: "SUPER_ADMIN",
+      capabilities: [],
+    }).isAllowed, true);
+    assert.equal(getDashboardRouteAccessDecision({
+      locale: "fa",
+      pathname: "/fa/dashboard/organizations/org_1/integrations/inoti",
+      role: "ADMIN",
+      capabilities: ["SHOP"],
+    }).isAllowed, false);
+    assert.equal(checkRouteAccess("/fa/dashboard/organizations/org_1/integrations/inoti", {
+      userId: "tenant-admin",
+      userRole: "ADMIN",
+      organizationId: "tenant-a",
+      organizationType: "SHOP",
+      organizationCapabilities: ["SHOP"],
+    }).hasAccess, false);
+  });
+
+  it("exposes business activation to owner-equivalent tenant managers only", () => {
+    assert.equal(isDashboardNavigationItemVisible("businessActivation", "ADMIN", []), true);
+    assert.equal(isDashboardNavigationItemVisible("businessActivation", "MANAGER", ["SHOP"]), true);
+    assert.equal(isDashboardNavigationItemVisible("businessActivation", "STAFF", ["SHOP"]), false);
+    assert.equal(isDashboardNavigationItemVisible("reputation", "MANAGER", ["SHOP"]), true);
+    assert.equal(getDashboardRouteAccessDecision({
+      locale: "fa",
+      pathname: "/fa/dashboard/business-activation",
+      role: "ADMIN",
+      capabilities: [],
+    }).isAllowed, true);
+    assert.equal(getDashboardRouteAccessDecision({
+      locale: "fa",
+      pathname: "/fa/dashboard/business-activation",
+      role: "STAFF",
+      capabilities: ["SHOP"],
+    }).isAllowed, false);
+    assert.equal(checkRouteAccess("/fa/dashboard/business-activation", {
+      userId: "tenant-admin",
+      userRole: "ADMIN",
+      organizationId: "tenant-a",
+      organizationType: "SHOP",
+      organizationCapabilities: [],
+    }).hasAccess, true);
+    assert.equal(checkRouteAccess("/fa/dashboard/reputation", {
+      userId: "tenant-admin",
+      userRole: "ADMIN",
+      organizationId: "tenant-a",
+      organizationType: "SHOP",
+      organizationCapabilities: [],
+    }).hasAccess, true);
+    assert.equal(checkRouteAccess("/fa/dashboard/business-activation", {
+      userId: "tenant-staff",
+      userRole: "STAFF",
+      organizationId: "tenant-a",
+      organizationType: "SHOP",
+      organizationCapabilities: ["SHOP"],
+    }).hasAccess, false);
   });
 });
 

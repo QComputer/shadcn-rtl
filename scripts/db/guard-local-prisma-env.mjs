@@ -71,12 +71,16 @@ export function runGuardedCommand(argv = process.argv.slice(2), env = process.en
     return Promise.resolve(1);
   }
 
-  const executable = process.platform === "win32" && !/\.(cmd|exe)$/i.test(command)
-    ? `${command}.cmd`
-    : command;
+  const executable = process.platform === "win32" ? "cmd.exe" : command;
+  const executableArgs = process.platform === "win32"
+    ? ["/d", "/s", "/c", command, ...args]
+    : args;
+  const childEnv = process.platform === "win32"
+    ? Object.fromEntries(Object.entries(env).filter(([key, value]) => key && !key.startsWith("=") && value !== undefined))
+    : env;
 
   return new Promise((resolve) => {
-    const child = spawnImpl(executable, args, { stdio: "inherit", env });
+    const child = spawnImpl(executable, executableArgs, { stdio: "inherit", env: childEnv });
     child.on("exit", (code) => resolve(code ?? 1));
     child.on("error", (error) => {
       console.error(error instanceof Error ? error.message : String(error));

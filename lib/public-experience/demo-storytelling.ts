@@ -1,0 +1,51 @@
+export const DEMO_STORY_STEPS = [
+  {
+    key: "business-joins",
+    ordering: 10,
+    title: "Business joins BazarBaaz",
+    description: "A demo organization is created with capability-based SHOP and/or APPOINTMENT surfaces.",
+    simulatedOnly: true,
+  },
+  {
+    key: "source-connected",
+    ordering: 20,
+    title: "Existing data is connected",
+    description: "Mock external catalog providers expose preview, mapping, approval, and import readiness.",
+    simulatedOnly: true,
+  },
+  {
+    key: "entities-structured",
+    ordering: 30,
+    title: "Business entities are structured",
+    description: "Products, services, categories, locations, content, and media are indexed into the entity graph.",
+    simulatedOnly: true,
+  },
+  {
+    key: "seo-discovered",
+    ordering: 40,
+    title: "SEO opportunities are discovered",
+    description: "Completeness checks produce schema hints and safe SEO opportunity read models.",
+    simulatedOnly: true,
+  },
+  {
+    key: "content-generated",
+    ordering: 50,
+    title: "Content opportunities are generated",
+    description: "Dry-run content provider adapters produce reviewable briefs and content assets.",
+    simulatedOnly: true,
+  },
+  {
+    key: "crm-available",
+    ordering: 60,
+    title: "CRM becomes available",
+    description: "Demo customer identities and interactions power organization-scoped customer summaries.",
+    simulatedOnly: true,
+  },
+  {
+    key: "inoti-demonstrated",
+    ordering: 70,
+    title: "iNoti ecosystem is demonstrated",
+    description: "iMenu, iAM, iCV, EBC, USSD, and SMS appear through dry-run provider adapter contracts only.",
+    simulatedOnly: true,
+  },
+] as const;

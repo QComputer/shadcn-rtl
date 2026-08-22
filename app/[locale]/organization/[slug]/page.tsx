@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import prisma from "@/lib/db";
 import { hasOrganizationCapability } from "@/lib/organization-capabilities";
 import { buildTenantPublicPath } from "@/lib/custom-domain-routing";
+import { getPublicOrganizationReadModel } from "@/lib/public-experience/organization-public-read-model.service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -30,6 +31,8 @@ export default async function OrganizationHomePage({ params }: Props) {
   });
 
   if (!organization) notFound();
+  const publicModel = await getPublicOrganizationReadModel(slug);
+  const reputation = publicModel.reputation;
 
   const hasShop = hasOrganizationCapability({
     legacyType: organization.type,
@@ -80,6 +83,29 @@ export default async function OrganizationHomePage({ params }: Props) {
           </Card>
         )}
       </section>
+
+      {reputation.reviewCount > 0 && (
+        <section className="mx-auto mt-10 max-w-4xl">
+          <Card>
+            <CardHeader>
+              <CardTitle>اعتبار کسب‌وکار</CardTitle>
+              <CardDescription>
+                امتیاز {reputation.score}/100 · میانگین {reputation.averageRating} از {reputation.reviewCount} نظر تاییدشده
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 md:grid-cols-2">
+              {reputation.selectedReviews.slice(0, 4).map((review) => (
+                <article key={review.id} className="rounded-md border p-3">
+                  <p className="text-sm font-medium">{"★".repeat(review.rating)}</p>
+                  {review.title && <p className="mt-2 font-medium">{review.title}</p>}
+                  {review.text && <p className="mt-1 text-sm text-muted-foreground">"{review.text}"</p>}
+                  <p className="mt-2 text-xs text-muted-foreground">{review.customerLabel}</p>
+                </article>
+              ))}
+            </CardContent>
+          </Card>
+        </section>
+      )}
     </main>
   );
 }

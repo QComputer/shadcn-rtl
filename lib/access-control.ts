@@ -70,6 +70,16 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     requiresOrgMembership: true,
   },
 
+  "/dashboard/business-activation": {
+    allowedRoles: ORG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+  },
+
+  "/dashboard/reputation": {
+    allowedRoles: ORG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+  },
+
   "/dashboard/qrcode": {
     allowedRoles: ORG_MANAGEMENT_ROLES,
     requiresOrgMembership: true,
@@ -80,6 +90,10 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
   },
 
   "/dashboard/organizations/new": {
+    allowedRoles: ["SUPER_ADMIN"],
+  },
+
+  "/dashboard/organizations/[id]/integrations/inoti": {
     allowedRoles: ["SUPER_ADMIN"],
   },
 
@@ -238,6 +252,18 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
       requiresOrgMembership: true,
     },
    "/dashboard/request-demo-leads": {
+      allowedRoles: ["SUPER_ADMIN"],
+    },
+   "/dashboard/tenant-provisioning": {
+      allowedRoles: ["SUPER_ADMIN"],
+    },
+   "/dashboard/tenant-provisioning/[planId]": {
+      allowedRoles: ["SUPER_ADMIN"],
+    },
+   "/dashboard/business-acquisition": {
+      allowedRoles: ["SUPER_ADMIN"],
+    },
+   "/dashboard/pilots": {
       allowedRoles: ["SUPER_ADMIN"],
     },
   }

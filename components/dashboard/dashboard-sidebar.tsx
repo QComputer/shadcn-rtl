@@ -22,11 +22,15 @@ import {
   Settings,
   ShieldCheck,
   ShoppingCart,
+  Store,
   Tags,
   UserRoundCheck,
   Users,
   WandSparkles,
   Wrench,
+  Rocket,
+  Star,
+  BriefcaseBusiness,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -91,6 +95,8 @@ const NAVIGATION_ICONS = {
   imports: Import,
   exports: Download,
   creativeStudio: WandSparkles,
+  businessActivation: Rocket,
+  reputation: Star,
   settings: Settings,
   organizationSettings: Building2,
   qrcode: QrCode,
@@ -99,6 +105,8 @@ const NAVIGATION_ICONS = {
   users: ShieldCheck,
   requestDemoLeads: Inbox,
   tenantProvisioning: ListChecks,
+  businessAcquisition: Store,
+  pilots: BriefcaseBusiness,
 } satisfies Record<DashboardNavigationKey, DashboardIcon>
 
 const NAVIGATION_GROUPS: NavigationGroup[] = DASHBOARD_NAVIGATION_GROUPS.map((group) => ({
@@ -140,6 +148,8 @@ const roleAwareNavigationCopy = {
       imports: "مرکز واردسازی",
       exports: "مرکز خروجی",
       creativeStudio: "استودیوی خلاقیت",
+      businessActivation: "فعال‌سازی کسب‌وکار",
+      reputation: "اعتبار کسب‌وکار",
       settings: "تنظیمات",
       organizationSettings: "تنظیمات سازمان",
       qrcode: "کد QR",
@@ -148,6 +158,8 @@ const roleAwareNavigationCopy = {
       users: "کاربران",
       requestDemoLeads: "درخواست‌های دمو",
       tenantProvisioning: "آماده‌سازی ایجاد کسب‌وکار",
+      businessAcquisition: "جذب کسب‌وکار",
+      pilots: "عملیات پایلوت",
     },
     roles: {
       SUPER_ADMIN: "مدیر کل",
@@ -187,6 +199,8 @@ const roleAwareNavigationCopy = {
       imports: "Import Hub",
       exports: "Export Hub",
       creativeStudio: "Creative Studio",
+      businessActivation: "Business activation",
+      reputation: "Reputation",
       settings: "Settings",
       organizationSettings: "Organization settings",
       qrcode: "QR code",
@@ -195,6 +209,8 @@ const roleAwareNavigationCopy = {
       users: "Users",
       requestDemoLeads: "Demo requests",
       tenantProvisioning: "Tenant provisioning",
+      businessAcquisition: "Business acquisition",
+      pilots: "Pilot operations",
     },
     roles: {
       SUPER_ADMIN: "Super admin",
@@ -234,6 +250,8 @@ const roleAwareNavigationCopy = {
       imports: "مركز الاستيراد",
       exports: "مركز التصدير",
       creativeStudio: "استوديو الإبداع",
+      businessActivation: "تفعيل النشاط",
+      reputation: "السمعة",
       settings: "الإعدادات",
       organizationSettings: "إعدادات المؤسسة",
       qrcode: "رمز QR",
@@ -242,6 +260,8 @@ const roleAwareNavigationCopy = {
       users: "المستخدمون",
       requestDemoLeads: "طلبات العرض التجريبي",
       tenantProvisioning: "إعداد إنشاء النشاط",
+      businessAcquisition: "اكتساب الأعمال",
+      pilots: "عمليات التجربة",
     },
     roles: {
       SUPER_ADMIN: "مدير عام",

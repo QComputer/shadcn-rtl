@@ -1,37 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { organizationService } from "@/lib/services/organization.service";
-import { serviceCategoryService } from "@/lib/services/category.service";
+import { jsonError } from "@/lib/api-guards";
+import { getPublicOrganizationReadModel } from "@/lib/public-experience/organization-public-read-model.service";
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     const { slug } = await params;
-
-    // Get organization by slug
-    const organization = await organizationService.getBySlugPublic(slug);
-
-    if (!organization) {
-      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
-    }
-
-    // Get service categories with services
-    const categories = await serviceCategoryService.listPublic(organization.id);
-
-    // Get business hours
-    const businessHours = await organizationService.getBusinessHours(organization.id);
-
-    return NextResponse.json({
-      organization,
-      categories,
-      businessHours,
-    });
+    return NextResponse.json(await getPublicOrganizationReadModel(slug));
   } catch (error) {
-    console.error("Error getting organization:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return jsonError(error);
   }
 }

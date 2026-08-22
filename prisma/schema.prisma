@@ -35,6 +35,76 @@ enum OrganizationCapabilityStatus {
   INACTIVE
 }
 
+enum OrganizationAcquisitionSourceType {
+  BAZARBAAZ_TEAM
+  SALES_AGENT
+  BUSINESS_SELF_SIGNUP
+  INVITATION_CODE
+}
+
+enum OrganizationIndustryKey {
+  RESTAURANT
+  PHARMACY
+  DENTAL_CLINIC
+  FASHION_BOUTIQUE
+  RETAIL_SHOP
+  OTHER
+}
+
+enum OrganizationInvitationStatus {
+  CREATED
+  SENT
+  CLAIMED
+  EXPIRED
+  REVOKED
+}
+
+enum OrganizationClaimRequestStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+}
+
+enum OrganizationActivationPlanStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum OrganizationActivationTaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+}
+
+enum OrganizationActivationTaskCategory {
+  PROFILE
+  OPERATIONS
+  CUSTOMER
+  GROWTH
+  INTEGRATIONS
+}
+
+enum PilotWorkspaceStatus {
+  DISCOVERY
+  ONBOARDING
+  CONFIGURATION
+  READY_FOR_LAUNCH
+  LIVE
+  PAUSED
+}
+
+enum PilotChecklistCategory {
+  BUSINESS_PROFILE
+  CATALOG
+  INTEGRATIONS
+  SEO
+  TRUST
+  LAUNCH
+}
+
 enum IntegrationProvider {
   INOTI_USSD
   INOTI_IMENU
@@ -74,8 +144,15 @@ enum IntegrationHealthStatus {
 
 enum BusinessEventType {
   ORDER_CREATED
+  ORDER_ACCEPTED
+  ORDER_PREPARING
+  ORDER_READY
+  ORDER_OUT_FOR_DELIVERY
+  ORDER_COMPLETED
+  APPOINTMENT_CREATED
   CUSTOMER_CREATED
   PAYMENT_COMPLETED
+  CAMPAIGN_CLICKED
   USSD_SESSION_STARTED
   INTEGRATION_CONNECTED
   INTEGRATION_HEALTH_CHECKED
@@ -90,6 +167,11 @@ enum CustomerIdentityStatus {
 enum CustomerInteractionType {
   CUSTOMER_CREATED
   ORDER_CREATED
+  ORDER_ACCEPTED
+  ORDER_PREPARING
+  ORDER_READY
+  ORDER_OUT_FOR_DELIVERY
+  ORDER_COMPLETED
   APPOINTMENT_CREATED
   USSD_SESSION_STARTED
   PAYMENT_COMPLETED
@@ -402,6 +484,310 @@ enum ExternalImportSourceStatus {
   ERROR
 }
 
+enum ExternalCatalogProvider {
+  SNAPPFOOD
+  EZY
+  MANUAL_IMPORT
+  FUTURE_PROVIDER
+}
+
+enum ExternalCatalogConnectionStatus {
+  DRAFT
+  ACTIVE
+  DISABLED
+  ERROR
+}
+
+enum ExternalCatalogSyncMode {
+  PREVIEW_ONLY
+  MANUAL_APPROVAL
+}
+
+enum ExternalCatalogItemType {
+  CATEGORY
+  PRODUCT
+  SERVICE
+  IMAGE
+  OPTION
+}
+
+enum ExternalImportRunStatus {
+  PREVIEW
+  MAPPING
+  READY_FOR_APPROVAL
+  APPROVED
+  IMPORTING
+  COMPLETED
+  FAILED
+}
+
+enum ExternalCatalogItemStatus {
+  DISCOVERED
+  MAPPED
+  APPROVED
+  IMPORTED
+  REJECTED
+}
+
+enum ExternalCatalogMappingStatus {
+  UNMAPPED
+  MATCHED
+  READY_FOR_IMPORT
+  IMPORTED
+  IGNORED
+}
+
+enum CatalogSyncRunStatus {
+  QUEUED
+  PREVIEWED
+  COMPLETED
+  FAILED
+}
+
+enum ExternalEntityType {
+  CATEGORY
+  PRODUCT
+  SERVICE
+}
+
+enum InternalBusinessEntityType {
+  CATEGORY
+  PRODUCT_CATEGORY
+  PRODUCT
+  SERVICE
+  ORGANIZATION
+  LOCATION
+  CAMPAIGN
+  CONTENT
+  SOCIAL_POST
+  MEDIA
+  REVIEW
+}
+
+enum ExternalEntityMappingStatus {
+  SUGGESTED
+  APPROVED
+  REJECTED
+}
+
+enum ExternalCatalogSyncJobStatus {
+  QUEUED
+  RUNNING
+  DRY_RUN_COMPLETED
+  COMPLETED
+  FAILED
+}
+
+enum ExternalCatalogChangeType {
+  NEW_ITEM
+  PRICE_CHANGED
+  NAME_CHANGED
+  UNCHANGED
+}
+
+enum BusinessEntityStatus {
+  ACTIVE
+  DRAFT
+  ARCHIVED
+}
+
+enum BusinessEntityRelationType {
+  HAS_PRODUCT
+  HAS_SERVICE
+  LOCATED_AT
+  HAS_CATEGORY
+  HAS_CONTENT
+  HAS_SOCIAL_POST
+  HAS_MEDIA
+  HAS_REVIEW
+  PART_OF_CAMPAIGN
+  RELATED_TO
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  PUBLISHED
+  HIDDEN
+  REJECTED
+}
+
+enum ReviewSource {
+  CUSTOMER_PORTAL
+  REVIEW_REQUEST
+  DEMO
+  IMPORT
+}
+
+enum ReviewRequestStatus {
+  CREATED
+  SUBMITTED
+  EXPIRED
+  CANCELED
+}
+
+enum SeoOpportunityType {
+  PRODUCT_DESCRIPTION_MISSING
+  SERVICE_DESCRIPTION_MISSING
+  LOCATION_PAGE_MISSING
+  BUSINESS_DESCRIPTION_MISSING
+  FAQ_MISSING
+  IMAGE_MISSING
+  REVIEW_MISSING
+  SCHEMA_HINT_MISSING
+  SOCIAL_CONTENT_MISSING
+}
+
+enum SeoOpportunityPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum SeoOpportunityStatus {
+  OPEN
+  ACCEPTED
+  PLANNED
+  DISMISSED
+  CONTENT_REQUESTED
+  COMPLETED
+  RESOLVED
+}
+
+enum SeoContentType {
+  LOCAL_LANDING_PAGE
+  PRODUCT_CONTENT
+  SERVICE_CONTENT
+  FAQ
+  ARTICLE
+  SOCIAL_POST
+  VIDEO_SCRIPT
+  CAMPAIGN_COPY
+  BUSINESS_DESCRIPTION
+}
+
+enum SeoContentRequestStatus {
+  DETECTED
+  DRAFT
+  READY_FOR_REVIEW
+  APPROVED
+  QUEUED
+  SENT_TO_PROVIDER
+  PROVIDER_PROCESSING
+  RESULT_RECEIVED
+  REJECTED
+  FAILED
+  CANCELLED
+}
+
+enum SeoContentApprovalState {
+  NOT_SUBMITTED
+  GENERATION_APPROVED
+  RESULT_REVIEW_REQUIRED
+  RESULT_APPROVED
+  PUBLICATION_APPROVED
+  REJECTED
+}
+
+enum BusinessGrowthProfileStatus {
+  DRAFT
+  ACTIVE
+  READY
+  ARCHIVED
+}
+
+enum KeywordIntent {
+  INFORMATIONAL
+  COMMERCIAL
+  TRANSACTIONAL
+  LOCAL
+}
+
+enum KeywordClusterSource {
+  OWNER_INPUT
+  INDUSTRY_TEMPLATE
+  AI_SUGGESTION
+  FUTURE_GOOGLE_TRENDS
+}
+
+enum KeywordClusterStatus {
+  PROPOSED
+  ACTIVE
+  DISMISSED
+  USED
+}
+
+enum GrowthRecommendationType {
+  SEO_ACTION
+  IAM_RECOMMENDATION
+  CONTENT_BLUEPRINT
+  TRUST_ACTION
+  ENGAGEMENT_ACTION
+}
+
+enum GrowthRecommendationStatus {
+  PROPOSED
+  PLANNED
+  ACCEPTED
+  DISMISSED
+  COMPLETED
+}
+
+enum ContentAssetSource {
+  INTERNAL
+  PROVIDER_DRY_RUN
+  PROVIDER_RESULT
+  IMPORT
+  MANUAL
+}
+
+enum ContentAssetStatus {
+  DRAFT
+  REVIEW_REQUIRED
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+  REJECTED
+}
+
+enum ContentDistributionTarget {
+  WEBSITE
+  INSTAGRAM
+  FACEBOOK
+  TELEGRAM
+  IAM
+  ICV
+  EBC
+}
+
+enum ContentDistributionStatus {
+  PLANNED
+  READY
+  PUBLISHED
+  FAILED
+  SYNCED
+}
+
+enum SocialNetwork {
+  INSTAGRAM
+  FACEBOOK
+  OTHER
+}
+
+enum SocialConnectionStatus {
+  DRAFT
+  ACTIVE
+  DISABLED
+  ERROR
+}
+
+enum SocialPostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
 enum ExternalImportJobStatus {
   QUEUED
   NEEDS_REVIEW
@@ -624,11 +1010,39 @@ model Organization {
 
   // Relations
   members                      OrganizationMember[]
+  acquisition                  OrganizationAcquisition?
+  activationPlan               OrganizationActivationPlan?
+  activationTasks              OrganizationActivationTask[]
+  pilotWorkspace               PilotWorkspace?
+  invitations                  OrganizationInvitation[]
+  claimRequests                OrganizationClaimRequest[]
   capabilities                 OrganizationCapability[]
   integrations                 OrganizationIntegration[]
   businessEvents               BusinessEvent[]
   customerIdentities           CustomerIdentity[]
   customerInteractions         CustomerInteraction[]
+  reviewRequests               ReviewRequest[]
+  reputationReviews            Review[]                       @relation("OrganizationReputationReviews")
+  demoSessionTokens            DemoSessionToken[]
+  demoScenarios                DemoScenario[]
+  demoProgressEntries          DemoProgress[]
+  externalCatalogConnections   ExternalCatalogConnection[]
+  externalImportRuns           ExternalImportRun[]
+  externalEntityMappings       ExternalEntityMapping[]
+  externalCatalogSyncJobs      ExternalCatalogSyncJob[]
+  businessEntities             BusinessEntity[]
+  businessEntityRelations      BusinessEntityRelation[]
+  businessEntityMetadataEntries BusinessEntityMetadata[]
+  businessGrowthProfile        BusinessGrowthProfile?
+  keywordClusters              KeywordCluster[]
+  growthRecommendations        GrowthRecommendation[]
+  seoOpportunities             SeoOpportunity[]
+  seoContentRequests           SeoContentRequest[]
+  seoContentBriefs             SeoContentBrief[]
+  contentAssets                ContentAsset[]
+  contentDistributions         ContentDistribution[]
+  socialConnections            SocialConnection[]
+  socialPosts                  SocialPost[]
   ussdSessions                 UssdSession[]
   ussdPaymentIntents           UssdPaymentIntent[]
   ussdCallbackEvents           UssdCallbackEvent[]
@@ -692,6 +1106,141 @@ model Organization {
   @@index([deletedAt])
   @@index([id, slug])
   @@index([id])
+}
+
+model OrganizationAcquisition {
+  id              String                            @id @default(cuid())
+  organizationId  String                            @unique
+  sourceType      OrganizationAcquisitionSourceType
+  industryKey     OrganizationIndustryKey
+  createdByUserId String?
+  agentUserId     String?
+  metadata        Json?
+  createdAt       DateTime                          @default(now())
+  updatedAt       DateTime                          @updatedAt
+
+  organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdByUser User?        @relation("OrganizationAcquisitionCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  agentUser     User?        @relation("OrganizationAcquisitionAgent", fields: [agentUserId], references: [id], onDelete: SetNull)
+
+  @@index([sourceType, createdAt])
+  @@index([industryKey])
+  @@index([createdByUserId])
+  @@index([agentUserId])
+}
+
+model OrganizationActivationPlan {
+  id                     String                           @id @default(cuid())
+  organizationId         String                           @unique
+  industryKey            OrganizationIndustryKey
+  status                 OrganizationActivationPlanStatus @default(ACTIVE)
+  generatedFromTemplate  String
+  recommendedActions     Json
+  completedActions       Json                             @default("[]")
+  growthOpportunities    Json
+  ownerOnboardingReadModel Json
+  metadata               Json?
+  generatedAt            DateTime                         @default(now())
+  createdAt              DateTime                         @default(now())
+  updatedAt              DateTime                         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tasks        OrganizationActivationTask[]
+
+  @@index([industryKey, status])
+  @@index([status, updatedAt])
+}
+
+model OrganizationActivationTask {
+  id               String                             @id @default(cuid())
+  organizationId   String
+  activationPlanId String
+  taskKey          String
+  title            String
+  description      String?                            @db.Text
+  category         OrganizationActivationTaskCategory
+  status           OrganizationActivationTaskStatus   @default(PENDING)
+  completedAt      DateTime?
+  targetRoute      String?
+  metadata         Json?
+  createdAt        DateTime                           @default(now())
+  updatedAt        DateTime                           @updatedAt
+
+  organization   Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  activationPlan OrganizationActivationPlan @relation(fields: [activationPlanId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, taskKey])
+  @@index([activationPlanId, status])
+  @@index([organizationId, status])
+  @@index([organizationId, category, status])
+}
+
+model PilotWorkspace {
+  id                  String               @id @default(cuid())
+  organizationId      String               @unique
+  status              PilotWorkspaceStatus @default(DISCOVERY)
+  assignedOperatorId  String?
+  notes               String?              @db.Text
+  checklist           Json                 @default("[]")
+  completedChecklist  Json                 @default("[]")
+  readinessSummary    Json
+  seoGrowthPlanner    Json?
+  metadata            Json?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedOperator User?        @relation("PilotWorkspaceAssignedOperator", fields: [assignedOperatorId], references: [id], onDelete: SetNull)
+
+  @@index([status, updatedAt])
+  @@index([assignedOperatorId])
+}
+
+model OrganizationInvitation {
+  id              String                       @id @default(cuid())
+  publicId        String                       @unique @default(uuid())
+  organizationId  String
+  invitedRole     UserRole
+  tokenHash       String                       @unique
+  expiresAt       DateTime
+  status          OrganizationInvitationStatus @default(CREATED)
+  createdByUserId String?
+  claimedByUserId String?
+  metadata        Json?
+  createdAt       DateTime                     @default(now())
+  updatedAt       DateTime                     @updatedAt
+
+  organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdByUser User?        @relation("OrganizationInvitationCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  claimedByUser User?        @relation("OrganizationInvitationClaimedBy", fields: [claimedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([expiresAt])
+  @@index([createdByUserId])
+  @@index([claimedByUserId])
+}
+
+model OrganizationClaimRequest {
+  id                   String                         @id @default(cuid())
+  publicId             String                         @unique @default(uuid())
+  organizationId       String
+  requesterUserId      String?
+  requesterEmail       String?
+  requesterPhone       String?
+  status               OrganizationClaimRequestStatus @default(REQUESTED)
+  verificationMetadata Json?
+  reviewedByUserId     String?
+  reviewedAt           DateTime?
+  createdAt            DateTime                       @default(now())
+  updatedAt            DateTime                       @updatedAt
+
+  organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requesterUser User?        @relation("OrganizationClaimRequester", fields: [requesterUserId], references: [id], onDelete: SetNull)
+  reviewedBy    User?        @relation("OrganizationClaimReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([requesterUserId])
+  @@index([reviewedByUserId])
 }
 
 model OrganizationCapability {
@@ -784,6 +1333,8 @@ model BusinessEvent {
   integration  OrganizationIntegration? @relation(fields: [integrationId, organizationId], references: [id, organizationId], onDelete: Cascade)
   customerIdentity CustomerIdentity?    @relation(fields: [customerIdentityId, organizationId], references: [id, organizationId], onDelete: NoAction)
   customerInteractions CustomerInteraction[]
+  reviewRequests ReviewRequest[]
+  reviews Review[]
 
   @@unique([organizationId, dedupeKey])
   @@index([organizationId, type, occurredAt])
@@ -813,6 +1364,8 @@ model CustomerIdentity {
   businessEvents       BusinessEvent[]
   interactions         CustomerInteraction[]
   ussdSessions         UssdSession[]
+  reviews              Review[]
+  reviewRequests       ReviewRequest[]
 
   @@unique([id, organizationId])
   @@unique([organizationId, phoneHash])
@@ -842,11 +1395,134 @@ model CustomerInteraction {
   customerIdentity   CustomerIdentity         @relation(fields: [customerIdentityId, organizationId], references: [id, organizationId], onDelete: Cascade)
   integration        OrganizationIntegration? @relation(fields: [integrationId, organizationId], references: [id, organizationId], onDelete: NoAction)
   businessEvent      BusinessEvent?           @relation(fields: [businessEventId], references: [id], onDelete: SetNull)
+  reviewRequests     ReviewRequest[]
+  reviews            Review[]
 
   @@index([organizationId, customerIdentityId, occurredAt])
   @@index([organizationId, type, occurredAt])
   @@index([integrationId, occurredAt])
   @@index([businessEventId])
+}
+
+model ReviewRequest {
+  id                 String              @id @default(cuid())
+  publicId           String              @unique @default(uuid())
+  organizationId     String
+  customerIdentityId String
+  businessEventId    String
+  customerInteractionId String?
+  tokenHash          String?
+  tokenIssuedAt      DateTime?
+  status             ReviewRequestStatus @default(CREATED)
+  source             ReviewSource        @default(REVIEW_REQUEST)
+  contextType        String?
+  contextId          String?
+  productId          String?
+  serviceId          String?
+  appointmentId      String?
+  orderId            String?
+  staffUserId        String?
+  metadata           Json?
+  expiresAt          DateTime?
+  submittedAt        DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customerIdentity    CustomerIdentity     @relation(fields: [customerIdentityId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  businessEvent       BusinessEvent        @relation(fields: [businessEventId], references: [id], onDelete: Cascade)
+  customerInteraction CustomerInteraction? @relation(fields: [customerInteractionId], references: [id], onDelete: SetNull)
+  reviews             Review[]
+
+  @@unique([organizationId, businessEventId, customerIdentityId])
+  @@unique([tokenHash])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, customerIdentityId, createdAt])
+  @@index([organizationId, contextType, contextId])
+}
+
+model DemoSessionToken {
+  id             String   @id @default(cuid())
+  publicId       String   @unique @default(uuid())
+  organizationId String
+  role           UserRole
+  demoRole       String?
+  tokenHash      String   @unique
+  metadata       Json?
+  expiresAt      DateTime
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, role, expiresAt])
+  @@index([organizationId, demoRole, expiresAt])
+  @@index([expiresAt])
+  @@index([revokedAt])
+}
+
+model DemoScenario {
+  id             String   @id @default(cuid())
+  publicId       String   @unique @default(uuid())
+  organizationId String
+  key            String
+  title          String
+  description    String?
+  isActive       Boolean  @default(true)
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  steps        DemoScenarioStep[]
+  progress     DemoProgress[]
+
+  @@unique([organizationId, key])
+  @@index([organizationId, isActive])
+}
+
+model DemoScenarioStep {
+  id          String   @id @default(cuid())
+  publicId    String   @unique @default(uuid())
+  scenarioId  String
+  key         String
+  title       String
+  description String?
+  role        String
+  action      String?
+  sortOrder   Int
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  scenario DemoScenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  progress DemoProgress[]
+
+  @@unique([scenarioId, key])
+  @@index([scenarioId, sortOrder])
+}
+
+model DemoProgress {
+  id             String    @id @default(cuid())
+  publicId       String    @unique @default(uuid())
+  organizationId String
+  scenarioId     String
+  stepId         String
+  sessionId      String?
+  demoRole       String?
+  completedAt    DateTime?
+  metadata       Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  scenario     DemoScenario      @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  step         DemoScenarioStep  @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@unique([scenarioId, stepId, sessionId])
+  @@index([organizationId, scenarioId])
+  @@index([sessionId])
 }
 
 model OrganizationCollaboration {
@@ -1058,6 +1734,13 @@ model User {
   requestedExportJobs           ExportJob[]                   @relation("ExportJobRequestedBy")
   reviewedImportedProductDrafts ImportedProductDraft[]        @relation("ImportedProductDraftReviewedBy")
   reviewedImportedContentDrafts ImportedContentDraft[]        @relation("ImportedContentDraftReviewedBy")
+  createdSeoContentRequests      SeoContentRequest[]          @relation("SeoContentRequestCreatedBy")
+  assignedPilotWorkspaces        PilotWorkspace[]             @relation("PilotWorkspaceAssignedOperator")
+  approvedSeoContentRequests     SeoContentRequest[]          @relation("SeoContentRequestApprovedBy")
+  reviewedSeoContentRequests     SeoContentRequest[]          @relation("SeoContentRequestReviewedBy")
+  publicationApprovedSeoContentRequests SeoContentRequest[]   @relation("SeoContentRequestPublicationApprovedBy")
+  reviewedContentAssets          ContentAsset[]               @relation("ContentAssetReviewedBy")
+  approvedContentAssets          ContentAsset[]               @relation("ContentAssetApprovedBy")
   aiMediaRequests               AiMediaRequest[]              @relation("AiMediaRequestRequestedBy")
   aiMediaJobMirrors             AiMediaJobMirror[]            @relation("AiMediaJobRequestedBy")
   aiMediaJobEvents              AiMediaJobEvent[]             @relation("AiMediaJobEventActor")
@@ -1073,6 +1756,12 @@ model User {
   createdTenantProvisioningPlans  TenantProvisioningPlan[] @relation("TenantProvisioningPlanCreatedBy")
   updatedTenantProvisioningPlans  TenantProvisioningPlan[] @relation("TenantProvisioningPlanUpdatedBy")
   approvedTenantProvisioningPlans TenantProvisioningPlan[] @relation("TenantProvisioningPlanApprovedBy")
+  createdOrganizationAcquisitions OrganizationAcquisition[] @relation("OrganizationAcquisitionCreatedBy")
+  agentOrganizationAcquisitions   OrganizationAcquisition[] @relation("OrganizationAcquisitionAgent")
+  createdOrganizationInvitations  OrganizationInvitation[]  @relation("OrganizationInvitationCreatedBy")
+  claimedOrganizationInvitations  OrganizationInvitation[]  @relation("OrganizationInvitationClaimedBy")
+  organizationClaimRequests       OrganizationClaimRequest[] @relation("OrganizationClaimRequester")
+  reviewedOrganizationClaims      OrganizationClaimRequest[] @relation("OrganizationClaimReviewedBy")
 
   @@index([email])
   @@index([name])
@@ -1871,24 +2560,58 @@ model Promotion {
 // --- SOCIAL & FEEDBACK ---
 
 model Review {
-  id      String  @id @default(cuid())
-  rating  Int     @default(5)
-  comment String? //@db.Text
+  id       String  @id @default(cuid())
+  publicId String  @unique @default(uuid())
+  rating   Int     @default(5)
+  title    String?
+  comment  String? //@db.Text
+  text     String? @db.Text
 
   // Review metadata
   isVerifiedPurchase Boolean @default(false)
+  status              ReviewStatus @default(PUBLISHED)
+  source              ReviewSource @default(CUSTOMER_PORTAL)
+  verifiedInteraction Boolean      @default(false)
+  verifiedAt          DateTime?
 
-  userId           String
+  userId           String?
+  organizationId   String?
   organizationSlug String
+  customerIdentityId    String?
+  reviewRequestId       String?
+  businessEventId       String?
+  customerInteractionId String?
+  businessEntityId      String?
+  contextType           String?
+  contextId             String?
+  productId             String?
+  serviceId             String?
+  appointmentId         String?
+  orderId               String?
+  staffUserId           String?
+  responseText          String? @db.Text
+  respondedAt           DateTime?
+  metadata              Json?
 
-  user         User         @relation("UserReviews", fields: [userId], references: [id])
-  organization Organization @relation("OrgReviews", fields: [organizationSlug], references: [slug])
+  user                User?                @relation("UserReviews", fields: [userId], references: [id])
+  organization        Organization         @relation("OrgReviews", fields: [organizationSlug], references: [slug])
+  reputationOrganization Organization?     @relation("OrganizationReputationReviews", fields: [organizationId], references: [id], onDelete: Cascade)
+  customerIdentity    CustomerIdentity?    @relation(fields: [customerIdentityId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  reviewRequest       ReviewRequest?       @relation(fields: [reviewRequestId], references: [id], onDelete: SetNull)
+  businessEvent       BusinessEvent?       @relation(fields: [businessEventId], references: [id], onDelete: SetNull)
+  customerInteraction CustomerInteraction? @relation(fields: [customerInteractionId], references: [id], onDelete: SetNull)
+  businessEntity      BusinessEntity?      @relation(fields: [businessEntityId, organizationId], references: [id, organizationId], onDelete: NoAction)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([userId, organizationSlug]) // One review per user per org
   @@index([organizationSlug])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, customerIdentityId, createdAt])
+  @@index([organizationId, verifiedInteraction])
+  @@index([organizationId, contextType, contextId])
+  @@index([businessEntityId])
   @@index([rating])
 }
 
@@ -1939,6 +2662,531 @@ model ExternalImportSource {
   @@index([organizationId, status])
   @@index([normalizedUrl])
   @@index([createdByUserId])
+}
+
+model ExternalCatalogConnection {
+  id             String                          @id @default(cuid())
+  publicId       String                          @unique @default(uuid())
+  organizationId String
+  provider       ExternalCatalogProvider
+  externalUrl    String?
+  status         ExternalCatalogConnectionStatus @default(DRAFT)
+  syncMode       ExternalCatalogSyncMode         @default(PREVIEW_ONLY)
+  metadata       Json?
+  lastSyncAt     DateTime?
+  createdAt      DateTime                        @default(now())
+  updatedAt      DateTime                        @updatedAt
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  items        ExternalCatalogItem[]
+  syncRuns     CatalogSyncRun[]
+  importRuns   ExternalImportRun[]
+  mappings     ExternalEntityMapping[]
+  syncJobs     ExternalCatalogSyncJob[]
+
+  @@unique([organizationId, provider, externalUrl])
+  @@index([organizationId, status])
+  @@index([provider, status])
+}
+
+model ExternalCatalogItem {
+  id             String                       @id @default(cuid())
+  publicId       String                       @unique @default(uuid())
+  connectionId   String
+  organizationId String
+  externalId     String
+  externalType   ExternalCatalogItemType
+  rawName        String
+  normalizedName String?
+  status         ExternalCatalogItemStatus    @default(DISCOVERED)
+  mappingStatus  ExternalCatalogMappingStatus @default(UNMAPPED)
+  approvedAt     DateTime?
+  rejectedAt     DateTime?
+  importedAt     DateTime?
+  importedEntityType InternalBusinessEntityType?
+  importedEntityId   String?
+  rawPayload      Json?
+  previewPayload  Json?
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
+
+  connection ExternalCatalogConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  mappings   ExternalEntityMapping[]
+
+  @@unique([connectionId, externalId, externalType])
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, mappingStatus])
+  @@index([connectionId, mappingStatus])
+}
+
+model CatalogSyncRun {
+  id             String               @id @default(cuid())
+  publicId       String               @unique @default(uuid())
+  connectionId   String
+  organizationId String
+  status         CatalogSyncRunStatus @default(QUEUED)
+  startedAt      DateTime             @default(now())
+  finishedAt     DateTime?
+  changesSummary Json?
+  metadata       Json?
+
+  connection ExternalCatalogConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, startedAt])
+  @@index([connectionId, startedAt])
+  @@index([status, startedAt])
+}
+
+model ExternalImportRun {
+  id             String                  @id @default(cuid())
+  publicId       String                  @unique @default(uuid())
+  organizationId String
+  connectionId   String
+  status         ExternalImportRunStatus @default(PREVIEW)
+  summary        Json?
+  errorMessage   String?
+  startedAt      DateTime                @default(now())
+  finishedAt     DateTime?
+  approvedAt     DateTime?
+  importedAt     DateTime?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  connection   ExternalCatalogConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([connectionId, startedAt])
+}
+
+model ExternalEntityMapping {
+  id                 String                      @id @default(cuid())
+  publicId           String                      @unique @default(uuid())
+  organizationId     String
+  connectionId       String?
+  externalItemId     String?
+  externalSource     String
+  externalEntityType ExternalEntityType
+  externalId         String
+  internalEntityType InternalBusinessEntityType
+  internalEntityId   String?
+  confidenceScore    Decimal?                    @db.Decimal(5, 4)
+  status             ExternalEntityMappingStatus @default(SUGGESTED)
+  metadata           Json?
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
+
+  organization Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  connection   ExternalCatalogConnection? @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  externalItem ExternalCatalogItem?       @relation(fields: [externalItemId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([organizationId, externalSource, externalEntityType, externalId, internalEntityType])
+  @@index([organizationId, status])
+  @@index([connectionId, status])
+  @@index([externalItemId])
+  @@index([internalEntityType, internalEntityId])
+}
+
+model ExternalCatalogSyncJob {
+  id             String                       @id @default(cuid())
+  publicId       String                       @unique @default(uuid())
+  organizationId String
+  connectionId   String?
+  source         String
+  entityType     ExternalEntityType
+  status         ExternalCatalogSyncJobStatus @default(QUEUED)
+  startedAt      DateTime                     @default(now())
+  finishedAt     DateTime?
+  resultSummary  Json?
+  errorMessage   String?
+  dryRun         Boolean                      @default(true)
+  createdAt      DateTime                     @default(now())
+  updatedAt      DateTime                     @updatedAt
+
+  organization Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  connection   ExternalCatalogConnection? @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([connectionId, startedAt])
+  @@index([source, entityType])
+}
+
+model BusinessEntity {
+  id             String                     @id @default(cuid())
+  publicId       String                     @unique @default(uuid())
+  organizationId String
+  entityType     InternalBusinessEntityType
+  entityId       String
+  title          String
+  slug           String?
+  status         BusinessEntityStatus       @default(ACTIVE)
+  metadata       Json?
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  outgoingRelations BusinessEntityRelation[] @relation("BusinessEntityRelationSource")
+  incomingRelations BusinessEntityRelation[] @relation("BusinessEntityRelationTarget")
+  metadataEntries   BusinessEntityMetadata[]
+  seoOpportunities  SeoOpportunity[]
+  seoContentRequests SeoContentRequest[]
+  seoContentBriefs   SeoContentBrief[]
+  contentAssets      ContentAsset[]
+  socialPosts       SocialPost[]
+  reviews           Review[]
+  keywordClusters   KeywordCluster[]
+  growthRecommendations GrowthRecommendation[]
+
+  @@unique([organizationId, entityType, entityId])
+  @@unique([id, organizationId])
+  @@index([organizationId, entityType])
+  @@index([organizationId, status])
+  @@index([slug])
+}
+
+model BusinessEntityRelation {
+  id             String                     @id @default(cuid())
+  publicId       String                     @unique @default(uuid())
+  organizationId String
+  sourceEntityId String
+  targetEntityId String
+  relationType   BusinessEntityRelationType
+  metadata       Json?
+  createdAt      DateTime                   @default(now())
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sourceEntity BusinessEntity @relation("BusinessEntityRelationSource", fields: [sourceEntityId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  targetEntity BusinessEntity @relation("BusinessEntityRelationTarget", fields: [targetEntityId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([organizationId, sourceEntityId, targetEntityId, relationType])
+  @@index([organizationId, sourceEntityId])
+  @@index([organizationId, targetEntityId])
+  @@index([organizationId, relationType])
+}
+
+model BusinessEntityMetadata {
+  id             String   @id @default(cuid())
+  publicId       String   @unique @default(uuid())
+  organizationId String
+  entityId       String
+  seoTitle       String?
+  seoDescription String?
+  schemaType     String?
+  keywords       Json?
+  locale         String   @default("fa")
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  entity       BusinessEntity @relation(fields: [entityId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([organizationId, entityId, locale])
+  @@index([organizationId, schemaType])
+  @@index([organizationId, locale])
+}
+
+model BusinessGrowthProfile {
+  id                 String                      @id @default(cuid())
+  publicId           String                      @unique @default(uuid())
+  organizationId     String                      @unique
+  status             BusinessGrowthProfileStatus @default(DRAFT)
+  primaryGoals       Json                        @default("[]")
+  targetAudience     Json                        @default("[]")
+  preferredKeywords  Json                        @default("[]")
+  preferredLocations Json                        @default("[]")
+  notes              String?                     @db.Text
+  metadata           Json?
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
+
+  organization    Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  keywordClusters KeywordCluster[]
+  recommendations GrowthRecommendation[]
+
+  @@index([status, updatedAt])
+}
+
+model KeywordCluster {
+  id              String                 @id @default(cuid())
+  publicId        String                 @unique @default(uuid())
+  organizationId  String
+  profileId       String?
+  relatedEntityId String?
+  keyword         String
+  intent          KeywordIntent
+  priority        SeoOpportunityPriority @default(MEDIUM)
+  source          KeywordClusterSource
+  status          KeywordClusterStatus   @default(PROPOSED)
+  metadata        Json?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  profile        BusinessGrowthProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  relatedEntity  BusinessEntity?        @relation(fields: [relatedEntityId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  recommendations GrowthRecommendation[]
+
+  @@unique([organizationId, keyword, intent])
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, intent])
+  @@index([organizationId, source])
+  @@index([profileId])
+  @@index([relatedEntityId])
+}
+
+model GrowthRecommendation {
+  id                     String                     @id @default(cuid())
+  publicId               String                     @unique @default(uuid())
+  organizationId         String
+  profileId              String?
+  keywordClusterId       String?
+  seoOpportunityId       String?
+  businessEntityId       String?
+  recommendationType     GrowthRecommendationType
+  title                  String
+  reason                 String                     @db.Text
+  priority               SeoOpportunityPriority     @default(MEDIUM)
+  status                 GrowthRecommendationStatus @default(PROPOSED)
+  relatedKeywords        Json                       @default("[]")
+  relatedEntities        Json                       @default("[]")
+  iamRecommendation      Json?
+  contentBlueprint       Json?
+  futureIntegrationHooks Json?
+  metadata               Json?
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
+
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  profile        BusinessGrowthProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  keywordCluster KeywordCluster?        @relation(fields: [keywordClusterId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  seoOpportunity SeoOpportunity?        @relation(fields: [seoOpportunityId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  businessEntity BusinessEntity?        @relation(fields: [businessEntityId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([organizationId, recommendationType, title])
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, recommendationType])
+  @@index([organizationId, priority])
+  @@index([profileId])
+  @@index([keywordClusterId])
+  @@index([seoOpportunityId])
+  @@index([businessEntityId])
+}
+
+model SeoOpportunity {
+  id              String                 @id @default(cuid())
+  publicId        String                 @unique @default(uuid())
+  organizationId  String
+  entityId        String
+  opportunityType SeoOpportunityType
+  priority        SeoOpportunityPriority @default(MEDIUM)
+  status          SeoOpportunityStatus   @default(OPEN)
+  metadata        Json?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  entity       BusinessEntity @relation(fields: [entityId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  contentRequests SeoContentRequest[]
+  growthRecommendations GrowthRecommendation[]
+
+  @@unique([organizationId, entityId, opportunityType])
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, opportunityType])
+  @@index([entityId])
+}
+
+model SeoContentRequest {
+  id                          String                  @id @default(cuid())
+  publicId                    String                  @unique @default(uuid())
+  organizationId              String
+  businessEntityId            String
+  seoOpportunityId            String?
+  contentType                 SeoContentType
+  locale                      String                  @default("fa")
+  targetKeywords              Json?
+  targetLocation              String?
+  status                      SeoContentRequestStatus @default(DRAFT)
+  priority                    SeoOpportunityPriority  @default(MEDIUM)
+  approvalState               SeoContentApprovalState @default(NOT_SUBMITTED)
+  provider                    IntegrationProvider?
+  providerRequestReference    String?
+  createdByUserId             String?
+  approvedByUserId            String?
+  approvedAt                  DateTime?
+  submittedAt                 DateTime?
+  resultReceivedAt            DateTime?
+  reviewedByUserId            String?
+  reviewedAt                  DateTime?
+  publicationApprovedByUserId String?
+  publicationApprovedAt       DateTime?
+  metadata                    Json?
+  createdAt                   DateTime                @default(now())
+  updatedAt                   DateTime                @updatedAt
+
+  organization          Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  businessEntity        BusinessEntity   @relation(fields: [businessEntityId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  seoOpportunity        SeoOpportunity?  @relation(fields: [seoOpportunityId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  createdBy             User?            @relation("SeoContentRequestCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approvedBy            User?            @relation("SeoContentRequestApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  reviewedBy            User?            @relation("SeoContentRequestReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  publicationApprovedBy User?            @relation("SeoContentRequestPublicationApprovedBy", fields: [publicationApprovedByUserId], references: [id], onDelete: SetNull)
+  brief                 SeoContentBrief?
+  contentAssets         ContentAsset[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, approvalState])
+  @@index([organizationId, contentType])
+  @@index([seoOpportunityId])
+  @@index([businessEntityId])
+}
+
+model SeoContentBrief {
+  id                 String         @id @default(cuid())
+  publicId           String         @unique @default(uuid())
+  organizationId     String
+  contentRequestId   String         @unique
+  businessEntityId   String
+  contentType        SeoContentType
+  locale             String         @default("fa")
+  contentGoal        String
+  primaryKeyword     String?
+  secondaryKeywords  Json?
+  location           String?
+  audience           String?
+  desiredSchemaType  String?
+  factualContext     Json?
+  relatedEntities    Json?
+  requiredReferences Json?
+  prohibitedClaims   Json?
+  toneHints          Json?
+  suggestedTitle     String?
+  suggestedOutline   Json?
+  metadata           Json?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contentRequest SeoContentRequest @relation(fields: [contentRequestId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  businessEntity BusinessEntity    @relation(fields: [businessEntityId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([contentRequestId, organizationId])
+  @@index([organizationId, contentType])
+  @@index([businessEntityId])
+}
+
+model ContentAsset {
+  id                      String             @id @default(cuid())
+  publicId                String             @unique @default(uuid())
+  organizationId          String
+  contentRequestId        String?
+  businessEntityId        String?
+  source                  ContentAssetSource @default(INTERNAL)
+  contentType             SeoContentType
+  title                   String
+  body                    String             @db.Text
+  locale                  String             @default("fa")
+  status                  ContentAssetStatus @default(DRAFT)
+  sourceProvider          IntegrationProvider?
+  providerResultReference String?
+  seoTitle                String?
+  seoDescription          String?
+  schemaType              String?
+  keywords                Json?
+  metadata                Json?
+  reviewedByUserId        String?
+  reviewedAt              DateTime?
+  approvedByUserId        String?
+  approvedAt              DateTime?
+  publishedAt             DateTime?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contentRequest SeoContentRequest? @relation(fields: [contentRequestId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  businessEntity BusinessEntity?    @relation(fields: [businessEntityId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  reviewedBy     User?              @relation("ContentAssetReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  approvedBy     User?              @relation("ContentAssetApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  distributions  ContentDistribution[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, contentType])
+  @@index([contentRequestId])
+  @@index([businessEntityId])
+}
+
+model ContentDistribution {
+  id                String                    @id @default(cuid())
+  publicId          String                    @unique @default(uuid())
+  organizationId    String
+  contentAssetId    String
+  target            ContentDistributionTarget
+  status            ContentDistributionStatus @default(PLANNED)
+  provider          IntegrationProvider?
+  externalReference String?
+  metadata          Json?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contentAsset ContentAsset @relation(fields: [contentAssetId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([organizationId, contentAssetId, target])
+  @@index([organizationId, status])
+  @@index([organizationId, target])
+  @@index([contentAssetId])
+}
+
+model SocialConnection {
+  id                String                 @id @default(cuid())
+  publicId          String                 @unique @default(uuid())
+  organizationId    String
+  network           SocialNetwork
+  status            SocialConnectionStatus @default(DRAFT)
+  handle            String?
+  externalAccountId String?
+  metadata          Json?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  posts        SocialPost[]
+
+  @@unique([organizationId, network, externalAccountId])
+  @@index([organizationId, status])
+  @@index([network, status])
+}
+
+model SocialPost {
+  id               String           @id @default(cuid())
+  publicId         String           @unique @default(uuid())
+  organizationId   String
+  connectionId     String?
+  businessEntityId String?
+  network          SocialNetwork
+  externalPostId   String?
+  status           SocialPostStatus @default(DRAFT)
+  caption          String?
+  mediaUrls        Json?
+  publishedAt      DateTime?
+  metadata         Json?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  connection     SocialConnection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+  businessEntity BusinessEntity?   @relation(fields: [businessEntityId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([organizationId, network, externalPostId])
+  @@index([organizationId, status])
+  @@index([businessEntityId])
+  @@index([connectionId])
 }
 
 model ExternalImportJob {

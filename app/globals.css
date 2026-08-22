@@ -488,3 +488,28 @@ html[dir="rtl"] .font-persian {
 .bazar-fullcalendar .fc-daygrid-event-harness {
   margin-inline: 2px;
 }
+
+@keyframes bazar-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bazar-bars {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scaleY(0.72);
+    transform-origin: bottom;
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
+    transform-origin: bottom;
+  }
+}

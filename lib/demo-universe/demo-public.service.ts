@@ -6,6 +6,7 @@ import { buildPublicDemoShowcase } from "@/lib/demo-universe/demo-showcase";
 import { FEATURED_DEMO_SHOWCASE_SLUGS } from "@/lib/demo-universe/demo-showcase-blueprints";
 import { getIntegrationShowcaseReadiness } from "@/lib/demo-universe/demo-scenario.service";
 import { effectiveOrganizationCapabilities } from "@/lib/organization-capabilities";
+import { isRealPilotBusinessSlug } from "@/lib/pilot-operations/real-pilot-businesses";
 import { getHomepageBackendContract } from "@/lib/public-experience/homepage-contract";
 import { listPlatformFeatureCapabilities, listPlatformFeatures } from "@/lib/public-experience/platform-features";
 
@@ -20,7 +21,10 @@ export async function listPublicDemoOrganizations() {
     orderBy: { name: "asc" },
   });
 
-  const demoOrganizations = organizations.filter((organization) => parseDemoSettings(organization.settings?.settings).enabled);
+  const demoOrganizations = organizations.filter((organization) =>
+    !isRealPilotBusinessSlug(organization.slug) &&
+    parseDemoSettings(organization.settings?.settings).enabled,
+  );
 
   return Promise.all(demoOrganizations.map(async (organization) => {
     const demo = parseDemoSettings(organization.settings?.settings);
@@ -56,7 +60,7 @@ export async function listPublicDemoShowcases() {
   return organizations
     .flatMap((organization) => {
       const demo = parseDemoSettings(organization.settings?.settings);
-      if (!demo.enabled) return [];
+      if (!demo.enabled || isRealPilotBusinessSlug(organization.slug)) return [];
       const showcase = buildPublicDemoShowcase({ organization, settings: organization.settings?.settings });
       return showcase ? [showcase] : [];
     })
@@ -70,7 +74,7 @@ export async function getPublicDemoShowcaseBySlug(slug: string) {
   });
   if (!organization) return null;
   const demo = parseDemoSettings(organization.settings?.settings);
-  if (!demo.enabled) return null;
+  if (!demo.enabled || isRealPilotBusinessSlug(organization.slug)) return null;
   return buildPublicDemoShowcase({ organization, settings: organization.settings?.settings });
 }
 

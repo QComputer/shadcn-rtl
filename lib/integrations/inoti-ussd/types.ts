@@ -41,6 +41,8 @@ export type UssdPaymentIntentProjection = {
   organizationId: string;
   integrationId: string;
   orderId: string;
+  paymentRequestId: string | null;
+  providerAttemptId: string | null;
   merchantFactorId: string;
   amountRial: bigint;
   sessionIdHash: string;
@@ -98,6 +100,9 @@ export type InotiCredentialProfile = {
   username: string;
   password: string;
   endpoint: string;
+  smsToken?: string | null;
+  ussdCodeName?: string | null;
+  ussdDialString?: string | null;
 };
 
 export interface InotiCredentialProvider {
@@ -163,6 +168,17 @@ export interface UssdIntegrationRepository {
     rrnHash?: string | null;
     outcome: "ACCEPTED" | "REJECTED" | "DUPLICATE" | "FAILED";
     errorCode?: string | null;
+  }): Promise<void>;
+  markPaymentVerificationStarted(input: {
+    integration: ResolvedInotiIntegration;
+    intent: UssdPaymentIntentProjection;
+    providerFactorId: string;
+    rrn: string;
+  }): Promise<void>;
+  markPaymentVerificationFailed(input: {
+    integration: ResolvedInotiIntegration;
+    intent: UssdPaymentIntentProjection;
+    reason: string;
   }): Promise<void>;
   settleVerifiedPayment(input: PaymentSettlementInput): Promise<PaymentSettlementResult>;
   markNotificationAttempted(intentId: string): Promise<void>;

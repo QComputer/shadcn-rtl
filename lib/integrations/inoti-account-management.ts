@@ -12,12 +12,14 @@ import { effectiveOrganizationCapabilities } from "@/lib/organization-capabiliti
 import { sanitizeIntegrationConfig } from "@/lib/integrations/organization-integrations";
 import { getIntegrationAdapter } from "@/lib/integrations/runtime/registry";
 import { checkIntegrationRuntimeHealth } from "@/lib/integrations/runtime/service";
+import { getInotiCredentialProfileState } from "@/lib/integrations/inoti-ussd/credentials";
+import { buildInotiUssdCallbackPath, buildInotiUssdCallbackUrl } from "@/lib/integrations/inoti-ussd/callback-url";
 
-export type InotiServiceKey = "iMenu" | "iAM" | "iCV" | "EBC" | "USSD";
+export type InotiServiceKey = "iMenu" | "iAM" | "iCV" | "EBC" | "USSD" | "SMS";
 
 type InotiServiceDefinition = {
   key: InotiServiceKey;
-  provider: Extract<IntegrationProvider, "INOTI_IMENU" | "INOTI_IAM" | "INOTI_ICV" | "INOTI_EBC" | "INOTI_USSD">;
+  provider: Extract<IntegrationProvider, "INOTI_IMENU" | "INOTI_IAM" | "INOTI_ICV" | "INOTI_EBC" | "INOTI_USSD" | "INOTI_SMS">;
   serviceKey: string;
   status: "AVAILABLE";
   version: "v1";
@@ -95,6 +97,19 @@ export const INOTI_SERVICE_CATALOG: readonly InotiServiceDefinition[] = [
     capabilityMappings: ["USSD"],
     growthFeatureMappings: ["Customer communication"],
   },
+  {
+    key: "SMS",
+    provider: "INOTI_SMS",
+    serviceKey: "INOTI_SMS",
+    status: "AVAILABLE",
+    version: "v1",
+    label: "SMS",
+    description: "Transactional SMS messaging readiness through the organization's iNoti account.",
+    purpose: "Transactional SMS messaging readiness",
+    featureMappings: ["Order SMS", "Appointment SMS", "Payment SMS", "Review request SMS"],
+    capabilityMappings: ["CRM", "SMS"],
+    growthFeatureMappings: ["Customer engagement", "Transactional messaging"],
+  },
 ] as const;
 
 export function listInotiServiceMappings() {
@@ -117,14 +132,20 @@ export type InotiAccountReadModel = {
     name: string;
     slug: string;
     type: string;
+    isPlatformOwner: boolean;
   };
   account: {
     status: "NOT_CONNECTED" | "DRAFT" | "CONNECTED" | "PARTIAL" | "DISABLED";
     externalAccountId: string | null;
     credentialProfileKey: string | null;
+    credentialState: "NOT_CONFIGURED" | "CREDENTIALS_AVAILABLE" | "NEEDS_CREDENTIALS" | "ORGANIZATION_SCOPE_MISMATCH" | "UNSUPPORTED_CREDENTIAL_PROFILE";
     servicesDetectedAt: string | null;
     lastHealthCheckedAt: string | null;
     connectedServices: InotiServiceKey[];
+    verificationState: "NOT_CONFIGURED" | "CREDENTIALS_AVAILABLE" | "AUTHENTICATION_FAILED" | "AUTHENTICATED" | "SERVICE_DISCOVERY_AVAILABLE" | "SERVICE_DISCOVERY_UNAVAILABLE" | "VERIFIED_READ_ONLY";
+    ussdCodeNameConfigured: boolean;
+    smsTokenConfigured: boolean;
+    ussdDialStringConfigured: boolean;
   };
   services: Array<{
     key: InotiServiceKey;
@@ -143,6 +164,15 @@ export type InotiAccountReadModel = {
     status: OrganizationIntegrationStatus | "NOT_CONNECTED";
     healthStatus: string;
     integrationId: string | null;
+    publicIntegrationId: string | null;
+    callbackPath: string | null;
+    callbackUrl: string | null;
+    credentialState: "NOT_CONFIGURED" | "CREDENTIALS_AVAILABLE" | "NEEDS_CREDENTIALS" | "ORGANIZATION_SCOPE_MISMATCH" | "UNSUPPORTED_CREDENTIAL_PROFILE";
+    readOnlyVerification: "NOT_CONFIGURED" | "CREDENTIALS_AVAILABLE" | "AUTHENTICATION_FAILED" | "AUTHENTICATED" | "SERVICE_DISCOVERY_AVAILABLE" | "SERVICE_DISCOVERY_UNAVAILABLE" | "VERIFIED_READ_ONLY";
+    ussdCodeNameConfigured: boolean;
+    smsTokenConfigured: boolean;
+    ussdDialStringConfigured: boolean;
+    realExecution: "DISABLED";
     action: "CREATE_DRAFT" | "CONNECT" | "CHECK_HEALTH" | "DISABLED";
   }>;
   activationImpact: Array<{
@@ -157,7 +187,9 @@ export type InotiAccountReadModel = {
   safeMetadata: {
     externalProviderCalls: false;
     secretsStoredDirectly: false;
-    serviceDiscoveryMode: "DRY_RUN";
+    serviceDiscoveryMode: "DRY_RUN" | "READ_ONLY_WHEN_CONFIGURED";
+    realSmsEnabled: false;
+    realPaymentsEnabled: false;
   };
 };
 
@@ -176,6 +208,7 @@ function typeForProvider(provider: InotiServiceDefinition["provider"]) {
   if (provider === "INOTI_IAM") return "IAM";
   if (provider === "INOTI_ICV") return "ICV";
   if (provider === "INOTI_EBC") return "EBC";
+  if (provider === "INOTI_SMS") return "SMS";
   return "USSD";
 }
 
@@ -194,6 +227,7 @@ async function requireOrganization(organizationId: string) {
       name: true,
       slug: true,
       type: true,
+      isPlatformOwner: true,
       capabilitiesInitializedAt: true,
       capabilities: { select: { key: true, status: true } },
       activationTasks: {
@@ -224,11 +258,28 @@ function safeConnectionConfiguration(input: {
       externalAccountId: input.externalAccountId ?? null,
       accountLabel: input.accountLabel ?? null,
       serviceSnapshot: input.services,
-      serviceDiscoveryMode: "DRY_RUN",
+      serviceDiscoveryMode: "READ_ONLY_WHEN_CONFIGURED",
       servicesDetectedAt: new Date().toISOString(),
       externalProviderCalls: false,
     },
   });
+}
+
+function verificationState(input: {
+  status: OrganizationIntegrationStatus | "NOT_CONNECTED";
+  healthStatus: string;
+  credentialState: InotiAccountReadModel["account"]["credentialState"];
+  healthMetadata?: unknown;
+}): InotiAccountReadModel["account"]["verificationState"] {
+  if (input.status === "NOT_CONNECTED") return "NOT_CONFIGURED";
+  if (input.credentialState !== "CREDENTIALS_AVAILABLE") return input.credentialState === "NEEDS_CREDENTIALS" ? "NOT_CONFIGURED" : "AUTHENTICATION_FAILED";
+  if (input.healthStatus === "CONNECTED") {
+    const metadata = input.healthMetadata && typeof input.healthMetadata === "object" && !Array.isArray(input.healthMetadata)
+      ? input.healthMetadata as Record<string, unknown>
+      : {};
+    return metadata.serviceDiscoverySupported === true ? "SERVICE_DISCOVERY_AVAILABLE" : "VERIFIED_READ_ONLY";
+  }
+  return "CREDENTIALS_AVAILABLE";
 }
 
 function selectSupportedCapabilities(input: {
@@ -242,6 +293,7 @@ async function upsertServiceIntegration(input: {
   organizationId: string;
   service: InotiServiceDefinition;
   status: OrganizationIntegrationStatus;
+  publicIntegrationId?: string | null;
   externalAccountId?: string | null;
   credentialProfileKey?: string | null;
   accountLabel?: string | null;
@@ -280,6 +332,7 @@ async function upsertServiceIntegration(input: {
         provider: input.service.provider,
         type: typeForProvider(input.service.provider),
         status: input.status,
+        ...(input.publicIntegrationId ? { publicId: input.publicIntegrationId } : {}),
         codeName: `${input.service.key.toLowerCase()}-${input.organizationId.slice(0, 8)}`,
         displayName: input.service.label,
         externalAccountId: input.externalAccountId ?? null,
@@ -333,6 +386,14 @@ export async function getInotiAccountReadModel(organizationId: string): Promise<
     orderBy: [{ provider: "asc" }],
   });
   const byProvider = new Map(integrations.map((integration) => [integration.provider, integration]));
+  const credentialStates: Map<IntegrationProvider, Awaited<ReturnType<typeof getInotiCredentialProfileState>>> = new Map(await Promise.all(INOTI_SERVICE_CATALOG.map(async (service) => {
+    const integration = byProvider.get(service.provider);
+    const state = await getInotiCredentialProfileState({
+      organizationId,
+      profileKey: integration?.credentialProfileKey ?? null,
+    });
+    return [service.provider, state] as const;
+  })));
   const connected = integrations.filter((integration) => integration.status === "ACTIVE");
   const connectedServices = connected.map((integration) => serviceForProvider(integration.provider)?.key).filter(Boolean) as InotiServiceKey[];
   const firstIntegration = integrations[0] ?? null;
@@ -364,17 +425,29 @@ export async function getInotiAccountReadModel(organizationId: string): Promise<
       name: organization.name,
       slug: organization.slug,
       type: organization.type,
+      isPlatformOwner: organization.isPlatformOwner,
     },
     account: {
       status,
       externalAccountId: firstIntegration?.externalAccountId ?? null,
       credentialProfileKey: firstIntegration?.credentialProfileKey ?? null,
+      credentialState: firstIntegration ? credentialStates.get(firstIntegration.provider)?.state ?? "NOT_CONFIGURED" : "NOT_CONFIGURED",
       servicesDetectedAt: detectedAt,
       lastHealthCheckedAt: lastHealth?.toISOString() ?? null,
       connectedServices,
+      verificationState: firstIntegration ? verificationState({
+        status: firstIntegration.status,
+        healthStatus: firstIntegration.healthStatus,
+        credentialState: credentialStates.get(firstIntegration.provider)?.state ?? "NOT_CONFIGURED",
+        healthMetadata: firstIntegration.healthMetadata,
+      }) : "NOT_CONFIGURED",
+      ussdCodeNameConfigured: firstIntegration ? credentialStates.get(firstIntegration.provider)?.ussdCodeNameConfigured ?? false : false,
+      smsTokenConfigured: firstIntegration ? credentialStates.get(firstIntegration.provider)?.smsTokenConfigured ?? false : false,
+      ussdDialStringConfigured: firstIntegration ? credentialStates.get(firstIntegration.provider)?.ussdDialStringConfigured ?? false : false,
     },
     services: INOTI_SERVICE_CATALOG.map((service) => {
       const integration = byProvider.get(service.provider);
+      const credentialState = credentialStates.get(service.provider)?.state ?? "NOT_CONFIGURED";
       const capabilityAvailable = service.capabilityMappings.some((capability) => availableCapabilities.includes(capability));
       const detected = Boolean(integration);
       return {
@@ -394,6 +467,20 @@ export async function getInotiAccountReadModel(organizationId: string): Promise<
         status: integration?.status ?? "NOT_CONNECTED",
         healthStatus: integration?.healthStatus ?? "UNKNOWN",
         integrationId: integration?.id ?? null,
+        publicIntegrationId: service.provider === "INOTI_USSD" ? integration?.publicId ?? null : null,
+        callbackPath: service.provider === "INOTI_USSD" && integration ? buildInotiUssdCallbackPath(integration.publicId) : null,
+        callbackUrl: service.provider === "INOTI_USSD" && integration ? buildInotiUssdCallbackUrl(integration.publicId) : null,
+        credentialState,
+        readOnlyVerification: verificationState({
+          status: integration?.status ?? "NOT_CONNECTED",
+          healthStatus: integration?.healthStatus ?? "UNKNOWN",
+          credentialState,
+          healthMetadata: integration?.healthMetadata,
+        }),
+        ussdCodeNameConfigured: credentialStates.get(service.provider)?.ussdCodeNameConfigured ?? false,
+        smsTokenConfigured: credentialStates.get(service.provider)?.smsTokenConfigured ?? false,
+        ussdDialStringConfigured: credentialStates.get(service.provider)?.ussdDialStringConfigured ?? false,
+        realExecution: "DISABLED" as const,
         action: !integration ? "CREATE_DRAFT" : integration.status === "ACTIVE" ? "CHECK_HEALTH" : integration.status === "DISABLED" ? "DISABLED" : "CONNECT",
       };
     }),
@@ -415,7 +502,9 @@ export async function getInotiAccountReadModel(organizationId: string): Promise<
     safeMetadata: {
       externalProviderCalls: false,
       secretsStoredDirectly: false,
-      serviceDiscoveryMode: "DRY_RUN",
+      serviceDiscoveryMode: "READ_ONLY_WHEN_CONFIGURED",
+      realSmsEnabled: false,
+      realPaymentsEnabled: false,
     },
   };
 }
@@ -425,6 +514,7 @@ export async function createInotiConnectionDraft(input: {
   externalAccountId?: string | null;
   credentialProfileKey?: string | null;
   accountLabel?: string | null;
+  publicIntegrationIds?: Partial<Record<InotiServiceKey, string>>;
   services: InotiServiceKey[];
   actorUserId?: string | null;
 }) {
@@ -437,6 +527,7 @@ export async function createInotiConnectionDraft(input: {
       organizationId: input.organizationId,
       service,
       status: "DRAFT",
+      publicIntegrationId: input.publicIntegrationIds?.[service.key] ?? null,
       externalAccountId: input.externalAccountId,
       credentialProfileKey: input.credentialProfileKey,
       accountLabel: input.accountLabel,

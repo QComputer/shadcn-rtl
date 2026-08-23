@@ -1,8 +1,11 @@
-import { PrismaClient, OrganizationType, OrganizationCapabilityStatus, UserRole, AppointmentStatus, CartStatus, OrderType, OrderStatus, PaymentStatus, PaymentMethod, DayOfWeek } from '@prisma/client';
+import { PrismaClient, OrganizationType, OrganizationCapabilityStatus, UserRole, AppointmentStatus, CartStatus, OrderType, OrderStatus, PaymentStatus, PaymentMethod, DayOfWeek, type OrganizationCapabilityKey } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { DEMO_SHOWCASE_BLUEPRINTS } from "../lib/demo-universe/demo-showcase-blueprints";
 import { seedSicilyMenu } from "./seed-data/sicily-menu";
+import { createInotiConnectionDraft } from "../lib/integrations/inoti-account-management";
+import { SEEDED_INOTI_USSD_PUBLIC_ID_BY_SLUG } from "../lib/integrations/inoti-ussd/seed-fixture-public-ids";
 import { createOrRefreshPilotWorkspace } from "../lib/pilot-operations/pilot-workspace.service";
+import { registerPilotSourceAssessment } from "../lib/pilot-operations/pilot-workspace.service";
 import { generateGrowthRecommendations, upsertBusinessGrowthProfile } from "../lib/growth-intelligence/growth-intelligence.service";
 
 // Generate a unique sessionId
@@ -27,6 +30,8 @@ async function mainDev(): Promise<SeedContext> {
   await prisma.conversation.deleteMany();
   await prisma.follow.deleteMany();
   await prisma.review.deleteMany();
+  await prisma.paymentProviderAttempt.deleteMany();
+  await prisma.paymentRequest.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
@@ -702,6 +707,7 @@ async function mainDev(): Promise<SeedContext> {
   // 2. CREATE ORGANIZATIONS - SHOP and APPOINTMENT Types
   // ========================================
   console.log("🏢 Creating organizations...");
+  const capabilitiesInitializedAt = new Date();
 
   // === SHOP Organizations ===
   const healthShop = await prisma.organization.create({
@@ -719,6 +725,7 @@ async function mainDev(): Promise<SeedContext> {
       logo: "salamat-logo.jpg",
       coverImage: "salamat-cover.jpg",
       isActive: true,
+      capabilitiesInitializedAt,
     },
   });
 
@@ -736,6 +743,7 @@ async function mainDev(): Promise<SeedContext> {
       logo: "food-logo.jpg",
       coverImage: "food-cover.jpg",
       isActive: true,
+      capabilitiesInitializedAt,
     },
   });
 
@@ -753,6 +761,7 @@ async function mainDev(): Promise<SeedContext> {
       logo: "sicily-logo.jpg",
       coverImage: "sicily-cover.jpg",
       isActive: true,
+      capabilitiesInitializedAt,
     },
   });
 
@@ -769,6 +778,7 @@ async function mainDev(): Promise<SeedContext> {
       logo: "chakme-logo.jpg",
       coverImage: "chakme-cover.jpg",
       isActive: true,
+      capabilitiesInitializedAt,
     },
   });
 
@@ -788,6 +798,7 @@ async function mainDev(): Promise<SeedContext> {
       logo: "tikal-logo.jpg",
       coverImage: "tikal-cover.jpg",
       isActive: true,
+      capabilitiesInitializedAt,
     },
   });
 
@@ -805,6 +816,7 @@ async function mainDev(): Promise<SeedContext> {
       logo: "dental-logo.jpg",
       coverImage: "dental-cover.jpg",
       isActive: true,
+      capabilitiesInitializedAt,
     },
   });
 
@@ -822,6 +834,7 @@ async function mainDev(): Promise<SeedContext> {
       logo: "spa-logo.jpg",
       coverImage: "spa-cover.jpg",
       isActive: true,
+      capabilitiesInitializedAt,
     },
   });
 
@@ -841,6 +854,7 @@ async function mainDev(): Promise<SeedContext> {
       logo: "law-logo.jpg",
       coverImage: "law-cover.jpg",
       isActive: true,
+      capabilitiesInitializedAt,
     },
   });
 
@@ -856,6 +870,7 @@ async function mainDev(): Promise<SeedContext> {
       slug: "zero-capability-demo",
       description: "نمونه محلی برای اعتبارسنجی پوسته سازمان بدون ماژول کسب‌وکار",
       isActive: true,
+      capabilitiesInitializedAt,
     },
   });
 
@@ -868,6 +883,22 @@ async function mainDev(): Promise<SeedContext> {
       slug: "mixed-capability-demo",
       description: "نمونه محلی با فروشگاه و نوبت‌دهی در یک سازمان",
       isActive: true,
+      capabilitiesInitializedAt,
+    },
+  });
+
+  const platformOrganization = await prisma.organization.create({
+    data: {
+      type: OrganizationType.SHOP,
+      locale: "fa",
+      timezone: "Asia/Tehran",
+      name: "BazarBaaz Platform",
+      slug: "bazarbaaz-platform",
+      description: "Internal BazarBaaz platform-owned account for operational integrations.",
+      isActive: true,
+      isOpen: false,
+      isPlatformOwner: true,
+      capabilitiesInitializedAt,
     },
   });
 
@@ -887,6 +918,7 @@ async function mainDev(): Promise<SeedContext> {
           logo: showcase.organization.logo,
           coverImage: showcase.organization.coverImage,
           isActive: true,
+          capabilitiesInitializedAt,
         },
       }),
     ),
@@ -1153,6 +1185,7 @@ async function mainDev(): Promise<SeedContext> {
     chakme,
     zeroCapabilityDemo,
     mixedCapabilityDemo,
+    platformOrganization,
     ...showcaseOrganizations,
   ];
 
@@ -1160,10 +1193,12 @@ async function mainDev(): Promise<SeedContext> {
   // the post-backfill invariant instead of recreating legacy-only tenants.
   await Promise.all(
     allOrgs.map(async (organization) => {
-      const capabilityKeys = organization.id === zeroCapabilityDemo.id
+      const capabilityKeys: OrganizationCapabilityKey[] = organization.id === zeroCapabilityDemo.id
         ? []
         : organization.id === mixedCapabilityDemo.id
-          ? [OrganizationType.SHOP, OrganizationType.APPOINTMENT]
+          ? ["SHOP", "APPOINTMENT"]
+          : organization.id === platformOrganization.id
+            ? ["SMS", "USSD"]
           : demoShowcaseBySlug.get(organization.slug)?.capabilities ?? [organization.type];
       await prisma.organizationCapability.createMany({
         data: capabilityKeys.map((key) => ({
@@ -1194,6 +1229,15 @@ async function mainDev(): Promise<SeedContext> {
   // Note: users[12-14] are CUSTOMERs - no organization membership
 
   console.log("✅ Created organization members with all role combinations\n");
+
+  await createInotiConnectionDraft({
+    organizationId: platformOrganization.id,
+    actorUserId: users[0].id,
+    credentialProfileKey: "local-env:inoti:platform",
+    accountLabel: "BazarBaaz Platform iNoti read-only verification profile",
+    publicIntegrationIds: { USSD: SEEDED_INOTI_USSD_PUBLIC_ID_BY_SLUG["bazarbaaz-platform"] },
+    services: ["USSD", "SMS"],
+  });
 
   // ========================================
   // 5. CREATE ORGANIZATION SETTINGS
@@ -2368,7 +2412,7 @@ async function upsertPilotOrganization(input: {
   slug: string;
   type: OrganizationType;
   industryKey: "RESTAURANT" | "RETAIL_SHOP" | "FASHION_BOUTIQUE";
-  capabilities: ReadonlyArray<"SHOP" | "APPOINTMENT" | "CRM" | "IAM" | "ICV" | "EBC" | "USSD">;
+  capabilities: ReadonlyArray<"SHOP" | "APPOINTMENT" | "CRM" | "IAM" | "ICV" | "EBC" | "USSD" | "SMS">;
   operatorUserId: string;
   status: "DISCOVERY" | "ONBOARDING" | "CONFIGURATION" | "READY_FOR_LAUNCH";
   notes: string;
@@ -2386,6 +2430,10 @@ async function upsertPilotOrganization(input: {
       type: input.type,
       locale: "fa",
       timezone: "Asia/Tehran",
+      description: null,
+      address: null,
+      phone: null,
+      email: null,
       capabilitiesInitializedAt: new Date(),
     },
     create: {
@@ -2394,10 +2442,10 @@ async function upsertPilotOrganization(input: {
       type: input.type,
       locale: "fa",
       timezone: "Asia/Tehran",
-      description: `${input.name} پایلوت عملیاتی بازارباز برای آماده‌سازی لانچ محلی.`,
-      address: input.seoGrowthPlanner.cityLocation,
-      phone: "+982100000000",
-      email: `${input.slug}@example.test`,
+      description: null,
+      address: null,
+      phone: null,
+      email: null,
       capabilitiesInitializedAt: new Date(),
     },
   });
@@ -2436,56 +2484,11 @@ async function upsertPilotOrganization(input: {
     });
   }
 
-  if (input.type === OrganizationType.SHOP) {
-    const category = await prisma.productCategory.upsert({
-      where: { id: `${input.slug}-pilot-category` },
-      update: { name: input.industryKey === "RESTAURANT" ? "منو" : "کاتالوگ" },
-      create: {
-        id: `${input.slug}-pilot-category`,
-        organizationId: organization.id,
-        organizationSlug: organization.slug,
-        name: input.industryKey === "RESTAURANT" ? "منو" : "کاتالوگ",
-        slug: `${input.slug}-catalog`,
-      },
-    });
-    await prisma.product.upsert({
-      where: { id: `${input.slug}-pilot-product` },
-      update: { name: input.industryKey === "RESTAURANT" ? "آیتم نمونه منو" : "محصول نمونه" },
-      create: {
-        id: `${input.slug}-pilot-product`,
-        organizationId: organization.id,
-        organizationSlug: organization.slug,
-        categoryId: category.id,
-        name: input.industryKey === "RESTAURANT" ? "آیتم نمونه منو" : "محصول نمونه",
-        slug: `${input.slug}-sample`,
-        basePrice: 100000,
-        isActive: true,
-      },
-    });
-  } else {
-    const category = await prisma.serviceCategory.upsert({
-      where: { id: `${input.slug}-pilot-service-category` },
-      update: { name: "خدمات پایلوت" },
-      create: {
-        id: `${input.slug}-pilot-service-category`,
-        organizationId: organization.id,
-        name: "خدمات پایلوت",
-      },
-    });
-    await prisma.service.upsert({
-      where: { id: `${input.slug}-pilot-service` },
-      update: { name: "خدمت نمونه" },
-      create: {
-        id: `${input.slug}-pilot-service`,
-        organizationId: organization.id,
-        categoryId: category.id,
-        name: "خدمت نمونه",
-        price: 100000,
-        duration: 45,
-        isActive: true,
-      },
-    });
-  }
+  await prisma.productVariant.deleteMany({ where: { productId: `${input.slug}-pilot-product` } });
+  await prisma.product.deleteMany({ where: { id: `${input.slug}-pilot-product` } });
+  await prisma.productCategory.deleteMany({ where: { id: `${input.slug}-pilot-category` } });
+  await prisma.service.deleteMany({ where: { id: `${input.slug}-pilot-service` } });
+  await prisma.serviceCategory.deleteMany({ where: { id: `${input.slug}-pilot-service-category` } });
 
   const workspace = await createOrRefreshPilotWorkspace({
     organizationId: organization.id,
@@ -2508,6 +2511,104 @@ async function upsertPilotOrganization(input: {
   });
   await generateGrowthRecommendations({ organizationId: organization.id, actorUserId: input.operatorUserId });
 
+  if (input.slug === "italiano-13") {
+    await createInotiConnectionDraft({
+      organizationId: organization.id,
+      actorUserId: input.operatorUserId,
+      credentialProfileKey: "local-env:inoti:italiano-13",
+      accountLabel: "Italiano 13 iNoti credentials required",
+      publicIntegrationIds: { USSD: SEEDED_INOTI_USSD_PUBLIC_ID_BY_SLUG["italiano-13"] },
+      services: ["USSD", "SMS"],
+    });
+    await registerPilotSourceAssessment({
+      organizationId: organization.id,
+      actorUserId: input.operatorUserId,
+      sourceKind: "SNAPPFOOD",
+      displayName: "SnappFood source candidate",
+      intendedPurpose: "Future restaurant menu/catalog intake after legal, provider, and owner approval.",
+      assessmentStatus: "REQUIRES_EXTERNAL_APPROVAL",
+      legalAssessmentStatus: "REQUIRES_EXTERNAL_APPROVAL",
+      technicalAssessmentStatus: "READY_FOR_REVIEW",
+      dataExpected: ["menu categories", "menu items", "prices only after approval", "images only after approval"],
+      manualImportRequired: true,
+      adapterSupport: "LOCAL_PREVIEW_FIXTURE",
+      externalVerificationRequired: true,
+      provenance: "EXTERNAL_CATALOG",
+    });
+  }
+
+  if (input.slug === "cafe-leo") {
+    await createInotiConnectionDraft({
+      organizationId: organization.id,
+      actorUserId: input.operatorUserId,
+      credentialProfileKey: "local-env:inoti:cafe-leo",
+      accountLabel: "Cafe Leo iNoti read-only verification profile",
+      publicIntegrationIds: { USSD: SEEDED_INOTI_USSD_PUBLIC_ID_BY_SLUG["cafe-leo"] },
+      services: ["USSD", "SMS"],
+    });
+    await registerPilotSourceAssessment({
+      organizationId: organization.id,
+      actorUserId: input.operatorUserId,
+      sourceKind: "WEBSITE",
+      displayName: "Cafe Leo website",
+      sourceUrl: "https://iran.leocafe.vip/",
+      intendedPurpose: "Future website-based content intake; crawling is not authorized in this milestone.",
+      assessmentStatus: "MANUAL_ONLY",
+      legalAssessmentStatus: "REQUIRES_EXTERNAL_APPROVAL",
+      technicalAssessmentStatus: "NOT_ASSESSED",
+      dataExpected: ["business profile", "brand/content", "media references", "future iAM content opportunities"],
+      manualImportRequired: true,
+      adapterSupport: "FUTURE_CONNECTOR",
+      externalVerificationRequired: true,
+      provenance: "WEBSITE",
+    });
+  }
+
+  if (input.slug === "aka-shoes") {
+    await createInotiConnectionDraft({
+      organizationId: organization.id,
+      actorUserId: input.operatorUserId,
+      credentialProfileKey: "local-env:inoti:aka-shoes",
+      accountLabel: "AKA Shoes iNoti read-only verification profile",
+      publicIntegrationIds: { USSD: SEEDED_INOTI_USSD_PUBLIC_ID_BY_SLUG["aka-shoes"] },
+      services: ["USSD", "SMS"],
+    });
+    await registerPilotSourceAssessment({
+      organizationId: organization.id,
+      actorUserId: input.operatorUserId,
+      sourceKind: "INSTAGRAM",
+      displayName: "AKA Shoes Instagram",
+      sourceUrl: "https://www.instagram.com/aka.shoes/",
+      intendedPurpose: "Future social/catalog intake with review before content, business entity, or product mapping.",
+      assessmentStatus: "REQUIRES_EXTERNAL_APPROVAL",
+      legalAssessmentStatus: "REQUIRES_EXTERNAL_APPROVAL",
+      technicalAssessmentStatus: "NOT_ASSESSED",
+      dataExpected: ["social content", "captions", "product photos", "optional product mapping after approval"],
+      manualImportRequired: true,
+      adapterSupport: "FUTURE_CONNECTOR",
+      externalVerificationRequired: true,
+      provenance: "SOCIAL",
+    });
+  }
+
+  if (input.slug === "tikal-pilot") {
+    await registerPilotSourceAssessment({
+      organizationId: organization.id,
+      actorUserId: input.operatorUserId,
+      sourceKind: "MANUAL",
+      displayName: "Manual salon service intake",
+      intendedPurpose: "Future owner/operator entry of legitimate services, staff, schedules, and portfolio media.",
+      assessmentStatus: "MANUAL_ONLY",
+      legalAssessmentStatus: "READY_FOR_REVIEW",
+      technicalAssessmentStatus: "ADAPTER_AVAILABLE",
+      dataExpected: ["services", "staff", "schedule", "portfolio/media"],
+      manualImportRequired: true,
+      adapterSupport: "MANUAL_INPUT",
+      externalVerificationRequired: false,
+      provenance: "MANUAL_OPERATOR",
+    });
+  }
+
   return workspace;
 }
 
@@ -2523,14 +2624,14 @@ async function seedPilotWorkspaces() {
       slug: "italiano-13",
       type: OrganizationType.SHOP,
       industryKey: "RESTAURANT" as const,
-      capabilities: ["SHOP", "CRM", "USSD"] as const,
+      capabilities: ["SHOP", "CRM", "USSD", "SMS"] as const,
       status: "CONFIGURATION" as const,
       notes: "SNAPPFOOD mock import readiness; no external calls.",
       seoGrowthPlanner: {
         businessGoals: ["افزایش سفارش مستقیم", "آماده‌سازی منوی عمومی"],
         targetAudience: ["مشتریان محلی", "سفارش بیرون‌بر"],
         preferredKeywords: ["رستوران ایتالیایی", "پیتزا", "پاستا"],
-        cityLocation: "تهران",
+        cityLocation: "",
       },
     },
     {
@@ -2538,14 +2639,14 @@ async function seedPilotWorkspaces() {
       slug: "cafe-leo",
       type: OrganizationType.SHOP,
       industryKey: "RESTAURANT" as const,
-      capabilities: ["SHOP", "CRM", "IAM"] as const,
+      capabilities: ["SHOP", "CRM", "IAM", "USSD", "SMS"] as const,
       status: "ONBOARDING" as const,
-      notes: "Website source preparation for https://iran.cafeleo.vip/; crawling disabled.",
+      notes: "Website source preparation for https://iran.leocafe.vip/; crawling disabled.",
       seoGrowthPlanner: {
         businessGoals: ["نمایش منو و برند", "آماده‌سازی صفحه محلی"],
         targetAudience: ["مشتریان کافه", "جستجوی محلی"],
         preferredKeywords: ["کافه لئو", "منوی کافه", "قهوه"],
-        cityLocation: "تهران",
+        cityLocation: "",
       },
     },
     {
@@ -2553,14 +2654,14 @@ async function seedPilotWorkspaces() {
       slug: "aka-shoes",
       type: OrganizationType.SHOP,
       industryKey: "RETAIL_SHOP" as const,
-      capabilities: ["SHOP", "CRM", "ICV", "EBC"] as const,
+      capabilities: ["SHOP", "CRM", "ICV", "EBC", "USSD", "SMS"] as const,
       status: "DISCOVERY" as const,
       notes: "Retail catalog and future Instagram/social connector preparation only.",
       seoGrowthPlanner: {
         businessGoals: ["آماده‌سازی کاتالوگ کفش", "پیشنهاد محتوای اجتماعی"],
         targetAudience: ["خریداران کفش", "مشتریان شبکه اجتماعی"],
         preferredKeywords: ["کفش آکا", "کفش زنانه", "کفش مردانه"],
-        cityLocation: "تهران",
+        cityLocation: "",
       },
     },
     {
@@ -2575,7 +2676,7 @@ async function seedPilotWorkspaces() {
         businessGoals: ["آماده‌سازی رزرو آنلاین", "نمایش خدمات سالن"],
         targetAudience: ["مشتریان خدمات زیبایی", "رزرو محلی"],
         preferredKeywords: ["سالن آرایشی تیکال", "رزرو سالن زیبایی", "خدمات زیبایی"],
-        cityLocation: "تهران",
+        cityLocation: "",
       },
     },
   ];

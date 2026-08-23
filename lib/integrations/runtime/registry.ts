@@ -5,12 +5,14 @@ import { ApiError } from "@/lib/api-guards";
 import { INTEGRATION_CATALOG } from "@/lib/integrations/organization-integrations";
 import {
   DryRunIntegrationAdapter,
+  InotiSmsAdapter,
   InotiUssdAdapter,
   type IntegrationAdapter,
 } from "@/lib/integrations/runtime/adapters";
 
 const adapters = {
   INOTI_USSD: new InotiUssdAdapter(),
+  INOTI_SMS: new InotiSmsAdapter(),
   INOTI_IMENU: new DryRunIntegrationAdapter("INOTI_IMENU", INTEGRATION_CATALOG.INOTI_IMENU.supportedCapabilities),
   INOTI_ICV: new DryRunIntegrationAdapter("INOTI_ICV", INTEGRATION_CATALOG.INOTI_ICV.supportedCapabilities),
   INOTI_IAM: new DryRunIntegrationAdapter("INOTI_IAM", INTEGRATION_CATALOG.INOTI_IAM.supportedCapabilities),

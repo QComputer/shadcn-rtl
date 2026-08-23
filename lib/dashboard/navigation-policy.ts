@@ -170,7 +170,11 @@ export const DASHBOARD_ROUTE_POLICY = {
   "/qrcode": ROLE_NAVIGATION_POLICY.qrcode,
   "/organizations": ROLE_NAVIGATION_POLICY.organizations,
   "/organizations/new": ROLE_NAVIGATION_POLICY.organizations,
+  "/organizations/[id]": ROLE_NAVIGATION_POLICY.organizations,
+  "/organizations/[id]/integrations": ROLE_NAVIGATION_POLICY.organizations,
   "/organizations/[id]/integrations/inoti": ROLE_NAVIGATION_POLICY.organizations,
+  "/platform": ROLE_NAVIGATION_POLICY.organizations,
+  "/platform/inoti": ROLE_NAVIGATION_POLICY.organizations,
   "/shop-domains": ROLE_NAVIGATION_POLICY.shopDomains,
   "/users": ROLE_NAVIGATION_POLICY.users,
   "/request-demo-leads": ROLE_NAVIGATION_POLICY.requestDemoLeads,
@@ -179,6 +183,7 @@ export const DASHBOARD_ROUTE_POLICY = {
   "/tenant-provisioning/[planId]": ROLE_NAVIGATION_POLICY.tenantProvisioning,
   "/business-acquisition": ROLE_NAVIGATION_POLICY.businessAcquisition,
   "/pilots": ROLE_NAVIGATION_POLICY.pilots,
+  "/pilots/[organizationId]": ROLE_NAVIGATION_POLICY.pilots,
 } as const satisfies Record<string, readonly DashboardRole[]>
 
 export function normalizeDashboardRole(role: string | null | undefined): DashboardRole | null {

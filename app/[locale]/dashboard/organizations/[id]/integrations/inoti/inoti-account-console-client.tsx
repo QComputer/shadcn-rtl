@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Loader2, PlugZap, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, Copy, Loader2, PlugZap, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import type { InotiAccountReadModel, InotiServiceKey } from "@/lib/integrations/
 
 type ResponseBody = { inoti: InotiAccountReadModel };
 
-const serviceKeys: InotiServiceKey[] = ["iMenu", "iAM", "iCV", "EBC", "USSD"];
+const serviceKeys: InotiServiceKey[] = ["iMenu", "iAM", "iCV", "EBC", "USSD", "SMS"];
 
 const copy = {
   fa: {
@@ -34,7 +34,14 @@ const copy = {
     credentialProfileKey: "کلید پروفایل محرمانه",
     externalAccountId: "شناسه حساب خارجی",
     accountLabel: "نام نمایشی حساب",
-    readinessOnly: "همه عملیات dry-run است؛ هیچ تماس خارجی انجام نمی‌شود و رمز مستقیم ذخیره نمی‌شود.",
+    publicIntegrationId: "شناسه عمومی اتصال",
+    callbackUrl: "مسیر وب‌سرویس USSD",
+    copyCallbackUrl: "کپی مسیر وب‌سرویس",
+    idEnvironment: "محیط شناسه",
+    localId: "LOCAL",
+    providerRegistration: "ثبت در پنل ارائه‌دهنده",
+    providerRegistrationStatus: "NOT CONFIRMED",
+    readinessOnly: "بررسی‌ها فقط خواندنی/ایمن است؛ ارسال پیامک و پرداخت واقعی غیرفعال است و رمز مستقیم ذخیره نمی‌شود.",
   },
   en: {
     title: "iNoti management",
@@ -52,7 +59,14 @@ const copy = {
     credentialProfileKey: "Secret profile key",
     externalAccountId: "External account ID",
     accountLabel: "Account label",
-    readinessOnly: "All operations are dry-run; no external provider call is made and no raw secret is stored.",
+    publicIntegrationId: "Public Integration ID",
+    callbackUrl: "USSD Web Service URL",
+    copyCallbackUrl: "Copy callback URL",
+    idEnvironment: "ID environment",
+    localId: "LOCAL",
+    providerRegistration: "Provider-side callback registration",
+    providerRegistrationStatus: "NOT CONFIRMED",
+    readinessOnly: "Verification is read-only/safe; real SMS and real payments are disabled and raw secrets are never stored.",
   },
   ar: {
     title: "إدارة iNoti",
@@ -70,7 +84,14 @@ const copy = {
     credentialProfileKey: "مفتاح ملف الأسرار",
     externalAccountId: "معرف الحساب الخارجي",
     accountLabel: "اسم الحساب",
-    readinessOnly: "كل العمليات dry-run ولا يتم أي اتصال خارجي أو تخزين أسرار مباشرة.",
+    publicIntegrationId: "معرف الاتصال العام",
+    callbackUrl: "رابط خدمة USSD",
+    copyCallbackUrl: "نسخ رابط الخدمة",
+    idEnvironment: "بيئة المعرّف",
+    localId: "LOCAL",
+    providerRegistration: "تسجيل الرابط لدى المزود",
+    providerRegistrationStatus: "NOT CONFIRMED",
+    readinessOnly: "التحقق قراءة فقط وآمن؛ إرسال SMS والدفع الحقيقي معطلان ولا يتم تخزين الأسرار مباشرة.",
   },
 } satisfies Record<SupportedLocale, Record<string, string>>;
 
@@ -86,6 +107,7 @@ export function InotiAccountConsoleClient({
   const [model, setModel] = useState<InotiAccountReadModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
   const [selected, setSelected] = useState<InotiServiceKey[]>(["iMenu", "iAM", "iCV", "EBC", "USSD"]);
   const [form, setForm] = useState({
     credentialProfileKey: "INOTI_DEFAULT",
@@ -149,6 +171,12 @@ export function InotiAccountConsoleClient({
     setSelected((current) => checked ? Array.from(new Set([...current, serviceKey])) : current.filter((item) => item !== serviceKey));
   }
 
+  async function copyCallbackUrl(value: string) {
+    await navigator.clipboard.writeText(value);
+    setCopied(value);
+    window.setTimeout(() => setCopied((current) => current === value ? null : current), 1800);
+  }
+
   if (loading) {
     return (
       <main className="flex min-h-[50vh] items-center justify-center" dir={isRtl ? "rtl" : "ltr"}>
@@ -164,6 +192,7 @@ export function InotiAccountConsoleClient({
           <Link href={`/${locale}/dashboard/organizations`} className="text-sm text-muted-foreground hover:text-foreground">{t.back}</Link>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">SUPER_ADMIN</Badge>
+            {model?.organization.isPlatformOwner && <Badge variant="secondary">PLATFORM OWNER</Badge>}
             <Badge variant="outline">{model?.account.status ?? "NOT_CONNECTED"}</Badge>
           </div>
           <h1 className="text-2xl font-semibold">{t.title}</h1>
@@ -231,9 +260,30 @@ export function InotiAccountConsoleClient({
                   <p>{t.mappings}: {service.featureMappings.join(", ")}</p>
                   <p>{service.growthFeatureMappings.join(", ")}</p>
                   <p>{service.capabilityAvailable ? "Capability ready" : "Capability not enabled"}</p>
+                  <p>Credentials: {service.credentialState}</p>
+                  <p>Username/password: {service.credentialState === "CREDENTIALS_AVAILABLE" ? "configured" : "missing"}</p>
+                  <p>Read-only: {service.readOnlyVerification}</p>
+                  {service.key === "USSD" && <p>USSD CodeName: {service.ussdCodeNameConfigured ? "configured" : "missing"}</p>}
+                  {service.key === "USSD" && <p>USSD dial code: {service.ussdDialStringConfigured ? "configured" : "not configured"}</p>}
+                  {service.key === "USSD" && service.publicIntegrationId && (
+                    <div className="space-y-1 rounded-md bg-muted/50 p-2 text-foreground">
+                      <p className="break-all text-xs"><span className="font-medium">{t.publicIntegrationId}:</span> {service.publicIntegrationId}</p>
+                      <p className="text-xs"><span className="font-medium">{t.idEnvironment}:</span> {t.localId}</p>
+                      <p className="break-all text-xs"><span className="font-medium">{t.callbackUrl}:</span> {service.callbackUrl}</p>
+                      <p className="text-xs"><span className="font-medium">{t.providerRegistration}:</span> {t.providerRegistrationStatus}</p>
+                    </div>
+                  )}
+                  {service.key === "SMS" && <p>SMS token: {service.smsTokenConfigured ? "configured" : "missing"}</p>}
                   <p>Health: {service.healthStatus}</p>
+                  <p>Real execution: {service.realExecution}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  {service.key === "USSD" && service.callbackUrl && (
+                    <Button size="sm" variant="outline" onClick={() => void copyCallbackUrl(service.callbackUrl!)} title={t.copyCallbackUrl}>
+                      {copied === service.callbackUrl ? <CheckCircle2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      {t.copyCallbackUrl}
+                    </Button>
+                  )}
                   <Button size="sm" variant="outline" onClick={() => void health(service.key)} disabled={!service.integrationId || busy === `health-${service.key}`}>
                     {busy === `health-${service.key}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                     {t.health}
@@ -252,7 +302,7 @@ export function InotiAccountConsoleClient({
       <Card>
         <CardHeader>
           <CardTitle>{t.activation}</CardTitle>
-          <CardDescription>{model?.safeMetadata.serviceDiscoveryMode} · External calls: {String(model?.safeMetadata.externalProviderCalls)}</CardDescription>
+          <CardDescription>{model?.safeMetadata.serviceDiscoveryMode} · Real SMS: {String(model?.safeMetadata.realSmsEnabled)} · Real payments: {String(model?.safeMetadata.realPaymentsEnabled)}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-2">
           {model?.activationImpact.length ? model.activationImpact.map((task) => (

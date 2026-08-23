@@ -142,7 +142,7 @@ export class OrganizationService {
 
   async getBySlugPublic(slug: string) {
     return prisma.organization.findUnique({
-      where: { slug, isActive: true },
+      where: { slug, isActive: true, isPlatformOwner: false },
       select: {
         id: true,
         type: true,

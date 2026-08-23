@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { Activity, CheckCircle2, Circle, ClipboardList, Search, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { Activity, CheckCircle2, Circle, ClipboardList, Eye, Search, ShieldCheck } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { supportedLocales, type SupportedLocale } from "@/lib/i18n";
 import { listPilotWorkspaces } from "@/lib/pilot-operations/pilot-workspace.service";
@@ -81,6 +82,15 @@ export default async function PilotOperationsPage({
               <span className="w-fit border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-800">
                 {statusLabel(pilot.status)}
               </span>
+            </div>
+            <div className="mt-3">
+              <Link
+                href={`/${locale}/dashboard/pilots/${pilot.organizationId}`}
+                className="inline-flex items-center gap-2 border border-slate-300 px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+              >
+                <Eye className="h-4 w-4" />
+                مشاهده ورک‌اسپیس لانچ
+              </Link>
             </div>
 
             <div className="mt-4">

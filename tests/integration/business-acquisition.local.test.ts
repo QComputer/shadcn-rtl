@@ -25,7 +25,10 @@ import {
 import {
   completePilotChecklistItem,
   createOrRefreshPilotWorkspace,
+  getRealPilotLaunchWorkspace,
   listPilotWorkspaces,
+  recordPilotLaunchReview,
+  registerPilotSourceAssessment,
   updatePilotWorkspace,
 } from "@/lib/pilot-operations/pilot-workspace.service";
 import {
@@ -34,6 +37,7 @@ import {
   getOwnerGrowthReadModel,
   upsertBusinessGrowthProfile,
 } from "@/lib/growth-intelligence/growth-intelligence.service";
+import { getPublicDemoShowcaseBySlug, listPublicDemoOrganizations } from "@/lib/demo-universe/demo-public.service";
 
 function fixtureId(label: string) {
   return `ba_${label}_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
@@ -48,6 +52,9 @@ async function cleanup(prefix: string) {
   const slugs = organizations.map((organization) => organization.slug);
 
   await prisma.auditLog.deleteMany({ where: { organizationId: { in: organizationIds } } });
+  await prisma.externalImportSource.deleteMany({ where: { organizationId: { in: organizationIds } } });
+  await prisma.organizationIntegrationCapability.deleteMany({ where: { organizationId: { in: organizationIds } } });
+  await prisma.organizationIntegration.deleteMany({ where: { organizationId: { in: organizationIds } } });
   await prisma.pilotWorkspace.deleteMany({ where: { organizationId: { in: organizationIds } } });
   await prisma.organizationActivationTask.deleteMany({ where: { organizationId: { in: organizationIds } } });
   await prisma.organizationActivationPlan.deleteMany({ where: { organizationId: { in: organizationIds } } });
@@ -765,6 +772,125 @@ describe("business acquisition local foundation", () => {
       assert.equal(await prisma.auditLog.count({
         where: { organizationId: restaurant.organization.id, entityType: "PilotWorkspace" },
       }) >= 3, true);
+    } finally {
+      await cleanup(prefix);
+    }
+  });
+
+  it("builds real pilot launch readiness without fake data or external provider side effects", async () => {
+    const prefix = `ba${randomUUID().replace(/-/g, "").slice(0, 7)}`;
+    await cleanup(prefix);
+    const originalFetch = globalThis.fetch;
+    let fetchCalls = 0;
+    globalThis.fetch = (async () => {
+      fetchCalls += 1;
+      return new Response("unexpected", { status: 500 });
+    }) as typeof fetch;
+    try {
+      const operator = await prisma.user.create({
+        data: { name: `${prefix}-operator`, email: `${prefix}-operator@example.test`, password: "demo-password", role: "SUPER_ADMIN", isTeamMember: true },
+      });
+      const created = await finalizeTeamOrganizationCreation({
+        createdByUserId: operator.id,
+        sourceType: "BAZARBAAZ_TEAM",
+        industryKey: "RESTAURANT",
+        name: "Restaurant Italiano 13",
+        slug: `${prefix}-italiano-13`,
+        selectedCapabilities: ["SHOP", "CRM", "USSD"],
+      });
+      await createOrRefreshPilotWorkspace({
+        organizationId: created.organization.id,
+        actorUserId: operator.id,
+        assignedOperatorId: operator.id,
+        status: "CONFIGURATION",
+        notes: "Real pilot intake only; no SnappFood calls.",
+      });
+
+      const source = await registerPilotSourceAssessment({
+        organizationId: created.organization.id,
+        actorUserId: operator.id,
+        sourceKind: "SNAPPFOOD",
+        displayName: "SnappFood source candidate",
+        intendedPurpose: "Future menu intake after legal/provider approval.",
+        assessmentStatus: "REQUIRES_EXTERNAL_APPROVAL",
+        dataExpected: ["menu categories", "menu items"],
+        manualImportRequired: true,
+        adapterSupport: "LOCAL_PREVIEW_FIXTURE",
+        externalVerificationRequired: true,
+        provenance: "EXTERNAL_CATALOG",
+      });
+      assert.equal(source.externalProviderCalls, false);
+      assert.equal(fetchCalls, 0);
+
+      await prisma.organizationIntegration.create({
+        data: {
+          organizationId: created.organization.id,
+          provider: "INOTI_USSD",
+          type: "USSD",
+          status: "ACTIVE",
+          codeName: `${prefix}-ussd`,
+          displayName: "USSD",
+          externalAccountId: "internal-account-reference",
+          credentialProfileKey: "cred-profile-real-pilot-test",
+          configuration: { localReadinessOnly: true },
+          healthStatus: "UNKNOWN",
+        },
+      });
+
+      const launch = await getRealPilotLaunchWorkspace({ organizationId: created.organization.id });
+      assert.equal(launch.launch.stage, "PROFILE_SETUP");
+      assert.equal(launch.profileReadiness.state, "MISSING");
+      assert.equal(launch.catalogReadiness.state, "MISSING");
+      assert.equal(launch.sourceAssessments.some((entry) => entry.sourceKind === "SNAPPFOOD" && entry.persisted), true);
+      assert.equal(launch.integrationReadiness.services.find((service) => service.key === "USSD")?.connectionState, "CONNECTION_PENDING");
+      assert.equal(launch.safety.externalProviderCalls, false);
+      assert.equal(launch.safety.exposesCredentials, false);
+      assert.equal(/cred-profile-real-pilot-test|internal-account-reference|customerIdentityId|tokenHash/i.test(JSON.stringify(launch)), false);
+      assert.equal(launch.blockers.some((blocker) => blocker.key === "catalog-required"), true);
+      assert.equal(launch.recommendations.some((recommendation) => recommendation.key === "trust-reviews"), true);
+
+      const reviewed = await recordPilotLaunchReview({
+        organizationId: created.organization.id,
+        actorUserId: operator.id,
+        notes: "Configuration review recorded locally.",
+      });
+      assert.equal(reviewed.launch.approval.completed, true);
+      assert.equal(reviewed.blockers.some((blocker) => blocker.key === "launch-review"), false);
+      assert.equal(await prisma.auditLog.count({
+        where: { organizationId: created.organization.id, description: "Pilot launch review completed" },
+      }), 1);
+    } finally {
+      globalThis.fetch = originalFetch;
+      await cleanup(prefix);
+    }
+  });
+
+  it("keeps real pilot slugs out of Demo Universe discovery even if demo settings drift", async () => {
+    const prefix = "italiano-13";
+    await cleanup(prefix);
+    try {
+      const organization = await prisma.organization.create({
+        data: {
+          name: "Restaurant Italiano 13",
+          slug: "italiano-13",
+          type: "SHOP",
+          locale: "fa",
+          capabilitiesInitializedAt: new Date(),
+        },
+      });
+      await prisma.organizationSettings.create({
+        data: {
+          organizationSlug: organization.slug,
+          settings: { demo: { enabled: true, roles: ["CUSTOMER", "MANAGER"] } },
+        },
+      });
+      await prisma.organizationCapability.create({
+        data: { organizationId: organization.id, key: "SHOP", status: "ACTIVE", enabledAt: new Date() },
+      });
+
+      const demos = await listPublicDemoOrganizations();
+      assert.equal(demos.some((demo) => demo.slug === "italiano-13"), false);
+      assert.equal(await getPublicDemoShowcaseBySlug("italiano-13"), null);
     } finally {
       await cleanup(prefix);
     }

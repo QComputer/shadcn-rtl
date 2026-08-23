@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
         where: {
           isActive: true,
           deletedAt: null,
+          isPlatformOwner: false,
           OR: [
             { name: contains },
             { slug: contains },
@@ -98,6 +99,7 @@ export async function GET(request: NextRequest) {
           organization: {
             isActive: true,
             deletedAt: null,
+            isPlatformOwner: false,
           },
           OR: [
             { name: contains },
@@ -133,6 +135,7 @@ export async function GET(request: NextRequest) {
           organization: {
             isActive: true,
             deletedAt: null,
+            isPlatformOwner: false,
           },
           OR: [
             { name: contains },

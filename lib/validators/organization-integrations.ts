@@ -3,6 +3,7 @@ import { organizationCapabilityKeys } from "@/lib/validators/tenant-platform";
 
 export const integrationProviders = [
   "INOTI_USSD",
+  "INOTI_SMS",
   "INOTI_IMENU",
   "INOTI_ICV",
   "INOTI_IAM",

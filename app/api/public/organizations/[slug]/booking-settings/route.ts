@@ -9,8 +9,8 @@ export async function GET(
     const { slug } = await params;
 
     // Get organization by slug
-    const organization = await prisma.organization.findUnique({
-      where: { slug, isActive: true },
+    const organization = await prisma.organization.findFirst({
+      where: { slug, isActive: true, isPlatformOwner: false },
       select: { id: true, timezone: true },
     });
 

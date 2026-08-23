@@ -4,6 +4,7 @@ import type { OrganizationCapabilityKey, UserRole } from "@prisma/client";
 import { ApiError } from "@/lib/api-guards";
 import prisma from "@/lib/db";
 import { sanitizeIntegrationConfig } from "@/lib/integrations/organization-integrations";
+import { isRealPilotBusinessSlug } from "@/lib/pilot-operations/real-pilot-businesses";
 
 export const DEMO_ROLES = ["PLATFORM_ADMIN", "ORGANIZATION_OWNER", "CUSTOMER", "MANAGER", "STAFF", "DRIVER"] as const;
 
@@ -74,7 +75,9 @@ export async function getDemoOrganization(organizationId: string) {
     },
   });
   if (!organization) throw new ApiError(404, "Organization not found");
-  const demo = parseDemoSettings(organization.settings?.settings);
+  const demo = isRealPilotBusinessSlug(organization.slug)
+    ? { enabled: false, roles: [], capabilities: undefined }
+    : parseDemoSettings(organization.settings?.settings);
   return { organization, demo };
 }
 

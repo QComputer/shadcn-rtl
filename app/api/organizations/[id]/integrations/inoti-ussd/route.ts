@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ApiError, jsonError, requireAuthSession } from "@/lib/api-guards";
 import prisma from "@/lib/db";
-import { inotiUssdProvider } from "@/lib/integrations/inoti-ussd/inoti-provider";
 import { environmentInotiCredentialProvider } from "@/lib/integrations/inoti-ussd/credentials";
+import { buildInotiUssdCallbackPath, buildInotiUssdCallbackUrl } from "@/lib/integrations/inoti-ussd/callback-url";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { updateInotiUssdIntegrationSchema } from "@/lib/validators/inoti-ussd";
 
@@ -14,41 +14,6 @@ function safeConfiguration(value: unknown) {
     orderStatusEnabled: config.orderStatusEnabled === true,
     paymentEnabled: config.paymentEnabled === true,
   };
-}
-
-function resolvePlatformOrigin() {
-  const appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "";
-  try {
-    const url = new URL(appUrl);
-    return `${url.protocol}//${url.host}`;
-  } catch {
-    return "";
-  }
-}
-
-async function resolveCallbackOrigin(integration: {
-  callbackOrigin: string | null;
-  organizationId: string;
-}): Promise<string | null> {
-  if (integration.callbackOrigin) {
-    return integration.callbackOrigin;
-  }
-
-  const primaryDomain = await prisma.organizationDomain.findFirst({
-    where: {
-      organizationId: integration.organizationId,
-      status: "ACTIVE",
-      isPrimary: true,
-    },
-    select: { normalizedDomain: true },
-  });
-
-  if (primaryDomain?.normalizedDomain) {
-    return `https://${primaryDomain.normalizedDomain}`;
-  }
-
-  const platformOrigin = resolvePlatformOrigin();
-  return platformOrigin || null;
 }
 
 function serializeIntegration(
@@ -80,7 +45,7 @@ function serializeIntegration(
     credentialProfileKey: integration.credentialProfileKey,
     credentialConfigured,
     configuration: safeConfiguration(integration.configuration),
-    callbackPath: `/api/integrations/inoti/ussd/${integration.publicId}`,
+    callbackPath: buildInotiUssdCallbackPath(integration.publicId),
     callbackUrl,
     lastCallbackAt: integration.lastCallbackAt,
     disabledAt: integration.disabledAt,
@@ -126,8 +91,7 @@ export async function GET(
 
     const credentialProfile = await environmentInotiCredentialProvider.resolveProfile(id, integration.credentialProfileKey);
     const credentialConfigured = Boolean(credentialProfile);
-    const callbackOrigin = await resolveCallbackOrigin(integration);
-    const callbackUrl = callbackOrigin ? `${callbackOrigin}/api/integrations/inoti/ussd/${integration.publicId}` : null;
+    const callbackUrl = buildInotiUssdCallbackUrl(integration.publicId);
 
     return NextResponse.json(serializeIntegration(integration, callbackUrl, credentialConfigured));
   } catch (error) {
@@ -210,8 +174,7 @@ export async function PUT(
 
     const credentialProfile = await environmentInotiCredentialProvider.resolveProfile(id, result.credentialProfileKey);
     const credentialConfigured = Boolean(credentialProfile);
-    const callbackOrigin = await resolveCallbackOrigin(result);
-    const callbackUrl = callbackOrigin ? `${callbackOrigin}/api/integrations/inoti/ussd/${result.publicId}` : null;
+    const callbackUrl = buildInotiUssdCallbackUrl(result.publicId);
 
     return NextResponse.json(serializeIntegration(result, callbackUrl, credentialConfigured));
   } catch (error) {

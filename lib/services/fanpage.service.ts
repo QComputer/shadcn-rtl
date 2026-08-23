@@ -14,7 +14,7 @@ function revalidateFanpage(slug: string) {
 export class FanpageService {
   async requirePublicOrganization(slug: string) {
     const organization = await prisma.organization.findFirst({
-      where: { slug, isActive: true, deletedAt: null },
+      where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
       select: {
         id: true,
         name: true,

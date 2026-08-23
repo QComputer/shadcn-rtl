@@ -11,7 +11,7 @@ export async function GET(
     const { slug } = await params;
     const includeAiMediaAttachment = canReadAiMediaEntityAttachmentColumns();
     const organization = await prisma.organization.findFirst({
-      where: { slug, isActive: true, deletedAt: null },
+      where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
       select: {
         id: true,
         name: true,

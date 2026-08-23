@@ -1,8 +1,12 @@
 import "server-only";
 
 import type {
+  ExternalImportSourceStatus,
+  ExternalImportSourceType,
+  IntegrationProvider,
   OrganizationCapabilityKey,
   OrganizationIndustryKey,
+  OrganizationIntegrationStatus,
   PilotChecklistCategory,
   PilotWorkspaceStatus,
   Prisma,
@@ -576,4 +580,773 @@ export async function completePilotChecklistItem(input: {
   });
 
   return buildReadModel(updated.id, db);
+}
+
+export type PilotLaunchStage =
+  | "DATA_COLLECTION"
+  | "PROFILE_SETUP"
+  | "CATALOG_SETUP"
+  | "INTEGRATION_SETUP"
+  | "GROWTH_SETUP"
+  | "TRUST_SETUP"
+  | "LAUNCH_REVIEW"
+  | "READY_TO_LAUNCH"
+  | "LIVE"
+  | "PAUSED";
+
+export type ProviderConnectionState =
+  | "NOT_CONFIGURED"
+  | "CONFIGURED"
+  | "READY_TO_CONNECT"
+  | "CONNECTION_PENDING"
+  | "VERIFIED_EXTERNALLY"
+  | "ACTIVE";
+
+export type PilotSourceKind = "SNAPPFOOD" | "WEBSITE" | "INSTAGRAM" | "INOTI" | "IAM" | "MANUAL" | "CSV" | "OTHER";
+
+export type PilotSourceAssessmentStatus =
+  | "NOT_ASSESSED"
+  | "MANUAL_ONLY"
+  | "ADAPTER_AVAILABLE"
+  | "READY_FOR_REVIEW"
+  | "REQUIRES_CREDENTIALS"
+  | "REQUIRES_EXTERNAL_APPROVAL"
+  | "UNSUPPORTED";
+
+export type PilotReadinessState = "READY" | "MISSING" | "NEEDS_OPERATOR_INPUT" | "PENDING_VERIFICATION" | "OPTIONAL" | "BLOCKED";
+
+export type PilotSourceAssessment = {
+  id: string | null;
+  persisted: boolean;
+  sourceKind: PilotSourceKind;
+  sourceType: ExternalImportSourceType;
+  displayName: string;
+  sourceUrl: string | null;
+  intendedPurpose: string;
+  connectionState: ProviderConnectionState;
+  assessmentStatus: PilotSourceAssessmentStatus;
+  legalAssessmentStatus: PilotSourceAssessmentStatus;
+  technicalAssessmentStatus: PilotSourceAssessmentStatus;
+  dataExpected: string[];
+  manualImportRequired: boolean;
+  adapterSupport: "NONE" | "LOCAL_PREVIEW_FIXTURE" | "MANUAL_INPUT" | "FUTURE_CONNECTOR";
+  externalVerificationRequired: boolean;
+  provenance: "MANUAL_OPERATOR" | "BUSINESS_OWNER" | "EXTERNAL_CATALOG" | "WEBSITE" | "SOCIAL" | "INOTI" | "IAM" | "LEGACY_IMPORT";
+  externalProviderCalls: false;
+  updatedAt: string | null;
+};
+
+export type RealPilotLaunchReadModel = {
+  organization: PilotWorkspaceReadModel["organization"] & {
+    descriptionStatus: PilotReadinessState;
+    locationStatus: PilotReadinessState;
+    publicContactStatus: PilotReadinessState;
+  };
+  pilot: PilotWorkspaceReadModel;
+  acquisition: {
+    industry: OrganizationIndustryKey;
+    sourceType: string | null;
+    generatedFromBazarBaazTeam: boolean;
+  };
+  activation: {
+    status: string;
+    completedActions: number;
+    recommendedActions: number;
+  };
+  launch: {
+    stage: PilotLaunchStage;
+    blockerCount: number;
+    recommendationCount: number;
+    approval: {
+      completed: boolean;
+      reviewerUserId: string | null;
+      reviewedAt: string | null;
+      notes: string | null;
+    };
+  };
+  profileReadiness: {
+    state: PilotReadinessState;
+    missing: string[];
+    editableFields: string[];
+  };
+  catalogReadiness: {
+    state: PilotReadinessState;
+    productCount: number;
+    productCategoryCount: number;
+    serviceCount: number;
+    staffCount: number;
+    requiredCapability: "SHOP" | "APPOINTMENT";
+    sourcePath: "MANUAL_INPUT" | "STRUCTURED_PASTE" | "APPROVED_LOCAL_FIXTURE" | "FUTURE_CONNECTOR";
+  };
+  integrationReadiness: {
+    dryRunOnly: true;
+    services: Array<{
+      key: string;
+      provider: IntegrationProvider;
+      recommended: boolean;
+      capabilityAvailable: boolean;
+      connectionState: ProviderConnectionState;
+      label: string;
+      credentialState: string;
+      readOnlyVerification: string;
+      publicIntegrationId: string | null;
+      callbackUrl: string | null;
+      ussdCodeNameConfigured: boolean;
+      smsTokenConfigured: boolean;
+      ussdDialStringConfigured: boolean;
+      realExecution: "DISABLED";
+      nextAction: string;
+    }>;
+  };
+  growthReadiness: {
+    state: PilotReadinessState;
+    seoScore: number;
+    keywordPlanCount: number;
+    iamRecommendationCount: number;
+    contentOpportunityCount: number;
+    nextAction: string | null;
+  };
+  trustReadiness: {
+    state: PilotReadinessState;
+    verifiedReviewCount: number;
+    reviewRequestReady: boolean;
+    publicTrustReady: boolean;
+  };
+  publicExperienceReadiness: {
+    state: PilotReadinessState;
+    safeToSerialize: boolean;
+    missingPublicFields: string[];
+    privateFieldsExcluded: string[];
+  };
+  sourceAssessments: PilotSourceAssessment[];
+  blockers: Array<{ key: string; title: string; area: string; severity: "BLOCKER"; nextAction: string }>;
+  recommendations: Array<{ key: string; title: string; area: string; severity: "RECOMMENDATION"; nextAction: string }>;
+  nextActions: Array<{ key: string; title: string; area: string; priority: "HIGH" | "MEDIUM" | "LOW" }>;
+  safety: {
+    externalProviderCalls: false;
+    exposesCredentials: false;
+    exposesCustomerIdentity: false;
+    demoUniverseSeparated: true;
+  };
+};
+
+type PilotWorkspaceMetadata = {
+  realPilotIntake?: {
+    website?: string | null;
+    socialUrls?: string[];
+    operatingAreas?: string[];
+  };
+  launchApproval?: {
+    completed: boolean;
+    reviewerUserId: string;
+    reviewedAt: string;
+    notes?: string | null;
+    remainingRecommendations?: string[];
+  };
+};
+
+function jsonObjectValue(value: Prisma.JsonValue | null | undefined): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value)
+    ? Array.from(new Set(value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim())))
+    : [];
+}
+
+function sourceTypeForKind(kind: PilotSourceKind): ExternalImportSourceType {
+  if (kind === "SNAPPFOOD") return "SNAP_FOOD";
+  if (kind === "INSTAGRAM") return "INSTAGRAM";
+  if (kind === "CSV") return "CSV";
+  if (kind === "WEBSITE" || kind === "MANUAL") return "MANUAL_URL";
+  return "UNKNOWN";
+}
+
+function normalizeSourceUrl(value?: string | null) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed.toLowerCase() : null;
+}
+
+function realPilotDefaults(slug: string, businessKindValue: ReturnType<typeof businessKind>): PilotSourceAssessment[] {
+  const defaults: PilotSourceAssessment[] = [];
+  if (slug === "italiano-13" || businessKindValue === "RESTAURANT") {
+    defaults.push(sourceAssessmentDefaults({
+      sourceKind: "SNAPPFOOD",
+      displayName: "SnappFood source candidate",
+      sourceUrl: null,
+      intendedPurpose: "Future menu/catalog intake after provider and legal review.",
+      assessmentStatus: "REQUIRES_EXTERNAL_APPROVAL",
+      dataExpected: ["menu categories", "menu items", "prices if approved", "images if approved"],
+      adapterSupport: "LOCAL_PREVIEW_FIXTURE",
+      externalVerificationRequired: true,
+      provenance: "EXTERNAL_CATALOG",
+    }));
+  }
+  if (slug === "cafe-leo") {
+    defaults.push(sourceAssessmentDefaults({
+      sourceKind: "WEBSITE",
+      displayName: "Cafe Leo website",
+      sourceUrl: "https://iran.leocafe.vip/",
+      intendedPurpose: "Future website-based brand/content intake. Crawling is not authorized in this milestone.",
+      assessmentStatus: "MANUAL_ONLY",
+      dataExpected: ["business profile", "brand content", "menu/content if owner approves", "media references"],
+      adapterSupport: "FUTURE_CONNECTOR",
+      externalVerificationRequired: true,
+      provenance: "WEBSITE",
+    }));
+  }
+  if (slug === "aka-shoes") {
+    defaults.push(sourceAssessmentDefaults({
+      sourceKind: "INSTAGRAM",
+      displayName: "AKA Shoes Instagram",
+      sourceUrl: "https://www.instagram.com/aka.shoes/",
+      intendedPurpose: "Future social/catalog intake with human review before entity or product mapping.",
+      assessmentStatus: "REQUIRES_EXTERNAL_APPROVAL",
+      dataExpected: ["social content", "product photos", "captions", "optional product mapping after review"],
+      adapterSupport: "FUTURE_CONNECTOR",
+      externalVerificationRequired: true,
+      provenance: "SOCIAL",
+    }));
+  }
+  defaults.push(sourceAssessmentDefaults({
+    sourceKind: "MANUAL",
+    displayName: "Manual operator intake",
+    sourceUrl: null,
+    intendedPurpose: "Safe local data entry and structured pasted data with operator provenance.",
+    assessmentStatus: "ADAPTER_AVAILABLE",
+    dataExpected: businessKindValue === "APPOINTMENT" ? ["services", "staff", "schedule", "portfolio media"] : ["profile fields", "categories", "catalog/menu items", "media"],
+    adapterSupport: "MANUAL_INPUT",
+    externalVerificationRequired: false,
+    provenance: "MANUAL_OPERATOR",
+  }));
+  return defaults;
+}
+
+function sourceAssessmentDefaults(input: {
+  sourceKind: PilotSourceKind;
+  displayName: string;
+  sourceUrl: string | null;
+  intendedPurpose: string;
+  assessmentStatus: PilotSourceAssessmentStatus;
+  dataExpected: string[];
+  adapterSupport: PilotSourceAssessment["adapterSupport"];
+  externalVerificationRequired: boolean;
+  provenance: PilotSourceAssessment["provenance"];
+}): PilotSourceAssessment {
+  return {
+    id: null,
+    persisted: false,
+    sourceKind: input.sourceKind,
+    sourceType: sourceTypeForKind(input.sourceKind),
+    displayName: input.displayName,
+    sourceUrl: input.sourceUrl,
+    intendedPurpose: input.intendedPurpose,
+    connectionState: input.externalVerificationRequired ? "READY_TO_CONNECT" : "CONFIGURED",
+    assessmentStatus: input.assessmentStatus,
+    legalAssessmentStatus: input.assessmentStatus,
+    technicalAssessmentStatus: input.assessmentStatus,
+    dataExpected: input.dataExpected,
+    manualImportRequired: input.adapterSupport !== "LOCAL_PREVIEW_FIXTURE",
+    adapterSupport: input.adapterSupport,
+    externalVerificationRequired: input.externalVerificationRequired,
+    provenance: input.provenance,
+    externalProviderCalls: false,
+    updatedAt: null,
+  };
+}
+
+function serializeSourceAssessment(row: {
+  id: string;
+  type: ExternalImportSourceType;
+  status: ExternalImportSourceStatus;
+  displayName: string | null;
+  sourceUrl: string | null;
+  metadata: Prisma.JsonValue | null;
+  updatedAt: Date;
+}): PilotSourceAssessment {
+  const metadata = jsonObjectValue(row.metadata);
+  const sourceKind = typeof metadata.sourceKind === "string" ? metadata.sourceKind as PilotSourceKind : "OTHER";
+  const assessmentStatus = typeof metadata.assessmentStatus === "string" ? metadata.assessmentStatus as PilotSourceAssessmentStatus : "NOT_ASSESSED";
+  const adapterSupport = typeof metadata.adapterSupport === "string" ? metadata.adapterSupport as PilotSourceAssessment["adapterSupport"] : "NONE";
+  const externalVerificationRequired = metadata.externalVerificationRequired === true;
+  return {
+    id: row.id,
+    persisted: true,
+    sourceKind,
+    sourceType: row.type,
+    displayName: row.displayName ?? sourceKind,
+    sourceUrl: row.sourceUrl,
+    intendedPurpose: typeof metadata.intendedPurpose === "string" ? metadata.intendedPurpose : "Source assessment",
+    connectionState: typeof metadata.connectionState === "string" ? metadata.connectionState as ProviderConnectionState : externalVerificationRequired ? "READY_TO_CONNECT" : "CONFIGURED",
+    assessmentStatus,
+    legalAssessmentStatus: typeof metadata.legalAssessmentStatus === "string" ? metadata.legalAssessmentStatus as PilotSourceAssessmentStatus : assessmentStatus,
+    technicalAssessmentStatus: typeof metadata.technicalAssessmentStatus === "string" ? metadata.technicalAssessmentStatus as PilotSourceAssessmentStatus : assessmentStatus,
+    dataExpected: stringList(metadata.dataExpected),
+    manualImportRequired: metadata.manualImportRequired !== false,
+    adapterSupport,
+    externalVerificationRequired,
+    provenance: typeof metadata.provenance === "string" ? metadata.provenance as PilotSourceAssessment["provenance"] : "MANUAL_OPERATOR",
+    externalProviderCalls: false,
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+function mergeSourceAssessments(stored: PilotSourceAssessment[], defaults: PilotSourceAssessment[]) {
+  const key = (item: PilotSourceAssessment) => `${item.sourceKind}:${item.sourceUrl ?? ""}`;
+  const storedKeys = new Set(stored.map(key));
+  return [...stored, ...defaults.filter((item) => !storedKeys.has(key(item)))];
+}
+
+function providerState(input: {
+  status: OrganizationIntegrationStatus | "NOT_CONNECTED";
+  credentialProfileKey?: string | null;
+  healthStatus?: string | null;
+  healthMetadata?: Prisma.JsonValue | null;
+}): ProviderConnectionState {
+  if (input.status === "NOT_CONNECTED") return "NOT_CONFIGURED";
+  const metadata = jsonObjectValue(input.healthMetadata);
+  const externallyVerified = metadata.externalProviderVerified === true || metadata.verifiedExternally === true;
+  if (input.status === "ACTIVE" && externallyVerified && input.healthStatus === "CONNECTED") return "ACTIVE";
+  if (externallyVerified && input.healthStatus === "CONNECTED") return "VERIFIED_EXTERNALLY";
+  if (input.status === "ACTIVE") return "CONNECTION_PENDING";
+  if (input.credentialProfileKey) return "READY_TO_CONNECT";
+  return "CONFIGURED";
+}
+
+function readinessFromMissing(missing: string[], optional = false): PilotReadinessState {
+  if (missing.length === 0) return "READY";
+  return optional ? "OPTIONAL" : "MISSING";
+}
+
+function buildBlockers(input: {
+  pilot: PilotWorkspaceReadModel;
+  missingProfile: string[];
+  catalogReady: boolean;
+  launchApproved: boolean;
+}) {
+  const blockers: RealPilotLaunchReadModel["blockers"] = [];
+  const capabilities = input.pilot.organization.capabilities;
+  if (!input.pilot.organization.name.trim()) {
+    blockers.push({ key: "profile-name", title: "No public business name", area: "Identity", severity: "BLOCKER", nextAction: "Enter the public business name" });
+  }
+  for (const field of input.missingProfile) {
+    const fieldLabel = field === "contact info" ? "public contact" : field;
+    blockers.push({ key: `profile-${field.replace(/\s+/g, "-")}`, title: `Missing ${fieldLabel}`, area: "Identity", severity: "BLOCKER", nextAction: "Complete public profile intake" });
+  }
+  if (!capabilities.includes("SHOP") && !capabilities.includes("APPOINTMENT")) {
+    blockers.push({ key: "capability-required", title: "No enabled launch capability", area: "Operations", severity: "BLOCKER", nextAction: "Enable SHOP or APPOINTMENT capability" });
+  }
+  if (!input.catalogReady) {
+    blockers.push({ key: "catalog-required", title: capabilities.includes("APPOINTMENT") ? "No service catalog ready" : "No catalog/menu ready", area: "Operations", severity: "BLOCKER", nextAction: capabilities.includes("APPOINTMENT") ? "Enter services and schedule data" : "Enter menu/catalog data manually or from an approved source" });
+  }
+  if (!input.launchApproved) {
+    blockers.push({ key: "launch-review", title: "Launch review not completed", area: "Approval", severity: "BLOCKER", nextAction: "Complete operator launch review after required data is safe" });
+  }
+  return blockers;
+}
+
+function deriveLaunchStage(input: {
+  status: PilotWorkspaceStatus;
+  blockers: RealPilotLaunchReadModel["blockers"];
+  growthReady: boolean;
+  trustReady: boolean;
+}): PilotLaunchStage {
+  if (input.status === "LIVE") return "LIVE";
+  if (input.status === "PAUSED") return "PAUSED";
+  const firstBlocker = input.blockers[0];
+  if (!firstBlocker) return "READY_TO_LAUNCH";
+  if (firstBlocker.area === "Identity") return firstBlocker.key === "profile-name" ? "DATA_COLLECTION" : "PROFILE_SETUP";
+  if (firstBlocker.area === "Operations") return "CATALOG_SETUP";
+  if (!input.growthReady) return "GROWTH_SETUP";
+  if (!input.trustReady) return "TRUST_SETUP";
+  return "LAUNCH_REVIEW";
+}
+
+async function loadSourceAssessments(input: {
+  organizationId: string;
+  slug: string;
+  businessKindValue: ReturnType<typeof businessKind>;
+  db: DbClient;
+}) {
+  const rows = await input.db.externalImportSource.findMany({
+    where: { organizationId: input.organizationId },
+    select: { id: true, type: true, status: true, displayName: true, sourceUrl: true, metadata: true, updatedAt: true },
+    orderBy: [{ updatedAt: "desc" }],
+  });
+  const stored = rows
+    .filter((row) => jsonObjectValue(row.metadata).realPilotLaunch === true)
+    .map(serializeSourceAssessment);
+  return mergeSourceAssessments(stored, realPilotDefaults(input.slug, input.businessKindValue));
+}
+
+export async function getRealPilotLaunchWorkspace(input: { organizationId: string; db?: DbClient }): Promise<RealPilotLaunchReadModel> {
+  const db = input.db ?? prisma;
+  const pilot = await getPilotWorkspace({ organizationId: input.organizationId, db });
+  const [organization, activationPlan, growthPlan, inoti] = await Promise.all([
+    db.organization.findFirst({
+      where: { id: input.organizationId, isActive: true, deletedAt: null },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        address: true,
+        phone: true,
+        email: true,
+        logo: true,
+        coverImage: true,
+        acquisition: { select: { sourceType: true, industryKey: true } },
+        pilotWorkspace: { select: { completedChecklist: true, metadata: true } },
+      },
+    }),
+    getActivationPlan({ organizationId: input.organizationId, db }),
+    getGrowthPlan({ organizationId: input.organizationId, db }).catch(() => null),
+    getInotiAccountReadModel(input.organizationId).catch(() => null),
+  ]);
+  if (!organization) throw new ApiError(404, "Organization not found");
+
+  const missingProfile = profileMissing(organization);
+  const requiredCapability = pilot.organization.capabilities.includes("APPOINTMENT") ? "APPOINTMENT" as const : "SHOP" as const;
+  const catalogReady = requiredCapability === "APPOINTMENT"
+    ? pilot.readinessSummary.catalog.serviceCount > 0
+    : pilot.readinessSummary.catalog.productCount > 0;
+  const metadata = jsonObjectValue(organization.pilotWorkspace?.metadata) as PilotWorkspaceMetadata;
+  const completed = new Set(jsonArray(organization.pilotWorkspace?.completedChecklist).filter((item): item is string => typeof item === "string"));
+  const approval = metadata.launchApproval;
+  const launchApproved = approval?.completed === true || completed.has("launch-final-review");
+  const blockers = buildBlockers({ pilot, missingProfile, catalogReady, launchApproved });
+  const recommendations: RealPilotLaunchReadModel["recommendations"] = [
+    pilot.readinessSummary.trust.reviewCount === 0
+      ? { key: "trust-reviews", title: "No verified reviews yet", area: "Trust", severity: "RECOMMENDATION", nextAction: "Prepare review request readiness after real customer interactions" }
+      : null,
+    pilot.readinessSummary.seo.iamRecommendationCount === 0
+      ? { key: "growth-iam", title: "No iAM page recommendations generated", area: "Growth", severity: "RECOMMENDATION", nextAction: "Refresh growth intelligence after profile/catalog intake" }
+      : null,
+    pilot.readinessSummary.integrations.inotiStatus === "NOT_CONNECTED"
+      ? { key: "integration-inoti", title: "iNoti services are not configured locally", area: "Integrations", severity: "RECOMMENDATION", nextAction: "Create local iNoti readiness drafts only after operator review" }
+      : null,
+  ].filter((item): item is RealPilotLaunchReadModel["recommendations"][number] => Boolean(item));
+  const stage = deriveLaunchStage({
+    status: pilot.status,
+    blockers,
+    growthReady: Boolean(growthPlan && growthPlan.readiness.seoStrategyStatus === "READY"),
+    trustReady: pilot.readinessSummary.trust.reviewCount > 0,
+  });
+  const kind = businessKind({ organizationName: pilot.organization.name, industry: pilot.organization.industry, capabilities: pilot.organization.capabilities });
+  const sourceAssessments = await loadSourceAssessments({ organizationId: input.organizationId, slug: organization.slug, businessKindValue: kind, db });
+  const recommendedServices = new Set<string>(getIndustryTemplate(pilot.organization.industry).growthIntelligence.recommendedInotiServices);
+
+  const integrationServices = (inoti?.services ?? []).map((service) => ({
+    key: service.key,
+    provider: service.provider,
+    recommended: recommendedServices.has(service.key),
+    capabilityAvailable: service.capabilityAvailable,
+    connectionState: providerState({
+      status: service.status,
+      healthStatus: service.healthStatus,
+      credentialProfileKey: service.credentialState === "CREDENTIALS_AVAILABLE" ? "configured" : null,
+    }),
+    label: service.label,
+    credentialState: service.credentialState,
+    readOnlyVerification: service.readOnlyVerification,
+    publicIntegrationId: service.publicIntegrationId,
+    callbackUrl: service.callbackUrl,
+    ussdCodeNameConfigured: service.ussdCodeNameConfigured,
+    smsTokenConfigured: service.smsTokenConfigured,
+    ussdDialStringConfigured: service.ussdDialStringConfigured,
+    realExecution: service.realExecution,
+    nextAction: service.status === "NOT_CONNECTED"
+      ? "iNoti credentials not yet provided"
+      : service.credentialState !== "CREDENTIALS_AVAILABLE"
+        ? "Add the correct tenant credential profile before read-only verification"
+      : service.status === "DRAFT"
+        ? "Collect credentials or provider approval when authorized"
+        : "Read-only verification may be run; live SMS and payments remain disabled",
+  }));
+
+  const nextActions: RealPilotLaunchReadModel["nextActions"] = [
+    ...blockers.slice(0, 3).map((blocker) => ({ key: blocker.key, title: blocker.nextAction, area: blocker.area, priority: "HIGH" as const })),
+    ...recommendations.slice(0, 3).map((recommendation) => ({ key: recommendation.key, title: recommendation.nextAction, area: recommendation.area, priority: "MEDIUM" as const })),
+  ];
+
+  return {
+    organization: {
+      ...pilot.organization,
+      descriptionStatus: organization.description?.trim() ? "READY" : "MISSING",
+      locationStatus: organization.address?.trim() ? "READY" : "MISSING",
+      publicContactStatus: organization.phone?.trim() || organization.email?.trim() ? "READY" : "MISSING",
+    },
+    pilot,
+    acquisition: {
+      industry: organization.acquisition?.industryKey ?? pilot.organization.industry,
+      sourceType: organization.acquisition?.sourceType ?? null,
+      generatedFromBazarBaazTeam: organization.acquisition?.sourceType === "BAZARBAAZ_TEAM",
+    },
+    activation: {
+      status: activationPlan.status,
+      completedActions: activationPlan.completedActions.length,
+      recommendedActions: activationPlan.recommendedActions.length,
+    },
+    launch: {
+      stage,
+      blockerCount: blockers.length,
+      recommendationCount: recommendations.length,
+      approval: {
+        completed: launchApproved,
+        reviewerUserId: approval?.reviewerUserId ?? null,
+        reviewedAt: approval?.reviewedAt ?? null,
+        notes: approval?.notes ?? null,
+      },
+    },
+    profileReadiness: {
+      state: readinessFromMissing(missingProfile),
+      missing: missingProfile,
+      editableFields: ["name", "description", "industry", "address", "phone", "email", "website", "socialUrls", "operatingAreas", "preferredGoals", "preferredKeywords", "notes"],
+    },
+    catalogReadiness: {
+      state: catalogReady ? "READY" : "MISSING",
+      productCount: pilot.readinessSummary.catalog.productCount,
+      productCategoryCount: pilot.readinessSummary.catalog.productCategoryCount,
+      serviceCount: pilot.readinessSummary.catalog.serviceCount,
+      staffCount: pilot.readinessSummary.catalog.staffCount,
+      requiredCapability,
+      sourcePath: "MANUAL_INPUT",
+    },
+    integrationReadiness: {
+      dryRunOnly: true,
+      services: integrationServices,
+    },
+    growthReadiness: {
+      state: growthPlan && growthPlan.readiness.seoStrategyStatus === "READY" ? "READY" : "NEEDS_OPERATOR_INPUT",
+      seoScore: growthPlan?.readiness.seoScore ?? 0,
+      keywordPlanCount: growthPlan?.readiness.keywordPlanCount ?? 0,
+      iamRecommendationCount: growthPlan?.readiness.iamRecommendationCount ?? 0,
+      contentOpportunityCount: growthPlan?.readiness.contentOpportunityCount ?? 0,
+      nextAction: growthPlan?.readiness.nextAction ?? pilot.readinessSummary.seo.nextGrowthAction,
+    },
+    trustReadiness: {
+      state: pilot.readinessSummary.trust.reviewCount > 0 ? "READY" : "OPTIONAL",
+      verifiedReviewCount: pilot.readinessSummary.trust.reviewCount,
+      reviewRequestReady: true,
+      publicTrustReady: pilot.readinessSummary.trust.reviewCount > 0,
+    },
+    publicExperienceReadiness: {
+      state: blockers.some((blocker) => blocker.area === "Identity" || blocker.area === "Operations") ? "MISSING" : "READY",
+      safeToSerialize: true,
+      missingPublicFields: missingProfile,
+      privateFieldsExcluded: ["integration credentials", "provider config", "customer identity", "operator notes", "internal growth notes", "unapproved reviews"],
+    },
+    sourceAssessments,
+    blockers,
+    recommendations,
+    nextActions,
+    safety: {
+      externalProviderCalls: false,
+      exposesCredentials: false,
+      exposesCustomerIdentity: false,
+      demoUniverseSeparated: true,
+    },
+  };
+}
+
+export async function registerPilotSourceAssessment(input: {
+  organizationId: string;
+  actorUserId: string;
+  sourceKind: PilotSourceKind;
+  displayName?: string | null;
+  sourceUrl?: string | null;
+  intendedPurpose: string;
+  assessmentStatus?: PilotSourceAssessmentStatus;
+  legalAssessmentStatus?: PilotSourceAssessmentStatus;
+  technicalAssessmentStatus?: PilotSourceAssessmentStatus;
+  dataExpected?: string[];
+  manualImportRequired?: boolean;
+  adapterSupport?: PilotSourceAssessment["adapterSupport"];
+  externalVerificationRequired?: boolean;
+  provenance?: PilotSourceAssessment["provenance"];
+  db?: DbClient;
+}) {
+  const db = input.db ?? prisma;
+  await requireOrganization({ organizationId: input.organizationId, db });
+  const sourceType = sourceTypeForKind(input.sourceKind);
+  const sourceUrl = input.sourceUrl?.trim() || null;
+  const normalizedUrl = normalizeSourceUrl(sourceUrl);
+  const rows = await db.externalImportSource.findMany({
+    where: { organizationId: input.organizationId, type: sourceType, normalizedUrl },
+    select: { id: true, metadata: true },
+  });
+  const existing = rows.find((row) => jsonObjectValue(row.metadata).sourceKind === input.sourceKind);
+  const assessmentStatus = input.assessmentStatus ?? "NOT_ASSESSED";
+  const metadata = {
+    realPilotLaunch: true,
+    sourceKind: input.sourceKind,
+    intendedPurpose: input.intendedPurpose,
+    connectionState: input.externalVerificationRequired ? "READY_TO_CONNECT" : "CONFIGURED",
+    assessmentStatus,
+    legalAssessmentStatus: input.legalAssessmentStatus ?? assessmentStatus,
+    technicalAssessmentStatus: input.technicalAssessmentStatus ?? assessmentStatus,
+    dataExpected: input.dataExpected ?? [],
+    manualImportRequired: input.manualImportRequired ?? true,
+    adapterSupport: input.adapterSupport ?? "NONE",
+    externalVerificationRequired: input.externalVerificationRequired ?? true,
+    provenance: input.provenance ?? "MANUAL_OPERATOR",
+    externalProviderCalls: false,
+  } satisfies Prisma.InputJsonObject;
+
+  const row = existing
+    ? await db.externalImportSource.update({
+        where: { id: existing.id },
+        data: {
+          displayName: input.displayName?.trim() || input.sourceKind,
+          sourceUrl,
+          normalizedUrl,
+          status: "DRAFT",
+          metadata,
+          createdByUserId: input.actorUserId,
+        },
+      })
+    : await db.externalImportSource.create({
+        data: {
+          organizationId: input.organizationId,
+          type: sourceType,
+          status: "DRAFT",
+          displayName: input.displayName?.trim() || input.sourceKind,
+          sourceUrl,
+          normalizedUrl,
+          consentConfirmed: false,
+          metadata,
+          createdByUserId: input.actorUserId,
+        },
+      });
+
+  await db.auditLog.create({
+    data: {
+      action: "UPDATE",
+      entityType: "ExternalImportSource",
+      entityId: row.id,
+      organizationId: input.organizationId,
+      userId: input.actorUserId,
+      description: "Pilot source assessment updated",
+      newValue: asJsonObject({ sourceKind: input.sourceKind, assessmentStatus, externalProviderCalls: false }),
+    },
+  });
+  return serializeSourceAssessment(row);
+}
+
+export async function updateRealPilotBusinessIntake(input: {
+  organizationId: string;
+  actorUserId: string;
+  name?: string | null;
+  description?: string | null;
+  industry?: OrganizationIndustryKey | null;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  socialUrls?: string[];
+  operatingAreas?: string[];
+  preferredGoals?: string[];
+  preferredKeywords?: string[];
+  notes?: string | null;
+  db?: DbClient;
+}) {
+  const db = input.db ?? prisma;
+  const workspace = await db.pilotWorkspace.findUnique({ where: { organizationId: input.organizationId }, select: { id: true, metadata: true, seoGrowthPlanner: true } });
+  if (!workspace) throw new ApiError(404, "Pilot workspace not found");
+  await db.organization.update({
+    where: { id: input.organizationId },
+    data: {
+      name: input.name === undefined ? undefined : input.name?.trim() || undefined,
+      description: input.description === undefined ? undefined : input.description?.trim() || null,
+      address: input.address === undefined ? undefined : input.address?.trim() || null,
+      phone: input.phone === undefined ? undefined : input.phone?.trim() || null,
+      email: input.email === undefined ? undefined : input.email?.trim() || null,
+    },
+  });
+  if (input.industry) {
+    await db.organizationAcquisition.updateMany({
+      where: { organizationId: input.organizationId },
+      data: { industryKey: input.industry },
+    });
+  }
+  const currentMetadata = jsonObjectValue(workspace.metadata) as PilotWorkspaceMetadata;
+  const currentPlanner = jsonObjectValue(workspace.seoGrowthPlanner);
+  await db.pilotWorkspace.update({
+    where: { organizationId: input.organizationId },
+    data: {
+      notes: input.notes === undefined ? undefined : input.notes?.trim() || null,
+      metadata: asJsonObject({
+        ...currentMetadata,
+        realPilotIntake: {
+          ...(currentMetadata.realPilotIntake ?? {}),
+          website: input.website === undefined ? currentMetadata.realPilotIntake?.website ?? null : input.website?.trim() || null,
+          socialUrls: input.socialUrls ?? currentMetadata.realPilotIntake?.socialUrls ?? [],
+          operatingAreas: input.operatingAreas ?? currentMetadata.realPilotIntake?.operatingAreas ?? [],
+        },
+        externalProviderCalls: false,
+      }),
+      seoGrowthPlanner: asJsonObject({
+        ...currentPlanner,
+        businessGoals: input.preferredGoals ?? stringList(currentPlanner.businessGoals),
+        preferredKeywords: input.preferredKeywords ?? stringList(currentPlanner.preferredKeywords),
+      }),
+    },
+  });
+
+  await audit({
+    db,
+    action: "UPDATE",
+    workspaceId: workspace.id,
+    organizationId: input.organizationId,
+    actorUserId: input.actorUserId,
+    description: "Pilot business intake updated",
+    newValue: asJsonObject({ updatedFields: Object.keys(input).filter((key) => !["db", "actorUserId", "organizationId"].includes(key)), externalProviderCalls: false }),
+  });
+
+  return getRealPilotLaunchWorkspace({ organizationId: input.organizationId, db });
+}
+
+export async function recordPilotLaunchReview(input: {
+  organizationId: string;
+  actorUserId: string;
+  notes?: string | null;
+  db?: DbClient;
+}) {
+  const db = input.db ?? prisma;
+  const workspace = await db.pilotWorkspace.findUnique({ where: { organizationId: input.organizationId } });
+  if (!workspace) throw new ApiError(404, "Pilot workspace not found");
+  const completed = new Set(jsonArray(workspace.completedChecklist).filter((item): item is string => typeof item === "string"));
+  completed.add("launch-final-review");
+  const metadata = jsonObjectValue(workspace.metadata) as PilotWorkspaceMetadata;
+  const updated = await db.pilotWorkspace.update({
+    where: { organizationId: input.organizationId },
+    data: {
+      completedChecklist: asJsonArray(Array.from(completed)),
+      metadata: asJsonObject({
+        ...metadata,
+        launchApproval: {
+          completed: true,
+          reviewerUserId: input.actorUserId,
+          reviewedAt: new Date().toISOString(),
+          notes: input.notes?.trim() || null,
+        },
+        externalProviderCalls: false,
+      }),
+    },
+  });
+  await db.organizationActivationTask.updateMany({
+    where: { organizationId: input.organizationId, taskKey: "pilot-launch-final-review" },
+    data: { status: "COMPLETED", completedAt: new Date() },
+  });
+  await audit({
+    db,
+    action: "UPDATE",
+    workspaceId: updated.id,
+    organizationId: input.organizationId,
+    actorUserId: input.actorUserId,
+    description: "Pilot launch review completed",
+    newValue: asJsonObject({ completed: true, externalProviderCalls: false }),
+  });
+  return getRealPilotLaunchWorkspace({ organizationId: input.organizationId, db });
 }

@@ -55,6 +55,12 @@ export const INTEGRATION_CATALOG = {
     supportedCapabilities: ["USSD"],
     secretStrategy: "credentialProfile",
   },
+  INOTI_SMS: {
+    provider: "INOTI_SMS",
+    type: "SMS",
+    supportedCapabilities: ["CRM", "SMS"],
+    secretStrategy: "credentialProfile",
+  },
   PAYMENT: {
     provider: "PAYMENT",
     type: "PAYMENT",

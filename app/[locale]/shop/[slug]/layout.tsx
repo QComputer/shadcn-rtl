@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: ShopLayoutProps): Promise<Met
   const { locale, slug } = await params;
   try {
 const organization = await prisma.organization.findFirst({
-  where: { slug, isActive: true, deletedAt: null },
+  where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
   select: {
     name: true,
     slug: true,
@@ -101,7 +101,7 @@ export default async function ShopLayout({ children, params }: ShopLayoutProps) 
   const t = (key: string) => getDictValue(dict, key);
 
 const organization = await prisma.organization.findFirst({
-  where: { slug, isActive: true, deletedAt: null },
+  where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
   select: {
     id: true, name: true, slug: true, type: true, lat: true, lng: true,
     description: true, address: true, phone: true, email: true, logo: true, coverImage: true,

@@ -131,6 +131,7 @@ describe("integration runtime adapter registry", () => {
       "INOTI_IAM",
       "INOTI_ICV",
       "INOTI_IMENU",
+      "INOTI_SMS",
       "INOTI_USSD",
       "OTHER",
       "PAYMENT",
@@ -138,17 +139,17 @@ describe("integration runtime adapter registry", () => {
     ]);
   });
 
-  it("runs dry-run health without external provider calls and blocks disabled runtime", async () => {
-    const adapter = getIntegrationAdapter("INOTI_USSD");
-    assert.equal(adapter.supportedActions.includes("USSD_SESSION_START"), true);
+  it("runs dry-run health for dry-run providers and blocks disabled runtime", async () => {
+    const adapter = getIntegrationAdapter("INOTI_EBC");
     const active = await adapter.checkHealth({
       organizationId: "org-a",
       integrationId: "integration-a",
-      provider: "INOTI_USSD",
+      provider: "INOTI_EBC",
       status: "ACTIVE",
+      codeName: "ebc",
       credentialProfileKey: "INOTI_DEFAULT",
       configuration: { serviceCode: "87788778" },
-      capabilityKeys: ["USSD"],
+      capabilityKeys: ["EBC"],
     });
     assert.equal(active.status, "CONNECTED");
     assert.equal(active.connected, true);
@@ -157,24 +158,45 @@ describe("integration runtime adapter registry", () => {
     const disabled = await adapter.checkHealth({
       organizationId: "org-a",
       integrationId: "integration-a",
-      provider: "INOTI_USSD",
+      provider: "INOTI_EBC",
       status: "DISABLED",
+      codeName: "ebc",
       credentialProfileKey: "INOTI_DEFAULT",
       configuration: {},
-      capabilityKeys: ["USSD"],
+      capabilityKeys: ["EBC"],
     });
     assert.equal(disabled.status, "BLOCKED");
     assert.equal(disabled.errorCode, "INTEGRATION_NOT_ACTIVE");
   });
 
+  it("keeps iNoti USSD health read-only and fails closed without credentials", async () => {
+    const adapter = getIntegrationAdapter("INOTI_USSD");
+    assert.equal(adapter.supportedActions.includes("USSD_SESSION_START"), true);
+    const active = await adapter.checkHealth({
+      organizationId: "__platform__",
+      integrationId: "integration-a",
+      provider: "INOTI_USSD",
+      status: "ACTIVE",
+      codeName: "alpha",
+      credentialProfileKey: "INOTI_DEFAULT",
+      configuration: { serviceCode: "87788778" },
+      capabilityKeys: ["USSD"],
+    });
+    assert.equal(active.status, "DEGRADED");
+    assert.equal(active.connected, false);
+    assert.equal(active.metadata.readOnly, true);
+    assert.equal(active.metadata.realPaymentExecution, false);
+  });
+
   it("exposes reusable iNoti service mappings without credential data", () => {
     const mappings = listInotiServiceMappings();
-    assert.equal(mappings.length, 5);
+    assert.equal(mappings.length, 6);
     assert.deepEqual(mappings.map((mapping) => mapping.serviceKey).sort(), [
       "INOTI_EBC",
       "INOTI_IAM",
       "INOTI_ICV",
       "INOTI_IMENU",
+      "INOTI_SMS",
       "INOTI_USSD",
     ]);
     assert.equal(mappings.find((mapping) => mapping.serviceKey === "INOTI_IAM")?.mappedGrowthFeatures.includes("SEO readiness"), true);

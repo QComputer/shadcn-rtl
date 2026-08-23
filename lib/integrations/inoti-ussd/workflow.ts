@@ -10,6 +10,7 @@ import {
   prismaUssdIntegrationRepository,
   type UssdIntegrationRepository,
 } from "@/lib/integrations/inoti-ussd/repository";
+import { isValidInotiUssdPublicIntegrationId } from "@/lib/integrations/inoti-ussd/callback-url";
 import type {
   ParsedUssdRequest,
   ResolvedInotiIntegration,
@@ -91,7 +92,7 @@ export class InotiUssdWorkflow {
 
   async handle(publicIntegrationId: string, requestHost: string | null, searchParams: URLSearchParams): Promise<string> {
     if (!limitsAllow()) return UNAVAILABLE_RESPONSE;
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(publicIntegrationId)) {
+    if (!isValidInotiUssdPublicIntegrationId(publicIntegrationId)) {
       return INVALID_RESPONSE;
     }
 
@@ -224,6 +225,13 @@ export class InotiUssdWorkflow {
       return exactReplay ? "پرداخت تایید شد" : PAYMENT_FAILED_RESPONSE;
     }
 
+    await this.repository.markPaymentVerificationStarted({
+      integration,
+      intent,
+      providerFactorId,
+      rrn: request.rrn ?? "",
+    });
+
     const verification = await this.provider.verifyPayment(credentialProfile, {
       codeName: integration.codeName,
       sessionId: request.sessionId,
@@ -234,6 +242,7 @@ export class InotiUssdWorkflow {
       rrn: request.rrn ?? "",
     });
     if ("code" in verification) {
+      await this.repository.markPaymentVerificationFailed({ integration, intent, reason: `PROVIDER_${verification.code}` });
       await this.repository.recordCallbackEvent({
         integration, paymentIntentId: intent.id, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
         outcome: "FAILED", errorCode: `PROVIDER_${verification.code}`,
@@ -250,6 +259,7 @@ export class InotiUssdWorkflow {
       sameText(record.providerFactorId, providerFactorId) &&
       sameText(record.rrn, request.rrn ?? "");
     if (!verified) {
+      await this.repository.markPaymentVerificationFailed({ integration, intent, reason: "PROVIDER_RECORD_MISMATCH" });
       await this.repository.recordCallbackEvent({
         integration, paymentIntentId: intent.id, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
         outcome: "REJECTED", errorCode: "PROVIDER_RECORD_MISMATCH",

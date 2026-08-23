@@ -5,7 +5,10 @@ import { normalizeIranianMobile, parseUssdQuery, UssdParseError } from "@/lib/in
 import { InotiUssdWorkflow } from "@/lib/integrations/inoti-ussd/workflow";
 import { InotiUssdProvider } from "@/lib/integrations/inoti-ussd/inoti-provider";
 import { parseProviderRialAmount } from "@/lib/integrations/inoti-ussd/inoti-provider";
+import { buildInotiUssdCallbackUrl, isValidInotiUssdPublicIntegrationId } from "@/lib/integrations/inoti-ussd/callback-url";
 import { inotiPlainTextResponse } from "@/lib/integrations/inoti-ussd/response";
+import { InotiSmsProvider } from "@/lib/integrations/inoti-sms/provider";
+import { classifyFetchError, classifyProviderTimeout, latencyBucket, secretDiagnostics } from "@/lib/integrations/inoti-diagnostics";
 import { updateInotiUssdIntegrationSchema } from "@/lib/validators/inoti-ussd";
 import type {
   InotiCredentialProfile,
@@ -41,8 +44,137 @@ const integrationB: ResolvedInotiIntegration = {
 };
 const factor = `BZ${"a".repeat(32)}`;
 
+describe("iNoti public integration identity", () => {
+  it("builds canonical BazarBaaz callback URLs from stable UUID public IDs", () => {
+    assert.equal(isValidInotiUssdPublicIntegrationId(integrationA.publicId), true);
+    assert.equal(isValidInotiUssdPublicIntegrationId("tenant-a"), false);
+    assert.equal(
+      buildInotiUssdCallbackUrl(integrationA.publicId),
+      `https://bazarbaaz.ir/api/integrations/inoti/ussd/${integrationA.publicId}`,
+    );
+    assert.throws(() => buildInotiUssdCallbackUrl("tenant-a"));
+  });
+});
+
+describe("iNoti live read-only provider probes", () => {
+  it("normalizes diagnostics without leaking secret contents", () => {
+    assert.deepEqual(classifyFetchError(new DOMException("aborted", "AbortError")), "REQUEST_TIMEOUT");
+    assert.equal(classifyProviderTimeout({
+      providerCode: "TIMEOUT",
+      dns: "RESOLVED",
+      tcp: "TCP_CONNECTED",
+      tls: "TLS_SUCCEEDED",
+    }), "PROVIDER_RESPONSE_TIMEOUT");
+    assert.equal(classifyProviderTimeout({
+      providerCode: "TIMEOUT",
+      dns: "DNS_ERROR",
+      tcp: "TCP_ERROR",
+      tls: "TLS_ERROR",
+    }), "DNS_ERROR");
+    assert.equal(latencyBucket(250), "FAST");
+    assert.equal(latencyBucket(2_500), "NORMAL");
+    assert.equal(latencyBucket(6_000), "SLOW");
+    assert.equal(latencyBucket(9_000), "TIMEOUT");
+    assert.deepEqual(secretDiagnostics(" secret\n"), {
+      present: true,
+      nonEmpty: true,
+      length: 8,
+      trimmedEqualsOriginal: false,
+      containsWhitespace: true,
+    });
+  });
+
+  it("parses SMS ActiveLines without exposing sender numbers", async () => {
+    const originalFetch = globalThis.fetch;
+    let body = "";
+    globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+      body = String(init?.body ?? "");
+      return new Response(JSON.stringify({
+        ObjActiveLinesOutput: [
+          { LineNumber: "300012345", LineType: "SERVICE", PriceEn: 1, PriceFa: 2 },
+          { LineNumber: "300067890", LineType: "OTP", PriceEn: 1, PriceFa: 2 },
+        ],
+        Status: 1,
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }) as typeof fetch;
+    try {
+      const result = await new InotiSmsProvider().activeLinesReadOnly({
+        organizationId: "tenant-a",
+        profileKey: "local-env:inoti:aka-shoes",
+        username: "user",
+        password: "pass",
+        endpoint: "https://login.inoti.com/_services/ExternalUssdPay.asmx",
+        smsToken: "secret-token",
+      });
+      assert.equal(result.ok, true);
+      assert.equal(result.ok && result.activeLineCount, 2);
+      assert.deepEqual(result.ok && result.lineTypes, ["OTP", "SERVICE"]);
+      assert.match(body, /"Token":"secret-token"/);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("uses a narrow GetPayments read-only probe with IsAll=false and a single merchant factor", async () => {
+    const originalFetch = globalThis.fetch;
+    let requestBody = "";
+    globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+      requestBody = String(init?.body ?? "");
+      return new Response(
+        `<?xml version="1.0"?><soap:Envelope><soap:Body><GetPaymentsResponse><GetPaymentsResult>[]</GetPaymentsResult></GetPaymentsResponse></soap:Body></soap:Envelope>`,
+        { status: 200, headers: { "content-type": "text/xml" } },
+      );
+    }) as typeof fetch;
+    try {
+      const result = await new InotiUssdProvider().probeReadOnlyPayments({
+        credentialProfile: {
+          organizationId: "tenant-a",
+          profileKey: "local-env:inoti:cafe-leo",
+          username: "user",
+          password: "pass",
+          endpoint: "https://login.inoti.com/_services/ExternalUssdPay.asmx",
+          ussdCodeName: "09126511010",
+        },
+        codeName: "09126511010",
+        merchantFactorId: `BZ${"b".repeat(32)}`,
+      });
+      assert.deepEqual(result, { ok: true, code: "VERIFIED_READ_ONLY" });
+      assert.match(requestBody, /<IsAll>false<\/IsAll>/);
+      assert.match(requestBody, /<YourFactorID>BZbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb<\/YourFactorID>/);
+      assert.match(requestBody, /<CodeName>09126511010<\/CodeName>/);
+      assert.doesNotMatch(requestBody, /<Mobile>09/);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("classifies YourFactorID provider validation separately from SOAP contract failures", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(
+      `<?xml version="1.0"?><soap:Envelope><soap:Body><GetPaymentsResponse><GetPaymentsResult>YourFactorID Error</GetPaymentsResult></GetPaymentsResponse></soap:Body></soap:Envelope>`,
+      { status: 200, headers: { "content-type": "text/xml" } },
+    )) as typeof fetch;
+    try {
+      assert.deepEqual(await new InotiUssdProvider().probeReadOnlyPayments({
+        credentialProfile: {
+          organizationId: "tenant-a",
+          profileKey: "local-env:inoti:cafe-leo",
+          username: "user",
+          password: "pass",
+          endpoint: "https://login.inoti.com/_services/ExternalUssdPay.asmx",
+          ussdCodeName: "09126511010",
+        },
+        codeName: "09126511010",
+        merchantFactorId: `BZ${"c".repeat(32)}`,
+      }), { ok: false, code: "PROVIDER_VALIDATION_ERROR" });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
 class FakeCredentialProvider {
-  async resolveProfile(_organizationId: string, _profileKey: string | null): Promise<InotiCredentialProfile | null> {
+  async resolveProfile(): Promise<InotiCredentialProfile | null> {
     return {
       organizationId: "_organizationId",
       profileKey: "INOTI_DEFAULT",
@@ -98,6 +230,8 @@ class FakeRepository implements UssdIntegrationRepository {
       organizationId: input.integration.organizationId,
       integrationId: input.integration.id,
       orderId: input.order.id,
+      paymentRequestId: null,
+      providerAttemptId: null,
       merchantFactorId: factor,
       amountRial: input.amountRial,
       sessionIdHash: input.sessionIdHash,
@@ -116,6 +250,8 @@ class FakeRepository implements UssdIntegrationRepository {
   async recordCallbackEvent(input: { outcome: string; errorCode?: string | null }) {
     this.events.push({ outcome: input.outcome, errorCode: input.errorCode });
   }
+  async markPaymentVerificationStarted() {}
+  async markPaymentVerificationFailed() {}
   async settleVerifiedPayment(input: PaymentSettlementInput): Promise<PaymentSettlementResult> {
     if (this.settlementKeys.has(input.idempotencyKey) || input.intent.status === "SETTLED") {
       return { kind: "DUPLICATE", notification: null };
@@ -149,12 +285,14 @@ class FakeProvider implements UssdProvider {
     providerFactorId: string; rrn: string; result: string; successful: boolean;
   }> = {};
   calls = 0;
-  getReadiness(_profile: InotiCredentialProfile | null) {
+  getReadiness(profile: InotiCredentialProfile | null) {
+    void profile;
     return this.ready
       ? { ready: true, transportSecure: true, code: "READY" as const }
       : { ready: false, transportSecure: true, code: "CONFIG_DISABLED" as const };
   }
-  async verifyPayment(_profile: InotiCredentialProfile | null, query: InotiPaymentVerificationQuery): Promise<InotiVerificationResult> {
+  async verifyPayment(profile: InotiCredentialProfile | null, query: InotiPaymentVerificationQuery): Promise<InotiVerificationResult> {
+    void profile;
     this.calls += 1;
     if (this.mode === "TIMEOUT") return { ok: false, code: "TIMEOUT" };
     if (this.mode === "MALFORMED") return { ok: false, code: "MALFORMED_RESPONSE" };

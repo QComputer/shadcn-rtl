@@ -37,7 +37,7 @@ async function canManageFanpage(userId: string | undefined, userRole: string | u
 export async function generateMetadata({ params }: FanpagePageProps): Promise<Metadata> {
   const { locale, slug } = await params;
   const organization = await prisma.organization.findFirst({
-    where: { slug, type: "SHOP", isActive: true, deletedAt: null },
+    where: { slug, type: "SHOP", isActive: true, deletedAt: null, isPlatformOwner: false },
     select: { name: true, slug: true, description: true, logo: true, coverImage: true },
   });
 
@@ -67,7 +67,7 @@ export default async function ShopFanpagePage({ params }: FanpagePageProps) {
   const session = await auth();
 
   const organization = await prisma.organization.findFirst({
-    where: { slug, type: "SHOP", isActive: true, deletedAt: null },
+    where: { slug, type: "SHOP", isActive: true, deletedAt: null, isPlatformOwner: false },
     select: {
       id: true,
       name: true,

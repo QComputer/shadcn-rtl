@@ -185,6 +185,82 @@ export class InotiUssdProvider implements UssdProvider {
       clearTimeout(timeout);
     }
   }
+
+  async probeReadOnlyPayments(input: {
+    credentialProfile: InotiCredentialProfile | null;
+    codeName: string | null | undefined;
+    merchantFactorId: string;
+  }): Promise<{
+    ok: boolean;
+    code: "VERIFIED_READ_ONLY" | "NO_CREDENTIALS" | "NO_CODE_NAME" | "CODENAME_REJECTED" | "PROVIDER_UNAVAILABLE" | "PROVIDER_VALIDATION_ERROR" | "CONTRACT_ERROR" | "AUTHENTICATION_FAILED" | "TIMEOUT";
+  }> {
+    const credentialProfile = input.credentialProfile;
+    if (!credentialProfile?.username || !credentialProfile.password) return { ok: false, code: "NO_CREDENTIALS" };
+    const codeName = input.codeName?.trim();
+    if (!codeName) return { ok: false, code: "NO_CODE_NAME" };
+
+    const endpoint = credentialProfile.endpoint;
+    let transportSecure = false;
+    try {
+      transportSecure = new URL(endpoint).protocol === "https:";
+    } catch {
+      transportSecure = false;
+    }
+    if (!transportSecure) return { ok: false, code: "PROVIDER_UNAVAILABLE" };
+
+    const fields: Record<string, string> = {
+      Username: credentialProfile.username,
+      Password: credentialProfile.password,
+      CodeName: codeName,
+      IsAll: "false",
+      DateFrom: "",
+      DateTo: "",
+      SessionID: "",
+      PriceFrom: "",
+      PriceTo: "",
+      Mobile: "",
+      RefKey: "",
+      iNotiFactorID: "",
+      YourFactorID: input.merchantFactorId,
+      RRN: "",
+      NullResult: "",
+    };
+    const body = `<?xml version="1.0" encoding="utf-8"?>` +
+      `<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">` +
+      `<soap:Body><GetPayments xmlns="http://tempuri.org/">` +
+      Object.entries(fields).map(([key, value]) => `<${key}>${escapeXml(value)}</${key}>`).join("") +
+      `</GetPayments></soap:Body></soap:Envelope>`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutFromEnvironment());
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "text/xml; charset=utf-8",
+          soapaction: '"http://tempuri.org/GetPayments"',
+        },
+        body,
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!response.ok) return { ok: false, code: response.status === 401 || response.status === 403 ? "AUTHENTICATION_FAILED" : "PROVIDER_UNAVAILABLE" };
+      const text = await response.text();
+      const records = parseSoapRecords(text);
+      if (!records) {
+        const normalized = text.toLowerCase();
+        if (normalized.includes("yourfactorid error")) return { ok: false, code: "PROVIDER_VALIDATION_ERROR" };
+        if (normalized.includes("codename") || normalized.includes("code name")) return { ok: false, code: "CODENAME_REJECTED" };
+        if (normalized.includes("username") || normalized.includes("password") || normalized.includes("unauthorized")) return { ok: false, code: "AUTHENTICATION_FAILED" };
+        return { ok: false, code: "CONTRACT_ERROR" };
+      }
+      return { ok: true, code: "VERIFIED_READ_ONLY" };
+    } catch (error) {
+      return { ok: false, code: error instanceof Error && error.name === "AbortError" ? "TIMEOUT" : "PROVIDER_UNAVAILABLE" };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
 }
 
 export const inotiUssdProvider = new InotiUssdProvider();

@@ -93,7 +93,23 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     allowedRoles: ["SUPER_ADMIN"],
   },
 
+  "/dashboard/organizations/[id]": {
+    allowedRoles: ["SUPER_ADMIN"],
+  },
+
+  "/dashboard/organizations/[id]/integrations": {
+    allowedRoles: ["SUPER_ADMIN"],
+  },
+
   "/dashboard/organizations/[id]/integrations/inoti": {
+    allowedRoles: ["SUPER_ADMIN"],
+  },
+
+  "/dashboard/platform/inoti": {
+    allowedRoles: ["SUPER_ADMIN"],
+  },
+
+  "/dashboard/platform": {
     allowedRoles: ["SUPER_ADMIN"],
   },
 
@@ -264,6 +280,9 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
       allowedRoles: ["SUPER_ADMIN"],
     },
    "/dashboard/pilots": {
+      allowedRoles: ["SUPER_ADMIN"],
+    },
+   "/dashboard/pilots/[organizationId]": {
       allowedRoles: ["SUPER_ADMIN"],
     },
   }

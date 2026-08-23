@@ -157,6 +157,7 @@ function LoginForm({ locale }: { locale: string }) {
                   <Label htmlFor="password">{t("auth.password") || "رمز عبور"}</Label>
                   <Link
                     href={`/${locale}/forgot-password`}
+                    prefetch={false}
                     className="text-sm text-primary hover:underline"
                   >
                     {t("auth.forgotPassword") || "فراموشی رمز عبور؟"}

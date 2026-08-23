@@ -107,6 +107,7 @@ enum PilotChecklistCategory {
 
 enum IntegrationProvider {
   INOTI_USSD
+  INOTI_SMS
   INOTI_IMENU
   INOTI_ICV
   INOTI_IAM
@@ -151,6 +152,11 @@ enum BusinessEventType {
   ORDER_COMPLETED
   APPOINTMENT_CREATED
   CUSTOMER_CREATED
+  PAYMENT_REQUEST_CREATED
+  PAYMENT_CALLBACK_RECEIVED
+  PAYMENT_VERIFICATION_STARTED
+  PAYMENT_VERIFIED
+  PAYMENT_FAILED
   PAYMENT_COMPLETED
   CAMPAIGN_CLICKED
   USSD_SESSION_STARTED
@@ -418,9 +424,38 @@ enum WebPushDeliveryStatus {
 
 enum SmsDeliveryStatus {
   PENDING
+  QUEUED
+  SENDING
   SENT
+  DELIVERED
   FAILED
+  CANCELLED
   SKIPPED
+}
+
+enum OutboundMessageCategory {
+  TRANSACTIONAL
+  MARKETING
+}
+
+enum PaymentRequestStatus {
+  CREATED
+  AWAITING_CUSTOMER
+  PENDING_VERIFICATION
+  PAID
+  FAILED
+  EXPIRED
+  CANCELLED
+}
+
+enum PaymentProviderAttemptStatus {
+  CREATED
+  AWAITING_CUSTOMER
+  PENDING_VERIFICATION
+  VERIFIED
+  FAILED
+  EXPIRED
+  CANCELLED
 }
 
 enum NotificationDeliveryAttemptStatus {
@@ -1001,6 +1036,7 @@ model Organization {
   lng                       Float?
   isActive                  Boolean          @default(true)
   isOpen                    Boolean          @default(true)
+  isPlatformOwner           Boolean          @default(false)
   capabilitiesInitializedAt DateTime?
 
   // Timestamps & Soft Delete
@@ -1046,6 +1082,8 @@ model Organization {
   ussdSessions                 UssdSession[]
   ussdPaymentIntents           UssdPaymentIntent[]
   ussdCallbackEvents           UssdCallbackEvent[]
+  paymentRequests              PaymentRequest[]
+  paymentProviderAttempts      PaymentProviderAttempt[]
   ownedCollaborations          OrganizationCollaboration[]   @relation("CollaborationOwner")
   partnerCollaborations        OrganizationCollaboration[]   @relation("CollaborationPartner")
   readyTimeHistory             OrderReadyTimeHistory[]
@@ -1292,6 +1330,8 @@ model OrganizationIntegration {
   ussdSessions  UssdSession[]
   paymentIntents UssdPaymentIntent[]
   callbackEvents UssdCallbackEvent[]
+  paymentRequests PaymentRequest[]      @relation("PaymentRequestProviderIntegration")
+  paymentProviderAttempts PaymentProviderAttempt[]
 
   @@unique([organizationId, provider])
   @@unique([id, organizationId])
@@ -1366,6 +1406,7 @@ model CustomerIdentity {
   ussdSessions         UssdSession[]
   reviews              Review[]
   reviewRequests       ReviewRequest[]
+  paymentRequests      PaymentRequest[]
 
   @@unique([id, organizationId])
   @@unique([organizationId, phoneHash])
@@ -1937,6 +1978,7 @@ model Appointment {
   customer        User?          @relation("CustomerAppointmentRelation", fields: [customerId], references: [id])
   guestCustomerId String?
   guestCustomer   GuestCustomer? @relation(fields: [guestCustomerId], references: [id])
+  paymentRequests PaymentRequest[]
 
   serviceId String
 
@@ -2199,6 +2241,7 @@ model GuestCustomer {
   orders       Order[]
   ussdSessions UssdSession[]
   customerIdentities CustomerIdentity[]
+  paymentRequests PaymentRequest[]
 
   createdAt DateTime @default(now())
 
@@ -2260,6 +2303,7 @@ model Order {
   payment            Payment?
   paymentEvents      PaymentEvent[]
   ussdPaymentIntents UssdPaymentIntent[]
+  paymentRequests    PaymentRequest[]
   statusHistory      OrderStatusHistory[]
   readyTimeHistory   OrderReadyTimeHistory[]
   inventoryMovements InventoryMovement[]
@@ -2422,6 +2466,83 @@ model PaymentEvent {
   @@index([createdById])
 }
 
+model PaymentRequest {
+  id                    String               @id @default(cuid())
+  publicId              String               @unique @default(uuid())
+  organizationId        String
+  customerIdentityId    String?
+  orderId               String?
+  appointmentId         String?
+  guestCustomerId       String?
+  providerIntegrationId String?
+  amountRial            BigInt
+  currency              String               @default("IRR")
+  purpose               String
+  status                PaymentRequestStatus @default(CREATED)
+  providerReference     String?
+  publicPaymentId       String               @unique @default(uuid())
+  expiresAt             DateTime?
+  paidAt                DateTime?
+  failedAt              DateTime?
+  cancelledAt           DateTime?
+  metadata              Json?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  organization        Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customerIdentity    CustomerIdentity?        @relation(fields: [customerIdentityId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  order               Order?                   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  appointment         Appointment?             @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  guestCustomer       GuestCustomer?           @relation(fields: [guestCustomerId], references: [id], onDelete: SetNull)
+  providerIntegration OrganizationIntegration? @relation("PaymentRequestProviderIntegration", fields: [providerIntegrationId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  attempts            PaymentProviderAttempt[]
+  ussdPaymentIntents  UssdPaymentIntent[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, orderId])
+  @@index([organizationId, appointmentId])
+  @@index([providerIntegrationId, status])
+  @@index([customerIdentityId, createdAt])
+}
+
+model PaymentProviderAttempt {
+  id                    String                       @id @default(cuid())
+  organizationId        String
+  paymentRequestId      String
+  providerIntegrationId String?
+  provider              IntegrationProvider
+  status                PaymentProviderAttemptStatus @default(CREATED)
+  amountRial            BigInt
+  providerFactorId      String?
+  merchantFactorId      String?
+  rrn                   String?
+  providerResult        String?
+  callbackEvidence      Json?
+  verificationEvidence  Json?
+  failureReason         String?
+  idempotencyKey        String?
+  callbackReceivedAt    DateTime?
+  verificationStartedAt DateTime?
+  verifiedAt            DateTime?
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+
+  organization        Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  paymentRequest      PaymentRequest           @relation(fields: [paymentRequestId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  providerIntegration OrganizationIntegration? @relation(fields: [providerIntegrationId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  ussdPaymentIntent   UssdPaymentIntent?
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, idempotencyKey])
+  @@unique([providerIntegrationId, merchantFactorId])
+  @@unique([providerIntegrationId, providerFactorId])
+  @@unique([providerIntegrationId, rrn])
+  @@index([organizationId, status, createdAt])
+  @@index([paymentRequestId, status])
+  @@index([providerIntegrationId, status])
+}
+
 model UssdSession {
   id              String            @id @default(cuid())
   publicId        String            @unique @default(uuid())
@@ -2459,6 +2580,8 @@ model UssdPaymentIntent {
   organizationId       String
   integrationId        String
   orderId              String
+  paymentRequestId     String?
+  providerAttemptId    String?                 @unique
   merchantFactorId     String                  @unique
   amountRial           BigInt
   sessionIdHash        String
@@ -2477,15 +2600,19 @@ model UssdPaymentIntent {
   organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   integration  OrganizationIntegration @relation(fields: [integrationId, organizationId], references: [id, organizationId], onDelete: Cascade)
   order        Order                   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  paymentRequest PaymentRequest?       @relation(fields: [paymentRequestId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  providerAttempt PaymentProviderAttempt? @relation(fields: [providerAttemptId, organizationId], references: [id, organizationId], onDelete: NoAction)
   callbackEvents UssdCallbackEvent[]
 
   @@unique([integrationId, orderId, sessionIdHash])
   @@unique([id, integrationId, organizationId])
+  @@unique([providerAttemptId, organizationId])
   @@unique([integrationId, providerFactorId])
   @@unique([integrationId, rrn])
   @@index([organizationId, status, createdAt])
   @@index([integrationId, status, createdAt])
   @@index([orderId, status])
+  @@index([paymentRequestId, status])
 }
 
 model UssdCallbackEvent {

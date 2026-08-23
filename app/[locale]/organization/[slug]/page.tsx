@@ -16,7 +16,7 @@ export default async function OrganizationHomePage({ params }: Props) {
   const requestHeaders = await headers();
   const isCustomDomain = requestHeaders.get("x-bazar-custom-domain") === "true";
   const organization = await prisma.organization.findFirst({
-    where: { slug, isActive: true, deletedAt: null },
+    where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
     select: {
       name: true,
       slug: true,

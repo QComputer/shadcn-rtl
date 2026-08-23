@@ -114,6 +114,12 @@ import {
   listInotiServiceMappings,
 } from "@/lib/integrations/inoti-account-management";
 import {
+  environmentInotiCredentialProvider,
+  getInotiCredentialProfileState,
+  INOTI_PLATFORM_ORGANIZATION_ID,
+  INOTI_PLATFORM_ORGANIZATION_SLUG,
+} from "@/lib/integrations/inoti-ussd/credentials";
+import {
   createReviewRequestFromBusinessEvent,
   createReviewRequestLinkFromBusinessEvent,
   getCustomerSubmittedReviews,
@@ -503,9 +509,10 @@ describe("explicit tenant context against the disposable local database", () => 
         organizationId: orgAId,
         integrationId: ussd.id,
       });
-      assert.equal(health.healthStatus, "CONNECTED");
-      assert.equal(health.connected, true);
-      assert.equal(health.metadata.dryRun, true);
+      assert.equal(health.healthStatus, "DEGRADED");
+      assert.equal(health.connected, false);
+      assert.equal(health.metadata.readOnly, true);
+      assert.equal(health.metadata.realPaymentExecution, false);
 
       await assert.rejects(
         recordBusinessEvent({
@@ -765,17 +772,18 @@ describe("explicit tenant context against the disposable local database", () => 
       const empty = await getInotiAccountReadModel(orgId);
       assert.equal(empty.account.status, "NOT_CONNECTED");
       assert.equal(empty.services.find((service) => service.key === "iMenu")?.expected, true);
+      assert.equal(empty.services.find((service) => service.key === "SMS")?.provider, "INOTI_SMS");
 
       const draft = await createInotiConnectionDraft({
         organizationId: orgId,
         externalAccountId: "acct-local",
         credentialProfileKey: "INOTI_DEFAULT",
         accountLabel: "Local iNoti",
-        services: ["iMenu", "EBC", "USSD"],
+        services: ["iMenu", "EBC", "USSD", "SMS"],
         actorUserId,
       });
       assert.equal(draft.account.status, "DRAFT");
-      assert.equal(draft.services.filter((service) => service.detected).length, 3);
+      assert.equal(draft.services.filter((service) => service.detected).length, 4);
       assert.equal(JSON.stringify(draft).includes("INOTI_DEFAULT"), true);
       assert.equal(/password|apiKey|accessToken|secretValue/i.test(JSON.stringify(draft)), false);
 
@@ -784,11 +792,11 @@ describe("explicit tenant context against the disposable local database", () => 
         externalAccountId: "acct-local",
         credentialProfileKey: "INOTI_DEFAULT",
         accountLabel: "Local iNoti",
-        services: ["iMenu", "EBC", "USSD"],
+        services: ["iMenu", "EBC", "USSD", "SMS"],
         actorUserId,
       });
       assert.equal(connected.account.status, "PARTIAL");
-      assert.deepEqual(connected.account.connectedServices.sort(), ["EBC", "USSD", "iMenu"].sort());
+      assert.deepEqual(connected.account.connectedServices.sort(), ["EBC", "SMS", "USSD", "iMenu"].sort());
       assert.equal(connected.activationImpact[0]?.readinessStatus, "AVAILABLE");
 
       const health = await checkInotiServiceHealth({
@@ -796,7 +804,9 @@ describe("explicit tenant context against the disposable local database", () => 
         serviceKey: "USSD",
         actorUserId,
       });
-      assert.equal(health.services.find((service) => service.key === "USSD")?.healthStatus, "CONNECTED");
+      const ussdHealth = health.services.find((service) => service.key === "USSD");
+      assert.equal(ussdHealth?.healthStatus, "DEGRADED");
+      assert.equal(ussdHealth?.realExecution, "DISABLED");
 
       const disabled = await disableInotiService({
         organizationId: orgId,
@@ -822,6 +832,94 @@ describe("explicit tenant context against the disposable local database", () => 
       await prisma.organizationCapability.deleteMany({ where: { organizationId: { in: [orgId, otherOrgId] } } });
       await prisma.organization.deleteMany({ where: { id: { in: [orgId, otherOrgId] } } });
       await prisma.user.deleteMany({ where: { id: actorUserId } });
+    }
+  });
+
+  it("isolates real iNoti credential profiles across Platform, AKA Shoes, Cafe Leo, and Italiano 13", async () => {
+    const originalEnvironment = {
+      INOTI_PLATFORM_USERNAME: process.env.INOTI_PLATFORM_USERNAME,
+      INOTI_PLATFORM_PASSWORD: process.env.INOTI_PLATFORM_PASSWORD,
+      INOTI_AKA_SHOES_USERNAME: process.env.INOTI_AKA_SHOES_USERNAME,
+      INOTI_AKA_SHOES_PASSWORD: process.env.INOTI_AKA_SHOES_PASSWORD,
+      INOTI_CAFE_LEO_USERNAME: process.env.INOTI_CAFE_LEO_USERNAME,
+      INOTI_CAFE_LEO_PASSWORD: process.env.INOTI_CAFE_LEO_PASSWORD,
+      INOTI_CAFE_LEO_USSD_CODE_NAME: process.env.INOTI_CAFE_LEO_USSD_CODE_NAME,
+      INOTI_CAFE_LEO_SMS_TOKEN: process.env.INOTI_CAFE_LEO_SMS_TOKEN,
+      INOTI_ITALIANO13_USERNAME: process.env.INOTI_ITALIANO13_USERNAME,
+      INOTI_ITALIANO13_PASSWORD: process.env.INOTI_ITALIANO13_PASSWORD,
+    };
+    const createdOrgIds: string[] = [];
+    async function ensurePilotOrg(slug: string) {
+      const existing = await prisma.organization.findUnique({ where: { slug }, select: { id: true } });
+      if (existing) return existing.id;
+      const id = fixtureId(`inoti_profile_${slug.replace(/-/g, "_")}`);
+      await prisma.organization.create({
+        data: { id, name: slug, slug, type: "SHOP", capabilitiesInitializedAt: new Date() },
+      });
+      createdOrgIds.push(id);
+      return id;
+    }
+
+    try {
+      process.env.INOTI_PLATFORM_USERNAME = "platform-user";
+      process.env.INOTI_PLATFORM_PASSWORD = "platform-pass";
+      process.env.INOTI_AKA_SHOES_USERNAME = "aka-user";
+      process.env.INOTI_AKA_SHOES_PASSWORD = "aka-pass";
+      process.env.INOTI_CAFE_LEO_USERNAME = "cafe-user";
+      process.env.INOTI_CAFE_LEO_PASSWORD = "cafe-pass";
+      process.env.INOTI_CAFE_LEO_USSD_CODE_NAME = "09126511010";
+      delete process.env.INOTI_CAFE_LEO_SMS_TOKEN;
+      delete process.env.INOTI_ITALIANO13_USERNAME;
+      delete process.env.INOTI_ITALIANO13_PASSWORD;
+
+      const akaOrgId = await ensurePilotOrg("aka-shoes");
+      const cafeOrgId = await ensurePilotOrg("cafe-leo");
+      const italianoOrgId = await ensurePilotOrg("italiano-13");
+      const existingPlatformOrg = await prisma.organization.findUnique({ where: { slug: INOTI_PLATFORM_ORGANIZATION_SLUG }, select: { id: true } });
+      const platformOrgId = existingPlatformOrg?.id ?? fixtureId("inoti_profile_platform_owner");
+      if (!existingPlatformOrg) {
+        await prisma.organization.create({
+          data: {
+            id: platformOrgId,
+            name: "BazarBaaz Platform",
+            slug: INOTI_PLATFORM_ORGANIZATION_SLUG,
+            type: "SHOP",
+            isPlatformOwner: true,
+            capabilitiesInitializedAt: new Date(),
+          },
+        });
+        createdOrgIds.push(platformOrgId);
+      }
+
+      assert.equal((await getInotiCredentialProfileState({ organizationId: INOTI_PLATFORM_ORGANIZATION_ID, profileKey: "local-env:inoti:platform" })).state, "CREDENTIALS_AVAILABLE");
+      assert.equal((await getInotiCredentialProfileState({ organizationId: platformOrgId, profileKey: "local-env:inoti:platform" })).state, "CREDENTIALS_AVAILABLE");
+      assert.equal((await getInotiCredentialProfileState({ organizationId: akaOrgId, profileKey: "local-env:inoti:aka-shoes" })).state, "CREDENTIALS_AVAILABLE");
+      const cafeState = await getInotiCredentialProfileState({ organizationId: cafeOrgId, profileKey: "local-env:inoti:cafe-leo" });
+      assert.equal(cafeState.state, "CREDENTIALS_AVAILABLE");
+      assert.equal(cafeState.ussdCodeNameConfigured, true);
+      assert.equal(cafeState.smsTokenConfigured, false);
+      assert.equal((await getInotiCredentialProfileState({ organizationId: italianoOrgId, profileKey: "local-env:inoti:italiano-13" })).state, "NEEDS_CREDENTIALS");
+
+      assert.equal(await environmentInotiCredentialProvider.resolveProfile(akaOrgId, "local-env:inoti:platform"), null);
+      assert.equal(await environmentInotiCredentialProvider.resolveProfile(akaOrgId, "local-env:inoti:cafe-leo"), null);
+      assert.equal(await environmentInotiCredentialProvider.resolveProfile(cafeOrgId, "local-env:inoti:platform"), null);
+      assert.equal(await environmentInotiCredentialProvider.resolveProfile(cafeOrgId, "local-env:inoti:aka-shoes"), null);
+      assert.equal(await environmentInotiCredentialProvider.resolveProfile(cafeOrgId, "local-env:inoti:italiano-13"), null);
+      assert.equal(await environmentInotiCredentialProvider.resolveProfile(italianoOrgId, "local-env:inoti:cafe-leo"), null);
+      assert.equal(await environmentInotiCredentialProvider.resolveProfile(INOTI_PLATFORM_ORGANIZATION_ID, "local-env:inoti:cafe-leo"), null);
+
+      assert.equal((await environmentInotiCredentialProvider.resolveProfile(akaOrgId, "local-env:inoti:aka-shoes"))?.profileKey, "local-env:inoti:aka-shoes");
+      assert.equal((await environmentInotiCredentialProvider.resolveProfile(cafeOrgId, "local-env:inoti:cafe-leo"))?.profileKey, "local-env:inoti:cafe-leo");
+      assert.equal((await environmentInotiCredentialProvider.resolveProfile(INOTI_PLATFORM_ORGANIZATION_ID, "local-env:inoti:platform"))?.profileKey, "local-env:inoti:platform");
+      assert.equal((await environmentInotiCredentialProvider.resolveProfile(platformOrgId, "local-env:inoti:platform"))?.profileKey, "local-env:inoti:platform");
+    } finally {
+      for (const [key, value] of Object.entries(originalEnvironment)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+      if (createdOrgIds.length > 0) {
+        await prisma.organization.deleteMany({ where: { id: { in: createdOrgIds } } });
+      }
     }
   });
 

@@ -17,6 +17,7 @@ async function getRuntimeContext(organizationId: string, integrationId: string) 
     integrationId: integration.id,
     provider: integration.provider,
     status: integration.status,
+    codeName: integration.codeName,
     credentialProfileKey: integration.credentialProfileKey,
     configuration: integration.configuration,
     capabilityKeys: integration.capabilities.map((capability) => capability.capabilityKey),
@@ -74,7 +75,7 @@ export async function checkIntegrationRuntimeHealth(input: {
 export async function executeIntegrationRuntimeAction(input: {
   organizationId: string;
   integrationId: string;
-  action: "HEALTH_CHECK" | "BUSINESS_EVENT_RECORD" | "USSD_SESSION_START";
+  action: "HEALTH_CHECK" | "BUSINESS_EVENT_RECORD" | "USSD_SESSION_START" | "SMS_SEND" | "SMS_STATUS_CHECK" | "USSD_PAYMENT_INITIATE" | "USSD_PAYMENT_VERIFY";
 }) {
   const context = await getRuntimeContext(input.organizationId, input.integrationId);
   if (context.status !== "ACTIVE") throw new ApiError(409, "Integration must be ACTIVE");

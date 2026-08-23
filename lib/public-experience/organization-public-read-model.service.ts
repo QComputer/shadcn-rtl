@@ -7,7 +7,7 @@ import { buildPublicOrganizationReadModel } from "@/lib/public-experience/organi
 
 export async function getPublicOrganizationReadModel(slug: string) {
   const organization = await prisma.organization.findFirst({
-    where: { slug, isActive: true, deletedAt: null },
+    where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
     select: {
       id: true,
       type: true,

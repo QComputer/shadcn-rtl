@@ -15,7 +15,7 @@ export async function GET(
 
     // Get organization by slug
     const organization = await prisma.organization.findFirst({
-      where: { slug, isActive: true, deletedAt: null },
+      where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
       select: {
         id: true,
         type: true,

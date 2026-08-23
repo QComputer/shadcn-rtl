@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { execSync } from "node:child_process";
 import { describe, it } from "node:test";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/db";
 import { PrismaUssdIntegrationRepository } from "@/lib/integrations/inoti-ussd/repository";
+import { buildInotiUssdCallbackUrl } from "@/lib/integrations/inoti-ussd/callback-url";
+import { INOTI_PLATFORM_ORGANIZATION_SLUG } from "@/lib/integrations/inoti-ussd/credentials";
+import { SEEDED_INOTI_USSD_PUBLIC_ID_BY_SLUG } from "@/lib/integrations/inoti-ussd/seed-fixture-public-ids";
 import type { ResolvedInotiIntegration } from "@/lib/integrations/inoti-ussd/types";
 
 const localDatabaseUrl = new URL(process.env.DATABASE_URL ?? "https://missing.invalid");
@@ -12,7 +16,118 @@ assert.ok(
   "inoti-ussd.local.test.ts refuses to run against a non-local database",
 );
 
+const seededSlugs = [INOTI_PLATFORM_ORGANIZATION_SLUG, "aka-shoes", "cafe-leo", "italiano-13"] as const;
+
+async function readSeededUssdPublicIds() {
+  const rows = await prisma.organizationIntegration.findMany({
+    where: {
+      provider: "INOTI_USSD",
+      organization: { slug: { in: [...seededSlugs] } },
+    },
+    select: {
+      publicId: true,
+      organization: { select: { slug: true } },
+    },
+    orderBy: [{ organization: { slug: "asc" } }],
+  });
+  return Object.fromEntries(rows.map((row) => [row.organization.slug, row.publicId]));
+}
+
 describe("iNoti USSD integration on disposable local PostgreSQL", () => {
+  it("keeps platform and pilot public callback identities distinct and local", async () => {
+    const integrations = await prisma.organizationIntegration.findMany({
+      where: {
+        provider: "INOTI_USSD",
+        organization: {
+          slug: { in: [INOTI_PLATFORM_ORGANIZATION_SLUG, "aka-shoes", "cafe-leo", "italiano-13"] },
+        },
+      },
+      select: {
+        publicId: true,
+        organization: { select: { slug: true, isPlatformOwner: true } },
+      },
+    });
+    const bySlug = new Map(integrations.map((integration) => [integration.organization.slug, integration]));
+    for (const slug of [INOTI_PLATFORM_ORGANIZATION_SLUG, "aka-shoes", "cafe-leo"]) {
+      assert.ok(bySlug.get(slug), `${slug} has a local INOTI_USSD integration`);
+      assert.match(bySlug.get(slug)!.publicId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      assert.equal(buildInotiUssdCallbackUrl(bySlug.get(slug)!.publicId), `https://bazarbaaz.ir/api/integrations/inoti/ussd/${bySlug.get(slug)!.publicId}`);
+    }
+    if (bySlug.has("italiano-13")) {
+      assert.match(bySlug.get("italiano-13")!.publicId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      assert.equal(buildInotiUssdCallbackUrl(bySlug.get("italiano-13")!.publicId), `https://bazarbaaz.ir/api/integrations/inoti/ussd/${bySlug.get("italiano-13")!.publicId}`);
+    }
+    assert.equal(bySlug.get(INOTI_PLATFORM_ORGANIZATION_SLUG)?.organization.isPlatformOwner, true);
+    assert.equal(new Set(integrations.map((integration) => integration.publicId)).size, integrations.length);
+    for (const slug of seededSlugs) {
+      if (bySlug.has(slug)) {
+        assert.equal(bySlug.get(slug)!.publicId, SEEDED_INOTI_USSD_PUBLIC_ID_BY_SLUG[slug]);
+      }
+    }
+  });
+
+  it("keeps seeded public callback identities stable across repeated seed runs", async () => {
+    execSync("pnpm db:seed", {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: "pipe",
+      windowsHide: true,
+    });
+    const before = await readSeededUssdPublicIds();
+    for (const slug of seededSlugs) {
+      assert.equal(before[slug], SEEDED_INOTI_USSD_PUBLIC_ID_BY_SLUG[slug]);
+    }
+
+    execSync("pnpm db:seed", {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: "pipe",
+      windowsHide: true,
+    });
+
+    const after = await readSeededUssdPublicIds();
+    assert.deepEqual(after, before);
+  });
+
+  it("enforces public callback identity uniqueness and runtime IDs stay generated", async () => {
+    const suffix = randomUUID().replace(/-/g, "");
+    const organization = await prisma.organization.create({
+      data: { type: "SHOP", name: `USSD duplicate ${suffix}`, slug: `ussd-duplicate-${suffix}` },
+    });
+    try {
+      await assert.rejects(
+        prisma.organizationIntegration.create({
+          data: {
+            organizationId: organization.id,
+            provider: "INOTI_USSD",
+            publicId: SEEDED_INOTI_USSD_PUBLIC_ID_BY_SLUG[INOTI_PLATFORM_ORGANIZATION_SLUG],
+            status: "DRAFT",
+            codeName: `duplicate-${suffix.slice(0, 8)}`,
+            configuration: {},
+          },
+        }),
+        (error: unknown) => error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002",
+      );
+
+      const runtimeIntegration = await prisma.organizationIntegration.create({
+        data: {
+          organizationId: organization.id,
+          provider: "INOTI_USSD",
+          status: "DRAFT",
+          codeName: `runtime-${suffix.slice(0, 8)}`,
+          configuration: {},
+        },
+      });
+      assert.match(runtimeIntegration.publicId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      const seededPublicIds: readonly string[] = Object.values(SEEDED_INOTI_USSD_PUBLIC_ID_BY_SLUG);
+      assert.equal(seededPublicIds.includes(runtimeIntegration.publicId), false);
+      assert.equal(runtimeIntegration.publicId.includes(organization.id.slice(0, 8)), false);
+    } finally {
+      await prisma.organizationIntegration.deleteMany({ where: { organizationId: organization.id } });
+      await prisma.organization.deleteMany({ where: { id: organization.id } });
+    }
+  });
+
   it("enforces tenant FKs/uniqueness, preserves disabled data, and settles exactly once", async () => {
     const suffix = randomUUID().replace(/-/g, "");
     const repository = new PrismaUssdIntegrationRepository();
@@ -32,6 +147,12 @@ describe("iNoti USSD integration on disposable local PostgreSQL", () => {
         configuration: { orderStatusEnabled: true, paymentEnabled: true },
       },
     });
+    const originalPublicId = integrationRow.publicId;
+    assert.match(originalPublicId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    assert.equal(
+      buildInotiUssdCallbackUrl(originalPublicId),
+      `https://bazarbaaz.ir/api/integrations/inoti/ussd/${originalPublicId}`,
+    );
     const orderA = await prisma.order.create({
       data: {
         orderNumber: `USSD-A-${suffix}`,
@@ -121,8 +242,20 @@ describe("iNoti USSD integration on disposable local PostgreSQL", () => {
       await prisma.organizationIntegration.update({ where: { id: integration.id }, data: { status: "DISABLED", disabledAt: new Date() } });
       assert.equal((await repository.resolveIntegration(integration.publicId))?.status, "DISABLED");
       assert.equal(await prisma.ussdPaymentIntent.count({ where: { id: intent.id } }), 1);
+      assert.equal((await prisma.organizationIntegration.findUniqueOrThrow({ where: { id: integration.id } })).publicId, originalPublicId);
+      await prisma.organizationIntegration.update({
+        where: { id: integration.id },
+        data: {
+          codeName: "alpha2",
+          credentialProfileKey: "local-env:inoti:aka-shoes",
+          healthStatus: "DEGRADED",
+          healthMetadata: { readOnlyVerification: "NO_CREDENTIALS", realPaymentExecution: false },
+        },
+      });
+      assert.equal((await prisma.organizationIntegration.findUniqueOrThrow({ where: { id: integration.id } })).publicId, originalPublicId);
       await prisma.organizationIntegration.update({ where: { id: integration.id }, data: { status: "ACTIVE", disabledAt: null } });
       assert.equal((await repository.resolveIntegration(integration.publicId))?.status, "ACTIVE");
+      assert.equal((await prisma.organizationIntegration.findUniqueOrThrow({ where: { id: integration.id } })).publicId, originalPublicId);
       assert.equal(await prisma.ussdPaymentIntent.count({ where: { id: intent.id } }), 1);
 
       const settlementInput = {
@@ -157,6 +290,8 @@ describe("iNoti USSD integration on disposable local PostgreSQL", () => {
     } finally {
       await prisma.ussdCallbackEvent.deleteMany({ where: { organizationId: { in: [organizationA.id, organizationB.id] } } });
       await prisma.ussdPaymentIntent.deleteMany({ where: { organizationId: { in: [organizationA.id, organizationB.id] } } });
+      await prisma.paymentProviderAttempt.deleteMany({ where: { organizationId: { in: [organizationA.id, organizationB.id] } } });
+      await prisma.paymentRequest.deleteMany({ where: { organizationId: { in: [organizationA.id, organizationB.id] } } });
       await prisma.auditLog.deleteMany({ where: { organizationId: { in: [organizationA.id, organizationB.id] } } });
       await prisma.payment.deleteMany({ where: { orderId: { in: [orderA.id, orderB.id] } } });
       await prisma.paymentEvent.deleteMany({ where: { orderId: { in: [orderA.id, orderB.id] } } });

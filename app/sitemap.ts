@@ -23,7 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const [organizations, productCategories, serviceCategories, products, services] = await Promise.all([
       prisma.organization.findMany({
-        where: { isActive: true, deletedAt: null },
+        where: { isActive: true, deletedAt: null, isPlatformOwner: false },
         select: {
           slug: true,
           type: true,
@@ -52,6 +52,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           organization: {
             isActive: true,
             deletedAt: null,
+            isPlatformOwner: false,
             domains: { none: { status: "ACTIVE", isPrimary: true } },
           },
           products: { some: { isActive: true, deletedAt: null } },
@@ -69,7 +70,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         where: {
           isActive: true,
           deletedAt: null,
-          organization: { isActive: true, deletedAt: null },
+          organization: { isActive: true, deletedAt: null, isPlatformOwner: false },
           services: { some: { isActive: true, deletedAt: null } },
         },
         select: {
@@ -90,6 +91,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           organization: {
             isActive: true,
             deletedAt: null,
+            isPlatformOwner: false,
             domains: { none: { status: "ACTIVE", isPrimary: true } },
           },
         },
@@ -106,7 +108,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         where: {
           isActive: true,
           deletedAt: null,
-          organization: { isActive: true, deletedAt: null },
+          organization: { isActive: true, deletedAt: null, isPlatformOwner: false },
         },
         select: {
           id: true,

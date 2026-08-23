@@ -189,8 +189,8 @@ export default async function OrganizationLayout({ children, params }: Organizat
           email: organization.email,
           homeHref: tenantHref("/"),
           profileHref: tenantHref("/"),
-          servicesHref: tenantHref("/services"),
-          bookingHref: tenantHref("/booking"),
+          servicesHref: organization.type === "APPOINTMENT" ? tenantHref("/services") : null,
+          bookingHref: organization.type === "APPOINTMENT" ? tenantHref("/booking") : null,
           poweredByHref: "https://bazarbaaz.ir",
         }}
       />

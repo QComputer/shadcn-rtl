@@ -78,6 +78,7 @@ const PROFILE_DEFINITIONS: readonly ProfileDefinition[] = [
     usernameEnv: "INOTI_USSD_USERNAME",
     passwordEnv: "INOTI_USSD_PASSWORD",
     endpointEnv: "INOTI_USSD_GET_PAYMENTS_URL",
+    ussdCodeNameEnv: "INOTI_USSD_CODE_NAME",
     organizationSlugs: [],
     platformOnly: true,
   },

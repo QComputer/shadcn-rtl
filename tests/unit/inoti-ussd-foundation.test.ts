@@ -362,6 +362,8 @@ describe("iNoti callback parser", () => {
 
   it("treats 6655 as the provider prefix and matches organization CodeName on an exact segment boundary", () => {
     assert.deepEqual(parseUssdQuery(query("6655*12"), "12").segments, ["6655", "12"]);
+    assert.deepEqual(parseUssdQuery(query("6655*87788778"), "87788778").segments, ["6655", "87788778"]);
+    assert.throws(() => parseUssdQuery(query("6655*87788778"), "ussd-cmt666ew"), UssdParseError);
     assert.throws(() => parseUssdQuery(query("6655*123"), "12"), UssdParseError);
     assert.throws(() => parseUssdQuery(query("6655*12"), "123"), UssdParseError);
   });
@@ -497,6 +499,24 @@ describe("iNoti tenant-scoped workflow", () => {
     const workflow = new InotiUssdWorkflow(repository, new FakeProvider(), new FakeCredentialProvider(), async () => undefined);
     const result = await workflow.handle(integrationA.publicId, null, query("6655*alpha", { organizationId: "tenant-b" }));
     assert.equal(result, "1-وضعیت سفارش\n2-پرداخت سفارش");
+  });
+
+  it("accepts the real provider CodeName and rejects the proven generated placeholder mismatch", async () => {
+    const realIntegration: ResolvedInotiIntegration = {
+      ...integrationA,
+      codeName: "87788778",
+      config: { orderStatusEnabled: true, paymentEnabled: false },
+    };
+    const repository = new FakeRepository();
+    repository.integrations.set(realIntegration.publicId, realIntegration);
+    const workflow = new InotiUssdWorkflow(repository, new FakeProvider(), new FakeCredentialProvider(), async () => undefined);
+
+    assert.equal(await workflow.handle(realIntegration.publicId, null, query("6655*87788778")), "1-وضعیت سفارش");
+    assert.equal(repository.ussdEvents[0]?.eventType, "USSD_SESSION_STARTED");
+    assert.equal(repository.ussdEvents[1]?.eventType, "USSD_MENU_SHOWN");
+
+    repository.integrations.set(realIntegration.publicId, { ...realIntegration, codeName: "ussd-cmt666ew" });
+    assert.equal(await workflow.handle(realIntegration.publicId, null, query("6655*87788778")), "درخواست نامعتبر است");
   });
 
   it("fails closed for unknown, disabled, wrong-code, and cross-tenant tracking tokens", async () => {

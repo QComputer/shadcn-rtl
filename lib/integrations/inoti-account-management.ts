@@ -12,7 +12,10 @@ import { effectiveOrganizationCapabilities } from "@/lib/organization-capabiliti
 import { sanitizeIntegrationConfig } from "@/lib/integrations/organization-integrations";
 import { getIntegrationAdapter } from "@/lib/integrations/runtime/registry";
 import { checkIntegrationRuntimeHealth } from "@/lib/integrations/runtime/service";
-import { getInotiCredentialProfileState } from "@/lib/integrations/inoti-ussd/credentials";
+import {
+  environmentInotiCredentialProvider,
+  getInotiCredentialProfileState,
+} from "@/lib/integrations/inoti-ussd/credentials";
 import { buildInotiUssdCallbackPath, buildInotiUssdCallbackUrl } from "@/lib/integrations/inoti-ussd/callback-url";
 
 export type InotiServiceKey = "iMenu" | "iAM" | "iCV" | "EBC" | "USSD" | "SMS";
@@ -212,6 +215,43 @@ function typeForProvider(provider: InotiServiceDefinition["provider"]) {
   return "USSD";
 }
 
+function demoDraftCodeName(input: {
+  service: InotiServiceDefinition;
+  organizationId: string;
+}) {
+  return `${input.service.key.toLowerCase()}-${input.organizationId.slice(0, 8)}`;
+}
+
+async function resolveProviderCodeNameForActivation(input: {
+  organizationId: string;
+  service: InotiServiceDefinition;
+  status: OrganizationIntegrationStatus;
+  credentialProfileKey?: string | null;
+  existingCodeName?: string | null;
+  providerCodeNameRequired?: boolean;
+}) {
+  if (input.service.provider !== "INOTI_USSD") {
+    return input.existingCodeName ?? demoDraftCodeName(input);
+  }
+
+  if (input.status !== "ACTIVE" || input.providerCodeNameRequired === false) {
+    return input.existingCodeName ?? demoDraftCodeName(input);
+  }
+
+  const credentialProfile = await environmentInotiCredentialProvider.resolveProfile(
+    input.organizationId,
+    input.credentialProfileKey ?? null,
+  );
+  const codeName = credentialProfile?.ussdCodeName?.trim();
+  if (!codeName) {
+    throw new ApiError(400, "iNoti USSD activation requires an explicit provider CodeName");
+  }
+  if (!/^[A-Za-z0-9_-]{1,32}$/.test(codeName)) {
+    throw new ApiError(400, "iNoti USSD provider CodeName has an invalid format");
+  }
+  return codeName;
+}
+
 function normalizeServiceKeys(input: unknown): InotiServiceKey[] {
   if (!Array.isArray(input)) return [];
   return Array.from(new Set(input.map((item) => String(item)).filter((item): item is InotiServiceKey =>
@@ -309,6 +349,27 @@ async function upsertServiceIntegration(input: {
     service: input.service,
     availableCapabilities: input.availableCapabilities,
   });
+  const existing = await prisma.organizationIntegration.findUnique({
+    where: {
+      organizationId_provider: {
+        organizationId: input.organizationId,
+        provider: input.service.provider,
+      },
+    },
+    select: { codeName: true, status: true },
+  });
+  const status = input.status === "DRAFT" && existing?.status === "ACTIVE"
+    ? existing.status
+    : input.status;
+  const providerCodeNameRequired = !(input.status === "DRAFT" && existing?.status === "ACTIVE");
+  const codeName = await resolveProviderCodeNameForActivation({
+    organizationId: input.organizationId,
+    service: input.service,
+    status,
+    credentialProfileKey: input.credentialProfileKey,
+    existingCodeName: existing?.codeName ?? null,
+    providerCodeNameRequired,
+  });
 
   return prisma.$transaction(async (tx) => {
     const integration = await tx.organizationIntegration.upsert({
@@ -319,26 +380,27 @@ async function upsertServiceIntegration(input: {
         },
       },
       update: {
-        status: input.status,
+        status,
         type: typeForProvider(input.service.provider),
+        codeName,
         displayName: input.service.label,
         externalAccountId: input.externalAccountId ?? null,
         credentialProfileKey: input.credentialProfileKey ?? null,
         configuration: configuration as Prisma.InputJsonObject,
-        disabledAt: input.status === "DISABLED" ? new Date() : null,
+        disabledAt: status === "DISABLED" ? new Date() : null,
       },
       create: {
         organizationId: input.organizationId,
         provider: input.service.provider,
         type: typeForProvider(input.service.provider),
-        status: input.status,
+        status,
         ...(input.publicIntegrationId ? { publicId: input.publicIntegrationId } : {}),
-        codeName: `${input.service.key.toLowerCase()}-${input.organizationId.slice(0, 8)}`,
+        codeName,
         displayName: input.service.label,
         externalAccountId: input.externalAccountId ?? null,
         credentialProfileKey: input.credentialProfileKey ?? null,
         configuration: configuration as Prisma.InputJsonObject,
-        disabledAt: input.status === "DISABLED" ? new Date() : null,
+        disabledAt: status === "DISABLED" ? new Date() : null,
       },
     });
 
@@ -360,11 +422,11 @@ async function upsertServiceIntegration(input: {
         action: "UPDATE",
         entityType: "OrganizationIntegration",
         entityId: integration.id,
-        description: `INOTI_${input.status}`,
+        description: `INOTI_${status}`,
         newValue: {
           provider: input.service.provider,
           service: input.service.key,
-          status: input.status,
+          status,
           externalProviderCalls: false,
         },
         organizationId: input.organizationId,

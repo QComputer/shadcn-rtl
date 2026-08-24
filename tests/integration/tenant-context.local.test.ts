@@ -792,11 +792,11 @@ describe("explicit tenant context against the disposable local database", () => 
         externalAccountId: "acct-local",
         credentialProfileKey: "INOTI_DEFAULT",
         accountLabel: "Local iNoti",
-        services: ["iMenu", "EBC", "USSD", "SMS"],
+        services: ["iMenu", "EBC", "SMS"],
         actorUserId,
       });
       assert.equal(connected.account.status, "PARTIAL");
-      assert.deepEqual(connected.account.connectedServices.sort(), ["EBC", "SMS", "USSD", "iMenu"].sort());
+      assert.deepEqual(connected.account.connectedServices.sort(), ["EBC", "SMS", "iMenu"].sort());
       assert.equal(connected.activationImpact[0]?.readinessStatus, "AVAILABLE");
 
       const health = await checkInotiServiceHealth({
@@ -805,7 +805,7 @@ describe("explicit tenant context against the disposable local database", () => 
         actorUserId,
       });
       const ussdHealth = health.services.find((service) => service.key === "USSD");
-      assert.equal(ussdHealth?.healthStatus, "DEGRADED");
+      assert.equal(ussdHealth?.healthStatus, "BLOCKED");
       assert.equal(ussdHealth?.realExecution, "DISABLED");
 
       const disabled = await disableInotiService({

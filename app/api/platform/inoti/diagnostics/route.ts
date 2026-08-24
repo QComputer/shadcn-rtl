@@ -36,8 +36,10 @@ export async function POST(_request: NextRequest) {
       ussdIntegration?.credentialProfileKey ?? null
     );
 
+    const providerCodeNameConfigured = Boolean(credentialProfile?.ussdCodeName);
+    const integrationCodeNameConfigured = Boolean(ussdIntegration?.codeName);
     const credentialState = credentialProfile
-      ? { resolved: true, hasUsername: Boolean(credentialProfile.username), hasPassword: Boolean(credentialProfile.password), hasSmsToken: Boolean(credentialProfile.smsToken), hasUssdCodeName: Boolean(credentialProfile.ussdCodeName) }
+      ? { resolved: true, hasUsername: Boolean(credentialProfile.username), hasPassword: Boolean(credentialProfile.password), hasSmsToken: Boolean(credentialProfile.smsToken), hasUssdCodeName: providerCodeNameConfigured }
       : { resolved: false, hasUsername: false, hasPassword: false, hasSmsToken: false, hasUssdCodeName: false };
 
     let getPaymentsResult: { state: string; errorCode?: string | null } = { state: "NOT_CHECKED" };
@@ -45,7 +47,7 @@ export async function POST(_request: NextRequest) {
       try {
         const result = await inotiUssdProvider.probeReadOnlyPayments({
           credentialProfile,
-          codeName: ussdIntegration.codeName ?? credentialProfile.ussdCodeName ?? null,
+          codeName: credentialProfile.ussdCodeName ?? ussdIntegration.codeName ?? null,
           merchantFactorId: "BZ" + "0".repeat(32),
         });
         getPaymentsResult = { state: result.ok ? "VERIFIED_READ_ONLY" : result.code, errorCode: result.code };
@@ -64,6 +66,14 @@ export async function POST(_request: NextRequest) {
       },
       diagnostics: {
         credentialProfile: credentialState,
+        ussdCodeName: {
+          integrationConfigured: integrationCodeNameConfigured,
+          providerConfigured: providerCodeNameConfigured,
+          source: providerCodeNameConfigured ? "CREDENTIAL_PROFILE" : integrationCodeNameConfigured ? "INTEGRATION_ROW" : "MISSING",
+          matchesProviderConfiguration: providerCodeNameConfigured && integrationCodeNameConfigured
+            ? credentialProfile?.ussdCodeName === ussdIntegration?.codeName
+            : null,
+        },
         getPayments: getPaymentsResult,
       },
       mutationSafety: {

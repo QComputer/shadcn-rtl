@@ -4,6 +4,7 @@ import { execSync } from "node:child_process";
 import { describe, it } from "node:test";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/db";
+import { connectInotiServices } from "@/lib/integrations/inoti-account-management";
 import { PrismaUssdIntegrationRepository } from "@/lib/integrations/inoti-ussd/repository";
 import { buildInotiUssdCallbackUrl } from "@/lib/integrations/inoti-ussd/callback-url";
 import { INOTI_PLATFORM_ORGANIZATION_SLUG } from "@/lib/integrations/inoti-ussd/credentials";
@@ -87,6 +88,99 @@ describe("iNoti USSD integration on disposable local PostgreSQL", () => {
 
     const after = await readSeededUssdPublicIds();
     assert.deepEqual(after, before);
+  });
+
+  it("activates platform USSD with the explicit provider CodeName without rotating publicIntegrationId", async () => {
+    const originalEnvironment = {
+      username: process.env.INOTI_PLATFORM_USERNAME,
+      password: process.env.INOTI_PLATFORM_PASSWORD,
+      codeName: process.env.INOTI_PLATFORM_USSD_CODE_NAME,
+    };
+    process.env.INOTI_PLATFORM_USERNAME = "platform-user";
+    process.env.INOTI_PLATFORM_PASSWORD = "platform-pass";
+    process.env.INOTI_PLATFORM_USSD_CODE_NAME = "87788778";
+
+    try {
+      const platformOrg = await prisma.organization.findUniqueOrThrow({
+        where: { slug: INOTI_PLATFORM_ORGANIZATION_SLUG },
+        select: { id: true },
+      });
+      const before = await prisma.organizationIntegration.findUniqueOrThrow({
+        where: { organizationId_provider: { organizationId: platformOrg.id, provider: "INOTI_USSD" } },
+        select: { publicId: true, codeName: true },
+      });
+
+      await connectInotiServices({
+        organizationId: platformOrg.id,
+        credentialProfileKey: "local-env:inoti:platform",
+        services: ["USSD"],
+      });
+
+      const after = await prisma.organizationIntegration.findUniqueOrThrow({
+        where: { organizationId_provider: { organizationId: platformOrg.id, provider: "INOTI_USSD" } },
+        select: { publicId: true, codeName: true, status: true },
+      });
+      assert.equal(after.status, "ACTIVE");
+      assert.equal(after.codeName, "87788778");
+      assert.equal(after.publicId, before.publicId);
+      assert.notEqual(after.publicId, after.codeName);
+
+      await connectInotiServices({
+        organizationId: platformOrg.id,
+        credentialProfileKey: "local-env:inoti:platform",
+        services: ["USSD"],
+      });
+
+      const rerun = await prisma.organizationIntegration.findUniqueOrThrow({
+        where: { organizationId_provider: { organizationId: platformOrg.id, provider: "INOTI_USSD" } },
+        select: { publicId: true, codeName: true, status: true },
+      });
+      assert.deepEqual(rerun, after);
+    } finally {
+      for (const [key, value] of Object.entries({
+        INOTI_PLATFORM_USERNAME: originalEnvironment.username,
+        INOTI_PLATFORM_PASSWORD: originalEnvironment.password,
+        INOTI_PLATFORM_USSD_CODE_NAME: originalEnvironment.codeName,
+      })) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  });
+
+  it("fails closed when a real USSD activation has no explicit provider CodeName", async () => {
+    const originalEnvironment = {
+      username: process.env.INOTI_PLATFORM_USERNAME,
+      password: process.env.INOTI_PLATFORM_PASSWORD,
+      codeName: process.env.INOTI_PLATFORM_USSD_CODE_NAME,
+    };
+    process.env.INOTI_PLATFORM_USERNAME = "platform-user";
+    process.env.INOTI_PLATFORM_PASSWORD = "platform-pass";
+    delete process.env.INOTI_PLATFORM_USSD_CODE_NAME;
+
+    try {
+      const platformOrg = await prisma.organization.findUniqueOrThrow({
+        where: { slug: INOTI_PLATFORM_ORGANIZATION_SLUG },
+        select: { id: true },
+      });
+      await assert.rejects(
+        connectInotiServices({
+          organizationId: platformOrg.id,
+          credentialProfileKey: "local-env:inoti:platform",
+          services: ["USSD"],
+        }),
+        /explicit provider CodeName/,
+      );
+    } finally {
+      for (const [key, value] of Object.entries({
+        INOTI_PLATFORM_USERNAME: originalEnvironment.username,
+        INOTI_PLATFORM_PASSWORD: originalEnvironment.password,
+        INOTI_PLATFORM_USSD_CODE_NAME: originalEnvironment.codeName,
+      })) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
   });
 
   it("enforces public callback identity uniqueness and runtime IDs stay generated", async () => {

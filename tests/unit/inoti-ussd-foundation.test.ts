@@ -786,6 +786,69 @@ describe("iNoti tenant-scoped workflow", () => {
     assert.equal(await workflow.handle(integrationA.publicId, null, query("6655*alpha*1*track-a")), "وضعیت سفارش: در حال آماده‌سازی");
   });
 
+  it("supports the real accumulated order-status conversation with a numeric demo token", async () => {
+    const repository = new FakeRepository();
+    const provider = new FakeProvider();
+    const workflow = new InotiUssdWorkflow(repository, provider, new FakeCredentialProvider(), async () => undefined);
+    const sessionid = "123e4567-e89b-12d3-a456-426614174000";
+    const trackingToken = "4829061753146827";
+    repository.integrations.set(integrationA.publicId, {
+      ...integrationA,
+      config: { orderStatusEnabled: true, paymentEnabled: false },
+    });
+    repository.orders.set(
+      `${integrationA.id}:${trackingToken}`,
+      order("a", { publicTrackingToken: trackingToken }),
+    );
+
+    assert.equal(
+      await workflow.handle(integrationA.publicId, null, query("6655*alpha", { sessionid })),
+      "1-وضعیت سفارش",
+    );
+    assert.equal(
+      await workflow.handle(integrationA.publicId, null, query("6655*alpha*1", { sessionid })),
+      "کد پیگیری سفارش را وارد کنید",
+    );
+    assert.equal([...repository.sessions.values()][0]?.lastAction, "ORDER_STATUS_PROMPT");
+    assert.equal(
+      await workflow.handle(
+        integrationA.publicId,
+        null,
+        query(`6655*alpha*1*${trackingToken}`, { sessionid }),
+      ),
+      "وضعیت سفارش: در حال آماده‌سازی",
+    );
+
+    assert.equal(repository.sessions.size, 1);
+    assert.equal([...repository.sessions.values()][0]?.lastAction, "1");
+    assert.equal(repository.intents.size, 0);
+    assert.equal(provider.calls, 0);
+    assert.deepEqual(
+      repository.ussdEvents.map((event) => event.eventType),
+      ["USSD_SESSION_STARTED", "USSD_MENU_SHOWN", "USSD_ORDER_STATUS_REQUESTED"],
+    );
+    assert.deepEqual(repository.ussdEvents[2]?.metadata, {
+      trackingTokenLength: trackingToken.length,
+      trackingTokenNumeric: true,
+    });
+    assert.doesNotMatch(JSON.stringify(repository.ussdEvents), new RegExp(trackingToken));
+  });
+
+  it("rejects unsupported three-segment commands and does not expose a payment prompt", async () => {
+    const repository = new FakeRepository();
+    const provider = new FakeProvider();
+    const workflow = new InotiUssdWorkflow(repository, provider, new FakeCredentialProvider(), async () => undefined);
+
+    assert.equal(await workflow.handle(integrationA.publicId, null, query("6655*alpha*9")), "درخواست نامعتبر است");
+    repository.integrations.set(integrationA.publicId, {
+      ...integrationA,
+      config: { orderStatusEnabled: true, paymentEnabled: false },
+    });
+    assert.equal(await workflow.handle(integrationA.publicId, null, query("6655*alpha*2")), "درخواست نامعتبر است");
+    assert.equal(repository.intents.size, 0);
+    assert.equal(provider.calls, 0);
+  });
+
   it("creates an idempotent payment request in provider rial format only when ready", async () => {
     const repository = new FakeRepository();
     const provider = new FakeProvider();

@@ -26,6 +26,7 @@ const INVALID_RESPONSE = "درخواست نامعتبر است";
 const UNAVAILABLE_RESPONSE = "سرویس در دسترس نیست";
 const PAYMENT_FAILED_RESPONSE = "تایید پرداخت ناموفق بود";
 const EXPIRED_SESSION_RESPONSE = "جلسه منقضی شده است";
+const ORDER_TRACKING_PROMPT = "کد پیگیری سفارش را وارد کنید";
 const USSD_SESSION_TTL_MS = 30 * 60 * 1000;
 
 type UssdRequestContext = {
@@ -182,7 +183,14 @@ export class InotiUssdWorkflow {
       return EXPIRED_SESSION_RESPONSE;
     }
 
-    const action = request.rrn ? "CALLBACK" : request.segments.length === 2 ? "MENU" : request.segments[2];
+    const command = request.segments[2];
+    const action = request.rrn
+      ? "CALLBACK"
+      : request.segments.length === 2
+        ? "MENU"
+        : request.segments.length === 3 && command === "1"
+          ? "ORDER_STATUS_PROMPT"
+          : command;
     await this.repository.touchIntegration(integration.id);
     await this.repository.touchUssdSession({
       integrationId: integration.id,
@@ -208,13 +216,21 @@ export class InotiUssdWorkflow {
       ].filter((value): value is string => Boolean(value));
       return choices.length ? choices.join("\n") : UNAVAILABLE_RESPONSE;
     }
+    if (request.segments.length === 3) {
+      if (command === "1" && integration.config.orderStatusEnabled) {
+        return ORDER_TRACKING_PROMPT;
+      }
+      return INVALID_RESPONSE;
+    }
     if (request.segments.length !== 4) return INVALID_RESPONSE;
 
-    const command = request.segments[2];
     const trackingToken = request.segments[3];
     if (!trackingToken || trackingToken.length > 64) return INVALID_RESPONSE;
     if (command === "1") {
-      await this.recordEvent(integration, sessionIdHash, "USSD_ORDER_STATUS_REQUESTED", { trackingToken });
+      await this.recordEvent(integration, sessionIdHash, "USSD_ORDER_STATUS_REQUESTED", {
+        trackingTokenLength: trackingToken.length,
+        trackingTokenNumeric: /^\d+$/.test(trackingToken),
+      });
       return this.handleOrderStatus(integration, trackingToken);
     }
     if (command === "2") {

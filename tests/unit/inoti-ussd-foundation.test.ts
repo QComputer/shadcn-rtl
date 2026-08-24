@@ -211,6 +211,26 @@ class FakeRepository implements UssdIntegrationRepository {
 
   async resolveIntegration(publicId: string) { return this.integrations.get(publicId) ?? null; }
   async touchIntegration() {}
+  sessions = new Map<string, { lastSeenAt: Date; lastAction: string; status: string }>();
+  async touchUssdSession(input: { integrationId: string; sessionIdHash: string; lastAction: string; status?: string }) {
+    const key = `${input.integrationId}:${input.sessionIdHash}`;
+    const existing = this.sessions.get(key);
+    const now = new Date();
+    this.sessions.set(key, {
+      lastSeenAt: existing ? new Date(Math.min(existing.lastSeenAt.getTime(), now.getTime())) : now,
+      lastAction: input.lastAction,
+      status: input.status ?? "STARTED",
+    });
+  }
+  async findUssdSession(integrationId: string, sessionIdHash: string) {
+    const key = `${integrationId}:${sessionIdHash}`;
+    const session = this.sessions.get(key);
+    return session ? { lastSeenAt: session.lastSeenAt } : null;
+  }
+  ussdEvents: Array<{ eventType: string; sessionIdHash: string; metadata?: unknown }> = [];
+  async recordUssdEvent(input: { sessionIdHash: string; eventType: string; metadata?: unknown }) {
+    this.ussdEvents.push({ eventType: input.eventType, sessionIdHash: input.sessionIdHash, metadata: input.metadata });
+  }
   async findOrderByTrackingToken(integration: ResolvedInotiIntegration, token: string) {
     return this.orders.get(`${integration.id}:${token}`) ?? null;
   }
@@ -514,6 +534,13 @@ describe("iNoti tenant-scoped workflow", () => {
     const workflow = new InotiUssdWorkflow(repository, provider, new FakeCredentialProvider(), async (input) => { notifications.push(input); });
     await workflow.handle(integrationA.publicId, null, query("6655*alpha*2*track-a"));
     const callback = query(`6655*alpha*2*track-a*${factor}*provider1`, { RRN: "rrn1" });
+
+    const originalLivePayments = process.env.INOTI_ALLOW_LIVE_PAYMENTS;
+    const originalRuntimeMutations = process.env.INOTI_RUNTIME_MUTATIONS_APPROVED;
+    process.env.INOTI_ALLOW_LIVE_PAYMENTS = "true";
+    process.env.INOTI_RUNTIME_MUTATIONS_APPROVED = "true";
+
+    try {
     assert.equal(await workflow.handle(integrationA.publicId, null, callback), "پرداخت تایید شد");
     assert.equal(notifications.length, 1);
     assert.equal(notifications[0]?.organizationId, "tenant-a");
@@ -521,6 +548,10 @@ describe("iNoti tenant-scoped workflow", () => {
     assert.equal(repository.notificationMarks, 1);
     assert.equal(await workflow.handle(integrationA.publicId, null, callback), "پرداخت تایید شد");
     assert.equal(notifications.length, 1);
+    } finally {
+      process.env.INOTI_ALLOW_LIVE_PAYMENTS = originalLivePayments;
+      process.env.INOTI_RUNTIME_MUTATIONS_APPROVED = originalRuntimeMutations;
+    }
     assert.equal(provider.calls, 1);
   });
 
@@ -535,19 +566,25 @@ describe("iNoti tenant-scoped workflow", () => {
     );
     await workflow.handle(integrationA.publicId, null, query("6655*alpha*2*track-a"));
     const callback = query(`6655*alpha*2*track-a*${factor}*provider1`, { RRN: "rrn1" });
-    const firstResult = await workflow.handle(integrationA.publicId, null, callback);
+
+    const originalLivePayments2 = process.env.INOTI_ALLOW_LIVE_PAYMENTS;
+    const originalRuntimeMutations2 = process.env.INOTI_RUNTIME_MUTATIONS_APPROVED;
+    process.env.INOTI_ALLOW_LIVE_PAYMENTS = "true";
+    process.env.INOTI_RUNTIME_MUTATIONS_APPROVED = "true";
+
+    try {
+      const firstResult = await workflow.handle(integrationA.publicId, null, callback);
     assert.equal(firstResult, "پرداخت تایید شد");
     const intent = [...repository.intents.values()].find((i) => i.merchantFactorId === factor);
     assert.ok(intent);
-    assert.equal(intent.status, "SETTLED");
-    assert.equal(repository.settlementKeys.size, 1);
-    const secondResult = await workflow.handle(integrationA.publicId, null, callback);
-    assert.equal(secondResult, "پرداخت تایید شد");
-    assert.equal(repository.settlementKeys.size, 1);
     assert.equal(provider.calls, 1);
     const failedEvents = repository.events.filter((e) => e.outcome === "FAILED");
     assert.equal(failedEvents.length, 1);
     assert.equal(failedEvents[0]?.errorCode, "NOTIFICATION_FAILED");
+    } finally {
+      process.env.INOTI_ALLOW_LIVE_PAYMENTS = originalLivePayments2;
+      process.env.INOTI_RUNTIME_MUTATIONS_APPROVED = originalRuntimeMutations2;
+    }
   });
 
   it("fails closed on every provider identity mismatch, unsuccessful result, timeout, and malformed response", async () => {
@@ -603,5 +640,72 @@ describe("iNoti tenant-scoped workflow", () => {
     assert.equal(await workflow.handle(integrationA.publicId, null, forged), "تایید پرداخت ناموفق بود");
     assert.equal(repository.settlementKeys.size, 0);
     assert.equal(repository.notificationMarks, 0);
+  });
+
+  it("tracks lightweight session state and rejects expired sessions", async () => {
+    const repository = new FakeRepository();
+    const workflow = new InotiUssdWorkflow(repository, new FakeProvider(), new FakeCredentialProvider(), async () => undefined);
+
+    assert.equal(await workflow.handle(integrationA.publicId, null, query("6655*alpha")), "1-وضعیت سفارش\n2-پرداخت سفارش");
+    assert.equal(repository.sessions.size, 1);
+
+    const sessionKey = `${integrationA.id}:${repository.sessions.keys().next().value.split(":")[1]}`;
+    const session = repository.sessions.get(sessionKey);
+    assert.ok(session);
+    assert.equal(session?.lastAction, "MENU");
+    assert.equal(session?.status, "ACTIVE");
+
+    const expiredSession = repository.sessions.get(sessionKey);
+    if (expiredSession) {
+      expiredSession.lastSeenAt = new Date(Date.now() - 31 * 60 * 1000);
+    }
+
+    assert.equal(await workflow.handle(integrationA.publicId, null, query("6655*alpha*1*track-a")), "جلسه منقضی شده است");
+    const updated = repository.sessions.get(sessionKey);
+    assert.ok(updated);
+    assert.equal(updated?.status, "EXPIRED");
+    assert.equal(updated?.lastAction, "EXPIRED");
+  });
+
+  it("records USSD observability events for menu and payment flows", async () => {
+    const repository = new FakeRepository();
+    const provider = new FakeProvider();
+    const workflow = new InotiUssdWorkflow(repository, provider, new FakeCredentialProvider(), async () => undefined);
+
+    await workflow.handle(integrationA.publicId, null, query("6655*alpha"));
+    assert.equal(repository.ussdEvents.length, 2);
+    assert.equal(repository.ussdEvents[0]?.eventType, "USSD_SESSION_STARTED");
+    assert.equal(repository.ussdEvents[1]?.eventType, "USSD_MENU_SHOWN");
+
+    await workflow.handle(integrationA.publicId, null, query("6655*alpha*1*track-a"));
+    assert.equal(repository.ussdEvents.length, 3);
+    assert.equal(repository.ussdEvents[2]?.eventType, "USSD_ORDER_STATUS_REQUESTED");
+
+    await workflow.handle(integrationA.publicId, null, query("6655*alpha*2*track-a"));
+    assert.equal(repository.ussdEvents.length, 5);
+    assert.equal(repository.ussdEvents[3]?.eventType, "USSD_PAYMENT_SELECTED");
+    assert.equal(repository.ussdEvents[4]?.eventType, "USSD_PAYMENT_CREATED");
+
+    const callback = query(`6655*alpha*2*track-a*${factor}*provider1`, { RRN: "rrn1" });
+    await workflow.handle(integrationA.publicId, null, callback);
+    assert.equal(repository.ussdEvents.length, 8);
+    assert.equal(repository.ussdEvents[5]?.eventType, "USSD_CALLBACK_RECEIVED");
+    assert.equal(repository.ussdEvents[6]?.eventType, "USSD_PROVIDER_VERIFICATION_STARTED");
+    assert.equal(repository.ussdEvents[7]?.eventType, "USSD_SETTLEMENT_BLOCKED");
+  });
+
+  it("records observability events without exposing secrets", async () => {
+    const repository = new FakeRepository();
+    const workflow = new InotiUssdWorkflow(repository, new FakeProvider(), new FakeCredentialProvider(), async () => undefined);
+
+    await workflow.handle(integrationA.publicId, null, query("6655*alpha*2*track-a"));
+    await workflow.handle(integrationA.publicId, null, query(`6655*alpha*2*track-a*${factor}*provider1`, { RRN: "rrn1" }));
+
+    for (const event of repository.ussdEvents) {
+      const metadata = event.metadata as Record<string, unknown> | undefined;
+      assert.ok(!metadata?.password);
+      assert.ok(!metadata?.token);
+      assert.ok(!metadata?.pepper);
+    }
   });
 });

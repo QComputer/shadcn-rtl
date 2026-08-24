@@ -208,6 +208,19 @@ enum UssdCallbackOutcome {
   FAILED
 }
 
+enum UssdEventType {
+  USSD_SESSION_STARTED
+  USSD_MENU_SHOWN
+  USSD_ORDER_STATUS_REQUESTED
+  USSD_PAYMENT_SELECTED
+  USSD_PAYMENT_CREATED
+  USSD_CALLBACK_RECEIVED
+  USSD_PROVIDER_VERIFICATION_STARTED
+  USSD_PROVIDER_VERIFICATION_FAILED
+  USSD_SETTLEMENT_BLOCKED
+  USSD_ERROR
+}
+
 enum OrganizationCollaborationStatus {
   PENDING
   ACTIVE
@@ -1080,6 +1093,7 @@ model Organization {
   socialConnections            SocialConnection[]
   socialPosts                  SocialPost[]
   ussdSessions                 UssdSession[]
+  ussdEvents                   UssdEvent[]
   ussdPaymentIntents           UssdPaymentIntent[]
   ussdCallbackEvents           UssdCallbackEvent[]
   paymentRequests              PaymentRequest[]
@@ -1328,6 +1342,7 @@ model OrganizationIntegration {
   businessEvents BusinessEvent[]
   customerInteractions CustomerInteraction[]
   ussdSessions  UssdSession[]
+  ussdEvents    UssdEvent[]
   paymentIntents UssdPaymentIntent[]
   callbackEvents UssdCallbackEvent[]
   paymentRequests PaymentRequest[]      @relation("PaymentRequestProviderIntegration")
@@ -2637,6 +2652,25 @@ model UssdCallbackEvent {
   @@index([integrationId, createdAt])
   @@index([paymentIntentId, createdAt])
   @@index([outcome, createdAt])
+}
+
+model UssdEvent {
+  id              String        @id @default(cuid())
+  publicId        String        @unique @default(uuid())
+  organizationId  String
+  integrationId   String
+  sessionIdHash   String
+  eventType       UssdEventType
+  metadata        Json?
+  createdAt       DateTime      @default(now())
+
+  organization  Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration   OrganizationIntegration @relation(fields: [integrationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([integrationId, createdAt])
+  @@index([sessionIdHash, createdAt])
+  @@index([eventType, createdAt])
 }
 
 model OrderStatusHistory {

@@ -145,41 +145,4 @@ export type PaymentSettlementResult =
   | { kind: "SETTLED"; notification: PaymentNotification | null }
   | { kind: "DUPLICATE"; notification: null };
 
-export interface UssdIntegrationRepository {
-  resolveIntegration(publicId: string): Promise<ResolvedInotiIntegration | null>;
-  touchIntegration(integrationId: string): Promise<void>;
-  findOrderByTrackingToken(integration: ResolvedInotiIntegration, token: string): Promise<UssdOrderProjection | null>;
-  createOrGetPaymentIntent(input: {
-    integration: ResolvedInotiIntegration;
-    order: UssdOrderProjection;
-    sessionIdHash: string;
-    mobileHash: string;
-    mobileMasked: string;
-    amountRial: bigint;
-  }): Promise<UssdPaymentIntentProjection>;
-  findPaymentIntent(integrationId: string, merchantFactorId: string): Promise<UssdPaymentIntentProjection | null>;
-  recordCallbackEvent(input: {
-    integration: ResolvedInotiIntegration;
-    paymentIntentId?: string | null;
-    idempotencyKey: string;
-    sessionIdHash: string;
-    mobileHash: string;
-    callHash: string;
-    rrnHash?: string | null;
-    outcome: "ACCEPTED" | "REJECTED" | "DUPLICATE" | "FAILED";
-    errorCode?: string | null;
-  }): Promise<void>;
-  markPaymentVerificationStarted(input: {
-    integration: ResolvedInotiIntegration;
-    intent: UssdPaymentIntentProjection;
-    providerFactorId: string;
-    rrn: string;
-  }): Promise<void>;
-  markPaymentVerificationFailed(input: {
-    integration: ResolvedInotiIntegration;
-    intent: UssdPaymentIntentProjection;
-    reason: string;
-  }): Promise<void>;
-  settleVerifiedPayment(input: PaymentSettlementInput): Promise<PaymentSettlementResult>;
-  markNotificationAttempted(intentId: string): Promise<void>;
-}
+export type { UssdIntegrationRepository } from "@/lib/integrations/inoti-ussd/repository";

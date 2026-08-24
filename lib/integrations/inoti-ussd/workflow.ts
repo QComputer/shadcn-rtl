@@ -18,10 +18,13 @@ import type {
   InotiCredentialProfile,
 } from "@/lib/integrations/inoti-ussd/types";
 import { environmentInotiCredentialProvider } from "@/lib/integrations/inoti-ussd/credentials";
+import { inotiLivePaymentsAllowed } from "@/lib/integrations/inoti-runtime-safety";
 
 const INVALID_RESPONSE = "درخواست نامعتبر است";
 const UNAVAILABLE_RESPONSE = "سرویس در دسترس نیست";
 const PAYMENT_FAILED_RESPONSE = "تایید پرداخت ناموفق بود";
+const EXPIRED_SESSION_RESPONSE = "جلسه منقضی شده است";
+const USSD_SESSION_TTL_MS = 30 * 60 * 1000;
 
 function getHashPepper() {
   const pepper = process.env.INOTI_USSD_HASH_PEPPER;
@@ -112,10 +115,41 @@ export class InotiUssdWorkflow {
 
     const sessionIdHash = hashSensitive(request.sessionId);
     if (!limitsAllow(integration.id, sessionIdHash)) return UNAVAILABLE_RESPONSE;
-    await this.repository.touchIntegration(integration.id);
 
-    if (request.rrn) return this.handlePaymentCallback(integration, request, sessionIdHash);
+    const existingSession = await this.repository.findUssdSession(integration.id, sessionIdHash);
+    const isNewSession = !existingSession;
+    if (existingSession && existingSession.lastSeenAt.getTime() < Date.now() - USSD_SESSION_TTL_MS) {
+      await this.repository.touchUssdSession({
+        integrationId: integration.id,
+        organizationId: integration.organizationId,
+        sessionIdHash,
+        lastAction: "EXPIRED",
+        status: "EXPIRED",
+      });
+      await this.recordEvent(integration, sessionIdHash, "USSD_ERROR", { reason: "SESSION_EXPIRED" });
+      return EXPIRED_SESSION_RESPONSE;
+    }
+
+    const action = request.rrn ? "CALLBACK" : request.segments.length === 2 ? "MENU" : request.segments[2];
+    await this.repository.touchIntegration(integration.id);
+    await this.repository.touchUssdSession({
+      integrationId: integration.id,
+      organizationId: integration.organizationId,
+      sessionIdHash,
+      lastAction: action,
+      status: "ACTIVE",
+    });
+
+    if (isNewSession) {
+      await this.recordEvent(integration, sessionIdHash, "USSD_SESSION_STARTED");
+    }
+
+    if (request.rrn) {
+      await this.recordEvent(integration, sessionIdHash, "USSD_CALLBACK_RECEIVED");
+      return this.handlePaymentCallback(integration, request, sessionIdHash);
+    }
     if (request.segments.length === 2) {
+      await this.recordEvent(integration, sessionIdHash, "USSD_MENU_SHOWN");
       const choices = [
         integration.config.orderStatusEnabled ? "1-وضعیت سفارش" : null,
         integration.config.paymentEnabled ? "2-پرداخت سفارش" : null,
@@ -127,9 +161,34 @@ export class InotiUssdWorkflow {
     const command = request.segments[2];
     const trackingToken = request.segments[3];
     if (!trackingToken || trackingToken.length > 64) return INVALID_RESPONSE;
-    if (command === "1") return this.handleOrderStatus(integration, trackingToken);
-    if (command === "2") return this.handlePaymentRequest(integration, request, trackingToken, sessionIdHash);
+    if (command === "1") {
+      await this.recordEvent(integration, sessionIdHash, "USSD_ORDER_STATUS_REQUESTED", { trackingToken });
+      return this.handleOrderStatus(integration, trackingToken);
+    }
+    if (command === "2") {
+      await this.recordEvent(integration, sessionIdHash, "USSD_PAYMENT_SELECTED", { trackingToken });
+      return this.handlePaymentRequest(integration, request, trackingToken, sessionIdHash);
+    }
     return INVALID_RESPONSE;
+  }
+
+  private async recordEvent(
+    integration: ResolvedInotiIntegration,
+    sessionIdHash: string,
+    eventType: "USSD_SESSION_STARTED" | "USSD_MENU_SHOWN" | "USSD_ORDER_STATUS_REQUESTED" | "USSD_PAYMENT_SELECTED" | "USSD_PAYMENT_CREATED" | "USSD_CALLBACK_RECEIVED" | "USSD_PROVIDER_VERIFICATION_STARTED" | "USSD_PROVIDER_VERIFICATION_FAILED" | "USSD_SETTLEMENT_BLOCKED" | "USSD_ERROR",
+    metadata?: Record<string, unknown>,
+  ) {
+    try {
+      await this.repository.recordUssdEvent({
+        organizationId: integration.organizationId,
+        integrationId: integration.id,
+        sessionIdHash,
+        eventType,
+        metadata: metadata as any,
+      });
+    } catch {
+      // observability must not break USSD flow
+    }
   }
 
   private async handleOrderStatus(integration: ResolvedInotiIntegration, trackingToken: string) {
@@ -173,6 +232,11 @@ export class InotiUssdWorkflow {
     });
     if (intent.status === "SETTLED") return "سفارش قبلا پرداخت شده است";
     if (intent.amountRial !== amountRial) return "مبلغ سفارش نامعتبر است";
+    await this.recordEvent(integration, sessionIdHash, "USSD_PAYMENT_CREATED", {
+      intentId: intent.id,
+      merchantFactorId: intent.merchantFactorId,
+      amountRial: intent.amountRial.toString(),
+    });
     return `9900|${intent.merchantFactorId}|${intent.amountRial.toString()}`;
   }
 
@@ -231,6 +295,10 @@ export class InotiUssdWorkflow {
       providerFactorId,
       rrn: request.rrn ?? "",
     });
+    await this.recordEvent(integration, sessionIdHash, "USSD_PROVIDER_VERIFICATION_STARTED", {
+      intentId: intent.id,
+      merchantFactorId: intent.merchantFactorId,
+    });
 
     const verification = await this.provider.verifyPayment(credentialProfile, {
       codeName: integration.codeName,
@@ -246,6 +314,10 @@ export class InotiUssdWorkflow {
       await this.repository.recordCallbackEvent({
         integration, paymentIntentId: intent.id, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
         outcome: "FAILED", errorCode: `PROVIDER_${verification.code}`,
+      });
+      await this.recordEvent(integration, sessionIdHash, "USSD_PROVIDER_VERIFICATION_FAILED", {
+        intentId: intent.id,
+        code: verification.code,
       });
       return PAYMENT_FAILED_RESPONSE;
     }
@@ -263,6 +335,18 @@ export class InotiUssdWorkflow {
       await this.repository.recordCallbackEvent({
         integration, paymentIntentId: intent.id, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
         outcome: "REJECTED", errorCode: "PROVIDER_RECORD_MISMATCH",
+      });
+      return PAYMENT_FAILED_RESPONSE;
+    }
+
+    if (!inotiLivePaymentsAllowed()) {
+      await this.repository.recordCallbackEvent({
+        integration, paymentIntentId: intent.id, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
+        outcome: "REJECTED", errorCode: "PAYMENT_SETTLEMENT_DISABLED",
+      });
+      await this.recordEvent(integration, sessionIdHash, "USSD_SETTLEMENT_BLOCKED", {
+        intentId: intent.id,
+        merchantFactorId: intent.merchantFactorId,
       });
       return PAYMENT_FAILED_RESPONSE;
     }

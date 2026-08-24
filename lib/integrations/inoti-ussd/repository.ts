@@ -11,9 +11,26 @@ import type {
   UssdPaymentIntentProjection,
 } from "@/lib/integrations/inoti-ussd/types";
 
+import type { JsonValue } from "@prisma/client/runtime/library";
+
 export interface UssdIntegrationRepository {
   resolveIntegration(publicId: string): Promise<ResolvedInotiIntegration | null>;
   touchIntegration(integrationId: string): Promise<void>;
+  touchUssdSession(input: {
+    integrationId: string;
+    organizationId: string;
+    sessionIdHash: string;
+    lastAction: string;
+    status?: "STARTED" | "ACTIVE" | "COMPLETED" | "EXPIRED" | "FAILED";
+  }): Promise<void>;
+  findUssdSession(integrationId: string, sessionIdHash: string): Promise<{ lastSeenAt: Date } | null>;
+  recordUssdEvent(input: {
+    organizationId: string;
+    integrationId: string;
+    sessionIdHash: string;
+    eventType: "USSD_SESSION_STARTED" | "USSD_MENU_SHOWN" | "USSD_ORDER_STATUS_REQUESTED" | "USSD_PAYMENT_SELECTED" | "USSD_PAYMENT_CREATED" | "USSD_CALLBACK_RECEIVED" | "USSD_PROVIDER_VERIFICATION_STARTED" | "USSD_PROVIDER_VERIFICATION_FAILED" | "USSD_SETTLEMENT_BLOCKED" | "USSD_ERROR";
+    metadata?: JsonValue | null;
+  }): Promise<void>;
   findOrderByTrackingToken(integration: ResolvedInotiIntegration, token: string): Promise<UssdOrderProjection | null>;
   createOrGetPaymentIntent(input: {
     integration: ResolvedInotiIntegration;
@@ -115,6 +132,59 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
 
   async touchIntegration(integrationId: string) {
     await prisma.organizationIntegration.update({ where: { id: integrationId }, data: { lastCallbackAt: new Date() } });
+  }
+
+  async touchUssdSession(input: {
+    integrationId: string;
+    organizationId: string;
+    sessionIdHash: string;
+    lastAction: string;
+    status?: "STARTED" | "ACTIVE" | "COMPLETED" | "EXPIRED" | "FAILED";
+  }) {
+    const now = new Date();
+    await prisma.ussdSession.upsert({
+      where: { integrationId_sessionIdHash: { integrationId: input.integrationId, sessionIdHash: input.sessionIdHash } },
+      create: {
+        organizationId: input.organizationId,
+        integrationId: input.integrationId,
+        sessionIdHash: input.sessionIdHash,
+        status: input.status ?? "STARTED",
+        metadata: { lastAction: input.lastAction },
+        startedAt: now,
+        lastSeenAt: now,
+      },
+      update: {
+        status: input.status ?? "STARTED",
+        metadata: { lastAction: input.lastAction },
+        lastSeenAt: now,
+      },
+    });
+  }
+
+  async findUssdSession(integrationId: string, sessionIdHash: string): Promise<{ lastSeenAt: Date } | null> {
+    const session = await prisma.ussdSession.findUnique({
+      where: { integrationId_sessionIdHash: { integrationId, sessionIdHash } },
+      select: { lastSeenAt: true },
+    });
+    return session ?? null;
+  }
+
+  async recordUssdEvent(input: {
+    organizationId: string;
+    integrationId: string;
+    sessionIdHash: string;
+    eventType: "USSD_SESSION_STARTED" | "USSD_MENU_SHOWN" | "USSD_ORDER_STATUS_REQUESTED" | "USSD_PAYMENT_SELECTED" | "USSD_PAYMENT_CREATED" | "USSD_CALLBACK_RECEIVED" | "USSD_PROVIDER_VERIFICATION_STARTED" | "USSD_PROVIDER_VERIFICATION_FAILED" | "USSD_SETTLEMENT_BLOCKED" | "USSD_ERROR";
+    metadata?: JsonValue | null;
+  }) {
+    await prisma.ussdEvent.create({
+      data: {
+        organizationId: input.organizationId,
+        integrationId: input.integrationId,
+        sessionIdHash: input.sessionIdHash,
+        eventType: input.eventType,
+        metadata: input.metadata ?? undefined,
+      },
+    });
   }
 
   async findOrderByTrackingToken(integration: ResolvedInotiIntegration, token: string) {

@@ -95,25 +95,30 @@ function parseFailureSessionHash(searchParams: URLSearchParams, integrationId: s
   return hashSensitive(rawSessionId && rawSessionId.length <= 512 ? rawSessionId : `invalid-session:${integrationId}`);
 }
 
-function protocolSafeInitialCall(searchParams: URLSearchParams) {
+function diagnosticCall(searchParams: URLSearchParams) {
   const values = searchParams.getAll("call");
-  if (values.length !== 1) return null;
+  if (!values.length) return { call: null, callState: "MISSING" } as const;
+  if (values.length !== 1) return { call: null, callState: "DUPLICATE" } as const;
   const rawCall = values[0] ?? "";
+  if (!rawCall) return { call: "", callState: "EMPTY" } as const;
   const normalized = normalizeDigits(rawCall).trim();
   const segments = normalized.replace(/^\*/, "").replace(/#$/, "").split("*").filter(Boolean);
-  if (!rawCall || rawCall.length > 256 || rawCall.includes("\0") || !/^[*#A-Za-z0-9_\-\s]+$/.test(rawCall)) return null;
-  return segments.length <= 2 ? rawCall : null;
+  if (rawCall.length > 256 || rawCall.includes("\0") || !/^[*#A-Za-z0-9_\-\s]+$/.test(rawCall) || segments.length > 2) {
+    return { call: null, callState: "SUPPRESSED_USER_INPUT_OR_UNSAFE" } as const;
+  }
+  return { call: rawCall, callState: "EXACT_INITIAL" } as const;
 }
 
 function parseFailureMetadata(searchParams: URLSearchParams, error: UssdParseError, context?: UssdRequestContext) {
   const parameterNames = [...new Set(searchParams.keys())].slice(0, 32).map((name) => name.slice(0, 64)).sort();
+  const callDiagnostic = diagnosticCall(searchParams);
   return {
     reason: "REQUEST_PARSE_REJECTED",
     parseErrorCode: error.code,
     requestMethod: context?.method ?? "UNKNOWN",
     parameterNames,
     parameterNameCount: parameterNames.length,
-    call: protocolSafeInitialCall(searchParams),
+    ...callDiagnostic,
     callValueCount: searchParams.getAll("call").length,
     mobilePresent: searchParams.has("mobile"),
     mobileValueCount: searchParams.getAll("mobile").length,

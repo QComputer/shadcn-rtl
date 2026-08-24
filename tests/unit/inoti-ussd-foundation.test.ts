@@ -541,6 +541,7 @@ describe("iNoti tenant-scoped workflow", () => {
     assert.equal(metadata.requestMethod, "GET");
     assert.deepEqual(metadata.parameterNames, ["RRN", "call", "extra", "mobile", "sessionid"]);
     assert.equal(metadata.call, "*87788778#");
+    assert.equal(metadata.callState, "EXACT_INITIAL");
     assert.equal(metadata.mobilePresent, true);
     assert.equal(metadata.sessionidPresent, true);
     assert.equal(metadata.rrnPresent, true);
@@ -554,7 +555,14 @@ describe("iNoti tenant-scoped workflow", () => {
     await workflow.handle(integrationA.publicId, null, userInputCall);
     const protectedMetadata = repository.ussdEvents[1]?.metadata as Record<string, unknown>;
     assert.equal(protectedMetadata.call, null);
+    assert.equal(protectedMetadata.callState, "SUPPRESSED_USER_INPUT_OR_UNSAFE");
     assert.doesNotMatch(JSON.stringify(protectedMetadata), /sensitive-tracking-token/);
+
+    const emptyCall = query("");
+    await workflow.handle(integrationA.publicId, null, emptyCall);
+    const emptyMetadata = repository.ussdEvents[2]?.metadata as Record<string, unknown>;
+    assert.equal(emptyMetadata.call, "");
+    assert.equal(emptyMetadata.callState, "EMPTY");
   });
 
   it("fails closed for unknown, disabled, wrong-code, and cross-tenant tracking tokens", async () => {

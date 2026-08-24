@@ -11,6 +11,7 @@ import { InotiSmsProvider } from "@/lib/integrations/inoti-sms/provider";
 import { classifyFetchError, classifyProviderTimeout, latencyBucket, secretDiagnostics } from "@/lib/integrations/inoti-diagnostics";
 import { updateInotiUssdIntegrationSchema } from "@/lib/validators/inoti-ussd";
 import { describeSessionIdSyntax, sessionIdParseFailureReason } from "@/lib/integrations/inoti-ussd/session-syntax";
+import { recordInotiUssdIngress } from "@/lib/integrations/inoti-ussd/ingress";
 import type {
   InotiCredentialProfile,
   InotiPaymentVerificationQuery,
@@ -398,6 +399,73 @@ describe("iNoti callback parser", () => {
   });
 });
 
+describe("iNoti ingress telemetry", () => {
+  it("records route entry with protocol-safe metadata before parsing", async () => {
+    const mobile = "09000000000";
+    const sessionid = "123e4567-e89b-12d3-a456-426614174000";
+    const captured: unknown[] = [];
+    const request = new Request(
+      `${buildInotiUssdCallbackUrl(integrationA.publicId)}?call=6655*alpha&mobile=${mobile}&sessionid=${sessionid}`,
+      {
+        method: "GET",
+        headers: {
+          host: "bazarbaaz.ir",
+          authorization: "Bearer private-token",
+          cookie: "private-cookie=value",
+        },
+      },
+    );
+
+    await recordInotiUssdIngress(request, integrationA.publicId, async (input) => {
+      captured.push(input);
+    });
+
+    assert.equal(captured.length, 1);
+    const event = captured[0] as {
+      action: string;
+      entityType: string;
+      entityId: string;
+      description: string;
+      newValue: Record<string, unknown>;
+    };
+    assert.equal(event.action, "CREATE");
+    assert.equal(event.entityType, "InotiUssdIngress");
+    assert.equal(event.entityId, integrationA.publicId);
+    assert.equal(event.description, "USSD_INGRESS_RECEIVED");
+    assert.equal(event.newValue.event, "USSD_INGRESS_RECEIVED");
+    assert.equal(event.newValue.requestMethod, "GET");
+    assert.equal(event.newValue.requestHost, "bazarbaaz.ir");
+    assert.equal(event.newValue.requestPath, `/api/integrations/inoti/ussd/${integrationA.publicId}`);
+    assert.deepEqual(event.newValue.parameterNames, ["call", "mobile", "sessionid"]);
+    assert.equal(event.newValue.call, "6655*alpha");
+    assert.equal(event.newValue.callState, "EXACT_INITIAL");
+    assert.equal(event.newValue.mobileValueCount, 1);
+    assert.equal(event.newValue.sessionidValueCount, 1);
+    assert.equal(event.newValue.rrnValueCount, 0);
+    assert.doesNotMatch(JSON.stringify(event), new RegExp(`${mobile}|${sessionid}|private-token|private-cookie`));
+  });
+
+  it("suppresses user input and duplicate values at ingress", async () => {
+    const captured: unknown[] = [];
+    const request = new Request(
+      `${buildInotiUssdCallbackUrl(integrationA.publicId)}?call=6655*alpha*1*sensitive-token&mobile=x&mobile=y&sessionid=a&sessionid=b&RRN=c`,
+      { method: "GET" },
+    );
+
+    await recordInotiUssdIngress(request, integrationA.publicId, async (input) => {
+      captured.push(input);
+    });
+
+    const event = captured[0] as { newValue: Record<string, unknown> };
+    assert.equal(event.newValue.call, null);
+    assert.equal(event.newValue.callState, "SUPPRESSED_USER_INPUT_OR_UNSAFE");
+    assert.equal(event.newValue.mobileValueCount, 2);
+    assert.equal(event.newValue.sessionidValueCount, 2);
+    assert.equal(event.newValue.rrnValueCount, 1);
+    assert.doesNotMatch(JSON.stringify(event), /sensitive-token|[?&]mobile=|[?&]sessionid=|[?&]RRN=/);
+  });
+});
+
 describe("iNoti session syntax telemetry", () => {
   it("describes representative provider-safe syntax without retaining identity", () => {
     const cases = [
@@ -614,12 +682,17 @@ describe("iNoti tenant-scoped workflow", () => {
       config: { orderStatusEnabled: true, paymentEnabled: false },
     };
     const repository = new FakeRepository();
+    const provider = new FakeProvider();
     repository.integrations.set(realIntegration.publicId, realIntegration);
-    const workflow = new InotiUssdWorkflow(repository, new FakeProvider(), new FakeCredentialProvider(), async () => undefined);
+    const workflow = new InotiUssdWorkflow(repository, provider, new FakeCredentialProvider(), async () => undefined);
 
-    assert.equal(await workflow.handle(realIntegration.publicId, null, query("6655*87788778")), "1-وضعیت سفارش");
+    assert.equal(await workflow.handle(realIntegration.publicId, null, query("6655*87788778", {
+      sessionid: "123e4567-e89b-12d3-a456-426614174000",
+    })), "1-وضعیت سفارش");
     assert.equal(repository.ussdEvents[0]?.eventType, "USSD_SESSION_STARTED");
     assert.equal(repository.ussdEvents[1]?.eventType, "USSD_MENU_SHOWN");
+    assert.equal(repository.intents.size, 0);
+    assert.equal(provider.calls, 0);
 
     repository.integrations.set(realIntegration.publicId, { ...realIntegration, codeName: "ussd-cmt666ew" });
     assert.equal(await workflow.handle(realIntegration.publicId, null, query("6655*87788778")), "درخواست نامعتبر است");

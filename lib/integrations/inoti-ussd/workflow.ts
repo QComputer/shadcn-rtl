@@ -4,7 +4,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { customerOrderLifecycleRouter } from "@/lib/notifications/customer-order-lifecycle-router";
 import { tomanDecimalToRial } from "@/lib/integrations/inoti-ussd/currency";
-import { normalizeDigits, parseUssdQuery, UssdParseError } from "@/lib/integrations/inoti-ussd/parser";
+import { parseUssdQuery, UssdParseError } from "@/lib/integrations/inoti-ussd/parser";
 import { inotiUssdProvider } from "@/lib/integrations/inoti-ussd/inoti-provider";
 import {
   prismaUssdIntegrationRepository,
@@ -20,6 +20,7 @@ import type {
 import { environmentInotiCredentialProvider } from "@/lib/integrations/inoti-ussd/credentials";
 import { inotiLivePaymentsAllowed } from "@/lib/integrations/inoti-runtime-safety";
 import { describeSessionIdSyntax, sessionIdParseFailureReason } from "@/lib/integrations/inoti-ussd/session-syntax";
+import { diagnosticCall, safeParameterNames } from "@/lib/integrations/inoti-ussd/request-diagnostics";
 
 const INVALID_RESPONSE = "درخواست نامعتبر است";
 const UNAVAILABLE_RESPONSE = "سرویس در دسترس نیست";
@@ -96,22 +97,8 @@ function parseFailureSessionHash(searchParams: URLSearchParams, integrationId: s
   return hashSensitive(rawSessionId && rawSessionId.length <= 512 ? rawSessionId : `invalid-session:${integrationId}`);
 }
 
-function diagnosticCall(searchParams: URLSearchParams) {
-  const values = searchParams.getAll("call");
-  if (!values.length) return { call: null, callState: "MISSING" } as const;
-  if (values.length !== 1) return { call: null, callState: "DUPLICATE" } as const;
-  const rawCall = values[0] ?? "";
-  if (!rawCall) return { call: "", callState: "EMPTY" } as const;
-  const normalized = normalizeDigits(rawCall).trim();
-  const segments = normalized.replace(/^\*/, "").replace(/#$/, "").split("*").filter(Boolean);
-  if (rawCall.length > 256 || rawCall.includes("\0") || !/^[*#A-Za-z0-9_\-\s]+$/.test(rawCall) || segments.length > 2) {
-    return { call: null, callState: "SUPPRESSED_USER_INPUT_OR_UNSAFE" } as const;
-  }
-  return { call: rawCall, callState: "EXACT_INITIAL" } as const;
-}
-
 function parseFailureMetadata(searchParams: URLSearchParams, error: UssdParseError, context?: UssdRequestContext) {
-  const parameterNames = [...new Set(searchParams.keys())].slice(0, 32).map((name) => name.slice(0, 64)).sort();
+  const parameterNames = safeParameterNames(searchParams);
   const callDiagnostic = diagnosticCall(searchParams);
   const sessionSyntax = describeSessionIdSyntax(searchParams);
   return {

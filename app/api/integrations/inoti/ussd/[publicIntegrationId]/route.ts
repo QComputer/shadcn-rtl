@@ -8,11 +8,15 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ publicIntegrationId: string }> },
 ) {
+  const startedAtMs = Date.now();
   try {
     const { publicIntegrationId } = await params;
     const url = new URL(request.url);
     const requestHost = request.headers.get("host");
-    return inotiPlainTextResponse(await inotiUssdWorkflow.handle(publicIntegrationId, requestHost, url.searchParams));
+    return inotiPlainTextResponse(await inotiUssdWorkflow.handle(publicIntegrationId, requestHost, url.searchParams, {
+      method: request.method,
+      startedAtMs,
+    }));
   } catch {
     return inotiPlainTextResponse("سرویس در دسترس نیست");
   }

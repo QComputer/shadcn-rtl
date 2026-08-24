@@ -519,6 +519,44 @@ describe("iNoti tenant-scoped workflow", () => {
     assert.equal(await workflow.handle(realIntegration.publicId, null, query("6655*87788778")), "درخواست نامعتبر است");
   });
 
+  it("records a sanitized parse-failure diagnostic without persisting mobile or session values", async () => {
+    const repository = new FakeRepository();
+    const workflow = new InotiUssdWorkflow(repository, new FakeProvider(), new FakeCredentialProvider(), async () => undefined);
+    const mobile = "09123456789";
+    const sessionid = "987654321";
+    const params = new URLSearchParams({ mobile, sessionid, call: "*87788778#", extra: "ignored", RRN: "rrn-present" });
+
+    assert.equal(
+      await workflow.handle(integrationA.publicId, "bazarbaaz.ir", params, { method: "GET", startedAtMs: Date.now() - 5 }),
+      "درخواست نامعتبر است",
+    );
+    assert.equal(repository.sessions.size, 0);
+    assert.equal(repository.ussdEvents.length, 1);
+    assert.equal(repository.ussdEvents[0]?.eventType, "USSD_ERROR");
+    assert.notEqual(repository.ussdEvents[0]?.sessionIdHash, sessionid);
+
+    const metadata = repository.ussdEvents[0]?.metadata as Record<string, unknown>;
+    assert.equal(metadata.reason, "REQUEST_PARSE_REJECTED");
+    assert.equal(metadata.parseErrorCode, "INVALID_CALL_SCOPE");
+    assert.equal(metadata.requestMethod, "GET");
+    assert.deepEqual(metadata.parameterNames, ["RRN", "call", "extra", "mobile", "sessionid"]);
+    assert.equal(metadata.call, "*87788778#");
+    assert.equal(metadata.mobilePresent, true);
+    assert.equal(metadata.sessionidPresent, true);
+    assert.equal(metadata.rrnPresent, true);
+    assert.equal(metadata.responseStatus, 200);
+    assert.equal(metadata.responseContentType, "text/plain; charset=utf-8");
+    assert.equal(metadata.responseBody, "درخواست نامعتبر است");
+    assert.equal(typeof metadata.responseLatencyMs, "number");
+    assert.doesNotMatch(JSON.stringify(metadata), new RegExp(`${mobile}|${sessionid}|rrn-present`));
+
+    const userInputCall = query("6655*alpha*1*sensitive-tracking-token", { mobile: "invalid" });
+    await workflow.handle(integrationA.publicId, null, userInputCall);
+    const protectedMetadata = repository.ussdEvents[1]?.metadata as Record<string, unknown>;
+    assert.equal(protectedMetadata.call, null);
+    assert.doesNotMatch(JSON.stringify(protectedMetadata), /sensitive-tracking-token/);
+  });
+
   it("fails closed for unknown, disabled, wrong-code, and cross-tenant tracking tokens", async () => {
     const repository = new FakeRepository();
     repository.integrations.set(integrationB.publicId, { ...integrationB, status: "DISABLED" });

@@ -4,7 +4,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { customerOrderLifecycleRouter } from "@/lib/notifications/customer-order-lifecycle-router";
 import { tomanDecimalToRial } from "@/lib/integrations/inoti-ussd/currency";
-import { parseUssdQuery, UssdParseError } from "@/lib/integrations/inoti-ussd/parser";
+import { normalizeDigits, parseUssdQuery, UssdParseError } from "@/lib/integrations/inoti-ussd/parser";
 import { inotiUssdProvider } from "@/lib/integrations/inoti-ussd/inoti-provider";
 import {
   prismaUssdIntegrationRepository,
@@ -25,6 +25,11 @@ const UNAVAILABLE_RESPONSE = "سرویس در دسترس نیست";
 const PAYMENT_FAILED_RESPONSE = "تایید پرداخت ناموفق بود";
 const EXPIRED_SESSION_RESPONSE = "جلسه منقضی شده است";
 const USSD_SESSION_TTL_MS = 30 * 60 * 1000;
+
+type UssdRequestContext = {
+  method?: string;
+  startedAtMs?: number;
+};
 
 function getHashPepper() {
   const pepper = process.env.INOTI_USSD_HASH_PEPPER;
@@ -84,6 +89,45 @@ function hostsMatch(requestHost: string, callbackOrigin: string): boolean {
   return normalizedRequestHost === normalizedCallbackHost;
 }
 
+function parseFailureSessionHash(searchParams: URLSearchParams, integrationId: string) {
+  const values = searchParams.getAll("sessionid");
+  const rawSessionId = values.length === 1 ? values[0] ?? "" : "";
+  return hashSensitive(rawSessionId && rawSessionId.length <= 512 ? rawSessionId : `invalid-session:${integrationId}`);
+}
+
+function protocolSafeInitialCall(searchParams: URLSearchParams) {
+  const values = searchParams.getAll("call");
+  if (values.length !== 1) return null;
+  const rawCall = values[0] ?? "";
+  const normalized = normalizeDigits(rawCall).trim();
+  const segments = normalized.replace(/^\*/, "").replace(/#$/, "").split("*").filter(Boolean);
+  if (!rawCall || rawCall.length > 256 || rawCall.includes("\0") || !/^[*#A-Za-z0-9_\-\s]+$/.test(rawCall)) return null;
+  return segments.length <= 2 ? rawCall : null;
+}
+
+function parseFailureMetadata(searchParams: URLSearchParams, error: UssdParseError, context?: UssdRequestContext) {
+  const parameterNames = [...new Set(searchParams.keys())].slice(0, 32).map((name) => name.slice(0, 64)).sort();
+  return {
+    reason: "REQUEST_PARSE_REJECTED",
+    parseErrorCode: error.code,
+    requestMethod: context?.method ?? "UNKNOWN",
+    parameterNames,
+    parameterNameCount: parameterNames.length,
+    call: protocolSafeInitialCall(searchParams),
+    callValueCount: searchParams.getAll("call").length,
+    mobilePresent: searchParams.has("mobile"),
+    mobileValueCount: searchParams.getAll("mobile").length,
+    sessionidPresent: searchParams.has("sessionid"),
+    sessionidValueCount: searchParams.getAll("sessionid").length,
+    rrnPresent: searchParams.has("RRN") || searchParams.has("rrn"),
+    rrnValueCount: searchParams.getAll("RRN").length + searchParams.getAll("rrn").length,
+    responseStatus: 200,
+    responseContentType: "text/plain; charset=utf-8",
+    responseBody: INVALID_RESPONSE,
+    responseLatencyMs: Math.max(0, Date.now() - (context?.startedAtMs ?? Date.now())),
+  };
+}
+
 export class InotiUssdWorkflow {
   constructor(
     private readonly repository: UssdIntegrationRepository,
@@ -93,7 +137,12 @@ export class InotiUssdWorkflow {
       customerOrderLifecycleRouter.notifyPaymentStatusChangedSafe.bind(customerOrderLifecycleRouter),
   ) {}
 
-  async handle(publicIntegrationId: string, requestHost: string | null, searchParams: URLSearchParams): Promise<string> {
+  async handle(
+    publicIntegrationId: string,
+    requestHost: string | null,
+    searchParams: URLSearchParams,
+    context?: UssdRequestContext,
+  ): Promise<string> {
     if (!limitsAllow()) return UNAVAILABLE_RESPONSE;
     if (!isValidInotiUssdPublicIntegrationId(publicIntegrationId)) {
       return INVALID_RESPONSE;
@@ -110,7 +159,16 @@ export class InotiUssdWorkflow {
     try {
       request = parseUssdQuery(searchParams, integration.codeName);
     } catch (error) {
-      return error instanceof UssdParseError ? INVALID_RESPONSE : UNAVAILABLE_RESPONSE;
+      if (error instanceof UssdParseError) {
+        await this.recordEvent(
+          integration,
+          parseFailureSessionHash(searchParams, integration.id),
+          "USSD_ERROR",
+          parseFailureMetadata(searchParams, error, context),
+        );
+        return INVALID_RESPONSE;
+      }
+      return UNAVAILABLE_RESPONSE;
     }
 
     const sessionIdHash = hashSensitive(request.sessionId);

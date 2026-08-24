@@ -7,6 +7,9 @@ const DIGIT_MAP: Record<string, string> = {
   "٥": "5", "٦": "6", "٧": "7", "٨": "8", "٩": "9",
 };
 
+const NUMERIC_SESSION_ID_PATTERN = /^\d{1,64}$/;
+const CANONICAL_UUID_SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export class UssdParseError extends Error {
   constructor(readonly code: string) {
     super(code);
@@ -47,7 +50,12 @@ export function parseUssdQuery(searchParams: URLSearchParams, codeName: string):
 
   const mobile = normalizeIranianMobile(mobileRaw);
   if (!mobile) throw new UssdParseError("INVALID_MOBILE");
-  if (!/^\d{1,64}$/.test(sessionRaw)) throw new UssdParseError("INVALID_SESSIONID");
+  const sessionId = NUMERIC_SESSION_ID_PATTERN.test(sessionRaw)
+    ? sessionRaw
+    : CANONICAL_UUID_SESSION_ID_PATTERN.test(sessionRaw)
+      ? sessionRaw.toLowerCase()
+      : null;
+  if (!sessionId) throw new UssdParseError("INVALID_SESSIONID");
 
   const call = callRaw.replace(/^\*/, "").replace(/#$/, "");
   if (!call || call.length > 256 || !/^[A-Za-z0-9_-]+(?:\*[A-Za-z0-9_-]+)*$/.test(call)) {
@@ -65,5 +73,5 @@ export function parseUssdQuery(searchParams: URLSearchParams, codeName: string):
     if (!/^[A-Za-z0-9_-]{1,64}$/.test(rrn)) throw new UssdParseError("INVALID_RRN");
   }
 
-  return { mobile, sessionId: sessionRaw, call, segments, rrn };
+  return { mobile, sessionId, call, segments, rrn };
 }

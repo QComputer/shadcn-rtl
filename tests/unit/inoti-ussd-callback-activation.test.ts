@@ -154,9 +154,13 @@ describe("iNoti callback activation preparation", () => {
     const repository = new FakeRepository();
     const provider = new FakeProvider();
     const workflow = new InotiUssdWorkflow(repository, provider, new FakeCredentialProvider(), async () => undefined);
+    const sessionId = "123e4567-e89b-12d3-a456-426614174000";
 
-    await workflow.handle(integrationA.publicId, null, query("6655*alpha*2*track-a"));
-    const callback = query(`6655*alpha*2*track-a*${factor}*provider1`, { RRN: "rrn1" });
+    await workflow.handle(integrationA.publicId, null, query("6655*alpha*2*track-a", { sessionid: sessionId }));
+    const callback = query(`6655*alpha*2*track-a*${factor}*provider1`, {
+      RRN: "rrn1",
+      sessionid: sessionId.toUpperCase(),
+    });
 
     const original = process.env.INOTI_ALLOW_LIVE_PAYMENTS;
     const originalRuntime = process.env.INOTI_RUNTIME_MUTATIONS_APPROVED;

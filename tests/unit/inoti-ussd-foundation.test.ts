@@ -349,6 +349,34 @@ describe("iNoti callback parser", () => {
     assert.deepEqual(parsed.segments, ["6655", "alpha", "1", "track-a"]);
   });
 
+  it("accepts only numeric or canonical UUID session IDs and normalizes UUID case", () => {
+    const providerShape = "123e4567-e89b-12d3-a456-426614174000";
+    const lower = parseUssdQuery(query("6655*alpha", { sessionid: providerShape }), "alpha");
+    const upper = parseUssdQuery(query("6655*alpha", { sessionid: providerShape.toUpperCase() }), "alpha");
+
+    assert.equal(lower.sessionId, providerShape);
+    assert.equal(upper.sessionId, providerShape);
+    assert.equal(parseUssdQuery(query("6655*alpha", { sessionid: "۱۲۳۴" }), "alpha").sessionId, "1234");
+
+    for (const sessionid of [
+      "",
+      "1".repeat(65),
+      "123e4567-e89b-12d3-a456-42661417400",
+      "123e4567-e89b-12d3-a456-426614174000!",
+      "123e4567_e89b_12d3_a456_426614174000",
+      "123e4567-e89b-12d3-a456-42661417400\0",
+      "123e4567-e89b-12d3-a456-42661417400\u0001",
+      "provider-session-A",
+      "شناسه",
+    ]) {
+      assert.throws(
+        () => parseUssdQuery(query("6655*alpha", { sessionid }), "alpha"),
+        (error: unknown) => error instanceof UssdParseError && error.code === "INVALID_SESSIONID",
+        JSON.stringify(sessionid),
+      );
+    }
+  });
+
   it("rejects missing, duplicate, malformed, wrong-scope, and oversized values", () => {
     for (const params of [
       new URLSearchParams({ sessionid: "1", call: "6655*alpha" }),
@@ -436,8 +464,10 @@ describe("iNoti session syntax telemetry", () => {
     assert.doesNotMatch(JSON.stringify(duplicate), /first-private-value|second-private-value/);
   });
 
-  it("keeps parser acceptance unchanged while real call reaches session validation", () => {
+  it("accepts the verified provider UUID shape while the real call still reaches session validation", () => {
+    const providerShape = "123e4567-e89b-12d3-a456-426614174000";
     assert.deepEqual(parseUssdQuery(query("6655*87788778", { sessionid: "۱۲۳۴" }), "87788778").segments, ["6655", "87788778"]);
+    assert.deepEqual(parseUssdQuery(query("6655*87788778", { sessionid: providerShape }), "87788778").segments, ["6655", "87788778"]);
     assert.throws(
       () => parseUssdQuery(query("6655*87788778", { sessionid: "provider-session-A" }), "87788778"),
       (error: unknown) => error instanceof UssdParseError && error.code === "INVALID_SESSIONID",
@@ -593,6 +623,33 @@ describe("iNoti tenant-scoped workflow", () => {
 
     repository.integrations.set(realIntegration.publicId, { ...realIntegration, codeName: "ussd-cmt666ew" });
     assert.equal(await workflow.handle(realIntegration.publicId, null, query("6655*87788778")), "درخواست نامعتبر است");
+  });
+
+  it("uses normalized UUID session identity for sessions and payment idempotency", async () => {
+    const repository = new FakeRepository();
+    const workflow = new InotiUssdWorkflow(repository, new FakeProvider(), new FakeCredentialProvider(), async () => undefined);
+    const sessionId = "123e4567-e89b-12d3-a456-426614174000";
+    const otherSessionId = "123e4567-e89b-12d3-a456-426614174001";
+
+    assert.equal(
+      await workflow.handle(integrationA.publicId, null, query("6655*alpha", { sessionid: sessionId })),
+      "1-وضعیت سفارش\n2-پرداخت سفارش",
+    );
+    assert.equal(
+      await workflow.handle(integrationA.publicId, null, query("6655*alpha", { sessionid: sessionId.toUpperCase() })),
+      "1-وضعیت سفارش\n2-پرداخت سفارش",
+    );
+    assert.equal(repository.sessions.size, 1);
+
+    const first = await workflow.handle(integrationA.publicId, null, query("6655*alpha*2*track-a", { sessionid: sessionId }));
+    const sameNormalized = await workflow.handle(integrationA.publicId, null, query("6655*alpha*2*track-a", { sessionid: sessionId.toUpperCase() }));
+    assert.equal(sameNormalized, first);
+    assert.equal(repository.intents.size, 1);
+
+    await workflow.handle(integrationA.publicId, null, query("6655*alpha*2*track-a", { sessionid: otherSessionId }));
+    assert.equal(repository.sessions.size, 2);
+    assert.equal(repository.intents.size, 2);
+    assert.notEqual([...repository.sessions.keys()][0], [...repository.sessions.keys()][1]);
   });
 
   it("records a sanitized parse-failure diagnostic without persisting mobile or session values", async () => {

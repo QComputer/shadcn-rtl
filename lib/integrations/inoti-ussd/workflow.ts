@@ -19,6 +19,7 @@ import type {
 } from "@/lib/integrations/inoti-ussd/types";
 import { environmentInotiCredentialProvider } from "@/lib/integrations/inoti-ussd/credentials";
 import { inotiLivePaymentsAllowed } from "@/lib/integrations/inoti-runtime-safety";
+import { describeSessionIdSyntax, sessionIdParseFailureReason } from "@/lib/integrations/inoti-ussd/session-syntax";
 
 const INVALID_RESPONSE = "درخواست نامعتبر است";
 const UNAVAILABLE_RESPONSE = "سرویس در دسترس نیست";
@@ -112,6 +113,7 @@ function diagnosticCall(searchParams: URLSearchParams) {
 function parseFailureMetadata(searchParams: URLSearchParams, error: UssdParseError, context?: UssdRequestContext) {
   const parameterNames = [...new Set(searchParams.keys())].slice(0, 32).map((name) => name.slice(0, 64)).sort();
   const callDiagnostic = diagnosticCall(searchParams);
+  const sessionSyntax = describeSessionIdSyntax(searchParams);
   return {
     reason: "REQUEST_PARSE_REJECTED",
     parseErrorCode: error.code,
@@ -122,8 +124,8 @@ function parseFailureMetadata(searchParams: URLSearchParams, error: UssdParseErr
     callValueCount: searchParams.getAll("call").length,
     mobilePresent: searchParams.has("mobile"),
     mobileValueCount: searchParams.getAll("mobile").length,
-    sessionidPresent: searchParams.has("sessionid"),
-    sessionidValueCount: searchParams.getAll("sessionid").length,
+    ...sessionSyntax,
+    sessionidValidationReason: sessionIdParseFailureReason(error.code, sessionSyntax),
     rrnPresent: searchParams.has("RRN") || searchParams.has("rrn"),
     rrnValueCount: searchParams.getAll("RRN").length + searchParams.getAll("rrn").length,
     responseStatus: 200,

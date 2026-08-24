@@ -10,6 +10,7 @@ import { inotiPlainTextResponse } from "@/lib/integrations/inoti-ussd/response";
 import { InotiSmsProvider } from "@/lib/integrations/inoti-sms/provider";
 import { classifyFetchError, classifyProviderTimeout, latencyBucket, secretDiagnostics } from "@/lib/integrations/inoti-diagnostics";
 import { updateInotiUssdIntegrationSchema } from "@/lib/validators/inoti-ussd";
+import { describeSessionIdSyntax, sessionIdParseFailureReason } from "@/lib/integrations/inoti-ussd/session-syntax";
 import type {
   InotiCredentialProfile,
   InotiPaymentVerificationQuery,
@@ -366,6 +367,81 @@ describe("iNoti callback parser", () => {
     assert.throws(() => parseUssdQuery(query("6655*87788778"), "ussd-cmt666ew"), UssdParseError);
     assert.throws(() => parseUssdQuery(query("6655*123"), "12"), UssdParseError);
     assert.throws(() => parseUssdQuery(query("6655*12"), "123"), UssdParseError);
+  });
+});
+
+describe("iNoti session syntax telemetry", () => {
+  it("describes representative provider-safe syntax without retaining identity", () => {
+    const cases = [
+      { value: "123456789012345", shape: "DIGITS", flags: { sessionidDigitsOnlyRaw: true } },
+      { value: "123e4567-e89b-12d3-a456-426614174000", shape: "UUID", flags: { sessionidUuidLike: true, sessionidContainsHyphen: true } },
+      { value: "Qx9Zp7K2Lm", shape: "ALPHANUMERIC", flags: { sessionidAlphanumericLike: true, sessionidContainsAsciiLetters: true } },
+      { value: "abc-123", shape: "MIXED_ASCII", flags: { sessionidContainsHyphen: true } },
+      { value: "۱۲۳۴", shape: "NORMALIZED_DIGITS", flags: { sessionidContainsNonAscii: true, sessionidDigitsOnlyAfterNormalization: true } },
+      { value: "١٢٣٤", shape: "NORMALIZED_DIGITS", flags: { sessionidContainsNonAscii: true, sessionidDigitsOnlyAfterNormalization: true } },
+      { value: "  12345 \t", shape: "NORMALIZED_DIGITS", flags: { sessionidContainsWhitespace: true, sessionidDigitsOnlyRaw: false } },
+      { value: "deadBEEF12", shape: "HEX", flags: { sessionidHexLike: true } },
+      { value: "U2Vzc2lvbklEMTIzNA==", shape: "BASE64_LIKE", flags: { sessionidBase64Like: true, sessionidContainsEquals: true } },
+      { value: "abc.def_1", shape: "MIXED_ASCII", flags: { sessionidContainsDot: true, sessionidContainsUnderscore: true } },
+      { value: "abc:12/+=", shape: "MIXED_ASCII", flags: { sessionidContainsColon: true, sessionidContainsSlash: true, sessionidContainsPlus: true, sessionidContainsEquals: true } },
+      { value: "شناسه", shape: "NON_ASCII", flags: { sessionidContainsNonAscii: true } },
+    ] as const;
+
+    for (const testCase of cases) {
+      const metadata = describeSessionIdSyntax(new URLSearchParams({ sessionid: testCase.value }));
+      assert.equal(metadata.sessionidShape, testCase.shape);
+      assert.equal(metadata.sessionidCount, 1);
+      assert.equal(metadata.sessionidRawLength, testCase.value.length);
+      for (const [key, expected] of Object.entries(testCase.flags)) {
+        assert.equal(metadata[key as keyof typeof metadata], expected, `${testCase.shape}:${key}`);
+      }
+      const serialized = JSON.stringify(metadata);
+      assert.equal(serialized.includes(testCase.value), false);
+      if (testCase.value.length >= 8) {
+        assert.equal(serialized.includes(testCase.value.slice(0, 6)), false);
+        assert.equal(serialized.includes(testCase.value.slice(-6)), false);
+      }
+    }
+  });
+
+  it("distinguishes empty, overlong, NUL, control, missing, and duplicate session IDs", () => {
+    const empty = describeSessionIdSyntax(new URLSearchParams({ sessionid: "" }));
+    assert.equal(empty.sessionidState, "EMPTY");
+    assert.equal(empty.sessionidEmptyRaw, true);
+    assert.equal(sessionIdParseFailureReason("INVALID_SESSIONID", empty), "SESSIONID_EMPTY");
+
+    const overlong = describeSessionIdSyntax(new URLSearchParams({ sessionid: "a".repeat(65) }));
+    assert.equal(overlong.sessionidTrimmedLength, 65);
+    assert.equal(sessionIdParseFailureReason("INVALID_SESSIONID", overlong), "SESSIONID_TOO_LONG");
+
+    const nul = describeSessionIdSyntax(new URLSearchParams({ sessionid: "abc\0def" }));
+    assert.equal(nul.sessionidContainsNul, true);
+    assert.equal(nul.sessionidContainsControlCharacter, true);
+    assert.equal(sessionIdParseFailureReason("INVALID_SESSIONID", nul), "SESSIONID_NUL");
+
+    const control = describeSessionIdSyntax(new URLSearchParams({ sessionid: "abc\u0001def" }));
+    assert.equal(control.sessionidContainsControlCharacter, true);
+    assert.equal(sessionIdParseFailureReason("INVALID_SESSIONID", control), "SESSIONID_NOT_NUMERIC_AFTER_NORMALIZATION");
+
+    const missing = describeSessionIdSyntax(new URLSearchParams());
+    assert.equal(missing.sessionidShape, "MISSING");
+    assert.equal(sessionIdParseFailureReason("INVALID_SESSIONID", missing), "SESSIONID_COUNT_INVALID");
+
+    const duplicateParams = new URLSearchParams();
+    duplicateParams.append("sessionid", "first-private-value");
+    duplicateParams.append("sessionid", "second-private-value");
+    const duplicate = describeSessionIdSyntax(duplicateParams);
+    assert.equal(duplicate.sessionidShape, "DUPLICATE");
+    assert.equal(duplicate.sessionidRawLength, null);
+    assert.doesNotMatch(JSON.stringify(duplicate), /first-private-value|second-private-value/);
+  });
+
+  it("keeps parser acceptance unchanged while real call reaches session validation", () => {
+    assert.deepEqual(parseUssdQuery(query("6655*87788778", { sessionid: "۱۲۳۴" }), "87788778").segments, ["6655", "87788778"]);
+    assert.throws(
+      () => parseUssdQuery(query("6655*87788778", { sessionid: "provider-session-A" }), "87788778"),
+      (error: unknown) => error instanceof UssdParseError && error.code === "INVALID_SESSIONID",
+    );
   });
 });
 

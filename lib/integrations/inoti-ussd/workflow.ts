@@ -20,7 +20,11 @@ import type {
 import { environmentInotiCredentialProvider } from "@/lib/integrations/inoti-ussd/credentials";
 import { inotiLivePaymentsAllowed } from "@/lib/integrations/inoti-runtime-safety";
 import { describeSessionIdSyntax, sessionIdParseFailureReason } from "@/lib/integrations/inoti-ussd/session-syntax";
-import { diagnosticCall, safeParameterNames } from "@/lib/integrations/inoti-ussd/request-diagnostics";
+import {
+  diagnosticCall,
+  safeCallSegmentDiagnostics,
+  safeParameterNames,
+} from "@/lib/integrations/inoti-ussd/request-diagnostics";
 
 const INVALID_RESPONSE = "درخواست نامعتبر است";
 const UNAVAILABLE_RESPONSE = "سرویس در دسترس نیست";
@@ -190,7 +194,11 @@ export class InotiUssdWorkflow {
         ? "MENU"
         : request.segments.length === 3 && command === "1"
           ? "ORDER_STATUS_PROMPT"
-          : command;
+          : request.segments.length === 4 && command === "1"
+            ? "ORDER_STATUS_LOOKUP"
+            : request.segments.length === 4 && command === "2"
+              ? "PAYMENT_REQUEST"
+              : "INVALID_FLOW";
     await this.repository.touchIntegration(integration.id);
     await this.repository.touchUssdSession({
       integrationId: integration.id,
@@ -220,12 +228,34 @@ export class InotiUssdWorkflow {
       if (command === "1" && integration.config.orderStatusEnabled) {
         return ORDER_TRACKING_PROMPT;
       }
-      return INVALID_RESPONSE;
+      return this.rejectInvalidFlow(
+        integration,
+        request,
+        sessionIdHash,
+        !isNewSession,
+        "UNSUPPORTED_THREE_SEGMENT_COMMAND",
+      );
     }
-    if (request.segments.length !== 4) return INVALID_RESPONSE;
+    if (request.segments.length !== 4) {
+      return this.rejectInvalidFlow(
+        integration,
+        request,
+        sessionIdHash,
+        !isNewSession,
+        "UNSUPPORTED_SEGMENT_COUNT",
+      );
+    }
 
     const trackingToken = request.segments[3];
-    if (!trackingToken || trackingToken.length > 64) return INVALID_RESPONSE;
+    if (!trackingToken || trackingToken.length > 64) {
+      return this.rejectInvalidFlow(
+        integration,
+        request,
+        sessionIdHash,
+        !isNewSession,
+        "INVALID_TRACKING_TOKEN",
+      );
+    }
     if (command === "1") {
       await this.recordEvent(integration, sessionIdHash, "USSD_ORDER_STATUS_REQUESTED", {
         trackingTokenLength: trackingToken.length,
@@ -237,6 +267,57 @@ export class InotiUssdWorkflow {
       await this.recordEvent(integration, sessionIdHash, "USSD_PAYMENT_SELECTED", { trackingToken });
       return this.handlePaymentRequest(integration, request, trackingToken, sessionIdHash);
     }
+    return this.rejectInvalidFlow(
+      integration,
+      request,
+      sessionIdHash,
+      !isNewSession,
+      "UNSUPPORTED_FOUR_SEGMENT_COMMAND",
+    );
+  }
+
+  private async rejectInvalidFlow(
+    integration: ResolvedInotiIntegration,
+    request: ParsedUssdRequest,
+    sessionIdHash: string,
+    sessionWasExisting: boolean,
+    rejectionReason: string,
+  ) {
+    let orderTrackingMatchPosition: number | null = null;
+    let orderTrackingLookupResult = "NOT_CHECKED";
+    if (integration.config.orderStatusEnabled) {
+      orderTrackingLookupResult = "NO_MATCH";
+      try {
+        for (let index = 2; index < request.segments.length; index += 1) {
+          const segment = request.segments[index] ?? "";
+          if (!/^\d{8,32}$/.test(segment)) continue;
+          const order = await this.repository.findOrderByTrackingToken(integration, segment);
+          if (order) {
+            orderTrackingMatchPosition = index + 1;
+            orderTrackingLookupResult = "MATCHED";
+            break;
+          }
+        }
+      } catch {
+        orderTrackingLookupResult = "LOOKUP_UNAVAILABLE";
+      }
+    }
+
+    await this.recordEvent(integration, sessionIdHash, "USSD_ERROR", {
+      reason: "WORKFLOW_SHAPE_REJECTED",
+      rejectionReason,
+      segmentCount: request.segments.length,
+      segments: safeCallSegmentDiagnostics(request.segments),
+      commandValue: request.segments[2] === "1" || request.segments[2] === "2"
+        ? request.segments[2]
+        : null,
+      sessionWasExisting,
+      orderTrackingLookupResult,
+      orderTrackingMatchPosition,
+      responseStatus: 200,
+      responseContentType: "text/plain; charset=utf-8",
+      responseBody: INVALID_RESPONSE,
+    });
     return INVALID_RESPONSE;
   }
 

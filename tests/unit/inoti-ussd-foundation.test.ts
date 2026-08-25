@@ -439,6 +439,11 @@ describe("iNoti ingress telemetry", () => {
     assert.deepEqual(event.newValue.parameterNames, ["call", "mobile", "sessionid"]);
     assert.equal(event.newValue.call, "6655*alpha");
     assert.equal(event.newValue.callState, "EXACT_INITIAL");
+    assert.equal(event.newValue.callSegmentCount, 2);
+    assert.deepEqual(event.newValue.callSegments, [
+      { position: 1, length: 4, valueClass: "PROVIDER_PREFIX", digitsOnly: true },
+      { position: 2, length: 5, valueClass: "CODE_NAME_CANDIDATE", digitsOnly: false },
+    ]);
     assert.equal(event.newValue.mobileValueCount, 1);
     assert.equal(event.newValue.sessionidValueCount, 1);
     assert.equal(event.newValue.rrnValueCount, 0);
@@ -459,6 +464,13 @@ describe("iNoti ingress telemetry", () => {
     const event = captured[0] as { newValue: Record<string, unknown> };
     assert.equal(event.newValue.call, null);
     assert.equal(event.newValue.callState, "SUPPRESSED_USER_INPUT_OR_UNSAFE");
+    assert.equal(event.newValue.callSegmentCount, 4);
+    assert.deepEqual(event.newValue.callSegments, [
+      { position: 1, length: 4, valueClass: "PROVIDER_PREFIX", digitsOnly: true },
+      { position: 2, length: 5, valueClass: "CODE_NAME_CANDIDATE", digitsOnly: false },
+      { position: 3, length: 1, valueClass: "ORDER_STATUS_COMMAND", digitsOnly: true },
+      { position: 4, length: 15, valueClass: "SAFE_ASCII_INPUT", digitsOnly: false },
+    ]);
     assert.equal(event.newValue.mobileValueCount, 2);
     assert.equal(event.newValue.sessionidValueCount, 2);
     assert.equal(event.newValue.rrnValueCount, 1);
@@ -820,7 +832,7 @@ describe("iNoti tenant-scoped workflow", () => {
     );
 
     assert.equal(repository.sessions.size, 1);
-    assert.equal([...repository.sessions.values()][0]?.lastAction, "1");
+    assert.equal([...repository.sessions.values()][0]?.lastAction, "ORDER_STATUS_LOOKUP");
     assert.equal(repository.intents.size, 0);
     assert.equal(provider.calls, 0);
     assert.deepEqual(
@@ -845,6 +857,65 @@ describe("iNoti tenant-scoped workflow", () => {
       config: { orderStatusEnabled: true, paymentEnabled: false },
     });
     assert.equal(await workflow.handle(integrationA.publicId, null, query("6655*alpha*2")), "درخواست نامعتبر است");
+    assert.equal(repository.intents.size, 0);
+    assert.equal(provider.calls, 0);
+  });
+
+  it("records the rejected real third-step shape without retaining the numeric tracking token", async () => {
+    const repository = new FakeRepository();
+    const provider = new FakeProvider();
+    const workflow = new InotiUssdWorkflow(repository, provider, new FakeCredentialProvider(), async () => undefined);
+    const sessionid = "123e4567-e89b-12d3-a456-426614174000";
+    const trackingToken = "9517053450208212";
+    repository.integrations.set(integrationA.publicId, {
+      ...integrationA,
+      config: { orderStatusEnabled: true, paymentEnabled: false },
+    });
+    repository.orders.set(
+      `${integrationA.id}:${trackingToken}`,
+      order("a", { publicTrackingToken: trackingToken }),
+    );
+
+    assert.equal(
+      await workflow.handle(integrationA.publicId, null, query("6655*alpha", { sessionid })),
+      "1-وضعیت سفارش",
+    );
+    assert.equal(
+      await workflow.handle(
+        integrationA.publicId,
+        null,
+        query(`6655*alpha*${trackingToken}`, { sessionid }),
+      ),
+      "درخواست نامعتبر است",
+    );
+
+    assert.equal(repository.sessions.size, 1);
+    assert.equal([...repository.sessions.values()][0]?.lastAction, "INVALID_FLOW");
+    assert.deepEqual(
+      repository.ussdEvents.map((event) => event.eventType),
+      ["USSD_SESSION_STARTED", "USSD_MENU_SHOWN", "USSD_ERROR"],
+    );
+    assert.deepEqual(repository.ussdEvents[2]?.metadata, {
+      reason: "WORKFLOW_SHAPE_REJECTED",
+      rejectionReason: "UNSUPPORTED_THREE_SEGMENT_COMMAND",
+      segmentCount: 3,
+      segments: [
+        { position: 1, length: 4, valueClass: "PROVIDER_PREFIX", digitsOnly: true },
+        { position: 2, length: 5, valueClass: "CODE_NAME_CANDIDATE", digitsOnly: false },
+        { position: 3, length: 16, valueClass: "NUMERIC_INPUT", digitsOnly: true },
+      ],
+      commandValue: null,
+      sessionWasExisting: true,
+      orderTrackingLookupResult: "MATCHED",
+      orderTrackingMatchPosition: 3,
+      responseStatus: 200,
+      responseContentType: "text/plain; charset=utf-8",
+      responseBody: "درخواست نامعتبر است",
+    });
+    assert.doesNotMatch(JSON.stringify({
+      events: repository.ussdEvents,
+      sessions: [...repository.sessions.values()],
+    }), new RegExp(trackingToken));
     assert.equal(repository.intents.size, 0);
     assert.equal(provider.calls, 0);
   });

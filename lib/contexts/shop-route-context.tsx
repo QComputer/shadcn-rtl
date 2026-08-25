@@ -8,6 +8,12 @@ type ShopRouteContextValue = {
   orderHref: (orderNumber: string) => string;
 };
 
+type ShopRouteProviderValue = {
+  productsHref: string;
+  checkoutHref: string;
+  orderHrefPrefix: string;
+};
+
 const ShopRouteContext = createContext<ShopRouteContextValue | null>(null);
 
 export function ShopRouteProvider({
@@ -15,10 +21,19 @@ export function ShopRouteProvider({
   value,
 }: {
   children: React.ReactNode;
-  value: ShopRouteContextValue;
+  value: ShopRouteProviderValue;
 }) {
+  const resolvedValue = React.useMemo<ShopRouteContextValue>(
+    () => ({
+      productsHref: value.productsHref,
+      checkoutHref: value.checkoutHref,
+      orderHref: (orderNumber: string) => `${value.orderHrefPrefix}${orderNumber}`,
+    }),
+    [value.checkoutHref, value.orderHrefPrefix, value.productsHref],
+  );
+
   return (
-    <ShopRouteContext.Provider value={value}>
+    <ShopRouteContext.Provider value={resolvedValue}>
       {children}
     </ShopRouteContext.Provider>
   );

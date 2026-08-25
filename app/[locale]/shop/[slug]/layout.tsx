@@ -157,10 +157,10 @@ const organization = await prisma.organization.findFirst({
   const routePaths = {
     productsHref,
     checkoutHref,
-    orderHref: (orderNumber: string) => buildShopOrderPath({
+    orderHrefPrefix: buildShopOrderPath({
       locale,
       shopSlug: organization.slug,
-      orderNumber,
+      orderNumber: "",
       isCustomDomain: seoContext.isCustomDomain,
     }),
   };

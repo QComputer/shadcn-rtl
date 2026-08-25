@@ -1,5 +1,5 @@
 import { normalizeDomainHost, type CustomDomainLocale } from "@/lib/custom-domain-routing";
-import { effectiveOrganizationCapabilities } from "@/lib/organization-capabilities";
+import { activePublicBusinessCapabilities, resolveOrganizationPublicHome, type OrganizationPublicHome } from "@/lib/organization-public-home";
 import type { OrganizationCapabilityKey } from "@prisma/client";
 
 export type ResolvedTenant = {
@@ -8,6 +8,7 @@ export type ResolvedTenant = {
   organizationId: string;
   organizationType: "SHOP" | "APPOINTMENT";
   capabilities: OrganizationCapabilityKey[];
+  publicHome: OrganizationPublicHome;
 };
 
 export type ResolverPrismaLike = {
@@ -42,6 +43,7 @@ export async function resolveActiveTenantForHost(
           type: true,
           capabilitiesInitializedAt: true,
           capabilities: { select: { key: true, status: true } },
+          settings: { select: { settings: true } },
           isActive: true,
           deletedAt: true,
         },
@@ -63,10 +65,10 @@ export async function resolveActiveTenantForHost(
     locale: toSupportedLocale(domain.organization.locale),
     organizationId: domain.organization.id,
     organizationType: domain.organization.type,
-    capabilities: effectiveOrganizationCapabilities({
-      legacyType: domain.organization.type,
-      capabilitiesInitializedAt: domain.organization.capabilitiesInitializedAt,
+    capabilities: activePublicBusinessCapabilities(domain.organization.capabilities),
+    publicHome: resolveOrganizationPublicHome({
       capabilities: domain.organization.capabilities,
+      settings: domain.organization.settings?.settings,
     }),
   };
 }

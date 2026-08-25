@@ -9,7 +9,7 @@ export interface CartItem {
   quantity: number;
   variant: {
     id: string;
-    name: string;
+    name: string | null;
     price: number | string | null;
     sku: string | null;
     product: {

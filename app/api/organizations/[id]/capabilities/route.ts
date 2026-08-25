@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { ApiError, jsonError, requireAuthSession } from "@/lib/api-guards";
 import prisma from "@/lib/db";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { organizationCapabilityKeys, replaceOrganizationCapabilitiesSchema } from "@/lib/validators/tenant-platform";
+import {
+  activePublicBusinessCapabilities,
+  getConfiguredDefaultPublicCapability,
+  writeDefaultPublicCapabilitySetting,
+} from "@/lib/organization-public-home";
 
 export async function GET(
   _request: NextRequest,
@@ -76,6 +82,25 @@ export async function PUT(
         },
         select: { id: true, slug: true },
       });
+      const activePublicCapabilities = activePublicBusinessCapabilities(
+        organizationCapabilityKeys.map((key) => ({
+          key,
+          status: requested.has(key) ? "ACTIVE" : "INACTIVE",
+        })),
+      );
+      const settings = await tx.organizationSettings.findUnique({
+        where: { organizationSlug: organization.slug },
+        select: { id: true, settings: true },
+      });
+      const configuredDefault = getConfiguredDefaultPublicCapability(settings?.settings);
+      if (settings && configuredDefault && !activePublicCapabilities.includes(configuredDefault)) {
+        await tx.organizationSettings.update({
+          where: { id: settings.id },
+          data: {
+            settings: writeDefaultPublicCapabilitySetting(settings.settings, null) as any,
+          },
+        });
+      }
       await tx.auditLog.create({
         data: {
           action: "UPDATE",
@@ -94,6 +119,20 @@ export async function PUT(
         select: { id: true, type: true, capabilitiesInitializedAt: true, capabilities: { orderBy: { key: "asc" } } },
       });
     });
+
+    const organizationSlug = await prisma.organization.findUnique({
+      where: { id },
+      select: { slug: true },
+    });
+    if (organizationSlug?.slug) {
+      revalidatePath("/");
+      revalidatePath("/shop");
+      for (const routeLocale of ["fa", "en", "ar"]) {
+        revalidatePath(`/${routeLocale}/organization/${organizationSlug.slug}`);
+        revalidatePath(`/${routeLocale}/shop/${organizationSlug.slug}`);
+        revalidatePath(`/${routeLocale}/appointment/${organizationSlug.slug}`);
+      }
+    }
 
     return NextResponse.json(result);
   } catch (error) {

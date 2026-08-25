@@ -29,10 +29,12 @@ import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatToman, toPersianDigits } from "@/lib/persian"
 import { useCart } from "@/lib/contexts/cart-context"
 import { getProductPrimaryMediaUrl } from "@/lib/ai-media/entity-primary-media"
+import { buildShopCheckoutPath, buildShopOrderPath, buildShopProductsPath } from "@/lib/shop-public-paths"
+import { useShopRoutePaths } from "@/lib/contexts/shop-route-context"
 
 interface ProductVariant {
   id: string
-  name: string
+  name: string | null
   sku: string | null
   price: number | null
   inventory: number
@@ -93,6 +95,11 @@ export default function ProductDetailPage({
   
   // Get cart functions from context
   const { addToCart } = useCart()
+  const { productsHref } = useShopRoutePaths({
+    productsHref: buildShopProductsPath({ locale, shopSlug: slug }),
+    checkoutHref: buildShopCheckoutPath({ locale, shopSlug: slug }),
+    orderHref: (orderNumber) => buildShopOrderPath({ locale, shopSlug: slug, orderNumber }),
+  })
 
   useEffect(() => {
     setMounted(true)
@@ -199,7 +206,7 @@ export default function ProductDetailPage({
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">{error || "Product not found"}</p>
-            <Link href={`/${locale}/shop/${slug}`}>
+            <Link href={productsHref}>
               <Button className="mt-4">{t("common.back")}</Button>
             </Link>
           </CardContent>
@@ -219,7 +226,7 @@ export default function ProductDetailPage({
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-3">
           <nav className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Link href={`/${locale}/shop/${slug}`} className="hover:text-foreground">
+            <Link href={productsHref} className="hover:text-foreground">
               {organization.name}
             </Link>
             <ChevronLeft className="h-4 w-4" />
@@ -359,7 +366,7 @@ export default function ProductDetailPage({
                           value={variant.id}
                           disabled={product.trackInventory && variant.inventory === 0}
                         >
-                          {variant.name}
+                          {variant.name || product.name}
                           {variant.price && ` - ${formatToman(variant.price)}`}
                           {product.trackInventory && variant.inventory === 0 && " (ناموجود)"}
                         </SelectItem>
@@ -402,7 +409,7 @@ export default function ProductDetailPage({
                 <Button 
                   size="lg" 
                   className="flex-1 gap-2"
-                  disabled={!inStock || addingToCart}
+                  disabled={!selectedVariant || !inStock || addingToCart}
                   onClick={handleAddToCart}
                 >
                   {addedToCart ? (
@@ -426,13 +433,13 @@ export default function ProductDetailPage({
                     <div>
                       <p className="text-sm text-muted-foreground">فروشنده:</p>
                       <Link 
-                        href={`/${locale}/shop/${slug}`}
+                        href={productsHref}
                         className="font-medium hover:text-primary"
                       >
                         {organization.name}
                       </Link>
                     </div>
-                    <Link href={`/${locale}/shop/${slug}`}>
+                    <Link href={productsHref}>
                       <Button variant="outline" size="sm">
                         مشاهده منو
                         <ArrowLeft className="h-4 w-4 mr-1" />

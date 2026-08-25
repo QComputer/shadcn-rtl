@@ -64,6 +64,9 @@ export async function GET(
             discountType: true,
             discountValue: true,
             variants: {
+              where: {
+                deletedAt: null,
+              },
               select: {
                 id: true,
                 name: true,

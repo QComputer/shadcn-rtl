@@ -16,6 +16,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { PublicImage } from "@/components/public/public-image"
 import { WebPushOptIn } from "@/components/public/web-push-opt-in"
+import { buildShopCheckoutPath, buildShopOrderPath, buildShopProductsPath } from "@/lib/shop-public-paths"
+import { useShopRoutePaths } from "@/lib/contexts/shop-route-context"
 
 interface ShopProfile {
   id: string
@@ -44,6 +46,11 @@ export default function ShopProfilePage({
    const [loading, setLoading] = useState(true)
    const [error, setError] = useState<string | null>(null)
    const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
+   const { productsHref } = useShopRoutePaths({
+     productsHref: buildShopProductsPath({ locale, shopSlug: slug }),
+     checkoutHref: buildShopCheckoutPath({ locale, shopSlug: slug }),
+     orderHref: (orderNumber) => buildShopOrderPath({ locale, shopSlug: slug, orderNumber }),
+   })
 
    useEffect(() => {
      setMounted(true)
@@ -99,7 +106,7 @@ export default function ShopProfilePage({
            <CardContent>
              <p className="text-muted-foreground">{error || "Shop not found"}</p>
              <Button className="mt-4">
-               <Link href={`/${locale}/shop/${slug}`}>{t("common.back")}</Link>
+               <Link href={productsHref}>{t("common.back")}</Link>
              </Button>
            </CardContent>
          </Card>
@@ -151,7 +158,7 @@ export default function ShopProfilePage({
                )}
                <div className="flex flex-wrap gap-3">
                  <Button>
-                   <Link href={`/${locale}/shop/${slug}`}>
+                   <Link href={productsHref}>
                      <Package className="h-4 w-4 mr-2" />
                      {t("navigation.products")}
                    </Link>

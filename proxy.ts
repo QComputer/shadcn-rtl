@@ -260,7 +260,17 @@ export async function proxy(request: NextRequest) {
     );
 
     if (splitPath.pathnameWithoutLocale === "/") {
-      tenantHomeUrl.pathname = `/${locale}/organization/${tenant.slug}`;
+      if (tenant.publicHome?.kind === "business") {
+        tenantHomeUrl.pathname = tenant.publicHome.capability === "SHOP"
+          ? buildShopPlatformPath({
+              locale,
+              slug: tenant.slug,
+              publicPathname: "/",
+            })
+          : `/${locale}/appointment/${tenant.slug}${tenant.publicHome.publicEntryPath}`;
+      } else {
+        tenantHomeUrl.pathname = `/${locale}/organization/${tenant.slug}`;
+      }
       const response = NextResponse.rewrite(tenantHomeUrl, { request: { headers: requestHeaders } });
       response.headers.set("x-locale", locale);
       response.headers.set("x-direction", localeConfig[locale].dir);

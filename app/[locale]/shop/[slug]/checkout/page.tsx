@@ -39,6 +39,8 @@ import type { ClientPaymentSettings as PaymentSettings, ClientUser as User } fro
 import { Switch } from "@/components/ui/switch";
 import { getDictionary } from "@/lib/dictionary";
 import { formatToman, toPersianDigits } from "@/lib/persian";
+import { buildShopCheckoutPath, buildShopOrderPath, buildShopProductsPath } from "@/lib/shop-public-paths";
+import { useShopRoutePaths } from "@/lib/contexts/shop-route-context";
 
 interface CheckoutFormData {
   customerName?: string;
@@ -69,6 +71,11 @@ export default function CheckoutPage({
   const dict = getDictionary(locale)
   const slug = resolvedParams.slug;
   const router = useRouter();
+  const { productsHref, orderHref } = useShopRoutePaths({
+    productsHref: buildShopProductsPath({ locale, shopSlug: slug }),
+    checkoutHref: buildShopCheckoutPath({ locale, shopSlug: slug }),
+    orderHref: (orderNumber) => buildShopOrderPath({ locale, shopSlug: slug, orderNumber }),
+  });
 
   const [user, setUser] = useState<User|null>(null);
   const [loading, setLoading] = useState(true)
@@ -219,7 +226,7 @@ try {
       const trackingSuffix = order.publicTrackingToken
         ? `?token=${encodeURIComponent(order.publicTrackingToken)}`
         : "";
-      router.push(`/${locale}/shop/${slug}/order/${order.orderNumber}${trackingSuffix}`);
+      router.push(`${orderHref(order.orderNumber)}${trackingSuffix}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to place order");
     } finally {
@@ -264,7 +271,7 @@ try {
             <p>برای ادامه بررسی و تایید چند محصول اضافه کنید </p>
           </CardContent>
           <CardFooter className="justify-center">
-            <Link href={`/${locale}/shop/${slug}`}>
+            <Link href={productsHref}>
               <Button>
                 محصولات ما را ببینید
                 <ArrowLeft className="ml-2 h-4 w-4" />
@@ -282,7 +289,7 @@ try {
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-3">
           <nav className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Link href={`/${locale}/shop/${slug}`} className="hover:text-foreground">
+            <Link href={productsHref} className="hover:text-foreground">
               {organizationName}
             </Link>
             <ChevronRight className="h-4 w-4" />

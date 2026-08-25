@@ -585,6 +585,8 @@ describe("ACTIVE-only routing (resolveActiveTenantForHost)", () => {
             slug: "myshop",
             locale: "en",
             type: "SHOP",
+            capabilities: [{ key: "SHOP", status: "ACTIVE" }],
+            settings: null,
             isActive: true,
             deletedAt: null,
             ...organizationOverrides,
@@ -602,17 +604,46 @@ describe("ACTIVE-only routing (resolveActiveTenantForHost)", () => {
       locale: "en",
       organizationId: "org_1",
       organizationType: "SHOP",
+      capabilities: ["SHOP"],
+      publicHome: {
+        kind: "business",
+        capability: "SHOP",
+        publicSurface: "shop",
+        publicEntryPath: "/shop",
+      },
     });
   });
 
   it("resolves an ACTIVE appointment domain to its tenant", async () => {
-    const prisma = makePrisma("ACTIVE", { type: "APPOINTMENT", slug: "clinic-demo", locale: "fa" });
+    const prisma = makePrisma("ACTIVE", {
+      type: "APPOINTMENT",
+      slug: "clinic-demo",
+      locale: "fa",
+      capabilities: [{ key: "APPOINTMENT", status: "ACTIVE" }],
+    });
     const tenant = await resolveActiveTenantForHost(prisma, "clinic.example.ir");
     assert.deepEqual(tenant, {
       slug: "clinic-demo",
       locale: "fa",
       organizationId: "org_1",
       organizationType: "APPOINTMENT",
+      capabilities: ["APPOINTMENT"],
+      publicHome: {
+        kind: "business",
+        capability: "APPOINTMENT",
+        publicSurface: "appointment",
+        publicEntryPath: "/services",
+      },
+    });
+  });
+
+  it("does not use legacy organization type as the custom-domain root capability", async () => {
+    const prisma = makePrisma("ACTIVE", { type: "SHOP", capabilities: [] });
+    const tenant = await resolveActiveTenantForHost(prisma, "shop.example.ir");
+    assert.deepEqual(tenant?.capabilities, []);
+    assert.deepEqual(tenant?.publicHome, {
+      kind: "generic",
+      reason: "NO_PUBLIC_CAPABILITY",
     });
   });
 

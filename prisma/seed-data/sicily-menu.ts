@@ -19,6 +19,10 @@ function buildSku(blockId: number, itemId: number): string {
   return `${SKU_PREFIX}-${blockId}-${itemId}`;
 }
 
+export function buildDefaultVariantSku(productSku: string): string {
+  return `${productSku}-DEFAULT`;
+}
+
 function validateCategories(
   fixture: ReturnType<typeof readExtractionFixture>,
 ): CategoryValidationResult[] {
@@ -331,8 +335,8 @@ export async function seedSicilyMenu(
       },
     });
 
-    if (existing) {
-      await prisma.product.update({
+    const product = existing
+      ? await prisma.product.update({
         where: { id: existing.id },
         data: {
           name: item.sourceName,
@@ -346,9 +350,8 @@ export async function seedSicilyMenu(
           trackInventory: false,
           lowStockThreshold: 0,
         },
-      });
-    } else {
-      await prisma.product.create({
+      })
+      : await prisma.product.create({
         data: {
           organizationId: sicilyOrg.id,
           organizationSlug: sicilyOrg.slug,
@@ -364,9 +367,27 @@ export async function seedSicilyMenu(
           lowStockThreshold: 0,
         },
       });
-    }
 
     if (isPriced) {
+      await prisma.productVariant.upsert({
+        where: { sku: buildDefaultVariantSku(sku) },
+        update: {
+          productId: product.id,
+          name: null,
+          price: null,
+          inventory: 0,
+          allowBackOrder: true,
+          deletedAt: null,
+        },
+        create: {
+          productId: product.id,
+          sku: buildDefaultVariantSku(sku),
+          name: null,
+          price: null,
+          inventory: 0,
+          allowBackOrder: true,
+        },
+      });
       pricedActiveCount++;
     } else {
       inactiveUnpricedCount++;

@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { CalendarDays, ShoppingBag, UserRound } from "lucide-react";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import prisma from "@/lib/db";
-import { hasOrganizationCapability } from "@/lib/organization-capabilities";
 import { buildTenantPublicPath } from "@/lib/custom-domain-routing";
+import { activePublicBusinessCapabilities, resolveOrganizationPublicHome } from "@/lib/organization-public-home";
 import { getPublicOrganizationReadModel } from "@/lib/public-experience/organization-public-read-model.service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,26 +24,34 @@ export default async function OrganizationHomePage({ params }: Props) {
       address: true,
       phone: true,
       email: true,
-      type: true,
-      capabilitiesInitializedAt: true,
       capabilities: { select: { key: true, status: true } },
+      settings: { select: { settings: true } },
     },
   });
 
   if (!organization) notFound();
+  const publicHome = resolveOrganizationPublicHome({
+    capabilities: organization.capabilities,
+    settings: organization.settings?.settings,
+  });
+  if (publicHome.kind === "business") {
+    if (isCustomDomain) {
+      redirect(buildTenantPublicPath(locale, publicHome.capability === "SHOP" ? "/" : publicHome.publicEntryPath));
+    }
+
+    redirect(
+      publicHome.capability === "SHOP"
+        ? `/${locale}/shop/${organization.slug}`
+        : `/${locale}/appointment/${organization.slug}${publicHome.publicEntryPath}`,
+    );
+  }
+
   const publicModel = await getPublicOrganizationReadModel(slug);
   const reputation = publicModel.reputation;
 
-  const hasShop = hasOrganizationCapability({
-    legacyType: organization.type,
-    capabilitiesInitializedAt: organization.capabilitiesInitializedAt,
-    capabilities: organization.capabilities,
-  }, "SHOP");
-  const hasAppointments = hasOrganizationCapability({
-    legacyType: organization.type,
-    capabilitiesInitializedAt: organization.capabilitiesInitializedAt,
-    capabilities: organization.capabilities,
-  }, "APPOINTMENT");
+  const publicCapabilities = activePublicBusinessCapabilities(organization.capabilities);
+  const hasShop = publicCapabilities.includes("SHOP");
+  const hasAppointments = publicCapabilities.includes("APPOINTMENT");
   const href = (path: "/shop" | "/services") => {
     if (isCustomDomain) return buildTenantPublicPath(locale, path);
     return path === "/shop"

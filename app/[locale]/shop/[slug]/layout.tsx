@@ -14,9 +14,11 @@ import { ShopLocationDialog } from "@/components/shop/shop-location-dialog";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildOrganizationJsonLd, buildPublicMetadata, getUploadedOrGeneratedSeoImageUrl } from "@/lib/seo";
 import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
-import { buildShopPublicPath } from "@/lib/shop-public-paths";
+import { buildShopCheckoutPath, buildShopOrderPath, buildShopProductsPath, buildShopPublicPath } from "@/lib/shop-public-paths";
 import { TenantFooter } from "@/components/public/tenant-footer";
 import { hasOrganizationCapability } from "@/lib/organization-capabilities";
+import { resolveOrganizationPublicHome } from "@/lib/organization-public-home";
+import { ShopRouteProvider } from "@/lib/contexts/shop-route-context";
 
 interface ShopLayoutProps {
   children: React.ReactNode;
@@ -40,6 +42,7 @@ const organization = await prisma.organization.findFirst({
     coverImage: true,
     capabilitiesInitializedAt: true,
     capabilities: { select: { key: true, status: true } },
+    settings: { select: { settings: true } },
   }
 })
     if (!organization || !hasOrganizationCapability({
@@ -53,7 +56,14 @@ const organization = await prisma.organization.findFirst({
     }
 
     const uploadedShareImage = organization.coverImage || organization.logo;
-    const seoContext = await getShopTenantSeoContext({ locale, slug: organization.slug, subPath: "/" });
+    const initialSeoContext = await getShopTenantSeoContext({ locale, slug: organization.slug, subPath: "/" });
+    const publicHome = resolveOrganizationPublicHome({
+      capabilities: organization.capabilities,
+      settings: organization.settings?.settings,
+    });
+    const seoContext = initialSeoContext.isCustomDomain && !(publicHome.kind === "business" && publicHome.capability === "SHOP")
+      ? await getShopTenantSeoContext({ locale, slug: organization.slug, subPath: "/shop" })
+      : initialSeoContext;
 
     return buildPublicMetadata({
       locale,
@@ -93,6 +103,7 @@ type ShopLayoutOrganization = {
   coverImage: string | null;
   capabilitiesInitializedAt: Date | null;
   capabilities: Array<{ key: "SHOP" | "APPOINTMENT"; status: "ACTIVE" | "INACTIVE" }>;
+  settings: { settings: unknown } | null;
 };
 
 export default async function ShopLayout({ children, params }: ShopLayoutProps) {
@@ -107,6 +118,7 @@ const organization = await prisma.organization.findFirst({
     description: true, address: true, phone: true, email: true, logo: true, coverImage: true,
     capabilitiesInitializedAt: true,
     capabilities: { select: { key: true, status: true } },
+    settings: { select: { settings: true } },
   },
 }) as ShopLayoutOrganization | null;
 
@@ -119,6 +131,11 @@ const organization = await prisma.organization.findFirst({
   }
 
   const seoContext = await getShopTenantSeoContext({ locale, slug: organization.slug, subPath: "/" });
+  const publicHome = resolveOrganizationPublicHome({
+    capabilities: organization.capabilities,
+    settings: organization.settings?.settings,
+  });
+  const useCustomDomainRoot = seoContext.isCustomDomain && publicHome.kind === "business" && publicHome.capability === "SHOP";
   const tenantHref = (subPath = "/") =>
     buildShopPublicPath({
       locale,
@@ -126,30 +143,52 @@ const organization = await prisma.organization.findFirst({
       subPath,
       isCustomDomain: seoContext.isCustomDomain,
     });
+  const productsHref = buildShopProductsPath({
+    locale,
+    shopSlug: organization.slug,
+    isCustomDomain: seoContext.isCustomDomain,
+    useCustomDomainRoot,
+  });
+  const checkoutHref = buildShopCheckoutPath({
+    locale,
+    shopSlug: organization.slug,
+    isCustomDomain: seoContext.isCustomDomain,
+  });
+  const routePaths = {
+    productsHref,
+    checkoutHref,
+    orderHref: (orderNumber: string) => buildShopOrderPath({
+      locale,
+      shopSlug: organization.slug,
+      orderNumber,
+      isCustomDomain: seoContext.isCustomDomain,
+    }),
+  };
 
   const navItems = [
-    { href: tenantHref("/"), label: t("navigation.products") },
+    { href: productsHref, label: t("navigation.products") },
     { href: tenantHref("/profile"), label: t("navigation.profile") },
     { href: tenantHref("/fanpage"), label: t("organization.fanpage") },
-    { href: tenantHref("/checkout"), label: t("navigation.checkout") },
+    { href: checkoutHref, label: t("navigation.checkout") },
   ];
 
   return (
     <CartProvider locale={locale} slug={slug} >
-      <JsonLd
-        data={buildOrganizationJsonLd({
-          organization,
-          path: seoContext.path,
-          kind: "Store",
-          baseUrl: seoContext.baseUrl,
-        })}
-      />
-      <div className="min-h-screen flex flex-col">
+      <ShopRouteProvider value={routePaths}>
+        <JsonLd
+          data={buildOrganizationJsonLd({
+            organization,
+            path: seoContext.path,
+            kind: "Store",
+            baseUrl: seoContext.baseUrl,
+          })}
+        />
+        <div className="min-h-screen flex flex-col">
         {/* Shop Header */}
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container flex h-16 pr-5 pl-2 justify-between ">
             <span className="flex items-center text-lg md:text-xl">
-              <Link href={tenantHref("/")}>              
+              <Link href={productsHref}>
               {organization?.name}
               </Link>
               </span>
@@ -186,7 +225,7 @@ const organization = await prisma.organization.findFirst({
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t supports-[backdrop-filter]:bg-background/60">
           <div className="grid grid-cols-5 h-16">
             <Link
-              href={tenantHref("/")}
+              href={productsHref}
               className="flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
               <Home className="h-5 w-5" />
@@ -207,7 +246,7 @@ const organization = await prisma.organization.findFirst({
               <span>{t("organization.fanpage")}</span>
             </Link>
             <Link
-              href={tenantHref("/checkout")}
+              href={checkoutHref}
               className="flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
               <ShoppingCart className="h-5 w-5" />
@@ -232,13 +271,14 @@ const organization = await prisma.organization.findFirst({
             address: organization.address,
             phone: organization.phone,
             email: organization.email,
-            homeHref: tenantHref("/"),
+            homeHref: productsHref,
             profileHref: tenantHref("/profile"),
-            cartHref: tenantHref("/checkout"),
+            cartHref: checkoutHref,
             poweredByHref: "https://bazarbaaz.ir",
           }}
         />
-      </div>
+        </div>
+      </ShopRouteProvider>
     </CartProvider>
   );
 }

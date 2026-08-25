@@ -13,7 +13,7 @@ import { useTheme } from "@/hooks/use-theme"
 import type { ClientBusinessHour as BusinessHour, ClientOrganization as Organization, ClientOrganizationSettings as OrganizationSettings, ClientPaymentSettings as PaymentSettings } from "@/lib/client-model-types"
 import { ShopStatusBadge } from "@/components/ShopStatusBadge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { BusinessCapability } from "@/lib/business-capability-registry"
+import { BUSINESS_CAPABILITY_REGISTRY, type BusinessCapability } from "@/lib/business-capability-registry"
 
 interface ImageRecord {
   id: number;
@@ -22,6 +22,18 @@ interface ImageRecord {
 }
 
 const MapLocationPicker = dynamic(() => import("@/components/ui/map-location-picker"), { ssr: false })
+
+const businessCapabilityLabels: Record<BusinessCapability, string> = {
+  SHOP: "فروشگاه",
+  APPOINTMENT: "نوبت‌دهی",
+}
+
+function readDefaultPublicCapability(settings: OrganizationSettings | null): BusinessCapability | null {
+  const value = settings?.settings;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const candidate = (value as Record<string, unknown>).defaultPublicCapability;
+  return candidate === "SHOP" || candidate === "APPOINTMENT" ? candidate : null;
+}
 
 export default function OrganizationSettingsPage({ params }: { params: Promise<{ locale: string }> }) {
   const resolvedParams = use(params)
@@ -52,6 +64,8 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   const [savingPreparationSettings, setSavingPreparationSettings] = useState(false)
   const [capabilities, setCapabilities] = useState<BusinessCapability[]>([])
   const [savingCapabilities, setSavingCapabilities] = useState(false)
+  const [defaultPublicCapability, setDefaultPublicCapability] = useState<BusinessCapability | "AUTO">("AUTO")
+  const [savingDefaultPublicCapability, setSavingDefaultPublicCapability] = useState(false)
   //const [paymentSettings, setPaymentSettings ] = useState<PaymentSettings|null>(null)
 
   // Form state
@@ -99,6 +113,8 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
 .then(settings => {
        setSettings(settings)
        setDefaultPreparationMinutes(settings.defaultPreparationMinutes || 30)
+       const configuredDefaultPublicCapability = readDefaultPublicCapability(settings)
+       setDefaultPublicCapability(configuredDefaultPublicCapability ?? "AUTO")
        setOrganization(settings.organization)
        setCapabilities(
          settings.organization.capabilitiesInitializedAt
@@ -433,11 +449,15 @@ const handleOpen = async (e: React.FormEvent) => {
   }
 
   const toggleCapability = (capability: BusinessCapability) => {
-    setCapabilities((current) =>
-      current.includes(capability)
+    setCapabilities((current) => {
+      const next = current.includes(capability)
         ? current.filter((item) => item !== capability)
-        : [...current, capability],
-    )
+        : [...current, capability]
+      setDefaultPublicCapability((selected) =>
+        selected !== "AUTO" && !next.includes(selected) ? "AUTO" : selected,
+      )
+      return next
+    })
   }
 
   const handleSaveCapabilities = async () => {
@@ -461,6 +481,12 @@ const handleOpen = async (e: React.FormEvent) => {
           .filter((capability: { status: string }) => capability.status === "ACTIVE")
           .map((capability: { key: BusinessCapability }) => capability.key),
       )
+      if (defaultPublicCapability !== "AUTO" && !(data.capabilities || []).some(
+        (capability: { key: BusinessCapability; status: string }) =>
+          capability.key === defaultPublicCapability && capability.status === "ACTIVE",
+      )) {
+        setDefaultPublicCapability("AUTO")
+      }
       setSuccess("قابلیت‌های کسب‌وکار ذخیره شد")
       window.dispatchEvent(new Event("organization-capabilities-changed"))
       router.refresh()
@@ -468,6 +494,34 @@ const handleOpen = async (e: React.FormEvent) => {
       setError(err instanceof Error ? err.message : "ذخیره قابلیت‌های کسب‌وکار ناموفق بود")
     } finally {
       setSavingCapabilities(false)
+    }
+  }
+
+  const handleSaveDefaultPublicCapability = async () => {
+    if (!organization?.id) return
+    setSavingDefaultPublicCapability(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const response = await fetch(`/api/organizations/${organization.id}/settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          defaultPublicCapability: defaultPublicCapability === "AUTO" ? null : defaultPublicCapability,
+        }),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        throw new Error(data?.error || "ذخیره صفحه پیش‌فرض دامنه ناموفق بود")
+      }
+      const updated = await response.json()
+      setSettings(updated)
+      setSuccess("صفحه پیش‌فرض دامنه ذخیره شد")
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "ذخیره صفحه پیش‌فرض دامنه ناموفق بود")
+    } finally {
+      setSavingDefaultPublicCapability(false)
     }
   }
 
@@ -568,6 +622,57 @@ const handleOpen = async (e: React.FormEvent) => {
             ذخیره قابلیت‌ها
           </Button>
         </CardFooter>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            صفحه پیش‌فرض دامنه
+          </CardTitle>
+          <CardDescription>
+            این گزینه فقط برای دامنه اختصاصی سازمان استفاده می‌شود و از قابلیت‌های عمومی فعال ساخته می‌شود.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+          <div className="space-y-2">
+            <Label htmlFor="default-public-capability">تجربه ریشه دامنه</Label>
+            <Select
+              value={defaultPublicCapability}
+              onValueChange={(value) => setDefaultPublicCapability(value as BusinessCapability | "AUTO")}
+              disabled={capabilities.length < 2}
+            >
+              <SelectTrigger id="default-public-capability">
+                <SelectValue placeholder="انتخاب صفحه پیش‌فرض دامنه" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="AUTO">
+                  {capabilities.length === 1
+                    ? `خودکار: ${businessCapabilityLabels[capabilities[0]]}`
+                    : "صفحه عمومی سازمان"}
+                </SelectItem>
+                {capabilities
+                  .filter((capability) => BUSINESS_CAPABILITY_REGISTRY[capability]?.publicSurface)
+                  .map((capability) => (
+                    <SelectItem key={capability} value={capability}>
+                      {businessCapabilityLabels[capability]}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              اگر فقط یک قابلیت عمومی فعال باشد، ریشه دامنه همان تجربه را بدون تنظیم دستی باز می‌کند.
+            </p>
+          </div>
+          <Button
+            type="button"
+            onClick={handleSaveDefaultPublicCapability}
+            disabled={savingDefaultPublicCapability || capabilities.length === 0}
+          >
+            {savingDefaultPublicCapability ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Save className="me-2 h-4 w-4" />}
+            ذخیره
+          </Button>
+        </CardContent>
       </Card>
 
 

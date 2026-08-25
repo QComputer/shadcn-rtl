@@ -29,6 +29,8 @@ import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatPersianDate, formatRelativePersianTime, formatToman, toPersianDigits } from "@/lib/persian";
 import { Label } from "@/components/ui/label";
 import { Input } from "@base-ui/react";
+import { buildShopCheckoutPath, buildShopOrderPath, buildShopProductsPath } from "@/lib/shop-public-paths";
+import { useShopRoutePaths } from "@/lib/contexts/shop-route-context";
 
 interface OrderItem {
   id: string;
@@ -115,6 +117,11 @@ export default function OrderConfirmationPage({
   const slug = resolvedParams.slug;
   const orderNumber = resolvedParams.orderNumber;
   const trackingToken = resolvedSearchParams?.token || "";
+  const { productsHref, orderHref } = useShopRoutePaths({
+    productsHref: buildShopProductsPath({ locale, shopSlug: slug }),
+    checkoutHref: buildShopCheckoutPath({ locale, shopSlug: slug }),
+    orderHref: (nextOrderNumber) => buildShopOrderPath({ locale, shopSlug: slug, orderNumber: nextOrderNumber }),
+  });
 
   const [mounted, setMounted] = useState(false)
   const [refetching, setRefetching] = useState(true)
@@ -251,7 +258,7 @@ const paymentStatusConfig: Record<Order["paymentStatus"], { label: string; icon:
             <p>{error || "سفارش پیدا نشد"}</p>
           </CardContent>
           <div className="p-6 pt-0 flex justify-center">
-            <Link href={`/${locale}/shop/${slug}/order/${orderNumber}`}>
+            <Link href={orderHref(orderNumber)}>
               <Button>
                 {t("order.tryAgain")}
                 <ArrowLeft className="ml-2 h-4 w-4" />
@@ -270,7 +277,7 @@ const paymentStatusConfig: Record<Order["paymentStatus"], { label: string; icon:
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-3">
           <nav className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Link href={`/${locale}/shop/${slug}`} className="hover:text-foreground">
+            <Link href={productsHref} className="hover:text-foreground">
               {data.order.organization.name}
             </Link>
             <ChevronLeft className="h-4 w-4" />
@@ -494,7 +501,7 @@ const paymentStatusConfig: Record<Order["paymentStatus"], { label: string; icon:
           )}
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-4 justify-end items-end">
-              <Link href={`/${locale}/shop/${slug}`}>
+              <Link href={productsHref}>
                 <Button size="lg">
                   {t("order.continueShopping")}
                   {isRTL ? <ArrowLeft className="mr-2 h-4 w-4" /> : <ArrowRight className="ml-2 h-4 w-4" />}

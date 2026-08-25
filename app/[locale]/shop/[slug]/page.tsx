@@ -41,7 +41,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { PublicImage } from "@/components/public/public-image"
 import { getProductPrimaryMediaUrl } from "@/lib/ai-media/entity-primary-media"
-import { buildShopProductPath } from "@/lib/shop-public-paths"
+import { buildShopProductPath, isShopCustomDomainPathname } from "@/lib/shop-public-paths"
 import {
   countVisibleProductsByCategory,
   getShopMenuProductInventory,
@@ -50,7 +50,7 @@ import {
 
 interface ProductVariant {
   id: string
-  name: string
+  name: string | null
   sku: string | null
   price: number | null
   inventory: number
@@ -206,7 +206,7 @@ export default function ShopPage({
   }
 
   const isCustomDomain = mounted && typeof window !== "undefined"
-    ? !window.location.pathname.startsWith(`/${locale}/shop/${slug}`)
+    ? isShopCustomDomainPathname({ pathname: window.location.pathname, locale, shopSlug: slug })
     : false
 
   const productHref = (product: Product) => buildShopProductPath({

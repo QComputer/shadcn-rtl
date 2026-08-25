@@ -34,6 +34,65 @@ export function buildShopPublicPath(input: {
   return `/${locale}/shop/${input.shopSlug}${subPath === "/" ? "" : subPath}`;
 }
 
+export function buildShopProductsPath(input: {
+  locale: string;
+  shopSlug: string;
+  isCustomDomain?: boolean;
+  useCustomDomainRoot?: boolean;
+}) {
+  if (input.isCustomDomain && !input.useCustomDomainRoot) {
+    return buildShopPublicPath({
+      locale: input.locale,
+      shopSlug: input.shopSlug,
+      subPath: "/shop",
+      isCustomDomain: true,
+    });
+  }
+
+  return buildShopPublicPath({
+    locale: input.locale,
+    shopSlug: input.shopSlug,
+    isCustomDomain: input.isCustomDomain,
+  });
+}
+
+export function buildShopCheckoutPath(input: {
+  locale: string;
+  shopSlug: string;
+  isCustomDomain?: boolean;
+}) {
+  return buildShopPublicPath({
+    locale: input.locale,
+    shopSlug: input.shopSlug,
+    subPath: "/checkout",
+    isCustomDomain: input.isCustomDomain,
+  });
+}
+
+export function buildShopOrderPath(input: {
+  locale: string;
+  shopSlug: string;
+  orderNumber: string;
+  isCustomDomain?: boolean;
+}) {
+  return buildShopPublicPath({
+    locale: input.locale,
+    shopSlug: input.shopSlug,
+    subPath: `/order/${input.orderNumber}`,
+    isCustomDomain: input.isCustomDomain,
+  });
+}
+
+export function isShopCustomDomainPathname(input: {
+  pathname: string;
+  locale: string;
+  shopSlug: string;
+}) {
+  const locale = normalizeLocale(input.locale);
+  const platformRoot = `/${locale}/shop/${input.shopSlug}`;
+  return !(input.pathname === platformRoot || input.pathname.startsWith(`${platformRoot}/`));
+}
+
 export function buildShopCategoryPath(input: {
   locale: string;
   shopSlug: string;

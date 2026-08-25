@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import type { AddToCartInput, UpdateCartItemInput } from "@/lib/validators";
 import { Decimal } from "@prisma/client/runtime/library";
+import { activePublicBusinessCapabilities } from "@/lib/organization-public-home";
 
 const cartInclude = {
   items: {
@@ -194,20 +195,28 @@ export class CartService {
           isActive: true,
           organization: {
             isActive: true,
-            type: "SHOP",
           },
         },
       },
       include: {
         product: {
           include: {
-            organization: true,
+            organization: {
+              select: {
+                slug: true,
+                capabilities: { select: { key: true, status: true } },
+              },
+            },
           },
         },
       },
     });
 
     if (!variant) {
+      throw new Error("Product variant not found");
+    }
+
+    if (!activePublicBusinessCapabilities(variant.product.organization.capabilities).includes("SHOP")) {
       throw new Error("Product variant not found");
     }
 
@@ -459,14 +468,27 @@ export class CartService {
               organization: {
                 slug: organizationSlug,
                 isActive: true,
-                type: "SHOP",
               },
             },
           },
-          include: { product: true },
+          include: {
+            product: {
+              include: {
+                organization: {
+                  select: {
+                    capabilities: { select: { key: true, status: true } },
+                  },
+                },
+              },
+            },
+          },
         });
 
         if (!variant) {
+          continue;
+        }
+
+        if (!activePublicBusinessCapabilities(variant.product.organization.capabilities).includes("SHOP")) {
           continue;
         }
 

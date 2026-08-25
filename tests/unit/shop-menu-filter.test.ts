@@ -6,7 +6,16 @@ import {
   type ShopMenuCategory,
   type ShopMenuProduct,
 } from "../../lib/shop-menu-filter";
-import { buildShopCategoryPath, buildShopProductPath, buildShopPublicPath, decodePublicRouteSegment } from "../../lib/shop-public-paths";
+import {
+  buildShopCategoryPath,
+  buildShopCheckoutPath,
+  buildShopOrderPath,
+  buildShopProductPath,
+  buildShopProductsPath,
+  buildShopPublicPath,
+  decodePublicRouteSegment,
+  isShopCustomDomainPathname,
+} from "../../lib/shop-public-paths";
 import { getDictionary, getDictValue } from "../../lib/dictionary";
 
 type TestProduct = ShopMenuProduct & {
@@ -173,6 +182,34 @@ describe("shop menu in-page category filtering", () => {
 
   it("custom-domain root remains canonical for all products", () => {
     assert.equal(buildShopPublicPath({ locale: "fa", shopSlug: "chakme", isCustomDomain: true }), "/");
+  });
+
+  it("custom-domain products navigation can target the selected root experience", () => {
+    assert.equal(
+      buildShopProductsPath({ locale: "fa", shopSlug: "sicily", isCustomDomain: true, useCustomDomainRoot: true }),
+      "/",
+    );
+    assert.equal(
+      buildShopProductsPath({ locale: "fa", shopSlug: "sicily", isCustomDomain: true }),
+      "/shop",
+    );
+    assert.equal(
+      buildShopProductsPath({ locale: "en", shopSlug: "sicily", isCustomDomain: true }),
+      "/en/shop",
+    );
+    assert.equal(buildShopProductsPath({ locale: "fa", shopSlug: "sicily" }), "/fa/shop/sicily");
+  });
+
+  it("custom-domain checkout and order paths stay on the tenant path surface", () => {
+    assert.equal(buildShopCheckoutPath({ locale: "fa", shopSlug: "sicily", isCustomDomain: true }), "/checkout");
+    assert.equal(buildShopOrderPath({ locale: "fa", shopSlug: "sicily", orderNumber: "ORD-1", isCustomDomain: true }), "/order/ORD-1");
+    assert.equal(buildShopCheckoutPath({ locale: "fa", shopSlug: "sicily" }), "/fa/shop/sicily/checkout");
+  });
+
+  it("distinguishes platform-shaped shop URLs from custom-domain shop URLs", () => {
+    assert.equal(isShopCustomDomainPathname({ pathname: "/product/p1", locale: "fa", shopSlug: "sicily" }), true);
+    assert.equal(isShopCustomDomainPathname({ pathname: "/shop", locale: "fa", shopSlug: "sicily" }), true);
+    assert.equal(isShopCustomDomainPathname({ pathname: "/fa/shop/sicily/product/p1", locale: "fa", shopSlug: "sicily" }), false);
   });
 
   it("encoded Persian legacy category slugs still decode", () => {

@@ -63,6 +63,7 @@ export type ClientOrganizationSettings = {
   organizationId?: string;
   theme?: string | null;
   locale?: string | null;
+  settings?: Record<string, unknown> | null;
   defaultPreparationMinutes?: number;
   [key: string]: unknown;
 };

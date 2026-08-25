@@ -8,6 +8,15 @@ export type ResolvedCustomDomain = {
   organizationId: string;
   organizationType: "SHOP" | "APPOINTMENT";
   capabilities: Array<"SHOP" | "APPOINTMENT">;
+  publicHome?: {
+    kind: "business";
+    capability: "SHOP" | "APPOINTMENT";
+    publicSurface: "shop" | "appointment";
+    publicEntryPath: "/shop" | "/services";
+  } | {
+    kind: "generic";
+    reason: "NO_PUBLIC_CAPABILITY" | "MULTIPLE_WITHOUT_VALID_DEFAULT";
+  };
 };
 
 const DEFAULT_PLATFORM_HOSTS = [

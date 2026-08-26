@@ -36,7 +36,8 @@ describe("Cafe Leo catalog importer on disposable local database", () => {
     const phone = `0914${suffix.slice(0, 7)}`;
     const fixture = cloneFixture();
     const firstSourceId = fixture.categories[0]!.products[0]!.sourceId;
-    const firstPrice = fixture.categories[0]!.products[0]!.priceValue;
+    const firstSourcePrice = fixture.categories[0]!.products[0]!.sourceDisplayValue;
+    const firstStoredPrice = fixture.categories[0]!.products[0]!.storedTomanValue;
     const createdProgressIds = new Set<string>();
 
     try {
@@ -98,16 +99,17 @@ describe("Cafe Leo catalog importer on disposable local database", () => {
       assert.deepEqual(secondRun.counts, firstRun.counts);
 
       const changedFixture = cloneFixture();
-      changedFixture.categories[0]!.products[0]!.priceValue = firstPrice + 7;
-      changedFixture.categories[0]!.products[0]!.rawPrice = `${firstPrice + 7} تومان`;
+      changedFixture.categories[0]!.products[0]!.sourceDisplayValue = firstSourcePrice + 7;
+      changedFixture.categories[0]!.products[0]!.storedTomanValue = (firstSourcePrice + 7) * 1000;
+      changedFixture.categories[0]!.products[0]!.rawPrice = `${firstSourcePrice + 7} تومان`;
       changedFixture.categories[0]!.products[0]!.imageUrl = changedFixture.categories[0]!.products[1]!.imageUrl;
       await importCafeLeoCatalog(prisma, { fixture: changedFixture, organizationSlug: leoSlug });
       const updatedProduct = await prisma.product.findFirstOrThrow({
         where: { organizationSlug: leoSlug, sku: `CAFELEO-${firstSourceId}` },
         include: { variants: true },
       });
-      assert.equal(updatedProduct.basePrice.toString(), String(firstPrice + 7));
-      assert.equal(updatedProduct.variants[0]?.price?.toString(), String(firstPrice + 7));
+      assert.equal(updatedProduct.basePrice.toString(), String((firstSourcePrice + 7) * 1000));
+      assert.equal(updatedProduct.variants[0]?.price?.toString(), String((firstSourcePrice + 7) * 1000));
       assert.equal(updatedProduct.image, changedFixture.categories[0]!.products[1]!.imageUrl);
 
       const removedFixture = cloneFixture();
@@ -149,7 +151,7 @@ describe("Cafe Leo catalog importer on disposable local database", () => {
         },
       });
       const cart = await cartService.getCart(leoSlug, undefined, sessionId);
-      assert.equal(cart?.subtotal, firstPrice * 2);
+      assert.equal(cart?.subtotal, firstStoredPrice * 2);
 
       await orderService
         .createForGuest({
@@ -170,9 +172,9 @@ describe("Cafe Leo catalog importer on disposable local database", () => {
       ]) {
         if (progressId) createdProgressIds.add(progressId);
       }
-      assert.equal(order.items[0]?.price.toString(), String(firstPrice));
-      assert.equal(order.subtotal.toString(), String(firstPrice * 2));
-      assert.equal(order.total.toString(), String(firstPrice * 2));
+      assert.equal(order.items[0]?.price.toString(), String(firstStoredPrice));
+      assert.equal(order.subtotal.toString(), String(firstStoredPrice * 2));
+      assert.equal(order.total.toString(), String(firstStoredPrice * 2));
     } finally {
       const orders = await prisma.order.findMany({
         where: { organizationSlug: leoSlug },

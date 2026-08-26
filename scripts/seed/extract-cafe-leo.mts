@@ -65,6 +65,10 @@ function parsePrice(rawPrice: string) {
   return value;
 }
 
+function toStoredTomanValue(sourceDisplayValue: number) {
+  return sourceDisplayValue * 1000;
+}
+
 function absolutize(value: string | null) {
   if (!value) return null;
   return new URL(value, SOURCE_URL).href;
@@ -120,6 +124,7 @@ function parseCategories(html: string): CafeLeoCategory[] {
         .map((tag) => tag.trim())
         .filter(Boolean);
       const rawPrice = stripTags(itemHtml.match(/<span class="cafeleo-product_price">([\s\S]*?)<\/span>/)?.[1] ?? "");
+      const sourceDisplayValue = parsePrice(rawPrice);
       const imageCandidates = extractSrcSetCandidates(itemHtml);
       const sourceHref = href ?? `#${sourceId}-${productOrder}`;
       const product: CafeLeoProduct = {
@@ -128,7 +133,8 @@ function parseCategories(html: string): CafeLeoCategory[] {
         name: productName,
         description: description || null,
         rawPrice,
-        priceValue: parsePrice(rawPrice),
+        sourceDisplayValue,
+        storedTomanValue: toStoredTomanValue(sourceDisplayValue),
         currencyLabel: "تومان",
         imageUrl: imageCandidates.find((candidate) => candidate.includes("-520x.")) ?? imageCandidates[0] ?? null,
         imageCandidates,
@@ -208,13 +214,14 @@ async function main() {
     },
     business: parseBusiness(html),
     pricePolicy: {
-      sourceRepresentation: "Visible product cards render numeric Persian strings followed by تومان, for example " + values.join("; "),
-      interpretation: "literal-displayed-toman",
-      bazarbaazStoredValue: "source numeric value without conversion",
+      sourceRepresentation: "Visible product cards render shorthand numeric Persian strings followed by تومان, for example " + values.join("; "),
+      interpretation: "displayed-number-means-thousand-toman",
+      conversion: "multiply-source-display-value-by-1000",
+      bazarbaazStoredValue: "storedTomanValue",
       evidence: [
         "Every parsed product price is rendered inside .cafeleo-product_price with تومان.",
-        "The source HTML contains no ریال or هزار marker.",
-        "No hidden raw-price API or embedded JSON numeric unit was detected in network inspection.",
+        "The visible menu range is 84 تا 390; literal toman would make modern coffee-shop prices economically implausible, while 84,000 تا 390,000 toman is internally plausible.",
+        "No hidden raw-price API or embedded JSON numeric unit was detected in network inspection; the fixture preserves both sourceDisplayValue and storedTomanValue.",
       ],
       guessed: false,
     },

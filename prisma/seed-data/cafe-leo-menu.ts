@@ -87,8 +87,11 @@ function validateFixture(fixture: CafeLeoExtractionFixture) {
       }
       productIds.add(product.sourceId);
       if (!product.name.trim()) throw new Error(`Cafe Leo product ${product.sourceId} is missing a name`);
-      if (!Number.isInteger(product.priceValue) || product.priceValue <= 0) {
-        throw new Error(`Cafe Leo product ${product.sourceId} has invalid priceValue`);
+      if (!Number.isInteger(product.sourceDisplayValue) || product.sourceDisplayValue <= 0) {
+        throw new Error(`Cafe Leo product ${product.sourceId} has invalid sourceDisplayValue`);
+      }
+      if (!Number.isInteger(product.storedTomanValue) || product.storedTomanValue !== product.sourceDisplayValue * 1000) {
+        throw new Error(`Cafe Leo product ${product.sourceId} has invalid storedTomanValue`);
       }
       if (product.imageUrl) normalizeCafeLeoSourceUrl(product.imageUrl);
       for (const candidate of product.imageCandidates) normalizeCafeLeoSourceUrl(candidate);
@@ -292,7 +295,7 @@ export async function importCafeLeoCatalog(
         name: product.name,
         slug: productSlug(product),
         description: product.description,
-        basePrice: product.priceValue,
+        basePrice: product.storedTomanValue,
         image: imageUrl,
         isActive: true,
         sortOrder: product.order,
@@ -326,7 +329,7 @@ export async function importCafeLeoCatalog(
           productId: productRecord.id,
           name: null,
           image: imageUrl,
-          price: product.priceValue,
+          price: product.storedTomanValue,
           inventory: 0,
           allowBackOrder: true,
           deletedAt: null,
@@ -336,7 +339,7 @@ export async function importCafeLeoCatalog(
           sku: variantSku,
           name: null,
           image: imageUrl,
-          price: product.priceValue,
+          price: product.storedTomanValue,
           inventory: 0,
           allowBackOrder: true,
         },

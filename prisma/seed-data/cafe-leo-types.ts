@@ -17,7 +17,8 @@ export interface CafeLeoProduct {
   name: string;
   description: string | null;
   rawPrice: string;
-  priceValue: number;
+  sourceDisplayValue: number;
+  storedTomanValue: number;
   currencyLabel: "تومان";
   imageUrl: string | null;
   imageCandidates: string[];
@@ -51,8 +52,9 @@ export interface CafeLeoExtractionFixture {
   business: CafeLeoBusinessInfo;
   pricePolicy: {
     sourceRepresentation: string;
-    interpretation: "literal-displayed-toman";
-    bazarbaazStoredValue: "source numeric value without conversion";
+    interpretation: "displayed-number-means-thousand-toman";
+    conversion: "multiply-source-display-value-by-1000";
+    bazarbaazStoredValue: "storedTomanValue";
     evidence: string[];
     guessed: false;
   };

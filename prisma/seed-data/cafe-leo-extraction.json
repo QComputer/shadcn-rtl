@@ -1,6 +1,6 @@
 {
   "fixtureName": "cafe-leo-real-menu",
-  "frozenAt": "2026-08-26T08:43:34.733Z",
+  "frozenAt": "2026-08-26T10:36:21.212Z",
   "source": {
     "url": "https://iran.cafeleo.vip/",
     "type": "next-static-html",
@@ -37,13 +37,14 @@
     }
   },
   "pricePolicy": {
-    "sourceRepresentation": "Visible product cards render numeric Persian strings followed by تومان, for example اسپرسو ۱۰۰٪ روبوستا (تک)=۱۱۵ تومان; اسپرسو ۱۰۰٪ روبوستا (دوبل)=۱۳۰ تومان; اسپرسو ۷۰٪ ربوستا ۳۰٪ عربیکا (تک)=۱۲۵ تومان; اسپرسو ۷۰٪ ربوستا ۳۰٪ عربیکا (دوبل)=۱۴۰ تومان; اسپرسو ۱۰۰٪ عربیکا (تک)=۱۲۹ تومان",
-    "interpretation": "literal-displayed-toman",
-    "bazarbaazStoredValue": "source numeric value without conversion",
+    "sourceRepresentation": "Visible product cards render shorthand numeric Persian strings followed by تومان, for example اسپرسو ۱۰۰٪ روبوستا (تک)=۱۱۵ تومان; اسپرسو ۱۰۰٪ روبوستا (دوبل)=۱۳۰ تومان; اسپرسو ۷۰٪ ربوستا ۳۰٪ عربیکا (تک)=۱۲۵ تومان; اسپرسو ۷۰٪ ربوستا ۳۰٪ عربیکا (دوبل)=۱۴۰ تومان; اسپرسو ۱۰۰٪ عربیکا (تک)=۱۲۹ تومان",
+    "interpretation": "displayed-number-means-thousand-toman",
+    "conversion": "multiply-source-display-value-by-1000",
+    "bazarbaazStoredValue": "storedTomanValue",
     "evidence": [
       "Every parsed product price is rendered inside .cafeleo-product_price with تومان.",
-      "The source HTML contains no ریال or هزار marker.",
-      "No hidden raw-price API or embedded JSON numeric unit was detected in network inspection."
+      "The visible menu range is 84 تا 390; literal toman would make modern coffee-shop prices economically implausible, while 84,000 تا 390,000 toman is internally plausible.",
+      "No hidden raw-price API or embedded JSON numeric unit was detected in network inspection; the fixture preserves both sourceDisplayValue and storedTomanValue."
     ],
     "guessed": false
   },
@@ -60,7 +61,8 @@
           "name": "اسپرسو ۱۰۰٪ روبوستا (تک)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۱۵ تومان",
-          "priceValue": 115,
+          "sourceDisplayValue": 115,
+          "storedTomanValue": 115000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
           "imageCandidates": [
@@ -79,7 +81,8 @@
           "name": "اسپرسو ۱۰۰٪ روبوستا (دوبل)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۳۰ تومان",
-          "priceValue": 130,
+          "sourceDisplayValue": 130,
+          "storedTomanValue": 130000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
           "imageCandidates": [
@@ -98,7 +101,8 @@
           "name": "اسپرسو ۷۰٪ ربوستا ۳۰٪ عربیکا (تک)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۲۵ تومان",
-          "priceValue": 125,
+          "sourceDisplayValue": 125,
+          "storedTomanValue": 125000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
           "imageCandidates": [
@@ -117,7 +121,8 @@
           "name": "اسپرسو ۷۰٪ ربوستا ۳۰٪ عربیکا (دوبل)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۴۰ تومان",
-          "priceValue": 140,
+          "sourceDisplayValue": 140,
+          "storedTomanValue": 140000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
           "imageCandidates": [
@@ -136,7 +141,8 @@
           "name": "اسپرسو ۱۰۰٪ عربیکا (تک)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۲۹ تومان",
-          "priceValue": 129,
+          "sourceDisplayValue": 129,
+          "storedTomanValue": 129000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
           "imageCandidates": [
@@ -155,7 +161,8 @@
           "name": "اسپرسو ۱۰۰٪ عربیکا (دوبل)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۴۲ تومان",
-          "priceValue": 142,
+          "sourceDisplayValue": 142,
+          "storedTomanValue": 142000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
           "imageCandidates": [
@@ -174,7 +181,8 @@
           "name": "اسپرسو مولیناری ۷۰٪ عربیکا ۳۰٪ ربوستا (تک)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۳۴ تومان",
-          "priceValue": 134,
+          "sourceDisplayValue": 134,
+          "storedTomanValue": 134000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
           "imageCandidates": [
@@ -193,7 +201,8 @@
           "name": "اسپرسو مولیناری ۷۰٪ عربیکا ۳۰٪ ربوستا (دوبل)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۶۵ تومان",
-          "priceValue": 165,
+          "sourceDisplayValue": 165,
+          "storedTomanValue": 165000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
           "imageCandidates": [
@@ -212,7 +221,8 @@
           "name": "آمریکانو ۱۰۰٪ روبوستا (دوبل)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۳۰ تومان",
-          "priceValue": 130,
+          "sourceDisplayValue": 130,
+          "storedTomanValue": 130000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
           "imageCandidates": [
@@ -231,7 +241,8 @@
           "name": "آمریکانو ۷۰٪ ربوستا ۳۰٪ عربیکا (دوبل)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۴۰ تومان",
-          "priceValue": 140,
+          "sourceDisplayValue": 140,
+          "storedTomanValue": 140000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
           "imageCandidates": [
@@ -250,7 +261,8 @@
           "name": "آمریکانو ۱۰۰٪ عربیکا (دوبل)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۴۲ تومان",
-          "priceValue": 142,
+          "sourceDisplayValue": 142,
+          "storedTomanValue": 142000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
           "imageCandidates": [
@@ -269,7 +281,8 @@
           "name": "آمریکانو مولیناری ۷۰٪ عربیکا ۳۰٪ ربوستا (دوبل)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۶۵ تومان",
-          "priceValue": 165,
+          "sourceDisplayValue": 165,
+          "storedTomanValue": 165000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
           "imageCandidates": [
@@ -288,7 +301,8 @@
           "name": "کورتادو (دوبل)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۰۰ تومان",
-          "priceValue": 200,
+          "sourceDisplayValue": 200,
+          "storedTomanValue": 200000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
           "imageCandidates": [
@@ -307,7 +321,8 @@
           "name": "لاته (دوبل)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۲۰ تومان",
-          "priceValue": 220,
+          "sourceDisplayValue": 220,
+          "storedTomanValue": 220000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
           "imageCandidates": [
@@ -326,7 +341,8 @@
           "name": "لاته طعم‌دار (دوبل) (فندق، کارامل، آدامس، دارچین، وانیل)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۳۵ تومان",
-          "priceValue": 235,
+          "sourceDisplayValue": 235,
+          "storedTomanValue": 235000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
           "imageCandidates": [
@@ -345,7 +361,8 @@
           "name": "موکا (دوبل) (سس شکلات، سیروپ شکلات)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۳۵ تومان",
-          "priceValue": 235,
+          "sourceDisplayValue": 235,
+          "storedTomanValue": 235000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
           "imageCandidates": [
@@ -364,7 +381,8 @@
           "name": "قهوه دمی سینگل اورجین ۱۰۰٪ عربیکا",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۱۵ تومان",
-          "priceValue": 115,
+          "sourceDisplayValue": 115,
+          "storedTomanValue": 115000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
           "imageCandidates": [
@@ -383,7 +401,8 @@
           "name": "ترک (دوبل)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۲۵ تومان",
-          "priceValue": 125,
+          "sourceDisplayValue": 125,
+          "storedTomanValue": 125000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
           "imageCandidates": [
@@ -402,7 +421,8 @@
           "name": "شیر قهوه ترک",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۸۵ تومان",
-          "priceValue": 185,
+          "sourceDisplayValue": 185,
+          "storedTomanValue": 185000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
           "imageCandidates": [
@@ -421,7 +441,8 @@
           "name": "شیر نسکافه",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۹۰ تومان",
-          "priceValue": 190,
+          "sourceDisplayValue": 190,
+          "storedTomanValue": 190000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
           "imageCandidates": [
@@ -440,7 +461,8 @@
           "name": "کاپوچینو",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۹۰ تومان",
-          "priceValue": 190,
+          "sourceDisplayValue": 190,
+          "storedTomanValue": 190000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
           "imageCandidates": [
@@ -459,7 +481,8 @@
           "name": "کاپوچینو ایتالیایی (تک شات)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۰۰ تومان",
-          "priceValue": 200,
+          "sourceDisplayValue": 200,
+          "storedTomanValue": 200000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
           "imageCandidates": [
@@ -478,7 +501,8 @@
           "name": "اسپرسو کن پانا",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۹۰ تومان",
-          "priceValue": 190,
+          "sourceDisplayValue": 190,
+          "storedTomanValue": 190000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
           "imageCandidates": [
@@ -497,7 +521,8 @@
           "name": "وایت چاکلت کافی",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۲۰ تومان",
-          "priceValue": 220,
+          "sourceDisplayValue": 220,
+          "storedTomanValue": 220000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
           "imageCandidates": [
@@ -516,7 +541,8 @@
           "name": "کافی اسنیکرز",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۲۰ تومان",
-          "priceValue": 220,
+          "sourceDisplayValue": 220,
+          "storedTomanValue": 220000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
           "imageCandidates": [
@@ -535,7 +561,8 @@
           "name": "نوتلا کافی",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۲۰ تومان",
-          "priceValue": 220,
+          "sourceDisplayValue": 220,
+          "storedTomanValue": 220000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
           "imageCandidates": [
@@ -554,7 +581,8 @@
           "name": "لئو کافی مخصوص",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۲۰ تومان",
-          "priceValue": 220,
+          "sourceDisplayValue": 220,
+          "storedTomanValue": 220000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
           "imageCandidates": [
@@ -581,7 +609,8 @@
           "name": "آیس لاته",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۲۰ تومان",
-          "priceValue": 220,
+          "sourceDisplayValue": 220,
+          "storedTomanValue": 220000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-latte-520x.webp",
           "imageCandidates": [
@@ -600,7 +629,8 @@
           "name": "آیس لاته طعم‌دار (فندق، کارامل، آدامس، دارچین، وانیل)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۳۵ تومان",
-          "priceValue": 235,
+          "sourceDisplayValue": 235,
+          "storedTomanValue": 235000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-latte-520x.webp",
           "imageCandidates": [
@@ -619,7 +649,8 @@
           "name": "آیس آمریکانو",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۴۰ تومان",
-          "priceValue": 140,
+          "sourceDisplayValue": 140,
+          "storedTomanValue": 140000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
           "imageCandidates": [
@@ -638,7 +669,8 @@
           "name": "آیس کاپوچینو",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۹۰ تومان",
-          "priceValue": 190,
+          "sourceDisplayValue": 190,
+          "storedTomanValue": 190000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
           "imageCandidates": [
@@ -657,7 +689,8 @@
           "name": "آیس موکا",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۳۵ تومان",
-          "priceValue": 235,
+          "sourceDisplayValue": 235,
+          "storedTomanValue": 235000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
           "imageCandidates": [
@@ -676,7 +709,8 @@
           "name": "آیس کافی لیموناد",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۷۰ تومان",
-          "priceValue": 270,
+          "sourceDisplayValue": 270,
+          "storedTomanValue": 270000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
           "imageCandidates": [
@@ -695,7 +729,8 @@
           "name": "تونیک اسپرسو پرتقالی",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۷۰ تومان",
-          "priceValue": 270,
+          "sourceDisplayValue": 270,
+          "storedTomanValue": 270000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-orange-tonic-520x.webp",
           "imageCandidates": [
@@ -714,7 +749,8 @@
           "name": "آفوگاتو",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۲۰ تومان",
-          "priceValue": 220,
+          "sourceDisplayValue": 220,
+          "storedTomanValue": 220000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
           "imageCandidates": [
@@ -733,7 +769,8 @@
           "name": "کارامل فراپاچینو",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۴۵ تومان",
-          "priceValue": 245,
+          "sourceDisplayValue": 245,
+          "storedTomanValue": 245000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
           "imageCandidates": [
@@ -752,7 +789,8 @@
           "name": "کلد برو (قهوه سرد دم)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۱۰ تومان",
-          "priceValue": 110,
+          "sourceDisplayValue": 110,
+          "storedTomanValue": 110000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
           "imageCandidates": [
@@ -779,7 +817,8 @@
           "name": "هات چاکلت",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۲۰ تومان",
-          "priceValue": 220,
+          "sourceDisplayValue": 220,
+          "storedTomanValue": 220000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
           "imageCandidates": [
@@ -798,7 +837,8 @@
           "name": "هات چاکلت طعم‌دار (فندق، زمینی، فلفلی)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۳۰ تومان",
-          "priceValue": 230,
+          "sourceDisplayValue": 230,
+          "storedTomanValue": 230000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
           "imageCandidates": [
@@ -817,7 +857,8 @@
           "name": "وایت چاکلت",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۹۰ تومان",
-          "priceValue": 190,
+          "sourceDisplayValue": 190,
+          "storedTomanValue": 190000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
           "imageCandidates": [
@@ -836,7 +877,8 @@
           "name": "شیر کاکائو",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۹۰ تومان",
-          "priceValue": 190,
+          "sourceDisplayValue": 190,
+          "storedTomanValue": 190000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
           "imageCandidates": [
@@ -855,7 +897,8 @@
           "name": "ماسالا",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۹۰ تومان",
-          "priceValue": 190,
+          "sourceDisplayValue": 190,
+          "storedTomanValue": 190000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
           "imageCandidates": [
@@ -874,7 +917,8 @@
           "name": "ماسالا با فندق",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۰۵ تومان",
-          "priceValue": 205,
+          "sourceDisplayValue": 205,
+          "storedTomanValue": 205000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
           "imageCandidates": [
@@ -893,7 +937,8 @@
           "name": "ثعلب (چاشنی دارچین، پودر نارگیل)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۹۰ تومان",
-          "priceValue": 190,
+          "sourceDisplayValue": 190,
+          "storedTomanValue": 190000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
           "imageCandidates": [
@@ -912,7 +957,8 @@
           "name": "چای کرک",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۹۰ تومان",
-          "priceValue": 190,
+          "sourceDisplayValue": 190,
+          "storedTomanValue": 190000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
           "imageCandidates": [
@@ -931,7 +977,8 @@
           "name": "هات لوتوس",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۲۰ تومان",
-          "priceValue": 220,
+          "sourceDisplayValue": 220,
+          "storedTomanValue": 220000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
           "imageCandidates": [
@@ -950,7 +997,8 @@
           "name": "هات نوتلا",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۲۰ تومان",
-          "priceValue": 220,
+          "sourceDisplayValue": 220,
+          "storedTomanValue": 220000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
           "imageCandidates": [
@@ -969,7 +1017,8 @@
           "name": "شیر عسل",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۹۰ تومان",
-          "priceValue": 190,
+          "sourceDisplayValue": 190,
+          "storedTomanValue": 190000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
           "imageCandidates": [
@@ -988,7 +1037,8 @@
           "name": "ماچا",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۷۰ تومان",
-          "priceValue": 270,
+          "sourceDisplayValue": 270,
+          "storedTomanValue": 270000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
           "imageCandidates": [
@@ -1015,7 +1065,8 @@
           "name": "عصاره + آبلیمو و عسل (تک)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۱۵ تومان",
-          "priceValue": 115,
+          "sourceDisplayValue": 115,
+          "storedTomanValue": 115000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-520x.webp",
           "imageCandidates": [
@@ -1034,7 +1085,8 @@
           "name": "عصاره + آبلیمو و عسل (دوبل)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۳۷ تومان",
-          "priceValue": 137,
+          "sourceDisplayValue": 137,
+          "storedTomanValue": 137000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-520x.webp",
           "imageCandidates": [
@@ -1053,7 +1105,8 @@
           "name": "عصاره خالص",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۳۰ تومان",
-          "priceValue": 130,
+          "sourceDisplayValue": 130,
+          "storedTomanValue": 130000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
           "imageCandidates": [
@@ -1072,7 +1125,8 @@
           "name": "عصاره خالص (دوبل)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۵۵ تومان",
-          "priceValue": 155,
+          "sourceDisplayValue": 155,
+          "storedTomanValue": 155000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
           "imageCandidates": [
@@ -1091,7 +1145,8 @@
           "name": "لیموناد زنجبیل",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۴۰ تومان",
-          "priceValue": 240,
+          "sourceDisplayValue": 240,
+          "storedTomanValue": 240000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-520x.webp",
           "imageCandidates": [
@@ -1118,7 +1173,8 @@
           "name": "لیموناد ساده",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۴۰ تومان",
-          "priceValue": 240,
+          "sourceDisplayValue": 240,
+          "storedTomanValue": 240000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-520x.webp",
           "imageCandidates": [
@@ -1137,7 +1193,8 @@
           "name": "لیموناد آلبالو",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۴۰ تومان",
-          "priceValue": 240,
+          "sourceDisplayValue": 240,
+          "storedTomanValue": 240000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-520x.webp",
           "imageCandidates": [
@@ -1156,7 +1213,8 @@
           "name": "لیموناد آناناس",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۴۰ تومان",
-          "priceValue": 240,
+          "sourceDisplayValue": 240,
+          "storedTomanValue": 240000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-520x.webp",
           "imageCandidates": [
@@ -1175,7 +1233,8 @@
           "name": "لیموناد بلوبری",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۴۰ تومان",
-          "priceValue": 240,
+          "sourceDisplayValue": 240,
+          "storedTomanValue": 240000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-520x.webp",
           "imageCandidates": [
@@ -1194,7 +1253,8 @@
           "name": "لیموناد پرتقال",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۴۰ تومان",
-          "priceValue": 240,
+          "sourceDisplayValue": 240,
+          "storedTomanValue": 240000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-520x.webp",
           "imageCandidates": [
@@ -1213,7 +1273,8 @@
           "name": "لیموناد توت فرنگی",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۴۰ تومان",
-          "priceValue": 240,
+          "sourceDisplayValue": 240,
+          "storedTomanValue": 240000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-520x.webp",
           "imageCandidates": [
@@ -1232,7 +1293,8 @@
           "name": "لیموناد سیب",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۴۰ تومان",
-          "priceValue": 240,
+          "sourceDisplayValue": 240,
+          "storedTomanValue": 240000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-520x.webp",
           "imageCandidates": [
@@ -1251,7 +1313,8 @@
           "name": "لیموناد آدامسی",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۴۰ تومان",
-          "priceValue": 240,
+          "sourceDisplayValue": 240,
+          "storedTomanValue": 240000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
           "imageCandidates": [
@@ -1270,7 +1333,8 @@
           "name": "موهیتو",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۵۵ تومان",
-          "priceValue": 255,
+          "sourceDisplayValue": 255,
+          "storedTomanValue": 255000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-520x.webp",
           "imageCandidates": [
@@ -1289,7 +1353,8 @@
           "name": "آب میوه‌های فصل (هندوانه، طالبی، پرتقال)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۵۵ تومان",
-          "priceValue": 255,
+          "sourceDisplayValue": 255,
+          "storedTomanValue": 255000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-520x.webp",
           "imageCandidates": [
@@ -1308,7 +1373,8 @@
           "name": "هندوانه + نعنا",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۷۰ تومان",
-          "priceValue": 270,
+          "sourceDisplayValue": 270,
+          "storedTomanValue": 270000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-520x.webp",
           "imageCandidates": [
@@ -1327,7 +1393,8 @@
           "name": "پیناکولادا",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۴۰ تومان",
-          "priceValue": 240,
+          "sourceDisplayValue": 240,
+          "storedTomanValue": 240000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
           "imageCandidates": [
@@ -1346,7 +1413,8 @@
           "name": "آیس ماچا",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۷۰ تومان",
-          "priceValue": 270,
+          "sourceDisplayValue": 270,
+          "storedTomanValue": 270000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
           "imageCandidates": [
@@ -1365,7 +1433,8 @@
           "name": "آیس اسپیرولینا",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۷۰ تومان",
-          "priceValue": 270,
+          "sourceDisplayValue": 270,
+          "storedTomanValue": 270000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
           "imageCandidates": [
@@ -1392,7 +1461,8 @@
           "name": "اسپرسو سینگل (۱۰۰٪ روبوستا)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۰۰ تومان",
-          "priceValue": 100,
+          "sourceDisplayValue": 100,
+          "storedTomanValue": 100000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
           "imageCandidates": [
@@ -1411,7 +1481,8 @@
           "name": "اسپرسو دوبل (۱۰۰٪ روبوستا)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۱۰ تومان",
-          "priceValue": 110,
+          "sourceDisplayValue": 110,
+          "storedTomanValue": 110000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
           "imageCandidates": [
@@ -1438,7 +1509,8 @@
           "name": "بابل‌تی بلوبری",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۸۵ تومان",
-          "priceValue": 285,
+          "sourceDisplayValue": 285,
+          "storedTomanValue": 285000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-520x.webp",
           "imageCandidates": [
@@ -1457,7 +1529,8 @@
           "name": "بابل‌تی توت فرنگی",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۸۵ تومان",
-          "priceValue": 285,
+          "sourceDisplayValue": 285,
+          "storedTomanValue": 285000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-520x.webp",
           "imageCandidates": [
@@ -1476,7 +1549,8 @@
           "name": "بابل‌تی انبه",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۸۵ تومان",
-          "priceValue": 285,
+          "sourceDisplayValue": 285,
+          "storedTomanValue": 285000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-520x.webp",
           "imageCandidates": [
@@ -1495,7 +1569,8 @@
           "name": "بابل‌تی کارامل",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۸۵ تومان",
-          "priceValue": 285,
+          "sourceDisplayValue": 285,
+          "storedTomanValue": 285000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-520x.webp",
           "imageCandidates": [
@@ -1514,7 +1589,8 @@
           "name": "بابل‌تی شکلات",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۸۵ تومان",
-          "priceValue": 285,
+          "sourceDisplayValue": 285,
+          "storedTomanValue": 285000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-520x.webp",
           "imageCandidates": [
@@ -1533,7 +1609,8 @@
           "name": "بابل‌تی کافی کارامل",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۹۵ تومان",
-          "priceValue": 295,
+          "sourceDisplayValue": 295,
+          "storedTomanValue": 295000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-520x.webp",
           "imageCandidates": [
@@ -1560,7 +1637,8 @@
           "name": "اسموتی انبه",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۷۵ تومان",
-          "priceValue": 375,
+          "sourceDisplayValue": 375,
+          "storedTomanValue": 375000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-520x.webp",
           "imageCandidates": [
@@ -1579,7 +1657,8 @@
           "name": "اسموتی آناناس",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۷۵ تومان",
-          "priceValue": 375,
+          "sourceDisplayValue": 375,
+          "storedTomanValue": 375000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-520x.webp",
           "imageCandidates": [
@@ -1598,7 +1677,8 @@
           "name": "اسموتی توت فرنگی",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۷۵ تومان",
-          "priceValue": 375,
+          "sourceDisplayValue": 375,
+          "storedTomanValue": 375000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
           "imageCandidates": [
@@ -1617,7 +1697,8 @@
           "name": "اسموتی قهوه",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۷۵ تومان",
-          "priceValue": 375,
+          "sourceDisplayValue": 375,
+          "storedTomanValue": 375000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
           "imageCandidates": [
@@ -1636,7 +1717,8 @@
           "name": "اسموتی موز",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۷۵ تومان",
-          "priceValue": 375,
+          "sourceDisplayValue": 375,
+          "storedTomanValue": 375000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-520x.webp",
           "imageCandidates": [
@@ -1663,7 +1745,8 @@
           "name": "چای سیاه",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۸۴ تومان",
-          "priceValue": 84,
+          "sourceDisplayValue": 84,
+          "storedTomanValue": 84000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
           "imageCandidates": [
@@ -1682,7 +1765,8 @@
           "name": "چای سبز",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۹۵ تومان",
-          "priceValue": 95,
+          "sourceDisplayValue": 95,
+          "storedTomanValue": 95000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-green-loose-520x.webp",
           "imageCandidates": [
@@ -1701,7 +1785,8 @@
           "name": "چای ترش",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۹۵ تومان",
-          "priceValue": 95,
+          "sourceDisplayValue": 95,
+          "storedTomanValue": 95000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-hibiscus-520x.webp",
           "imageCandidates": [
@@ -1720,7 +1805,8 @@
           "name": "چای کوهی",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۹۵ تومان",
-          "priceValue": 95,
+          "sourceDisplayValue": 95,
+          "storedTomanValue": 95000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-mountain-520x.webp",
           "imageCandidates": [
@@ -1739,7 +1825,8 @@
           "name": "دمنوش به لیمو",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۹۵ تومان",
-          "priceValue": 95,
+          "sourceDisplayValue": 95,
+          "storedTomanValue": 95000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-lemon-verbena-520x.webp",
           "imageCandidates": [
@@ -1758,7 +1845,8 @@
           "name": "گل گاو زبان",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۹۵ تومان",
-          "priceValue": 95,
+          "sourceDisplayValue": 95,
+          "storedTomanValue": 95000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-mixed-herbs-520x.webp",
           "imageCandidates": [
@@ -1777,7 +1865,8 @@
           "name": "آویشن",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۹۵ تومان",
-          "priceValue": 95,
+          "sourceDisplayValue": 95,
+          "storedTomanValue": 95000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-green-leaves-520x.webp",
           "imageCandidates": [
@@ -1796,7 +1885,8 @@
           "name": "بهارنارنج",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۹۵ تومان",
-          "priceValue": 95,
+          "sourceDisplayValue": 95,
+          "storedTomanValue": 95000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-dried-herbs-520x.webp",
           "imageCandidates": [
@@ -1815,7 +1905,8 @@
           "name": "دمنوش لئو",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۰۵ تومان",
-          "priceValue": 105,
+          "sourceDisplayValue": 105,
+          "storedTomanValue": 105000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
           "imageCandidates": [
@@ -1842,7 +1933,8 @@
           "name": "شکلات نعناع",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۲۵ تومان",
-          "priceValue": 325,
+          "sourceDisplayValue": 325,
+          "storedTomanValue": 325000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-520x.webp",
           "imageCandidates": [
@@ -1861,7 +1953,8 @@
           "name": "اسنیکرز",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۲۵ تومان",
-          "priceValue": 325,
+          "sourceDisplayValue": 325,
+          "storedTomanValue": 325000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
           "imageCandidates": [
@@ -1880,7 +1973,8 @@
           "name": "اورئو",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۲۵ تومان",
-          "priceValue": 325,
+          "sourceDisplayValue": 325,
+          "storedTomanValue": 325000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-520x.webp",
           "imageCandidates": [
@@ -1899,7 +1993,8 @@
           "name": "لوتوس",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۲۵ تومان",
-          "priceValue": 325,
+          "sourceDisplayValue": 325,
+          "storedTomanValue": 325000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
           "imageCandidates": [
@@ -1918,7 +2013,8 @@
           "name": "بادام زمینی",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۲۵ تومان",
-          "priceValue": 325,
+          "sourceDisplayValue": 325,
+          "storedTomanValue": 325000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
           "imageCandidates": [
@@ -1937,7 +2033,8 @@
           "name": "بلوبری",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۲۵ تومان",
-          "priceValue": 325,
+          "sourceDisplayValue": 325,
+          "storedTomanValue": 325000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-520x.webp",
           "imageCandidates": [
@@ -1956,7 +2053,8 @@
           "name": "توت فرنگی",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۱۰ تومان",
-          "priceValue": 310,
+          "sourceDisplayValue": 310,
+          "storedTomanValue": 310000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
           "imageCandidates": [
@@ -1975,7 +2073,8 @@
           "name": "شاتوت",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۱۰ تومان",
-          "priceValue": 310,
+          "sourceDisplayValue": 310,
+          "storedTomanValue": 310000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-520x.webp",
           "imageCandidates": [
@@ -1994,7 +2093,8 @@
           "name": "شکلات",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۱۰ تومان",
-          "priceValue": 310,
+          "sourceDisplayValue": 310,
+          "storedTomanValue": 310000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
           "imageCandidates": [
@@ -2013,7 +2113,8 @@
           "name": "انبه",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۱۰ تومان",
-          "priceValue": 310,
+          "sourceDisplayValue": 310,
+          "storedTomanValue": 310000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-520x.webp",
           "imageCandidates": [
@@ -2032,7 +2133,8 @@
           "name": "کارامل",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۱۰ تومان",
-          "priceValue": 310,
+          "sourceDisplayValue": 310,
+          "storedTomanValue": 310000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-520x.webp",
           "imageCandidates": [
@@ -2051,7 +2153,8 @@
           "name": "وانیل پسته",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۲۵ تومان",
-          "priceValue": 325,
+          "sourceDisplayValue": 325,
+          "storedTomanValue": 325000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-520x.webp",
           "imageCandidates": [
@@ -2070,7 +2173,8 @@
           "name": "کافی مارشمالو",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۲۵ تومان",
-          "priceValue": 325,
+          "sourceDisplayValue": 325,
+          "storedTomanValue": 325000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
           "imageCandidates": [
@@ -2089,7 +2193,8 @@
           "name": "کافئین",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۲۵ تومان",
-          "priceValue": 325,
+          "sourceDisplayValue": 325,
+          "storedTomanValue": 325000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
           "imageCandidates": [
@@ -2108,7 +2213,8 @@
           "name": "کاکائو تلخ",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۲۵ تومان",
-          "priceValue": 325,
+          "sourceDisplayValue": 325,
+          "storedTomanValue": 325000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
           "imageCandidates": [
@@ -2127,7 +2233,8 @@
           "name": "نوتلا",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۲۵ تومان",
-          "priceValue": 325,
+          "sourceDisplayValue": 325,
+          "storedTomanValue": 325000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
           "imageCandidates": [
@@ -2146,7 +2253,8 @@
           "name": "معجون ترش",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۲۵ تومان",
-          "priceValue": 325,
+          "sourceDisplayValue": 325,
+          "storedTomanValue": 325000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-sour-mix-520x.webp",
           "imageCandidates": [
@@ -2165,7 +2273,8 @@
           "name": "نسکافه",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۱۰ تومان",
-          "priceValue": 310,
+          "sourceDisplayValue": 310,
+          "storedTomanValue": 310000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
           "imageCandidates": [
@@ -2184,7 +2293,8 @@
           "name": "وانیل",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۱۰ تومان",
-          "priceValue": 310,
+          "sourceDisplayValue": 310,
+          "storedTomanValue": 310000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-520x.webp",
           "imageCandidates": [
@@ -2203,7 +2313,8 @@
           "name": "موز",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۱۰ تومان",
-          "priceValue": 310,
+          "sourceDisplayValue": 310,
+          "storedTomanValue": 310000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-520x.webp",
           "imageCandidates": [
@@ -2222,7 +2333,8 @@
           "name": "کیت کت",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۲۵ تومان",
-          "priceValue": 325,
+          "sourceDisplayValue": 325,
+          "storedTomanValue": 325000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
           "imageCandidates": [
@@ -2241,7 +2353,8 @@
           "name": "اردو (توت فرنگی به دلخواه شما)",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۵۰ تومان",
-          "priceValue": 350,
+          "sourceDisplayValue": 350,
+          "storedTomanValue": 350000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-520x.webp",
           "imageCandidates": [
@@ -2268,7 +2381,8 @@
           "name": "ترکیب جذاب دوغ باقلوا",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۱۱۵ تومان",
-          "priceValue": 115,
+          "sourceDisplayValue": 115,
+          "storedTomanValue": 115000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-doogh-baklava-520x.webp",
           "imageCandidates": [
@@ -2287,7 +2401,8 @@
           "name": "شیک پروتئین وی",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۳۹۰ تومان",
-          "priceValue": 390,
+          "sourceDisplayValue": 390,
+          "storedTomanValue": 390000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-520x.webp",
           "imageCandidates": [
@@ -2306,7 +2421,8 @@
           "name": "نوشیدنی سرد جذاب",
           "description": "منوی تابستان کافه لئو — شهرکرد",
           "rawPrice": "۲۹۰ تومان",
-          "priceValue": 290,
+          "sourceDisplayValue": 290,
+          "storedTomanValue": 290000,
           "currencyLabel": "تومان",
           "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
           "imageCandidates": [

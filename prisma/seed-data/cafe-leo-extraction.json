@@ -1,0 +1,2343 @@
+{
+  "fixtureName": "cafe-leo-real-menu",
+  "frozenAt": "2026-08-26T08:43:34.733Z",
+  "source": {
+    "url": "https://iran.cafeleo.vip/",
+    "type": "next-static-html",
+    "authoritativeExtractionMethod": "Fetched rendered static HTML and parsed product_group/product_list markup; Playwright network inspection found no menu API/XHR.",
+    "htmlTitle": "کافه لئو | قهوه تخصصی — شهرکرد",
+    "imageSourceOrigin": "https://iran.cafeleo.vip"
+  },
+  "organization": {
+    "slug": "cafe-leo",
+    "domain": "leocafe.ir"
+  },
+  "business": {
+    "name": "کافه لئو",
+    "description": "کافه لئو شهرکرد — قهوه تخصصی و سرو بیرون‌بر. خیابان کاشانی. هرجا زندگی هست، لئو هست.",
+    "logoUrl": "https://iran.cafeleo.vip/media/images/brand/cafeleo-logo.svg",
+    "coverImageUrl": "https://iran.cafeleo.vip/media/images/brand/cafeleo-og-1200x630.jpg?v=2",
+    "address": "شهرکرد، خیابان کاشانی بین کوچه ۵۵ و ۵۷",
+    "phone": "03832241111",
+    "email": "hello@cafeleo.ir",
+    "hours": "Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday 06:00-23:00",
+    "socialLinks": [
+      "https://www.instagram.com/iran.cafeleo/"
+    ],
+    "sourceProvided": {
+      "name": true,
+      "description": true,
+      "logo": true,
+      "coverImage": true,
+      "address": true,
+      "phone": true,
+      "email": true,
+      "hours": true,
+      "socialLinks": true
+    }
+  },
+  "pricePolicy": {
+    "sourceRepresentation": "Visible product cards render numeric Persian strings followed by تومان, for example اسپرسو ۱۰۰٪ روبوستا (تک)=۱۱۵ تومان; اسپرسو ۱۰۰٪ روبوستا (دوبل)=۱۳۰ تومان; اسپرسو ۷۰٪ ربوستا ۳۰٪ عربیکا (تک)=۱۲۵ تومان; اسپرسو ۷۰٪ ربوستا ۳۰٪ عربیکا (دوبل)=۱۴۰ تومان; اسپرسو ۱۰۰٪ عربیکا (تک)=۱۲۹ تومان",
+    "interpretation": "literal-displayed-toman",
+    "bazarbaazStoredValue": "source numeric value without conversion",
+    "evidence": [
+      "Every parsed product price is rendered inside .cafeleo-product_price with تومان.",
+      "The source HTML contains no ریال or هزار marker.",
+      "No hidden raw-price API or embedded JSON numeric unit was detected in network inspection."
+    ],
+    "guessed": false
+  },
+  "categories": [
+    {
+      "sourceId": "hot-coffee",
+      "slug": "hot-coffee",
+      "name": "قهوه گرم",
+      "order": 1,
+      "products": [
+        {
+          "sourceId": "hot-coffee-1",
+          "sourceHref": "#hot-coffee-1",
+          "name": "اسپرسو ۱۰۰٪ روبوستا (تک)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۱۵ تومان",
+          "priceValue": 115,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 1
+        },
+        {
+          "sourceId": "hot-coffee-2",
+          "sourceHref": "#hot-coffee-2",
+          "name": "اسپرسو ۱۰۰٪ روبوستا (دوبل)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۳۰ تومان",
+          "priceValue": 130,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 2
+        },
+        {
+          "sourceId": "hot-coffee-3",
+          "sourceHref": "#hot-coffee-3",
+          "name": "اسپرسو ۷۰٪ ربوستا ۳۰٪ عربیکا (تک)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۲۵ تومان",
+          "priceValue": 125,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 3
+        },
+        {
+          "sourceId": "hot-coffee-4",
+          "sourceHref": "#hot-coffee-4",
+          "name": "اسپرسو ۷۰٪ ربوستا ۳۰٪ عربیکا (دوبل)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۴۰ تومان",
+          "priceValue": 140,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 4
+        },
+        {
+          "sourceId": "hot-coffee-5",
+          "sourceHref": "#hot-coffee-5",
+          "name": "اسپرسو ۱۰۰٪ عربیکا (تک)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۲۹ تومان",
+          "priceValue": 129,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 5
+        },
+        {
+          "sourceId": "hot-coffee-6",
+          "sourceHref": "#hot-coffee-6",
+          "name": "اسپرسو ۱۰۰٪ عربیکا (دوبل)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۴۲ تومان",
+          "priceValue": 142,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 6
+        },
+        {
+          "sourceId": "hot-coffee-7",
+          "sourceHref": "#hot-coffee-7",
+          "name": "اسپرسو مولیناری ۷۰٪ عربیکا ۳۰٪ ربوستا (تک)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۳۴ تومان",
+          "priceValue": 134,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 7
+        },
+        {
+          "sourceId": "hot-coffee-8",
+          "sourceHref": "#hot-coffee-8",
+          "name": "اسپرسو مولیناری ۷۰٪ عربیکا ۳۰٪ ربوستا (دوبل)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۶۵ تومان",
+          "priceValue": 165,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 8
+        },
+        {
+          "sourceId": "hot-coffee-9",
+          "sourceHref": "#hot-coffee-9",
+          "name": "آمریکانو ۱۰۰٪ روبوستا (دوبل)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۳۰ تومان",
+          "priceValue": 130,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 9
+        },
+        {
+          "sourceId": "hot-coffee-10",
+          "sourceHref": "#hot-coffee-10",
+          "name": "آمریکانو ۷۰٪ ربوستا ۳۰٪ عربیکا (دوبل)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۴۰ تومان",
+          "priceValue": 140,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 10
+        },
+        {
+          "sourceId": "hot-coffee-11",
+          "sourceHref": "#hot-coffee-11",
+          "name": "آمریکانو ۱۰۰٪ عربیکا (دوبل)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۴۲ تومان",
+          "priceValue": 142,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 11
+        },
+        {
+          "sourceId": "hot-coffee-12",
+          "sourceHref": "#hot-coffee-12",
+          "name": "آمریکانو مولیناری ۷۰٪ عربیکا ۳۰٪ ربوستا (دوبل)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۶۵ تومان",
+          "priceValue": 165,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 12
+        },
+        {
+          "sourceId": "hot-coffee-13",
+          "sourceHref": "#hot-coffee-13",
+          "name": "کورتادو (دوبل)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۰۰ تومان",
+          "priceValue": 200,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 13
+        },
+        {
+          "sourceId": "hot-coffee-14",
+          "sourceHref": "#hot-coffee-14",
+          "name": "لاته (دوبل)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۲۰ تومان",
+          "priceValue": 220,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 14
+        },
+        {
+          "sourceId": "hot-coffee-15",
+          "sourceHref": "#hot-coffee-15",
+          "name": "لاته طعم‌دار (دوبل) (فندق، کارامل، آدامس، دارچین، وانیل)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۳۵ تومان",
+          "priceValue": 235,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 15
+        },
+        {
+          "sourceId": "hot-coffee-16",
+          "sourceHref": "#hot-coffee-16",
+          "name": "موکا (دوبل) (سس شکلات، سیروپ شکلات)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۳۵ تومان",
+          "priceValue": 235,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 16
+        },
+        {
+          "sourceId": "hot-coffee-17",
+          "sourceHref": "#hot-coffee-17",
+          "name": "قهوه دمی سینگل اورجین ۱۰۰٪ عربیکا",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۱۵ تومان",
+          "priceValue": 115,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 17
+        },
+        {
+          "sourceId": "hot-coffee-18",
+          "sourceHref": "#hot-coffee-18",
+          "name": "ترک (دوبل)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۲۵ تومان",
+          "priceValue": 125,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 18
+        },
+        {
+          "sourceId": "hot-coffee-19",
+          "sourceHref": "#hot-coffee-19",
+          "name": "شیر قهوه ترک",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۸۵ تومان",
+          "priceValue": 185,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 19
+        },
+        {
+          "sourceId": "hot-coffee-20",
+          "sourceHref": "#hot-coffee-20",
+          "name": "شیر نسکافه",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۹۰ تومان",
+          "priceValue": 190,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 20
+        },
+        {
+          "sourceId": "hot-coffee-21",
+          "sourceHref": "#hot-coffee-21",
+          "name": "کاپوچینو",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۹۰ تومان",
+          "priceValue": 190,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-white-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 21
+        },
+        {
+          "sourceId": "hot-coffee-22",
+          "sourceHref": "#hot-coffee-22",
+          "name": "کاپوچینو ایتالیایی (تک شات)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۰۰ تومان",
+          "priceValue": 200,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 22
+        },
+        {
+          "sourceId": "hot-coffee-23",
+          "sourceHref": "#hot-coffee-23",
+          "name": "اسپرسو کن پانا",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۹۰ تومان",
+          "priceValue": 190,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 23
+        },
+        {
+          "sourceId": "hot-coffee-24",
+          "sourceHref": "#hot-coffee-24",
+          "name": "وایت چاکلت کافی",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۲۰ تومان",
+          "priceValue": 220,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 24
+        },
+        {
+          "sourceId": "hot-coffee-25",
+          "sourceHref": "#hot-coffee-25",
+          "name": "کافی اسنیکرز",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۲۰ تومان",
+          "priceValue": 220,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 25
+        },
+        {
+          "sourceId": "hot-coffee-26",
+          "sourceHref": "#hot-coffee-26",
+          "name": "نوتلا کافی",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۲۰ تومان",
+          "priceValue": 220,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 26
+        },
+        {
+          "sourceId": "hot-coffee-27",
+          "sourceHref": "#hot-coffee-27",
+          "name": "لئو کافی مخصوص",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۲۰ تومان",
+          "priceValue": 220,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 27
+        }
+      ]
+    },
+    {
+      "sourceId": "cold-coffee",
+      "slug": "cold-coffee",
+      "name": "قهوه سرد",
+      "order": 2,
+      "products": [
+        {
+          "sourceId": "cold-coffee-1",
+          "sourceHref": "#cold-coffee-1",
+          "name": "آیس لاته",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۲۰ تومان",
+          "priceValue": 220,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-latte-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-latte-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-latte-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-latte-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-latte-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 1
+        },
+        {
+          "sourceId": "cold-coffee-2",
+          "sourceHref": "#cold-coffee-2",
+          "name": "آیس لاته طعم‌دار (فندق، کارامل، آدامس، دارچین، وانیل)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۳۵ تومان",
+          "priceValue": 235,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-latte-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-latte-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-latte-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-latte-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-latte-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 2
+        },
+        {
+          "sourceId": "cold-coffee-3",
+          "sourceHref": "#cold-coffee-3",
+          "name": "آیس آمریکانو",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۴۰ تومان",
+          "priceValue": 140,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 3
+        },
+        {
+          "sourceId": "cold-coffee-4",
+          "sourceHref": "#cold-coffee-4",
+          "name": "آیس کاپوچینو",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۹۰ تومان",
+          "priceValue": 190,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 4
+        },
+        {
+          "sourceId": "cold-coffee-5",
+          "sourceHref": "#cold-coffee-5",
+          "name": "آیس موکا",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۳۵ تومان",
+          "priceValue": 235,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 5
+        },
+        {
+          "sourceId": "cold-coffee-6",
+          "sourceHref": "#cold-coffee-6",
+          "name": "آیس کافی لیموناد",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۷۰ تومان",
+          "priceValue": 270,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 6
+        },
+        {
+          "sourceId": "cold-coffee-7",
+          "sourceHref": "#cold-coffee-7",
+          "name": "تونیک اسپرسو پرتقالی",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۷۰ تومان",
+          "priceValue": 270,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-orange-tonic-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-orange-tonic-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-orange-tonic-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-orange-tonic-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-orange-tonic-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 7
+        },
+        {
+          "sourceId": "cold-coffee-8",
+          "sourceHref": "#cold-coffee-8",
+          "name": "آفوگاتو",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۲۰ تومان",
+          "priceValue": 220,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 8
+        },
+        {
+          "sourceId": "cold-coffee-9",
+          "sourceHref": "#cold-coffee-9",
+          "name": "کارامل فراپاچینو",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۴۵ تومان",
+          "priceValue": 245,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 9
+        },
+        {
+          "sourceId": "cold-coffee-10",
+          "sourceHref": "#cold-coffee-10",
+          "name": "کلد برو (قهوه سرد دم)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۱۰ تومان",
+          "priceValue": 110,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 10
+        }
+      ]
+    },
+    {
+      "sourceId": "hot-drinks",
+      "slug": "hot-drinks",
+      "name": "نوشیدنی گرم",
+      "order": 3,
+      "products": [
+        {
+          "sourceId": "hot-drinks-1",
+          "sourceHref": "#hot-drinks-1",
+          "name": "هات چاکلت",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۲۰ تومان",
+          "priceValue": 220,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 1
+        },
+        {
+          "sourceId": "hot-drinks-2",
+          "sourceHref": "#hot-drinks-2",
+          "name": "هات چاکلت طعم‌دار (فندق، زمینی، فلفلی)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۳۰ تومان",
+          "priceValue": 230,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 2
+        },
+        {
+          "sourceId": "hot-drinks-3",
+          "sourceHref": "#hot-drinks-3",
+          "name": "وایت چاکلت",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۹۰ تومان",
+          "priceValue": 190,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 3
+        },
+        {
+          "sourceId": "hot-drinks-4",
+          "sourceHref": "#hot-drinks-4",
+          "name": "شیر کاکائو",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۹۰ تومان",
+          "priceValue": 190,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 4
+        },
+        {
+          "sourceId": "hot-drinks-5",
+          "sourceHref": "#hot-drinks-5",
+          "name": "ماسالا",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۹۰ تومان",
+          "priceValue": 190,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 5
+        },
+        {
+          "sourceId": "hot-drinks-6",
+          "sourceHref": "#hot-drinks-6",
+          "name": "ماسالا با فندق",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۰۵ تومان",
+          "priceValue": 205,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 6
+        },
+        {
+          "sourceId": "hot-drinks-7",
+          "sourceHref": "#hot-drinks-7",
+          "name": "ثعلب (چاشنی دارچین، پودر نارگیل)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۹۰ تومان",
+          "priceValue": 190,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 7
+        },
+        {
+          "sourceId": "hot-drinks-8",
+          "sourceHref": "#hot-drinks-8",
+          "name": "چای کرک",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۹۰ تومان",
+          "priceValue": 190,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 8
+        },
+        {
+          "sourceId": "hot-drinks-9",
+          "sourceHref": "#hot-drinks-9",
+          "name": "هات لوتوس",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۲۰ تومان",
+          "priceValue": 220,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 9
+        },
+        {
+          "sourceId": "hot-drinks-10",
+          "sourceHref": "#hot-drinks-10",
+          "name": "هات نوتلا",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۲۰ تومان",
+          "priceValue": 220,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 10
+        },
+        {
+          "sourceId": "hot-drinks-11",
+          "sourceHref": "#hot-drinks-11",
+          "name": "شیر عسل",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۹۰ تومان",
+          "priceValue": 190,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 11
+        },
+        {
+          "sourceId": "hot-drinks-12",
+          "sourceHref": "#hot-drinks-12",
+          "name": "ماچا",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۷۰ تومان",
+          "priceValue": 270,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 12
+        }
+      ]
+    },
+    {
+      "sourceId": "ginger-extract",
+      "slug": "ginger-extract",
+      "name": "عصاره زنجبیل",
+      "order": 4,
+      "products": [
+        {
+          "sourceId": "ginger-extract-1",
+          "sourceHref": "#ginger-extract-1",
+          "name": "عصاره + آبلیمو و عسل (تک)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۱۵ تومان",
+          "priceValue": 115,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 1
+        },
+        {
+          "sourceId": "ginger-extract-2",
+          "sourceHref": "#ginger-extract-2",
+          "name": "عصاره + آبلیمو و عسل (دوبل)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۳۷ تومان",
+          "priceValue": 137,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 2
+        },
+        {
+          "sourceId": "ginger-extract-3",
+          "sourceHref": "#ginger-extract-3",
+          "name": "عصاره خالص",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۳۰ تومان",
+          "priceValue": 130,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 3
+        },
+        {
+          "sourceId": "ginger-extract-4",
+          "sourceHref": "#ginger-extract-4",
+          "name": "عصاره خالص (دوبل)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۵۵ تومان",
+          "priceValue": 155,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 4
+        },
+        {
+          "sourceId": "ginger-extract-5",
+          "sourceHref": "#ginger-extract-5",
+          "name": "لیموناد زنجبیل",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۴۰ تومان",
+          "priceValue": 240,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 5
+        }
+      ]
+    },
+    {
+      "sourceId": "cold-drinks",
+      "slug": "cold-drinks",
+      "name": "نوشیدنی سرد",
+      "order": 5,
+      "products": [
+        {
+          "sourceId": "cold-drinks-1",
+          "sourceHref": "#cold-drinks-1",
+          "name": "لیموناد ساده",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۴۰ تومان",
+          "priceValue": 240,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 1
+        },
+        {
+          "sourceId": "cold-drinks-2",
+          "sourceHref": "#cold-drinks-2",
+          "name": "لیموناد آلبالو",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۴۰ تومان",
+          "priceValue": 240,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 2
+        },
+        {
+          "sourceId": "cold-drinks-3",
+          "sourceHref": "#cold-drinks-3",
+          "name": "لیموناد آناناس",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۴۰ تومان",
+          "priceValue": 240,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 3
+        },
+        {
+          "sourceId": "cold-drinks-4",
+          "sourceHref": "#cold-drinks-4",
+          "name": "لیموناد بلوبری",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۴۰ تومان",
+          "priceValue": 240,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 4
+        },
+        {
+          "sourceId": "cold-drinks-5",
+          "sourceHref": "#cold-drinks-5",
+          "name": "لیموناد پرتقال",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۴۰ تومان",
+          "priceValue": 240,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 5
+        },
+        {
+          "sourceId": "cold-drinks-6",
+          "sourceHref": "#cold-drinks-6",
+          "name": "لیموناد توت فرنگی",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۴۰ تومان",
+          "priceValue": 240,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 6
+        },
+        {
+          "sourceId": "cold-drinks-7",
+          "sourceHref": "#cold-drinks-7",
+          "name": "لیموناد سیب",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۴۰ تومان",
+          "priceValue": 240,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 7
+        },
+        {
+          "sourceId": "cold-drinks-8",
+          "sourceHref": "#cold-drinks-8",
+          "name": "لیموناد آدامسی",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۴۰ تومان",
+          "priceValue": 240,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 8
+        },
+        {
+          "sourceId": "cold-drinks-9",
+          "sourceHref": "#cold-drinks-9",
+          "name": "موهیتو",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۵۵ تومان",
+          "priceValue": 255,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-clear-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 9
+        },
+        {
+          "sourceId": "cold-drinks-10",
+          "sourceHref": "#cold-drinks-10",
+          "name": "آب میوه‌های فصل (هندوانه، طالبی، پرتقال)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۵۵ تومان",
+          "priceValue": 255,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 10
+        },
+        {
+          "sourceId": "cold-drinks-11",
+          "sourceHref": "#cold-drinks-11",
+          "name": "هندوانه + نعنا",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۷۰ تومان",
+          "priceValue": 270,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 11
+        },
+        {
+          "sourceId": "cold-drinks-12",
+          "sourceHref": "#cold-drinks-12",
+          "name": "پیناکولادا",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۴۰ تومان",
+          "priceValue": 240,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 12
+        },
+        {
+          "sourceId": "cold-drinks-13",
+          "sourceHref": "#cold-drinks-13",
+          "name": "آیس ماچا",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۷۰ تومان",
+          "priceValue": 270,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 13
+        },
+        {
+          "sourceId": "cold-drinks-14",
+          "sourceHref": "#cold-drinks-14",
+          "name": "آیس اسپیرولینا",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۷۰ تومان",
+          "priceValue": 270,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-teal-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 14
+        }
+      ]
+    },
+    {
+      "sourceId": "economic-coffee",
+      "slug": "economic-coffee",
+      "name": "قهوه اقتصادی",
+      "order": 6,
+      "products": [
+        {
+          "sourceId": "economic-coffee-1",
+          "sourceHref": "#economic-coffee-1",
+          "name": "اسپرسو سینگل (۱۰۰٪ روبوستا)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۰۰ تومان",
+          "priceValue": 100,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 1
+        },
+        {
+          "sourceId": "economic-coffee-2",
+          "sourceHref": "#economic-coffee-2",
+          "name": "اسپرسو دوبل (۱۰۰٪ روبوستا)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۱۰ تومان",
+          "priceValue": 110,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-120-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 2
+        }
+      ]
+    },
+    {
+      "sourceId": "bubble-tea",
+      "slug": "bubble-tea",
+      "name": "بابل‌تی",
+      "order": 7,
+      "products": [
+        {
+          "sourceId": "bubble-tea-1",
+          "sourceHref": "#bubble-tea-1",
+          "name": "بابل‌تی بلوبری",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۸۵ تومان",
+          "priceValue": 285,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 1
+        },
+        {
+          "sourceId": "bubble-tea-2",
+          "sourceHref": "#bubble-tea-2",
+          "name": "بابل‌تی توت فرنگی",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۸۵ تومان",
+          "priceValue": 285,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 2
+        },
+        {
+          "sourceId": "bubble-tea-3",
+          "sourceHref": "#bubble-tea-3",
+          "name": "بابل‌تی انبه",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۸۵ تومان",
+          "priceValue": 285,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 3
+        },
+        {
+          "sourceId": "bubble-tea-4",
+          "sourceHref": "#bubble-tea-4",
+          "name": "بابل‌تی کارامل",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۸۵ تومان",
+          "priceValue": 285,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 4
+        },
+        {
+          "sourceId": "bubble-tea-5",
+          "sourceHref": "#bubble-tea-5",
+          "name": "بابل‌تی شکلات",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۸۵ تومان",
+          "priceValue": 285,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 5
+        },
+        {
+          "sourceId": "bubble-tea-6",
+          "sourceHref": "#bubble-tea-6",
+          "name": "بابل‌تی کافی کارامل",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۹۵ تومان",
+          "priceValue": 295,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-bubble-tea-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 6
+        }
+      ]
+    },
+    {
+      "sourceId": "smoothies",
+      "slug": "smoothies",
+      "name": "اسموتی",
+      "order": 8,
+      "products": [
+        {
+          "sourceId": "smoothies-1",
+          "sourceHref": "#smoothies-1",
+          "name": "اسموتی انبه",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۷۵ تومان",
+          "priceValue": 375,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 1
+        },
+        {
+          "sourceId": "smoothies-2",
+          "sourceHref": "#smoothies-2",
+          "name": "اسموتی آناناس",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۷۵ تومان",
+          "priceValue": 375,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 2
+        },
+        {
+          "sourceId": "smoothies-3",
+          "sourceHref": "#smoothies-3",
+          "name": "اسموتی توت فرنگی",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۷۵ تومان",
+          "priceValue": 375,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 3
+        },
+        {
+          "sourceId": "smoothies-4",
+          "sourceHref": "#smoothies-4",
+          "name": "اسموتی قهوه",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۷۵ تومان",
+          "priceValue": 375,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 4
+        },
+        {
+          "sourceId": "smoothies-5",
+          "sourceHref": "#smoothies-5",
+          "name": "اسموتی موز",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۷۵ تومان",
+          "priceValue": 375,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 5
+        }
+      ]
+    },
+    {
+      "sourceId": "tea",
+      "slug": "tea",
+      "name": "چای و دمنوش",
+      "order": 9,
+      "products": [
+        {
+          "sourceId": "tea-1",
+          "sourceHref": "#tea-1",
+          "name": "چای سیاه",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۸۴ تومان",
+          "priceValue": 84,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 1
+        },
+        {
+          "sourceId": "tea-2",
+          "sourceHref": "#tea-2",
+          "name": "چای سبز",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۹۵ تومان",
+          "priceValue": 95,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-green-loose-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-green-loose-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-green-loose-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-green-loose-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-green-loose-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 2
+        },
+        {
+          "sourceId": "tea-3",
+          "sourceHref": "#tea-3",
+          "name": "چای ترش",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۹۵ تومان",
+          "priceValue": 95,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-hibiscus-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-hibiscus-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-hibiscus-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-hibiscus-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-hibiscus-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 3
+        },
+        {
+          "sourceId": "tea-4",
+          "sourceHref": "#tea-4",
+          "name": "چای کوهی",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۹۵ تومان",
+          "priceValue": 95,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-mountain-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-mountain-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-mountain-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-mountain-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-mountain-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 4
+        },
+        {
+          "sourceId": "tea-5",
+          "sourceHref": "#tea-5",
+          "name": "دمنوش به لیمو",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۹۵ تومان",
+          "priceValue": 95,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-lemon-verbena-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-lemon-verbena-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-lemon-verbena-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-lemon-verbena-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-lemon-verbena-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 5
+        },
+        {
+          "sourceId": "tea-6",
+          "sourceHref": "#tea-6",
+          "name": "گل گاو زبان",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۹۵ تومان",
+          "priceValue": 95,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-mixed-herbs-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-mixed-herbs-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-mixed-herbs-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-mixed-herbs-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-mixed-herbs-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 6
+        },
+        {
+          "sourceId": "tea-7",
+          "sourceHref": "#tea-7",
+          "name": "آویشن",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۹۵ تومان",
+          "priceValue": 95,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-green-leaves-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-green-leaves-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-green-leaves-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-green-leaves-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-green-leaves-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 7
+        },
+        {
+          "sourceId": "tea-8",
+          "sourceHref": "#tea-8",
+          "name": "بهارنارنج",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۹۵ تومان",
+          "priceValue": 95,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-dried-herbs-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-dried-herbs-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-dried-herbs-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-dried-herbs-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-tea-dried-herbs-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 8
+        },
+        {
+          "sourceId": "tea-9",
+          "sourceHref": "#tea-9",
+          "name": "دمنوش لئو",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۰۵ تومان",
+          "priceValue": 105,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-220-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 9
+        }
+      ]
+    },
+    {
+      "sourceId": "milkshakes",
+      "slug": "milkshakes",
+      "name": "میلک شیک",
+      "order": 10,
+      "products": [
+        {
+          "sourceId": "milkshakes-1",
+          "sourceHref": "#milkshakes-1",
+          "name": "شکلات نعناع",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۲۵ تومان",
+          "priceValue": 325,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 1
+        },
+        {
+          "sourceId": "milkshakes-2",
+          "sourceHref": "#milkshakes-2",
+          "name": "اسنیکرز",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۲۵ تومان",
+          "priceValue": 325,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 2
+        },
+        {
+          "sourceId": "milkshakes-3",
+          "sourceHref": "#milkshakes-3",
+          "name": "اورئو",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۲۵ تومان",
+          "priceValue": 325,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 3
+        },
+        {
+          "sourceId": "milkshakes-4",
+          "sourceHref": "#milkshakes-4",
+          "name": "لوتوس",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۲۵ تومان",
+          "priceValue": 325,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 4
+        },
+        {
+          "sourceId": "milkshakes-5",
+          "sourceHref": "#milkshakes-5",
+          "name": "بادام زمینی",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۲۵ تومان",
+          "priceValue": 325,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 5
+        },
+        {
+          "sourceId": "milkshakes-6",
+          "sourceHref": "#milkshakes-6",
+          "name": "بلوبری",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۲۵ تومان",
+          "priceValue": 325,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 6
+        },
+        {
+          "sourceId": "milkshakes-7",
+          "sourceHref": "#milkshakes-7",
+          "name": "توت فرنگی",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۱۰ تومان",
+          "priceValue": 310,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 7
+        },
+        {
+          "sourceId": "milkshakes-8",
+          "sourceHref": "#milkshakes-8",
+          "name": "شاتوت",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۱۰ تومان",
+          "priceValue": 310,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 8
+        },
+        {
+          "sourceId": "milkshakes-9",
+          "sourceHref": "#milkshakes-9",
+          "name": "شکلات",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۱۰ تومان",
+          "priceValue": 310,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 9
+        },
+        {
+          "sourceId": "milkshakes-10",
+          "sourceHref": "#milkshakes-10",
+          "name": "انبه",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۱۰ تومان",
+          "priceValue": 310,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 10
+        },
+        {
+          "sourceId": "milkshakes-11",
+          "sourceHref": "#milkshakes-11",
+          "name": "کارامل",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۱۰ تومان",
+          "priceValue": 310,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-lemonade-cherry-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 11
+        },
+        {
+          "sourceId": "milkshakes-12",
+          "sourceHref": "#milkshakes-12",
+          "name": "وانیل پسته",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۲۵ تومان",
+          "priceValue": 325,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 12
+        },
+        {
+          "sourceId": "milkshakes-13",
+          "sourceHref": "#milkshakes-13",
+          "name": "کافی مارشمالو",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۲۵ تومان",
+          "priceValue": 325,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 13
+        },
+        {
+          "sourceId": "milkshakes-14",
+          "sourceHref": "#milkshakes-14",
+          "name": "کافئین",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۲۵ تومان",
+          "priceValue": 325,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 14
+        },
+        {
+          "sourceId": "milkshakes-15",
+          "sourceHref": "#milkshakes-15",
+          "name": "کاکائو تلخ",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۲۵ تومان",
+          "priceValue": 325,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 15
+        },
+        {
+          "sourceId": "milkshakes-16",
+          "sourceHref": "#milkshakes-16",
+          "name": "نوتلا",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۲۵ تومان",
+          "priceValue": 325,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-cup-350-black-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 16
+        },
+        {
+          "sourceId": "milkshakes-17",
+          "sourceHref": "#milkshakes-17",
+          "name": "معجون ترش",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۲۵ تومان",
+          "priceValue": 325,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-sour-mix-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-sour-mix-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-sour-mix-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-sour-mix-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-sour-mix-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 17
+        },
+        {
+          "sourceId": "milkshakes-18",
+          "sourceHref": "#milkshakes-18",
+          "name": "نسکافه",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۱۰ تومان",
+          "priceValue": 310,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 18
+        },
+        {
+          "sourceId": "milkshakes-19",
+          "sourceHref": "#milkshakes-19",
+          "name": "وانیل",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۱۰ تومان",
+          "priceValue": 310,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-vanilla-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 19
+        },
+        {
+          "sourceId": "milkshakes-20",
+          "sourceHref": "#milkshakes-20",
+          "name": "موز",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۱۰ تومان",
+          "priceValue": 310,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-shake-mango-banana-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 20
+        },
+        {
+          "sourceId": "milkshakes-21",
+          "sourceHref": "#milkshakes-21",
+          "name": "کیت کت",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۲۵ تومان",
+          "priceValue": 325,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-chocolate-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 21
+        },
+        {
+          "sourceId": "milkshakes-22",
+          "sourceHref": "#milkshakes-22",
+          "name": "اردو (توت فرنگی به دلخواه شما)",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۵۰ تومان",
+          "priceValue": 350,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 22
+        }
+      ]
+    },
+    {
+      "sourceId": "special",
+      "slug": "special",
+      "name": "پیشنهاد ویژه",
+      "order": 11,
+      "products": [
+        {
+          "sourceId": "special-1",
+          "sourceHref": "#special-1",
+          "name": "ترکیب جذاب دوغ باقلوا",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۱۱۵ تومان",
+          "priceValue": 115,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-doogh-baklava-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-doogh-baklava-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-doogh-baklava-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-doogh-baklava-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-doogh-baklava-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 1
+        },
+        {
+          "sourceId": "special-2",
+          "sourceHref": "#special-2",
+          "name": "شیک پروتئین وی",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۳۹۰ تومان",
+          "priceValue": 390,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-milkshake-blue-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 2
+        },
+        {
+          "sourceId": "special-3",
+          "sourceHref": "#special-3",
+          "name": "نوشیدنی سرد جذاب",
+          "description": "منوی تابستان کافه لئو — شهرکرد",
+          "rawPrice": "۲۹۰ تومان",
+          "priceValue": 290,
+          "currencyLabel": "تومان",
+          "imageUrl": "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+          "imageCandidates": [
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-680x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-860x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-520x.webp",
+            "https://iran.cafeleo.vip/media/images/products/cafeleo-ice-coffee-400x.webp"
+          ],
+          "tags": [],
+          "availability": "available",
+          "order": 3
+        }
+      ]
+    }
+  ],
+  "counts": {
+    "categories": 11,
+    "products": 115,
+    "pricedOrderable": 115,
+    "unpriced": 0,
+    "unavailable": 0,
+    "uniqueProductImages": 24,
+    "variantsDetected": 0
+  },
+  "extractionEvidence": {
+    "categorySelector": "div.product_group[data-category-slug] > h2.product_title",
+    "productSelector": "li.cafeleo-product-item",
+    "productIdSource": "a.product_block[href] fragment, e.g. #hot-coffee-1",
+    "priceSelector": ".cafeleo-product_price",
+    "imageSelector": "picture.product_image img[src] plus source[srcSet]",
+    "jsonLdPresent": true,
+    "apiCallsDetected": []
+  }
+}

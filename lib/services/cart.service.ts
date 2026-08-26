@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import type { AddToCartInput, UpdateCartItemInput } from "@/lib/validators";
 import { Decimal } from "@prisma/client/runtime/library";
 import { activePublicBusinessCapabilities } from "@/lib/organization-public-home";
+import { toMoneyDecimal, toMoneyNumber } from "@/lib/money";
 
 const cartInclude = {
   items: {
@@ -24,13 +25,6 @@ const cartInclude = {
     },
   },
 } as const;
-
-function toMoneyNumber(value: number | string | Decimal | null | undefined): number {
-  if (value === null || value === undefined) return 0;
-  if (value instanceof Decimal) return value.toNumber();
-  const parsed = typeof value === "string" ? Number(value) : value;
-  return Number.isFinite(parsed) ? parsed : 0;
-}
 
 function ensureCartOwner(
   cart: { customerId: string | null; sessionId: string | null },
@@ -54,15 +48,17 @@ function normalizeCart(cart: any | null) {
 
   let subtotal = new Decimal(0);
   for (const item of cart.items) {
-    const basePrice = new Decimal(toMoneyNumber(item.variant.price ?? item.variant.product.basePrice));
+    const basePrice = toMoneyDecimal(item.variant.price ?? item.variant.product.basePrice, "cart item price");
     const discountType = item.variant.product.discountType;
-    const discountValue = toMoneyNumber(item.variant.product.discountValue);
+    const discountValue = item.variant.product.discountValue === null
+      ? new Decimal(0)
+      : toMoneyDecimal(item.variant.product.discountValue, "cart item discount");
     
     // Apply product discount
     let price = basePrice;
-    if (discountType === "percentage" && discountValue > 0) {
-      price = basePrice.mul(1 - discountValue / 100);
-    } else if (discountType === "fixed" && discountValue > 0) {
+    if (discountType === "percentage" && discountValue.gt(0)) {
+      price = basePrice.mul(new Decimal(1).sub(discountValue.div(100)));
+    } else if (discountType === "fixed" && discountValue.gt(0)) {
       price = Decimal.max(new Decimal(0), basePrice.sub(discountValue));
     }
     
@@ -412,9 +408,11 @@ export class CartService {
     const taxRate = 0;
 
     const subtotal = cart.items.reduce((sum, item) => {
-      const basePrice = toMoneyNumber(item.variant.price ?? item.variant.product.basePrice);
+      const basePrice = toMoneyNumber(item.variant.price ?? item.variant.product.basePrice, "cart summary item price");
       const discountType = item.variant.product.discountType;
-      const discountValue = toMoneyNumber(item.variant.product.discountValue);
+      const discountValue = item.variant.product.discountValue === null
+        ? 0
+        : toMoneyNumber(item.variant.product.discountValue, "cart summary item discount");
 
       let price = basePrice;
       if (discountType === "percentage" && discountValue > 0) {

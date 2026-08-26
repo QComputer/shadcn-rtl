@@ -11,6 +11,7 @@ import { buildOrderPushTargetUrl } from "@/lib/push-target-url";
 import { requireActiveOrganizationCapability } from "@/lib/organization-capabilities.server";
 import { ApiError } from "@/lib/api-guards";
 import { updateOrderReadyTimeSchema } from "@/lib/validators/tenant-platform";
+import { toMoneyDecimal, toMoneyNumber } from "@/lib/money";
 
 const ALLOWED_ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING: ["PLACED", "ACCEPTED", "CANCELLED"],
@@ -102,13 +103,6 @@ async function getProgressId(
   return progressId;
 }
 
-function toMoneyNumber(value: number | string | Decimal | null | undefined): number {
-  if (value === null || value === undefined) return 0;
-  if (value instanceof Decimal) return value.toNumber();
-  const parsed = typeof value === "string" ? Number(value) : value;
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
 function getProductPriceWithDiscount(item: {
   variant: {
     price: number | Decimal | null;
@@ -122,14 +116,16 @@ function getProductPriceWithDiscount(item: {
   variantId: string;
   quantity: number;
 }): Decimal {
-  const basePrice = new Decimal(toMoneyNumber(item.variant.price ?? item.variant.product.basePrice));
+  const basePrice = toMoneyDecimal(item.variant.price ?? item.variant.product.basePrice, "order item price");
   const discountType = item.variant.product.discountType;
-  const discountValue = toMoneyNumber(item.variant.product.discountValue);
+  const discountValue = item.variant.product.discountValue === null
+    ? new Decimal(0)
+    : toMoneyDecimal(item.variant.product.discountValue, "order item discount");
 
-  if (discountType === "percentage" && discountValue > 0) {
-    return basePrice.mul(1 - discountValue / 100);
+  if (discountType === "percentage" && discountValue.gt(0)) {
+    return basePrice.mul(new Decimal(1).sub(discountValue.div(100)));
   }
-  if (discountType === "fixed" && discountValue > 0) {
+  if (discountType === "fixed" && discountValue.gt(0)) {
     return Decimal.max(new Decimal(0), basePrice.sub(discountValue));
   }
   return basePrice;

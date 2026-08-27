@@ -8,7 +8,24 @@ const securityHeaders = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
 
+function resolveAppBasePath(): NextConfig["basePath"] {
+  const raw = process.env.APP_BASE_PATH;
+  if (!raw || raw.trim() === "") {
+    return undefined;
+  }
+
+  const trimmed = raw.trim();
+  if (trimmed === "/app") {
+    return "/app";
+  }
+
+  throw new Error(
+    `Unsupported APP_BASE_PATH: "${trimmed}". Only unset or "/app" are valid for Bazarbaaz builds.`
+  );
+}
+
 const nextConfig: NextConfig = {
+  basePath: resolveAppBasePath(),
   allowedDevOrigins: [
     "192.168.1.6",
     "*.localtest.me",

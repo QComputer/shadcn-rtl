@@ -104,6 +104,22 @@ export async function GET(request: Request) {
             orderBy: { updatedAt: "desc" },
             take: 1000,
           },
+          serviceCategories: {
+            where: {
+              isActive: true,
+              deletedAt: null,
+              services: { some: { isActive: true, deletedAt: null } },
+            },
+            select: { id: true, slug: true, updatedAt: true },
+            orderBy: { updatedAt: "desc" },
+            take: 1000,
+          },
+          services: {
+            where: { isActive: true, deletedAt: null },
+            select: { id: true, slug: true, updatedAt: true },
+            orderBy: { updatedAt: "desc" },
+            take: 1000,
+          },
         },
       },
     },
@@ -112,11 +128,6 @@ export async function GET(request: Request) {
   if (
     !domain ||
     domain.status !== "ACTIVE" ||
-    !hasOrganizationCapability({
-      legacyType: domain.organization.type,
-      capabilitiesInitializedAt: domain.organization.capabilitiesInitializedAt,
-      capabilities: domain.organization.capabilities,
-    }, "SHOP") ||
     !domain.organization.isActive ||
     domain.organization.deletedAt
   ) {
@@ -124,37 +135,85 @@ export async function GET(request: Request) {
   }
 
   const organization = domain.organization;
+  const hasShop = hasOrganizationCapability({
+    legacyType: organization.type,
+    capabilitiesInitializedAt: organization.capabilitiesInitializedAt,
+    capabilities: organization.capabilities,
+  }, "SHOP");
+  const hasAppointment = hasOrganizationCapability({
+    legacyType: organization.type,
+    capabilitiesInitializedAt: organization.capabilitiesInitializedAt,
+    capabilities: organization.capabilities,
+  }, "APPOINTMENT");
+
+  if (!hasShop && !hasAppointment) {
+    return new NextResponse("Custom domain is not active", { status: 404 });
+  }
+
   const entries: SitemapEntry[] = [
     ...tenantEntries({ baseUrl, subPath: "/", lastModified: organization.updatedAt, priority: "1.0" }),
-    ...tenantEntries({ baseUrl, subPath: "/profile", lastModified: organization.updatedAt, priority: "0.8" }),
-    ...tenantEntries({
-      baseUrl,
-      subPath: "/fanpage",
-      lastModified: organization.fanpagePosts[0]?.updatedAt || organization.updatedAt,
-      priority: "0.7",
-    }),
   ];
 
-  for (const category of organization.productCategories) {
+  if (hasShop) {
     entries.push(
+      ...tenantEntries({ baseUrl, subPath: "/profile", lastModified: organization.updatedAt, priority: "0.8" }),
       ...tenantEntries({
         baseUrl,
-        subPath: `/category/${category.slug || category.id}`,
-        lastModified: category.updatedAt,
+        subPath: "/fanpage",
+        lastModified: organization.fanpagePosts[0]?.updatedAt || organization.updatedAt,
         priority: "0.7",
       }),
     );
+
+    for (const category of organization.productCategories) {
+      entries.push(
+        ...tenantEntries({
+          baseUrl,
+          subPath: `/category/${category.slug || category.id}`,
+          lastModified: category.updatedAt,
+          priority: "0.7",
+        }),
+      );
+    }
+
+    for (const product of organization.products) {
+      entries.push(
+        ...tenantEntries({
+          baseUrl,
+          subPath: `/product/${product.slug || product.id}`,
+          lastModified: product.updatedAt,
+          priority: "0.6",
+        }),
+      );
+    }
   }
 
-  for (const product of organization.products) {
+  if (hasAppointment) {
     entries.push(
-      ...tenantEntries({
-        baseUrl,
-        subPath: `/product/${product.slug || product.id}`,
-        lastModified: product.updatedAt,
-        priority: "0.6",
-      }),
+      ...tenantEntries({ baseUrl, subPath: "/services", lastModified: organization.updatedAt, priority: "0.8" }),
     );
+
+    for (const category of organization.serviceCategories) {
+      entries.push(
+        ...tenantEntries({
+          baseUrl,
+          subPath: `/services/category/${category.slug || category.id}`,
+          lastModified: category.updatedAt,
+          priority: "0.7",
+        }),
+      );
+    }
+
+    for (const service of organization.services) {
+      entries.push(
+        ...tenantEntries({
+          baseUrl,
+          subPath: `/services/${service.slug || service.id}`,
+          lastModified: service.updatedAt,
+          priority: "0.6",
+        }),
+      );
+    }
   }
 
   const xml = [

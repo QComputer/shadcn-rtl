@@ -14,7 +14,8 @@ const inactive = (key: string) => ({ key: key as any, status: "INACTIVE" });
 describe("organization public home resolution", () => {
   it("routes a SHOP-only custom-domain root to the shop experience", () => {
     assert.deepEqual(resolveOrganizationPublicHome({ capabilities: [active("SHOP")] }), {
-      kind: "business",
+      kind: "capability",
+      mode: "SHOP",
       capability: "SHOP",
       publicSurface: "shop",
       publicEntryPath: "/shop",
@@ -23,14 +24,15 @@ describe("organization public home resolution", () => {
 
   it("routes an APPOINTMENT-only custom-domain root to the appointment experience", () => {
     assert.deepEqual(resolveOrganizationPublicHome({ capabilities: [active("APPOINTMENT")] }), {
-      kind: "business",
+      kind: "capability",
+      mode: "APPOINTMENT",
       capability: "APPOINTMENT",
       publicSurface: "appointment",
       publicEntryPath: "/services",
     });
   });
 
-  it("uses the configured default for multi-capability organizations", () => {
+  it("uses the configured default for multi-capability organizations in AUTO mode", () => {
     const shopDefault = resolveOrganizationPublicHome({
       capabilities: [active("SHOP"), active("APPOINTMENT")],
       settings: { defaultPublicCapability: "SHOP" },
@@ -40,13 +42,13 @@ describe("organization public home resolution", () => {
       settings: { defaultPublicCapability: "APPOINTMENT" },
     });
 
-    assert.equal(shopDefault.kind, "business");
-    assert.equal(shopDefault.kind === "business" ? shopDefault.capability : null, "SHOP");
-    assert.equal(appointmentDefault.kind, "business");
-    assert.equal(appointmentDefault.kind === "business" ? appointmentDefault.capability : null, "APPOINTMENT");
+    assert.equal(shopDefault.kind, "capability");
+    assert.equal(shopDefault.kind === "capability" ? shopDefault.capability : null, "SHOP");
+    assert.equal(appointmentDefault.kind, "capability");
+    assert.equal(appointmentDefault.kind === "capability" ? appointmentDefault.capability : null, "APPOINTMENT");
   });
 
-  it("keeps multi-capability organizations generic when no default is configured", () => {
+  it("keeps multi-capability organizations generic when no default is configured in AUTO mode", () => {
     assert.deepEqual(resolveOrganizationPublicHome({
       capabilities: [active("SHOP"), active("APPOINTMENT")],
       settings: null,
@@ -81,7 +83,8 @@ describe("organization public home resolution", () => {
       capabilities: [active("SHOP"), inactive("APPOINTMENT")],
       settings: { defaultPublicCapability: "APPOINTMENT" },
     }), {
-      kind: "business",
+      kind: "capability",
+      mode: "SHOP",
       capability: "SHOP",
       publicSurface: "shop",
       publicEntryPath: "/shop",
@@ -107,5 +110,143 @@ describe("organization public home resolution", () => {
       theme: "system",
     });
     assert.equal(writeDefaultPublicCapabilitySetting({ defaultPublicCapability: "SHOP" }, null), null);
+  });
+
+  it("supports explicit SHOP mode when SHOP is active", () => {
+    assert.deepEqual(resolveOrganizationPublicHome({
+      capabilities: [active("SHOP"), active("APPOINTMENT")],
+      publicHomeMode: "SHOP",
+    }), {
+      kind: "capability",
+      mode: "SHOP",
+      capability: "SHOP",
+      publicSurface: "shop",
+      publicEntryPath: "/shop",
+    });
+  });
+
+  it("rejects explicit SHOP mode when SHOP is not active", () => {
+    assert.deepEqual(resolveOrganizationPublicHome({
+      capabilities: [active("APPOINTMENT")],
+      publicHomeMode: "SHOP",
+    }), {
+      kind: "invalid",
+      reason: "MODE_REQUIRES_MISSING_CAPABILITY",
+      mode: "SHOP",
+    });
+  });
+
+  it("supports explicit APPOINTMENT mode when APPOINTMENT is active", () => {
+    assert.deepEqual(resolveOrganizationPublicHome({
+      capabilities: [active("SHOP"), active("APPOINTMENT")],
+      publicHomeMode: "APPOINTMENT",
+    }), {
+      kind: "capability",
+      mode: "APPOINTMENT",
+      capability: "APPOINTMENT",
+      publicSurface: "appointment",
+      publicEntryPath: "/services",
+    });
+  });
+
+  it("rejects explicit APPOINTMENT mode when APPOINTMENT is not active", () => {
+    assert.deepEqual(resolveOrganizationPublicHome({
+      capabilities: [active("SHOP")],
+      publicHomeMode: "APPOINTMENT",
+    }), {
+      kind: "invalid",
+      reason: "MODE_REQUIRES_MISSING_CAPABILITY",
+      mode: "APPOINTMENT",
+    });
+  });
+
+  it("supports BRAND mode with BAZARBAAZ provider", () => {
+    assert.deepEqual(resolveOrganizationPublicHome({
+      capabilities: [active("SHOP")],
+      publicHomeMode: "BRAND",
+      brandLandingProvider: "BAZARBAAZ",
+    }), {
+      kind: "brand",
+      provider: "BAZARBAAZ",
+    });
+  });
+
+  it("supports BRAND mode with CUSTOM_INTERNAL provider", () => {
+    assert.deepEqual(resolveOrganizationPublicHome({
+      capabilities: [active("SHOP")],
+      publicHomeMode: "BRAND",
+      brandLandingProvider: "CUSTOM_INTERNAL",
+    }), {
+      kind: "brand",
+      provider: "CUSTOM_INTERNAL",
+    });
+  });
+
+  it("supports BRAND mode with CUSTOM_EXTERNAL provider", () => {
+    assert.deepEqual(resolveOrganizationPublicHome({
+      capabilities: [active("SHOP")],
+      publicHomeMode: "BRAND",
+      brandLandingProvider: "CUSTOM_EXTERNAL",
+    }), {
+      kind: "external",
+      provider: "CUSTOM_EXTERNAL",
+    });
+  });
+
+  it("rejects BRAND mode without a provider", () => {
+    assert.deepEqual(resolveOrganizationPublicHome({
+      capabilities: [active("SHOP")],
+      publicHomeMode: "BRAND",
+    }), {
+      kind: "invalid",
+      reason: "MODE_REQUIRES_MISSING_PROVIDER",
+      mode: "BRAND",
+    });
+  });
+
+  it("supports VISITOR_CHOICE with active capabilities", () => {
+    assert.deepEqual(resolveOrganizationPublicHome({
+      capabilities: [active("SHOP"), active("APPOINTMENT")],
+      publicHomeMode: "VISITOR_CHOICE",
+    }), {
+      kind: "visitor-choice",
+      capabilities: ["SHOP", "APPOINTMENT"],
+    });
+  });
+
+  it("rejects VISITOR_CHOICE with no active capabilities", () => {
+    assert.deepEqual(resolveOrganizationPublicHome({
+      capabilities: [inactive("SHOP"), inactive("APPOINTMENT")],
+      publicHomeMode: "VISITOR_CHOICE",
+    }), {
+      kind: "generic",
+      reason: "NO_PUBLIC_CAPABILITY",
+    });
+  });
+
+  it("preserves legacy behavior when new fields are null", () => {
+    assert.deepEqual(resolveOrganizationPublicHome({
+      capabilities: [active("SHOP")],
+      settings: null,
+    }), {
+      kind: "capability",
+      mode: "SHOP",
+      capability: "SHOP",
+      publicSurface: "shop",
+      publicEntryPath: "/shop",
+    });
+  });
+
+  it("ignores inactive capabilities in AUTO mode", () => {
+    assert.deepEqual(resolveOrganizationPublicHome({
+      capabilities: [active("SHOP"), inactive("APPOINTMENT")],
+      settings: { defaultPublicCapability: "APPOINTMENT" },
+    }), {
+      kind: "capability",
+      mode: "SHOP",
+      capability: "SHOP",
+      publicSurface: "shop",
+      publicEntryPath: "/shop",
+    });
   });
 });

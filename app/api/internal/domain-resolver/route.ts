@@ -9,14 +9,30 @@ export type ResolvedCustomDomain = {
   organizationId: string;
   organizationType: "SHOP" | "APPOINTMENT";
   capabilities: Array<"SHOP" | "APPOINTMENT">;
+  publicHomeMode?: string | null;
+  brandLandingProvider?: string | null;
   publicHome?: {
-    kind: "business";
+    kind: "capability";
+    mode: "SHOP" | "APPOINTMENT";
     capability: "SHOP" | "APPOINTMENT";
     publicSurface: "shop" | "appointment";
     publicEntryPath: "/shop" | "/services";
   } | {
+    kind: "brand";
+    provider: "BAZARBAAZ" | "CUSTOM_INTERNAL";
+  } | {
+    kind: "external";
+    provider: "CUSTOM_EXTERNAL";
+  } | {
+    kind: "visitor-choice";
+    capabilities: Array<"SHOP" | "APPOINTMENT">;
+  } | {
     kind: "generic";
     reason: "NO_PUBLIC_CAPABILITY" | "MULTIPLE_WITHOUT_VALID_DEFAULT";
+  } | {
+    kind: "invalid";
+    reason: "MODE_REQUIRES_MISSING_CAPABILITY";
+    mode: "SHOP" | "APPOINTMENT";
   };
 };
 

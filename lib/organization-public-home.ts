@@ -12,16 +12,37 @@ export type PublicBusinessCapabilityRecord = {
   status: OrganizationCapabilityStatus | string;
 };
 
+export type PublicHomeMode = "AUTO" | "SHOP" | "APPOINTMENT" | "BRAND" | "VISITOR_CHOICE" | null;
+export type BrandLandingProvider = "BAZARBAAZ" | "CUSTOM_INTERNAL" | "CUSTOM_EXTERNAL" | null;
+
 export type OrganizationPublicHome =
   | {
-      kind: "business";
+      kind: "capability";
+      mode: "SHOP" | "APPOINTMENT";
       capability: BusinessCapability;
       publicSurface: (typeof BUSINESS_CAPABILITY_REGISTRY)[BusinessCapability]["publicSurface"];
       publicEntryPath: (typeof BUSINESS_CAPABILITY_REGISTRY)[BusinessCapability]["publicEntryPath"];
     }
   | {
+      kind: "brand";
+      provider: "BAZARBAAZ" | "CUSTOM_INTERNAL";
+    }
+  | {
+      kind: "external";
+      provider: "CUSTOM_EXTERNAL";
+    }
+  | {
+      kind: "visitor-choice";
+      capabilities: BusinessCapability[];
+    }
+  | {
       kind: "generic";
       reason: "NO_PUBLIC_CAPABILITY" | "MULTIPLE_WITHOUT_VALID_DEFAULT";
+    }
+  | {
+      kind: "invalid";
+      reason: "MODE_REQUIRES_MISSING_CAPABILITY" | "MODE_REQUIRES_MISSING_PROVIDER";
+      mode: "SHOP" | "APPOINTMENT" | "BRAND";
     };
 
 const PUBLIC_BUSINESS_CAPABILITY_SET = new Set<OrganizationCapabilityKey>(
@@ -89,9 +110,60 @@ export function assertDefaultPublicCapabilityAllowed(input: {
 export function resolveOrganizationPublicHome(input: {
   capabilities: PublicBusinessCapabilityRecord[] | null | undefined;
   settings?: unknown;
+  publicHomeMode?: PublicHomeMode;
+  brandLandingProvider?: BrandLandingProvider;
 }): OrganizationPublicHome {
   const activeCapabilities = activePublicBusinessCapabilities(input.capabilities);
 
+  const mode = input.publicHomeMode ?? "AUTO";
+
+  if (mode === "SHOP") {
+    if (activeCapabilities.includes("SHOP")) {
+      return {
+        kind: "capability",
+        mode: "SHOP",
+        capability: "SHOP",
+        publicSurface: BUSINESS_CAPABILITY_REGISTRY.SHOP.publicSurface,
+        publicEntryPath: BUSINESS_CAPABILITY_REGISTRY.SHOP.publicEntryPath,
+      };
+    }
+    return { kind: "invalid", reason: "MODE_REQUIRES_MISSING_CAPABILITY", mode: "SHOP" };
+  }
+
+  if (mode === "APPOINTMENT") {
+    if (activeCapabilities.includes("APPOINTMENT")) {
+      return {
+        kind: "capability",
+        mode: "APPOINTMENT",
+        capability: "APPOINTMENT",
+        publicSurface: BUSINESS_CAPABILITY_REGISTRY.APPOINTMENT.publicSurface,
+        publicEntryPath: BUSINESS_CAPABILITY_REGISTRY.APPOINTMENT.publicEntryPath,
+      };
+    }
+    return { kind: "invalid", reason: "MODE_REQUIRES_MISSING_CAPABILITY", mode: "APPOINTMENT" };
+  }
+
+  if (mode === "BRAND") {
+    if (input.brandLandingProvider === "CUSTOM_EXTERNAL") {
+      return { kind: "external", provider: "CUSTOM_EXTERNAL" };
+    }
+    if (input.brandLandingProvider === "CUSTOM_INTERNAL") {
+      return { kind: "brand", provider: "CUSTOM_INTERNAL" };
+    }
+    if (input.brandLandingProvider === "BAZARBAAZ") {
+      return { kind: "brand", provider: "BAZARBAAZ" };
+    }
+    return { kind: "invalid", reason: "MODE_REQUIRES_MISSING_PROVIDER", mode: "BRAND" };
+  }
+
+  if (mode === "VISITOR_CHOICE") {
+    if (activeCapabilities.length === 0) {
+      return { kind: "generic", reason: "NO_PUBLIC_CAPABILITY" };
+    }
+    return { kind: "visitor-choice", capabilities: activeCapabilities };
+  }
+
+  // AUTO (default/legacy)
   if (activeCapabilities.length === 0) {
     return { kind: "generic", reason: "NO_PUBLIC_CAPABILITY" };
   }
@@ -99,7 +171,8 @@ export function resolveOrganizationPublicHome(input: {
   if (activeCapabilities.length === 1) {
     const capability = activeCapabilities[0];
     return {
-      kind: "business",
+      kind: "capability",
+      mode: capability,
       capability,
       publicSurface: BUSINESS_CAPABILITY_REGISTRY[capability].publicSurface,
       publicEntryPath: BUSINESS_CAPABILITY_REGISTRY[capability].publicEntryPath,
@@ -109,7 +182,8 @@ export function resolveOrganizationPublicHome(input: {
   const configuredDefault = getConfiguredDefaultPublicCapability(input.settings);
   if (configuredDefault && activeCapabilities.includes(configuredDefault)) {
     return {
-      kind: "business",
+      kind: "capability",
+      mode: configuredDefault,
       capability: configuredDefault,
       publicSurface: BUSINESS_CAPABILITY_REGISTRY[configuredDefault].publicSurface,
       publicEntryPath: BUSINESS_CAPABILITY_REGISTRY[configuredDefault].publicEntryPath,

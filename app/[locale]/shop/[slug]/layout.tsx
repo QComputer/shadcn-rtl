@@ -61,7 +61,7 @@ const organization = await prisma.organization.findFirst({
       capabilities: organization.capabilities,
       settings: organization.settings?.settings,
     });
-    const seoContext = initialSeoContext.isCustomDomain && !(publicHome.kind === "business" && publicHome.capability === "SHOP")
+    const seoContext = initialSeoContext.isCustomDomain && !(publicHome.kind === "capability" && publicHome.capability === "SHOP")
       ? await getShopTenantSeoContext({ locale, slug: organization.slug, subPath: "/shop" })
       : initialSeoContext;
 
@@ -135,7 +135,7 @@ const organization = await prisma.organization.findFirst({
     capabilities: organization.capabilities,
     settings: organization.settings?.settings,
   });
-  const useCustomDomainRoot = seoContext.isCustomDomain && publicHome.kind === "business" && publicHome.capability === "SHOP";
+  const useCustomDomainRoot = seoContext.isCustomDomain && publicHome.kind === "capability" && publicHome.capability === "SHOP";
   const tenantHref = (subPath = "/") =>
     buildShopPublicPath({
       locale,

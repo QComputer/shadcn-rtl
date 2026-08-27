@@ -8,6 +8,8 @@ export type ResolvedTenant = {
   organizationId: string;
   organizationType: "SHOP" | "APPOINTMENT";
   capabilities: OrganizationCapabilityKey[];
+  publicHomeMode?: string | null;
+  brandLandingProvider?: string | null;
   publicHome: OrganizationPublicHome;
 };
 
@@ -43,7 +45,7 @@ export async function resolveActiveTenantForHost(
           type: true,
           capabilitiesInitializedAt: true,
           capabilities: { select: { key: true, status: true } },
-          settings: { select: { settings: true } },
+          settings: { select: { settings: true, publicHomeMode: true, brandLandingProvider: true } },
           isActive: true,
           deletedAt: true,
         },
@@ -66,9 +68,13 @@ export async function resolveActiveTenantForHost(
     organizationId: domain.organization.id,
     organizationType: domain.organization.type,
     capabilities: activePublicBusinessCapabilities(domain.organization.capabilities),
+    publicHomeMode: domain.organization.settings?.publicHomeMode ?? null,
+    brandLandingProvider: domain.organization.settings?.brandLandingProvider ?? null,
     publicHome: resolveOrganizationPublicHome({
       capabilities: domain.organization.capabilities,
       settings: domain.organization.settings?.settings,
+      publicHomeMode: domain.organization.settings?.publicHomeMode ?? undefined,
+      brandLandingProvider: domain.organization.settings?.brandLandingProvider ?? undefined,
     }),
   };
 }

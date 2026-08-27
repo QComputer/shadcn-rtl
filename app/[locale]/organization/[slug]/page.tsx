@@ -34,7 +34,7 @@ export default async function OrganizationHomePage({ params }: Props) {
     capabilities: organization.capabilities,
     settings: organization.settings?.settings,
   });
-  if (publicHome.kind === "business") {
+  if (publicHome.kind === "capability") {
     if (isCustomDomain) {
       redirect(buildTenantPublicPath(locale, publicHome.capability === "SHOP" ? "/" : publicHome.publicEntryPath));
     }

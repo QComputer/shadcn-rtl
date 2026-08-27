@@ -260,17 +260,33 @@ export async function proxy(request: NextRequest) {
     );
 
     if (splitPath.pathnameWithoutLocale === "/") {
-      if (tenant.publicHome?.kind === "business") {
-        tenantHomeUrl.pathname = tenant.publicHome.capability === "SHOP"
+      const publicHome = tenant.publicHome;
+
+      if (publicHome?.kind === "capability") {
+        tenantHomeUrl.pathname = publicHome.capability === "SHOP"
           ? buildShopPlatformPath({
               locale,
               slug: tenant.slug,
               publicPathname: "/",
             })
-          : `/${locale}/appointment/${tenant.slug}${tenant.publicHome.publicEntryPath}`;
+          : `/${locale}/appointment/${tenant.slug}${publicHome.publicEntryPath}`;
+      } else if (publicHome?.kind === "brand") {
+        tenantHomeUrl.pathname = publicHome.provider === "CUSTOM_INTERNAL"
+          ? `/${locale}/brand/${tenant.slug}/custom`
+          : `/${locale}/brand/${tenant.slug}`;
+      } else if (publicHome?.kind === "visitor-choice") {
+        tenantHomeUrl.pathname = `/${locale}/visitor-choice/${tenant.slug}`;
+      } else if (publicHome?.kind === "external") {
+        const externalUrl = request.nextUrl.clone();
+        externalUrl.pathname = `/${locale}/external-root/${tenant.slug}`;
+        const response = NextResponse.rewrite(externalUrl, { request: { headers: requestHeaders } });
+        response.headers.set("x-locale", locale);
+        response.headers.set("x-direction", localeConfig[locale].dir);
+        return withSecurityHeaders(response);
       } else {
         tenantHomeUrl.pathname = `/${locale}/organization/${tenant.slug}`;
       }
+
       const response = NextResponse.rewrite(tenantHomeUrl, { request: { headers: requestHeaders } });
       response.headers.set("x-locale", locale);
       response.headers.set("x-direction", localeConfig[locale].dir);

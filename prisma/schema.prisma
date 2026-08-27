@@ -18,6 +18,20 @@ enum OrganizationType {
   APPOINTMENT
 }
 
+enum PublicHomeMode {
+  AUTO
+  SHOP
+  APPOINTMENT
+  BRAND
+  VISITOR_CHOICE
+}
+
+enum BrandLandingProvider {
+  BAZARBAAZ
+  CUSTOM_INTERNAL
+  CUSTOM_EXTERNAL
+}
+
 enum OrganizationCapabilityKey {
   SHOP
   APPOINTMENT
@@ -4385,6 +4399,10 @@ model OrganizationSettings {
   enablePickup              Boolean  @default(true)
   enableDelivery            Boolean  @default(true)
   defaultPreparationMinutes Int      @default(30)
+
+  // Public presence settings
+  publicHomeMode       PublicHomeMode?
+  brandLandingProvider BrandLandingProvider?
 
   // Notification settings
   emailNotifications Boolean @default(false)

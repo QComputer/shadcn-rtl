@@ -34,10 +34,10 @@ const requiredFiles = [
   "components/seo/json-ld.tsx",
   "app/robots.ts",
   "app/sitemap.ts",
-  "app/[locale]/shop/[slug]/layout.tsx",
-  "app/[locale]/appointment/[slug]/layout.tsx",
-  "app/[locale]/shop/[slug]/product/[productId]/layout.tsx",
-  "app/[locale]/appointment/[slug]/services/[serviceId]/layout.tsx",
+  "app/[locale]/[slug]/shop/layout.tsx",
+  "app/[locale]/[slug]/appointment/layout.tsx",
+  "app/[locale]/[slug]/shop/product/[productId]/layout.tsx",
+  "app/[locale]/[slug]/appointment/services/[serviceId]/layout.tsx",
   "docs/PHASE_48_PUBLIC_SEO_FOUNDATION.md",
   "docs/PHASE_48_OVERLAY_MANIFEST.md",
 ];
@@ -60,38 +60,31 @@ for (const needle of ['"/api/"', '"/auth/"', '"/dashboard/"', '"/fa/dashboard/"'
 }
 expectIncludes("app/robots.ts", 'sitemap: getCanonicalUrl("/sitemap.xml")', "robots points at dynamic sitemap");
 
-for (const needle of [
-  "/shop/${organization.slug}",
-  "/shop/${organization.slug}/profile",
-  "/shop/${organization.slug}/fanpage",
-  "/appointment/${organization.slug}",
-  "/appointment/${organization.slug}/services",
-  "/appointment/${organization.slug}/fanpage",
-  "/shop/${product.organizationSlug}/product/${product.slug || product.id}",
-  "/appointment/${service.organization.slug}/services/${service.slug || service.id}",
-]) {
+expectIncludes("app/sitemap.ts", "buildOrganizationRootPath", "sitemap includes organization roots through the shared route builder");
+expectIncludes("app/sitemap.ts", "buildOrganizationPublicPath", "sitemap includes capability children through the shared route builder");
+for (const needle of ['surface: "shop"', 'surface: "appointment"', 'subPath: "/profile"', 'subPath: "/services"']) {
   expectIncludes("app/sitemap.ts", needle, `sitemap includes ${needle}`);
 }
 
 for (const rel of [
-  "app/[locale]/shop/[slug]/layout.tsx",
-  "app/[locale]/appointment/[slug]/layout.tsx",
-  "app/[locale]/shop/[slug]/product/[productId]/layout.tsx",
-  "app/[locale]/appointment/[slug]/services/[serviceId]/layout.tsx",
-  "app/[locale]/shop/[slug]/fanpage/page.tsx",
-  "app/[locale]/appointment/[slug]/fanpage/page.tsx",
+  "app/[locale]/[slug]/shop/layout.tsx",
+  "app/[locale]/[slug]/appointment/layout.tsx",
+  "app/[locale]/[slug]/shop/product/[productId]/layout.tsx",
+  "app/[locale]/[slug]/appointment/services/[serviceId]/layout.tsx",
+  "app/[locale]/[slug]/shop/fanpage/page.tsx",
+  "app/[locale]/[slug]/appointment/fanpage/page.tsx",
 ]) {
   expectIncludes(rel, "generateMetadata", `${rel} exports route metadata`);
   expectIncludes(rel, "buildPublicMetadata", `${rel} uses shared metadata builder`);
 }
 
 for (const rel of [
-  "app/[locale]/shop/[slug]/layout.tsx",
-  "app/[locale]/appointment/[slug]/layout.tsx",
-  "app/[locale]/shop/[slug]/product/[productId]/layout.tsx",
-  "app/[locale]/appointment/[slug]/services/[serviceId]/layout.tsx",
-  "app/[locale]/shop/[slug]/fanpage/page.tsx",
-  "app/[locale]/appointment/[slug]/fanpage/page.tsx",
+  "app/[locale]/[slug]/shop/layout.tsx",
+  "app/[locale]/[slug]/appointment/layout.tsx",
+  "app/[locale]/[slug]/shop/product/[productId]/layout.tsx",
+  "app/[locale]/[slug]/appointment/services/[serviceId]/layout.tsx",
+  "app/[locale]/[slug]/shop/fanpage/page.tsx",
+  "app/[locale]/[slug]/appointment/fanpage/page.tsx",
 ]) {
   expectIncludes(rel, "<JsonLd", `${rel} renders JSON-LD`);
 }

@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { signIn } from "@/lib/auth";
 import { ApiError, jsonError } from "@/lib/api-guards";
+import { slugSchema } from "@/lib/validators";
 
 const organizationRegisterSchema = z.object({
   username: z
@@ -12,12 +13,7 @@ const organizationRegisterSchema = z.object({
     .min(3, "Username must be at least 3 characters")
     .max(50, "Username must be less than 50 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  orgSlug: z
-    .string()
-    .trim()
-    .min(3, "Organization slug must be at least 3 characters")
-    .max(10, "Organization slug must be less than 10 characters")
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Organization slug must be lowercase alphanumeric with hyphens"),
+  orgSlug: slugSchema,
   orgName: z
     .string()
     .trim()

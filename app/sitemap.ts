@@ -3,6 +3,7 @@ import prisma from "@/lib/db";
 import { supportedLocales } from "@/lib/i18n";
 import { getCanonicalUrl } from "@/lib/seo";
 import { hasOrganizationCapability } from "@/lib/organization-capabilities";
+import { buildOrganizationPublicPath, buildOrganizationRootPath } from "@/lib/custom-domain-routing";
 
 export const dynamic = "force-dynamic";
 
@@ -124,16 +125,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ]);
 
     for (const organization of organizations) {
+      entries.push(...localizedEntries((locale) => buildOrganizationRootPath({ locale, organizationSlug: organization.slug }), organization.updatedAt));
+
       if (hasOrganizationCapability({ legacyType: organization.type, capabilitiesInitializedAt: organization.capabilitiesInitializedAt, capabilities: organization.capabilities }, "SHOP")) {
         // Shops with active primary custom domains publish their public SEO
         // surface through the tenant-domain sitemap. Keep them out of the
         // platform sitemap to avoid platform/custom-domain duplication.
         if (organization.domains.length === 0) {
           entries.push(
-            ...localizedEntries((locale) => `/${locale}/shop/${organization.slug}`, organization.updatedAt),
-            ...localizedEntries((locale) => `/${locale}/shop/${organization.slug}/profile`, organization.updatedAt),
+            ...localizedEntries((locale) => buildOrganizationPublicPath({ locale, organizationSlug: organization.slug, surface: "shop" }), organization.updatedAt),
+            ...localizedEntries((locale) => buildOrganizationPublicPath({ locale, organizationSlug: organization.slug, surface: "shop", subPath: "/profile" }), organization.updatedAt),
             ...localizedEntries(
-              (locale) => `/${locale}/shop/${organization.slug}/fanpage`,
+              (locale) => buildOrganizationPublicPath({ locale, organizationSlug: organization.slug, surface: "shop", subPath: "/fanpage" }),
               organization.fanpagePosts[0]?.updatedAt || organization.updatedAt,
             ),
           );
@@ -142,10 +145,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
       if (hasOrganizationCapability({ legacyType: organization.type, capabilitiesInitializedAt: organization.capabilitiesInitializedAt, capabilities: organization.capabilities }, "APPOINTMENT")) {
         entries.push(
-          ...localizedEntries((locale) => `/${locale}/appointment/${organization.slug}`, organization.updatedAt),
-          ...localizedEntries((locale) => `/${locale}/appointment/${organization.slug}/services`, organization.updatedAt),
+          ...localizedEntries((locale) => buildOrganizationPublicPath({ locale, organizationSlug: organization.slug, surface: "appointment" }), organization.updatedAt),
+          ...localizedEntries((locale) => buildOrganizationPublicPath({ locale, organizationSlug: organization.slug, surface: "appointment", subPath: "/services" }), organization.updatedAt),
           ...localizedEntries(
-            (locale) => `/${locale}/appointment/${organization.slug}/fanpage`,
+            (locale) => buildOrganizationPublicPath({ locale, organizationSlug: organization.slug, surface: "appointment", subPath: "/fanpage" }),
             organization.fanpagePosts[0]?.updatedAt || organization.updatedAt,
           ),
         );
@@ -155,7 +158,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const category of productCategories.filter((item) => hasOrganizationCapability({ legacyType: item.organization.type, capabilitiesInitializedAt: item.organization.capabilitiesInitializedAt, capabilities: item.organization.capabilities }, "SHOP"))) {
       entries.push(
         ...localizedEntries(
-          (locale) => `/${locale}/shop/${category.organizationSlug}/category/${category.slug || category.id}`,
+          (locale) => buildOrganizationPublicPath({ locale, organizationSlug: category.organizationSlug, surface: "shop", subPath: `/category/${category.slug || category.id}` }),
           category.updatedAt,
         ),
       );
@@ -164,7 +167,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const category of serviceCategories.filter((item) => hasOrganizationCapability({ legacyType: item.organization.type, capabilitiesInitializedAt: item.organization.capabilitiesInitializedAt, capabilities: item.organization.capabilities }, "APPOINTMENT"))) {
       entries.push(
         ...localizedEntries(
-          (locale) => `/${locale}/appointment/${category.organization.slug}/services/category/${category.slug || category.id}`,
+          (locale) => buildOrganizationPublicPath({ locale, organizationSlug: category.organization.slug, surface: "appointment", subPath: `/services/category/${category.slug || category.id}` }),
           category.updatedAt,
         ),
       );
@@ -173,7 +176,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const product of products.filter((item) => hasOrganizationCapability({ legacyType: item.organization.type, capabilitiesInitializedAt: item.organization.capabilitiesInitializedAt, capabilities: item.organization.capabilities }, "SHOP"))) {
       entries.push(
         ...localizedEntries(
-          (locale) => `/${locale}/shop/${product.organizationSlug}/product/${product.slug || product.id}`,
+          (locale) => buildOrganizationPublicPath({ locale, organizationSlug: product.organizationSlug, surface: "shop", subPath: `/product/${product.slug || product.id}` }),
           product.updatedAt,
         ),
       );
@@ -182,7 +185,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const service of services.filter((item) => hasOrganizationCapability({ legacyType: item.organization.type, capabilitiesInitializedAt: item.organization.capabilitiesInitializedAt, capabilities: item.organization.capabilities }, "APPOINTMENT"))) {
       entries.push(
         ...localizedEntries(
-          (locale) => `/${locale}/appointment/${service.organization.slug}/services/${service.slug || service.id}`,
+          (locale) => buildOrganizationPublicPath({ locale, organizationSlug: service.organization.slug, surface: "appointment", subPath: `/services/${service.slug || service.id}` }),
           service.updatedAt,
         ),
       );

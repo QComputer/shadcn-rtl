@@ -9,6 +9,7 @@ import type {
 import { ApiError } from "@/lib/api-guards";
 import { buildUniqueCategorySlug, normalizeCategorySlug } from "@/lib/category-slugs";
 import { normalizePagination } from "@/lib/pagination";
+import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing";
 
 type CategoryListParams = {
   page?: number | string;
@@ -60,14 +61,14 @@ function revalidateCategoryPublicPages(input: {
 
   for (const locale of locales) {
     if (input.mode === "shop") {
-      revalidatePath(`/${locale}/shop/${input.organizationSlug}`);
+      revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: input.organizationSlug, surface: "shop" }));
       for (const segment of uniqueSegments) {
-        revalidatePath(`/${locale}/shop/${input.organizationSlug}/category/${segment}`);
+        revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: input.organizationSlug, surface: "shop", subPath: `/category/${segment}` }));
       }
     } else {
-      revalidatePath(`/${locale}/appointment/${input.organizationSlug}/services`);
+      revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: input.organizationSlug, surface: "appointment", subPath: "/services" }));
       for (const segment of uniqueSegments) {
-        revalidatePath(`/${locale}/appointment/${input.organizationSlug}/services/category/${segment}`);
+        revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: input.organizationSlug, surface: "appointment", subPath: `/services/category/${segment}` }));
       }
     }
   }

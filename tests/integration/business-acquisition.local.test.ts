@@ -529,14 +529,14 @@ describe("business acquisition local foundation", () => {
       assert.equal(adminDashboard.guidedSetup.tasks.some((task) => task.taskKey === "menu-readiness"), true);
       assert.equal(adminDashboard.guidedSetup.nextRecommendedTasks.every((task) => Boolean(task.targetRoute)), true);
       assert.equal(adminDashboard.readinessScore.dimensions.length, 4);
-      assert.equal(adminDashboard.organization.publicPaths.shell, `/fa/organization/${primary.organization.slug}`);
+      assert.equal(adminDashboard.organization.publicPaths.shell, `/fa/${primary.organization.slug}`);
 
       const managerDashboard = await getOwnerActivationDashboard({
         session: { user: { id: manager.id, role: "MANAGER", organizationId: primary.organization.id } },
         organizationId: primary.organization.id,
         locale: "en",
       });
-      assert.equal(managerDashboard.organization.publicPaths.shop, `/en/shop/${primary.organization.slug}`);
+      assert.equal(managerDashboard.organization.publicPaths.shop, `/en/${primary.organization.slug}/shop`);
       assert.equal(managerDashboard.guidedSetup.tasks.some((task) => task.category === "INTEGRATIONS"), true);
       assert.equal(managerDashboard.inotiReadiness.length > 0, true);
       assert.equal(JSON.stringify(managerDashboard).includes(other.organization.id), false);

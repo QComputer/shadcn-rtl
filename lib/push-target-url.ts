@@ -1,5 +1,6 @@
 import {
   buildTenantPublicPath,
+  buildOrganizationPublicPath,
   getShopSubPathFromPlatformPath,
   isPlatformHost,
 } from "@/lib/custom-domain-routing";
@@ -33,8 +34,13 @@ export function buildOrderPushTargetUrl(input: {
   locale?: string;
   audience: "CUSTOMER" | "DRIVER";
 }) {
-  const locale = encodeURIComponent(input.locale || "fa");
+  const locale = input.locale || "fa";
   if (input.audience === "DRIVER") return `/${locale}/dashboard/driver-orders`;
 
-  return `/${locale}/shop/${encodeURIComponent(input.organizationSlug)}/order/${encodeURIComponent(input.orderNumber)}`;
+  return buildOrganizationPublicPath({
+    locale,
+    organizationSlug: input.organizationSlug,
+    surface: "shop",
+    subPath: `/order/${encodeURIComponent(input.orderNumber)}`,
+  });
 }

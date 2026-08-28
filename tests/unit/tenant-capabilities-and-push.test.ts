@@ -248,13 +248,13 @@ describe("customer trust reputation foundation", () => {
 describe("dashboard public organization destinations", () => {
   const base = { slug: "demo", type: "SHOP" as const };
   it("routes zero and mixed capability organizations to their shell", () => {
-    assert.equal(publicOrganizationHref("fa", { ...base, capabilitiesInitializedAt: new Date(), capabilities: [] }), "/fa/organization/demo");
-    assert.equal(publicOrganizationHref("fa", { ...base, capabilitiesInitializedAt: new Date(), capabilities: [{ key: "SHOP", status: "ACTIVE" }, { key: "APPOINTMENT", status: "ACTIVE" }] }), "/fa/organization/demo");
+    assert.equal(publicOrganizationHref("fa", { ...base, capabilitiesInitializedAt: new Date(), capabilities: [] }), "/fa/demo");
+    assert.equal(publicOrganizationHref("fa", { ...base, capabilitiesInitializedAt: new Date(), capabilities: [{ key: "SHOP", status: "ACTIVE" }, { key: "APPOINTMENT", status: "ACTIVE" }] }), "/fa/demo");
   });
   it("routes one enabled capability and preserves legacy fallback", () => {
-    assert.equal(publicOrganizationHref("fa", { ...base, capabilitiesInitializedAt: new Date(), capabilities: [{ key: "SHOP", status: "ACTIVE" }] }), "/fa/shop/demo");
-    assert.equal(publicOrganizationHref("fa", { ...base, type: "APPOINTMENT", capabilitiesInitializedAt: new Date(), capabilities: [{ key: "APPOINTMENT", status: "ACTIVE" }] }), "/fa/appointment/demo");
-    assert.equal(publicOrganizationHref("fa", { ...base }), "/fa/shop/demo");
+    assert.equal(publicOrganizationHref("fa", { ...base, capabilitiesInitializedAt: new Date(), capabilities: [{ key: "SHOP", status: "ACTIVE" }] }), "/fa/demo");
+    assert.equal(publicOrganizationHref("fa", { ...base, type: "APPOINTMENT", capabilitiesInitializedAt: new Date(), capabilities: [{ key: "APPOINTMENT", status: "ACTIVE" }] }), "/fa/demo");
+    assert.equal(publicOrganizationHref("fa", { ...base }), "/fa/demo");
   });
 });
 
@@ -409,7 +409,7 @@ describe("capability-aware dashboard authorization", () => {
 
 describe("tenant-safe push deep links", () => {
   it("allows relative tenant routes", () => {
-    assert.equal(normalizePushTargetUrl("/fa/shop/sicily/order/ORD-1"), "/fa/shop/sicily/order/ORD-1");
+    assert.equal(normalizePushTargetUrl("/fa/sicily/shop/order/ORD-1"), "/fa/sicily/shop/order/ORD-1");
   });
 
   it("rejects external and scheme-relative URLs", () => {
@@ -422,7 +422,7 @@ describe("tenant-safe push deep links", () => {
       organizationSlug: "cafe-a",
       orderNumber: "ORD-1",
       audience: "CUSTOMER",
-    }), "/fa/shop/cafe-a/order/ORD-1");
+    }), "/fa/cafe-a/shop/order/ORD-1");
     assert.equal(buildOrderPushTargetUrl({
       organizationSlug: "cafe-a",
       orderNumber: "ORD-1",
@@ -431,7 +431,7 @@ describe("tenant-safe push deep links", () => {
   });
 
   it("uses clean order links for custom-origin subscriptions", () => {
-    const platformTarget = "/fa/shop/cafe-a/order/ORD-1";
+    const platformTarget = "/fa/cafe-a/shop/order/ORD-1";
     assert.equal(adaptPushTargetUrlForOrigin({
       targetUrl: platformTarget,
       subscriptionOrigin: "https://cafe-a.example.ir",
@@ -457,10 +457,10 @@ describe("origin-aware push subscriptions", () => {
     const payload = JSON.parse(buildMinimalWebPushPayload({
       title: "Order update",
       body: "Order ORD-1 is ready",
-      targetUrl: "/fa/shop/cafe-a/order/ORD-1",
+      targetUrl: "/fa/cafe-a/shop/order/ORD-1",
     }));
     assert.deepEqual(Object.keys(payload).sort(), ["body", "title", "url"]);
-    assert.equal(payload.url, "/fa/shop/cafe-a/order/ORD-1");
+    assert.equal(payload.url, "/fa/cafe-a/shop/order/ORD-1");
     assert.equal("customerId" in payload, false);
     assert.equal("organizationId" in payload, false);
     assert.equal("phone" in payload, false);

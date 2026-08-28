@@ -3,6 +3,7 @@
 import { useState, useEffect, use, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing"
 import { ArrowRight, Save, Loader2, Trash2, ArrowLeft, Plus, ChevronLeftIcon, ChevronRightIcon, X, Sparkles, Clock, RotateCcw, Ban } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -372,7 +373,7 @@ export default function EditProductPage({
 
   const productSlugSegment = slug.trim() || product?.slug || ""
   const productPreviewPath = product?.organizationSlug && productSlugSegment
-    ? `/${locale}/shop/${product.organizationSlug}/product/${productSlugSegment}`
+    ? buildOrganizationPublicPath({ locale, organizationSlug: product.organizationSlug, surface: "shop", subPath: `/product/${productSlugSegment}` })
     : null
   const aiSellerState = getAiMediaSellerState(aiStatus, aiUsage, aiStateLoading)
   const aiCanCreate = canCreateAiMediaJob(aiSellerState)

@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing"
 import { ArrowRight, Save, Loader2, Trash2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -178,7 +179,7 @@ export default function EditServicePage({
 
   const serviceSlugSegment = slug.trim() || service?.slug || ""
   const servicePreviewPath = service?.organization?.slug && serviceSlugSegment
-    ? `/${locale}/appointment/${service.organization.slug}/services/${serviceSlugSegment}`
+    ? buildOrganizationPublicPath({ locale, organizationSlug: service.organization.slug, surface: "appointment", subPath: `/services/${serviceSlugSegment}` })
     : null
 
   const handleSubmit = async (e: React.FormEvent) => {

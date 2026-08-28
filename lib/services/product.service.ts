@@ -10,6 +10,7 @@ import { hasPermission, type UserRole } from "@/lib/types";
 import { ApiError } from "@/lib/api-guards";
 import { buildUniqueDetailSlug, normalizeDetailSlug } from "@/lib/detail-slugs";
 import { normalizePagination } from "@/lib/pagination";
+import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing";
 import { InventoryMovementReason } from "@prisma/client";
 import { supportedLocales } from "@/lib/i18n";
 import { canReadAiMediaEntityAttachmentColumns } from "@/lib/services/ai-media-entity-attachment-service";
@@ -17,9 +18,9 @@ import { canReadAiMediaEntityAttachmentColumns } from "@/lib/services/ai-media-e
 function revalidateShopProductPages(productId: string, organizationSlug: string, segments: Array<string | null | undefined> = []) {
   const uniqueSegments = Array.from(new Set([productId, ...segments].filter(Boolean)));
   for (const locale of supportedLocales) {
-    revalidatePath(`/${locale}/shop/${organizationSlug}`);
+    revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug, surface: "shop" }));
     for (const segment of uniqueSegments) {
-      revalidatePath(`/${locale}/shop/${organizationSlug}/product/${segment}`);
+      revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug, surface: "shop", subPath: `/product/${segment}` }));
     }
   }
   revalidateTag("home-page", "max");

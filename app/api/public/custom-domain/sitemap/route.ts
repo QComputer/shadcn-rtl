@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { buildTenantPublicPath, customDomainLocales, normalizeDomainHost } from "@/lib/custom-domain-routing";
+import { buildOrganizationPublicPath, buildTenantPublicPath, customDomainLocales, normalizeDomainHost, type OrganizationPublicSurface } from "@/lib/custom-domain-routing";
 import { getCanonicalUrl } from "@/lib/seo";
 import { hasOrganizationCapability } from "@/lib/organization-capabilities";
 
@@ -46,11 +46,20 @@ function entryXml(entry: SitemapEntry) {
 function tenantEntries(input: {
   baseUrl: string;
   subPath: string;
+  surface?: OrganizationPublicSurface;
   lastModified?: Date | null;
   priority?: string;
 }): SitemapEntry[] {
   return customDomainLocales.map((locale) => ({
-    loc: getCanonicalUrl(buildTenantPublicPath(locale, input.subPath), input.baseUrl),
+    loc: getCanonicalUrl(input.surface
+      ? buildOrganizationPublicPath({
+          locale,
+          organizationSlug: "resolved-by-host",
+          surface: input.surface,
+          subPath: input.subPath,
+          isCustomDomain: true,
+        })
+      : buildTenantPublicPath(locale, input.subPath), input.baseUrl),
     lastmod: input.lastModified,
     changefreq: "daily",
     priority: input.priority || (locale === "fa" ? "0.8" : "0.7"),
@@ -156,9 +165,11 @@ export async function GET(request: Request) {
 
   if (hasShop) {
     entries.push(
-      ...tenantEntries({ baseUrl, subPath: "/profile", lastModified: organization.updatedAt, priority: "0.8" }),
+      ...tenantEntries({ baseUrl, surface: "shop", subPath: "/", lastModified: organization.updatedAt, priority: "0.9" }),
+      ...tenantEntries({ baseUrl, surface: "shop", subPath: "/profile", lastModified: organization.updatedAt, priority: "0.8" }),
       ...tenantEntries({
         baseUrl,
+        surface: "shop",
         subPath: "/fanpage",
         lastModified: organization.fanpagePosts[0]?.updatedAt || organization.updatedAt,
         priority: "0.7",
@@ -169,6 +180,7 @@ export async function GET(request: Request) {
       entries.push(
         ...tenantEntries({
           baseUrl,
+          surface: "shop",
           subPath: `/category/${category.slug || category.id}`,
           lastModified: category.updatedAt,
           priority: "0.7",
@@ -180,6 +192,7 @@ export async function GET(request: Request) {
       entries.push(
         ...tenantEntries({
           baseUrl,
+          surface: "shop",
           subPath: `/product/${product.slug || product.id}`,
           lastModified: product.updatedAt,
           priority: "0.6",
@@ -190,13 +203,15 @@ export async function GET(request: Request) {
 
   if (hasAppointment) {
     entries.push(
-      ...tenantEntries({ baseUrl, subPath: "/services", lastModified: organization.updatedAt, priority: "0.8" }),
+      ...tenantEntries({ baseUrl, surface: "appointment", subPath: "/", lastModified: organization.updatedAt, priority: "0.9" }),
+      ...tenantEntries({ baseUrl, surface: "appointment", subPath: "/services", lastModified: organization.updatedAt, priority: "0.8" }),
     );
 
     for (const category of organization.serviceCategories) {
       entries.push(
         ...tenantEntries({
           baseUrl,
+          surface: "appointment",
           subPath: `/services/category/${category.slug || category.id}`,
           lastModified: category.updatedAt,
           priority: "0.7",
@@ -208,6 +223,7 @@ export async function GET(request: Request) {
       entries.push(
         ...tenantEntries({
           baseUrl,
+          surface: "appointment",
           subPath: `/services/${service.slug || service.id}`,
           lastModified: service.updatedAt,
           priority: "0.6",

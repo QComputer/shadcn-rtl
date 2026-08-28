@@ -185,9 +185,109 @@ export function buildTenantPublicPath(locale: string, tenantSubPath = "/") {
   return `/${supportedLocale}${cleanSubPath}`;
 }
 
+export type OrganizationPublicSurface = "shop" | "appointment";
+
+export function buildOrganizationRootPath(input: {
+  locale: string;
+  organizationSlug: string;
+  isCustomDomain?: boolean;
+}) {
+  if (input.isCustomDomain) return "/";
+  const locale = isSupportedCustomDomainLocale(input.locale)
+    ? input.locale
+    : defaultCustomDomainLocale;
+  return `/${locale}/${input.organizationSlug}`;
+}
+
+/**
+ * Builds a browser-visible organization capability path without exposing the
+ * internal locale/organization route used by the App Router.
+ */
+export function buildOrganizationPublicPath(input: {
+  locale: string;
+  organizationSlug: string;
+  surface: OrganizationPublicSurface;
+  subPath?: string;
+  isCustomDomain?: boolean;
+}) {
+  const locale = isSupportedCustomDomainLocale(input.locale)
+    ? input.locale
+    : defaultCustomDomainLocale;
+  const subPath = input.subPath && input.subPath !== "/"
+    ? input.subPath.startsWith("/") ? input.subPath : `/${input.subPath}`
+    : "";
+
+  if (input.isCustomDomain) {
+    const capabilityPath = `/${input.surface}${subPath}`;
+    return locale === defaultCustomDomainLocale
+      ? capabilityPath
+      : `/${locale}${capabilityPath}`;
+  }
+
+  return `/${locale}/${input.organizationSlug}/${input.surface}${subPath}`;
+}
+
+export function buildOrganizationPlatformPath(input: {
+  locale: string;
+  organizationSlug: string;
+  surface: OrganizationPublicSurface;
+  publicPathname: string;
+}) {
+  const locale = isSupportedCustomDomainLocale(input.locale)
+    ? input.locale
+    : defaultCustomDomainLocale;
+  const { pathnameWithoutLocale } = splitLocalePrefix(input.publicPathname);
+  const surfacePrefix = `/${input.surface}`;
+  const subPath = pathnameWithoutLocale === surfacePrefix
+    ? ""
+    : pathnameWithoutLocale.startsWith(`${surfacePrefix}/`)
+      ? pathnameWithoutLocale.slice(surfacePrefix.length)
+      : pathnameWithoutLocale === "/"
+        ? ""
+        : pathnameWithoutLocale;
+
+  return `/${locale}/${input.organizationSlug}/${input.surface}${subPath}`;
+}
+
+export type PublicRouteSearchParams = Record<string, string | string[] | undefined>;
+
+export function appendPublicRouteSearchParams(pathname: string, searchParams?: PublicRouteSearchParams) {
+  if (!searchParams) return pathname;
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (Array.isArray(value)) {
+      for (const item of value) query.append(key, item);
+    } else if (value !== undefined) {
+      query.set(key, value);
+    }
+  }
+  const serialized = query.toString();
+  return serialized ? `${pathname}?${serialized}` : pathname;
+}
+
+export function buildLegacyPlatformCapabilityRedirect(input: {
+  locale: string;
+  organizationSlug: string;
+  surface: OrganizationPublicSurface;
+  legacySegments?: string[];
+  searchParams?: PublicRouteSearchParams;
+}) {
+  const segments = input.legacySegments ?? [];
+  const normalizedSegments = input.surface === "appointment" && segments[0] === "appointment" && segments[1]
+    ? ["my-appointments", ...segments.slice(1)]
+    : segments;
+  const subPath = normalizedSegments.length > 0 ? `/${normalizedSegments.join("/")}` : "/";
+  return appendPublicRouteSearchParams(buildOrganizationPublicPath({
+    locale: input.locale,
+    organizationSlug: input.organizationSlug,
+    surface: input.surface,
+    subPath,
+  }), input.searchParams);
+}
+
 export function getShopSubPathFromPlatformPath(pathname: string, slug: string) {
   const { locale, pathnameWithoutLocale } = splitLocalePrefix(pathname);
-  const prefix = `/shop/${slug}`;
+  const prefix = `/${slug}/shop`;
 
   if (pathnameWithoutLocale === prefix) {
     return {
@@ -211,13 +311,153 @@ export function buildShopPlatformPath(input: {
   slug: string;
   publicPathname: string;
 }) {
-  const locale = isSupportedCustomDomainLocale(input.locale)
-    ? input.locale
-    : defaultCustomDomainLocale;
-  const { pathnameWithoutLocale } = splitLocalePrefix(input.publicPathname);
-  const cleanPath = pathnameWithoutLocale === "/" ? "" : pathnameWithoutLocale;
+  return buildOrganizationPlatformPath({
+    locale: input.locale,
+    organizationSlug: input.slug,
+    surface: "shop",
+    publicPathname: input.publicPathname,
+  });
+}
 
-  return `/${locale}/shop/${input.slug}${cleanPath}`;
+export function getAppointmentSubPathFromPlatformPath(pathname: string, slug: string) {
+  const { locale, pathnameWithoutLocale } = splitLocalePrefix(pathname);
+  const prefix = `/${slug}/appointment`;
+
+  if (pathnameWithoutLocale === prefix) {
+    return { locale: locale || defaultCustomDomainLocale, subPath: "/" };
+  }
+
+  if (pathnameWithoutLocale.startsWith(`${prefix}/`)) {
+    const internalSubPath = pathnameWithoutLocale.slice(prefix.length) || "/";
+    return {
+      locale: locale || defaultCustomDomainLocale,
+      subPath: internalSubPath.startsWith("/appointment/")
+        ? `/my-appointments/${internalSubPath.slice("/appointment/".length)}`
+        : internalSubPath,
+    };
+  }
+
+  return null;
+}
+
+export function buildAppointmentPlatformPath(input: {
+  locale: string;
+  slug: string;
+  publicPathname: string;
+}) {
+  return buildOrganizationPlatformPath({
+    locale: input.locale,
+    organizationSlug: input.slug,
+    surface: "appointment",
+    publicPathname: input.publicPathname,
+  });
+}
+
+export type CustomDomainCapabilityPath = {
+  locale: CustomDomainLocale;
+  surface: OrganizationPublicSurface;
+  subPath: string;
+};
+
+/**
+ * Syntactically maps a parsed public namespace to its capability key. This
+ * does not inspect an organization or authorize access; the resolver/proxy
+ * layer must compare the returned key with the resolved tenant capabilities.
+ */
+export function classifyPublicSurfaceCapability(surface: OrganizationPublicSurface) {
+  return surface === "shop" ? "SHOP" as const : "APPOINTMENT" as const;
+}
+
+const RESERVED_CUSTOM_DOMAIN_SEGMENTS: Record<OrganizationPublicSurface, Set<string>> = {
+  shop: new Set(["category", "product", "cart", "checkout", "order", "profile", "fanpage"]),
+  appointment: new Set(["services", "booking", "my-appointments", "appointment", "fanpage", "staff"]),
+};
+
+export function isReservedCustomDomainSurfaceSegment(surface: OrganizationPublicSurface, segment: string) {
+  return RESERVED_CUSTOM_DOMAIN_SEGMENTS[surface].has(segment.toLowerCase());
+}
+
+export function parseCustomDomainCapabilityPath(pathname: string): CustomDomainCapabilityPath | null {
+  const splitPath = splitLocalePrefix(pathname);
+  const locale = splitPath.locale || defaultCustomDomainLocale;
+
+  for (const surface of ["shop", "appointment"] as const) {
+    const prefix = `/${surface}`;
+    if (splitPath.pathnameWithoutLocale === prefix) {
+      return { locale, surface, subPath: "/" };
+    }
+    if (splitPath.pathnameWithoutLocale.startsWith(`${prefix}/`)) {
+      return {
+        locale,
+        surface,
+        subPath: splitPath.pathnameWithoutLocale.slice(prefix.length) || "/",
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * The future cross-zone edge contract owns only these explicit namespaces.
+ * The legacy paths below are application-level compatibility redirects and do
+ * not imply that an external edge (including CafeLeo/nginx) must route them to
+ * Bazarbaaz.
+ */
+export const CUSTOM_DOMAIN_CAPABILITY_EDGE_PREFIXES = ["/shop", "/appointment"] as const;
+
+const LEGACY_CUSTOM_DOMAIN_SURFACES = [
+  { surface: "shop", prefixes: ["/product", "/category", "/cart", "/checkout", "/order", "/profile", "/fanpage"] },
+  { surface: "appointment", prefixes: ["/services", "/booking", "/my-appointments"] },
+] as const;
+
+export function getLegacyCustomDomainCapabilityRedirect(pathname: string): string | null {
+  const splitPath = splitLocalePrefix(pathname);
+  const locale = splitPath.locale || defaultCustomDomainLocale;
+
+  const intermediateDetailPrefix = "/appointment/appointment/";
+  if (splitPath.pathnameWithoutLocale.startsWith(intermediateDetailPrefix)) {
+    const detailPath = splitPath.pathnameWithoutLocale.slice(intermediateDetailPrefix.length);
+    if (detailPath) {
+      return buildOrganizationPublicPath({
+        locale,
+        organizationSlug: "unused-on-custom-domain",
+        surface: "appointment",
+        subPath: `/my-appointments/${detailPath}`,
+        isCustomDomain: true,
+      });
+    }
+  }
+
+  if (splitPath.pathnameWithoutLocale.startsWith("/appointment/")) {
+    const detailPath = splitPath.pathnameWithoutLocale.slice("/appointment/".length);
+    const detailSegment = detailPath.split("/")[0];
+    if (detailSegment && !isReservedCustomDomainSurfaceSegment("appointment", detailSegment)) {
+      return buildOrganizationPublicPath({
+        locale,
+        organizationSlug: "unused-on-custom-domain",
+        surface: "appointment",
+        subPath: `/my-appointments/${detailPath}`,
+        isCustomDomain: true,
+      });
+    }
+  }
+
+  for (const entry of LEGACY_CUSTOM_DOMAIN_SURFACES) {
+    if (entry.prefixes.some((prefix) =>
+      splitPath.pathnameWithoutLocale === prefix || splitPath.pathnameWithoutLocale.startsWith(`${prefix}/`),
+    )) {
+      return buildOrganizationPublicPath({
+        locale,
+        organizationSlug: "unused-on-custom-domain",
+        surface: entry.surface,
+        subPath: splitPath.pathnameWithoutLocale,
+        isCustomDomain: true,
+      });
+    }
+  }
+
+  return null;
 }
 
 export type ParsedShopPlatformPath = {
@@ -231,15 +471,42 @@ export function parseShopPlatformPath(pathname: string): ParsedShopPlatformPath 
   if (!locale) return null;
 
   const parts = pathnameWithoutLocale.split("/").filter(Boolean);
-  if (parts[0] !== "shop" || !parts[1]) return null;
+  if (!parts[0] || parts[1] !== "shop") return null;
 
   const subPathParts = parts.slice(2);
   const subPath = subPathParts.length > 0 ? `/${subPathParts.join("/")}` : "/";
 
   return {
     locale,
-    slug: parts[1],
+    slug: parts[0],
     subPath,
+  };
+}
+
+export type ParsedLegacyPlatformCapabilityPath = {
+  locale: CustomDomainLocale;
+  slug: string;
+  surface: OrganizationPublicSurface;
+  subPath: string;
+};
+
+export function parseLegacyPlatformCapabilityPath(pathname: string): ParsedLegacyPlatformCapabilityPath | null {
+  const { locale, pathnameWithoutLocale } = splitLocalePrefix(pathname);
+  if (!locale) return null;
+
+  const parts = pathnameWithoutLocale.split("/").filter(Boolean);
+  const surface = parts[0];
+  if ((surface !== "shop" && surface !== "appointment") || !parts[1]) return null;
+
+  const legacySubPathParts = parts.slice(2);
+  const subPathParts = surface === "appointment" && legacySubPathParts[0] === "appointment" && legacySubPathParts[1]
+    ? ["my-appointments", ...legacySubPathParts.slice(1)]
+    : legacySubPathParts;
+  return {
+    locale,
+    slug: parts[1],
+    surface,
+    subPath: subPathParts.length > 0 ? `/${subPathParts.join("/")}` : "/",
   };
 }
 

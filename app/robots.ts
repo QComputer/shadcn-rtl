@@ -3,11 +3,10 @@ import { supportedLocales } from "@/lib/i18n";
 import { getCanonicalUrl } from "@/lib/seo";
 
 const transactionalDisallows = supportedLocales.flatMap((locale) => [
-  `/${locale}/shop/*/checkout`,
-  `/${locale}/shop/*/order/*`,
-  `/${locale}/appointment/*/booking`,
-  `/${locale}/appointment/*/my-appointments`,
-  `/${locale}/appointment/*/appointment/*`,
+  `/${locale}/*/shop/checkout`,
+  `/${locale}/*/shop/order/*`,
+  `/${locale}/*/appointment/booking`,
+  `/${locale}/*/appointment/my-appointments`,
 ]);
 
 export default function robots(): MetadataRoute.Robots {

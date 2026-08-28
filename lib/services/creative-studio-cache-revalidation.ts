@@ -1,5 +1,6 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { supportedLocales } from "@/lib/i18n";
+import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing";
 
 export type CreativeStudioApplyTargetField =
   | "product.image"
@@ -39,24 +40,24 @@ export function revalidateCreativeStudioPublicTarget(input: CreativeStudioRevali
 
   for (const locale of supportedLocales) {
     if (input.targetField === "product.image") {
-      paths.push(`/${locale}/shop/${input.organizationSlug}`);
-      paths.push(`/${locale}/shop/${input.organizationSlug}/product/${input.productSlugOrId}`);
+      paths.push(buildOrganizationPublicPath({ locale, organizationSlug: input.organizationSlug, surface: "shop" }));
+      paths.push(buildOrganizationPublicPath({ locale, organizationSlug: input.organizationSlug, surface: "shop", subPath: `/product/${input.productSlugOrId}` }));
       if (input.categorySlugOrId) {
-        paths.push(`/${locale}/shop/${input.organizationSlug}/category/${input.categorySlugOrId}`);
+        paths.push(buildOrganizationPublicPath({ locale, organizationSlug: input.organizationSlug, surface: "shop", subPath: `/category/${input.categorySlugOrId}` }));
       }
     }
 
     if (input.targetField === "organization.logo" || input.targetField === "organization.coverImage") {
-      paths.push(`/${locale}/shop/${input.organizationSlug}`);
-      paths.push(`/${locale}/shop/${input.organizationSlug}/fanpage`);
-      paths.push(`/${locale}/shop/${input.organizationSlug}/profile`);
-      paths.push(`/${locale}/appointment/${input.organizationSlug}`);
-      paths.push(`/${locale}/appointment/${input.organizationSlug}/fanpage`);
+      paths.push(buildOrganizationPublicPath({ locale, organizationSlug: input.organizationSlug, surface: "shop" }));
+      paths.push(buildOrganizationPublicPath({ locale, organizationSlug: input.organizationSlug, surface: "shop", subPath: "/fanpage" }));
+      paths.push(buildOrganizationPublicPath({ locale, organizationSlug: input.organizationSlug, surface: "shop", subPath: "/profile" }));
+      paths.push(buildOrganizationPublicPath({ locale, organizationSlug: input.organizationSlug, surface: "appointment" }));
+      paths.push(buildOrganizationPublicPath({ locale, organizationSlug: input.organizationSlug, surface: "appointment", subPath: "/fanpage" }));
     }
 
     if (input.targetField === "fanpagePost.image") {
-      paths.push(`/${locale}/shop/${input.organizationSlug}/fanpage`);
-      paths.push(`/${locale}/appointment/${input.organizationSlug}/fanpage`);
+      paths.push(buildOrganizationPublicPath({ locale, organizationSlug: input.organizationSlug, surface: "shop", subPath: "/fanpage" }));
+      paths.push(buildOrganizationPublicPath({ locale, organizationSlug: input.organizationSlug, surface: "appointment", subPath: "/fanpage" }));
     }
   }
 

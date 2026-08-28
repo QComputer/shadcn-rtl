@@ -81,7 +81,7 @@ async function testOrganizationImages() {
     // Get organization data
     const orgs = ["sicily", "chakme", "tikal"];
     for (const slug of orgs) {
-      const res = await fetch(`${baseUrl}/fa/shop/${slug}`);
+      const res = await fetch(`${baseUrl}/fa/${slug}/shop`);
       console.log(`  Shop ${slug}: ${res.status}`);
     }
   } catch (e) {

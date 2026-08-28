@@ -30,11 +30,11 @@ function expectIncludes(rel, needle, label = `${rel} includes ${needle}`) {
 }
 
 const noIndexLayouts = [
-  "app/[locale]/shop/[slug]/checkout/layout.tsx",
-  "app/[locale]/shop/[slug]/order/[orderNumber]/layout.tsx",
-  "app/[locale]/appointment/[slug]/booking/layout.tsx",
-  "app/[locale]/appointment/[slug]/my-appointments/layout.tsx",
-  "app/[locale]/appointment/[slug]/appointment/[id]/layout.tsx",
+  "app/[locale]/[slug]/shop/checkout/layout.tsx",
+  "app/[locale]/[slug]/shop/order/[orderNumber]/layout.tsx",
+  "app/[locale]/[slug]/appointment/booking/layout.tsx",
+  "app/[locale]/[slug]/appointment/my-appointments/layout.tsx",
+  "app/[locale]/[slug]/appointment/my-appointments/[id]/layout.tsx",
 ];
 
 for (const rel of [
@@ -78,11 +78,11 @@ for (const needle of [
 }
 
 for (const rel of [
-  "app/[locale]/shop/[slug]/checkout/page.tsx",
-  "app/[locale]/shop/[slug]/order/[orderNumber]/page.tsx",
-  "app/[locale]/appointment/[slug]/booking/page.tsx",
-  "app/[locale]/appointment/[slug]/my-appointments/page.tsx",
-  "app/[locale]/appointment/[slug]/appointment/[id]/page.tsx",
+  "app/[locale]/[slug]/shop/checkout/page.tsx",
+  "app/[locale]/[slug]/shop/order/[orderNumber]/page.tsx",
+  "app/[locale]/[slug]/appointment/booking/page.tsx",
+  "app/[locale]/[slug]/appointment/my-appointments/page.tsx",
+  "app/[locale]/[slug]/appointment/my-appointments/[id]/page.tsx",
 ]) {
   expectFile(rel);
 }

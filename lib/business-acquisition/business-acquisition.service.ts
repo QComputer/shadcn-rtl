@@ -8,6 +8,7 @@ import type {
 } from "@prisma/client";
 import prisma from "@/lib/db";
 import { ApiError } from "@/lib/api-guards";
+import { assertOrganizationSlugAllowed } from "@/lib/organization-slugs";
 import { generateActivationPlan } from "@/lib/business-acquisition/activation-plan.service";
 import {
   createAcquisitionOnboardingDraft,
@@ -87,6 +88,7 @@ export async function finalizeTeamOrganizationCreation(input: FinalizeTeamOrgani
   createdByUserId: string;
   db?: typeof prisma;
 }) {
+  assertOrganizationSlugAllowed(input.slug);
   if (input.sourceType !== ACTIVE_SOURCE) {
     throw new ApiError(400, "Only BAZARBAAZ_TEAM acquisition is active");
   }

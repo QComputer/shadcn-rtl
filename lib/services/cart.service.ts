@@ -4,6 +4,8 @@ import type { AddToCartInput, UpdateCartItemInput } from "@/lib/validators";
 import { Decimal } from "@prisma/client/runtime/library";
 import { activePublicBusinessCapabilities } from "@/lib/organization-public-home";
 import { toMoneyDecimal, toMoneyNumber } from "@/lib/money";
+import { supportedLocales } from "@/lib/i18n";
+import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing";
 
 const cartInclude = {
   items: {
@@ -380,7 +382,10 @@ export class CartService {
       data: { status: "ACTIVE" },
     });
 
-    revalidatePath(`/shop/${organizationSlug}`);
+    revalidatePath("/shop");
+    for (const locale of supportedLocales) {
+      revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug, surface: "shop" }));
+    }
   }
 
   async getCartSummary(

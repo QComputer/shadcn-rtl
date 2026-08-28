@@ -50,7 +50,7 @@ await check("orders API requires authentication", async () => {
 
 // Test 3: Check checkout page loads (contains MapLocationPicker)
 await check("checkout page is reachable for shop", async () => {
-  const res = await fetch(url("/fa/shop/test-shop/checkout"));
+  const res = await fetch(url("/fa/test-shop/shop/checkout"));
   // May 404 if shop doesn't exist, that's fine - we just check it's not a server error
   expectStatus("checkout", res, [200, 307, 308, 404]);
 });

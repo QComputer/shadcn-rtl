@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db";
 import { ApiError } from "@/lib/api-guards";
 import { supportedLocales } from "@/lib/i18n";
+import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing";
 import { validateAiMediaAssetForSelection } from "@/lib/services/ai-media-asset-selection-service";
 import { streamAiMediaAssetContent } from "@/lib/services/ai-media-asset-service";
 import { hasPermission, type UserRole } from "@/lib/types";
@@ -77,19 +78,19 @@ function toSafeResult(input: {
 
 function revalidateProductAttachment(product: { id: string; slug: string | null; organizationSlug: string }) {
   for (const locale of supportedLocales) {
-    safelyRevalidatePath(`/${locale}/shop/${product.organizationSlug}`);
-    safelyRevalidatePath(`/${locale}/shop/${product.organizationSlug}/product/${product.id}`);
-    if (product.slug) safelyRevalidatePath(`/${locale}/shop/${product.organizationSlug}/product/${product.slug}`);
+    safelyRevalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: product.organizationSlug, surface: "shop" }));
+    safelyRevalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: product.organizationSlug, surface: "shop", subPath: `/product/${product.id}` }));
+    if (product.slug) safelyRevalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: product.organizationSlug, surface: "shop", subPath: `/product/${product.slug}` }));
   }
   safelyRevalidateTag("home-page");
 }
 
 function revalidateServiceAttachment(service: { id: string; slug: string | null; organization: { slug: string } }) {
   for (const locale of supportedLocales) {
-    safelyRevalidatePath(`/${locale}/appointment/${service.organization.slug}`);
-    safelyRevalidatePath(`/${locale}/appointment/${service.organization.slug}/services`);
-    safelyRevalidatePath(`/${locale}/appointment/${service.organization.slug}/services/${service.id}`);
-    if (service.slug) safelyRevalidatePath(`/${locale}/appointment/${service.organization.slug}/services/${service.slug}`);
+    safelyRevalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: service.organization.slug, surface: "appointment" }));
+    safelyRevalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: service.organization.slug, surface: "appointment", subPath: "/services" }));
+    safelyRevalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: service.organization.slug, surface: "appointment", subPath: `/services/${service.id}` }));
+    if (service.slug) safelyRevalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: service.organization.slug, surface: "appointment", subPath: `/services/${service.slug}` }));
   }
   safelyRevalidateTag("home-page");
 }

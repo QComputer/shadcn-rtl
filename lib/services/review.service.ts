@@ -94,8 +94,8 @@ export class ReviewService {
       },
     });
 
-revalidatePath(`/fa/appointment/${organization.slug}`);
-     revalidatePath(`/fa/shop/${organization.slug}`);
+revalidatePath(`/fa/${organization.slug}/appointment`);
+     revalidatePath(`/fa/${organization.slug}/shop`);
     return review;
   }
 
@@ -242,8 +242,8 @@ revalidatePath(`/fa/appointment/${organization.slug}`);
       },
     });
 
-revalidatePath(`/fa/appointment/${review.organizationSlug}`);
-     revalidatePath(`/fa/shop/${review.organizationSlug}`);
+revalidatePath(`/fa/${review.organizationSlug}/appointment`);
+     revalidatePath(`/fa/${review.organizationSlug}/shop`);
      return updated;
    }
 
@@ -259,8 +259,8 @@ revalidatePath(`/fa/appointment/${review.organizationSlug}`);
     }
 
 await prisma.review.delete({ where: { id } });
-     revalidatePath(`/fa/appointment/${review.organizationSlug}`);
-     revalidatePath(`/fa/shop/${review.organizationSlug}`);
+     revalidatePath(`/fa/${review.organizationSlug}/appointment`);
+     revalidatePath(`/fa/${review.organizationSlug}/shop`);
    }
 
   async getUserReview(userId: string, organizationSlug: string) {

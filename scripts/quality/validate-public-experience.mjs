@@ -32,8 +32,8 @@ if (exists(publicImagePath)) {
 const publicSurfaces = [
   "app/[locale]/page.tsx",
   "components/home/home-hero.tsx",
-  "app/[locale]/appointment/[slug]/page.tsx",
-  "app/[locale]/shop/[slug]/page.tsx",
+  "app/[locale]/[slug]/appointment/page.tsx",
+  "app/[locale]/[slug]/shop/page.tsx",
 ];
 
 for (const rel of publicSurfaces) {
@@ -42,11 +42,11 @@ for (const rel of publicSurfaces) {
   add(`${rel} has no raw img tags`, !/<img\b/.test(source));
 }
 
-const orgLayout = read("app/[locale]/appointment/[slug]/layout.tsx");
+const orgLayout = read("app/[locale]/[slug]/appointment/layout.tsx");
 add("appointment public layout has visible nav", /const navItems = \[/.test(orgLayout) && /navigation\.profile/.test(orgLayout) && (/organizations\/\$\{organization\?\.slug/.test(orgLayout) || /baseOrganizationPath/.test(orgLayout)));
 add("appointment public layout uses explicit safe select", /select:\s*{[\s\S]*id:\s*true[\s\S]*name:\s*true[\s\S]*slug:\s*true/.test(orgLayout));
 
-const shopLayout = read("app/[locale]/shop/[slug]/layout.tsx");
+const shopLayout = read("app/[locale]/[slug]/shop/layout.tsx");
 add("shop public layout has visible nav", /const navItems = \[/.test(shopLayout) && /navigation\.products/.test(shopLayout) && /navigation\.checkout/.test(shopLayout));
 add("shop public layout remains active/deleted filtered", /isActive:\s*true/.test(shopLayout) && /deletedAt:\s*null/.test(shopLayout));
 

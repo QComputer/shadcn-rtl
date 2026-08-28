@@ -30,8 +30,8 @@ function expectIncludes(rel, needle, label = `${rel} includes ${needle}`) {
 }
 
 const categoryPages = [
-  "app/[locale]/shop/[slug]/category/[categoryId]/page.tsx",
-  "app/[locale]/appointment/[slug]/services/category/[categoryId]/page.tsx",
+  "app/[locale]/[slug]/shop/category/[categoryId]/page.tsx",
+  "app/[locale]/[slug]/appointment/services/category/[categoryId]/page.tsx",
 ];
 
 for (const rel of [
@@ -76,12 +76,12 @@ for (const rel of categoryPages) {
 }
 
 expectIncludes(
-  "app/[locale]/shop/[slug]/page.tsx",
+  "app/[locale]/[slug]/shop/page.tsx",
   "category.slug || category.id",
   "shop listing prefers category slug with id fallback",
 );
 expectIncludes(
-  "app/[locale]/appointment/[slug]/services/page.tsx",
+  "app/[locale]/[slug]/appointment/services/page.tsx",
   "category.slug || category.id",
   "appointment services listing prefers category slug with id fallback",
 );

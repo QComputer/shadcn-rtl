@@ -30,8 +30,8 @@ function expectIncludes(rel, needle, label = `${rel} includes ${needle}`) {
 }
 
 const categoryPages = [
-  "app/[locale]/shop/[slug]/category/[categoryId]/page.tsx",
-  "app/[locale]/appointment/[slug]/services/category/[categoryId]/page.tsx",
+  "app/[locale]/[slug]/shop/category/[categoryId]/page.tsx",
+  "app/[locale]/[slug]/appointment/services/category/[categoryId]/page.tsx",
 ];
 
 for (const rel of [
@@ -52,12 +52,12 @@ for (const rel of categoryPages) {
 }
 
 expectIncludes(
-  "app/[locale]/shop/[slug]/page.tsx",
+  "app/[locale]/[slug]/shop/page.tsx",
   "/shop/${slug}/category/${category.slug || category.id}",
   "shop listing links to product category pages",
 );
 expectIncludes(
-  "app/[locale]/appointment/[slug]/services/page.tsx",
+  "app/[locale]/[slug]/appointment/services/page.tsx",
   "/appointment/${slug}/services/category/${category.slug || category.id}",
   "appointment services listing links to service category pages",
 );

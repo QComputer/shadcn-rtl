@@ -21,15 +21,15 @@ function json(rel) {
   return JSON.parse(read(rel));
 }
 
-const orgLayout = read("app/[locale]/appointment/[slug]/layout.tsx");
+const orgLayout = read("app/[locale]/[slug]/appointment/layout.tsx");
 add("organization public layout uses explicit select", /select:\s*{[\s\S]*id:\s*true[\s\S]*name:\s*true[\s\S]*slug:\s*true[\s\S]*type:\s*true/.test(orgLayout));
 add("organization public layout filters active records", /isActive:\s*true/.test(orgLayout) && /deletedAt:\s*null/.test(orgLayout));
 add("organization public layout avoids unsafe full findUnique", !/organization\.findUnique\(\s*{\s*where:\s*{\s*slug\s*}/.test(orgLayout));
 add("organization public layout avoids server self-fetch metadata", !/NEXT_PUBLIC_APP_URL/.test(orgLayout) && !/fetch\(/.test(orgLayout));
 add("organization public layout uses organization name in header", /organization\.name/.test(orgLayout) && !/>\s*Logo\s*</.test(orgLayout));
 
-const orgPage = read("app/[locale]/appointment/[slug]/page.tsx");
-const shopLayout = read("app/[locale]/shop/[slug]/layout.tsx");
+const orgPage = read("app/[locale]/[slug]/appointment/page.tsx");
+const shopLayout = read("app/[locale]/[slug]/shop/layout.tsx");
 add("follow button wired into appointment public page", /FollowButton/.test(orgPage) && /organizationId={organization\.id}/.test(orgPage));
 add("follow button wired into shop layout", /FollowButton/.test(shopLayout) && /organizationId={organization\.id}/.test(shopLayout));
 add("shop layout filters active records", /isActive:\s*true/.test(shopLayout) && /deletedAt:\s*null/.test(shopLayout));
@@ -53,7 +53,7 @@ for (const locale of ["fa", "en", "ar"]) {
   }
 }
 
-add("fanpage route exists or remains intentionally deferred", true, exists("app/[locale]/appointment/[slug]/fanpage/page.tsx") ? "implemented in P30" : "deferred");
+add("fanpage route exists or remains intentionally deferred", true, exists("app/[locale]/[slug]/appointment/fanpage/page.tsx") ? "implemented in P30" : "deferred");
 add("P28 documentation exists", exists("docs/PHASE_28_FOLLOW_FANPAGE_READINESS_CLEANUP.md"));
 
 console.table(results);

@@ -1,9 +1,4 @@
-const DEFAULT_LOCALE = "fa";
-const SUPPORTED_LOCALES = new Set(["fa", "en", "ar"]);
-
-function normalizeLocale(locale: string) {
-  return SUPPORTED_LOCALES.has(locale) ? locale : DEFAULT_LOCALE;
-}
+import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing";
 
 function normalizeSubPath(subPath: string) {
   if (!subPath || subPath === "/") return "/";
@@ -24,14 +19,13 @@ export function buildShopPublicPath(input: {
   subPath?: string;
   isCustomDomain?: boolean;
 }) {
-  const locale = normalizeLocale(input.locale);
-  const subPath = normalizeSubPath(input.subPath || "/");
-
-  if (input.isCustomDomain) {
-    return locale === DEFAULT_LOCALE ? subPath : `/${locale}${subPath === "/" ? "" : subPath}`;
-  }
-
-  return `/${locale}/shop/${input.shopSlug}${subPath === "/" ? "" : subPath}`;
+  return buildOrganizationPublicPath({
+    locale: input.locale,
+    organizationSlug: input.shopSlug,
+    surface: "shop",
+    subPath: normalizeSubPath(input.subPath || "/"),
+    isCustomDomain: input.isCustomDomain,
+  });
 }
 
 export function buildShopProductsPath(input: {
@@ -40,15 +34,6 @@ export function buildShopProductsPath(input: {
   isCustomDomain?: boolean;
   useCustomDomainRoot?: boolean;
 }) {
-  if (input.isCustomDomain && !input.useCustomDomainRoot) {
-    return buildShopPublicPath({
-      locale: input.locale,
-      shopSlug: input.shopSlug,
-      subPath: "/shop",
-      isCustomDomain: true,
-    });
-  }
-
   return buildShopPublicPath({
     locale: input.locale,
     shopSlug: input.shopSlug,
@@ -88,8 +73,11 @@ export function isShopCustomDomainPathname(input: {
   locale: string;
   shopSlug: string;
 }) {
-  const locale = normalizeLocale(input.locale);
-  const platformRoot = `/${locale}/shop/${input.shopSlug}`;
+  const platformRoot = buildOrganizationPublicPath({
+    locale: input.locale,
+    organizationSlug: input.shopSlug,
+    surface: "shop",
+  });
   return !(input.pathname === platformRoot || input.pathname.startsWith(`${platformRoot}/`));
 }
 

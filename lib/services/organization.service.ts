@@ -4,17 +4,21 @@ import { createOrganizationSchema, pageSizeSchema, updateOrganizationSchema } fr
 import type { CreateOrganizationInput, UpdateOrganizationInput } from "@/lib/validators";
 import { hasPermission, type UserRole, type Permission } from "@/lib/types";
 import { supportedLocales } from "@/lib/i18n";
+import { assertOrganizationSlugAllowed } from "@/lib/organization-slugs";
+import { buildOrganizationPublicPath, buildOrganizationRootPath } from "@/lib/custom-domain-routing";
 
 function revalidateOrganizationPublicPages(slug: string) {
   for (const locale of supportedLocales) {
-    revalidatePath(`/${locale}/shop/${slug}`);
-    revalidatePath(`/${locale}/shop/${slug}/profile`);
-    revalidatePath(`/${locale}/appointment/${slug}`);
+    revalidatePath(buildOrganizationRootPath({ locale, organizationSlug: slug }));
+    revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: slug, surface: "shop" }));
+    revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: slug, surface: "shop", subPath: "/profile" }));
+    revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: slug, surface: "appointment" }));
   }
 }
 
 export class OrganizationService {
   async create(data: CreateOrganizationInput) {
+    assertOrganizationSlugAllowed(data.slug);
     return prisma.$transaction(async (tx) => {
       const existingSlug = await tx.organization.findUnique({
         where: { slug: data.slug },
@@ -51,6 +55,7 @@ export class OrganizationService {
   }
 
   async createByUser(data: CreateOrganizationInput, userId: string) {
+    assertOrganizationSlugAllowed(data.slug);
     return prisma.$transaction(async (tx) => {
       const existingSlug = await tx.organization.findUnique({
         where: { slug: data.slug },

@@ -29,7 +29,6 @@ let isPlatformHost: any;
 let isCustomDomainBypassPath: any;
 let isCustomDomainApplicationPath: any;
 let buildShopPlatformPath: any;
-let buildTenantPublicPath: any;
 let getShopSubPathFromPlatformPath: any;
 let parseShopPlatformPath: any;
 let isSeoIndexableShopSubPath: any;
@@ -79,7 +78,6 @@ before(async () => {
   ({ validateShopDomainInput } = await import("@/lib/shop-domain-admin"));
   ({
     buildShopPlatformPath,
-    buildTenantPublicPath,
     getShopSubPathFromPlatformPath,
     isCustomDomainApplicationPath,
     isCustomDomainBypassPath,
@@ -471,7 +469,7 @@ describe("host routing helpers", () => {
         slug: "chakme",
         publicPathname: `/category/${categorySegment}`,
       }),
-      `/fa/shop/chakme/category/${categorySegment}`,
+      `/fa/chakme/shop/category/${categorySegment}`,
     );
   });
 
@@ -483,7 +481,7 @@ describe("host routing helpers", () => {
         slug: "chakme",
         publicPathname: `/category/${encodedCategorySegment}`,
       }),
-      `/fa/shop/chakme/category/${encodedCategorySegment}`,
+      `/fa/chakme/shop/category/${encodedCategorySegment}`,
     );
   });
 
@@ -496,12 +494,12 @@ describe("host routing helpers", () => {
   });
 
   it("redirects platform-shaped custom-domain category URLs to the tenant canonical path", () => {
-    const platformPath = getShopSubPathFromPlatformPath("/fa/shop/chakme/category/پیتزا-ایتالیایی-cmo8ht", "chakme");
+    const platformPath = getShopSubPathFromPlatformPath("/fa/chakme/shop/category/پیتزا-ایتالیایی-cmo8ht", "chakme");
     assert.deepEqual(platformPath, {
       locale: "fa",
       subPath: "/category/پیتزا-ایتالیایی-cmo8ht",
     });
-    assert.equal(buildTenantPublicPath(platformPath.locale, platformPath.subPath), "/category/پیتزا-ایتالیایی-cmo8ht");
+    assert.equal(buildShopCategoryPath({ locale: platformPath.locale, shopSlug: "chakme", categorySegment: "پیتزا-ایتالیایی-cmo8ht", isCustomDomain: true }), "/shop/category/پیتزا-ایتالیایی-cmo8ht");
   });
 
   it("keeps non-default custom-domain locales in canonical category paths", () => {
@@ -512,7 +510,7 @@ describe("host routing helpers", () => {
         categorySegment: "pizza-cmo8ht",
         isCustomDomain: true,
       }),
-      "/en/category/pizza-cmo8ht",
+      "/en/shop/category/pizza-cmo8ht",
     );
   });
 
@@ -524,7 +522,7 @@ describe("host routing helpers", () => {
         categorySegment: "پیتزا-ایتالیایی-cmo8ht",
         page: 2,
       }),
-      "/fa/shop/chakme/category/پیتزا-ایتالیایی-cmo8ht?page=2",
+      "/fa/chakme/shop/category/پیتزا-ایتالیایی-cmo8ht?page=2",
     );
     assert.equal(
       buildShopCategoryPath({
@@ -534,13 +532,13 @@ describe("host routing helpers", () => {
         isCustomDomain: true,
         page: 2,
       }),
-      "/category/پیتزا-ایتالیایی-cmo8ht?page=2",
+      "/shop/category/پیتزا-ایتالیایی-cmo8ht?page=2",
     );
   });
 
   it("keeps product paths and all-products paths on their current public surface", () => {
-    assert.equal(buildShopPublicPath({ locale: "fa", shopSlug: "chakme", isCustomDomain: true }), "/");
-    assert.equal(buildShopPublicPath({ locale: "fa", shopSlug: "chakme" }), "/fa/shop/chakme");
+    assert.equal(buildShopPublicPath({ locale: "fa", shopSlug: "chakme", isCustomDomain: true }), "/shop");
+    assert.equal(buildShopPublicPath({ locale: "fa", shopSlug: "chakme" }), "/fa/chakme/shop");
     assert.equal(
       buildShopProductPath({
         locale: "fa",
@@ -548,7 +546,7 @@ describe("host routing helpers", () => {
         productSegment: "latte-cmo123",
         isCustomDomain: true,
       }),
-      "/product/latte-cmo123",
+      "/shop/product/latte-cmo123",
     );
     assert.equal(
       buildShopProductPath({
@@ -556,7 +554,7 @@ describe("host routing helpers", () => {
         shopSlug: "chakme",
         productSegment: "latte-cmo123",
       }),
-      "/fa/shop/chakme/product/latte-cmo123",
+      "/fa/chakme/shop/product/latte-cmo123",
     );
   });
 
@@ -567,7 +565,7 @@ describe("host routing helpers", () => {
   });
 
   it("parses platform category paths without losing locale, shop slug, or category segment", () => {
-    assert.deepEqual(parseShopPlatformPath("/fa/shop/chakme/category/پیتزا-ایتالیایی-cmo8ht"), {
+    assert.deepEqual(parseShopPlatformPath("/fa/chakme/shop/category/پیتزا-ایتالیایی-cmo8ht"), {
       locale: "fa",
       slug: "chakme",
       subPath: "/category/پیتزا-ایتالیایی-cmo8ht",

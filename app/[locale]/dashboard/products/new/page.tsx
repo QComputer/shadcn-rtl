@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing"
 import { ArrowRight, Save, Loader2, Plus, ArrowLeft, ChevronLeftIcon, ChevronRightIcon, X, Sparkles } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -231,7 +232,7 @@ export default function NewProductPage({
 
   const selectedCategory = categories.find(category => category.id === categoryId)
   const productPreviewPath = slug.trim() && selectedCategory?.organizationSlug
-    ? `/${locale}/shop/${selectedCategory.organizationSlug}/product/${slug.trim()}`
+    ? buildOrganizationPublicPath({ locale, organizationSlug: selectedCategory.organizationSlug, surface: "shop", subPath: `/product/${slug.trim()}` })
     : null
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

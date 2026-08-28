@@ -46,11 +46,11 @@ includes("proxy.ts", "buildShopPlatformPath", "proxy rewrites clean custom domai
 includes("proxy.ts", "getShopSubPathFromPlatformPath", "proxy redirects leaked /shop slug paths back to clean domain paths");
 includes("app/api/internal/domain-resolver/route.ts", "CUSTOM_DOMAIN_RESOLVER_SECRET", "resolver uses internal secret");
 includes("lib/domains/domain-resolver.server.ts", "organizationType: domain.organization.type", "resolver returns tenant organization type");
-includes("proxy.ts", "tenant.organizationType === \"SHOP\"", "proxy restricts shop rewrites to shop tenants");
-includes("app/[locale]/shop/[slug]/layout.tsx", "getShopTenantSeoContext", "shop layout uses custom-domain SEO context");
-includes("app/[locale]/shop/[slug]/product/[productId]/layout.tsx", "getShopTenantSeoContext", "product detail uses custom-domain SEO context");
-includes("app/[locale]/shop/[slug]/category/[categoryId]/page.tsx", "getShopTenantSeoContext", "category page uses custom-domain SEO context");
-includes("app/[locale]/shop/[slug]/fanpage/page.tsx", "getShopTenantSeoContext", "fanpage uses custom-domain SEO context");
+includes("proxy.ts", "tenant.capabilities.includes(\"SHOP\")", "proxy restricts shop rewrites to SHOP-capable tenants");
+includes("app/[locale]/[slug]/shop/layout.tsx", "getShopTenantSeoContext", "shop layout uses custom-domain SEO context");
+includes("app/[locale]/[slug]/shop/product/[productId]/layout.tsx", "getShopTenantSeoContext", "product detail uses custom-domain SEO context");
+includes("app/[locale]/[slug]/shop/category/[categoryId]/page.tsx", "getShopTenantSeoContext", "category page uses custom-domain SEO context");
+includes("app/[locale]/[slug]/shop/fanpage/page.tsx", "getShopTenantSeoContext", "fanpage uses custom-domain SEO context");
 includes("lib/seo.ts", "baseUrl?: string | URL", "SEO helpers accept tenant base URL");
 includes(".env.example", "CUSTOM_DOMAIN_RESOLVER_SECRET", "env template documents resolver secret");
 

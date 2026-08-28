@@ -361,9 +361,9 @@ async function runShopMediaFlow() {
       }
     }
 
-    await expectBrowserImages(`/${locale}/shop/${org.slug}`, [logo.url, cover.url, productImage.url], "shop page");
-    await expectBrowserImages(`/${locale}/shop/${org.slug}/product/${product.id}`, [productImage.url], "product detail page");
-    await expectBrowserImages(`/${locale}/shop/${org.slug}/profile`, [logo.url, cover.url], "shop profile page");
+    await expectBrowserImages(`/${locale}/${org.slug}/shop`, [logo.url, cover.url, productImage.url], "shop page");
+    await expectBrowserImages(`/${locale}/${org.slug}/shop/product/${product.id}`, [productImage.url], "product detail page");
+    await expectBrowserImages(`/${locale}/${org.slug}/shop/profile`, [logo.url, cover.url], "shop profile page");
 
     await runHomePageImageCheck(org, [cover.url]);
   } finally {
@@ -462,8 +462,8 @@ async function runAppointmentMediaFlow() {
       if (publicService.image !== serviceImage.url) throw new Error("public appointment services API image is stale");
     });
 
-    await expectBrowserImages(`/${locale}/appointment/${org.slug}`, [logo.url, categoryImage.url], "appointment page");
-    await expectBrowserImages(`/${locale}/appointment/${org.slug}/services`, [serviceImage.url], "appointment services page");
+    await expectBrowserImages(`/${locale}/${org.slug}/appointment`, [logo.url, categoryImage.url], "appointment page");
+    await expectBrowserImages(`/${locale}/${org.slug}/appointment/services`, [serviceImage.url], "appointment services page");
   } finally {
     if (org && originals) {
       await retry("restore appointment organization images", () =>

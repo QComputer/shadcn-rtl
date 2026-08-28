@@ -178,7 +178,7 @@ async function testSitemap(baseUrl) {
 }
 
 async function testPlatformShopRedirect(platformUrl, shopSlug, baseUrl, primaryHost) {
-  const url = joinUrl(platformUrl, `/fa/shop/${shopSlug}`);
+  const url = joinUrl(platformUrl, `/fa/${shopSlug}/shop`);
   const response = await fetchWithTimeout(url, { redirect: "manual" });
 
   if (![301, 302, 307, 308].includes(response.status)) {
@@ -232,7 +232,7 @@ async function testCustomDomainCategoryRoutes(baseUrl, platformUrl, shopSlug) {
   }
 
   for (const categorySegment of categorySegments) {
-    const customCategoryPath = `/category/${encodeURIComponent(categorySegment)}`;
+    const customCategoryPath = `/shop/category/${encodeURIComponent(categorySegment)}`;
     const customResponse = await fetchWithTimeout(joinUrl(baseUrl, customCategoryPath));
     assertOkResponse(`custom-domain category ${categorySegment}`, customResponse);
 
@@ -241,7 +241,7 @@ async function testCustomDomainCategoryRoutes(baseUrl, platformUrl, shopSlug) {
       throw new Error(`custom-domain category leaked platform path: ${customResponse.url}`);
     }
 
-    const platformResponse = await fetchWithTimeout(joinUrl(platformUrl, `/fa/shop/${shopSlug}/category/${encodeURIComponent(categorySegment)}`), {
+    const platformResponse = await fetchWithTimeout(joinUrl(platformUrl, `/fa/${shopSlug}/shop/category/${encodeURIComponent(categorySegment)}`), {
       redirect: "manual",
     });
     if (![200, 301, 302, 307, 308].includes(platformResponse.status)) {

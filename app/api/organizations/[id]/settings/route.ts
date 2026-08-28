@@ -12,6 +12,7 @@ import {
   type PublicBusinessCapabilityRecord,
 } from "@/lib/organization-public-home";
 import type { BusinessCapability } from "@/lib/business-capability-registry";
+import { buildOrganizationPublicPath, buildOrganizationRootPath } from "@/lib/custom-domain-routing";
 
 async function getOrganizationSlug(organizationId: string) {
   const org = await prisma.organization.findUnique({
@@ -194,8 +195,9 @@ export async function PATCH(
     revalidatePath("/");
     revalidatePath("/shop");
     for (const routeLocale of ["fa", "en", "ar"]) {
-      revalidatePath(`/${routeLocale}/organization/${organizationSlug}`);
-      revalidatePath(`/${routeLocale}/shop/${organizationSlug}`);
+      revalidatePath(buildOrganizationRootPath({ locale: routeLocale, organizationSlug }));
+      revalidatePath(buildOrganizationPublicPath({ locale: routeLocale, organizationSlug, surface: "shop" }));
+      revalidatePath(buildOrganizationPublicPath({ locale: routeLocale, organizationSlug, surface: "appointment" }));
     }
     return NextResponse.json(settings);
   } catch (error) {

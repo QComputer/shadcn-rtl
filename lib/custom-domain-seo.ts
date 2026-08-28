@@ -1,7 +1,8 @@
 import { headers } from "next/headers";
 import prisma from "@/lib/db";
 import {
-  buildTenantPublicPath,
+  buildOrganizationPublicPath,
+  buildOrganizationRootPath,
   defaultCustomDomainLocale,
   isSupportedCustomDomainLocale,
   type CustomDomainLocale,
@@ -9,17 +10,36 @@ import {
 
 export type TenantSeoContext = {
   isCustomDomain: boolean;
+  organizationRootNavigation: "hard" | "next";
   baseUrl?: string;
   path: string;
   alternatePath: (locale: CustomDomainLocale) => string;
 };
 
-const ORGANIZATION_PATHS = {
-  SHOP: (slug: string, subPath: string) => `/shop/${slug}${subPath === "/" ? "" : subPath}`,
-  APPOINTMENT: (slug: string, subPath: string) => `/appointment/${slug}${subPath === "/" ? "" : subPath}`,
-} as const;
+export async function getOrganizationRootSeoContext(input: {
+  locale: string;
+  slug: string;
+}) {
+  const headerList = await headers();
+  const customDomainEnabled = headerList.get("x-bazar-custom-domain") === "true";
+  const headerSlug = headerList.get("x-bazar-tenant-slug");
+  const customBaseUrl = headerList.get("x-bazar-tenant-public-base-url") || undefined;
+  const locale = isSupportedCustomDomainLocale(input.locale)
+    ? input.locale
+    : defaultCustomDomainLocale;
+  const isCustomDomain = customDomainEnabled && headerSlug === input.slug;
 
-type OrganizationPathBuilder = (slug: string, subPath: string) => string;
+  return {
+    isCustomDomain,
+    baseUrl: isCustomDomain ? customBaseUrl : undefined,
+    path: buildOrganizationRootPath({ locale, organizationSlug: input.slug, isCustomDomain }),
+    alternatePath: (nextLocale: CustomDomainLocale) => buildOrganizationRootPath({
+      locale: nextLocale,
+      organizationSlug: input.slug,
+      isCustomDomain,
+    }),
+  };
+}
 
 async function getPrimaryDomainBaseUrl(slug: string, type: "SHOP" | "APPOINTMENT") {
   const domain = await prisma.organizationDomain.findFirst({
@@ -49,37 +69,42 @@ export async function getTenantSeoContext(input: {
   const headerSlug = headerList.get("x-bazar-tenant-slug");
   const customDomainEnabled = headerList.get("x-bazar-custom-domain") === "true";
   const customBaseUrl = headerList.get("x-bazar-tenant-public-base-url") || undefined;
+  const organizationRootNavigation = headerList.get("x-bazar-organization-root-zone") === "external"
+    ? "hard" as const
+    : "next" as const;
   const locale = isSupportedCustomDomainLocale(input.locale)
     ? input.locale
     : defaultCustomDomainLocale;
   const subPath = input.subPath || "/";
+  const surface = input.organizationType === "APPOINTMENT" ? "appointment" : "shop";
 
   if (customDomainEnabled && customBaseUrl && headerSlug === input.slug) {
     return {
       isCustomDomain: true,
+      organizationRootNavigation,
       baseUrl: customBaseUrl,
-      path: buildTenantPublicPath(locale, subPath),
-      alternatePath: (nextLocale) => buildTenantPublicPath(nextLocale, subPath),
+      path: buildOrganizationPublicPath({ locale, organizationSlug: input.slug, surface, subPath, isCustomDomain: true }),
+      alternatePath: (nextLocale) => buildOrganizationPublicPath({ locale: nextLocale, organizationSlug: input.slug, surface, subPath, isCustomDomain: true }),
     };
   }
 
   const primaryDomainBaseUrl = await getPrimaryDomainBaseUrl(input.slug, input.organizationType);
 
-  const pathBuilder: OrganizationPathBuilder = ORGANIZATION_PATHS[input.organizationType] ?? ORGANIZATION_PATHS.SHOP;
-
   if (primaryDomainBaseUrl) {
     return {
       isCustomDomain: false,
+      organizationRootNavigation: "next",
       baseUrl: primaryDomainBaseUrl,
-      path: buildTenantPublicPath(locale, subPath),
-      alternatePath: (nextLocale) => buildTenantPublicPath(nextLocale, subPath),
+      path: buildOrganizationPublicPath({ locale, organizationSlug: input.slug, surface, subPath, isCustomDomain: true }),
+      alternatePath: (nextLocale) => buildOrganizationPublicPath({ locale: nextLocale, organizationSlug: input.slug, surface, subPath, isCustomDomain: true }),
     };
   }
 
   return {
     isCustomDomain: false,
-    path: pathBuilder(input.slug, subPath),
-    alternatePath: (nextLocale) => pathBuilder(input.slug, `/${nextLocale}${subPath}`),
+    organizationRootNavigation: "next",
+    path: buildOrganizationPublicPath({ locale, organizationSlug: input.slug, surface, subPath }),
+    alternatePath: (nextLocale) => buildOrganizationPublicPath({ locale: nextLocale, organizationSlug: input.slug, surface, subPath }),
   };
 }
 

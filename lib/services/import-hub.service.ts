@@ -4,6 +4,7 @@ import { writeAuditLog } from "@/lib/audit-log"
 import { buildUniqueCategorySlug } from "@/lib/category-slugs"
 import { buildUniqueDetailSlug } from "@/lib/detail-slugs"
 import { supportedLocales } from "@/lib/i18n"
+import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing"
 import {
   detectImportSourceType,
   isThirdPartyUrlSource,
@@ -87,12 +88,12 @@ function revalidateImportedProductPages(
   categorySlugs: Array<string | null>,
 ) {
   for (const locale of supportedLocales) {
-    revalidatePath(`/${locale}/shop/${organizationSlug}`)
+    revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug, surface: "shop" }))
     for (const slug of productSlugs) {
-      if (slug) revalidatePath(`/${locale}/shop/${organizationSlug}/product/${slug}`)
+      if (slug) revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug, surface: "shop", subPath: `/product/${slug}` }))
     }
     for (const slug of categorySlugs) {
-      if (slug) revalidatePath(`/${locale}/shop/${organizationSlug}/category/${slug}`)
+      if (slug) revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug, surface: "shop", subPath: `/category/${slug}` }))
     }
   }
   revalidateTag("home-page", "max")
@@ -100,8 +101,8 @@ function revalidateImportedProductPages(
 
 function revalidateImportedFanpagePages(organizationSlug: string) {
   for (const locale of supportedLocales) {
-    revalidatePath(`/${locale}/shop/${organizationSlug}/fanpage`)
-    revalidatePath(`/${locale}/appointment/${organizationSlug}/fanpage`)
+    revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug, surface: "shop", subPath: "/fanpage" }))
+    revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug, surface: "appointment", subPath: "/fanpage" }))
   }
   revalidateTag("home-page", "max")
 }

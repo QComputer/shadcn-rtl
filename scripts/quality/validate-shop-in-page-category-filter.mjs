@@ -16,8 +16,8 @@ function has(path) {
   return existsSync(resolve(process.cwd(), path));
 }
 
-const shopPagePath = "app/[locale]/shop/[slug]/page.tsx";
-const categoryPagePath = "app/[locale]/shop/[slug]/category/[categoryId]/page.tsx";
+const shopPagePath = "app/[locale]/[slug]/shop/page.tsx";
+const categoryPagePath = "app/[locale]/[slug]/shop/category/[categoryId]/page.tsx";
 const filterPath = "lib/shop-menu-filter.ts";
 const pathsPath = "lib/shop-public-paths.ts";
 const unitTestPath = "tests/unit/shop-menu-filter.test.ts";

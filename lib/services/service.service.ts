@@ -10,6 +10,7 @@ import type {
 } from "@/lib/validators";
 import { hasPermission, type UserRole } from "@/lib/types";
 import { ApiError } from "@/lib/api-guards";
+import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing";
 import { buildUniqueDetailSlug, normalizeDetailSlug } from "@/lib/detail-slugs";
 import { normalizePagination } from "@/lib/pagination";
 import { supportedLocales } from "@/lib/i18n";
@@ -19,10 +20,10 @@ function revalidateAppointmentServicePages(serviceId: string, organizationSlug: 
   const uniqueSegments = Array.from(new Set([serviceId, ...segments].filter(Boolean)));
 
   for (const locale of supportedLocales) {
-    revalidatePath(`/${locale}/appointment/${organizationSlug}`);
-    revalidatePath(`/${locale}/appointment/${organizationSlug}/services`);
+    revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug, surface: "appointment" }));
+    revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug, surface: "appointment", subPath: "/services" }));
     for (const segment of uniqueSegments) {
-      revalidatePath(`/${locale}/appointment/${organizationSlug}/services/${segment}`);
+      revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug, surface: "appointment", subPath: `/services/${segment}` }));
     }
   }
 

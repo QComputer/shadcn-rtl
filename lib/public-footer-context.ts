@@ -4,10 +4,10 @@ export type PublicFooterContext = "platform" | "shop" | "service" | "none";
 
 export function getPublicFooterContextForPathname(pathname: string): PublicFooterContext {
   const { pathnameWithoutLocale } = splitLocalePrefix(pathname);
-  const firstSegment = pathnameWithoutLocale.split("/").filter(Boolean)[0] || "";
+  const [firstSegment = "", secondSegment = ""] = pathnameWithoutLocale.split("/").filter(Boolean);
 
-  if (firstSegment === "shop") return "shop";
-  if (firstSegment === "appointment") return "service";
+  if (firstSegment === "shop" || secondSegment === "shop") return "shop";
+  if (firstSegment === "appointment" || secondSegment === "appointment") return "service";
   if (
     firstSegment === "dashboard" ||
     firstSegment === "login" ||

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { hasOrganizationCapability, type CapabilityRecord } from "@/lib/organization-capabilities";
+import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing";
 
 const MAX_QUERY_LENGTH = 80;
 const MAX_RESULTS_PER_GROUP = 6;
@@ -182,7 +183,7 @@ export async function GET(request: NextRequest) {
       type: "PRODUCT",
       title: product.name,
       subtitle: product.description,
-      href: `/${locale}/shop/${product.organization.slug}/product/${product.slug || product.id}`,
+      href: buildOrganizationPublicPath({ locale, organizationSlug: product.organization.slug, surface: "shop", subPath: `/product/${product.slug || product.id}` }),
       image: product.image,
       organizationName: product.organization.name,
       price: decimalToNumber(product.basePrice),
@@ -193,7 +194,7 @@ export async function GET(request: NextRequest) {
       type: "SERVICE",
       title: service.name,
       subtitle: service.description,
-      href: `/${locale}/appointment/${service.organization.slug}/services/${service.slug || service.id}`,
+      href: buildOrganizationPublicPath({ locale, organizationSlug: service.organization.slug, surface: "appointment", subPath: `/services/${service.slug || service.id}` }),
       image: service.image,
       organizationName: service.organization.name,
       price: decimalToNumber(service.price),

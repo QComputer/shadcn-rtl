@@ -17,6 +17,7 @@ import {
   type ActivationAction,
 } from "@/lib/business-acquisition/activation-plan.service";
 import { getIndustryTemplate } from "@/lib/business-acquisition/industry-templates";
+import { buildOrganizationPublicPath, buildOrganizationRootPath } from "@/lib/custom-domain-routing";
 
 const OWNER_PORTAL_ROLES: UserRole[] = ["ADMIN", "MANAGER"];
 
@@ -578,9 +579,9 @@ export async function getOwnerActivationDashboard(input: {
       coverImage: organization.coverImage,
       isOpen: organization.isOpen,
       publicPaths: {
-        shell: `/${locale}/organization/${organization.slug}`,
-        shop: effectiveCapabilities.includes("SHOP") ? `/${locale}/shop/${organization.slug}` : null,
-        appointment: effectiveCapabilities.includes("APPOINTMENT") ? `/${locale}/appointment/${organization.slug}` : null,
+        shell: buildOrganizationRootPath({ locale, organizationSlug: organization.slug }),
+        shop: effectiveCapabilities.includes("SHOP") ? buildOrganizationPublicPath({ locale, organizationSlug: organization.slug, surface: "shop" }) : null,
+        appointment: effectiveCapabilities.includes("APPOINTMENT") ? buildOrganizationPublicPath({ locale, organizationSlug: organization.slug, surface: "appointment" }) : null,
       },
     },
     membership: {

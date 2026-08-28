@@ -30,12 +30,12 @@ function expectIncludes(rel, needle, label) {
 }
 
 const metadataRoutes = [
-  "app/[locale]/shop/[slug]/layout.tsx",
-  "app/[locale]/appointment/[slug]/layout.tsx",
-  "app/[locale]/shop/[slug]/category/[categoryId]/page.tsx",
-  "app/[locale]/appointment/[slug]/services/category/[categoryId]/page.tsx",
-  "app/[locale]/shop/[slug]/product/[productId]/layout.tsx",
-  "app/[locale]/appointment/[slug]/services/[serviceId]/layout.tsx",
+  "app/[locale]/[slug]/shop/layout.tsx",
+  "app/[locale]/[slug]/appointment/layout.tsx",
+  "app/[locale]/[slug]/shop/category/[categoryId]/page.tsx",
+  "app/[locale]/[slug]/appointment/services/category/[categoryId]/page.tsx",
+  "app/[locale]/[slug]/shop/product/[productId]/layout.tsx",
+  "app/[locale]/[slug]/appointment/services/[serviceId]/layout.tsx",
 ];
 
 for (const rel of [
@@ -70,12 +70,12 @@ for (const rel of metadataRoutes) {
   expectIncludes(rel, "getUploadedOrGeneratedSeoImageUrl", `${rel} uses generated OG fallback helper`);
 }
 
-expectIncludes("app/[locale]/shop/[slug]/layout.tsx", "organization.coverImage || organization.logo", "shop organization uploaded image precedence is preserved");
-expectIncludes("app/[locale]/appointment/[slug]/layout.tsx", "organization.coverImage || organization.logo", "appointment organization uploaded image precedence is preserved");
-expectIncludes("app/[locale]/shop/[slug]/category/[categoryId]/page.tsx", "category.image || category.organization.coverImage || category.organization.logo", "shop category uploaded image precedence is preserved");
-expectIncludes("app/[locale]/appointment/[slug]/services/category/[categoryId]/page.tsx", "category.image || category.organization.coverImage || category.organization.logo", "service category uploaded image precedence is preserved");
-expectIncludes("app/[locale]/shop/[slug]/product/[productId]/layout.tsx", "product.image || product.organization.coverImage || product.organization.logo", "product uploaded image precedence is preserved");
-expectIncludes("app/[locale]/appointment/[slug]/services/[serviceId]/layout.tsx", "service.image || service.organization.coverImage || service.organization.logo", "service uploaded image precedence is preserved");
+expectIncludes("app/[locale]/[slug]/shop/layout.tsx", "organization.coverImage || organization.logo", "shop organization uploaded image precedence is preserved");
+expectIncludes("app/[locale]/[slug]/appointment/layout.tsx", "organization.coverImage || organization.logo", "appointment organization uploaded image precedence is preserved");
+expectIncludes("app/[locale]/[slug]/shop/category/[categoryId]/page.tsx", "category.image || category.organization.coverImage || category.organization.logo", "shop category uploaded image precedence is preserved");
+expectIncludes("app/[locale]/[slug]/appointment/services/category/[categoryId]/page.tsx", "category.image || category.organization.coverImage || category.organization.logo", "service category uploaded image precedence is preserved");
+expectIncludes("app/[locale]/[slug]/shop/product/[productId]/layout.tsx", "product.image || product.organization.coverImage || product.organization.logo", "product uploaded image precedence is preserved");
+expectIncludes("app/[locale]/[slug]/appointment/services/[serviceId]/layout.tsx", "service.image || service.organization.coverImage || service.organization.logo", "service uploaded image precedence is preserved");
 
 for (const kind of ["organization", "category", "product", "service"]) {
   const source = metadataRoutes.map((rel) => read(rel)).join("\n");

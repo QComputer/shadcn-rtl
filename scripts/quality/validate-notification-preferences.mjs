@@ -42,8 +42,8 @@ const webPushService = exists("lib/services/web-push-foundation.service.ts")
 const optInComponent = exists("components/public/web-push-opt-in.tsx")
   ? read("components/public/web-push-opt-in.tsx")
   : ""
-const shopProfile = exists("app/[locale]/shop/[slug]/profile/page.tsx")
-  ? read("app/[locale]/shop/[slug]/profile/page.tsx")
+const shopProfile = exists("app/[locale]/[slug]/shop/profile/page.tsx")
+  ? read("app/[locale]/[slug]/shop/profile/page.tsx")
   : ""
 const packageJson = exists("package.json") ? read("package.json") : ""
 const validateProject = exists("scripts/quality/validate-project.mjs") ? read("scripts/quality/validate-project.mjs") : ""

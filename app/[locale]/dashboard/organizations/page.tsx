@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db";
 import { supportedLocales, type SupportedLocale } from "@/lib/i18n";
 import { toPersianDigits } from "@/lib/persian";
 import { cn } from "@/lib/utils";
-import { effectiveOrganizationCapabilities, type CapabilityRecord } from "@/lib/organization-capabilities";
+import { buildOrganizationRootPath } from "@/lib/custom-domain-routing";
 
 export const dynamic = "force-dynamic";
 
@@ -217,10 +217,8 @@ function buildQuery(params: Record<string, string | number | undefined>) {
   return text ? `?${text}` : "";
 }
 
-export function publicOrganizationHref(locale: SupportedLocale, organization: { type: OrganizationType; slug: string; capabilitiesInitializedAt?: Date | null; capabilities?: CapabilityRecord[] }) {
-  const capabilities = effectiveOrganizationCapabilities({ legacyType: organization.type, capabilitiesInitializedAt: organization.capabilitiesInitializedAt, capabilities: organization.capabilities });
-  if (capabilities.length !== 1) return `/${locale}/organization/${organization.slug}`;
-  return capabilities[0] === "SHOP" ? `/${locale}/shop/${organization.slug}` : `/${locale}/appointment/${organization.slug}`;
+export function publicOrganizationHref<T extends { slug: string }>(locale: SupportedLocale, organization: T) {
+  return buildOrganizationRootPath({ locale, organizationSlug: organization.slug });
 }
 
 function statusBadgeClass(isActive: boolean) {

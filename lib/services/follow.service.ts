@@ -3,11 +3,13 @@ import { revalidatePath } from "next/cache";
 import { ApiError } from "@/lib/api-guards";
 import { normalizePagination } from "@/lib/pagination";
 import { supportedLocales } from "@/lib/i18n";
+import { buildOrganizationPublicPath, buildOrganizationRootPath } from "@/lib/custom-domain-routing";
 
 function revalidateOrganizationPublicPages(slug: string) {
   for (const locale of supportedLocales) {
-    revalidatePath(`/${locale}/appointment/${slug}`);
-    revalidatePath(`/${locale}/shop/${slug}`);
+    revalidatePath(buildOrganizationRootPath({ locale, organizationSlug: slug }));
+    revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: slug, surface: "appointment" }));
+    revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: slug, surface: "shop" }));
   }
 }
 

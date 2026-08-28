@@ -407,13 +407,13 @@ async function main() {
       throw new Error("Platform footer did not render expected platform navigation.");
     }
 
-    await gotoSettled(page, `${baseUrl}/fa/shop/${tenantB}`);
+    await gotoSettled(page, `${baseUrl}/fa/${tenantB}/shop`);
     await expectOneFooter(page, "Footer Tenant Beta", "Footer Tenant Alpha");
 
-    await gotoSettled(page, `${baseUrl}/fa/shop/${tenantB}/product/beta-product-${stamp}`);
+    await gotoSettled(page, `${baseUrl}/fa/${tenantB}/shop/product/beta-product-${stamp}`);
     await expectOneFooter(page, "Footer Tenant Beta", "Footer Tenant Alpha");
 
-    await gotoSettled(page, `${baseUrl}/fa/shop/${tenantB}/category/beta-category-${stamp}`);
+    await gotoSettled(page, `${baseUrl}/fa/${tenantB}/shop/category/beta-category-${stamp}`);
     await expectOneFooter(page, "Footer Tenant Beta", "Footer Tenant Alpha");
 
     customContext = await browser.newContext({
@@ -430,8 +430,8 @@ async function main() {
     await gotoSettled(customPage, "/");
     await expectOneFooter(customPage, "Footer Tenant Alpha", "Footer Tenant Beta");
     const customFooterLinks = await customPage.locator("footer a").evaluateAll((links) => links.map((link) => link.getAttribute("href")));
-    if (!customFooterLinks.includes("/") || !customFooterLinks.includes("/checkout")) {
-      throw new Error(`Custom-domain footer links were not tenant-root relative: ${customFooterLinks.join(", ")}`);
+    if (!customFooterLinks.includes("/shop") || !customFooterLinks.includes("/shop/checkout")) {
+      throw new Error(`Custom-domain footer links were not shop-namespaced: ${customFooterLinks.join(", ")}`);
     }
 
     const actionableConsoleErrors = consoleErrors.filter((message) => !isIgnorableLocalAuthConsoleError(message));

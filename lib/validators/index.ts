@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isReservedOrganizationSlug } from "@/lib/organization-slugs";
 
 // Common validation patterns
 export const passwordSchema = z
@@ -20,7 +21,8 @@ export const slugSchema = z
   .string()
   .min(3, "Slug must be at least 3 characters")
   .max(10, "Slug must be less than 10 characters")
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase alphanumeric with hyphens");
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase alphanumeric with hyphens")
+  .refine((slug) => !isReservedOrganizationSlug(slug), "Slug is reserved by the platform");
 
 export const pageSchema = z.coerce.number().int().positive().default(1);
 export const pageSizeSchema = z.coerce.number().int().positive().max(100).default(20);

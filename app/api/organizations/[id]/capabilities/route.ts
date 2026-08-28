@@ -9,6 +9,7 @@ import {
   getConfiguredDefaultPublicCapability,
   writeDefaultPublicCapabilitySetting,
 } from "@/lib/organization-public-home";
+import { buildOrganizationPublicPath, buildOrganizationRootPath } from "@/lib/custom-domain-routing";
 
 export async function GET(
   _request: NextRequest,
@@ -128,9 +129,9 @@ export async function PUT(
       revalidatePath("/");
       revalidatePath("/shop");
       for (const routeLocale of ["fa", "en", "ar"]) {
-        revalidatePath(`/${routeLocale}/organization/${organizationSlug.slug}`);
-        revalidatePath(`/${routeLocale}/shop/${organizationSlug.slug}`);
-        revalidatePath(`/${routeLocale}/appointment/${organizationSlug.slug}`);
+        revalidatePath(buildOrganizationRootPath({ locale: routeLocale, organizationSlug: organizationSlug.slug }));
+        revalidatePath(buildOrganizationPublicPath({ locale: routeLocale, organizationSlug: organizationSlug.slug, surface: "shop" }));
+        revalidatePath(buildOrganizationPublicPath({ locale: routeLocale, organizationSlug: organizationSlug.slug, surface: "appointment" }));
       }
     }
 

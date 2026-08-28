@@ -410,7 +410,7 @@ try {
   console.log(`public shop API check: status=${apiCheck.status} body=${apiText.slice(0, 500)}`);
   if (!apiCheck.ok) throw new Error(`Public shop API check failed: status=${apiCheck.status} body=${apiText.slice(0, 1000)}`);
 
-  await runBrowserFlow(`http://127.0.0.1:${appPort}/fa/shop/${shopSlug}`, "platform");
+  await runBrowserFlow(`http://127.0.0.1:${appPort}/fa/${shopSlug}/shop`, "platform");
   await runBrowserFlow(`http://${customHost}:${appPort}/`, "custom-domain");
   await verifyLegacyCategory(`http://${customHost}:${appPort}`, `پیتزا-${stamp}`);
 

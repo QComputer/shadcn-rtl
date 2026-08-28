@@ -12,6 +12,7 @@ import {
 } from "@/lib/services/ai-media-service-client";
 import { ApiError } from "@/lib/api-guards";
 import { supportedLocales } from "@/lib/i18n";
+import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing";
 import type { UserRole } from "@/lib/types";
 import { hasPermission } from "@/lib/types";
 import { revalidatePath, revalidateTag } from "next/cache";
@@ -115,8 +116,8 @@ function getImportedProductAiMediaPrompt(sourceMetadata: unknown) {
 function revalidateAiSelectedProductImage(organizationSlug: string, productSlugOrId: string) {
   try {
     for (const locale of supportedLocales) {
-      revalidatePath(`/${locale}/shop/${organizationSlug}`);
-      revalidatePath(`/${locale}/shop/${organizationSlug}/product/${productSlugOrId}`);
+      revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug, surface: "shop" }));
+      revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug, surface: "shop", subPath: `/product/${productSlugOrId}` }));
     }
     revalidateTag("home-page", "max");
   } catch {

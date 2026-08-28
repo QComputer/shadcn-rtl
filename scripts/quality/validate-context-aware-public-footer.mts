@@ -15,8 +15,8 @@ function report(name: string, ok: boolean) {
 }
 
 const localeLayout = read("app/[locale]/layout.tsx");
-const shopLayout = read("app/[locale]/shop/[slug]/layout.tsx");
-const serviceLayout = read("app/[locale]/appointment/[slug]/layout.tsx");
+const shopLayout = read("app/[locale]/[slug]/shop/layout.tsx");
+const serviceLayout = read("app/[locale]/[slug]/appointment/layout.tsx");
 const dashboardLayout = read("app/[locale]/dashboard/layout.tsx");
 const proxy = read("proxy.ts");
 const footerContext = read("lib/public-footer-context.ts");

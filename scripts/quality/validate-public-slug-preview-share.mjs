@@ -67,10 +67,10 @@ expectIncludes("lib/services/category.service.ts", "slug: true", "service catego
 expectIncludes("lib/seo.ts", "width: 1200", "shared metadata declares Open Graph image width");
 expectIncludes("lib/seo.ts", "height: 630", "shared metadata declares Open Graph image height");
 expectIncludes("lib/seo.ts", "alt: input.title || DEFAULT_TITLE", "shared metadata declares image alt text");
-expectIncludes("app/[locale]/shop/[slug]/product/[productId]/layout.tsx", "product.image || product.organization.coverImage || product.organization.logo", "product detail share image falls back to cover image");
-expectIncludes("app/[locale]/appointment/[slug]/services/[serviceId]/layout.tsx", "service.image || service.organization.coverImage || service.organization.logo", "service detail share image falls back to cover image");
-expectIncludes("app/[locale]/shop/[slug]/category/[categoryId]/page.tsx", "product.image || category.image || category.organization.coverImage || category.organization.logo", "shop category item JSON-LD uses cover-image fallback");
-expectIncludes("app/[locale]/appointment/[slug]/services/category/[categoryId]/page.tsx", "service.image || category.image || category.organization.coverImage || category.organization.logo", "service category item JSON-LD uses cover-image fallback");
+expectIncludes("app/[locale]/[slug]/shop/product/[productId]/layout.tsx", "product.image || product.organization.coverImage || product.organization.logo", "product detail share image falls back to cover image");
+expectIncludes("app/[locale]/[slug]/appointment/services/[serviceId]/layout.tsx", "service.image || service.organization.coverImage || service.organization.logo", "service detail share image falls back to cover image");
+expectIncludes("app/[locale]/[slug]/shop/category/[categoryId]/page.tsx", "product.image || category.image || category.organization.coverImage || category.organization.logo", "shop category item JSON-LD uses cover-image fallback");
+expectIncludes("app/[locale]/[slug]/appointment/services/category/[categoryId]/page.tsx", "service.image || category.image || category.organization.coverImage || category.organization.logo", "service category item JSON-LD uses cover-image fallback");
 
 const packageJson = JSON.parse(read("package.json"));
 add(

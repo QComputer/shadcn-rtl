@@ -3,11 +3,12 @@ import { ApiError } from "@/lib/api-guards";
 import { normalizePagination } from "@/lib/pagination";
 import { revalidatePath } from "next/cache";
 import { supportedLocales } from "@/lib/i18n";
+import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing";
 
 function revalidateFanpage(slug: string) {
   for (const locale of supportedLocales) {
-    revalidatePath(`/${locale}/appointment/${slug}/fanpage`);
-    revalidatePath(`/${locale}/shop/${slug}/fanpage`);
+    revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: slug, surface: "appointment", subPath: "/fanpage" }));
+    revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: slug, surface: "shop", subPath: "/fanpage" }));
   }
 }
 

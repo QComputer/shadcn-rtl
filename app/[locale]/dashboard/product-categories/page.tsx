@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing"
 import {
   Plus,
   Search,
@@ -154,7 +155,7 @@ export default function ProductCategoriesPage({
   const getCategoryPreviewPath = () => {
     const segment = formData.slug.trim() || editingCategory?.slug || ""
     const organizationSlug = editingCategory?.organizationSlug || currentOrganizationSlug
-    return segment && organizationSlug ? `/${locale}/shop/${organizationSlug}/category/${segment}` : null
+    return segment && organizationSlug ? buildOrganizationPublicPath({ locale, organizationSlug, surface: "shop", subPath: `/category/${segment}` }) : null
   }
 
   // Open create dialog

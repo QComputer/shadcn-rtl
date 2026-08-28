@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing"
 import { ArrowRight, Save, Loader2, Plus } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -117,7 +118,7 @@ export default function NewServicePage({
 
   const selectedCategory = categories.find(category => category.id === categoryId)
   const servicePreviewPath = slug.trim() && selectedCategory?.organization?.slug
-    ? `/${locale}/appointment/${selectedCategory.organization.slug}/services/${slug.trim()}`
+    ? buildOrganizationPublicPath({ locale, organizationSlug: selectedCategory.organization.slug, surface: "appointment", subPath: `/services/${slug.trim()}` })
     : null
 
   const handleSubmit = async (e: React.FormEvent) => {

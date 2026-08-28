@@ -2,17 +2,26 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import {
   buildShopPlatformPath,
+  buildAppointmentPlatformPath,
+  buildOrganizationRootPath,
+  buildOrganizationPublicPath,
   buildTenantPublicPath,
   getPlatformCanonicalRedirectTarget,
   CANONICAL_PLATFORM_HOST,
   getShopSubPathFromPlatformPath,
+  getAppointmentSubPathFromPlatformPath,
   isCustomDomainApplicationPath,
   isCustomDomainBypassPath,
   isPlatformHost,
   normalizeDomainHost,
   parseShopPlatformPath,
+  parseLegacyPlatformCapabilityPath,
   splitLocalePrefix,
   isSeoIndexableShopSubPath,
+  getLegacyCustomDomainCapabilityRedirect,
+  parseCustomDomainCapabilityPath,
+  classifyPublicSurfaceCapability,
+  isReservedCustomDomainSurfaceSegment,
   type ResolvedCustomDomain,
 } from "@/lib/custom-domain-routing";
 import { getPublicFooterContextForPathname, type PublicFooterContext } from "@/lib/public-footer-context";
@@ -155,6 +164,10 @@ function buildTenantRewriteHeaders(
   requestHeaders.set("x-bazar-tenant-public-base-url", getRequestOrigin(request));
   requestHeaders.set("x-bazar-tenant-public-locale", locale);
   requestHeaders.set("x-bazar-tenant-public-path", publicPath);
+  requestHeaders.set(
+    "x-bazar-organization-root-zone",
+    tenant.publicHome?.kind === "external" ? "external" : "bazarbaaz",
+  );
   requestHeaders.set("x-bazar-public-footer-context", "none");
   return requestHeaders;
 }
@@ -262,21 +275,7 @@ export async function proxy(request: NextRequest) {
     if (splitPath.pathnameWithoutLocale === "/") {
       const publicHome = tenant.publicHome;
 
-      if (publicHome?.kind === "capability") {
-        tenantHomeUrl.pathname = publicHome.capability === "SHOP"
-          ? buildShopPlatformPath({
-              locale,
-              slug: tenant.slug,
-              publicPathname: "/",
-            })
-          : `/${locale}/appointment/${tenant.slug}${publicHome.publicEntryPath}`;
-      } else if (publicHome?.kind === "brand") {
-        tenantHomeUrl.pathname = publicHome.provider === "CUSTOM_INTERNAL"
-          ? `/${locale}/brand/${tenant.slug}/custom`
-          : `/${locale}/brand/${tenant.slug}`;
-      } else if (publicHome?.kind === "visitor-choice") {
-        tenantHomeUrl.pathname = `/${locale}/visitor-choice/${tenant.slug}`;
-      } else if (publicHome?.kind === "external") {
+      if (publicHome?.kind === "external") {
         const externalUrl = request.nextUrl.clone();
         externalUrl.pathname = `/${locale}/external-root/${tenant.slug}`;
         const response = NextResponse.rewrite(externalUrl, { request: { headers: requestHeaders } });
@@ -284,7 +283,7 @@ export async function proxy(request: NextRequest) {
         response.headers.set("x-direction", localeConfig[locale].dir);
         return withSecurityHeaders(response);
       } else {
-        tenantHomeUrl.pathname = `/${locale}/organization/${tenant.slug}`;
+        tenantHomeUrl.pathname = buildOrganizationRootPath({ locale, organizationSlug: tenant.slug });
       }
 
       const response = NextResponse.rewrite(tenantHomeUrl, { request: { headers: requestHeaders } });
@@ -293,75 +292,102 @@ export async function proxy(request: NextRequest) {
       return withSecurityHeaders(response);
     }
 
-    if (splitPath.pathnameWithoutLocale === "/shop" || splitPath.pathnameWithoutLocale.startsWith("/shop/")) {
-      if (!tenant.capabilities.includes("SHOP")) {
-        const unavailableUrl = request.nextUrl.clone();
-        unavailableUrl.pathname = `/${locale}/not-found`;
-        return withSecurityHeaders(NextResponse.rewrite(unavailableUrl, { request: { headers: requestHeaders } }));
-      }
-      const rewrittenUrl = request.nextUrl.clone();
-      rewrittenUrl.pathname = buildShopPlatformPath({
-        locale,
-        slug: tenant.slug,
-        publicPathname: splitPath.pathnameWithoutLocale.slice("/shop".length) || "/",
+    const legacyPlatformCapabilityPath = parseLegacyPlatformCapabilityPath(pathname);
+    if (
+      legacyPlatformCapabilityPath &&
+      legacyPlatformCapabilityPath.slug === tenant.slug &&
+      tenant.capabilities.includes(classifyPublicSurfaceCapability(legacyPlatformCapabilityPath.surface))
+    ) {
+      const cleanUrl = request.nextUrl.clone();
+      cleanUrl.pathname = buildOrganizationPublicPath({
+        locale: legacyPlatformCapabilityPath.locale,
+        organizationSlug: tenant.slug,
+        surface: legacyPlatformCapabilityPath.surface,
+        subPath: legacyPlatformCapabilityPath.subPath,
+        isCustomDomain: true,
       });
-      return withSecurityHeaders(NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } }));
+      return withSecurityHeaders(NextResponse.redirect(cleanUrl, 308));
     }
 
-    if (["/services", "/booking", "/my-appointments", "/staff", "/appointment"].some((prefix) =>
-      splitPath.pathnameWithoutLocale === prefix || splitPath.pathnameWithoutLocale.startsWith(`${prefix}/`),
-    )) {
-      if (!tenant.capabilities.includes("APPOINTMENT")) {
-        const unavailableUrl = request.nextUrl.clone();
-        unavailableUrl.pathname = `/${locale}/not-found`;
-        return withSecurityHeaders(NextResponse.rewrite(unavailableUrl, { request: { headers: requestHeaders } }));
-      }
-      const rewrittenUrl = request.nextUrl.clone();
-      rewrittenUrl.pathname = `/${locale}/appointment/${tenant.slug}${splitPath.pathnameWithoutLocale}`;
-      return withSecurityHeaders(NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } }));
-    }
-
-    // Preserve indexed shop URLs such as /product/* and /category/* on existing
-    // custom domains while making / the organization-level home.
-    if (tenant.capabilities.includes("SHOP")) {
+    if (tenant.capabilities.includes("SHOP") && !isReservedCustomDomainSurfaceSegment("shop", tenant.slug)) {
       const platformPath = getShopSubPathFromPlatformPath(pathname, tenant.slug);
       if (platformPath) {
         const cleanUrl = request.nextUrl.clone();
-        cleanUrl.pathname = buildTenantPublicPath(platformPath.locale, platformPath.subPath);
+        cleanUrl.pathname = buildOrganizationPublicPath({
+          locale: platformPath.locale,
+          organizationSlug: tenant.slug,
+          surface: "shop",
+          subPath: platformPath.subPath,
+          isCustomDomain: true,
+        });
         return withSecurityHeaders(NextResponse.redirect(cleanUrl, 308));
       }
+    }
 
+    if (tenant.capabilities.includes("APPOINTMENT") && !isReservedCustomDomainSurfaceSegment("appointment", tenant.slug)) {
+      const platformPath = getAppointmentSubPathFromPlatformPath(pathname, tenant.slug);
+      if (platformPath) {
+        const cleanUrl = request.nextUrl.clone();
+        cleanUrl.pathname = buildOrganizationPublicPath({
+          locale: platformPath.locale,
+          organizationSlug: tenant.slug,
+          surface: "appointment",
+          subPath: platformPath.subPath,
+          isCustomDomain: true,
+        });
+        return withSecurityHeaders(NextResponse.redirect(cleanUrl, 308));
+      }
+    }
+
+    const legacyCapabilityRedirect = getLegacyCustomDomainCapabilityRedirect(pathname);
+    if (legacyCapabilityRedirect) {
+      const redirectedCapabilityPath = parseCustomDomainCapabilityPath(legacyCapabilityRedirect);
+      const requiredCapability = redirectedCapabilityPath
+        ? classifyPublicSurfaceCapability(redirectedCapabilityPath.surface)
+        : null;
+      if (!requiredCapability || !tenant.capabilities.includes(requiredCapability)) {
+        const unavailableUrl = request.nextUrl.clone();
+        unavailableUrl.pathname = `/${locale}/not-found`;
+        return withSecurityHeaders(NextResponse.rewrite(unavailableUrl, { request: { headers: requestHeaders } }));
+      }
+
+      const cleanUrl = request.nextUrl.clone();
+      cleanUrl.pathname = legacyCapabilityRedirect;
+      return withSecurityHeaders(NextResponse.redirect(cleanUrl, 308));
+    }
+
+    const capabilityPath = parseCustomDomainCapabilityPath(pathname);
+    if (capabilityPath) {
+      // Path classification is syntactic; authorization remains here against
+      // the capabilities returned by the trusted host resolver.
+      const requiredCapability = classifyPublicSurfaceCapability(capabilityPath.surface);
+      if (!tenant.capabilities.includes(requiredCapability)) {
+        const unavailableUrl = request.nextUrl.clone();
+        unavailableUrl.pathname = `/${locale}/not-found`;
+        return withSecurityHeaders(NextResponse.rewrite(unavailableUrl, { request: { headers: requestHeaders } }));
+      }
       const rewrittenUrl = request.nextUrl.clone();
-      rewrittenUrl.pathname = buildShopPlatformPath({
-        locale,
-        slug: tenant.slug,
-        publicPathname: pathname,
-      });
-
-      const requestHeaders = buildTenantRewriteHeaders(
-        request,
-        normalizedHost,
-        tenant,
-        locale,
-        buildTenantPublicPath(locale, splitPath.pathnameWithoutLocale),
-      );
-
-      const response = NextResponse.rewrite(rewrittenUrl, {
-        request: { headers: requestHeaders },
-      });
-      response.headers.set("x-locale", locale);
-      response.headers.set("x-direction", localeConfig[locale].dir);
-      response.cookies.set("locale", locale, {
-        path: "/",
-        maxAge: 60 * 60 * 24 * 365,
-        httpOnly: false,
-      });
-      return withSecurityHeaders(response);
+      rewrittenUrl.pathname = capabilityPath.surface === "shop"
+        ? buildShopPlatformPath({ locale, slug: tenant.slug, publicPathname: capabilityPath.subPath })
+        : buildAppointmentPlatformPath({ locale, slug: tenant.slug, publicPathname: capabilityPath.subPath });
+      return withSecurityHeaders(NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } }));
     }
 
     const notConfiguredUrl = request.nextUrl.clone();
     notConfiguredUrl.pathname = `/${defaultLocale}/domain-not-configured`;
     return withSecurityHeaders(NextResponse.rewrite(notConfiguredUrl));
+  }
+
+  const legacyPlatformCapabilityPath = parseLegacyPlatformCapabilityPath(pathname);
+  if (legacyPlatformCapabilityPath) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = buildOrganizationPublicPath({
+      locale: legacyPlatformCapabilityPath.locale,
+      organizationSlug: legacyPlatformCapabilityPath.slug,
+      surface: legacyPlatformCapabilityPath.surface,
+      subPath: legacyPlatformCapabilityPath.subPath,
+    });
+    return withSecurityHeaders(NextResponse.redirect(redirectUrl, 308));
   }
 
   // If a shop has an active primary custom domain, redirect indexable public
@@ -380,7 +406,13 @@ export async function proxy(request: NextRequest) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.protocol = "https:";
       redirectUrl.host = primaryDomain;
-      redirectUrl.pathname = buildTenantPublicPath(platformShopPath.locale, platformShopPath.subPath);
+      redirectUrl.pathname = buildOrganizationPublicPath({
+        locale: platformShopPath.locale,
+        organizationSlug: platformShopPath.slug,
+        surface: "shop",
+        subPath: platformShopPath.subPath,
+        isCustomDomain: true,
+      });
       return withSecurityHeaders(NextResponse.redirect(redirectUrl, 308));
     }
   }

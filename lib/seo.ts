@@ -31,6 +31,7 @@ export type PublicSeoInput = {
   keywords?: string[];
   type?: "website" | "article";
   alternatePath?: (locale: SupportedLocale) => string;
+  icons?: Metadata["icons"];
 };
 
 export type SeoOrganization = {
@@ -183,6 +184,7 @@ export function buildPublicMetadata(input: PublicSeoInput): Metadata {
     description,
     keywords: input.keywords,
     alternates,
+    icons: input.icons,
     robots: {
       index: true,
       follow: true,

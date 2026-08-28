@@ -1,15 +1,75 @@
 import Link from "next/link";
 import { headers } from "next/headers";
+import { Metadata } from "next";
 import { CalendarDays, ShoppingBag, UserRound } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import prisma from "@/lib/db";
 import { buildTenantPublicPath } from "@/lib/custom-domain-routing";
 import { activePublicBusinessCapabilities, resolveOrganizationPublicHome } from "@/lib/organization-public-home";
 import { getPublicOrganizationReadModel } from "@/lib/public-experience/organization-public-read-model.service";
+import { resolveOrganizationBranding } from "@/lib/organization-branding";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+
+  const organization = await prisma.organization.findFirst({
+    where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      description: true,
+      logo: true,
+      coverImage: true,
+      capabilities: { select: { key: true, status: true } },
+      settings: { select: { settings: true } },
+      branding: {
+        select: {
+          organizationId: true,
+          displayName: true,
+          shortName: true,
+          logoUrl: true,
+          faviconUrl: true,
+          appleTouchIconUrl: true,
+          pwaIcon192Url: true,
+          pwaIcon512Url: true,
+          ogImageUrl: true,
+          source: true,
+        },
+      },
+    },
+  });
+
+  if (!organization) {
+    return { title: "Organization Not Found" };
+  }
+
+  const branding = resolveOrganizationBranding({
+    organizationId: organization.id,
+    name: organization.name,
+    logo: organization.logo,
+    coverImage: organization.coverImage,
+    branding: organization.branding,
+  });
+
+  return {
+    title: branding.displayName || organization.name || "Bazar Baz",
+    description: organization.description || `${organization.name} on Bazar Baz.`,
+    icons: {
+      icon: [{ url: branding.favicon }],
+      apple: [{ url: branding.appleTouchIcon }],
+    },
+    openGraph: {
+      title: branding.displayName || organization.name || "Bazar Baz",
+      description: organization.description || `${organization.name} on Bazar Baz.`,
+      images: branding.ogImage ? [{ url: branding.ogImage, width: 1200, height: 630 }] : undefined,
+    },
+  };
+}
 
 export default async function OrganizationHomePage({ params }: Props) {
   const { locale, slug } = await params;

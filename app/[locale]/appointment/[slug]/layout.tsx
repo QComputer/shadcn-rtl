@@ -5,12 +5,13 @@ import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 import prisma from "@/lib/db";
 import { getDictionary, getDictValue } from "@/lib/dictionary";
 import { JsonLd } from "@/components/seo/json-ld";
-import { buildOrganizationJsonLd, buildPublicMetadata, getUploadedOrGeneratedSeoImageUrl } from "@/lib/seo";
+import { buildOrganizationJsonLd, buildPublicMetadata } from "@/lib/seo";
 import { TenantFooter } from "@/components/public/tenant-footer";
 import { buildTenantPublicPath } from "@/lib/custom-domain-routing";
 import { getTenantSeoContext } from "@/lib/custom-domain-seo";
 import { hasOrganizationCapability } from "@/lib/organization-capabilities";
 import type { CapabilityRecord } from "@/lib/organization-capabilities";
+import { resolveOrganizationBranding } from "@/lib/organization-branding";
 
 interface OrganizationLayoutProps {
   children: React.ReactNode;
@@ -35,6 +36,17 @@ type OrganizationLayoutData = {
   lng: number | null;
   capabilitiesInitializedAt: Date | null;
   capabilities: CapabilityRecord[];
+  branding: {
+    organizationId: string;
+    displayName: string | null;
+    shortName: string | null;
+    faviconUrl: string | null;
+    appleTouchIconUrl: string | null;
+    pwaIcon192Url: string | null;
+    pwaIcon512Url: string | null;
+    ogImageUrl: string | null;
+    source: "BAZARBAAZ_MANAGED" | "EXTERNAL_SYNC" | "PLATFORM_FALLBACK" | null;
+  } | null;
 };
 
 async function getPublicOrganization(slug: string): Promise<OrganizationLayoutData | null> {
@@ -59,6 +71,19 @@ async function getPublicOrganization(slug: string): Promise<OrganizationLayoutDa
       lng: true,
       capabilitiesInitializedAt: true,
       capabilities: { select: { key: true, status: true } },
+      branding: {
+        select: {
+          organizationId: true,
+          displayName: true,
+          shortName: true,
+          faviconUrl: true,
+          appleTouchIconUrl: true,
+          pwaIcon192Url: true,
+          pwaIcon512Url: true,
+          ogImageUrl: true,
+          source: true,
+        },
+      },
     },
   });
   return organization && hasOrganizationCapability({
@@ -80,22 +105,26 @@ export async function generateMetadata({ params }: OrganizationLayoutProps): Pro
     };
   }
 
-  const uploadedShareImage = organization.coverImage || organization.logo;
+  const branding = resolveOrganizationBranding({
+    organizationId: organization.id,
+    name: organization.name,
+    logo: organization.logo,
+    coverImage: organization.coverImage,
+    branding: organization.branding,
+  });
 
   return buildPublicMetadata({
     locale,
     path: `/${locale}/appointment/${organization.slug}`,
-    title: organization.name || "Bazar Baz appointment",
+    title: branding.displayName || organization.name || "Bazar Baz appointment",
     description: organization.description || "Book appointments online on Bazar Baz.",
-    image: getUploadedOrGeneratedSeoImageUrl(uploadedShareImage, {
-      kind: "organization",
-      locale,
-      title: organization.name || "Bazar Baz appointment",
-      subtitle: organization.description || "Book appointments online on Bazar Baz.",
-      organizationName: organization.name,
-    }),
+    image: branding.ogImage,
     keywords: ["Bazar Baz", "appointment", "booking", organization.slug],
     alternatePath: (nextLocale) => `/${nextLocale}/appointment/${organization.slug}`,
+    icons: {
+      icon: [{ url: branding.favicon }],
+      apple: [{ url: branding.appleTouchIcon }],
+    },
   });
 }
 

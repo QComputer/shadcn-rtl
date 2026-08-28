@@ -12,17 +12,18 @@ import { FollowButton } from "@/components/follow/follow-button";
 import { getDictionary, getDictValue } from "@/lib/dictionary";
 import { ShopLocationDialog } from "@/components/shop/shop-location-dialog";
 import { JsonLd } from "@/components/seo/json-ld";
-import { buildOrganizationJsonLd, buildPublicMetadata, getUploadedOrGeneratedSeoImageUrl } from "@/lib/seo";
+import { buildOrganizationJsonLd, buildPublicMetadata } from "@/lib/seo";
 import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
 import { buildShopCheckoutPath, buildShopOrderPath, buildShopProductsPath, buildShopPublicPath } from "@/lib/shop-public-paths";
 import { TenantFooter } from "@/components/public/tenant-footer";
 import { hasOrganizationCapability } from "@/lib/organization-capabilities";
 import { resolveOrganizationPublicHome } from "@/lib/organization-public-home";
+import { resolveOrganizationBranding } from "@/lib/organization-branding";
 import { ShopRouteProvider } from "@/lib/contexts/shop-route-context";
 
 interface ShopLayoutProps {
   children: React.ReactNode;
-   params: Promise<{
+  params: Promise<{
     locale: string;
     slug: string;
   }>;
@@ -31,20 +32,22 @@ interface ShopLayoutProps {
 export async function generateMetadata({ params }: ShopLayoutProps): Promise<Metadata> {
   const { locale, slug } = await params;
   try {
-const organization = await prisma.organization.findFirst({
-  where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
-  select: {
-    name: true,
-    slug: true,
-    type: true,
-    description: true,
-    logo: true,
-    coverImage: true,
-    capabilitiesInitializedAt: true,
-    capabilities: { select: { key: true, status: true } },
-    settings: { select: { settings: true } },
-  }
-})
+    const organization = await prisma.organization.findFirst({
+      where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        type: true,
+        description: true,
+        logo: true,
+        coverImage: true,
+        capabilitiesInitializedAt: true,
+        capabilities: { select: { key: true, status: true } },
+        settings: { select: { settings: true } },
+        branding: true,
+      },
+    });
     if (!organization || !hasOrganizationCapability({
       legacyType: organization.type,
       capabilitiesInitializedAt: organization.capabilitiesInitializedAt,
@@ -55,7 +58,6 @@ const organization = await prisma.organization.findFirst({
       };
     }
 
-    const uploadedShareImage = organization.coverImage || organization.logo;
     const initialSeoContext = await getShopTenantSeoContext({ locale, slug: organization.slug, subPath: "/" });
     const publicHome = resolveOrganizationPublicHome({
       capabilities: organization.capabilities,
@@ -65,21 +67,27 @@ const organization = await prisma.organization.findFirst({
       ? await getShopTenantSeoContext({ locale, slug: organization.slug, subPath: "/shop" })
       : initialSeoContext;
 
+    const branding = resolveOrganizationBranding({
+      organizationId: organization.id,
+      name: organization.name,
+      logo: organization.logo,
+      coverImage: organization.coverImage,
+      branding: organization.branding,
+    });
+
     return buildPublicMetadata({
       locale,
       baseUrl: seoContext.baseUrl,
       path: seoContext.path,
-      title: organization.name || "Bazar Baz shop",
+      title: branding.displayName || organization.name || "Bazar Baz shop",
       description: organization.description || "Online shop on Bazar Baz.",
-      image: getUploadedOrGeneratedSeoImageUrl(uploadedShareImage, {
-        kind: "organization",
-        locale,
-        title: organization.name || "Bazar Baz shop",
-        subtitle: organization.description || "Online shop on Bazar Baz.",
-        organizationName: organization.name,
-      }, seoContext.baseUrl),
+      image: branding.ogImage,
       keywords: ["Bazar Baz", "shop", "online shopping", organization.slug],
       alternatePath: seoContext.alternatePath,
+      icons: {
+        icon: [{ url: branding.favicon }],
+        apple: [{ url: branding.appleTouchIcon }],
+      },
     });
   } catch {
     return {

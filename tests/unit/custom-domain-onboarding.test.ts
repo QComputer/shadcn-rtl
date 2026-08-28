@@ -39,6 +39,7 @@ let buildShopPublicPath: any;
 let decodePublicRouteSegment: any;
 let assertDomainOwnership: any;
 let resolveActiveTenantForHost: any;
+let resolveOrganizationBranding: any;
 let toSupportedLocale: any;
 let rewriteAuthHtmlForCustomDomain: any;
 let rewriteAuthJsonForCustomDomain: any;
@@ -89,6 +90,7 @@ before(async () => {
   ({ buildShopCategoryPath, buildShopProductPath, buildShopPublicPath, decodePublicRouteSegment } = await import("@/lib/shop-public-paths"));
   ({ assertDomainOwnership } = await import("@/lib/domains/domain-authorization.server"));
   ({ resolveActiveTenantForHost, toSupportedLocale } = await import("@/lib/domains/domain-resolver.server"));
+  ({ resolveOrganizationBranding } = await import("@/lib/organization-branding"));
   ({
     rewriteAuthHtmlForCustomDomain,
     rewriteAuthJsonForCustomDomain,
@@ -583,6 +585,16 @@ describe("ACTIVE-only routing (resolveActiveTenantForHost)", () => {
           organization: {
             id: "org_1",
             slug: "myshop",
+            name: "My Shop",
+            logo: "/my-shop-logo.png",
+            coverImage: null,
+            branding: {
+              organizationId: "org_1",
+              displayName: "My Shop Brand",
+              faviconUrl: "/my-shop-favicon.svg",
+              appleTouchIconUrl: "/my-shop-apple.png",
+              source: "BAZARBAAZ_MANAGED",
+            },
             locale: "en",
             type: "SHOP",
             capabilities: [{ key: "SHOP", status: "ACTIVE" }],
@@ -605,11 +617,25 @@ describe("ACTIVE-only routing (resolveActiveTenantForHost)", () => {
       organizationId: "org_1",
       organizationType: "SHOP",
       capabilities: ["SHOP"],
+      publicHomeMode: null,
+      brandLandingProvider: null,
       publicHome: {
-        kind: "business",
+        kind: "capability",
+        mode: "SHOP",
         capability: "SHOP",
         publicSurface: "shop",
         publicEntryPath: "/shop",
+      },
+      branding: {
+        organizationId: "org_1",
+        displayName: "My Shop Brand",
+        shortName: "My Shop",
+        logo: "/my-shop-logo.png",
+        favicon: "/my-shop-favicon.svg",
+        appleTouchIcon: "/my-shop-apple.png",
+        pwaIcons: { icon192: "/pwa-icon.svg", icon512: "/pwa-icon.svg" },
+        ogImage: "/my-shop-logo.png",
+        source: "BAZARBAAZ_MANAGED",
       },
     });
   });
@@ -628,13 +654,46 @@ describe("ACTIVE-only routing (resolveActiveTenantForHost)", () => {
       organizationId: "org_1",
       organizationType: "APPOINTMENT",
       capabilities: ["APPOINTMENT"],
+      publicHomeMode: null,
+      brandLandingProvider: null,
       publicHome: {
-        kind: "business",
+        kind: "capability",
+        mode: "APPOINTMENT",
         capability: "APPOINTMENT",
         publicSurface: "appointment",
         publicEntryPath: "/services",
       },
+      branding: {
+        organizationId: "org_1",
+        displayName: "My Shop Brand",
+        shortName: "My Shop",
+        logo: "/my-shop-logo.png",
+        favicon: "/my-shop-favicon.svg",
+        appleTouchIcon: "/my-shop-apple.png",
+        pwaIcons: { icon192: "/pwa-icon.svg", icon512: "/pwa-icon.svg" },
+        ogImage: "/my-shop-logo.png",
+        source: "BAZARBAAZ_MANAGED",
+      },
     });
+  });
+
+  it("resolves the same organization branding independently of host routing", async () => {
+    const tenant = await resolveActiveTenantForHost(makePrisma("ACTIVE"), "shop.example.ir");
+    const platformBranding = resolveOrganizationBranding({
+      organizationId: "org_1",
+      name: "My Shop",
+      logo: "/my-shop-logo.png",
+      coverImage: null,
+      branding: {
+        organizationId: "org_1",
+        displayName: "My Shop Brand",
+        faviconUrl: "/my-shop-favicon.svg",
+        appleTouchIconUrl: "/my-shop-apple.png",
+        source: "BAZARBAAZ_MANAGED",
+      },
+    });
+
+    assert.deepEqual(tenant?.branding, platformBranding);
   });
 
   it("does not use legacy organization type as the custom-domain root capability", async () => {

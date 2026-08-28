@@ -1,5 +1,6 @@
 import { normalizeDomainHost, type CustomDomainLocale } from "@/lib/custom-domain-routing";
 import { activePublicBusinessCapabilities, resolveOrganizationPublicHome, type OrganizationPublicHome } from "@/lib/organization-public-home";
+import { resolveOrganizationBranding } from "@/lib/organization-branding";
 import type { OrganizationCapabilityKey } from "@prisma/client";
 
 export type ResolvedTenant = {
@@ -11,6 +12,7 @@ export type ResolvedTenant = {
   publicHomeMode?: string | null;
   brandLandingProvider?: string | null;
   publicHome: OrganizationPublicHome;
+  branding: ReturnType<typeof resolveOrganizationBranding>;
 };
 
 export type ResolverPrismaLike = {
@@ -41,11 +43,15 @@ export async function resolveActiveTenantForHost(
         select: {
           id: true,
           slug: true,
+          name: true,
+          logo: true,
+          coverImage: true,
           locale: true,
           type: true,
           capabilitiesInitializedAt: true,
           capabilities: { select: { key: true, status: true } },
           settings: { select: { settings: true, publicHomeMode: true, brandLandingProvider: true } },
+          branding: true,
           isActive: true,
           deletedAt: true,
         },
@@ -75,6 +81,13 @@ export async function resolveActiveTenantForHost(
       settings: domain.organization.settings?.settings,
       publicHomeMode: domain.organization.settings?.publicHomeMode ?? undefined,
       brandLandingProvider: domain.organization.settings?.brandLandingProvider ?? undefined,
+    }),
+    branding: resolveOrganizationBranding({
+      organizationId: domain.organization.id,
+      name: domain.organization.name,
+      logo: domain.organization.logo,
+      coverImage: domain.organization.coverImage,
+      branding: domain.organization.branding,
     }),
   };
 }

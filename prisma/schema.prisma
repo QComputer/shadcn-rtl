@@ -32,6 +32,12 @@ enum BrandLandingProvider {
   CUSTOM_EXTERNAL
 }
 
+enum OrganizationBrandingSource {
+  BAZARBAAZ_MANAGED
+  EXTERNAL_SYNC
+  PLATFORM_FALLBACK
+}
+
 enum OrganizationCapabilityKey {
   SHOP
   APPOINTMENT
@@ -1163,6 +1169,7 @@ model Organization {
   aiMediaSpendHolds            AiMediaSpendHold[]
   workerContributionMirrors    WorkerContributionMirror[]
   paymentSettings              PaymentSettings?
+  branding                     OrganizationBranding?
 
   @@unique([id, slug])
   @@unique([id])
@@ -1172,6 +1179,29 @@ model Organization {
   @@index([deletedAt])
   @@index([id, slug])
   @@index([id])
+}
+
+model OrganizationBranding {
+  id                        String                    @id @default(cuid())
+  organizationId            String                    @unique
+  displayName               String?
+  shortName                 String?
+  logoUrl                   String?
+  faviconUrl                String?
+  appleTouchIconUrl         String?
+  pwaIcon192Url             String?
+  pwaIcon512Url             String?
+  ogImageUrl                String?
+  source                    OrganizationBrandingSource @default(BAZARBAAZ_MANAGED)
+  externalSourceUrl         String?
+  externalSourceLastSyncedAt DateTime?
+  checksumSha256            String?
+  createdAt                 DateTime                  @default(now())
+  updatedAt                 DateTime                  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
 }
 
 model OrganizationAcquisition {

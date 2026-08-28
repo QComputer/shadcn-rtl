@@ -32,7 +32,20 @@ export type ResolvedCustomDomain = {
   } | {
     kind: "invalid";
     reason: "MODE_REQUIRES_MISSING_CAPABILITY";
-    mode: "SHOP" | "APPOINTMENT";
+    mode: "SHOP" | "APPOINTMENT" | "BRAND";
+  };
+  branding?: {
+    organizationId: string;
+    displayName: string | null;
+    shortName: string | null;
+    favicon: string | null;
+    appleTouchIcon: string | null;
+    pwaIcons: {
+      icon192: string | null;
+      icon512: string | null;
+    };
+    ogImage: string | null;
+    source: "BAZARBAAZ_MANAGED" | "EXTERNAL_SYNC" | "PLATFORM_FALLBACK";
   };
 };
 

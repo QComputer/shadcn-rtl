@@ -31,7 +31,7 @@ export type ResolvedCustomDomain = {
   } | {
     kind: "invalid";
     reason: "MODE_REQUIRES_MISSING_CAPABILITY";
-    mode: "SHOP" | "APPOINTMENT";
+    mode: "SHOP" | "APPOINTMENT" | "BRAND";
   };
 };
 

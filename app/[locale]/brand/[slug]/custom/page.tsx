@@ -1,8 +1,63 @@
 import { notFound } from "next/navigation";
+import { Metadata } from "next";
 import { prisma } from "@/lib/db";
+import { resolveOrganizationBranding } from "@/lib/organization-branding";
 
 interface CustomBrandLandingPageProps {
   params: Promise<{ locale: string; slug: string }>;
+}
+
+export async function generateMetadata({ params }: CustomBrandLandingPageProps): Promise<Metadata> {
+  const { slug } = await params;
+
+  const organization = await prisma.organization.findUnique({
+    where: { slug },
+    select: {
+      id: true,
+      name: true,
+      logo: true,
+      coverImage: true,
+      branding: {
+        select: {
+          organizationId: true,
+          displayName: true,
+          shortName: true,
+          faviconUrl: true,
+          appleTouchIconUrl: true,
+          pwaIcon192Url: true,
+          pwaIcon512Url: true,
+          ogImageUrl: true,
+          source: true,
+        },
+      },
+    },
+  });
+
+  if (!organization) {
+    return { title: "Organization Not Found" };
+  }
+
+  const branding = resolveOrganizationBranding({
+    organizationId: organization.id,
+    name: organization.name,
+    logo: organization.logo,
+    coverImage: organization.coverImage,
+    branding: organization.branding,
+  });
+
+  return {
+    title: branding.displayName || organization.name || "Bazar Baz",
+    description: `${organization.name} - Official page on Bazar Baz.`,
+    icons: {
+      icon: [{ url: branding.favicon }],
+      apple: [{ url: branding.appleTouchIcon }],
+    },
+    openGraph: {
+      title: branding.displayName || organization.name || "Bazar Baz",
+      description: `${organization.name} - Official page on Bazar Baz.`,
+      images: branding.ogImage ? [{ url: branding.ogImage, width: 1200, height: 630 }] : undefined,
+    },
+  };
 }
 
 export default async function CustomBrandLandingPage({ params }: CustomBrandLandingPageProps) {

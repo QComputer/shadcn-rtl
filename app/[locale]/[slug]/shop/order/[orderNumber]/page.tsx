@@ -1,4 +1,5 @@
 "use client";
+import { appFetch } from "@/lib/app-base-path";
 
 import React, { useState, useEffect, use } from "react";
 import Link from "next/link";
@@ -177,7 +178,7 @@ export default function OrderConfirmationPage({
     try {
       setLoading(true);
       const tokenSuffix = trackingToken ? `?token=${encodeURIComponent(trackingToken)}` : "";
-      const response = await fetch(`/api/public/orders/${orderNumber}${tokenSuffix}`, {
+      const response = await appFetch(`/api/public/orders/${orderNumber}${tokenSuffix}`, {
         credentials: "same-origin",
       });
       if (!response.ok) {
@@ -199,7 +200,7 @@ export default function OrderConfirmationPage({
   async function fetchPaymentSettings() {
     try {
       setLoading(true);
-      const response = await fetch(`/api/public/organizations/${slug}/shop`);
+      const response = await appFetch(`/api/public/organizations/${slug}/shop`);
       if (!response?.ok) {
         throw new Error("Organization not found");
       }

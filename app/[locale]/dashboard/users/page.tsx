@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
@@ -96,7 +97,7 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
           pageSize: "100",
         })
         
-        const response = await fetch(`/api/users`)
+        const response = await appFetch(`/api/users`)
         if (!response.ok) {
           throw new Error("Failed to fetch users")
         }
@@ -119,7 +120,7 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
       setError(null)
       
       try {
-        const response = await fetch(`/api/organizations`)
+        const response = await appFetch(`/api/organizations`)
         if (!response.ok) {
           throw new Error("Failed to fetch users")
         }
@@ -145,7 +146,7 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
  const handleDeleteUser = async ()=>{
   try {
       setUpdating(true)
-      const response = await fetch(`/api/users/${selectedUser.id}`, {
+      const response = await appFetch(`/api/users/${selectedUser.id}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -175,7 +176,7 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
   const handleUpdateIsActive = async (userId: string, isActive: boolean) => {
     try {
       setUpdating(true)
-      const response = await fetch(`/api/users/${userId}`, {
+      const response = await appFetch(`/api/users/${userId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -206,7 +207,7 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
   const handleUpdateMemberIsActive = async (userId: string, isActive: boolean) => {
     try {
       setUpdating(true)
-      const userResponse = await fetch(`/api/users/${selectedUser.id}`)
+      const userResponse = await appFetch(`/api/users/${selectedUser.id}`)
       
       if (!userResponse.ok) {
         throw new Error("Failed to find user")
@@ -216,7 +217,7 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
         throw new Error("User has no organization membership to update")
       }
 
-      const response = await fetch(`/api/organizations/${user.memberOf.organizationId}/members/${user.memberOf.id}`, {
+      const response = await appFetch(`/api/organizations/${user.memberOf.organizationId}/members/${user.memberOf.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -252,7 +253,7 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
   const handleUpdateOrganization = async (userId: string, organizationId: string, role: string= 'STAFF')  => {
     try {
       setUpdating(true)
-      const response = await fetch(`/api/organizations/${organizationId}/members`, {
+      const response = await appFetch(`/api/organizations/${organizationId}/members`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -286,7 +287,7 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
     try {
       setSelectedUser(null)
       setLoading(true)
-      const response = await fetch(`/api/users/${userId}`, {
+      const response = await appFetch(`/api/users/${userId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

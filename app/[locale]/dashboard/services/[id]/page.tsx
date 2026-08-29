@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
@@ -133,20 +134,20 @@ export default function EditServicePage({
     
     // Fetch service and categories in parallel
     Promise.all([
-      fetch(`/api/services/${serviceId}`)
+      appFetch(`/api/services/${serviceId}`)
         .then(res => {
           if (!res.ok) throw new Error("Service not found")
           return res.json()
         })
         .then(data => data.service || data),
-      fetch("/api/service-categories?pageSize=100")
+      appFetch("/api/service-categories?pageSize=100")
         .then(res => res.json())
         .then(data => data.data || []),
-      fetch("/api/users/me/membership")
+      appFetch("/api/users/me/membership")
         .then(res => res.json())
         .then(data => {
           if (data.membership?.organizationId) {
-            return fetch(`/api/organizations/${data.membership.organizationId}/members`)
+            return appFetch(`/api/organizations/${data.membership.organizationId}/members`)
               .then(res => res.json())
               .then(membersData => membersData.members || membersData || [])
           }
@@ -194,7 +195,7 @@ export default function EditServicePage({
     setError(null)
     
      try {
-      const response = await fetch(`/api/services/${serviceId}`, {
+      const response = await appFetch(`/api/services/${serviceId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -227,7 +228,7 @@ export default function EditServicePage({
   const handleDelete = async () => {
     setDeleting(true)
     try {
-      const response = await fetch(`/api/services/${serviceId}`, {
+      const response = await appFetch(`/api/services/${serviceId}`, {
         method: "DELETE",
       })
       

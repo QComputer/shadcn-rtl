@@ -1,4 +1,5 @@
 "use client";
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState } from "react";
 import type { FormEvent } from "react";
@@ -58,7 +59,7 @@ export function ReviewRequestForm({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
-    const response = await fetch(`/api/public/review-requests/${token}`, {
+    const response = await appFetch(`/api/public/review-requests/${token}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

@@ -4,6 +4,7 @@ import { appointmentService } from "@/lib/services/appointment.service";
 import { createAppointmentSchema } from "@/lib/validators";
 import { prisma } from "@/lib/db";
 import { ApiError, jsonError, getActiveMembership } from "@/lib/api-guards";
+import { appCookiePath } from "@/lib/app-base-path";
 
 function splitName(fullName: string) {
   const nameParts = fullName.trim().split(/\s+/);
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
         httpOnly: true,
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
-        path: "/",
+        path: appCookiePath(),
         maxAge: 60 * 60 * 24 * 30,
       });
     }

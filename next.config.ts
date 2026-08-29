@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { resolveAppBasePath } from "./lib/app-base-path";
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -8,24 +9,11 @@ const securityHeaders = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
 
-function resolveAppBasePath(): NextConfig["basePath"] {
-  const raw = process.env.APP_BASE_PATH;
-  if (!raw || raw.trim() === "") {
-    return undefined;
-  }
-
-  const trimmed = raw.trim();
-  if (trimmed === "/app") {
-    return "/app";
-  }
-
-  throw new Error(
-    `Unsupported APP_BASE_PATH: "${trimmed}". Only unset or "/app" are valid for Bazarbaaz builds.`
-  );
-}
+const appBasePath = resolveAppBasePath();
 
 const nextConfig: NextConfig = {
-  basePath: resolveAppBasePath(),
+  basePath: appBasePath || undefined,
+  env: { NEXT_PUBLIC_APP_BASE_PATH: appBasePath },
   allowedDevOrigins: [
     "192.168.1.6",
     "*.localtest.me",

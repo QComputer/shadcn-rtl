@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { use, useCallback, useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
@@ -195,7 +196,7 @@ export default function ExportHubPage({ params }: { params: Promise<{ locale: st
 
   const fetchOrganizations = useCallback(async (signal?: AbortSignal) => {
     if (isSuperAdmin) {
-      const response = await fetch("/api/organizations?pageSize=100", { cache: "no-store", signal })
+      const response = await appFetch("/api/organizations?pageSize=100", { cache: "no-store", signal })
       if (!response.ok) throw new Error(await readError(response, copy.error))
       const data = await response.json()
       const options = (data.data ?? []) as OrganizationOption[]
@@ -204,7 +205,7 @@ export default function ExportHubPage({ params }: { params: Promise<{ locale: st
       return options[0]?.id || ""
     }
 
-    const response = await fetch("/api/users/me/membership", { cache: "no-store", signal })
+    const response = await appFetch("/api/users/me/membership", { cache: "no-store", signal })
     if (!response.ok) throw new Error(await readError(response, copy.error))
     const data = await response.json()
     const membership = data.membership
@@ -223,7 +224,7 @@ export default function ExportHubPage({ params }: { params: Promise<{ locale: st
 
   const fetchJobs = useCallback(async (orgId: string, signal?: AbortSignal) => {
     const query = orgId ? `?organizationId=${encodeURIComponent(orgId)}` : ""
-    const response = await fetch(`/api/dashboard/exports/jobs${query}`, { cache: "no-store", signal })
+    const response = await appFetch(`/api/dashboard/exports/jobs${query}`, { cache: "no-store", signal })
     if (!response.ok) throw new Error(await readError(response, copy.error))
     const data = await response.json()
     setJobs((data.jobs ?? []) as ExportJob[])
@@ -254,7 +255,7 @@ export default function ExportHubPage({ params }: { params: Promise<{ locale: st
     setSaving(true)
     setError(null)
     try {
-      const response = await fetch("/api/dashboard/exports/jobs", {
+      const response = await appFetch("/api/dashboard/exports/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ organizationId, type, format }),
@@ -271,7 +272,7 @@ export default function ExportHubPage({ params }: { params: Promise<{ locale: st
   }
 
   async function loadJob(jobId: string) {
-    const response = await fetch(`/api/dashboard/exports/jobs/${jobId}`, { cache: "no-store" })
+    const response = await appFetch(`/api/dashboard/exports/jobs/${jobId}`, { cache: "no-store" })
     if (!response.ok) {
       setError(await readError(response, copy.error))
       return

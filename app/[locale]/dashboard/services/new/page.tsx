@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
@@ -88,14 +89,14 @@ export default function NewServicePage({
     setLoading(true)
     
     Promise.all([
-      fetch("/api/service-categories?pageSize=100")
+      appFetch("/api/service-categories?pageSize=100")
         .then(res => res.json())
         .then(data => data.data || []),
-      fetch("/api/users/me/membership")
+      appFetch("/api/users/me/membership")
         .then(res => res.json())
         .then(data => {
           if (data.membership?.organizationId) {
-            return fetch(`/api/organizations/${data.membership.organizationId}/members`)
+            return appFetch(`/api/organizations/${data.membership.organizationId}/members`)
               .then(res => res.json())
               .then(membersData => membersData.members || membersData || [])
           }
@@ -133,7 +134,7 @@ export default function NewServicePage({
     setError(null)
     
      try {
-      const response = await fetch("/api/services", {
+      const response = await appFetch("/api/services", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

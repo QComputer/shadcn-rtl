@@ -15,6 +15,7 @@ import prisma from "@/lib/db"
 import type { Provider } from "next-auth/providers"
 import bcrypt from "bcryptjs";
 import type { UserRole } from "./types";
+import { appCookiePath, appPath } from "./app-base-path";
 
 /**
  * NextAuth Type Extensions
@@ -202,6 +203,18 @@ const nextAuthSecret =
  * NextAuth Configuration
  */
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Next.js strips its configured basePath before dispatching this route.
+  // Browser clients receive the full mount path from SessionProvider.
+  basePath: "/api/auth",
+  cookies: {
+    sessionToken: { options: { path: appCookiePath() } },
+    callbackUrl: { options: { path: appCookiePath() } },
+    csrfToken: { options: { path: appCookiePath() } },
+    pkceCodeVerifier: { options: { path: appCookiePath() } },
+    state: { options: { path: appCookiePath() } },
+    nonce: { options: { path: appCookiePath() } },
+    webauthnChallenge: { options: { path: appCookiePath() } },
+  },
   // Use JWT for session management
   session: {
     strategy: "jwt",
@@ -214,8 +227,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   
   // Custom pages for authentication flows
   pages: {
-    signIn: "/login",
-    error: "/login",
+    signIn: appPath("/fa/login"),
+    error: appPath("/fa/login"),
   },
   
   // Authentication providers

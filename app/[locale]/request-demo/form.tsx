@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState } from "react"
 import Link from "next/link"
@@ -44,7 +45,7 @@ export function RequestDemoForm({ locale, content }: { locale: Locale; content: 
 
     setLoading(true)
     try {
-      const response = await fetch("/api/request-demo", {
+      const response = await appFetch("/api/request-demo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

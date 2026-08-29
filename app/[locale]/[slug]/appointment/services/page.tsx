@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
@@ -94,7 +95,7 @@ export default function ServicesPage({
       setDict(getDictionary(locale))
     })
     
-    fetch(`/api/public/organizations/${slug}/services`)
+    appFetch(`/api/public/organizations/${slug}/services`)
       .then(res => {
         if (!res.ok) throw new Error("Services not found")
         return res.json()

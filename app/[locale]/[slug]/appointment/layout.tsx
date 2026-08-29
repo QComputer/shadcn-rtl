@@ -14,6 +14,7 @@ import type { CapabilityRecord } from "@/lib/organization-capabilities";
 import { resolveOrganizationBranding } from "@/lib/organization-branding";
 import { AppointmentRouteProvider } from "@/lib/contexts/appointment-route-context";
 import { OrganizationRootNavigationProvider } from "@/lib/contexts/organization-root-navigation-context";
+import { appResourceUrl } from "@/lib/app-base-path";
 
 interface OrganizationLayoutProps {
   children: React.ReactNode;
@@ -133,8 +134,8 @@ export async function generateMetadata({ params }: OrganizationLayoutProps): Pro
     keywords: ["Bazar Baz", "appointment", "booking", organization.slug],
     alternatePath: seoContext.alternatePath,
     icons: {
-      icon: [{ url: branding.favicon }],
-      apple: [{ url: branding.appleTouchIcon }],
+      icon: [{ url: appResourceUrl(branding.favicon) }],
+      apple: [{ url: appResourceUrl(branding.appleTouchIcon) }],
     },
   });
 }

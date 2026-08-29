@@ -1,4 +1,5 @@
 "use client";
+import { appFetch } from "@/lib/app-base-path";
 
 import Link from "next/link";
 import type React from "react";
@@ -122,7 +123,7 @@ export function BusinessActivationClient({ locale }: { locale: SupportedLocale }
   async function load() {
     setIsLoading(true);
     setError(null);
-    const response = await fetch(`/api/dashboard/business-activation?locale=${locale}`, { cache: "no-store" });
+    const response = await appFetch(`/api/dashboard/business-activation?locale=${locale}`, { cache: "no-store" });
     if (!response.ok) {
       setError(await response.text());
       setIsLoading(false);
@@ -146,7 +147,7 @@ export function BusinessActivationClient({ locale }: { locale: SupportedLocale }
   async function saveProfile() {
     if (!dashboard) return;
     setIsSaving(true);
-    const response = await fetch("/api/dashboard/business-activation/profile", {
+    const response = await appFetch("/api/dashboard/business-activation/profile", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ organizationId: dashboard.organization.id, ...form }),
@@ -161,7 +162,7 @@ export function BusinessActivationClient({ locale }: { locale: SupportedLocale }
   async function completeStep(taskKey: string) {
     if (!dashboard) return;
     setCompletingKey(taskKey);
-    const response = await fetch("/api/dashboard/business-activation/steps/complete", {
+    const response = await appFetch("/api/dashboard/business-activation/steps/complete", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ organizationId: dashboard.organization.id, taskKey }),

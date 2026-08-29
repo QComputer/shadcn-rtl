@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
@@ -112,7 +113,7 @@ export default function MyAppointmentsPage({
     setLookupError(null)
     
     try {
-      const response = await fetch("/api/public/appointments/lookup", {
+      const response = await appFetch("/api/public/appointments/lookup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

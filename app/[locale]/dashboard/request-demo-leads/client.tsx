@@ -1,4 +1,5 @@
 "use client";
+import { appFetch } from "@/lib/app-base-path";
 
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -124,7 +125,7 @@ export function RequestDemoLeadsClient() {
       params.set("limit", "20");
       if (statusFilter) params.set("status", statusFilter);
 
-      const response = await fetch(`/api/dashboard/request-demo-leads?${params.toString()}`);
+      const response = await appFetch(`/api/dashboard/request-demo-leads?${params.toString()}`);
       if (!response.ok) {
         throw new Error("Failed to fetch leads");
       }
@@ -167,7 +168,7 @@ export function RequestDemoLeadsClient() {
         return;
       }
 
-      const response = await fetch(`/api/dashboard/request-demo-leads/${selectedLead.id}`, {
+      const response = await appFetch(`/api/dashboard/request-demo-leads/${selectedLead.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

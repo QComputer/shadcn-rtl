@@ -1,4 +1,5 @@
 "use client";
+import { appFetch } from "@/lib/app-base-path";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -39,7 +40,7 @@ export function DemoEntryClient({ locale }: { locale: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/public/demo-organizations")
+    appFetch("/api/public/demo-organizations")
       .then((response) => response.json())
       .then((payload) => {
         if (cancelled) return;

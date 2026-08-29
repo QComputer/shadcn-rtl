@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
@@ -162,7 +163,7 @@ export default function NewOrganizationPage({
         const img = await uploadFile(imageFile)
         imageUrl = img.url
       }
-      const response = await fetch("/api/organizations", {
+      const response = await appFetch("/api/organizations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -211,7 +212,7 @@ export default function NewOrganizationPage({
     const id = image?.id 
     if(!id) return
     try {
-      const response = await fetch(`/api/images/${id}`, {
+      const response = await appFetch(`/api/images/${id}`, {
         method: "DELETE",
       });
 

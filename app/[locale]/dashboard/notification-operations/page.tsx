@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { use, useCallback, useEffect, useMemo, useState } from "react"
 import {
@@ -525,7 +526,7 @@ export default function NotificationOperationsPage({ params }: { params: Promise
       setError(null)
       setRefreshing(true)
       try {
-        const response = await fetch("/api/dashboard/notification-operations", { cache: "no-store" })
+        const response = await appFetch("/api/dashboard/notification-operations", { cache: "no-store" })
         const payload = await response.json().catch(() => ({}))
         if (!response.ok) throw new Error(payload.error || t.error)
         setDashboard(payload as NotificationOperationsDashboard)
@@ -542,7 +543,7 @@ export default function NotificationOperationsPage({ params }: { params: Promise
 
   const loadReports = useCallback(async () => {
     try {
-      const response = await fetch("/api/dashboard/notification-operations/sms-ir/deliveries", { cache: "no-store" })
+      const response = await appFetch("/api/dashboard/notification-operations/sms-ir/deliveries", { cache: "no-store" })
       const payload = await response.json().catch(() => ({ ok: false, data: [] }))
       if (response.ok && payload.ok) {
         setReports(payload.data || [])

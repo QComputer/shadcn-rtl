@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { use, useCallback, useEffect, useRef, useState } from "react"
 import { useSession } from "next-auth/react"
@@ -1090,7 +1091,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
 
   const fetchOrganizations = useCallback(async (signal?: AbortSignal) => {
     if (isSuperAdmin) {
-      const response = await fetch("/api/organizations?pageSize=100", { cache: "no-store", signal })
+      const response = await appFetch("/api/organizations?pageSize=100", { cache: "no-store", signal })
       if (!response.ok) throw new Error(await readError(response, copy.error))
       const data = await response.json()
       const options = (data.data ?? []) as OrganizationOption[]
@@ -1100,7 +1101,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
       return nextOrganizationId
     }
 
-    const response = await fetch("/api/users/me/membership", { cache: "no-store", signal })
+    const response = await appFetch("/api/users/me/membership", { cache: "no-store", signal })
     if (!response.ok) throw new Error(await readError(response, copy.error))
     const data = await response.json()
     const membership = data.membership
@@ -1129,7 +1130,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
       isActive: "true",
       organizationId: orgId,
     })
-    const response = await fetch(`/api/products?${params.toString()}`, { cache: "no-store", signal })
+    const response = await appFetch(`/api/products?${params.toString()}`, { cache: "no-store", signal })
     if (!response.ok) throw new Error(await readError(response, copy.error))
     const data = await response.json()
     const nextProducts = (data.data ?? []) as ProductOption[]
@@ -1142,9 +1143,9 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
   const loadOverview = useCallback(async (orgId: string, signal?: AbortSignal) => {
     const query = orgId ? `?organizationId=${encodeURIComponent(orgId)}` : ""
     const [statusResponse, usageResponse, jobsResponse] = await Promise.all([
-      fetch(`/api/dashboard/creative-studio/status${query}`, { cache: "no-store", signal }),
-      fetch(`/api/dashboard/creative-studio/usage${query}`, { cache: "no-store", signal }),
-      fetch(`/api/dashboard/creative-studio/jobs${query}`, { cache: "no-store", signal }),
+      appFetch(`/api/dashboard/creative-studio/status${query}`, { cache: "no-store", signal }),
+      appFetch(`/api/dashboard/creative-studio/usage${query}`, { cache: "no-store", signal }),
+      appFetch(`/api/dashboard/creative-studio/jobs${query}`, { cache: "no-store", signal }),
     ])
 
     if (!statusResponse.ok) throw new Error(await readError(statusResponse, copy.error))
@@ -1161,7 +1162,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
 
   const loadJob = useCallback(async (jobId: string, orgId = organizationId, signal?: AbortSignal) => {
     const query = orgId ? `?organizationId=${encodeURIComponent(orgId)}` : ""
-    const response = await fetch(`/api/dashboard/creative-studio/jobs/${encodeURIComponent(jobId)}${query}`, {
+    const response = await appFetch(`/api/dashboard/creative-studio/jobs/${encodeURIComponent(jobId)}${query}`, {
       cache: "no-store",
       signal,
     })
@@ -1233,7 +1234,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
     setApplyNotice(null)
     try {
       const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ""
-      const response = await fetch(`/api/dashboard/creative-studio/jobs${query}`, {
+      const response = await appFetch(`/api/dashboard/creative-studio/jobs${query}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1276,7 +1277,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
     setGenerationNotice(null)
     setApplyNotice(null)
     try {
-      const response = await fetch("/api/dashboard/creative-studio/organization-brand/execute", {
+      const response = await appFetch("/api/dashboard/creative-studio/organization-brand/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1341,7 +1342,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
       try {
         await loadOverview(organizationId)
         const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ""
-        const response = await fetch(`/api/dashboard/creative-studio/jobs/${encodeURIComponent(jobId)}${query}`, {
+        const response = await appFetch(`/api/dashboard/creative-studio/jobs/${encodeURIComponent(jobId)}${query}`, {
           cache: "no-store",
         })
         if (!response.ok) throw new Error(await readError(response, copy.error))
@@ -1372,7 +1373,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
     setGenerationNotice(null)
     try {
       const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ""
-      const response = await fetch(`/api/dashboard/creative-studio/jobs/${encodeURIComponent(jobId)}/cancel${query}`, {
+      const response = await appFetch(`/api/dashboard/creative-studio/jobs/${encodeURIComponent(jobId)}/cancel${query}`, {
         method: "POST",
       })
       if (!response.ok) throw new Error(await readError(response, copy.generationFailed))
@@ -1397,7 +1398,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
     setGenerationNotice(null)
     try {
       const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ""
-      const response = await fetch(`/api/dashboard/creative-studio/jobs/${encodeURIComponent(jobId)}/refresh-provider-result${query}`, {
+      const response = await appFetch(`/api/dashboard/creative-studio/jobs/${encodeURIComponent(jobId)}/refresh-provider-result${query}`, {
         method: "POST",
       })
       if (!response.ok) throw new Error(await readError(response, copy.remoteUnavailable))
@@ -1426,7 +1427,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
     setApplyNotice(null)
     try {
       const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ""
-      const response = await fetch(`/api/dashboard/creative-studio/assets/${encodeURIComponent(asset.id)}/select${query}`, {
+      const response = await appFetch(`/api/dashboard/creative-studio/assets/${encodeURIComponent(asset.id)}/select${query}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1451,7 +1452,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
     setApplyNotice(null)
     try {
       const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ""
-      const response = await fetch(`/api/dashboard/creative-studio/assets/${encodeURIComponent(asset.id)}/reject${query}`, {
+      const response = await appFetch(`/api/dashboard/creative-studio/assets/${encodeURIComponent(asset.id)}/reject${query}`, {
         method: "POST",
       })
       if (!response.ok) throw new Error(await readError(response, copy.rejectFailed))
@@ -1476,7 +1477,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
     setApplyNotice(null)
     try {
       const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ""
-      const response = await fetch(`/api/dashboard/creative-studio/assets/${encodeURIComponent(pendingApply.asset.id)}/apply${query}`, {
+      const response = await appFetch(`/api/dashboard/creative-studio/assets/${encodeURIComponent(pendingApply.asset.id)}/apply${query}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1510,7 +1511,7 @@ export default function CreativeStudioDashboardPage({ params }: { params: Promis
     setRollbackNotice(null)
     try {
       const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ""
-      const response = await fetch(`/api/dashboard/creative-studio/assets/${encodeURIComponent(asset.id)}/rollback${query}`, {
+      const response = await appFetch(`/api/dashboard/creative-studio/assets/${encodeURIComponent(asset.id)}/rollback${query}`, {
         method: "POST",
       })
       if (!response.ok) throw new Error(await readError(response, copy.rollbackFailed))

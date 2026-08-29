@@ -1,4 +1,5 @@
 "use client";
+import { appFetch } from "@/lib/app-base-path";
 
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -104,7 +105,7 @@ export function DemoShellClient({ organizationSlug, initialRole }: { organizatio
 
   async function loadDashboard(nextRole = role) {
     setMessage(null);
-    const response = await fetch(ROLE_ENDPOINT[nextRole], {
+    const response = await appFetch(ROLE_ENDPOINT[nextRole], {
       headers: { "x-demo-organization-slug": organizationSlug },
     });
     if (!response.ok) {
@@ -116,7 +117,7 @@ export function DemoShellClient({ organizationSlug, initialRole }: { organizatio
   }
 
   async function loadScenario() {
-    const response = await fetch("/api/demo/scenario", {
+    const response = await appFetch("/api/demo/scenario", {
       headers: { "x-demo-organization-slug": organizationSlug },
     });
     if (response.ok) {
@@ -131,7 +132,7 @@ export function DemoShellClient({ organizationSlug, initialRole }: { organizatio
   }, [endpoint, organizationSlug]);
 
   async function createOrder() {
-    const response = await fetch("/api/demo/orders/create", {
+    const response = await appFetch("/api/demo/orders/create", {
       method: "POST",
       headers: { "x-demo-organization-slug": organizationSlug },
     });
@@ -142,7 +143,7 @@ export function DemoShellClient({ organizationSlug, initialRole }: { organizatio
 
   async function catalogAnalyze() {
     setMessage(null);
-    const create = await fetch("/api/demo/catalog/connections", {
+    const create = await appFetch("/api/demo/catalog/connections", {
       method: "POST",
       headers: { "content-type": "application/json", "x-demo-organization-slug": organizationSlug },
       body: JSON.stringify({ provider: "SNAPPFOOD", externalUrl: "https://example.test/demo-menu" }),
@@ -152,25 +153,25 @@ export function DemoShellClient({ organizationSlug, initialRole }: { organizatio
       return;
     }
     const connection = (await create.json()).connection;
-    const preview = await fetch(`/api/demo/catalog/connections/${connection.id}/preview`, {
+    const preview = await appFetch(`/api/demo/catalog/connections/${connection.id}/preview`, {
       method: "POST",
       headers: { "x-demo-organization-slug": organizationSlug },
     });
     const previewPayload = await preview.json();
-    const mappings = await fetch(`/api/demo/catalog/connections/${connection.id}/mappings`, {
+    const mappings = await appFetch(`/api/demo/catalog/connections/${connection.id}/mappings`, {
       method: "POST",
       headers: { "x-demo-organization-slug": organizationSlug },
     });
-    const approve = await fetch(`/api/demo/catalog/connections/${connection.id}/approve`, {
+    const approve = await appFetch(`/api/demo/catalog/connections/${connection.id}/approve`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-demo-organization-slug": organizationSlug },
       body: JSON.stringify({}),
     });
-    const imported = await fetch(`/api/demo/catalog/connections/${connection.id}/import`, {
+    const imported = await appFetch(`/api/demo/catalog/connections/${connection.id}/import`, {
       method: "POST",
       headers: { "x-demo-organization-slug": organizationSlug },
     });
-    const dryRun = await fetch(`/api/demo/catalog/connections/${connection.id}/sync-dry-run`, {
+    const dryRun = await appFetch(`/api/demo/catalog/connections/${connection.id}/sync-dry-run`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-demo-organization-slug": organizationSlug },
       body: JSON.stringify({ entityType: "PRODUCT" }),
@@ -187,7 +188,7 @@ export function DemoShellClient({ organizationSlug, initialRole }: { organizatio
   }
 
   async function resetDemo() {
-    await fetch(`/api/public/demo/${organizationSlug}/session`, { method: "DELETE" });
+    await appFetch(`/api/public/demo/${organizationSlug}/session`, { method: "DELETE" });
     window.location.href = "/fa/demo";
   }
 
@@ -211,7 +212,7 @@ export function DemoShellClient({ organizationSlug, initialRole }: { organizatio
               type="button"
               onClick={async () => {
                 const demoRole = nextRole as DemoRole;
-                const response = await fetch(`/api/public/demo/${organizationSlug}/session`, {
+                const response = await appFetch(`/api/public/demo/${organizationSlug}/session`, {
                   method: "POST",
                   headers: { "content-type": "application/json" },
                   body: JSON.stringify({ role: demoRole }),

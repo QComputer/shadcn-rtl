@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "react-toastify"
 import { BellOff } from "lucide-react"
+import { appPath } from "@/lib/app-base-path"
 
 type DashboardPushStatus = {
   active: boolean
@@ -63,7 +64,7 @@ export function DashboardPushOptIn() {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const response = await fetch("/api/dashboard/push-subscriptions")
+      const response = await fetch(appPath("/api/dashboard/push-subscriptions"))
       if (response.ok) {
         const data = (await response.json()) as DashboardPushStatus
         setStatus(data)
@@ -157,7 +158,7 @@ export function DashboardPushOptIn() {
         applicationServerKey: keyBytes as unknown as BufferSource,
       })
 
-      const response = await fetch("/api/dashboard/push-subscriptions", {
+      const response = await fetch(appPath("/api/dashboard/push-subscriptions"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(subscription),
@@ -189,7 +190,7 @@ export function DashboardPushOptIn() {
   const unsubscribe = async () => {
     setLoading(true)
     try {
-      const response = await fetch("/api/dashboard/push-subscriptions", {
+      const response = await fetch(appPath("/api/dashboard/push-subscriptions"), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ endpoint: status?.subscriptions?.[0]?.endpoint }),

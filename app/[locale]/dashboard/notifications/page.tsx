@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { use, useCallback, useEffect, useMemo, useState } from "react"
 import { AlertTriangle, Bell, CheckCheck, RefreshCw, Send, Undo2 } from "lucide-react"
@@ -170,8 +171,8 @@ export default function DashboardNotificationsPage({ params }: { params: Promise
   const fetchNotifications = useCallback(async (signal?: AbortSignal) => {
     setError(null)
     const [notificationResponse, membershipResponse] = await Promise.all([
-      fetch("/api/dashboard/notifications?scope=all&limit=100", { cache: "no-store", signal }),
-      fetch("/api/users/me/membership", { cache: "no-store", signal }).catch(() => null),
+      appFetch("/api/dashboard/notifications?scope=all&limit=100", { cache: "no-store", signal }),
+      appFetch("/api/users/me/membership", { cache: "no-store", signal }).catch(() => null),
     ])
 
     if (!notificationResponse.ok) {
@@ -216,7 +217,7 @@ export default function DashboardNotificationsPage({ params }: { params: Promise
     setUpdatingId(id)
     setError(null)
     try {
-      const response = await fetch("/api/dashboard/notifications", {
+      const response = await appFetch("/api/dashboard/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: [id], seen }),
@@ -236,7 +237,7 @@ export default function DashboardNotificationsPage({ params }: { params: Promise
     setSendResult(null)
     setError(null)
     try {
-      const response = await fetch("/api/dashboard/notifications", {
+      const response = await appFetch("/api/dashboard/notifications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

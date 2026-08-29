@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 // TODO:  0. Add `delete` button on edit variant dialog
 //        1. Add `+` button to link to creating new category
 //        2. traslate 
@@ -120,7 +121,7 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
         params.set("organizationId", organizationMembership.organizationId)
       }
       
-      const response = await fetch(`/api/products?${params.toString()}`)
+      const response = await appFetch(`/api/products?${params.toString()}`)
       
       if (!response.ok) {
         throw new Error("Failed to fetch products")

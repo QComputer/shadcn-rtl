@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { appPath } from "@/lib/app-base-path"
 import {
   BarChart,
   Bar,
@@ -190,7 +191,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
         setIsLoading(true)
         setError(null)
         
-        const response = await fetch("/api/dashboard")
+        const response = await fetch(appPath("/api/dashboard"))
         
         if (!response.ok) {
           if (response.status === 401) {

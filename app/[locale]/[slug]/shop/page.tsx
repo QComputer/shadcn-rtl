@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
@@ -228,7 +229,7 @@ export default function ShopPage({
     const fetchDataSilently = async () => {
         setLoadingSilently(true)
       try {
-      const response = await fetch(`/api/public/organizations/${slug}/shop`)
+      const response = await appFetch(`/api/public/organizations/${slug}/shop`)
       if (!response.ok) {
         throw new Error("Failed to fetch shop data")
       }
@@ -260,7 +261,7 @@ export default function ShopPage({
     })
     
     // Fetch shop data
-    fetch(`/api/public/organizations/${slug}/shop`)
+    appFetch(`/api/public/organizations/${slug}/shop`)
       .then(res => {
         if (!res.ok) throw new Error("Shop not found")
         return res.json()

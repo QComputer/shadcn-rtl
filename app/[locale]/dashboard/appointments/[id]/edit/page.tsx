@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
@@ -102,7 +103,7 @@ export default function EditAppointmentPage({
     
     setLoading(true)
     
-    fetch(`/api/appointments/${appointmentId}`)
+    appFetch(`/api/appointments/${appointmentId}`)
       .then(res => {
         if (!res.ok) throw new Error("Appointment not found")
         return res.json()
@@ -131,7 +132,7 @@ export default function EditAppointmentPage({
     setError(null)
     
     try {
-      const response = await fetch(`/api/appointments/${appointmentId}`, {
+      const response = await appFetch(`/api/appointments/${appointmentId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

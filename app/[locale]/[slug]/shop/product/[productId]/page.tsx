@@ -31,6 +31,7 @@ import { useCart } from "@/lib/contexts/cart-context"
 import { getProductPrimaryMediaUrl } from "@/lib/ai-media/entity-primary-media"
 import { buildShopCheckoutPath, buildShopOrderPath, buildShopProductsPath } from "@/lib/shop-public-paths"
 import { useShopRoutePaths } from "@/lib/contexts/shop-route-context"
+import { appPath } from "@/lib/app-base-path"
 
 interface ProductVariant {
   id: string
@@ -110,7 +111,7 @@ export default function ProductDetailPage({
     })
     
     // Fetch product data
-    fetch(`/api/public/products/${productId}?organizationSlug=${slug}`)
+    fetch(appPath(`/api/public/products/${productId}?organizationSlug=${slug}`))
       .then(res => {
         if (!res.ok) throw new Error("Product not found")
         return res.json()

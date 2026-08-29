@@ -1,4 +1,5 @@
 'use client'
+import { appFetch } from "@/lib/app-base-path";
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,7 +14,7 @@ useEffect(()=>{
 })
 
 const handleSubmit = async () => {
-    const response = await fetch('/api/qrcode', {
+    const response = await appFetch('/api/qrcode', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

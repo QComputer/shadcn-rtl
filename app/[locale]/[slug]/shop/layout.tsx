@@ -21,6 +21,7 @@ import { resolveOrganizationBranding } from "@/lib/organization-branding";
 import { ShopRouteProvider } from "@/lib/contexts/shop-route-context";
 import { OrganizationRootNavigationProvider } from "@/lib/contexts/organization-root-navigation-context";
 import { buildOrganizationRootPath } from "@/lib/custom-domain-routing";
+import { appResourceUrl } from "@/lib/app-base-path";
 
 interface ShopLayoutProps {
   children: React.ReactNode;
@@ -80,8 +81,8 @@ export async function generateMetadata({ params }: ShopLayoutProps): Promise<Met
       keywords: ["Bazar Baz", "shop", "online shopping", organization.slug],
       alternatePath: seoContext.alternatePath,
       icons: {
-        icon: [{ url: branding.favicon }],
-        apple: [{ url: branding.appleTouchIcon }],
+        icon: [{ url: appResourceUrl(branding.favicon) }],
+        apple: [{ url: appResourceUrl(branding.appleTouchIcon) }],
       },
     });
   } catch {

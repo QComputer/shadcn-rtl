@@ -1,4 +1,5 @@
 "use client";
+import { appFetch } from "@/lib/app-base-path";
 
 import { use, useEffect, useMemo, useState } from "react";
 import { Loader2, Plus, RefreshCw, Trash2, CheckCircle2, AlertTriangle, Copy } from "lucide-react";
@@ -119,8 +120,8 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
       setLoading(true);
       try {
         const [domainsRes, vercelRes] = await Promise.all([
-          fetch("/api/dashboard/organization-domains", { cache: "no-store" }),
-          fetch("/api/dashboard/organization-domains/vercel-automation", { cache: "no-store" }),
+          appFetch("/api/dashboard/organization-domains", { cache: "no-store" }),
+          appFetch("/api/dashboard/organization-domains/vercel-automation", { cache: "no-store" }),
         ]);
 
         if (domainsRes.ok) {
@@ -153,7 +154,7 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
       const organizationId = resolveOrganizationId(domains);
       if (organizationId) payload.organizationId = organizationId;
 
-      const response = await fetch("/api/dashboard/organization-domains", {
+      const response = await appFetch("/api/dashboard/organization-domains", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -182,7 +183,7 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
   async function handleVerifyDomain(domain: OrganizationDomain) {
     setSubmitting(true);
     try {
-      const response = await fetch(`/api/dashboard/organization-domains/${domain.id}/vercel`, {
+      const response = await appFetch(`/api/dashboard/organization-domains/${domain.id}/vercel`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "check" }),
@@ -210,7 +211,7 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
 
     setSubmitting(true);
     try {
-      const response = await fetch(`/api/dashboard/organization-domains/${domain.id}`, {
+      const response = await appFetch(`/api/dashboard/organization-domains/${domain.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "DISABLED" }),
@@ -238,7 +239,7 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
 
     setSubmitting(true);
     try {
-      const response = await fetch(`/api/dashboard/organization-domains/${domain.id}`, {
+      const response = await appFetch(`/api/dashboard/organization-domains/${domain.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isPrimary: true }),
@@ -266,7 +267,7 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
 
     setSubmitting(true);
     try {
-      const response = await fetch(`/api/dashboard/organization-domains/${domain.id}/vercel`, {
+      const response = await appFetch(`/api/dashboard/organization-domains/${domain.id}/vercel`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "remove" }),

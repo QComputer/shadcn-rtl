@@ -1,4 +1,5 @@
 "use client";
+import { appFetch } from "@/lib/app-base-path";
 
 import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -154,7 +155,7 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch("/api/users/me", { cache: "no-store" });
+        const response = await appFetch("/api/users/me", { cache: "no-store" });
         if (!response.ok) throw new Error("Failed to fetch profile");
         const data = (await response.json()) as UserProfile;
         setUser(data);
@@ -165,7 +166,7 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
         setSelectedTheme(data.theme || "system");
 
         if (data.memberOf?.organizationId) {
-          const hoursResponse = await fetch(`/api/users/me/business-hours?organizationId=${encodeURIComponent(data.memberOf.organizationId)}`, { cache: "no-store" });
+          const hoursResponse = await appFetch(`/api/users/me/business-hours?organizationId=${encodeURIComponent(data.memberOf.organizationId)}`, { cache: "no-store" });
           if (hoursResponse.ok) {
             const hoursData = await hoursResponse.json();
             if (Array.isArray(hoursData.hours) && hoursData.hours.length > 0) {
@@ -190,7 +191,7 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
     setError(null);
     setMessage(null);
     try {
-      const response = await fetch("/api/users/me", {
+      const response = await appFetch("/api/users/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -231,7 +232,7 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
 
     setSaving(true);
     try {
-      const response = await fetch("/api/users/me", {
+      const response = await appFetch("/api/users/me", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
@@ -257,7 +258,7 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
     setError(null);
     setMessage(null);
     try {
-      const response = await fetch(`/api/users/me/business-hours?organizationId=${encodeURIComponent(user.memberOf.organizationId)}`, {
+      const response = await appFetch(`/api/users/me/business-hours?organizationId=${encodeURIComponent(user.memberOf.organizationId)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(businessHours.map(({ day, openTime, closeTime, isOpen }) => ({ day, openTime, closeTime, isOpen }))),

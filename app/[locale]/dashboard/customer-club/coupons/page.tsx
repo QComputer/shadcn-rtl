@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { FormEvent, use, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
@@ -179,14 +180,14 @@ export default function CouponsPage({ params }: { params: Promise<{ locale: stri
 
   const fetchCoupons = useCallback(async (signal?: AbortSignal) => {
     setError(null)
-    const membershipResponse = await fetch("/api/users/me/membership", { cache: "no-store", signal })
+    const membershipResponse = await appFetch("/api/users/me/membership", { cache: "no-store", signal })
     if (!membershipResponse.ok) throw new Error(await readError(membershipResponse, "Failed to load organization membership"))
 
     const membershipData = await membershipResponse.json()
     const orgId = membershipData?.membership?.organizationId
     if (!orgId) throw new Error(copy.noOrganization)
 
-    const response = await fetch(`/api/dashboard/customer-club/coupons?organizationId=${encodeURIComponent(orgId)}`, {
+    const response = await appFetch(`/api/dashboard/customer-club/coupons?organizationId=${encodeURIComponent(orgId)}`, {
       cache: "no-store",
       signal,
     })
@@ -233,7 +234,7 @@ export default function CouponsPage({ params }: { params: Promise<{ locale: stri
     setError(null)
     setNotice(null)
     try {
-      const response = await fetch("/api/dashboard/customer-club/coupons", {
+      const response = await appFetch("/api/dashboard/customer-club/coupons", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

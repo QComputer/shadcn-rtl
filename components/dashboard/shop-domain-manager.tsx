@@ -1,4 +1,5 @@
 "use client";
+import { appFetch } from "@/lib/app-base-path";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -452,7 +453,7 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/dashboard/shop-domains", { cache: "no-store" });
+      const response = await appFetch("/api/dashboard/shop-domains", { cache: "no-store" });
       const payload = await readJson<ShopDomainPayload | { error?: string }>(response);
       if (!response.ok) throw new Error(getJsonError(payload, copy.failedToLoad));
       const data = payload as ShopDomainPayload;
@@ -507,7 +508,7 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
     setError(null);
     setMessage(null);
     try {
-      const response = await fetch("/api/dashboard/shop-domains", {
+      const response = await appFetch("/api/dashboard/shop-domains", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -538,7 +539,7 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
     setError(null);
     setMessage(null);
     try {
-      const response = await fetch("/api/dashboard/shop-domains", {
+      const response = await appFetch("/api/dashboard/shop-domains", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -562,7 +563,7 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
     setMessage(null);
     setDnsRecords([]);
     try {
-      const response = await fetch(`/api/dashboard/shop-domains/${domainId}/vercel`, {
+      const response = await appFetch(`/api/dashboard/shop-domains/${domainId}/vercel`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
@@ -586,7 +587,7 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
     setError(null);
     setMessage(null);
     try {
-      const response = await fetch("/api/dashboard/shop-domains", {
+      const response = await appFetch("/api/dashboard/shop-domains", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),

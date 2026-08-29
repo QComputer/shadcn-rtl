@@ -1,4 +1,5 @@
 "use client";
+import { appFetch } from "@/lib/app-base-path";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -117,7 +118,7 @@ export function InotiAccountConsoleClient({
 
   async function load() {
     setLoading(true);
-    const response = await fetch(`/api/platform/inoti/organizations/${organizationId}`, { cache: "no-store" });
+    const response = await appFetch(`/api/platform/inoti/organizations/${organizationId}`, { cache: "no-store" });
     if (response.ok) {
       const data = (await response.json()) as ResponseBody;
       setModel(data.inoti);
@@ -131,7 +132,7 @@ export function InotiAccountConsoleClient({
 
   async function submit(action: "draft" | "connect") {
     setBusy(action);
-    const response = await fetch(`/api/platform/inoti/organizations/${organizationId}`, {
+    const response = await appFetch(`/api/platform/inoti/organizations/${organizationId}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ action, services: selected, ...form }),
@@ -145,7 +146,7 @@ export function InotiAccountConsoleClient({
 
   async function health(serviceKey?: string) {
     setBusy(`health-${serviceKey ?? "all"}`);
-    const response = await fetch(`/api/platform/inoti/organizations/${organizationId}/health`, {
+    const response = await appFetch(`/api/platform/inoti/organizations/${organizationId}/health`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ serviceKey }),
@@ -159,7 +160,7 @@ export function InotiAccountConsoleClient({
 
   async function disable(serviceKey: string) {
     setBusy(`disable-${serviceKey}`);
-    const response = await fetch(`/api/platform/inoti/organizations/${organizationId}/services/${serviceKey}`, { method: "DELETE" });
+    const response = await appFetch(`/api/platform/inoti/organizations/${organizationId}/services/${serviceKey}`, { method: "DELETE" });
     if (response.ok) {
       const data = (await response.json()) as ResponseBody;
       setModel(data.inoti);

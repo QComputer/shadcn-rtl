@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
 import dayjs, { Dayjs } from "dayjs"
@@ -248,7 +249,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
         params.set("organizationId", organizationMembership.organizationId)
       }
       
-      const response = await fetch(`/api/orders?${params.toString()}`)
+      const response = await appFetch(`/api/orders?${params.toString()}`)
       
       if (!response.ok) {
         throw new Error("Failed to fetch orders")
@@ -289,7 +290,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
     setUpdating(true)
     
     try {
-      const response = await fetch(`/api/orders/${orderId}/payment`, {
+      const response = await appFetch(`/api/orders/${orderId}/payment`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -318,7 +319,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
 
   const fetchDrivers = async () => {
     try {
-      const res = await fetch("/api/users")
+      const res = await appFetch("/api/users")
       if (!res.ok) return
       const data = await res.json()
       const driverUsers = (data.data || []).filter((u: Order["customer"] & { role: string }) => u.role === "DRIVER")
@@ -333,7 +334,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
   const assignDriver = async (orderId: string, driverId: string) => {
     setAssigningDriver(true)
     try {
-      const response = await fetch(`/api/orders/${orderId}/assign-driver`, {
+      const response = await appFetch(`/api/orders/${orderId}/assign-driver`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ driverId }),
@@ -356,7 +357,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     setUpdating(true)
     try {
-      const response = await fetch(`/api/orders/${orderId}`, {
+      const response = await appFetch(`/api/orders/${orderId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -411,7 +412,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
     setSavingPreparationTime(true)
 
     try {
-      const response = await fetch(`/api/orders/${selectedOrder.id}/ready-time`, {
+      const response = await appFetch(`/api/orders/${selectedOrder.id}/ready-time`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

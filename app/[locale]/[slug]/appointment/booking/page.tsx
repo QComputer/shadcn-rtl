@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
@@ -136,7 +137,7 @@ export default function BookingPage({
       setDict(getDictionary(locale))
     })
     
-    fetch(`/api/public/organizations/${slug}`)
+    appFetch(`/api/public/organizations/${slug}`)
       .then(res => {
         if (!res.ok) throw new Error("Organization not found")
         return res.json()
@@ -161,7 +162,7 @@ export default function BookingPage({
     setLoadingSlots(true)
     const dateStr = selectedDate.toISOString().split('T')[0]
     
-    fetch(`/api/services/${selectedService.id}/slots?date=${dateStr}`)
+    appFetch(`/api/services/${selectedService.id}/slots?date=${dateStr}`)
       .then(res => res.json())
       .then(slots => {
         setAvailableSlots(slots.data || [])
@@ -207,7 +208,7 @@ export default function BookingPage({
     setBookingError(null)
 
     try {
-      const response = await fetch("/api/appointments", {
+      const response = await appFetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

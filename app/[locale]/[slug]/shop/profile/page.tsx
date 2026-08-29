@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
@@ -59,7 +60,7 @@ export default function ShopProfilePage({
        setDict(getDictionary(locale))
      })
      
-      fetch(`/api/public/organizations/${slug}`)
+      appFetch(`/api/public/organizations/${slug}`)
        .then(res => {
          if (!res.ok) throw new Error("Shop not found")
          return res.json()

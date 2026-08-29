@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 // TOODO: add deleting a Variant 
 import { useState, useEffect, use, useRef } from "react"
 import { useRouter } from "next/navigation"
@@ -286,13 +287,13 @@ export default function EditProductPage({
 
     setAiStateLoading(true)
     Promise.all([
-      fetch("/api/dashboard/ai-media/status")
+      appFetch("/api/dashboard/ai-media/status")
         .then(async (res) => {
           if (!res.ok) return { enabled: false }
           return res.json()
         })
         .catch(() => ({ enabled: false })),
-      fetch("/api/dashboard/ai-media/usage")
+      appFetch("/api/dashboard/ai-media/usage")
         .then(async (res) => {
           if (!res.ok) return { usage: null }
           return res.json()
@@ -326,13 +327,13 @@ export default function EditProductPage({
     
     // Fetch product and categories in parallel
     Promise.all([
-      fetch(`/api/products/${productId}`)
+      appFetch(`/api/products/${productId}`)
         .then(res => {
           if (!res.ok) throw new Error("Product not found")
           return res.json()
         })
         .then(data => data.product || data),
-      fetch(`/api/product-categories`)
+      appFetch(`/api/product-categories`)
         .then(res => res.json())
         .then(data => data.data || [])
 
@@ -458,7 +459,7 @@ export default function EditProductPage({
     setError(null)
     
      try {
-      const response = await fetch(`/api/products/${productId}`, {
+      const response = await appFetch(`/api/products/${productId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -492,7 +493,7 @@ export default function EditProductPage({
   const handleDelete = async () => {
     setDeleting(true)
     try {
-      const response = await fetch(`/api/products/${productId}`, {
+      const response = await appFetch(`/api/products/${productId}`, {
         method: "DELETE",
       })
       
@@ -512,7 +513,7 @@ export default function EditProductPage({
   const handleDeleteVariant = async () => {
     setDeletingVariant(true)
     try {
-      const response = await fetch(`/api/products/${productId}/variants/${selectedVariant.id}`, {
+      const response = await appFetch(`/api/products/${productId}/variants/${selectedVariant.id}`, {
         method: "DELETE",
       })
       
@@ -551,7 +552,7 @@ export default function EditProductPage({
     setAiPollAttempts(0)
 
     try {
-      const response = await fetch(`/api/dashboard/products/${productId}/ai-image-suggestions`, {
+      const response = await appFetch(`/api/dashboard/products/${productId}/ai-image-suggestions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -611,7 +612,7 @@ export default function EditProductPage({
       attempts++
       setAiPollAttempts(attempts)
       try {
-        const response = await fetch(`/api/dashboard/ai-image-suggestions/${jobId}`)
+        const response = await appFetch(`/api/dashboard/ai-image-suggestions/${jobId}`)
         if (!response.ok) {
           const data = await response.json().catch(() => ({}))
           throw new Error(data.error || "Failed to poll job")
@@ -666,7 +667,7 @@ export default function EditProductPage({
 
     setAiConfirming(true)
     try {
-      const response = await fetch(`/api/dashboard/products/${productId}/ai-image-suggestions/select`, {
+      const response = await appFetch(`/api/dashboard/products/${productId}/ai-image-suggestions/select`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ job_id: aiJobId, image_url: imageUrl, output_index: outputIndex }),
@@ -714,7 +715,7 @@ export default function EditProductPage({
     setAiLoading(true)
     setAiError(null)
     try {
-      const response = await fetch(`/api/dashboard/products/${productId}/ai-image-suggestions`)
+      const response = await appFetch(`/api/dashboard/products/${productId}/ai-image-suggestions`)
       if (!response.ok) {
         const data = await response.json().catch(() => ({}))
         throw new Error(data.error || "Failed to recover AI media job")
@@ -745,7 +746,7 @@ export default function EditProductPage({
 
     setAiCanceling(true)
     try {
-      const response = await fetch(`/api/dashboard/ai-image-suggestions/${aiJobId}/cancel`, {
+      const response = await appFetch(`/api/dashboard/ai-image-suggestions/${aiJobId}/cancel`, {
         method: "POST",
       })
       if (!response.ok) {
@@ -780,7 +781,7 @@ export default function EditProductPage({
     setError(null)
     
      try {
-      const response = await fetch(`/api/products/${productId}/variants`, {
+      const response = await appFetch(`/api/products/${productId}/variants`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -814,7 +815,7 @@ export default function EditProductPage({
     setError(null)
     
      try {
-      const response = await fetch(`/api/products/${productId}/variants`, {
+      const response = await appFetch(`/api/products/${productId}/variants`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

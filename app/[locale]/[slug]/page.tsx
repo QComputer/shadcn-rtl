@@ -18,6 +18,7 @@ import AppointmentServicesPage from "./appointment/services/page";
 import AppointmentLayout from "./appointment/layout";
 import { OrganizationBrandHome } from "@/components/public/organization-brand-home";
 import { OrganizationVisitorChoice } from "@/components/public/organization-visitor-choice";
+import { appResourceUrl } from "@/lib/app-base-path";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -74,8 +75,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     image: branding.ogImage,
     alternatePath: seoContext.alternatePath,
     icons: {
-      icon: [{ url: branding.favicon }],
-      apple: [{ url: branding.appleTouchIcon }],
+      icon: [{ url: appResourceUrl(branding.favicon) }],
+      apple: [{ url: appResourceUrl(branding.appleTouchIcon) }],
     },
   });
 }

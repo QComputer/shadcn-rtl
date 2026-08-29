@@ -10,6 +10,7 @@ import { DashboardSidebarWithDict } from "@/components/dashboard/dashboard-sideb
 import { DashboardRouteAccessBoundary } from "@/components/dashboard/dashboard-route-access-boundary"
 import { DashboardPushOptIn } from "@/components/dashboard/dashboard-push-opt-in"
 import type { SupportedLocale } from "@/lib/i18n"
+import { appPath } from "@/lib/app-base-path"
 
 type DashboardNotification = {
   id: string
@@ -64,7 +65,7 @@ function DashboardNotificationPoller() {
       }
 
       try {
-        const response = await fetch("/api/dashboard/notifications", {
+        const response = await fetch(appPath("/api/dashboard/notifications"), {
           cache: "no-store",
         })
 
@@ -85,7 +86,7 @@ function DashboardNotificationPoller() {
         const notifications = Array.isArray(data.notifications) ? data.notifications : []
 
         if (data.trigger && notifications.length > 0) {
-          const audio = new Audio("/Alarm10.wav")
+          const audio = new Audio(appPath("/Alarm10.wav"))
           audio.play().catch(() => undefined)
 
           for (const notification of notifications) {
@@ -102,7 +103,7 @@ function DashboardNotificationPoller() {
             }
           }
 
-          await fetch("/api/dashboard/notifications", {
+          await fetch(appPath("/api/dashboard/notifications"), {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ ids: notifications.map((notification) => notification.id) }),

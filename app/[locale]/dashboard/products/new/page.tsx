@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
@@ -180,13 +181,13 @@ export default function NewProductPage({
 
     setAiStateLoading(true)
     Promise.all([
-      fetch("/api/dashboard/ai-media/status")
+      appFetch("/api/dashboard/ai-media/status")
         .then(async (res) => {
           if (!res.ok) return { enabled: false }
           return res.json()
         })
         .catch(() => ({ enabled: false })),
-      fetch("/api/dashboard/ai-media/usage")
+      appFetch("/api/dashboard/ai-media/usage")
         .then(async (res) => {
           if (!res.ok) return { usage: null }
           return res.json()
@@ -215,7 +216,7 @@ export default function NewProductPage({
     setLoading(true)
     
     Promise.all([
-      fetch(`/api/product-categories`)
+      appFetch(`/api/product-categories`)
         .then(res => res.json())
         .then(data => data.data || [])
     ]).then(([categoriesData]) => {
@@ -273,7 +274,7 @@ export default function NewProductPage({
         const img = await uploadFile(imageFile)
         imageUrl = img.url
       }
-      const response = await fetch("/api/products", {
+      const response = await appFetch("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -326,7 +327,7 @@ export default function NewProductPage({
     const id = image?.id 
     if(!id) return
     try {
-      const response = await fetch(`/api/images/${id}`, {
+      const response = await appFetch(`/api/images/${id}`, {
         method: "DELETE",
       });
 

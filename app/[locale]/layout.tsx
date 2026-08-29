@@ -11,12 +11,13 @@ import { PwaInstallManager } from "@/components/pwa-install-manager";
 import { getCanonicalUrl, getPublicBaseUrl } from "@/lib/seo";
 import { PlatformFooter } from "@/components/public/platform-footer";
 import { headers } from "next/headers";
+import { appPath, resolveAppBasePath } from "@/lib/app-base-path";
 
 
 export const metadata: Metadata = {
   metadataBase: getPublicBaseUrl(),
   applicationName: "Bazar Baz",
-  manifest: "/manifest.webmanifest",
+  manifest: appPath("/manifest.webmanifest"),
   title: {
     default: "بازارباز - پلتفرم مدیریت کسب‌وکار ایرانی",
     template: "%s | بازارباز"
@@ -43,8 +44,8 @@ export const metadata: Metadata = {
     images: [getCanonicalUrl("/og-image")],
   },
   icons: {
-    icon: [{ url: "/pwa-icon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/pwa-icon.svg", type: "image/svg+xml" }],
+    icon: [{ url: appPath("/pwa-icon.svg"), type: "image/svg+xml" }],
+    apple: [{ url: appPath("/pwa-icon.svg"), type: "image/svg+xml" }],
   },
   appleWebApp: {
     capable: true,
@@ -100,13 +101,13 @@ export default async function LocaleLayout({
       <head key={locale}>
       </head>
       <body className="antialiased">
-        <SessionProvider>
+        <SessionProvider basePath={appPath("/api/auth")}>
           <LocaleProvider defaultLocale={locale}>
             <AuthProvider>
               <ErrorBoundary>
                 <ThemeProvider defaultTheme="dark" storageKey="shadcn-rtl-theme">
                   {children}
-                  <PwaInstallManager enabled={process.env.PWA_ENABLED !== "false"} locale={locale} />
+                  <PwaInstallManager enabled={process.env.PWA_ENABLED !== "false"} locale={locale} basePath={resolveAppBasePath()} />
                 </ThemeProvider>
               </ErrorBoundary>
             </AuthProvider>

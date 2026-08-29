@@ -1,4 +1,5 @@
 "use client";
+import { appFetch } from "@/lib/app-base-path";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -46,8 +47,8 @@ export function TenantProvisioningClient({ locale }: { locale: Locale }) {
     setError(null);
     try {
       const [plansResponse, leadsResponse] = await Promise.all([
-        fetch("/api/dashboard/tenant-provisioning-plans", { cache: "no-store" }),
-        fetch("/api/dashboard/request-demo-leads?limit=100", { cache: "no-store" }),
+        appFetch("/api/dashboard/tenant-provisioning-plans", { cache: "no-store" }),
+        appFetch("/api/dashboard/request-demo-leads?limit=100", { cache: "no-store" }),
       ]);
       if (!plansResponse.ok || !leadsResponse.ok) {
         throw new Error("بارگذاری اطلاعات آماده‌سازی ناموفق بود");
@@ -72,7 +73,7 @@ export function TenantProvisioningClient({ locale }: { locale: Locale }) {
     setCreating(true);
     setError(null);
     try {
-      const response = await fetch("/api/dashboard/tenant-provisioning-plans", {
+      const response = await appFetch("/api/dashboard/tenant-provisioning-plans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ requestDemoLeadId: selectedLeadId }),

@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
@@ -57,7 +58,7 @@ function RegisterForm({ locale }: { locale: string }) {
     setIsLoading(true)
 
     try {
-      const response = await fetch("/api/auth/register", {
+      const response = await appFetch("/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -6,6 +6,7 @@ import { cartService } from "@/lib/services/cart.service";
 import { addToCartSchema } from "@/lib/validators";
 import { randomUUID } from "crypto";
 import { ZodError } from "zod";
+import { appCookiePath } from "@/lib/app-base-path";
 
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || "guest_session_id";
 
@@ -28,7 +29,7 @@ function responseWithSessionCookie(
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7,
-      path: "/",
+      path: appCookiePath(),
     });
   }
   return response;

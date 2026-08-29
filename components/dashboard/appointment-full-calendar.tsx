@@ -1,4 +1,5 @@
 "use client";
+import { appFetch } from "@/lib/app-base-path";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
@@ -233,7 +234,7 @@ export function AppointmentFullCalendar({
   const direction = locale === "fa" || locale === "ar" ? "rtl" : "ltr";
 
   const loadOrganizationContext = useCallback(async () => {
-    const res = await fetch("/api/users/me/membership", { cache: "no-store" });
+    const res = await appFetch("/api/users/me/membership", { cache: "no-store" });
     if (!res.ok) throw new Error("دریافت عضویت سازمانی ناموفق بود");
     const data = (await res.json()) as MembershipResponse;
     const membership = data.membership || data.memberships?.[0] || null;
@@ -243,7 +244,7 @@ export function AppointmentFullCalendar({
   }, []);
 
   const loadMembers = useCallback(async (orgId: string) => {
-    const res = await fetch(`/api/organizations/${orgId}/members`, { cache: "no-store" });
+    const res = await appFetch(`/api/organizations/${orgId}/members`, { cache: "no-store" });
     if (!res.ok) throw new Error("دریافت سرویس‌دهندگان ناموفق بود");
     const data = await res.json();
     setMembers(Array.isArray(data) ? data : []);
@@ -251,7 +252,7 @@ export function AppointmentFullCalendar({
 
   const loadServices = useCallback(async (orgId: string) => {
     const params = new URLSearchParams({ organizationId: orgId, pageSize: "200", isActive: "true" });
-    const res = await fetch(`/api/services?${params.toString()}`, { cache: "no-store" });
+    const res = await appFetch(`/api/services?${params.toString()}`, { cache: "no-store" });
     if (!res.ok) throw new Error("دریافت سرویس‌ها ناموفق بود");
     const data = await res.json();
     setServices(Array.isArray(data?.data) ? data.data : []);
@@ -270,7 +271,7 @@ export function AppointmentFullCalendar({
       if (selectedProvider !== "ALL") params.set("serviceProviderId", selectedProvider);
       if (organizationId) params.set("organizationId", organizationId);
 
-      const res = await fetch(`/api/appointments?${params.toString()}`, { cache: "no-store" });
+      const res = await appFetch(`/api/appointments?${params.toString()}`, { cache: "no-store" });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new Error(body?.error || "دریافت نوبت‌ها ناموفق بود");
@@ -355,7 +356,7 @@ export function AppointmentFullCalendar({
     setRescheduling(true);
     setError(null);
     try {
-      const res = await fetch(`/api/appointments/${appointment.id}/reschedule`, {
+      const res = await appFetch(`/api/appointments/${appointment.id}/reschedule`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -380,7 +381,7 @@ export function AppointmentFullCalendar({
   async function updateAppointmentStatus(appointment: Appointment, status: AppointmentStatus) {
     try {
       setRefreshing(true);
-      const res = await fetch(`/api/appointments/${appointment.id}`, {
+      const res = await appFetch(`/api/appointments/${appointment.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status, notes: statusNote || undefined }),

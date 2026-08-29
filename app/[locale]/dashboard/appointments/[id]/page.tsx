@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
@@ -100,7 +101,7 @@ export default function AppointmentDetailPage({
     
     setLoading(true)
     
-    fetch(`/api/appointments/${appointmentId}`)
+    appFetch(`/api/appointments/${appointmentId}`)
       .then(res => {
         if (!res.ok) throw new Error("Appointment not found")
         return res.json()
@@ -122,7 +123,7 @@ export default function AppointmentDetailPage({
   const handleDelete = async () => {
     setDeleting(true)
     try {
-      const response = await fetch(`/api/appointments/${appointmentId}`, {
+      const response = await appFetch(`/api/appointments/${appointmentId}`, {
         method: "DELETE",
       })
       

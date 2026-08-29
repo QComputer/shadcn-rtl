@@ -4,14 +4,15 @@ import {
   getShopSubPathFromPlatformPath,
   isPlatformHost,
 } from "@/lib/custom-domain-routing";
+import { appPath, stripAppBasePath } from "@/lib/app-base-path";
 
 /** Returns a same-origin deep link suitable for a service-worker notification. */
 export function normalizePushTargetUrl(value?: string | null) {
-  if (!value) return "/";
+  if (!value) return appPath("/");
   if (!value.startsWith("/") || value.startsWith("//")) {
     throw new Error("Push target URL must be same-origin");
   }
-  return value;
+  return appPath(value);
 }
 
 export function adaptPushTargetUrlForOrigin(input: {
@@ -22,9 +23,9 @@ export function adaptPushTargetUrlForOrigin(input: {
   const targetUrl = normalizePushTargetUrl(input.targetUrl);
   if (isPlatformHost(new URL(input.subscriptionOrigin).hostname)) return targetUrl;
 
-  const platformPath = getShopSubPathFromPlatformPath(targetUrl, input.organizationSlug);
+  const platformPath = getShopSubPathFromPlatformPath(stripAppBasePath(targetUrl), input.organizationSlug);
   return platformPath
-    ? buildTenantPublicPath(platformPath.locale, platformPath.subPath)
+    ? appPath(buildTenantPublicPath(platformPath.locale, platformPath.subPath))
     : targetUrl;
 }
 

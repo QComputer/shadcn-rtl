@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -72,7 +73,7 @@ export function FollowButton({
     
     try {
       const method = isFollowing ? "DELETE" : "POST"
-      const response = await fetch(`/api/organizations/${organizationId}/follow`, {
+      const response = await appFetch(`/api/organizations/${organizationId}/follow`, {
         method,
         headers: { "Content-Type": "application/json" },
       })

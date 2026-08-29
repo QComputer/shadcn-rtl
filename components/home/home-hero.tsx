@@ -1,4 +1,5 @@
 "use client";
+import { appFetch } from "@/lib/app-base-path";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -179,7 +180,7 @@ export function HomeHero({
 
     const timer = window.setTimeout(async () => {
       try {
-        const response = await fetch(`/api/public/search?q=${encodeURIComponent(trimmed)}&locale=${locale}`, {
+        const response = await appFetch(`/api/public/search?q=${encodeURIComponent(trimmed)}&locale=${locale}`, {
           signal: controller.signal,
         });
         if (!response.ok) throw new Error("Search failed");

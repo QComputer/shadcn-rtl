@@ -41,6 +41,7 @@ import { getDictionary } from "@/lib/dictionary";
 import { formatToman, toPersianDigits } from "@/lib/persian";
 import { buildShopCheckoutPath, buildShopOrderPath, buildShopProductsPath } from "@/lib/shop-public-paths";
 import { useShopRoutePaths } from "@/lib/contexts/shop-route-context";
+import { appPath } from "@/lib/app-base-path";
 
 interface CheckoutFormData {
   customerName?: string;
@@ -119,7 +120,7 @@ export default function CheckoutPage({
   useEffect(() => {
     async function fetchOrganization() {
       try {
-        const response = await fetch(`/api/public/organizations/${slug}/shop`);
+        const response = await fetch(appPath(`/api/public/organizations/${slug}/shop`));
         if (response.ok) {
           
           const data = await response.json();
@@ -142,7 +143,7 @@ export default function CheckoutPage({
 
     async function fetchCurrentUser() {
       try {
-        const response = await fetch("/api/users/me");
+        const response = await fetch(appPath("/api/users/me"));
         if (!response.ok) return;
         const currentUser = await response.json();
         if (cancelled) return;
@@ -189,7 +190,7 @@ export default function CheckoutPage({
     setError(null);
 
 try {
-       const response = await fetch("/api/orders", {
+       const response = await fetch(appPath("/api/orders"), {
          method: "POST",
          headers: { "Content-Type": "application/json" },
          body: JSON.stringify({

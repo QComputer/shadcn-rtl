@@ -8,6 +8,7 @@ import { Eye, EyeOff, LogIn, Loader2, AlertCircle } from "lucide-react"
 import { signIn } from "next-auth/react"
 import { cn } from "@/lib/utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { appPath } from "@/lib/app-base-path"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,7 +19,7 @@ import { getDictionary, getDictValue } from "@/lib/dictionary"
 function LoginForm({ locale }: { locale: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get("callbackUrl") || `/${locale}/dashboard`
+  const callbackUrl = searchParams.get("callbackUrl") || appPath(`/${locale}/dashboard`)
 
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")

@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
@@ -132,7 +133,7 @@ export default function ServicesDashboardPage({
       ? "/api/services?provider=me" 
       : "/api/services"
     
-    fetch(servicesUrl)
+    appFetch(servicesUrl)
       .then(res => {
         if (!res.ok) throw new Error("Failed to fetch services")
         return res.json()
@@ -147,7 +148,7 @@ export default function ServicesDashboardPage({
       })
     
     // Fetch categories
-    fetch("/api/service-categories")
+    appFetch("/api/service-categories")
       .then(res => {
         if (!res.ok) throw new Error("Failed to fetch categories")
         return res.json()
@@ -182,7 +183,7 @@ export default function ServicesDashboardPage({
   // Toggle service active status
   const toggleActive = async (service: Service) => {
     try {
-      const response = await fetch(`/api/services/${service.id}`, {
+      const response = await appFetch(`/api/services/${service.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: !service.isActive }),
@@ -209,7 +210,7 @@ export default function ServicesDashboardPage({
     
     setDeleting(true)
     try {
-      const response = await fetch(`/api/services/${serviceToDelete.id}`, {
+      const response = await appFetch(`/api/services/${serviceToDelete.id}`, {
         method: "DELETE",
       })
       

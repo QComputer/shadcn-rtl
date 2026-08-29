@@ -25,6 +25,7 @@ import {
   type ResolvedCustomDomain,
 } from "@/lib/custom-domain-routing";
 import { getPublicFooterContextForPathname, type PublicFooterContext } from "@/lib/public-footer-context";
+import { appCookiePath } from "@/lib/app-base-path";
 
 // Supported locales - Persian is the default (primary native language)
 export const locales = ["fa", "en", "ar"] as const;
@@ -452,7 +453,7 @@ export async function proxy(request: NextRequest) {
 
     // Set locale cookie
     response.cookies.set("locale", locale, {
-      path: "/",
+      path: appCookiePath(),
       maxAge: 60 * 60 * 24 * 365,
       httpOnly: false,
     });
@@ -479,7 +480,7 @@ export async function proxy(request: NextRequest) {
   // Set locale cookie if not already set
   if (!request.cookies.has("locale")) {
     response.cookies.set("locale", locale, {
-      path: "/",
+      path: appCookiePath(),
       maxAge: 60 * 60 * 24 * 365,
       httpOnly: false,
     });

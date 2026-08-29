@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { use, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
@@ -96,14 +97,14 @@ export default function NewCampaignPage({ params }: { params: Promise<{ locale: 
 
   const loadBuilder = useCallback(async (signal?: AbortSignal) => {
     setError(null)
-    const membershipResponse = await fetch("/api/users/me/membership", { cache: "no-store", signal })
+    const membershipResponse = await appFetch("/api/users/me/membership", { cache: "no-store", signal })
     if (!membershipResponse.ok) throw new Error(await readError(membershipResponse, "Failed to load organization membership"))
 
     const membershipData = await membershipResponse.json()
     const orgId = membershipData?.membership?.organizationId
     if (!orgId) throw new Error(copy.noOrganization)
 
-    const segmentsResponse = await fetch(`/api/dashboard/customer-club/segments?organizationId=${encodeURIComponent(orgId)}`, {
+    const segmentsResponse = await appFetch(`/api/dashboard/customer-club/segments?organizationId=${encodeURIComponent(orgId)}`, {
       cache: "no-store",
       signal,
     })
@@ -135,7 +136,7 @@ export default function NewCampaignPage({ params }: { params: Promise<{ locale: 
     setSaving(true)
     setError(null)
     try {
-      const response = await fetch("/api/dashboard/customer-club/campaigns", {
+      const response = await appFetch("/api/dashboard/customer-club/campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

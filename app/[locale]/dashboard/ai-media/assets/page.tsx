@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { use, useCallback, useEffect, useMemo, useState } from "react"
 import { useSession } from "next-auth/react"
@@ -167,7 +168,7 @@ export default function AiMediaAssetsPage({ params }: { params: Promise<{ locale
         page: String(pageNum),
         pageSize: "20",
       })
-      const response = await fetch(`/api/dashboard/ai-media/assets?${query.toString()}`, { cache: "no-store" })
+      const response = await appFetch(`/api/dashboard/ai-media/assets?${query.toString()}`, { cache: "no-store" })
       if (!response.ok) throw new Error(copy.error)
       const data = (await response.json()) as AssetsResponse
       setAssets(data)

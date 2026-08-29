@@ -1,4 +1,5 @@
 "use client";
+import { appFetch } from "@/lib/app-base-path";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -91,7 +92,7 @@ export function TenantProvisioningPlanEditor({ locale, planId }: { locale: Local
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/dashboard/tenant-provisioning-plans/${planId}`, { cache: "no-store" });
+      const response = await appFetch(`/api/dashboard/tenant-provisioning-plans/${planId}`, { cache: "no-store" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "بارگذاری طرح ناموفق بود");
       setPlan(data);
@@ -123,7 +124,7 @@ export function TenantProvisioningPlanEditor({ locale, planId }: { locale: Local
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch(path, init);
+      const response = await appFetch(path, init);
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "اقدام انجام نشد");
       setPlan(data);

@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
@@ -69,7 +70,7 @@ export default function StaffPage({
       setDict(getDictionary(locale))
     })
     
-    fetch(`/api/public/organizations/${slug}/staff`)
+    appFetch(`/api/public/organizations/${slug}/staff`)
       .then(res => {
         if (!res.ok) throw new Error("Staff not found")
         return res.json()

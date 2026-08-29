@@ -3,6 +3,7 @@
 import * as React from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { supportedLocales, type SupportedLocale } from "@/lib/i18n"
+import { appCookiePath } from "@/lib/app-base-path"
 
 interface LocaleContextValue {
   locale: SupportedLocale
@@ -51,7 +52,7 @@ export function LocaleProvider({
     setLocaleState(newLocale)
     
     // Set cookie
-    document.cookie = `locale=${newLocale};path=/;max-age=31536000`
+    document.cookie = `locale=${newLocale};path=${appCookiePath()};max-age=31536000`
     
     // Get current path without locale
     const currentLocale = pathname.split("/")[1]

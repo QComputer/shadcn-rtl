@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { use, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
@@ -143,14 +144,14 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ local
 
   const fetchCampaign = useCallback(async (signal?: AbortSignal) => {
     setError(null)
-    const membershipResponse = await fetch("/api/users/me/membership", { cache: "no-store", signal })
+    const membershipResponse = await appFetch("/api/users/me/membership", { cache: "no-store", signal })
     if (!membershipResponse.ok) throw new Error(await readError(membershipResponse, "Failed to load organization membership"))
 
     const membershipData = await membershipResponse.json()
     const orgId = membershipData?.membership?.organizationId
     if (!orgId) throw new Error(copy.noOrganization)
 
-    const response = await fetch(`/api/dashboard/customer-club/campaigns/${id}?organizationId=${encodeURIComponent(orgId)}`, {
+    const response = await appFetch(`/api/dashboard/customer-club/campaigns/${id}?organizationId=${encodeURIComponent(orgId)}`, {
       cache: "no-store",
       signal,
     })
@@ -193,7 +194,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ local
     setNotice(null)
     setError(null)
     try {
-      const response = await fetch(`/api/dashboard/customer-club/campaigns/${id}/send`, {
+      const response = await appFetch(`/api/dashboard/customer-club/campaigns/${id}/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ organizationId, dryRun }),
@@ -215,7 +216,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ local
     setNotice(null)
     setError(null)
     try {
-      const response = await fetch(`/api/dashboard/customer-club/campaigns/${id}?organizationId=${encodeURIComponent(organizationId)}`, {
+      const response = await appFetch(`/api/dashboard/customer-club/campaigns/${id}?organizationId=${encodeURIComponent(organizationId)}`, {
         method: "DELETE",
       })
       if (!response.ok) throw new Error(await readError(response, "Failed to cancel campaign"))

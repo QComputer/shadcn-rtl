@@ -4,6 +4,7 @@ import * as React from "react"
 import { supportedLocales, localeConfig, type SupportedLocale } from "@/lib/i18n"
 import { Button } from "@/components/ui/button"
 import { Globe } from "lucide-react"
+import { appCookiePath } from "@/lib/app-base-path"
 
 interface LocaleSwitcherProps {
   className?: string
@@ -46,7 +47,7 @@ export function LocaleSwitcher({
     setIsOpen(false)
     
     // Set cookie
-    document.cookie = `locale=${locale};path=/;max-age=31536000`
+    document.cookie = `locale=${locale};path=${appCookiePath()};max-age=31536000`
     
     // Get current path without locale
     const currentPath = window.location.pathname
@@ -143,7 +144,7 @@ export function SimpleLocaleSwitcher({
       onChange(newLocale)
     } else {
       // Default behavior: redirect to locale-prefixed path
-      document.cookie = `locale=${newLocale};path=/;max-age=31536000`
+      document.cookie = `locale=${newLocale};path=${appCookiePath()};max-age=31536000`
       
       const currentPath = window.location.pathname
       const pathParts = currentPath.split("/").filter(Boolean)

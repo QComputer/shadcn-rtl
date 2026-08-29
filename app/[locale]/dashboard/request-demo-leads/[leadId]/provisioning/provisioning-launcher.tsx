@@ -1,4 +1,5 @@
 "use client";
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ export function LeadProvisioningLauncher({ locale, leadId }: { locale: string; l
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/dashboard/tenant-provisioning-plans", {
+      const response = await appFetch("/api/dashboard/tenant-provisioning-plans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ requestDemoLeadId: leadId }),

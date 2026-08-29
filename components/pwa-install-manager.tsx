@@ -12,6 +12,7 @@ type BeforeInstallPromptEvent = Event & {
 type PwaInstallManagerProps = {
   enabled: boolean
   locale: string
+  basePath: string
 }
 
 const copy = {
@@ -34,10 +35,10 @@ const copy = {
 
 function canRegisterServiceWorker() {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return false
-  return window.location.protocol === "https:" || window.location.hostname === "localhost"
+  return window.isSecureContext
 }
 
-export function PwaInstallManager({ enabled, locale }: PwaInstallManagerProps) {
+export function PwaInstallManager({ enabled, locale, basePath }: PwaInstallManagerProps) {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const text = copy[locale as keyof typeof copy] || copy.fa
@@ -45,8 +46,9 @@ export function PwaInstallManager({ enabled, locale }: PwaInstallManagerProps) {
 
   useEffect(() => {
     if (!enabled || !canRegisterServiceWorker()) return
-    void navigator.serviceWorker.register("/web-push-sw.js", { scope: "/" }).catch(() => undefined)
-  }, [enabled])
+    const scope = basePath ? `${basePath}/` : "/"
+    void navigator.serviceWorker.register(`${basePath}/web-push-sw.js`, { scope }).catch(() => undefined)
+  }, [basePath, enabled])
 
   useEffect(() => {
     if (!enabled) return

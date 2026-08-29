@@ -1,4 +1,5 @@
 "use client";
+import { appFetch } from "@/lib/app-base-path";
 
 import { useEffect, useState } from "react";
 import { ImageIcon, Loader2, Sparkles, X } from "lucide-react";
@@ -91,7 +92,7 @@ export function AiMediaAssetPicker({
     let active = true;
     setLoading(true);
     setError(null);
-    fetch("/api/dashboard/ai-media/assets?pageSize=24")
+    appFetch("/api/dashboard/ai-media/assets?pageSize=24")
       .then(async (response) => {
         if (!response.ok) throw new Error((await response.json().catch(() => null))?.error || "Failed to load AI media assets");
         return response.json();
@@ -115,7 +116,7 @@ export function AiMediaAssetPicker({
     setSavingId(assetId);
     setError(null);
     try {
-      const response = await fetch(attachUrl, {
+      const response = await appFetch(attachUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ aiMediaAssetId: assetId, idempotencyKey: `attach-${assetId}` }),
@@ -136,7 +137,7 @@ export function AiMediaAssetPicker({
     setSavingId("detach");
     setError(null);
     try {
-      const response = await fetch(attachUrl, { method: "DELETE" });
+      const response = await appFetch(attachUrl, { method: "DELETE" });
       const data = await response.json().catch(() => null);
       if (!response.ok) throw new Error(data?.error || "Failed to detach AI media asset");
       setSelectedAssetId(null);

@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use, useMemo } from "react"
 import dynamic from "next/dynamic"
@@ -193,7 +194,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
       if (searchQuery) params.set("search", searchQuery)
       if (statusFilter && statusFilter !== "all") params.set("status", statusFilter)
 
-      const response = await fetch(`/api/orders?${params.toString()}`)
+      const response = await appFetch(`/api/orders?${params.toString()}`)
       if (!response.ok) throw new Error("Failed to fetch orders")
 
       const data: OrdersResponse = await response.json()
@@ -224,7 +225,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
     if (!selectedOrder?.id || !pickupTime) return
     setSavingPickupTime(true)
     try {
-      await fetch(`/api/orders/${selectedOrder.id}`, {
+      await appFetch(`/api/orders/${selectedOrder.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ estimatedEndTime: pickupTime.toDate().toISOString(), type: "PICK_UP" }),
@@ -241,7 +242,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
     if (!selectedOrder?.id || !deliveryTime) return
     setSavingDeliveryTime(true)
     try {
-      await fetch(`/api/orders/${selectedOrder.id}`, {
+      await appFetch(`/api/orders/${selectedOrder.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ estimatedEndTime: deliveryTime.toDate().toISOString(), type: "DELIVERY" }),
@@ -279,7 +280,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     setUpdating(true)
     try {
-      const response = await fetch(`/api/orders/${orderId}`, {
+      const response = await appFetch(`/api/orders/${orderId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
@@ -299,7 +300,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
   }
 
   const acceptOrder = async (id: string) => {
-    const response = await fetch(`/api/orders/${id}/driver`, {
+    const response = await appFetch(`/api/orders/${id}/driver`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     })
@@ -308,7 +309,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
   }
 
   const denyOrder = async (id: string) => {
-    const response = await fetch(`/api/orders/${id}/driver`, {
+    const response = await appFetch(`/api/orders/${id}/driver`, {
       method: "DELETE",
     })
     if (!response.ok) throw new Error("Failed to deny order")
@@ -316,7 +317,7 @@ export default function DriverOrdersPage({ params }: { params: Promise<{ locale:
   }
 
   const unDenyOrder = async (id: string) => {
-    const response = await fetch(`/api/orders/${id}/driver`, {
+    const response = await appFetch(`/api/orders/${id}/driver`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "undeny" }),

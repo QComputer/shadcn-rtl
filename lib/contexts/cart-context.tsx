@@ -2,6 +2,7 @@
 // TODO: Make it the unified cart-context for both registered and guest users
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { appPath } from "@/lib/app-base-path";
 
 // Types
 export interface CartItem {
@@ -116,7 +117,7 @@ export function CartProvider({ children, slug, locale }: CartProviderProps) {
     setError(null);
     
     try {
-      const response = await fetch(`/api/cart?organizationSlug=${slug}`);
+      const response = await fetch(appPath(`/api/cart?organizationSlug=${slug}`));
       if (!response.ok) {
         throw new Error("Failed to fetch cart");
       }
@@ -140,7 +141,7 @@ export function CartProvider({ children, slug, locale }: CartProviderProps) {
     setError(null);
     
     try {
-      const response = await fetch("/api/cart", {
+      const response = await fetch(appPath("/api/cart"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -172,7 +173,7 @@ export function CartProvider({ children, slug, locale }: CartProviderProps) {
     setError(null);
     
     try {
-      const response = await fetch(`/api/cart/items/${itemId}`, {
+      const response = await fetch(appPath(`/api/cart/items/${itemId}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quantity }),
@@ -199,7 +200,7 @@ export function CartProvider({ children, slug, locale }: CartProviderProps) {
     setError(null);
     
     try {
-      const response = await fetch(`/api/cart/items/${itemId}`, {
+      const response = await fetch(appPath(`/api/cart/items/${itemId}`), {
         method: "DELETE",
       });
       
@@ -224,7 +225,7 @@ export function CartProvider({ children, slug, locale }: CartProviderProps) {
     setError(null);
     
     try {
-      const response = await fetch(`/api/cart?organizationSlug=${slug}`, {
+      const response = await fetch(appPath(`/api/cart?organizationSlug=${slug}`), {
         method: "DELETE",
       });
       

@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { use, useCallback, useEffect, useMemo, useState } from "react"
 import {
@@ -106,7 +107,7 @@ export default function OrganizationMembersPage({ params }: { params: Promise<{ 
   const fetchMembers = useCallback(async (signal?: AbortSignal) => {
     setError(null)
 
-    const membershipResponse = await fetch("/api/users/me/membership", { cache: "no-store", signal })
+    const membershipResponse = await appFetch("/api/users/me/membership", { cache: "no-store", signal })
     if (!membershipResponse.ok) {
       throw new Error(await readError(membershipResponse, "Failed to fetch membership"))
     }
@@ -115,7 +116,7 @@ export default function OrganizationMembersPage({ params }: { params: Promise<{ 
     const orgId = membershipData?.membership?.organizationId
     if (!orgId) throw new Error("No active organization membership")
 
-    const membersResponse = await fetch(`/api/organizations/${orgId}/members`, { cache: "no-store", signal })
+    const membersResponse = await appFetch(`/api/organizations/${orgId}/members`, { cache: "no-store", signal })
     if (!membersResponse.ok) {
       throw new Error(await readError(membersResponse, "Failed to fetch members"))
     }
@@ -182,7 +183,7 @@ export default function OrganizationMembersPage({ params }: { params: Promise<{ 
     setUpdating(true)
     setError(null)
     try {
-      const response = await fetch(`/api/organizations/${organizationId}/members/${memberId}`, {
+      const response = await appFetch(`/api/organizations/${organizationId}/members/${memberId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

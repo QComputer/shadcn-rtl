@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
+import { appPath, resolveAppBasePath } from "@/lib/app-base-path"
 
 type NotificationPreference = {
   channel: "IN_APP" | "WEB_PUSH" | "SMS"
@@ -175,7 +176,7 @@ export function WebPushOptIn({ organizationSlug, organizationName, locale = "fa"
       return
     }
 
-    const response = await fetch(`/api/customer/push-subscriptions?organizationSlug=${encodeURIComponent(organizationSlug)}`, {
+    const response = await fetch(appPath(`/api/customer/push-subscriptions?organizationSlug=${encodeURIComponent(organizationSlug)}`), {
       cache: "no-store",
       signal,
     })
@@ -200,7 +201,7 @@ export function WebPushOptIn({ organizationSlug, organizationName, locale = "fa"
   }, [fetchStatus, text.pushStatusLoadError])
 
   const recordPermission = async (state: "DENIED" | "UNSUPPORTED", reason: string) => {
-    await fetch("/api/customer/push-subscriptions", {
+    await fetch(appPath("/api/customer/push-subscriptions"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -237,14 +238,15 @@ export function WebPushOptIn({ organizationSlug, organizationName, locale = "fa"
         return
       }
 
-      const registration = await navigator.serviceWorker.register("/web-push-sw.js")
+      const basePath = resolveAppBasePath()
+      const registration = await navigator.serviceWorker.register(appPath("/web-push-sw.js"), { scope: basePath ? `${basePath}/` : "/" })
       const existingSubscription = await registration.pushManager.getSubscription()
       const subscription = existingSubscription ?? await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey) as unknown as BufferSource,
       })
 
-      const response = await fetch("/api/customer/push-subscriptions", {
+      const response = await fetch(appPath("/api/customer/push-subscriptions"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -272,13 +274,13 @@ export function WebPushOptIn({ organizationSlug, organizationName, locale = "fa"
     try {
       let endpoint: string | null = null
       if (browserSupportsPush()) {
-        const registration = await navigator.serviceWorker.getRegistration("/web-push-sw.js")
+        const registration = await navigator.serviceWorker.getRegistration(appPath("/web-push-sw.js"))
         const subscription = await registration?.pushManager.getSubscription()
         endpoint = subscription?.endpoint ?? null
         await subscription?.unsubscribe()
       }
 
-      const response = await fetch("/api/customer/push-subscriptions", {
+      const response = await fetch(appPath("/api/customer/push-subscriptions"), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -309,7 +311,7 @@ export function WebPushOptIn({ organizationSlug, organizationName, locale = "fa"
     setMessage(null)
 
     try {
-      const response = await fetch("/api/customer/notification-preferences", {
+      const response = await fetch(appPath("/api/customer/notification-preferences"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

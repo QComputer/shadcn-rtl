@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { use, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
@@ -417,7 +418,7 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
 
   const fetchOrganizations = useCallback(async (signal?: AbortSignal) => {
     if (isSuperAdmin) {
-      const response = await fetch("/api/organizations?pageSize=100", { cache: "no-store", signal })
+      const response = await appFetch("/api/organizations?pageSize=100", { cache: "no-store", signal })
       if (!response.ok) throw new Error(await readError(response, copy.error))
       const data = await response.json()
       const options = (data.data ?? []) as OrganizationOption[]
@@ -426,7 +427,7 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
       return options[0]?.id || ""
     }
 
-    const response = await fetch("/api/users/me/membership", { cache: "no-store", signal })
+    const response = await appFetch("/api/users/me/membership", { cache: "no-store", signal })
     if (!response.ok) throw new Error(await readError(response, copy.error))
     const data = await response.json()
     const membership = data.membership
@@ -445,7 +446,7 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
 
   const fetchJobs = useCallback(async (orgId: string, signal?: AbortSignal) => {
     const query = orgId ? `?organizationId=${encodeURIComponent(orgId)}` : ""
-    const response = await fetch(`/api/dashboard/imports/jobs${query}`, { cache: "no-store", signal })
+    const response = await appFetch(`/api/dashboard/imports/jobs${query}`, { cache: "no-store", signal })
     if (!response.ok) throw new Error(await readError(response, copy.error))
     const data = await response.json()
     setJobs((data.jobs ?? []) as ImportJob[])
@@ -485,7 +486,7 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
     setSaving(true)
     setError(null)
     try {
-      const response = await fetch("/api/dashboard/imports/jobs", {
+      const response = await appFetch("/api/dashboard/imports/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -518,7 +519,7 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
   }
 
   async function cancelJob(jobId: string) {
-    const response = await fetch(`/api/dashboard/imports/jobs/${jobId}/cancel`, { method: "POST" })
+    const response = await appFetch(`/api/dashboard/imports/jobs/${jobId}/cancel`, { method: "POST" })
     if (!response.ok) {
       setError(await readError(response, copy.error))
       return
@@ -527,7 +528,7 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
   }
 
   async function retryJob(jobId: string) {
-    const response = await fetch(`/api/dashboard/imports/jobs/${jobId}/retry`, { method: "POST" })
+    const response = await appFetch(`/api/dashboard/imports/jobs/${jobId}/retry`, { method: "POST" })
     if (!response.ok) {
       setError(await readError(response, copy.error))
       return
@@ -538,13 +539,13 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
   }
 
   async function loadJob(jobId: string) {
-    const response = await fetch(`/api/dashboard/imports/jobs/${jobId}`, { cache: "no-store" })
+    const response = await appFetch(`/api/dashboard/imports/jobs/${jobId}`, { cache: "no-store" })
     if (!response.ok) {
       setError(await readError(response, copy.error))
       return
     }
     const data = await response.json()
-    const eventsResponse = await fetch(`/api/dashboard/imports/jobs/${jobId}/events`, { cache: "no-store" })
+    const eventsResponse = await appFetch(`/api/dashboard/imports/jobs/${jobId}/events`, { cache: "no-store" })
     const eventsData = eventsResponse.ok ? await eventsResponse.json() : { events: [] }
     setSelectedJob({ ...(data.job as ImportJob), auditEvents: eventsData.events ?? [] })
   }
@@ -557,7 +558,7 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
     const contentDraftIds = (selectedJob.contentDrafts ?? [])
       .filter((draft) => draft.status === "DRAFT")
       .map((draft) => draft.id)
-    const response = await fetch(`/api/dashboard/imports/jobs/${selectedJob.id}/review`, {
+    const response = await appFetch(`/api/dashboard/imports/jobs/${selectedJob.id}/review`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status, productDraftIds, contentDraftIds }),
@@ -586,7 +587,7 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
     if (!selectedJob) return
     const { productDraftIds, contentDraftIds } = getDuplicateDraftIds(selectedJob)
     if (productDraftIds.length + contentDraftIds.length === 0) return
-    const response = await fetch(`/api/dashboard/imports/jobs/${selectedJob.id}/resolve`, {
+    const response = await appFetch(`/api/dashboard/imports/jobs/${selectedJob.id}/resolve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ decision, productDraftIds, contentDraftIds }),

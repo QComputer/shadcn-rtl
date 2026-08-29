@@ -5,6 +5,7 @@ import { createOrderSchema, orderFilterSchema } from "@/lib/validators";
 import { prisma } from "@/lib/db";
 import { randomUUID } from "crypto";
 import { ZodError } from "zod";
+import { appCookiePath } from "@/lib/app-base-path";
 
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || "guest_session_id";
 
@@ -33,7 +34,7 @@ function setGuestSessionCookie(request: NextRequest, sessionId: string, response
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7,
-      path: "/",
+      path: appCookiePath(),
     });
   }
   return response;

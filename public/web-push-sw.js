@@ -1,8 +1,16 @@
+self.__BAZAR_BAZ_BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
+const withBasePath = (path) => self.__BAZAR_BAZ_BASE_PATH && !path.startsWith(`${self.__BAZAR_BAZ_BASE_PATH}/`)
+  ? `${self.__BAZAR_BAZ_BASE_PATH}${path}`
+  : path;
+const withoutBasePath = (path) => self.__BAZAR_BAZ_BASE_PATH && path.startsWith(`${self.__BAZAR_BAZ_BASE_PATH}/`)
+  ? path.slice(self.__BAZAR_BAZ_BASE_PATH.length)
+  : path;
+
 self.__BAZAR_BAZ_PWA_CACHE = {
   version: "p98-offline-shell",
-  staticCacheName: "bazar-baz-static-p98",
-  offlineUrl: "/offline.html",
-  staticAssets: ["/offline.html", "/manifest.webmanifest", "/pwa-icon.svg", "/pwa-maskable-icon.svg"],
+  staticCacheName: `bazar-baz-static-p98${self.__BAZAR_BAZ_BASE_PATH || "-root"}`,
+  offlineUrl: withBasePath("/offline.html"),
+  staticAssets: ["/offline.html", "/manifest.webmanifest", "/pwa-icon.svg", "/pwa-maskable-icon.svg"].map(withBasePath),
   bypassPathPrefixes: [
     "/api/",
     "/uploads/",
@@ -45,15 +53,16 @@ self.addEventListener("activate", (event) => {
 });
 
 function shouldBypassCache(url) {
-  if (PWA_CACHE.bypassPathPrefixes.some((prefix) => url.pathname.startsWith(prefix))) return true;
-  return PWA_CACHE.bypassPathIncludes.some((fragment) => url.pathname.includes(fragment));
+  const pathname = withoutBasePath(url.pathname);
+  if (PWA_CACHE.bypassPathPrefixes.some((prefix) => pathname.startsWith(prefix))) return true;
+  return PWA_CACHE.bypassPathIncludes.some((fragment) => pathname.includes(fragment));
 }
 
 function isStaticAsset(url) {
   return (
-    url.pathname.startsWith("/_next/static/") ||
+    withoutBasePath(url.pathname).startsWith("/_next/static/") ||
     PWA_CACHE.staticAssets.includes(url.pathname) ||
-    url.pathname === "/favicon.ico"
+    withoutBasePath(url.pathname) === "/favicon.ico"
   );
 }
 
@@ -114,9 +123,9 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title || "Bazar Baz", {
       body: payload.body || "",
-      icon: "/pwa-icon.svg",
-      badge: "/pwa-maskable-icon.svg",
-      data: { url: payload.url || "/" },
+      icon: withBasePath("/pwa-icon.svg"),
+      badge: withBasePath("/pwa-maskable-icon.svg"),
+      data: { url: withBasePath(payload.url || "/") },
     }),
   );
 });
@@ -127,10 +136,10 @@ self.addEventListener("notificationclick", (event) => {
   try {
     const candidate = new URL(event.notification.data?.url || "/", self.location.origin);
     if (candidate.origin === self.location.origin) {
-      targetUrl = `${candidate.pathname}${candidate.search}${candidate.hash}`;
+      targetUrl = withBasePath(`${candidate.pathname}${candidate.search}${candidate.hash}`);
     }
   } catch {
-    targetUrl = "/";
+    targetUrl = withBasePath("/");
   }
 
   event.waitUntil(

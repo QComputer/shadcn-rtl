@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
@@ -118,12 +119,12 @@ export default function ServiceCategoriesPage({
     
     setLoading(true)
     Promise.all([
-      fetch("/api/service-categories?pageSize=100")
+      appFetch("/api/service-categories?pageSize=100")
         .then(res => {
           if (!res.ok) throw new Error("Failed to fetch categories")
           return res.json()
         }),
-      fetch("/api/users/me/membership")
+      appFetch("/api/users/me/membership")
         .then(res => res.ok ? res.json() : null)
         .catch(() => null),
     ])
@@ -204,7 +205,7 @@ export default function ServiceCategoriesPage({
         : "/api/service-categories"
       const method = editingCategory ? "PATCH" : "POST"
       
-      const response = await fetch(url, {
+      const response = await appFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -242,7 +243,7 @@ export default function ServiceCategoriesPage({
     
     setDeleting(true)
     try {
-      const response = await fetch(`/api/service-categories/${categoryToDelete.id}`, {
+      const response = await appFetch(`/api/service-categories/${categoryToDelete.id}`, {
         method: "DELETE",
       })
       

@@ -1,4 +1,5 @@
 "use client";
+import { appFetch } from "@/lib/app-base-path";
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -25,7 +26,7 @@ export function FanpagePostForm({ slug, locale }: { slug: string; locale: string
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`/api/public/organizations/${slug}/fanpage/posts`, {
+      const response = await appFetch(`/api/public/organizations/${slug}/fanpage/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: title || null, body, image: image || null, video: video || null }),

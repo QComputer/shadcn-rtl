@@ -1,4 +1,5 @@
 "use client"
+import { appFetch } from "@/lib/app-base-path";
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import { Save, User, Bell, Lock, Palette, Globe, Loader2, X } from "lucide-react"
@@ -105,7 +106,7 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
     setLoading(true)
 
     // Fetch user profile
-    fetch(`/api/organizations/noId/settings`)
+    appFetch(`/api/organizations/noId/settings`)
       .then(res => {
         if (!res.ok) throw new Error("Failed to fetch organization settings")
         return res.json()
@@ -179,7 +180,7 @@ const handleClose = async (e: React.FormEvent) => {
     setError(null)
     
     try {
-      const response = await fetch(`/api/organizations/open`, {
+      const response = await appFetch(`/api/organizations/open`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -203,7 +204,7 @@ const handleOpen = async (e: React.FormEvent) => {
     setError(null)
     
     try {
-      const response = await fetch(`/api/organizations/open`, {
+      const response = await appFetch(`/api/organizations/open`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isOpen: true }),
@@ -273,7 +274,7 @@ const handleOpen = async (e: React.FormEvent) => {
     setError(null)
     setSuccess(null)
     try {
-      const response = await fetch(`/api/organizations/${organization.id}`, {
+      const response = await appFetch(`/api/organizations/${organization.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -318,7 +319,7 @@ const handleOpen = async (e: React.FormEvent) => {
     setError(null)
     setSuccess(null)
     try {
-      const response = await fetch(`/api/organizations/${organization.id}/payment`, {
+      const response = await appFetch(`/api/organizations/${organization.id}/payment`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -354,7 +355,7 @@ const handleOpen = async (e: React.FormEvent) => {
     setError(null)
     setSuccess(null)
     try {
-      const response = await fetch(`/api/organizations/${organization.id}`, {
+      const response = await appFetch(`/api/organizations/${organization.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -385,7 +386,7 @@ const handleOpen = async (e: React.FormEvent) => {
     setSavingPreparationSettings(true)
     setError(null)
     try {
-      const response = await fetch(`/api/organizations/${organization.id}/settings`, {
+      const response = await appFetch(`/api/organizations/${organization.id}/settings`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ defaultPreparationMinutes }),
@@ -410,7 +411,7 @@ const handleOpen = async (e: React.FormEvent) => {
     setError(null)
     setSuccess(null)
     try {
-      const response = await fetch(`/api/organizations/${organization.id}`, {
+      const response = await appFetch(`/api/organizations/${organization.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -466,7 +467,7 @@ const handleOpen = async (e: React.FormEvent) => {
     setError(null)
     setSuccess(null)
     try {
-      const response = await fetch(`/api/organizations/${organization.id}/capabilities`, {
+      const response = await appFetch(`/api/organizations/${organization.id}/capabilities`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ organizationId: organization.id, capabilities }),
@@ -503,7 +504,7 @@ const handleOpen = async (e: React.FormEvent) => {
     setError(null)
     setSuccess(null)
     try {
-      const response = await fetch(`/api/organizations/${organization.id}/settings`, {
+      const response = await appFetch(`/api/organizations/${organization.id}/settings`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

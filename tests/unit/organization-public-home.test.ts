@@ -4,6 +4,7 @@ import {
   activePublicBusinessCapabilities,
   assertDefaultPublicCapabilityAllowed,
   getConfiguredDefaultPublicCapability,
+  getPublicExperienceOwnership,
   resolveOrganizationPublicHome,
   writeDefaultPublicCapabilitySetting,
 } from "../../lib/organization-public-home";
@@ -12,6 +13,19 @@ const active = (key: string) => ({ key: key as any, status: "ACTIVE" });
 const inactive = (key: string) => ({ key: key as any, status: "INACTIVE" });
 
 describe("organization public home resolution", () => {
+  it("formalizes public-experience ownership independently from capabilities", () => {
+    const capabilities = [active("SHOP"), active("APPOINTMENT")];
+    assert.equal(getPublicExperienceOwnership(resolveOrganizationPublicHome({
+      capabilities,
+      publicHomeMode: "BRAND",
+      brandLandingProvider: "CUSTOM_EXTERNAL",
+    })), "EXTERNAL_WEBSITE");
+    assert.equal(getPublicExperienceOwnership(resolveOrganizationPublicHome({
+      capabilities,
+      publicHomeMode: "VISITOR_CHOICE",
+    })), "BAZARBAAZ_MANAGED");
+  });
+
   it("routes a SHOP-only custom-domain root to the shop experience", () => {
     assert.deepEqual(resolveOrganizationPublicHome({ capabilities: [active("SHOP")] }), {
       kind: "capability",

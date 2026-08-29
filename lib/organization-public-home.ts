@@ -14,6 +14,7 @@ export type PublicBusinessCapabilityRecord = {
 
 export type PublicHomeMode = "AUTO" | "SHOP" | "APPOINTMENT" | "BRAND" | "VISITOR_CHOICE" | null;
 export type BrandLandingProvider = "BAZARBAAZ" | "CUSTOM_INTERNAL" | "CUSTOM_EXTERNAL" | null;
+export type PublicExperienceOwnership = "BAZARBAAZ_MANAGED" | "EXTERNAL_WEBSITE";
 
 export type OrganizationPublicHome =
   | {
@@ -44,6 +45,12 @@ export type OrganizationPublicHome =
       reason: "MODE_REQUIRES_MISSING_CAPABILITY" | "MODE_REQUIRES_MISSING_PROVIDER";
       mode: "SHOP" | "APPOINTMENT" | "BRAND";
     };
+
+export function getPublicExperienceOwnership(
+  publicHome: OrganizationPublicHome,
+): PublicExperienceOwnership {
+  return publicHome.kind === "external" ? "EXTERNAL_WEBSITE" : "BAZARBAAZ_MANAGED";
+}
 
 const PUBLIC_BUSINESS_CAPABILITY_SET = new Set<OrganizationCapabilityKey>(
   BUSINESS_CAPABILITIES as readonly OrganizationCapabilityKey[],

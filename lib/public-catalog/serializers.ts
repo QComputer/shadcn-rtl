@@ -4,6 +4,7 @@ import {
   type PublicCatalogMedia,
   type PublicCatalogMoney,
   type PublicCatalogProduct,
+  type PublicCatalogPurchase,
   type PublicCatalogVariant,
 } from "@/lib/public-catalog/contracts";
 
@@ -50,6 +51,7 @@ export function serializePublicCatalogProduct(input: {
   basePrice: MoneyLike; discountType?: string | null; discountValue?: MoneyLike | null; trackInventory: boolean;
   category: { id: string; slug?: string | null; name: string };
   variants: Array<{ id: string; name?: string | null; price?: MoneyLike | null; inventory: number; allowBackOrder: boolean }>;
+  purchase?: PublicCatalogPurchase | null;
 }): PublicCatalogProduct {
   const productBase = amount(input.basePrice);
   const productPrice = discountedAmount(productBase, input.discountType, input.discountValue);
@@ -75,5 +77,6 @@ export function serializePublicCatalogProduct(input: {
     media: serializePublicCatalogMedia(input),
     orderable: variants.some((variant) => variant.orderable),
     variants,
+    purchase: input.purchase ?? null,
   };
 }

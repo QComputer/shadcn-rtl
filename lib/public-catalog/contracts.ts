@@ -14,6 +14,7 @@ export const publicCatalogListQuerySchema = z.object({
 
 export type PublicCatalogMoney = { amount: number; currency: typeof PUBLIC_CATALOG_PRICE_UNIT };
 export type PublicCatalogMedia = { card: string | null; detail: string | null; alt: string };
+export type PublicCatalogPurchase = { href: string; productId: string };
 export type PublicCatalogVariant = {
   id: string;
   name: string | null;
@@ -41,6 +42,7 @@ export type PublicCatalogProduct = {
   media: PublicCatalogMedia;
   orderable: boolean;
   variants: PublicCatalogVariant[];
+  purchase: PublicCatalogPurchase | null;
 };
 
 export type PublicCatalogPagination = {

@@ -3,6 +3,8 @@ import "server-only";
 import { ApiError } from "@/lib/api-guards";
 import { prisma } from "@/lib/db";
 import { activePublicBusinessCapabilities } from "@/lib/organization-public-home";
+import { resolveOrganizationEndpointForTenant } from "@/lib/organization-endpoints.server";
+import { buildProductPurchaseHandoff } from "@/lib/purchase-intent";
 import type { PublicCatalogPagination } from "@/lib/public-catalog/contracts";
 import { serializePublicCatalogCategory, serializePublicCatalogProduct } from "@/lib/public-catalog/serializers";
 import type { Prisma } from "@prisma/client";
@@ -30,6 +32,15 @@ async function requirePublicShop(identifier: string) {
     throw new ApiError(404, "Catalog not found");
   }
   return organization;
+}
+
+async function purchaseBuilder(organization: { id: string; slug: string }) {
+  const appEndpoint = await resolveOrganizationEndpointForTenant({ organizationId: organization.id, role: "APP" });
+  return (productId: string) => buildProductPurchaseHandoff({
+    organizationIdentifier: organization.slug,
+    productId,
+    appEndpoint,
+  });
 }
 
 const visibleCategoryWhere = { isActive: true, deletedAt: null } as const;
@@ -87,8 +98,9 @@ export async function listPublicCatalogProducts(input: {
     }),
     prisma.product.count({ where }),
   ]);
+  const buildPurchase = await purchaseBuilder(organization);
   const pagination: PublicCatalogPagination = { page: input.page, limit: input.limit, total, totalPages: Math.ceil(total / input.limit) };
-  return { products: rows.map(serializePublicCatalogProduct), pagination };
+  return { products: rows.map((product) => serializePublicCatalogProduct({ ...product, purchase: buildPurchase(product.id) })), pagination };
 }
 
 export async function getPublicCatalogProduct(organizationIdentifier: string, productIdentifier: string) {
@@ -101,7 +113,8 @@ export async function getPublicCatalogProduct(organizationIdentifier: string, pr
     select: publicProductSelect,
   });
   if (!product) throw new ApiError(404, "Product not found");
-  return serializePublicCatalogProduct(product);
+  const buildPurchase = await purchaseBuilder(organization);
+  return serializePublicCatalogProduct({ ...product, purchase: buildPurchase(product.id) });
 }
 
 export async function getPublicCatalogSnapshot(organizationIdentifier: string) {

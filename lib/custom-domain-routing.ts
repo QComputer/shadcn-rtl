@@ -10,6 +10,10 @@ export type ResolvedCustomDomain = {
   capabilities: Array<"SHOP" | "APPOINTMENT">;
   publicHomeMode?: string | null;
   brandLandingProvider?: string | null;
+  appEndpoint?: {
+    origin: string;
+    pathPrefix: string;
+  } | null;
   publicHome?: {
     kind: "capability";
     mode: "SHOP" | "APPOINTMENT";
@@ -183,6 +187,19 @@ export function buildTenantPublicPath(locale: string, tenantSubPath = "/") {
   }
 
   return `/${supportedLocale}${cleanSubPath}`;
+}
+
+export function isResolvedOperationalAppHost(
+  tenant: Pick<ResolvedCustomDomain, "appEndpoint">,
+  host: string | undefined | null,
+  appBasePath: "" | "/app",
+): boolean {
+  if (!tenant.appEndpoint || tenant.appEndpoint.pathPrefix !== appBasePath) return false;
+  try {
+    return normalizeDomainHost(new URL(tenant.appEndpoint.origin).host) === normalizeDomainHost(host);
+  } catch {
+    return false;
+  }
 }
 
 export type OrganizationPublicSurface = "shop" | "appointment";

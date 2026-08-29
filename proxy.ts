@@ -22,10 +22,11 @@ import {
   parseCustomDomainCapabilityPath,
   classifyPublicSurfaceCapability,
   isReservedCustomDomainSurfaceSegment,
+  isResolvedOperationalAppHost,
   type ResolvedCustomDomain,
 } from "@/lib/custom-domain-routing";
 import { getPublicFooterContextForPathname, type PublicFooterContext } from "@/lib/public-footer-context";
-import { appCookiePath } from "@/lib/app-base-path";
+import { appCookiePath, appPath, resolveAppBasePath } from "@/lib/app-base-path";
 
 // Supported locales - Persian is the default (primary native language)
 export const locales = ["fa", "en", "ar"] as const;
@@ -110,7 +111,7 @@ async function resolveTenantForCustomDomain(
   request: NextRequest,
   normalizedHost: string,
 ): Promise<ResolvedCustomDomain | null> {
-  const resolverUrl = new URL("/api/internal/domain-resolver", request.url);
+  const resolverUrl = new URL(appPath("/api/internal/domain-resolver"), request.url);
   resolverUrl.searchParams.set("host", normalizedHost);
 
   const resolverSecret = process.env.CUSTOM_DOMAIN_RESOLVER_SECRET || process.env.INTERNAL_API_SECRET || "";
@@ -132,7 +133,7 @@ async function resolvePrimaryDomainForShop(
   request: NextRequest,
   slug: string,
 ): Promise<string | null> {
-  const resolverUrl = new URL("/api/internal/shop-primary-domain", request.url);
+  const resolverUrl = new URL(appPath("/api/internal/shop-primary-domain"), request.url);
   resolverUrl.searchParams.set("slug", slug);
 
   const resolverSecret = process.env.CUSTOM_DOMAIN_RESOLVER_SECRET || process.env.INTERNAL_API_SECRET || "";
@@ -218,6 +219,33 @@ export async function proxy(request: NextRequest) {
       const notConfiguredUrl = request.nextUrl.clone();
       notConfiguredUrl.pathname = `/${defaultLocale}/domain-not-configured`;
       return withSecurityHeaders(NextResponse.rewrite(notConfiguredUrl));
+    }
+
+    // A verified OrganizationDomain can route more than a public experience.
+    // The explicit APP endpoint owns the operational build when both host and
+    // compile-time path prefix match, so it must bypass public-root rewrites.
+    if (isResolvedOperationalAppHost(tenant, normalizedHost, resolveAppBasePath())) {
+      const splitPath = splitLocalePrefix(pathname);
+      if (!splitPath.locale && !pathname.startsWith("/api")) {
+        const localizedUrl = request.nextUrl.clone();
+        localizedUrl.pathname = pathname === "/" ? `/${defaultLocale}` : `/${defaultLocale}${pathname}`;
+        return withSecurityHeaders(NextResponse.redirect(localizedUrl));
+      }
+
+      const requestHeaders = buildTenantRewriteHeaders(
+        request,
+        normalizedHost,
+        tenant,
+        splitPath.locale || defaultLocale,
+        pathname,
+      );
+      requestHeaders.set("x-bazar-public-footer-context", "none");
+      const response = NextResponse.next({ request: { headers: requestHeaders } });
+      if (splitPath.locale) {
+        response.headers.set("x-locale", splitPath.locale);
+        response.headers.set("x-direction", localeConfig[splitPath.locale].dir);
+      }
+      return withSecurityHeaders(response);
     }
 
     const tenantPathLocale = splitLocalePrefix(pathname).locale;

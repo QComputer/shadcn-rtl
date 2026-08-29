@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { normalizeDomainHost, type CustomDomainLocale } from "@/lib/custom-domain-routing";
 import { resolveActiveTenantForHost } from "@/lib/domains/domain-resolver.server";
+import { resolveOrganizationEndpointForTenant } from "@/lib/organization-endpoints.server";
 
 export type ResolvedCustomDomain = {
   slug: string;
@@ -47,6 +48,10 @@ export type ResolvedCustomDomain = {
     ogImage: string | null;
     source: "BAZARBAAZ_MANAGED" | "EXTERNAL_SYNC" | "PLATFORM_FALLBACK";
   };
+  appEndpoint?: {
+    origin: string;
+    pathPrefix: string;
+  } | null;
 };
 
 function getResolverSecret() {
@@ -78,5 +83,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Domain not found" }, { status: 404 });
   }
 
-  return NextResponse.json(resolved);
+  const appEndpoint = await resolveOrganizationEndpointForTenant({
+    organizationId: resolved.organizationId,
+    role: "APP",
+  }).catch(() => null);
+
+  return NextResponse.json({
+    ...resolved,
+    appEndpoint: appEndpoint
+      ? { origin: appEndpoint.origin, pathPrefix: appEndpoint.pathPrefix }
+      : null,
+  });
 }

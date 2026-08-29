@@ -3,7 +3,7 @@ import "server-only";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { customerOrderLifecycleRouter } from "@/lib/notifications/customer-order-lifecycle-router";
-import { tomanDecimalToRial } from "@/lib/integrations/inoti-ussd/currency";
+import { parsePositiveToman, tomanToInotiRial } from "@/lib/integrations/inoti-ussd/currency";
 import { parseUssdQuery, UssdParseError } from "@/lib/integrations/inoti-ussd/parser";
 import { inotiUssdProvider } from "@/lib/integrations/inoti-ussd/inoti-provider";
 import {
@@ -365,9 +365,11 @@ export class InotiUssdWorkflow {
     if (!order) return "سفارش یافت نشد";
     if (order.paymentStatus === "COMPLETED") return "سفارش قبلا پرداخت شده است";
 
+    let amountToman: bigint;
     let amountRial: bigint;
     try {
-      amountRial = tomanDecimalToRial(order.totalToman);
+      amountToman = parsePositiveToman(order.totalToman);
+      amountRial = tomanToInotiRial(amountToman);
     } catch {
       return "مبلغ سفارش نامعتبر است";
     }
@@ -377,7 +379,7 @@ export class InotiUssdWorkflow {
       sessionIdHash,
       mobileHash: hashSensitive(request.mobile),
       mobileMasked: maskMobile(request.mobile),
-      amountRial,
+      amountToman,
     });
     if (intent.status === "SETTLED") return "سفارش قبلا پرداخت شده است";
     if (intent.amountRial !== amountRial) return "مبلغ سفارش نامعتبر است";
@@ -459,7 +461,12 @@ export class InotiUssdWorkflow {
       rrn: request.rrn ?? "",
     });
     if ("code" in verification) {
-      await this.repository.markPaymentVerificationFailed({ integration, intent, reason: `PROVIDER_${verification.code}` });
+      await this.repository.markPaymentVerificationFailed({
+        integration,
+        intent,
+        reason: `PROVIDER_${verification.code}`,
+        retryable: true,
+      });
       await this.repository.recordCallbackEvent({
         integration, paymentIntentId: intent.id, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
         outcome: "FAILED", errorCode: `PROVIDER_${verification.code}`,
@@ -480,7 +487,12 @@ export class InotiUssdWorkflow {
       sameText(record.providerFactorId, providerFactorId) &&
       sameText(record.rrn, request.rrn ?? "");
     if (!verified) {
-      await this.repository.markPaymentVerificationFailed({ integration, intent, reason: "PROVIDER_RECORD_MISMATCH" });
+      await this.repository.markPaymentVerificationFailed({
+        integration,
+        intent,
+        reason: "PROVIDER_RECORD_MISMATCH",
+        retryable: false,
+      });
       await this.repository.recordCallbackEvent({
         integration, paymentIntentId: intent.id, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
         outcome: "REJECTED", errorCode: "PROVIDER_RECORD_MISMATCH",

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { tomanDecimalToRial } from "@/lib/integrations/inoti-ussd/currency";
+import { parsePositiveToman, tomanDecimalToRial, tomanToInotiRial } from "@/lib/integrations/inoti-ussd/currency";
 import { normalizeIranianMobile, parseUssdQuery, UssdParseError } from "@/lib/integrations/inoti-ussd/parser";
 import { InotiUssdWorkflow } from "@/lib/integrations/inoti-ussd/workflow";
 import { InotiUssdProvider } from "@/lib/integrations/inoti-ussd/inoti-provider";
@@ -242,7 +242,7 @@ class FakeRepository implements UssdIntegrationRepository {
     sessionIdHash: string;
     mobileHash: string;
     mobileMasked: string;
-    amountRial: bigint;
+    amountToman: bigint;
   }) {
     const key = `${input.integration.id}:${input.order.id}:${input.sessionIdHash}`;
     const existing = this.intents.get(key);
@@ -255,7 +255,7 @@ class FakeRepository implements UssdIntegrationRepository {
       paymentRequestId: null,
       providerAttemptId: null,
       merchantFactorId: factor,
-      amountRial: input.amountRial,
+      amountRial: tomanToInotiRial(input.amountToman),
       sessionIdHash: input.sessionIdHash,
       mobileHash: input.mobileHash,
       mobileMasked: input.mobileMasked,
@@ -556,14 +556,16 @@ describe("iNoti session syntax telemetry", () => {
 });
 
 describe("iNoti amount conversion", () => {
-  it("converts Decimal toman to integer rial without floating point", () => {
-    assert.equal(tomanDecimalToRial("1250.00"), BigInt(12500));
-    assert.equal(tomanDecimalToRial("0.1"), BigInt(1));
+  it("keeps integer Toman authoritative and converts to Rial only at the provider boundary", () => {
+    assert.equal(parsePositiveToman("1"), BigInt(1));
+    assert.equal(parsePositiveToman("1000"), BigInt(1000));
+    assert.equal(tomanToInotiRial("220000"), BigInt(2200000));
+    assert.equal(tomanDecimalToRial("1250"), BigInt(12500));
   });
 
-  it("rejects zero, negative, fractional-rial, malformed, and extreme amounts", () => {
-    for (const value of ["0", "-1", "0.01", "1e6", "1000000000000000000"]) {
-      assert.throws(() => tomanDecimalToRial(value));
+  it("rejects zero, negative, fractional, malformed, and overflow amounts", () => {
+    for (const value of ["0", "-1", "0.1", "1250.00", "1e6", "100000000000000000"]) {
+      assert.throws(() => tomanToInotiRial(value));
     }
   });
 

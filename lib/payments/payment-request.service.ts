@@ -5,6 +5,7 @@ import type { IntegrationProvider, PaymentProviderAttemptStatus, PaymentRequestS
 import { ApiError } from "@/lib/api-guards";
 import prisma from "@/lib/db";
 import { recordBusinessEvent } from "@/lib/integrations/runtime/business-events";
+import { canTransitionPaymentAttempt, canTransitionPaymentRequest } from "@/lib/payments/payment-state";
 
 type DbClient = Prisma.TransactionClient | typeof prisma;
 
@@ -83,14 +84,14 @@ export async function createPaymentRequest(input: {
   appointmentId?: string | null;
   guestCustomerId?: string | null;
   providerIntegrationId?: string | null;
-  amountRial: bigint;
+  amountToman: bigint;
   purpose: string;
   expiresAt?: Date | null;
   metadata?: unknown;
   db?: DbClient;
 }) {
   const db = input.db ?? prisma;
-  if (input.amountRial <= BigInt(0)) throw new ApiError(400, "Payment amount must be positive IRR");
+  if (input.amountToman <= BigInt(0)) throw new ApiError(400, "Payment amount must be positive Toman");
   await assertOrganization(input.organizationId, db);
   await assertOrderBelongsToOrganization({ organizationId: input.organizationId, orderId: input.orderId, db });
   await assertAppointmentBelongsToOrganization({ organizationId: input.organizationId, appointmentId: input.appointmentId, db });
@@ -106,8 +107,8 @@ export async function createPaymentRequest(input: {
       appointmentId: input.appointmentId ?? null,
       guestCustomerId: input.guestCustomerId ?? null,
       providerIntegrationId: input.providerIntegrationId ?? null,
-      amountRial: input.amountRial,
-      currency: "IRR",
+      amountToman: input.amountToman,
+      currency: "TOMAN",
       purpose: input.purpose,
       expiresAt: input.expiresAt ?? null,
       metadata: asJsonObject(input.metadata),
@@ -120,8 +121,8 @@ export async function createPaymentRequest(input: {
     type: "PAYMENT_REQUEST_CREATED",
     entityType: "PaymentRequest",
     entityId: request.id,
-    payload: { purpose: request.purpose, currency: "IRR" },
-    metadata: { amountRial: request.amountRial.toString() },
+    payload: { purpose: request.purpose, currency: "TOMAN" },
+    metadata: { amountToman: request.amountToman.toString() },
   }).catch(() => undefined);
 
   return request;
@@ -132,7 +133,7 @@ export async function createPaymentProviderAttempt(input: {
   paymentRequestId: string;
   providerIntegrationId?: string | null;
   provider: IntegrationProvider;
-  amountRial: bigint;
+  amountToman: bigint;
   merchantFactorId?: string | null;
   providerFactorId?: string | null;
   idempotencyKey?: string | null;
@@ -143,10 +144,10 @@ export async function createPaymentProviderAttempt(input: {
   await assertIntegrationBelongsToOrganization({ organizationId: input.organizationId, integrationId: input.providerIntegrationId, db });
   const request = await db.paymentRequest.findFirst({
     where: { id: input.paymentRequestId, organizationId: input.organizationId },
-    select: { id: true, amountRial: true },
+    select: { id: true, amountToman: true },
   });
   if (!request) throw new ApiError(404, "Payment request not found");
-  if (request.amountRial !== input.amountRial) throw new ApiError(409, "Payment attempt amount does not match request amount");
+  if (request.amountToman !== input.amountToman) throw new ApiError(409, "Payment attempt amount does not match request amount");
 
   return db.paymentProviderAttempt.create({
     data: {
@@ -154,7 +155,7 @@ export async function createPaymentProviderAttempt(input: {
       paymentRequestId: input.paymentRequestId,
       providerIntegrationId: input.providerIntegrationId ?? null,
       provider: input.provider,
-      amountRial: input.amountRial,
+      amountToman: input.amountToman,
       merchantFactorId: input.merchantFactorId ?? null,
       providerFactorId: input.providerFactorId ?? null,
       idempotencyKey: input.idempotencyKey ?? null,
@@ -171,8 +172,16 @@ export async function updatePaymentRequestStatus(input: {
   db?: DbClient;
 }) {
   const db = input.db ?? prisma;
-  return db.paymentRequest.update({
+  const current = await db.paymentRequest.findUnique({
     where: { id_organizationId: { id: input.paymentRequestId, organizationId: input.organizationId } },
+    select: { status: true },
+  });
+  if (!current) throw new ApiError(404, "Payment request not found");
+  if (!canTransitionPaymentRequest(current.status, input.status)) {
+    throw new ApiError(409, `Illegal payment request transition: ${current.status} -> ${input.status}`);
+  }
+  const updated = await db.paymentRequest.updateMany({
+    where: { id: input.paymentRequestId, organizationId: input.organizationId, status: current.status },
     data: {
       status: input.status,
       providerReference: input.providerReference ?? undefined,
@@ -180,6 +189,10 @@ export async function updatePaymentRequestStatus(input: {
       failedAt: input.status === "FAILED" ? new Date() : undefined,
       cancelledAt: input.status === "CANCELLED" ? new Date() : undefined,
     },
+  });
+  if (updated.count !== 1) throw new ApiError(409, "Payment request changed concurrently");
+  return db.paymentRequest.findUniqueOrThrow({
+    where: { id_organizationId: { id: input.paymentRequestId, organizationId: input.organizationId } },
   });
 }
 
@@ -196,8 +209,16 @@ export async function updatePaymentAttemptStatus(input: {
   db?: DbClient;
 }) {
   const db = input.db ?? prisma;
-  return db.paymentProviderAttempt.update({
+  const current = await db.paymentProviderAttempt.findUnique({
     where: { id_organizationId: { id: input.attemptId, organizationId: input.organizationId } },
+    select: { status: true },
+  });
+  if (!current) throw new ApiError(404, "Payment attempt not found");
+  if (!canTransitionPaymentAttempt(current.status, input.status)) {
+    throw new ApiError(409, `Illegal payment attempt transition: ${current.status} -> ${input.status}`);
+  }
+  const updated = await db.paymentProviderAttempt.updateMany({
+    where: { id: input.attemptId, organizationId: input.organizationId, status: current.status },
     data: {
       status: input.status,
       providerFactorId: input.providerFactorId ?? undefined,
@@ -210,5 +231,9 @@ export async function updatePaymentAttemptStatus(input: {
       verificationStartedAt: input.status === "PENDING_VERIFICATION" ? new Date() : undefined,
       verifiedAt: input.status === "VERIFIED" ? new Date() : undefined,
     },
+  });
+  if (updated.count !== 1) throw new ApiError(409, "Payment attempt changed concurrently");
+  return db.paymentProviderAttempt.findUniqueOrThrow({
+    where: { id_organizationId: { id: input.attemptId, organizationId: input.organizationId } },
   });
 }

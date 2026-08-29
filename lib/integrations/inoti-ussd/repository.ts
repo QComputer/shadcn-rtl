@@ -3,6 +3,7 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/db";
 import { generateBazarBaazFactorId } from "@/lib/payments/payment-request.service";
+import { tomanToInotiRial } from "@/lib/integrations/inoti-ussd/currency";
 import type {
   PaymentSettlementInput,
   PaymentSettlementResult,
@@ -38,7 +39,7 @@ export interface UssdIntegrationRepository {
     sessionIdHash: string;
     mobileHash: string;
     mobileMasked: string;
-    amountRial: bigint;
+    amountToman: bigint;
   }): Promise<UssdPaymentIntentProjection>;
   findPaymentIntent(integrationId: string, merchantFactorId: string): Promise<UssdPaymentIntentProjection | null>;
   recordCallbackEvent(input: {
@@ -62,6 +63,7 @@ export interface UssdIntegrationRepository {
     integration: ResolvedInotiIntegration;
     intent: UssdPaymentIntentProjection;
     reason: string;
+    retryable: boolean;
   }): Promise<void>;
   settleVerifiedPayment(input: PaymentSettlementInput): Promise<PaymentSettlementResult>;
   markNotificationAttempted(intentId: string): Promise<void>;
@@ -228,7 +230,7 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
     sessionIdHash: string;
     mobileHash: string;
     mobileMasked: string;
-    amountRial: bigint;
+    amountToman: bigint;
   }) {
     const where = {
       integrationId_orderId_sessionIdHash: {
@@ -248,14 +250,14 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
             organizationId: input.integration.organizationId,
             orderId: input.order.id,
             providerIntegrationId: input.integration.id,
-            amountRial: input.amountRial,
-            currency: "IRR",
+            amountToman: input.amountToman,
+            currency: "TOMAN",
             purpose: "ORDER_PAYMENT",
             status: "AWAITING_CUSTOMER",
             metadata: {
               source: "INOTI_USSD",
               merchantFactorId,
-              amountUnit: "IRR",
+              amountUnit: "TOMAN",
             },
           },
         });
@@ -266,7 +268,7 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
             providerIntegrationId: input.integration.id,
             provider: "INOTI_USSD",
             status: "AWAITING_CUSTOMER",
-            amountRial: input.amountRial,
+            amountToman: input.amountToman,
             merchantFactorId,
           },
         });
@@ -278,7 +280,7 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
             paymentRequestId: paymentRequest.id,
             providerAttemptId: providerAttempt.id,
             merchantFactorId,
-            amountRial: input.amountRial,
+            amountRial: tomanToInotiRial(input.amountToman),
             sessionIdHash: input.sessionIdHash,
             mobileHash: input.mobileHash,
             mobileMasked: input.mobileMasked,
@@ -371,21 +373,23 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
           status: { not: "SETTLED" },
         },
         data: {
-          status: "REJECTED",
+          status: input.retryable ? "REQUESTED" : "REJECTED",
           providerResult: input.reason.slice(0, 64),
         },
       });
       if (input.intent.paymentRequestId) {
         await tx.paymentRequest.update({
           where: { id_organizationId: { id: input.intent.paymentRequestId, organizationId: input.integration.organizationId } },
-          data: { status: "FAILED", failedAt: new Date() },
+          data: input.retryable
+            ? { status: "PENDING_VERIFICATION", failedAt: null }
+            : { status: "FAILED", failedAt: new Date() },
         });
       }
       if (input.intent.providerAttemptId) {
         await tx.paymentProviderAttempt.update({
           where: { id_organizationId: { id: input.intent.providerAttemptId, organizationId: input.integration.organizationId } },
           data: {
-            status: "FAILED",
+            status: input.retryable ? "PENDING_VERIFICATION" : "FAILED",
             failureReason: input.reason.slice(0, 256),
           },
         });
@@ -475,21 +479,21 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
         where: { id: intent.orderId },
         data: {
           paymentStatus: "COMPLETED",
-          paymentMethod: "BANK_TRANSFER",
+          paymentMethod: "INOTI_USSD",
           paymentId: input.providerFactorId,
           paidAt: new Date(),
           payment: {
             upsert: {
               create: {
                 amount: intent.order.total,
-                method: "BANK_TRANSFER",
+                method: "INOTI_USSD",
                 status: "COMPLETED",
                 transactionId: input.providerFactorId,
                 metadata: { provider: "INOTI_USSD", merchantFactorId: intent.merchantFactorId },
               },
               update: {
                 status: "COMPLETED",
-                method: "BANK_TRANSFER",
+                method: "INOTI_USSD",
                 transactionId: input.providerFactorId,
                 metadata: { provider: "INOTI_USSD", merchantFactorId: intent.merchantFactorId },
               },
@@ -503,7 +507,7 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
             orderId: intent.orderId,
             previousStatus,
             newStatus: "COMPLETED",
-            method: "BANK_TRANSFER",
+            method: "INOTI_USSD",
             amount: intent.order.total,
             transactionId: input.providerFactorId,
             note: "Verified iNoti USSD payment",

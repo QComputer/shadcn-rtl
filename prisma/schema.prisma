@@ -354,6 +354,7 @@ enum PaymentMethod {
   CASH
   WALLET
   BANK_TRANSFER
+  INOTI_USSD
 }
 
 enum InventoryMovementReason {
@@ -2534,8 +2535,8 @@ model PaymentRequest {
   appointmentId         String?
   guestCustomerId       String?
   providerIntegrationId String?
-  amountRial            BigInt
-  currency              String               @default("IRR")
+  amountToman           BigInt
+  currency              String               @default("TOMAN")
   purpose               String
   status                PaymentRequestStatus @default(CREATED)
   providerReference     String?
@@ -2572,7 +2573,7 @@ model PaymentProviderAttempt {
   providerIntegrationId String?
   provider              IntegrationProvider
   status                PaymentProviderAttemptStatus @default(CREATED)
-  amountRial            BigInt
+  amountToman           BigInt
   providerFactorId      String?
   merchantFactorId      String?
   rrn                   String?

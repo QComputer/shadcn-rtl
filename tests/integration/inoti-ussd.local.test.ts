@@ -306,7 +306,7 @@ describe("iNoti USSD integration on disposable local PostgreSQL", () => {
         sessionIdHash: "s".repeat(64),
         mobileHash: "m".repeat(64),
         mobileMasked: "0912***6789",
-        amountRial: BigInt(12500),
+        amountToman: BigInt(1250),
       });
       const sameIntent = await repository.createOrGetPaymentIntent({
         integration,
@@ -314,7 +314,7 @@ describe("iNoti USSD integration on disposable local PostgreSQL", () => {
         sessionIdHash: "s".repeat(64),
         mobileHash: "m".repeat(64),
         mobileMasked: "0912***6789",
-        amountRial: BigInt(12500),
+        amountToman: BigInt(1250),
       });
       assert.equal(sameIntent.id, intent.id);
 

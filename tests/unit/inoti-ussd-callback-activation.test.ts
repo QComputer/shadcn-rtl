@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { InotiUssdWorkflow } from "@/lib/integrations/inoti-ussd/workflow";
+import { tomanToInotiRial } from "@/lib/integrations/inoti-ussd/currency";
 import type { ResolvedInotiIntegration, UssdIntegrationRepository, UssdProvider, InotiCredentialProfile } from "@/lib/integrations/inoti-ussd/types";
 
 const integrationA: ResolvedInotiIntegration = {
@@ -24,6 +25,7 @@ class FakeRepository implements UssdIntegrationRepository {
   events: Array<{ outcome: string; errorCode?: string | null }> = [];
   settlementKeys = new Set<string>();
   notificationMarks = 0;
+  verificationFailures: Array<{ reason: string; retryable: boolean }> = [];
 
   async resolveIntegration(publicId: string) { return this.integrations.get(publicId) ?? null; }
   async touchIntegration() {}
@@ -47,7 +49,7 @@ class FakeRepository implements UssdIntegrationRepository {
       paymentRequestId: null,
       providerAttemptId: null,
       merchantFactorId: factor,
-      amountRial: input.amountRial,
+      amountRial: tomanToInotiRial(input.amountToman),
       sessionIdHash: input.sessionIdHash,
       mobileHash: input.mobileHash,
       mobileMasked: input.mobileMasked,
@@ -65,7 +67,9 @@ class FakeRepository implements UssdIntegrationRepository {
     this.events.push({ outcome: input.outcome, errorCode: input.errorCode });
   }
   async markPaymentVerificationStarted() {}
-  async markPaymentVerificationFailed() {}
+  async markPaymentVerificationFailed(input: { reason: string; retryable: boolean }) {
+    this.verificationFailures.push(input);
+  }
   async settleVerifiedPayment(input: any) {
     if (this.settlementKeys.has(input.idempotencyKey) || input.intent.status === "SETTLED") {
       return { kind: "DUPLICATE" as const, notification: null };
@@ -253,6 +257,9 @@ describe("iNoti callback activation preparation", () => {
       const result = await workflow.handle(integrationA.publicId, null, callback);
       assert.equal(result, "تایید پرداخت ناموفق بود");
       assert.equal(repository.settlementKeys.size, 0);
+      assert.equal(repository.verificationFailures.length, 1);
+      assert.equal(repository.verificationFailures[0]?.reason, "PROVIDER_NOT_FOUND");
+      assert.equal(repository.verificationFailures[0]?.retryable, true);
     } finally {
       process.env.INOTI_ALLOW_LIVE_PAYMENTS = original;
       process.env.INOTI_RUNTIME_MUTATIONS_APPROVED = originalRuntime;
@@ -305,6 +312,8 @@ describe("iNoti callback activation preparation", () => {
       const result = await workflow.handle(integrationA.publicId, null, callback);
       assert.equal(result, "تایید پرداخت ناموفق بود");
       assert.equal(repository.settlementKeys.size, 0);
+      assert.equal(repository.verificationFailures.length, 1);
+      assert.equal(repository.verificationFailures[0]?.retryable, false);
     } finally {
       process.env.INOTI_ALLOW_LIVE_PAYMENTS = original;
       process.env.INOTI_RUNTIME_MUTATIONS_APPROVED = originalRuntime;

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2 } from "lucide-react";
+import { BazarbaazLogo } from "@/components/brand/BazarbaazLogo";
 
 type PlatformFooterProps = {
   locale: string;
@@ -16,7 +16,7 @@ export function PlatformFooter({ locale, platformName }: PlatformFooterProps) {
               href={`/${locale}`}
               className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
             >
-              <Building2 className="h-6 w-6 text-primary" aria-hidden="true" />
+              <BazarbaazLogo variant="mark" theme="auto" width={24} height={24} decorative />
               <span className="font-bold text-lg">{platformName}</span>
             </Link>
           </div>
@@ -38,7 +38,7 @@ export function PlatformFooter({ locale, platformName }: PlatformFooterProps) {
               target="_blank"
               rel="noopener noreferrer"
               href="https://trustseal.enamad.ir/?id=6010025&Code=PIS9oHglTwxwasymJaZx3w3cO1wbPvA7"
-              aria-label="Bazar Baz trust seal"
+              aria-label="Bazarbaaz trust seal"
             >
               <img
                 referrerPolicy="origin"
@@ -48,7 +48,7 @@ export function PlatformFooter({ locale, platformName }: PlatformFooterProps) {
                 slot="PIS9oHglTwxwasymJaZx3w3cO1wbPvA7"
               />
             </a>
-            <p className="text-sm text-muted-foreground">بازار باز</p>
+            <p className="text-sm text-muted-foreground">بازارباز</p>
           </div>
         </div>
       </div>

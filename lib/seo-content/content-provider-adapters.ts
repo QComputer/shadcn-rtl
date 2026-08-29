@@ -101,7 +101,7 @@ class DryRunIamContentAdapter implements ContentProviderAdapter {
       body: [
         `Dry-run ${request.contentType} content for ${request.brief.targetEntity}${location}.`,
         request.brief.contentGoal,
-        "This placeholder uses only verified BazarBaaz business data and must be reviewed before any publication.",
+        "This placeholder uses only verified Bazarbaaz business data and must be reviewed before any publication.",
         secondary,
       ].filter(Boolean).join("\n\n"),
       seoTitle: request.brief.suggestedTitle ?? request.brief.targetEntity,

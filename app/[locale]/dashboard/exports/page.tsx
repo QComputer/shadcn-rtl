@@ -91,7 +91,7 @@ const copyByLocale: Record<string, ExportHubCopy> = {
     },
   },
   en: {
-    title: "Bazar Baz Export Hub",
+    title: "Bazarbaaz Export Hub",
     subtitle: "Create reviewable CSV or JSON exports for organization data.",
     organization: "Organization",
     type: "Data type",
@@ -120,7 +120,7 @@ const copyByLocale: Record<string, ExportHubCopy> = {
     },
   },
   ar: {
-    title: "مركز التصدير في بازار باز",
+    title: "مركز التصدير في بازارباز",
     subtitle: "أنشئ ملفات CSV أو JSON قابلة للمراجعة لبيانات المؤسسة.",
     organization: "المؤسسة",
     type: "نوع البيانات",

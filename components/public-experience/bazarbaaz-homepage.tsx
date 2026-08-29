@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DemoLauncherClient } from "@/components/public-experience/demo-launcher-client";
 import { HomepageHeroVisual } from "@/components/public-experience/homepage-hero-visual";
+import { BazarbaazLogo } from "@/components/brand/BazarbaazLogo";
 import type { HomepageViewModel } from "@/lib/public-experience/homepage-view-model";
 
 const featureIcons = {
@@ -40,6 +41,12 @@ export function BazarBaazHomepage({ model, locale }: { model: HomepageViewModel;
       <section className="relative overflow-hidden border-b bg-background">
         <div className="container mx-auto grid gap-10 px-4 py-12 md:py-16 lg:grid-cols-[1fr_.9fr] lg:items-center lg:py-20">
           <div className="max-w-3xl">
+            <Link href={`/${locale}`} aria-label={locale === "fa" ? "بازارباز" : "Bazarbaaz"} className="mb-6 inline-flex">
+              <BazarbaazLogo
+                language={locale === "fa" ? "fa" : "en"}
+                className="h-10 w-auto sm:h-12"
+              />
+            </Link>
             <Badge variant="secondary" className="mb-5">{model.hero.eyebrow}</Badge>
             <h1 className="text-4xl font-black leading-tight text-foreground sm:text-5xl lg:text-6xl">
               {model.hero.title}

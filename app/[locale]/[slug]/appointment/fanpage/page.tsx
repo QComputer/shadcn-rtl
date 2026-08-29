@@ -55,7 +55,7 @@ export async function generateMetadata({ params }: FanpagePageProps): Promise<Me
     description: organization.description || `Latest updates from ${organization.name}.`,
     image: organization.coverImage || organization.logo,
     type: "article",
-    keywords: ["Bazar Baz", "fanpage", "appointment", organization.slug],
+    keywords: ["Bazarbaaz", "fanpage", "appointment", organization.slug],
     alternatePath: seoContext.alternatePath,
   });
 }

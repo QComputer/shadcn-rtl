@@ -69,8 +69,8 @@ export async function GET(request: Request) {
   const palette = kindColors[kind] || kindColors.organization;
   const locale = safeParam(searchParams, "locale", "fa").toLowerCase();
   const isRtl = locale === "fa" || locale === "ar";
-  const label = (isRtl ? rtlKindLabels[kind] : kindLabels[kind]) || "Bazar Baz";
-  const title = safeParam(searchParams, "title", "Bazar Baz");
+  const label = (isRtl ? rtlKindLabels[kind] : kindLabels[kind]) || "Bazarbaaz";
+  const title = safeParam(searchParams, "title", "Bazarbaaz");
   const subtitle = safeParam(searchParams, "subtitle", "Commerce and appointment booking");
   const organization = safeParam(searchParams, "organization", "bazar-baz.ir");
   const localeLabel = locale.toUpperCase();
@@ -109,7 +109,7 @@ export async function GET(request: Request) {
             B
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: isRtl ? "flex-end" : "flex-start" }}>
-            <div style={{ fontSize: 62, fontWeight: 900, letterSpacing: 0 }}>Bazar Baz</div>
+            <div style={{ fontSize: 62, fontWeight: 900, letterSpacing: 0 }}>Bazarbaaz</div>
             <div style={{ color: "#cbd5e1", fontSize: 28 }}>{organization}</div>
           </div>
         </div>

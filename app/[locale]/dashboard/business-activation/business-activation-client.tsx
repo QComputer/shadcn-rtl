@@ -50,7 +50,7 @@ const copy = {
   },
   en: {
     title: "Business activation",
-    subtitle: "Your BazarBaaz readiness, growth recommendations, and suggested integration setup.",
+    subtitle: "Your Bazarbaaz readiness, growth recommendations, and suggested integration setup.",
     loading: "Loading activation...",
     retry: "Retry",
     profile: "Public profile",

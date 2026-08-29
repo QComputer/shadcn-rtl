@@ -438,7 +438,7 @@ export async function proxy(request: NextRequest) {
   const hasLocale = pathnameHasLocale(pathname);
 
   // If no locale is present on the platform domain, always use Persian.
-  // Do not derive the first-visit locale from cookies or browser language: Bazar Baz
+  // Do not derive the first-visit locale from cookies or browser language: Bazarbaaz
   // is Persian-first, and explicit /en/... or /ar/... paths remain available.
   if (!hasLocale) {
     const locale = defaultLocale;

@@ -53,7 +53,7 @@ export default async function HomePage({
         data={{
           "@context": "https://schema.org",
           "@type": "SoftwareApplication",
-          name: "BazarBaaz",
+          name: "Bazarbaaz",
           applicationCategory: "BusinessApplication",
           operatingSystem: "Web",
           url: getCanonicalUrl(`/${locale}`),

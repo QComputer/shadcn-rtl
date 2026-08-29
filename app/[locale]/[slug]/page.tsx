@@ -70,8 +70,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     locale,
     baseUrl: seoContext.baseUrl,
     path: seoContext.path,
-    title: branding.displayName || organization.name || "Bazar Baz",
-    description: organization.description || `${organization.name} on Bazar Baz.`,
+    title: branding.displayName || organization.name || "Bazarbaaz",
+    description: organization.description || `${organization.name} on Bazarbaaz.`,
     image: branding.ogImage,
     alternatePath: seoContext.alternatePath,
     icons: {

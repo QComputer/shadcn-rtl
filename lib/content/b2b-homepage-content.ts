@@ -326,14 +326,14 @@ export const b2bHomepageContent = {
   },
   en: {
     seo: {
-      title: "Bazar Baz — Iranian Business Management Platform",
+      title: "Bazarbaaz — Iranian Business Management Platform",
       description:
-        "Bazar Baz is a B2B service platform for Iranian businesses. Manage sales, appointments, customers, SMS, Web Push, and Persian dashboard.",
+        "Bazarbaaz is a B2B service platform for Iranian businesses. Manage sales, appointments, customers, SMS, Web Push, and Persian dashboard.",
     },
     hero: {
       title: "Manage your business online; from orders and appointments to direct customer communication",
       subtitle:
-        "Bazar Baz is a service platform for Iranian businesses that brings sales, appointments, customers, customer club, SMS, notifications, and your brand page into one simple Persian dashboard.",
+        "Bazarbaaz is a service platform for Iranian businesses that brings sales, appointments, customers, customer club, SMS, notifications, and your brand page into one simple Persian dashboard.",
       primaryCta: "Request Demo",
       secondaryCta: "View Demo Businesses",
     },

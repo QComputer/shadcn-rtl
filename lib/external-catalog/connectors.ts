@@ -155,7 +155,7 @@ class MockCatalogConnector implements ExternalCatalogConnector {
   }
 
   async importApprovedItems(): Promise<never> {
-    throw new Error("Provider-side import is intentionally disabled; BazarBaaz imports from approved preview items only");
+    throw new Error("Provider-side import is intentionally disabled; Bazarbaaz imports from approved preview items only");
   }
 }
 

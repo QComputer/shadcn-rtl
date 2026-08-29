@@ -146,27 +146,27 @@ export const b2bLegalContent = {
   en: {
     trust: {
       seo: {
-        title: "Trust, security and data ownership in Bazar Baz",
+        title: "Trust, security and data ownership in Bazarbaaz",
         description:
-          "Your business data stays with you. Bazar Baz is a business management platform with security, access control, and transparency.",
+          "Your business data stays with you. Bazarbaaz is a business management platform with security, access control, and transparency.",
       },
       hero: {
-        title: "Trust, security and data ownership in Bazar Baz",
+        title: "Trust, security and data ownership in Bazarbaaz",
         subtitle:
-          "Bazar Baz is built for businesses, and your data stays with you.",
+          "Bazarbaaz is built for businesses, and your data stays with you.",
       },
       sections: [
         {
           title: "Built for businesses",
-          body: "Bazar Baz is a B2B service platform designed to empower Iranian businesses to manage sales, services, customers, and direct communications. It does not replace your relationship with customers; it makes it more organized, trackable, and professional.",
+          body: "Bazarbaaz is a B2B service platform designed to empower Iranian businesses to manage sales, services, customers, and direct communications. It does not replace your relationship with customers; it makes it more organized, trackable, and professional.",
         },
         {
           title: "Customer relationship ownership belongs to the business",
-          body: "Your customer data, purchase history, contact information, and notification preferences belong to your business. Bazar Baz does not share this data with other businesses and you can manage data export and controls from the dashboard.",
+          body: "Your customer data, purchase history, contact information, and notification preferences belong to your business. Bazarbaaz does not share this data with other businesses and you can manage data export and controls from the dashboard.",
         },
         {
           title: "Access and roles are managed in the dashboard",
-          body: "The Bazar Baz dashboard is role-based (RBAC). You can invite staff and selectively manage their access. Each user only accesses data and workflows they are authorized for.",
+          body: "The Bazarbaaz dashboard is role-based (RBAC). You can invite staff and selectively manage their access. Each user only accesses data and workflows they are authorized for.",
         },
         {
           title: "SMS and notifications are used only with controlled activation policies",
@@ -174,15 +174,15 @@ export const b2bLegalContent = {
         },
         {
           title: "Sensitive information should not be displayed on public pages",
-          body: "Bazar Baz avoids displaying sensitive customer or business information on public pages. Public pages are only for platform introduction and demo examples.",
+          body: "Bazarbaaz avoids displaying sensitive customer or business information on public pages. Public pages are only for platform introduction and demo examples.",
         },
         {
           title: "Demos are examples, not a public marketplace",
-          body: "Bazar Baz demo examples are designed for business owner orientation only. They are not related to real businesses or public customers and should not be considered a public marketplace.",
+          body: "Bazarbaaz demo examples are designed for business owner orientation only. They are not related to real businesses or public customers and should not be considered a public marketplace.",
         },
         {
           title: "Commitment to transparency",
-          body: "Bazar Baz operates with transparency in deployment, support, and data usage. Important changes to services, policies, or features will be communicated. This page explains Bazar Baz's approach and is not a substitute for legal advice or final contract text.",
+          body: "Bazarbaaz operates with transparency in deployment, support, and data usage. Important changes to services, policies, or features will be communicated. This page explains Bazarbaaz's approach and is not a substitute for legal advice or final contract text.",
         },
       ],
       cta: {
@@ -192,19 +192,19 @@ export const b2bLegalContent = {
     },
     privacy: {
       seo: {
-        title: "Privacy in Bazar Baz",
+        title: "Privacy in Bazarbaaz",
         description:
-          "Bazar Baz privacy notice: business data, customer interaction data, contact/demo data, technical logs, SMS/Web Push consent, and data usage policy.",
+          "Bazarbaaz privacy notice: business data, customer interaction data, contact/demo data, technical logs, SMS/Web Push consent, and data usage policy.",
       },
       hero: {
-        title: "Privacy in Bazar Baz",
+        title: "Privacy in Bazarbaaz",
         subtitle:
           "This is an initial privacy notice and must be reviewed by legal counsel before commercial use.",
       },
       sections: [
         {
           title: "Processed data",
-          body: "Bazar Baz may process the following data for platform operation:\n- Business account information (name, activity type, contact info)\n- Customer interaction data (orders, appointments, SMS, notifications)\n- Contact and demo request data for follow-up\n- Technical and security logs for support and platform improvement",
+          body: "Bazarbaaz may process the following data for platform operation:\n- Business account information (name, activity type, contact info)\n- Customer interaction data (orders, appointments, SMS, notifications)\n- Contact and demo request data for follow-up\n- Technical and security logs for support and platform improvement",
         },
         {
           title: "Purpose of data processing",
@@ -212,7 +212,7 @@ export const b2bLegalContent = {
         },
         {
           title: "Data ownership",
-          body: "Customer and business data belongs to your business. Bazar Baz does not sell this data to third parties and does not share it without your permission, unless required by law.",
+          body: "Customer and business data belongs to your business. Bazarbaaz does not sell this data to third parties and does not share it without your permission, unless required by law.",
         },
         {
           title: "SMS and notifications",
@@ -220,7 +220,7 @@ export const b2bLegalContent = {
         },
         {
           title: "Security",
-          body: "Bazar Baz uses common security standards for data transmission and storage. However, no system is completely secure and users are responsible for securing their accounts (such as keeping passwords safe).",
+          body: "Bazarbaaz uses common security standards for data transmission and storage. However, no system is completely secure and users are responsible for securing their accounts (such as keeping passwords safe).",
         },
         {
           title: "User rights",
@@ -238,31 +238,31 @@ export const b2bLegalContent = {
     },
     terms: {
       seo: {
-        title: "Bazar Baz Terms of Service",
+        title: "Bazarbaaz Terms of Service",
         description:
-          "Draft terms of service for Bazar Baz: commercial accounts, business responsibility, prohibited uses, SMS/payment/notification rules, demo pages, dashboard access, and feature changes.",
+          "Draft terms of service for Bazarbaaz: commercial accounts, business responsibility, prohibited uses, SMS/payment/notification rules, demo pages, dashboard access, and feature changes.",
       },
       hero: {
-        title: "Bazar Baz Terms of Service",
+        title: "Bazarbaaz Terms of Service",
         subtitle:
           "This is a draft terms of service and must be reviewed and approved by legal counsel before official publication.",
       },
       sections: [
         {
           title: "Commercial service platform",
-          body: "Bazar Baz is a B2B service platform for Iranian businesses. It helps businesses have a dedicated page, online shop/appointment booking, customer management, SMS and notifications, management dashboard, and reporting in one place.",
+          body: "Bazarbaaz is a B2B service platform for Iranian businesses. It helps businesses have a dedicated page, online shop/appointment booking, customer management, SMS and notifications, management dashboard, and reporting in one place.",
         },
         {
           title: "Commercial accounts and authorized users",
-          body: "Registration on Bazar Baz is for businesses and their authorized users. Each business is responsible for safeguarding account information, selecting authorized users, and preventing unauthorized access.",
+          body: "Registration on Bazarbaaz is for businesses and their authorized users. Each business is responsible for safeguarding account information, selecting authorized users, and preventing unauthorized access.",
         },
         {
           title: "Business content and activity responsibility",
-          body: "Businesses are fully responsible for their own content, products, services, pricing, images, descriptions, and how they communicate with customers. Bazar Baz acts solely as a platform provider.",
+          body: "Businesses are fully responsible for their own content, products, services, pricing, images, descriptions, and how they communicate with customers. Bazarbaaz acts solely as a platform provider.",
         },
         {
           title: "Prohibited uses",
-          body: "Using Bazar Baz for the following is prohibited:\n- Sending spam or unsolicited messages/calls\n- Offering illegal goods/services or violating Iranian laws\n- Misusing customer data\n- Creating fake identities or false business information\n- Attempting to harm platform security, stability, or functionality",
+          body: "Using Bazarbaaz for the following is prohibited:\n- Sending spam or unsolicited messages/calls\n- Offering illegal goods/services or violating Iranian laws\n- Misusing customer data\n- Creating fake identities or false business information\n- Attempting to harm platform security, stability, or functionality",
         },
         {
           title: "SMS, payment, and notification features",
@@ -270,15 +270,15 @@ export const b2bLegalContent = {
         },
         {
           title: "Demos and examples",
-          body: "Bazar Baz demo examples are for business owner orientation only. They should not be treated as verification of real businesses or as a public pricing reference.",
+          body: "Bazarbaaz demo examples are for business owner orientation only. They should not be treated as verification of real businesses or as a public pricing reference.",
         },
         {
           title: "Platform changes",
-          body: "Bazar Baz may change features, packages, pricing, and terms of service over time. Significant changes will be communicated to registered businesses.",
+          body: "Bazarbaaz may change features, packages, pricing, and terms of service over time. Significant changes will be communicated to registered businesses.",
         },
         {
           title: "Suspension or access restriction",
-          body: "In case of violation of these terms, Bazar Baz may suspend or restrict account access or services with or without prior notice.",
+          body: "In case of violation of these terms, Bazarbaaz may suspend or restrict account access or services with or without prior notice.",
         },
       ],
       cta: {

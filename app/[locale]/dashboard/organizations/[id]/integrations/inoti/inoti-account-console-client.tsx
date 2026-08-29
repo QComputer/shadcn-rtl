@@ -55,7 +55,7 @@ const copy = {
     disable: "Disable",
     account: "iNoti account",
     services: "Detected services",
-    mappings: "BazarBaaz mapping",
+    mappings: "Bazarbaaz mapping",
     activation: "Activation impact",
     credentialProfileKey: "Secret profile key",
     externalAccountId: "External account ID",

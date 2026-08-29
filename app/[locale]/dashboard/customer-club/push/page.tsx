@@ -219,7 +219,7 @@ export default function WebPushDashboardPage({ params }: { params: Promise<{ loc
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [title, setTitle] = useState("New update from your shop")
-  const [body, setBody] = useState("Open Bazar Baz to see the latest update.")
+  const [body, setBody] = useState("Open Bazarbaaz to see the latest update.")
   const [dryRun, setDryRun] = useState(true)
 
   useEffect(() => {

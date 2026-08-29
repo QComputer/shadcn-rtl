@@ -22,7 +22,7 @@ const copy = {
     dismiss: "\u0628\u0633\u062a\u0646",
   },
   en: {
-    title: "Install Bazar Baz",
+    title: "Install Bazarbaaz",
     action: "Install",
     dismiss: "Close",
   },

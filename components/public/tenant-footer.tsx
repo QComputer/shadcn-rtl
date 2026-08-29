@@ -79,7 +79,7 @@ export function TenantFooter({ footer }: { footer: TenantFooterViewModel }) {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
-              Powered by Bazar Baz
+              Powered by Bazarbaaz
               <ExternalLink className="h-3 w-3" aria-hidden="true" />
             </a>
           </section>

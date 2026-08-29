@@ -55,7 +55,7 @@ export function planBazSpendHoldLifecycle(input: BazSpendPlanningInput): BazSpen
         ? plan(input.retryPolicy === "REVIEW" ? "REVIEW_HOLD" : "KEEP_HOLD", false, "retryable failure is not final")
         : plan("NONE", false, "no active hold");
     case "IMPORTED":
-      return hasActiveHold ? plan("SETTLE_HOLD", true, "accepted Bazar Baz import") : plan("NONE", false, "no active hold to settle");
+      return hasActiveHold ? plan("SETTLE_HOLD", true, "accepted Bazarbaaz import") : plan("NONE", false, "no active hold to settle");
     case "FAILED_FINAL":
     case "CANCELLED":
     case "EXPIRED":

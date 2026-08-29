@@ -188,19 +188,19 @@ export const featurePagesContent = {
   en: {
     features: {
       seo: {
-        title: "Bazar Baz Features — Iranian Business Management Platform",
+        title: "Bazarbaaz Features — Iranian Business Management Platform",
         description:
-          "Complete Bazar Baz capabilities: shop management, orders, services, appointments, customer club, SMS, notifications, campaigns, and management dashboard.",
+          "Complete Bazarbaaz capabilities: shop management, orders, services, appointments, customer club, SMS, notifications, campaigns, and management dashboard.",
       },
       hero: {
-        title: "Bazar Baz capabilities for online business management",
+        title: "Bazarbaaz capabilities for online business management",
         subtitle:
-          "Bazar Baz brings core sales, service, customer, and communication tools together in one Persian dashboard.",
+          "Bazarbaaz brings core sales, service, customer, and communication tools together in one Persian dashboard.",
       },
       cta: {
         primary: "Request Demo",
         secondary: "View Demos",
-        tertiary: "View Bazar Baz Dashboard",
+        tertiary: "View Bazarbaaz Dashboard",
       },
       groups: [
         {
@@ -288,9 +288,9 @@ export const featurePagesContent = {
     },
     dashboardShowcase: {
       seo: {
-        title: "Bazar Baz Dashboard — Business Management Panel",
+        title: "Bazarbaaz Dashboard — Business Management Panel",
         description:
-          "Bazar Baz dashboard for managing orders, services, customers, customer club, campaigns, SMS, and business reporting.",
+          "Bazarbaaz dashboard for managing orders, services, customers, customer club, campaigns, SMS, and business reporting.",
       },
       hero: {
         title: "A dashboard for your daily business management",
@@ -356,7 +356,7 @@ export const featurePagesContent = {
       safety: {
         title: "Safety and Trust",
         subtitle:
-          "The Bazar Baz dashboard is designed for your business team, and your data stays with you.",
+          "The Bazarbaaz dashboard is designed for your business team, and your data stays with you.",
         bullets: [
           "Your customer and business data belongs to you and is never shared with other businesses.",
           "Real SMS sending only happens with your explicit activation; the default is a safe trial mode.",

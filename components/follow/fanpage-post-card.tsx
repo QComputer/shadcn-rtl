@@ -20,9 +20,9 @@ export type FanpagePostCardData = {
 };
 
 function formatAuthorName(author: FanpagePostCardData["author"]) {
-  if (!author) return "Bazar Baz";
+  if (!author) return "Bazarbaaz";
   const fullName = [author.firstName, author.lastName].filter(Boolean).join(" ").trim();
-  return fullName || author.name || "Bazar Baz";
+  return fullName || author.name || "Bazarbaaz";
 }
 
 export function FanpagePostCard({ post, locale }: { post: FanpagePostCardData; locale: string }) {

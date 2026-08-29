@@ -15,11 +15,11 @@ export type ResolvedOrganizationBranding = {
   source: OrganizationBrandingSource;
 };
 
-const BAZARBAAZ_LOGO = "/pwa-icon.svg";
-const BAZARBAAZ_FAVICON = "/pwa-icon.svg";
-const BAZARBAAZ_APPLE_TOUCH_ICON = "/pwa-icon.svg";
-const BAZARBAAZ_PWA_192 = "/pwa-icon.svg";
-const BAZARBAAZ_PWA_512 = "/pwa-icon.svg";
+const BAZARBAAZ_LOGO = "/brand/marks/bazarbaaz-mark.svg";
+const BAZARBAAZ_FAVICON = "/icons/favicon.svg";
+const BAZARBAAZ_APPLE_TOUCH_ICON = "/icons/apple-touch-icon.png";
+const BAZARBAAZ_PWA_192 = "/icons/icon-192x192.png";
+const BAZARBAAZ_PWA_512 = "/icons/icon-512x512.png";
 const BAZARBAAZ_OG_IMAGE = "/og-image";
 
 function firstDefined<T>(...values: (T | null | undefined)[]): T | null {
@@ -55,8 +55,8 @@ export function resolveOrganizationBranding(input: {
 
   return {
     organizationId: input.organizationId,
-    displayName: firstDefined(branding?.displayName, input.name) || "Bazar Baz",
-    shortName: firstDefined(branding?.shortName, input.name) || "Bazar Baz",
+    displayName: firstDefined(branding?.displayName, input.name) || "Bazarbaaz",
+    shortName: firstDefined(branding?.shortName, input.name) || "Bazarbaaz",
     logo: firstDefined(branding?.logoUrl, input.logo, BAZARBAAZ_LOGO),
     favicon: firstDefined(branding?.faviconUrl, BAZARBAAZ_FAVICON),
     appleTouchIcon: firstDefined(branding?.appleTouchIconUrl, branding?.faviconUrl, BAZARBAAZ_APPLE_TOUCH_ICON),
@@ -76,7 +76,7 @@ export function resolveOrganizationBranding(input: {
 export function resolvePlatformFallbackBranding(): ResolvedOrganizationBranding {
   return {
     organizationId: "platform",
-    displayName: "Bazar Baz",
+    displayName: "Bazarbaaz",
     shortName: "بازارباز",
     logo: BAZARBAAZ_LOGO,
     favicon: BAZARBAAZ_FAVICON,

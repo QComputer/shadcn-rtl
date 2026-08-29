@@ -232,7 +232,7 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     },
   },
   en: {
-    title: "Bazar Baz Import Hub",
+    title: "Bazarbaaz Import Hub",
     subtitle: "Turn seller-owned channel content into reviewable drafts.",
     source: "Source",
     organization: "Organization",
@@ -290,7 +290,7 @@ const copyByLocale: Record<string, ImportHubCopy> = {
     },
   },
   ar: {
-    title: "مركز الاستيراد في بازار باز",
+    title: "مركز الاستيراد في بازارباز",
     subtitle: "حوّل محتوى قنوات البيع المملوك للبائع إلى مسودات قابلة للمراجعة.",
     source: "المصدر",
     organization: "المؤسسة",

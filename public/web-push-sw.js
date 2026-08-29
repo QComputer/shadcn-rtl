@@ -10,7 +10,13 @@ self.__BAZAR_BAZ_PWA_CACHE = {
   version: "p98-offline-shell",
   staticCacheName: `bazar-baz-static-p98${self.__BAZAR_BAZ_BASE_PATH || "-root"}`,
   offlineUrl: withBasePath("/offline.html"),
-  staticAssets: ["/offline.html", "/manifest.webmanifest", "/pwa-icon.svg", "/pwa-maskable-icon.svg"].map(withBasePath),
+  staticAssets: [
+    "/offline.html",
+    "/manifest.webmanifest",
+    "/icons/icon-192x192.png",
+    "/icons/icon-512x512.png",
+    "/icons/icon-maskable-512x512.png",
+  ].map(withBasePath),
   bypassPathPrefixes: [
     "/api/",
     "/uploads/",
@@ -107,7 +113,7 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("push", (event) => {
   let payload = {
-    title: "Bazar Baz",
+    title: "Bazarbaaz",
     body: "You have a new notification.",
     url: "/",
   };
@@ -121,10 +127,10 @@ self.addEventListener("push", (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(payload.title || "Bazar Baz", {
+    self.registration.showNotification(payload.title || "Bazarbaaz", {
       body: payload.body || "",
-      icon: withBasePath("/pwa-icon.svg"),
-      badge: withBasePath("/pwa-maskable-icon.svg"),
+      icon: withBasePath("/icons/icon-192x192.png"),
+      badge: withBasePath("/icons/icon-maskable-192x192.png"),
       data: { url: withBasePath(payload.url || "/") },
     }),
   );

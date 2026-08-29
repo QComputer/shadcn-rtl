@@ -4,7 +4,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   Activity,
-  BarChart3,
   Bell,
   Building2,
   Download,
@@ -32,6 +31,7 @@ import {
   Star,
   BriefcaseBusiness,
 } from "lucide-react"
+import { BazarbaazLogo } from "@/components/brand/BazarbaazLogo"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
@@ -120,7 +120,7 @@ const NAVIGATION_GROUPS: NavigationGroup[] = DASHBOARD_NAVIGATION_GROUPS.map((gr
 
 const roleAwareNavigationCopy = {
   fa: {
-    appName: "بازار باز",
+    appName: "بازارباز",
     sectionLabel: "ناوبری داشبورد",
     openMenu: "باز کردن منوی داشبورد",
     closeMenu: "بستن منوی داشبورد",
@@ -171,7 +171,7 @@ const roleAwareNavigationCopy = {
     },
   },
   en: {
-    appName: "Bazar Baz",
+    appName: "Bazarbaaz",
     sectionLabel: "Dashboard navigation",
     openMenu: "Open dashboard menu",
     closeMenu: "Close dashboard menu",
@@ -222,7 +222,7 @@ const roleAwareNavigationCopy = {
     },
   },
   ar: {
-    appName: "بازار باز",
+    appName: "بازارباز",
     sectionLabel: "تنقل لوحة التحكم",
     openMenu: "فتح قائمة لوحة التحكم",
     closeMenu: "إغلاق قائمة لوحة التحكم",
@@ -326,8 +326,8 @@ function SidebarContent({
     <div className="flex h-full min-h-0 flex-col bg-background text-foreground" dir={locale === "fa" || locale === "ar" ? "rtl" : "ltr"}>
       <div className="border-b px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <BarChart3 className="h-5 w-5" aria-hidden="true" />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 p-2 text-primary">
+            <BazarbaazLogo variant="mark" theme="mono" className="h-full w-full" decorative />
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{copy.appName}</p>

@@ -479,7 +479,7 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
           <Card>
             <CardHeader>
               <CardTitle>سیاست اعلان‌های پروژه</CardTitle>
-              <CardDescription>خلاصه سیاست فعلی Bazar Baz برای اعلان داخل برنامه، Web Push و SMS.</CardDescription>
+              <CardDescription>خلاصه سیاست فعلی Bazarbaaz برای اعلان داخل برنامه، Web Push و SMS.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="grid gap-3 md:grid-cols-2">

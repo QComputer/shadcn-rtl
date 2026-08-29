@@ -236,12 +236,12 @@ export function getAiMediaStatusDisplay(value: unknown, locale = "fa"): AiMediaS
     },
     RESULT_READY: {
       fa: { label: "نتیجه آماده است", badgeText: "آماده", description: "نتیجه آماده شده و هنوز باید توسط سرور بازارباز وارد دارایی‌ها شود.", tone: "success" },
-      en: { label: "Result ready", badgeText: "Ready", description: "The result is ready and still must be imported by the Bazar Baz server.", tone: "success" },
+      en: { label: "Result ready", badgeText: "Ready", description: "The result is ready and still must be imported by the Bazarbaaz server.", tone: "success" },
       ar: { label: "النتيجة جاهزة", badgeText: "جاهز", description: "النتيجة جاهزة ويجب إدخالها عبر خادم بازارباز.", tone: "success" },
     },
     IMPORTED_BY_BAZAR_BAZ: {
       fa: { label: "در بازارباز ذخیره شد", badgeText: "ذخیره شد", description: "نتیجه توسط سرور بازارباز اعتبارسنجی و به دارایی امن تبدیل شده است.", tone: "success" },
-      en: { label: "Imported by Bazar Baz", badgeText: "Imported", description: "The Bazar Baz server validated and stored the result as an asset.", tone: "success" },
+      en: { label: "Imported by Bazarbaaz", badgeText: "Imported", description: "The Bazarbaaz server validated and stored the result as an asset.", tone: "success" },
       ar: { label: "تم الإدخال في بازارباز", badgeText: "تم الحفظ", description: "تحقق خادم بازارباز من النتيجة وحفظها كأصل.", tone: "success" },
     },
     FAILED_RETRYABLE: {

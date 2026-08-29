@@ -156,7 +156,7 @@ export async function generateMetadata({ params, searchParams }: ServiceCategory
       subtitle: category.description || `${category.name} services from ${category.organization.name}.`,
       organizationName: category.organization.name,
     }),
-    keywords: ["Bazar Baz", "service category", category.name, category.organization.slug],
+    keywords: ["Bazarbaaz", "service category", category.name, category.organization.slug],
     alternatePath: (nextLocale) => categoryPath(nextLocale, slug, categorySegment, pagination.page, seoContext.isCustomDomain),
   });
 }

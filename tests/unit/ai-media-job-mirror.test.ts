@@ -34,7 +34,7 @@ describe("AI media app-owned job mirror design helpers", () => {
     assert.equal(mapNetworkStatusToJobMirrorState({ status: "SOMETHING_NEW" }), "QUEUED");
   });
 
-  it("settles spend hold only after accepted Bazar Baz import", () => {
+  it("settles spend hold only after accepted Bazarbaaz import", () => {
     assert.equal(getSpendHoldActionForMirrorState("RESULT_READY", { hasActiveHold: true }), "keep");
     assert.equal(getSpendHoldActionForMirrorState("IMPORT_PENDING", { hasActiveHold: true }), "keep");
     assert.equal(getSpendHoldActionForMirrorState("IMPORTED", { hasActiveHold: true }), "settle");

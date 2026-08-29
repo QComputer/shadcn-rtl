@@ -38,7 +38,7 @@ export function HomepageHeroVisual() {
       <div className="mt-4 rounded-lg border bg-background p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-bold">BazarBaaz operating layer</p>
+            <p className="text-sm font-bold">Bazarbaaz operating layer</p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">Public site, catalog, CRM, SEO, content workflow, dry-run integrations</p>
           </div>
           <Sparkles className="h-5 w-5 shrink-0 text-primary motion-safe:animate-pulse" aria-hidden="true" />

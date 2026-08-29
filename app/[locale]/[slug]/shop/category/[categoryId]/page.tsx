@@ -165,7 +165,7 @@ export async function generateMetadata({ params, searchParams }: ShopCategoryPag
       subtitle: category.description || `${category.name} products from ${category.organization.name}.`,
       organizationName: category.organization.name,
     }, seoContext.baseUrl),
-    keywords: ["Bazar Baz", "shop category", category.name, category.organization.slug],
+    keywords: ["Bazarbaaz", "shop category", category.name, category.organization.slug],
     alternatePath: seoContext.alternatePath,
   });
 }

@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ThemeSwitcher } from "@/components/ui/theme-switcher"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
+import { BazarbaazLogo } from "@/components/brand/BazarbaazLogo"
 
 function LoginForm({ locale }: { locale: string }) {
   const router = useRouter()
@@ -109,9 +110,9 @@ function LoginForm({ locale }: { locale: string }) {
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary mb-4"
+            className="mb-4 inline-flex items-center justify-center"
           >
-            <LogIn className="w-8 h-8 text-primary-foreground" />
+            <BazarbaazLogo language={locale === "fa" ? "fa" : "en"} className="h-14 w-auto" />
           </motion.div>
           <h1 className="text-2xl font-bold">{t("auth.welcomeBack") || "خوش آمدید"}</h1>
           <p className="text-muted-foreground mt-2">{t("auth.signInToContinue") || "برای ورود به پنل مدیریت وارد شوید"}</p>

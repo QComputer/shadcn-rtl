@@ -55,7 +55,7 @@ const ROLE_EXPERIENCE: Record<DemoRole, {
 }> = {
   PLATFORM_ADMIN: {
     label: "Platform Admin",
-    explanation: "You are comparing demo tenants, ecosystem readiness, and public experience quality across BazarBaaz.",
+    explanation: "You are comparing demo tenants, ecosystem readiness, and public experience quality across Bazarbaaz.",
     suggestedActions: ["Compare tenants", "Review ecosystem readiness", "Inspect SEO/content status"],
     capabilities: ["Platform analytics", "Demo portfolio", "Integration readiness"],
   },
@@ -183,7 +183,7 @@ export function DemoShellClient({ organizationSlug, initialRole }: { organizatio
       import: await imported.json(),
       syncDryRun: await dryRun.json(),
     });
-    setMessage("کاتالوگ بیرونی به‌صورت mock بررسی، تأیید و به داده‌های BazarBaaz تبدیل شد؛ هیچ سیستم بیرونی تغییر نکرد.");
+    setMessage("کاتالوگ بیرونی به‌صورت mock بررسی، تأیید و به داده‌های Bazarbaaz تبدیل شد؛ هیچ سیستم بیرونی تغییر نکرد.");
     await loadDashboard();
   }
 
@@ -198,7 +198,7 @@ export function DemoShellClient({ organizationSlug, initialRole }: { organizatio
         <div className="flex flex-col gap-4 rounded-lg border bg-card p-6 md:flex-row md:items-center md:justify-between">
           <div>
             <Badge variant="secondary">Demo Universe</Badge>
-            <h1 className="mt-3 text-3xl font-black">You are experiencing BazarBaaz as: {roleExperience.label}</h1>
+            <h1 className="mt-3 text-3xl font-black">You are experiencing Bazarbaaz as: {roleExperience.label}</h1>
             <p className="mt-2 text-sm text-muted-foreground">سازمان: {organizationSlug}</p>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">{roleExperience.explanation}</p>
           </div>

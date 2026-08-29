@@ -16,14 +16,14 @@ import { appPath, resolveAppBasePath } from "@/lib/app-base-path";
 
 export const metadata: Metadata = {
   metadataBase: getPublicBaseUrl(),
-  applicationName: "Bazar Baz",
+  applicationName: "Bazarbaaz",
   manifest: appPath("/manifest.webmanifest"),
   title: {
     default: "بازارباز - پلتفرم مدیریت کسب‌وکار ایرانی",
     template: "%s | بازارباز"
   },
   description: "پلتفرم مدیریت کسب‌وکار ایرانی: فروشگاه، نوبت‌دهی، مشتریان، باشگاه مشتریان، پیامک، اعلان و داشبورد مدیریتی فارسی.",
-  keywords: ["Bazar Baz", "پلتفرم کسب‌وکار", "مدیریت کسب‌وکار", "فروشگاه آنلاین", "نوبت‌دهی آنلاین", "باشگاه مشتریان", "پیامک-marketing", "داشبورد مدیریتی", "بازارباز"],
+  keywords: ["Bazarbaaz", "پلتفرم کسب‌وکار", "مدیریت کسب‌وکار", "فروشگاه آنلاین", "نوبت‌دهی آنلاین", "باشگاه مشتریان", "پیامک-marketing", "داشبورد مدیریتی", "بازارباز"],
   openGraph: {
     title: "بازارباز - پلتفرم مدیریت کسب‌وکار ایرانی",
     description: "پلتفرم مدیریت کسب‌وکار ایرانی: فروشگاه، نوبت‌دهی، مشتریان، باشگاه مشتریان، پیامک، اعلان و داشبورد مدیریتی فارسی.",
@@ -44,12 +44,17 @@ export const metadata: Metadata = {
     images: [getCanonicalUrl("/og-image")],
   },
   icons: {
-    icon: [{ url: appPath("/pwa-icon.svg"), type: "image/svg+xml" }],
-    apple: [{ url: appPath("/pwa-icon.svg"), type: "image/svg+xml" }],
+    icon: [
+      { url: appPath("/icons/favicon.svg"), type: "image/svg+xml" },
+      { url: appPath("/icons/favicon-32x32.png"), sizes: "32x32", type: "image/png" },
+      { url: appPath("/icons/favicon-16x16.png"), sizes: "16x16", type: "image/png" },
+    ],
+    shortcut: [{ url: appPath("/icons/favicon.ico") }],
+    apple: [{ url: appPath("/icons/apple-touch-icon.png"), sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
-    title: "Bazar Baz",
+    title: "Bazarbaaz",
     statusBarStyle: "black-translucent",
   },
   formatDetection: {
@@ -114,7 +119,7 @@ export default async function LocaleLayout({
           </LocaleProvider>
         </SessionProvider>
         {showPlatformFooter ? (
-          <PlatformFooter locale={locale} platformName={t("home.platformName") || "Bazar Baz"} />
+          <PlatformFooter locale={locale} platformName={t("home.platformName") || "Bazarbaaz"} />
         ) : null}
       </body>
     </html>

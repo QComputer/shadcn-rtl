@@ -30,7 +30,7 @@ export default async function DemoPage({
         <div className="absolute inset-0 -z-10 opacity-70 [background:radial-gradient(circle_at_top_left,hsl(var(--primary)/.20),transparent_36%),radial-gradient(circle_at_bottom_right,hsl(var(--secondary)/.36),transparent_34%)]" />
         <div className="container mx-auto px-4 py-16 lg:py-24">
           <div className="mx-auto max-w-4xl text-center">
-            <Badge variant="secondary">BazarBaaz Interactive Demo Universe</Badge>
+            <Badge variant="secondary">Bazarbaaz Interactive Demo Universe</Badge>
             <h1 className="mt-6 text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">
               بازارباز را مثل یک کسب‌وکار واقعی تجربه کنید
             </h1>

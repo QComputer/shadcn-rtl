@@ -881,7 +881,7 @@ describe("explicit tenant context against the disposable local database", () => 
         await prisma.organization.create({
           data: {
             id: platformOrgId,
-            name: "BazarBaaz Platform",
+            name: "Bazarbaaz Platform",
             slug: INOTI_PLATFORM_ORGANIZATION_SLUG,
             type: "SHOP",
             isPlatformOwner: true,

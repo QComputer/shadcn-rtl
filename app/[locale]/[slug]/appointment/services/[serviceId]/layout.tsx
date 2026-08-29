@@ -98,7 +98,7 @@ export async function generateMetadata({ params }: ServiceDetailLayoutProps): Pr
       subtitle: service.description || `Book ${service.name} at ${service.organization.name}.`,
       organizationName: service.organization.name,
     }, seoContext.baseUrl),
-    keywords: ["Bazar Baz", "service", "appointment", service.name, service.organization.slug, service.category.name],
+    keywords: ["Bazarbaaz", "service", "appointment", service.name, service.organization.slug, service.category.name],
     alternatePath: seoContext.alternatePath,
   });
 }

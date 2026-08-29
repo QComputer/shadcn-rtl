@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: ServicesLayoutProps): Promise
     title: `Services | ${organization.name}`,
     description: organization.description || `Book services at ${organization.name}.`,
     image: organization.coverImage || organization.logo,
-    keywords: ["Bazar Baz", "services", "appointment", slug],
+    keywords: ["Bazarbaaz", "services", "appointment", slug],
     alternatePath: seoContext.alternatePath,
   });
 }

@@ -33,7 +33,7 @@ export type AiMediaCapabilityRecord = {
 };
 
 export type AiMediaCapabilitySummary = {
-  contractTitle: "Bazar Baz AI Media Service";
+  contractTitle: "Bazarbaaz AI Media Service";
   contractVersion: "0.1.0";
   openapi: "3.1.0";
   fingerprint: string;
@@ -53,7 +53,7 @@ export const AI_MEDIA_ABSENT_LEGACY_RENDER_PATHS = [
 ] as const;
 
 const contractBasis = [
-  "Bazar Baz AI Media Service",
+  "Bazarbaaz AI Media Service",
   "0.1.0",
   "3.1.0",
   PRODUCT_ENDPOINT,
@@ -115,7 +115,7 @@ const GENERAL_CREATIVE_RECORD: AiMediaCapabilityRecord = {
   status: "UNKNOWN",
   endpoint: "/v1/creative/campaign-packs/{pack_id}/generate",
   method: "POST",
-  requestSchema: "Not proven for Bazar Baz tenant image generation",
+  requestSchema: "Not proven for Bazarbaaz tenant image generation",
   responseSchema: "Not mapped",
   auth: "X-BazarBaz-AI-Key",
   idempotency: "not-declared",
@@ -131,7 +131,7 @@ export function getAiMediaCapabilitySummary(): AiMediaCapabilitySummary {
   const service = getAiMediaServiceConfigStatus();
 
   return {
-    contractTitle: "Bazar Baz AI Media Service",
+    contractTitle: "Bazarbaaz AI Media Service",
     contractVersion: "0.1.0",
     openapi: "3.1.0",
     fingerprint: AI_MEDIA_CONTRACT_FINGERPRINT,

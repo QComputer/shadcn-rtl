@@ -47,7 +47,7 @@ const integrationB: ResolvedInotiIntegration = {
 const factor = `BZ${"a".repeat(32)}`;
 
 describe("iNoti public integration identity", () => {
-  it("builds canonical BazarBaaz callback URLs from stable UUID public IDs", () => {
+  it("builds canonical Bazarbaaz callback URLs from stable UUID public IDs", () => {
     assert.equal(isValidInotiUssdPublicIntegrationId(integrationA.publicId), true);
     assert.equal(isValidInotiUssdPublicIntegrationId("tenant-a"), false);
     assert.equal(

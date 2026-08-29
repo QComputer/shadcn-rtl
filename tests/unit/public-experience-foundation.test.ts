@@ -94,7 +94,7 @@ describe("homepage presentation contract", () => {
     assert.equal(model.platformFeatures, platformFeatures);
     assert.equal(model.storytelling[0].key, "business-joins");
     assert.deepEqual(model.demo.journeys.map((journey) => journey.role), ["CUSTOMER", "MANAGER"]);
-    assert.equal(model.demo.title, "Explore how different businesses use BazarBaaz");
+    assert.equal(model.demo.title, "Explore how different businesses use Bazarbaaz");
     assert.equal(model.metrics.find((metric) => metric.label === "تعامل CRM")?.value, "5");
   });
 });

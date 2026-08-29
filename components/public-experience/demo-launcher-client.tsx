@@ -130,7 +130,7 @@ export function DemoLauncherClient({ locale, organizations, journeys }: DemoLaun
             <UserRoundCheck className="h-5 w-5" aria-hidden="true" />
           </span>
           <div>
-            <h3 className="text-xl font-black">مسیر استفاده این کسب‌وکار از BazarBaaz</h3>
+            <h3 className="text-xl font-black">مسیر استفاده این کسب‌وکار از Bazarbaaz</h3>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               {selectedShowcase?.tagline ?? "نقش انتخاب‌شده با API سشن دمو فعال می‌شود و فقط به همین کسب‌وکار نمایشی دسترسی دارد."}
             </p>

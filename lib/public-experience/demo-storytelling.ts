@@ -2,7 +2,7 @@ export const DEMO_STORY_STEPS = [
   {
     key: "business-joins",
     ordering: 10,
-    title: "Business joins BazarBaaz",
+    title: "Business joins Bazarbaaz",
     description: "A demo organization is created with capability-based SHOP and/or APPOINTMENT surfaces.",
     simulatedOnly: true,
   },

@@ -148,14 +148,14 @@ export function buildHomepageViewModel(input: PublicDemoExperienceSummary): Home
     ],
     ecosystem: [
       { key: "iMenu", title: "iMenu", description: "منبع یا نمایش منو در سناریوهای خشک و بدون فراخوان واقعی." },
-      { key: "BazarBaaz", title: "BazarBaaz", description: "لایه عملیاتی کسب‌وکار، داده، CRM، SEO و دمو." },
+      { key: "BazarBaaz", title: "Bazarbaaz", description: "لایه عملیاتی کسب‌وکار، داده، CRM، SEO و دمو." },
       { key: "iAM", title: "iAM", description: "آداپتر dry-run برای آمادگی هویت و دسترسی." },
       { key: "iCV", title: "iCV", description: "ظرفیت اکوسیستم آینده بدون ادعای اتصال واقعی." },
       { key: "EBC", title: "EBC", description: "زمینه ارتباطات کسب‌وکار در سطح قرارداد آداپتر." },
       { key: "USSD", title: "USSD", description: "جریان dry-run کد دستوری و پرداخت فقط در شبیه‌سازی." },
     ],
     demo: {
-      title: "Explore how different businesses use BazarBaaz",
+      title: "Explore how different businesses use Bazarbaaz",
       subtitle: "داروخانه، کلینیک، کافه رستوران و مزون را از حضور دیجیتال تا عملیات، CRM، رشد و تعامل مشتری دنبال کنید.",
       organizations: input.demoOrganizations,
       journeys: orderJourneys(input.journeys),

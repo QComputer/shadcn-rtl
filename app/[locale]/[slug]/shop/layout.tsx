@@ -75,10 +75,10 @@ export async function generateMetadata({ params }: ShopLayoutProps): Promise<Met
       locale,
       baseUrl: seoContext.baseUrl,
       path: seoContext.path,
-      title: branding.displayName || organization.name || "Bazar Baz shop",
-      description: organization.description || "Online shop on Bazar Baz.",
+      title: branding.displayName || organization.name || "Bazarbaaz shop",
+      description: organization.description || "Online shop on Bazarbaaz.",
       image: branding.ogImage,
-      keywords: ["Bazar Baz", "shop", "online shopping", organization.slug],
+      keywords: ["Bazarbaaz", "shop", "online shopping", organization.slug],
       alternatePath: seoContext.alternatePath,
       icons: {
         icon: [{ url: appResourceUrl(branding.favicon) }],

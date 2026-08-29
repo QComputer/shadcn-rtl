@@ -221,7 +221,7 @@ function industryTaskDrafts(input: {
       { taskKey: "customer-engagement-readiness", title: "Prepare customer engagement", description: "Review customer club readiness for retention.", category: "CUSTOMER", targetRoute: "/dashboard/customer-club", metadata: { source: "INDUSTRY_TEMPLATE", dimension: "CUSTOMER_EXPERIENCE" } },
     ],
     OTHER: [
-      { taskKey: "capability-review", title: "Review enabled capabilities", description: "Confirm the selected BazarBaaz capabilities match this business.", category: "OPERATIONS", targetRoute: "/dashboard/business-activation", metadata: { source: "INDUSTRY_TEMPLATE", dimension: "OPERATIONS" } },
+      { taskKey: "capability-review", title: "Review enabled capabilities",         description: "Confirm the selected Bazarbaaz capabilities match this business.", category: "OPERATIONS", targetRoute: "/dashboard/business-activation", metadata: { source: "INDUSTRY_TEMPLATE", dimension: "OPERATIONS" } },
       { taskKey: "customer-path-review", title: "Review customer journey", description: "Prepare the customer path before sharing the business page.", category: "CUSTOMER", targetRoute: "/dashboard/customer-club", metadata: { source: "INDUSTRY_TEMPLATE", dimension: "CUSTOMER_EXPERIENCE" } },
     ],
   };

@@ -70,7 +70,7 @@ function contentGoalForType(contentType: SeoContentType) {
     case "CAMPAIGN_COPY":
       return "Create campaign copy from verified campaign and business context.";
     default:
-      return "Create an article brief from verified BazarBaaz data.";
+      return "Create an article brief from verified Bazarbaaz data.";
   }
 }
 

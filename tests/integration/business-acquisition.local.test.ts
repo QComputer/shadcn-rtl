@@ -83,7 +83,7 @@ async function cleanup(prefix: string) {
 }
 
 describe("business acquisition local foundation", () => {
-  it("lets the BazarBaaz team create an organization and records acquisition source", async () => {
+  it("lets the Bazarbaaz team create an organization and records acquisition source", async () => {
     const prefix = `ba${randomUUID().replace(/-/g, "").slice(0, 7)}`;
     await cleanup(prefix);
     try {

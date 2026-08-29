@@ -50,10 +50,10 @@ describe("organization branding resolution", () => {
     assert.equal(branding.displayName, "Test Org");
     assert.equal(branding.shortName, "Test Org");
     assert.equal(branding.logo, "/test-logo.png");
-    assert.equal(branding.favicon, "/pwa-icon.svg");
-    assert.equal(branding.appleTouchIcon, "/pwa-icon.svg");
-    assert.equal(branding.pwaIcons.icon192, "/pwa-icon.svg");
-    assert.equal(branding.pwaIcons.icon512, "/pwa-icon.svg");
+    assert.equal(branding.favicon, "/icons/favicon.svg");
+    assert.equal(branding.appleTouchIcon, "/icons/apple-touch-icon.png");
+    assert.equal(branding.pwaIcons.icon192, "/icons/icon-192x192.png");
+    assert.equal(branding.pwaIcons.icon512, "/icons/icon-512x512.png");
     assert.equal(branding.ogImage, "/test-cover.jpg");
     assert.equal(branding.source, "PLATFORM_FALLBACK");
   });
@@ -71,11 +71,11 @@ describe("organization branding resolution", () => {
       },
     });
 
-    assert.equal(branding.logo, "/pwa-icon.svg");
+    assert.equal(branding.logo, "/brand/marks/bazarbaaz-mark.svg");
     assert.equal(branding.favicon, "/custom-favicon.ico");
     assert.equal(branding.appleTouchIcon, "/custom-favicon.ico");
-    assert.equal(branding.pwaIcons.icon192, "/pwa-icon.svg");
-    assert.equal(branding.pwaIcons.icon512, "/pwa-icon.svg");
+    assert.equal(branding.pwaIcons.icon192, "/icons/icon-192x192.png");
+    assert.equal(branding.pwaIcons.icon512, "/icons/icon-512x512.png");
     assert.equal(branding.ogImage, "/og-image");
   });
 
@@ -99,12 +99,12 @@ describe("organization branding resolution", () => {
     const fallback = resolvePlatformFallbackBranding();
 
     assert.equal(fallback.organizationId, "platform");
-    assert.equal(fallback.displayName, "Bazar Baz");
-    assert.equal(fallback.logo, "/pwa-icon.svg");
-    assert.equal(fallback.favicon, "/pwa-icon.svg");
-    assert.equal(fallback.appleTouchIcon, "/pwa-icon.svg");
-    assert.equal(fallback.pwaIcons.icon192, "/pwa-icon.svg");
-    assert.equal(fallback.pwaIcons.icon512, "/pwa-icon.svg");
+    assert.equal(fallback.displayName, "Bazarbaaz");
+    assert.equal(fallback.logo, "/brand/marks/bazarbaaz-mark.svg");
+    assert.equal(fallback.favicon, "/icons/favicon.svg");
+    assert.equal(fallback.appleTouchIcon, "/icons/apple-touch-icon.png");
+    assert.equal(fallback.pwaIcons.icon192, "/icons/icon-192x192.png");
+    assert.equal(fallback.pwaIcons.icon512, "/icons/icon-512x512.png");
     assert.equal(fallback.ogImage, "/og-image");
     assert.equal(fallback.source, "PLATFORM_FALLBACK");
   });
@@ -123,8 +123,8 @@ describe("organization branding resolution", () => {
 
     assert.equal(branding.displayName, "My Shop");
     assert.equal(branding.shortName, "My Shop");
-    assert.equal(branding.logo, "/pwa-icon.svg");
-    assert.equal(branding.favicon, "/pwa-icon.svg");
+    assert.equal(branding.logo, "/brand/marks/bazarbaaz-mark.svg");
+    assert.equal(branding.favicon, "/icons/favicon.svg");
   });
 
   it("does not leak cross-tenant assets", () => {
@@ -192,8 +192,8 @@ describe("organization branding resolution", () => {
     });
 
     assert.equal(branding.logo, "/org-logo.png");
-    assert.equal(branding.favicon, "/pwa-icon.svg");
-    assert.equal(branding.appleTouchIcon, "/pwa-icon.svg");
+    assert.equal(branding.favicon, "/icons/favicon.svg");
+    assert.equal(branding.appleTouchIcon, "/icons/apple-touch-icon.png");
   });
 
   it("uses organization logo for ogImage when branding ogImage is missing", () => {
@@ -263,7 +263,7 @@ describe("organization branding resolution", () => {
 
     assert.equal(branding.displayName, "Org A");
     assert.equal(branding.logo, "/org-a-logo.png");
-    assert.equal(branding.favicon, "/pwa-icon.svg");
+    assert.equal(branding.favicon, "/icons/favicon.svg");
     assert.equal(branding.ogImage, "/org-a-cover.jpg");
     assert.equal(branding.source, "PLATFORM_FALLBACK");
   });

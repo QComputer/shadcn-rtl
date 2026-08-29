@@ -122,9 +122,9 @@ export const conversionContent = {
   },
   en: {
     requestDemo: {
-      title: "Request a Bazar Baz Demo",
+      title: "Request a Bazarbaaz Demo",
       subtitle:
-        "Take a few minutes to tell us about your business so we can explain the most suitable Bazar Baz scenario for you.",
+        "Take a few minutes to tell us about your business so we can explain the most suitable Bazarbaaz scenario for you.",
       fields: {
         fullName: "Full name",
         businessName: "Business name",
@@ -133,16 +133,16 @@ export const conversionContent = {
         city: "City",
         description: "Short description of your needs",
         preferredContactTime: "Preferred contact time",
-        consent: "I confirm that the entered information will be used by the Bazar Baz team to follow up on the demo request.",
+        consent: "I confirm that the entered information will be used by the Bazarbaaz team to follow up on the demo request.",
       },
       submit: "Submit demo request",
       successTitle: "Request submitted",
       successMessage:
-        "The Bazar Baz team will contact you as soon as possible. In the current version, this request is submitted as a preview and permanent storage in the production database is deferred.",
+        "The Bazarbaaz team will contact you as soon as possible. In the current version, this request is submitted as a preview and permanent storage in the production database is deferred.",
       note: "In the current version, this form is a preview and data is not permanently stored.",
     },
     contact: {
-      title: "Contact Bazar Baz",
+      title: "Contact Bazarbaaz",
       subtitle:
         "For technical, business, and partnership questions, you can reach us through the channels below.",
       suitableFor: "Suitable for which businesses?",
@@ -159,7 +159,7 @@ export const conversionContent = {
       onboardingPath: "Recommended onboarding path",
       onboardingSteps: [
         "Submit a demo request via the form below",
-        "Bazar Baz team reviews business needs",
+        "Bazarbaaz team reviews business needs",
         "Platform setup and initial configuration",
         "Team training and full deployment",
       ],
@@ -177,7 +177,7 @@ export const conversionContent = {
     pricing: {
       title: "Pricing and Packages",
       subtitle:
-        "Bazar Baz can be packaged based on business needs, service types, branch count, order/appointment volume, SMS/notification volume, and support level.",
+        "Bazarbaaz can be packaged based on business needs, service types, branch count, order/appointment volume, SMS/notification volume, and support level.",
       packages: [
         {
           id: "starter",

@@ -214,7 +214,7 @@ export async function ensureDefaultDemoScenario(organizationId: string) {
   const scenarioTitle = showcase?.tagline ?? "سفارش تا تحویل";
   const scenarioDescription = showcase
     ? showcase.highlights.join(" | ")
-    : "یک مسیر نمایشی برای تجربه چندنقشی BazarBaaz از ثبت سفارش تا تحویل.";
+    : "یک مسیر نمایشی برای تجربه چندنقشی Bazarbaaz از ثبت سفارش تا تحویل.";
   const scenarioSteps = showcase
     ? showcase.storySteps.map((step) => ({
         key: step.key,

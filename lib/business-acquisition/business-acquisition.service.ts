@@ -155,7 +155,7 @@ export async function finalizeTeamOrganizationCreation(input: FinalizeTeamOrgani
         action: "CREATE",
         entityType: "OrganizationAcquisition",
         entityId: acquisition.id,
-        description: "BazarBaaz team finalized organization acquisition",
+        description: "Bazarbaaz team finalized organization acquisition",
         userId: input.createdByUserId,
         organizationId: organization.id,
         organizationSlug: organization.slug,

@@ -86,7 +86,7 @@ export async function generateMetadata({ params }: ProductDetailLayoutProps): Pr
       subtitle: product.description || `${product.name} from ${product.organization.name}.`,
       organizationName: product.organization.name,
     }, seoContext.baseUrl),
-    keywords: ["Bazar Baz", "product", product.name, product.organization.slug, product.category.name],
+    keywords: ["Bazarbaaz", "product", product.name, product.organization.slug, product.category.name],
     alternatePath: seoContext.alternatePath,
   });
 }

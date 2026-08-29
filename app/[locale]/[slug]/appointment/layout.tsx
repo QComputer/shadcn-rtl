@@ -128,10 +128,10 @@ export async function generateMetadata({ params }: OrganizationLayoutProps): Pro
     locale,
     baseUrl: seoContext.baseUrl,
     path: seoContext.path,
-    title: branding.displayName || organization.name || "Bazar Baz appointment",
-    description: organization.description || "Book appointments online on Bazar Baz.",
+    title: branding.displayName || organization.name || "Bazarbaaz appointment",
+    description: organization.description || "Book appointments online on Bazarbaaz.",
     image: branding.ogImage,
-    keywords: ["Bazar Baz", "appointment", "booking", organization.slug],
+    keywords: ["Bazarbaaz", "appointment", "booking", organization.slug],
     alternatePath: seoContext.alternatePath,
     icons: {
       icon: [{ url: appResourceUrl(branding.favicon) }],

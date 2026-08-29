@@ -7,7 +7,7 @@ const LEGACY_PRODUCTION_HOSTS = new Set([
   "bazar-baz.ir",
   "www.bazar-baz.ir",
 ]);
-const DEFAULT_TITLE = "Bazar Baz";
+const DEFAULT_TITLE = "Bazarbaaz";
 const DEFAULT_DESCRIPTION = "Multi-tenant commerce and appointment booking marketplace.";
 const DEFAULT_IMAGE = "/og-image";
 

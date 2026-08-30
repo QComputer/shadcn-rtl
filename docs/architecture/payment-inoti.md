@@ -61,6 +61,20 @@ Verified provider payments arriving after a request is `EXPIRED` or `CANCELLED` 
 - Operations must define late-payment handling, alerting/reconciliation ownership, callback latency monitoring, retry scheduling, and payment-status client behavior.
 - Live verification, live payment, and runtime provider mutation gates remain independently fail-closed. Enabling them requires an explicitly authorized production rollout; BB-P2 does not enable any gate.
 
+## BB-P3 production operating decisions
+
+The public status boundary is a read-only possession-authorized lookup at `/api/payments/{publicPaymentId}`. The random UUID is distinct from internal IDs and tenant identifiers. The response exposes only provider-neutral state, amount/currency, purpose, and safe timestamps. `PENDING_VERIFICATION` is represented as "Payment is being verified" and is never shown as paid or definitively failed. The endpoint is rate limited using the existing primitive and returns generic not-found/unavailable errors.
+
+The operator boundary is an authenticated, tenant-scoped reconciliation queue at `/api/organizations/{id}/payments/reconciliation`. It classifies provider-result pending, terminal failure, late verified money, security anomaly, and manual review without exposing callback evidence, raw failure values, session/mobile data, provider factors, RRN, or credentials. A verified payment on an expired or cancelled request is retained as evidence and routed to refund, credit, or explicitly approved manual acceptance; it never auto-pays, auto-reopens, or auto-fulfils.
+
+Durable retry is an activation prerequisite, not an in-process timer. The present strict `GetPayments` query needs callback-supplied correlation values that are intentionally stored only as hashes or masks. Until provider callback retry is proven or an approved encrypted correlation envelope/durable worker exists, callback-free reconciliation is blocked. Correlation cannot be weakened to manufacture a poller. Retryable provider outcomes remain pending; ambiguous, mismatch, replay, exhausted, and late-payment cases are operator-visible.
+
+The callback remains on the platform-controlled `https://bazarbaaz.ir` origin and uses only the opaque integration UUID. It is independent of tenant `PUBLIC` and `APP` hosts. Callback cutover pauses new initiation, preserves the old path for in-flight payments, verifies the new path, observes the overlap window, and retires the old path only after reconciliation.
+
+Activation has separate dimensions rather than one database enum: configuration state, tenant `paymentEnabled`, live-verification gate, live-payment gate, runtime-mutation approval, monitoring readiness, durable reconciliation readiness, and rollout phase. A useful operational projection is `NOT_CONFIGURED`, `CONFIGURED_DISABLED`, `VERIFICATION_READY`, `CANARY_ENABLED`, `ACTIVE`, or `PAUSED`. No global variable can bypass tenant `paymentEnabled`, and the tenant flag cannot bypass global gates. Pausing initiation must preserve safe reconciliation of existing payments.
+
+The money migration and compatible application revision form one release boundary. Old application/new schema and new application/old schema are unsafe combinations. After migration, rollback should normally be feature-gate pause plus forward-fix. Database restore does not reverse iNoti/bank truth; after any real transaction, provider reconciliation precedes every restore or schema reversal. The actionable deployment, checkpoint, canary, pause, and escalation procedure lives in `docs/runbooks/inoti-payment-production.md`.
+
 ## Rollout inventory
 
 | Target | BB-P1 disposition | Notes |

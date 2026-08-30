@@ -37,6 +37,17 @@ const paymentOperationsSelect = {
       status: true,
       verifiedAt: true,
       settledAt: true,
+      verificationJob: {
+        select: {
+          status: true,
+          attemptCount: true,
+          nextAttemptAt: true,
+          lastAttemptAt: true,
+          lastFailureClass: true,
+          leaseExpiresAt: true,
+          completedAt: true,
+        },
+      },
     },
   },
 } satisfies Prisma.PaymentRequestSelect;
@@ -62,6 +73,7 @@ export async function getOrganizationReconciliationQueue(input: {
         { status: { in: ["PENDING_VERIFICATION", "FAILED", "EXPIRED", "CANCELLED"] } },
         { attempts: { some: { status: { in: ["PENDING_VERIFICATION", "FAILED", "VERIFIED"] } } } },
         { ussdPaymentIntent: { is: { status: { in: ["VERIFYING", "VERIFIED", "SETTLED", "REJECTED"] } } } },
+        { ussdPaymentIntent: { is: { verificationJob: { is: { status: { in: ["QUEUED", "CLAIMED", "RETRY", "MANUAL_REVIEW", "EXHAUSTED"] } } } } } },
       ],
     },
     select: paymentOperationsSelect,

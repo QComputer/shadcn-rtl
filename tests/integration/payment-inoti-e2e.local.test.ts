@@ -13,6 +13,7 @@ import type {
   InotiVerificationResult,
   UssdProvider,
 } from "@/lib/integrations/inoti-ussd/types";
+import { processDuePaymentVerifications } from "@/lib/integrations/inoti-ussd/durable-verification";
 
 const databaseUrl = process.env.DATABASE_URL ?? "";
 const isDisposable = /(?:localhost|127\.0\.0\.1)(?::\d+)?\//i.test(databaseUrl);
@@ -92,6 +93,7 @@ describe("BB-P2 PaymentRequest and iNoti lifecycle on disposable PostgreSQL", { 
 
   after(async () => {
     const organizationIds = [organizationA.id, organizationB.id];
+    await prisma.ussdPaymentVerificationJob.deleteMany({ where: { organizationId: { in: organizationIds } } });
     await prisma.ussdCallbackEvent.deleteMany({ where: { organizationId: { in: organizationIds } } });
     await prisma.ussdPaymentIntent.deleteMany({ where: { organizationId: { in: organizationIds } } });
     await prisma.paymentProviderAttempt.deleteMany({ where: { organizationId: { in: organizationIds } } });
@@ -174,6 +176,71 @@ describe("BB-P2 PaymentRequest and iNoti lifecycle on disposable PostgreSQL", { 
     assert.equal(await prisma.paymentEvent.count({ where: { orderId: orderA.id, newStatus: "COMPLETED" } }), 1);
     assert.equal(await prisma.auditLog.count({ where: { organizationId: organizationA.id, entityId: intent.id, description: "iNoti USSD payment verified and settled" } }), 1);
     assert.equal(provider.calls, 1);
+  });
+
+  it("persists encrypted callback correlation and settles from fresh bounded workers after retry and lease recovery", async () => {
+    const priorVersion = process.env.INOTI_PAYMENT_CORRELATION_ACTIVE_KEY_VERSION;
+    const priorKey = process.env.INOTI_PAYMENT_CORRELATION_KEY_V91;
+    process.env.INOTI_PAYMENT_CORRELATION_ACTIVE_KEY_VERSION = "91";
+    process.env.INOTI_PAYMENT_CORRELATION_KEY_V91 = Buffer.alloc(32, 91).toString("base64");
+    try {
+      const request = await createPaymentRequest({ organizationId: organizationA.id, providerIntegrationId: integrationA.id, amountToman: BigInt(9000), purpose: "DURABLE_E2E" });
+      const lifecycle = new InotiPaymentLifecycleService(repository, provider, credentials, () => true);
+      const initiated = await lifecycle.initiate({ publicIntegrationId: integrationA.publicId, organizationId: organizationA.id, paymentRequestId: request.id, sessionId: "808", mobile: "09123456789" });
+      const workflow = new InotiUssdWorkflow(repository, provider, credentials, async () => undefined, () => true, () => true);
+      const url = new URL(callbackUrl(integrationA.publicId, {
+        codeName: "alpha",
+        sessionId: "808",
+        factor: initiated.merchantFactorId,
+        providerFactor: "provider-durable-808",
+        rrn: "rrn-durable-808",
+      }));
+      const acknowledged = await workflow.handle(integrationA.publicId, null, url.searchParams);
+      assert.equal(acknowledged, "پرداخت در حال بررسی است");
+      await Promise.all(Array.from({ length: 9 }, () => workflow.handle(integrationA.publicId, null, url.searchParams)));
+
+      const intent = await prisma.ussdPaymentIntent.findUniqueOrThrow({ where: { paymentRequestId_organizationId: { paymentRequestId: request.id, organizationId: organizationA.id } } });
+      const job = await prisma.ussdPaymentVerificationJob.findUniqueOrThrow({ where: { paymentIntentId: intent.id } });
+      assert.equal(await prisma.ussdPaymentVerificationJob.count({ where: { paymentIntentId: intent.id } }), 1);
+      assert.equal(JSON.stringify(job.encryptedCorrelation).includes("09123456789"), false);
+
+      const firstWorker = new FixtureProvider();
+      firstWorker.mode = "NOT_FOUND";
+      const startedAt = new Date("2026-08-31T00:00:00.000Z");
+      const first = await processDuePaymentVerifications({ provider: firstWorker, settlementAllowed: () => true, now: startedAt });
+      assert.equal(first.retried, 1);
+      const retry = await prisma.ussdPaymentVerificationJob.findUniqueOrThrow({ where: { id: job.id } });
+      assert.equal(retry.status, "RETRY");
+      assert.equal(retry.attemptCount, 1);
+
+      await prisma.ussdPaymentVerificationJob.update({
+        where: { id: job.id },
+        data: { status: "CLAIMED", leaseToken: "crashed-worker", leaseExpiresAt: new Date(startedAt.getTime() + 120_000), nextAttemptAt: startedAt },
+      });
+      const blockedByLease = await processDuePaymentVerifications({ provider: new FixtureProvider(), settlementAllowed: () => true, now: new Date(startedAt.getTime() + 31_000) });
+      assert.equal(blockedByLease.claimed, 0);
+      await prisma.ussdPaymentVerificationJob.update({ where: { id: job.id }, data: { leaseExpiresAt: new Date(startedAt.getTime() + 30_000) } });
+
+      const recoveredProvider = new FixtureProvider();
+      const concurrent = await Promise.all([
+        processDuePaymentVerifications({ provider: recoveredProvider, settlementAllowed: () => true, now: new Date(startedAt.getTime() + 31_000) }),
+        processDuePaymentVerifications({ provider: recoveredProvider, settlementAllowed: () => true, now: new Date(startedAt.getTime() + 31_000) }),
+      ]);
+      assert.equal(concurrent.reduce((sum, result) => sum + result.succeeded, 0), 1);
+      assert.equal(recoveredProvider.calls, 1);
+      const completed = await prisma.ussdPaymentVerificationJob.findUniqueOrThrow({ where: { id: job.id } });
+      assert.equal(completed.status, "SUCCEEDED");
+      assert.equal(completed.encryptedCorrelation, null);
+      assert.ok(completed.correlationRetiredAt);
+      assert.equal((await prisma.paymentRequest.findUniqueOrThrow({ where: { id: request.id } })).status, "PAID");
+      assert.equal((await prisma.paymentProviderAttempt.findUniqueOrThrow({ where: { id: initiated.providerAttemptId } })).status, "VERIFIED");
+      assert.equal(await prisma.ussdCallbackEvent.count({ where: { paymentIntentId: intent.id, idempotencyKey: `settlement:durable:${job.id}` } }), 1);
+    } finally {
+      if (priorVersion === undefined) delete process.env.INOTI_PAYMENT_CORRELATION_ACTIVE_KEY_VERSION;
+      else process.env.INOTI_PAYMENT_CORRELATION_ACTIVE_KEY_VERSION = priorVersion;
+      if (priorKey === undefined) delete process.env.INOTI_PAYMENT_CORRELATION_KEY_V91;
+      else process.env.INOTI_PAYMENT_CORRELATION_KEY_V91 = priorKey;
+    }
   });
 
   it("recovers from temporary not-found and timeout without terminal failure", async () => {

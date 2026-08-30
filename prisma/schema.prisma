@@ -228,6 +228,15 @@ enum UssdCallbackOutcome {
   FAILED
 }
 
+enum UssdPaymentVerificationJobStatus {
+  QUEUED
+  CLAIMED
+  RETRY
+  SUCCEEDED
+  MANUAL_REVIEW
+  EXHAUSTED
+}
+
 enum UssdEventType {
   USSD_SESSION_STARTED
   USSD_MENU_SHOWN
@@ -1119,6 +1128,7 @@ model Organization {
   ussdCallbackEvents           UssdCallbackEvent[]
   paymentRequests              PaymentRequest[]
   paymentProviderAttempts      PaymentProviderAttempt[]
+  paymentVerificationJobs      UssdPaymentVerificationJob[]
   ownedCollaborations          OrganizationCollaboration[]   @relation("CollaborationOwner")
   partnerCollaborations        OrganizationCollaboration[]   @relation("CollaborationPartner")
   readyTimeHistory             OrderReadyTimeHistory[]
@@ -1390,6 +1400,7 @@ model OrganizationIntegration {
   ussdEvents    UssdEvent[]
   paymentIntents UssdPaymentIntent[]
   callbackEvents UssdCallbackEvent[]
+  paymentVerificationJobs UssdPaymentVerificationJob[]
   paymentRequests PaymentRequest[]      @relation("PaymentRequestProviderIntegration")
   paymentProviderAttempts PaymentProviderAttempt[]
 
@@ -2592,6 +2603,7 @@ model PaymentProviderAttempt {
   paymentRequest      PaymentRequest           @relation(fields: [paymentRequestId, organizationId], references: [id, organizationId], onDelete: Cascade)
   providerIntegration OrganizationIntegration? @relation(fields: [providerIntegrationId, organizationId], references: [id, organizationId], onDelete: NoAction)
   ussdPaymentIntent   UssdPaymentIntent?
+  verificationJobs   UssdPaymentVerificationJob[]
 
   @@unique([id, organizationId])
   @@unique([organizationId, idempotencyKey])
@@ -2663,6 +2675,7 @@ model UssdPaymentIntent {
   paymentRequest PaymentRequest?       @relation(fields: [paymentRequestId, organizationId], references: [id, organizationId], onDelete: NoAction)
   providerAttempt PaymentProviderAttempt? @relation(fields: [providerAttemptId, organizationId], references: [id, organizationId], onDelete: NoAction)
   callbackEvents UssdCallbackEvent[]
+  verificationJob UssdPaymentVerificationJob?
 
   @@unique([integrationId, orderId, sessionIdHash])
   @@unique([id, integrationId, organizationId])
@@ -2674,6 +2687,40 @@ model UssdPaymentIntent {
   @@index([integrationId, status, createdAt])
   @@index([orderId, status])
   @@index([paymentRequestId, status])
+}
+
+model UssdPaymentVerificationJob {
+  id                     String                           @id @default(cuid())
+  organizationId         String
+  integrationId          String
+  paymentIntentId        String                           @unique
+  providerAttemptId      String?
+  status                 UssdPaymentVerificationJobStatus @default(QUEUED)
+  encryptedCorrelation   Json?
+  correlationFingerprint String
+  encryptionKeyVersion   Int
+  attemptCount           Int                              @default(0)
+  nextAttemptAt          DateTime                         @default(now())
+  lastAttemptAt          DateTime?
+  lastFailureClass       String?
+  leaseToken             String?
+  leaseExpiresAt         DateTime?
+  completedAt            DateTime?
+  correlationRetiredAt   DateTime?
+  createdAt              DateTime                         @default(now())
+  updatedAt              DateTime                         @updatedAt
+
+  organization    Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration     OrganizationIntegration @relation(fields: [integrationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  paymentIntent   UssdPaymentIntent       @relation(fields: [paymentIntentId, integrationId, organizationId], references: [id, integrationId, organizationId], onDelete: Cascade)
+  providerAttempt PaymentProviderAttempt? @relation(fields: [providerAttemptId, organizationId], references: [id, organizationId], onDelete: NoAction)
+
+  @@unique([id, organizationId])
+  @@unique([paymentIntentId, integrationId, organizationId])
+  @@index([status, nextAttemptAt])
+  @@index([leaseExpiresAt])
+  @@index([organizationId, status, updatedAt])
+  @@index([integrationId, status, nextAttemptAt])
 }
 
 model UssdCallbackEvent {

@@ -8,6 +8,7 @@ ensureNextLocalEnvLoaded();
 const { prisma } = await import("@/lib/db");
 const { buildInotiUssdCallbackUrl, isValidInotiUssdPublicIntegrationId } = await import("@/lib/integrations/inoti-ussd/callback-url");
 const { getInotiCredentialProfileState } = await import("@/lib/integrations/inoti-ussd/credentials");
+const { correlationKeyReadiness } = await import("@/lib/integrations/inoti-ussd/correlation-envelope");
 const { evaluateInotiProductionReadiness } = await import("@/lib/payments/inoti-production-readiness");
 
 const targetSlugs = process.argv.slice(2).map((value) => value.trim()).filter(Boolean);
@@ -15,11 +16,11 @@ assert.ok(targetSlugs.length > 0, "Usage: tsx scripts/inoti/payment-production-p
 assert.ok(targetSlugs.every((slug) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)), "Organization slugs must be lowercase URL slugs");
 
 const requiredPaymentMigrations = [
-  "20260826000100_product_media_assets",
   "20260827_organization_branding",
   "20260827_public_home_mode",
   "20260830000100_reconcile_payment_money_semantics",
   "20260830000200_inoti_payment_e2e",
+  "20260831000100_inoti_durable_payment_reconciliation",
 ] as const;
 const repositoryMigrations = readdirSync(path.join(process.cwd(), "prisma", "migrations"), { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
@@ -49,8 +50,19 @@ const audit = await prisma.$transaction(async (tx) => {
     `SELECT COUNT(*)::bigint AS count FROM "_prisma_migrations" WHERE finished_at IS NULL AND rolled_back_at IS NULL`,
   );
   const moneyColumns = await tx.$queryRawUnsafe<Array<{ table_name: string; column_name: string }>>(
-    `SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name IN ('PaymentRequest', 'PaymentProviderAttempt') AND column_name IN ('amountRial', 'amountToman') ORDER BY table_name, column_name`,
+    `SELECT table_name::text AS table_name, column_name::text AS column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name IN ('PaymentRequest', 'PaymentProviderAttempt') AND column_name IN ('amountRial', 'amountToman') ORDER BY table_name, column_name`,
   );
+  const durableTable = await tx.$queryRawUnsafe<Array<{ present: boolean }>>(
+    `SELECT to_regclass('public."UssdPaymentVerificationJob"') IS NOT NULL AS present`,
+  );
+  const durableCounts = durableTable[0]?.present
+    ? await tx.$queryRawUnsafe<Array<{ pending: bigint; reconciliation: bigint }>>(
+        `SELECT
+          COUNT(*) FILTER (WHERE status::text IN ('QUEUED', 'CLAIMED', 'RETRY'))::bigint AS pending,
+          COUNT(*) FILTER (WHERE status::text IN ('MANUAL_REVIEW', 'EXHAUSTED'))::bigint AS reconciliation
+         FROM "UssdPaymentVerificationJob"`,
+      )
+    : [{ pending: BigInt(0), reconciliation: BigInt(0) }];
   const integrations = await tx.$queryRawUnsafe<IntegrationRow[]>(
     `SELECT o.id AS "organizationId", o.slug AS "organizationSlug", o."isActive" AS "organizationActive", i."publicId" AS "publicIntegrationId", i.provider::text AS provider, i.status::text AS "integrationStatus", i."codeName", i."credentialProfileKey", i.configuration
      FROM "Organization" o
@@ -78,6 +90,9 @@ const audit = await prisma.$transaction(async (tx) => {
     duplicatePaymentRequests: Number(duplicateRequests[0]?.count ?? BigInt(0)),
     requestAmountAnomalies: Number(requestAnomalies[0]?.count ?? BigInt(0)),
     attemptAmountAnomalies: Number(attemptAnomalies[0]?.count ?? BigInt(0)),
+    durableTablePresent: durableTable[0]?.present === true,
+    pendingVerificationJobs: Number(durableCounts[0]?.pending ?? BigInt(0)),
+    reconciliationCount: Number(durableCounts[0]?.reconciliation ?? BigInt(0)),
   };
 }, { isolationLevel: "Serializable", timeout: 30_000 });
 
@@ -91,7 +106,9 @@ const appRevisionReady = [
   "lib/payments/payment-operations.service.ts",
   "app/api/payments/[publicPaymentId]/route.ts",
   "app/api/organizations/[id]/payments/reconciliation/route.ts",
+  "app/api/internal/payments/inoti-verification/route.ts",
 ].every((relativePath) => existsSync(path.join(process.cwd(), relativePath)));
+const encryption = correlationKeyReadiness();
 
 const results = [];
 for (const slug of targetSlugs) {
@@ -119,7 +136,7 @@ for (const slug of targetSlugs) {
     livePaymentEnabled: process.env.INOTI_ALLOW_LIVE_PAYMENTS === "true",
     runtimeMutationsApproved: process.env.INOTI_RUNTIME_MUTATIONS_APPROVED === "true",
     monitoringReady: process.env.INOTI_PAYMENT_MONITORING_READY === "true",
-    durableReconciliationReady: process.env.INOTI_PAYMENT_RECONCILIATION_WORKER_READY === "true",
+    durableReconciliationReady: audit.durableTablePresent && encryption.configured && process.env.INOTI_PAYMENT_RECONCILIATION_WORKER_READY === "true",
   };
   results.push({
     organizationSlug: slug,
@@ -132,6 +149,7 @@ for (const slug of targetSlugs) {
       moneyColumns: audit.moneyColumns,
       duplicatePaymentRequests: audit.duplicatePaymentRequests,
       amountAnomalies: audit.requestAmountAnomalies + audit.attemptAmountAnomalies,
+      durableVerificationTablePresent: audit.durableTablePresent,
     },
     integration: {
       count: integrations.length,
@@ -150,6 +168,12 @@ for (const slug of targetSlugs) {
       runtimeMutations: facts.runtimeMutationsApproved,
       monitoring: facts.monitoringReady,
       durableReconciliation: facts.durableReconciliationReady,
+      encryptionKeyConfigured: encryption.configured,
+      encryptionKeyVersion: encryption.activeVersion,
+    },
+    operations: {
+      pendingVerificationJobs: audit.pendingVerificationJobs,
+      reconciliationCount: audit.reconciliationCount,
     },
     readiness: evaluateInotiProductionReadiness(facts),
   });

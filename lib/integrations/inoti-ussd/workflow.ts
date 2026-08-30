@@ -21,6 +21,7 @@ import { environmentInotiCredentialProvider } from "@/lib/integrations/inoti-uss
 import { inotiLivePaymentsAllowed } from "@/lib/integrations/inoti-runtime-safety";
 import { describeSessionIdSyntax, sessionIdParseFailureReason } from "@/lib/integrations/inoti-ussd/session-syntax";
 import { hashInotiEvidence, maskInotiMobile } from "@/lib/integrations/inoti-ussd/evidence";
+import { correlationKeyReadiness } from "@/lib/integrations/inoti-ussd/correlation-envelope";
 import {
   diagnosticCall,
   safeCallSegmentDiagnostics,
@@ -448,6 +449,41 @@ export class InotiUssdWorkflow {
       intentId: intent.id,
       merchantFactorId: intent.merchantFactorId,
     });
+
+    if (correlationKeyReadiness().configured) {
+      try {
+        const { scheduleDurablePaymentVerification } = await import("@/lib/integrations/inoti-ussd/durable-verification");
+        const scheduled = await scheduleDurablePaymentVerification({
+          organizationId: integration.organizationId,
+          integrationId: integration.id,
+          paymentIntentId: intent.id,
+          providerAttemptId: intent.providerAttemptId,
+          correlation: {
+            sessionId: request.sessionId,
+            mobile: request.mobile,
+            call: request.call,
+            rrn: request.rrn ?? "",
+            merchantFactorId,
+            providerFactorId,
+          },
+        });
+        if (scheduled.kind === "CONFLICT") return PAYMENT_FAILED_RESPONSE;
+        return "پرداخت در حال بررسی است";
+      } catch {
+        await this.repository.recordCallbackEvent({
+          integration, paymentIntentId: intent.id, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
+          outcome: "FAILED", errorCode: "DURABLE_VERIFICATION_SCHEDULE_FAILED",
+        });
+        return PAYMENT_FAILED_RESPONSE;
+      }
+    }
+    if (this.provider === inotiUssdProvider) {
+      await this.repository.recordCallbackEvent({
+        integration, paymentIntentId: intent.id, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
+        outcome: "FAILED", errorCode: "DURABLE_CORRELATION_KEY_MISSING",
+      });
+      return PAYMENT_FAILED_RESPONSE;
+    }
 
     const verification = await this.provider.verifyPayment(credentialProfile, {
       codeName: integration.codeName,

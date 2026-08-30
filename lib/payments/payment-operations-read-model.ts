@@ -27,6 +27,15 @@ export type PaymentOperationsInput = {
     status: UssdPaymentIntentStatus;
     verifiedAt: Date | null;
     settledAt: Date | null;
+    verificationJob?: {
+      status: string;
+      attemptCount: number;
+      nextAttemptAt: Date;
+      lastAttemptAt: Date | null;
+      lastFailureClass: string | null;
+      leaseExpiresAt: Date | null;
+      completedAt: Date | null;
+    } | null;
   } | null;
 };
 
@@ -80,7 +89,7 @@ export type ReconciliationCategory =
 function hasSecurityFailure(input: PaymentOperationsInput) {
   return input.attempts.some((attempt) =>
     /correlation|mismatch|replay|duplicate|ambiguous/i.test(attempt.failureReason ?? ""),
-  );
+  ) || /correlation|mismatch|replay|ambiguous|encryption/i.test(input.ussdPaymentIntent?.verificationJob?.lastFailureClass ?? "");
 }
 
 function hasVerifiedEvidence(input: PaymentOperationsInput) {
@@ -154,6 +163,15 @@ export function buildOperatorReconciliationItem(input: PaymentOperationsInput) {
     operatorAction: classification.operatorAction,
     attemptStatuses: [...new Set(input.attempts.map((attempt) => attempt.status))],
     providerIntentStatus: input.ussdPaymentIntent?.status ?? null,
+    durableVerification: input.ussdPaymentIntent?.verificationJob ? {
+      status: input.ussdPaymentIntent.verificationJob.status,
+      attemptCount: input.ussdPaymentIntent.verificationJob.attemptCount,
+      nextAttemptAt: input.ussdPaymentIntent.verificationJob.nextAttemptAt.toISOString(),
+      lastAttemptAt: input.ussdPaymentIntent.verificationJob.lastAttemptAt?.toISOString() ?? null,
+      failureClass: input.ussdPaymentIntent.verificationJob.lastFailureClass,
+      leaseExpiresAt: input.ussdPaymentIntent.verificationJob.leaseExpiresAt?.toISOString() ?? null,
+      completedAt: input.ussdPaymentIntent.verificationJob.completedAt?.toISOString() ?? null,
+    } : null,
     callbackObserved: input.attempts.some((attempt) => Boolean(attempt.callbackReceivedAt)),
     verificationStarted: input.attempts.some((attempt) => Boolean(attempt.verificationStartedAt)),
     verifiedEvidenceObserved: hasVerifiedEvidence(input),

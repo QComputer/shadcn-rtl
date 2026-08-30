@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { parsePositiveToman, tomanDecimalToRial, tomanToInotiRial } from "@/lib/integrations/inoti-ussd/currency";
 import { normalizeIranianMobile, parseUssdQuery, UssdParseError } from "@/lib/integrations/inoti-ussd/parser";
 import { InotiUssdWorkflow } from "@/lib/integrations/inoti-ussd/workflow";
-import { InotiUssdProvider } from "@/lib/integrations/inoti-ussd/inoti-provider";
+import { InotiUssdProvider, selectVerifiedPaymentRecord } from "@/lib/integrations/inoti-ussd/inoti-provider";
 import { parseProviderRialAmount } from "@/lib/integrations/inoti-ussd/inoti-provider";
 import { buildInotiUssdCallbackUrl, isValidInotiUssdPublicIntegrationId } from "@/lib/integrations/inoti-ussd/callback-url";
 import { inotiPlainTextResponse } from "@/lib/integrations/inoti-ussd/response";
@@ -606,6 +606,19 @@ describe("iNoti public response and admin metadata boundaries", () => {
 });
 
 describe("iNoti SOAP provider adapter", () => {
+  it("selects exactly one exact record and rejects zero or ambiguous exact matches", () => {
+    const query: InotiPaymentVerificationQuery = {
+      codeName: "alpha", sessionId: "123456", mobile: "09123456789", amountRial: BigInt(12500),
+      merchantFactorId: factor, providerFactorId: "provider1", rrn: "rrn1",
+    };
+    const exact = { ...query, result: "true", successful: true };
+    const unrelated = { ...exact, merchantFactorId: `BZ${"b".repeat(32)}` };
+    assert.equal(selectVerifiedPaymentRecord([unrelated, exact], query).ok, true);
+    assert.deepEqual(selectVerifiedPaymentRecord([], query), { ok: false, code: "NOT_FOUND" });
+    assert.deepEqual(selectVerifiedPaymentRecord([unrelated], query), { ok: false, code: "CORRELATION_MISMATCH" });
+    assert.deepEqual(selectVerifiedPaymentRecord([exact, { ...exact }], query), { ok: false, code: "AMBIGUOUS_MATCH" });
+  });
+
   it("requires HTTPS/readiness and normalizes valid, missing, malformed, HTTP-error, and timeout responses", async () => {
     const originalFetch = globalThis.fetch;
     const originalEnvironment = {

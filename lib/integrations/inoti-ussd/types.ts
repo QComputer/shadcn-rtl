@@ -40,7 +40,7 @@ export type UssdPaymentIntentProjection = {
   id: string;
   organizationId: string;
   integrationId: string;
-  orderId: string;
+  orderId: string | null;
   paymentRequestId: string | null;
   providerAttemptId: string | null;
   merchantFactorId: string;
@@ -78,7 +78,7 @@ export type InotiVerificationResult =
   | { ok: true; record: InotiPaymentRecord }
   | {
       ok: false;
-      code: "NOT_READY" | "TIMEOUT" | "PROVIDER_ERROR" | "MALFORMED_RESPONSE" | "NOT_FOUND";
+      code: "NOT_READY" | "TIMEOUT" | "PROVIDER_ERROR" | "MALFORMED_RESPONSE" | "NOT_FOUND" | "CORRELATION_MISMATCH" | "AMBIGUOUS_MATCH";
     };
 
 export type InotiProviderReadiness = {
@@ -143,6 +143,7 @@ export type PaymentNotification = {
 
 export type PaymentSettlementResult =
   | { kind: "SETTLED"; notification: PaymentNotification | null }
-  | { kind: "DUPLICATE"; notification: null };
+  | { kind: "DUPLICATE"; notification: null }
+  | { kind: "RECONCILIATION_REQUIRED"; notification: null; requestStatus: "EXPIRED" | "CANCELLED" | "PAID" };
 
 export type { UssdIntegrationRepository } from "@/lib/integrations/inoti-ussd/repository";

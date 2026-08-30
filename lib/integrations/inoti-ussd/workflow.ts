@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createHash, timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { customerOrderLifecycleRouter } from "@/lib/notifications/customer-order-lifecycle-router";
 import { parsePositiveToman, tomanToInotiRial } from "@/lib/integrations/inoti-ussd/currency";
@@ -20,6 +20,7 @@ import type {
 import { environmentInotiCredentialProvider } from "@/lib/integrations/inoti-ussd/credentials";
 import { inotiLivePaymentsAllowed } from "@/lib/integrations/inoti-runtime-safety";
 import { describeSessionIdSyntax, sessionIdParseFailureReason } from "@/lib/integrations/inoti-ussd/session-syntax";
+import { hashInotiEvidence, maskInotiMobile } from "@/lib/integrations/inoti-ussd/evidence";
 import {
   diagnosticCall,
   safeCallSegmentDiagnostics,
@@ -38,29 +39,14 @@ type UssdRequestContext = {
   startedAtMs?: number;
 };
 
-function getHashPepper() {
-  const pepper = process.env.INOTI_USSD_HASH_PEPPER;
-  if (pepper) return pepper;
-  if (process.env.NODE_ENV === "production") throw new Error("INOTI_USSD_HASH_PEPPER_REQUIRED");
-  return process.env.NEXTAUTH_SECRET || "inoti-ussd-local-test-pepper";
-}
-
-function hashSensitive(value: string) {
-  return createHash("sha256").update(getHashPepper()).update("\0").update(value).digest("hex");
-}
-
 function sameText(left: string, right: string) {
   const a = Buffer.from(left, "utf8");
   const b = Buffer.from(right, "utf8");
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-function maskMobile(mobile: string) {
-  return `${mobile.slice(0, 4)}***${mobile.slice(-4)}`;
-}
-
 function paymentCallbackIdentity(integrationId: string, request: ParsedUssdRequest) {
-  return hashSensitive([integrationId, request.sessionId, request.mobile, request.call, request.rrn ?? ""].join("|"));
+  return hashInotiEvidence([integrationId, request.sessionId, request.mobile, request.call, request.rrn ?? ""].join("|"));
 }
 
 function statusLabel(status: string) {
@@ -99,7 +85,7 @@ function hostsMatch(requestHost: string, callbackOrigin: string): boolean {
 function parseFailureSessionHash(searchParams: URLSearchParams, integrationId: string) {
   const values = searchParams.getAll("sessionid");
   const rawSessionId = values.length === 1 ? values[0] ?? "" : "";
-  return hashSensitive(rawSessionId && rawSessionId.length <= 512 ? rawSessionId : `invalid-session:${integrationId}`);
+  return hashInotiEvidence(rawSessionId && rawSessionId.length <= 512 ? rawSessionId : `invalid-session:${integrationId}`);
 }
 
 function parseFailureMetadata(searchParams: URLSearchParams, error: UssdParseError, context?: UssdRequestContext) {
@@ -134,6 +120,8 @@ export class InotiUssdWorkflow {
     private readonly credentialProvider: { resolveProfile(organizationId: string, profileKey: string | null): Promise<InotiCredentialProfile | null> },
     private readonly notifyPayment: typeof customerOrderLifecycleRouter.notifyPaymentStatusChangedSafe =
       customerOrderLifecycleRouter.notifyPaymentStatusChangedSafe.bind(customerOrderLifecycleRouter),
+    private readonly settlementAllowed: () => boolean = inotiLivePaymentsAllowed,
+    private readonly initiationAllowed?: () => boolean,
   ) {}
 
   async handle(
@@ -170,7 +158,7 @@ export class InotiUssdWorkflow {
       return UNAVAILABLE_RESPONSE;
     }
 
-    const sessionIdHash = hashSensitive(request.sessionId);
+    const sessionIdHash = hashInotiEvidence(request.sessionId);
     if (!limitsAllow(integration.id, sessionIdHash)) return UNAVAILABLE_RESPONSE;
 
     const existingSession = await this.repository.findUssdSession(integration.id, sessionIdHash);
@@ -352,7 +340,10 @@ export class InotiUssdWorkflow {
     trackingToken: string,
     sessionIdHash: string,
   ) {
-    if (!integration.config.paymentEnabled) {
+    const initiationPermitted = this.initiationAllowed
+      ? this.initiationAllowed()
+      : this.provider !== inotiUssdProvider || inotiLivePaymentsAllowed();
+    if (!integration.config.paymentEnabled || !initiationPermitted) {
       return "پرداخت در دسترس نیست";
     }
     const credentialProfile = await this.credentialProvider.resolveProfile(integration.organizationId, integration.credentialProfileKey);
@@ -377,8 +368,8 @@ export class InotiUssdWorkflow {
       integration,
       order,
       sessionIdHash,
-      mobileHash: hashSensitive(request.mobile),
-      mobileMasked: maskMobile(request.mobile),
+      mobileHash: hashInotiEvidence(request.mobile),
+      mobileMasked: maskInotiMobile(request.mobile),
       amountToman,
     });
     if (intent.status === "SETTLED") return "سفارش قبلا پرداخت شده است";
@@ -398,16 +389,15 @@ export class InotiUssdWorkflow {
   ) {
     const credentialProfile = await this.credentialProvider.resolveProfile(integration.organizationId, integration.credentialProfileKey);
     const readiness = this.provider.getReadiness(credentialProfile);
-    const mobileHash = hashSensitive(request.mobile);
-    const callHash = hashSensitive(request.call);
-    const rrnHash = hashSensitive(request.rrn ?? "");
+    const mobileHash = hashInotiEvidence(request.mobile);
+    const callHash = hashInotiEvidence(request.call);
+    const rrnHash = hashInotiEvidence(request.rrn ?? "");
     const idempotencyKey = paymentCallbackIdentity(integration.id, request);
     const factors = request.segments.slice(-2);
     const merchantFactorId = factors[0] ?? "";
     const providerFactorId = factors[1] ?? "";
 
     if (
-      !integration.config.paymentEnabled ||
       !readiness.ready ||
       !/^BZ[A-Fa-f0-9]{32}$/.test(merchantFactorId) ||
       !/^[A-Za-z0-9_-]{1,64}$/.test(providerFactorId)
@@ -440,12 +430,20 @@ export class InotiUssdWorkflow {
       return exactReplay ? "پرداخت تایید شد" : PAYMENT_FAILED_RESPONSE;
     }
 
-    await this.repository.markPaymentVerificationStarted({
-      integration,
-      intent,
-      providerFactorId,
-      rrn: request.rrn ?? "",
-    });
+    try {
+      await this.repository.markPaymentVerificationStarted({
+        integration,
+        intent,
+        providerFactorId,
+        rrn: request.rrn ?? "",
+      });
+    } catch {
+      await this.repository.recordCallbackEvent({
+        integration, paymentIntentId: intent.id, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
+        outcome: "REJECTED", errorCode: "PROVIDER_IDENTITY_CONFLICT",
+      });
+      return PAYMENT_FAILED_RESPONSE;
+    }
     await this.recordEvent(integration, sessionIdHash, "USSD_PROVIDER_VERIFICATION_STARTED", {
       intentId: intent.id,
       merchantFactorId: intent.merchantFactorId,
@@ -461,11 +459,12 @@ export class InotiUssdWorkflow {
       rrn: request.rrn ?? "",
     });
     if ("code" in verification) {
+      const retryable = verification.code !== "CORRELATION_MISMATCH";
       await this.repository.markPaymentVerificationFailed({
         integration,
         intent,
         reason: `PROVIDER_${verification.code}`,
-        retryable: true,
+        retryable,
       });
       await this.repository.recordCallbackEvent({
         integration, paymentIntentId: intent.id, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
@@ -500,7 +499,7 @@ export class InotiUssdWorkflow {
       return PAYMENT_FAILED_RESPONSE;
     }
 
-    if (!inotiLivePaymentsAllowed()) {
+    if (!this.settlementAllowed()) {
       await this.repository.recordCallbackEvent({
         integration, paymentIntentId: intent.id, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
         outcome: "REJECTED", errorCode: "PAYMENT_SETTLEMENT_DISABLED",
@@ -525,6 +524,7 @@ export class InotiUssdWorkflow {
         providerFactorId: record.providerFactorId,
         providerResult: record.result,
       });
+      if (settlement.kind === "RECONCILIATION_REQUIRED") return PAYMENT_FAILED_RESPONSE;
       if (settlement.notification) {
         try {
           await this.notifyPayment({

@@ -2556,7 +2556,7 @@ model PaymentRequest {
   guestCustomer       GuestCustomer?           @relation(fields: [guestCustomerId], references: [id], onDelete: SetNull)
   providerIntegration OrganizationIntegration? @relation("PaymentRequestProviderIntegration", fields: [providerIntegrationId, organizationId], references: [id, organizationId], onDelete: NoAction)
   attempts            PaymentProviderAttempt[]
-  ussdPaymentIntents  UssdPaymentIntent[]
+  ussdPaymentIntent   UssdPaymentIntent?
 
   @@unique([id, organizationId])
   @@index([organizationId, status, createdAt])
@@ -2639,7 +2639,7 @@ model UssdPaymentIntent {
   id                   String                  @id @default(cuid())
   organizationId       String
   integrationId        String
-  orderId              String
+  orderId              String?
   paymentRequestId     String?
   providerAttemptId    String?                 @unique
   merchantFactorId     String                  @unique
@@ -2659,7 +2659,7 @@ model UssdPaymentIntent {
 
   organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   integration  OrganizationIntegration @relation(fields: [integrationId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  order        Order                   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  order        Order?                  @relation(fields: [orderId], references: [id], onDelete: Restrict)
   paymentRequest PaymentRequest?       @relation(fields: [paymentRequestId, organizationId], references: [id, organizationId], onDelete: NoAction)
   providerAttempt PaymentProviderAttempt? @relation(fields: [providerAttemptId, organizationId], references: [id, organizationId], onDelete: NoAction)
   callbackEvents UssdCallbackEvent[]
@@ -2667,6 +2667,7 @@ model UssdPaymentIntent {
   @@unique([integrationId, orderId, sessionIdHash])
   @@unique([id, integrationId, organizationId])
   @@unique([providerAttemptId, organizationId])
+  @@unique([paymentRequestId, organizationId])
   @@unique([integrationId, providerFactorId])
   @@unique([integrationId, rrn])
   @@index([organizationId, status, createdAt])

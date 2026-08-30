@@ -2,7 +2,7 @@
 
 ## Scope and invariants
 
-This document defines the BB-P1 payment boundary. It reconciles the existing order, `PaymentRequest`, provider-attempt, iNoti USSD, callback, and settlement code; it does not introduce a new checkout product.
+This document defines the BB-P1 payment boundary and the BB-P2 verified lifecycle. It reconciles the existing order, `PaymentRequest`, provider-attempt, iNoti USSD, callback, and settlement code; it does not introduce a new checkout product.
 
 - Commerce amounts are positive integer **Toman**. `Order.total`, `PaymentRequest.amountToman`, and `PaymentProviderAttempt.amountToman` are internal money.
 - iNoti expects **Rial**. Conversion is exactly `rial = toman * 10`, once, at the provider boundary. `UssdPaymentIntent.amountRial` is deliberately provider-denominated evidence.
@@ -35,6 +35,31 @@ The order's `paymentStatus=COMPLETED` means the financial obligation was verifie
 4. On callback, resolve that UUID to one active tenant integration, hash sensitive callback identifiers, locate the tenant-owned intent, and record receipt evidence.
 5. Query `GetPayments` read-only using the tenant credential profile and exact expected fields.
 6. Settle only a fully matching successful record and only when both live-payment and runtime-mutation gates are explicitly enabled. Duplicate callbacks return the settled result without a second financial transition.
+
+## BB-P2 verified lifecycle
+
+An order-backed or standalone request is created from authoritative server state. Initiation creates or reuses one iNoti attempt for that request, generates a non-secret `BZ` factor bound to the integration, and serializes `9900|YourFactorID|Price` with the amount converted from Toman to Rial exactly once. Repeated initiation for the same request reuses the durable attempt and intent.
+
+The callback route remains the stable platform-controlled machine boundary at `/api/integrations/inoti/ussd/{publicIntegrationId}`. Its host, RRN, factor, session, mobile, and call data are correlation input only. The route resolves the opaque integration ID, records hashed or masked evidence, and invokes the configured provider adapter. There is no public mock selector; BB-P2 runtime tests inject a fixture provider into the same route handler.
+
+Provider selection accepts exactly one successful record matching the integration account, session, normalized mobile, expected Rial amount, merchant factor, and the callback's provider factor and RRN. Provider factor and RRN are optional only until supplied by the callback; once supplied they are mandatory confirming fields. No result, timeout, transport failure, malformed response, and ambiguous matches remain retryable. A proven correlation mismatch is terminal and never marks the request paid.
+
+The current provider contract reveals the provider factor and RRN through callback evidence, so BB-P2 does not weaken correlation to implement callback-free polling. A lost-callback verifier would need a separately proven provider query that can select one record without those fields. Retry scheduling and an authorized payment-status read surface remain operational wiring for BB-P3; existing order-status reads are not treated as a provider-neutral `PaymentRequest` status endpoint.
+
+Settlement uses a database transaction, a conditional intent claim, unique request-to-intent and provider-identity constraints, and a settlement-specific idempotency key. Concurrent verifiers may observe the same provider proof, but only one can create the financial transition and audit event. The others resolve as duplicates. Order-backed settlement sets `paymentStatus=COMPLETED` while leaving fulfillment `status` unchanged. Standalone requests settle to `PAID` without an order write.
+
+Disabling `paymentEnabled` prevents new initiation. It does not erase or refuse evidence for an already-created payment: callbacks may still be verified and reconciled when the independent live verification and settlement gates permit it. This distinction prevents a configuration toggle from stranding customer money while keeping new financial activity fail-closed.
+
+The money migration renames legacy request/attempt Rial columns to Toman and divides exact multiples of ten once. It aborts on non-divisible or non-positive values. Provider evidence in `UssdPaymentIntent.amountRial`, factor, session hash, and RRN is preserved. Disposable PostgreSQL acceptance covers ordinary, minimum, and large values and a repeated migration deploy.
+
+Verified provider payments arriving after a request is `EXPIRED` or `CANCELLED` do not reopen or auto-settle the request. The provider proof is retained as `VERIFIED` evidence with `reconciliationRequired=true` and an audit record. Refund, credit, or manual-acceptance handling remains a product and operations policy for BB-P3; automatic financial state mutation is intentionally forbidden.
+
+## BB-P3 production gates
+
+- Production must apply every repository migration, including the money reconciliation and BB-P2 intent uniqueness/standalone migration, before compatible code is deployed.
+- Each rollout integration needs a genuine tenant-owned CodeName and credential profile. Aka Shoes remains blocked until its real CodeName is established; Italiano 13 is not a rollout target.
+- Operations must define late-payment handling, alerting/reconciliation ownership, callback latency monitoring, retry scheduling, and payment-status client behavior.
+- Live verification, live payment, and runtime provider mutation gates remain independently fail-closed. Enabling them requires an explicitly authorized production rollout; BB-P2 does not enable any gate.
 
 ## Rollout inventory
 

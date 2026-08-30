@@ -35,7 +35,8 @@ export interface UssdIntegrationRepository {
   findOrderByTrackingToken(integration: ResolvedInotiIntegration, token: string): Promise<UssdOrderProjection | null>;
   createOrGetPaymentIntent(input: {
     integration: ResolvedInotiIntegration;
-    order: UssdOrderProjection;
+    order?: UssdOrderProjection | null;
+    paymentRequestId?: string | null;
     sessionIdHash: string;
     mobileHash: string;
     mobileMasked: string;
@@ -84,7 +85,7 @@ function toIntentProjection(intent: {
   id: string;
   organizationId: string;
   integrationId: string;
-  orderId: string;
+  orderId: string | null;
   paymentRequestId: string | null;
   providerAttemptId: string | null;
   merchantFactorId: string;
@@ -226,41 +227,69 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
 
   async createOrGetPaymentIntent(input: {
     integration: ResolvedInotiIntegration;
-    order: UssdOrderProjection;
+    order?: UssdOrderProjection | null;
+    paymentRequestId?: string | null;
     sessionIdHash: string;
     mobileHash: string;
     mobileMasked: string;
     amountToman: bigint;
   }) {
-    const where = {
-      integrationId_orderId_sessionIdHash: {
-        integrationId: input.integration.id,
-        orderId: input.order.id,
-        sessionIdHash: input.sessionIdHash,
-      },
-    };
-    const existing = await prisma.ussdPaymentIntent.findUnique({ where });
+    if (!input.order && !input.paymentRequestId) throw new Error("PAYMENT_REQUEST_OR_ORDER_REQUIRED");
+    const existing = input.paymentRequestId
+      ? await prisma.ussdPaymentIntent.findUnique({
+          where: {
+            paymentRequestId_organizationId: {
+              paymentRequestId: input.paymentRequestId,
+              organizationId: input.integration.organizationId,
+            },
+          },
+        })
+      : await prisma.ussdPaymentIntent.findUnique({
+          where: {
+            integrationId_orderId_sessionIdHash: {
+              integrationId: input.integration.id,
+              orderId: input.order!.id,
+              sessionIdHash: input.sessionIdHash,
+            },
+          },
+        });
     if (existing) return toIntentProjection(existing);
 
     try {
       const created = await prisma.$transaction(async (tx) => {
         const merchantFactorId = generateBazarBaazFactorId();
-        const paymentRequest = await tx.paymentRequest.create({
-          data: {
-            organizationId: input.integration.organizationId,
-            orderId: input.order.id,
-            providerIntegrationId: input.integration.id,
-            amountToman: input.amountToman,
-            currency: "TOMAN",
-            purpose: "ORDER_PAYMENT",
-            status: "AWAITING_CUSTOMER",
-            metadata: {
-              source: "INOTI_USSD",
-              merchantFactorId,
-              amountUnit: "TOMAN",
-            },
-          },
-        });
+        const paymentRequest = input.paymentRequestId
+          ? await tx.paymentRequest.findFirst({
+              where: {
+                id: input.paymentRequestId,
+                organizationId: input.integration.organizationId,
+                providerIntegrationId: input.integration.id,
+                amountToman: input.amountToman,
+                currency: "TOMAN",
+                status: { in: ["CREATED", "AWAITING_CUSTOMER", "PENDING_VERIFICATION"] },
+                OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+              },
+            })
+          : await tx.paymentRequest.create({
+              data: {
+                organizationId: input.integration.organizationId,
+                orderId: input.order!.id,
+                providerIntegrationId: input.integration.id,
+                amountToman: input.amountToman,
+                currency: "TOMAN",
+                purpose: "ORDER_PAYMENT",
+                status: "AWAITING_CUSTOMER",
+                metadata: {
+                  source: "INOTI_USSD",
+                  merchantFactorId,
+                  amountUnit: "TOMAN",
+                },
+              },
+            });
+        if (!paymentRequest) throw new Error("PAYMENT_REQUEST_NOT_INITIABLE");
+        if (paymentRequest.status === "CREATED") {
+          await tx.paymentRequest.update({ where: { id: paymentRequest.id }, data: { status: "AWAITING_CUSTOMER" } });
+        }
         const providerAttempt = await tx.paymentProviderAttempt.create({
           data: {
             organizationId: input.integration.organizationId,
@@ -270,13 +299,14 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
             status: "AWAITING_CUSTOMER",
             amountToman: input.amountToman,
             merchantFactorId,
+            idempotencyKey: `INOTI_INIT:${paymentRequest.id}`,
           },
         });
         return tx.ussdPaymentIntent.create({
           data: {
             organizationId: input.integration.organizationId,
             integrationId: input.integration.id,
-            orderId: input.order.id,
+            orderId: paymentRequest.orderId,
             paymentRequestId: paymentRequest.id,
             providerAttemptId: providerAttempt.id,
             merchantFactorId,
@@ -290,7 +320,24 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
       return toIntentProjection(created);
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-        const raced = await prisma.ussdPaymentIntent.findUnique({ where });
+        const raced = input.paymentRequestId
+          ? await prisma.ussdPaymentIntent.findUnique({
+              where: {
+                paymentRequestId_organizationId: {
+                  paymentRequestId: input.paymentRequestId,
+                  organizationId: input.integration.organizationId,
+                },
+              },
+            })
+          : await prisma.ussdPaymentIntent.findUnique({
+              where: {
+                integrationId_orderId_sessionIdHash: {
+                  integrationId: input.integration.id,
+                  orderId: input.order!.id,
+                  sessionIdHash: input.sessionIdHash,
+                },
+              },
+            });
         if (raced) return toIntentProjection(raced);
       }
       throw error;
@@ -303,34 +350,31 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
   }
 
   async recordCallbackEvent(input: Parameters<UssdIntegrationRepository["recordCallbackEvent"]>[0]) {
-    try {
-      await prisma.ussdCallbackEvent.create({
-        data: {
-          organizationId: input.integration.organizationId,
-          integrationId: input.integration.id,
-          paymentIntentId: input.paymentIntentId ?? null,
-          idempotencyKey: input.idempotencyKey,
-          sessionIdHash: input.sessionIdHash,
-          mobileHash: input.mobileHash,
-          callHash: input.callHash,
-          rrnHash: input.rrnHash ?? null,
-          outcome: input.outcome,
-          errorCode: input.errorCode ?? null,
-        },
-      });
-    } catch (error) {
-      if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) throw error;
-    }
+    await prisma.ussdCallbackEvent.createMany({
+      data: {
+        organizationId: input.integration.organizationId,
+        integrationId: input.integration.id,
+        paymentIntentId: input.paymentIntentId ?? null,
+        idempotencyKey: input.idempotencyKey,
+        sessionIdHash: input.sessionIdHash,
+        mobileHash: input.mobileHash,
+        callHash: input.callHash,
+        rrnHash: input.rrnHash ?? null,
+        outcome: input.outcome,
+        errorCode: input.errorCode ?? null,
+      },
+      skipDuplicates: true,
+    });
   }
 
   async markPaymentVerificationStarted(input: Parameters<UssdIntegrationRepository["markPaymentVerificationStarted"]>[0]) {
     await prisma.$transaction(async (tx) => {
-      await tx.ussdPaymentIntent.updateMany({
+      const claim = await tx.ussdPaymentIntent.updateMany({
         where: {
           id: input.intent.id,
           integrationId: input.integration.id,
           organizationId: input.integration.organizationId,
-          status: { not: "SETTLED" },
+          status: { notIn: ["SETTLED", "VERIFIED"] },
         },
         data: {
           status: "VERIFYING",
@@ -338,9 +382,14 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
           rrn: input.rrn,
         },
       });
+      if (claim.count !== 1) return;
       if (input.intent.paymentRequestId) {
-        await tx.paymentRequest.update({
-          where: { id_organizationId: { id: input.intent.paymentRequestId, organizationId: input.integration.organizationId } },
+        await tx.paymentRequest.updateMany({
+          where: {
+            id: input.intent.paymentRequestId,
+            organizationId: input.integration.organizationId,
+            status: { notIn: ["EXPIRED", "CANCELLED", "PAID"] },
+          },
           data: { status: "PENDING_VERIFICATION", providerReference: input.providerFactorId },
         });
       }
@@ -365,21 +414,26 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
 
   async markPaymentVerificationFailed(input: Parameters<UssdIntegrationRepository["markPaymentVerificationFailed"]>[0]) {
     await prisma.$transaction(async (tx) => {
-      await tx.ussdPaymentIntent.updateMany({
+      const claim = await tx.ussdPaymentIntent.updateMany({
         where: {
           id: input.intent.id,
           integrationId: input.integration.id,
           organizationId: input.integration.organizationId,
-          status: { not: "SETTLED" },
+          status: { notIn: ["SETTLED", "VERIFIED"] },
         },
         data: {
           status: input.retryable ? "REQUESTED" : "REJECTED",
           providerResult: input.reason.slice(0, 64),
         },
       });
+      if (claim.count !== 1) return;
       if (input.intent.paymentRequestId) {
-        await tx.paymentRequest.update({
-          where: { id_organizationId: { id: input.intent.paymentRequestId, organizationId: input.integration.organizationId } },
+        await tx.paymentRequest.updateMany({
+          where: {
+            id: input.intent.paymentRequestId,
+            organizationId: input.integration.organizationId,
+            status: { notIn: ["EXPIRED", "CANCELLED", "PAID"] },
+          },
           data: input.retryable
             ? { status: "PENDING_VERIFICATION", failedAt: null }
             : { status: "FAILED", failedAt: new Date() },
@@ -398,9 +452,10 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
   }
 
   async settleVerifiedPayment(input: PaymentSettlementInput): Promise<PaymentSettlementResult> {
+    const settlementEventKey = `settlement:${input.idempotencyKey}`;
     try {
       return await prisma.$transaction(async (tx) => {
-      const priorEvent = await tx.ussdCallbackEvent.findUnique({ where: { idempotencyKey: input.idempotencyKey } });
+      const priorEvent = await tx.ussdCallbackEvent.findUnique({ where: { idempotencyKey: settlementEventKey } });
       if (priorEvent) return { kind: "DUPLICATE", notification: null };
 
       const intent = await tx.ussdPaymentIntent.findFirst({
@@ -410,6 +465,7 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
           organizationId: input.integration.organizationId,
         },
         include: {
+          paymentRequest: true,
           order: {
             include: {
               guestCustomer: { select: { phone: true } },
@@ -425,7 +481,7 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
             organizationId: input.integration.organizationId,
             integrationId: input.integration.id,
             paymentIntentId: intent.id,
-            idempotencyKey: input.idempotencyKey,
+            idempotencyKey: settlementEventKey,
             sessionIdHash: input.sessionIdHash,
             mobileHash: input.mobileHash,
             callHash: input.callHash,
@@ -436,9 +492,74 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
         return { kind: "DUPLICATE", notification: null };
       }
 
-      const previousStatus = intent.order.paymentStatus;
-      await tx.ussdPaymentIntent.update({
-        where: { id: intent.id },
+      if (!intent.paymentRequest) throw new Error("PAYMENT_REQUEST_NOT_FOUND");
+      if (["EXPIRED", "CANCELLED", "PAID"].includes(intent.paymentRequest.status)) {
+        const claim = await tx.ussdPaymentIntent.updateMany({
+          where: { id: intent.id, status: { notIn: ["VERIFIED", "SETTLED"] } },
+          data: {
+            status: "VERIFIED",
+            providerFactorId: input.providerFactorId,
+            rrn: input.rrn,
+            providerResult: input.providerResult.slice(0, 64),
+            verifiedAt: new Date(),
+          },
+        });
+        if (claim.count !== 1) return { kind: "DUPLICATE", notification: null };
+        if (intent.providerAttemptId) {
+          await tx.paymentProviderAttempt.update({
+            where: { id_organizationId: { id: intent.providerAttemptId, organizationId: input.integration.organizationId } },
+            data: {
+              status: "VERIFIED",
+              providerFactorId: input.providerFactorId,
+              rrn: input.rrn,
+              providerResult: input.providerResult.slice(0, 64),
+              verificationEvidence: {
+                provider: "INOTI_USSD",
+                verification: "GetPayments",
+                amountRial: intent.amountRial.toString(),
+                reconciliationRequired: true,
+                paymentRequestStatus: intent.paymentRequest.status,
+              },
+              verifiedAt: new Date(),
+            },
+          });
+        }
+        await tx.ussdCallbackEvent.create({
+          data: {
+            organizationId: input.integration.organizationId,
+            integrationId: input.integration.id,
+            paymentIntentId: intent.id,
+            idempotencyKey: settlementEventKey,
+            sessionIdHash: input.sessionIdHash,
+            mobileHash: input.mobileHash,
+            callHash: input.callHash,
+            rrnHash: input.rrnHash,
+            outcome: "ACCEPTED",
+            errorCode: `RECONCILIATION_REQUIRED_${intent.paymentRequest.status}`,
+          },
+        });
+        await tx.auditLog.create({
+          data: {
+            action: "CHANGE_STATUS",
+            entityType: "PaymentRequest",
+            entityId: intent.paymentRequest.id,
+            description: "Verified iNoti payment requires reconciliation",
+            previousValue: { status: intent.paymentRequest.status },
+            newValue: { status: intent.paymentRequest.status, providerVerified: true, settlementApplied: false },
+            organizationId: input.integration.organizationId,
+            organizationSlug: input.integration.organizationSlug,
+          },
+        });
+        return {
+          kind: "RECONCILIATION_REQUIRED",
+          notification: null,
+          requestStatus: intent.paymentRequest.status as "EXPIRED" | "CANCELLED" | "PAID",
+        };
+      }
+
+      const previousStatus = intent.order?.paymentStatus ?? null;
+      const claim = await tx.ussdPaymentIntent.updateMany({
+        where: { id: intent.id, status: { not: "SETTLED" } },
         data: {
           status: "SETTLED",
           providerFactorId: input.providerFactorId,
@@ -448,6 +569,7 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
           settledAt: new Date(),
         },
       });
+      if (claim.count !== 1) return { kind: "DUPLICATE", notification: null };
       if (intent.paymentRequestId) {
         await tx.paymentRequest.update({
           where: { id_organizationId: { id: intent.paymentRequestId, organizationId: input.integration.organizationId } },
@@ -475,7 +597,7 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
           },
         });
       }
-      await tx.order.update({
+      if (intent.order) await tx.order.update({
         where: { id: intent.orderId },
         data: {
           paymentStatus: "COMPLETED",
@@ -501,11 +623,11 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
           },
         },
       });
-      if (previousStatus !== "COMPLETED") {
+      if (intent.order && previousStatus !== "COMPLETED") {
         await tx.paymentEvent.create({
           data: {
             orderId: intent.orderId,
-            previousStatus,
+            previousStatus: previousStatus!,
             newStatus: "COMPLETED",
             method: "INOTI_USSD",
             amount: intent.order.total,
@@ -519,7 +641,7 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
           organizationId: input.integration.organizationId,
           integrationId: input.integration.id,
           paymentIntentId: intent.id,
-          idempotencyKey: input.idempotencyKey,
+          idempotencyKey: settlementEventKey,
           sessionIdHash: input.sessionIdHash,
           mobileHash: input.mobileHash,
           callHash: input.callHash,
@@ -533,8 +655,8 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
           entityType: "UssdPaymentIntent",
           entityId: intent.id,
           description: "iNoti USSD payment verified and settled",
-          previousValue: { paymentStatus: previousStatus },
-          newValue: { paymentStatus: "COMPLETED", provider: "INOTI_USSD", merchantFactorId: intent.merchantFactorId },
+          previousValue: { paymentStatus: previousStatus, paymentRequestStatus: intent.paymentRequest.status },
+          newValue: { paymentStatus: intent.order ? "COMPLETED" : null, paymentRequestStatus: "PAID", provider: "INOTI_USSD", merchantFactorId: intent.merchantFactorId },
           organizationId: input.integration.organizationId,
           organizationSlug: input.integration.organizationSlug,
         },
@@ -542,12 +664,12 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
 
       return {
         kind: "SETTLED",
-        notification: previousStatus === "COMPLETED" ? null : {
+        notification: !intent.order || previousStatus === "COMPLETED" ? null : {
           intentId: intent.id,
           organizationId: input.integration.organizationId,
           orderId: intent.order.id,
           orderNumber: intent.order.orderNumber,
-          previousStatus,
+          previousStatus: previousStatus!,
           customerId: intent.order.customerId,
           guestCustomerId: intent.order.guestCustomerId,
           guestPhone: intent.order.guestCustomer?.phone ?? null,
@@ -556,7 +678,7 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
       }, { maxWait: 10_000, timeout: 10_000 });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-        const winner = await prisma.ussdCallbackEvent.findUnique({ where: { idempotencyKey: input.idempotencyKey } });
+        const winner = await prisma.ussdCallbackEvent.findUnique({ where: { idempotencyKey: settlementEventKey } });
         if (winner) return { kind: "DUPLICATE", notification: null };
       }
       throw error;

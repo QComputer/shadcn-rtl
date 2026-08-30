@@ -98,6 +98,27 @@ function parseSoapRecords(xml: string): InotiPaymentRecord[] | null {
   }
 }
 
+function recordMatchesQuery(record: InotiPaymentRecord, query: InotiPaymentVerificationQuery) {
+  return record.successful &&
+    record.sessionId === query.sessionId &&
+    record.mobile === query.mobile &&
+    record.amountRial === query.amountRial &&
+    record.merchantFactorId === query.merchantFactorId &&
+    record.providerFactorId === query.providerFactorId &&
+    record.rrn === query.rrn;
+}
+
+export function selectVerifiedPaymentRecord(
+  records: readonly InotiPaymentRecord[],
+  query: InotiPaymentVerificationQuery,
+): InotiVerificationResult {
+  if (records.length === 0) return { ok: false, code: "NOT_FOUND" };
+  const matches = records.filter((record) => recordMatchesQuery(record, query));
+  if (matches.length === 1) return { ok: true, record: matches[0] };
+  if (matches.length > 1) return { ok: false, code: "AMBIGUOUS_MATCH" };
+  return { ok: false, code: "CORRELATION_MISMATCH" };
+}
+
 function timeoutFromEnvironment() {
   const parsed = Number(process.env.INOTI_USSD_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS);
   return Number.isInteger(parsed) && parsed >= 1_000 && parsed <= 30_000 ? parsed : DEFAULT_TIMEOUT_MS;
@@ -177,8 +198,7 @@ export class InotiUssdProvider implements UssdProvider {
       if (!response.ok) return { ok: false, code: "PROVIDER_ERROR" };
       const records = parseSoapRecords(await response.text());
       if (!records) return { ok: false, code: "MALFORMED_RESPONSE" };
-      if (records.length !== 1) return { ok: false, code: records.length ? "MALFORMED_RESPONSE" : "NOT_FOUND" };
-      return { ok: true, record: records[0] };
+      return selectVerifiedPaymentRecord(records, query);
     } catch (error) {
       return { ok: false, code: error instanceof Error && error.name === "AbortError" ? "TIMEOUT" : "PROVIDER_ERROR" };
     } finally {

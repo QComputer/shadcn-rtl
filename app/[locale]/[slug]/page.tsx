@@ -19,6 +19,7 @@ import AppointmentLayout from "./appointment/layout";
 import { OrganizationBrandHome } from "@/components/public/organization-brand-home";
 import { OrganizationVisitorChoice } from "@/components/public/organization-visitor-choice";
 import { appResourceUrl } from "@/lib/app-base-path";
+import { resolveOrganizationHomeContent } from "@/lib/organization-home-content";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -64,14 +65,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     coverImage: organization.coverImage,
     branding: organization.branding,
   });
+  const homeContent = resolveOrganizationHomeContent({ organizationSlug: slug, locale });
   const seoContext = await getOrganizationRootSeoContext({ locale, slug });
 
   return buildPublicMetadata({
     locale,
     baseUrl: seoContext.baseUrl,
     path: seoContext.path,
-    title: branding.displayName || organization.name || "Bazarbaaz",
-    description: organization.description || `${organization.name} on Bazarbaaz.`,
+    title: homeContent?.seo.title || branding.displayName || organization.name || "Bazarbaaz",
+    description: homeContent?.seo.description || organization.description || `${organization.name} on Bazarbaaz.`,
     image: branding.ogImage,
     alternatePath: seoContext.alternatePath,
     icons: {

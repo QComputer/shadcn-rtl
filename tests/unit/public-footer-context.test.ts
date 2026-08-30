@@ -10,6 +10,12 @@ describe("context-aware public footer", () => {
     assert.equal(getPublicFooterContextForPathname("/en/pricing"), "platform");
   });
 
+  it("lets organization roots own their tenant footer", () => {
+    assert.equal(getPublicFooterContextForPathname("/fa/aka-shoes"), "none");
+    assert.equal(getPublicFooterContextForPathname("/en/cafe-leo"), "none");
+    assert.equal(getPublicFooterContextForPathname("/fa/features"), "platform");
+  });
+
   it("uses the shop footer for shop routes and compatibility children", () => {
     assert.equal(getPublicFooterContextForPathname("/fa/shop/chakme"), "shop");
     assert.equal(getPublicFooterContextForPathname("/fa/shop/chakme/product/latte"), "shop");

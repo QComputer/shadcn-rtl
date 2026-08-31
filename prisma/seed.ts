@@ -1,4 +1,4 @@
-import { PrismaClient, OrganizationType, OrganizationCapabilityStatus, UserRole, AppointmentStatus, CartStatus, OrderType, OrderStatus, PaymentStatus, PaymentMethod, DayOfWeek, type OrganizationCapabilityKey } from '@prisma/client';
+import { PrismaClient, OrganizationType, OrganizationCapabilityStatus, UserRole, AppointmentStatus, CartStatus, OrderType, OrderStatus, PaymentStatus, PaymentMethod, DayOfWeek, type OrganizationCapabilityKey, OrganizationBrandingSource } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { DEMO_SHOWCASE_BLUEPRINTS } from "../lib/demo-universe/demo-showcase-blueprints";
 import { seedSicilyMenu } from "./seed-data/sicily-menu";
@@ -694,6 +694,23 @@ async function mainDev(): Promise<SeedContext> {
         name: "chakme3", // unique username
         phone: "+989100000005",
         role: UserRole.DRIVER,
+        isActive: true,
+        isTeamMember: true,
+        locale: "fa",
+        theme: "dark",
+      },
+    }),
+
+    // ========================================
+    // Cafe Leo Owner (index 33)
+    // ========================================
+    prisma.user.create({
+      data: {
+        password: hashedPassword,
+        firstName: "جلیل",
+        lastName: "لئو",
+        name: "jalil",
+        role: UserRole.ADMIN,
         isActive: true,
         isTeamMember: true,
         locale: "fa",
@@ -2414,6 +2431,7 @@ async function upsertPilotOrganization(input: {
   industryKey: "RESTAURANT" | "RETAIL_SHOP" | "FASHION_BOUTIQUE";
   capabilities: ReadonlyArray<"SHOP" | "APPOINTMENT" | "CRM" | "IAM" | "ICV" | "EBC" | "USSD" | "SMS">;
   operatorUserId: string;
+  ownerUserId?: string;
   status: "DISCOVERY" | "ONBOARDING" | "CONFIGURATION" | "READY_FOR_LAUNCH";
   notes: string;
   seoGrowthPlanner: {
@@ -2481,6 +2499,24 @@ async function upsertPilotOrganization(input: {
       where: { organizationId_key: { organizationId: organization.id, key: capability } },
       update: { status: OrganizationCapabilityStatus.ACTIVE, enabledAt: new Date() },
       create: { organizationId: organization.id, key: capability, status: OrganizationCapabilityStatus.ACTIVE, enabledAt: new Date() },
+    });
+  }
+
+  if (input.ownerUserId) {
+    await prisma.organizationMember.upsert({
+      where: { organizationId_userId: { organizationId: organization.id, userId: input.ownerUserId } },
+      update: {
+        organizationSlug: organization.slug,
+        role: UserRole.ADMIN,
+        isActive: true,
+      },
+      create: {
+        organizationId: organization.id,
+        organizationSlug: organization.slug,
+        userId: input.ownerUserId,
+        role: UserRole.ADMIN,
+        isActive: true,
+      },
     });
   }
 
@@ -2617,6 +2653,10 @@ async function seedPilotWorkspaces() {
     where: { role: UserRole.SUPER_ADMIN, isActive: true },
     select: { id: true },
   });
+  const cafeLeoOwner = await prisma.user.findUniqueOrThrow({
+    where: { name: "jalil" },
+    select: { id: true },
+  });
 
   const pilots = [
     {
@@ -2640,6 +2680,7 @@ async function seedPilotWorkspaces() {
       type: OrganizationType.SHOP,
       industryKey: "RESTAURANT" as const,
       capabilities: ["SHOP", "CRM", "IAM", "USSD", "SMS"] as const,
+      ownerUserId: cafeLeoOwner.id,
       status: "ONBOARDING" as const,
       notes: "Website source preparation for https://iran.leocafe.vip/; crawling disabled.",
       seoGrowthPlanner: {
@@ -2682,7 +2723,10 @@ async function seedPilotWorkspaces() {
   ];
 
   for (const pilot of pilots) {
-    await upsertPilotOrganization({ ...pilot, operatorUserId: operator.id });
+    await upsertPilotOrganization({
+      ...pilot,
+      operatorUserId: pilot.slug === "cafe-leo" && "ownerUserId" in pilot && pilot.ownerUserId ? pilot.ownerUserId : operator.id,
+    });
   }
   console.log(`✅ Created ${pilots.length} pilot operations workspaces`);
 }
@@ -2696,6 +2740,56 @@ async function main() {
 
   await seedSicilyMenu(prisma, sicilyOrg);
   await seedPilotWorkspaces();
+  await seedItaliano13Branding(prisma);
+}
+
+async function seedItaliano13Branding(db: PrismaClient) {
+  const organization = await db.organization.findUnique({
+    where: { slug: "italiano-13" },
+    select: { id: true },
+  });
+  if (!organization) return;
+
+  await db.organizationBranding.upsert({
+    where: { organizationId: organization.id },
+    update: {
+      displayName: "رستوران ایتالیایی سیزده",
+      shortName: "Restaurant 13",
+      logoUrl: "/brand/tenants/restaurant-13/brand/production-ready/logo-lockup-fa.svg",
+      markUrl: "/brand/tenants/restaurant-13/brand/production-ready/logo-mark.svg",
+      logoInverseUrl: "/brand/tenants/restaurant-13/brand/production-ready/logo-mark-light.svg",
+      faviconUrl: "/brand/tenants/restaurant-13/brand/production-ready/favicon.ico",
+      appleTouchIconUrl: "/brand/tenants/restaurant-13/brand/production-ready/apple-touch-icon.png",
+      pwaIcon192Url: "/brand/tenants/restaurant-13/brand/production-ready/icon-192.png",
+      pwaIcon512Url: "/brand/tenants/restaurant-13/brand/production-ready/icon-512.png",
+      pwaMaskable192Url: "/brand/tenants/restaurant-13/brand/production-ready/icon-192-dark.png",
+      pwaMaskable512Url: "/brand/tenants/restaurant-13/brand/production-ready/icon-512-dark.png",
+      monochromeIconUrl: "/brand/tenants/restaurant-13/brand/production-ready/logo-mark.svg",
+      themeColor: "#C94035",
+      backgroundColor: "#F7F1E9",
+      ogImageUrl: "/brand/tenants/restaurant-13/brand/production-ready/og-image.webp",
+      source: OrganizationBrandingSource.BAZARBAAZ_MANAGED,
+    },
+    create: {
+      organizationId: organization.id,
+      displayName: "رستوران ایتالیایی سیزده",
+      shortName: "Restaurant 13",
+      logoUrl: "/brand/tenants/restaurant-13/brand/production-ready/logo-lockup-fa.svg",
+      markUrl: "/brand/tenants/restaurant-13/brand/production-ready/logo-mark.svg",
+      logoInverseUrl: "/brand/tenants/restaurant-13/brand/production-ready/logo-mark-light.svg",
+      faviconUrl: "/brand/tenants/restaurant-13/brand/production-ready/favicon.ico",
+      appleTouchIconUrl: "/brand/tenants/restaurant-13/brand/production-ready/apple-touch-icon.png",
+      pwaIcon192Url: "/brand/tenants/restaurant-13/brand/production-ready/icon-192.png",
+      pwaIcon512Url: "/brand/tenants/restaurant-13/brand/production-ready/icon-512.png",
+      pwaMaskable192Url: "/brand/tenants/restaurant-13/brand/production-ready/icon-192-dark.png",
+      pwaMaskable512Url: "/brand/tenants/restaurant-13/brand/production-ready/icon-512-dark.png",
+      monochromeIconUrl: "/brand/tenants/restaurant-13/brand/production-ready/logo-mark.svg",
+      themeColor: "#C94035",
+      backgroundColor: "#F7F1E9",
+      ogImageUrl: "/brand/tenants/restaurant-13/brand/production-ready/og-image.webp",
+      source: OrganizationBrandingSource.BAZARBAAZ_MANAGED,
+    },
+  });
 }
 
 main()

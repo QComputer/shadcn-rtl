@@ -109,7 +109,7 @@ export async function OrganizationBrandHome({ params }: OrganizationBrandHomePro
     id: true, name: true, description: true, address: true, phone: true, email: true, logo: true, coverImage: true,
     capabilities: { where: { status: "ACTIVE" }, select: { key: true } },
     domains: { where: { isPrimary: true, status: "ACTIVE" }, select: { domain: true }, take: 1 },
-    branding: { select: { organizationId: true, displayName: true, shortName: true, logoUrl: true, faviconUrl: true, appleTouchIconUrl: true, pwaIcon192Url: true, pwaIcon512Url: true, ogImageUrl: true, source: true } },
+    branding: { select: { organizationId: true, displayName: true, shortName: true, logoUrl: true, logoInverseUrl: true, markUrl: true, faviconUrl: true, appleTouchIconUrl: true, pwaIcon192Url: true, pwaIcon512Url: true, pwaMaskable192Url: true, pwaMaskable512Url: true, monochromeIconUrl: true, themeColor: true, backgroundColor: true, ogImageUrl: true, source: true } },
   } });
   if (!organization) notFound();
   const branding = resolveOrganizationBranding({ organizationId: organization.id, name: organization.name, logo: organization.logo, coverImage: organization.coverImage, branding: organization.branding });

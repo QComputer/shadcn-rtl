@@ -47,4 +47,29 @@ describe("organization editorial home content", () => {
     assert.match(source, /resolveOrganizationHomeContent/);
     assert.match(source, /buildOrganizationPublicPath/);
   });
+
+  it("resolves the localized Restaurant 13 pilot through the generic adapter", () => {
+    const home = resolveOrganizationHomeContent({ organizationSlug: "italiano-13", locale: "fa" });
+    assert.ok(home);
+    assert.equal(home.seo.title, "رستوران ایتالیایی سیزده | شهرکرد");
+    assert.equal(home.hero.desktopImage.src.endsWith("hero-main.webp"), true);
+    assert.equal(home.hero.mobileImage.src.endsWith("hero-main-mobile.webp"), true);
+    assert.equal(home.collections.length, 4);
+    assert.equal(home.featured.items.length, 5);
+    assert.equal(home.lookbook.items.length, 4);
+    assert.equal(home.contact.phoneFallback, "03832251313");
+    assert.equal(home.contact.instagramUrl, "https://www.instagram.com/restaurant_13_/");
+  });
+
+  it("references every supplied Restaurant 13 homepage asset and keeps them outside Product media", () => {
+    const home = resolveOrganizationHomeContent({ organizationSlug: "italiano-13", locale: "fa" });
+    assert.ok(home);
+    const images = [home.hero.desktopImage, home.hero.mobileImage, ...home.collections.map((item) => item.image), ...home.featured.items.map((item) => item.image), ...home.lookbook.items.map((item) => item.image)];
+    assert.ok(images.length > 0);
+    for (const image of images) {
+      assert.match(image.src, /^\/brand\/tenants\/restaurant-13\//);
+      assert.equal(existsSync(join(process.cwd(), "public", image.src.replace(/^\//, ""))), true, image.src);
+      assert.ok(image.alt.length > 0);
+    }
+  });
 });

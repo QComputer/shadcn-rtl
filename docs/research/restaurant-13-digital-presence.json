@@ -1,0 +1,182 @@
+{
+  "agent": "Kilo Code",
+  "branch": "kilo/restaurant-13-presence-research",
+  "baseMain": "553e203a2f1e84d5abc6fa073c5b0a5bdcc13e05",
+  "generatedAt": "2026-09-01T01:30:00+03:30",
+  "identity": {
+    "primaryName": "فست فود ایتالیایی سیزده",
+    "alternativeNames": [
+      "رستوران ایتالیایی سیزده",
+      "رستوران ۱۳",
+      "Restaurant 13"
+    ],
+    "phone": "03832251313",
+    "phoneVerified": false,
+    "instagram": "@restaurant_13_",
+    "instagramUrl": "https://www.instagram.com/restaurant_13_/",
+    "instagramVerified": false,
+    "generalLocation": "شهرکرد، بلوار آیت‌الله کاشانی",
+    "exactAddress": null,
+    "openingHours": null,
+    "coordinates": null,
+    "businessCategory": "Fast food / Italian restaurant"
+  },
+  "logo": {
+    "status": "PROVISIONAL",
+    "officialVerified": false,
+    "currentMarkMatchesOfficial": "UNKNOWN",
+    "runtimeAssetChanged": false
+  },
+  "snappfood": {
+    "sourceReachable": true,
+    "restaurantCode": "31lmw4",
+    "apiEndpoint": "https://apigw.snappfood.ir/menu-read-model/31lmw4?lat=35.774&long=51.418&optionalClient=PWA&client=PWA&deviceType=PWA&appVersion=6.0.0&Bonyan=true",
+    "webUrl": "https://snappfood.ir/restaurant/menu/%D9%81%D8%B3%D8%AA_%D9%81%D9%88%D8%AF_%D8%A7%DB%8C%D8%AA%D8%A7%D9%84%DB%8C%D8%A7%DB%8C%DB%8C_%D8%B3%DB%8C%D8%B2%D8%AF%D9%87-r-31lmw4/?is_pickup=0",
+    "previousBaseline": {
+      "categories": 9,
+      "products": 56,
+      "prices": 72
+    },
+    "currentSnapshot": {
+      "categories": 9,
+      "products": 55,
+      "prices": 71
+    },
+    "changedSinceSnapshot": true,
+    "diff": {
+      "removed": [
+        "آبمیوه گازدار خانواده هوفنبرگ لیموناد"
+      ],
+      "added": [],
+      "renamed": [],
+      "priceChanged": []
+    },
+    "productionImportPerformed": false
+  },
+  "inotiIMenu": {
+    "officialSemanticsDiscovered": "PARTIAL",
+    "model": "UNKNOWN",
+    "currentAdapter": "DryRunIntegrationAdapter",
+    "isLiveIntegration": false,
+    "requiredIdentifiers": [
+      "organization iNoti account",
+      "iMenu service enablement"
+    ],
+    "requiredCredentials": "per-organization iNoti username/password pattern",
+    "apiAvailable": false,
+    "manualProviderActionRequired": true,
+    "providerMutationPerformed": false
+  },
+  "bazarbaazIMenuMapping": {
+    "sourceOfTruth": "BAZARBAAZ",
+    "classification": "LINK_ONLY_OR_MANUAL_PROVIDER_PRESENTATION",
+    "categoryMapping": "Bazarbaaz ProductCategory -> iMenu category",
+    "productMapping": "Bazarbaaz Product -> iMenu product",
+    "variantMapping": "Bazarbaaz Variant -> iMenu variation/size",
+    "priceMapping": "Bazarbaaz price Toman -> iMenu price (identity)",
+    "imageStrategy": "Bazarbaaz-owned media only; do not hotlink external provider CDN"
+  },
+  "iamContent": {
+    "prepared": true,
+    "homepageLink": "https://bazarbaaz.ir/fa/italiano-13",
+    "menuLink": "https://bazarbaaz.ir/fa/italiano-13/shop",
+    "linkStatus": "EXPECTED_AFTER_PRODUCTION_ONBOARDING",
+    "sections": [
+      "Page title",
+      "H1",
+      "Short introduction",
+      "Business description",
+      "CTA texts",
+      "Phone",
+      "Instagram reference",
+      "Location phrasing"
+    ]
+  },
+  "seoEntity": {
+    "primaryEntity": "رستوران ایتالیایی سیزده",
+    "alternativeNames": [
+      "رستوران ۱۳",
+      "Restaurant 13",
+      "فست فود ایتالیایی سیزده"
+    ],
+    "businessCategory": "رستوران ایتالیایی / فست فود",
+    "city": "شهرکرد",
+    "suggestedTitle": "رستوران ایتالیایی سیزده | شهرکرد | منو و تماس",
+    "suggestedMeta": "منوی رستوران ۱۳ شهرکرد: پیتزا، برگر، پاستا و غذاهای فرنگی. مشاهده منو، تماس و آدرس رستوران ایتالیایی سیزده در شهرکرد.",
+    "suggestedH1": "رستوران ۱۳؛ پیتزا، برگر و پاستا در شهرکرد",
+    "suggestedH2s": [
+      "منو رستوران ۱۳",
+      "تماس و آدرس",
+      "درباره رستوران ۱۳"
+    ],
+    "faqCandidates": [
+      "آدرس رستوران ۱۳ شهرکرد چیست؟",
+      "شماره تماس رستوران ایتالیایی سیزده؟",
+      "منوی رستوران ۱۳ شامل چه مواردی است؟",
+      "آیا رستوران ۱۳ تحویل دارد؟"
+    ],
+    "keywordClusters": [
+      "رستوران در شهرکرد",
+      "رستوران ایتالیایی شهرکرد",
+      "فست فود شهرکرد",
+      "پیتزا در شهرکرد",
+      "رستوران سیزده شهرکرد",
+      "فست فود ایتالیایی سیزده"
+    ],
+    "iamKeywordTargets": {
+      "branded": "رستوران ۱۳ شهرکرد",
+      "discovery": "فست فود شهرکرد",
+      "category": [
+        "پیتزا شهرکرد",
+        "برگر شهرکرد"
+      ]
+    }
+  },
+  "presenceGraph": {
+    "canonicalBazarbaazEntity": "https://bazarbaaz.ir/fa/italiano-13",
+    "bazarbaazMenu": "https://bazarbaaz.ir/fa/italiano-13/shop",
+    "instagram": "https://www.instagram.com/restaurant_13_/",
+    "iam": "future acquisition page for فست فود شهرکرد",
+    "imenu": "link-only or manual provider presentation"
+  },
+  "productionQA": {
+    "bazarbaaz": "ACCESSIBLE",
+    "cafeLeo": "ACCESSIBLE",
+    "akaShoes": "ACCESSIBLE",
+    "italianoHomepage": "404_NOT_FOUND",
+    "italianoMenu": "404_NOT_FOUND",
+    "productionMutation": false
+  },
+  "assetQA": {
+    "totalFiles": 34,
+    "totalSizeBytes": 948087,
+    "brokenFiles": 0,
+    "provisionalLogoIdentifiable": true,
+    "mimeExtensions": {
+      "webp": ["hero", "collections", "products", "lookbook", "og", "brand-background"],
+      "png": ["pwa-icons", "social-avatar", "apple-touch-icon", "logo-marks"],
+      "svg": ["logo-lockups", "logo-marks", "pattern"],
+      "ico": ["favicon"]
+    }
+  },
+  "files": {
+    "documentation": [
+      "docs/research/restaurant-13-digital-presence.md"
+    ],
+    "structuredHandoff": [
+      "docs/research/restaurant-13-digital-presence.json"
+    ],
+    "runtimeFilesChanged": []
+  },
+  "quality": {
+    "gitDiffCheck": "PASS"
+  },
+  "finalDecision": {
+    "identity": "PARTIAL",
+    "officialLogo": "NOT_VERIFIED",
+    "imenu": "SOFTWARE_DESIGN_READY",
+    "iamContent": "PARTIAL",
+    "seoEntityContent": "PARTIAL",
+    "readyForCodexHandoff": true
+  }
+}

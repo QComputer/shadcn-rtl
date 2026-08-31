@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/internal/payments/inoti-verification",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}

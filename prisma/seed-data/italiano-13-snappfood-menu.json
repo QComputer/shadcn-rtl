@@ -1,0 +1,1054 @@
+{
+  "snapshotVersion": 1,
+  "source": {
+    "provider": "SNAPPFOOD_MENU",
+    "restaurantCode": "31lmw4",
+    "restaurantName": "فست فود ایتالیایی سیزده",
+    "url": "https://snappfood.ir/restaurant/menu/%D9%81%D8%B3%D8%AA_%D9%81%D9%88%D8%AF_%D8%A7%DB%8C%D8%AA%D8%A7%D9%84%DB%8C%D8%A7%DB%8C%DB%8C_%D8%B3%DB%8C%D8%B2%D8%AF%D9%87-r-31lmw4/?is_pickup=0",
+    "publicReadEndpoint": "https://apigw.snappfood.ir/menu-read-model/31lmw4?lat=35.774&long=51.418&optionalClient=PWA&client=PWA&deviceType=PWA&appVersion=6.0.0&Bonyan=true",
+    "retrievalMethod": "normal-browser-public-menu-read-model",
+    "retrievedAt": "2026-08-30T21:10:30.013Z"
+  },
+  "organization": {
+    "slug": "italiano-13"
+  },
+  "money": {
+    "sourceDisplayedUnit": "TOMAN",
+    "sourceApiUnit": "TOMAN",
+    "bazarbaazStoredUnit": "TOMAN",
+    "conversion": "identity",
+    "floatingPointUsed": false
+  },
+  "counts": {
+    "categories": 9,
+    "products": 56,
+    "prices": 72,
+    "unpricedOrAmbiguous": 0,
+    "duplicateSourceIdentities": 0
+  },
+  "parsingWarnings": [],
+  "excludedFields": [
+    "images",
+    "descriptions",
+    "ratings",
+    "reviews",
+    "customer-content"
+  ],
+  "categories": [
+    {
+      "externalId": "category:542176",
+      "name": "سس و چاشنی",
+      "order": 0,
+      "products": [
+        {
+          "externalId": "product:p:180409",
+          "name": "سس قارچ",
+          "order": 0,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:p:180409:31665240",
+              "name": "100 گرم",
+              "priceToman": 80000,
+              "active": true,
+              "order": 0
+            },
+            {
+              "externalId": "variation:p:180409:6647900",
+              "name": "سس قارچ بزرگ",
+              "priceToman": 150000,
+              "active": true,
+              "order": 1
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:6647902",
+          "name": "سس سیر",
+          "order": 1,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:6647902:6647902",
+              "name": null,
+              "priceToman": 60000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:6647910",
+          "name": "سس تری یاکی",
+          "order": 2,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:6647910:6647910",
+              "name": null,
+              "priceToman": 60000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:6647925",
+          "name": "سس سالاد مخصوص",
+          "order": 3,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:6647925:6647925",
+              "name": null,
+              "priceToman": 60000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:6647926",
+          "name": "سس سالاد سزار",
+          "order": 4,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:6647926:6647926",
+              "name": null,
+              "priceToman": 60000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:6647927",
+          "name": "سس چیلی",
+          "order": 5,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:6647927:6647927",
+              "name": null,
+              "priceToman": 60000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:7579585",
+          "name": "سس تک نفره",
+          "order": 6,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:7579585:7579585",
+              "name": null,
+              "priceToman": 12000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalId": "category:391850",
+      "name": "پیتزا",
+      "order": 1,
+      "products": [
+        {
+          "externalId": "product:pv:6647879",
+          "name": "پیتزا سیر استیک مرغ دو نفره",
+          "order": 0,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:6647879:6647879",
+              "name": null,
+              "priceToman": 1040000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:6647880",
+          "name": "پیتزا سیر استیک مرغ تک نفره",
+          "order": 1,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:6647880:6647880",
+              "name": null,
+              "priceToman": 520000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:6647881",
+          "name": "بوریتو گوشت دو نفره",
+          "order": 2,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:6647881:6647881",
+              "name": null,
+              "priceToman": 1250000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:6647882",
+          "name": "بوریتو گوشت تک نفره",
+          "order": 3,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:6647882:6647882",
+              "name": null,
+              "priceToman": 695000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:p:151",
+          "name": "پیتزا میکس",
+          "order": 4,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:p:151:4693506",
+              "name": "یک نفره",
+              "priceToman": 570000,
+              "active": true,
+              "order": 0
+            },
+            {
+              "externalId": "variation:p:151:4693507",
+              "name": "دو نفره",
+              "priceToman": 1070000,
+              "active": true,
+              "order": 1
+            }
+          ]
+        },
+        {
+          "externalId": "product:p:265",
+          "name": "پیتزا اسپشیال",
+          "order": 5,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:p:265:4693508",
+              "name": "یک نفره",
+              "priceToman": 500000,
+              "active": true,
+              "order": 0
+            },
+            {
+              "externalId": "variation:p:265:4693509",
+              "name": "دو نفره",
+              "priceToman": 1000000,
+              "active": true,
+              "order": 1
+            }
+          ]
+        },
+        {
+          "externalId": "product:p:61260",
+          "name": "پیتزا رست بیف کلاسیک",
+          "order": 6,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:p:61260:4693511",
+              "name": "یک نفره",
+              "priceToman": 595000,
+              "active": true,
+              "order": 0
+            },
+            {
+              "externalId": "variation:p:61260:4693512",
+              "name": "دو نفره",
+              "priceToman": 1170000,
+              "active": true,
+              "order": 1
+            }
+          ]
+        },
+        {
+          "externalId": "product:p:4640",
+          "name": "پیتزا زبان",
+          "order": 7,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:p:4640:4693514",
+              "name": "یک نفره",
+              "priceToman": 690000,
+              "active": true,
+              "order": 0
+            },
+            {
+              "externalId": "variation:p:4640:4693515",
+              "name": "دو نفره",
+              "priceToman": 1180000,
+              "active": true,
+              "order": 1
+            }
+          ]
+        },
+        {
+          "externalId": "product:p:138",
+          "name": "پیتزا مکزیکی",
+          "order": 8,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:p:138:4693517",
+              "name": "یک نفره",
+              "priceToman": 520000,
+              "active": true,
+              "order": 0
+            },
+            {
+              "externalId": "variation:p:138:4693518",
+              "name": "دو نفره",
+              "priceToman": 1040000,
+              "active": true,
+              "order": 1
+            }
+          ]
+        },
+        {
+          "externalId": "product:p:58794",
+          "name": "پیتزا مخلوط کلاسیک",
+          "order": 9,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:p:58794:4693520",
+              "name": "یک نفره",
+              "priceToman": 475000,
+              "active": true,
+              "order": 0
+            },
+            {
+              "externalId": "variation:p:58794:4693521",
+              "name": "دو نفره",
+              "priceToman": 995000,
+              "active": true,
+              "order": 1
+            }
+          ]
+        },
+        {
+          "externalId": "product:p:34619",
+          "name": "پیتزا پپرونی کلاسیک",
+          "order": 10,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:p:34619:4693523",
+              "name": "یک نفره",
+              "priceToman": 475000,
+              "active": true,
+              "order": 0
+            },
+            {
+              "externalId": "variation:p:34619:4693524",
+              "name": "دو نفره",
+              "priceToman": 995000,
+              "active": true,
+              "order": 1
+            }
+          ]
+        },
+        {
+          "externalId": "product:p:57408",
+          "name": "پیتزا سبزیجات کلاسیک",
+          "order": 11,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:p:57408:4693526",
+              "name": "یک نفره",
+              "priceToman": 430000,
+              "active": true,
+              "order": 0
+            },
+            {
+              "externalId": "variation:p:57408:4693527",
+              "name": "دو نفره",
+              "priceToman": 850000,
+              "active": true,
+              "order": 1
+            }
+          ]
+        },
+        {
+          "externalId": "product:p:232",
+          "name": "پیتزا یونانی",
+          "order": 12,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:p:232:5311272",
+              "name": "یک نفره",
+              "priceToman": 595000,
+              "active": true,
+              "order": 0
+            },
+            {
+              "externalId": "variation:p:232:5311273",
+              "name": "دو نفره",
+              "priceToman": 1170000,
+              "active": true,
+              "order": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalId": "category:391857",
+      "name": "برگر",
+      "order": 2,
+      "products": [
+        {
+          "externalId": "product:pv:6680059",
+          "name": "هات داگ ویژه سیزده",
+          "order": 0,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:6680059:6680059",
+              "name": null,
+              "priceToman": 500000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalId": "category:391858",
+      "name": "پاستا و لازانیا",
+      "order": 3,
+      "products": [
+        {
+          "externalId": "product:pv:4693601",
+          "name": "پاستا اسپشیال",
+          "order": 0,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693601:4693601",
+              "name": null,
+              "priceToman": 590000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4693602",
+          "name": "پاستا آلفردو گوشت",
+          "order": 1,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693602:4693602",
+              "name": null,
+              "priceToman": 660000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4693603",
+          "name": "پاستا آلفردو مرغ",
+          "order": 2,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693603:4693603",
+              "name": null,
+              "priceToman": 560000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4693604",
+          "name": "پاستا سبزیجات",
+          "order": 3,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693604:4693604",
+              "name": null,
+              "priceToman": 440000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalId": "category:391861",
+      "name": "غذای فرنگی",
+      "order": 4,
+      "products": [
+        {
+          "externalId": "product:pv:6266910",
+          "name": "استیک مرغ با گودا",
+          "order": 0,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:6266910:6266910",
+              "name": null,
+              "priceToman": 775000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4693668",
+          "name": "چیکن استیک پارمزان",
+          "order": 1,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693668:4693668",
+              "name": null,
+              "priceToman": 775000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4693669",
+          "name": "چیکن تریاکی",
+          "order": 2,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693669:4693669",
+              "name": null,
+              "priceToman": 730000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalId": "category:391864",
+      "name": "بشقاب",
+      "order": 5,
+      "products": [
+        {
+          "externalId": "product:pv:26618255",
+          "name": "بشقاب سوخاری تک نفره",
+          "order": 0,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:26618255:26618255",
+              "name": null,
+              "priceToman": 550000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:35318691",
+          "name": "بشقاب میگو",
+          "order": 1,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:35318691:35318691",
+              "name": null,
+              "priceToman": 780000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4693664",
+          "name": "بشقاب سوخاری",
+          "order": 2,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693664:4693664",
+              "name": null,
+              "priceToman": 1200000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4693665",
+          "name": "بشقاب مدیترانه ای",
+          "order": 3,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693665:4693665",
+              "name": null,
+              "priceToman": 580000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4693666",
+          "name": "بشقاب سبزیجات",
+          "order": 4,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693666:4693666",
+              "name": null,
+              "priceToman": 480000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalId": "category:391867",
+      "name": "پیش غذا",
+      "order": 6,
+      "products": [
+        {
+          "externalId": "product:pv:6266911",
+          "name": "وایت فراز",
+          "order": 0,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:6266911:6266911",
+              "name": null,
+              "priceToman": 495000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4693689",
+          "name": "سیب زمینی سرخ کرده",
+          "order": 1,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693689:4693689",
+              "name": null,
+              "priceToman": 260000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4693687",
+          "name": "سیب زمینی با پنیر",
+          "order": 2,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693687:4693687",
+              "name": null,
+              "priceToman": 550000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4693685",
+          "name": "سیب زمینی استامبولی",
+          "order": 3,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693685:4693685",
+              "name": null,
+              "priceToman": 690000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4827282",
+          "name": "سیب زمینی تنوری",
+          "order": 4,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4827282:4827282",
+              "name": null,
+              "priceToman": 280000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4693690",
+          "name": "چیپس و پنیر",
+          "order": 5,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693690:4693690",
+              "name": null,
+              "priceToman": 590000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4693686",
+          "name": "قارچ سوخاری",
+          "order": 6,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693686:4693686",
+              "name": null,
+              "priceToman": 480000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4693688",
+          "name": "نان سیر",
+          "order": 7,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693688:4693688",
+              "name": null,
+              "priceToman": 390000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalId": "category:391868",
+      "name": "سالاد",
+      "order": 7,
+      "products": [
+        {
+          "externalId": "product:pv:25113824",
+          "name": "سالاد فصل کوچک",
+          "order": 0,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:25113824:25113824",
+              "name": null,
+              "priceToman": 200000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:28874228",
+          "name": "سالاد فصل بزرگ",
+          "order": 1,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:28874228:28874228",
+              "name": null,
+              "priceToman": 300000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4693692",
+          "name": "سالاد مخصوص",
+          "order": 2,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693692:4693692",
+              "name": null,
+              "priceToman": 550000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4693695",
+          "name": "سالاد سزار",
+          "order": 3,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693695:4693695",
+              "name": null,
+              "priceToman": 500000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "externalId": "category:391872",
+      "name": "نوشیدنی",
+      "order": 8,
+      "products": [
+        {
+          "externalId": "product:pv:33036349",
+          "name": "آبمیوه گازدار خانواده هوفنبرگ لیموناد",
+          "order": 0,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:33036349:33036349",
+              "name": null,
+              "priceToman": 105000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:33036350",
+          "name": "آبمیوه گازدار خانواده هوفنبرگ بلوبری",
+          "order": 1,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:33036350:33036350",
+              "name": null,
+              "priceToman": 145500,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:33036686",
+          "name": "آبمیوه گازدار قوطی هوفنبرگ کاکتوس",
+          "order": 2,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:33036686:33036686",
+              "name": null,
+              "priceToman": 112500,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:33036687",
+          "name": "آبمیوه گازدار قوطی هوفنبرگ بلوبری",
+          "order": 3,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:33036687:33036687",
+              "name": null,
+              "priceToman": 112500,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:33036689",
+          "name": "آبمیوه گازدار قوطی هوفنبرگ سیب کیوی",
+          "order": 4,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:33036689:33036689",
+              "name": null,
+              "priceToman": 112500,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:p:78698",
+          "name": "نوشابه خانواده",
+          "order": 5,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:p:78698:8480849",
+              "name": "کوکا کولا زیرو",
+              "priceToman": 111000,
+              "active": true,
+              "order": 0
+            },
+            {
+              "externalId": "variation:p:78698:4693723",
+              "name": "کوکا کولا",
+              "priceToman": 111000,
+              "active": true,
+              "order": 1
+            },
+            {
+              "externalId": "variation:p:78698:4693724",
+              "name": "فانتا پرتقالی",
+              "priceToman": 111000,
+              "active": true,
+              "order": 2
+            },
+            {
+              "externalId": "variation:p:78698:4693725",
+              "name": "اسپرایت",
+              "priceToman": 111000,
+              "active": true,
+              "order": 3
+            }
+          ]
+        },
+        {
+          "externalId": "product:p:339",
+          "name": "نوشابه قوطی",
+          "order": 6,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:p:339:4693715",
+              "name": "کوکا کولا",
+              "priceToman": 84000,
+              "active": true,
+              "order": 0
+            },
+            {
+              "externalId": "variation:p:339:4693716",
+              "name": "فانتا پرتقالی",
+              "priceToman": 84000,
+              "active": true,
+              "order": 1
+            },
+            {
+              "externalId": "variation:p:339:4693717",
+              "name": "اسپرایت",
+              "priceToman": 84000,
+              "active": true,
+              "order": 2
+            }
+          ]
+        },
+        {
+          "externalId": "product:p:31392",
+          "name": "ماءالشعیر قوطی هی دی",
+          "order": 7,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:p:31392:4693722",
+              "name": "استوایی",
+              "priceToman": 90000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:p:73900",
+          "name": "دلستر خانواده هوفنبرگ",
+          "order": 8,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:p:73900:4693726",
+              "name": "هلو",
+              "priceToman": 120000,
+              "active": true,
+              "order": 0
+            },
+            {
+              "externalId": "variation:p:73900:4693727",
+              "name": "لیمو",
+              "priceToman": 120000,
+              "active": true,
+              "order": 1
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4693719",
+          "name": "دوغ قوطی",
+          "order": 9,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693719:4693719",
+              "name": null,
+              "priceToman": 82000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        },
+        {
+          "externalId": "product:pv:4693714",
+          "name": "آب معدنی کوچک",
+          "order": 10,
+          "active": true,
+          "variants": [
+            {
+              "externalId": "variation:pv:4693714:4693714",
+              "name": null,
+              "priceToman": 20000,
+              "active": true,
+              "order": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

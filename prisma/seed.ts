@@ -1,4 +1,4 @@
-import { PrismaClient, OrganizationType, OrganizationCapabilityStatus, UserRole, AppointmentStatus, CartStatus, OrderType, OrderStatus, PaymentStatus, PaymentMethod, DayOfWeek, type OrganizationCapabilityKey } from '@prisma/client';
+import { PrismaClient, OrganizationType, OrganizationCapabilityStatus, UserRole, AppointmentStatus, CartStatus, OrderType, OrderStatus, PaymentStatus, PaymentMethod, DayOfWeek, type OrganizationCapabilityKey, OrganizationBrandingSource } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { DEMO_SHOWCASE_BLUEPRINTS } from "../lib/demo-universe/demo-showcase-blueprints";
 import { seedSicilyMenu } from "./seed-data/sicily-menu";
@@ -700,6 +700,7 @@ async function mainDev(): Promise<SeedContext> {
         theme: "dark",
       },
     }),
+
   ]);
 
   console.log(`✅ Created ${users.length} users with all roles\n`);
@@ -2617,7 +2618,6 @@ async function seedPilotWorkspaces() {
     where: { role: UserRole.SUPER_ADMIN, isActive: true },
     select: { id: true },
   });
-
   const pilots = [
     {
       name: "رستوران ایتالیایی ۱۳",
@@ -2696,6 +2696,42 @@ async function main() {
 
   await seedSicilyMenu(prisma, sicilyOrg);
   await seedPilotWorkspaces();
+  await seedItaliano13Branding(prisma);
+}
+
+async function seedItaliano13Branding(db: PrismaClient) {
+  const organization = await db.organization.findUnique({
+    where: { slug: "italiano-13" },
+    select: { id: true },
+  });
+  if (!organization) return;
+
+  await db.organizationBranding.upsert({
+    where: { organizationId: organization.id },
+    update: {
+      displayName: "رستوران ایتالیایی سیزده",
+      shortName: "Restaurant 13",
+      logoUrl: "/brand/tenants/restaurant-13/brand/production-ready/logo-lockup-fa.svg",
+      faviconUrl: "/brand/tenants/restaurant-13/brand/production-ready/favicon.ico",
+      appleTouchIconUrl: "/brand/tenants/restaurant-13/brand/production-ready/apple-touch-icon.png",
+      pwaIcon192Url: "/brand/tenants/restaurant-13/brand/production-ready/icon-192.png",
+      pwaIcon512Url: "/brand/tenants/restaurant-13/brand/production-ready/icon-512.png",
+      ogImageUrl: "/brand/tenants/restaurant-13/brand/production-ready/og-image.webp",
+      source: OrganizationBrandingSource.BAZARBAAZ_MANAGED,
+    },
+    create: {
+      organizationId: organization.id,
+      displayName: "رستوران ایتالیایی سیزده",
+      shortName: "Restaurant 13",
+      logoUrl: "/brand/tenants/restaurant-13/brand/production-ready/logo-lockup-fa.svg",
+      faviconUrl: "/brand/tenants/restaurant-13/brand/production-ready/favicon.ico",
+      appleTouchIconUrl: "/brand/tenants/restaurant-13/brand/production-ready/apple-touch-icon.png",
+      pwaIcon192Url: "/brand/tenants/restaurant-13/brand/production-ready/icon-192.png",
+      pwaIcon512Url: "/brand/tenants/restaurant-13/brand/production-ready/icon-512.png",
+      ogImageUrl: "/brand/tenants/restaurant-13/brand/production-ready/og-image.webp",
+      source: OrganizationBrandingSource.BAZARBAAZ_MANAGED,
+    },
+  });
 }
 
 main()

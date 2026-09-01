@@ -1,3 +1,5 @@
+import type { NextRequest } from "next/server";
+
 export const customDomainLocales = ["fa", "en", "ar"] as const;
 export type CustomDomainLocale = (typeof customDomainLocales)[number];
 export const defaultCustomDomainLocale: CustomDomainLocale = "fa";
@@ -617,4 +619,22 @@ export function isCustomDomainApplicationPath(pathname: string) {
     pathnameWithoutLocale === "/dashboard" ||
     pathnameWithoutLocale.startsWith("/dashboard/")
   );
+}
+
+/**
+ * Extracts and normalizes the X-Forwarded-Host header value.
+ * Returns null if the header is missing, empty, or invalid.
+ */
+export function extractForwardedHost(request: NextRequest): string | null {
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  if (!forwardedHost) return null;
+
+  const normalized = normalizeDomainHost(forwardedHost);
+  if (!normalized) return null;
+
+  // Reject platform hosts in X-Forwarded-Host to prevent spoofing
+  // the canonical platform origin.
+  if (isPlatformHost(normalized)) return null;
+
+  return normalized;
 }

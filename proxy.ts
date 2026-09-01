@@ -6,6 +6,7 @@ import {
   buildOrganizationRootPath,
   buildOrganizationPublicPath,
   buildTenantPublicPath,
+  extractForwardedHost,
   getPlatformCanonicalRedirectTarget,
   CANONICAL_PLATFORM_HOST,
   getShopSubPathFromPlatformPath,
@@ -28,6 +29,10 @@ import {
 } from "@/lib/custom-domain-routing";
 import { getPublicFooterContextForPathname, type PublicFooterContext } from "@/lib/public-footer-context";
 import { appCookiePath, appPath, resolveAppBasePath } from "@/lib/app-base-path";
+import {
+  extractProxyCredential,
+  resolveTrustedForwardedAppTenant,
+} from "@/lib/forwarded-app-resolver.server";
 
 // Supported locales - Persian is the default (primary native language)
 export const locales = ["fa", "en", "ar"] as const;
@@ -175,6 +180,27 @@ function buildTenantRewriteHeaders(
   return requestHeaders;
 }
 
+function buildForwardedAppRewriteHeaders(
+  request: NextRequest,
+  forwardedHost: string,
+  tenant: { organizationId: string; slug: string },
+  locale: Locale,
+  publicPath: string,
+) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-bazar-custom-domain", "true");
+  requestHeaders.set("x-bazar-tenant-domain", forwardedHost);
+  requestHeaders.set("x-bazar-tenant-slug", tenant.slug);
+  requestHeaders.set("x-bazar-tenant-organization-id", tenant.organizationId);
+  requestHeaders.set("x-bazar-forwarded-app", "true");
+  requestHeaders.set("x-bazar-forwarded-host", forwardedHost);
+  requestHeaders.set("x-bazar-tenant-public-base-url", getRequestOrigin(request));
+  requestHeaders.set("x-bazar-tenant-public-locale", locale);
+  requestHeaders.set("x-bazar-tenant-public-path", publicPath);
+  requestHeaders.set("x-bazar-public-footer-context", "none");
+  return requestHeaders;
+}
+
 function getRequestOrigin(request: NextRequest) {
   const host = request.headers.get("host") || request.nextUrl.host;
   const protocol = request.headers.get("x-forwarded-proto") || request.nextUrl.protocol.replace(":", "") || "https";
@@ -201,6 +227,65 @@ export async function proxy(request: NextRequest) {
     canonicalUrl.host = CANONICAL_PLATFORM_HOST;
     canonicalUrl.port = "";
     return withSecurityHeaders(NextResponse.redirect(canonicalUrl, 308));
+  }
+
+  // Forwarded-host resolution for trusted reverse-proxy deployments.
+  // When the Host header is a platform host (e.g., Vercel deployment),
+  // check for X-Forwarded-Host to support APP_PATH topology where
+  // an external reverse proxy forwards the public host.
+  //
+  // Security constraints:
+  // - X-Forwarded-Host is ONLY trusted when a valid proxy token is present
+  // - The proxy token must match the server-side BAZARBAAZ_APP_PROXY_TOKEN secret
+  // - The forwarded host must resolve to a configured, ACTIVE OrganizationEndpoint(role=APP)
+  // - The organization must be active
+  // - The request path must be inside the endpoint's pathPrefix
+  // - Unknown or invalid forwarded hosts fail closed (treated as platform traffic)
+  // - No tenant-specific hostname conditions
+  // - Trusted proxy mode is only enabled when the proxy credential is configured
+  if (isPlatformHost(normalizedHost)) {
+    const forwardedHost = extractForwardedHost(request);
+    const proxyCredential = extractProxyCredential(request);
+    if (forwardedHost && proxyCredential) {
+      const appBasePath = resolveAppBasePath();
+      const resolution = await resolveTrustedForwardedAppTenant({
+        forwardedHost,
+        proxyCredential,
+        appBasePath,
+        pathname,
+      });
+      if (resolution.status === "resolved") {
+        const { tenant } = resolution;
+        const splitPath = splitLocalePrefix(pathname);
+        const locale = splitPath.locale || defaultLocale;
+        const requestHeaders = buildForwardedAppRewriteHeaders(
+          request,
+          forwardedHost,
+          tenant,
+          locale,
+          pathname,
+        );
+        const operationalRoute = pathname.startsWith("/api")
+          ? null
+          : resolveOperationalAppRoute(pathname, tenant.slug);
+        if (!pathname.startsWith("/api") && !operationalRoute) {
+          const unavailableUrl = request.nextUrl.clone();
+          unavailableUrl.pathname = `/${defaultLocale}/not-found`;
+          return withSecurityHeaders(NextResponse.rewrite(unavailableUrl, { request: { headers: requestHeaders } }));
+        }
+        const response = operationalRoute
+          ? NextResponse.rewrite(new URL(operationalRoute.internalPathname + request.nextUrl.search, request.url), {
+              request: { headers: requestHeaders },
+            })
+          : NextResponse.next({ request: { headers: requestHeaders } });
+        const operationalLocale = operationalRoute?.locale || splitPath.locale;
+        if (operationalLocale) {
+          response.headers.set("x-locale", operationalLocale);
+          response.headers.set("x-direction", localeConfig[operationalLocale].dir);
+        }
+        return withSecurityHeaders(response);
+      }
+    }
   }
 
   if (!isPlatformHost(normalizedHost) && pathname.startsWith("/api/auth")) {

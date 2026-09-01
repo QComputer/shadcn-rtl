@@ -36,13 +36,13 @@ test("Italiano 13 import is idempotent, tenant-safe, public, and cart-ready", as
   });
 
   const first = await importItaliano13Snapshot({ prisma, organizationId: organization.id, snapshot: fixture });
-  assert.deepEqual(first.created, { categories: 9, products: 56, variants: 72 });
+  assert.deepEqual(first.created, { categories: 9, products: 55, variants: 71 });
   assert.deepEqual(first.updated, { categories: 0, products: 0, variants: 0 });
 
   const second = await importItaliano13Snapshot({ prisma, organizationId: organization.id, snapshot: fixture });
   assert.deepEqual(second.created, { categories: 0, products: 0, variants: 0 });
   assert.deepEqual(second.updated, { categories: 0, products: 0, variants: 0 });
-  assert.deepEqual(second.unchanged, { categories: 9, products: 56, variants: 72 });
+  assert.deepEqual(second.unchanged, { categories: 9, products: 55, variants: 71 });
 
   const changedFixture = structuredClone(fixture);
   const changedProduct = changedFixture.categories[0].products[0];
@@ -64,8 +64,8 @@ test("Italiano 13 import is idempotent, tenant-safe, public, and cart-ready", as
   assert.equal(storedVariant.product.image, null);
   assert.equal(storedVariant.product.description, null);
   assert.equal(await prisma.productCategory.count({ where: { organizationId: organization.id, isActive: true, deletedAt: null } }), 9);
-  assert.equal(await prisma.product.count({ where: { organizationId: organization.id, isActive: true, deletedAt: null } }), 56);
-  assert.equal(await prisma.productVariant.count({ where: { product: { organizationId: organization.id }, deletedAt: null } }), 72);
+  assert.equal(await prisma.product.count({ where: { organizationId: organization.id, isActive: true, deletedAt: null } }), 55);
+  assert.equal(await prisma.productVariant.count({ where: { product: { organizationId: organization.id }, deletedAt: null } }), 71);
   const guardProducts = await prisma.product.findMany({ where: { id: { in: guardProductIds } }, select: { basePrice: true } });
   assert.equal(guardProducts.length, 5);
   assert.ok(guardProducts.every((product) => product.basePrice.equals(12345)));
@@ -77,18 +77,18 @@ test("Italiano 13 import is idempotent, tenant-safe, public, and cart-ready", as
   const removed = await importItaliano13Snapshot({ prisma, organizationId: organization.id, snapshot: removedFixture });
   assert.equal(removed.deactivated.products, 1);
   assert.equal(removed.deactivated.variants, removedProduct.variants.length);
-  assert.equal(await prisma.product.count({ where: { organizationId: organization.id, isActive: true, deletedAt: null } }), 55);
+  assert.equal(await prisma.product.count({ where: { organizationId: organization.id, isActive: true, deletedAt: null } }), 54);
   await importItaliano13Snapshot({ prisma, organizationId: organization.id, snapshot: fixture });
-  assert.equal(await prisma.product.count({ where: { organizationId: organization.id, isActive: true, deletedAt: null } }), 56);
-  assert.equal(await prisma.productVariant.count({ where: { product: { organizationId: organization.id }, deletedAt: null } }), 72);
+  assert.equal(await prisma.product.count({ where: { organizationId: organization.id, isActive: true, deletedAt: null } }), 55);
+  assert.equal(await prisma.productVariant.count({ where: { product: { organizationId: organization.id }, deletedAt: null } }), 71);
 
   const publicSnapshot = await getPublicCatalogSnapshot("italiano-13");
   assert.equal(publicSnapshot.categories.length, 9);
-  assert.equal(publicSnapshot.pagination.total, 56);
+  assert.equal(publicSnapshot.pagination.total, 55);
   assert.equal(publicSnapshot.priceUnit, "TOMAN");
   const allProducts = await listPublicCatalogProducts({ organizationIdentifier: "italiano-13", page: 1, limit: 100 });
-  assert.equal(allProducts.products.length, 56);
-  assert.equal(allProducts.products.flatMap((product) => product.variants).length, 72);
+  assert.equal(allProducts.products.length, 55);
+  assert.equal(allProducts.products.flatMap((product) => product.variants).length, 71);
 
   const cart = await prisma.shopCart.create({ data: { organizationSlug: "italiano-13", sessionId: `italiano-db-test-${suffix}` } });
   const cartItem = await prisma.shopCartItem.create({ data: { cartId: cart.id, variantId: storedVariant.id, quantity: 2 } });

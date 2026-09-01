@@ -83,8 +83,8 @@ const snapshot = {
 };
 
 assert.equal(snapshot.counts.categories, 9);
-assert.equal(snapshot.counts.products, 56);
-assert.equal(snapshot.counts.prices, 72);
+assert.equal(snapshot.counts.products, 55);
+assert.equal(snapshot.counts.prices, 71);
 assert.equal(snapshot.counts.unpricedOrAmbiguous, 0);
 assert.equal(snapshot.counts.duplicateSourceIdentities, 0);
 

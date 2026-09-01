@@ -7,7 +7,7 @@
     "url": "https://snappfood.ir/restaurant/menu/%D9%81%D8%B3%D8%AA_%D9%81%D9%88%D8%AF_%D8%A7%DB%8C%D8%AA%D8%A7%D9%84%DB%8C%D8%A7%DB%8C%DB%8C_%D8%B3%DB%8C%D8%B2%D8%AF%D9%87-r-31lmw4/?is_pickup=0",
     "publicReadEndpoint": "https://apigw.snappfood.ir/menu-read-model/31lmw4?lat=35.774&long=51.418&optionalClient=PWA&client=PWA&deviceType=PWA&appVersion=6.0.0&Bonyan=true",
     "retrievalMethod": "normal-browser-public-menu-read-model",
-    "retrievedAt": "2026-08-30T21:10:30.013Z"
+    "retrievedAt": "2026-09-01T00:16:32.025Z"
   },
   "organization": {
     "slug": "italiano-13"
@@ -21,8 +21,8 @@
   },
   "counts": {
     "categories": 9,
-    "products": 56,
-    "prices": 72,
+    "products": 55,
+    "prices": 71,
     "unpricedOrAmbiguous": 0,
     "duplicateSourceIdentities": 0
   },
@@ -842,24 +842,9 @@
       "order": 8,
       "products": [
         {
-          "externalId": "product:pv:33036349",
-          "name": "آبمیوه گازدار خانواده هوفنبرگ لیموناد",
-          "order": 0,
-          "active": true,
-          "variants": [
-            {
-              "externalId": "variation:pv:33036349:33036349",
-              "name": null,
-              "priceToman": 105000,
-              "active": true,
-              "order": 0
-            }
-          ]
-        },
-        {
           "externalId": "product:pv:33036350",
           "name": "آبمیوه گازدار خانواده هوفنبرگ بلوبری",
-          "order": 1,
+          "order": 0,
           "active": true,
           "variants": [
             {
@@ -874,7 +859,7 @@
         {
           "externalId": "product:pv:33036686",
           "name": "آبمیوه گازدار قوطی هوفنبرگ کاکتوس",
-          "order": 2,
+          "order": 1,
           "active": true,
           "variants": [
             {
@@ -889,7 +874,7 @@
         {
           "externalId": "product:pv:33036687",
           "name": "آبمیوه گازدار قوطی هوفنبرگ بلوبری",
-          "order": 3,
+          "order": 2,
           "active": true,
           "variants": [
             {
@@ -904,7 +889,7 @@
         {
           "externalId": "product:pv:33036689",
           "name": "آبمیوه گازدار قوطی هوفنبرگ سیب کیوی",
-          "order": 4,
+          "order": 3,
           "active": true,
           "variants": [
             {
@@ -919,7 +904,7 @@
         {
           "externalId": "product:p:78698",
           "name": "نوشابه خانواده",
-          "order": 5,
+          "order": 4,
           "active": true,
           "variants": [
             {
@@ -955,7 +940,7 @@
         {
           "externalId": "product:p:339",
           "name": "نوشابه قوطی",
-          "order": 6,
+          "order": 5,
           "active": true,
           "variants": [
             {
@@ -984,7 +969,7 @@
         {
           "externalId": "product:p:31392",
           "name": "ماءالشعیر قوطی هی دی",
-          "order": 7,
+          "order": 6,
           "active": true,
           "variants": [
             {
@@ -999,7 +984,7 @@
         {
           "externalId": "product:p:73900",
           "name": "دلستر خانواده هوفنبرگ",
-          "order": 8,
+          "order": 7,
           "active": true,
           "variants": [
             {
@@ -1021,7 +1006,7 @@
         {
           "externalId": "product:pv:4693719",
           "name": "دوغ قوطی",
-          "order": 9,
+          "order": 8,
           "active": true,
           "variants": [
             {
@@ -1036,7 +1021,7 @@
         {
           "externalId": "product:pv:4693714",
           "name": "آب معدنی کوچک",
-          "order": 10,
+          "order": 9,
           "active": true,
           "variants": [
             {

@@ -400,5 +400,8 @@ export async function importItaliano13Snapshot(input: {
       },
     });
     return summary;
+  }, {
+    maxWait: 30_000,
+    timeout: 180_000,
   });
 }

@@ -1,0 +1,102 @@
+{
+  "agent": "Kilo Code",
+  "branch": "kilo/custom-domain-readiness",
+  "baseMain": "89ff16140c880453d6f62ab3f4ab78d2c1131c46",
+  "generatedAt": "2026-09-01T04:55:00+03:30",
+  "plannedDomains": [
+    {
+      "domain": "fastfood13.ir",
+      "organizationSlug": "italiano-13",
+      "status": "PLANNED_NOT_CONNECTED",
+      "kind": "APEX",
+      "type": "CUSTOM"
+    },
+    {
+      "domain": "akashoes.ir",
+      "organizationSlug": "aka-shoes",
+      "status": "PLANNED_NOT_CONNECTED",
+      "kind": "APEX",
+      "type": "CUSTOM"
+    }
+  ],
+  "organizationDomain": {
+    "model": "OrganizationDomain",
+    "uniqueness": ["domain", "normalizedDomain"],
+    "statuses": ["REQUESTED", "PROVIDER_PENDING", "DNS_REQUIRED", "VERIFYING", "ACTIVE", "ERROR", "DISABLED", "REMOVAL_PENDING", "REMOVED"],
+    "verificationRequirements": ["providerVerified", "dnsConfigured", "sslReady"],
+    "primarySemantics": "isPrimary flag controls platform sitemap exclusion and 308 redirects",
+    "wwwHandling": "www prefix stripped by normalizeDomainHost; single domain row sufficient",
+    "tenantIsolation": "ACTIVE status + active organization + not deleted"
+  },
+  "organizationEndpoint": {
+    "model": "OrganizationEndpoint (settings-based)",
+    "roles": ["PUBLIC", "APP", "API", "CALLBACK"],
+    "publicMapping": "OrganizationDomain reference with empty pathPrefix for storefront root",
+    "appMapping": "Optional; required for branded PWA manifest on custom domain",
+    "apiMapping": "Optional explicit API origin",
+    "callbackMapping": "Optional explicit callback origin"
+  },
+  "routing": {
+    "resolutionFlow": "proxy.ts -> resolveTenantForCustomDomain -> /api/internal/domain-resolver -> resolveActiveTenantForHost",
+    "customDomainRoot": "/ rewrites to /<locale>/<slug>",
+    "shopPath": "/shop rewrites to /<locale>/<slug>/shop",
+    "slugExposed": false,
+    "platformRedirect": "Platform indexable shop paths 308 redirect to custom domain when isPrimary"
+  },
+  "seo": {
+    "canonicalBehavior": "Custom domain becomes primary canonical when isPrimary",
+    "sitemap": "Tenant sitemap at /sitemap.xml on custom domain; excluded from platform sitemap when primary domain exists",
+    "robots": "Served via /api/public/custom-domain/robots",
+    "localeRepresentation": "Default locale (fa) strips locale prefix from public paths"
+  },
+  "pwa": {
+    "readiness": "MINOR_GAP",
+    "gap": "PUBLIC-only custom domains receive platform manifest, not tenant-branded manifest",
+    "requiredForBrandedPWA": "APP OrganizationEndpoint referencing custom domain",
+    "manifestEndpoint": "/manifest.webmanifest"
+  },
+  "auth": {
+    "cookieCompatibility": "PASS",
+    "originCompatibility": "PASS",
+    "notes": "Auth.js callbacks rewritten to custom origin; sessions are host-only; no cross-origin SSO"
+  },
+  "commerce": {
+    "cart": "PASS - uses buildOrganizationPublicPath which is custom-domain aware",
+    "checkout": "PASS - rewritten internally with tenant context headers",
+    "payment": "FLAG - callback domain isolation not explicitly audited; recommend stable platform or APP origin",
+    "hardcodedBazarbaazAssumptions": "None found in cart/checkout/order URL construction"
+  },
+  "callback": {
+    "recommendedOrigin": "Platform or dedicated APP endpoint",
+    "currentImplementation": "Auth.js callbacks rewritten to custom origin for user-facing flows; provider callbacks not explicitly isolated"
+  },
+  "infrastructure": {
+    "vercelReady": true,
+    "dnsSteps": "A record to 76.76.21.21 or CNAME to cname.vercel-dns.com",
+    "tls": "Vercel auto-provisions after DNS verification",
+    "noInfrastructureMutated": true
+  },
+  "tests": {
+    "customDomainOnboarding": {
+      "total": 52,
+      "pass": 50,
+      "fail": 2,
+      "failures": "Pre-existing branding-field fixture mismatches (logoInverse, mark, maskable icons, themeColor, backgroundColor)"
+    }
+  },
+  "blockers": [],
+  "minorGaps": [
+    {
+      "area": "PWA manifest",
+      "description": "PUBLIC-only custom domains receive platform manifest instead of tenant-branded manifest",
+      "file": "app/manifest.ts",
+      "suggestedMilestone": "Minor extension to manifest resolver to support PUBLIC domain branding"
+    }
+  ],
+  "finalDecision": {
+    "architecture": "READY_NOW",
+    "fastfood13": "READY_FOR_FUTURE_CUTOVER",
+    "akashoes": "READY_FOR_FUTURE_CUTOVER",
+    "readyForCodexHandoff": true
+  }
+}

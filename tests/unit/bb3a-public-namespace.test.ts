@@ -207,7 +207,7 @@ describe("BB-3A custom-domain public namespace", () => {
   });
 
   it("limits future edge ownership to explicit capability namespaces", () => {
-    assert.deepEqual(CUSTOM_DOMAIN_CAPABILITY_EDGE_PREFIXES, ["/shop", "/appointment"]);
+    assert.deepEqual(CUSTOM_DOMAIN_CAPABILITY_EDGE_PREFIXES, ["/shop", "/appointment", "/purchase/product"]);
     const routingSource = readFileSync("lib/custom-domain-routing.ts", "utf8");
     assert.match(routingSource, /application-level compatibility redirects/);
     assert.match(routingSource, /not imply that an external edge/);

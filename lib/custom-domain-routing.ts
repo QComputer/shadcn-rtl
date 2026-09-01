@@ -376,6 +376,11 @@ export type CustomDomainCapabilityPath = {
   subPath: string;
 };
 
+export type CustomDomainPurchaseIntentPath = {
+  locale: CustomDomainLocale;
+  productId: string;
+};
+
 /**
  * Syntactically maps a parsed public namespace to its capability key. This
  * does not inspect an organization or authorize access; the resolver/proxy
@@ -415,13 +420,41 @@ export function parseCustomDomainCapabilityPath(pathname: string): CustomDomainC
   return null;
 }
 
+const PURCHASE_INTENT_PATH_PREFIX = "/purchase/product/";
+
+export function parseCustomDomainPurchaseIntentPath(
+  pathname: string,
+): CustomDomainPurchaseIntentPath | null {
+  const splitPath = splitLocalePrefix(pathname);
+  const locale = splitPath.locale || defaultCustomDomainLocale;
+
+  if (!splitPath.pathnameWithoutLocale.startsWith(PURCHASE_INTENT_PATH_PREFIX)) {
+    return null;
+  }
+
+  const productId = splitPath.pathnameWithoutLocale.slice(PURCHASE_INTENT_PATH_PREFIX.length);
+
+  if (!productId || productId.includes("/") || productId.includes("?") || productId.includes("#")) {
+    return null;
+  }
+
+  return {
+    locale,
+    productId: decodeURIComponent(productId),
+  };
+}
+
 /**
  * The future cross-zone edge contract owns only these explicit namespaces.
  * The legacy paths below are application-level compatibility redirects and do
  * not imply that an external edge (including CafeLeo/nginx) must route them to
  * Bazarbaaz.
  */
-export const CUSTOM_DOMAIN_CAPABILITY_EDGE_PREFIXES = ["/shop", "/appointment"] as const;
+export const CUSTOM_DOMAIN_CAPABILITY_EDGE_PREFIXES = [
+  "/shop",
+  "/appointment",
+  "/purchase/product",
+] as const;
 
 const LEGACY_CUSTOM_DOMAIN_SURFACES = [
   { surface: "shop", prefixes: ["/product", "/category", "/cart", "/checkout", "/order", "/profile", "/fanpage"] },

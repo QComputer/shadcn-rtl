@@ -20,6 +20,7 @@ import {
   isSeoIndexableShopSubPath,
   getLegacyCustomDomainCapabilityRedirect,
   parseCustomDomainCapabilityPath,
+  parseCustomDomainPurchaseIntentPath,
   classifyPublicSurfaceCapability,
   isReservedCustomDomainSurfaceSegment,
   isResolvedOperationalAppHost,
@@ -399,6 +400,22 @@ export async function proxy(request: NextRequest) {
       rewrittenUrl.pathname = capabilityPath.surface === "shop"
         ? buildShopPlatformPath({ locale, slug: tenant.slug, publicPathname: capabilityPath.subPath })
         : buildAppointmentPlatformPath({ locale, slug: tenant.slug, publicPathname: capabilityPath.subPath });
+      return withSecurityHeaders(NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } }));
+    }
+
+    const purchaseIntentPath = parseCustomDomainPurchaseIntentPath(pathname);
+    if (purchaseIntentPath) {
+      if (!tenant.capabilities.includes("SHOP")) {
+        const unavailableUrl = request.nextUrl.clone();
+        unavailableUrl.pathname = `/${locale}/not-found`;
+        return withSecurityHeaders(NextResponse.rewrite(unavailableUrl, { request: { headers: requestHeaders } }));
+      }
+      const rewrittenUrl = request.nextUrl.clone();
+      rewrittenUrl.pathname = `/${purchaseIntentPath.locale}/${tenant.slug}/purchase/product/${purchaseIntentPath.productId}`;
+      const query = new URLSearchParams(request.nextUrl.search);
+      query.forEach((value, key) => {
+        rewrittenUrl.searchParams.set(key, value);
+      });
       return withSecurityHeaders(NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } }));
     }
 

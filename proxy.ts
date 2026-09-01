@@ -23,6 +23,7 @@ import {
   classifyPublicSurfaceCapability,
   isReservedCustomDomainSurfaceSegment,
   isResolvedOperationalAppHost,
+  resolveOperationalAppRoute,
   type ResolvedCustomDomain,
 } from "@/lib/custom-domain-routing";
 import { getPublicFooterContextForPathname, type PublicFooterContext } from "@/lib/public-footer-context";
@@ -226,12 +227,6 @@ export async function proxy(request: NextRequest) {
     // compile-time path prefix match, so it must bypass public-root rewrites.
     if (isResolvedOperationalAppHost(tenant, normalizedHost, resolveAppBasePath())) {
       const splitPath = splitLocalePrefix(pathname);
-      if (!splitPath.locale && !pathname.startsWith("/api")) {
-        const localizedUrl = request.nextUrl.clone();
-        localizedUrl.pathname = pathname === "/" ? `/${defaultLocale}` : `/${defaultLocale}${pathname}`;
-        return withSecurityHeaders(NextResponse.redirect(localizedUrl));
-      }
-
       const requestHeaders = buildTenantRewriteHeaders(
         request,
         normalizedHost,
@@ -240,10 +235,23 @@ export async function proxy(request: NextRequest) {
         pathname,
       );
       requestHeaders.set("x-bazar-public-footer-context", "none");
-      const response = NextResponse.next({ request: { headers: requestHeaders } });
-      if (splitPath.locale) {
-        response.headers.set("x-locale", splitPath.locale);
-        response.headers.set("x-direction", localeConfig[splitPath.locale].dir);
+      const operationalRoute = pathname.startsWith("/api")
+        ? null
+        : resolveOperationalAppRoute(pathname, tenant.slug);
+      if (!pathname.startsWith("/api") && !operationalRoute) {
+        const unavailableUrl = request.nextUrl.clone();
+        unavailableUrl.pathname = `/${defaultLocale}/not-found`;
+        return withSecurityHeaders(NextResponse.rewrite(unavailableUrl, { request: { headers: requestHeaders } }));
+      }
+      const response = operationalRoute
+        ? NextResponse.rewrite(new URL(operationalRoute.internalPathname + request.nextUrl.search, request.url), {
+            request: { headers: requestHeaders },
+          })
+        : NextResponse.next({ request: { headers: requestHeaders } });
+      const operationalLocale = operationalRoute?.locale || splitPath.locale;
+      if (operationalLocale) {
+        response.headers.set("x-locale", operationalLocale);
+        response.headers.set("x-direction", localeConfig[operationalLocale].dir);
       }
       return withSecurityHeaders(response);
     }

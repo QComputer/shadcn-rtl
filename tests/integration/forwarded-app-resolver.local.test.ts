@@ -55,7 +55,7 @@ describe("forwarded app resolver database integration", () => {
       forwardedHost,
       proxyCredential: VALID_TOKEN,
       appBasePath: "/app",
-      pathname: "/app/",
+      pathname: "/",
     });
     assert.equal(result.status, "resolved");
     if (result.status === "resolved") {
@@ -71,17 +71,17 @@ describe("forwarded app resolver database integration", () => {
       forwardedHost,
       proxyCredential: VALID_TOKEN,
       appBasePath: "/app",
-      pathname: "/app/purchase/product/prod-123",
+      pathname: "/purchase/product/prod-123",
     });
     assert.equal(result.status, "resolved");
   });
 
-  it("rejects request outside /app prefix", async () => {
+  it("rejects malformed non-absolute internal path", async () => {
     const result = await resolveTrustedForwardedAppTenant({
       forwardedHost,
       proxyCredential: VALID_TOKEN,
       appBasePath: "/app",
-      pathname: "/some-other-path",
+      pathname: "some-other-path",
     });
     assert.equal(result.status, "no-tenant");
   });
@@ -91,7 +91,7 @@ describe("forwarded app resolver database integration", () => {
       forwardedHost,
       proxyCredential: "b".repeat(32),
       appBasePath: "/app",
-      pathname: "/app/",
+      pathname: "/",
     });
     assert.equal(result.status, "unauthorized");
   });
@@ -101,7 +101,7 @@ describe("forwarded app resolver database integration", () => {
       forwardedHost,
       proxyCredential: "",
       appBasePath: "/app",
-      pathname: "/app/",
+      pathname: "/",
     });
     assert.equal(result.status, "unauthorized");
   });
@@ -111,7 +111,7 @@ describe("forwarded app resolver database integration", () => {
       forwardedHost: "unknown.host.example",
       proxyCredential: VALID_TOKEN,
       appBasePath: "/app",
-      pathname: "/app/",
+      pathname: "/",
     });
     assert.equal(result.status, "no-tenant");
   });

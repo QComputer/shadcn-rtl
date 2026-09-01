@@ -1,5 +1,6 @@
 import "server-only";
 
+import { appPath } from "@/lib/app-base-path";
 import { prisma } from "@/lib/db";
 import { normalizeDomainHost } from "@/lib/custom-domain-routing";
 import {
@@ -67,6 +68,15 @@ export async function resolveTrustedForwardedAppTenant(
   if (!normalizedHost) {
     return { status: "no-tenant" };
   }
+  if (!input.pathname.startsWith("/")) {
+    return { status: "no-tenant" };
+  }
+
+  // Next.js removes the configured basePath before proxy.ts observes a
+  // request. Reconstruct only the browser-visible pathname for endpoint
+  // ownership validation; operational routing continues to use the stripped
+  // internal pathname.
+  const browserPathname = appPath(input.pathname, input.appBasePath);
 
   const organizations = await prisma.organization.findMany({
     where: { isActive: true, deletedAt: null },
@@ -91,7 +101,7 @@ export async function resolveTrustedForwardedAppTenant(
 
     if (endpoint.pathPrefix !== input.appBasePath) continue;
 
-    if (!pathIsUnderPrefix(input.pathname, endpoint.pathPrefix)) continue;
+    if (!pathIsUnderPrefix(browserPathname, endpoint.pathPrefix)) continue;
 
     return {
       status: "resolved",

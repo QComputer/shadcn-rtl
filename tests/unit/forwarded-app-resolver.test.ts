@@ -91,13 +91,13 @@ describe("forwarded app resolver security", () => {
     assert.equal(result.status, "no-tenant");
   });
 
-  it("returns no-tenant when path is outside APP prefix", async () => {
+  it("returns no-tenant for a malformed non-absolute internal path", async () => {
     process.env.BAZARBAAZ_APP_PROXY_TOKEN = VALID_TOKEN;
     const result = await resolveTrustedForwardedAppTenant({
       forwardedHost: "iran.cafeleo.vip",
       proxyCredential: VALID_TOKEN,
       appBasePath: "/app",
-      pathname: "/",
+      pathname: "shop",
     });
     assert.equal(result.status, "no-tenant");
   });

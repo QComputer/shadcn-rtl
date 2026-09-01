@@ -79,8 +79,32 @@ function withSecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
-function withFooterContext(request: NextRequest, context: PublicFooterContext) {
+export function sanitizedProxyBoundaryHeaders(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
+  for (const name of [
+    "x-bazarbaaz-proxy-token",
+    "x-bazar-forwarded-app",
+    "x-bazar-forwarded-host",
+    "x-bazar-custom-domain",
+    "x-bazar-tenant-domain",
+    "x-bazar-tenant-slug",
+    "x-bazar-tenant-organization-id",
+    "x-bazar-tenant-organization-type",
+    "x-bazar-tenant-capabilities",
+    "x-bazar-tenant-public-base-url",
+    "x-bazar-tenant-public-locale",
+    "x-bazar-tenant-public-path",
+    "x-bazar-organization-root-zone",
+    "x-bazar-public-footer-context",
+    "x-forwarded-host",
+  ]) {
+    requestHeaders.delete(name);
+  }
+  return requestHeaders;
+}
+
+function withFooterContext(request: NextRequest, context: PublicFooterContext) {
+  const requestHeaders = sanitizedProxyBoundaryHeaders(request);
   requestHeaders.set("x-bazar-public-footer-context", context);
   return { request: { headers: requestHeaders } };
 }
@@ -162,7 +186,7 @@ function buildTenantRewriteHeaders(
   locale: Locale,
   publicPath: string,
 ) {
-  const requestHeaders = new Headers(request.headers);
+  const requestHeaders = sanitizedProxyBoundaryHeaders(request);
   requestHeaders.set("x-bazar-custom-domain", "true");
   requestHeaders.set("x-bazar-tenant-domain", normalizedHost);
   requestHeaders.set("x-bazar-tenant-slug", tenant.slug);
@@ -187,13 +211,15 @@ function buildForwardedAppRewriteHeaders(
   locale: Locale,
   publicPath: string,
 ) {
-  const requestHeaders = new Headers(request.headers);
+  const requestHeaders = sanitizedProxyBoundaryHeaders(request);
   requestHeaders.set("x-bazar-custom-domain", "true");
   requestHeaders.set("x-bazar-tenant-domain", forwardedHost);
   requestHeaders.set("x-bazar-tenant-slug", tenant.slug);
   requestHeaders.set("x-bazar-tenant-organization-id", tenant.organizationId);
   requestHeaders.set("x-bazar-forwarded-app", "true");
   requestHeaders.set("x-bazar-forwarded-host", forwardedHost);
+  requestHeaders.set("x-forwarded-host", forwardedHost);
+  requestHeaders.set("x-forwarded-proto", "https");
   requestHeaders.set("x-bazar-tenant-public-base-url", getRequestOrigin(request));
   requestHeaders.set("x-bazar-tenant-public-locale", locale);
   requestHeaders.set("x-bazar-tenant-public-path", publicPath);
@@ -256,6 +282,7 @@ export async function proxy(request: NextRequest) {
       });
       if (resolution.status === "resolved") {
         const { tenant } = resolution;
+        const browserPathname = appPath(pathname, appBasePath);
         const splitPath = splitLocalePrefix(pathname);
         const locale = splitPath.locale || defaultLocale;
         const requestHeaders = buildForwardedAppRewriteHeaders(
@@ -263,12 +290,13 @@ export async function proxy(request: NextRequest) {
           forwardedHost,
           tenant,
           locale,
-          pathname,
+          browserPathname,
         );
-        const operationalRoute = pathname.startsWith("/api")
+        const isAppResource = pathname === "/manifest.webmanifest";
+        const operationalRoute = pathname.startsWith("/api") || isAppResource
           ? null
           : resolveOperationalAppRoute(pathname, tenant.slug);
-        if (!pathname.startsWith("/api") && !operationalRoute) {
+        if (!pathname.startsWith("/api") && !isAppResource && !operationalRoute) {
           const unavailableUrl = request.nextUrl.clone();
           unavailableUrl.pathname = `/${defaultLocale}/not-found`;
           return withSecurityHeaders(NextResponse.rewrite(unavailableUrl, { request: { headers: requestHeaders } }));
@@ -289,7 +317,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!isPlatformHost(normalizedHost) && pathname.startsWith("/api/auth")) {
-    const requestHeaders = new Headers(request.headers);
+    const requestHeaders = sanitizedProxyBoundaryHeaders(request);
     requestHeaders.set("x-forwarded-host", hostHeader);
     requestHeaders.set(
       "x-forwarded-proto",
@@ -569,7 +597,7 @@ export async function proxy(request: NextRequest) {
       ? `/${locale}`
       : `/${locale}${pathname}`;
 
-    const newUrl = new URL(newPath, request.url);
+    const newUrl = new URL(appPath(newPath), request.url);
     const response = NextResponse.redirect(newUrl);
 
     // Set locale cookie
@@ -587,7 +615,7 @@ export async function proxy(request: NextRequest) {
   
   // Validate locale
   if (!locales.includes(locale)) {
-    const newUrl = new URL(`/${defaultLocale}${pathname}`, request.url);
+    const newUrl = new URL(appPath(`/${defaultLocale}${pathname}`), request.url);
     return withSecurityHeaders(NextResponse.redirect(newUrl));
   }
 
@@ -615,6 +643,8 @@ export const config = {
   matcher: [
     "/robots.txt",
     "/sitemap.xml",
+    "/manifest.webmanifest",
+    "/api/:path*",
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
   ],
 };

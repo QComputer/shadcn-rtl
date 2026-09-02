@@ -79,3 +79,5 @@ next-env.d.ts
 *.sqlite3
 *.db
 .playwright-mcp/
+
+.vercel

@@ -1,3 +1,5 @@
+import type { NextRequest } from "next/server";
+
 export const customDomainLocales = ["fa", "en", "ar"] as const;
 export type CustomDomainLocale = (typeof customDomainLocales)[number];
 export const defaultCustomDomainLocale: CustomDomainLocale = "fa";
@@ -200,6 +202,58 @@ export function isResolvedOperationalAppHost(
   } catch {
     return false;
   }
+}
+
+export type OperationalAppRoute = {
+  locale: CustomDomainLocale;
+  internalPathname: string;
+  surface: "HOME" | "SHOP" | "PURCHASE_INTENT" | "LOGIN";
+};
+
+function safeDecodedPathSegment(value: string): string | null {
+  try {
+    const decoded = decodeURIComponent(value);
+    if (!decoded || decoded === "." || decoded === ".." || /[/?#\\]/.test(decoded)) return null;
+    return encodeURIComponent(decoded);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Adapts the clean browser namespace owned by an APP endpoint to the existing
+ * organization-first App Router hierarchy. Next.js has already stripped the
+ * configured basePath before this function sees the pathname.
+ */
+export function resolveOperationalAppRoute(
+  pathname: string,
+  organizationSlug: string,
+): OperationalAppRoute | null {
+  const splitPath = splitLocalePrefix(pathname);
+  const locale = splitPath.locale || defaultCustomDomainLocale;
+  const path = splitPath.pathnameWithoutLocale;
+  const organization = safeDecodedPathSegment(organizationSlug);
+  if (!organization) return null;
+
+  if (path === "/") {
+    return { locale, internalPathname: `/${locale}/${organization}`, surface: "HOME" };
+  }
+  if (path === "/login") {
+    return { locale, internalPathname: `/${locale}/login`, surface: "LOGIN" };
+  }
+  if (path === "/shop" || path.startsWith("/shop/")) {
+    return { locale, internalPathname: `/${locale}/${organization}${path}`, surface: "SHOP" };
+  }
+  const match = path.match(/^\/purchase\/product\/([^/]+)$/);
+  const productId = match ? safeDecodedPathSegment(match[1]) : null;
+  if (productId) {
+    return {
+      locale,
+      internalPathname: `/${locale}/${organization}/purchase/product/${productId}`,
+      surface: "PURCHASE_INTENT",
+    };
+  }
+  return null;
 }
 
 export type OrganizationPublicSurface = "shop" | "appointment";
@@ -565,4 +619,22 @@ export function isCustomDomainApplicationPath(pathname: string) {
     pathnameWithoutLocale === "/dashboard" ||
     pathnameWithoutLocale.startsWith("/dashboard/")
   );
+}
+
+/**
+ * Extracts and normalizes the X-Forwarded-Host header value.
+ * Returns null if the header is missing, empty, or invalid.
+ */
+export function extractForwardedHost(request: NextRequest): string | null {
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  if (!forwardedHost) return null;
+
+  const normalized = normalizeDomainHost(forwardedHost);
+  if (!normalized) return null;
+
+  // Reject platform hosts in X-Forwarded-Host to prevent spoofing
+  // the canonical platform origin.
+  if (isPlatformHost(normalized)) return null;
+
+  return normalized;
 }

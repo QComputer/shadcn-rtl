@@ -29,24 +29,20 @@ function safeSegment(value: string, label: string) {
 }
 
 export function buildProductPurchaseHandoff(input: {
-  organizationIdentifier: string;
   productId: string;
   appEndpoint: ResolvedOrganizationEndpoint | null;
-  locale?: string;
   attribution?: PurchaseAttribution;
 }): { href: string; productId: string } | null {
   if (!input.appEndpoint) return null;
   if (input.appEndpoint.role !== "APP") throw new Error("Purchase handoff requires an APP endpoint");
   const attribution = purchaseAttributionSchema.parse(input.attribution ?? {});
-  const locale = safeSegment(input.locale ?? "fa", "Locale");
-  const organization = safeSegment(input.organizationIdentifier, "Organization identifier");
   const product = safeSegment(input.productId, "Product ID");
   const query = new URLSearchParams();
   if (attribution.source) query.set("source", attribution.source);
   if (attribution.campaign) query.set("campaign", attribution.campaign);
   const suffix = query.size ? `?${query}` : "";
   return {
-    href: joinOrganizationEndpointPath(input.appEndpoint, `/${locale}/${organization}/purchase/product/${product}${suffix}`),
+    href: joinOrganizationEndpointPath(input.appEndpoint, `/purchase/product/${product}${suffix}`),
     productId: input.productId,
   };
 }

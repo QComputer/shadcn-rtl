@@ -6,6 +6,7 @@ import {
   buildOrganizationRootPath,
   buildOrganizationPublicPath,
   buildTenantPublicPath,
+  extractForwardedHost,
   getPlatformCanonicalRedirectTarget,
   CANONICAL_PLATFORM_HOST,
   getShopSubPathFromPlatformPath,
@@ -23,10 +24,15 @@ import {
   classifyPublicSurfaceCapability,
   isReservedCustomDomainSurfaceSegment,
   isResolvedOperationalAppHost,
+  resolveOperationalAppRoute,
   type ResolvedCustomDomain,
 } from "@/lib/custom-domain-routing";
 import { getPublicFooterContextForPathname, type PublicFooterContext } from "@/lib/public-footer-context";
 import { appCookiePath, appPath, resolveAppBasePath } from "@/lib/app-base-path";
+import {
+  extractProxyCredential,
+  resolveTrustedForwardedAppTenant,
+} from "@/lib/forwarded-app-resolver.server";
 
 // Supported locales - Persian is the default (primary native language)
 export const locales = ["fa", "en", "ar"] as const;
@@ -73,8 +79,32 @@ function withSecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
-function withFooterContext(request: NextRequest, context: PublicFooterContext) {
+export function sanitizedProxyBoundaryHeaders(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
+  for (const name of [
+    "x-bazarbaaz-proxy-token",
+    "x-bazar-forwarded-app",
+    "x-bazar-forwarded-host",
+    "x-bazar-custom-domain",
+    "x-bazar-tenant-domain",
+    "x-bazar-tenant-slug",
+    "x-bazar-tenant-organization-id",
+    "x-bazar-tenant-organization-type",
+    "x-bazar-tenant-capabilities",
+    "x-bazar-tenant-public-base-url",
+    "x-bazar-tenant-public-locale",
+    "x-bazar-tenant-public-path",
+    "x-bazar-organization-root-zone",
+    "x-bazar-public-footer-context",
+    "x-forwarded-host",
+  ]) {
+    requestHeaders.delete(name);
+  }
+  return requestHeaders;
+}
+
+function withFooterContext(request: NextRequest, context: PublicFooterContext) {
+  const requestHeaders = sanitizedProxyBoundaryHeaders(request);
   requestHeaders.set("x-bazar-public-footer-context", context);
   return { request: { headers: requestHeaders } };
 }
@@ -156,7 +186,7 @@ function buildTenantRewriteHeaders(
   locale: Locale,
   publicPath: string,
 ) {
-  const requestHeaders = new Headers(request.headers);
+  const requestHeaders = sanitizedProxyBoundaryHeaders(request);
   requestHeaders.set("x-bazar-custom-domain", "true");
   requestHeaders.set("x-bazar-tenant-domain", normalizedHost);
   requestHeaders.set("x-bazar-tenant-slug", tenant.slug);
@@ -170,6 +200,29 @@ function buildTenantRewriteHeaders(
     "x-bazar-organization-root-zone",
     tenant.publicHome?.kind === "external" ? "external" : "bazarbaaz",
   );
+  requestHeaders.set("x-bazar-public-footer-context", "none");
+  return requestHeaders;
+}
+
+function buildForwardedAppRewriteHeaders(
+  request: NextRequest,
+  forwardedHost: string,
+  tenant: { organizationId: string; slug: string },
+  locale: Locale,
+  publicPath: string,
+) {
+  const requestHeaders = sanitizedProxyBoundaryHeaders(request);
+  requestHeaders.set("x-bazar-custom-domain", "true");
+  requestHeaders.set("x-bazar-tenant-domain", forwardedHost);
+  requestHeaders.set("x-bazar-tenant-slug", tenant.slug);
+  requestHeaders.set("x-bazar-tenant-organization-id", tenant.organizationId);
+  requestHeaders.set("x-bazar-forwarded-app", "true");
+  requestHeaders.set("x-bazar-forwarded-host", forwardedHost);
+  requestHeaders.set("x-forwarded-host", forwardedHost);
+  requestHeaders.set("x-forwarded-proto", "https");
+  requestHeaders.set("x-bazar-tenant-public-base-url", getRequestOrigin(request));
+  requestHeaders.set("x-bazar-tenant-public-locale", locale);
+  requestHeaders.set("x-bazar-tenant-public-path", publicPath);
   requestHeaders.set("x-bazar-public-footer-context", "none");
   return requestHeaders;
 }
@@ -202,8 +255,69 @@ export async function proxy(request: NextRequest) {
     return withSecurityHeaders(NextResponse.redirect(canonicalUrl, 308));
   }
 
+  // Forwarded-host resolution for trusted reverse-proxy deployments.
+  // When the Host header is a platform host (e.g., Vercel deployment),
+  // check for X-Forwarded-Host to support APP_PATH topology where
+  // an external reverse proxy forwards the public host.
+  //
+  // Security constraints:
+  // - X-Forwarded-Host is ONLY trusted when a valid proxy token is present
+  // - The proxy token must match the server-side BAZARBAAZ_APP_PROXY_TOKEN secret
+  // - The forwarded host must resolve to a configured, ACTIVE OrganizationEndpoint(role=APP)
+  // - The organization must be active
+  // - The request path must be inside the endpoint's pathPrefix
+  // - Unknown or invalid forwarded hosts fail closed (treated as platform traffic)
+  // - No tenant-specific hostname conditions
+  // - Trusted proxy mode is only enabled when the proxy credential is configured
+  if (isPlatformHost(normalizedHost)) {
+    const forwardedHost = extractForwardedHost(request);
+    const proxyCredential = extractProxyCredential(request);
+    if (forwardedHost && proxyCredential) {
+      const appBasePath = resolveAppBasePath();
+      const resolution = await resolveTrustedForwardedAppTenant({
+        forwardedHost,
+        proxyCredential,
+        appBasePath,
+        pathname,
+      });
+      if (resolution.status === "resolved") {
+        const { tenant } = resolution;
+        const browserPathname = appPath(pathname, appBasePath);
+        const splitPath = splitLocalePrefix(pathname);
+        const locale = splitPath.locale || defaultLocale;
+        const requestHeaders = buildForwardedAppRewriteHeaders(
+          request,
+          forwardedHost,
+          tenant,
+          locale,
+          browserPathname,
+        );
+        const isAppResource = pathname === "/manifest.webmanifest";
+        const operationalRoute = pathname.startsWith("/api") || isAppResource
+          ? null
+          : resolveOperationalAppRoute(pathname, tenant.slug);
+        if (!pathname.startsWith("/api") && !isAppResource && !operationalRoute) {
+          const unavailableUrl = request.nextUrl.clone();
+          unavailableUrl.pathname = `/${defaultLocale}/not-found`;
+          return withSecurityHeaders(NextResponse.rewrite(unavailableUrl, { request: { headers: requestHeaders } }));
+        }
+        const response = operationalRoute
+          ? NextResponse.rewrite(new URL(operationalRoute.internalPathname + request.nextUrl.search, request.url), {
+              request: { headers: requestHeaders },
+            })
+          : NextResponse.next({ request: { headers: requestHeaders } });
+        const operationalLocale = operationalRoute?.locale || splitPath.locale;
+        if (operationalLocale) {
+          response.headers.set("x-locale", operationalLocale);
+          response.headers.set("x-direction", localeConfig[operationalLocale].dir);
+        }
+        return withSecurityHeaders(response);
+      }
+    }
+  }
+
   if (!isPlatformHost(normalizedHost) && pathname.startsWith("/api/auth")) {
-    const requestHeaders = new Headers(request.headers);
+    const requestHeaders = sanitizedProxyBoundaryHeaders(request);
     requestHeaders.set("x-forwarded-host", hostHeader);
     requestHeaders.set(
       "x-forwarded-proto",
@@ -226,12 +340,6 @@ export async function proxy(request: NextRequest) {
     // compile-time path prefix match, so it must bypass public-root rewrites.
     if (isResolvedOperationalAppHost(tenant, normalizedHost, resolveAppBasePath())) {
       const splitPath = splitLocalePrefix(pathname);
-      if (!splitPath.locale && !pathname.startsWith("/api")) {
-        const localizedUrl = request.nextUrl.clone();
-        localizedUrl.pathname = pathname === "/" ? `/${defaultLocale}` : `/${defaultLocale}${pathname}`;
-        return withSecurityHeaders(NextResponse.redirect(localizedUrl));
-      }
-
       const requestHeaders = buildTenantRewriteHeaders(
         request,
         normalizedHost,
@@ -240,10 +348,23 @@ export async function proxy(request: NextRequest) {
         pathname,
       );
       requestHeaders.set("x-bazar-public-footer-context", "none");
-      const response = NextResponse.next({ request: { headers: requestHeaders } });
-      if (splitPath.locale) {
-        response.headers.set("x-locale", splitPath.locale);
-        response.headers.set("x-direction", localeConfig[splitPath.locale].dir);
+      const operationalRoute = pathname.startsWith("/api")
+        ? null
+        : resolveOperationalAppRoute(pathname, tenant.slug);
+      if (!pathname.startsWith("/api") && !operationalRoute) {
+        const unavailableUrl = request.nextUrl.clone();
+        unavailableUrl.pathname = `/${defaultLocale}/not-found`;
+        return withSecurityHeaders(NextResponse.rewrite(unavailableUrl, { request: { headers: requestHeaders } }));
+      }
+      const response = operationalRoute
+        ? NextResponse.rewrite(new URL(operationalRoute.internalPathname + request.nextUrl.search, request.url), {
+            request: { headers: requestHeaders },
+          })
+        : NextResponse.next({ request: { headers: requestHeaders } });
+      const operationalLocale = operationalRoute?.locale || splitPath.locale;
+      if (operationalLocale) {
+        response.headers.set("x-locale", operationalLocale);
+        response.headers.set("x-direction", localeConfig[operationalLocale].dir);
       }
       return withSecurityHeaders(response);
     }
@@ -476,7 +597,7 @@ export async function proxy(request: NextRequest) {
       ? `/${locale}`
       : `/${locale}${pathname}`;
 
-    const newUrl = new URL(newPath, request.url);
+    const newUrl = new URL(appPath(newPath), request.url);
     const response = NextResponse.redirect(newUrl);
 
     // Set locale cookie
@@ -494,7 +615,7 @@ export async function proxy(request: NextRequest) {
   
   // Validate locale
   if (!locales.includes(locale)) {
-    const newUrl = new URL(`/${defaultLocale}${pathname}`, request.url);
+    const newUrl = new URL(appPath(`/${defaultLocale}${pathname}`), request.url);
     return withSecurityHeaders(NextResponse.redirect(newUrl));
   }
 
@@ -522,6 +643,8 @@ export const config = {
   matcher: [
     "/robots.txt",
     "/sitemap.xml",
+    "/manifest.webmanifest",
+    "/api/:path*",
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
   ],
 };

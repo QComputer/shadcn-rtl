@@ -53,7 +53,7 @@ describe("public to operational purchase handoff", () => {
   it("adds a host-independent APP purchase URL to public catalog data", async () => {
     const product = await getPublicCatalogProduct(slugs.app, productId);
     assert.equal(product.purchase?.productId, productId);
-    assert.equal(product.purchase?.href, `https://app.tenant.example/fa/${slugs.app}/purchase/product/${productId}`);
+    assert.equal(product.purchase?.href, `https://app.tenant.example/purchase/product/${productId}`);
     assert.doesNotMatch(product.purchase!.href, /bazarbaaz\.ir|evil\.example/);
     assert.equal((await getPublicCatalogProduct(slugs.none, productId).catch(() => null)), null);
   });
@@ -65,9 +65,9 @@ describe("public to operational purchase handoff", () => {
   });
 
   it("binds immutable product ID to organization and survives slug changes", async () => {
-    assert.equal(await resolveOperationalProductHandoff({ organizationIdentifier: slugs.app, productId, locale: "fa" }), `/fa/${slugs.app}/shop/product/mutable-slug`);
+    assert.equal(await resolveOperationalProductHandoff({ organizationIdentifier: slugs.app, productId, locale: "fa" }), "https://app.tenant.example/shop/product/mutable-slug");
     await prisma.product.update({ where: { id: productId }, data: { slug: "renamed-slug" } });
-    assert.equal(await resolveOperationalProductHandoff({ organizationIdentifier: slugs.app, productId, locale: "fa" }), `/fa/${slugs.app}/shop/product/renamed-slug`);
+    assert.equal(await resolveOperationalProductHandoff({ organizationIdentifier: slugs.app, productId, locale: "fa" }), "https://app.tenant.example/shop/product/renamed-slug");
     await assert.rejects(resolveOperationalProductHandoff({ organizationIdentifier: slugs.app, productId: otherProductId, locale: "fa" }), /Product not found/);
   });
 
@@ -89,7 +89,7 @@ describe("public to operational purchase handoff", () => {
       locale: "fa",
       query: { source: "website", campaign: "summer", price: "1", quantity: "10", redirectUrl: "https://evil.example", host: "evil.example" },
     });
-    assert.equal(target, `/fa/${slugs.app}/shop/product/renamed-slug?source=website&campaign=summer`);
+    assert.equal(target, "https://app.tenant.example/shop/product/renamed-slug?source=website&campaign=summer");
   });
 
   it("performs navigation resolution without cart, order, payment, or inventory mutation", async () => {

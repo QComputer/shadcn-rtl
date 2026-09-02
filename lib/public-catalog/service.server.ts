@@ -37,7 +37,6 @@ async function requirePublicShop(identifier: string) {
 async function purchaseBuilder(organization: { id: string; slug: string }) {
   const appEndpoint = await resolveOrganizationEndpointForTenant({ organizationId: organization.id, role: "APP" });
   return (productId: string) => buildProductPurchaseHandoff({
-    organizationIdentifier: organization.slug,
     productId,
     appEndpoint,
   });

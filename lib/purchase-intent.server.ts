@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api-guards";
 import { prisma } from "@/lib/db";
 import { activePublicBusinessCapabilities } from "@/lib/organization-public-home";
 import { resolveOrganizationEndpointForTenant } from "@/lib/organization-endpoints.server";
+import { joinOrganizationEndpointPath } from "@/lib/organization-endpoints";
 import { purchaseAttributionSchema } from "@/lib/purchase-intent";
 import { buildShopProductPath } from "@/lib/shop-public-paths";
 
@@ -20,7 +21,8 @@ export async function resolveOperationalProductHandoff(input: {
   if (!organization || !activePublicBusinessCapabilities(organization.capabilities).includes("SHOP")) {
     throw new ApiError(404, "Product not found");
   }
-  if (!await resolveOrganizationEndpointForTenant({ organizationId: organization.id, role: "APP" })) {
+  const appEndpoint = await resolveOrganizationEndpointForTenant({ organizationId: organization.id, role: "APP" });
+  if (!appEndpoint) {
     throw new ApiError(404, "Product not found");
   }
   const product = await prisma.product.findFirst({
@@ -47,6 +49,7 @@ export async function resolveOperationalProductHandoff(input: {
     locale: input.locale,
     shopSlug: organization.slug,
     productSegment: product.slug || product.id,
+    isCustomDomain: true,
   });
-  return query.size ? `${target}?${query}` : target;
+  return joinOrganizationEndpointPath(appEndpoint, query.size ? `${target}?${query}` : target);
 }

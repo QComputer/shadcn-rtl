@@ -30,11 +30,49 @@ export async function resolveOrganizationEndpointForTenant(input: {
       },
     },
   });
-  if (!organization) return null;
-  return resolveOrganizationEndpoint({
-    organizationId: organization.id,
-    role: input.role,
-    settings: organization.settings?.settings,
-    domains: organization.domains,
-  });
+  if (!organization) {
+    console.error("[public-catalog-app-endpoint-diagnostic]", JSON.stringify({
+      event: "public-catalog-app-endpoint-diagnostic",
+      organizationId: input.organizationId,
+      role: input.role,
+      resolution: "no-organization",
+      runtime: process.env.VERCEL_ENV || process.env.NODE_ENV,
+    }));
+    return null;
+  }
+  try {
+    const result = resolveOrganizationEndpoint({
+      organizationId: organization.id,
+      role: input.role,
+      settings: organization.settings?.settings,
+      domains: organization.domains,
+    });
+    console.error("[public-catalog-app-endpoint-diagnostic]", JSON.stringify({
+      event: "public-catalog-app-endpoint-diagnostic",
+      organizationId: input.organizationId,
+      role: input.role,
+      settingsKeys: organization.settings?.settings ? Object.keys(organization.settings.settings) : null,
+      endpointDefinitions: organization.settings?.settings?.["organizationEndpoints"] || null,
+      domainsCount: organization.domains?.length ?? 0,
+      resolution: result ? "resolved" : "null",
+      endpointSource: result?.source ?? null,
+      endpointOrigin: result?.origin ?? null,
+      endpointPathPrefix: result?.pathPrefix ?? null,
+      runtime: process.env.VERCEL_ENV || process.env.NODE_ENV,
+    }));
+    return result;
+  } catch (error) {
+    console.error("[public-catalog-app-endpoint-diagnostic]", JSON.stringify({
+      event: "public-catalog-app-endpoint-diagnostic",
+      organizationId: input.organizationId,
+      role: input.role,
+      settingsKeys: organization.settings?.settings ? Object.keys(organization.settings.settings) : null,
+      endpointDefinitions: organization.settings?.settings?.["organizationEndpoints"] || null,
+      domainsCount: organization.domains?.length ?? 0,
+      resolution: "error",
+      errorMessage: error instanceof Error ? error.message : String(error),
+      runtime: process.env.VERCEL_ENV || process.env.NODE_ENV,
+    }));
+    throw error;
+  }
 }

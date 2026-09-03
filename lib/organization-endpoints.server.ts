@@ -1,5 +1,6 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
 import { prisma } from "@/lib/db";
 import {
   resolveOrganizationEndpoint,
@@ -47,6 +48,18 @@ export async function resolveOrganizationEndpointForTenant(input: {
       settings: organization.settings?.settings,
       domains: organization.domains,
     });
+    const dbFingerprint = createHash("sha256").update(process.env.DATABASE_URL || "").digest("hex").slice(0, 12);
+    let dbHost = null;
+    let dbName = null;
+    try {
+      if (process.env.DATABASE_URL) {
+        const parsed = new URL(process.env.DATABASE_URL);
+        dbHost = parsed.hostname;
+        dbName = parsed.pathname.split("/")[1] || null;
+      }
+    } catch {
+      // ignore parse errors
+    }
     console.error("[public-catalog-app-endpoint-diagnostic]", JSON.stringify({
       event: "public-catalog-app-endpoint-diagnostic",
       organizationId: input.organizationId,
@@ -59,9 +72,24 @@ export async function resolveOrganizationEndpointForTenant(input: {
       endpointOrigin: result?.origin ?? null,
       endpointPathPrefix: result?.pathPrefix ?? null,
       runtime: process.env.VERCEL_ENV || process.env.NODE_ENV,
+      dbFingerprint,
+      dbHost,
+      dbName,
     }));
     return result;
   } catch (error) {
+    const dbFingerprint = createHash("sha256").update(process.env.DATABASE_URL || "").digest("hex").slice(0, 12);
+    let dbHost = null;
+    let dbName = null;
+    try {
+      if (process.env.DATABASE_URL) {
+        const parsed = new URL(process.env.DATABASE_URL);
+        dbHost = parsed.hostname;
+        dbName = parsed.pathname.split("/")[1] || null;
+      }
+    } catch {
+      // ignore parse errors
+    }
     console.error("[public-catalog-app-endpoint-diagnostic]", JSON.stringify({
       event: "public-catalog-app-endpoint-diagnostic",
       organizationId: input.organizationId,
@@ -72,6 +100,9 @@ export async function resolveOrganizationEndpointForTenant(input: {
       resolution: "error",
       errorMessage: error instanceof Error ? error.message : String(error),
       runtime: process.env.VERCEL_ENV || process.env.NODE_ENV,
+      dbFingerprint,
+      dbHost,
+      dbName,
     }));
     throw error;
   }

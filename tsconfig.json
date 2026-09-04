@@ -31,5 +31,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
 , "next-sitemap.config.js"  ],
-  "exclude": ["node_modules", "dist", "scripts/e2e/local-callback-webservice-smoke.mts"]
+  "exclude": ["node_modules", "dist", "demo", "scripts/e2e/local-callback-webservice-smoke.mts"]
 }

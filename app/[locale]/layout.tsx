@@ -5,92 +5,53 @@ import { ThemeProvider } from "@/hooks/use-theme";
 import { SessionProvider } from "next-auth/react";
 import { getDictionary } from "@/lib/dictionary"
 import { AuthProvider } from "@/hooks/use-auth";
-import { LocaleProvider } from "@/components/locale-provider";
-import { ErrorBoundary } from "@/components/error-boundary";
-import { PwaInstallManager } from "@/components/pwa-install-manager";
-import { getCanonicalUrl, getPublicBaseUrl } from "@/lib/seo";
-import { PlatformFooter } from "@/components/public/platform-footer";
-import { headers } from "next/headers";
-import { appPath, resolveAppBasePath } from "@/lib/app-base-path";
+import { LocaleProvider } from "@/components/locale-provider"
+import { ErrorBoundary } from "@/components/error-boundary"
+import { PwaInstallManager } from "@/components/pwa-install-manager"
+import { getPublicBaseUrl, buildPublicMetadata } from "@/lib/seo"
+import { headers } from "next/headers"
+import { appPath, resolveAppBasePath } from "@/lib/app-base-path"
+import { PlatformFooter } from "@/components/public/platform-footer"
 
+export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  metadataBase: getPublicBaseUrl(),
-  applicationName: "Bazarbaaz",
-  manifest: appPath("/manifest.webmanifest"),
-  title: {
-    default: "بازارباز - پلتفرم مدیریت کسب‌وکار ایرانی",
-    template: "%s | بازارباز"
-  },
-  description: "پلتفرم مدیریت کسب‌وکار ایرانی: فروشگاه، نوبت‌دهی، مشتریان، باشگاه مشتریان، پیامک، اعلان و داشبورد مدیریتی فارسی.",
-  keywords: ["Bazarbaaz", "پلتفرم کسب‌وکار", "مدیریت کسب‌وکار", "فروشگاه آنلاین", "نوبت‌دهی آنلاین", "باشگاه مشتریان", "پیامک-marketing", "داشبورد مدیریتی", "بازارباز"],
-  openGraph: {
-    title: "بازارباز - پلتفرم مدیریت کسب‌وکار ایرانی",
-    description: "پلتفرم مدیریت کسب‌وکار ایرانی: فروشگاه، نوبت‌دهی، مشتریان، باشگاه مشتریان، پیامک، اعلان و داشبورد مدیریتی فارسی.",
-    url: "https://bazarbaaz.ir",
-    siteName: "بازارباز",
-    images: [
-      {
-        url: getCanonicalUrl("/og-image"),
-        width: 1200,
-        height: 630,
-      },
-    ],
-    locale: "fa",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    images: [getCanonicalUrl("/og-image")],
-  },
-  icons: {
-    icon: [
-      { url: appPath("/icons/favicon.svg"), type: "image/svg+xml" },
-      { url: appPath("/icons/favicon-32x32.png"), sizes: "32x32", type: "image/png" },
-      { url: appPath("/icons/favicon-16x16.png"), sizes: "16x16", type: "image/png" },
-    ],
-    shortcut: [{ url: appPath("/icons/favicon.ico") }],
-    apple: [{ url: appPath("/icons/apple-touch-icon.png"), sizes: "180x180", type: "image/png" }],
-  },
-  appleWebApp: {
-    capable: true,
-    title: "Bazarbaaz",
-    statusBarStyle: "black-translucent",
-  },
-  formatDetection: {
-    telephone: false,
-  },
-};
-
-// Generate static params for all supported locales - required for static export
 export function generateStaticParams() {
   return supportedLocales.map((locale) => ({ locale }));
 }
 
-// Validate that the locale is supported
-function validateLocale(locale: string): SupportedLocale {
+function normalizeLocale(locale: string | undefined): SupportedLocale {
   if (supportedLocales.includes(locale as SupportedLocale)) {
     return locale as SupportedLocale;
   }
-  return "fa" as SupportedLocale; // Default to Persian
+  return "fa" as SupportedLocale;
 }
 
 export default async function LocaleLayout({
   children,
-  params,
 }: {
   children: React.ReactNode;
-  params: Promise<{ locale: string }>;
 }) {
-  // Next.js 16 - params is a Promise
-  const resolvedParams = await params;
-  const locale = validateLocale(resolvedParams.locale);
-  const config = localeConfig[locale];
+  const headersList = await headers();
+  const tenantPublicBaseUrlHeader = headersList.get('x-bazar-tenant-public-base-url');
+  const isTenantContext = !!tenantPublicBaseUrlHeader;
+  let baseUrl: string | URL | undefined;
+  if (isTenantContext && tenantPublicBaseUrlHeader) {
+    try {
+      baseUrl = new URL(tenantPublicBaseUrlHeader);
+    } catch (error) {
+      console.error("Invalid tenant public base URL header:", tenantPublicBaseUrlHeader, error);
+      baseUrl = getPublicBaseUrl();
+    }
+  } else {
+    baseUrl = getPublicBaseUrl();
+  }
+  const pathname = headersList.get("x-url-pathname") || "/";
+  const pathParts = pathname.split("/").filter(Boolean);
+  const localeFromPath = pathParts[0];
+  const locale = normalizeLocale(localeFromPath);
   const dict = getDictionary(locale)
-  const headerList = await headers();
-  const footerContext = headerList.get("x-bazar-public-footer-context") || "platform";
+  const footerContext = headersList.get("x-bazar-public-footer-context") || "platform";
   const showPlatformFooter = footerContext === "platform";
-  // Helper to get translations based on locale
   const t = (key: string): string => {
     const keys = key.split(".")
     let value: any = dict
@@ -99,10 +60,21 @@ export default async function LocaleLayout({
     }
     return value || key
   }
+  const metadata: Metadata = buildPublicMetadata({
+    locale: locale,
+    baseUrl: baseUrl,
+    path: pathname,
+    title: `${t("home.platformName") || "Bazarbaaz"} | بازارباز`,
+    description: t("home.description") || "پلتفرم مدیریت کسب‌وکار ایرانی: فروشگاه، نوبت‌دهی، مشتریان، باشگاه مشتریان، پیامک، اعلان و داشبورد مدیریتی فارسی.",
+    keywords: ["Bazarbaaz", "پلتفرم کسب‌وکار", "مدیریت کسب‌وکار", "فروشگاه آنلاین", "نوبت‌دهی آنلاین", "باشگاه مشتریان", "پیامک-marketing", "داشبورد مدیریتی", "بازارباز"],
+  });
 
-
+  (metadata as any).title = {
+    template: "%s | بازارباز",
+    default: "بازارباز | از کسب‌وکار سنتی تا حضور دیجیتال هوشمند",
+  };
   return (
-    <html lang={locale} dir={config.dir}>
+    <html lang={locale} dir={localeConfig[locale].dir}>
       <head key={locale}>
       </head>
       <body className="antialiased">

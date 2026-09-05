@@ -27,8 +27,10 @@ function discountedAmount(base: number, discountType?: string | null, discountVa
   return base;
 }
 
-export function serializePublicCatalogMedia(input: { image?: string | null; name: string }): PublicCatalogMedia {
-  return { card: input.image ?? null, detail: input.image ?? null, alt: input.name };
+export function serializePublicCatalogMedia(input: { image?: string | null; images?: string[]; name: string }): PublicCatalogMedia {
+  const primary = input.image ?? null;
+  const gallery = (input.images ?? []).filter((url) => url !== primary);
+  return { card: primary, detail: primary, alt: input.name, gallery };
 }
 
 export function serializePublicCatalogCategory(input: {
@@ -47,7 +49,7 @@ export function serializePublicCatalogCategory(input: {
 }
 
 export function serializePublicCatalogProduct(input: {
-  id: string; slug?: string | null; name: string; description?: string | null; image?: string | null;
+  id: string; slug?: string | null; name: string; description?: string | null; image?: string | null; images?: string[];
   basePrice: MoneyLike; discountType?: string | null; discountValue?: MoneyLike | null; trackInventory: boolean;
   category: { id: string; slug?: string | null; name: string };
   variants: Array<{ id: string; name?: string | null; price?: MoneyLike | null; inventory: number; allowBackOrder: boolean }>;

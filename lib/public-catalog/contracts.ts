@@ -13,7 +13,7 @@ export const publicCatalogListQuerySchema = z.object({
 }).strict();
 
 export type PublicCatalogMoney = { amount: number; currency: typeof PUBLIC_CATALOG_PRICE_UNIT };
-export type PublicCatalogMedia = { card: string | null; detail: string | null; alt: string };
+export type PublicCatalogMedia = { card: string | null; detail: string | null; alt: string; gallery: string[] };
 export type PublicCatalogPurchase = { href: string; productId: string };
 export type PublicCatalogVariant = {
   id: string;

@@ -14,7 +14,7 @@ const publicVariantSelect = {
 } satisfies Prisma.ProductVariantSelect;
 const publicCategorySelect = { id: true, slug: true, name: true } satisfies Prisma.ProductCategorySelect;
 const publicProductSelect = {
-  id: true, slug: true, name: true, description: true, basePrice: true, image: true,
+  id: true, slug: true, name: true, description: true, basePrice: true, image: true, images: { select: { url: true } },
   discountType: true, discountValue: true, trackInventory: true,
   category: { select: publicCategorySelect },
   variants: { where: { deletedAt: null }, orderBy: [{ name: "asc" }, { id: "asc" }], select: publicVariantSelect },
@@ -99,7 +99,7 @@ export async function listPublicCatalogProducts(input: {
   ]);
   const buildPurchase = await purchaseBuilder(organization);
   const pagination: PublicCatalogPagination = { page: input.page, limit: input.limit, total, totalPages: Math.ceil(total / input.limit) };
-  return { products: rows.map((product) => serializePublicCatalogProduct({ ...product, purchase: buildPurchase(product.id) })), pagination };
+  return { products: rows.map((product) => serializePublicCatalogProduct({ ...product, images: product.images.map((img) => img.url), purchase: buildPurchase(product.id) })), pagination };
 }
 
 export async function getPublicCatalogProduct(organizationIdentifier: string, productIdentifier: string) {
@@ -113,7 +113,7 @@ export async function getPublicCatalogProduct(organizationIdentifier: string, pr
   });
   if (!product) throw new ApiError(404, "Product not found");
   const buildPurchase = await purchaseBuilder(organization);
-  return serializePublicCatalogProduct({ ...product, purchase: buildPurchase(product.id) });
+  return serializePublicCatalogProduct({ ...product, images: product.images.map((img) => img.url), purchase: buildPurchase(product.id) });
 }
 
 export async function getPublicCatalogSnapshot(organizationIdentifier: string) {

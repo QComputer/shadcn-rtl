@@ -244,8 +244,14 @@ export default function ProductDetailPage({
             <div className="space-y-4">
               {/* Main Image */}
               <div className="aspect-square bg-muted rounded-lg overflow-hidden relative">
-                {getProductPrimaryMediaUrl(product) ? (
-                  <img 
+                {(product.images?.length ?? 0) > 1 ? (
+                  <img
+                    src={product.images[selectedImage] || getProductPrimaryMediaUrl(product) || undefined}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : getProductPrimaryMediaUrl(product) ? (
+                  <img
                     src={getProductPrimaryMediaUrl(product) || undefined}
                     alt={product.name}
                     className="w-full h-full object-cover"

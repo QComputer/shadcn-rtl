@@ -1,0 +1,22 @@
+:root {
+  --bazarbaaz-blue: #2F5BFF;
+  --bazarbaaz-blue-bright: #3B82F6;
+  --bazarbaaz-ink: #0F172A;
+  --bazarbaaz-bg: #FFFFFF;
+  --bazarbaaz-logo-main: var(--bazarbaaz-ink);
+  --bazarbaaz-logo-accent: var(--bazarbaaz-blue);
+}
+
+.dark {
+  --bazarbaaz-bg: #0B1220;
+  --bazarbaaz-logo-main: #F8FAFC;
+  --bazarbaaz-logo-accent: var(--bazarbaaz-blue-bright);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --bazarbaaz-bg: #0B1220;
+    --bazarbaaz-logo-main: #F8FAFC;
+    --bazarbaaz-logo-accent: var(--bazarbaaz-blue-bright);
+  }
+}

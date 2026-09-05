@@ -1,0 +1,123 @@
+{
+  "brand": "Restaurant 13 / رستوران ایتالیایی سیزده",
+  "slug": "restaurant-13",
+  "package": "restaurant13_bazarbaaz_branding_overlay_v2",
+  "files": [
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/app-icon-512.png",
+      "bytes": 407717
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/app-icon-light-512.png",
+      "bytes": 287138
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/apple-touch-icon.png",
+      "bytes": 47825
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/brand-guidelines-board.png",
+      "bytes": 1900788
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/brand-guidelines-board.webp",
+      "bytes": 142888
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/favicon-16.png",
+      "bytes": 668
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/favicon-32.png",
+      "bytes": 2134
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/icon-192.png",
+      "bytes": 54227
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/icon-512.png",
+      "bytes": 407717
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/icon-maskable-192.png",
+      "bytes": 15307
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/icon-maskable-512.png",
+      "bytes": 77010
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/logo-lockup-charcoal.png",
+      "bytes": 453702
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/logo-lockup-gold.png",
+      "bytes": 848373
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/logo-lockup-ivory.png",
+      "bytes": 315106
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/logo-mark-charcoal.png",
+      "bytes": 319401
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/logo-mark-gold.png",
+      "bytes": 869501
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/social-avatar-dark.png",
+      "bytes": 2216398
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/social-avatar-dark.webp",
+      "bytes": 127670
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/social-avatar-light.png",
+      "bytes": 1138085
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/social-avatar-light.webp",
+      "bytes": 43116
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/storefront-sign-day.png",
+      "bytes": 2393219
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/storefront-sign-day.webp",
+      "bytes": 161214
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/storefront-sign-night.png",
+      "bytes": 1849260
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/storefront-sign-night.webp",
+      "bytes": 105468
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/source-reference/official-facade-day.png",
+      "bytes": 2038929
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/source-reference/official-logo-closeup.jpg",
+      "bytes": 29900
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/source-reference/official-logo-square.jpg",
+      "bytes": 6374
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/source-reference/official-sign-night.png",
+      "bytes": 280640
+    },
+    {
+      "path": "public/brand/tenants/restaurant-13/brand/source-reference/official-sign-vertical.jpg",
+      "bytes": 7413
+    }
+  ]
+}

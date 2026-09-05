@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-label="Bazarbaaz logo mark">
+
+        <style>
+          :root { --bb-main: #0F172A; --bb-accent: #2F5BFF; }
+          @media (prefers-color-scheme: dark) {
+            :root { --bb-main: #F8FAFC; --bb-accent: #3B82F6; }
+          }
+        </style>
+        
+
+<path d="M170 120 V880" stroke="var(--bb-main)" stroke-width="84" stroke-linecap="round"/>
+<path d="M300 120 H520 C690 120 815 240 815 400 C815 455 790 505 748 545" stroke="var(--bb-accent)" stroke-width="84" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M300 500 H620 C706 500 770 527 800 565" stroke="var(--bb-main)" stroke-width="84" fill="none" stroke-linecap="round"/>
+<path d="M805 655 C822 710 813 765 780 810 C742 860 675 880 590 880 H300" stroke="var(--bb-main)" stroke-width="84" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

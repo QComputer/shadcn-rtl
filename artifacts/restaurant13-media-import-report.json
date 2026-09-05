@@ -1,0 +1,506 @@
+[
+  {
+    "productId": "cmthwooll00mqjm0oq5t7mszv",
+    "productName": "آب معدنی کوچک",
+    "slug": "italiano-96de57c48e9304d2",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-96de57c48e9304d2/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-96de57c48e9304d2/studio.webp",
+    "status": "COMPLETE",
+    "notes": "Generated asset from package"
+  },
+  {
+    "productId": "cmthwoap100iqjm0o95p3xjt1",
+    "productName": "آبمیوه گازدار خانواده هوفنبرگ بلوبری",
+    "slug": "italiano-8d49d0d16382622c",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-8d49d0d16382622c/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-8d49d0d16382622c/studio.webp",
+    "status": "COMPLETE",
+    "notes": "Generated asset from package"
+  },
+  {
+    "productId": "cmthwo9jv00iejm0o4jjulnym",
+    "productName": "آبمیوه گازدار خانواده هوفنبرگ لیموناد",
+    "slug": "italiano-8b8a5ad44f048ee6",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-8b8a5ad44f048ee6/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-8b8a5ad44f048ee6/studio.webp",
+    "status": "COMPLETE",
+    "notes": "Generated asset from package"
+  },
+  {
+    "productId": "cmthwoczy00jejm0o32dpr4dr",
+    "productName": "آبمیوه گازدار قوطی هوفنبرگ بلوبری",
+    "slug": "italiano-0cb1e53f09b51d50",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-0cb1e53f09b51d50/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-0cb1e53f09b51d50/studio.webp",
+    "status": "COMPLETE",
+    "notes": "Generated asset from package"
+  },
+  {
+    "productId": "cmthwoe5800jqjm0ottcabd4x",
+    "productName": "آبمیوه گازدار قوطی هوفنبرگ سیب کیوی",
+    "slug": "italiano-0ac404a53f7f2d62",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-0ac404a53f7f2d62/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-0ac404a53f7f2d62/studio.webp",
+    "status": "COMPLETE",
+    "notes": "Generated asset from package"
+  },
+  {
+    "productId": "cmthwobu700j2jm0om8g4rsoq",
+    "productName": "آبمیوه گازدار قوطی هوفنبرگ کاکتوس",
+    "slug": "italiano-6ddcd80ae3b372fd",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-6ddcd80ae3b372fd/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-6ddcd80ae3b372fd/studio.webp",
+    "status": "COMPLETE",
+    "notes": "Generated asset from package"
+  },
+  {
+    "productId": "cmthwnk5c00b2jm0oqdf7qyl7",
+    "productName": "استیک مرغ با گودا",
+    "slug": "italiano-df9de0eeb7db81c3",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-df9de0eeb7db81c3/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-df9de0eeb7db81c3/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwnst500dkjm0oe7whcxlm",
+    "productName": "بشقاب سبزیجات",
+    "slug": "italiano-9d21d68ef3281aa7",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-9d21d68ef3281aa7/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-9d21d68ef3281aa7/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwnqh000cwjm0ov69wqt54",
+    "productName": "بشقاب سوخاری",
+    "slug": "italiano-11dab2ef374123ae",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-11dab2ef374123ae/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-11dab2ef374123ae/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwno6l00c8jm0oxz6akm1q",
+    "productName": "بشقاب سوخاری تک نفره",
+    "slug": "italiano-c3f538b4baf44910",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-c3f538b4baf44910/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-c3f538b4baf44910/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwnrm600d8jm0om9j80ste",
+    "productName": "بشقاب مدیترانه ای",
+    "slug": "italiano-63c556cb8dd01dfc",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-63c556cb8dd01dfc/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-63c556cb8dd01dfc/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwnpbt00ckjm0ofqgyhxzd",
+    "productName": "بشقاب میگو",
+    "slug": "italiano-73b41feffc6d01b4",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-73b41feffc6d01b4/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-73b41feffc6d01b4/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwmuwq0042jm0o4nrqra0x",
+    "productName": "بوریتو گوشت تک نفره",
+    "slug": "italiano-dae9394d2a8c1b5e",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-dae9394d2a8c1b5e/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-dae9394d2a8c1b5e/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwmtrk003qjm0obnota617",
+    "productName": "بوریتو گوشت دو نفره",
+    "slug": "italiano-7de5759c528ef1f0",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-7de5759c528ef1f0/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-7de5759c528ef1f0/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwolpz00lwjm0ob41s4gsl",
+    "productName": "دلستر خانواده هوفنبرگ",
+    "slug": "italiano-36ab8a08573f4cad",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-36ab8a08573f4cad/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-36ab8a08573f4cad/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwong100mejm0o1yakw49h",
+    "productName": "دوغ قوطی",
+    "slug": "italiano-dc9a40e048fb2c1f",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-dc9a40e048fb2c1f/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-dc9a40e048fb2c1f/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwo7u100hwjm0oh6at0or6",
+    "productName": "سالاد سزار",
+    "slug": "italiano-64a404468cf8bc0a",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-64a404468cf8bc0a/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-64a404468cf8bc0a/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwo5jj00h8jm0oqesmppv0",
+    "productName": "سالاد فصل بزرگ",
+    "slug": "italiano-1dea19cb77d6271e",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-1dea19cb77d6271e/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-1dea19cb77d6271e/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwo4dz00gwjm0o07izdxlm",
+    "productName": "سالاد فصل کوچک",
+    "slug": "italiano-cc9c7a868e655aab",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-cc9c7a868e655aab/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-cc9c7a868e655aab/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwo6oy00hkjm0osasykh0c",
+    "productName": "سالاد مخصوص",
+    "slug": "italiano-7eabf686bc283b8e",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-7eabf686bc283b8e/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-7eabf686bc283b8e/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwml330018jm0o3fi62zbh",
+    "productName": "سس تری یاکی",
+    "slug": "italiano-bb0a3ee0f14066c0",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-bb0a3ee0f14066c0/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-bb0a3ee0f14066c0/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwmpq7002kjm0oocgfhu6v",
+    "productName": "سس تک نفره",
+    "slug": "italiano-10bf06ed52a69ea0",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-10bf06ed52a69ea0/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-10bf06ed52a69ea0/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwmnda001wjm0ome9kph8h",
+    "productName": "سس سالاد سزار",
+    "slug": "italiano-18a322e9e87135c4",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-18a322e9e87135c4/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-18a322e9e87135c4/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwmm82001kjm0odvg2qymb",
+    "productName": "سس سالاد مخصوص",
+    "slug": "italiano-ce4ee20b6494cbb9",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-ce4ee20b6494cbb9/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-ce4ee20b6494cbb9/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwmjve000wjm0oo1tlqblo",
+    "productName": "سس سیر",
+    "slug": "italiano-0f1491c21e789de7",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-0f1491c21e789de7/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-0f1491c21e789de7/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwmhhe000ejm0oeyvn3k98",
+    "productName": "سس قارچ",
+    "slug": "italiano-5bcfdbc33e850e43",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-5bcfdbc33e850e43/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-5bcfdbc33e850e43/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwmoin0028jm0ozv2ciu08",
+    "productName": "سس چیلی",
+    "slug": "italiano-c280271a04f6b698",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-c280271a04f6b698/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-c280271a04f6b698/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwny2i00f2jm0oe84tnza0",
+    "productName": "سیب زمینی استامبولی",
+    "slug": "italiano-cb07a768212006f3",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-cb07a768212006f3/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-cb07a768212006f3/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwnwx900eqjm0oo4nishy9",
+    "productName": "سیب زمینی با پنیر",
+    "slug": "italiano-e25ae37ff7123d3d",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-e25ae37ff7123d3d/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-e25ae37ff7123d3d/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwnz8100fejm0oejqykvke",
+    "productName": "سیب زمینی تنوری",
+    "slug": "italiano-66696a31b1febd9b",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-66696a31b1febd9b/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-66696a31b1febd9b/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwnvox00eejm0ow5bx7imp",
+    "productName": "سیب زمینی سرخ کرده",
+    "slug": "italiano-bb512163c5104240",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-bb512163c5104240/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-bb512163c5104240/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwo1ik00g2jm0ozd5v8492",
+    "productName": "قارچ سوخاری",
+    "slug": "italiano-ef2c517cea25cb8e",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-ef2c517cea25cb8e/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-ef2c517cea25cb8e/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwokks00lkjm0o8b3epl2i",
+    "productName": "ماءالشعیر قوطی هی دی",
+    "slug": "italiano-fbbc13df36ce8c3a",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-fbbc13df36ce8c3a/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-fbbc13df36ce8c3a/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwo2nx00gejm0ostozha87",
+    "productName": "نان سیر",
+    "slug": "italiano-0ca0d250a8fdb7f0",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-0ca0d250a8fdb7f0/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-0ca0d250a8fdb7f0/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwofel00k2jm0oxxjwl2nz",
+    "productName": "نوشابه خانواده",
+    "slug": "italiano-5cdc20bed6fa4b1a",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-5cdc20bed6fa4b1a/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-5cdc20bed6fa4b1a/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwoi9k00kwjm0o5p2dj8ns",
+    "productName": "نوشابه قوطی",
+    "slug": "italiano-52bf076f32c38f2a",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-52bf076f32c38f2a/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-52bf076f32c38f2a/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwnd870092jm0o1p3fsa1k",
+    "productName": "هات داگ ویژه سیزده",
+    "slug": "italiano-0b5914c28b4fc51b",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-0b5914c28b4fc51b/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-0b5914c28b4fc51b/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwnuiv00e2jm0omwsc4lx8",
+    "productName": "وایت فراز",
+    "slug": "italiano-195e8a29a1118622",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-195e8a29a1118622/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-195e8a29a1118622/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwnh9g00a8jm0ookm1aou3",
+    "productName": "پاستا آلفردو مرغ",
+    "slug": "italiano-05924dee4aa587db",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-05924dee4aa587db/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-05924dee4aa587db/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwng42009wjm0ouuopl21e",
+    "productName": "پاستا آلفردو گوشت",
+    "slug": "italiano-2754cdc49ebc680d",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-2754cdc49ebc680d/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-2754cdc49ebc680d/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwneyh009kjm0oi9mr8rfo",
+    "productName": "پاستا اسپشیال",
+    "slug": "italiano-28822084aa2cd14c",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-28822084aa2cd14c/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-28822084aa2cd14c/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwnif000akjm0ort4p92ye",
+    "productName": "پاستا سبزیجات",
+    "slug": "italiano-ad1fa8ef9f3fb8bc",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-ad1fa8ef9f3fb8bc/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-ad1fa8ef9f3fb8bc/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwmxsb004wjm0ovyroyuu0",
+    "productName": "پیتزا اسپشیال",
+    "slug": "italiano-c238a9e218d58731",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-c238a9e218d58731/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-c238a9e218d58731/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwmzyi005ejm0ovcccztiq",
+    "productName": "پیتزا رست بیف کلاسیک",
+    "slug": "italiano-83d751ecf0b9d7b1",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-83d751ecf0b9d7b1/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-83d751ecf0b9d7b1/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwn1p0005wjm0oapkaedmm",
+    "productName": "پیتزا زبان",
+    "slug": "italiano-3c791b0a685e2b28",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-3c791b0a685e2b28/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-3c791b0a685e2b28/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwn8ky007wjm0oclujch3h",
+    "productName": "پیتزا سبزیجات کلاسیک",
+    "slug": "italiano-080e5c495088d4da",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-080e5c495088d4da/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-080e5c495088d4da/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwmsmb003ejm0onqqekjze",
+    "productName": "پیتزا سیر استیک مرغ تک نفره",
+    "slug": "italiano-8997d83e33fdcc40",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-8997d83e33fdcc40/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-8997d83e33fdcc40/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwmrgl0032jm0ojeltk4h1",
+    "productName": "پیتزا سیر استیک مرغ دو نفره",
+    "slug": "italiano-7a31e66ca5bf9714",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-7a31e66ca5bf9714/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-7a31e66ca5bf9714/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwn55b006wjm0om9eguolh",
+    "productName": "پیتزا مخلوط کلاسیک",
+    "slug": "italiano-7f65c6cca9c2191c",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-7f65c6cca9c2191c/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-7f65c6cca9c2191c/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwn3f9006ejm0ot1y64j0v",
+    "productName": "پیتزا مکزیکی",
+    "slug": "italiano-5cbb3357d68a3643",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-5cbb3357d68a3643/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-5cbb3357d68a3643/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwmw23004ejm0ot1oy6g41",
+    "productName": "پیتزا میکس",
+    "slug": "italiano-e9c694b45fde21be",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-e9c694b45fde21be/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-e9c694b45fde21be/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwn6v5007ejm0oq7b4j2o7",
+    "productName": "پیتزا پپرونی کلاسیک",
+    "slug": "italiano-7a5412eb5ea2ba80",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-7a5412eb5ea2ba80/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-7a5412eb5ea2ba80/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwnaqn008ejm0oqtz2sscl",
+    "productName": "پیتزا یونانی",
+    "slug": "italiano-503d45f095d81bf3",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-503d45f095d81bf3/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-503d45f095d81bf3/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwo0de00fqjm0o7uun524s",
+    "productName": "چیپس و پنیر",
+    "slug": "italiano-dbe4e93a37166b75",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-dbe4e93a37166b75/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-dbe4e93a37166b75/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwnlav00bejm0oe0avqy20",
+    "productName": "چیکن استیک پارمزان",
+    "slug": "italiano-2f530f11db31d20c",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-2f530f11db31d20c/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-2f530f11db31d20c/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  },
+  {
+    "productId": "cmthwnmgx00bqjm0otpphqo8f",
+    "productName": "چیکن تریاکی",
+    "slug": "italiano-bd571fd744d76de4",
+    "normalUrl": "/brand/tenants/restaurant-13/menu/products/italiano-bd571fd744d76de4/normal.webp",
+    "studioUrl": "/brand/tenants/restaurant-13/menu/products/italiano-bd571fd744d76de4/studio.webp",
+    "status": "PLACEHOLDER",
+    "notes": "Placeholder asset from package"
+  }
+]

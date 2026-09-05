@@ -1,6 +1,6 @@
 /**
  * NextAuth Configuration
- * 
+ *
  * This module configures NextAuth.js for authentication with:
  * - Credentials provider for username/password login
  * - Google OAuth provider
@@ -19,7 +19,7 @@ import { appCookiePath, appPath } from "./app-base-path";
 
 /**
  * NextAuth Type Extensions
- * 
+ *
  * Extend the default NextAuth types to include custom user properties.
  */
 declare module "next-auth" {
@@ -31,14 +31,14 @@ declare module "next-auth" {
     name?: string;
     organizationId?: string | null;
   }
-   interface Session{
+    interface Session{
     role?: UserRole;
     locale?: string;
     isTeamMember?: boolean;
     theme?: string;
     name?: string;
     organizationId?: string | null;
-   }
+  }
 
   interface JWT {
     role?: UserRole;
@@ -81,8 +81,8 @@ const buildProviders = (): Provider[] => {
            type: "text",
             placeholder: "Enter your username or email"
           },
-        password: { 
-          label: "Password", 
+        password: {
+          label: "Password",
           type: "password",
           placeholder: "Enter your password"
         }
@@ -209,7 +209,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   cookies: {
     sessionToken: { options: { path: appCookiePath() } },
     callbackUrl: { options: { path: appCookiePath() } },
-    csrfToken: { options: { path: appCookiePath() } },
+    csrfToken: { options: { path: "/" } }, // Fixed: __Host- cookies require Path=/
     pkceCodeVerifier: { options: { path: appCookiePath() } },
     state: { options: { path: appCookiePath() } },
     nonce: { options: { path: appCookiePath() } },
@@ -224,16 +224,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     maxAge: 30 * 24 * 60 * 60,
   },
   secret: nextAuthSecret,
-  
+
   // Custom pages for authentication flows
   pages: {
     signIn: appPath("/fa/login"),
     error: appPath("/fa/login"),
   },
-  
+
   // Authentication providers
   providers: buildProviders(),
-  
+
   // Callbacks for customizing token and session behavior
   callbacks: {
     /**
@@ -251,7 +251,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return token;
     },
-    
+
     /**
      * Session callback - called whenever a session is checked
      * Maps token data to session user object
@@ -269,7 +269,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       return session;
     },
-    
+
     /**
      * SignIn callback - called after successful authentication
      * Can be used to prevent sign-ins based on user status
@@ -304,7 +304,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return false;
     },
   },
-  
+
   // Event handlers for lifecycle events
   events: {
     /**
@@ -317,7 +317,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Avoid logging full user/session payloads in production.
     },
   },
-  
+
   // Enable debug logging in development
   debug: process.env.NODE_ENV === "development",
 });

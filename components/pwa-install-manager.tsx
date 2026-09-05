@@ -33,7 +33,7 @@ const copy = {
   },
 } as const
 
-function canRegisterServiceWorker() {
+export function canRegisterServiceWorker() {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return false
   return window.isSecureContext
 }
@@ -46,6 +46,7 @@ export function PwaInstallManager({ enabled, locale, basePath }: PwaInstallManag
 
   useEffect(() => {
     if (!enabled || !canRegisterServiceWorker()) return
+    if (process.env.NODE_ENV === "development") return
     const scope = basePath ? `${basePath}/` : "/"
     void navigator.serviceWorker.register(`${basePath}/web-push-sw.js`, { scope }).catch(() => undefined)
   }, [basePath, enabled])

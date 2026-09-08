@@ -1,0 +1,66 @@
+{
+  "tenant": "italiano-13",
+  "targetPath": "public/brand/tenants/restaurant-13/iam/",
+  "assets": [
+    {
+      "file": "burger-highlight.webp",
+      "bytes": 79036,
+      "dimensions": [
+        960,
+        720
+      ],
+      "animated": false,
+      "publicUrl": "https://bazarbaaz.ir/brand/tenants/restaurant-13/iam/burger-highlight.webp"
+    },
+    {
+      "file": "cta-banner.webp",
+      "bytes": 59088,
+      "dimensions": [
+        1200,
+        500
+      ],
+      "animated": false,
+      "publicUrl": "https://bazarbaaz.ir/brand/tenants/restaurant-13/iam/cta-banner.webp"
+    },
+    {
+      "file": "food-showcase.webp",
+      "bytes": 382660,
+      "dimensions": [
+        720,
+        540
+      ],
+      "animated": true,
+      "publicUrl": "https://bazarbaaz.ir/brand/tenants/restaurant-13/iam/food-showcase.webp"
+    },
+    {
+      "file": "hero-rtl.webp",
+      "bytes": 75006,
+      "dimensions": [
+        1200,
+        675
+      ],
+      "animated": false,
+      "publicUrl": "https://bazarbaaz.ir/brand/tenants/restaurant-13/iam/hero-rtl.webp"
+    },
+    {
+      "file": "pasta-highlight.webp",
+      "bytes": 84072,
+      "dimensions": [
+        960,
+        720
+      ],
+      "animated": false,
+      "publicUrl": "https://bazarbaaz.ir/brand/tenants/restaurant-13/iam/pasta-highlight.webp"
+    },
+    {
+      "file": "pizza-highlight.webp",
+      "bytes": 96762,
+      "dimensions": [
+        960,
+        720
+      ],
+      "animated": false,
+      "publicUrl": "https://bazarbaaz.ir/brand/tenants/restaurant-13/iam/pizza-highlight.webp"
+    }
+  ]
+}

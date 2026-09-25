@@ -12,7 +12,7 @@ export type PublicBusinessCapabilityRecord = {
   status: OrganizationCapabilityStatus | string;
 };
 
-export type PublicHomeMode = "AUTO" | "SHOP" | "APPOINTMENT" | "BRAND" | "VISITOR_CHOICE" | null;
+export type PublicHomeMode = "AUTO" | "PROFILE" | "SHOP" | "APPOINTMENT" | "BRAND" | "VISITOR_CHOICE" | null;
 export type BrandLandingProvider = "BAZARBAAZ" | "CUSTOM_INTERNAL" | "CUSTOM_EXTERNAL" | null;
 export type PublicExperienceOwnership = "BAZARBAAZ_MANAGED" | "EXTERNAL_WEBSITE";
 
@@ -122,7 +122,24 @@ export function resolveOrganizationPublicHome(input: {
 }): OrganizationPublicHome {
   const activeCapabilities = activePublicBusinessCapabilities(input.capabilities);
 
-  const mode = input.publicHomeMode ?? "AUTO";
+  // PROFILE is the safe default for new and legacy organizations. BRAND is
+  // retained as the persisted legacy spelling of the same experience.
+  const mode = input.publicHomeMode ?? "PROFILE";
+
+  if (mode === "PROFILE") {
+    if (input.brandLandingProvider === "CUSTOM_EXTERNAL") {
+      return { kind: "external", provider: "CUSTOM_EXTERNAL" };
+    }
+    return { kind: "brand", provider: input.brandLandingProvider === "CUSTOM_INTERNAL" ? "CUSTOM_INTERNAL" : "BAZARBAAZ" };
+  }
+
+  if (mode === "BRAND") {
+    if (input.brandLandingProvider === "CUSTOM_EXTERNAL") return { kind: "external", provider: "CUSTOM_EXTERNAL" };
+    if (input.brandLandingProvider === "CUSTOM_INTERNAL" || input.brandLandingProvider === "BAZARBAAZ") {
+      return { kind: "brand", provider: input.brandLandingProvider };
+    }
+    return { kind: "invalid", reason: "MODE_REQUIRES_MISSING_PROVIDER", mode: "BRAND" };
+  }
 
   if (mode === "SHOP") {
     if (activeCapabilities.includes("SHOP")) {
@@ -148,19 +165,6 @@ export function resolveOrganizationPublicHome(input: {
       };
     }
     return { kind: "invalid", reason: "MODE_REQUIRES_MISSING_CAPABILITY", mode: "APPOINTMENT" };
-  }
-
-  if (mode === "BRAND") {
-    if (input.brandLandingProvider === "CUSTOM_EXTERNAL") {
-      return { kind: "external", provider: "CUSTOM_EXTERNAL" };
-    }
-    if (input.brandLandingProvider === "CUSTOM_INTERNAL") {
-      return { kind: "brand", provider: "CUSTOM_INTERNAL" };
-    }
-    if (input.brandLandingProvider === "BAZARBAAZ") {
-      return { kind: "brand", provider: "BAZARBAAZ" };
-    }
-    return { kind: "invalid", reason: "MODE_REQUIRES_MISSING_PROVIDER", mode: "BRAND" };
   }
 
   if (mode === "VISITOR_CHOICE") {

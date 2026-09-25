@@ -2415,6 +2415,7 @@ async function upsertPilotOrganization(input: {
   capabilities: ReadonlyArray<"SHOP" | "APPOINTMENT" | "CRM" | "IAM" | "ICV" | "EBC" | "USSD" | "SMS">;
   operatorUserId: string;
   status: "DISCOVERY" | "ONBOARDING" | "CONFIGURATION" | "READY_FOR_LAUNCH";
+  publicHomeMode?: "SHOP" | "APPOINTMENT" | "BRAND" | "VISITOR_CHOICE";
   notes: string;
   seoGrowthPlanner: {
     businessGoals: string[];
@@ -2452,8 +2453,8 @@ async function upsertPilotOrganization(input: {
 
   await prisma.organizationSettings.upsert({
     where: { organizationSlug: organization.slug },
-    update: {},
-    create: { organizationSlug: organization.slug },
+    update: input.publicHomeMode ? { publicHomeMode: input.publicHomeMode } : {},
+    create: { organizationSlug: organization.slug, publicHomeMode: input.publicHomeMode },
   });
   await prisma.paymentSettings.upsert({
     where: { organizationSlug: organization.slug },
@@ -2656,6 +2657,7 @@ async function seedPilotWorkspaces() {
       industryKey: "RETAIL_SHOP" as const,
       capabilities: ["SHOP", "CRM", "ICV", "EBC", "USSD", "SMS"] as const,
       status: "DISCOVERY" as const,
+      publicHomeMode: "SHOP" as const,
       notes: "Retail catalog and future Instagram/social connector preparation only.",
       seoGrowthPlanner: {
         businessGoals: ["آماده‌سازی کاتالوگ کفش", "پیشنهاد محتوای اجتماعی"],

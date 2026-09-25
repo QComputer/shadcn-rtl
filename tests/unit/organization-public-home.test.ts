@@ -26,33 +26,27 @@ describe("organization public home resolution", () => {
     })), "BAZARBAAZ_MANAGED");
   });
 
-  it("routes a SHOP-only custom-domain root to the shop experience", () => {
+  it("defaults a new organization to the profile experience", () => {
     assert.deepEqual(resolveOrganizationPublicHome({ capabilities: [active("SHOP")] }), {
-      kind: "capability",
-      mode: "SHOP",
-      capability: "SHOP",
-      publicSurface: "shop",
-      publicEntryPath: "/shop",
+      kind: "brand",
+      provider: "BAZARBAAZ",
     });
   });
 
-  it("routes an APPOINTMENT-only custom-domain root to the appointment experience", () => {
-    assert.deepEqual(resolveOrganizationPublicHome({ capabilities: [active("APPOINTMENT")] }), {
-      kind: "capability",
-      mode: "APPOINTMENT",
-      capability: "APPOINTMENT",
-      publicSurface: "appointment",
-      publicEntryPath: "/services",
-    });
+  it("allows a capability-aware shop homepage selection", () => {
+    assert.equal(resolveOrganizationPublicHome({ capabilities: [active("SHOP")], publicHomeMode: "SHOP" }).kind, "capability");
+    assert.equal(resolveOrganizationPublicHome({ capabilities: [active("APPOINTMENT")], publicHomeMode: "SHOP" }).kind, "invalid");
   });
 
   it("uses the configured default for multi-capability organizations in AUTO mode", () => {
     const shopDefault = resolveOrganizationPublicHome({
       capabilities: [active("SHOP"), active("APPOINTMENT")],
+      publicHomeMode: "AUTO",
       settings: { defaultPublicCapability: "SHOP" },
     });
     const appointmentDefault = resolveOrganizationPublicHome({
       capabilities: [active("SHOP"), active("APPOINTMENT")],
+      publicHomeMode: "AUTO",
       settings: { defaultPublicCapability: "APPOINTMENT" },
     });
 
@@ -65,6 +59,7 @@ describe("organization public home resolution", () => {
   it("keeps multi-capability organizations generic when no default is configured in AUTO mode", () => {
     assert.deepEqual(resolveOrganizationPublicHome({
       capabilities: [active("SHOP"), active("APPOINTMENT")],
+      publicHomeMode: "AUTO",
       settings: null,
     }), {
       kind: "generic",
@@ -95,6 +90,7 @@ describe("organization public home resolution", () => {
   it("falls back when the selected capability is later disabled", () => {
     assert.deepEqual(resolveOrganizationPublicHome({
       capabilities: [active("SHOP"), inactive("APPOINTMENT")],
+      publicHomeMode: "AUTO",
       settings: { defaultPublicCapability: "APPOINTMENT" },
     }), {
       kind: "capability",
@@ -108,6 +104,7 @@ describe("organization public home resolution", () => {
   it("renders generic organization content when no public business capability is active", () => {
     assert.deepEqual(resolveOrganizationPublicHome({
       capabilities: [active("CRM"), inactive("SHOP")],
+      publicHomeMode: "AUTO",
       settings: { defaultPublicCapability: "SHOP" },
     }), {
       kind: "generic",
@@ -241,6 +238,7 @@ describe("organization public home resolution", () => {
   it("preserves legacy behavior when new fields are null", () => {
     assert.deepEqual(resolveOrganizationPublicHome({
       capabilities: [active("SHOP")],
+      publicHomeMode: "AUTO",
       settings: null,
     }), {
       kind: "capability",
@@ -254,6 +252,7 @@ describe("organization public home resolution", () => {
   it("ignores inactive capabilities in AUTO mode", () => {
     assert.deepEqual(resolveOrganizationPublicHome({
       capabilities: [active("SHOP"), inactive("APPOINTMENT")],
+      publicHomeMode: "AUTO",
       settings: { defaultPublicCapability: "APPOINTMENT" },
     }), {
       kind: "capability",

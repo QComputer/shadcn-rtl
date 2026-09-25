@@ -17,6 +17,13 @@ function safeIconUrl(value: string, fallback: string, basePath: AppBasePath): st
   return appPath(fallback, basePath);
 }
 
+function maskableSibling(value: string | undefined, size: "192" | "512") {
+  const suffix = `icon-${size}x${size}.png`;
+  return value?.startsWith("/") && value.endsWith(suffix)
+    ? `${value.slice(0, -suffix.length)}maskable-${size}x${size}.png`
+    : undefined;
+}
+
 export function buildOperationalAppManifest(input: {
   basePath: AppBasePath;
   branding?: ResolvedOrganizationBranding | null;
@@ -31,7 +38,7 @@ export function buildOperationalAppManifest(input: {
     description: branding
       ? `${name} operational application powered by Bazarbaaz`
       : "Bazarbaaz multi-business platform",
-    start_url: appPath("/fa", basePath),
+    start_url: appPath(branding && branding.organizationId !== "platform" ? "/" : "/fa", basePath),
     scope: appPath("/", basePath),
     display: "standalone",
     orientation: "portrait",
@@ -54,13 +61,13 @@ export function buildOperationalAppManifest(input: {
         purpose: "any",
       },
       {
-        src: appPath("/icons/icon-maskable-192x192.png", basePath),
+        src: safeIconUrl(maskableSibling(branding?.pwaIcons.icon192, "192") || "/icons/icon-maskable-192x192.png", "/icons/icon-maskable-192x192.png", basePath),
         sizes: "192x192",
         type: "image/png",
         purpose: "maskable",
       },
       {
-        src: appPath("/icons/icon-maskable-512x512.png", basePath),
+        src: safeIconUrl(maskableSibling(branding?.pwaIcons.icon512, "512") || "/icons/icon-maskable-512x512.png", "/icons/icon-maskable-512x512.png", basePath),
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",

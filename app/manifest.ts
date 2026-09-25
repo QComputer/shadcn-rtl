@@ -5,7 +5,6 @@ import { normalizeDomainHost } from "@/lib/custom-domain-routing";
 import { resolveActiveTenantForHost } from "@/lib/domains/domain-resolver.server";
 import { prisma } from "@/lib/db";
 import { resolveOrganizationBranding } from "@/lib/organization-branding";
-import { resolveOrganizationEndpointForTenant } from "@/lib/organization-endpoints.server";
 import { buildOperationalAppManifest } from "@/lib/operational-app-manifest";
 
 export const dynamic = "force-dynamic";
@@ -30,19 +29,16 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
       },
     });
     if (tenant) {
-      const endpoint = await resolveOrganizationEndpointForTenant({ organizationId: tenant.id, role: "APP" });
-      if (endpoint?.pathPrefix === basePath) {
-        return buildOperationalAppManifest({
-          basePath,
-          branding: resolveOrganizationBranding({
-            organizationId: tenant.id,
-            name: tenant.name,
-            logo: tenant.logo,
-            coverImage: tenant.coverImage,
-            branding: tenant.branding,
-          }),
-        });
-      }
+      return buildOperationalAppManifest({
+        basePath,
+        branding: resolveOrganizationBranding({
+          organizationId: tenant.id,
+          name: tenant.name,
+          logo: tenant.logo,
+          coverImage: tenant.coverImage,
+          branding: tenant.branding,
+        }),
+      });
     }
   }
 
@@ -50,14 +46,7 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     try {
       const tenant = await resolveActiveTenantForHost(prisma, host);
       if (tenant) {
-        const endpoint = await resolveOrganizationEndpointForTenant({
-          organizationId: tenant.organizationId,
-          role: "APP",
-        });
-        const endpointHost = endpoint ? normalizeDomainHost(new URL(endpoint.origin).host) : null;
-        if (endpoint && endpointHost === host && endpoint.pathPrefix === basePath) {
-          return buildOperationalAppManifest({ basePath, branding: tenant.branding });
-        }
+        return buildOperationalAppManifest({ basePath, branding: tenant.branding });
       }
     } catch {
       // A manifest must remain available during resolver/database degradation.

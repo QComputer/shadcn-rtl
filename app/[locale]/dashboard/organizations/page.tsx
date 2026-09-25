@@ -8,6 +8,7 @@ import { supportedLocales, type SupportedLocale } from "@/lib/i18n";
 import { toPersianDigits } from "@/lib/persian";
 import { cn } from "@/lib/utils";
 import { buildOrganizationRootPath } from "@/lib/custom-domain-routing";
+import { OrganizationHomepageModeControl } from "@/components/dashboard/organization-homepage-mode-control";
 
 export const dynamic = "force-dynamic";
 
@@ -315,6 +316,7 @@ export default async function OrganizationsPage({
         type: true,
         capabilitiesInitializedAt: true,
         capabilities: { select: { key: true, status: true } },
+        settings: { select: { publicHomeMode: true } },
         description: true,
         address: true,
         phone: true,
@@ -529,6 +531,17 @@ export default async function OrganizationsPage({
                       {copy.inotiManager}
                     </Link>
                   </div>
+                </div>
+                <div className="mt-3">
+                  <OrganizationHomepageModeControl
+                    organizationId={organization.id}
+                    initialMode={organization.settings?.publicHomeMode === "SHOP"
+                      ? "SHOP"
+                      : organization.settings?.publicHomeMode === "APPOINTMENT"
+                        ? "APPOINTMENT"
+                        : "PROFILE"}
+                    capabilities={organization.capabilities.map((capability) => capability.key)}
+                  />
                 </div>
               </article>
             );

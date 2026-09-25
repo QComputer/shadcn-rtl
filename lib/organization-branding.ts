@@ -53,6 +53,8 @@ export function resolveOrganizationBranding(input: {
     ? input.branding
     : null;
 
+  const icon192 = firstDefined(branding?.pwaIcon192Url, BAZARBAAZ_PWA_192) as string;
+  const icon512 = firstDefined(branding?.pwaIcon512Url, BAZARBAAZ_PWA_512) as string;
   return {
     organizationId: input.organizationId,
     displayName: firstDefined(branding?.displayName, input.name) || "Bazarbaaz",
@@ -61,8 +63,8 @@ export function resolveOrganizationBranding(input: {
     favicon: firstDefined(branding?.faviconUrl, BAZARBAAZ_FAVICON),
     appleTouchIcon: firstDefined(branding?.appleTouchIconUrl, branding?.faviconUrl, BAZARBAAZ_APPLE_TOUCH_ICON),
     pwaIcons: {
-      icon192: firstDefined(branding?.pwaIcon192Url, BAZARBAAZ_PWA_192),
-      icon512: firstDefined(branding?.pwaIcon512Url, BAZARBAAZ_PWA_512),
+      icon192,
+      icon512,
     },
     ogImage: firstDefined(
       branding?.ogImageUrl,

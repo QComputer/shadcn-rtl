@@ -131,8 +131,27 @@ export async function PATCH(
     const body = await request.json();
     const data: Record<string, unknown> = {};
     const hasDefaultPublicCapability = Object.prototype.hasOwnProperty.call(body, "defaultPublicCapability");
+    const hasHomepageMode = Object.prototype.hasOwnProperty.call(body, "homepageMode");
     const hasPreparationMinutes = Object.prototype.hasOwnProperty.call(body, "defaultPreparationMinutes");
     let defaultPublicCapabilityForAudit: string | null | undefined;
+
+    if (hasHomepageMode) {
+      const selected = body.homepageMode === "PROFILE" ? "BRAND" : body.homepageMode;
+      if (!["BRAND", "SHOP", "APPOINTMENT"].includes(selected)) {
+        throw new ApiError(400, "Invalid homepage mode");
+      }
+      if (selected !== "BRAND") {
+        const organization = await prisma.organization.findUnique({
+          where: { id: organizationId },
+          select: { capabilities: { select: { key: true, status: true } } },
+        });
+        const active = activePublicBusinessCapabilities(organization?.capabilities as PublicBusinessCapabilityRecord[] ?? []);
+        if (!active.includes(selected as BusinessCapability)) {
+          throw new ApiError(400, "Homepage mode requires an active capability");
+        }
+      }
+      data.publicHomeMode = selected;
+    }
 
     if (hasPreparationMinutes) {
       Object.assign(data, updatePreparationDefaultsSchema.parse(body));
@@ -184,7 +203,7 @@ export async function PATCH(
       entityId: settings.id,
       description: hasDefaultPublicCapability
         ? "Updated default public capability"
-        : "Updated default order preparation time",
+        : hasHomepageMode ? "Updated business homepage mode" : "Updated default order preparation time",
       userId: session.user.id,
       organizationId,
       organizationSlug,

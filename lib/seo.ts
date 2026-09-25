@@ -32,6 +32,8 @@ export type PublicSeoInput = {
   type?: "website" | "article";
   alternatePath?: (locale: SupportedLocale) => string;
   icons?: Metadata["icons"];
+  applicationName?: string;
+  themeColor?: string;
 };
 
 export type SeoOrganization = {
@@ -181,6 +183,8 @@ export function buildPublicMetadata(input: PublicSeoInput): Metadata {
   return {
     metadataBase: input.baseUrl ? new URL(input.baseUrl) : getPublicBaseUrl(),
     title: input.title || DEFAULT_TITLE,
+    applicationName: input.applicationName || input.title || DEFAULT_TITLE,
+    themeColor: input.themeColor,
     description,
     keywords: input.keywords,
     alternates,
@@ -200,7 +204,7 @@ export function buildPublicMetadata(input: PublicSeoInput): Metadata {
       title: input.title || DEFAULT_TITLE,
       description,
       url: alternates.canonical,
-      siteName: DEFAULT_TITLE,
+      siteName: input.applicationName || input.title || DEFAULT_TITLE,
       images: [{ url: image, width: 1200, height: 630, alt: input.title || DEFAULT_TITLE }],
       locale: localeConfig[locale].languageCode.replace("-", "_"),
       alternateLocale: supportedLocales

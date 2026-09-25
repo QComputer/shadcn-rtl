@@ -67,6 +67,8 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   const [savingCapabilities, setSavingCapabilities] = useState(false)
   const [defaultPublicCapability, setDefaultPublicCapability] = useState<BusinessCapability | "AUTO">("AUTO")
   const [savingDefaultPublicCapability, setSavingDefaultPublicCapability] = useState(false)
+  const [homepageMode, setHomepageMode] = useState<"PROFILE" | "SHOP" | "APPOINTMENT">("PROFILE")
+  const [savingHomepageMode, setSavingHomepageMode] = useState(false)
   //const [paymentSettings, setPaymentSettings ] = useState<PaymentSettings|null>(null)
 
   // Form state
@@ -113,6 +115,7 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
       })
 .then(settings => {
        setSettings(settings)
+       setHomepageMode(settings.publicHomeMode === "SHOP" || settings.publicHomeMode === "APPOINTMENT" ? settings.publicHomeMode : "PROFILE")
        setDefaultPreparationMinutes(settings.defaultPreparationMinutes || 30)
        const configuredDefaultPublicCapability = readDefaultPublicCapability(settings)
        setDefaultPublicCapability(configuredDefaultPublicCapability ?? "AUTO")
@@ -526,6 +529,30 @@ const handleOpen = async (e: React.FormEvent) => {
     }
   }
 
+  const handleSaveHomepageMode = async () => {
+    if (!organization?.id) return
+    setSavingHomepageMode(true)
+    setError(null)
+    try {
+      const response = await appFetch(`/api/organizations/${organization.id}/settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ homepageMode }),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        throw new Error(data?.error || "ذخیره صفحه اصلی ناموفق بود")
+      }
+      setSettings(await response.json())
+      setSuccess("صفحه اصلی کسب‌وکار ذخیره شد")
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "ذخیره صفحه اصلی ناموفق بود")
+    } finally {
+      setSavingHomepageMode(false)
+    }
+  }
+
   if (!mounted || loading) {
     return (
       <div className="p-6 space-y-4">
@@ -569,6 +596,29 @@ const handleOpen = async (e: React.FormEvent) => {
           {error}
         </div>
       )}
+      <Card>
+        <CardHeader>
+          <CardTitle>صفحه اصلی کسب‌وکار</CardTitle>
+          <CardDescription>دامنه اختصاصی همیشه در ریشه می‌ماند؛ این گزینه فقط تجربه‌ای را که در `/` نمایش داده می‌شود انتخاب می‌کند.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+          <div className="space-y-2">
+            <Label htmlFor="homepage-mode">تجربه ریشه دامنه</Label>
+            <Select value={homepageMode} onValueChange={(value) => setHomepageMode(value as typeof homepageMode)}>
+              <SelectTrigger id="homepage-mode"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PROFILE">پروفایل کسب‌وکار — معرفی برند و اطلاعات تماس</SelectItem>
+                {capabilities.includes("SHOP") ? <SelectItem value="SHOP">فروشگاه — محصولات، دسته‌بندی و خرید</SelectItem> : null}
+                {capabilities.includes("APPOINTMENT") ? <SelectItem value="APPOINTMENT">رزرو و نوبت — خدمات و booking</SelectItem> : null}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button type="button" onClick={handleSaveHomepageMode} disabled={savingHomepageMode}>
+            {savingHomepageMode ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Save className="me-2 h-4 w-4" />}ذخیره
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           وضعیت:

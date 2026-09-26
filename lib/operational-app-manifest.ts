@@ -29,7 +29,7 @@ export function buildOperationalAppManifest(input: {
   branding?: ResolvedOrganizationBranding | null;
 }): MetadataRoute.Manifest {
   const { basePath, branding } = input;
-  const name = branding?.displayName || "Bazarbaaz | بازارباز";
+  const name = branding?.applicationName || branding?.displayName || "Bazarbaaz | بازارباز";
   const shortName = branding?.shortName || "Bazarbaaz";
 
   return {
@@ -44,8 +44,8 @@ export function buildOperationalAppManifest(input: {
     orientation: "portrait",
     dir: "rtl",
     lang: "fa",
-    background_color: "#0f172a",
-    theme_color: "#2F5BFF",
+    background_color: branding?.backgroundColor || "#ffffff",
+    theme_color: branding?.themeColor || "#2F5BFF",
     categories: ["business", "shopping", "productivity"],
     icons: [
       {
@@ -61,13 +61,13 @@ export function buildOperationalAppManifest(input: {
         purpose: "any",
       },
       {
-        src: safeIconUrl(maskableSibling(branding?.pwaIcons.icon192, "192") || "/icons/icon-maskable-192x192.png", "/icons/icon-maskable-192x192.png", basePath),
+        src: safeIconUrl(branding?.pwaIcons.maskable192 || maskableSibling(branding?.pwaIcons.icon192, "192") || "/icons/icon-maskable-192x192.png", "/icons/icon-maskable-192x192.png", basePath),
         sizes: "192x192",
         type: "image/png",
         purpose: "maskable",
       },
       {
-        src: safeIconUrl(maskableSibling(branding?.pwaIcons.icon512, "512") || "/icons/icon-maskable-512x512.png", "/icons/icon-maskable-512x512.png", basePath),
+        src: safeIconUrl(branding?.pwaIcons.maskable512 || maskableSibling(branding?.pwaIcons.icon512, "512") || "/icons/icon-maskable-512x512.png", "/icons/icon-maskable-512x512.png", basePath),
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",

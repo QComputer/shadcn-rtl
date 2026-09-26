@@ -84,8 +84,8 @@ export async function generateMetadata({ params }: ShopLayoutProps): Promise<Met
         icon: [{ url: appResourceUrl(branding.favicon) }],
         apple: [{ url: appResourceUrl(branding.appleTouchIcon) }],
       },
-      applicationName: branding.displayName,
-      themeColor: branding.displayName === "Bazarbaaz" ? "#2F5BFF" : "#16845b",
+      applicationName: branding.applicationName,
+      themeColor: branding.themeColor,
     });
   } catch {
     return {

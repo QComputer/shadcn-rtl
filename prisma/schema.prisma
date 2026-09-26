@@ -1196,6 +1196,7 @@ model OrganizationBranding {
   id                        String                    @id @default(cuid())
   organizationId            String                    @unique
   displayName               String?
+  applicationName           String?
   shortName                 String?
   logoUrl                   String?
   faviconUrl                String?
@@ -1203,6 +1204,13 @@ model OrganizationBranding {
   pwaIcon192Url             String?
   pwaIcon512Url             String?
   ogImageUrl                String?
+  pwaMaskable192Url         String?
+  pwaMaskable512Url         String?
+  monochromeIconUrl         String?
+  markUrl                   String?
+  logoInverseUrl            String?
+  themeColor                String?
+  backgroundColor           String?
   source                    OrganizationBrandingSource @default(BAZARBAAZ_MANAGED)
   externalSourceUrl         String?
   externalSourceLastSyncedAt DateTime?

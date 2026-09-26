@@ -15,6 +15,7 @@ import type { ClientBusinessHour as BusinessHour, ClientOrganization as Organiza
 import { ShopStatusBadge } from "@/components/ShopStatusBadge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { BUSINESS_CAPABILITY_REGISTRY, type BusinessCapability } from "@/lib/business-capability-registry"
+import { OrganizationBrandingForm } from "@/components/organization-branding-form"
 
 interface ImageRecord {
   id: number;
@@ -583,6 +584,7 @@ const handleOpen = async (e: React.FormEvent) => {
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
+      {organization?.id && <OrganizationBrandingForm organizationId={organization.id} />}
 
       {/* Header */}
       <div>

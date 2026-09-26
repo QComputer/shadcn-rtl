@@ -24,7 +24,7 @@ type Target = {
   business: string;
   slug: string | null;
   organizationId: string;
-  profileKey: "local-env:inoti:platform" | "local-env:inoti:aka-shoes" | "local-env:inoti:cafe-leo" | "local-env:inoti:italiano-13";
+  profileKey: "local-env:inoti:platform" | "local-env:inoti:aka-shoes" | "local-env:inoti:cafe-leo" | "local-env:inoti:fastfood13";
   liveVerificationAllowed: boolean;
 };
 
@@ -32,7 +32,7 @@ const targets: Target[] = [
   { business: "Platform / Ahmad Jamali", slug: INOTI_PLATFORM_ORGANIZATION_SLUG, organizationId: "", profileKey: "local-env:inoti:platform", liveVerificationAllowed: true },
   { business: "AKA Shoes", slug: "aka-shoes", organizationId: "", profileKey: "local-env:inoti:aka-shoes", liveVerificationAllowed: true },
   { business: "Cafe Leo", slug: "cafe-leo", organizationId: "", profileKey: "local-env:inoti:cafe-leo", liveVerificationAllowed: true },
-  { business: "Restaurant Italiano 13", slug: "italiano-13", organizationId: "", profileKey: "local-env:inoti:italiano-13", liveVerificationAllowed: false },
+  { business: "Restaurant 13", slug: "fastfood13", organizationId: "", profileKey: "local-env:inoti:fastfood13", liveVerificationAllowed: false },
 ];
 
 async function hydrateTargets() {

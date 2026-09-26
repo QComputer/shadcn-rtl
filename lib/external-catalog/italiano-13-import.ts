@@ -150,7 +150,7 @@ export async function importItaliano13Snapshot(input: {
   organizationId: string;
   snapshot: Italiano13Snapshot;
 }): Promise<Italiano13ImportSummary> {
-  if (input.snapshot.organization.slug !== "italiano-13") throw new Error("Snapshot organization slug must be italiano-13");
+  if (input.snapshot.organization.slug !== "fastfood13") throw new Error("Snapshot organization slug must be fastfood13");
   if (input.snapshot.money.conversion !== "identity" || input.snapshot.money.bazarbaazStoredUnit !== "TOMAN") {
     throw new Error("Italiano 13 import requires exact integer Toman prices");
   }
@@ -175,10 +175,10 @@ export async function importItaliano13Snapshot(input: {
 
   return input.prisma.$transaction(async (tx) => {
     const organization = await tx.organization.findFirst({
-      where: { id: input.organizationId, slug: "italiano-13", isActive: true, deletedAt: null },
+      where: { id: input.organizationId, slug: "fastfood13", isActive: true, deletedAt: null },
       select: { id: true, slug: true },
     });
-    if (!organization) throw new Error("Active italiano-13 organization was not found");
+    if (!organization) throw new Error("Active fastfood13 organization was not found");
     const shopCapability = await tx.organizationCapability.findFirst({
       where: { organizationId: organization.id, key: "SHOP", status: "ACTIVE" },
       select: { id: true },

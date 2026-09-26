@@ -2511,13 +2511,13 @@ async function upsertPilotOrganization(input: {
   });
   await generateGrowthRecommendations({ organizationId: organization.id, actorUserId: input.operatorUserId });
 
-  if (input.slug === "italiano-13") {
+  if (input.slug === "fastfood13") {
     await createInotiConnectionDraft({
       organizationId: organization.id,
       actorUserId: input.operatorUserId,
-      credentialProfileKey: "local-env:inoti:italiano-13",
+      credentialProfileKey: "local-env:inoti:fastfood13",
       accountLabel: "Italiano 13 iNoti credentials required",
-      publicIntegrationIds: { USSD: SEEDED_INOTI_USSD_PUBLIC_ID_BY_SLUG["italiano-13"] },
+      publicIntegrationIds: { USSD: SEEDED_INOTI_USSD_PUBLIC_ID_BY_SLUG["fastfood13"] },
       services: ["USSD", "SMS"],
     });
     await registerPilotSourceAssessment({
@@ -2621,7 +2621,7 @@ async function seedPilotWorkspaces() {
   const pilots = [
     {
       name: "رستوران ایتالیایی ۱۳",
-      slug: "italiano-13",
+      slug: "fastfood13",
       type: OrganizationType.SHOP,
       industryKey: "RESTAURANT" as const,
       capabilities: ["SHOP", "CRM", "USSD", "SMS"] as const,

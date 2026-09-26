@@ -61,7 +61,7 @@ const targets = [
   { business: "Platform / Ahmad Jamali", slug: INOTI_PLATFORM_ORGANIZATION_SLUG, profileKey: "local-env:inoti:platform", readOnly: true },
   { business: "AKA Shoes", slug: "aka-shoes", profileKey: "local-env:inoti:aka-shoes", readOnly: true },
   { business: "Cafe Leo", slug: "cafe-leo", profileKey: "local-env:inoti:cafe-leo", readOnly: true },
-  { business: "Restaurant Italiano 13", slug: "italiano-13", profileKey: "local-env:inoti:italiano-13", readOnly: false },
+  { business: "Restaurant 13", slug: "fastfood13", profileKey: "local-env:inoti:fastfood13", readOnly: false },
 ] as const;
 
 const organizations = await prisma.organization.findMany({

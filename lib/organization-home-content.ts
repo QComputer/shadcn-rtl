@@ -150,39 +150,39 @@ const ITALIANO_13_FA: OrganizationHomeContent = {
     title: "رستوران ۱۳؛ پیتزا، برگر و پاستا در شهرکرد",
     statement: "طعم ایتالیایی، با حال‌وهوای محلی",
     description: "پیتزا، برگر، پاستا و غذاهای فرنگی تازه در قلب شهرکرد. سفارش مستقیم یا تماس برای رزرو.",
-    desktopImage: homeAsset("restaurant-13", "hero/hero-main.webp", "رستوران ایتالیایی سیزده شهرکرد", 1279, 720),
-    mobileImage: homeAsset("restaurant-13", "hero/hero-main-mobile.webp", "رستوران ایتالیایی سیزده شهرکرد", 900, 507),
+    desktopImage: homeAsset("fastfood13", "hero/hero-main.webp", "رستوران ایتالیایی سیزده شهرکرد", 1279, 720),
+    mobileImage: homeAsset("fastfood13", "hero/hero-main-mobile.webp", "رستوران ایتالیایی سیزده شهرکرد", 900, 507),
     primaryCta: "مشاهده منو",
     contactCta: "تماس با رستوران",
     socialCta: "اینستاگرام ۱۳",
   },
   highlights: ["پیتزا تازه", "برگر و همبرگر", "پاستا و لازانیا", "سفارش در شهرکرد"],
   collections: [
-    { title: "پیتزا", image: homeAsset("restaurant-13", "collections/featured-pizza.webp", "پیتزا میکس سیزده", 800, 600) },
-    { title: "برگر", image: homeAsset("restaurant-13", "collections/featured-burger.webp", "برگر ذغالی", 800, 600) },
-    { title: "پاستا", image: homeAsset("restaurant-13", "collections/featured-pasta.webp", "پاستا آلفردو", 800, 600) },
-    { title: "ویژه‌ها", image: homeAsset("restaurant-13", "collections/featured-special-dish.webp", "چیکن استیک پارمزان", 800, 600) },
+    { title: "پیتزا", image: homeAsset("fastfood13", "collections/featured-pizza.webp", "پیتزا میکس سیزده", 800, 600) },
+    { title: "برگر", image: homeAsset("fastfood13", "collections/featured-burger.webp", "برگر ذغالی", 800, 600) },
+    { title: "پاستا", image: homeAsset("fastfood13", "collections/featured-pasta.webp", "پاستا آلفردو", 800, 600) },
+    { title: "ویژه‌ها", image: homeAsset("fastfood13", "collections/featured-special-dish.webp", "چیکن استیک پارمزان", 800, 600) },
   ],
   featured: {
     title: "تازه‌های منو",
     description: "انتخاب تصویری از پیتزا، برگر، پاستا و غذاهای ویژه رستوران ۱۳",
     shopCta: "مشاهده منو کامل",
     items: [
-      { title: "پیتزا میکس سیزده", image: homeAsset("restaurant-13", "products/pizza-signature.webp", "پیتزا میکس سیزده", 960, 720) },
-      { title: "برگر ذغالی", image: homeAsset("restaurant-13", "products/burger-signature.webp", "برگر ذغالی", 960, 720) },
-      { title: "پاستا آلفردو", image: homeAsset("restaurant-13", "products/pasta-alfredo.webp", "پاستا آلفردو", 960, 720) },
-      { title: "چیکن استیک پارمزان", image: homeAsset("restaurant-13", "products/chicken-parmesan.webp", "چیکن استیک پارمزان", 960, 720) },
-      { title: "بشقاب سوخاری", image: homeAsset("restaurant-13", "products/crispy-platter.webp", "بشقاب سوخاری", 960, 720) },
+      { title: "پیتزا میکس سیزده", image: homeAsset("fastfood13", "products/pizza-signature.webp", "پیتزا میکس سیزده", 960, 720) },
+      { title: "برگر ذغالی", image: homeAsset("fastfood13", "products/burger-signature.webp", "برگر ذغالی", 960, 720) },
+      { title: "پاستا آلفردو", image: homeAsset("fastfood13", "products/pasta-alfredo.webp", "پاستا آلفردو", 960, 720) },
+      { title: "چیکن استیک پارمزان", image: homeAsset("fastfood13", "products/chicken-parmesan.webp", "چیکن استیک پارمزان", 960, 720) },
+      { title: "بشقاب سوخاری", image: homeAsset("fastfood13", "products/crispy-platter.webp", "بشقاب سوخاری", 960, 720) },
     ],
   },
   lookbook: {
     title: "منوهای رستوران ۱۳",
     description: "نگاهی به چند دسته محبوب و تازه‌های آشپزخانه رستوران.",
     items: [
-      { title: "پیش‌غذا", image: homeAsset("restaurant-13", "lookbook/featured-appetizer.webp", "پیش‌غذای ویژه رستوران ۱۳", 800, 600) },
-      { title: "برگر", image: homeAsset("restaurant-13", "products/burger-signature.webp", "برگر", 960, 720) },
-      { title: "پاستا", image: homeAsset("restaurant-13", "products/pasta-alfredo.webp", "پاستا", 960, 720) },
-      { title: "ویژه‌ها", image: homeAsset("restaurant-13", "products/chicken-parmesan.webp", "ویژه‌ها", 960, 720) },
+      { title: "پیش‌غذا", image: homeAsset("fastfood13", "lookbook/featured-appetizer.webp", "پیش‌غذای ویژه رستوران ۱۳", 800, 600) },
+      { title: "برگر", image: homeAsset("fastfood13", "products/burger-signature.webp", "برگر", 960, 720) },
+      { title: "پاستا", image: homeAsset("fastfood13", "products/pasta-alfredo.webp", "پاستا", 960, 720) },
+      { title: "ویژه‌ها", image: homeAsset("fastfood13", "products/chicken-parmesan.webp", "ویژه‌ها", 960, 720) },
     ],
   },
   campaign: {
@@ -204,7 +204,7 @@ const ITALIANO_13_FA: OrganizationHomeContent = {
 
 const PILOT_HOME_CONTENT = new Map<string, Readonly<Record<string, OrganizationHomeContent>>>([
   ["aka-shoes", { fa: AKA_SHOES_FA }],
-  ["italiano-13", { fa: ITALIANO_13_FA }],
+  ["fastfood13", { fa: ITALIANO_13_FA }],
 ]);
 
 export function resolveOrganizationHomeContent(input: {

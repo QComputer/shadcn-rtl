@@ -62,7 +62,7 @@ const snapshot = {
     retrievalMethod: "normal-browser-public-menu-read-model",
     retrievedAt: new Date().toISOString(),
   },
-  organization: { slug: "italiano-13" },
+  organization: { slug: "fastfood13" },
   money: {
     sourceDisplayedUnit: "TOMAN",
     sourceApiUnit: "TOMAN",

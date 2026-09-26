@@ -795,7 +795,7 @@ describe("business acquisition local foundation", () => {
         sourceType: "BAZARBAAZ_TEAM",
         industryKey: "RESTAURANT",
         name: "Restaurant Italiano 13",
-        slug: `${prefix}-italiano-13`,
+        slug: `${prefix}-fastfood13`,
         selectedCapabilities: ["SHOP", "CRM", "USSD"],
       });
       await createOrRefreshPilotWorkspace({
@@ -866,13 +866,13 @@ describe("business acquisition local foundation", () => {
   });
 
   it("keeps real pilot slugs out of Demo Universe discovery even if demo settings drift", async () => {
-    const prefix = "italiano-13";
+    const prefix = "fastfood13";
     await cleanup(prefix);
     try {
       const organization = await prisma.organization.create({
         data: {
           name: "Restaurant Italiano 13",
-          slug: "italiano-13",
+          slug: "fastfood13",
           type: "SHOP",
           locale: "fa",
           capabilitiesInitializedAt: new Date(),
@@ -889,8 +889,8 @@ describe("business acquisition local foundation", () => {
       });
 
       const demos = await listPublicDemoOrganizations();
-      assert.equal(demos.some((demo) => demo.slug === "italiano-13"), false);
-      assert.equal(await getPublicDemoShowcaseBySlug("italiano-13"), null);
+      assert.equal(demos.some((demo) => demo.slug === "fastfood13"), false);
+      assert.equal(await getPublicDemoShowcaseBySlug("fastfood13"), null);
     } finally {
       await cleanup(prefix);
     }

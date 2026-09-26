@@ -1,5 +1,5 @@
 export const REAL_PILOT_BUSINESS_SLUGS = [
-  "italiano-13",
+  "fastfood13",
   "cafe-leo",
   "aka-shoes",
   "tikal-pilot",

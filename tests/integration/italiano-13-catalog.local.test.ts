@@ -29,7 +29,7 @@ test("Italiano 13 import is idempotent, tenant-safe, public, and cart-ready", as
     data: {
       type: "SHOP",
       name: "فست فود ایتالیایی سیزده",
-      slug: "italiano-13",
+      slug: "fastfood13",
       capabilitiesInitializedAt: new Date(),
       capabilities: { create: { key: "SHOP", status: "ACTIVE", enabledAt: new Date() } },
     },
@@ -82,15 +82,15 @@ test("Italiano 13 import is idempotent, tenant-safe, public, and cart-ready", as
   assert.equal(await prisma.product.count({ where: { organizationId: organization.id, isActive: true, deletedAt: null } }), 56);
   assert.equal(await prisma.productVariant.count({ where: { product: { organizationId: organization.id }, deletedAt: null } }), 72);
 
-  const publicSnapshot = await getPublicCatalogSnapshot("italiano-13");
+  const publicSnapshot = await getPublicCatalogSnapshot("fastfood13");
   assert.equal(publicSnapshot.categories.length, 9);
   assert.equal(publicSnapshot.pagination.total, 56);
   assert.equal(publicSnapshot.priceUnit, "TOMAN");
-  const allProducts = await listPublicCatalogProducts({ organizationIdentifier: "italiano-13", page: 1, limit: 100 });
+  const allProducts = await listPublicCatalogProducts({ organizationIdentifier: "fastfood13", page: 1, limit: 100 });
   assert.equal(allProducts.products.length, 56);
   assert.equal(allProducts.products.flatMap((product) => product.variants).length, 72);
 
-  const cart = await prisma.shopCart.create({ data: { organizationSlug: "italiano-13", sessionId: `italiano-db-test-${suffix}` } });
+  const cart = await prisma.shopCart.create({ data: { organizationSlug: "fastfood13", sessionId: `fastfood13-db-test-${suffix}` } });
   const cartItem = await prisma.shopCartItem.create({ data: { cartId: cart.id, variantId: storedVariant.id, quantity: 2 } });
   assert.equal(cartItem.quantity, 2);
   assert.equal(Number(storedVariant.price) * cartItem.quantity, (originalPrice + 1000) * 2);

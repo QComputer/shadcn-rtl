@@ -17,7 +17,7 @@ assert.ok(
   "inoti-ussd.local.test.ts refuses to run against a non-local database",
 );
 
-const seededSlugs = [INOTI_PLATFORM_ORGANIZATION_SLUG, "aka-shoes", "cafe-leo", "italiano-13"] as const;
+const seededSlugs = [INOTI_PLATFORM_ORGANIZATION_SLUG, "aka-shoes", "cafe-leo", "fastfood13"] as const;
 
 async function readSeededUssdPublicIds() {
   const rows = await prisma.organizationIntegration.findMany({
@@ -40,7 +40,7 @@ describe("iNoti USSD integration on disposable local PostgreSQL", () => {
       where: {
         provider: "INOTI_USSD",
         organization: {
-          slug: { in: [INOTI_PLATFORM_ORGANIZATION_SLUG, "aka-shoes", "cafe-leo", "italiano-13"] },
+          slug: { in: [INOTI_PLATFORM_ORGANIZATION_SLUG, "aka-shoes", "cafe-leo", "fastfood13"] },
         },
       },
       select: {
@@ -54,9 +54,9 @@ describe("iNoti USSD integration on disposable local PostgreSQL", () => {
       assert.match(bySlug.get(slug)!.publicId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
       assert.equal(buildInotiUssdCallbackUrl(bySlug.get(slug)!.publicId), `https://bazarbaaz.ir/api/integrations/inoti/ussd/${bySlug.get(slug)!.publicId}`);
     }
-    if (bySlug.has("italiano-13")) {
-      assert.match(bySlug.get("italiano-13")!.publicId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
-      assert.equal(buildInotiUssdCallbackUrl(bySlug.get("italiano-13")!.publicId), `https://bazarbaaz.ir/api/integrations/inoti/ussd/${bySlug.get("italiano-13")!.publicId}`);
+    if (bySlug.has("fastfood13")) {
+      assert.match(bySlug.get("fastfood13")!.publicId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      assert.equal(buildInotiUssdCallbackUrl(bySlug.get("fastfood13")!.publicId), `https://bazarbaaz.ir/api/integrations/inoti/ussd/${bySlug.get("fastfood13")!.publicId}`);
     }
     assert.equal(bySlug.get(INOTI_PLATFORM_ORGANIZATION_SLUG)?.organization.isPlatformOwner, true);
     assert.equal(new Set(integrations.map((integration) => integration.publicId)).size, integrations.length);

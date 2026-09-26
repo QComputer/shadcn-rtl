@@ -845,8 +845,8 @@ describe("explicit tenant context against the disposable local database", () => 
       INOTI_CAFE_LEO_PASSWORD: process.env.INOTI_CAFE_LEO_PASSWORD,
       INOTI_CAFE_LEO_USSD_CODE_NAME: process.env.INOTI_CAFE_LEO_USSD_CODE_NAME,
       INOTI_CAFE_LEO_SMS_TOKEN: process.env.INOTI_CAFE_LEO_SMS_TOKEN,
-      INOTI_ITALIANO13_USERNAME: process.env.INOTI_ITALIANO13_USERNAME,
-      INOTI_ITALIANO13_PASSWORD: process.env.INOTI_ITALIANO13_PASSWORD,
+      INOTI_FASTFOOD13_USERNAME: process.env.INOTI_FASTFOOD13_USERNAME,
+      INOTI_FASTFOOD13_PASSWORD: process.env.INOTI_FASTFOOD13_PASSWORD,
     };
     const createdOrgIds: string[] = [];
     async function ensurePilotOrg(slug: string) {
@@ -869,12 +869,12 @@ describe("explicit tenant context against the disposable local database", () => 
       process.env.INOTI_CAFE_LEO_PASSWORD = "cafe-pass";
       process.env.INOTI_CAFE_LEO_USSD_CODE_NAME = "09126511010";
       delete process.env.INOTI_CAFE_LEO_SMS_TOKEN;
-      delete process.env.INOTI_ITALIANO13_USERNAME;
-      delete process.env.INOTI_ITALIANO13_PASSWORD;
+      delete process.env.INOTI_FASTFOOD13_USERNAME;
+      delete process.env.INOTI_FASTFOOD13_PASSWORD;
 
       const akaOrgId = await ensurePilotOrg("aka-shoes");
       const cafeOrgId = await ensurePilotOrg("cafe-leo");
-      const italianoOrgId = await ensurePilotOrg("italiano-13");
+      const italianoOrgId = await ensurePilotOrg("fastfood13");
       const existingPlatformOrg = await prisma.organization.findUnique({ where: { slug: INOTI_PLATFORM_ORGANIZATION_SLUG }, select: { id: true } });
       const platformOrgId = existingPlatformOrg?.id ?? fixtureId("inoti_profile_platform_owner");
       if (!existingPlatformOrg) {
@@ -898,13 +898,13 @@ describe("explicit tenant context against the disposable local database", () => 
       assert.equal(cafeState.state, "CREDENTIALS_AVAILABLE");
       assert.equal(cafeState.ussdCodeNameConfigured, true);
       assert.equal(cafeState.smsTokenConfigured, false);
-      assert.equal((await getInotiCredentialProfileState({ organizationId: italianoOrgId, profileKey: "local-env:inoti:italiano-13" })).state, "NEEDS_CREDENTIALS");
+      assert.equal((await getInotiCredentialProfileState({ organizationId: italianoOrgId, profileKey: "local-env:inoti:fastfood13" })).state, "NEEDS_CREDENTIALS");
 
       assert.equal(await environmentInotiCredentialProvider.resolveProfile(akaOrgId, "local-env:inoti:platform"), null);
       assert.equal(await environmentInotiCredentialProvider.resolveProfile(akaOrgId, "local-env:inoti:cafe-leo"), null);
       assert.equal(await environmentInotiCredentialProvider.resolveProfile(cafeOrgId, "local-env:inoti:platform"), null);
       assert.equal(await environmentInotiCredentialProvider.resolveProfile(cafeOrgId, "local-env:inoti:aka-shoes"), null);
-      assert.equal(await environmentInotiCredentialProvider.resolveProfile(cafeOrgId, "local-env:inoti:italiano-13"), null);
+      assert.equal(await environmentInotiCredentialProvider.resolveProfile(cafeOrgId, "local-env:inoti:fastfood13"), null);
       assert.equal(await environmentInotiCredentialProvider.resolveProfile(italianoOrgId, "local-env:inoti:cafe-leo"), null);
       assert.equal(await environmentInotiCredentialProvider.resolveProfile(INOTI_PLATFORM_ORGANIZATION_ID, "local-env:inoti:cafe-leo"), null);
 

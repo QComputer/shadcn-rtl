@@ -15,7 +15,7 @@ export type InotiCredentialProfileKey =
   | "local-env:inoti:platform"
   | "local-env:inoti:aka-shoes"
   | "local-env:inoti:cafe-leo"
-  | "local-env:inoti:italiano-13";
+  | "local-env:inoti:fastfood13";
 
 export type InotiCredentialProfileState =
   | "NOT_CONFIGURED"
@@ -33,6 +33,9 @@ type ProfileDefinition = {
   ussdCodeNameEnv?: string;
   ussdDialString?: string;
   organizationSlugs: readonly string[];
+  legacyUsernameEnv?: string;
+  legacyPasswordEnv?: string;
+  legacyEndpointEnv?: string;
   platformOnly?: boolean;
 };
 
@@ -67,11 +70,14 @@ const PROFILE_DEFINITIONS: readonly ProfileDefinition[] = [
     organizationSlugs: ["cafe-leo"],
   },
   {
-    key: "local-env:inoti:italiano-13",
-    usernameEnv: "INOTI_ITALIANO13_USERNAME",
-    passwordEnv: "INOTI_ITALIANO13_PASSWORD",
-    endpointEnv: "INOTI_ITALIANO13_USSD_ENDPOINT",
-    organizationSlugs: ["italiano-13"],
+    key: "local-env:inoti:fastfood13",
+    usernameEnv: "INOTI_FASTFOOD13_USERNAME",
+    passwordEnv: "INOTI_FASTFOOD13_PASSWORD",
+    endpointEnv: "INOTI_FASTFOOD13_USSD_ENDPOINT",
+    legacyUsernameEnv: "INOTI_ITALIANO13_USERNAME",
+    legacyPasswordEnv: "INOTI_ITALIANO13_PASSWORD",
+    legacyEndpointEnv: "INOTI_ITALIANO13_USSD_ENDPOINT",
+    organizationSlugs: ["fastfood13"],
   },
   {
     key: "INOTI_DEFAULT",
@@ -93,8 +99,15 @@ function hasValue(value: string | undefined) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function readEnv(primary: string | undefined, legacy: string | undefined) {
+  const primaryValue = primary ? process.env[primary]?.trim() : undefined;
+  if (hasValue(primaryValue)) return primaryValue;
+  const legacyValue = legacy ? process.env[legacy]?.trim() : undefined;
+  return hasValue(legacyValue) ? legacyValue : undefined;
+}
+
 function credentialsConfigured(definition: ProfileDefinition) {
-  return hasValue(process.env[definition.usernameEnv]) && hasValue(process.env[definition.passwordEnv]);
+  return Boolean(readEnv(definition.usernameEnv, definition.legacyUsernameEnv) && readEnv(definition.passwordEnv, definition.legacyPasswordEnv));
 }
 
 function smsTokenConfigured(definition: ProfileDefinition) {
@@ -190,8 +203,8 @@ export class EnvironmentInotiCredentialProvider implements InotiCredentialProvid
     const definition = definitionFor(profileKey);
     if (!definition) return null;
     if (!await profileAllowedForOrganization(definition, organizationId)) return null;
-    const username = process.env[definition.usernameEnv]?.trim();
-    const password = process.env[definition.passwordEnv]?.trim();
+    const username = readEnv(definition.usernameEnv, definition.legacyUsernameEnv);
+    const password = readEnv(definition.passwordEnv, definition.legacyPasswordEnv);
     if (!username || !password) return null;
 
     return {
@@ -199,7 +212,7 @@ export class EnvironmentInotiCredentialProvider implements InotiCredentialProvid
       profileKey: definition.key,
       username,
       password,
-      endpoint: process.env[definition.endpointEnv ?? ""]?.trim() || DEFAULT_ENDPOINT,
+      endpoint: readEnv(definition.endpointEnv, definition.legacyEndpointEnv) || DEFAULT_ENDPOINT,
       smsToken: process.env[definition.smsTokenEnv ?? ""]?.trim() || null,
       ussdCodeName: process.env[definition.ussdCodeNameEnv ?? ""]?.trim() || null,
       ussdDialString: definition.ussdDialString ?? null,
@@ -216,9 +229,9 @@ export class EnvironmentInotiCredentialProvider implements InotiCredentialProvid
     return {
       organizationId,
       profileKey: definition.key,
-      username: process.env[definition.usernameEnv]?.trim() || "",
-      password: process.env[definition.passwordEnv]?.trim() || "",
-      endpoint: process.env[definition.endpointEnv ?? ""]?.trim() || DEFAULT_ENDPOINT,
+      username: readEnv(definition.usernameEnv, definition.legacyUsernameEnv) || "",
+      password: readEnv(definition.passwordEnv, definition.legacyPasswordEnv) || "",
+      endpoint: readEnv(definition.endpointEnv, definition.legacyEndpointEnv) || DEFAULT_ENDPOINT,
       smsToken,
       ussdCodeName: process.env[definition.ussdCodeNameEnv ?? ""]?.trim() || null,
       ussdDialString: definition.ussdDialString ?? null,

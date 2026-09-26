@@ -770,7 +770,7 @@ function normalizeSourceUrl(value?: string | null) {
 
 function realPilotDefaults(slug: string, businessKindValue: ReturnType<typeof businessKind>): PilotSourceAssessment[] {
   const defaults: PilotSourceAssessment[] = [];
-  if (slug === "italiano-13" || businessKindValue === "RESTAURANT") {
+  if (slug === "fastfood13" || businessKindValue === "RESTAURANT") {
     defaults.push(sourceAssessmentDefaults({
       sourceKind: "SNAPPFOOD",
       displayName: "SnappFood source candidate",

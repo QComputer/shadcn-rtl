@@ -44,6 +44,8 @@ export type ResolvedCustomDomain = {
     pwaIcons: {
       icon192: string | null;
       icon512: string | null;
+      maskable192: string | null;
+      maskable512: string | null;
     };
     ogImage: string | null;
     source: "BAZARBAAZ_MANAGED" | "EXTERNAL_SYNC" | "PLATFORM_FALLBACK";

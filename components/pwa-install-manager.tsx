@@ -13,6 +13,7 @@ type PwaInstallManagerProps = {
   enabled: boolean
   locale: string
   basePath: string
+  appName?: string
 }
 
 const copy = {
@@ -38,7 +39,7 @@ export function canRegisterServiceWorker() {
   return window.isSecureContext
 }
 
-export function PwaInstallManager({ enabled, locale, basePath }: PwaInstallManagerProps) {
+export function PwaInstallManager({ enabled, locale, basePath, appName = "بازارباز" }: PwaInstallManagerProps) {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const text = copy[locale as keyof typeof copy] || copy.fa
@@ -91,7 +92,7 @@ export function PwaInstallManager({ enabled, locale, basePath }: PwaInstallManag
     >
       <div className="flex min-w-0 items-center gap-2">
         <Download className="h-4 w-4 shrink-0 text-primary" />
-        <span className="truncate font-medium">{text.title}</span>
+        <span className="truncate font-medium">{locale === "en" ? `Install ${appName}` : locale === "ar" ? `ثبّت ${appName}` : `نصب ${appName}`}</span>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <Button type="button" size="sm" onClick={install}>

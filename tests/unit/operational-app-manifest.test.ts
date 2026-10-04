@@ -7,7 +7,7 @@ describe("operational app manifest", () => {
   it("keeps the platform fallback inside each build topology", () => {
     const root = buildOperationalAppManifest({ basePath: "" });
     const path = buildOperationalAppManifest({ basePath: "/app" });
-    assert.equal(root.name, "Bazarbaaz | بازارباز");
+    assert.equal(root.name, "بازارباز");
     assert.equal(root.start_url, "/fa");
     assert.equal(root.scope, "/");
     assert.equal(path.start_url, "/app/fa");
@@ -36,7 +36,7 @@ describe("operational app manifest", () => {
     assert.equal(manifest.short_name, "Fixture");
     assert.equal(manifest.icons?.[0]?.src, "https://assets.example/192.png");
     assert.equal(manifest.icons?.[1]?.src, "/app/tenant-assets/512.png");
-    assert.equal(manifest.icons?.[2]?.src, "/app/icons/icon-maskable-192x192.png");
+    assert.equal(manifest.icons?.[2]?.src, "https://assets.example/192.png");
   });
 
   it("rejects unsafe tenant icon schemes and uses application-owned assets", () => {

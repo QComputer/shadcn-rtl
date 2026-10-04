@@ -12,6 +12,9 @@ import { getPublicBaseUrl, buildPublicMetadata } from "@/lib/seo"
 import { headers } from "next/headers"
 import { appPath, resolveAppBasePath } from "@/lib/app-base-path"
 import { PlatformFooter } from "@/components/public/platform-footer"
+import { prisma } from "@/lib/db"
+import { normalizeDomainHost } from "@/lib/custom-domain-routing"
+import { resolveActiveTenantForHost } from "@/lib/domains/domain-resolver.server"
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +55,13 @@ export default async function LocaleLayout({
   const dict = getDictionary(locale)
   const footerContext = headersList.get("x-bazar-public-footer-context") || "platform";
   const showPlatformFooter = footerContext === "platform";
+  let installName = "بازارباز";
+  try {
+    const tenant = await resolveActiveTenantForHost(prisma, normalizeDomainHost(headersList.get("host")));
+    if (tenant?.branding.displayName) installName = tenant.branding.displayName;
+  } catch {
+    // Installation UI remains platform-branded when tenant resolution is unavailable.
+  }
   const t = (key: string): string => {
     const keys = key.split(".")
     let value: any = dict
@@ -84,7 +94,7 @@ export default async function LocaleLayout({
               <ErrorBoundary>
                 <ThemeProvider defaultTheme="dark" storageKey="shadcn-rtl-theme">
                   {children}
-                  <PwaInstallManager enabled={process.env.PWA_ENABLED !== "false"} locale={locale} basePath={resolveAppBasePath()} />
+                  <PwaInstallManager enabled={process.env.PWA_ENABLED !== "false"} locale={locale} basePath={resolveAppBasePath()} appName={installName} />
                 </ThemeProvider>
               </ErrorBoundary>
             </AuthProvider>

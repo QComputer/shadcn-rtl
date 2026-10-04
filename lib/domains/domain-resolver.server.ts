@@ -88,7 +88,12 @@ export async function resolveActiveTenantForHost(
       name: domain.organization.name,
       logo: domain.organization.logo,
       coverImage: domain.organization.coverImage,
-      branding: domain.organization.branding,
+      branding: {
+        ...domain.organization.branding,
+        pwaInstallationName: typeof domain.organization.settings?.settings === "object" && domain.organization.settings.settings && !Array.isArray(domain.organization.settings.settings)
+          ? (domain.organization.settings.settings as Record<string, unknown>).pwaInstallationName as string | null | undefined
+          : null,
+      },
     }),
     theme: domain.organization.settings?.settings && typeof domain.organization.settings.settings === "object" && !Array.isArray(domain.organization.settings.settings)
       ? (domain.organization.settings.settings as Record<string, unknown>).theme ?? null

@@ -29,8 +29,8 @@ export function buildOperationalAppManifest(input: {
   branding?: ResolvedOrganizationBranding | null;
 }): MetadataRoute.Manifest {
   const { basePath, branding } = input;
-  const name = branding?.applicationName || branding?.displayName || "Bazarbaaz | بازارباز";
-  const shortName = branding?.shortName || "Bazarbaaz";
+  const name = branding?.installationName || "بازارباز";
+  const shortName = branding?.shortName || "بازارباز";
 
   return {
     name,

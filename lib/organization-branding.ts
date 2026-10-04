@@ -5,6 +5,7 @@ export type ResolvedOrganizationBranding = {
   displayName: string;
   applicationName: string;
   shortName: string;
+  installationName: string;
   logo: string;
   favicon: string;
   appleTouchIcon: string;
@@ -50,6 +51,7 @@ export function resolveOrganizationBranding(input: {
     displayName?: string | null;
     applicationName?: string | null;
     shortName?: string | null;
+    pwaInstallationName?: string | null;
     logoUrl?: string | null;
     faviconUrl?: string | null;
     appleTouchIconUrl?: string | null;
@@ -82,6 +84,7 @@ export function resolveOrganizationBranding(input: {
     displayName: firstDefined(branding?.displayName, input.name) || "Bazarbaaz",
     applicationName: firstDefined(branding?.applicationName, branding?.displayName, input.name) || "Bazarbaaz",
     shortName: firstDefined(branding?.shortName, input.name) || "Bazarbaaz",
+    installationName: firstDefined(branding?.pwaInstallationName, branding?.displayName, branding?.shortName, input.name) || "Bazarbaaz",
     logo: version(firstDefined(branding?.logoUrl, input.logo, fallback) as string),
     favicon: version(firstDefined(branding?.faviconUrl, branding?.logoUrl, input.logo, fallback) as string),
     appleTouchIcon: version(firstDefined(branding?.appleTouchIconUrl, branding?.faviconUrl, branding?.logoUrl, input.logo, fallback) as string),
@@ -109,6 +112,7 @@ export function resolvePlatformFallbackBranding(): ResolvedOrganizationBranding 
     displayName: "Bazarbaaz",
     applicationName: "Bazarbaaz",
     shortName: "بازارباز",
+    installationName: "بازارباز",
     logo: BAZARBAAZ_LOGO,
     favicon: BAZARBAAZ_FAVICON,
     appleTouchIcon: BAZARBAAZ_APPLE_TOUCH_ICON,

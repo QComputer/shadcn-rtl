@@ -135,6 +135,7 @@ export async function PATCH(
     const hasHomepageMode = Object.prototype.hasOwnProperty.call(body, "homepageMode");
     const hasPreparationMinutes = Object.prototype.hasOwnProperty.call(body, "defaultPreparationMinutes");
     const hasTheme = Object.prototype.hasOwnProperty.call(body, "theme");
+    const hasPwaInstallationName = Object.prototype.hasOwnProperty.call(body, "pwaInstallationName");
     let defaultPublicCapabilityForAudit: string | null | undefined;
 
     if (hasHomepageMode) {
@@ -163,6 +164,13 @@ export async function PATCH(
       const organization = await prisma.organization.findUnique({ where: { id: organizationId }, select: { settings: { select: { settings: true } } } });
       const current = organization?.settings?.settings && typeof organization.settings.settings === "object" && !Array.isArray(organization.settings.settings) ? organization.settings.settings as Record<string, unknown> : {};
       data.settings = { ...current, theme: resolveOrganizationTheme(body.theme) };
+    }
+
+    if (hasPwaInstallationName) {
+      const organization = await prisma.organization.findUnique({ where: { id: organizationId }, select: { settings: { select: { settings: true } } } });
+      const current = organization?.settings?.settings && typeof organization.settings.settings === "object" && !Array.isArray(organization.settings.settings) ? organization.settings.settings as Record<string, unknown> : {};
+      const value = typeof body.pwaInstallationName === "string" ? body.pwaInstallationName.trim().slice(0, 80) : "";
+      data.settings = { ...current, pwaInstallationName: value || null };
     }
 
     if (hasDefaultPublicCapability) {

@@ -1203,6 +1203,7 @@ model OrganizationBranding {
   appleTouchIconUrl         String?
   pwaIcon192Url             String?
   pwaIcon512Url             String?
+  pwaInstallationName       String?
   ogImageUrl                String?
   pwaMaskable192Url         String?
   pwaMaskable512Url         String?

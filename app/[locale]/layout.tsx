@@ -60,7 +60,7 @@ export default async function LocaleLayout({
   let tenantThemeStyle: string | undefined;
   try {
     const tenant = await resolveActiveTenantForHost(prisma, normalizeDomainHost(headersList.get("host")));
-    if (tenant?.branding.displayName) installName = tenant.branding.displayName;
+    if (tenant?.branding.installationName) installName = tenant.branding.installationName;
     if (tenant?.theme) tenantThemeStyle = organizationThemeCss(resolveOrganizationTheme(tenant.theme));
   } catch {
     // Installation UI remains platform-branded when tenant resolution is unavailable.

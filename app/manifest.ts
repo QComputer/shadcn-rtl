@@ -5,6 +5,7 @@ import { normalizeDomainHost } from "@/lib/custom-domain-routing";
 import { resolveActiveTenantForHost } from "@/lib/domains/domain-resolver.server";
 import { prisma } from "@/lib/db";
 import { resolveOrganizationBranding } from "@/lib/organization-branding";
+import { resolveOrganizationEndpointForTenant } from "@/lib/organization-endpoints.server";
 import { buildOperationalAppManifest } from "@/lib/operational-app-manifest";
 
 export const dynamic = "force-dynamic";
@@ -26,19 +27,28 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
         logo: true,
         coverImage: true,
         branding: true,
+        settings: { select: { settings: true } },
       },
     });
     if (tenant) {
-      return buildOperationalAppManifest({
-        basePath,
-        branding: resolveOrganizationBranding({
-          organizationId: tenant.id,
-          name: tenant.name,
-          logo: tenant.logo,
-          coverImage: tenant.coverImage,
-          branding: tenant.branding,
-        }),
-      });
+      const endpoint = await resolveOrganizationEndpointForTenant({ organizationId: tenant.id, role: "APP" });
+      if (endpoint?.pathPrefix === basePath) {
+        return buildOperationalAppManifest({
+          basePath,
+          branding: resolveOrganizationBranding({
+            organizationId: tenant.id,
+            name: tenant.name,
+            logo: tenant.logo,
+            coverImage: tenant.coverImage,
+            branding: {
+              ...tenant.branding,
+              pwaInstallationName: typeof tenant.settings?.settings === "object" && tenant.settings.settings && !Array.isArray(tenant.settings.settings)
+                ? (tenant.settings.settings as Record<string, unknown>).pwaInstallationName as string | null | undefined
+                : null,
+            },
+          }),
+        });
+      }
     }
   }
 

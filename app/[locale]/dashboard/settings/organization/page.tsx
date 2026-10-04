@@ -80,6 +80,8 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   const [selectedLocale, setSelectedLocale] = useState(locale)
   const [selectedTheme, setSelectedTheme] = useState("system")
   const [brandTheme, setBrandTheme] = useState({ primary: "#2F5BFF", secondary: "#64748B", background: "#FFFFFF", surface: "#FFFFFF" })
+  const [pwaInstallationName, setPwaInstallationName] = useState("")
+  const [savingPwaName, setSavingPwaName] = useState(false)
   const [savingBrandTheme, setSavingBrandTheme] = useState(false)
   
   const [lat, setLat] = useState<number | undefined>(undefined)
@@ -121,6 +123,7 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
        setHomepageMode(settings.publicHomeMode === "SHOP" || settings.publicHomeMode === "APPOINTMENT" ? settings.publicHomeMode : "PROFILE")
         const configuredBrandTheme = settings.settings?.settings?.theme
         if (configuredBrandTheme && typeof configuredBrandTheme === "object") setBrandTheme((current) => ({ ...current, ...configuredBrandTheme }))
+       setPwaInstallationName(typeof settings.settings?.settings?.pwaInstallationName === "string" ? settings.settings.settings.pwaInstallationName : "")
        setDefaultPreparationMinutes(settings.defaultPreparationMinutes || 30)
        const configuredDefaultPublicCapability = readDefaultPublicCapability(settings)
        setDefaultPublicCapability(configuredDefaultPublicCapability ?? "AUTO")
@@ -170,6 +173,17 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
       router.refresh()
     } catch (err) { setError(err instanceof Error ? err.message : "ذخیره رنگ‌بندی ناموفق بود") }
     finally { setSavingBrandTheme(false) }
+  }
+  const savePwaInstallationName = async () => {
+    setSavingPwaName(true)
+    setError(null)
+    try {
+      const response = await appFetch(`/api/organizations/${organization?.id || "noId"}/settings`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pwaInstallationName }) })
+      if (!response.ok) throw new Error("نام نصب برنامه ذخیره نشد")
+      setSuccess("نام نصب برنامه ذخیره شد")
+      router.refresh()
+    } catch (err) { setError(err instanceof Error ? err.message : "نام نصب برنامه ذخیره نشد") }
+    finally { setSavingPwaName(false) }
   }
   const handleCoverImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -621,6 +635,11 @@ const handleOpen = async (e: React.FormEvent) => {
           <div className="sm:col-span-2 rounded-lg border p-4" style={{ backgroundColor: brandTheme.background, color: brandTheme.primary }}><div className="rounded-md p-3" style={{ backgroundColor: brandTheme.surface }}><span className="font-medium">پیش‌نمایش فروشگاه</span><Button className="ms-3" style={{ backgroundColor: brandTheme.primary }}>عملیات</Button></div></div>
         </CardContent>
         <CardFooter><Button type="button" onClick={saveBrandTheme} disabled={savingBrandTheme}>{savingBrandTheme ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Save className="me-2 h-4 w-4" />}ذخیره رنگ‌بندی</Button></CardFooter>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle>هویت برنامه نصب‌شده</CardTitle><CardDescription>این نام در Manifest و پنجره نصب PWA نمایش داده می‌شود و مستقل از نام رسمی سازمان است.</CardDescription></CardHeader>
+        <CardContent className="flex max-w-xl gap-2"><Input value={pwaInstallationName} onChange={(event) => setPwaInstallationName(event.target.value)} placeholder={locale === "fa" ? "نام نصب برنامه" : "Installation name"} maxLength={80} /></CardContent>
+        <CardFooter><Button type="button" onClick={savePwaInstallationName} disabled={savingPwaName}>{savingPwaName ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Save className="me-2 h-4 w-4" />}ذخیره نام نصب</Button></CardFooter>
       </Card>
       <Card>
         <CardHeader>

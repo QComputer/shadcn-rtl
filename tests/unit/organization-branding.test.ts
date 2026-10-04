@@ -50,10 +50,10 @@ describe("organization branding resolution", () => {
     assert.equal(branding.displayName, "Test Org");
     assert.equal(branding.shortName, "Test Org");
     assert.equal(branding.logo, "/test-logo.png");
-    assert.equal(branding.favicon, "/icons/favicon.svg");
-    assert.equal(branding.appleTouchIcon, "/icons/apple-touch-icon.png");
-    assert.equal(branding.pwaIcons.icon192, "/icons/icon-192x192.png");
-    assert.equal(branding.pwaIcons.icon512, "/icons/icon-512x512.png");
+    assert.equal(branding.favicon, "/test-logo.png");
+    assert.equal(branding.appleTouchIcon, "/test-logo.png");
+    assert.equal(branding.pwaIcons.icon192, "/test-logo.png");
+    assert.equal(branding.pwaIcons.icon512, "/test-logo.png");
     assert.equal(branding.ogImage, "/test-cover.jpg");
     assert.equal(branding.source, "PLATFORM_FALLBACK");
   });
@@ -71,7 +71,7 @@ describe("organization branding resolution", () => {
       },
     });
 
-    assert.equal(branding.logo, "/brand/marks/bazarbaaz-mark.svg");
+    assert.equal(branding.logo, "/api/public/organization-branding/org-3/fallback.svg");
     assert.equal(branding.favicon, "/custom-favicon.ico");
     assert.equal(branding.appleTouchIcon, "/custom-favicon.ico");
     assert.equal(branding.pwaIcons.icon192, "/icons/icon-192x192.png");
@@ -123,8 +123,8 @@ describe("organization branding resolution", () => {
 
     assert.equal(branding.displayName, "My Shop");
     assert.equal(branding.shortName, "My Shop");
-    assert.equal(branding.logo, "/brand/marks/bazarbaaz-mark.svg");
-    assert.equal(branding.favicon, "/icons/favicon.svg");
+    assert.equal(branding.logo, "/api/public/organization-branding/org-5/fallback.svg");
+    assert.equal(branding.favicon, "/api/public/organization-branding/org-5/fallback.svg");
   });
 
   it("does not leak cross-tenant assets", () => {
@@ -192,8 +192,8 @@ describe("organization branding resolution", () => {
     });
 
     assert.equal(branding.logo, "/org-logo.png");
-    assert.equal(branding.favicon, "/icons/favicon.svg");
-    assert.equal(branding.appleTouchIcon, "/icons/apple-touch-icon.png");
+    assert.equal(branding.favicon, "/org-logo.png");
+    assert.equal(branding.appleTouchIcon, "/org-logo.png");
   });
 
   it("uses organization logo for ogImage when branding ogImage is missing", () => {
@@ -263,7 +263,7 @@ describe("organization branding resolution", () => {
 
     assert.equal(branding.displayName, "Org A");
     assert.equal(branding.logo, "/org-a-logo.png");
-    assert.equal(branding.favicon, "/icons/favicon.svg");
+    assert.equal(branding.favicon, "/org-a-logo.png");
     assert.equal(branding.ogImage, "/org-a-cover.jpg");
     assert.equal(branding.source, "PLATFORM_FALLBACK");
   });

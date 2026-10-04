@@ -29,6 +29,7 @@ const BAZARBAAZ_PWA_512 = "/icons/icon-512x512.png";
 const BAZARBAAZ_MASKABLE_192 = "/icons/icon-maskable-192x192.png";
 const BAZARBAAZ_MASKABLE_512 = "/icons/icon-maskable-512x512.png";
 const BAZARBAAZ_OG_IMAGE = "/og-image";
+const organizationFallback = (id: string) => `/api/public/organization-branding/${encodeURIComponent(id)}/fallback.svg`;
 
 function firstDefined<T>(...values: (T | null | undefined)[]): T | null {
   for (const value of values) {
@@ -75,19 +76,20 @@ export function resolveOrganizationBranding(input: {
   const derivedMaskable512 = icon512.includes("icon-512x512.png") ? icon512.replace("icon-512x512.png", "maskable-512x512.png") : null;
   const maskable192 = firstDefined(branding?.pwaMaskable192Url, derivedMaskable192, "/icons/icon-maskable-192x192.png") as string;
   const maskable512 = firstDefined(branding?.pwaMaskable512Url, derivedMaskable512, "/icons/icon-maskable-512x512.png") as string;
+  const fallback = organizationFallback(input.organizationId);
   return {
     organizationId: input.organizationId,
     displayName: firstDefined(branding?.displayName, input.name) || "Bazarbaaz",
     applicationName: firstDefined(branding?.applicationName, branding?.displayName, input.name) || "Bazarbaaz",
     shortName: firstDefined(branding?.shortName, input.name) || "Bazarbaaz",
-    logo: version(firstDefined(branding?.logoUrl, input.logo, BAZARBAAZ_LOGO) as string),
-    favicon: version(firstDefined(branding?.faviconUrl, BAZARBAAZ_FAVICON) as string),
-    appleTouchIcon: version(firstDefined(branding?.appleTouchIconUrl, branding?.faviconUrl, BAZARBAAZ_APPLE_TOUCH_ICON) as string),
+    logo: version(firstDefined(branding?.logoUrl, input.logo, fallback) as string),
+    favicon: version(firstDefined(branding?.faviconUrl, branding?.logoUrl, input.logo, fallback) as string),
+    appleTouchIcon: version(firstDefined(branding?.appleTouchIconUrl, branding?.faviconUrl, branding?.logoUrl, input.logo, fallback) as string),
     pwaIcons: {
-      icon192: version(icon192),
-      icon512: version(icon512),
-      maskable192: version(maskable192),
-      maskable512: version(maskable512),
+      icon192: version(firstDefined(branding?.pwaIcon192Url, branding?.logoUrl, input.logo, icon192) as string),
+      icon512: version(firstDefined(branding?.pwaIcon512Url, branding?.logoUrl, input.logo, icon512) as string),
+      maskable192: version(firstDefined(branding?.pwaMaskable192Url, derivedMaskable192, branding?.logoUrl, input.logo, maskable192) as string),
+      maskable512: version(firstDefined(branding?.pwaMaskable512Url, derivedMaskable512, branding?.logoUrl, input.logo, maskable512) as string),
     },
     ogImage: firstDefined(
       branding?.ogImageUrl,

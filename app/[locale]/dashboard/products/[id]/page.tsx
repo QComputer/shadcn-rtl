@@ -61,6 +61,7 @@ import {
   type NormalizedAiMediaStatus,
 } from "@/lib/ai-media/status"
 import { AiMediaAssetPicker } from "@/components/ai-media/ai-media-asset-picker"
+import { ProductGalleryEditor } from "@/components/dashboard/product-gallery-editor"
 
 const AI_JOB_POLL_INTERVAL_MS = 3000
 const AI_JOB_MAX_POLL_ATTEMPTS = 90
@@ -226,7 +227,7 @@ export default function EditProductPage({
   const aiPollRunIdRef = useRef(0)
     
     // Upload function
-  async function uploadFile(file: File) {
+  async function uploadFile(file: File, onProgress?: (value: number) => void) {
     const form = new FormData();
     form.append("file", file);
 
@@ -235,7 +236,11 @@ export default function EditProductPage({
       xhr.open("POST", "/api/upload");
 
       xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
+        if (e.lengthComputable) {
+          const value = Math.round((e.loaded / e.total) * 100)
+          setProgress(value)
+          onProgress?.(value)
+        }
       };
 
       xhr.onload = () => {
@@ -1015,6 +1020,12 @@ export default function EditProductPage({
             )}
             
             </div>
+
+            <ProductGalleryEditor
+              productId={productId}
+              variants={variants}
+              uploadFile={uploadFile}
+            />
 
             <AiMediaAssetPicker
               entityLabel="تصویر اصلی AI محصول"

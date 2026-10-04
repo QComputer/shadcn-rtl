@@ -13,6 +13,7 @@ import {
 } from "@/lib/organization-public-home";
 import type { BusinessCapability } from "@/lib/business-capability-registry";
 import { buildOrganizationPublicPath, buildOrganizationRootPath } from "@/lib/custom-domain-routing";
+import { resolveOrganizationTheme } from "@/lib/organization-theme";
 
 async function getOrganizationSlug(organizationId: string) {
   const org = await prisma.organization.findUnique({
@@ -133,6 +134,7 @@ export async function PATCH(
     const hasDefaultPublicCapability = Object.prototype.hasOwnProperty.call(body, "defaultPublicCapability");
     const hasHomepageMode = Object.prototype.hasOwnProperty.call(body, "homepageMode");
     const hasPreparationMinutes = Object.prototype.hasOwnProperty.call(body, "defaultPreparationMinutes");
+    const hasTheme = Object.prototype.hasOwnProperty.call(body, "theme");
     let defaultPublicCapabilityForAudit: string | null | undefined;
 
     if (hasHomepageMode) {
@@ -155,6 +157,12 @@ export async function PATCH(
 
     if (hasPreparationMinutes) {
       Object.assign(data, updatePreparationDefaultsSchema.parse(body));
+    }
+
+    if (hasTheme) {
+      const organization = await prisma.organization.findUnique({ where: { id: organizationId }, select: { settings: { select: { settings: true } } } });
+      const current = organization?.settings?.settings && typeof organization.settings.settings === "object" && !Array.isArray(organization.settings.settings) ? organization.settings.settings as Record<string, unknown> : {};
+      data.settings = { ...current, theme: resolveOrganizationTheme(body.theme) };
     }
 
     if (hasDefaultPublicCapability) {
@@ -201,7 +209,9 @@ export async function PATCH(
       action: "UPDATE",
       entityType: "OrganizationPreparationSettings",
       entityId: settings.id,
-      description: hasDefaultPublicCapability
+      description: hasTheme
+        ? "Updated organization storefront theme"
+        : hasDefaultPublicCapability
         ? "Updated default public capability"
         : hasHomepageMode ? "Updated business homepage mode" : "Updated default order preparation time",
       userId: session.user.id,

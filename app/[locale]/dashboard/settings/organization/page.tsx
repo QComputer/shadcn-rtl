@@ -79,6 +79,8 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   const [phone, setPhone] = useState("")
   const [selectedLocale, setSelectedLocale] = useState(locale)
   const [selectedTheme, setSelectedTheme] = useState("system")
+  const [brandTheme, setBrandTheme] = useState({ primary: "#2F5BFF", secondary: "#64748B", background: "#FFFFFF", surface: "#FFFFFF" })
+  const [savingBrandTheme, setSavingBrandTheme] = useState(false)
   
   const [lat, setLat] = useState<number | undefined>(undefined)
   const [lng, setLng] = useState<number | undefined>(undefined)
@@ -117,6 +119,8 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
 .then(settings => {
        setSettings(settings)
        setHomepageMode(settings.publicHomeMode === "SHOP" || settings.publicHomeMode === "APPOINTMENT" ? settings.publicHomeMode : "PROFILE")
+        const configuredBrandTheme = settings.settings?.settings?.theme
+        if (configuredBrandTheme && typeof configuredBrandTheme === "object") setBrandTheme((current) => ({ ...current, ...configuredBrandTheme }))
        setDefaultPreparationMinutes(settings.defaultPreparationMinutes || 30)
        const configuredDefaultPublicCapability = readDefaultPublicCapability(settings)
        setDefaultPublicCapability(configuredDefaultPublicCapability ?? "AUTO")
@@ -156,6 +160,16 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   const t = (key: string): string => {
     if (!dict) return key
     return getDictValue(dict, key)
+  }
+  const saveBrandTheme = async () => {
+    setSavingBrandTheme(true)
+    try {
+      const response = await appFetch(`/api/organizations/${organization?.id || "noId"}/settings`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ theme: brandTheme }) })
+      if (!response.ok) throw new Error("ذخیره رنگ‌بندی ناموفق بود")
+      setSuccess("رنگ‌بندی ذخیره شد")
+      router.refresh()
+    } catch (err) { setError(err instanceof Error ? err.message : "ذخیره رنگ‌بندی ناموفق بود") }
+    finally { setSavingBrandTheme(false) }
   }
   const handleCoverImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -598,6 +612,16 @@ const handleOpen = async (e: React.FormEvent) => {
           {error}
         </div>
       )}
+      <Card>
+        <CardHeader><CardTitle>رنگ‌بندی فروشگاه</CardTitle><CardDescription>پیش‌نمایش زنده رنگ‌های برند سازمان؛ متن متضاد به‌صورت خودکار محاسبه می‌شود.</CardDescription></CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          {(["primary", "secondary", "background", "surface"] as const).map((key) => (
+            <label key={key} className="flex items-center justify-between gap-3 text-sm"><span>{key}</span><Input type="color" value={brandTheme[key]} onChange={(event) => setBrandTheme((current) => ({ ...current, [key]: event.target.value }))} className="h-10 w-20 p-1" /></label>
+          ))}
+          <div className="sm:col-span-2 rounded-lg border p-4" style={{ backgroundColor: brandTheme.background, color: brandTheme.primary }}><div className="rounded-md p-3" style={{ backgroundColor: brandTheme.surface }}><span className="font-medium">پیش‌نمایش فروشگاه</span><Button className="ms-3" style={{ backgroundColor: brandTheme.primary }}>عملیات</Button></div></div>
+        </CardContent>
+        <CardFooter><Button type="button" onClick={saveBrandTheme} disabled={savingBrandTheme}>{savingBrandTheme ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Save className="me-2 h-4 w-4" />}ذخیره رنگ‌بندی</Button></CardFooter>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>صفحه اصلی کسب‌وکار</CardTitle>

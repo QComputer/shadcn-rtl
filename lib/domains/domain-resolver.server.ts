@@ -13,6 +13,7 @@ export type ResolvedTenant = {
   brandLandingProvider?: string | null;
   publicHome: OrganizationPublicHome;
   branding: ReturnType<typeof resolveOrganizationBranding>;
+  theme: unknown;
 };
 
 export type ResolverPrismaLike = {
@@ -89,5 +90,8 @@ export async function resolveActiveTenantForHost(
       coverImage: domain.organization.coverImage,
       branding: domain.organization.branding,
     }),
+    theme: domain.organization.settings?.settings && typeof domain.organization.settings.settings === "object" && !Array.isArray(domain.organization.settings.settings)
+      ? (domain.organization.settings.settings as Record<string, unknown>).theme ?? null
+      : null,
   };
 }

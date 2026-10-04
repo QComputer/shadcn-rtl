@@ -15,6 +15,7 @@ import { PlatformFooter } from "@/components/public/platform-footer"
 import { prisma } from "@/lib/db"
 import { normalizeDomainHost } from "@/lib/custom-domain-routing"
 import { resolveActiveTenantForHost } from "@/lib/domains/domain-resolver.server"
+import { organizationThemeCss, resolveOrganizationTheme } from "@/lib/organization-theme"
 
 export const dynamic = "force-dynamic";
 
@@ -56,9 +57,11 @@ export default async function LocaleLayout({
   const footerContext = headersList.get("x-bazar-public-footer-context") || "platform";
   const showPlatformFooter = footerContext === "platform";
   let installName = "بازارباز";
+  let tenantThemeStyle: string | undefined;
   try {
     const tenant = await resolveActiveTenantForHost(prisma, normalizeDomainHost(headersList.get("host")));
     if (tenant?.branding.displayName) installName = tenant.branding.displayName;
+    if (tenant?.theme) tenantThemeStyle = organizationThemeCss(resolveOrganizationTheme(tenant.theme));
   } catch {
     // Installation UI remains platform-branded when tenant resolution is unavailable.
   }
@@ -84,8 +87,9 @@ export default async function LocaleLayout({
     default: "بازارباز | از کسب‌وکار سنتی تا حضور دیجیتال هوشمند",
   };
   return (
-    <html lang={locale} dir={localeConfig[locale].dir}>
+    <html lang={locale} dir={localeConfig[locale].dir} style={tenantThemeStyle ? { colorScheme: "light" } : undefined}>
       <head key={locale}>
+        {tenantThemeStyle ? <style id="organization-theme">{`:root { ${tenantThemeStyle} }`}</style> : null}
       </head>
       <body className="antialiased">
         <SessionProvider basePath={appPath("/api/auth")}>

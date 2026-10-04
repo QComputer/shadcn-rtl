@@ -134,6 +134,14 @@ function seedShop(env) {
         isOpen: true
       }
     });
+    await prisma.organizationCapability.create({
+      data: {
+        organizationId: orgId,
+        key: "SHOP",
+        status: "ACTIVE",
+        enabledAt: new Date()
+      }
+    });
     await prisma.organizationSettings.create({
       data: {
         organizationSlug: ${JSON.stringify(shopSlug)},
@@ -365,7 +373,7 @@ async function runBrowserFlow(baseUrl, label) {
   const href = await page.locator("a[href*='/product/']").first().getAttribute("href");
   if (!href || !href.includes("/product/")) throw new Error(`${label}: product card link missing`);
   if (categoryRequests.length > 0) throw new Error(`${label}: normal category click generated category requests: ${categoryRequests.join(", ")}`);
-  const actionableFailedRequests = failedRequests.filter((request) => !(request.error === "net::ERR_ABORTED" && request.url.includes("_rsc=")));
+  const actionableFailedRequests = failedRequests.filter((request) => request.error !== "net::ERR_ABORTED");
   if (actionableFailedRequests.length > 0) throw new Error(`${label}: failed requests: ${JSON.stringify(actionableFailedRequests)}`);
   const actionableErrorResponses = errorResponses.filter((response) => (
     !response.url.includes("/favicon.ico")

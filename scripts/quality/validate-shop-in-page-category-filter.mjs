@@ -38,7 +38,7 @@ if (has(shopPagePath)) {
   addCheck("category controls do not call router.push", !shopPage.includes("router.push") && !shopPage.includes("useRouter"));
   addCheck("all-products control exists", categoryBlock.includes("shop.allProducts") && categoryBlock.includes("setSelectedCategoryId(null)"));
   addCheck("active state is accessible", categoryBlock.includes("aria-pressed={selectedCategoryId === null}") && categoryBlock.includes("aria-pressed={selectedCategoryId === category.id}"));
-  addCheck("mobile overflow category bar exists", categoryBlock.includes("overflow-x-auto") && categoryBlock.includes("w-max"));
+  addCheck("categories use compact two-row layout without horizontal scrolling", categoryBlock.includes("grid-flow-col") && categoryBlock.includes("grid-rows-2") && categoryBlock.includes("overflow-hidden") && !categoryBlock.includes("overflow-x-auto") && !categoryBlock.includes("w-max"));
   addCheck("search and category filters combine through helper", shopPage.includes("getVisibleShopMenuProducts(data.categories, { selectedCategoryId, searchQuery })"));
   addCheck("product links still use productHref", shopPage.includes("href={productHref(product)}"));
   addCheck("cart context remains in shop page", shopPage.includes("useCart()") && shopPage.includes("addToCart"));

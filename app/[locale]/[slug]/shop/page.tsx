@@ -20,6 +20,7 @@ import {
   LocateFixedIcon,
   ShoppingCart,
   Check,
+  ChevronDown,
 } from "lucide-react"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -151,6 +152,7 @@ export default function ShopPage({
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
+  const [showAllCategories, setShowAllCategories] = useState(false)
   const [viewMode, setViewMode] = useState<"grid" | "list">("list")
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
@@ -470,8 +472,8 @@ const getDisplayPrice = (product: Product): PriceInfo => {
 
           {/* Categories */}
           {data.categories.length > 1 && (
-            <div className="mb-6 overflow-x-auto pb-2" role="group" aria-label={t("shop.categoryFilter") || "Category filter"}>
-              <div className="flex w-max min-w-full gap-2">
+            <div className="mb-6" role="group" aria-label={t("shop.categoryFilter") || "Category filter"}>
+              <div className={cn("grid grid-flow-col auto-cols-max grid-rows-2 gap-2 overflow-hidden", showAllCategories ? "max-h-none" : "max-h-20")}>
               <button
                 type="button"
                 aria-pressed={selectedCategoryId === null}
@@ -501,6 +503,12 @@ const getDisplayPrice = (product: Product): PriceInfo => {
                 </button>
               ))}
               </div>
+              {data.categories.length > 7 && (
+                <button type="button" aria-expanded={showAllCategories} onClick={() => setShowAllCategories((value) => !value)} className="mt-2 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring">
+                  {showAllCategories ? (t("common.showLess") || "Show less") : (t("common.showMore") || "More categories")}
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", showAllCategories && "rotate-180")} aria-hidden="true" />
+                </button>
+              )}
             </div>
           )}
 

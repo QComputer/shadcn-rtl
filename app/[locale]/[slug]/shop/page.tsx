@@ -42,7 +42,7 @@ import { ShopStatusBadge } from "@/components/ShopStatusBadge"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { PublicImage } from "@/components/public/public-image"
-import { getProductPrimaryMediaUrl } from "@/lib/ai-media/entity-primary-media"
+import { getProductThumbnailUrl } from "@/lib/ai-media/entity-primary-media"
 import { buildShopProductPath, isShopCustomDomainPathname } from "@/lib/shop-public-paths"
 import {
   countVisibleProductsByCategory,
@@ -71,6 +71,7 @@ interface Product {
   image: string | null
   aiPrimaryMediaAssetId?: string | null
   images: string[]
+  galleryItems?: Array<{ thumbnailUrl?: string | null; image?: { url?: string | null; thumbnailUrl?: string | null } | null }>
   trackInventory: boolean
   discountType: "none" | "percentage" | "fixed" | string | null
   discountValue: number | string | null
@@ -538,7 +539,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
                       <div className="aspect-square bg-muted relative -mt-4 -mb-4">
                       <Link   href={productHref(product)}>
                       <PublicImage
-                        src={getProductPrimaryMediaUrl(product)}
+                        src={getProductThumbnailUrl(product)}
                         alt={product.name}
                         kind="product"
                         className="w-full h-full object-cover"
@@ -630,7 +631,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
                                <div className="w-24 h-24 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                           <Link href={productHref(product)}>
                               <PublicImage
-                                src={getProductPrimaryMediaUrl(product)}
+                                src={getProductThumbnailUrl(product)}
                                 alt={product.name}
                                 kind="product"
                                 className="w-full h-full object-cover"
@@ -722,7 +723,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
 
 
                 <PublicImage
-                  src={selectedProduct ? getProductPrimaryMediaUrl(selectedProduct) : null}
+                  src={selectedProduct ? getProductThumbnailUrl(selectedProduct) : null}
                   alt={selectedProduct?.name || "Product image"}
                   kind="product"
                   className="w-full h-full object-cover"

@@ -1,4 +1,5 @@
 import { NextResponse, NextRequest } from "next/server";
+import sharp from "sharp";
 import { prisma } from "@/lib/db";
 import {
   ApiError,
@@ -44,6 +45,13 @@ export async function POST(req: NextRequest) {
 
     const filename = createStoredImageFilename(file.type, purpose);
     const result = await writeStoredImage(filename, buffer, access);
+    const thumbnailBuffer = await sharp(buffer)
+      .rotate()
+      .resize({ width: 640, withoutEnlargement: true })
+      .webp({ quality: 78 })
+      .toBuffer();
+    const thumbnailFilename = createStoredImageFilename("image/webp", `${purpose}-thumbnail`);
+    const thumbnail = await writeStoredImage(thumbnailFilename, thumbnailBuffer, access);
 
     const image = await prisma.image.create({
       data: {
@@ -51,6 +59,7 @@ export async function POST(req: NextRequest) {
         filename: result.pathname,
         mimeType: file.type,
         sizeBytes: file.size,
+        thumbnailUrl: thumbnail.url,
         purpose,
         access,
         uploadedByUserId: session.user.id,

@@ -58,6 +58,10 @@ export async function GET(
             trackInventory: true,
             sortOrder: true,
             image: true,
+            galleryItems: {
+              orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }],
+              select: { id: true, thumbnailUrl: true, isPrimary: true, sortOrder: true, image: { select: { url: true, thumbnailUrl: true } } },
+            },
             ...(includeAiMediaAttachment ? { aiPrimaryMediaAssetId: true } : {}),
             isActive: true,
             deletedAt: true,
@@ -75,6 +79,10 @@ export async function GET(
                 inventory: true,
                 allowBackOrder: true,
                 deletedAt: true,
+                galleryItems: {
+                  orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }],
+                  select: { id: true, thumbnailUrl: true, isPrimary: true, sortOrder: true, image: { select: { url: true, thumbnailUrl: true } } },
+                },
               },
             },
           },

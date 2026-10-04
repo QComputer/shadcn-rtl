@@ -146,6 +146,9 @@ importers:
       shadcn:
         specifier: ^3.8.4
         version: 3.8.5(@types/node@20.19.42)(typescript@5.9.3)
+      sharp:
+        specifier: 0.34.5
+        version: 0.34.5
       socket.io-client:
         specifier: ^4.8.3
         version: 4.8.3
@@ -3706,9 +3709,6 @@ packages:
   perfect-debounce@1.0.0:
     resolution: {integrity: sha512-xCy9V055GLEqoFaHoC1SoLIaLmWctgCUaBaWxDZ7/Zx4CTyX7cJQLJOok/orfjZAh9kEYpjJa4d0KcJmCbctZA==}
 
-  pg-cloudflare@1.4.0:
-    resolution: {integrity: sha512-Vo7z/6rrQYxpNRylp4Tlob2elzbh+N/MOQbxFVWCxS7oEx6jF53GTJFxK2WWpKuBRkmiin4Mt+xofFDjx09R0A==}
-
   pg-connection-string@2.13.0:
     resolution: {integrity: sha512-EMnU9E2fSULdsbErBbMaXJvFeD9B4+nPcM3f+4lsiCR0BHLPrLVjv3DbyM2hgQQviKJaTWIRRTjKjWlHg3p2ig==}
 
@@ -5109,8 +5109,7 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
-  '@img/colour@1.1.0':
-    optional: true
+  '@img/colour@1.1.0': {}
 
   '@img/sharp-darwin-arm64@0.34.5':
     optionalDependencies:
@@ -8132,9 +8131,6 @@ snapshots:
 
   perfect-debounce@1.0.0: {}
 
-  pg-cloudflare@1.4.0:
-    optional: true
-
   pg-connection-string@2.13.0: {}
 
   pg-int8@1.0.1: {}
@@ -8160,8 +8156,6 @@ snapshots:
       pg-protocol: 1.14.0
       pg-types: 2.2.0
       pgpass: 1.0.5
-    optionalDependencies:
-      pg-cloudflare: 1.4.0
 
   pgpass@1.0.5:
     dependencies:
@@ -8623,7 +8617,6 @@ snapshots:
       '@img/sharp-win32-arm64': 0.34.5
       '@img/sharp-win32-ia32': 0.34.5
       '@img/sharp-win32-x64': 0.34.5
-    optional: true
 
   shebang-command@2.0.0:
     dependencies:

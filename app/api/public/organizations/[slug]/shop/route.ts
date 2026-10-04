@@ -73,6 +73,7 @@ export async function GET(
                 sku: true,
                 price: true,
                 inventory: true,
+                allowBackOrder: true,
                 deletedAt: true,
               },
             },

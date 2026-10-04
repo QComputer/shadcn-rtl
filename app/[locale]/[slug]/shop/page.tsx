@@ -46,7 +46,7 @@ import { getProductPrimaryMediaUrl } from "@/lib/ai-media/entity-primary-media"
 import { buildShopProductPath, isShopCustomDomainPathname } from "@/lib/shop-public-paths"
 import {
   countVisibleProductsByCategory,
-  getShopMenuProductInventory,
+  getShopMenuProductAvailability,
   getVisibleShopMenuProducts,
 } from "@/lib/shop-menu-filter"
 
@@ -56,6 +56,7 @@ interface ProductVariant {
   sku: string | null
   price: number | null
   inventory: number
+  allowBackOrder: boolean
   description: string | null
   isActive: boolean
   isDeleted: boolean
@@ -318,11 +319,6 @@ const getDisplayPrice = (product: Product): PriceInfo => {
   }
 }
 
-  // Get total inventory (Infinity = unlimited if trackInventory is false)
-  const getTotalInventory = (product: Product): number => {
-    return getShopMenuProductInventory(product)
-  }
-
   if (!mounted || loading || !data) {
     return (
       <div className="min-h-screen bg-background">
@@ -529,7 +525,8 @@ const getDisplayPrice = (product: Product): PriceInfo => {
           ) : viewMode === "grid" ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {filteredProducts.map((product) => {
-                const inventory = getTotalInventory(product)
+                const availability = getShopMenuProductAvailability(product)
+                const inventory = availability.inventory
                 const priceInfo = getDisplayPrice(product)
                 const isDiscounted = priceInfo.isDiscounted
                 const displayPrice = typeof priceInfo.display === "number" ? priceInfo.display : 0
@@ -547,12 +544,12 @@ const getDisplayPrice = (product: Product): PriceInfo => {
                         className="w-full h-full object-cover"
                       />
                         </Link>
-                        {product.trackInventory && inventory === 0 && (
+                        {availability.isOutOfStock && (
                           <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
                             <Badge variant="secondary">ناموجود</Badge>
                           </div>
                         )}
-                        {isDiscounted && product.trackInventory && inventory > 0 && (
+                        {isDiscounted && availability.tracksInventory && inventory > 0 && (
                           <div className="absolute top-2 right-2">
                             <Badge variant="destructive" className="text-xs">
                               {toPersianDigits(Math.round(((originalPrice || displayPrice) - displayPrice) / (originalPrice || displayPrice) * 100))}% تخفیف
@@ -596,7 +593,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
                   <Button 
                   size="default" 
                   className={"flex-1 gap-2"}
-                  disabled={addingToCart == product.id}
+                  disabled={addingToCart == product.id || !availability.canPurchase}
                   onClick={() => handleAddToCart(product)}
                 >
                   {addedToCart_VariantId == product.variants[0]?.id ? (
@@ -619,7 +616,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
           ) : (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               {filteredProducts.map((product) => {
-                const inventory = getTotalInventory(product)
+                const availability = getShopMenuProductAvailability(product)
                 const priceInfo = getDisplayPrice(product)
                 const displayPrice = typeof priceInfo.display === "number" ? priceInfo.display : 0
                 const isDiscounted = priceInfo.isDiscounted
@@ -679,7 +676,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
                                 
                                 <Button 
                                 className={"flex-1 gap-2 w-28"}
-                                disabled={addingToCart == product.id}
+                                disabled={addingToCart == product.id || !availability.canPurchase}
                                 onClick={() => handleAddToCart(product)}
                               >
                                 {(product.variants?.length>0 && addedToCart_VariantId == product.variants[0]?.id) ? (
@@ -765,7 +762,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
                       
                                       <Button 
                                 className={"flex-1 gap-2 w-28"}
-                                disabled={addingToCart_VariantId == v.id}
+                                disabled={addingToCart_VariantId == v.id || (selectedProduct.trackInventory && v.inventory <= 0 && !v.allowBackOrder)}
                             onClick={()=>handleAddVariantToCart(v.id)}
                               >
                                 {addedToCart_VariantId == v.id ? (

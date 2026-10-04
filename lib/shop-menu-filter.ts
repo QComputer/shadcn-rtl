@@ -35,6 +35,28 @@ export function getShopMenuProductInventory(product: ShopMenuProduct): number {
     : 0;
 }
 
+export type ShopMenuProductAvailability = {
+  tracksInventory: boolean;
+  inventory: number;
+  isOutOfStock: boolean;
+  canPurchase: boolean;
+};
+
+export function getShopMenuProductAvailability(
+  product: ShopMenuProduct,
+): ShopMenuProductAvailability {
+  const tracksInventory = product.trackInventory === true;
+  const inventory = getShopMenuProductInventory(product);
+  const isOutOfStock = tracksInventory && inventory <= 0;
+
+  return {
+    tracksInventory,
+    inventory,
+    isOutOfStock,
+    canPurchase: !isOutOfStock,
+  };
+}
+
 export function getVisibleShopMenuProducts<TProduct extends ShopMenuProduct>(
   categories: Array<ShopMenuCategory<TProduct>>,
   input: {
@@ -50,7 +72,6 @@ export function getVisibleShopMenuProducts<TProduct extends ShopMenuProduct>(
 
     for (const product of category.products) {
       if (!product.isActive || product.deletedAt) continue;
-      if (product.trackInventory && getShopMenuProductInventory(product) === 0) continue;
 
       products.push({
         ...product,
@@ -79,9 +100,5 @@ export function countVisibleProductsByCategory<TProduct extends ShopMenuProduct>
   category: ShopMenuCategory<TProduct>,
 ): number {
   if (!category.isActive || category.deletedAt) return 0;
-  return category.products.filter((product) =>
-    product.isActive &&
-    !product.deletedAt &&
-    (!product.trackInventory || getShopMenuProductInventory(product) > 0)
-  ).length;
+  return category.products.filter((product) => product.isActive && !product.deletedAt).length;
 }

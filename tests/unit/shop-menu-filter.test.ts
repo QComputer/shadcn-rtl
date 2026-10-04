@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   countVisibleProductsByCategory,
+  getShopMenuProductAvailability,
   getVisibleShopMenuProducts,
   type ShopMenuCategory,
   type ShopMenuProduct,
@@ -82,14 +83,14 @@ describe("shop menu in-page category filtering", () => {
   it("initial state displays all visible products in stable sort order", () => {
     assert.deepEqual(
       getVisibleShopMenuProducts(categories, { selectedCategoryId: null }).map((item) => item.id),
-      ["p_other", "p_margherita", "p_juice", "p_pepperoni", "p_coffee"],
+      ["p_sold_out", "p_other", "p_margherita", "p_juice", "p_pepperoni", "p_coffee"],
     );
   });
 
   it("clicking a category filters in place by stable category id", () => {
     assert.deepEqual(
       getVisibleShopMenuProducts(categories, { selectedCategoryId: "cat_pizza" }).map((item) => item.id),
-      ["p_margherita", "p_pepperoni"],
+      ["p_sold_out", "p_margherita", "p_pepperoni"],
     );
   });
 
@@ -97,7 +98,7 @@ describe("shop menu in-page category filtering", () => {
     const filtered = getVisibleShopMenuProducts(categories, { selectedCategoryId: "cat_drinks" });
     const restored = getVisibleShopMenuProducts(categories, { selectedCategoryId: null });
     assert.equal(filtered.length, 2);
-    assert.equal(restored.length, 5);
+    assert.equal(restored.length, 6);
   });
 
   it("Persian category labels work without slug parsing", () => {
@@ -139,7 +140,7 @@ describe("shop menu in-page category filtering", () => {
   it("product ordering is preserved after filtering", () => {
     assert.deepEqual(
       getVisibleShopMenuProducts(categories, { selectedCategoryId: "cat_pizza" }).map((item) => item.sortOrder),
-      [40, 20],
+      [90, 40, 20],
     );
   });
 
@@ -152,9 +153,15 @@ describe("shop menu in-page category filtering", () => {
     assert.equal(ids.includes("p_hidden"), false);
   });
 
-  it("sold-out tracked products remain hidden", () => {
+  it("sold-out tracked products remain visible for unavailable presentation", () => {
     const ids = getVisibleShopMenuProducts(categories, { selectedCategoryId: "cat_pizza" }).map((item) => item.id);
-    assert.equal(ids.includes("p_sold_out"), false);
+    assert.equal(ids.includes("p_sold_out"), true);
+    assert.deepEqual(getShopMenuProductAvailability(categories[0].products[3]), {
+      tracksInventory: true,
+      inventory: 0,
+      isOutOfStock: true,
+      canPurchase: false,
+    });
   });
 
   it("tenant-scoped source data can be asserted by callers before rendering", () => {
@@ -223,6 +230,6 @@ describe("shop menu in-page category filtering", () => {
   });
 
   it("visible category counts use the same availability policy as products", () => {
-    assert.equal(countVisibleProductsByCategory(categories[0]), 2);
+    assert.equal(countVisibleProductsByCategory(categories[0]), 3);
   });
 });

@@ -1893,6 +1893,7 @@ model User {
   hotelWebsiteReviews                   HotelWebsiteContentReview[]   @relation("HotelWebsiteReviewActor")
   hotelWebsitePublications              HotelWebsitePublication[]     @relation("HotelWebsitePublicationActor")
   revokedHotelWebsitePublications       HotelWebsitePublication[]     @relation("HotelWebsitePublicationRevoker")
+  hotelWebsiteOperations                HotelWebsiteOperation[]       @relation("HotelWebsiteOperationActor")
   aiMediaUsageQuotes            AiMediaUsageQuote[]           @relation("AiMediaQuoteRequestedBy")
   aiMediaSpendHolds             AiMediaSpendHold[]            @relation("AiMediaSpendHoldRequestedBy")
   ussdSessions                  UssdSession[]                 @relation("UssdSessionCustomer")
@@ -4782,6 +4783,7 @@ model HotelProperty {
   reservations         HotelReservation[]
   websitePages         HotelWebsitePage[]
   websiteMedia         HotelWebsiteMediaAssociation[]
+  websiteOperations    HotelWebsiteOperation[]
 
   @@unique([organizationId, slug])
   @@unique([id, organizationId])
@@ -5178,6 +5180,26 @@ model HotelWebsiteContentReview {
 
   @@index([organizationId, propertyId, pageId, createdAt])
   @@index([revisionId, action, createdAt])
+}
+
+/// Durable per-property replay records for C1B1 editorial mutations. The row
+/// and its business/audit write are committed in the same transaction.
+model HotelWebsiteOperation {
+  id               String   @id @default(cuid())
+  organizationId   String
+  propertyId       String
+  actorUserId      String
+  operation        String
+  idempotencyKey   String
+  requestSha256    String   @db.Char(64)
+  response         Json?
+  createdAt        DateTime @default(now())
+
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  actor    User          @relation("HotelWebsiteOperationActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, propertyId, operation, idempotencyKey])
+  @@index([organizationId, propertyId, createdAt])
 }
 
 /// A temporary, expiring claim on inventory while the guest completes payment.

@@ -5,7 +5,7 @@ import { OrganizationCapabilityKey, Prisma, type PrismaClient } from "@prisma/cl
 import { prisma as defaultPrisma } from "@/lib/db-runtime";
 import { createHotelWebsiteDraftSchema, type HotelWebsiteContent, type HotelWebsiteMediaAssociationInput } from "@/lib/hotel/content/hotel-website-contract";
 
-type Db = PrismaClient;
+type Db = PrismaClient | Prisma.TransactionClient;
 
 export class HotelWebsiteContentAuthorizationError extends Error {}
 export class HotelWebsiteContentValidationError extends Error {}
@@ -40,17 +40,16 @@ export function createHotelWebsiteRevisionHash(content: HotelWebsiteContent, med
   return createHash("sha256").update(canonicalJson({ content, media: orderedMedia })).digest("hex");
 }
 
-export async function createHotelWebsiteDraftRevision(input: {
+export async function createHotelWebsiteDraftRevisionInTransaction(tx: Prisma.TransactionClient, input: {
   organizationId: string;
   propertyId: string;
   actorUserId: string;
   content: unknown;
   media: unknown;
-}, db: Db = defaultPrisma) {
+}) {
   const parsed = createHotelWebsiteDraftSchema.safeParse({ content: input.content, media: input.media });
   if (!parsed.success) throw new HotelWebsiteContentValidationError(parsed.error.issues[0]?.message ?? "Invalid Hotel website content");
 
-  return db.$transaction(async (tx) => {
     const organization = await tx.organization.findFirst({
       where: {
         id: input.organizationId,
@@ -141,6 +140,18 @@ export async function createHotelWebsiteDraftRevision(input: {
       },
     });
 
-    return { ...revision, mediaCount: parsed.data.media.length };
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  return { ...revision, mediaCount: parsed.data.media.length };
+}
+
+export async function createHotelWebsiteDraftRevision(input: {
+  organizationId: string;
+  propertyId: string;
+  actorUserId: string;
+  content: unknown;
+  media: unknown;
+}, db: Db = defaultPrisma) {
+  if (!("$transaction" in db)) return createHotelWebsiteDraftRevisionInTransaction(db, input);
+  return db.$transaction((tx) => createHotelWebsiteDraftRevisionInTransaction(tx, input), {
+    isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+  });
 }

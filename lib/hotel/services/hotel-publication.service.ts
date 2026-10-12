@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { prisma as defaultPrisma } from "@/lib/db-runtime";
 import { normalizeDomainHost } from "@/lib/custom-domain-routing";
 
-type Db = PrismaClient;
+type Db = PrismaClient | Prisma.TransactionClient;
 export type HotelPublicationResource = "PROPERTY" | "ROOM_TYPE" | "RATE_PLAN" | "CANCELLATION_POLICY";
 export type HotelPublicationScope = { readonly availability: boolean; readonly quote: boolean; readonly policies: boolean };
 

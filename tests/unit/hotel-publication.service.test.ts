@@ -35,3 +35,19 @@ test("unknown hosts fail closed", async () => {
   fake.organizationDomain.findUnique = async () => null;
   assert.equal(await resolveHotelTenantForHost("unknown.example", fake as never), null);
 });
+
+test("inactive domains, organizations, non-HOTEL verticals, and disabled capability fail closed", async () => {
+  const cases = [
+    { status: "PENDING", organization: { id: "org-1", isActive: true, deletedAt: null, vertical: "HOTEL", capabilities: [{ key: "HOTEL_BOOKING", status: "ACTIVE" }] } },
+    { status: "ACTIVE", organization: { id: "org-1", isActive: false, deletedAt: null, vertical: "HOTEL", capabilities: [{ key: "HOTEL_BOOKING", status: "ACTIVE" }] } },
+    { status: "ACTIVE", organization: { id: "org-1", isActive: true, deletedAt: new Date(), vertical: "HOTEL", capabilities: [{ key: "HOTEL_BOOKING", status: "ACTIVE" }] } },
+    { status: "ACTIVE", organization: { id: "org-1", isActive: true, deletedAt: null, vertical: "SHOP", capabilities: [{ key: "HOTEL_BOOKING", status: "ACTIVE" }] } },
+    { status: "ACTIVE", organization: { id: "org-1", isActive: true, deletedAt: null, vertical: "HOTEL", capabilities: [{ key: "HOTEL_BOOKING", status: "SUSPENDED" }] } },
+    { status: "ACTIVE", organization: { id: "org-1", isActive: true, deletedAt: null, vertical: "HOTEL", capabilities: [] } },
+  ];
+  for (const domain of cases) {
+    const fake = db() as unknown as { organizationDomain: { findUnique: (args: unknown) => Promise<unknown> } };
+    fake.organizationDomain.findUnique = async () => domain;
+    assert.equal(await resolveHotelTenantForHost("hotel.example", fake as never), null);
+  }
+});

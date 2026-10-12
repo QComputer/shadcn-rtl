@@ -3,7 +3,7 @@ import type { DemoShowcaseIndustry, DemoShowcaseRoleExperience, DemoShowcaseStep
 import type { DemoWalkthroughStage } from "@/lib/demo-universe/demo-walkthrough";
 import type { DemoRole } from "@/lib/public-experience/types";
 
-const CAPABILITY_KEYS = ["SHOP", "APPOINTMENT", "CRM", "USSD", "LOYALTY", "IAM", "ICV", "EBC", "SMS", "HOTEL_BOOKING"] as const;
+const CAPABILITY_KEYS = ["SHOP", "APPOINTMENT", "CRM", "USSD", "LOYALTY", "IAM", "ICV", "EBC", "SMS", "HOTEL_BOOKING", "HOTEL_WEBSITE"] as const;
 const INDUSTRIES = ["PHARMACY", "DENTAL_CLINIC", "CAFE_RESTAURANT", "FASHION_BOUTIQUE"] as const;
 const DEMO_ROLE_KEYS = ["PLATFORM_ADMIN", "ORGANIZATION_OWNER", "CUSTOMER", "MANAGER", "STAFF", "DRIVER"] as const;
 const WALKTHROUGH_STAGES = ["DIGITAL_PRESENCE", "BUSINESS_OPERATIONS", "CUSTOMER_INTELLIGENCE", "GROWTH_INTELLIGENCE", "CUSTOMER_ENGAGEMENT"] as const;

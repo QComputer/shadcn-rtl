@@ -52,6 +52,26 @@ enum OrganizationCapabilityKey {
   // an organization assigned the HOTEL vertical does NOT gain this capability,
   // and activation remains an explicit, audited operation.
   HOTEL_BOOKING
+  // Public Hotel website/content, independent from booking operations.
+  HOTEL_WEBSITE
+}
+
+enum HotelWebsiteRevisionStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum HotelWebsiteMediaScope {
+  PROPERTY
+  ROOM_CATEGORY
+}
+
+enum HotelWebsiteReviewAction {
+  SUBMITTED
+  APPROVED
+  REJECTED
 }
 
 enum OrganizationCapabilityStatus {
@@ -1187,6 +1207,7 @@ model Organization {
   aiMediaJobEvents             AiMediaJobEvent[]
   aiMediaImports               AiMediaImport[]
   aiMediaAssets                AiMediaAsset[]
+  hotelWebsitePages             HotelWebsitePage[]
   aiMediaUsageQuotes           AiMediaUsageQuote[]
   aiMediaSpendHolds            AiMediaSpendHold[]
   workerContributionMirrors    WorkerContributionMirror[]
@@ -1868,6 +1889,10 @@ model User {
   aiMediaJobMirrors             AiMediaJobMirror[]            @relation("AiMediaJobRequestedBy")
   aiMediaJobEvents              AiMediaJobEvent[]             @relation("AiMediaJobEventActor")
   aiMediaAssets                 AiMediaAsset[]                @relation("AiMediaAssetRequestedBy")
+  createdHotelWebsiteRevisions          HotelWebsiteContentRevision[] @relation("HotelWebsiteRevisionCreatedBy")
+  hotelWebsiteReviews                   HotelWebsiteContentReview[]   @relation("HotelWebsiteReviewActor")
+  hotelWebsitePublications              HotelWebsitePublication[]     @relation("HotelWebsitePublicationActor")
+  revokedHotelWebsitePublications       HotelWebsitePublication[]     @relation("HotelWebsitePublicationRevoker")
   aiMediaUsageQuotes            AiMediaUsageQuote[]           @relation("AiMediaQuoteRequestedBy")
   aiMediaSpendHolds             AiMediaSpendHold[]            @relation("AiMediaSpendHoldRequestedBy")
   ussdSessions                  UssdSession[]                 @relation("UssdSessionCustomer")
@@ -2178,7 +2203,9 @@ model Image {
   uploadedBy   User?         @relation("UploadedImages", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
   organization Organization? @relation("OrganizationImages", fields: [organizationId], references: [id], onDelete: SetNull)
   products     Product[]
+  hotelWebsiteMedia HotelWebsiteMediaAssociation[]
 
+  @@unique([id, organizationId])
   @@index([uploadedByUserId])
   @@index([organizationId])
   @@index([purpose])
@@ -4753,6 +4780,8 @@ model HotelProperty {
   inventoryAdjustments HotelInventoryAdjustment[]
   holds                HotelBookingHold[]
   reservations         HotelReservation[]
+  websitePages         HotelWebsitePage[]
+  websiteMedia         HotelWebsiteMediaAssociation[]
 
   @@unique([organizationId, slug])
   @@unique([id, organizationId])
@@ -4790,6 +4819,7 @@ model HotelRoomType {
   amenities    HotelRoomTypeAmenity[]
   ratePlans    HotelRatePlan[]
   inventory    HotelInventory[]
+  websiteMedia HotelWebsiteMediaAssociation[]
   holds        HotelBookingHold[]
   reservations HotelReservation[]
 
@@ -5029,6 +5059,125 @@ model HotelPublicationApproval {
 
   @@unique([organizationId, propertyId, resourceType, resourceId, resourceRevision])
   @@index([organizationId, propertyId, resourceType, resourceId, status])
+}
+
+/// Generic Hotel website content container. The counter is advanced atomically
+/// while creating a new immutable revision; it is not coupled to booking state.
+model HotelWebsitePage {
+  id              String   @id @default(cuid())
+  organizationId  String
+  propertyId      String
+  pageKey         String   @default("HOME")
+  revisionCounter Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization                   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  property     HotelProperty                  @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  revisions    HotelWebsiteContentRevision[]
+  publications HotelWebsitePublication[]
+  reviews      HotelWebsiteContentReview[]
+  media        HotelWebsiteMediaAssociation[]
+
+  @@unique([id, organizationId, propertyId])
+  @@unique([organizationId, propertyId, pageKey])
+  @@index([organizationId, propertyId])
+}
+
+/// Snapshot fields are immutable; a trigger in the migration rejects changes
+/// to content, hash, scope, sequence and creator while allowing review status
+/// transitions. Editing always inserts another revision.
+model HotelWebsiteContentRevision {
+  id              String                     @id @default(cuid())
+  organizationId  String
+  propertyId      String
+  pageId          String
+  revisionNumber  Int
+  status          HotelWebsiteRevisionStatus @default(DRAFT)
+  content         Json
+  contentSha256   String                     @db.Char(64)
+  createdByUserId String
+  createdAt       DateTime                   @default(now())
+
+  page         HotelWebsitePage               @relation(fields: [pageId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade)
+  createdBy    User                           @relation("HotelWebsiteRevisionCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  media        HotelWebsiteMediaAssociation[]
+  reviews      HotelWebsiteContentReview[]
+  publications HotelWebsitePublication[]
+
+  @@unique([id, organizationId, propertyId])
+  @@unique([pageId, revisionNumber])
+  @@index([organizationId, propertyId, pageId, createdAt])
+}
+
+/// References existing tenant-owned Image rows. Gallery order and localized
+/// alt text are revision-scoped so a published revision cannot drift.
+model HotelWebsiteMediaAssociation {
+  id             String                 @id @default(cuid())
+  organizationId String
+  propertyId     String
+  pageId         String
+  revisionId     String
+  imageId        String
+  scope          HotelWebsiteMediaScope
+  roomTypeId     String?
+  sortOrder      Int
+  slot           String                 @default("GALLERY")
+  altText        Json
+  createdAt      DateTime               @default(now())
+
+  page     HotelWebsitePage            @relation(fields: [pageId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade)
+  revision HotelWebsiteContentRevision @relation(fields: [revisionId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade)
+  image    Image                       @relation(fields: [imageId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  property HotelProperty               @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  roomType HotelRoomType?              @relation(fields: [roomTypeId, propertyId], references: [id, propertyId], onDelete: Cascade)
+
+  @@index([organizationId, propertyId, revisionId, scope, roomTypeId, sortOrder])
+  @@index([imageId, organizationId])
+}
+
+/// Publication points to one approved immutable revision. A new draft does not
+/// replace this pointer; revocation preserves the historical publication row.
+model HotelWebsitePublication {
+  id                String    @id @default(cuid())
+  organizationId    String
+  propertyId        String
+  pageId            String
+  revisionId        String
+  publishedByUserId String
+  publishedAt       DateTime  @default(now())
+  revokedByUserId   String?
+  revokedAt         DateTime?
+  revocationReason  String?
+
+  page        HotelWebsitePage            @relation(fields: [pageId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade)
+  revision    HotelWebsiteContentRevision @relation(fields: [revisionId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade)
+  publishedBy User                        @relation("HotelWebsitePublicationActor", fields: [publishedByUserId], references: [id], onDelete: Restrict)
+  revokedBy   User?                       @relation("HotelWebsitePublicationRevoker", fields: [revokedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, propertyId, pageId, publishedAt])
+  @@index([organizationId, propertyId, revisionId])
+}
+
+/// Append-only review history for an exact revision; audit failure must abort
+/// any future review/publication transaction.
+model HotelWebsiteContentReview {
+  id             String                   @id @default(cuid())
+  organizationId String
+  propertyId     String
+  pageId         String
+  revisionId     String
+  actorUserId    String
+  action         HotelWebsiteReviewAction
+  note           String?
+  createdAt      DateTime                 @default(now())
+
+  page     HotelWebsitePage            @relation(fields: [pageId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade)
+  revision HotelWebsiteContentRevision @relation(fields: [revisionId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade)
+  actor    User                        @relation("HotelWebsiteReviewActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, propertyId, pageId, createdAt])
+  @@index([revisionId, action, createdAt])
 }
 
 /// A temporary, expiring claim on inventory while the guest completes payment.

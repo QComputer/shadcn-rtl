@@ -15,6 +15,7 @@ export const organizationCapabilityKeys = [
   // order so the two are easy to diff. Keep in sync — a key present in the enum
   // but missing here can never be persisted.
   "HOTEL_BOOKING",
+  "HOTEL_WEBSITE",
 ] as const;
 
 /**

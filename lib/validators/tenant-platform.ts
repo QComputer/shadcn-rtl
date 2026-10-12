@@ -1,6 +1,28 @@
 import { z } from "zod";
+import { BUSINESS_VERTICALS } from "@/lib/business-verticals";
 
-export const organizationCapabilityKeys = ["SHOP", "APPOINTMENT", "CRM", "USSD", "LOYALTY", "IAM", "ICV", "EBC", "SMS"] as const;
+export const organizationCapabilityKeys = [
+  "SHOP",
+  "APPOINTMENT",
+  "CRM",
+  "USSD",
+  "LOYALTY",
+  "IAM",
+  "ICV",
+  "EBC",
+  "SMS",
+  // Mirrors OrganizationCapabilityKey in prisma/schema.prisma. Kept in the same
+  // order so the two are easy to diff. Keep in sync — a key present in the enum
+  // but missing here can never be persisted.
+  "HOTEL_BOOKING",
+] as const;
+
+/**
+ * Business Vertical. Mirrors the registry in lib/business-verticals.ts, which
+ * stays the single source of truth; this array is derived from it so the two
+ * cannot drift.
+ */
+export const businessVerticalKeys = BUSINESS_VERTICALS;
 export const collaborationScopeKeys = [
   "CUSTOMER_IDENTITY",
   "CUSTOMER_PROFILE",

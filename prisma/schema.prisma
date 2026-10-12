@@ -48,6 +48,10 @@ enum OrganizationCapabilityKey {
   ICV
   EBC
   SMS
+  // Hotel booking capability (H3-B0). Separate from any Business Vertical:
+  // an organization assigned the HOTEL vertical does NOT gain this capability,
+  // and activation remains an explicit, audited operation.
+  HOTEL_BOOKING
 }
 
 enum OrganizationCapabilityStatus {
@@ -1081,6 +1085,12 @@ model Organization {
   isOpen                    Boolean          @default(true)
   isPlatformOwner           Boolean          @default(false)
   capabilitiesInitializedAt DateTime?
+  // Business Vertical (H3-B0). Taxonomy only: it never grants a capability and is
+  // never inferred from `type`. Nullable so existing organizations stay unclassified
+  // rather than being silently reclassified. Deliberately TEXT, not an enum, so a
+  // newer deploy can write a vertical an older deploy will not misread.
+  // Validation lives in lib/business-verticals.ts.
+  vertical                  String?
 
   // Timestamps & Soft Delete
   createdAt DateTime  @default(now())
@@ -1089,6 +1099,7 @@ model Organization {
 
   // Relations
   members                      OrganizationMember[]
+  hotelProperties              HotelProperty[]
   acquisition                  OrganizationAcquisition?
   activationPlan               OrganizationActivationPlan?
   activationTasks              OrganizationActivationTask[]
@@ -2297,7 +2308,7 @@ model ShopCartItem {
   @@index([variantId])
 }
 
-// Guest Customer 
+// Guest Customer
 model GuestCustomer {
   id        String  @id @default(cuid())
   name      String
@@ -4673,4 +4684,520 @@ model TenantProvisioningPlan {
   @@index([status, createdAt])
   @@index([proposedSlug])
   @@index([createdAt])
+}
+
+// =============================================================================
+// Hotel Vertical persistence (H3-B1)
+//
+// Design source: docs/HOTEL-PERSISTENCE-DESIGN.md and docs/HOTEL-H2-CLOSURE.md.
+//
+// Cross-cutting rules applied to every model below:
+//
+//  * Tenant isolation. Every row carries `organizationId`. Parent tables expose
+//    `@@unique([id, organizationId])` and children reference them with a
+//    COMPOSITE foreign key `[parentId, organizationId]`, so a cross-tenant
+//    reference is impossible at the database level rather than merely
+//    forbidden by application code. This mirrors the existing
+//    `OrganizationIntegration` pattern.
+//
+//  * Money. `BigInt`, integer TOMAN. No Float, no Decimal in the money path.
+//    Rial conversion happens only at the provider boundary (see
+//    docs/HOTEL-PAYMENT-INTEGRATION.md).
+//
+//  * Dates. `date` columns are `@db.Date` (a property-local calendar day), never
+//    an instant. This is the fix for the off-by-one class of bug that comes from
+//    storing a local calendar day as a timestamp.
+//
+//  * A stay is `[checkIn, checkOut)`. The checkout day is NOT an occupied night.
+//
+//  * No `now()` in any index or constraint predicate. Hold expiry and inventory
+//    release are transactional application concerns (H3-C), not predicate logic.
+// =============================================================================
+
+/// A hotel property. An organization may own several; Hotel Damoon starts with
+/// one. Identity is its own cuid, NOT the organization's public slug.
+model HotelProperty {
+  id             String  @id @default(cuid())
+  organizationId String
+  /// Denormalised for slug-based read paths (matches OrganizationSettings).
+  /// Not an authorisation key.
+  organizationSlug String
+  slug           String
+  name           String
+  description    String?
+  localizedContent Json?
+  /// IANA zone, e.g. "Asia/Tehran". Defines the property-local calendar.
+  timezone       String  @default("Asia/Tehran")
+  currency       String  @default("TOMAN")
+  /// "HH:mm" property-local. checkOutTime < checkInTime is NORMAL for hotels.
+  checkInTime    String  @default("14:00")
+  checkOutTime   String  @default("11:00")
+  minStayNights  Int     @default(1)
+  maxStayNights  Int     @default(30)
+  addressLine1   String?
+  city           String?
+  latitude       Decimal? @db.Decimal(9, 6)
+  longitude      Decimal? @db.Decimal(9, 6)
+  isActive       Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organization         Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  roomTypes            HotelRoomType[]
+  rooms                HotelRoom[]
+  amenities            HotelAmenity[]
+  ratePlans            HotelRatePlan[]
+  cancellationPolicies HotelCancellationPolicy[]
+  inventory            HotelInventory[]
+  inventoryAdjustments HotelInventoryAdjustment[]
+  holds                HotelBookingHold[]
+  reservations         HotelReservation[]
+
+  @@unique([organizationId, slug])
+  @@unique([id, organizationId])
+  @@index([organizationId, isActive])
+}
+
+/// A sellable room category. Distinct from a physical room.
+model HotelRoomType {
+  id             String  @id @default(cuid())
+  organizationId String
+  propertyId     String
+  slug           String
+  name           String
+  description    String?
+  localizedContent Json?
+  // Occupancy limits as real columns so the database can index and constrain
+  // them. Mirrors HotelCapacity in lib/hotel/domain/types.ts.
+  maxAdults      Int
+  maxChildren    Int     @default(0)
+  maxOccupancy   Int
+  /// Bed shapes, e.g. [{ kind: "queen", count: 1 }]. Validated against
+  /// BED_CAPACITY in application code; JSON avoids a migration per bed kind.
+  beds           Json
+  sizeSqm        Int?
+  /// Default sellable count per night used when seeding inventory.
+  totalAllotment Int     @default(0)
+  isActive       Boolean @default(true)
+  sortOrder      Int     @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  property     HotelProperty       @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  rooms        HotelRoom[]
+  amenities    HotelRoomTypeAmenity[]
+  ratePlans    HotelRatePlan[]
+  inventory    HotelInventory[]
+  holds        HotelBookingHold[]
+  reservations HotelReservation[]
+
+  @@unique([propertyId, slug])
+  @@unique([id, organizationId])
+  /// Lets children enforce that a room type belongs to the SAME PROPERTY, not just
+  /// the same organization. Without this, inventory or a rate plan could reference a
+  /// room type from a sibling property (H3-B1 integrity gap, fixed here).
+  @@unique([id, propertyId])
+  @@index([organizationId, propertyId, isActive])
+}
+
+/// A physical, assignable room. Room codes are unique per PROPERTY, never
+/// globally, so two hotels may both have "101".
+model HotelRoom {
+  id             String  @id @default(cuid())
+  organizationId String
+  propertyId     String
+  roomTypeId     String
+  /// Human label shown at the front desk.
+  code           String
+  floor          String?
+  description    String?
+  isOutOfService Boolean @default(false)
+  isActive       Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  property         HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  roomType         HotelRoomType @relation(fields: [roomTypeId, propertyId], references: [id, propertyId], onDelete: Restrict)
+  reservationRooms HotelReservationRoom[]
+
+  @@unique([propertyId, code])
+  @@unique([id, organizationId])
+  @@index([organizationId, roomTypeId, isActive])
+}
+
+/// An amenity the property actually offers. Never seeded by inference.
+model HotelAmenity {
+  id             String  @id @default(cuid())
+  organizationId String
+  propertyId     String
+  /// Mirrors HotelAmenityKey in lib/hotel/domain/types.ts.
+  key            String
+  label          String
+  description    String?
+  localizedContent Json?
+  isActive       Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  roomTypes HotelRoomTypeAmenity[]
+
+  @@unique([propertyId, key])
+  @@unique([id, organizationId])
+  @@index([organizationId, propertyId, isActive])
+}
+
+/// Join: which amenities a room type offers.
+model HotelRoomTypeAmenity {
+  id             String @id @default(cuid())
+  organizationId String
+  roomTypeId     String
+  amenityId      String
+
+  roomType HotelRoomType @relation(fields: [roomTypeId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  amenity  HotelAmenity  @relation(fields: [amenityId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([roomTypeId, amenityId])
+  @@index([organizationId, amenityId])
+}
+
+/// A sellable rate for a room type. Money in integer TOMAN.
+model HotelRatePlan {
+  id             String  @id @default(cuid())
+  organizationId String
+  propertyId     String
+  roomTypeId     String
+  code           String
+  name           String
+  description    String?
+  localizedContent Json?
+  currency       String  @default("TOMAN")
+  baseNightlyRate BigInt
+  mealPlan       String  @default("none")
+  minNights      Int     @default(1)
+  /// 0 = unbounded.
+  maxNights      Int     @default(0)
+  isRefundable   Boolean @default(true)
+  validFrom      DateTime? @db.Date
+  validTo        DateTime? @db.Date
+  cancellationPolicyId String?
+  isActive       Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  property      HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  roomType      HotelRoomType @relation(fields: [roomTypeId, propertyId], references: [id, propertyId], onDelete: Cascade)
+  cancellationPolicy HotelCancellationPolicy? @relation(fields: [cancellationPolicyId, propertyId, organizationId], references: [id, propertyId, organizationId], onDelete: Restrict)
+  nightlyRates  HotelNightlyRate[]
+
+  @@unique([propertyId, code])
+  @@unique([id, organizationId])
+  @@index([organizationId, propertyId, roomTypeId, isActive])
+}
+
+/// Date-specific price / stay restriction. Narrowest matching window wins.
+model HotelNightlyRate {
+  id             String  @id @default(cuid())
+  organizationId String
+  propertyId     String
+  ratePlanId     String
+  from           DateTime @db.Date
+  to             DateTime @db.Date
+  nightlyRate    BigInt?
+  minNights      Int?
+  maxNights      Int?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  ratePlan HotelRatePlan @relation(fields: [ratePlanId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([ratePlanId, from, to])
+  @@index([organizationId, propertyId, from, to])
+}
+
+/// Cancellation terms. `version` increments on every edit so a snapshot taken at
+/// booking time stays attributable. Retention is stored in BASIS POINTS (0-10000)
+/// so the persisted value is integral; the domain uses a 0..1 fraction.
+model HotelCancellationPolicy {
+  id             String  @id @default(cuid())
+  organizationId String
+  propertyId     String
+  key            String
+  name           String
+  description    String?
+  freeCancellationCutoffHours Int
+  fullCancellationRetention  Int  @default(0)
+  isActive       Boolean @default(true)
+  version        Int     @default(1)
+  localizedContent Json?
+  /// Ordered JSON tiers. Each tier contains cutoffHours, retentionBasisPoints,
+  /// and penaltyBasis (RESERVATION_TOTAL or FIRST_NIGHT).
+  cancellationTiers Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  ratePlans HotelRatePlan[]
+
+  @@unique([propertyId, key])
+  @@unique([id, organizationId])
+  @@unique([id, propertyId, organizationId])
+  @@index([organizationId, propertyId, isActive])
+}
+
+/// One row per (roomType, date). THE UNIT OF CONTENTION for H3-C.
+model HotelInventory {
+  id             String   @id @default(cuid())
+  organizationId String
+  propertyId     String
+  roomTypeId     String
+  /// Property-local calendar day, never an instant.
+  date           DateTime @db.Date
+  allotment      Int      @default(0)
+  booked         Int      @default(0)
+  held           Int      @default(0)
+  /// Physically unusable rooms that night (maintenance).
+  outOfService   Int      @default(0)
+  closedToArrival  Boolean @default(false)
+  closedToDeparture Boolean @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  roomType HotelRoomType @relation(fields: [roomTypeId, propertyId], references: [id, propertyId], onDelete: Cascade)
+
+  @@unique([roomTypeId, date])
+  @@index([organizationId, propertyId, date])
+}
+
+/// Auditable manual correction. Inventory is never edited without one.
+model HotelInventoryAdjustment {
+  id             String   @id @default(cuid())
+  organizationId String
+  propertyId     String
+  roomTypeId     String
+  date           DateTime @db.Date
+  allotmentDelta     Int @default(0)
+  outOfServiceDelta  Int @default(0)
+  reason         String
+  createdByUserId String?
+  createdAt      DateTime @default(now())
+
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([organizationId, propertyId, date])
+}
+
+/// Durable request-level idempotency for manual inventory adjustments.
+/// The row is created and completed in the same transaction as the inventory
+/// update and its audit record.
+model HotelInventoryIdempotency {
+  id                 String    @id
+  organizationId     String
+  operationScope     String
+  idempotencyKey     String
+  requestFingerprint String
+  status             String    @default("PROCESSING")
+  resultJson         Json?
+  createdAt          DateTime  @default(now())
+  completedAt        DateTime?
+
+  @@unique([organizationId, operationScope, idempotencyKey])
+  @@index([organizationId, operationScope, createdAt])
+}
+
+/// Explicit, auditable approval for exposing the current hotel resource revision.
+/// Approval is never inferred from isActive or from a custom domain.
+model HotelPublicationApproval {
+  id             String    @id
+  organizationId String
+  propertyId     String
+  resourceType   String
+  resourceId     String
+  resourceRevision String
+  scope          Json
+  status         String    @default("APPROVED")
+  approvedByUserId String
+  approvedAt     DateTime  @default(now())
+  revokedAt      DateTime?
+  revokedByUserId String?
+  revokedReason  String?
+
+  @@unique([organizationId, propertyId, resourceType, resourceId, resourceRevision])
+  @@index([organizationId, propertyId, resourceType, resourceId, status])
+}
+
+/// A temporary, expiring claim on inventory while the guest completes payment.
+/// `status` is authoritative; expiry is evaluated by a scheduler in a later
+/// milestone, NOT by a `now()` predicate here.
+model HotelBookingHold {
+  id             String   @id @default(cuid())
+  organizationId String
+  propertyId     String
+  roomTypeId     String
+  reference      String
+  quantity       Int      @default(1)
+  checkIn        DateTime @db.Date
+  checkOut       DateTime @db.Date
+  expiresAt      DateTime
+  status         String   @default("ACTIVE")
+  ratePlanId     String?
+  currency       String   @default("TOMAN")
+  totalAmount    BigInt?
+  nightlyRates   Json?
+  cancellationPolicySnapshot Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  property     HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  roomType     HotelRoomType @relation(fields: [roomTypeId, propertyId], references: [id, propertyId], onDelete: Cascade)
+  reservation  HotelReservation?
+
+  @@unique([organizationId, reference])
+  @@unique([id, organizationId])
+  @@index([status, expiresAt])
+  @@index([organizationId, propertyId, status, expiresAt])
+}
+
+/// Prepared durable coordination for anonymous hold requests.
+/// This model is additive and remains unapplied until separately authorized.
+model HotelBookingHoldIdempotency {
+  id                 String    @id
+  organizationId     String
+  operationScope     String
+  idempotencyKey     String
+  requestFingerprint String
+  status             String    @default("PROCESSING")
+  holdId             String?
+  resultJson         Json?
+  createdAt          DateTime  @default(now())
+  completedAt        DateTime?
+
+  @@unique([organizationId, operationScope, idempotencyKey])
+  @@index([organizationId, operationScope, createdAt])
+}
+
+/// A reservation. Distinct from a hold: a reservation is a durable record whose
+/// lifecycle is `status`.
+model HotelReservation {
+  id             String   @id @default(cuid())
+  organizationId String
+  propertyId     String
+  roomTypeId     String
+  ratePlanId     String
+  reference      String
+  /// Mirrors ReservationStatus in lib/hotel/domain/booking-state.ts:
+  /// HELD | PENDING_PAYMENT | CONFIRMED | CHECKED_IN | CHECKED_OUT |
+  /// CANCELLED | NO_SHOW | EXPIRED | REFUNDED
+  status         String   @default("PENDING_PAYMENT")
+  checkIn        DateTime @db.Date
+  /// EXCLUSIVE: the checkout day is not an occupied night.
+  checkOut       DateTime @db.Date
+  currency       String   @default("TOMAN")
+  totalAmount    BigInt
+  paidAmount     BigInt   @default(0)
+  refundedAmount BigInt   @default(0)
+  /// Denormalised for reporting; the SNAPSHOT below is authoritative.
+  cancellationPolicyKey String
+  /// Frozen terms agreed at booking time. A later policy edit must NOT change
+  /// an existing reservation's refund. Shape: ReservationCancellationPolicySnapshot
+  /// in lib/hotel/domain/types.ts.
+  cancellationPolicySnapshot Json
+  guestCustomerId String?
+  holdId         String?  @unique
+  /// One reservation per (tenant, client-supplied key): the idempotency guard.
+  idempotencyKey String
+  confirmedAt    DateTime?
+  checkedInAt    DateTime?
+  checkedOutAt   DateTime?
+  cancelledAt    DateTime?
+  cancellationReason String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  /// Optimistic-lock counter for compare-and-set transitions (H3-C).
+  version        Int      @default(0)
+
+  property   HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  roomType   HotelRoomType @relation(fields: [roomTypeId, propertyId], references: [id, propertyId], onDelete: Restrict)
+  hold       HotelBookingHold? @relation(fields: [holdId], references: [id], onDelete: SetNull)
+  nights     HotelReservationRoom[]
+  guests     HotelReservationGuest[]
+  allocations HotelPaymentAllocation[]
+
+  @@unique([organizationId, reference])
+  @@unique([organizationId, idempotencyKey])
+  @@unique([id, organizationId])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, propertyId, checkIn, checkOut])
+  @@index([organizationId, holdId])
+}
+
+/// One row per occupied night: the per-night allocation ledger.
+/// Presence of a row IS the claim. Cancelling deletes the rows (H3-C).
+model HotelReservationRoom {
+  id             String   @id @default(cuid())
+  organizationId String
+  reservationId  String
+  /// Property-local calendar day. Half-open semantics: the reservation's
+  /// checkOut date has NO row.
+  date           DateTime @db.Date
+  roomTypeId     String
+  /// Physical assignment when the property assigns rooms explicitly.
+  roomId         String?
+  /// Rate snapshot for this night, integer TOMAN.
+  rate           BigInt
+
+  reservation HotelReservation @relation(fields: [reservationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  room        HotelRoom?       @relation(fields: [roomId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  /// One row per reservation per night.
+  @@unique([reservationId, date])
+  /// Backs the PostgreSQL EXCLUDE constraint that stops one physical room being
+  /// allocated twice on the same night (see migration 20261003070000).
+  @@unique([roomId, date])
+  @@index([organizationId, date, roomTypeId])
+  @@index([organizationId, reservationId])
+}
+
+model HotelReservationGuest {
+  id             String   @id @default(cuid())
+  organizationId String
+  reservationId  String
+  fullName       String
+  isPrimary      Boolean  @default(false)
+  isChild        Boolean  @default(false)
+  age            Int?
+  /// Hashed, never plaintext (mirrors CustomerIdentity.phoneHash).
+  phoneHash      String?
+  createdAt      DateTime @default(now())
+
+  reservation HotelReservation @relation(fields: [reservationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([reservationId, fullName])
+  @@index([organizationId, reservationId])
+}
+
+/// Links a reservation to a payment request. Deliberately has NO foreign key to
+/// PaymentRequest yet: `PaymentRequest.hotelReservationId` is added in H3-E, and
+/// a polymorphic FK is not expressible. The unique public id is stored so the
+/// link is still durable and auditable in the meantime.
+model HotelPaymentAllocation {
+  id             String   @id @default(cuid())
+  organizationId String
+  hotelReservationId String
+  /// Opaque public id of the PaymentRequest. Never a raw provider reference.
+  paymentRequestPublicId String @unique
+  /// DEPOSIT | BALANCE | REFUND
+  kind           String
+  amountToman    BigInt
+  createdAt      DateTime @default(now())
+
+  reservation HotelReservation @relation(fields: [hotelReservationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([hotelReservationId, kind])
+  @@index([organizationId, hotelReservationId])
 }

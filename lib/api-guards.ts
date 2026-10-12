@@ -44,6 +44,24 @@ export function jsonError(error: unknown, fallback = "Internal server error") {
   return NextResponse.json({ error: safeMessage }, { status });
 }
 
+/**
+ * Cookie-authenticated state changes must not be callable cross-origin.
+ * The expected origin is derived from the request URL, never from a forwarded
+ * host supplied by the client.
+ */
+export function requireSameOriginMutation(request: Request) {
+  const origin = request.headers.get("origin");
+  const expectedOrigin = new URL(request.url).origin;
+  const fetchSite = request.headers.get("sec-fetch-site");
+
+  if (!origin || origin !== expectedOrigin) {
+    throw new ApiError(403, "Cross-origin request rejected");
+  }
+  if (fetchSite && !["same-origin", "same-site", "none"].includes(fetchSite)) {
+    throw new ApiError(403, "Cross-origin request rejected");
+  }
+}
+
 export async function requireAuthSession(): Promise<SessionWithUser> {
   const session = await auth();
   const user = session?.user;

@@ -5,6 +5,7 @@ import type { CreateOrganizationInput, UpdateOrganizationInput } from "@/lib/val
 import { hasPermission, type UserRole, type Permission } from "@/lib/types";
 import { supportedLocales } from "@/lib/i18n";
 import { assertOrganizationSlugAllowed } from "@/lib/organization-slugs";
+import { parseBusinessVertical } from "@/lib/business-verticals";
 import { buildOrganizationPublicPath, buildOrganizationRootPath } from "@/lib/custom-domain-routing";
 
 function revalidateOrganizationPublicPages(slug: string) {
@@ -231,6 +232,39 @@ export class OrganizationService {
     revalidateOrganizationPublicPages(organization.slug);
     revalidateTag("home-page", "max");
     return organization;
+  }
+
+  /**
+   * Assign, change, or clear an organization's Business Vertical (H3-B0).
+   *
+   * Deliberately narrow:
+   *  - it never reads or writes `type`, so legacy behaviour is untouched;
+   *  - it never touches `OrganizationCapability`, so assigning HOTEL cannot
+   *    activate HOTEL_BOOKING, SHOP or anything else;
+   *  - it never infers a vertical from `type`; `null` clears the assignment.
+   *
+   * Authorisation reuses the existing `org:update` permission rather than a
+   * hotel-specific rule.
+   */
+  async setBusinessVertical(
+    id: string,
+    vertical: string | null,
+    userRole: UserRole,
+  ) {
+    if (!hasPermission(userRole, "org:update")) {
+      throw new Error("Unauthorized");
+    }
+
+    const parsed = vertical === null ? null : parseBusinessVertical(vertical);
+    if (vertical !== null && parsed === null) {
+      throw new Error("Unknown business vertical");
+    }
+
+    return prisma.organization.update({
+      where: { id },
+      data: { vertical: parsed },
+      select: { id: true, slug: true, vertical: true, type: true },
+    });
   }
 
   async delete(id: string, userRole: UserRole) {

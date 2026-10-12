@@ -102,6 +102,7 @@ describe("H3-B0 business vertical persistence", () => {
   it("6. rejects an unknown vertical at the application boundary", async () => {
     const parsed = updateOrganizationSchema.safeParse({ vertical: "BAKING_SHOP" });
     assert.equal(parsed.success, false);
+    assert.equal(updateOrganizationSchema.safeParse({ vertical: "HOTEL" }).success, false, "tenant organization updates cannot assign verticals");
 
     const created2 = createOrganizationSchema.safeParse({
       name: "Bad vertical",
@@ -163,8 +164,8 @@ describe("H3-B0 business vertical persistence", () => {
     const organization = await makeOrg("unauth", { vertical: "HOTEL" });
 
     await assert.rejects(
-      () => service.setBusinessVertical(organization.id, "PHARMACY", "CUSTOMER" as never),
-      /Unauthorized/,
+      () => service.setBusinessVertical(organization.id, "PHARMACY", "CUSTOMER", "test-actor"),
+      /Only a platform SUPER_ADMIN/,
     );
 
     const row = await prisma.organization.findUniqueOrThrow({ where: { id: organization.id } });

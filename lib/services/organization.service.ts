@@ -17,6 +17,16 @@ function revalidateOrganizationPublicPages(slug: string) {
   }
 }
 
+export class BusinessVerticalAssignmentError extends Error {
+  constructor(
+    readonly code: "FORBIDDEN" | "INVALID_VERTICAL" | "NOT_FOUND" | "CONFLICT",
+    message: string,
+  ) {
+    super(message);
+    this.name = "BusinessVerticalAssignmentError";
+  }
+}
+
 export class OrganizationService {
   async create(data: CreateOrganizationInput) {
     assertOrganizationSlugAllowed(data.slug);
@@ -234,37 +244,80 @@ export class OrganizationService {
     return organization;
   }
 
-  /**
-   * Assign, change, or clear an organization's Business Vertical (H3-B0).
-   *
-   * Deliberately narrow:
-   *  - it never reads or writes `type`, so legacy behaviour is untouched;
-   *  - it never touches `OrganizationCapability`, so assigning HOTEL cannot
-   *    activate HOTEL_BOOKING, SHOP or anything else;
-   *  - it never infers a vertical from `type`; `null` clears the assignment.
-   *
-   * Authorisation reuses the existing `org:update` permission rather than a
-   * hotel-specific rule.
-   */
+  /** Assign an unset organization's vertical through a platform-only workflow. */
   async setBusinessVertical(
     id: string,
-    vertical: string | null,
+    vertical: string,
     userRole: UserRole,
+    actorId: string,
   ) {
-    if (!hasPermission(userRole, "org:update")) {
-      throw new Error("Unauthorized");
+    if (userRole !== "SUPER_ADMIN" || !actorId) {
+      throw new BusinessVerticalAssignmentError("FORBIDDEN", "Only a platform SUPER_ADMIN can assign a business vertical");
     }
 
-    const parsed = vertical === null ? null : parseBusinessVertical(vertical);
-    if (vertical !== null && parsed === null) {
-      throw new Error("Unknown business vertical");
+    const parsed = parseBusinessVertical(vertical);
+    if (!parsed) {
+      throw new BusinessVerticalAssignmentError("INVALID_VERTICAL", "Unknown business vertical");
     }
 
-    return prisma.organization.update({
-      where: { id },
-      data: { vertical: parsed },
-      select: { id: true, slug: true, vertical: true, type: true },
+    const result = await prisma.$transaction(async (tx) => {
+      const organization = await tx.organization.findUnique({
+        where: { id },
+        select: { id: true, slug: true, vertical: true, type: true },
+      });
+      if (!organization) {
+        throw new BusinessVerticalAssignmentError("NOT_FOUND", "Organization not found");
+      }
+      if (organization.vertical === parsed) {
+        return { organization, changed: false };
+      }
+      if (organization.vertical !== null) {
+        throw new BusinessVerticalAssignmentError("CONFLICT", "Organization already has a different business vertical");
+      }
+
+      // Compare-and-set makes concurrent assignments safe: exactly one
+      // different vertical can win, while an identical racing assignment is
+      // treated as idempotent after the failed compare.
+      const updated = await tx.organization.updateMany({
+        where: { id, vertical: null },
+        data: { vertical: parsed },
+      });
+      if (updated.count === 0) {
+        const latest = await tx.organization.findUnique({
+          where: { id },
+          select: { id: true, slug: true, vertical: true, type: true },
+        });
+        if (!latest) {
+          throw new BusinessVerticalAssignmentError("NOT_FOUND", "Organization not found");
+        }
+        if (latest.vertical === parsed) {
+          return { organization: latest, changed: false };
+        }
+        throw new BusinessVerticalAssignmentError("CONFLICT", "Organization was assigned a different business vertical concurrently");
+      }
+
+      const assigned = { ...organization, vertical: parsed };
+      await tx.auditLog.create({
+        data: {
+          action: "UPDATE",
+          entityType: "Organization",
+          entityId: organization.id,
+          description: "Business vertical assigned by platform administrator",
+          previousValue: { vertical: organization.vertical },
+          newValue: { vertical: parsed },
+          userId: actorId,
+          organizationId: organization.id,
+          organizationSlug: organization.slug,
+        },
+      });
+      return { organization: assigned, changed: true };
     });
+
+    if (result.changed) {
+      revalidateOrganizationPublicPages(result.organization.slug);
+      revalidateTag("home-page", "max");
+    }
+    return result;
   }
 
   async delete(id: string, userRole: UserRole) {

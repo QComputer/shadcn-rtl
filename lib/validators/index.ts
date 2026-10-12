@@ -77,9 +77,9 @@ export const createOrganizationSchema = z.object({
 
 export const updateOrganizationSchema = z.object({
   name: z.string().min(2).max(200).optional(),
-  // Business Vertical (H3-B0). `null` clears the assignment, which the column
-  // permits because it is nullable. Never inferred from `type`.
-  vertical: z.enum(BUSINESS_VERTICALS).nullable().optional(),
+  // Vertical assignment is intentionally excluded from tenant organization
+  // updates. Use the platform-admin vertical assignment endpoint instead.
+  vertical: z.never().optional(),
   description: z.string().max(5000).optional(),
   address: z.string().max(500).optional(),
   phone: phoneSchema.optional(),

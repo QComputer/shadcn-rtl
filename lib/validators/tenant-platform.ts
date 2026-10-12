@@ -23,6 +23,14 @@ export const organizationCapabilityKeys = [
  * cannot drift.
  */
 export const businessVerticalKeys = BUSINESS_VERTICALS;
+
+/** Platform-only assignment request; tenant organization updates reject this field. */
+export const assignBusinessVerticalSchema = z.object({
+  vertical: z.enum(BUSINESS_VERTICALS),
+}).strict();
+
+export const businessVerticalOrganizationIdSchema = z.string().cuid();
+
 export const collaborationScopeKeys = [
   "CUSTOMER_IDENTITY",
   "CUSTOMER_PROFILE",

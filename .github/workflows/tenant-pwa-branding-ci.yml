@@ -107,7 +107,7 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Route synthetic tenant hosts to the ephemeral runner
-        run: echo "127.0.0.1 tenant-alpha.pwa-ci.test tenant-beta.pwa-ci.test tenant-inactive.pwa-ci.test tenant-unknown.pwa-ci.test" | sudo tee -a /etc/hosts
+        run: echo "127.0.0.1 tenant-alpha.pwa-ci.test tenant-beta.pwa-ci.test tenant-inactive.pwa-ci.test tenant-incomplete.pwa-ci.test tenant-unknown.pwa-ci.test" | sudo tee -a /etc/hosts
 
       - name: Run production-mode tenant manifest and favicon browser acceptance
         env:

@@ -41,24 +41,24 @@ type RouteModule = Record<string, (request: NextRequest, context: { params: Prom
 let routes: RouteModule[];
 before(async () => {
   routes = await Promise.all([
-    import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/archive/route"),
-    import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/room-types/[roomTypeId]/archive/route"),
-    import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/rooms/route"),
-    import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/rooms/[roomId]/route"),
-    import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/rooms/[roomId]/archive/route"),
-    import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/amenities/route"),
-    import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/amenities/[amenityId]/route"),
-    import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/room-types/[roomTypeId]/amenities/route"),
-    import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/rate-plans/route"),
-    import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/rate-plans/[ratePlanId]/route"),
-    import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/rate-plans/[ratePlanId]/nightly-rates/route"),
-    import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/cancellation-policies/route"),
-    import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/cancellation-policies/[policyId]/route"),
-    import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/cancellation-policies/[policyId]/activation/route"),
+    import("../../app/api/organizations/[id]/hotels/[propertyId]/archive/route"),
+    import("../../app/api/organizations/[id]/hotels/[propertyId]/room-types/[roomTypeId]/archive/route"),
+    import("../../app/api/organizations/[id]/hotels/[propertyId]/rooms/route"),
+    import("../../app/api/organizations/[id]/hotels/[propertyId]/rooms/[roomId]/route"),
+    import("../../app/api/organizations/[id]/hotels/[propertyId]/rooms/[roomId]/archive/route"),
+    import("../../app/api/organizations/[id]/hotels/[propertyId]/amenities/route"),
+    import("../../app/api/organizations/[id]/hotels/[propertyId]/amenities/[amenityId]/route"),
+    import("../../app/api/organizations/[id]/hotels/[propertyId]/room-types/[roomTypeId]/amenities/route"),
+    import("../../app/api/organizations/[id]/hotels/[propertyId]/rate-plans/route"),
+    import("../../app/api/organizations/[id]/hotels/[propertyId]/rate-plans/[ratePlanId]/route"),
+    import("../../app/api/organizations/[id]/hotels/[propertyId]/rate-plans/[ratePlanId]/nightly-rates/route"),
+    import("../../app/api/organizations/[id]/hotels/[propertyId]/cancellation-policies/route"),
+    import("../../app/api/organizations/[id]/hotels/[propertyId]/cancellation-policies/[policyId]/route"),
+    import("../../app/api/organizations/[id]/hotels/[propertyId]/cancellation-policies/[policyId]/activation/route"),
   ]) as unknown as RouteModule[];
 });
 const request = (body: unknown = {}) => new NextRequest("https://hotel.example/api", { method: "POST", body: JSON.stringify(body), headers: { "content-type": "application/json" } });
-const context = { organizationId: "org1", propertyId: "property-1", roomTypeId: "room-type-1", roomId: "room-1", amenityId: "amenity-1", ratePlanId: "plan-1", policyId: "policy-1" };
+const context = { id: "org1", propertyId: "property-1", roomTypeId: "room-type-1", roomId: "room-1", amenityId: "amenity-1", ratePlanId: "plan-1", policyId: "policy-1" };
 
 test("all 14 non-inventory handlers delegate successfully", async () => {
   calls.length = 0;

@@ -6,7 +6,7 @@ import { HotelWebsiteContentAuthorizationError, HotelWebsiteContentValidationErr
 import { HotelWebsiteManagementConflictError, HotelWebsiteManagementNotFoundError } from "@/lib/hotel/content/hotel-website-management.service";
 import { parseJsonObject } from "@/lib/hotel/management/api-adapter";
 
-export type WebsiteManagementParams = { organizationId: string; propertyId: string; revisionId?: string; publicationId?: string };
+export type WebsiteManagementParams = { id: string; propertyId: string; revisionId?: string; publicationId?: string };
 export type WebsiteManagementContext = {
   principal: { userId: string; role: "SUPER_ADMIN" | "ADMIN" | "MANAGER" | "STAFF" | "DRIVER" | "CUSTOMER" | "GUEST"; organizationId?: string | null };
   scope: { organizationId: string; propertyId: string };
@@ -39,7 +39,7 @@ export async function websiteRead(paramsPromise: Promise<WebsiteManagementParams
   try {
     const session = await requireAuthSession();
     const params = await paramsPromise;
-    const context: WebsiteManagementContext = { principal: { userId: session.user.id, role: session.user.role, organizationId: session.user.organizationId }, scope: { organizationId: params.organizationId, propertyId: params.propertyId } };
+    const context: WebsiteManagementContext = { principal: { userId: session.user.id, role: session.user.role, organizationId: session.user.organizationId }, scope: { organizationId: params.id, propertyId: params.propertyId } };
     return safeResponse(await handler(context, params), 200);
   } catch (error) { return managementError(error); }
 }
@@ -55,7 +55,7 @@ export async function websiteMutation(request: Request, paramsPromise: Promise<W
     try { parsedBody = await request.json(); }
     catch { throw new ApiError(400, "A JSON request body is required"); }
     const body = parseJsonObject(parsedBody) as Record<string, unknown>;
-    const context: WebsiteManagementContext = { principal: { userId: session.user.id, role: session.user.role, organizationId: session.user.organizationId }, scope: { organizationId: params.organizationId, propertyId: params.propertyId }, idempotencyKey: key };
+    const context: WebsiteManagementContext = { principal: { userId: session.user.id, role: session.user.role, organizationId: session.user.organizationId }, scope: { organizationId: params.id, propertyId: params.propertyId }, idempotencyKey: key };
     return safeResponse(await handler(context, params, body), status);
   } catch (error) { return managementError(error); }
 }

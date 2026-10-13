@@ -30,17 +30,17 @@ mock.module("@/lib/hotel/content/hotel-website-management.service", { namedExpor
   },
 } });
 
-let createDraft: typeof import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/website/revisions/route").POST;
-let submit: typeof import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/website/revisions/[revisionId]/submit/route").POST;
-let list: typeof import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/website/revisions/route").GET;
-let preview: typeof import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/website/revisions/[revisionId]/preview/route").GET;
+let createDraft: typeof import("../../app/api/organizations/[id]/hotels/[propertyId]/website/revisions/route").POST;
+let submit: typeof import("../../app/api/organizations/[id]/hotels/[propertyId]/website/revisions/[revisionId]/submit/route").POST;
+let list: typeof import("../../app/api/organizations/[id]/hotels/[propertyId]/website/revisions/route").GET;
+let preview: typeof import("../../app/api/organizations/[id]/hotels/[propertyId]/website/revisions/[revisionId]/preview/route").GET;
 before(async () => {
-  ({ POST: createDraft, GET: list } = await import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/website/revisions/route"));
-  ({ POST: submit } = await import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/website/revisions/[revisionId]/submit/route"));
-  ({ GET: preview } = await import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/website/revisions/[revisionId]/preview/route"));
+  ({ POST: createDraft, GET: list } = await import("../../app/api/organizations/[id]/hotels/[propertyId]/website/revisions/route"));
+  ({ POST: submit } = await import("../../app/api/organizations/[id]/hotels/[propertyId]/website/revisions/[revisionId]/submit/route"));
+  ({ GET: preview } = await import("../../app/api/organizations/[id]/hotels/[propertyId]/website/revisions/[revisionId]/preview/route"));
 });
 
-const routeContext = { params: Promise.resolve({ organizationId: "org-1", propertyId: "property-1", revisionId: "revision-1" }) };
+const routeContext = { params: Promise.resolve({ id: "org-1", propertyId: "property-1", revisionId: "revision-1" }) };
 function request(body: unknown = {}, headers: Record<string, string> = { origin: "https://app.example", "idempotency-key": "website-key-0001" }) {
   return new NextRequest("https://app.example/api/website", { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
 }

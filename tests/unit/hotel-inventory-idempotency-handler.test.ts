@@ -27,12 +27,12 @@ mock.module("@/lib/hotel/management/hotel-management.service", { namedExports: {
   },
 } });
 
-let post: (request: NextRequest, context: { params: Promise<{ organizationId: string; propertyId: string }> }) => Promise<Response>;
+let post: (request: NextRequest, context: { params: Promise<{ id: string; propertyId: string }> }) => Promise<Response>;
 before(async () => {
-  ({ POST: post } = await import("../../app/api/organizations/[organizationId]/hotels/[propertyId]/inventory/adjustments/route"));
+  ({ POST: post } = await import("../../app/api/organizations/[id]/hotels/[propertyId]/inventory/adjustments/route"));
 });
 
-const context = { params: Promise.resolve({ organizationId: "org-1", propertyId: "property-1" }) };
+const context = { params: Promise.resolve({ id: "org-1", propertyId: "property-1" }) };
 const request = (body: unknown = { roomTypeId: "room-type-1", date: "2027-08-12", allotmentDelta: 1, reason: "manual correction" }, headers: Record<string, string> = { origin: "https://hotel.example", "sec-fetch-site": "same-origin", "idempotency-key": "handler-key-01" }) => new NextRequest("https://hotel.example/api/inventory", { method: "POST", body: JSON.stringify(body), headers: { "content-type": "application/json", ...headers } });
 
 test("feature gate, auth, key and origin failures do not mutate", async () => {

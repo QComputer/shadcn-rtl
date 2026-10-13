@@ -43,6 +43,7 @@ export type DashboardNavigationKey =
   | "requestDemoLeads"
   | "tenantProvisioning"
   | "businessAcquisition"
+  | "hotelWebsite"
   | "pilots"
 
 export type DashboardNavigationGroupKey = "operations" | "catalog" | "teamAndSettings" | "platformAdmin"
@@ -75,6 +76,7 @@ export const DASHBOARD_NAVIGATION_ITEMS = {
   requestDemoLeads: "/request-demo-leads",
   tenantProvisioning: "/tenant-provisioning",
   businessAcquisition: "/business-acquisition",
+  hotelWebsite: "/hotel-website",
   pilots: "/pilots",
 } as const satisfies Record<DashboardNavigationKey, string>
 
@@ -89,7 +91,7 @@ export const DASHBOARD_NAVIGATION_GROUPS = [
   },
   {
     key: "teamAndSettings",
-    items: ["businessActivation", "reputation", "members", "customerClub", "imports", "exports", "creativeStudio", "settings", "organizationSettings", "qrcode"],
+    items: ["businessActivation", "reputation", "hotelWebsite", "members", "customerClub", "imports", "exports", "creativeStudio", "settings", "organizationSettings", "qrcode"],
   },
   {
     key: "platformAdmin",
@@ -129,6 +131,7 @@ export const ROLE_NAVIGATION_POLICY = {
   requestDemoLeads: ["SUPER_ADMIN"],
   tenantProvisioning: ["SUPER_ADMIN"],
   businessAcquisition: ["SUPER_ADMIN"],
+  hotelWebsite: MANAGEMENT_ROLES,
   pilots: ["SUPER_ADMIN"],
 } as const satisfies Record<DashboardNavigationKey, readonly DashboardRole[]>
 
@@ -182,6 +185,8 @@ export const DASHBOARD_ROUTE_POLICY = {
   "/tenant-provisioning": ROLE_NAVIGATION_POLICY.tenantProvisioning,
   "/tenant-provisioning/[planId]": ROLE_NAVIGATION_POLICY.tenantProvisioning,
   "/business-acquisition": ROLE_NAVIGATION_POLICY.businessAcquisition,
+  "/hotel-website": ROLE_NAVIGATION_POLICY.hotelWebsite,
+  "/hotel-website/[organizationId]/[propertyId]": ROLE_NAVIGATION_POLICY.hotelWebsite,
   "/pilots": ROLE_NAVIGATION_POLICY.pilots,
   "/pilots/[organizationId]": ROLE_NAVIGATION_POLICY.pilots,
 } as const satisfies Record<string, readonly DashboardRole[]>
@@ -207,11 +212,13 @@ export function getDashboardRoleFromUser(user: SidebarRoleContext | null | undef
 export function isDashboardNavigationItemVisible(
   key: DashboardNavigationKey,
   role: DashboardRole,
-  capabilities: readonly BusinessCapability[] = [],
+  capabilities: readonly string[] = [],
 ): boolean {
   const allowedRoles: readonly DashboardRole[] = ROLE_NAVIGATION_POLICY[key]
   if (!allowedRoles.includes(role) && role !== "SUPER_ADMIN") return false
   if (role === "SUPER_ADMIN") return true
+
+  if (key === "hotelWebsite") return capabilities.includes("HOTEL_WEBSITE")
 
   const requiredCapability = requiredCapabilityForNavigation(key)
   return !requiredCapability || capabilities.includes(requiredCapability)

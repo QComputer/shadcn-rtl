@@ -106,6 +106,7 @@ const NAVIGATION_ICONS = {
   requestDemoLeads: Inbox,
   tenantProvisioning: ListChecks,
   businessAcquisition: Store,
+  hotelWebsite: Building2,
   pilots: BriefcaseBusiness,
 } satisfies Record<DashboardNavigationKey, DashboardIcon>
 
@@ -159,6 +160,7 @@ const roleAwareNavigationCopy = {
       requestDemoLeads: "درخواست‌های دمو",
       tenantProvisioning: "آماده‌سازی ایجاد کسب‌وکار",
       businessAcquisition: "جذب کسب‌وکار",
+      hotelWebsite: "وب‌سایت هتل",
       pilots: "عملیات پایلوت",
     },
     roles: {
@@ -210,6 +212,7 @@ const roleAwareNavigationCopy = {
       requestDemoLeads: "Demo requests",
       tenantProvisioning: "Tenant provisioning",
       businessAcquisition: "Business acquisition",
+      hotelWebsite: "Hotel website",
       pilots: "Pilot operations",
     },
     roles: {
@@ -261,6 +264,7 @@ const roleAwareNavigationCopy = {
       requestDemoLeads: "طلبات العرض التجريبي",
       tenantProvisioning: "إعداد إنشاء النشاط",
       businessAcquisition: "اكتساب الأعمال",
+      hotelWebsite: "موقع الفندق",
       pilots: "عمليات التجربة",
     },
     roles: {

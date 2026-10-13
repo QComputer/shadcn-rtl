@@ -220,6 +220,7 @@ try {
     }
   }
 
+  const faviconEvidence = [];
   for (const [host, expectedSegment] of [[hosts.alpha, "aka-shoes"], [hosts.beta, "restaurant-13"]]) {
     const favicon = await responseFor(host, "/favicon.ico");
     assert.ok(favicon, `favicon response exists for ${host}`);
@@ -228,6 +229,7 @@ try {
     assert.ok(favicon.url.includes(expectedSegment), `favicon remains tenant-scoped for ${host}`);
     assert.equal(favicon.body.readUInt16LE(0), 0, `favicon is ICO: ${host}`);
     assert.equal(favicon.body.readUInt16LE(2), 1, `favicon is ICO type 1: ${host}`);
+    faviconEvidence.push({ host, status: favicon.status, contentType: favicon.headers["content-type"], resolvedUrl: favicon.url });
   }
 
   const alphaApple = await responseFor(hosts.alpha, "/brand/tenants/aka-shoes/pwa/apple-touch-icon-180.png");
@@ -277,6 +279,17 @@ try {
   const incompleteFavicon = await responseFor(hosts.incomplete, "/favicon.ico");
   assert.equal(incompleteFavicon?.status, 404, "incomplete tenant branding does not fall back to a platform favicon");
 
+  console.log("tenant-pwa-http-evidence", JSON.stringify({
+    manifests: {
+      platform: { status: platformResult.response.status, name: platformResult.manifest.name, short_name: platformResult.manifest.short_name, display: platformResult.manifest.display, icons: platformResult.manifest.icons.map(({ src, sizes, purpose }) => ({ src, sizes, purpose })) },
+      alpha: { status: alphaResult.response.status, name: alphaManifest.name, short_name: alphaManifest.short_name, id: alphaManifest.id, start_url: alphaManifest.start_url, scope: alphaManifest.scope, display: alphaManifest.display, lang: alphaManifest.lang, dir: alphaManifest.dir, icons: alphaManifest.icons.map(({ src, sizes, purpose }) => ({ src, sizes, purpose })) },
+      beta: { status: betaResult.response.status, name: betaManifest.name, short_name: betaManifest.short_name, id: betaManifest.id, start_url: betaManifest.start_url, scope: betaManifest.scope, display: betaManifest.display, lang: betaManifest.lang, dir: betaManifest.dir, icons: betaManifest.icons.map(({ src, sizes, purpose }) => ({ src, sizes, purpose })) },
+      unknown: { status: unknownResult.response.status, display: unknownResult.manifest.display, icons: unknownResult.manifest.icons },
+      inactive: { status: inactiveResult.response.status, display: inactiveResult.manifest.display, icons: inactiveResult.manifest.icons },
+      incomplete: { status: incompleteResult.response.status, display: incompleteResult.manifest.display, icons: incompleteResult.manifest.icons },
+    },
+    favicons: faviconEvidence,
+  }));
   console.log(JSON.stringify({
     result: "PASS",
     browser: "Chromium production-mode",

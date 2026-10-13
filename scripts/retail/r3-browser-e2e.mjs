@@ -19,6 +19,16 @@ async function makeRemoteFontsDeterministic(page) {
   await page.route("https://fonts.gstatic.com/**", (route) => route.abort());
 }
 
+async function captureRenderedViewport(page, outputPath) {
+  const session = await page.context().newCDPSession(page);
+  try {
+    const { data } = await session.send("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false });
+    await fs.writeFile(outputPath, Buffer.from(data, "base64"));
+  } finally {
+    await session.detach();
+  }
+}
+
 async function login(browser, email, locale = "fa", { expectedCatalogStatus = 200 } = {}) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
@@ -62,7 +72,7 @@ async function login(browser, email, locale = "fa", { expectedCatalogStatus = 20
     await addProductLink.waitFor({ timeout: 30000 });
   } catch (error) {
     const renderedText = (await page.locator("body").innerText()).slice(0, 1600);
-    await page.screenshot({ path: path.join(evidenceDir, `${email.split("@")[0]}-catalog-route-diagnostic.png`), fullPage: true, timeout: 30000 });
+    await captureRenderedViewport(page, path.join(evidenceDir, `${email.split("@")[0]}-catalog-route-diagnostic.png`));
     await fs.writeFile(path.join(evidenceDir, `${email.split("@")[0]}-catalog-route-diagnostic.txt`), JSON.stringify({ url: page.url(), title: await page.title(), renderedText, linkCount: await addProductLink.count(), error: String(error) }, null, 2));
     throw new Error(`MERCHANT_CATALOG_ROUTE_MISSING: expected localized add-product link at ${page.url()}; rendered body starts: ${renderedText}; ${String(error)}`);
   }
@@ -79,7 +89,7 @@ async function createAndPublish({ browser, email, locale, organization, category
   const addProductLink = page.getByRole("link", { name: locale === "fa" ? "افزودن محصول" : "Add product" });
   if (await addProductLink.count() !== 1) {
     const renderedText = (await page.locator("body").innerText()).slice(0, 1600);
-    await page.screenshot({ path: path.join(evidenceDir, `${organization}-dashboard-diagnostic.png`), fullPage: true, timeout: 30000 });
+    await captureRenderedViewport(page, path.join(evidenceDir, `${organization}-dashboard-diagnostic.png`));
     throw new Error(`MERCHANT_DASHBOARD_CONTROL_MISSING: expected one localized add-product link; rendered body starts: ${renderedText}`);
   }
   await addProductLink.click();
@@ -116,7 +126,7 @@ async function createAndPublish({ browser, email, locale, organization, category
   try {
     await previewImage.waitFor({ timeout: 15000 });
   } catch (error) {
-    await page.screenshot({ path: path.join(evidenceDir, `${organization}-media-gallery-diagnostic.png`), fullPage: true, timeout: 30000 });
+    await captureRenderedViewport(page, path.join(evidenceDir, `${organization}-media-gallery-diagnostic.png`));
     throw new Error(`MERCHANT_MEDIA_GALLERY_MISSING: API returned eligible image id=${previewAsset.id}, filename=${previewAsset.filename}; browser page=${page.url()}; ${String(error)}`);
   }
   await previewImage.click();
@@ -129,7 +139,7 @@ async function createAndPublish({ browser, email, locale, organization, category
   const productId = page.url().split("/").at(-1);
   await page.getByRole("button", { name: "پیش‌نمایش" }).click();
   await page.locator("div").filter({ hasText: /^پیش‌نمایش مدیر فروشگاه · این کالا هنوز برای مشتریان منتشر نشده است$/ }).waitFor();
-  await page.screenshot({ path: path.join(evidenceDir, `${organization}-draft-preview.png`), fullPage: true, timeout: 30000 });
+  await captureRenderedViewport(page, path.join(evidenceDir, `${organization}-draft-preview.png`));
   await page.getByLabel("نام محصول").fill(`${name} ویرایش‌شده`);
   const savedResponse = page.waitForResponse((response) => response.url().includes("/api/dashboard/retail/catalog/") && response.request().method() === "PATCH");
   await page.getByRole("button", { name: "ذخیره تغییرات" }).click();
@@ -152,7 +162,7 @@ async function createAndPublish({ browser, email, locale, organization, category
   assert.equal(data.variants[0].orderable, true, `published variant with inventory must be orderable: ${JSON.stringify({ price: data.variants[0].price.amount, orderable: data.variants[0].orderable })}`);
   await page.goto(`${baseUrl}/fa/retail/${organization}/product/${slug}`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.getByRole("heading", { name: `${name} ویرایش‌شده` }).waitFor({ timeout: 20000 });
-  await page.screenshot({ path: path.join(evidenceDir, `${organization}-published-detail.png`), fullPage: true, timeout: 30000 });
+  await captureRenderedViewport(page, path.join(evidenceDir, `${organization}-published-detail.png`));
   await page.goto(`${baseUrl}/fa/dashboard/retail-catalog/${productId}`);
   await page.getByRole("button", { name: "برداشتن از فروشگاه" }).click();
   await page.waitForTimeout(300);
@@ -187,7 +197,7 @@ async function main() {
     await makeRemoteFontsDeterministic(publicPage);
     await publicPage.goto(`${baseUrl}/fa/retail/retail-r3-fashion-preview`);
     assert.equal(await publicPage.locator("html").getAttribute("dir"), "rtl");
-    await publicPage.screenshot({ path: path.join(evidenceDir, "fashion-storefront-rtl-390.png"), fullPage: true, timeout: 30000 });
+    await captureRenderedViewport(publicPage, path.join(evidenceDir, "fashion-storefront-rtl-390.png"));
     console.log(JSON.stringify({ status: "PASSED", fashionProductId: fashion, electronicsProductId: electronics, viewport: "390x844", screenshots: evidenceDir }));
   } finally {
     await browser.close();

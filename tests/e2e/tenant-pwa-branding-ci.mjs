@@ -212,8 +212,8 @@ try {
   const beta = await createTenant({
     suffix: "beta",
     host: hosts.beta,
-    label: "رستوران ایتالیایی ۱۳",
-    shortName: "ایتالیایی ۱۳",
+    label: "رستوران 13",
+    shortName: "رستوران 13",
     assets: {
       favicon: "/brand/tenants/restaurant-13/brand/production-ready/favicon.ico",
       apple: "/brand/tenants/restaurant-13/brand/production-ready/apple-touch-icon.png",
@@ -263,8 +263,8 @@ try {
 
   const betaResult = await manifestFor(hosts.beta);
   const betaManifest = betaResult.manifest;
-  assert.equal(betaManifest.name, "رستوران ایتالیایی ۱۳");
-  assert.equal(betaManifest.short_name, "ایتالیایی ۱۳");
+  assert.equal(betaManifest.name, "رستوران 13");
+  assert.equal(betaManifest.short_name, "رستوران 13");
   assert.equal(betaManifest.icons.length, 4);
   assert.ok(betaManifest.icons.every((entry) => entry.src.includes("/brand/tenants/restaurant-13/")));
   assert.ok(!JSON.stringify(betaManifest).includes("aka-shoes"));
@@ -380,10 +380,10 @@ try {
   for (const scenario of [
     { host: "localhost", title: "نصب اپ بازارباز", iconPath: "/icons/icon-192x192.png", screenshot: "install-platform-fa-mobile.png", viewport: { width: 390, height: 844 } },
     { host: hosts.alpha, title: "نصب اپ آکا شوز", iconPath: "/brand/tenants/aka-shoes/pwa/icon-192x192.png", screenshot: "install-aka-fa-mobile.png", viewport: { width: 390, height: 844 }, theme: "dark" },
-    { host: hosts.beta, title: "نصب اپ رستوران ایتالیایی ۱۳", iconPath: "/brand/tenants/restaurant-13/brand/production-ready/icon-192.png", screenshot: "install-restaurant-fa-desktop.png", viewport: { width: 1280, height: 900 } },
+    { host: hosts.beta, title: "نصب اپ رستوران 13", iconPath: "/brand/tenants/restaurant-13/brand/production-ready/icon-192.png", screenshot: "install-restaurant-fa-desktop.png", viewport: { width: 1280, height: 900 } },
     { host: hosts.gamma, title: "نصب اپ برند آزمایشی سوم", iconPath: `${gammaAssetRoot}/icon-192.png`, screenshot: "install-generic-fa-mobile.png", viewport: { width: 390, height: 844 } },
     { host: hosts.alpha, locale: "en", title: "Install app آکا شوز", iconPath: "/brand/tenants/aka-shoes/pwa/icon-192x192.png", screenshot: "install-aka-en-desktop.png", viewport: { width: 1280, height: 900 } },
-    { host: hosts.beta, locale: "ar", title: "تثبيت تطبيق رستوران ایتالیایی ۱۳", iconPath: "/brand/tenants/restaurant-13/brand/production-ready/icon-192.png", screenshot: "install-restaurant-ar-mobile.png", viewport: { width: 390, height: 844 }, theme: "dark" },
+    { host: hosts.beta, locale: "ar", title: "تثبيت تطبيق رستوران 13", iconPath: "/brand/tenants/restaurant-13/brand/production-ready/icon-192.png", screenshot: "install-restaurant-ar-mobile.png", viewport: { width: 390, height: 844 }, theme: "dark" },
   ]) {
     invitations.push(await installInvitationFor(scenario));
   }

@@ -116,7 +116,7 @@ async function createAndPublish({ browser, email, locale, organization, category
   await page.waitForURL("**/fa/dashboard/retail-catalog/*", { timeout: 60000 });
   const productId = page.url().split("/").at(-1);
   await page.getByRole("button", { name: "پیش‌نمایش" }).click();
-  await page.getByText(/پیش‌نمایش مدیر فروشگاه/).waitFor();
+  await page.locator("div").filter({ hasText: /^پیش‌نمایش مدیر فروشگاه · این کالا هنوز برای مشتریان منتشر نشده است$/ }).waitFor();
   await page.screenshot({ path: path.join(evidenceDir, `${organization}-draft-preview.png`), fullPage: true });
   await page.getByLabel("نام محصول").fill(`${name} ویرایش‌شده`);
   const savedResponse = page.waitForResponse((response) => response.url().includes("/api/dashboard/retail/catalog/") && response.request().method() === "PATCH");

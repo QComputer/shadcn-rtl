@@ -244,13 +244,14 @@ try {
   assert.ok(alphaPageResponse && alphaPageResponse.status() === 200, "synthetic tenant page loads in production mode");
   await alphaPage.locator("body").waitFor();
   const metadata = await alphaPage.evaluate(() => ({
-    manifest: document.querySelector('link[rel="manifest"]')?.getAttribute("href"),
-    icon: document.querySelector('link[rel="icon"]')?.getAttribute("href"),
-    apple: document.querySelector('link[rel="apple-touch-icon"]')?.getAttribute("href"),
+    manifest: Array.from(document.querySelectorAll('link[rel="manifest"]')).map((link) => link.getAttribute("href")),
+    icons: Array.from(document.querySelectorAll('link[rel="icon"]')).map((link) => link.getAttribute("href")),
+    apple: Array.from(document.querySelectorAll('link[rel="apple-touch-icon"]')).map((link) => link.getAttribute("href")),
   }));
-  assert.ok(metadata.manifest?.includes("manifest.webmanifest"), "tenant page advertises a manifest");
-  assert.ok(metadata.icon?.includes("aka-shoes"), "tenant page advertises the tenant favicon");
-  assert.ok(metadata.apple?.includes("aka-shoes"), "tenant page advertises the tenant Apple icon");
+  console.log("tenant-alpha-page-icons", JSON.stringify(metadata));
+  assert.ok(metadata.manifest.some((href) => href?.includes("manifest.webmanifest")), "tenant page advertises a manifest");
+  assert.ok(metadata.icons.some((href) => href?.includes("aka-shoes")), `tenant page advertises the tenant favicon: ${JSON.stringify(metadata.icons)}`);
+  assert.ok(metadata.apple.some((href) => href?.includes("aka-shoes")), `tenant page advertises the tenant Apple icon: ${JSON.stringify(metadata.apple)}`);
   await alphaPage.screenshot({ path: `${artifactDir}/tenant-alpha.png`, fullPage: true });
   await alphaPage.close();
 

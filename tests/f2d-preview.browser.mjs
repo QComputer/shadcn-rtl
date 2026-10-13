@@ -29,7 +29,20 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1665, height: 896 }, deviceScaleFactor: 1 });
 const forbiddenRequests = [];
 const pageErrors = [];
+const consoleErrors = [];
+const failedRequests = [];
+let faviconStatus = null;
 page.on("pageerror", (error) => pageErrors.push(error.message));
+page.on("console", (message) => {
+  if (message.type() === "error") consoleErrors.push(message.text());
+});
+page.on("requestfailed", (request) => {
+  const failure = request.failure();
+  if (failure?.errorText !== "net::ERR_ABORTED") failedRequests.push(`${request.url()} (${failure?.errorText ?? "unknown failure"})`);
+});
+page.on("response", (response) => {
+  if (new URL(response.url()).pathname === "/favicon.ico") faviconStatus = response.status();
+});
 page.on("request", (request) => {
   const url = new URL(request.url());
   if (/\/api\/hotel\/v1\/(availability|quotes|holds|payments)|\/api\/payments/i.test(url.pathname)) forbiddenRequests.push(request.url());
@@ -42,13 +55,13 @@ try {
   assert.equal(await page.locator('main[data-provenance="PREVIEW"]').count(), 1);
   assert.equal(await page.locator("text=پیش‌نمایش داخلی طراحی").count(), 1);
 
-  const websiteGate = await page.evaluate(async () => {
-    const response = await fetch("/api/hotel/v1/website/properties/f2d-runtime-probe?locale=fa", { cache: "no-store" });
-    return { status: response.status, body: await response.json() };
-  });
+  const websiteGateResponse = await page.request.get(new URL("/api/hotel/v1/website/properties/f2d-runtime-probe?locale=fa", baseUrl).toString(), { headers: { "cache-control": "no-cache" } });
+  const websiteGate = { status: websiteGateResponse.status(), body: await websiteGateResponse.json() };
   assert.equal(websiteGate.status, 503, "public website route remains disabled in local runtime");
   assert.equal(websiteGate.body.error, "WEBSITE_DISABLED");
   assert.equal(JSON.stringify(websiteGate.body).includes("preview"), false, "disabled public API does not leak preview content");
+  const faviconResponse = await page.request.get(new URL("/favicon.ico", baseUrl).toString());
+  faviconStatus = faviconResponse.status();
 
   for (const width of [360, 390, 430, 768, 820, 1024, 1440, 1665]) {
     await page.setViewportSize({ width, height: width < 500 ? 844 : 896 });
@@ -166,7 +179,10 @@ try {
   assert.match(await page.locator("#booking").innerText(), /تاریخ ورود و خروج|تاریخ انتخاب‌شده|هیچ درخواستی ارسال نشد/);
   assert.deepEqual(forbiddenRequests, [], "preview did not call booking, hold or payment APIs");
   assert.deepEqual(pageErrors, [], "no uncaught browser errors");
-  console.log(JSON.stringify({ result: "PASS", route: baseUrl, viewports: [360, 390, 768, 820, 1024, 1440, 1665], visualColors, websiteGate: websiteGate.status, forbiddenRequests: forbiddenRequests.length, pageErrors: pageErrors.length, screenshots: ["desktop-1665x896-viewport.png", "desktop-1440x900-viewport.png", "tablet-768x1024-viewport.png", "desktop-full.png", "desktop-room-gallery-open-1665x896.png", "desktop-calendar-open-1665x896.png", "desktop-guests-open-1665x896.png", "mobile-390x844-viewport.png", "mobile-full.png", "mobile-room-gallery-open-390x844.png", "mobile-calendar-open-390x844.png", "mobile-guests-open-390x844.png"] }, null, 2));
+  assert.deepEqual(consoleErrors, [], "no browser console errors");
+  assert.deepEqual(failedRequests, [], "no unexpected failed browser requests");
+  assert.ok(faviconStatus !== null && faviconStatus >= 200 && faviconStatus < 400, `favicon resolves successfully: ${faviconStatus}`);
+  console.log(JSON.stringify({ result: "PASS", route: baseUrl, viewports: [360, 390, 430, 768, 820, 1024, 1440, 1665], visualColors, websiteGate: websiteGate.status, faviconStatus, forbiddenRequests: forbiddenRequests.length, pageErrors: pageErrors.length, consoleErrors: consoleErrors.length, failedRequests: failedRequests.length, screenshots: ["desktop-1665x896-viewport.png", "desktop-1440x900-viewport.png", "tablet-768x1024-viewport.png", "desktop-full.png", "desktop-room-gallery-open-1665x896.png", "desktop-calendar-open-1665x896.png", "desktop-guests-open-1665x896.png", "mobile-390x844-viewport.png", "mobile-full.png", "mobile-room-gallery-open-390x844.png", "mobile-calendar-open-390x844.png", "mobile-guests-open-390x844.png"] }, null, 2));
 } finally {
   await browser.close();
 }

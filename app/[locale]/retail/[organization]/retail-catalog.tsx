@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { useParams } from "next/navigation";
+import { appPath } from "@/lib/app-base-path";
 import type { PublicCatalogProduct } from "@/lib/public-catalog/contracts";
 
 type RetailView = {
@@ -30,7 +32,10 @@ export default function RetailLiveCatalog({ view, productSlug }: { view: RetailV
   const [busy, setBusy] = useState(false);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
-  const base = `/fa/retail/${encodeURIComponent(view.identifier)}`;
+  const params = useParams<{ locale: string }>();
+  const locale = params.locale || "fa";
+  const base = appPath(`/${encodeURIComponent(locale)}/retail/${encodeURIComponent(view.identifier)}`);
+  const [cartNotice, setCartNotice] = useState("");
   const isFashion = view.theme === "FASHION";
 
   useEffect(() => {
@@ -43,7 +48,7 @@ export default function RetailLiveCatalog({ view, productSlug }: { view: RetailV
       if (category) params.set("category", category);
       if (filter) params.set("filter", filter);
       try {
-        const response = await fetch(`/api/public/v1/organizations/${encodeURIComponent(view.identifier)}/products?${params}`, { signal: controller.signal, headers: { Accept: "application/json" } });
+        const response = await fetch(appPath(`/api/public/v1/organizations/${encodeURIComponent(view.identifier)}/products?${params}`), { signal: controller.signal, headers: { Accept: "application/json" } });
         if (!response.ok) throw new Error("catalog request failed");
         const body = await response.json() as { version: string; data: { products: PublicCatalogProduct[]; pagination: { page: number; totalPages: number } } };
         if (body.version !== "v1" || !Array.isArray(body.data.products)) throw new Error("catalog response invalid");
@@ -84,6 +89,26 @@ export default function RetailLiveCatalog({ view, productSlug }: { view: RetailV
   }, [products, sort, minimumPrice, maximumPrice]);
 
   const detail = productSlug ? products.find((product) => product.slug === productSlug || product.id === productSlug) : undefined;
+  const addToCart = async (variantId?: string) => {
+    if (!variantId || view.previewOnly) return;
+    setCartNotice("");
+    try {
+      const response = await fetch(appPath("/api/retail/v1/cart"), {
+        method: "POST", credentials: "same-origin", headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify({ organization: view.identifier, variantId, quantity: 1 }),
+      });
+      if (response.status === 401) {
+        const callbackUrl = `${base}/checkout`;
+        window.location.assign(appPath(`/${encodeURIComponent(locale)}/login?callbackUrl=${encodeURIComponent(callbackUrl)}`));
+        return;
+      }
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "افزودن کالا به سبد خرید ممکن نشد.");
+      setCartNotice("کالا به سبد خرید اضافه شد.");
+    } catch (error) {
+      setCartNotice(error instanceof Error ? error.message : "افزودن کالا به سبد خرید ممکن نشد.");
+    }
+  };
   const renderProduct = (product: PublicCatalogProduct) => {
     const image = product.media.card;
     const selectedId = variantChoice[product.id] ?? product.variants.find((variant) => variant.orderable)?.id ?? product.variants[0]?.id;
@@ -99,7 +124,7 @@ export default function RetailLiveCatalog({ view, productSlug }: { view: RetailV
         {product.variants.length > 1 && <label className="sr-only" htmlFor={`variant-${product.id}`}>انتخاب گزینه برای {product.name}</label>}
         {product.variants.length > 1 && <select id={`variant-${product.id}`} value={selectedId} onChange={(event) => setVariantChoice({ ...variantChoice, [product.id]: event.target.value })} className="mt-4 min-h-11 w-full rounded-lg border border-[#e2dfd8] bg-white px-2 py-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#9b7653]">{product.variants.map((variant) => <option key={variant.id} value={variant.id}>{variant.name ?? variant.options.map((option) => `${option.label}: ${attributeText(option)}`).join(" · ")}</option>)}</select>}
         <div className="mt-4 flex items-center justify-between gap-2"><div><strong className="block text-sm">{toman(selectedVariant?.price.amount ?? product.price.amount)}</strong><span className={`mt-1 block text-[11px] ${selectedVariant?.orderable ? "text-emerald-700" : "text-[#a45041]"}`}>{selectedVariant ? (selectedVariant.orderable ? "موجود" : "ناموجود") : "وضعیت فروش ثبت نشده"}</span></div>
-          <button disabled className="min-h-11 cursor-not-allowed rounded-full bg-[#eeece7] px-3 py-2 text-xs text-[#77736a]" title="ثبت سفارش آنلاین برای این فروشگاه هنوز فعال نشده است">ثبت سفارش غیرفعال</button>
+          <button disabled={view.previewOnly || !selectedVariant?.orderable} onClick={() => void addToCart(selectedVariant?.id)} className="min-h-11 rounded-full bg-[#292a24] px-3 py-2 text-xs text-white disabled:cursor-not-allowed disabled:bg-[#eeece7] disabled:text-[#77736a]">{view.previewOnly ? "پیش‌نمایش" : selectedVariant?.orderable ? "افزودن به سبد" : "ناموجود"}</button>
         </div>
       </div>
     </article>;
@@ -110,7 +135,7 @@ export default function RetailLiveCatalog({ view, productSlug }: { view: RetailV
     <header className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 md:px-10">
       <a href={base} className="text-xl font-bold tracking-tight">{view.name}<span className="mr-2 text-[#9b7653]" aria-hidden>●</span></a>
       {!productSlug && <nav aria-label="ناوبری فروشگاه" className="hidden gap-8 text-sm md:flex"><a href={`${base}#categories`}>دسته‌بندی‌ها</a><a href={`${base}#products`}>محصولات</a></nav>}
-      <a href={`${base}#products`} className="min-h-11 rounded-full border border-[#d9d5cd] px-4 py-3 text-sm">مشاهده کالاها <span aria-hidden>⌕</span></a>
+      <div className="flex items-center gap-2">{!view.previewOnly && <a href={`${base}/checkout`} className="min-h-11 rounded-full border border-[#d9d5cd] px-4 py-3 text-sm">سبد خرید</a>}<a href={`${base}#products`} className="min-h-11 rounded-full border border-[#d9d5cd] px-4 py-3 text-sm">مشاهده کالاها <span aria-hidden>⌕</span></a></div>
     </header>
     {!productSlug && <>
     <section className="mx-auto grid max-w-7xl gap-5 px-4 pb-8 md:grid-cols-[1fr_1.15fr] md:px-10">
@@ -136,7 +161,8 @@ export default function RetailLiveCatalog({ view, productSlug }: { view: RetailV
         </div>
       </div>
       {error ? <div role="alert" className="mt-8 rounded-2xl bg-white p-10 text-center text-[#8c3329]">دریافت محصولات ممکن نشد. چند لحظه دیگر دوباره تلاش کنید.</div> : busy ? <p role="status" className="mt-8 rounded-2xl bg-white p-10 text-center">در حال دریافت محصولات…</p> : sortedProducts.length ? <><div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 xl:grid-cols-4">{sortedProducts.map(renderProduct)}</div><nav aria-label="صفحه‌های محصولات" className="mt-8 flex items-center justify-center gap-4"><button disabled={pagination.page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} className="min-h-11 rounded-full border border-[#d9d5cd] px-5 disabled:opacity-40">قبلی</button><span className="text-sm" aria-live="polite">صفحه {new Intl.NumberFormat("fa-IR").format(pagination.page)} از {new Intl.NumberFormat("fa-IR").format(pagination.totalPages)}</span><button disabled={pagination.page >= pagination.totalPages} onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))} className="min-h-11 rounded-full border border-[#d9d5cd] px-5 disabled:opacity-40">بعدی</button></nav></> : <div className="mt-8 rounded-2xl bg-white p-10 text-center text-[#6e6a60]">محصولی با این مشخصات پیدا نشد. فیلترها را تغییر دهید.</div>}
-      <p className="mt-6 text-center text-xs text-[#77736a]">قیمت و وضعیت موجودی از فهرست فروشگاه دریافت شده‌اند. ثبت سفارش آنلاین هنوز برای این فروشگاه فعال نیست.</p>
+      {cartNotice && <p role="status" aria-live="polite" className="mt-5 text-center text-sm text-[#6e6a60]">{cartNotice}</p>}
+      <p className="mt-6 text-center text-xs text-[#77736a]">قیمت و وضعیت موجودی از فهرست منتشرشده فروشگاه دریافت شده‌اند.</p>
     </section>
     </>}
     {productSlug && <section className="mx-auto max-w-7xl px-5 pb-20 md:px-10">
@@ -146,7 +172,8 @@ export default function RetailLiveCatalog({ view, productSlug }: { view: RetailV
         <div className="py-2 md:py-8"><a href={`${base}#products`} className="text-sm text-[#766d61]">← بازگشت به محصولات</a><span className="mt-6 block text-sm text-[#92704e]">{detail.category.name}</span><h1 className="mt-3 text-3xl font-semibold md:text-4xl">{detail.name}</h1><p className="mt-4 whitespace-pre-line leading-8 text-[#67655e]">{detail.description}</p>
           {detail.variants.length > 0 ? <><label htmlFor="detail-variant" className="mt-7 block text-sm font-medium">انتخاب گزینه</label><select id="detail-variant" value={variantChoice[detail.id] ?? detail.variants.find((variant) => variant.orderable)?.id ?? detail.variants[0].id} onChange={(event) => setVariantChoice({ ...variantChoice, [detail.id]: event.target.value })} className="mt-2 min-h-12 w-full rounded-xl border border-[#ddd9d0] bg-white px-4 py-3">{detail.variants.map((variant) => <option key={variant.id} value={variant.id}>{variant.name ?? variant.options.map((option) => `${option.label}: ${attributeText(option)}`).join(" · ")}</option>)}</select>
             {(() => { const defaultId = detail.variants.find((item) => item.orderable)?.id ?? detail.variants[0].id; const variant = detail.variants.find((item) => item.id === (variantChoice[detail.id] ?? defaultId)) ?? detail.variants[0]; return <><strong className="mt-6 block text-xl">{toman(variant.price.amount)}</strong><span className="mt-2 block text-sm">{variant.orderable ? "موجود" : "ناموجود"}</span></>; })()}</> : <><strong className="mt-6 block text-xl">{toman(detail.price.amount)}</strong><span className="mt-2 block text-sm">وضعیت فروش ثبت نشده است</span></>}
-          <button disabled className="mt-5 min-h-12 w-full cursor-not-allowed rounded-full bg-[#292a24] px-7 py-4 text-sm text-white/60">ثبت سفارش آنلاین هنوز فعال نشده است</button>
+          {(() => { const variant = detail.variants.find((item) => item.id === (variantChoice[detail.id] ?? detail.variants.find((item) => item.orderable)?.id ?? detail.variants[0]?.id)); return <button disabled={view.previewOnly || !variant?.orderable} onClick={() => void addToCart(variant?.id)} className="mt-5 min-h-12 w-full rounded-full bg-[#292a24] px-7 py-4 text-sm text-white disabled:cursor-not-allowed disabled:bg-[#eeece7] disabled:text-[#77736a]">{view.previewOnly ? "پیش‌نمایش فروشگاه" : variant?.orderable ? "افزودن به سبد خرید" : "این گزینه ناموجود است"}</button>; })()}
+          {cartNotice && <p role="status" aria-live="polite" className="mt-3 text-sm text-[#6e6a60]">{cartNotice}</p>}
           {(detail.attributes.length > 0 || detail.variants.some((variant) => variant.options.length > 0)) && <section className="mt-8 border-t border-[#dfdcd4] pt-5"><h2 className="text-lg font-semibold">مشخصات محصول</h2><dl className="mt-3 divide-y divide-[#e8e5de]">{detail.attributes.map((attribute) => <div key={attribute.key} className="flex justify-between gap-4 py-3 text-sm"><dt className="text-[#77736a]">{attribute.label}</dt><dd className="font-medium">{attributeText(attribute)}</dd></div>)}{(detail.variants.find((variant) => variant.id === (variantChoice[detail.id] ?? detail.variants.find((item) => item.orderable)?.id ?? detail.variants[0]?.id)))?.options.map((option) => <div key={option.key} className="flex justify-between gap-4 py-3 text-sm"><dt className="text-[#77736a]">{option.label}</dt><dd className="font-medium">{attributeText(option)}</dd></div>)}</dl></section>}
         </div></article>}
     </section>}

@@ -390,6 +390,19 @@ enum PaymentMethod {
   INOTI_USSD
 }
 
+enum RetailPaymentReportKind {
+  BANK_RECEIPT
+  BANK_TIME
+  CASH_COLLECTION
+}
+
+enum RetailPaymentReportStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  CORRECTION_REQUESTED
+}
+
 enum InventoryMovementReason {
   INITIAL_STOCK
   MANUAL_ADJUSTMENT
@@ -1170,6 +1183,7 @@ model Organization {
   ussdPaymentIntents           UssdPaymentIntent[]
   ussdCallbackEvents           UssdCallbackEvent[]
   paymentRequests              PaymentRequest[]
+    retailPaymentReports         RetailPaymentReport[]
   paymentProviderAttempts      PaymentProviderAttempt[]
   paymentVerificationJobs      UssdPaymentVerificationJob[]
   ownedCollaborations          OrganizationCollaboration[]   @relation("CollaborationOwner")
@@ -2440,6 +2454,7 @@ model GuestCustomer {
 model Order {
   id          String      @id @default(cuid())
   orderNumber String      @unique
+  retailCheckoutKey String? @unique
   type        OrderType
   status      OrderStatus @default(PENDING)
 
@@ -2491,6 +2506,7 @@ model Order {
   paymentEvents      PaymentEvent[]
   ussdPaymentIntents UssdPaymentIntent[]
   paymentRequests    PaymentRequest[]
+  retailPaymentReports RetailPaymentReport[]
   statusHistory      OrderStatusHistory[]
   readyTimeHistory   OrderReadyTimeHistory[]
   inventoryMovements InventoryMovement[]
@@ -2630,6 +2646,32 @@ model Payment {
   @@index([orderId])
   @@index([status])
   @@index([transactionId])
+}
+
+// Reports are claims or collection records until an authorized operator confirms
+// them. The financial truth remains Order.paymentStatus and Payment.status.
+model RetailPaymentReport {
+  id               String                    @id @default(cuid())
+  organizationId   String
+  orderId          String
+  submittedById    String
+  kind             RetailPaymentReportKind
+  status           RetailPaymentReportStatus @default(PENDING_REVIEW)
+  receiptKey       String?
+  reportedAt       DateTime?
+  submittedContext Json?
+  cashMode         String?
+  collectorId      String?
+  reviewedById     String?
+  reviewedAt       DateTime?
+  reviewReason     String?
+  createdAt        DateTime                  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, orderId, createdAt])
+  @@index([organizationId, status, createdAt])
 }
 
 model PaymentEvent {

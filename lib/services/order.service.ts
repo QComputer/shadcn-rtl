@@ -1388,6 +1388,7 @@ if (!org?.slug) return
         where: { id },
         include: {
           items: true,
+          payment: true,
           customer: {
             select: {
               id: true,
@@ -1416,6 +1417,16 @@ if (!org?.slug) return
       }
 
       assertAllowedStatusTransition(existingOrder.status, nextStatus);
+      if (existingOrder.retailCheckoutKey && existingOrder.paymentMethod === "CASH" &&
+          nextStatus === "ACCEPTED" && existingOrder.paymentStatus !== "COMPLETED") {
+        const metadata = existingOrder.payment?.metadata;
+        const retail = metadata && typeof metadata === "object" && !Array.isArray(metadata)
+          ? (metadata as Record<string, unknown>).retailR4 : null;
+        if (retail && typeof retail === "object" && !Array.isArray(retail) &&
+            (retail as Record<string, unknown>).cashBeforeConfirmation === true) {
+          throw new ApiError(409, "Cash must be confirmed before accepting this order.");
+        }
+      }
 
       const shouldRestoreInventory =
         ["REFUNDED", "CANCELLED"].includes(nextStatus) &&
@@ -1622,6 +1633,7 @@ if (!org?.slug) return
           paymentStatus: true,
           paymentMethod: true,
           paymentId: true,
+          retailCheckoutKey: true,
           customerId: true,
           guestCustomerId: true,
           guestCustomer: {
@@ -1642,6 +1654,8 @@ if (!org?.slug) return
       if (!existingOrder) {
         throw new Error("Order not found");
       }
+
+      if (existingOrder.retailCheckoutKey) throw new ApiError(409, "Retail payments require the verified retail workflow.");
 
       const paidAt = nextStatus === "COMPLETED" ? new Date() : null;
 

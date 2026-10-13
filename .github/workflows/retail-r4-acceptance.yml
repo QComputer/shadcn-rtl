@@ -1,0 +1,86 @@
+name: Retail R4 isolated acceptance
+
+on:
+  push:
+    branches:
+      - codex/retail-r4-checkout-20261013
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  retail-r4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: retail_r4
+          POSTGRES_DB: bazarbaaz_retail_r4
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 55433:5432
+        options: >-
+          --health-cmd "pg_isready -U retail_r4 -d bazarbaaz_retail_r4"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://retail_r4@127.0.0.1:55433/bazarbaaz_retail_r4?schema=public
+      DIRECT_URL: postgresql://retail_r4@127.0.0.1:55433/bazarbaaz_retail_r4?schema=public
+      LOCAL_PRISMA_EXPECTED_PORT: "55433"
+      RETAIL_R4_EXPECTED_DATABASE: bazarbaaz_retail_r4
+      AUTH_TRUST_HOST: "true"
+      AUTH_URL: http://127.0.0.1:3000
+      NEXTAUTH_URL: http://127.0.0.1:3000
+      NEXT_TELEMETRY_DISABLED: "1"
+      CI: "true"
+      RETAIL_RECEIPT_TEST_STORAGE: "1"
+      RETAIL_RECEIPT_LOCAL_ROOT: ${{ runner.temp }}/retail-r4-private-receipts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Create ephemeral test credentials
+        run: |
+          auth_secret="$(openssl rand -hex 32)"
+          test_password="$(openssl rand -hex 20)"
+          echo "::add-mask::$auth_secret"
+          echo "::add-mask::$test_password"
+          echo "NEXTAUTH_SECRET=$auth_secret" >> "$GITHUB_ENV"
+          echo "RETAIL_R4_TEST_PASSWORD=$test_password" >> "$GITHUB_ENV"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate
+      - name: Validate Prisma schema
+        run: pnpm exec prisma validate
+      - name: Apply all migrations to disposable PostgreSQL 17
+        run: pnpm exec prisma migrate deploy
+      - name: Seed synthetic tenants
+        run: pnpm exec tsx scripts/retail/r4-fixtures.mjs seed
+      - name: Verify tenant catalog and restaurant separation
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/retail/r4-fixtures.mjs verify
+      - name: Focused regressions
+        run: >-
+          pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test
+          tests/unit/public-catalog-contract.test.ts
+          tests/unit/retail-attribute-validation.test.ts
+          tests/unit/tenant-capabilities-and-push.test.ts
+          tests/unit/shop-menu-filter.test.ts
+          tests/unit/hotel-management-api-security.test.ts
+          tests/integration/order-price-snapshot.local.test.ts
+          tests/integration/payment-inoti-e2e.local.test.ts
+      - name: ESLint
+        run: pnpm run lint --no-cache
+      - name: TypeScript
+        run: pnpm run typecheck
+      - name: Production build
+        run: pnpm run build

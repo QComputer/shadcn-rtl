@@ -1,4 +1,5 @@
 {
   "framework": "nextjs",
-  "buildCommand": "pnpm run build"
+  "buildCommand": "pnpm run build",
+  "ignoreCommand": "node scripts/retail/ignore-r4-vercel.mjs"
 }

@@ -14,7 +14,7 @@ const evidenceDir = path.resolve("artifacts/retail-r3-browser");
 const imagePath = path.join(evidenceDir, "synthetic-preview.png");
 const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j2ioAAAAASUVORK5CYII=", "base64");
 
-async function login(browser, email, locale = "fa") {
+async function login(browser, email, locale = "fa", { expectedCatalogStatus = 200 } = {}) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto(`${baseUrl}/${locale}/login?callbackUrl=${encodeURIComponent(`/${locale}/dashboard/retail-catalog`)}`);
@@ -41,11 +41,12 @@ async function login(browser, email, locale = "fa") {
   if (catalogResponse.status() === 401) {
     throw new Error("AUTH_COOKIE_PROPAGATION_OR_SERVER_SESSION_FAILURE: /api/auth/session was authenticated in the browser, but the merchant API returned HTTP 401.");
   }
-  if (catalogResponse.status() === 403) {
+  if (catalogResponse.status() === 403 && expectedCatalogStatus !== 403) {
     const body = await catalogResponse.json().catch(() => ({}));
     throw new Error(`MERCHANT_AUTHORIZATION_OR_CAPABILITY_DENIAL: authenticated manager catalog read returned HTTP 403: ${body.error ?? "no message"}`);
   }
-  assert.equal(catalogResponse.status(), 200, `authenticated merchant catalog read returned HTTP ${catalogResponse.status()}`);
+  assert.equal(catalogResponse.status(), expectedCatalogStatus, `authenticated merchant catalog read returned HTTP ${catalogResponse.status()}`);
+  if (expectedCatalogStatus === 403) return { context, page };
   // The credentials callback may return the dashboard root when callbackUrl is
   // normalized by the app. Navigate explicitly to the merchant catalog route;
   // the browser session and server-side route authorization remain in force.
@@ -130,8 +131,14 @@ async function createAndPublish({ browser, email, locale, organization, category
   assert.equal(publicDetail.status(), 200, "published product detail must be public");
   const detailBody = await publicDetail.json();
   const data = detailBody.data ?? detailBody;
+  const managedDetailResponse = await page.context().request.get(`${baseUrl}/api/dashboard/retail/catalog/${productId}`);
+  assert.equal(managedDetailResponse.status(), 200, "manager must still read the product after publication");
+  const managedProduct = (await managedDetailResponse.json()).product;
+  const managedVariant = managedProduct.variants[0];
+  assert.equal(managedVariant.price, attribute === "ram" ? 45900000 : 650000, `persisted variant price mismatch: ${JSON.stringify({ price: managedVariant.price, inventory: managedVariant.inventory, reservedQuantity: managedVariant.reservedQuantity })}`);
+  assert.equal(managedVariant.inventory, 3, `persisted variant inventory mismatch: ${JSON.stringify({ price: managedVariant.price, inventory: managedVariant.inventory, reservedQuantity: managedVariant.reservedQuantity })}`);
   assert.equal(data.variants[0].price.amount, attribute === "ram" ? 45900000 : 650000);
-  assert.equal(data.variants[0].orderable, true);
+  assert.equal(data.variants[0].orderable, true, `published variant with inventory must be orderable: ${JSON.stringify({ price: data.variants[0].price.amount, orderable: data.variants[0].orderable })}`);
   await page.goto(`${baseUrl}/fa/retail/${organization}/product/${slug}`);
   await page.getByText(`${name} ویرایش‌شده`).waitFor();
   await page.screenshot({ path: path.join(evidenceDir, `${organization}-published-detail.png`), fullPage: true });
@@ -152,8 +159,11 @@ async function main() {
     const fashion = await createAndPublish({ browser, email: "r3-fashion-manager@example.test", locale: "fa", organization: "retail-r3-fashion-preview", category: "کتانی", attribute: "material", option: "color-size", slug: "browser-r3-fashion", sku: "R3-BROWSER-SHOE-41", name: "کفش پیش‌نمایش مرورگر" });
     const electronics = await createAndPublish({ browser, email: "r3-mobile-manager@example.test", locale: "fa", organization: "retail-r3-mobile-preview", category: "گوشی هوشمند", attribute: "ram", option: "color-storage", slug: "browser-r3-phone", sku: "R3-BROWSER-PHONE-256", name: "موبایل پیش‌نمایش مرورگر" });
 
-    const staff = await login(browser, "r3-fashion-staff@example.test", "fa");
-    const denied = await staff.page.context().request.post(`${baseUrl}/api/dashboard/retail/catalog`, { data: {} });
+    const staff = await login(browser, "r3-fashion-staff@example.test", "fa", { expectedCatalogStatus: 403 });
+    const denied = await staff.page.context().request.post(`${baseUrl}/api/dashboard/retail/catalog`, {
+      headers: { origin: baseUrl, "sec-fetch-site": "same-origin" },
+      data: {},
+    });
     assert.equal(denied.status(), 403, "staff member must not write the catalog");
     await staff.context.close();
 

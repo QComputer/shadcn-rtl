@@ -240,7 +240,10 @@ try {
   assert.equal(betaApple.body.readUInt32BE(20), 180, "second tenant Apple Touch Icon height");
 
   const alphaPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-  const alphaPageResponse = await alphaPage.goto(`http://${hosts.alpha}:${port}/en/${alpha.slug}`, { waitUntil: "domcontentloaded" });
+  // A custom-domain root is the public browser URL. The proxy maps it to the
+  // organization route internally; requesting /en/<slug> on the custom host
+  // is an unsupported path and intentionally resolves to the unavailable page.
+  const alphaPageResponse = await alphaPage.goto(`http://${hosts.alpha}:${port}/en`, { waitUntil: "domcontentloaded" });
   assert.ok(alphaPageResponse && alphaPageResponse.status() === 200, "synthetic tenant page loads in production mode");
   await alphaPage.locator("body").waitFor();
   const metadata = await alphaPage.evaluate(() => ({
@@ -252,7 +255,8 @@ try {
     path: window.location.pathname,
   }));
   console.log("tenant-alpha-page-icons", JSON.stringify(metadata));
-  assert.equal(metadata.path, `/en/${alpha.slug}`, "browser remains on the requested tenant path");
+  assert.equal(metadata.path, "/en", "browser remains on the tenant's localized custom-domain root");
+  assert.match(metadata.title, /Synthetic Alpha/, "tenant root renders the expected organization's metadata");
   assert.ok(metadata.manifest.some((href) => href?.includes("manifest.webmanifest")), "tenant page advertises a manifest");
   assert.ok(metadata.icons.some((href) => href?.includes("aka-shoes")), `tenant page advertises the tenant favicon: ${JSON.stringify(metadata.icons)}`);
   assert.ok(metadata.apple.some((href) => href?.includes("aka-shoes")), `tenant page advertises the tenant Apple icon: ${JSON.stringify(metadata.apple)}`);
@@ -260,7 +264,7 @@ try {
   await alphaPage.close();
 
   const betaPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  const betaPageResponse = await betaPage.goto(`http://${hosts.beta}:${port}/en/${beta.slug}`, { waitUntil: "domcontentloaded" });
+  const betaPageResponse = await betaPage.goto(`http://${hosts.beta}:${port}/en`, { waitUntil: "domcontentloaded" });
   assert.ok(betaPageResponse && betaPageResponse.status() === 200, "second tenant page loads in production mode");
   await betaPage.locator("body").waitFor();
   await betaPage.screenshot({ path: `${artifactDir}/tenant-beta-mobile.png`, fullPage: true });

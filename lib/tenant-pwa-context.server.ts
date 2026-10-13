@@ -52,25 +52,41 @@ export async function resolveTenantPwaRequestContext(requestHeaders: HeaderReade
     const isTrustedForward = requestHeaders.get("x-bazar-forwarded-app") === "true";
     const organizationId = isTrustedForward ? requestHeaders.get("x-bazar-tenant-organization-id") : null;
     const forwardedHost = isTrustedForward ? normalizeDomainHost(requestHeaders.get("x-bazar-forwarded-host")) : "";
-    if (!organizationId || !forwardedHost) return { kind: "platform", organizationId: "platform" };
+    if (isTrustedForward) {
+      if (!organizationId || !forwardedHost) return { kind: "unknown" };
 
-    // proxy.ts strips incoming copies of these headers and sets them only after
-    // token validation plus APP endpoint/domain ownership checks. Recheck the
-    // active organization and endpoint to fail closed if configuration changed.
-    const [tenant, endpoint] = await Promise.all([
-      loadTenant(organizationId, requestHeaders.get("x-bazar-tenant-public-locale")),
-      resolveOrganizationEndpointForTenant({ organizationId, role: "APP" }).catch(() => null),
-    ]);
-    if (tenant.kind !== "tenant" || !endpoint) return { kind: "unknown" };
-    let endpointHost = "";
-    try {
-      endpointHost = normalizeDomainHost(new URL(endpoint.origin).host);
-    } catch {
-      return { kind: "unknown" };
+      // proxy.ts strips incoming copies of these headers and sets them only after
+      // token validation plus APP endpoint/domain ownership checks. Recheck the
+      // active organization and endpoint to fail closed if configuration changed.
+      const [tenant, endpoint] = await Promise.all([
+        loadTenant(organizationId, requestHeaders.get("x-bazar-tenant-public-locale")),
+        resolveOrganizationEndpointForTenant({ organizationId, role: "APP" }).catch(() => null),
+      ]);
+      if (tenant.kind !== "tenant" || !endpoint) return { kind: "unknown" };
+      let endpointHost = "";
+      try {
+        endpointHost = normalizeDomainHost(new URL(endpoint.origin).host);
+      } catch {
+        return { kind: "unknown" };
+      }
+      return endpointHost === forwardedHost && endpoint.pathPrefix === resolveAppBasePath()
+        ? tenant
+        : { kind: "unknown" };
     }
-    return endpointHost === forwardedHost && endpoint.pathPrefix === resolveAppBasePath()
-      ? tenant
-      : { kind: "unknown" };
+
+    // For direct custom-domain page rewrites, proxy.ts sanitizes client copies
+    // before setting this verified domain/organization pair. Re-resolve the
+    // active domain instead of treating the rewritten platform Host as branding.
+    if (requestHeaders.get("x-bazar-custom-domain") === "true") {
+      const tenantDomain = normalizeDomainHost(requestHeaders.get("x-bazar-tenant-domain"));
+      const tenantOrganizationId = requestHeaders.get("x-bazar-tenant-organization-id");
+      if (!tenantDomain || !tenantOrganizationId) return { kind: "unknown" };
+      const tenant = await resolveActiveTenantForHost(prisma, tenantDomain).catch(() => null);
+      if (!tenant || tenant.organizationId !== tenantOrganizationId) return { kind: "unknown" };
+      return loadTenant(tenant.organizationId, requestHeaders.get("x-bazar-tenant-public-locale") || tenant.locale);
+    }
+
+    return { kind: "platform", organizationId: "platform" };
   }
 
   const tenant = await resolveActiveTenantForHost(prisma, host).catch(() => null);

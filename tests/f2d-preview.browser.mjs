@@ -30,6 +30,14 @@ try {
   assert.equal(await page.locator('main[data-provenance="PREVIEW"]').count(), 1);
   assert.equal(await page.locator("text=پیش‌نمایش داخلی طراحی").count(), 1);
 
+  const websiteGate = await page.evaluate(async () => {
+    const response = await fetch("/api/hotel/v1/website/properties/f2d-runtime-probe?locale=fa", { cache: "no-store" });
+    return { status: response.status, body: await response.json() };
+  });
+  assert.equal(websiteGate.status, 503, "public website route remains disabled in local runtime");
+  assert.equal(websiteGate.body.error, "WEBSITE_DISABLED");
+  assert.equal(JSON.stringify(websiteGate.body).includes("preview"), false, "disabled public API does not leak preview content");
+
   for (const width of [360, 390, 768, 820, 1024, 1665]) {
     await page.setViewportSize({ width, height: width < 500 ? 844 : 896 });
     await page.waitForTimeout(80);
@@ -40,6 +48,23 @@ try {
   await page.setViewportSize({ width: 1665, height: 896 });
   await page.screenshot({ path: fileURLToPath(new URL("desktop-1665x896-viewport.png", output)), fullPage: false });
   await page.screenshot({ path: fileURLToPath(new URL("desktop-full.png", output)), fullPage: true });
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.screenshot({ path: fileURLToPath(new URL("desktop-1440x900-viewport.png", output)), fullPage: false });
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.screenshot({ path: fileURLToPath(new URL("tablet-768x1024-viewport.png", output)), fullPage: false });
+  await page.setViewportSize({ width: 1665, height: 896 });
+
+  const firstRoom = page.getByRole("button", { name: /مشاهده تصاویر/ }).first();
+  await firstRoom.click();
+  const roomDialog = page.getByTestId("room-gallery-dialog");
+  await roomDialog.waitFor();
+  assert.equal(await roomDialog.getByRole("button", { name: "تصویر قبلی اتاق" }).isDisabled(), true, "single-image preview keeps gallery navigation disabled");
+  assert.equal(await roomDialog.getByRole("button", { name: "تصویر بعدی اتاق" }).isDisabled(), true, "single-image preview keeps gallery navigation disabled");
+  await page.screenshot({ path: fileURLToPath(new URL("desktop-room-gallery-open-1665x896.png", output)), fullPage: false });
+  await page.keyboard.press("Escape");
+  await roomDialog.waitFor({ state: "detached" });
+  assert.equal(await firstRoom.evaluate((button) => document.activeElement === button), true, "room gallery Escape restores trigger focus");
 
   const arrival = page.getByRole("button", { name: "انتخاب تاریخ ورود شمسی" });
   await arrival.click();
@@ -56,13 +81,23 @@ try {
   await guestDialog.waitFor();
   await page.screenshot({ path: fileURLToPath(new URL("desktop-guests-open-1665x896.png", output)), fullPage: false });
   await guestDialog.getByRole("button", { name: "افزایش بزرگسال" }).click();
-  assert.equal(await guestDialog.getByLabel("تعداد بزرگسالان").innerText(), "۲");
+  assert.equal(await guestDialog.getByRole("status", { name: "تعداد بزرگسالان" }).innerText(), "۲");
   await page.keyboard.press("Escape");
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload({ waitUntil: "networkidle" });
   await page.screenshot({ path: fileURLToPath(new URL("mobile-390x844-viewport.png", output)), fullPage: false });
   await page.screenshot({ path: fileURLToPath(new URL("mobile-full.png", output)), fullPage: true });
+  const mobileRoomTrigger = page.getByRole("button", { name: /مشاهده تصاویر/ }).first();
+  await mobileRoomTrigger.click();
+  const mobileRoomDialog = page.getByTestId("room-gallery-dialog");
+  await mobileRoomDialog.waitFor();
+  const galleryBounds = await mobileRoomDialog.boundingBox();
+  assert.ok(galleryBounds && galleryBounds.x >= 0 && galleryBounds.x + galleryBounds.width <= 390, "room gallery fits mobile viewport");
+  await page.screenshot({ path: fileURLToPath(new URL("mobile-room-gallery-open-390x844.png", output)), fullPage: false });
+  await page.keyboard.press("Escape");
+  await mobileRoomDialog.waitFor({ state: "detached" });
+  assert.equal(await mobileRoomTrigger.evaluate((button) => document.activeElement === button), true, "mobile room gallery Escape restores trigger focus");
   const menu = page.getByRole("button", { name: "باز کردن منو" });
   await menu.click();
   assert.equal(await page.getByRole("navigation", { name: "پیمایش موبایل" }).isVisible(), true);
@@ -76,7 +111,7 @@ try {
   assert.match(await page.locator("#booking").innerText(), /تاریخ ورود و خروج|تاریخ انتخاب‌شده|هیچ درخواستی ارسال نشد/);
   assert.deepEqual(forbiddenRequests, [], "preview did not call booking, hold or payment APIs");
   assert.deepEqual(pageErrors, [], "no uncaught browser errors");
-  console.log(JSON.stringify({ result: "PASS", route: baseUrl, viewports: [360, 390, 768, 820, 1024, 1665], forbiddenRequests: forbiddenRequests.length, pageErrors: pageErrors.length, screenshots: ["desktop-1665x896-viewport.png", "desktop-full.png", "desktop-calendar-open-1665x896.png", "desktop-guests-open-1665x896.png", "mobile-390x844-viewport.png", "mobile-full.png", "mobile-calendar-open-390x844.png"] }, null, 2));
+  console.log(JSON.stringify({ result: "PASS", route: baseUrl, viewports: [360, 390, 768, 820, 1024, 1440, 1665], websiteGate: websiteGate.status, forbiddenRequests: forbiddenRequests.length, pageErrors: pageErrors.length, screenshots: ["desktop-1665x896-viewport.png", "desktop-1440x900-viewport.png", "tablet-768x1024-viewport.png", "desktop-full.png", "desktop-room-gallery-open-1665x896.png", "desktop-calendar-open-1665x896.png", "desktop-guests-open-1665x896.png", "mobile-390x844-viewport.png", "mobile-full.png", "mobile-room-gallery-open-390x844.png", "mobile-calendar-open-390x844.png"] }, null, 2));
 } finally {
   await browser.close();
 }

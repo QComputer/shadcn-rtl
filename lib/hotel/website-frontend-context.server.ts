@@ -1,7 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/db-runtime";
-import { resolveHotelWebsiteTenantForHost } from "@/lib/hotel/services/hotel-publication.service";
+import { resolveHotelWebsiteTenantForHost } from "@/lib/hotel/content/hotel-website-public.service";
 
 export type HotelWebsiteFrontendContext =
   | Readonly<{ status: "READY"; propertySlug: string }>

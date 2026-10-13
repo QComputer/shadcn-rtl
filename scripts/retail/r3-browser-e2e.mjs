@@ -215,8 +215,9 @@ async function main() {
 
     const publicPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
     await makeRemoteFontsDeterministic(publicPage);
-    await publicPage.goto(`${baseUrl}/fa/retail/retail-r3-fashion-preview`);
+    await publicPage.goto(`${baseUrl}/fa/retail/retail-r3-fashion-preview`, { waitUntil: "domcontentloaded", timeout: 60000 });
     assert.equal(await publicPage.locator("html").getAttribute("dir"), "rtl");
+    await publicPage.getByRole("link", { name: "کفش پیش‌نمایش مرورگر ویرایش‌شده" }).waitFor({ timeout: 20000 });
     await captureRenderedViewport(publicPage, path.join(evidenceDir, "fashion-storefront-rtl-390.png"));
     console.log(JSON.stringify({ status: "PASSED", fashionProductId: fashion, electronicsProductId: electronics, viewport: "390x844", screenshots: evidenceDir }));
   } finally {

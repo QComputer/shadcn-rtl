@@ -114,7 +114,10 @@ async function createAndPublish({ browser, email, locale, organization, category
   await previewImage.click();
   assert.equal(await previewImage.getAttribute("aria-pressed"), "true", "same-tenant PREVIEW media must be attachable to a product");
   await page.getByRole("button", { name: "ذخیره پیش‌نویس" }).click();
-  await page.waitForURL("**/fa/dashboard/retail-catalog/*", { timeout: 60000 });
+  await page.waitForURL((url) => {
+    const segments = url.pathname.split("/").filter(Boolean);
+    return segments.at(-2) === "retail-catalog" && segments.at(-1) !== "new";
+  }, { timeout: 60000 });
   const productId = page.url().split("/").at(-1);
   await page.getByRole("button", { name: "پیش‌نمایش" }).click();
   await page.locator("div").filter({ hasText: /^پیش‌نمایش مدیر فروشگاه · این کالا هنوز برای مشتریان منتشر نشده است$/ }).waitFor();

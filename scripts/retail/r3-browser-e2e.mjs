@@ -56,7 +56,13 @@ async function createAndPublish({ browser, email, locale, organization, category
   assert.equal(unauthorized.status(), 401, "unauthenticated catalog read must be rejected");
   await unauthorizedPage.close();
 
-  await page.getByRole("link", { name: locale === "fa" ? "افزودن محصول" : "Add product" }).click();
+  const addProductLink = page.getByRole("link", { name: locale === "fa" ? "افزودن محصول" : "Add product" });
+  if (await addProductLink.count() !== 1) {
+    const renderedText = (await page.locator("body").innerText()).slice(0, 1600);
+    await page.screenshot({ path: path.join(evidenceDir, `${organization}-dashboard-diagnostic.png`), fullPage: true });
+    throw new Error(`MERCHANT_DASHBOARD_CONTROL_MISSING: expected one localized add-product link; rendered body starts: ${renderedText}`);
+  }
+  await addProductLink.click();
   await page.getByLabel(locale === "fa" ? "نام محصول" : "Product name").fill(name);
   await page.getByLabel(locale === "fa" ? "نشانی کوتاه (اختیاری)" : "URL slug (optional)").fill(slug);
   await page.getByLabel(locale === "fa" ? "توضیحات محصول" : "Product description").fill("پیش‌نمایش مصنوعی برای آزمون جریان مدیریت کالا.");

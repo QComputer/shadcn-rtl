@@ -3,9 +3,19 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import { phones, shoes, type RetailStore as Store } from "./retail-data";
+import type { PublicCatalogProduct } from "@/lib/public-catalog/contracts";
+import RetailLiveCatalog from "@/app/[locale]/retail/[organization]/retail-catalog";
 const rial = (n: number) => new Intl.NumberFormat("fa-IR").format(n) + " تومان";
 
-export default function RetailPreview({ store, productId }: { store: Store; productId?: string }) {
+type LiveView = { identifier: string; name: string; description: string | null; theme: "FASHION" | "ELECTRONICS" | "GENERAL"; previewOnly: boolean; categories: Array<{ id: string; name: string; slug: string | null }>; products: PublicCatalogProduct[] };
+
+export default function RetailPreview({ store, productId, liveView }: { store?: Store; productId?: string; liveView?: LiveView }) {
+  if (liveView) return <RetailLiveCatalog view={liveView} productSlug={productId} />;
+  if (!store) return null;
+  return <RetailPreviewFixture store={store} productId={productId} />;
+}
+
+function RetailPreviewFixture({ store, productId }: { store: Store; productId?: string }) {
   const fashion = store === "fashion";
   const products = fashion ? shoes : phones;
   const [query, setQuery] = useState("");

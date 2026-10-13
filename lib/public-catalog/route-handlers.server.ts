@@ -30,8 +30,9 @@ export async function categoryHandler(request: NextRequest, context: NestedParam
 export async function productsHandler(request: NextRequest, context: OrganizationParams, head = false) {
   const { organizationIdentifier } = await context.params;
   return respond(request, () => {
-    const query = publicCatalogListQuerySchema.parse(Object.fromEntries(request.nextUrl.searchParams));
-    return listPublicCatalogProducts({ organizationIdentifier, page: query.page, limit: query.limit, category: query.category, q: query.q });
+    const params = request.nextUrl.searchParams;
+    const query = publicCatalogListQuerySchema.parse({ ...Object.fromEntries(params), ...(params.has("filter") ? { filter: params.getAll("filter") } : {}) });
+    return listPublicCatalogProducts({ organizationIdentifier, page: query.page, limit: query.limit, category: query.category, q: query.q, filter: "filter" in query ? query.filter : undefined });
   }, head);
 }
 export async function productHandler(request: NextRequest, context: NestedParams, head = false) {

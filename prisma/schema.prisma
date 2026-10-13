@@ -415,6 +415,18 @@ enum ImageAccess {
   PRIVATE
 }
 
+enum RetailAttributeScope {
+  PRODUCT
+  VARIANT_OPTION
+}
+
+enum RetailAttributeValueType {
+  TEXT
+  NUMBER
+  BOOLEAN
+  ENUM
+}
+
 enum CustomerClubMembershipStatus {
   ACTIVE
   PAUSED
@@ -1168,6 +1180,7 @@ model Organization {
   services                     Service[]
   productCategories            ProductCategory[]
   products                     Product[]
+  retailAttributeDefinitions   RetailAttributeDefinition[]
   carts                        ShopCart[]
   orders                       Order[]
   followers                    Follow[]
@@ -1232,6 +1245,8 @@ model OrganizationBranding {
   logoUrl                   String?
   faviconUrl                String?
   appleTouchIconUrl         String?
+  retailPresentationTheme  String?                   // FASHION, ELECTRONICS, GENERAL; presentation only
+  retailPreviewOnly        Boolean                   @default(false)
   pwaIcon192Url             String?
   pwaIcon512Url             String?
   ogImageUrl                String?
@@ -2247,6 +2262,7 @@ model Product {
   category            ProductCategory  @relation(fields: [categoryId], references: [id])
   aiPrimaryMediaAsset AiMediaAsset?    @relation("ProductAiPrimaryMediaAsset", fields: [aiPrimaryMediaAssetId], references: [id], onDelete: SetNull)
   variants            ProductVariant[]
+  attributeValues     ProductAttributeValue[]
   orderItems          OrderItem[]
 
   createdAt DateTime  @default(now())
@@ -2282,6 +2298,7 @@ model ProductVariant {
   cartItems          ShopCartItem[]
   orderItems         OrderItem[]
   inventoryMovements InventoryMovement[]
+  optionValues       ProductVariantAttributeValue[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -2289,6 +2306,66 @@ model ProductVariant {
 
   @@index([productId])
   @@index([deletedAt])
+}
+
+// Tenant-configured retail attributes. PRODUCT definitions describe/filter the
+// product; VARIANT_OPTION definitions are assigned only to explicitly created
+// purchasable variants. No option combination generation is implied.
+model RetailAttributeDefinition {
+  id                String                    @id @default(cuid())
+  organizationId    String
+  key               String
+  label             String
+  localizedLabels   Json                      @default("{}")
+  scope             RetailAttributeScope
+  valueType         RetailAttributeValueType
+  displayUnit       String?
+  localizedUnits    Json                      @default("{}")
+  allowedValues     Json?
+  isFilterable      Boolean                   @default(false)
+  sortOrder         Int                       @default(0)
+  isActive          Boolean                   @default(true)
+  organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  productValues     ProductAttributeValue[]
+  variantValues     ProductVariantAttributeValue[]
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  @@unique([organizationId, key])
+  @@unique([id, organizationId])
+  @@index([organizationId, scope, isActive, sortOrder])
+}
+
+model ProductAttributeValue {
+  id             String                   @id @default(cuid())
+  productId      String
+  definitionId   String
+  valueText      String?
+  valueNumber    Decimal?                  @db.Decimal(18, 4)
+  valueBoolean   Boolean?
+  product        Product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  definition     RetailAttributeDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, definitionId])
+  @@index([definitionId, valueText])
+  @@index([definitionId, valueNumber])
+  @@index([definitionId, valueBoolean])
+}
+
+model ProductVariantAttributeValue {
+  id             String                   @id @default(cuid())
+  variantId      String
+  definitionId   String
+  valueText      String?
+  valueNumber    Decimal?                  @db.Decimal(18, 4)
+  valueBoolean   Boolean?
+  variant        ProductVariant           @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  definition     RetailAttributeDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
+
+  @@unique([variantId, definitionId])
+  @@index([definitionId, valueText])
+  @@index([definitionId, valueNumber])
+  @@index([definitionId, valueBoolean])
 }
 
 model ShopCart {

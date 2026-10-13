@@ -1,5 +1,5 @@
 export type RetailStore = "fashion" | "electronics";
-export type RetailPreviewProduct = { id: string; title: string; category: string; price: number; image: string; note: string; attrs: Record<string, string>; variants: { label: string; price: number; stock: number; sku: string }[] };
+export type RetailPreviewProduct = { id: string; title: string; category: string; price: number; image: string; gallery?: string[]; note: string; attrs: Record<string, string>; variants: { label: string; price: number; stock: number; sku: string; available?: boolean }[] };
 
 export const shoes: RetailPreviewProduct[] = [
   { id: "s1", title: "کتانی شهری آوید", category: "کتانی", price: 2980000, image: "/retail-preview/preview-fashion-campaign.png", note: "سبک و راحت برای روزهای پررفت‌وآمد", attrs: { جنس: "چرم طبیعی", استایل: "روزمره" }, variants: [{ label: "مشکی · ۴۱", price: 2980000, stock: 4, sku: "PREVIEW-SHOE-41-BK" }, { label: "سفید · ۴۲", price: 2980000, stock: 2, sku: "PREVIEW-SHOE-42-WH" }] },

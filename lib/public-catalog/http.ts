@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { ApiError } from "@/lib/api-guards";
 
-export const PUBLIC_CATALOG_CACHE_CONTROL = "public, max-age=60, s-maxage=300, stale-while-revalidate=86400";
+export const PUBLIC_CATALOG_CACHE_CONTROL = "public, max-age=0, s-maxage=15, stale-while-revalidate=30";
 
 const publicHeaders = {
   "Access-Control-Allow-Origin": "*",

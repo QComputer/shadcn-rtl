@@ -49,11 +49,18 @@ jobs:
 
       - name: Create ephemeral test credentials
         run: |
-          echo "NEXTAUTH_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
-          echo "RETAIL_R3_TEST_PASSWORD=$(openssl rand -hex 20)" >> "$GITHUB_ENV"
+          auth_secret="$(openssl rand -hex 32)"
+          test_password="$(openssl rand -hex 20)"
+          echo "::add-mask::$auth_secret"
+          echo "::add-mask::$test_password"
+          echo "NEXTAUTH_SECRET=$auth_secret" >> "$GITHUB_ENV"
+          echo "RETAIL_R3_TEST_PASSWORD=$test_password" >> "$GITHUB_ENV"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client in the isolated runner
+        run: pnpm exec prisma generate
 
       - name: Apply migrations to the isolated PostgreSQL 17 service
         run: pnpm exec prisma migrate deploy

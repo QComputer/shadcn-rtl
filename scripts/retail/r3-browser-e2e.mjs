@@ -23,6 +23,7 @@ async function login(browser, email, locale = "fa") {
   await page.locator("#password").fill(password);
   await page.locator('button[type="submit"]').click();
   await page.waitForURL(`**/${locale}/dashboard/retail-catalog`, { timeout: 60000 });
+  assert.equal(new URL(page.url()).origin, new URL(baseUrl).origin, "credential login must remain on the configured local test origin");
   const sessionResponse = await page.evaluate(async () => {
     const response = await fetch("/api/auth/session");
     return { status: response.status, session: await response.json() };

@@ -33,6 +33,8 @@ jobs:
       LOCAL_PRISMA_EXPECTED_PORT: "55432"
       RETAIL_R3_EXPECTED_DATABASE: bazarbaaz_retail_r3
       AI_MEDIA_LOCAL_DOCKER_E2E: "1"
+      AUTH_TRUST_HOST: "true"
+      AUTH_URL: http://127.0.0.1:3000
       NEXTAUTH_URL: http://127.0.0.1:3000
       NEXT_TELEMETRY_DISABLED: "1"
 
@@ -94,12 +96,13 @@ jobs:
 
       - name: Start the isolated acceptance server
         run: |
-          pnpm start --port 3000 > /tmp/retail-r3-next.log 2>&1 &
+          mkdir -p artifacts/retail-r3-browser
+          pnpm start --port 3000 > artifacts/retail-r3-browser/next.log 2>&1 &
           for attempt in $(seq 1 60); do
             if curl --fail --silent http://127.0.0.1:3000/fa/login >/dev/null; then exit 0; fi
             sleep 2
           done
-          cat /tmp/retail-r3-next.log
+          cat artifacts/retail-r3-browser/next.log
           exit 1
 
       - name: Authenticated merchant browser acceptance
@@ -113,7 +116,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: retail-r3-browser-evidence
-          path: |
-            artifacts/retail-r3-browser/
-            /tmp/retail-r3-next.log
+          path: artifacts/retail-r3-browser/
           if-no-files-found: warn

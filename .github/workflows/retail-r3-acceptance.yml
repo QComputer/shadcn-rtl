@@ -80,7 +80,7 @@ jobs:
         run: pnpm exec tsx scripts/retail/r3-fixtures.mjs seed
 
       - name: Verify SQL catalog, tenant isolation, and restaurant compatibility
-        run: pnpm exec tsx scripts/retail/r3-fixtures.mjs verify
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/retail/r3-fixtures.mjs verify
 
       - name: Production build
         run: pnpm run build

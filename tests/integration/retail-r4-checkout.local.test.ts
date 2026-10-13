@@ -180,6 +180,7 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
     // oversell or increment the coupon count.
     const secondary = await db.user.create({ data: {
       email: `r4-concurrency-${suffix}@example.test`, name: "R4 synthetic concurrent buyer", role: "CUSTOMER", isActive: true,
+      password: customer.password,
     } });
     secondaryCustomerId = secondary.id;
     await db.productVariant.update({ where: { id: variantId }, data: { inventory: 1 } });

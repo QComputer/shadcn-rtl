@@ -183,6 +183,12 @@ async function createAndPublish({ browser, email, locale, organization, category
   await page.goto(`${baseUrl}/fa/retail/${organization}/product/${slug}`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.getByRole("heading", { name: `${name} ویرایش‌شده` }).waitFor({ timeout: 20000 });
   await captureRenderedViewport(page, path.join(evidenceDir, `${organization}-published-detail.png`));
+  const storefrontPage = await context.newPage();
+  await makeRemoteFontsDeterministic(storefrontPage);
+  await storefrontPage.goto(`${baseUrl}/fa/retail/${organization}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await storefrontPage.getByRole("link", { name: `${name} ویرایش‌شده` }).waitFor({ timeout: 20000 });
+  await captureRenderedViewport(storefrontPage, path.join(evidenceDir, `${organization}-published-catalog.png`));
+  await storefrontPage.close();
   await page.goto(`${baseUrl}/fa/dashboard/retail-catalog/${productId}`);
   await page.getByRole("button", { name: "برداشتن از فروشگاه" }).click();
   await page.waitForTimeout(300);
@@ -217,7 +223,7 @@ async function main() {
     await makeRemoteFontsDeterministic(publicPage);
     await publicPage.goto(`${baseUrl}/fa/retail/retail-r3-fashion-preview`, { waitUntil: "domcontentloaded", timeout: 60000 });
     assert.equal(await publicPage.locator("html").getAttribute("dir"), "rtl");
-    await publicPage.getByRole("link", { name: "کفش پیش‌نمایش مرورگر ویرایش‌شده" }).waitFor({ timeout: 20000 });
+    await publicPage.getByRole("link", { name: "نمونه فروشگاه کفش R3" }).waitFor({ timeout: 20000 });
     await captureRenderedViewport(publicPage, path.join(evidenceDir, "fashion-storefront-rtl-390.png"));
     console.log(JSON.stringify({ status: "PASSED", fashionProductId: fashion, electronicsProductId: electronics, viewport: "390x844", screenshots: evidenceDir }));
   } finally {

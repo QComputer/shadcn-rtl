@@ -51,10 +51,12 @@ async function login(browser, email, locale = "fa") {
   // the browser session and server-side route authorization remain in force.
   await page.goto(`${baseUrl}/${locale}/dashboard/retail-catalog`);
   const catalogHeading = page.getByRole("heading", { name: locale === "fa" ? "کاتالوگ فروشگاه" : locale === "ar" ? "كتالوج المتجر" : "Retail catalog" });
-  if (await catalogHeading.count() !== 1) {
+  try {
+    await catalogHeading.waitFor({ timeout: 15000 });
+  } catch (error) {
     const renderedText = (await page.locator("body").innerText()).slice(0, 1600);
     await page.screenshot({ path: path.join(evidenceDir, `${email.split("@")[0]}-catalog-route-diagnostic.png`), fullPage: true });
-    throw new Error(`MERCHANT_CATALOG_ROUTE_MISSING: expected catalog route heading at ${page.url()}; rendered body starts: ${renderedText}`);
+    throw new Error(`MERCHANT_CATALOG_ROUTE_MISSING: expected catalog route heading at ${page.url()}; rendered body starts: ${renderedText}; ${String(error)}`);
   }
   return { context, page };
 }

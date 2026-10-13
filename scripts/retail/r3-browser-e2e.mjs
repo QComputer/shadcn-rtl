@@ -132,7 +132,7 @@ async function createAndPublish({ browser, email, locale, organization, category
   const detailBody = await publicDetail.json();
   const data = detailBody.data ?? detailBody;
   const managedDetailResponse = await page.context().request.get(`${baseUrl}/api/dashboard/retail/catalog/${productId}`);
-  assert.equal(managedDetailResponse.status(), 200, "manager must still read the product after publication");
+  assert.equal(managedDetailResponse.status(), 200, `manager must still read product ${productId} after publication: ${await managedDetailResponse.text()}`);
   const managedProduct = (await managedDetailResponse.json()).product;
   const managedVariant = managedProduct.variants[0];
   assert.equal(managedVariant.price, attribute === "ram" ? 45900000 : 650000, `persisted variant price mismatch: ${JSON.stringify({ price: managedVariant.price, inventory: managedVariant.inventory, reservedQuantity: managedVariant.reservedQuantity })}`);

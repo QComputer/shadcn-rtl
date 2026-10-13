@@ -18,6 +18,33 @@ type PwaInstallManagerProps = {
   appIcon: string | null
 }
 
+type InstallIdentity = { name: string; icon: string }
+
+type InstallManifest = {
+  display?: string
+  name?: string
+  icons?: Array<{ src?: string; sizes?: string; purpose?: string }>
+}
+
+function manifestInstallIdentity(manifest: InstallManifest, appName: string, appIcon: string | null): InstallIdentity | null {
+  if (manifest.display !== "standalone" || !manifest.name?.trim()) return null
+  const icons = manifest.icons || []
+  const regular = icons.find((icon) => icon.sizes === "192x192" && icon.purpose?.includes("any"))
+  const has512 = icons.some((icon) => icon.sizes === "512x512" && icon.purpose?.includes("any"))
+  const hasMaskable192 = icons.some((icon) => icon.sizes === "192x192" && icon.purpose?.includes("maskable"))
+  const hasMaskable512 = icons.some((icon) => icon.sizes === "512x512" && icon.purpose?.includes("maskable"))
+  if (!regular?.src || !has512 || !hasMaskable192 || !hasMaskable512) return null
+  let iconUrl: URL
+  try {
+    iconUrl = new URL(regular.src, window.location.origin)
+  } catch {
+    return null
+  }
+  if (iconUrl.username || iconUrl.password || (iconUrl.protocol !== "https:" && iconUrl.origin !== window.location.origin)) return null
+  const serverIcon = appIcon ? new URL(appIcon, window.location.origin).href : null
+  return { name: serverIcon === iconUrl.href && appName.trim() ? appName.trim() : manifest.name.trim(), icon: iconUrl.href }
+}
+
 const copy = {
   fa: {
     title: "نصب اپ",
@@ -45,27 +72,43 @@ export function PwaInstallManager({ enabled, locale, basePath, appName, appIcon 
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const [readyIcon, setReadyIcon] = useState<string | null>(null)
+  const [identity, setIdentity] = useState<InstallIdentity | null>(null)
   const text = copy[locale as keyof typeof copy] || copy.fa
   const dir = locale === "en" ? "ltr" : "rtl"
 
   useEffect(() => {
-    if (!enabled || !appName.trim() || !appIcon) return
+    if (!enabled) return
+    let active = true
+    // A custom-domain page rewrite can change the Host seen by the layout.
+    // Read back the current origin's trusted, non-cacheable manifest before
+    // displaying an invitation or registering this origin's worker.
+    void fetch(`${basePath}/manifest.webmanifest`, { cache: "no-store", credentials: "same-origin" })
+      .then(async (response) => response.ok ? response.json() as Promise<InstallManifest> : null)
+      .then((manifest) => {
+        if (active) setIdentity(manifest ? manifestInstallIdentity(manifest, appName, appIcon) : null)
+      })
+      .catch(() => { if (active) setIdentity(null) })
+    return () => { active = false }
+  }, [enabled, basePath, appName, appIcon])
+
+  useEffect(() => {
+    if (!identity) return
     let active = true
     const image = new window.Image()
     image.onload = () => {
-      if (active) setReadyIcon(image.naturalWidth >= 192 && image.naturalWidth === image.naturalHeight ? appIcon : null)
+      if (active) setReadyIcon(image.naturalWidth >= 192 && image.naturalWidth === image.naturalHeight ? identity.icon : null)
     }
     image.onerror = () => { if (active) setReadyIcon(null) }
-    image.src = appIcon
+    image.src = identity.icon
     return () => { active = false }
-  }, [enabled, appName, appIcon])
+  }, [identity])
 
   useEffect(() => {
-    if (!enabled || !canRegisterServiceWorker()) return
+    if (!enabled || !identity || !canRegisterServiceWorker()) return
     if (process.env.NODE_ENV === "development") return
     const scope = basePath ? `${basePath}/` : "/"
     void navigator.serviceWorker.register(`${basePath}/web-push-sw.js`, { scope }).catch(() => undefined)
-  }, [basePath, enabled])
+  }, [basePath, enabled, identity])
 
   useEffect(() => {
     if (!enabled) return
@@ -98,7 +141,9 @@ export function PwaInstallManager({ enabled, locale, basePath, appName, appIcon 
     setDismissed(true)
   }
 
-  if (!enabled || !appName.trim() || !appIcon || readyIcon !== appIcon || dismissed || !installPrompt) return null
+  if (!enabled || !identity || readyIcon !== identity.icon || dismissed || !installPrompt) return null
+
+  const { name, icon } = identity
 
   return (
     <div
@@ -109,15 +154,15 @@ export function PwaInstallManager({ enabled, locale, basePath, appName, appIcon 
       <div className="flex min-w-0 items-center gap-2">
         <Image
           data-testid="pwa-install-brand-icon"
-          src={appIcon}
-          alt={locale === "fa" ? `نماد اپ ${appName}` : locale === "ar" ? `أيقونة تطبيق ${appName}` : `${appName} app icon`}
+          src={icon}
+          alt={locale === "fa" ? `نماد اپ ${name}` : locale === "ar" ? `أيقونة تطبيق ${name}` : `${name} app icon`}
           width={40}
           height={40}
           unoptimized
           onError={() => setReadyIcon(null)}
           className="h-10 w-10 shrink-0 rounded-lg object-contain"
         />
-        <span data-testid="pwa-install-title" className="truncate font-medium">{`${text.title} ${appName}`}</span>
+        <span data-testid="pwa-install-title" className="truncate font-medium">{`${text.title} ${name}`}</span>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <Button type="button" size="sm" onClick={install}>

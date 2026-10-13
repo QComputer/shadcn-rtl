@@ -8,7 +8,7 @@ import { buildProductPurchaseHandoff } from "@/lib/purchase-intent";
 import type { PublicCatalogPagination, PublicCatalogProductsPage, PublicCatalogSnapshot } from "@/lib/public-catalog/contracts";
 import { publicCatalogProductsPageSchema, publicCatalogSnapshotSchema } from "@/lib/public-catalog/contracts";
 import { serializePublicCatalogCategory, serializePublicCatalogProduct } from "@/lib/public-catalog/serializers";
-import type { Prisma } from "@prisma/client";
+import { Prisma, type Prisma as PrismaTypes } from "@prisma/client";
 
 const publicVariantSelect = {
   id: true, sku: true, name: true, price: true, inventory: true, reservedQuantity: true, allowBackOrder: true,
@@ -107,6 +107,7 @@ export async function getPublicCatalogCategory(organizationIdentifier: string, c
 
 export async function listPublicCatalogProducts(input: {
   organizationIdentifier: string; page: number; limit: number; category?: string; q?: string; filter?: string[];
+  minPrice?: number; maxPrice?: number; sort?: "featured" | "price-asc" | "price-desc" | "name-asc" | "newest";
 }) {
   const organization = await requirePublicShop(input.organizationIdentifier);
   let categoryId: string | undefined;
@@ -118,31 +119,65 @@ export async function listPublicCatalogProducts(input: {
     if (!category) throw new ApiError(404, "Category not found");
     categoryId = category.id;
   }
-  const where = {
-    organizationId: organization.id,
-    ...visibleProductWhereForTenant(organization.id),
-    ...(categoryId ? { categoryId } : {}),
-    ...(input.q ? { OR: [{ name: { contains: input.q, mode: "insensitive" as const } }, { description: { contains: input.q, mode: "insensitive" as const } }] } : {}),
-    ...(input.filter?.length ? { AND: input.filter.map((filter) => {
-      const index = filter.indexOf(":");
-      const key = filter.slice(0, index);
-      const value = filter.slice(index + 1);
-      const numeric = Number(value);
-      const numericValue = Number.isFinite(numeric) ? numeric : undefined;
-      return { OR: [
-        { attributeValues: { some: { valueText: value, definition: { organizationId: organization.id, key, isFilterable: true, scope: "PRODUCT" as const } } } },
-        ...(numericValue === undefined ? [] : [{ attributeValues: { some: { valueNumber: numericValue, definition: { organizationId: organization.id, key, isFilterable: true, scope: "PRODUCT" as const } } } }]),
-        { variants: { some: { deletedAt: null, optionValues: { some: { OR: [{ valueText: value }, ...(numericValue === undefined ? [] : [{ valueNumber: numericValue }])], definition: { organizationId: organization.id, key, isFilterable: true, scope: "VARIANT_OPTION" as const } } } } } },
-      ] };
-    }) } : {}),
-  };
-  const [rows, total] = await Promise.all([
-    prisma.product.findMany({
-      where, skip: (input.page - 1) * input.limit, take: input.limit,
-      orderBy: [{ sortOrder: "asc" }, { name: "asc" }, { id: "asc" }], select: publicProductSelect,
-    }),
-    prisma.product.count({ where }),
+  const predicates: PrismaTypes.Sql[] = [Prisma.sql`p."organizationId" = ${organization.id}`, Prisma.sql`p."isActive" = true`, Prisma.sql`p."deletedAt" IS NULL`, Prisma.sql`c."organizationId" = ${organization.id}`, Prisma.sql`c."isActive" = true`, Prisma.sql`c."deletedAt" IS NULL`];
+  if (categoryId) predicates.push(Prisma.sql`p."categoryId" = ${categoryId}`);
+  if (input.q) predicates.push(Prisma.sql`(p."name" ILIKE ${`%${input.q}%`} OR COALESCE(p."description", '') ILIKE ${`%${input.q}%`})`);
+  for (const filter of input.filter ?? []) {
+    const separator = filter.indexOf(":");
+    const key = filter.slice(0, separator);
+    const value = filter.slice(separator + 1);
+    const numeric = value.trim() !== "" ? Number(value) : Number.NaN;
+    const numericPredicate = Number.isFinite(numeric) ? Prisma.sql`OR (d."valueType" = 'NUMBER' AND av."valueNumber" = ${numeric})` : Prisma.empty;
+    const booleanPredicate = /^(true|false)$/i.test(value) ? Prisma.sql`OR (d."valueType" = 'BOOLEAN' AND av."valueBoolean" = ${value.toLowerCase() === "true"})` : Prisma.empty;
+    predicates.push(Prisma.sql`EXISTS (
+      SELECT 1 FROM "RetailAttributeDefinition" d
+      JOIN "ProductAttributeValue" av ON av."definitionId" = d."id"
+      WHERE av."productId" = p."id" AND d."organizationId" = ${organization.id}
+        AND d."key" = ${key} AND d."scope" = 'PRODUCT' AND d."isActive" = true AND d."isFilterable" = true
+        AND ((d."valueType" IN ('TEXT', 'ENUM') AND av."valueText" = ${value}) ${numericPredicate} ${booleanPredicate})
+    ) OR EXISTS (
+      SELECT 1 FROM "RetailAttributeDefinition" d
+      JOIN "ProductVariantAttributeValue" av ON av."definitionId" = d."id"
+      JOIN "ProductVariant" v ON v."id" = av."variantId"
+      WHERE v."productId" = p."id" AND v."deletedAt" IS NULL AND d."organizationId" = ${organization.id}
+        AND d."key" = ${key} AND d."scope" = 'VARIANT_OPTION' AND d."isActive" = true AND d."isFilterable" = true
+        AND ((d."valueType" IN ('TEXT', 'ENUM') AND av."valueText" = ${value}) ${numericPredicate} ${booleanPredicate})
+    )`);
+  }
+  const effectiveVariantPrice = Prisma.sql`COALESCE(v."price", p."basePrice")`;
+  const availableVariant = Prisma.sql`(NOT p."trackInventory" OR v."allowBackOrder" OR v."inventory" - v."reservedQuantity" > 0)`;
+  const rawPrice = Prisma.sql`COALESCE(
+    (SELECT MIN(${effectiveVariantPrice}) FROM "ProductVariant" v WHERE v."productId" = p."id" AND v."deletedAt" IS NULL AND ${availableVariant}),
+    (SELECT MIN(${effectiveVariantPrice}) FROM "ProductVariant" v WHERE v."productId" = p."id" AND v."deletedAt" IS NULL),
+    p."basePrice"
+  )`;
+  const displayPrice = Prisma.sql`CASE
+    WHEN p."discountType" = 'percentage' THEN GREATEST(0, ${rawPrice} * (1 - LEAST(COALESCE(p."discountValue", 0), 100) / 100))
+    WHEN p."discountType" = 'fixed' THEN GREATEST(0, ${rawPrice} - COALESCE(p."discountValue", 0))
+    ELSE ${rawPrice} END`;
+  const baseQuery = Prisma.sql`SELECT p."id", p."name", p."sortOrder", p."createdAt", ${displayPrice} AS "displayPrice"
+    FROM "Product" p JOIN "ProductCategory" c ON c."id" = p."categoryId"
+    WHERE ${Prisma.join(predicates, " AND ")}`;
+  const pricePredicates: PrismaTypes.Sql[] = [];
+  if (input.minPrice !== undefined) pricePredicates.push(Prisma.sql`catalog."displayPrice" >= ${input.minPrice}`);
+  if (input.maxPrice !== undefined) pricePredicates.push(Prisma.sql`catalog."displayPrice" <= ${input.maxPrice}`);
+  const filteredQuery = Prisma.sql`SELECT * FROM (${baseQuery}) catalog ${pricePredicates.length ? Prisma.sql`WHERE ${Prisma.join(pricePredicates, " AND ")}` : Prisma.empty}`;
+  const orderBy = input.sort === "price-asc" ? Prisma.sql`catalog."displayPrice" ASC, catalog."id" ASC`
+    : input.sort === "price-desc" ? Prisma.sql`catalog."displayPrice" DESC, catalog."id" ASC`
+    : input.sort === "name-asc" ? Prisma.sql`catalog."name" ASC, catalog."id" ASC`
+    : input.sort === "newest" ? Prisma.sql`catalog."createdAt" DESC, catalog."id" ASC`
+    : Prisma.sql`catalog."sortOrder" ASC, catalog."name" ASC, catalog."id" ASC`;
+  const [pageRecords, countRecords] = await Promise.all([
+    prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`${filteredQuery} ORDER BY ${orderBy} LIMIT ${input.limit} OFFSET ${(input.page - 1) * input.limit}`),
+    prisma.$queryRaw<Array<{ total: bigint }>>(Prisma.sql`SELECT COUNT(*)::bigint AS total FROM (${filteredQuery}) filtered`),
   ]);
+  const total = Number(countRecords[0]?.total ?? BigInt(0));
+  const rowsById = pageRecords.length ? await prisma.product.findMany({
+    where: { id: { in: pageRecords.map((record) => record.id) }, organizationId: organization.id, ...visibleProductWhereForTenant(organization.id) },
+    select: publicProductSelect,
+  }) : [];
+  const rowMap = new Map(rowsById.map((row) => [row.id, row]));
+  const rows = pageRecords.map(({ id }) => rowMap.get(id)).filter((row): row is NonNullable<typeof row> => row !== undefined);
   const buildPurchase = await purchaseBuilder(organization);
   const pagination: PublicCatalogPagination = { page: input.page, limit: input.limit, total, totalPages: Math.ceil(total / input.limit) };
   return publicCatalogProductsPageSchema.parse({ products: rows.map((product) => serializePublicCatalogProduct({ ...retailProduct(product, organization.id), purchase: buildPurchase(product.id) })), pagination }) as unknown as PublicCatalogProductsPage;

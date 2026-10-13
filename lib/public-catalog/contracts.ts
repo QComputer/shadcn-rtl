@@ -7,12 +7,17 @@ export const PUBLIC_CATALOG_MAX_PAGE_SIZE = 50;
 export const publicCatalogAttributeFilterSchema = z.string().trim().min(3).max(200).regex(/^[a-zA-Z0-9._-]+:.+$/);
 
 export const publicCatalogListQuerySchema = z.object({
-  page: z.coerce.number().int().positive().default(1),
+  page: z.coerce.number().int().positive().max(1_000_000).default(1),
   limit: z.coerce.number().int().positive().max(PUBLIC_CATALOG_MAX_PAGE_SIZE).default(PUBLIC_CATALOG_DEFAULT_PAGE_SIZE),
   category: z.string().trim().min(1).max(160).optional(),
   q: z.string().trim().min(1).max(100).optional(),
+  minPrice: z.coerce.number().finite().nonnegative().max(9_999_999_999.99).optional(),
+  maxPrice: z.coerce.number().finite().nonnegative().max(9_999_999_999.99).optional(),
+  sort: z.enum(["featured", "price-asc", "price-desc", "name-asc", "newest"]).default("featured"),
   filter: z.union([publicCatalogAttributeFilterSchema, z.array(publicCatalogAttributeFilterSchema).max(12)]).optional(),
-}).strict().transform(({ filter, ...query }) => filter === undefined ? query : ({ ...query, filter: typeof filter === "string" ? [filter] : filter }));
+}).strict().superRefine((query, context) => {
+  if (query.minPrice !== undefined && query.maxPrice !== undefined && query.minPrice > query.maxPrice) context.addIssue({ code: "custom", path: ["minPrice"], message: "Minimum price cannot be greater than maximum price." });
+}).transform(({ filter, ...query }) => filter === undefined ? query : ({ ...query, filter: typeof filter === "string" ? [filter] : filter }));
 
 export type PublicCatalogMoney = { amount: number; currency: typeof PUBLIC_CATALOG_PRICE_UNIT };
 export type PublicCatalogMedia = { card: string | null; detail: string | null; alt: string; gallery: string[] };

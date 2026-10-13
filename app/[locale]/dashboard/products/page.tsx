@@ -196,6 +196,12 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
           </p>
         </div>
         <div className="flex gap-2">
+          <Link href={`/${locale}/dashboard/retail-catalog`}>
+            <Button variant="outline">
+              <Package className="h-4 w-4 me-2" />
+              {locale === "en" ? "Retail catalog" : locale === "ar" ? "فهرس المتجر" : "کاتالوگ فروشگاه"}
+            </Button>
+          </Link>
           <Link href={`/${locale}/dashboard/product-categories`}>
             <Button variant="outline">
               <FolderOpen className="h-4 w-4 ml-2" />

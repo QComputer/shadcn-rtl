@@ -81,7 +81,7 @@ describe("Public Catalog API v1 contract", () => {
   });
 
   it("enforces bounded explicit pagination and query limits", () => {
-    assert.deepEqual(publicCatalogListQuerySchema.parse({}), { page: 1, limit: 20 });
+    assert.deepEqual(publicCatalogListQuerySchema.parse({}), { page: 1, limit: 20, sort: "featured" });
     assert.equal(publicCatalogListQuerySchema.parse({ limit: String(PUBLIC_CATALOG_MAX_PAGE_SIZE) }).limit, 50);
     const attributeFilters = publicCatalogListQuerySchema.parse({ filter: ["ram:12", "storage:256"] });
     assert.deepEqual("filter" in attributeFilters ? attributeFilters.filter : [], ["ram:12", "storage:256"]);
@@ -89,6 +89,9 @@ describe("Public Catalog API v1 contract", () => {
     assert.throws(() => publicCatalogListQuerySchema.parse({ page: "0" }));
     assert.throws(() => publicCatalogListQuerySchema.parse({ limit: "51" }));
     assert.throws(() => publicCatalogListQuerySchema.parse({ q: "x".repeat(101) }));
+    assert.deepEqual(publicCatalogListQuerySchema.parse({ minPrice: "100", maxPrice: "200", sort: "price-desc" }), { page: 1, limit: 20, minPrice: 100, maxPrice: 200, sort: "price-desc" });
+    assert.throws(() => publicCatalogListQuerySchema.parse({ minPrice: "201", maxPrice: "200" }));
+    assert.throws(() => publicCatalogListQuerySchema.parse({ sort: "unknown" }));
   });
 
   it("emits public non-credentialed CORS, cache headers, ETag, HEAD, and 304", async () => {

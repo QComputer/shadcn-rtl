@@ -43,7 +43,7 @@ try {
        AND c.relkind IN ('r', 'p', 'v', 'm', 'S', 'f')
   `;
   const migrationTable = await prisma.$queryRaw`
-    SELECT to_regclass('public._prisma_migrations') AS name
+    SELECT to_regclass('public._prisma_migrations')::text AS name
   `;
 
   if (mode === "before") {

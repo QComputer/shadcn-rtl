@@ -26,11 +26,11 @@
 - The same authenticated workflow verifies Fashion and Electronics manager login, product creation, attribute/variant management, eligible tenant-owned PREVIEW image attachment, price and inventory persistence, draft preview, edit/reload persistence, publication, public API and storefront detail/catalog visibility, unpublication and public 404, unauthenticated 401, staff write denial, and cross-tenant 404. The manager’s global user role is `STAFF`; its active organization membership role is `MANAGER`.
 - Only Preview deployment records reference the feature SHA. No Production deployment, merge, or Production data mutation was made.
 
-## Not accepted / blocking
+## Scope limits
 
 R3 merchant flow is acceptance-ready for the requested catalog-management scope. Media attachment uses synthetic, tenant-owned PREVIEW assets in the disposable database. Direct Blob-provider upload is not exercised because no isolated storage adapter or provider token is configured. Checkout, coupons, card/cash payment, payment verification, and USSD remain R4 scope.
 
-The WIP checkpoint and follow-up fixes are committed locally and pushed only to `codex/retail-r3-merchant-flow-20261013`. Current final SHA is pending the active hosted acceptance run.
+The WIP checkpoint and follow-up fixes are committed and pushed only to `codex/retail-r3-merchant-flow-20261013`. The acceptance evidence applies to implementation SHA `a675ed415d594fc98fe224433cccc8b613c0a635`; the final delivery SHA also includes this documentation update.
 
 ## Screenshots
 

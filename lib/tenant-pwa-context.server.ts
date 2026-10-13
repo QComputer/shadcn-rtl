@@ -77,9 +77,9 @@ export async function resolveTenantPwaRequestContext(requestHeaders: HeaderReade
     // For direct custom-domain page rewrites, proxy.ts sanitizes client copies
     // before setting this verified domain/organization pair. Re-resolve the
     // active domain instead of treating the rewritten platform Host as branding.
-    if (requestHeaders.get("x-bazar-custom-domain") === "true") {
-      const tenantDomain = normalizeDomainHost(requestHeaders.get("x-bazar-tenant-domain"));
-      const tenantOrganizationId = requestHeaders.get("x-bazar-tenant-organization-id");
+    const tenantDomain = normalizeDomainHost(requestHeaders.get("x-bazar-tenant-domain"));
+    const tenantOrganizationId = requestHeaders.get("x-bazar-tenant-organization-id");
+    if (tenantDomain || tenantOrganizationId) {
       if (!tenantDomain || !tenantOrganizationId) return { kind: "unknown" };
       const tenant = await resolveActiveTenantForHost(prisma, tenantDomain).catch(() => null);
       if (!tenant || tenant.organizationId !== tenantOrganizationId) return { kind: "unknown" };

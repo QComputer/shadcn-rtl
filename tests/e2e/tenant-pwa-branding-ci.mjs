@@ -128,11 +128,12 @@ async function waitForServer() {
 async function installInvitationFor({ host, locale = "fa", title, iconPath, screenshot, viewport, theme = "light" }) {
   const page = await browser.newPage({ viewport });
   try {
+    await page.addInitScript((value) => localStorage.setItem("shadcn-rtl-theme", value), theme);
     const response = await page.goto(`http://${host}:${port}/${locale}`, { waitUntil: "domcontentloaded" });
     assert.equal(response?.status(), 200, `install page loads for ${host}`);
-    await page.evaluate((value) => {
-      document.documentElement.classList.toggle("dark", value === "dark");
-    }, theme);
+    await page.waitForFunction((value) =>
+      document.documentElement.classList.contains(value) && document.documentElement.dataset.theme === value,
+    theme);
     const invitation = page.getByTestId("pwa-install-invitation");
     for (let attempt = 0; attempt < 12 && !(await invitation.isVisible().catch(() => false)); attempt += 1) {
       await page.evaluate(() => {
@@ -157,8 +158,20 @@ async function installInvitationFor({ host, locale = "fa", title, iconPath, scre
     assert.equal(iconState.complete, true);
     assert.ok(iconState.naturalWidth >= 192 && iconState.naturalWidth === iconState.naturalHeight);
     assert.ok(iconState.alt?.length);
+    const invitationColors = await invitation.evaluate((element) => ({
+      background: getComputedStyle(element).backgroundColor,
+      foreground: getComputedStyle(element.querySelector('[data-testid="pwa-install-title"]')).color,
+    }));
+    assert.notEqual(invitationColors.background, invitationColors.foreground);
     await page.screenshot({ path: `${artifactDir}/${screenshot}`, fullPage: false });
-    return { host, locale, title, icon: iconState, theme, viewport };
+    if (host === "localhost") {
+      await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")));
+    } else {
+      const closeLabel = locale === "en" ? "Close" : locale === "ar" ? "إغلاق" : "بستن";
+      await invitation.getByRole("button", { name: closeLabel }).click();
+    }
+    await invitation.waitFor({ state: "detached" });
+    return { host, locale, title, icon: iconState, resolvedTheme: theme, colors: invitationColors, viewport };
   } finally {
     await page.close();
   }

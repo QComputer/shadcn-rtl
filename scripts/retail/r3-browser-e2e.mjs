@@ -102,7 +102,8 @@ async function createAndPublish({ browser, email, locale, organization, category
   const mediaUpload = page.waitForResponse((response) => response.url().includes("/api/dashboard/retail/media") && response.request().method() === "POST");
   await upload.setInputFiles(imagePath);
   const mediaResponse = await mediaUpload;
-  assert.equal(mediaResponse.status(), 201, `eligible product image upload must be accepted; response=${await mediaResponse.text()}`);
+  const mediaHeaders = await mediaResponse.request().allHeaders();
+  assert.equal(mediaResponse.status(), 201, `eligible product image upload must be accepted; url=${mediaResponse.url()} origin=${mediaHeaders.origin ?? "missing"} secFetchSite=${mediaHeaders["sec-fetch-site"] ?? "missing"} response=${await mediaResponse.text()}`);
   await page.getByRole("button", { name: "ذخیره پیش‌نویس" }).click();
   await page.waitForURL("**/fa/dashboard/retail-catalog/*", { timeout: 60000 });
   const productId = page.url().split("/").at(-1);

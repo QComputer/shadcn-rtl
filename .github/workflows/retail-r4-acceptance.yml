@@ -38,7 +38,7 @@ jobs:
       NEXT_TELEMETRY_DISABLED: "1"
       CI: "true"
       RETAIL_RECEIPT_TEST_STORAGE: "1"
-      RETAIL_RECEIPT_LOCAL_ROOT: ${{ runner.temp }}/retail-r4-private-receipts
+      RETAIL_RECEIPT_LOCAL_ROOT: /tmp/retail-r4-private-receipts
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

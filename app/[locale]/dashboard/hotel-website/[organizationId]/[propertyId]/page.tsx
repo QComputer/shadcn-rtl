@@ -28,6 +28,7 @@ export default async function HotelWebsitePropertyDashboardPage({
       ← {locale === "en" ? "All properties" : locale === "ar" ? "كل العقارات" : "بازگشت به املاک"}
     </Link>
     <HotelCmsWorkspace
+      key={`${organization.id}:${property.id}`}
       scope={{ organizationId: organization.id, propertyId: property.id }}
       role={organization.role}
       propertyLabel={`${organization.name} · ${property.name}`}

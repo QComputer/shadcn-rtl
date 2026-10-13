@@ -101,6 +101,7 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel }: Props) {
     } finally { setBusy(false); }
   }
   async function selectRevision(id: string) {
+    if (hasUnsavedChanges && !window.confirm("تغییرات ذخیره‌نشده کنار گذاشته شود؟")) return;
     resetMessages(); setBusy(true);
     try {
       const version = await api.preview(id, locale);
@@ -165,7 +166,7 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel }: Props) {
     {notice && <p role="status" className={styles.notice}>{notice}</p>}
     <div className={styles.columns}>
       <aside className={styles.sidebar} aria-label="نسخه‌های محتوا">
-        <div className={styles.sideHeading}><h2>نسخه‌ها</h2><button disabled={busy} onClick={() => { setDraft(blankDraft()); setSelectedId(null); setPreview(null); setHasUnsavedChanges(false); setTab("editor"); resetMessages(); }}>+ نسخه تازه</button></div>
+        <div className={styles.sideHeading}><h2>نسخه‌ها</h2><button disabled={busy} onClick={() => { if (hasUnsavedChanges && !window.confirm("تغییرات ذخیره‌نشده کنار گذاشته شود؟")) return; setDraft(blankDraft()); setSelectedId(null); setPreview(null); setHasUnsavedChanges(false); setTab("editor"); resetMessages(); }}>+ نسخه تازه</button></div>
         {loading ? <p>در حال بارگذاری…</p> : revisions.length === 0 ? <p className={styles.muted}>هنوز نسخه‌ای ساخته نشده است.</p> : <ul className={styles.versionList}>{revisions.map((revision) => {
           const published = revision.publications.some((p) => !p.revokedAt);
           return <li key={revision.revisionId}><button className={`${styles.version} ${selectedId === revision.revisionId ? styles.selected : ""}`} disabled={busy} onClick={() => void selectRevision(revision.revisionId)}>

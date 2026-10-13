@@ -340,7 +340,7 @@ function SidebarContent({
         </div>
       </div>
 
-      <ScrollArea className="min-h-0 flex-1 px-3 py-3">
+      <ScrollArea dir={locale === "fa" || locale === "ar" ? "rtl" : "ltr"} className="min-h-0 flex-1 px-3 py-3">
         <nav aria-label={copy.sectionLabel} className="space-y-5">
           {visibleGroups.map((group) => (
             <section key={group.key} className="space-y-2">

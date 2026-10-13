@@ -6,13 +6,14 @@
 - Branch: `codex/retail-r3-merchant-flow-20261013`.
 - Starting commit: `72f9d055af1da86bce68b01a154b5fa7e70cd7fc` (R2 plus the approved RTL patch cherry-pick).
 - Local WIP checkpoint: `1a573dcc3d6829d3bfd171dd8ca2ae8619ccd6d6` preserves the complete R3 implementation. Follow-up route-contract, authorization, and browser fixes are committed on this same isolated feature branch; the checkpoint is not an acceptance verdict.
+- Accepted implementation SHA: `a675ed415d594fc98fe224433cccc8b613c0a635`.
 - The disposable container is `bazarbaaz-retail-r2-pg17-20261013`, PostgreSQL 17.10 on loopback port 55432. R3 uses the newly created empty database `bazarbaaz_retail_r3`; its identity and empty public schema were checked before migrating. R2 database `bazarbaaz_retail_r2` was not targeted. The existing R2 preview process and database remain running.
 - All 97 repository migrations applied successfully to the empty R3 database. No R3 schema migration was added; the accepted R2 product attribute schema already supports the merchant workflow.
 - R2 dependency tree inspection: R3’s direct `next` junction resolves inside R3’s own `.pnpm` directory. No install, package mutation, Prisma generation, or Prisma client regeneration was run against R2. Full install, Prisma generation, build, typecheck, browser, and database acceptance run on an isolated hosted runner with its own checkout and PostgreSQL 17 service. The R2 worktree reports clean; its preview on port 3101 returns HTTP 200 and its PostgreSQL container remains running on port 55432.
 
 ## Completed checks
 
-- Isolated hosted runner: all 97 migrations, lint (warnings only), the focused commerce and tenant regressions (67/67), synthetic DB fixture verification, production build, and TypeScript checks passed through SHA `3609931`. That run then exposed the blob-token prerequisite described below. No Hotel business logic or Hotel agent worktree was changed.
+- Isolated hosted runner [run 38442437040](https://github.com/QComputer/shadcn-rtl/actions/runs/38442437040) passed against SHA `a675ed415d594fc98fe224433cccc8b613c0a635`: all 97 migrations on empty PostgreSQL 17, ESLint (existing warnings only), focused commerce/tenant tests (67/67), synthetic fixture verification, production build, TypeScript, server startup, and authenticated browser acceptance. The durable browser log reports `status: PASSED` and records Fashion and Electronics product IDs.
 - Prisma schema validation: passed with R3 `DATABASE_URL` and `DIRECT_URL` targeting the local disposable R3 database.
 - Focused regression suite: 67/67 passed, covering public catalog response v1, retail attribute validation, tenant capabilities, dashboard policy and existing restaurant shop-menu filtering.
 - R3 database fixture `seed` and `verify`: passed on PostgreSQL 17.10. Verified footwear and mobile tenants, restaurant capability separation, tenant media eligibility, foreign product 404, typed filters, server-side price filter/sort, pagination totals, variant-specific prices and reserved-stock availability, and exclusion of private fields.
@@ -20,23 +21,22 @@
 - The optimized webpack build compiled successfully, then failed Next.js route type validation because the appointment and shop route layouts accepted a custom `organizationRootPath` prop and were also imported as ordinary components. Reusable content now lives outside the route layout files; route wrappers accept only Next's `children` and `params`. The slug home still passes the custom path to those reusable components, preserving custom-domain navigation and metadata paths.
 - Two additional Next route-module contract issues were moved without changing behavior: `publicOrganizationHref` is in `lib/organization-public-href.ts`, and the iNoti USSD callback factory is in `lib/integrations/inoti-ussd/callback-handler.ts`. TypeScript passed after these corrections.
 - The original browser media-upload attempt correctly failed closed because the application’s image storage adapter requires `BLOB_READ_WRITE_TOKEN`; no production token or provider was used. The browser acceptance now uses eligible, tenant-owned synthetic preview images preseeded in the disposable database and attaches them through the merchant UI. Direct blob upload remains outside this test because no isolated storage adapter is configured.
-- The shared `requireSameOriginMutation` guard initially rejected a same-origin browser POST because the framework request URL host differed from the browser-facing Host. A fix now derives the public origin from Host and forwarded protocol, retaining same-origin checks; its new regression and the complete rerun are pending.
-- C: was recovered to approximately 3.86 GB free. Heavy validation continues on the hosted runner, not locally.
+- The shared `requireSameOriginMutation` guard initially rejected a same-origin browser POST because the framework request URL host differed from the browser-facing Host. It now derives the public origin from Host and forwarded protocol while retaining same-origin checks; the new unit regression and complete hosted rerun passed.
+- R3 and R2 `node_modules` are separate physical directories, neither is a symlink/junction, and the R3 E2E dependencies and Prisma client are installed/generated only in the hosted job. The R2 preview returned HTTP 200 and its PostgreSQL 17 container remained running at final verification. C: had approximately 3.75 GB free; no local heavy build was run.
+- The same authenticated workflow verifies Fashion and Electronics manager login, product creation, attribute/variant management, eligible tenant-owned PREVIEW image attachment, price and inventory persistence, draft preview, edit/reload persistence, publication, public API and storefront detail/catalog visibility, unpublication and public 404, unauthenticated 401, staff write denial, and cross-tenant 404. The manager’s global user role is `STAFF`; its active organization membership role is `MANAGER`.
+- Only Preview deployment records reference the feature SHA. No Production deployment, merge, or Production data mutation was made.
 
 ## Not accepted / blocking
 
-The R3 merchant flow is **not acceptance-ready** until a full hosted browser run passes create/edit/preview/publish/storefront/unpublish/removal for both tenants, denied staff/cross-tenant access, and same-origin media attachment. The last completed runner failed only at media storage before this test moved to safe preseeded preview media. Checkout, coupons, and payment remain out of scope for R3.
+R3 merchant flow is acceptance-ready for the requested catalog-management scope. Media attachment uses synthetic, tenant-owned PREVIEW assets in the disposable database. Direct Blob-provider upload is not exercised because no isolated storage adapter or provider token is configured. Checkout, coupons, card/cash payment, payment verification, and USSD remain R4 scope.
 
 The WIP checkpoint and follow-up fixes are committed locally and pushed only to `codex/retail-r3-merchant-flow-20261013`. Current final SHA is pending the active hosted acceptance run.
 
 ## Screenshots
 
-Hosted runner artifacts are retained per CI run. The browser successfully rendered the authenticated catalog and editor on a 390×844 viewport. Final product preview/storefront screenshots await the complete merchant flow.
+The successful CI artifact `retail-r3-browser-evidence` is retained with run 38442437040. Downloaded screenshots and logs are at `artifacts/retail-r3-success-38442437040/`. Captures include the 390×844 Fashion storefront, Fashion and Electronics draft previews, published catalogs, and published product details. The screenshot capture uses Chromium DevTools and does not wait indefinitely for remote font readiness.
 
 ## Resume plan
 
-1. Recover at least 4–8 GB of C: space, then resume this same branch/worktree.
-2. Verify the R3 dependency graph uses only R3-local package links or read-only package invocation; do not regenerate the shared R2 Prisma client.
-3. Re-run the merchant browser flow with stable Next heap, investigate the session/API 401 observed during the first attempt, and capture responsive screenshots.
-4. Resolve the non-Retail Hotel route typecheck blocker through its owner or a separately approved change; do not edit Hotel F4 here.
-5. Re-run focused/full lint, TypeScript, production build, restaurant regression, tenant denial, inventory and pricing checks; then commit only after all required acceptance gates pass.
+1. Continue to R4 only after separately defining checkout, payment, coupons, and order lifecycle contracts.
+2. Configure a disposable Blob-compatible storage adapter before adding provider-upload acceptance; continue to keep real merchant assets and stock out of synthetic fixtures.

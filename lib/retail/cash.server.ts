@@ -55,24 +55,27 @@ export async function submitCourierCashCollection(input: {
       orderNumber: input.orderNumber, retailCheckoutKey: { not: null }, deletedAt: null },
       include: { payment: true, organization: { select: { id: true } } } });
     if (!order) throw new ApiError(404, "Order not found.");
-    if (order.driverId !== input.actorUserId || !["PICKED_UP", "DELIVERED"].includes(order.status)) {
+    await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE`;
+    const lockedOrder = await tx.order.findUniqueOrThrow({ where: { id: order.id },
+      include: { payment: true, organization: { select: { id: true } } } });
+    if (lockedOrder.driverId !== input.actorUserId || !["PICKED_UP", "DELIVERED"].includes(lockedOrder.status)) {
       throw new ApiError(403, "Courier is not assigned to this order.");
     }
     const membership = await tx.organizationMember.findFirst({ where: {
-      organizationId: order.organization.id, userId: input.actorUserId, isActive: true,
+      organizationId: lockedOrder.organization.id, userId: input.actorUserId, isActive: true,
       role: "DRIVER", user: { isActive: true, deletedAt: null },
     }, select: { id: true } });
     if (!membership) throw new ApiError(403, "Courier is not authorized.");
-    if (order.paymentMethod !== "CASH" || order.paymentStatus !== "PENDING" ||
-        cashMode(order.payment?.metadata ?? null) !== "COURIER") throw new ApiError(409, "Courier collection is unavailable.");
+    if (lockedOrder.paymentMethod !== "CASH" || lockedOrder.paymentStatus !== "PENDING" ||
+        cashMode(lockedOrder.payment?.metadata ?? null) !== "COURIER") throw new ApiError(409, "Courier collection is unavailable.");
     const report = await tx.retailPaymentReport.create({ data: {
-      organizationId: order.organization.id, orderId: order.id, submittedById: input.actorUserId,
+      organizationId: lockedOrder.organization.id, orderId: lockedOrder.id, submittedById: input.actorUserId,
       kind: "CASH_COLLECTION", status: "PENDING_REVIEW", cashMode: "COURIER",
       collectorId: input.actorUserId, reportedAt: new Date(),
       submittedContext: { source: "COURIER_COLLECTION_DECLARATION" },
     }, select: { id: true, status: true } });
-    await tx.paymentEvent.create({ data: { orderId: order.id, previousStatus: "PENDING", newStatus: "PENDING",
-      method: "CASH", amount: order.total, createdById: input.actorUserId,
+    await tx.paymentEvent.create({ data: { orderId: lockedOrder.id, previousStatus: "PENDING", newStatus: "PENDING",
+      method: "CASH", amount: lockedOrder.total, createdById: input.actorUserId,
       note: "Courier reported cash collection; merchant reconciliation pending" } });
     return report;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });

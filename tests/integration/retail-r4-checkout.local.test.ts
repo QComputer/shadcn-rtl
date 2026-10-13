@@ -29,13 +29,14 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
   process.env.RETAIL_RECEIPT_TEST_STORAGE = "1";
   process.env.RETAIL_RECEIPT_LOCAL_ROOT = testRoot;
 
-  const [{ PrismaClient }, checkout, reports, cash, receiptStorage, inotiReadiness] = await Promise.all([
+  const [{ PrismaClient }, checkout, reports, cash, receiptStorage, inotiReadiness, catalog] = await Promise.all([
     import("@prisma/client"),
     import("@/lib/retail/checkout.server"),
     import("@/lib/retail/payment-reports.server"),
     import("@/lib/retail/cash.server"),
     import("@/lib/retail/receipt-storage.server"),
     import("@/lib/retail/inoti-readiness.server"),
+    import("@/lib/public-catalog/service.server"),
   ]);
   const db = new PrismaClient({ log: ["error"] });
   const idempotencyKeys: string[] = [];
@@ -119,6 +120,9 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
     assert.equal(pctOrder.order.subtotal.toString(), "680000");
     assert.equal(pctOrder.order.discount.toString(), "20000");
     assert.equal(pctOrder.order.total.toString(), "660000");
+    const bankPayment = await db.payment.findUniqueOrThrow({ where: { orderId: pctOrder.order.id } });
+    assert.equal((bankPayment.metadata as { retailR4: { bankCardNumber: string } }).retailR4.bankCardNumber, "6037990000000000",
+      "checkout must snapshot the merchant card details presented for this order");
     const line = await db.orderItem.findFirstOrThrow({ where: { orderId: pctOrder.order.id, variantId } });
     assert.equal(line.price.toString(), "680000");
     assert.equal((await db.productVariant.findUniqueOrThrow({ where: { id: variantId } })).inventory, beforeStock - 1);
@@ -134,6 +138,17 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
     await db.productVariant.update({ where: { id: variantId }, data: { price: 680000 } });
     const fixedOrder = await checkoutOrder({ couponCode: fixed.code });
     assert.equal(fixedOrder.order.discount.toString(), "50000");
+    await db.product.update({ where: { id: productId }, data: { discountType: "percentage", discountValue: 10 } });
+    const discountedProduct = await catalog.getPublicCatalogProduct(fashion.slug, product.slug);
+    assert.equal(discountedProduct.variants[0]?.price.amount, 612000);
+    const discountedListing = await catalog.listPublicCatalogProducts({
+      organizationIdentifier: fashion.slug, page: 1, limit: 10, minPrice: 610000, maxPrice: 620000,
+    });
+    assert.ok(discountedListing.products.some((item) => item.id === productId));
+    const productDiscountOrder = await checkoutOrder();
+    assert.equal(productDiscountOrder.order.subtotal.toString(), "612000");
+    assert.equal((await db.orderItem.findFirstOrThrow({ where: { orderId: productDiscountOrder.order.id } })).price.toString(), "612000");
+    await db.product.update({ where: { id: productId }, data: { discountType: "none", discountValue: 0 } });
     await assert.rejects(() => checkoutOrder({ organization: mobile.slug, couponCode: fixed.code }), /Discount code was not found/);
     await checkoutOrder({ couponCode: capped.code });
     await assert.rejects(() => checkoutOrder({ couponCode: capped.code }), /Discount usage limit reached/);

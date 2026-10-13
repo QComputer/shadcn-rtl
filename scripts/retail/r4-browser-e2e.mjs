@@ -18,7 +18,13 @@ const evidenceDir = path.resolve("artifacts/retail-r4-browser");
 const receiptBytes = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j2ioAAAAASUVORK5CYII=", "base64");
 
 async function capture(page, filename) {
-  await page.screenshot({ path: path.join(evidenceDir, filename), fullPage: false });
+  const session = await page.context().newCDPSession(page);
+  try {
+    const { data } = await session.send("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false });
+    await fs.writeFile(path.join(evidenceDir, filename), Buffer.from(data, "base64"));
+  } finally {
+    await session.detach();
+  }
 }
 
 async function login(browser, email, callback = "/fa/retail/retail-r4-synthetic-fashion") {
@@ -90,6 +96,7 @@ async function main() {
   try {
     const customer = await login(browser, customerEmail);
     await customer.page.goto(`${baseUrl}/fa/retail/${fashion}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await customer.page.getByRole("heading", { level: 1 }).waitFor({ timeout: 30000 });
     await capture(customer.page, "customer-fashion-storefront.png");
     const receipt = await checkoutWithReport(customer.page, fashion, "r4-synthetic-avid", "RECEIPT");
     const time = await checkoutWithReport(customer.page, fashion, "r4-synthetic-avid", "TIME");

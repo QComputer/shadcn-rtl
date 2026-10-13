@@ -25,6 +25,8 @@ export const retailCheckoutInput = z.object({
   }
   if (value.paymentMethod === "CASH" && !value.cashMode) context.addIssue({ code: "custom", path: ["cashMode"], message: "Cash collection mode is required." });
   if (value.paymentMethod !== "CASH" && value.cashMode) context.addIssue({ code: "custom", path: ["cashMode"], message: "Cash mode is only valid for cash payment." });
+  if (value.cashMode === "PICKUP" && value.type !== "PICK_UP") context.addIssue({ code: "custom", path: ["cashMode"], message: "Pickup cash requires customer pickup." });
+  if (value.cashMode === "COURIER" && value.type !== "DELIVERY") context.addIssue({ code: "custom", path: ["cashMode"], message: "Courier cash requires delivery." });
 });
 
 type CheckoutInput = z.infer<typeof retailCheckoutInput>;
@@ -74,13 +76,13 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
   });
   if (!organization || organization.branding?.retailPreviewOnly) throw new ApiError(404, "Storefront is unavailable.");
   await requireActiveOrganizationCapability({ organizationId: organization.id, capability: "SHOP" });
-  const paymentPolicy = await requireEnabledRetailPaymentMethod(organization.slug, organization.id, input.paymentMethod);
-  if (input.cashMode && !paymentPolicy.cashModes.includes(input.cashMode)) throw new ApiError(409, "Cash collection mode is unavailable.");
   const existing = await prisma.order.findFirst({
     where: { retailCheckoutKey: input.idempotencyKey, organizationSlug: organization.slug, customerId },
-    select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, publicTrackingToken: true },
+    select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, paymentMethod: true, publicTrackingToken: true },
   });
   if (existing) return existing;
+  const paymentPolicy = await requireEnabledRetailPaymentMethod(organization.slug, organization.id, input.paymentMethod);
+  if (input.cashMode && !paymentPolicy.cashModes.includes(input.cashMode)) throw new ApiError(409, "Cash collection mode is unavailable.");
 
   const run = async () => prisma.$transaction(async (tx) => {
     const paymentSettings = await tx.paymentSettings.findUnique({
@@ -143,7 +145,7 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
         items: { create: items.map((item) => ({ productId: item.productId, variantId: item.variantId,
           quantity: item.quantity, price: item.price, discount: 0 })) },
       },
-      select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, publicTrackingToken: true },
+      select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, paymentMethod: true, publicTrackingToken: true },
     });
     for (const item of items) {
       if (!item.trackInventory) continue;
@@ -182,7 +184,7 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
         const previous = await prisma.order.findFirst({ where: {
           retailCheckoutKey: input.idempotencyKey, organizationSlug: organization.slug, customerId,
-        }, select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, publicTrackingToken: true } });
+        }, select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, paymentMethod: true, publicTrackingToken: true } });
         if (previous) return previous;
       }
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034" && attempt < 2) continue;

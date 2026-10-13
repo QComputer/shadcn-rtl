@@ -13,13 +13,14 @@ type PaymentMethod = {
 };
 type CartItem = { id?: string; name?: string; productName?: string; variantName?: string; quantity?: number; variant?: { name?: string; product?: { name?: string } } };
 type Cart = { items?: CartItem[] };
-type OrderResult = { orderNumber: string; total: string; paymentStatus: string; orderStatus: string; trackingToken?: string | null };
+type OrderResult = { orderNumber: string; total: string; paymentStatus: string; orderStatus: string; paymentMethod: PaymentMethod["method"]; trackingToken?: string | null; bankCardNumber?: string | null; bankAccountOwner?: string | null };
 
 const money = (value: number) => `${new Intl.NumberFormat("fa-IR").format(value)} تومان`;
 const statusText: Record<string, string> = {
   PENDING: "در انتظار بررسی", PAID: "پرداخت‌شده", UNPAID: "پرداخت‌نشده", AWAITING_PAYMENT: "در انتظار پرداخت",
   CONFIRMED: "تأییدشده", PROCESSING: "در حال آماده‌سازی", COMPLETED: "تکمیل‌شده", CANCELLED: "لغوشده",
 };
+const cashModeText: Record<string, string> = { COUNTER: "پرداخت در پیشخوان فروشگاه", PICKUP: "پرداخت هنگام تحویل حضوری", COURIER: "پرداخت به پیک هنگام تحویل" };
 const errorMessage = (value: unknown) => {
   if (value && typeof value === "object" && "error" in value && typeof value.error === "string") return value.error;
   return "درخواست انجام نشد. لطفاً دوباره تلاش کنید.";
@@ -81,13 +82,15 @@ export default function RetailCheckoutClient({ locale, organization }: { locale:
   }, [org]);
 
   const selectedMethod = methods.find((method) => method.method === paymentMethod);
+  const availableCashModes = selectedMethod?.cashModes?.filter((mode) => mode === "COUNTER" ||
+    (mode === "PICKUP" && type === "PICK_UP") || (mode === "COURIER" && type === "DELIVERY")) ?? [];
   const loginHref = appPath(`/${encodeURIComponent(locale)}/login?callbackUrl=${encodeURIComponent(appPath(`/${encodeURIComponent(locale)}/retail/${encodeURIComponent(org)}/checkout`))}`);
   const submitCheckout = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
     if (type === "DELIVERY" && !deliveryAddress.trim()) { setError("نشانی تحویل را وارد کنید."); return; }
     if (!paymentMethod) { setError("روش پرداخت را انتخاب کنید."); return; }
-    if (selectedMethod?.method === "CASH" && selectedMethod.cashModes?.length && !cashMode) { setError("شیوه پرداخت نقدی را انتخاب کنید."); return; }
+    if (selectedMethod?.method === "CASH" && !availableCashModes.includes(cashMode)) { setError("شیوه پرداخت نقدی را انتخاب کنید."); return; }
     setBusy(true);
     try {
       const response = await fetch(appPath("/api/retail/v1/checkout"), {
@@ -97,7 +100,7 @@ export default function RetailCheckoutClient({ locale, organization }: { locale:
       const body = await response.json().catch(() => ({}));
       if (response.status === 401) { setAuthenticated(false); return; }
       if (!response.ok) throw new Error(errorMessage(body));
-      if (typeof body.orderNumber !== "string" || typeof body.total !== "string" || typeof body.paymentStatus !== "string" || typeof body.orderStatus !== "string") throw new Error("پاسخ تأیید سفارش کامل نیست.");
+      if (typeof body.orderNumber !== "string" || typeof body.total !== "string" || typeof body.paymentStatus !== "string" || typeof body.orderStatus !== "string" || typeof body.paymentMethod !== "string") throw new Error("پاسخ تأیید سفارش کامل نیست.");
       setOrder(body as OrderResult);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "ثبت سفارش ممکن نشد."); }
     finally { setBusy(false); }
@@ -136,14 +139,14 @@ export default function RetailCheckoutClient({ locale, organization }: { locale:
         {order ? <section className="mt-7 rounded-2xl bg-white p-6 md:p-8">
           <h2 className="text-xl font-semibold">سفارش {order.orderNumber} ثبت شد</h2>
           <dl className="mt-5 grid gap-4 sm:grid-cols-3"><div><dt className="text-xs text-[#77736a]">مبلغ سفارش</dt><dd className="mt-1 font-semibold">{money(Number(order.total))}</dd></div><div><dt className="text-xs text-[#77736a]">وضعیت پرداخت</dt><dd className="mt-1">{statusText[order.paymentStatus] ?? order.paymentStatus}</dd></div><div><dt className="text-xs text-[#77736a]">وضعیت سفارش</dt><dd className="mt-1">{statusText[order.orderStatus] ?? order.orderStatus}</dd></div></dl>
-          {selectedMethod?.method === "INOTI_USSD" && selectedMethod.dialString && order.trackingToken && <div className="mt-7 rounded-2xl border border-[#e5e1d9] p-5 text-sm">
+          {order.paymentMethod === "INOTI_USSD" && methods.find((method) => method.method === "INOTI_USSD")?.dialString && order.trackingToken && <div className="mt-7 rounded-2xl border border-[#e5e1d9] p-5 text-sm">
             <h3 className="font-semibold">پرداخت با کد دستوری</h3>
-            <p className="mt-2">کد <b dir="ltr">{selectedMethod.dialString}</b> را شماره‌گیری کنید و کد پیگیری زیر را وارد کنید.</p>
+            <p className="mt-2">کد <b dir="ltr">{methods.find((method) => method.method === "INOTI_USSD")?.dialString}</b> را شماره‌گیری کنید و کد پیگیری زیر را وارد کنید.</p>
             <p className="mt-3 break-all rounded-lg bg-[#f8f7f4] p-3 font-mono" dir="ltr">{order.trackingToken}</p>
             <p className="mt-3 text-[#766d61]">پرداخت تا زمان تأیید ارائه‌دهنده در انتظار می‌ماند. کد پیگیری را فقط در درگاه کد دستوری همین فروشگاه وارد کنید.</p>
           </div>}
-          {selectedMethod?.method === "BANK_TRANSFER" && <div className="mt-7 border-t border-[#e5e1d9] pt-6"><h3 className="font-semibold">گزارش پرداخت بانکی</h3>
-            {selectedMethod.bankCardNumber && <p className="mt-3 text-sm">شماره کارت: <b dir="ltr">{selectedMethod.bankCardNumber}</b></p>}{selectedMethod.bankAccountOwner && <p className="mt-1 text-sm">به نام: {selectedMethod.bankAccountOwner}</p>}
+          {order.paymentMethod === "BANK_TRANSFER" && <div className="mt-7 border-t border-[#e5e1d9] pt-6"><h3 className="font-semibold">گزارش پرداخت بانکی</h3>
+            {order.bankCardNumber && <p className="mt-3 text-sm">شماره کارت: <b dir="ltr">{order.bankCardNumber}</b></p>}{order.bankAccountOwner && <p className="mt-1 text-sm">به نام: {order.bankAccountOwner}</p>}
             {reportSubmitted ? <p role="status" className="mt-4 text-sm text-emerald-800">{reportMessage}</p> : <>
               <fieldset className="mt-5"><legend className="text-sm">یکی از روش‌های گزارش را انتخاب کنید</legend><div className="mt-2 flex flex-wrap gap-4 text-sm"><label className="flex items-center gap-2"><input type="radio" name="reportMode" checked={reportMode === "RECEIPT"} onChange={() => setReportMode("RECEIPT")} />بارگذاری تصویر رسید</label><label className="flex items-center gap-2"><input type="radio" name="reportMode" checked={reportMode === "TIME"} onChange={() => setReportMode("TIME")} />ثبت زمان پرداخت</label></div></fieldset>
               {reportMode === "RECEIPT" ? <label className="mt-4 block text-sm">تصویر رسید<input className="mt-2 block w-full rounded-xl border border-[#ddd9d0] bg-white p-3" type="file" accept="image/*" onChange={(event) => setReceipt(event.target.files?.[0] ?? null)} /></label> : <label className="mt-4 block text-sm">زمان پرداخت<input className="mt-2 block min-h-12 w-full rounded-xl border border-[#ddd9d0] bg-white px-3" type="datetime-local" value={reportedAt} onChange={(event) => setReportedAt(event.target.value)} /></label>}
@@ -153,11 +156,11 @@ export default function RetailCheckoutClient({ locale, organization }: { locale:
         </section> : !items.length ? <section className="mt-7 rounded-2xl bg-white p-7"><p>سبد خرید شما خالی است.</p></section> : <>
           <section className="mt-7 rounded-2xl bg-white p-6"><h2 className="font-semibold">اقلام سبد خرید</h2><ul className="mt-4 divide-y divide-[#eeeae3]">{items.map((item, index) => <li key={item.id ?? index} className="flex justify-between gap-4 py-3 text-sm"><span>{item.productName ?? item.variant?.product?.name ?? item.name ?? "کالای فروشگاه"}{(item.variantName ?? item.variant?.name) ? ` · ${item.variantName ?? item.variant?.name}` : ""}</span><span>تعداد: {new Intl.NumberFormat("fa-IR").format(item.quantity ?? 1)}</span></li>)}</ul><p className="mt-4 text-xs text-[#77736a]">مبلغ نهایی پس از محاسبه و تأیید سرور نمایش داده می‌شود.</p></section>
           <form onSubmit={(event) => void submitCheckout(event)} className="mt-5 space-y-5 rounded-2xl bg-white p-6 md:p-8">
-            <fieldset><legend className="font-semibold">روش دریافت</legend><div className="mt-3 flex gap-5 text-sm"><label className="flex items-center gap-2"><input type="radio" name="type" checked={type === "PICK_UP"} onChange={() => setType("PICK_UP")} />دریافت حضوری</label><label className="flex items-center gap-2"><input type="radio" name="type" checked={type === "DELIVERY"} onChange={() => setType("DELIVERY")} />ارسال با پیک</label></div></fieldset>
+            <fieldset><legend className="font-semibold">روش دریافت</legend><div className="mt-3 flex gap-5 text-sm"><label className="flex items-center gap-2"><input type="radio" name="type" checked={type === "PICK_UP"} onChange={() => { setType("PICK_UP"); if (cashMode === "COURIER") setCashMode("COUNTER"); }} />دریافت حضوری</label><label className="flex items-center gap-2"><input type="radio" name="type" checked={type === "DELIVERY"} onChange={() => { setType("DELIVERY"); if (cashMode === "PICKUP") setCashMode("COUNTER"); }} />ارسال با پیک</label></div></fieldset>
             {type === "DELIVERY" && <label className="block text-sm">نشانی تحویل<textarea required value={deliveryAddress} onChange={(event) => setDeliveryAddress(event.target.value)} className="mt-2 min-h-24 w-full rounded-xl border border-[#ddd9d0] p-3" /></label>}
             <label className="block text-sm">کد تخفیف (اختیاری)<input value={couponCode} onChange={(event) => setCouponCode(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-[#ddd9d0] px-3" /></label>
             <label className="block text-sm">روش پرداخت<select required value={paymentMethod} onChange={(event) => { setPaymentMethod(event.target.value); const nextCash = methods.find((method) => method.method === event.target.value)?.cashModes?.[0]; setCashMode(nextCash ?? ""); }} className="mt-2 min-h-11 w-full rounded-xl border border-[#ddd9d0] bg-white px-3"><option value="">انتخاب کنید</option>{methods.map((method) => <option key={method.method} value={method.method}>{method.label}</option>)}</select></label>
-            {selectedMethod?.method === "CASH" && !!selectedMethod.cashModes?.length && <label className="block text-sm">شیوه پرداخت نقدی<select value={cashMode} onChange={(event) => setCashMode(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-[#ddd9d0] bg-white px-3">{selectedMethod.cashModes.map((mode) => <option key={mode} value={mode}>{mode}</option>)}</select></label>}
+            {selectedMethod?.method === "CASH" && !!availableCashModes.length && <label className="block text-sm">شیوه پرداخت نقدی<select value={cashMode} onChange={(event) => setCashMode(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-[#ddd9d0] bg-white px-3">{availableCashModes.map((mode) => <option key={mode} value={mode}>{cashModeText[mode] ?? mode}</option>)}</select></label>}
             <button disabled={busy || !methods.length} className="min-h-12 w-full rounded-full bg-[#292a24] px-6 py-3 text-sm text-white disabled:opacity-50">{busy ? "در حال ثبت سفارش…" : "ثبت سفارش"}</button>
           </form>
         </>}

@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { NextRequest } from "next/server";
 
 const calls: Array<{ name: string; input: unknown }> = [];
+let websiteEnabled = true;
 const publishedWebsite = {
   mode: "PUBLISHED", locale: "en", propertySlug: "hotel-a", revisionNumber: 2,
   content: { title: "Hotel A", hero: { heading: "Welcome" }, introduction: { body: "Introduction" }, sections: [], contact: {} },
@@ -16,6 +17,10 @@ mock.module(pathToFileURL(resolve("lib/hotel/content/hotel-website-public.servic
   getPublishedHotelWebsite: async (input: unknown) => { calls.push({ name: "website", input }); return publishedWebsite; },
   listPublishedHotelWebsiteRoomCategories: async (input: unknown) => { calls.push({ name: "rooms", input }); return publishedRooms; },
   getPublishedHotelWebsiteMedia: async (input: unknown) => { calls.push({ name: "media", input }); return { url: "https://hotel.public.blob.vercel-storage.com/image.jpg", filename: "image.jpg", mimeType: "image/jpeg" }; },
+} });
+mock.module(pathToFileURL(resolve("lib/hotel/services/public-website-gate.ts")).href, { namedExports: {
+  isHotelWebsitePublicReadAvailable: () => websiteEnabled,
+  HOTEL_WEBSITE_PUBLIC_GATE_MESSAGE: "Hotel website publication is not available",
 } });
 
 let websiteGET: typeof import("../../app/api/hotel/v1/website/properties/[propertySlug]/route").GET;
@@ -67,4 +72,19 @@ test("bad locale, slug, and media association fail without service access", { co
   assert.equal(badSlug.status, 400);
   assert.equal(badMedia.status, 404);
   assert.deepEqual(calls, []);
+});
+
+test("all public website routes fail closed while the independent rollout gate is disabled", { concurrency: false }, async () => {
+  calls.length = 0;
+  websiteEnabled = false;
+  const website = await websiteGET(request("/api/hotel/v1/website/properties/hotel-a"), { params: Promise.resolve({ propertySlug: "hotel-a" }) });
+  const rooms = await roomsGET(request("/api/hotel/v1/website/properties/hotel-a/room-categories"), { params: Promise.resolve({ propertySlug: "hotel-a" }) });
+  const media = await mediaGET(request("/api/hotel/v1/website/media/assoc-12345678"), { params: Promise.resolve({ associationId: "assoc-12345678" }) });
+  for (const response of [website, rooms, media]) {
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get("cache-control"), "no-store, max-age=0");
+    assert.deepEqual(await response.json(), { error: "WEBSITE_DISABLED", message: "Hotel website publication is not available" });
+  }
+  assert.deepEqual(calls, [], "disabled route gate prevents database-backed service access");
+  websiteEnabled = true;
 });

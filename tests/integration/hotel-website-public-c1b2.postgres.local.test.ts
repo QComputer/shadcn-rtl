@@ -9,6 +9,7 @@ function verifyTarget() {
   assert.notEqual(process.env.NODE_ENV, "production");
   assert.notEqual(process.env.VERCEL_ENV, "production");
   assert.equal(process.env.AI_MEDIA_LOCAL_DOCKER_E2E, "1");
+  assert.equal(process.env.HOTEL_WEBSITE_PUBLIC_OPERATIONAL_ENABLED, "1", "public website routes are enabled only inside this disposable test process");
   assert.equal(process.env.DATABASE_URL, process.env.DIRECT_URL);
   const runId = process.env.HOTEL_WEBSITE_C1B2_RUN_ID?.toLowerCase();
   const containerId = process.env.HOTEL_WEBSITE_C1B2_CONTAINER_ID?.toLowerCase();

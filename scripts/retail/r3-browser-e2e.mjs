@@ -97,7 +97,7 @@ async function createAndPublish({ browser, email, locale, organization, category
   await page.getByLabel("عنوان گونه").fill("پیش‌نمایش مشکی");
   await page.getByLabel("شناسه کالا (SKU)").fill(sku);
   await page.getByLabel("قیمت (تومان)").fill(attribute === "ram" ? "45900000" : "650000");
-  await page.getByLabel("موجودی").fill("3");
+  await page.locator('input[type="number"]').last().fill("3");
   const upload = page.locator('input[type="file"]');
   const mediaUpload = page.waitForResponse((response) => response.url().includes("/api/dashboard/retail/media") && response.request().method() === "POST");
   await upload.setInputFiles(imagePath);

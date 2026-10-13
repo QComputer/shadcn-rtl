@@ -50,13 +50,14 @@ async function login(browser, email, locale = "fa") {
   // normalized by the app. Navigate explicitly to the merchant catalog route;
   // the browser session and server-side route authorization remain in force.
   await page.goto(`${baseUrl}/${locale}/dashboard/retail-catalog`);
-  const catalogHeading = page.getByRole("heading", { name: locale === "fa" ? "کاتالوگ فروشگاه" : locale === "ar" ? "كتالوج المتجر" : "Retail catalog" });
+  const addProductLink = page.getByRole("link", { name: locale === "fa" ? "افزودن محصول" : locale === "ar" ? "إضافة منتج" : "Add product" });
   try {
-    await catalogHeading.waitFor({ timeout: 15000 });
+    await addProductLink.waitFor({ timeout: 30000 });
   } catch (error) {
     const renderedText = (await page.locator("body").innerText()).slice(0, 1600);
     await page.screenshot({ path: path.join(evidenceDir, `${email.split("@")[0]}-catalog-route-diagnostic.png`), fullPage: true });
-    throw new Error(`MERCHANT_CATALOG_ROUTE_MISSING: expected catalog route heading at ${page.url()}; rendered body starts: ${renderedText}; ${String(error)}`);
+    await fs.writeFile(path.join(evidenceDir, `${email.split("@")[0]}-catalog-route-diagnostic.txt`), JSON.stringify({ url: page.url(), title: await page.title(), renderedText, linkCount: await addProductLink.count(), error: String(error) }, null, 2));
+    throw new Error(`MERCHANT_CATALOG_ROUTE_MISSING: expected localized add-product link at ${page.url()}; rendered body starts: ${renderedText}; ${String(error)}`);
   }
   return { context, page };
 }

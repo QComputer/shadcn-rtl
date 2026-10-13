@@ -20,6 +20,9 @@ import { OrganizationBrandHome } from "@/components/public/organization-brand-ho
 import { OrganizationVisitorChoice } from "@/components/public/organization-visitor-choice";
 import { appResourceUrl } from "@/lib/app-base-path";
 import { resolveOrganizationHomeContent } from "@/lib/organization-home-content";
+import { resolveHotelWebsiteFrontendContext } from "@/lib/hotel/website-frontend-context.server";
+import { PublishedHotelWebsitePage } from "@/components/published-hotel-website-page";
+import { HotelDataState } from "@/components/hotel-data-state";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -90,8 +93,10 @@ export default async function OrganizationHomePage({ params }: Props) {
   const organization = await prisma.organization.findFirst({
     where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
     select: {
+      id: true,
       name: true,
       slug: true,
+      vertical: true,
       description: true,
       address: true,
       phone: true,
@@ -102,6 +107,21 @@ export default async function OrganizationHomePage({ params }: Props) {
   });
 
   if (!organization) notFound();
+
+  // Hotel publication is a distinct informational surface. It is resolved
+  // from the actual request Host and never falls through to preview data.
+  if (organization.vertical === "HOTEL") {
+    const localeCode = locale === "en" || locale === "ar" ? locale : "fa";
+    const context = await resolveHotelWebsiteFrontendContext({
+      host: requestHeaders.get("host"),
+      organizationId: organization.id,
+    });
+    if (context.status !== "READY") {
+      return <HotelDataState code="UNAVAILABLE_PROPERTY" locale={localeCode} />;
+    }
+    return <PublishedHotelWebsitePage propertySlug={context.propertySlug} locale={localeCode} />;
+  }
+
   const publicHome = resolveOrganizationPublicHome({
     capabilities: organization.capabilities,
     settings: organization.settings?.settings,

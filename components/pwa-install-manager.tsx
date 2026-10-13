@@ -73,8 +73,16 @@ export function PwaInstallManager({ enabled, locale, basePath, appName, appIcon 
   const [dismissed, setDismissed] = useState(false)
   const [readyIcon, setReadyIcon] = useState<string | null>(null)
   const [identity, setIdentity] = useState<InstallIdentity | null>(null)
-  const text = copy[locale as keyof typeof copy] || copy.fa
-  const dir = locale === "en" ? "ltr" : "rtl"
+  // Rewrites may also leave the parent layout's locale behind the browser URL.
+  const publicPath = typeof window === "undefined"
+    ? ""
+    : basePath && window.location.pathname.startsWith(`${basePath}/`)
+      ? window.location.pathname.slice(basePath.length)
+      : window.location.pathname
+  const pathLocale = publicPath.split("/").filter(Boolean)[0]
+  const invitationLocale = pathLocale === "fa" || pathLocale === "en" || pathLocale === "ar" ? pathLocale : locale
+  const text = copy[invitationLocale as keyof typeof copy] || copy.fa
+  const dir = invitationLocale === "en" ? "ltr" : "rtl"
 
   useEffect(() => {
     if (!enabled) return
@@ -155,7 +163,7 @@ export function PwaInstallManager({ enabled, locale, basePath, appName, appIcon 
         <Image
           data-testid="pwa-install-brand-icon"
           src={icon}
-          alt={locale === "fa" ? `نماد اپ ${name}` : locale === "ar" ? `أيقونة تطبيق ${name}` : `${name} app icon`}
+          alt={invitationLocale === "fa" ? `نماد اپ ${name}` : invitationLocale === "ar" ? `أيقونة تطبيق ${name}` : `${name} app icon`}
           width={40}
           height={40}
           unoptimized

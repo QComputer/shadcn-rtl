@@ -247,8 +247,12 @@ try {
     manifest: Array.from(document.querySelectorAll('link[rel="manifest"]')).map((link) => link.getAttribute("href")),
     icons: Array.from(document.querySelectorAll('link[rel="icon"]')).map((link) => link.getAttribute("href")),
     apple: Array.from(document.querySelectorAll('link[rel="apple-touch-icon"]')).map((link) => link.getAttribute("href")),
+    title: document.title,
+    heading: document.querySelector("h1")?.textContent,
+    path: window.location.pathname,
   }));
   console.log("tenant-alpha-page-icons", JSON.stringify(metadata));
+  assert.equal(metadata.path, `/en/${alpha.slug}`, "browser remains on the requested tenant path");
   assert.ok(metadata.manifest.some((href) => href?.includes("manifest.webmanifest")), "tenant page advertises a manifest");
   assert.ok(metadata.icons.some((href) => href?.includes("aka-shoes")), `tenant page advertises the tenant favicon: ${JSON.stringify(metadata.icons)}`);
   assert.ok(metadata.apple.some((href) => href?.includes("aka-shoes")), `tenant page advertises the tenant Apple icon: ${JSON.stringify(metadata.apple)}`);

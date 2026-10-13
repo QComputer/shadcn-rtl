@@ -22,6 +22,7 @@ import { appResourceUrl } from "@/lib/app-base-path";
 import { resolveOrganizationHomeContent } from "@/lib/organization-home-content";
 import { resolveHotelWebsiteFrontendContext } from "@/lib/hotel/website-frontend-context.server";
 import { PublishedHotelWebsitePage } from "@/components/published-hotel-website-page";
+import { trustedHotelWebsiteHost } from "@/lib/hotel/trusted-website-host";
 import { HotelDataState } from "@/components/hotel-data-state";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
@@ -113,7 +114,14 @@ export default async function OrganizationHomePage({ params }: Props) {
   if (organization.vertical === "HOTEL") {
     const localeCode = locale === "en" || locale === "ar" ? locale : "fa";
     const context = await resolveHotelWebsiteFrontendContext({
-      host: requestHeaders.get("host"),
+      // For custom-domain rewrites the proxy has already authenticated and
+      // normalized the tenant host. The internal rewrite keeps the platform
+      // request Host, so use only the proxy-provided tenant header there.
+      host: trustedHotelWebsiteHost({
+        requestHost: requestHeaders.get("host"),
+        isCustomDomain: requestHeaders.get("x-bazar-custom-domain"),
+        tenantDomain: requestHeaders.get("x-bazar-tenant-domain"),
+      }),
       organizationId: organization.id,
     });
     if (context.status !== "READY") {

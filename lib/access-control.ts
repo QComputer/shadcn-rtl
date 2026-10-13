@@ -15,6 +15,8 @@ export interface RouteAccessConfig {
   requiresOrgMembership?: boolean
   /** Required organization types when organization membership is required. */
   requiredOrgType?: OrganizationType[]
+  /** Required independently managed platform capability. */
+  requiredCapability?: string
   /** Route is available to every authenticated role. */
   isUniversal?: boolean
 }
@@ -24,7 +26,7 @@ export interface UserAccessContext {
   userRole: UserRole
   organizationId?: string
   organizationType?: OrganizationType
-  organizationCapabilities?: OrganizationType[]
+  organizationCapabilities?: string[]
 }
 
 export interface AccessCheckResult {
@@ -73,6 +75,18 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
   "/dashboard/business-activation": {
     allowedRoles: ORG_MANAGEMENT_ROLES,
     requiresOrgMembership: true,
+  },
+
+  "/dashboard/hotel-website": {
+    allowedRoles: ORG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+    requiredCapability: "HOTEL_WEBSITE",
+  },
+
+  "/dashboard/hotel-website/[organizationId]/[propertyId]": {
+    allowedRoles: ORG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+    requiredCapability: "HOTEL_WEBSITE",
   },
 
   "/dashboard/reputation": {
@@ -350,6 +364,18 @@ export function checkRouteAccess(route: string, context: UserAccessContext): Acc
       return {
         hasAccess: false,
         reason: `Organization capabilities ${capabilities.join(",") || "none"} are not allowed for ${normalizedRoute}`,
+        redirectPath: getRedirectPathForRole(context.userRole),
+      }
+    }
+  }
+
+  if (routeConfig.requiredCapability) {
+    const capabilities = context.organizationCapabilities
+      ?? (context.organizationType ? [context.organizationType] : [])
+    if (!capabilities.includes(routeConfig.requiredCapability)) {
+      return {
+        hasAccess: false,
+        reason: `Organization capability ${routeConfig.requiredCapability} is required for ${normalizedRoute}`,
         redirectPath: getRedirectPathForRole(context.userRole),
       }
     }

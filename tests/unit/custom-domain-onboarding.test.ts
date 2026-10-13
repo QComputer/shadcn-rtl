@@ -614,6 +614,7 @@ describe("ACTIVE-only routing (resolveActiveTenantForHost)", () => {
       locale: "en",
       organizationId: "org_1",
       organizationType: "SHOP",
+      vertical: null,
       capabilities: ["SHOP"],
       publicHomeMode: null,
       brandLandingProvider: null,
@@ -651,6 +652,7 @@ describe("ACTIVE-only routing (resolveActiveTenantForHost)", () => {
       locale: "fa",
       organizationId: "org_1",
       organizationType: "APPOINTMENT",
+      vertical: null,
       capabilities: ["APPOINTMENT"],
       publicHomeMode: null,
       brandLandingProvider: null,
@@ -673,6 +675,16 @@ describe("ACTIVE-only routing (resolveActiveTenantForHost)", () => {
         source: "BAZARBAAZ_MANAGED",
       },
     });
+  });
+
+  it("retains Hotel vertical identity for domain-based informational websites", async () => {
+    const tenant = await resolveActiveTenantForHost(makePrisma("ACTIVE", {
+      vertical: "HOTEL",
+      capabilities: [{ key: "HOTEL_WEBSITE", status: "ACTIVE", enabledAt: new Date(), disabledAt: null }],
+    }), "hotel.example.ir");
+    assert.equal(tenant?.vertical, "HOTEL");
+    assert.deepEqual(tenant?.capabilities, []);
+    assert.deepEqual(tenant?.publicHome, { kind: "generic", reason: "NO_PUBLIC_CAPABILITY" });
   });
 
   it("resolves the same organization branding independently of host routing", async () => {

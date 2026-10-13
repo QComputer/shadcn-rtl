@@ -52,3 +52,30 @@ ADMIN/MANAGER may draft and submit. Organization ADMIN or platform SUPER_ADMIN m
 ## Integration requirements and current limits
 
 Apply the active host's branding/theme separately using the platform tenant-branding contract; do not hardcode Damoon identity. The public content model currently has no approved editorial address visibility field, no public article/page route beyond the property HOME publication, and no price or availability projection in C1B2. Do not fabricate those fields. Future media content must continue to use platform-owned Image rows and C1A revision-scoped associations. C1B2 intentionally has no frontend dependency and no public content-preview route.
+
+## F3 unified website and CMS runtime
+
+The F3 integration combines the accepted F2D website runtime with the C1B1 CMS dashboard in the same Next.js application and database contract.
+
+- CMS property list: `/{locale}/dashboard/hotel-website`
+- CMS editor: `/{locale}/dashboard/hotel-website/{organizationId}/{propertyId}`
+- Public informational Hotel website: active Hotel domain root. The custom-domain router redirects the root to its localized organization route, then the browser reads the published C1B2 API from that same host.
+- The public page requires an active Hotel organization domain. The API rechecks host, property, `HOTEL_WEBSITE`, current publication/revision, and current media eligibility on every request.
+- CMS routes require an authenticated user and active tenant membership (or the C1B1 platform SUPER_ADMIN policy). ADMIN/MANAGER may draft and submit; approval remains independent; only ADMIN/SUPER_ADMIN may publish or revoke.
+- The calendar and guest selector remain UI-only previews. The public page sends no availability query, hold, reservation, payment, or inventory mutation.
+- `HOTEL_WEBSITE_PUBLIC_OPERATIONAL_ENABLED` defaults off. An owner-controlled local acceptance process may set it to `1`; production remains disabled until separately authorized.
+
+### Local startup
+
+Use an isolated local PostgreSQL database with this branch's migration chain. Set `DATABASE_URL` and `DIRECT_URL` in the local shell, then run:
+
+```powershell
+pnpm install --frozen-lockfile
+pnpm exec prisma generate
+pnpm exec prisma migrate deploy
+pnpm dev
+```
+
+Enable `HOTEL_WEBSITE_PUBLIC_OPERATIONAL_ENABLED=1` only in that local process after the synthetic organization has an active `HOTEL_WEBSITE` grant and an approved publication. The CMS itself remains authenticated and does not depend on `HOTEL_BOOKING`.
+
+For a local production-server smoke, run `pnpm build` followed by `pnpm start` with the same isolated runtime configuration. Do not use Production or Neon settings for local acceptance.

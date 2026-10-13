@@ -405,6 +405,20 @@ describe("capability-aware dashboard authorization", () => {
       organizationCapabilities: ["SHOP"],
     }).hasAccess, false);
   });
+
+  it("allows Hotel website CMS routes only for management roles with HOTEL_WEBSITE", () => {
+    const manager = {
+      userId: "hotel-manager",
+      userRole: "MANAGER" as const,
+      organizationId: "hotel-a",
+      organizationType: "SHOP" as const,
+      organizationCapabilities: ["HOTEL_WEBSITE"],
+    };
+    assert.equal(checkRouteAccess("/fa/dashboard/hotel-website", manager).hasAccess, true);
+    assert.equal(checkRouteAccess("/fa/dashboard/hotel-website/org-a/property-a", manager).hasAccess, true);
+    assert.equal(checkRouteAccess("/fa/dashboard/hotel-website", { ...manager, organizationCapabilities: [] }).hasAccess, false);
+    assert.equal(checkRouteAccess("/fa/dashboard/hotel-website", { ...manager, userRole: "STAFF" }).hasAccess, false);
+  });
 });
 
 describe("tenant-safe push deep links", () => {

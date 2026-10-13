@@ -369,6 +369,40 @@ export async function proxy(request: NextRequest) {
       return withSecurityHeaders(response);
     }
 
+    // Hotel websites are an informational vertical and do not require SHOP or
+    // APPOINTMENT capabilities. Keep their active-domain root on the existing
+    // organization route; the page and public APIs independently enforce
+    // HOTEL_WEBSITE and publication state before returning content.
+    if (tenant.vertical === "HOTEL") {
+      const splitPath = splitLocalePrefix(pathname);
+      const locale = splitPath.locale || defaultLocale;
+      const requestHeaders = buildTenantRewriteHeaders(
+        request,
+        normalizedHost,
+        tenant,
+        locale,
+        buildTenantPublicPath(locale, splitPath.pathnameWithoutLocale),
+      );
+      let response: NextResponse;
+      if (splitPath.pathnameWithoutLocale === "/") {
+        const hotelHomeUrl = request.nextUrl.clone();
+        hotelHomeUrl.pathname = buildOrganizationRootPath({ locale, organizationSlug: tenant.slug });
+        // Use a tenant-domain redirect here. A Next rewrite changes the Host
+        // observed by the App Router during local and production server runs,
+        // which would make the downstream host-based Hotel check fail closed.
+        response = NextResponse.redirect(hotelHomeUrl, 308);
+      } else if (splitPath.pathnameWithoutLocale === `/${tenant.slug}`) {
+        response = NextResponse.next({ request: { headers: requestHeaders } });
+      } else {
+        const notFoundUrl = request.nextUrl.clone();
+        notFoundUrl.pathname = `/${locale}/not-found`;
+        response = NextResponse.rewrite(notFoundUrl, { request: { headers: requestHeaders } });
+      }
+      response.headers.set("x-locale", locale);
+      response.headers.set("x-direction", localeConfig[locale].dir);
+      return withSecurityHeaders(response);
+    }
+
     const tenantPathLocale = splitLocalePrefix(pathname).locale;
     const localeForTenant = tenantPathLocale || defaultLocale;
 

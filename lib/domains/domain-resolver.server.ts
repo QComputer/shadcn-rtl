@@ -8,6 +8,7 @@ export type ResolvedTenant = {
   locale: CustomDomainLocale;
   organizationId: string;
   organizationType: "SHOP" | "APPOINTMENT";
+  vertical: string | null;
   capabilities: OrganizationCapabilityKey[];
   publicHomeMode?: string | null;
   brandLandingProvider?: string | null;
@@ -48,6 +49,7 @@ export async function resolveActiveTenantForHost(
           coverImage: true,
           locale: true,
           type: true,
+          vertical: true,
           capabilitiesInitializedAt: true,
           capabilities: { select: { key: true, status: true } },
           settings: { select: { settings: true, publicHomeMode: true, brandLandingProvider: true } },
@@ -73,6 +75,7 @@ export async function resolveActiveTenantForHost(
     locale: toSupportedLocale(domain.organization.locale),
     organizationId: domain.organization.id,
     organizationType: domain.organization.type,
+    vertical: domain.organization.vertical ?? null,
     capabilities: activePublicBusinessCapabilities(domain.organization.capabilities),
     publicHomeMode: domain.organization.settings?.publicHomeMode ?? null,
     brandLandingProvider: domain.organization.settings?.brandLandingProvider ?? null,

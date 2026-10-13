@@ -9,6 +9,7 @@ export type ResolvedCustomDomain = {
   locale: CustomDomainLocale;
   organizationId: string;
   organizationType: "SHOP" | "APPOINTMENT";
+  vertical: string | null;
   capabilities: Array<"SHOP" | "APPOINTMENT">;
   publicHomeMode?: string | null;
   brandLandingProvider?: string | null;

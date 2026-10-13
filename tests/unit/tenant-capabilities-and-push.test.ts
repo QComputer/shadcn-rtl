@@ -419,6 +419,22 @@ describe("capability-aware dashboard authorization", () => {
     assert.equal(checkRouteAccess("/fa/dashboard/hotel-website", { ...manager, organizationCapabilities: [] }).hasAccess, false);
     assert.equal(checkRouteAccess("/fa/dashboard/hotel-website", { ...manager, userRole: "STAFF" }).hasAccess, false);
   });
+
+  it("allows Retail catalog pages only for organization managers with SHOP", () => {
+    const manager = {
+      userId: "retail-manager",
+      userRole: "MANAGER" as const,
+      organizationId: "retail-a",
+      organizationType: "SHOP" as const,
+      organizationCapabilities: ["SHOP"],
+    };
+    assert.equal(checkRouteAccess("/fa/dashboard/retail-catalog", manager).hasAccess, true);
+    assert.equal(checkRouteAccess("/en/dashboard/retail-catalog/new", manager).hasAccess, true);
+    assert.equal(checkRouteAccess("/fa/dashboard/retail-catalog/product-a", manager).hasAccess, true);
+    assert.equal(checkRouteAccess("/fa/dashboard/retail-catalog", { ...manager, userRole: "STAFF" }).hasAccess, false);
+    assert.equal(checkRouteAccess("/fa/dashboard/retail-catalog", { ...manager, organizationCapabilities: [] }).hasAccess, false);
+    assert.equal(checkRouteAccess("/fa/dashboard/retail-catalog", { ...manager, organizationId: undefined }).hasAccess, false);
+  });
 });
 
 describe("tenant-safe push deep links", () => {

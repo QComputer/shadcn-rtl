@@ -109,7 +109,9 @@ jobs:
         env:
           RETAIL_R3_BASE_URL: http://127.0.0.1:3000
           RETAIL_R3_PLAYWRIGHT_ENTRY: ${{ github.workspace }}/node_modules/playwright/index.mjs
-        run: node scripts/retail/r3-browser-e2e.mjs
+        run: |
+          set -o pipefail
+          node scripts/retail/r3-browser-e2e.mjs 2>&1 | tee artifacts/retail-r3-browser/browser.log
 
       - name: Upload browser evidence and server logs
         if: always()

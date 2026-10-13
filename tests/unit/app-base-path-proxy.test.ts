@@ -58,6 +58,13 @@ describe("APP_PATH browser-visible redirects", () => {
     assert.equal(response.headers.get("location"), null);
   });
 
+  it("runs the trusted proxy boundary for the dynamic browser favicon route", async () => {
+    process.env.VERCEL_URL = "bazarbaaz-app.vercel.app";
+    assert.ok(config.matcher.includes("/favicon.ico"));
+    const response = await proxy(platformRequest("/favicon.ico"));
+    assert.equal(response.headers.get("location"), null);
+  });
+
   it("strips the proxy credential and spoofable tenant trust headers", () => {
     const request = new NextRequest("https://bazarbaaz-app.vercel.app/manifest.webmanifest", {
       headers: {

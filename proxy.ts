@@ -292,7 +292,7 @@ export async function proxy(request: NextRequest) {
           locale,
           browserPathname,
         );
-        const isAppResource = pathname === "/manifest.webmanifest";
+        const isAppResource = pathname === "/manifest.webmanifest" || pathname === "/favicon.ico";
         const operationalRoute = pathname.startsWith("/api") || isAppResource
           ? null
           : resolveOperationalAppRoute(pathname, tenant.slug);
@@ -678,6 +678,7 @@ export const config = {
     "/robots.txt",
     "/sitemap.xml",
     "/manifest.webmanifest",
+    "/favicon.ico",
     "/api/:path*",
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
   ],

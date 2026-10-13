@@ -13,21 +13,22 @@ type PwaInstallManagerProps = {
   enabled: boolean
   locale: string
   basePath: string
+  appName: string
 }
 
 const copy = {
   fa: {
-    title: "\u0646\u0635\u0628 \u0628\u0627\u0632\u0627\u0631 \u0628\u0627\u0632",
+    title: "\u0646\u0635\u0628",
     action: "\u0646\u0635\u0628",
     dismiss: "\u0628\u0633\u062a\u0646",
   },
   en: {
-    title: "Install Bazarbaaz",
+    title: "Install",
     action: "Install",
     dismiss: "Close",
   },
   ar: {
-    title: "\u062b\u0628\u0651\u062a \u0628\u0627\u0632\u0627\u0631 \u0628\u0627\u0632",
+    title: "\u062b\u0628\u0651\u062a",
     action: "\u062a\u062b\u0628\u064a\u062a",
     dismiss: "\u0625\u063a\u0644\u0627\u0642",
   },
@@ -38,7 +39,7 @@ export function canRegisterServiceWorker() {
   return window.isSecureContext
 }
 
-export function PwaInstallManager({ enabled, locale, basePath }: PwaInstallManagerProps) {
+export function PwaInstallManager({ enabled, locale, basePath, appName }: PwaInstallManagerProps) {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const text = copy[locale as keyof typeof copy] || copy.fa
@@ -91,7 +92,7 @@ export function PwaInstallManager({ enabled, locale, basePath }: PwaInstallManag
     >
       <div className="flex min-w-0 items-center gap-2">
         <Download className="h-4 w-4 shrink-0 text-primary" />
-        <span className="truncate font-medium">{text.title}</span>
+        <span className="truncate font-medium">{locale === "fa" ? `${text.title} ${appName}` : `${text.title} ${appName}`}</span>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <Button type="button" size="sm" onClick={install}>

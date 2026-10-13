@@ -1234,6 +1234,10 @@ model OrganizationBranding {
   appleTouchIconUrl         String?
   pwaIcon192Url             String?
   pwaIcon512Url             String?
+  pwaMaskable192Url         String?
+  pwaMaskable512Url         String?
+  themeColor                String?
+  backgroundColor           String?
   ogImageUrl                String?
   source                    OrganizationBrandingSource @default(BAZARBAAZ_MANAGED)
   externalSourceUrl         String?

@@ -10,13 +10,49 @@ import { ErrorBoundary } from "@/components/error-boundary"
 import { PwaInstallManager } from "@/components/pwa-install-manager"
 import { getPublicBaseUrl, buildPublicMetadata } from "@/lib/seo"
 import { headers } from "next/headers"
-import { appPath, resolveAppBasePath } from "@/lib/app-base-path"
+import { appPath, appResourceUrl, resolveAppBasePath } from "@/lib/app-base-path"
 import { PlatformFooter } from "@/components/public/platform-footer"
+import { resolveTenantPwaRequestContext } from "@/lib/tenant-pwa-context.server"
+import { resolvePlatformFallbackBranding } from "@/lib/organization-branding"
+import { isTenantPwaInstallable, safeTenantAssetUrl } from "@/lib/operational-app-manifest"
 
 export const dynamic = "force-dynamic";
 
 export function generateStaticParams() {
   return supportedLocales.map((locale) => ({ locale }));
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const requestHeaders = await headers();
+  const basePath = resolveAppBasePath();
+  const context = await resolveTenantPwaRequestContext(requestHeaders).catch(() => ({ kind: "unknown" as const }));
+  if (context.kind === "platform") {
+    const branding = resolvePlatformFallbackBranding();
+    return {
+      icons: {
+        icon: appResourceUrl(branding.favicon, basePath),
+        apple: appResourceUrl(branding.appleTouchIcon, basePath),
+      },
+      manifest: appResourceUrl("/manifest.webmanifest", basePath),
+      themeColor: "#2F5BFF",
+    };
+  }
+  if (context.kind === "tenant") {
+    const branding = context.branding;
+    const favicon = safeTenantAssetUrl(branding.favicon || branding.pwaIcons.icon192 || branding.logo, basePath);
+    const appleTouchIcon = safeTenantAssetUrl(branding.appleTouchIcon || branding.pwaIcons.icon512 || branding.logo, basePath);
+    return {
+      icons: {
+        ...(favicon ? { icon: favicon } : {}),
+        ...(appleTouchIcon ? { apple: appleTouchIcon } : {}),
+      },
+      manifest: appResourceUrl("/manifest.webmanifest", basePath),
+    };
+  }
+  return {
+    icons: { icon: [], apple: [] },
+    manifest: appResourceUrl("/manifest.webmanifest", basePath),
+  };
 }
 
 function normalizeLocale(locale: string | undefined): SupportedLocale {
@@ -32,6 +68,14 @@ export default async function LocaleLayout({
   children: React.ReactNode;
 }) {
   const headersList = await headers();
+  const pwaContext = await resolveTenantPwaRequestContext(headersList).catch(() => ({ kind: "unknown" as const }));
+  const pwaAppName = pwaContext.kind === "tenant"
+    ? (pwaContext.branding.shortName || pwaContext.branding.displayName)
+    : pwaContext.kind === "platform"
+      ? "بازارباز"
+      : "";
+  const pwaInstallReady = pwaContext.kind === "platform"
+    || (pwaContext.kind === "tenant" && isTenantPwaInstallable(pwaContext.branding));
   const tenantPublicBaseUrlHeader = headersList.get('x-bazar-tenant-public-base-url');
   const isTenantContext = !!tenantPublicBaseUrlHeader;
   let baseUrl: string | URL | undefined;
@@ -84,7 +128,7 @@ export default async function LocaleLayout({
               <ErrorBoundary>
                 <ThemeProvider defaultTheme="dark" storageKey="shadcn-rtl-theme">
                   {children}
-                  <PwaInstallManager enabled={process.env.PWA_ENABLED !== "false"} locale={locale} basePath={resolveAppBasePath()} />
+                  <PwaInstallManager enabled={process.env.PWA_ENABLED !== "false" && pwaInstallReady} locale={locale} basePath={resolveAppBasePath()} appName={pwaAppName} />
                 </ThemeProvider>
               </ErrorBoundary>
             </AuthProvider>

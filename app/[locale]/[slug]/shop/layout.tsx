@@ -4,7 +4,7 @@ import { CartBadge } from "@/components/shop/cart-badge";
 import { Button } from "@/components/ui/button";
 import { Metadata } from "next";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher";
-import { Home, Package, ShoppingCart, ShoppingBasket, User } from "lucide-react";
+import { Home, ShoppingCart, ShoppingBasket, User } from "lucide-react";
 import prisma from "@/lib/db";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -17,7 +17,7 @@ import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
 import { buildShopCheckoutPath, buildShopOrderPath, buildShopProductsPath, buildShopPublicPath } from "@/lib/shop-public-paths";
 import { TenantFooter } from "@/components/public/tenant-footer";
 import { hasOrganizationCapability } from "@/lib/organization-capabilities";
-import { resolveOrganizationBranding } from "@/lib/organization-branding";
+import { resolveOrganizationBranding, resolveTenantPageIcons } from "@/lib/organization-branding";
 import { ShopRouteProvider } from "@/lib/contexts/shop-route-context";
 import { OrganizationRootNavigationProvider } from "@/lib/contexts/organization-root-navigation-context";
 import { buildOrganizationRootPath } from "@/lib/custom-domain-routing";
@@ -70,6 +70,12 @@ export async function generateMetadata({ params }: ShopLayoutProps): Promise<Met
       coverImage: organization.coverImage,
       branding: organization.branding,
     });
+    const tenantIcons = resolveTenantPageIcons({
+      organizationId: organization.id,
+      name: organization.name,
+      logo: organization.logo,
+      branding: organization.branding,
+    });
 
     return buildPublicMetadata({
       locale,
@@ -81,8 +87,8 @@ export async function generateMetadata({ params }: ShopLayoutProps): Promise<Met
       keywords: ["Bazarbaaz", "shop", "online shopping", organization.slug],
       alternatePath: seoContext.alternatePath,
       icons: {
-        icon: [{ url: appResourceUrl(branding.favicon) }],
-        apple: [{ url: appResourceUrl(branding.appleTouchIcon) }],
+        icon: tenantIcons.icon.map(({ url }) => ({ url: appResourceUrl(url) })),
+        apple: tenantIcons.apple.map(({ url }) => ({ url: appResourceUrl(url) })),
       },
     });
   } catch {

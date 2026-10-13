@@ -11,7 +11,7 @@ import { buildOrganizationPublicPath, buildOrganizationRootPath } from "@/lib/cu
 import { getTenantSeoContext } from "@/lib/custom-domain-seo";
 import { hasOrganizationCapability } from "@/lib/organization-capabilities";
 import type { CapabilityRecord } from "@/lib/organization-capabilities";
-import { resolveOrganizationBranding } from "@/lib/organization-branding";
+import { resolveOrganizationBranding, resolveTenantPageIcons } from "@/lib/organization-branding";
 import { AppointmentRouteProvider } from "@/lib/contexts/appointment-route-context";
 import { OrganizationRootNavigationProvider } from "@/lib/contexts/organization-root-navigation-context";
 import { appResourceUrl } from "@/lib/app-base-path";
@@ -48,6 +48,8 @@ type OrganizationLayoutData = {
     appleTouchIconUrl: string | null;
     pwaIcon192Url: string | null;
     pwaIcon512Url: string | null;
+    pwaMaskable192Url: string | null;
+    pwaMaskable512Url: string | null;
     ogImageUrl: string | null;
     source: "BAZARBAAZ_MANAGED" | "EXTERNAL_SYNC" | "PLATFORM_FALLBACK" | null;
   } | null;
@@ -84,6 +86,8 @@ async function getPublicOrganization(slug: string): Promise<OrganizationLayoutDa
           appleTouchIconUrl: true,
           pwaIcon192Url: true,
           pwaIcon512Url: true,
+          pwaMaskable192Url: true,
+          pwaMaskable512Url: true,
           ogImageUrl: true,
           source: true,
         },
@@ -116,6 +120,12 @@ export async function generateMetadata({ params }: OrganizationLayoutProps): Pro
     coverImage: organization.coverImage,
     branding: organization.branding,
   });
+  const tenantIcons = resolveTenantPageIcons({
+    organizationId: organization.id,
+    name: organization.name,
+    logo: organization.logo,
+    branding: organization.branding,
+  });
 
   const seoContext = await getTenantSeoContext({
     locale,
@@ -134,8 +144,8 @@ export async function generateMetadata({ params }: OrganizationLayoutProps): Pro
     keywords: ["Bazarbaaz", "appointment", "booking", organization.slug],
     alternatePath: seoContext.alternatePath,
     icons: {
-      icon: [{ url: appResourceUrl(branding.favicon) }],
-      apple: [{ url: appResourceUrl(branding.appleTouchIcon) }],
+      icon: tenantIcons.icon.map(({ url }) => ({ url: appResourceUrl(url) })),
+      apple: tenantIcons.apple.map(({ url }) => ({ url: appResourceUrl(url) })),
     },
   });
 }

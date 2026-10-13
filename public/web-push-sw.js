@@ -7,16 +7,13 @@ const withoutBasePath = (path) => self.__BAZAR_BAZ_BASE_PATH && path.startsWith(
   : path;
 
 self.__BAZAR_BAZ_PWA_CACHE = {
-  version: "p98-offline-shell",
-  staticCacheName: `bazar-baz-static-p98${self.__BAZAR_BAZ_BASE_PATH || "-root"}`,
+  version: "p99-tenant-branded-pwa",
+  staticCacheName: `bazar-baz-static-p99${self.__BAZAR_BAZ_BASE_PATH || "-root"}`,
   offlineUrl: withBasePath("/offline.html"),
   staticAssets: [
     "/offline.html",
-    "/manifest.webmanifest",
-    "/icons/icon-192x192.png",
-    "/icons/icon-512x512.png",
-    "/icons/icon-maskable-512x512.png",
   ].map(withBasePath),
+  manifestUrl: withBasePath("/manifest.webmanifest"),
   bypassPathPrefixes: [
     "/api/",
     "/uploads/",
@@ -67,8 +64,7 @@ function shouldBypassCache(url) {
 function isStaticAsset(url) {
   return (
     withoutBasePath(url.pathname).startsWith("/_next/static/") ||
-    PWA_CACHE.staticAssets.includes(url.pathname) ||
-    withoutBasePath(url.pathname) === "/favicon.ico"
+    PWA_CACHE.staticAssets.includes(url.pathname)
   );
 }
 
@@ -113,7 +109,7 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("push", (event) => {
   let payload = {
-    title: "Bazarbaaz",
+    title: "",
     body: "You have a new notification.",
     url: "/",
   };
@@ -127,12 +123,22 @@ self.addEventListener("push", (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(payload.title || "Bazarbaaz", {
-      body: payload.body || "",
-      icon: withBasePath("/icons/icon-192x192.png"),
-      badge: withBasePath("/icons/icon-maskable-192x192.png"),
-      data: { url: withBasePath(payload.url || "/") },
-    }),
+    fetch(PWA_CACHE.manifestUrl, { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .catch(() => null)
+      .then((manifest) => {
+        const icons = Array.isArray(manifest?.icons) ? manifest.icons : [];
+        const regular = icons.find((candidate) => typeof candidate?.src === "string" && String(candidate.purpose || "any").includes("any"));
+        const maskable = icons.find((candidate) => typeof candidate?.src === "string" && String(candidate.purpose || "").includes("maskable"));
+        const iconUrl = regular?.src ? new URL(regular.src, self.location.origin).href : undefined;
+        const badgeUrl = maskable?.src ? new URL(maskable.src, self.location.origin).href : iconUrl;
+        return self.registration.showNotification(payload.title || manifest?.short_name || manifest?.name || "Notification", {
+          body: payload.body || "",
+          ...(iconUrl ? { icon: iconUrl } : {}),
+          ...(badgeUrl ? { badge: badgeUrl } : {}),
+          data: { url: withBasePath(payload.url || "/") },
+        });
+      }),
   );
 });
 

@@ -7,7 +7,7 @@ import prisma from "@/lib/db";
 import { buildOrganizationPublicPath, buildOrganizationRootPath } from "@/lib/custom-domain-routing";
 import { activePublicBusinessCapabilities, resolveOrganizationPublicHome } from "@/lib/organization-public-home";
 import { getPublicOrganizationReadModel } from "@/lib/public-experience/organization-public-read-model.service";
-import { resolveOrganizationBranding } from "@/lib/organization-branding";
+import { resolveOrganizationBranding, resolveTenantPageIcons } from "@/lib/organization-branding";
 import { getOrganizationRootSeoContext } from "@/lib/custom-domain-seo";
 import { buildPublicMetadata } from "@/lib/seo";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           appleTouchIconUrl: true,
           pwaIcon192Url: true,
           pwaIcon512Url: true,
+          pwaMaskable192Url: true,
+          pwaMaskable512Url: true,
           ogImageUrl: true,
           source: true,
         },
@@ -69,6 +71,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     coverImage: organization.coverImage,
     branding: organization.branding,
   });
+  const tenantIcons = resolveTenantPageIcons({
+    organizationId: organization.id,
+    name: organization.name,
+    logo: organization.logo,
+    branding: organization.branding,
+  });
   const homeContent = resolveOrganizationHomeContent({ organizationSlug: slug, locale });
   const seoContext = await getOrganizationRootSeoContext({ locale, slug });
 
@@ -81,8 +89,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     image: branding.ogImage,
     alternatePath: seoContext.alternatePath,
     icons: {
-      icon: [{ url: appResourceUrl(branding.favicon) }],
-      apple: [{ url: appResourceUrl(branding.appleTouchIcon) }],
+      icon: tenantIcons.icon.map(({ url }) => ({ url: appResourceUrl(url) })),
+      apple: tenantIcons.apple.map(({ url }) => ({ url: appResourceUrl(url) })),
     },
   });
 }

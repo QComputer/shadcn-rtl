@@ -15,6 +15,23 @@ export type ResolvedOrganizationBranding = {
   source: OrganizationBrandingSource;
 };
 
+export type TenantPwaBranding = {
+  organizationId: string;
+  displayName: string;
+  shortName: string;
+  logo: string | null;
+  favicon: string | null;
+  appleTouchIcon: string | null;
+  themeColor: string | null;
+  backgroundColor: string | null;
+  pwaIcons: {
+    icon192: string | null;
+    icon512: string | null;
+    maskable192: string | null;
+    maskable512: string | null;
+  };
+};
+
 const BAZARBAAZ_LOGO = "/brand/marks/bazarbaaz-mark.svg";
 const BAZARBAAZ_FAVICON = "/icons/favicon.svg";
 const BAZARBAAZ_APPLE_TOUCH_ICON = "/icons/apple-touch-icon.png";
@@ -87,5 +104,73 @@ export function resolvePlatformFallbackBranding(): ResolvedOrganizationBranding 
     },
     ogImage: BAZARBAAZ_OG_IMAGE,
     source: "PLATFORM_FALLBACK",
+  };
+}
+
+/**
+ * Resolve only assets explicitly owned by this organization's branding row.
+ * Missing tenant icons stay missing; callers must never substitute platform
+ * artwork for an organization.
+ */
+export function resolveTenantPwaBranding(input: {
+  organizationId: string;
+  name: string | null;
+  logo: string | null;
+  branding?: {
+    organizationId?: string | null;
+    displayName?: string | null;
+    shortName?: string | null;
+    logoUrl?: string | null;
+    faviconUrl?: string | null;
+    appleTouchIconUrl?: string | null;
+    pwaIcon192Url?: string | null;
+    pwaIcon512Url?: string | null;
+    pwaMaskable192Url?: string | null;
+    pwaMaskable512Url?: string | null;
+    themeColor?: string | null;
+    backgroundColor?: string | null;
+  } | null;
+}): TenantPwaBranding {
+  const branding = input.branding?.organizationId === input.organizationId
+    ? input.branding
+    : null;
+  return {
+    organizationId: input.organizationId,
+    displayName: firstDefined(branding?.displayName, input.name) || "",
+    shortName: firstDefined(branding?.shortName, input.name) || "",
+    logo: firstDefined(branding?.logoUrl, input.logo),
+    favicon: branding?.faviconUrl ?? null,
+    appleTouchIcon: branding?.appleTouchIconUrl ?? null,
+    themeColor: branding?.themeColor ?? null,
+    backgroundColor: branding?.backgroundColor ?? null,
+    pwaIcons: {
+      icon192: branding?.pwaIcon192Url ?? null,
+      icon512: branding?.pwaIcon512Url ?? null,
+      maskable192: branding?.pwaMaskable192Url ?? null,
+      maskable512: branding?.pwaMaskable512Url ?? null,
+    },
+  };
+}
+
+/** Metadata-safe tenant icon links, with tenant-only fallbacks. */
+export function resolveTenantPageIcons(input: Parameters<typeof resolveTenantPwaBranding>[0]) {
+  const branding = resolveTenantPwaBranding(input);
+  const favicon = branding.favicon || branding.pwaIcons.icon192 || branding.logo;
+  const apple = branding.appleTouchIcon || branding.pwaIcons.icon512 || branding.logo;
+  const safe = (value: string | null) => {
+    if (!value) return null;
+    if (value.startsWith("/") && !value.startsWith("//") && !value.includes("\\")) return value;
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && !url.username && !url.password ? value : null;
+    } catch {
+      return null;
+    }
+  };
+  const safeFavicon = safe(favicon);
+  const safeApple = safe(apple);
+  return {
+    icon: safeFavicon ? [{ url: safeFavicon }] : [],
+    apple: safeApple ? [{ url: safeApple }] : [],
   };
 }

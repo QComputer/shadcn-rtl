@@ -86,6 +86,26 @@ async function createAndPublish({ browser, email, locale, organization, category
   assert.equal(unauthorized.status(), 401, "unauthenticated catalog read must be rejected");
   await unauthorizedPage.close();
 
+  const variantLabels = option === "color-storage"
+    ? { color: "رنگ دستگاه آزمایشی", dimension: "حافظه داخلی آزمایشی" }
+    : { color: "رنگ", dimension: "سایز (EU)" };
+  if (option === "color-storage") {
+    for (const definition of [
+      { key: "r3_mobile_color", label: variantLabels.color, valueType: "ENUM", allowedValues: "آبی, مشکی" },
+      { key: "r3_mobile_storage", label: variantLabels.dimension, valueType: "NUMBER", allowedValues: "" },
+    ]) {
+      await page.getByPlaceholder("کلید (لاتین)").fill(definition.key);
+      await page.getByPlaceholder("نام نمایشی").fill(definition.label);
+      await page.getByLabel("کاربرد").selectOption("VARIANT_OPTION");
+      await page.getByLabel("نوع مقدار").selectOption(definition.valueType);
+      if (definition.valueType === "ENUM") await page.getByPlaceholder("گزینه‌ها با ویرگول جدا شوند").fill(definition.allowedValues);
+      const createDefinition = page.waitForResponse((response) => response.url().endsWith("/api/dashboard/retail/attributes") && response.request().method() === "POST");
+      await page.getByRole("button", { name: "ثبت ویژگی" }).click();
+      assert.equal((await createDefinition).status(), 201, `merchant must create variant option ${definition.key}`);
+      await page.locator("li").filter({ hasText: definition.key }).waitFor({ timeout: 10000 });
+    }
+  }
+
   const addProductLink = page.getByRole("link", { name: locale === "fa" ? "افزودن محصول" : "Add product" });
   if (await addProductLink.count() !== 1) {
     const renderedText = (await page.locator("body").innerText()).slice(0, 1600);
@@ -108,8 +128,8 @@ async function createAndPublish({ browser, email, locale, organization, category
     await page.getByLabel("رنگ").selectOption({ index: 1 });
     await page.getByLabel("سایز (EU)").fill("41");
   } else {
-    await page.getByLabel("رنگ").selectOption({ index: 1 });
-    await page.getByLabel("حافظه داخلی (GB)").fill("256");
+    await page.getByLabel(variantLabels.color).selectOption({ index: 1 });
+    await page.getByLabel(variantLabels.dimension).fill("256");
   }
   await page.getByLabel("عنوان گونه").fill("پیش‌نمایش مشکی");
   await page.getByLabel("شناسه کالا (SKU)").fill(sku);

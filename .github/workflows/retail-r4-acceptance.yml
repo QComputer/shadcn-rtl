@@ -79,9 +79,39 @@ jobs:
           tests/unit/hotel-management-api-security.test.ts
           tests/integration/order-price-snapshot.local.test.ts
           tests/integration/payment-inoti-e2e.local.test.ts
+      - name: Retail checkout and payment integration
+        env:
+          RETAIL_R4_CHECKOUT_PG_ACCEPTANCE: "1"
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/retail-r4-checkout.local.test.ts
       - name: ESLint
         run: pnpm run lint --no-cache
       - name: TypeScript
         run: pnpm run typecheck
       - name: Production build
         run: pnpm run build
+      - name: Install Chromium for isolated browser acceptance
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Start isolated acceptance server
+        run: |
+          mkdir -p artifacts/retail-r4-browser
+          pnpm start --port 3000 > artifacts/retail-r4-browser/next.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/fa/login >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat artifacts/retail-r4-browser/next.log
+          exit 1
+      - name: Authenticated retail checkout and payment review browser acceptance
+        env:
+          RETAIL_R4_BASE_URL: http://127.0.0.1:3000
+          RETAIL_R4_PLAYWRIGHT_ENTRY: ${{ github.workspace }}/node_modules/playwright/index.mjs
+        run: |
+          set -o pipefail
+          node scripts/retail/r4-browser-e2e.mjs 2>&1 | tee artifacts/retail-r4-browser/browser.log
+      - name: Upload browser evidence and server logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retail-r4-browser-evidence
+          path: artifacts/retail-r4-browser/
+          if-no-files-found: warn

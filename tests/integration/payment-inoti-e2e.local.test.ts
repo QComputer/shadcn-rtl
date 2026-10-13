@@ -206,7 +206,10 @@ describe("BB-P2 PaymentRequest and iNoti lifecycle on disposable PostgreSQL", { 
 
       const firstWorker = new FixtureProvider();
       firstWorker.mode = "NOT_FOUND";
-      const startedAt = new Date("2026-08-31T00:00:00.000Z");
+      // The worker must run after the freshly created job becomes due.
+      // A fixed historical date stopped being valid once this regression
+      // moved to later CI runs.
+      const startedAt = new Date(Date.now() + 1_000);
       const first = await processDuePaymentVerifications({ provider: firstWorker, settlementAllowed: () => true, now: startedAt });
       assert.equal(first.retried, 1);
       const retry = await prisma.ussdPaymentVerificationJob.findUniqueOrThrow({ where: { id: job.id } });

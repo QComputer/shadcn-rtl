@@ -1,4 +1,9 @@
 {
   "framework": "nextjs",
-  "buildCommand": "pnpm run build"
+  "buildCommand": "pnpm run build",
+  "git": {
+    "deploymentEnabled": {
+      "codex/tenant-pwa-branding-fix-20261013": false
+    }
+  }
 }

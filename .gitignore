@@ -66,6 +66,7 @@ next-env.d.ts
 /.release/
 /playwright-report/
 /test-results/
+/public/brand/tenants/__pwa-ci-generic/
 
 # local editor/user files
 /.vscode/

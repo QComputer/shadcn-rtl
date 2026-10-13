@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Download, X } from "lucide-react"
+import Image from "next/image"
+import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 type BeforeInstallPromptEvent = Event & {
@@ -14,21 +15,22 @@ type PwaInstallManagerProps = {
   locale: string
   basePath: string
   appName: string
+  appIcon: string | null
 }
 
 const copy = {
   fa: {
-    title: "\u0646\u0635\u0628",
+    title: "نصب اپ",
     action: "\u0646\u0635\u0628",
     dismiss: "\u0628\u0633\u062a\u0646",
   },
   en: {
-    title: "Install",
+    title: "Install app",
     action: "Install",
     dismiss: "Close",
   },
   ar: {
-    title: "\u062b\u0628\u0651\u062a",
+    title: "تثبيت تطبيق",
     action: "\u062a\u062b\u0628\u064a\u062a",
     dismiss: "\u0625\u063a\u0644\u0627\u0642",
   },
@@ -39,11 +41,24 @@ export function canRegisterServiceWorker() {
   return window.isSecureContext
 }
 
-export function PwaInstallManager({ enabled, locale, basePath, appName }: PwaInstallManagerProps) {
+export function PwaInstallManager({ enabled, locale, basePath, appName, appIcon }: PwaInstallManagerProps) {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [dismissed, setDismissed] = useState(false)
+  const [readyIcon, setReadyIcon] = useState<string | null>(null)
   const text = copy[locale as keyof typeof copy] || copy.fa
   const dir = locale === "en" ? "ltr" : "rtl"
+
+  useEffect(() => {
+    if (!enabled || !appName.trim() || !appIcon) return
+    let active = true
+    const image = new window.Image()
+    image.onload = () => {
+      if (active) setReadyIcon(image.naturalWidth >= 192 && image.naturalWidth === image.naturalHeight ? appIcon : null)
+    }
+    image.onerror = () => { if (active) setReadyIcon(null) }
+    image.src = appIcon
+    return () => { active = false }
+  }, [enabled, appName, appIcon])
 
   useEffect(() => {
     if (!enabled || !canRegisterServiceWorker()) return
@@ -83,16 +98,26 @@ export function PwaInstallManager({ enabled, locale, basePath, appName }: PwaIns
     setDismissed(true)
   }
 
-  if (!enabled || dismissed || !installPrompt) return null
+  if (!enabled || !appName.trim() || !appIcon || readyIcon !== appIcon || dismissed || !installPrompt) return null
 
   return (
     <div
+      data-testid="pwa-install-invitation"
       dir={dir}
       className="fixed inset-x-3 bottom-3 z-50 mx-auto flex max-w-md items-center justify-between gap-3 rounded-lg border bg-background/95 p-3 text-sm shadow-lg backdrop-blur"
     >
       <div className="flex min-w-0 items-center gap-2">
-        <Download className="h-4 w-4 shrink-0 text-primary" />
-        <span className="truncate font-medium">{locale === "fa" ? `${text.title} ${appName}` : `${text.title} ${appName}`}</span>
+        <Image
+          data-testid="pwa-install-brand-icon"
+          src={appIcon}
+          alt={locale === "fa" ? `نماد اپ ${appName}` : locale === "ar" ? `أيقونة تطبيق ${appName}` : `${appName} app icon`}
+          width={40}
+          height={40}
+          unoptimized
+          onError={() => setReadyIcon(null)}
+          className="h-10 w-10 shrink-0 rounded-lg object-contain"
+        />
+        <span data-testid="pwa-install-title" className="truncate font-medium">{`${text.title} ${appName}`}</span>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <Button type="button" size="sm" onClick={install}>

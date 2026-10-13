@@ -91,6 +91,7 @@ jobs:
           tests/unit/organization-branding-management.test.ts
           tests/unit/tenant-pwa-approved-assets.test.ts
           tests/unit/tenant-pwa-service-worker.test.ts
+          tests/unit/pwa-install-manager.test.ts
 
       - name: Run PostgreSQL-backed trusted proxy regression
         env:
@@ -100,6 +101,12 @@ jobs:
       - name: TypeScript validation
         run: pnpm typecheck
 
+      - name: Targeted PWA lint
+        run: pnpm exec eslint components/pwa-install-manager.tsx 'app/[locale]/layout.tsx' tests/unit/pwa-install-manager.test.ts tests/unit/tenant-pwa-service-worker.test.ts
+
+      - name: Prepare synthetic third-tenant artwork before build
+        run: node scripts/e2e/prepare-tenant-pwa-fixtures.mjs
+
       - name: Production Next.js build
         run: pnpm run build
 
@@ -107,7 +114,7 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Route synthetic tenant hosts to the ephemeral runner
-        run: echo "127.0.0.1 tenant-alpha.pwa-ci.test tenant-beta.pwa-ci.test tenant-inactive.pwa-ci.test tenant-incomplete.pwa-ci.test tenant-unknown.pwa-ci.test" | sudo tee -a /etc/hosts
+        run: echo "127.0.0.1 tenant-alpha.pwa-ci.test tenant-beta.pwa-ci.test tenant-gamma.pwa-ci.test tenant-inactive.pwa-ci.test tenant-unverified.pwa-ci.test tenant-incomplete.pwa-ci.test tenant-unknown.pwa-ci.test" | sudo tee -a /etc/hosts
 
       - name: Run production-mode tenant manifest and favicon browser acceptance
         env:

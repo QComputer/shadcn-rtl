@@ -1,4 +1,7 @@
 self.__BAZAR_BAZ_BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
+const cacheScope = encodeURIComponent(self.__BAZAR_BAZ_BASE_PATH || "root");
+const staticCachePrefix = `bazar-baz-static-${cacheScope}-`;
+const legacyStaticCacheName = `bazar-baz-static-p99${self.__BAZAR_BAZ_BASE_PATH || "-root"}`;
 const withBasePath = (path) => self.__BAZAR_BAZ_BASE_PATH && !path.startsWith(`${self.__BAZAR_BAZ_BASE_PATH}/`)
   ? `${self.__BAZAR_BAZ_BASE_PATH}${path}`
   : path;
@@ -7,8 +10,8 @@ const withoutBasePath = (path) => self.__BAZAR_BAZ_BASE_PATH && path.startsWith(
   : path;
 
 self.__BAZAR_BAZ_PWA_CACHE = {
-  version: "p99-tenant-branded-pwa",
-  staticCacheName: `bazar-baz-static-p99${self.__BAZAR_BAZ_BASE_PATH || "-root"}`,
+  version: "p100-tenant-branded-pwa",
+  staticCacheName: `${staticCachePrefix}p100`,
   offlineUrl: withBasePath("/offline.html"),
   staticAssets: [
     "/offline.html",
@@ -47,7 +50,10 @@ self.addEventListener("activate", (event) => {
       .then((cacheNames) =>
         Promise.all(
           cacheNames
-            .filter((cacheName) => cacheName.startsWith("bazar-baz-") && cacheName !== PWA_CACHE.staticCacheName)
+            .filter((cacheName) =>
+              (cacheName.startsWith(staticCachePrefix) || cacheName === legacyStaticCacheName) &&
+              cacheName !== PWA_CACHE.staticCacheName,
+            )
             .map((cacheName) => caches.delete(cacheName)),
         ),
       )
@@ -77,12 +83,12 @@ async function networkFirstNavigation(request) {
 }
 
 async function cacheFirstStaticAsset(request) {
-  const cachedResponse = await caches.match(request);
+  const cache = await caches.open(PWA_CACHE.staticCacheName);
+  const cachedResponse = await cache.match(request);
   if (cachedResponse) return cachedResponse;
 
   const networkResponse = await fetch(request);
   if (networkResponse.ok) {
-    const cache = await caches.open(PWA_CACHE.staticCacheName);
     await cache.put(request, networkResponse.clone());
   }
   return networkResponse;

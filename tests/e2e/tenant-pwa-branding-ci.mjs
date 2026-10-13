@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
-import { appendFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "playwright";
 import { PrismaClient } from "@prisma/client";
+import { genericAssetDirectory, genericAssetRoot } from "../../scripts/e2e/prepare-tenant-pwa-fixtures.mjs";
 
 const prisma = new PrismaClient();
 const artifactDir = "artifacts/tenant-pwa-ci";
@@ -15,7 +16,9 @@ const port = await reservePort();
 const hosts = {
   alpha: "tenant-alpha.pwa-ci.test",
   beta: "tenant-beta.pwa-ci.test",
+  gamma: "tenant-gamma.pwa-ci.test",
   inactive: "tenant-inactive.pwa-ci.test",
+  unverified: "tenant-unverified.pwa-ci.test",
   incomplete: "tenant-incomplete.pwa-ci.test",
   unknown: "tenant-unknown.pwa-ci.test",
 };
@@ -35,13 +38,13 @@ async function reservePort() {
   return address.port;
 }
 
-async function createTenant({ suffix, host, active = true, label, assets, withBranding = true }) {
+async function createTenant({ suffix, host, active = true, verified = true, label, shortName = label, assets, withBranding = true }) {
   const organization = await prisma.organization.create({
     data: {
       type: "SHOP",
       name: `Synthetic ${label} ${runId}`,
       slug: `tenant-pwa-${suffix}-${runId}`,
-      locale: "en",
+      locale: "fa",
       isActive: true,
     },
     select: { id: true, slug: true },
@@ -52,12 +55,12 @@ async function createTenant({ suffix, host, active = true, label, assets, withBr
       organizationId: organization.id,
       domain: host,
       normalizedDomain: host,
-      status: active ? "ACTIVE" : "DISABLED",
+      status: active ? (verified ? "ACTIVE" : "VERIFYING") : "DISABLED",
       type: "CUSTOM",
-      providerVerified: active,
-      dnsConfigured: active,
-      sslReady: active,
-      activatedAt: active ? new Date() : null,
+      providerVerified: active && verified,
+      dnsConfigured: active && verified,
+      sslReady: active && verified,
+      activatedAt: active && verified ? new Date() : null,
       isPrimary: true,
     },
   });
@@ -65,15 +68,15 @@ async function createTenant({ suffix, host, active = true, label, assets, withBr
     await prisma.organizationBranding.create({
       data: {
         organizationId: organization.id,
-        displayName: `Synthetic ${label}`,
-        shortName: label,
+        displayName: label,
+        shortName,
         faviconUrl: assets.favicon,
         appleTouchIconUrl: assets.apple,
         pwaIcon192Url: assets.icon192,
         pwaIcon512Url: assets.icon512,
         pwaMaskable192Url: assets.maskable192,
         pwaMaskable512Url: assets.maskable512,
-        themeColor: label === "Alpha" ? "#13579B" : "#9B5713",
+        themeColor: suffix === "alpha" ? "#13579B" : "#9B5713",
         backgroundColor: "#FFFFFF",
       },
     });
@@ -122,11 +125,68 @@ async function waitForServer() {
   throw new Error("Production Next.js server did not become ready within 60 seconds");
 }
 
+async function installInvitationFor({ host, locale = "fa", title, iconPath, screenshot, viewport, theme = "light" }) {
+  const page = await browser.newPage({ viewport });
+  try {
+    const response = await page.goto(`http://${host}:${port}/${locale}`, { waitUntil: "domcontentloaded" });
+    assert.equal(response?.status(), 200, `install page loads for ${host}`);
+    await page.evaluate((value) => {
+      document.documentElement.classList.toggle("dark", value === "dark");
+    }, theme);
+    const invitation = page.getByTestId("pwa-install-invitation");
+    for (let attempt = 0; attempt < 12 && !(await invitation.isVisible().catch(() => false)); attempt += 1) {
+      await page.evaluate(() => {
+        const event = new Event("beforeinstallprompt", { cancelable: true });
+        Object.assign(event, { prompt: async () => {}, userChoice: Promise.resolve({ outcome: "dismissed", platform: "web" }) });
+        window.dispatchEvent(event);
+      });
+      await delay(500);
+    }
+    await invitation.waitFor({ state: "visible", timeout: 5_000 });
+    assert.equal(await page.getByTestId("pwa-install-title").textContent(), title);
+    assert.equal(await invitation.getAttribute("dir"), locale === "en" ? "ltr" : "rtl");
+    const icon = page.getByTestId("pwa-install-brand-icon");
+    const iconState = await icon.evaluate((element) => ({
+      src: element.getAttribute("src"),
+      alt: element.getAttribute("alt"),
+      complete: element.complete,
+      naturalWidth: element.naturalWidth,
+      naturalHeight: element.naturalHeight,
+    }));
+    assert.ok(iconState.src?.includes(iconPath), `correct brand icon URL for ${host}: ${iconState.src}`);
+    assert.equal(iconState.complete, true);
+    assert.ok(iconState.naturalWidth >= 192 && iconState.naturalWidth === iconState.naturalHeight);
+    assert.ok(iconState.alt?.length);
+    await page.screenshot({ path: `${artifactDir}/${screenshot}`, fullPage: false });
+    return { host, locale, title, icon: iconState, theme, viewport };
+  } finally {
+    await page.close();
+  }
+}
+
+async function assertNoInstallInvitation(host, locale = "fa", extraHTTPHeaders = {}) {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, extraHTTPHeaders });
+  try {
+    await page.goto(`http://${host}:${port}/${locale}`, { waitUntil: "domcontentloaded" });
+    await page.evaluate(() => {
+      const event = new Event("beforeinstallprompt", { cancelable: true });
+      Object.assign(event, { prompt: async () => {}, userChoice: Promise.resolve({ outcome: "dismissed", platform: "web" }) });
+      window.dispatchEvent(event);
+    });
+    await delay(500);
+    assert.equal(await page.getByTestId("pwa-install-invitation").count(), 0, `no misleading install offer for ${host}`);
+  } finally {
+    await page.close();
+  }
+}
+
 try {
+  const gammaAssetRoot = genericAssetRoot;
   const alpha = await createTenant({
     suffix: "alpha",
     host: hosts.alpha,
-    label: "Alpha",
+    label: "آکا شوز",
+    shortName: "آکا",
     assets: {
       favicon: "/brand/tenants/aka-shoes/browser/favicon.ico",
       apple: "/brand/tenants/aka-shoes/pwa/apple-touch-icon-180.png",
@@ -139,7 +199,8 @@ try {
   const beta = await createTenant({
     suffix: "beta",
     host: hosts.beta,
-    label: "Beta",
+    label: "رستوران ایتالیایی ۱۳",
+    shortName: "ایتالیایی ۱۳",
     assets: {
       favicon: "/brand/tenants/restaurant-13/brand/production-ready/favicon.ico",
       apple: "/brand/tenants/restaurant-13/brand/production-ready/apple-touch-icon.png",
@@ -149,7 +210,22 @@ try {
       maskable512: "/brand/tenants/restaurant-13/brand/production-ready/icon-maskable-512.png",
     },
   });
+  await createTenant({
+    suffix: "gamma",
+    host: hosts.gamma,
+    label: "برند آزمایشی سوم",
+    shortName: "سوم",
+    assets: {
+      favicon: `${gammaAssetRoot}/icon-192.png`,
+      apple: `${gammaAssetRoot}/apple-180.png`,
+      icon192: `${gammaAssetRoot}/icon-192.png`,
+      icon512: `${gammaAssetRoot}/icon-512.png`,
+      maskable192: `${gammaAssetRoot}/maskable-192.png`,
+      maskable512: `${gammaAssetRoot}/maskable-512.png`,
+    },
+  });
   await createTenant({ suffix: "inactive", host: hosts.inactive, active: false, label: "Inactive", assets: {} });
+  await createTenant({ suffix: "unverified", host: hosts.unverified, verified: false, label: "Unverified", assets: {} });
   await createTenant({ suffix: "incomplete", host: hosts.incomplete, label: "Incomplete", assets: {}, withBranding: false });
 
   server = spawn("pnpm", ["exec", "next", "start", "--hostname", "127.0.0.1", "--port", String(port)], {
@@ -163,10 +239,10 @@ try {
   browser = await chromium.launch({ headless: true });
   const alphaResult = await manifestFor(hosts.alpha);
   const alphaManifest = alphaResult.manifest;
-  assert.equal(alphaManifest.name, "Synthetic Alpha");
-  assert.equal(alphaManifest.short_name, "Alpha");
-  assert.equal(alphaManifest.lang, "en");
-  assert.equal(alphaManifest.dir, "ltr");
+  assert.equal(alphaManifest.name, "آکا شوز");
+  assert.equal(alphaManifest.short_name, "آکا");
+  assert.equal(alphaManifest.lang, "fa");
+  assert.equal(alphaManifest.dir, "rtl");
   assert.equal(alphaManifest.display, "standalone");
   assert.equal(alphaManifest.icons.length, 4);
   assert.ok(alphaManifest.icons.every((entry) => entry.src.includes("/brand/tenants/aka-shoes/")));
@@ -174,11 +250,16 @@ try {
 
   const betaResult = await manifestFor(hosts.beta);
   const betaManifest = betaResult.manifest;
-  assert.equal(betaManifest.name, "Synthetic Beta");
-  assert.equal(betaManifest.short_name, "Beta");
+  assert.equal(betaManifest.name, "رستوران ایتالیایی ۱۳");
+  assert.equal(betaManifest.short_name, "ایتالیایی ۱۳");
   assert.equal(betaManifest.icons.length, 4);
   assert.ok(betaManifest.icons.every((entry) => entry.src.includes("/brand/tenants/restaurant-13/")));
   assert.ok(!JSON.stringify(betaManifest).includes("aka-shoes"));
+
+  const gammaResult = await manifestFor(hosts.gamma);
+  assert.equal(gammaResult.manifest.name, "برند آزمایشی سوم");
+  assert.equal(gammaResult.manifest.icons.length, 4);
+  assert.ok(gammaResult.manifest.icons.every((entry) => entry.src.includes(gammaAssetRoot)));
 
   const platformResult = await manifestFor("localhost");
   assert.match(platformResult.manifest.name, /Bazarbaaz|بازارباز/i);
@@ -199,13 +280,16 @@ try {
   const inactiveResult = await manifestFor(hosts.inactive);
   assert.deepEqual(inactiveResult.manifest.icons, []);
   assert.equal(inactiveResult.manifest.display, "browser");
+  const unverifiedResult = await manifestFor(hosts.unverified);
+  assert.deepEqual(unverifiedResult.manifest.icons, []);
+  assert.equal(unverifiedResult.manifest.display, "browser");
 
   const incompleteResult = await manifestFor(hosts.incomplete);
   assert.deepEqual(incompleteResult.manifest.icons, [], "active tenant without icon configuration has no platform icon fallback");
   assert.equal(incompleteResult.manifest.display, "browser", "active tenant without complete icons is non-installable");
   assert.ok(!JSON.stringify(incompleteResult.manifest).includes("/icons/"), "incomplete tenant manifest does not reference platform icons");
 
-  for (const [host, manifest] of [[hosts.alpha, alphaManifest], [hosts.beta, betaManifest]]) {
+  for (const [host, manifest] of [["localhost", platformResult.manifest], [hosts.alpha, alphaManifest], [hosts.beta, betaManifest], [hosts.gamma, gammaResult.manifest]]) {
     for (const icon of manifest.icons) {
       const assetPath = new URL(icon.src, `http://${host}:${port}`).pathname;
       const assetResponse = await responseFor(host, assetPath);
@@ -240,6 +324,13 @@ try {
   assert.equal(betaApple?.status, 200, "second tenant Apple Touch Icon is served");
   assert.equal(betaApple.body.readUInt32BE(16), 180, "second tenant Apple Touch Icon width");
   assert.equal(betaApple.body.readUInt32BE(20), 180, "second tenant Apple Touch Icon height");
+  const gammaApple = await responseFor(hosts.gamma, `${gammaAssetRoot}/apple-180.png`);
+  assert.equal(gammaApple?.status, 200, "generic tenant Apple Touch Icon is served");
+  assert.equal(gammaApple.body.readUInt32BE(16), 180);
+  const gammaFavicon = await responseFor(hosts.gamma, "/favicon.ico");
+  assert.equal(gammaFavicon?.status, 200, "generic tenant favicon resolves");
+  assert.match(gammaFavicon.headers["content-type"] || "", /^image\//);
+  assert.ok(gammaFavicon.url.includes(gammaAssetRoot));
 
   const alphaPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   // A custom-domain root is the public browser URL. The proxy maps it to the
@@ -258,7 +349,7 @@ try {
   }));
   console.log("tenant-alpha-page-icons", JSON.stringify(metadata));
   assert.equal(metadata.path, "/en", "browser remains on the tenant's localized custom-domain root");
-  assert.match(metadata.title, /Synthetic Alpha/, "tenant root renders the expected organization's metadata");
+  assert.match(metadata.title, /آکا شوز/, "tenant root renders the expected organization's metadata");
   assert.ok(metadata.manifest.some((href) => href?.includes("manifest.webmanifest")), "tenant page advertises a manifest");
   assert.ok(metadata.icons.some((href) => href?.includes("aka-shoes")), `tenant page advertises the tenant favicon: ${JSON.stringify(metadata.icons)}`);
   assert.ok(metadata.apple.some((href) => href?.includes("aka-shoes")), `tenant page advertises the tenant Apple icon: ${JSON.stringify(metadata.apple)}`);
@@ -271,6 +362,23 @@ try {
   await betaPage.locator("body").waitFor();
   await betaPage.screenshot({ path: `${artifactDir}/tenant-beta-mobile.png`, fullPage: true });
   await betaPage.close();
+
+  const invitations = [];
+  for (const scenario of [
+    { host: "localhost", title: "نصب اپ بازارباز", iconPath: "/icons/icon-192x192.png", screenshot: "install-platform-fa-mobile.png", viewport: { width: 390, height: 844 } },
+    { host: hosts.alpha, title: "نصب اپ آکا شوز", iconPath: "/brand/tenants/aka-shoes/pwa/icon-192x192.png", screenshot: "install-aka-fa-mobile.png", viewport: { width: 390, height: 844 }, theme: "dark" },
+    { host: hosts.beta, title: "نصب اپ رستوران ایتالیایی ۱۳", iconPath: "/brand/tenants/restaurant-13/brand/production-ready/icon-192.png", screenshot: "install-restaurant-fa-desktop.png", viewport: { width: 1280, height: 900 } },
+    { host: hosts.gamma, title: "نصب اپ برند آزمایشی سوم", iconPath: `${gammaAssetRoot}/icon-192.png`, screenshot: "install-generic-fa-mobile.png", viewport: { width: 390, height: 844 } },
+    { host: hosts.alpha, locale: "en", title: "Install app آکا شوز", iconPath: "/brand/tenants/aka-shoes/pwa/icon-192x192.png", screenshot: "install-aka-en-desktop.png", viewport: { width: 1280, height: 900 } },
+    { host: hosts.beta, locale: "ar", title: "تثبيت تطبيق رستوران ایتالیایی ۱۳", iconPath: "/brand/tenants/restaurant-13/brand/production-ready/icon-192.png", screenshot: "install-restaurant-ar-mobile.png", viewport: { width: 390, height: 844 }, theme: "dark" },
+  ]) {
+    invitations.push(await installInvitationFor(scenario));
+  }
+  for (const host of [hosts.unknown, hosts.inactive, hosts.unverified, hosts.incomplete]) {
+    await assertNoInstallInvitation(host);
+  }
+  await assertNoInstallInvitation(hosts.unknown, "fa", forgedHeaders);
+  writeFileSync(`${artifactDir}/install-invitations.json`, JSON.stringify({ status: "PASSED", invitations }, null, 2));
 
   const unknownFavicon = await responseFor(hosts.unknown, "/favicon.ico");
   assert.equal(unknownFavicon?.status, 404, "unknown hosts cannot inherit another tenant favicon");
@@ -287,15 +395,18 @@ try {
       unknown: { status: unknownResult.response.status, display: unknownResult.manifest.display, icons: unknownResult.manifest.icons },
       inactive: { status: inactiveResult.response.status, display: inactiveResult.manifest.display, icons: inactiveResult.manifest.icons },
       incomplete: { status: incompleteResult.response.status, display: incompleteResult.manifest.display, icons: incompleteResult.manifest.icons },
+      unverified: { status: unverifiedResult.response.status, display: unverifiedResult.manifest.display, icons: unverifiedResult.manifest.icons },
+      gamma: { status: gammaResult.response.status, name: gammaResult.manifest.name, icons: gammaResult.manifest.icons },
     },
     favicons: faviconEvidence,
   }));
   console.log(JSON.stringify({
     result: "PASS",
     browser: "Chromium production-mode",
-    manifests: { platform: "PASS", tenantAlpha: "PASS", tenantBeta: "PASS", forgedUnknown: "PASS", inactiveDomain: "PASS", incompleteTenant: "PASS" },
+    manifests: { platform: "PASS", tenantAlpha: "PASS", tenantBeta: "PASS", genericTenant: "PASS", forgedUnknown: "PASS", inactiveDomain: "PASS", unverifiedDomain: "PASS", incompleteTenant: "PASS" },
     assetHttpMimeAndDimensions: "PASS",
     metadataAndScreenshots: "PASS",
+    visibleInstallInvitations: "PASS",
     isolation: "PASS",
     artifacts: artifactDir,
   }, null, 2));
@@ -316,4 +427,6 @@ try {
     });
   }
   await prisma.$disconnect();
+  // CI-only synthetic artwork belongs to this run and is never published as a tenant asset.
+  rmSync(genericAssetDirectory, { recursive: true, force: true });
 }

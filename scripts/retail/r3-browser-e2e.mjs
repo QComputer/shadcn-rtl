@@ -46,6 +46,11 @@ async function login(browser, email, locale = "fa") {
     throw new Error(`MERCHANT_AUTHORIZATION_OR_CAPABILITY_DENIAL: authenticated manager catalog read returned HTTP 403: ${body.error ?? "no message"}`);
   }
   assert.equal(catalogResponse.status(), 200, `authenticated merchant catalog read returned HTTP ${catalogResponse.status()}`);
+  // The credentials callback may return the dashboard root when callbackUrl is
+  // normalized by the app. Navigate explicitly to the merchant catalog route;
+  // the browser session and server-side route authorization remain in force.
+  await page.goto(`${baseUrl}/${locale}/dashboard/retail-catalog`);
+  await page.getByRole("heading", { name: locale === "fa" ? "کاتالوگ فروشگاه" : locale === "ar" ? "كتالوج المتجر" : "Retail catalog" }).waitFor();
   return { context, page };
 }
 

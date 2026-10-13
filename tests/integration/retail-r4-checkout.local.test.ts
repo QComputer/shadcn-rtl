@@ -29,12 +29,13 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
   process.env.RETAIL_RECEIPT_TEST_STORAGE = "1";
   process.env.RETAIL_RECEIPT_LOCAL_ROOT = testRoot;
 
-  const [{ PrismaClient }, checkout, reports, cash, receiptStorage] = await Promise.all([
+  const [{ PrismaClient }, checkout, reports, cash, receiptStorage, inotiReadiness] = await Promise.all([
     import("@prisma/client"),
     import("@/lib/retail/checkout.server"),
     import("@/lib/retail/payment-reports.server"),
     import("@/lib/retail/cash.server"),
     import("@/lib/retail/receipt-storage.server"),
+    import("@/lib/retail/inoti-readiness.server"),
   ]);
   const db = new PrismaClient({ log: ["error"] });
   const idempotencyKeys: string[] = [];
@@ -44,6 +45,7 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
   const cartIds = new Set<string>();
   const couponIds: string[] = [];
   const orderIds: string[] = [];
+  let secondaryCustomerId = "";
 
   try {
     const identity = await db.$queryRaw<Array<{ database: string; version: string; version_num: number }>>`
@@ -58,6 +60,11 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
     const customer = await db.user.findUniqueOrThrow({ where: { email: "r4-synthetic-customer@example.test" } });
     const manager = await db.user.findUniqueOrThrow({ where: { email: "r4-synthetic-fashion-manager@example.test" } });
     const category = await db.productCategory.findFirstOrThrow({ where: { organizationId: fashion.id, slug: "sneakers" } });
+    assert.equal(await inotiReadiness.getRetailInotiReadiness(fashion.id), null,
+      "synthetic merchant without a verified active iNoti integration must not offer USSD");
+    await assert.rejects(() => checkout.createRetailCheckout(customer.id, {
+      organization: fashion.slug, idempotencyKey: randomUUID(), type: "PICK_UP", paymentMethod: "INOTI_USSD",
+    }), /Selected payment method is not available/);
 
     const product = await db.product.create({ data: {
       name: `[R4-SYNTHETIC] checkout test ${suffix}`, slug: `r4-checkout-${suffix}`,
@@ -80,14 +87,15 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
     const fixed = await addCoupon({ code: `R4F-${codeSuffix}`, discountType: "FIXED_AMOUNT", discountValue: 50000 });
     const capped = await addCoupon({ code: `R4L-${codeSuffix}`, discountType: "FIXED_AMOUNT", discountValue: 1000, usageLimit: 1, perCustomerLimit: 10 });
 
-    async function checkoutOrder(options: { organization?: string; couponCode?: string; paymentMethod?: "BANK_TRANSFER" | "CASH"; cashMode?: "COUNTER" } = {}) {
+    async function checkoutOrder(options: { organization?: string; couponCode?: string; paymentMethod?: "BANK_TRANSFER" | "CASH"; cashMode?: "COUNTER"; customerId?: string } = {}) {
       const organization = options.organization ?? fashion.slug;
+      const buyerId = options.customerId ?? customer.id;
       const key = randomUUID();
       idempotencyKeys.push(key);
       const organizationId = organization === fashion.slug ? fashion.id : mobile.id;
       const cart = await db.shopCart.upsert({
-        where: { organizationSlug_customerId: { organizationSlug: organization, customerId: customer.id } },
-        create: { organizationSlug: organization, customerId: customer.id }, update: { status: "ACTIVE" },
+        where: { organizationSlug_customerId: { organizationSlug: organization, customerId: buyerId } },
+        create: { organizationSlug: organization, customerId: buyerId }, update: { status: "ACTIVE" },
       });
       cartIds.add(cart.id);
       await db.shopCartItem.deleteMany({ where: { cartId: cart.id } });
@@ -96,7 +104,7 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
         const mobileVariant = await db.productVariant.findFirstOrThrow({ where: { sku: "R4-SYN-NOVA-256-BL", product: { organizationId: mobile.id } } });
         await db.shopCartItem.create({ data: { cartId: cart.id, variantId: mobileVariant.id, quantity: 1 } });
       }
-      const result = await checkout.createRetailCheckout(customer.id, {
+      const result = await checkout.createRetailCheckout(buyerId, {
         organization, idempotencyKey: key, type: "PICK_UP", paymentMethod: options.paymentMethod ?? "BANK_TRANSFER",
         ...(options.couponCode ? { couponCode: options.couponCode } : {}), ...(options.cashMode ? { cashMode: options.cashMode } : {}),
       });
@@ -166,6 +174,24 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
     assert.equal(cashResult.paymentStatus, "COMPLETED");
     assert.equal((await db.retailPaymentReport.findUniqueOrThrow({ where: { id: cashResult.reportId } })).status, "APPROVED");
     assert.equal((await db.payment.findUniqueOrThrow({ where: { orderId: cashOrder.order.id } })).status, "COMPLETED");
+
+    // Concurrent buyers share the same coupon row and the same final unit of
+    // stock. Exactly one checkout may commit; a losing transaction must not
+    // oversell or increment the coupon count.
+    const secondary = await db.user.create({ data: {
+      email: `r4-concurrency-${suffix}@example.test`, name: "R4 synthetic concurrent buyer", role: "CUSTOMER", isActive: true,
+    } });
+    secondaryCustomerId = secondary.id;
+    await db.productVariant.update({ where: { id: variantId }, data: { inventory: 1 } });
+    const singleUse = await addCoupon({ code: `R4C-${codeSuffix}`, discountType: "FIXED_AMOUNT", discountValue: 1000, usageLimit: 1 });
+    const races = await Promise.allSettled([
+      checkoutOrder({ couponCode: singleUse.code }),
+      checkoutOrder({ couponCode: singleUse.code, customerId: secondary.id }),
+    ]);
+    assert.equal(races.filter((result) => result.status === "fulfilled").length, 1);
+    assert.equal(races.filter((result) => result.status === "rejected").length, 1);
+    assert.equal((await db.coupon.findUniqueOrThrow({ where: { id: singleUse.id } })).usedCount, 1);
+    assert.equal((await db.productVariant.findUniqueOrThrow({ where: { id: variantId } })).inventory, 0);
   } finally {
     if (orderIds.length) {
       const reportsToClean = await db.retailPaymentReport.findMany({ where: { orderId: { in: orderIds } }, select: { receiptKey: true } });
@@ -184,6 +210,7 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
     if (cartIds.size) await db.shopCart.deleteMany({ where: { id: { in: [...cartIds] } } });
     if (productId) await db.productVariant.deleteMany({ where: { productId } });
     if (productId) await db.product.deleteMany({ where: { id: productId } });
+    if (secondaryCustomerId) await db.user.delete({ where: { id: secondaryCustomerId } });
     for (const key of receiptKeys) await receiptStorage.removeRetailReceipt(key).catch(() => undefined);
     await db.$disconnect();
     await rm(testRoot, { recursive: true, force: true });

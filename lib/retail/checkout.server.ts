@@ -6,7 +6,7 @@ import { z } from "zod";
 import { ApiError } from "@/lib/api-guards";
 import { prisma } from "@/lib/db";
 import { requireActiveOrganizationCapability } from "@/lib/organization-capabilities.server";
-import { requireEnabledRetailPaymentMethod } from "@/lib/retail/payment-policy.server";
+import { requireEnabledRetailPaymentMethod, retailPaymentPolicyInput } from "@/lib/retail/payment-policy.server";
 
 const money = (value: Prisma.Decimal | number | string) => new Prisma.Decimal(value);
 const code = (value: string) => value.trim().toUpperCase();
@@ -74,15 +74,28 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
   });
   if (!organization || organization.branding?.retailPreviewOnly) throw new ApiError(404, "Storefront is unavailable.");
   await requireActiveOrganizationCapability({ organizationId: organization.id, capability: "SHOP" });
-  const paymentPolicy = await requireEnabledRetailPaymentMethod(organization.slug, input.paymentMethod);
+  const paymentPolicy = await requireEnabledRetailPaymentMethod(organization.slug, organization.id, input.paymentMethod);
   if (input.cashMode && !paymentPolicy.cashModes.includes(input.cashMode)) throw new ApiError(409, "Cash collection mode is unavailable.");
   const existing = await prisma.order.findFirst({
     where: { retailCheckoutKey: input.idempotencyKey, organizationSlug: organization.slug, customerId },
-    select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true },
+    select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, publicTrackingToken: true },
   });
   if (existing) return existing;
 
   const run = async () => prisma.$transaction(async (tx) => {
+    const paymentSettings = await tx.paymentSettings.findUnique({
+      where: { organizationSlug: organization.slug }, select: { settings: true },
+    });
+    const policyValue = paymentSettings?.settings;
+    const activePolicy = retailPaymentPolicyInput.safeParse(
+      policyValue && typeof policyValue === "object" && !Array.isArray(policyValue) ? policyValue.retailR4 : null,
+    );
+    if (!activePolicy.success || (input.paymentMethod === "BANK_TRANSFER" && !activePolicy.data.bankTransferEnabled) ||
+        (input.paymentMethod === "CASH" && (!activePolicy.data.cashEnabled ||
+          (input.cashMode && !activePolicy.data.cashModes.includes(input.cashMode)))) ||
+        (input.paymentMethod === "INOTI_USSD" && !activePolicy.data.inotiUssdEnabled)) {
+      throw new ApiError(409, "Selected payment method is no longer available.");
+    }
     const cart = await tx.shopCart.findUnique({
       where: { organizationSlug_customerId: { organizationSlug: organization.slug, customerId } },
       include: { items: { include: { variant: { include: { product: true } } } } },
@@ -116,9 +129,13 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
     }) : null;
     const discount = applied?.discount ?? money(0);
     const total = Prisma.Decimal.max(0, subtotal.add(deliveryFee).sub(discount));
+    if (input.paymentMethod === "INOTI_USSD" && (total.lte(0) || !total.isInteger())) {
+      throw new ApiError(409, "USSD requires a positive whole-Toman order amount.");
+    }
     const order = await tx.order.create({
       data: {
         orderNumber: `RET-${Date.now().toString(36).toUpperCase()}-${randomBytes(5).toString("hex").toUpperCase()}`,
+        ...(input.paymentMethod === "INOTI_USSD" ? { publicTrackingToken: randomBytes(24).toString("base64url") } : {}),
         retailCheckoutKey: input.idempotencyKey,
         type: input.type, status: "PENDING", subtotal, deliveryFee, tax: 0, discount, total,
         deliveryAddress: input.deliveryAddress ?? null, organizationSlug: organization.slug,
@@ -126,7 +143,7 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
         items: { create: items.map((item) => ({ productId: item.productId, variantId: item.variantId,
           quantity: item.quantity, price: item.price, discount: 0 })) },
       },
-      select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true },
+      select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, publicTrackingToken: true },
     });
     for (const item of items) {
       if (!item.trackInventory) continue;
@@ -148,7 +165,9 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
       discountAmount: applied.discount, metadata: { code: applied.coupon.code, source: "RETAIL_CHECKOUT" },
     } });
     await tx.payment.create({ data: { orderId: order.id, method: input.paymentMethod as PaymentMethod, amount: total, status: "PENDING",
-      metadata: { retailR4: { cashMode: input.cashMode ?? null, cashBeforeConfirmation: paymentPolicy.cashBeforeConfirmation } } } });
+      metadata: { retailR4: { cashMode: input.cashMode ?? null, cashBeforeConfirmation: activePolicy.data.cashBeforeConfirmation,
+        ...(input.paymentMethod === "BANK_TRANSFER" ? { bankCardNumber: activePolicy.data.bankCardNumber,
+          bankAccountOwner: activePolicy.data.bankAccountOwner } : {}) } } } });
     await tx.paymentEvent.create({ data: { orderId: order.id, previousStatus: null, newStatus: "PENDING",
       method: input.paymentMethod as PaymentMethod, amount: total, createdById: customerId, note: "Retail checkout created" } });
     await tx.orderStatusHistory.create({ data: { orderId: order.id, previousStatus: null,
@@ -163,7 +182,7 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
         const previous = await prisma.order.findFirst({ where: {
           retailCheckoutKey: input.idempotencyKey, organizationSlug: organization.slug, customerId,
-        }, select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true } });
+        }, select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, publicTrackingToken: true } });
         if (previous) return previous;
       }
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034" && attempt < 2) continue;

@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { ApiError } from "@/lib/api-guards";
 import { prisma } from "@/lib/db";
+import { getRetailInotiReadiness } from "@/lib/retail/inoti-readiness.server";
 
 const cashMode = z.enum(["COUNTER", "PICKUP", "COURIER"]);
 const policySchema = z.object({
@@ -47,6 +48,9 @@ export async function getRetailPaymentPolicy(organizationSlug: string) {
 }
 
 export async function saveRetailPaymentPolicy(organizationSlug: string, organizationId: string, actorUserId: string, policy: RetailPaymentPolicy) {
+  if (policy.inotiUssdEnabled && !await getRetailInotiReadiness(organizationId)) {
+    throw new ApiError(409, "A verified tenant iNoti integration and payment rollout are required before enabling USSD.");
+  }
   return prisma.$transaction(async (tx) => {
     const previous = await tx.paymentSettings.findUnique({ where: { organizationSlug }, select: { settings: true } });
     const current = previous?.settings && typeof previous.settings === "object" && !Array.isArray(previous.settings)
@@ -71,12 +75,10 @@ export async function saveRetailPaymentPolicy(organizationSlug: string, organiza
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
-export async function requireEnabledRetailPaymentMethod(organizationSlug: string, method: "BANK_TRANSFER" | "CASH" | "INOTI_USSD") {
+export async function requireEnabledRetailPaymentMethod(organizationSlug: string, organizationId: string, method: "BANK_TRANSFER" | "CASH" | "INOTI_USSD") {
   const policy = await getRetailPaymentPolicy(organizationSlug);
   if (method === "BANK_TRANSFER" && policy.bankTransferEnabled && policy.bankCardNumber && policy.bankAccountOwner) return policy;
   if (method === "CASH" && policy.cashEnabled) return policy;
-  // iNoti also requires tenant-owned active integration and provider readiness,
-  // which is checked during initiation. It is never enabled by this switch alone.
-  if (method === "INOTI_USSD" && policy.inotiUssdEnabled) throw new ApiError(409, "USSD integration has not been verified for retail checkout.");
+  if (method === "INOTI_USSD" && policy.inotiUssdEnabled && await getRetailInotiReadiness(organizationId)) return policy;
   throw new ApiError(409, "Selected payment method is not available.");
 }

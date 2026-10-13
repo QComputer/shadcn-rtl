@@ -9,10 +9,11 @@ type PaymentMethod = {
   cashModes?: string[];
   bankCardNumber?: string | null;
   bankAccountOwner?: string | null;
+  dialString?: string;
 };
 type CartItem = { id?: string; name?: string; productName?: string; variantName?: string; quantity?: number; variant?: { name?: string; product?: { name?: string } } };
 type Cart = { items?: CartItem[] };
-type OrderResult = { orderNumber: string; total: string; paymentStatus: string; orderStatus: string };
+type OrderResult = { orderNumber: string; total: string; paymentStatus: string; orderStatus: string; trackingToken?: string | null };
 
 const money = (value: number) => `${new Intl.NumberFormat("fa-IR").format(value)} تومان`;
 const statusText: Record<string, string> = {
@@ -135,6 +136,12 @@ export default function RetailCheckoutClient({ locale, organization }: { locale:
         {order ? <section className="mt-7 rounded-2xl bg-white p-6 md:p-8">
           <h2 className="text-xl font-semibold">سفارش {order.orderNumber} ثبت شد</h2>
           <dl className="mt-5 grid gap-4 sm:grid-cols-3"><div><dt className="text-xs text-[#77736a]">مبلغ سفارش</dt><dd className="mt-1 font-semibold">{money(Number(order.total))}</dd></div><div><dt className="text-xs text-[#77736a]">وضعیت پرداخت</dt><dd className="mt-1">{statusText[order.paymentStatus] ?? order.paymentStatus}</dd></div><div><dt className="text-xs text-[#77736a]">وضعیت سفارش</dt><dd className="mt-1">{statusText[order.orderStatus] ?? order.orderStatus}</dd></div></dl>
+          {selectedMethod?.method === "INOTI_USSD" && selectedMethod.dialString && order.trackingToken && <div className="mt-7 rounded-2xl border border-[#e5e1d9] p-5 text-sm">
+            <h3 className="font-semibold">پرداخت با کد دستوری</h3>
+            <p className="mt-2">کد <b dir="ltr">{selectedMethod.dialString}</b> را شماره‌گیری کنید و کد پیگیری زیر را وارد کنید.</p>
+            <p className="mt-3 break-all rounded-lg bg-[#f8f7f4] p-3 font-mono" dir="ltr">{order.trackingToken}</p>
+            <p className="mt-3 text-[#766d61]">پرداخت تا زمان تأیید ارائه‌دهنده در انتظار می‌ماند. کد پیگیری را فقط در درگاه کد دستوری همین فروشگاه وارد کنید.</p>
+          </div>}
           {selectedMethod?.method === "BANK_TRANSFER" && <div className="mt-7 border-t border-[#e5e1d9] pt-6"><h3 className="font-semibold">گزارش پرداخت بانکی</h3>
             {selectedMethod.bankCardNumber && <p className="mt-3 text-sm">شماره کارت: <b dir="ltr">{selectedMethod.bankCardNumber}</b></p>}{selectedMethod.bankAccountOwner && <p className="mt-1 text-sm">به نام: {selectedMethod.bankAccountOwner}</p>}
             {reportSubmitted ? <p role="status" className="mt-4 text-sm text-emerald-800">{reportMessage}</p> : <>

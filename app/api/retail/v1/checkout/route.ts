@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       orderNumber: order.orderNumber, total: order.total.toString(),
       paymentStatus: order.paymentStatus, orderStatus: order.status,
+      ...(parsed.data.paymentMethod === "INOTI_USSD" ? { trackingToken: order.publicTrackingToken } : {}),
     }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) { return jsonError(error, "Retail checkout could not be completed."); }
 }

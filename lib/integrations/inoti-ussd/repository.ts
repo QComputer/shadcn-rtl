@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "@/lib/db";
 import { generateBazarBaazFactorId } from "@/lib/payments/payment-request.service";
 import { tomanToInotiRial } from "@/lib/integrations/inoti-ussd/currency";
+import { getRetailPaymentPolicy } from "@/lib/retail/payment-policy.server";
 import type {
   PaymentSettlementInput,
   PaymentSettlementResult,
@@ -204,6 +205,7 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
         status: true,
         paymentStatus: true,
         paymentMethod: true,
+        retailCheckoutKey: true,
         total: true,
         customerId: true,
         guestCustomerId: true,
@@ -211,6 +213,12 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
       },
     });
     if (!order?.publicTrackingToken) return null;
+    if (order.retailCheckoutKey) {
+      if (order.paymentMethod !== "INOTI_USSD" || order.paymentStatus !== "PENDING" ||
+          ["CANCELLED", "REFUNDED"].includes(order.status)) return null;
+      const policy = await getRetailPaymentPolicy(integration.organizationSlug);
+      if (!policy.inotiUssdEnabled) return null;
+    }
     return {
       id: order.id,
       orderNumber: order.orderNumber,

@@ -3,6 +3,7 @@ import { ApiError, jsonError } from "@/lib/api-guards";
 import { prisma } from "@/lib/db";
 import { requireActiveOrganizationCapability } from "@/lib/organization-capabilities.server";
 import { getRetailPaymentPolicy } from "@/lib/retail/payment-policy.server";
+import { getRetailInotiReadiness } from "@/lib/retail/inoti-readiness.server";
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,8 +21,8 @@ export async function GET(request: NextRequest) {
         bankCardNumber: policy.bankCardNumber, bankAccountOwner: policy.bankAccountOwner });
     }
     if (policy.cashEnabled) methods.push({ method: "CASH", label: "پرداخت نقدی", cashModes: policy.cashModes });
-    // USSD is added only after verified tenant integration and provider-safe
-    // checkout initiation exist. A policy switch alone never exposes it.
+    const inoti = policy.inotiUssdEnabled ? await getRetailInotiReadiness(organization.id) : null;
+    if (inoti) methods.push({ method: "INOTI_USSD", label: "پرداخت با کد دستوری", dialString: inoti.dialString });
     return NextResponse.json({ methods }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) { return jsonError(error, "Could not load payment methods."); }
 }

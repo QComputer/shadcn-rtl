@@ -89,7 +89,7 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   try {
     const customer = await login(browser, customerEmail);
-    await customer.page.goto(`${baseUrl}/fa/retail/${fashion}`);
+    await customer.page.goto(`${baseUrl}/fa/retail/${fashion}`, { waitUntil: "domcontentloaded", timeout: 60000 });
     await capture(customer.page, "customer-fashion-storefront.png");
     const receipt = await checkoutWithReport(customer.page, fashion, "r4-synthetic-avid", "RECEIPT");
     const time = await checkoutWithReport(customer.page, fashion, "r4-synthetic-avid", "TIME");

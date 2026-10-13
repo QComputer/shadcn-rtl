@@ -6,7 +6,7 @@ import { createPaymentRequest } from "@/lib/payments/payment-request.service";
 import { InotiPaymentLifecycleService } from "@/lib/payments/inoti-payment-lifecycle.service";
 import { PrismaUssdIntegrationRepository } from "@/lib/integrations/inoti-ussd/repository";
 import { InotiUssdWorkflow } from "@/lib/integrations/inoti-ussd/workflow";
-import { createInotiUssdCallbackHandler } from "@/app/api/integrations/inoti/ussd/[publicIntegrationId]/route";
+import { createInotiUssdCallbackHandler } from "@/lib/integrations/inoti-ussd/callback-handler";
 import type {
   InotiCredentialProfile,
   InotiPaymentVerificationQuery,

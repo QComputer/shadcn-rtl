@@ -1,0 +1,111 @@
+name: Retail R3 acceptance
+
+on:
+  push:
+    branches:
+      - codex/retail-r3-merchant-flow-20261013
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  retail-r3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: retail_r3
+          POSTGRES_DB: bazarbaaz_retail_r3
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U retail_r3 -d bazarbaaz_retail_r3"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://retail_r3@127.0.0.1:55432/bazarbaaz_retail_r3?schema=public
+      DIRECT_URL: postgresql://retail_r3@127.0.0.1:55432/bazarbaaz_retail_r3?schema=public
+      LOCAL_PRISMA_EXPECTED_PORT: "55432"
+      RETAIL_R3_EXPECTED_DATABASE: bazarbaaz_retail_r3
+      NEXTAUTH_URL: http://127.0.0.1:3000
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Create ephemeral test credentials
+        run: |
+          echo "NEXTAUTH_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "RETAIL_R3_TEST_PASSWORD=$(openssl rand -hex 20)" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations to the isolated PostgreSQL 17 service
+        run: pnpm exec prisma migrate deploy
+
+      - name: ESLint
+        run: pnpm run lint --no-cache
+
+      - name: Focused commerce and tenant regressions
+        run: >-
+          pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test
+          tests/unit/public-catalog-contract.test.ts
+          tests/unit/retail-attribute-validation.test.ts
+          tests/unit/tenant-capabilities-and-push.test.ts
+          tests/unit/shop-menu-filter.test.ts
+
+      - name: Seed synthetic tenant fixtures
+        run: pnpm exec tsx scripts/retail/r3-fixtures.mjs seed
+
+      - name: Verify SQL catalog, tenant isolation, and restaurant compatibility
+        run: pnpm exec tsx scripts/retail/r3-fixtures.mjs verify
+
+      - name: Production build
+        run: pnpm run build
+
+      - name: TypeScript
+        run: pnpm run typecheck
+
+      - name: Install browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Start the isolated acceptance server
+        run: |
+          pnpm start --port 3000 > /tmp/retail-r3-next.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/fa/login >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/retail-r3-next.log
+          exit 1
+
+      - name: Authenticated merchant browser acceptance
+        env:
+          RETAIL_R3_BASE_URL: http://127.0.0.1:3000
+          RETAIL_R3_PLAYWRIGHT_ENTRY: ${{ github.workspace }}/node_modules/playwright/index.mjs
+        run: node scripts/retail/r3-browser-e2e.mjs
+
+      - name: Upload browser evidence and server logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retail-r3-browser-evidence
+          path: |
+            artifacts/retail-r3-browser/
+            /tmp/retail-r3-next.log
+          if-no-files-found: warn

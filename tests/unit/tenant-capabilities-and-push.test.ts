@@ -24,7 +24,7 @@ import { normalizePushOrigin } from "@/lib/push-origin";
 import { buildMinimalWebPushPayload } from "@/lib/push-payload";
 import { resolveActiveTenantForHost } from "@/lib/domains/domain-resolver.server";
 import { isPlatformHost } from "@/lib/custom-domain-routing";
-import { publicOrganizationHref } from "@/app/[locale]/dashboard/organizations/page";
+import { publicOrganizationHref } from "@/lib/organization-public-href";
 import { getIntegrationAdapter, listIntegrationAdapters } from "@/lib/integrations/runtime/registry";
 import { listInotiServiceMappings } from "@/lib/integrations/inoti-account-management";
 import {

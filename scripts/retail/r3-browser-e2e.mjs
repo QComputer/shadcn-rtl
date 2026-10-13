@@ -23,8 +23,28 @@ async function login(browser, email, locale = "fa") {
   await page.locator("#password").fill(password);
   await page.locator('button[type="submit"]').click();
   await page.waitForURL(`**/${locale}/dashboard/retail-catalog`, { timeout: 60000 });
-  const session = await page.evaluate(async () => fetch("/api/auth/session").then((response) => response.json()));
-  console.log(`authenticated session user=${Boolean(session.user?.id)} role=${session.user?.role ?? "missing"} organization=${Boolean(session.user?.organizationId)}`);
+  const sessionResponse = await page.evaluate(async () => {
+    const response = await fetch("/api/auth/session");
+    return { status: response.status, session: await response.json() };
+  });
+  const session = sessionResponse.session;
+  if (!session.user?.id || !session.user?.role) {
+    throw new Error(`AUTH_SESSION_MISSING: credentials login navigated but the session endpoint returned HTTP ${sessionResponse.status} without an authenticated user.`);
+  }
+  if (!session.user.organizationId) {
+    throw new Error(`ACTIVE_ORGANIZATION_MISSING: authenticated user ${session.user.role} has no server-resolved organization context.`);
+  }
+  const cookieNames = (await context.cookies(baseUrl)).map((cookie) => cookie.name);
+  console.log(`authenticated session established role=${session.user.role} organization=true cookieNames=${cookieNames.join(",")}`);
+  const catalogResponse = await context.request.get(`${baseUrl}/api/dashboard/retail/catalog`);
+  if (catalogResponse.status() === 401) {
+    throw new Error("AUTH_COOKIE_PROPAGATION_OR_SERVER_SESSION_FAILURE: /api/auth/session was authenticated in the browser, but the merchant API returned HTTP 401.");
+  }
+  if (catalogResponse.status() === 403) {
+    const body = await catalogResponse.json().catch(() => ({}));
+    throw new Error(`MERCHANT_AUTHORIZATION_OR_CAPABILITY_DENIAL: authenticated manager catalog read returned HTTP 403: ${body.error ?? "no message"}`);
+  }
+  assert.equal(catalogResponse.status(), 200, `authenticated merchant catalog read returned HTTP ${catalogResponse.status()}`);
   return { context, page };
 }
 
@@ -97,7 +117,7 @@ async function createAndPublish({ browser, email, locale, organization, category
 async function main() {
   await fs.mkdir(evidenceDir, { recursive: true });
   await fs.writeFile(imagePath, png);
-  const browser = await chromium.launch({ headless: true, executablePath: "C:/Program Files/Google/Chrome/Application/chrome.exe" });
+  const browser = await chromium.launch({ headless: true });
   try {
     const fashion = await createAndPublish({ browser, email: "r3-fashion-manager@example.test", locale: "fa", organization: "retail-r3-fashion-preview", category: "کتانی", attribute: "material", option: "color-size", slug: "browser-r3-fashion", sku: "R3-BROWSER-SHOE-41", name: "کفش پیش‌نمایش مرورگر" });
     const electronics = await createAndPublish({ browser, email: "r3-mobile-manager@example.test", locale: "fa", organization: "retail-r3-mobile-preview", category: "گوشی هوشمند", attribute: "ram", option: "color-storage", slug: "browser-r3-phone", sku: "R3-BROWSER-PHONE-256", name: "موبایل پیش‌نمایش مرورگر" });

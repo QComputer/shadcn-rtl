@@ -1417,6 +1417,10 @@ if (!org?.slug) return
       }
 
       assertAllowedStatusTransition(existingOrder.status, nextStatus);
+      if (existingOrder.retailCheckoutKey && nextStatus === "CANCELLED" &&
+          existingOrder.paymentStatus === "COMPLETED") {
+        throw new ApiError(409, "A paid retail order requires a separate refund review before cancellation.");
+      }
       if (existingOrder.retailCheckoutKey && existingOrder.paymentMethod === "CASH" &&
           nextStatus === "ACCEPTED" && existingOrder.paymentStatus !== "COMPLETED") {
         const metadata = existingOrder.payment?.metadata;
@@ -1459,6 +1463,14 @@ if (!org?.slug) return
           note: nextStatus === "REFUNDED"
             ? "Inventory restored after order refund"
             : "Inventory restored after order cancellation",
+        });
+      }
+
+      if (existingOrder.retailCheckoutKey && nextStatus === "CANCELLED") {
+        await tx.paymentRequest.updateMany({
+          where: { orderId: existingOrder.id, organizationId: existingOrder.organization.id,
+            status: { in: ["CREATED", "AWAITING_CUSTOMER", "PENDING_VERIFICATION", "FAILED"] } },
+          data: { status: "CANCELLED", cancelledAt: new Date() },
         });
       }
 

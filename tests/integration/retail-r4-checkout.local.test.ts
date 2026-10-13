@@ -23,6 +23,7 @@ function assertExactDatabaseTarget() {
 test("Retail R4 checkout, discount limits, and payment reports persist on the seeded PG17 fixture", { skip: !enabled, concurrency: false }, async () => {
   assertExactDatabaseTarget();
   const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
+  const codeSuffix = suffix.toUpperCase();
   const testRoot = await mkdtemp(path.join(os.tmpdir(), "retail-r4-checkout-"));
   process.env.CI = "true";
   process.env.RETAIL_RECEIPT_TEST_STORAGE = "1";
@@ -75,9 +76,9 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
       couponIds.push(created.id);
       return created;
     }
-    const pct = await addCoupon({ code: `R4P-${suffix}`, discountType: "PERCENTAGE", discountValue: 10, minOrderTotal: 500000, maxDiscountAmount: 20000, usageLimit: 10, perCustomerLimit: 1 });
-    const fixed = await addCoupon({ code: `R4F-${suffix}`, discountType: "FIXED_AMOUNT", discountValue: 50000 });
-    const capped = await addCoupon({ code: `R4L-${suffix}`, discountType: "FIXED_AMOUNT", discountValue: 1000, usageLimit: 1, perCustomerLimit: 10 });
+    const pct = await addCoupon({ code: `R4P-${codeSuffix}`, discountType: "PERCENTAGE", discountValue: 10, minOrderTotal: 500000, maxDiscountAmount: 20000, usageLimit: 10, perCustomerLimit: 1 });
+    const fixed = await addCoupon({ code: `R4F-${codeSuffix}`, discountType: "FIXED_AMOUNT", discountValue: 50000 });
+    const capped = await addCoupon({ code: `R4L-${codeSuffix}`, discountType: "FIXED_AMOUNT", discountValue: 1000, usageLimit: 1, perCustomerLimit: 10 });
 
     async function checkoutOrder(options: { organization?: string; couponCode?: string; paymentMethod?: "BANK_TRANSFER" | "CASH"; cashMode?: "COUNTER" } = {}) {
       const organization = options.organization ?? fashion.slug;

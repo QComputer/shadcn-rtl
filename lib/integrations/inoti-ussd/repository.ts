@@ -475,6 +475,20 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
       });
       if (!intent) throw new Error("PAYMENT_INTENT_NOT_FOUND");
 
+      // Serialize a retail cancellation against settlement. The original
+      // projection can be stale if an operator cancelled the order while the
+      // provider verification was running.
+      if (intent.orderId && intent.order?.retailCheckoutKey) {
+        await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${intent.orderId} FOR UPDATE`;
+      }
+      const currentRetailOrder = intent.order?.retailCheckoutKey && intent.orderId
+        ? await tx.order.findUnique({ where: { id: intent.orderId }, select: { status: true, paymentStatus: true } })
+        : null;
+      const currentPaymentRequest = intent.paymentRequestId
+        ? await tx.paymentRequest.findUnique({ where: { id: intent.paymentRequestId }, select: { status: true } })
+        : null;
+      const cancelledRetailOrder = Boolean(currentRetailOrder && ["CANCELLED", "REFUNDED"].includes(currentRetailOrder.status));
+
       if (intent.status === "SETTLED") {
         await tx.ussdCallbackEvent.create({
           data: {
@@ -493,7 +507,8 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
       }
 
       if (!intent.paymentRequest) throw new Error("PAYMENT_REQUEST_NOT_FOUND");
-      if (["EXPIRED", "CANCELLED", "PAID"].includes(intent.paymentRequest.status)) {
+      if (cancelledRetailOrder || ["EXPIRED", "CANCELLED", "PAID"].includes(currentPaymentRequest?.status ?? intent.paymentRequest.status)) {
+        const reconciliationStatus = cancelledRetailOrder ? "CANCELLED" : (currentPaymentRequest?.status ?? intent.paymentRequest.status);
         const claim = await tx.ussdPaymentIntent.updateMany({
           where: { id: intent.id, status: { notIn: ["VERIFIED", "SETTLED"] } },
           data: {
@@ -518,7 +533,7 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
                 verification: "GetPayments",
                 amountRial: intent.amountRial.toString(),
                 reconciliationRequired: true,
-                paymentRequestStatus: intent.paymentRequest.status,
+                paymentRequestStatus: reconciliationStatus,
               },
               verifiedAt: new Date(),
             },
@@ -535,7 +550,7 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
             callHash: input.callHash,
             rrnHash: input.rrnHash,
             outcome: "ACCEPTED",
-            errorCode: `RECONCILIATION_REQUIRED_${intent.paymentRequest.status}`,
+            errorCode: `RECONCILIATION_REQUIRED_${reconciliationStatus}`,
           },
         });
         await tx.auditLog.create({
@@ -544,8 +559,8 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
             entityType: "PaymentRequest",
             entityId: intent.paymentRequest.id,
             description: "Verified iNoti payment requires reconciliation",
-            previousValue: { status: intent.paymentRequest.status },
-            newValue: { status: intent.paymentRequest.status, providerVerified: true, settlementApplied: false },
+            previousValue: { status: reconciliationStatus },
+            newValue: { status: reconciliationStatus, providerVerified: true, settlementApplied: false },
             organizationId: input.integration.organizationId,
             organizationSlug: input.integration.organizationSlug,
           },
@@ -553,7 +568,7 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
         return {
           kind: "RECONCILIATION_REQUIRED",
           notification: null,
-          requestStatus: intent.paymentRequest.status as "EXPIRED" | "CANCELLED" | "PAID",
+          requestStatus: reconciliationStatus as "EXPIRED" | "CANCELLED" | "PAID",
         };
       }
 

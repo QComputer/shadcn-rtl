@@ -98,7 +98,9 @@ async function createAndPublish({ browser, email, locale, organization, category
   await page.getByLabel("عنوان گونه").fill("پیش‌نمایش مشکی");
   await page.getByLabel("شناسه کالا (SKU)").fill(sku);
   await page.getByLabel("قیمت (تومان)").fill(attribute === "ram" ? "45900000" : "650000");
-  await page.locator('input[type="number"]').last().fill("3");
+  const inventoryInput = page.locator("label").filter({ hasText: /^موجودی/ }).locator('input[type="number"]');
+  assert.equal(await inventoryInput.count(), 1, "the variant inventory field must be uniquely identifiable");
+  await inventoryInput.fill("3");
   const availableMediaResponse = await context.request.get(`${baseUrl}/api/dashboard/retail/media`);
   assert.equal(availableMediaResponse.status(), 200, "manager must load eligible organization media");
   const availableMedia = (await availableMediaResponse.json()).images ?? [];

@@ -186,7 +186,7 @@ async function createAndPublish({ browser, email, locale, organization, category
   const storefrontPage = await context.newPage();
   await makeRemoteFontsDeterministic(storefrontPage);
   await storefrontPage.goto(`${baseUrl}/fa/retail/${organization}`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await storefrontPage.getByRole("link", { name: `${name} ویرایش‌شده` }).waitFor({ timeout: 20000 });
+  await storefrontPage.getByRole("link", { name: `${name} ویرایش‌شده` }).first().waitFor({ timeout: 20000 });
   await captureRenderedViewport(storefrontPage, path.join(evidenceDir, `${organization}-published-catalog.png`));
   await storefrontPage.close();
   await page.goto(`${baseUrl}/fa/dashboard/retail-catalog/${productId}`);

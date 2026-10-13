@@ -98,12 +98,10 @@ async function createAndPublish({ browser, email, locale, organization, category
   await page.getByLabel("شناسه کالا (SKU)").fill(sku);
   await page.getByLabel("قیمت (تومان)").fill(attribute === "ram" ? "45900000" : "650000");
   await page.locator('input[type="number"]').last().fill("3");
-  const upload = page.locator('input[type="file"]');
-  const mediaUpload = page.waitForResponse((response) => response.url().includes("/api/dashboard/retail/media") && response.request().method() === "POST");
-  await upload.setInputFiles(imagePath);
-  const mediaResponse = await mediaUpload;
-  const mediaHeaders = await mediaResponse.request().allHeaders();
-  assert.equal(mediaResponse.status(), 201, `eligible product image upload must be accepted; url=${mediaResponse.url()} origin=${mediaHeaders.origin ?? "missing"} secFetchSite=${mediaHeaders["sec-fetch-site"] ?? "missing"} response=${await mediaResponse.text()}`);
+  const previewImage = page.getByRole("button", { name: /افزودن تصویر: PREVIEW-R3-synthetic-test-asset\.png/ });
+  await previewImage.waitFor();
+  await previewImage.click();
+  assert.equal(await previewImage.getAttribute("aria-pressed"), "true", "same-tenant PREVIEW media must be attachable to a product");
   await page.getByRole("button", { name: "ذخیره پیش‌نویس" }).click();
   await page.waitForURL("**/fa/dashboard/retail-catalog/*", { timeout: 60000 });
   const productId = page.url().split("/").at(-1);

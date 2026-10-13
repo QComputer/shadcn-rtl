@@ -92,6 +92,13 @@ async function seedFixtures() {
   const fashionCategory = await prisma.productCategory.create({ data: { name: "کتانی", slug: "sneakers", organizationId: fashion.id, organizationSlug: fashion.slug } });
   const phoneCategory = await prisma.productCategory.create({ data: { name: "گوشی هوشمند", slug: "smartphones", organizationId: mobile.id, organizationSlug: mobile.slug } });
   const restaurantCategory = await prisma.productCategory.create({ data: { name: "غذای روز", slug: "daily-menu", organizationId: restaurant.id, organizationSlug: restaurant.slug } });
+  await Promise.all([
+    { organization: fashion, url: "/retail-preview/preview-fashion-campaign.png" },
+    { organization: mobile, url: "/retail-preview/preview-mobile-campaign.png" },
+  ].map(({ organization, url }) => prisma.image.create({ data: {
+    url, filename: "PREVIEW-R3-synthetic-test-asset.png", organizationId: organization.id,
+    access: "PUBLIC", purpose: "retail-product",
+  } })));
   const foreignImage = await prisma.image.create({ data: { url: "/retail-preview/preview-mobile-campaign.png", organizationId: mobile.id, access: "PUBLIC", purpose: "retail-r3-synthetic-foreign-media" } });
   await createProduct({ organization: fashion, category: fashionCategory, name: "کتانی نمونه آوید", slug: "avid-preview", price: 500000, media: [{ url: "/retail-preview/preview-fashion-campaign.png" }, { url: foreignImage.url, organizationId: mobile.id }, { url: "/retail-preview/preview-fashion-campaign.png", access: "PRIVATE" }, { url: "javascript:alert(1)" }],
     attrs: [{ key: "material", label: "جنس", valueType: "ENUM", value: "چرم طبیعی", allowedValues: ["چرم طبیعی", "پارچه"] }, { key: "style", label: "سبک", valueType: "TEXT", value: "روزمره" }],

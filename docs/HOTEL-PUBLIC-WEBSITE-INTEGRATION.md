@@ -5,7 +5,7 @@ This contract is for the Hotel frontend agent. It describes the accepted C1B1 ma
 ## Source branches and capability boundary
 
 - C1B1 management branch: `codex/hotel-content-c1b1-review`, commit `00f3a3830810bd6add295b3c5bb2426f118c9b9b`.
-- C1B2 public website branch: `codex/hotel-public-website-c1b2-review`, implementation commit `5816c703f00699449589c1918dd4f669d6bb821c`.
+- C1B2 public website branch: `codex/hotel-public-website-c1b2-review`, implementation commit `c949d288f8fb5b2befdaabacf1147db15ddaa2e5` (includes the independent default-off rollout gate).
 - `HOTEL_WEBSITE` gates editorial content and informational Hotel website reads. It must be explicitly active, have `enabledAt`, and have no `disabledAt`.
 - `HOTEL_BOOKING` remains the independent gate for booking operations. These public responses do not create holds, reservations, quotes, payments, or inventory changes and never promise availability.
 - Existing R1 catalog, availability, quote, and hold endpoints retain their existing booking/publication rules. The new room-category website response is a separate informational read and does not reveal price or inventory.
@@ -13,6 +13,8 @@ This contract is for the Hotel frontend agent. It describes the accepted C1B1 ma
 ## C1B2 public routes
 
 All routes require a trusted active host mapping to an active, nondeleted `HOTEL` organization with `HOTEL_WEBSITE` enabled. `HOTEL_BOOKING` is not required. The service selects the exact active, nonrevoked `HOME` publication and its `APPROVED` immutable revision. Unrecognized host/property and unavailable website state return a generic not-found response. All JSON and media responses use `Cache-Control: no-store, max-age=0`; the media redirect also uses `Referrer-Policy: no-referrer` and `X-Content-Type-Options: nosniff`.
+
+An independent rollout kill switch, `HOTEL_WEBSITE_PUBLIC_OPERATIONAL_ENABLED`, must equal `1` before any route reads data. It defaults off; disabled routes return `503 {"error":"WEBSITE_DISABLED"}`. Tenant capability remains separately required after the global gate is enabled.
 
 ### `GET /api/hotel/v1/website/properties/{propertySlug}?locale=fa|en|ar`
 
@@ -28,7 +30,7 @@ The opaque association identifier is a delivery handle, not an authorization tok
 
 ## Response and UI behavior
 
-The frontend should fetch these routes from its same public Hotel origin with an explicit locale. Validate the `mode` field and handle `UNPUBLISHED` as a real empty state. A transport `404` means tenant/property/public content is unavailable; `400` means invalid locale/slug; `500 {"error":"UNAVAILABLE"}` is intentionally generic. Never cache these responses in a browser/service worker/CDN. Render only server-returned fields. Do not infer booking availability from room category presence.
+The frontend should fetch these routes from its same public Hotel origin with an explicit locale. Validate the `mode` field and handle `UNPUBLISHED` as a real empty state. A transport `404` means tenant/property/public content is unavailable; `400` means invalid locale/slug; `503 {"error":"WEBSITE_DISABLED"}` means the global rollout gate is off; `500 {"error":"UNAVAILABLE"}` is intentionally generic. Never cache these responses in a browser/service worker/CDN. Render only server-returned fields. Do not infer booking availability from room category presence.
 
 Property and room gallery `src` values are same-origin opaque association routes. Render them as provided. If media becomes private, is deleted, changes MIME/URL eligibility, the association is excluded on later reads and the delivery route fails closed. Editorial revisions and their media links are immutable; changes require a new revision and approval/publication. Existing preview/conceptual F1 assets are not approved production content and must remain visually separated from API-backed content.
 

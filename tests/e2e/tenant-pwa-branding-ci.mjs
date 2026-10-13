@@ -240,8 +240,9 @@ try {
   assert.equal(betaApple.body.readUInt32BE(20), 180, "second tenant Apple Touch Icon height");
 
   const alphaPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-  const alphaPageResponse = await alphaPage.goto(`http://${hosts.alpha}:${port}/en/${alpha.slug}`, { waitUntil: "networkidle" });
+  const alphaPageResponse = await alphaPage.goto(`http://${hosts.alpha}:${port}/en/${alpha.slug}`, { waitUntil: "domcontentloaded" });
   assert.ok(alphaPageResponse && alphaPageResponse.status() === 200, "synthetic tenant page loads in production mode");
+  await alphaPage.locator("body").waitFor();
   const metadata = await alphaPage.evaluate(() => ({
     manifest: document.querySelector('link[rel="manifest"]')?.getAttribute("href"),
     icon: document.querySelector('link[rel="icon"]')?.getAttribute("href"),
@@ -254,8 +255,9 @@ try {
   await alphaPage.close();
 
   const betaPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  const betaPageResponse = await betaPage.goto(`http://${hosts.beta}:${port}/en/${beta.slug}`, { waitUntil: "networkidle" });
+  const betaPageResponse = await betaPage.goto(`http://${hosts.beta}:${port}/en/${beta.slug}`, { waitUntil: "domcontentloaded" });
   assert.ok(betaPageResponse && betaPageResponse.status() === 200, "second tenant page loads in production mode");
+  await betaPage.locator("body").waitFor();
   await betaPage.screenshot({ path: `${artifactDir}/tenant-beta-mobile.png`, fullPage: true });
   await betaPage.close();
 

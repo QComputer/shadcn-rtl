@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 const slugs = ["retail-r3-fashion-preview", "retail-r3-mobile-preview", "retail-r3-restaurant-compat"];
 const managerEmails = ["r3-fashion-manager@example.test", "r3-mobile-manager@example.test"];
 const staffEmail = "r3-fashion-staff@example.test";
+const inactiveManagerEmail = "r3-fashion-inactive-manager@example.test";
 const testPassword = process.env.RETAIL_R3_TEST_PASSWORD;
 if (!testPassword || testPassword.length < 12) {
   throw new Error("RETAIL_R3_TEST_PASSWORD must be set to a disposable test credential of at least 12 characters.");
@@ -30,7 +31,7 @@ async function removeFixtures() {
   const organizations = await prisma.organization.findMany({ where: { slug: { in: slugs } }, select: { id: true, slug: true } });
   const ids = organizations.map((item) => item.id);
   if (ids.length) await prisma.organizationMember.deleteMany({ where: { organizationId: { in: ids } } });
-  await prisma.user.deleteMany({ where: { email: { in: [...managerEmails, staffEmail] } } });
+  await prisma.user.deleteMany({ where: { email: { in: [...managerEmails, staffEmail, inactiveManagerEmail] } } });
   if (!ids.length) return;
   await prisma.product.deleteMany({ where: { organizationId: { in: ids } } });
   await prisma.productCategory.deleteMany({ where: { organizationId: { in: ids } } });
@@ -89,6 +90,8 @@ async function seedFixtures() {
   }
   const staff = await prisma.user.create({ data: { name: staffEmail, email: staffEmail, password, role: "STAFF", isTeamMember: true, locale: "fa" } });
   await prisma.organizationMember.create({ data: { organizationId: fashion.id, organizationSlug: fashion.slug, userId: staff.id, role: "STAFF", isActive: true } });
+  const inactiveManager = await prisma.user.create({ data: { name: inactiveManagerEmail, email: inactiveManagerEmail, password, role: "STAFF", isTeamMember: true, locale: "fa" } });
+  await prisma.organizationMember.create({ data: { organizationId: fashion.id, organizationSlug: fashion.slug, userId: inactiveManager.id, role: "MANAGER", isActive: false } });
   const fashionCategory = await prisma.productCategory.create({ data: { name: "کتانی", slug: "sneakers", organizationId: fashion.id, organizationSlug: fashion.slug } });
   const phoneCategory = await prisma.productCategory.create({ data: { name: "گوشی هوشمند", slug: "smartphones", organizationId: mobile.id, organizationSlug: mobile.slug } });
   const restaurantCategory = await prisma.productCategory.create({ data: { name: "غذای روز", slug: "daily-menu", organizationId: restaurant.id, organizationSlug: restaurant.slug } });

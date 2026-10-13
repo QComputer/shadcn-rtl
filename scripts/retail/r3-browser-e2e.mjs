@@ -198,6 +198,28 @@ async function createAndPublish({ browser, email, locale, organization, category
   return productId;
 }
 
+async function verifyInactiveMembershipIsDenied(browser) {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto(`${baseUrl}/fa/login?callbackUrl=${encodeURIComponent("/fa/dashboard/retail-catalog")}`);
+  await page.locator("#username").fill("r3-fashion-inactive-manager@example.test");
+  await page.locator("#password").fill(password);
+  await page.locator('button[type="submit"]').click();
+  await page.waitForURL((url) => !url.pathname.endsWith("/login"), { timeout: 60000 });
+  const sessionResponse = await context.request.get(`${baseUrl}/api/auth/session`);
+  const session = await sessionResponse.json();
+  assert.ok(session.user?.id, "inactive test user must authenticate before membership rejection is tested");
+  assert.equal(session.user.organizationId ?? null, null, "inactive manager membership must not produce a trusted active organization");
+  const catalogRead = await context.request.get(`${baseUrl}/api/dashboard/retail/catalog`);
+  assert.equal(catalogRead.status(), 403, "authenticated inactive manager membership must be rejected before catalog access");
+  const catalogWrite = await context.request.post(`${baseUrl}/api/dashboard/retail/catalog`, {
+    headers: { origin: baseUrl, "sec-fetch-site": "same-origin" },
+    data: {},
+  });
+  assert.equal(catalogWrite.status(), 403, "inactive manager membership must not create catalog products");
+  await context.close();
+}
+
 async function main() {
   await fs.mkdir(evidenceDir, { recursive: true });
   await fs.writeFile(imagePath, png);
@@ -213,6 +235,7 @@ async function main() {
     });
     assert.equal(denied.status(), 403, "staff member must not write the catalog");
     await staff.context.close();
+    await verifyInactiveMembershipIsDenied(browser);
 
     const mobileManager = await login(browser, "r3-mobile-manager@example.test", "fa");
     const crossTenant = await mobileManager.page.context().request.get(`${baseUrl}/api/dashboard/retail/catalog/${fashion}`);

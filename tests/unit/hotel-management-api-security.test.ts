@@ -17,6 +17,21 @@ test("same-origin mutation with matching Origin is accepted", () => {
   })));
 });
 
+test("same-origin mutation uses the public Host behind a proxy when request URL is internal", () => {
+  assert.doesNotThrow(() => requireSameOriginMutation(request({
+    host: "retail.example.test",
+    "x-forwarded-proto": "https",
+    origin: "https://retail.example.test",
+    "sec-fetch-site": "same-origin",
+  })));
+  assert.throws(() => requireSameOriginMutation(request({
+    host: "retail.example.test",
+    "x-forwarded-proto": "https",
+    origin: "https://attacker.example",
+    "sec-fetch-site": "cross-site",
+  })));
+});
+
 test("cross-origin, absent, malformed, and cross-site metadata are rejected", () => {
   assert.throws(() => requireSameOriginMutation(request({ origin: "https://evil.example" })));
   assert.throws(() => requireSameOriginMutation(request()));

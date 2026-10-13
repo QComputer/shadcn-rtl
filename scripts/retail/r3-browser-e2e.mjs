@@ -98,8 +98,18 @@ async function createAndPublish({ browser, email, locale, organization, category
   await page.getByLabel("شناسه کالا (SKU)").fill(sku);
   await page.getByLabel("قیمت (تومان)").fill(attribute === "ram" ? "45900000" : "650000");
   await page.locator('input[type="number"]').last().fill("3");
-  const previewImage = page.getByRole("button", { name: /افزودن تصویر: PREVIEW-R3-synthetic-test-asset\.png/ });
-  await previewImage.waitFor();
+  const availableMediaResponse = await context.request.get(`${baseUrl}/api/dashboard/retail/media`);
+  assert.equal(availableMediaResponse.status(), 200, "manager must load eligible organization media");
+  const availableMedia = (await availableMediaResponse.json()).images ?? [];
+  const previewAsset = availableMedia.find((image) => image.filename === "PREVIEW-R3-synthetic-test-asset.png");
+  assert.ok(previewAsset, `tenant-owned PREVIEW media missing from gallery: ${JSON.stringify(availableMedia.map(({ filename, purpose, access }) => ({ filename, purpose, access })))}`);
+  const previewImage = page.locator('button[aria-label$="PREVIEW-R3-synthetic-test-asset.png"]');
+  try {
+    await previewImage.waitFor({ timeout: 15000 });
+  } catch (error) {
+    await page.screenshot({ path: path.join(evidenceDir, `${organization}-media-gallery-diagnostic.png`), fullPage: true });
+    throw new Error(`MERCHANT_MEDIA_GALLERY_MISSING: API returned eligible image id=${previewAsset.id}, filename=${previewAsset.filename}; browser page=${page.url()}; ${String(error)}`);
+  }
   await previewImage.click();
   assert.equal(await previewImage.getAttribute("aria-pressed"), "true", "same-tenant PREVIEW media must be attachable to a product");
   await page.getByRole("button", { name: "ذخیره پیش‌نویس" }).click();

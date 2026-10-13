@@ -145,7 +145,7 @@ async function createAndPublish({ browser, email, locale, organization, category
   assert.equal(data.variants[0].price.amount, attribute === "ram" ? 45900000 : 650000);
   assert.equal(data.variants[0].orderable, true, `published variant with inventory must be orderable: ${JSON.stringify({ price: data.variants[0].price.amount, orderable: data.variants[0].orderable })}`);
   await page.goto(`${baseUrl}/fa/retail/${organization}/product/${slug}`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await page.getByText(`${name} ویرایش‌شده`).waitFor({ timeout: 20000 });
+  await page.getByRole("heading", { name: `${name} ویرایش‌شده` }).waitFor({ timeout: 20000 });
   await page.screenshot({ path: path.join(evidenceDir, `${organization}-published-detail.png`), fullPage: true });
   await page.goto(`${baseUrl}/fa/dashboard/retail-catalog/${productId}`);
   await page.getByRole("button", { name: "برداشتن از فروشگاه" }).click();

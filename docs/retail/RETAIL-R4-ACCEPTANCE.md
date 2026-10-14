@@ -45,10 +45,27 @@ Paid retail orders require a separate refund review before cancellation. Expired
 
 ## Verification record
 
-Hosted CI run [38468990694](https://github.com/QComputer/shadcn-rtl/actions/runs/38468990694) passed 97 migrations, synthetic fixture seed/verification, 83 focused tests, one R4 PostgreSQL integration test, ESLint, TypeScript, and an optimized production build on the then-current branch. Browser acceptance failed at the storefront full-load wait after successful login; that failure is not a pass. The follow-up branch run must pass the complete browser path before R4 can be accepted.
+Implementation SHA: `f1039c08c529f0d0ed9450809400bd286432a27e`.
 
-The browser suite exercises authenticated customer checkout, receipt-only/time-only submissions, merchant review, unauthorized and cross-tenant rejection, and captures mobile storefront and dashboard screenshots. Test assets, prices, stock, accounts, and bank details are synthetic and explicitly marked. Provider calls remain zero.
+Hosted acceptance [run 38517082127](https://github.com/QComputer/shadcn-rtl/actions/runs/38517082127) completed successfully at that SHA. It started from an empty disposable PostgreSQL 17 database (`bazarbaaz_retail_r4`, loopback port 55433) and applied the repository migration chain. Synthetic tenant seed and restaurant-separation checks passed; focused regressions passed **85/85**, including the isolated iNoti fixture suite; the Retail R4 PostgreSQL integration test passed **1/1**. Prisma validation, ESLint, TypeScript, and optimized production build passed.
 
-## Remaining gate
+The authenticated Chromium flow passed: customer sign-in, catalog and actual checkout form, order remains payment-pending, receipt-only upload and time-only submission, payment report review, merchant approval and rejection, anonymous denial, customer approval denial, and cross-tenant report isolation. The existing iNoti workflow fixture also settled a synthetic R4 order with tenant correlation, exact Toman-to-Rial conversion, durable verification, and unchanged fulfillment status. No live provider calls were made (`liveProviders: 0`).
 
-Update this record with the final SHA, complete CI run, screenshot artifact, and any unresolved browser or financial failures. Until every required check passes, the delivery verdict remains `RETAIL_R4_BLOCKED`.
+Screenshots are retained in [evidence/r4](evidence/r4/):
+
+- [Fashion storefront](evidence/r4/customer-fashion-storefront.png)
+- [Customer checkout](evidence/r4/customer-checkout.png)
+- [Merchant pending payment review](evidence/r4/merchant-pending-payment-reports.png)
+- [Merchant reviewed payments](evidence/r4/merchant-reviewed-payment-reports.png)
+
+The Vercel build configuration suppresses preview builds for this isolated branch. No merge, Production deployment, Production/Neon mutation, or live payment activity occurred.
+
+## Limitations and next milestone
+
+- Existing iNoti credential-profile configuration currently has tenant-specific allowlisting; generic synthetic merchants without an approved, tenant-owned profile correctly do not see or use USSD. The fixture validates the retail order callback/settlement path without enabling real credentials or provider calls.
+- Cash counter/pickup/courier and discount limits/concurrency are covered in the guarded PostgreSQL integration flow; production deployment and live payment-provider acceptance remain outside this milestone.
+- Next: add an operator-approved, tenant-owned iNoti credential-profile provisioning workflow for additional retail tenants, then run its isolated readiness and payment-initiation browser acceptance before any production enablement.
+
+## Verdict
+
+`RETAIL_R4_CHECKOUT_READY` for isolated local/hosted preview use. Production, live provider, and deployment gates remain closed.

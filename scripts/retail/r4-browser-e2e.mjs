@@ -118,7 +118,13 @@ async function main() {
 
     const manager = await login(browser, fashionManager, "/fa/dashboard/retail-payment-reports");
     await manager.page.goto(`${baseUrl}/fa/dashboard/retail-payment-reports`);
-    await manager.page.getByRole("heading", { name: "گزارش‌های پرداخت" }).waitFor({ timeout: 30000 });
+    try {
+      await manager.page.getByRole("heading", { name: "گزارش‌های پرداخت" }).waitFor({ timeout: 30000 });
+    } catch (error) {
+      await capture(manager.page, "merchant-dashboard-failure.png");
+      console.error(JSON.stringify({ merchantDashboardUrl: manager.page.url(), title: await manager.page.title(), bodyText: (await manager.page.locator("body").innerText()).slice(0, 4000) }));
+      throw error;
+    }
     await manager.page.getByText(receipt.orderNumber).waitFor();
     await manager.page.getByText(time.orderNumber).waitFor();
     await capture(manager.page, "merchant-pending-payment-reports.png");

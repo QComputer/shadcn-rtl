@@ -3,7 +3,6 @@ import "server-only";
 import { Prisma, RetailPaymentReportStatus } from "@prisma/client";
 import { z } from "zod";
 import { ApiError } from "@/lib/api-guards";
-import { writeAuditLog } from "@/lib/audit-log";
 import { prisma } from "@/lib/db";
 import { getRetailPaymentPolicy } from "@/lib/retail/payment-policy.server";
 import { removeRetailReceipt, storeRetailReceipt } from "@/lib/retail/receipt-storage.server";
@@ -136,12 +135,14 @@ export async function reviewRetailPaymentReport(input: {
       method: order.paymentMethod, amount: order.total, createdById: input.actorUserId,
       note: `Retail payment report ${status.toLowerCase()}${input.reason ? `: ${input.reason}` : ""}`,
     } });
+    await tx.auditLog.create({ data: {
+      action: "UPDATE", entityType: "RetailPaymentReport", entityId: report.id,
+      description: `Retail payment report ${status.toLowerCase()}`,
+      userId: input.actorUserId, organizationId: input.organizationId,
+      newValue: { status, reason: input.reason ?? null, orderId: order.id },
+    } });
     return { orderId: order.id, reportId: report.id, status };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-  await writeAuditLog({ action: "UPDATE", entityType: "RetailPaymentReport", entityId: result.reportId,
-    description: `Retail payment report ${result.status.toLowerCase()}`,
-    userId: input.actorUserId, organizationId: input.organizationId,
-    newValue: { status: result.status, reason: input.reason ?? null, orderId: result.orderId } });
   return result;
 }
 

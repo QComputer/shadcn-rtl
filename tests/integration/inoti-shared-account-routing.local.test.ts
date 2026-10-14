@@ -95,7 +95,10 @@ function assertUniqueConflict(error: unknown, ...expectedFields: string[]) {
 }
 
 describe("R5 shared iNoti merchant-account routing on disposable PostgreSQL", { skip: !isDisposable }, () => {
-  const suffix = randomUUID().replace(/-/g, "");
+const suffix = randomUUID().replace(/-/g, "");
+  const sessionA = String(100000000 + (Number.parseInt(suffix.slice(0, 8), 16) % 900000000));
+  const sessionB = String(100000000 + (Number.parseInt(suffix.slice(8, 16), 16) % 900000000));
+  const sessionCafe = String(100000000 + (Number.parseInt(suffix.slice(16, 24), 16) % 900000000));
   const repository = new PrismaUssdIntegrationRepository();
   const provider = new FixtureProvider();
   let organizationA: Awaited<ReturnType<typeof prisma.organization.create>> | null = null;
@@ -173,14 +176,14 @@ describe("R5 shared iNoti merchant-account routing on disposable PostgreSQL", { 
     ]);
     const lifecycle = new InotiPaymentLifecycleService(repository, provider, credentialProvider, () => true);
     const [initiatedA, initiatedB] = await Promise.all([
-      lifecycle.initiate({ publicIntegrationId: integrationA.publicId, organizationId: organizationA.id, paymentRequestId: requestA.id, sessionId: `1${suffix.slice(0, 8)}`, mobile: "09123456789" }),
-      lifecycle.initiate({ publicIntegrationId: integrationB.publicId, organizationId: organizationB.id, paymentRequestId: requestB.id, sessionId: `2${suffix.slice(0, 8)}`, mobile: "09123456780" }),
+      lifecycle.initiate({ publicIntegrationId: integrationA.publicId, organizationId: organizationA.id, paymentRequestId: requestA.id, sessionId: sessionA, mobile: "09123456789" }),
+      lifecycle.initiate({ publicIntegrationId: integrationB.publicId, organizationId: organizationB.id, paymentRequestId: requestB.id, sessionId: sessionB, mobile: "09123456780" }),
     ]);
     const replayA = await lifecycle.initiate({
       publicIntegrationId: integrationA.publicId,
       organizationId: organizationA.id,
       paymentRequestId: requestA.id,
-      sessionId: `1${suffix.slice(0, 8)}`,
+      sessionId: sessionA,
       mobile: "09123456789",
     });
     assert.equal(replayA.merchantFactorId, initiatedA.merchantFactorId, "same payment request and evidence must reuse the original factor");
@@ -189,7 +192,7 @@ describe("R5 shared iNoti merchant-account routing on disposable PostgreSQL", { 
         publicIntegrationId: integrationA.publicId,
         organizationId: organizationA.id,
         paymentRequestId: requestA.id,
-        sessionId: `1${suffix.slice(0, 8)}`,
+        sessionId: sessionA,
         mobile: "09123456788",
       }),
       /USSD_PAYMENT_INTENT_IDEMPOTENCY_CONFLICT/,
@@ -221,7 +224,7 @@ describe("R5 shared iNoti merchant-account routing on disposable PostgreSQL", { 
 
     const workflow = new InotiUssdWorkflow(repository, provider, credentialProvider, async () => undefined, () => true, () => true);
     const responseA = await workflow.handle(integrationA.publicId, null, callbackParams({
-      codeName: "owner", sessionId: `1${suffix.slice(0, 8)}`, factor: initiatedA.merchantFactorId,
+      codeName: "owner", sessionId: sessionA, factor: initiatedA.merchantFactorId,
       providerFactor: `provider-a-${suffix.slice(0, 8)}`, rrn: `rrn-a-${suffix.slice(0, 8)}`, mobile: "09123456789",
     }));
     assert.equal(responseA, "پرداخت تایید شد");
@@ -229,7 +232,7 @@ describe("R5 shared iNoti merchant-account routing on disposable PostgreSQL", { 
     assert.equal((await prisma.paymentRequest.findUniqueOrThrow({ where: { id: requestB.id } })).status, "AWAITING_CUSTOMER");
 
     const responseB = await workflow.handle(integrationB.publicId, null, callbackParams({
-      codeName: "owner", sessionId: `2${suffix.slice(0, 8)}`, factor: initiatedB.merchantFactorId,
+      codeName: "owner", sessionId: sessionB, factor: initiatedB.merchantFactorId,
       providerFactor: `provider-b-${suffix.slice(0, 8)}`, rrn: `rrn-b-${suffix.slice(0, 8)}`, mobile: "09123456780",
     }));
     assert.equal(responseB, "پرداخت تایید شد");
@@ -292,7 +295,7 @@ describe("R5 shared iNoti merchant-account routing on disposable PostgreSQL", { 
 
     const request = await createPaymentRequest({ organizationId: cafeOrganization.id, providerIntegrationId: cafeIntegration.id, amountToman: BigInt(12500), purpose: "R5_CAFE_SNAPSHOT" });
     const lifecycle = new InotiPaymentLifecycleService(repository, provider, credentialProvider, () => true);
-    const sessionId = `3${suffix.slice(0, 8)}`;
+    const sessionId = sessionCafe;
     const initiated = await lifecycle.initiate({ publicIntegrationId: cafeIntegration.publicId, organizationId: cafeOrganization.id, paymentRequestId: request.id, sessionId, mobile: "09123456781" });
     const intent = await prisma.ussdPaymentIntent.findUniqueOrThrow({ where: { paymentRequestId_organizationId: { paymentRequestId: request.id, organizationId: cafeOrganization.id } } });
     assert.equal(intent.merchantAccountKey, "CAFE_LEO");

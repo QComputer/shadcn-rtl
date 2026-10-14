@@ -68,6 +68,8 @@ jobs:
       - name: Test R5 account routing on an unseeded database
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/inoti-shared-account-routing.local.test.ts
 
+      - name: Seed local iNoti identity regression fixtures
+        run: pnpm db:seed
       - name: Seed fashion, electronics, and restaurant compatibility fixtures
         run: pnpm exec tsx scripts/retail/r4-fixtures.mjs seed
       - name: Seed Cafe Leo native Shop fixture in the disposable database

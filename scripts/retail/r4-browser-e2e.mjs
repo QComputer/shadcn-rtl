@@ -122,7 +122,12 @@ async function main() {
     assert.ok(sizeColorVariant.optionValues.some(option => option.definition.key === "size" && Number(option.valueNumber) === 42));
     await fashionManagerContext.page.getByRole("button", { name: /مشکی.*۴۲/ }).click();
     await fashionManagerContext.page.locator('[role="dialog"] #inventory').fill("8");
+    const variantUpdatePromise = fashionManagerContext.page.waitForResponse(response => response.url().endsWith(`/api/products/${fashionProduct.id}/variants`) && response.request().method() === "PATCH");
     await fashionManagerContext.page.locator('[role="dialog"]').getByRole("button", { name: /ذخیره|Save/ }).click();
+    const variantUpdateResponse = await variantUpdatePromise;
+    assert.equal(variantUpdateResponse.status(), 200, `variant inventory update failed: ${await variantUpdateResponse.text()}`);
+    assert.equal(variantUpdateResponse.request().postDataJSON().inventory, 8, "manager form must submit the requested stock value");
+    assert.equal((await variantUpdateResponse.json()).inventory, 8, "variant update response must contain the saved stock value");
     await fashionManagerContext.page.locator('[role="dialog"]').waitFor({ state: "hidden" });
     const revisedStock = await prisma.productVariant.findUniqueOrThrow({ where: { id: sizeColorVariant.id }, select: { inventory: true } });
     assert.equal(revisedStock.inventory, 8, "authorized manager stock change must persist for the selected size/color variant");

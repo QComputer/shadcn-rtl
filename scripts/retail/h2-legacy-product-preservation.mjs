@@ -46,8 +46,9 @@ try {
         organizationId: organization.id, organizationSlug, categoryId: category.id, isActive: index !== 2,
         trackInventory: true, lowStockThreshold: 3 + index, sortOrder: index + 1,
         variants: { create: [{ name: `legacy size ${index + 1}`, sku: `H2-LEGACY-${index + 1}`, inventory: 7 + index, reservedQuantity: 1 }] },
-        include: { images: { select: { id: true } }, variants: { select: { id: true } } },
-      } });
+      },
+      include: { images: { select: { id: true } }, variants: { select: { id: true } } },
+    });
       expected.products.push({
         id: product.id,
         slug: product.slug,

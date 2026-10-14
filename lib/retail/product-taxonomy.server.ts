@@ -79,7 +79,7 @@ export async function replaceProductTaxonomy(
   try { tags = input.tagNames === undefined ? undefined : canonicalTagNames(input.tagNames); }
   catch { throw new ApiError(400, "Invalid product tags"); }
 
-  await withSerializableRetry(() => prisma.$transaction(async tx => {
+  const product = await withSerializableRetry(() => prisma.$transaction(async tx => {
     const locked = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT "id" FROM "Product"
       WHERE "id" = ${productId} AND "organizationId" = ${organizationId} AND "deletedAt" IS NULL

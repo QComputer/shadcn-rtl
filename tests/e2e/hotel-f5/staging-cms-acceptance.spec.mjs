@@ -113,6 +113,9 @@ test("F5 synthetic author-to-publication workflow enforces RBAC, tenant and medi
     }
 
     const author = await login(env.HOTEL_F5_AUTHOR_USERNAME, env.HOTEL_F5_AUTHOR_PASSWORD, `/fa/dashboard/hotel-website/${orgId}/${propertyId}`);
+    const editorTab = author.page.getByRole("button", { name: "ویرایش محتوا", exact: true });
+    await expect(editorTab).toBeVisible();
+    await editorTab.click();
     const beforeCount = (await readRevisions(author.page)).length;
     const initialPublic = await author.page.request.get(publicApiUrl);
     expect(initialPublic.status()).toBe(200);
@@ -157,6 +160,7 @@ test("F5 synthetic author-to-publication workflow enforces RBAC, tenant and medi
     await foreign.context.close();
 
     // Foreign-organization media must be rejected before a new revision is persisted.
+    await editorTab.click();
     await author.page.getByLabel("عنوان صفحه", { exact: true }).fill(content.title + marker);
     await author.page.getByLabel("عنوان اصلی صفحه", { exact: true }).fill(content.heading + marker);
     await author.page.getByLabel("متن معرفی هتل", { exact: true }).fill(content.introduction);

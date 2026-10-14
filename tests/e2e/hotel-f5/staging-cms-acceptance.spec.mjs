@@ -42,8 +42,12 @@ test("F5 synthetic author-to-publication workflow enforces RBAC, tenant and medi
     });
     contexts.push(context);
     context.on("request", (request) => {
-      if (/\/(availability|quotes?|holds|reservations|payments|checkout|inoti|sms|notifications)(\/|\?|$)/i.test(new URL(request.url()).pathname)) {
-        violations.push(new URL(request.url()).pathname);
+      const pathname = new URL(request.url()).pathname;
+      const method = request.method();
+      const forbiddenOperation = /\/(availability|quotes?|holds|reservations|payments|checkout|inoti|sms|notifications)(\/|\?|$)/i.test(pathname);
+      const dashboardInboxRead = method === "GET" && /^\/(?:api\/)?(?:[a-z]{2}\/)?dashboard\/notifications\/?$/i.test(pathname);
+      if (forbiddenOperation && !dashboardInboxRead) {
+        violations.push(`${method} ${pathname}`);
       }
     });
     return context;

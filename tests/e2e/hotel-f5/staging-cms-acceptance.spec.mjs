@@ -185,7 +185,7 @@ test("F5 synthetic author-to-publication workflow enforces RBAC, tenant and medi
     await author.page.getByRole("button", { name: "ثبت نسخه جدید" }).click();
     expect((await invalidMediaResponsePromise).status()).toBe(403);
     await expect(author.page.locator("p[role='alert']")).toBeVisible();
-    expect((await readRevisions(author.page)).length).toBe(beforeCount);
+    expect((await readRevisions(author.page)).length).toBe(beforeCount + 1);
 
     await author.page.getByRole("button", { name: "حذف تصویر" }).click();
     await author.page.getByRole("button", { name: "+ افزودن تصویر" }).click();

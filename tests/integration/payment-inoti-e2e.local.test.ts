@@ -77,6 +77,7 @@ describe("BB-P2 PaymentRequest and iNoti lifecycle on disposable PostgreSQL", { 
   let integrationB: Awaited<ReturnType<typeof prisma.organizationIntegration.create>>;
   let orderA: Awaited<ReturnType<typeof prisma.order.create>>;
   let orderB: Awaited<ReturnType<typeof prisma.order.create>>;
+  let retailOrder: Awaited<ReturnType<typeof prisma.order.create>>;
 
   before(async () => {
     organizationA = await prisma.organization.create({ data: { type: "SHOP", name: `P2 A ${suffix}`, slug: `p2-a-${suffix}` } });
@@ -89,6 +90,10 @@ describe("BB-P2 PaymentRequest and iNoti lifecycle on disposable PostgreSQL", { 
     });
     orderA = await prisma.order.create({ data: { orderNumber: `P2-A-${suffix}`, type: "PICK_UP", subtotal: 220000, total: 220000, organizationSlug: organizationA.slug, publicTrackingToken: `track-a-${suffix}`, status: "PREPARING" } });
     orderB = await prisma.order.create({ data: { orderNumber: `P2-B-${suffix}`, type: "PICK_UP", subtotal: 1000, total: 1000, organizationSlug: organizationB.slug, publicTrackingToken: `track-b-${suffix}` } });
+    await prisma.paymentSettings.create({ data: { organizationSlug: organizationA.slug, settings: {
+      retailR4: { bankTransferEnabled: false, cashEnabled: false, inotiUssdEnabled: true,
+        bankCardNumber: null, bankAccountOwner: null, cashModes: ["COUNTER"], cashBeforeConfirmation: true },
+    } } });
   });
 
   after(async () => {
@@ -104,7 +109,8 @@ describe("BB-P2 PaymentRequest and iNoti lifecycle on disposable PostgreSQL", { 
     await prisma.businessEvent.deleteMany({ where: { organizationId: { in: organizationIds } } });
     await prisma.payment.deleteMany({ where: { orderId: { in: [orderA.id, orderB.id] } } });
     await prisma.paymentEvent.deleteMany({ where: { orderId: { in: [orderA.id, orderB.id] } } });
-    await prisma.order.deleteMany({ where: { id: { in: [orderA.id, orderB.id] } } });
+    await prisma.order.deleteMany({ where: { id: { in: [orderA.id, orderB.id, ...(retailOrder ? [retailOrder.id] : [])] } } });
+    await prisma.paymentSettings.deleteMany({ where: { organizationSlug: organizationA.slug } });
     await prisma.organizationIntegration.deleteMany({ where: { organizationId: { in: organizationIds } } });
     await prisma.organization.deleteMany({ where: { id: { in: organizationIds } } });
     await prisma.$disconnect();
@@ -175,6 +181,35 @@ describe("BB-P2 PaymentRequest and iNoti lifecycle on disposable PostgreSQL", { 
     assert.equal(order.status, "PREPARING");
     assert.equal(await prisma.paymentEvent.count({ where: { orderId: orderA.id, newStatus: "COMPLETED" } }), 1);
     assert.equal(await prisma.auditLog.count({ where: { organizationId: organizationA.id, entityId: intent.id, description: "iNoti USSD payment verified and settled" } }), 1);
+    assert.equal(provider.calls, 1);
+  });
+
+  it("settles a retail R4 order through the tenant USSD fixture without changing fulfillment", async () => {
+    provider.mode = "SUCCESS";
+    provider.calls = 0;
+    const trackingToken = suffix.replace(/[a-f]/g, (letter) => String(letter.charCodeAt(0) - 87)).slice(0, 16);
+    retailOrder = await prisma.order.create({ data: {
+      orderNumber: `P2-RETAIL-${suffix}`, type: "PICK_UP", subtotal: 15500, total: 15500,
+      organizationSlug: organizationA.slug, publicTrackingToken: trackingToken,
+      retailCheckoutKey: randomUUID(), paymentMethod: "INOTI_USSD", paymentStatus: "PENDING", status: "PENDING",
+    } });
+    const workflow = new InotiUssdWorkflow(repository, provider, credentials, async () => undefined, () => true, () => true);
+    const start = new URLSearchParams({ mobile: "09123456789", sessionid: "910", call: `6655*alpha*2*${trackingToken}` });
+    const payload = await workflow.handle(integrationA.publicId, null, start);
+    const [, factor, amountRial] = payload.split("|");
+    assert.equal(amountRial, "155000", "retail Toman order amount is converted to Rial exactly once");
+    const handler = createInotiUssdCallbackHandler(workflow, async () => undefined);
+    const response = await handler(new Request(callbackUrl(integrationA.publicId, { codeName: "alpha", sessionId: "910", factor })),
+      { params: Promise.resolve({ publicIntegrationId: integrationA.publicId }) });
+    assert.equal(await response.text(), "پرداخت تایید شد");
+    const intent = await prisma.ussdPaymentIntent.findFirstOrThrow({ where: { orderId: retailOrder.id } });
+    const request = await prisma.paymentRequest.findUniqueOrThrow({ where: { id: intent.paymentRequestId! } });
+    const order = await prisma.order.findUniqueOrThrow({ where: { id: retailOrder.id } });
+    assert.equal(request.organizationId, organizationA.id);
+    assert.equal(request.orderId, retailOrder.id);
+    assert.equal(request.amountToman, BigInt(15500));
+    assert.equal(order.paymentStatus, "COMPLETED");
+    assert.equal(order.status, "PENDING", "verified payment does not advance order fulfillment");
     assert.equal(provider.calls, 1);
   });
 

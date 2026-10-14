@@ -73,21 +73,38 @@ async function checkoutWithReport(page, org, sku, reportType) {
   const cartRead = await page.context().request.get(`${baseUrl}/api/retail/v1/cart?organization=${org}`);
   assert.equal(cartRead.status(), 200);
   assert.ok(JSON.stringify(await cartRead.json()).includes(variant.id), "cart read must include the selected fixture variant");
-  const checkout = await api(page, `${baseUrl}/api/retail/v1/checkout`, { method: "POST", body: {
-    organization: org, idempotencyKey: crypto.randomUUID(), type: "PICK_UP", paymentMethod: "BANK_TRANSFER",
-  } });
-  assert.equal(checkout.status, 201, `bank transfer checkout must succeed: ${JSON.stringify(checkout.body)}`);
-  assert.equal(checkout.body.paymentStatus, "PENDING", "checkout must not claim payment success");
-  const reportUrl = `${baseUrl}/api/retail/v1/orders/${encodeURIComponent(checkout.body.orderNumber)}/bank-report?organization=${org}`;
-  const report = reportType === "RECEIPT"
-    ? await api(page, reportUrl, { method: "POST", form: receiptBytes })
-    : await api(page, reportUrl, { method: "POST", body: {
-      method: "TIME", reportedAt: new Date().toISOString(), submittedLocalTime: "Synthetic R4 test time",
-    } });
-  assert.equal(report.status, 201, `${reportType} submission must create a pending review: ${JSON.stringify(report.body)}`);
-  assert.equal(report.body.report.kind, reportType === "RECEIPT" ? "BANK_RECEIPT" : "BANK_TIME");
-  assert.equal(report.body.report.status, "PENDING_REVIEW");
-  return { orderNumber: checkout.body.orderNumber, reportId: report.body.report.id };
+  await page.goto(`${baseUrl}/fa/retail/${org}/checkout`, { waitUntil: "domcontentloaded" });
+  await page.getByRole("heading", { name: "تکمیل سفارش" }).waitFor();
+  await page.getByRole("button", { name: "ثبت سفارش" }).waitFor();
+  const receiptRadio = page.getByLabel("بارگذاری تصویر رسید");
+  const timeRadio = page.getByLabel("ثبت زمان پرداخت");
+  assert.equal(await receiptRadio.isChecked(), true);
+  assert.equal(await timeRadio.isChecked(), false);
+  if (reportType === "RECEIPT") await capture(page, "customer-checkout.png");
+  await page.getByRole("button", { name: "ثبت سفارش" }).click();
+  const orderHeading = page.getByRole("heading", { name: /^سفارش RET-[A-Z0-9-]+ ثبت شد$/ });
+  await orderHeading.waitFor({ timeout: 30000 });
+  const orderNumber = (await orderHeading.innerText()).match(/RET-[A-Z0-9-]+/)?.[0];
+  assert.ok(orderNumber, "the persisted order number must be shown after UI checkout");
+  assert.ok(await page.getByText("در انتظار بررسی").count(), "checkout must leave payment pending");
+  if (reportType === "RECEIPT") {
+    await page.locator('input[type="file"]').setInputFiles({ name: "synthetic-r4-receipt.png", mimeType: "image/png", buffer: receiptBytes });
+  } else {
+    await timeRadio.click();
+    const localTime = new Date(Date.now() - 60_000).toISOString().slice(0, 16);
+    await page.locator('input[type="datetime-local"]').fill(localTime);
+    assert.equal(await timeRadio.isChecked(), true);
+    assert.equal(await receiptRadio.isChecked(), false);
+  }
+  const reportResponsePromise = page.waitForResponse((response) => response.url().includes("/bank-report?") && response.request().method() === "POST");
+  await page.getByRole("button", { name: "ارسال گزارش پرداخت" }).click();
+  const reportResponse = await reportResponsePromise;
+  assert.equal(reportResponse.status(), 201, `${reportType} submission must return a created report`);
+  const reportBody = await reportResponse.json();
+  await page.getByText("گزارش پرداخت ارسال شد.").waitFor({ timeout: 30000 });
+  assert.equal(reportBody.report.kind, reportType === "RECEIPT" ? "BANK_RECEIPT" : "BANK_TIME");
+  assert.equal(reportBody.report.status, "PENDING_REVIEW");
+  return { orderNumber, reportId: reportBody.report.id };
 }
 
 async function main() {

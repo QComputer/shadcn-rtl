@@ -87,7 +87,7 @@ async function api(page, url, { method = "GET", body, form } = {}) {
   return response;
 }
 
-async function prepareInventoryCheckout(page, organizationSlug, customerId, variantId) {
+async function prepareInventoryCart(organizationSlug, customerId, variantId) {
   const cart = await prisma.shopCart.upsert({
     where: { organizationSlug_customerId: { organizationSlug, customerId } },
     create: { organizationSlug, customerId },
@@ -95,7 +95,9 @@ async function prepareInventoryCheckout(page, organizationSlug, customerId, vari
   });
   await prisma.shopCartItem.deleteMany({ where: { cartId: cart.id } });
   await prisma.shopCartItem.create({ data: { cartId: cart.id, variantId, quantity: 1 } });
-  const idempotencyKey = randomUUID();
+}
+
+async function submitInventoryCheckout(page, organizationSlug, idempotencyKey) {
   const response = await api(page, `${baseUrl}/api/retail/v1/checkout`, {
     method: "POST",
     body: { organization: organizationSlug, idempotencyKey, type: "PICK_UP", paymentMethod: "BANK_TRANSFER" },
@@ -103,6 +105,11 @@ async function prepareInventoryCheckout(page, organizationSlug, customerId, vari
   assert.equal(response.status, 201, `synthetic checkout must succeed: ${JSON.stringify(response.body)}`);
   const order = await prisma.order.findFirstOrThrow({ where: { retailCheckoutKey: idempotencyKey, organizationSlug } });
   return { order, idempotencyKey };
+}
+
+async function prepareInventoryCheckout(page, organizationSlug, customerId, variantId) {
+  await prepareInventoryCart(organizationSlug, customerId, variantId);
+  return submitInventoryCheckout(page, organizationSlug, randomUUID());
 }
 
 async function runWithRowsLocked(variantId, orderId, operations) {
@@ -138,10 +145,10 @@ async function runWithRowsLocked(variantId, orderId, operations) {
 
   const settled = await outcomes;
   await holder;
-  assert.ok(waiting >= operations.length,
-    `expected ${operations.length} independent HTTP-backed operations to overlap on PostgreSQL row locks, observed ${waiting}`);
   const rejected = settled.filter((result) => result.status === "rejected");
   assert.deepEqual(rejected.map((result) => String(result.reason)), [], "concurrent HTTP operations must not fail partially");
+  assert.ok(waiting >= operations.length,
+    `expected ${operations.length} independent HTTP-backed operations to overlap on PostgreSQL row locks, observed ${waiting}`);
   return settled.map((result) => result.value);
 }
 
@@ -288,11 +295,13 @@ async function main() {
     await setVariantStock(fashionManagerContext.page, fashionProduct.id, sizeColorVariant.id, 20);
     let baseline = await prisma.productVariant.findUniqueOrThrow({ where: { id: sizeColorVariant.id }, select: { inventory: true } });
     let beforeMovements = await movementIds(sizeColorVariant.id);
+    await prepareInventoryCart(fashion, customerUser.id, sizeColorVariant.id);
+    const checkoutRaceKey = randomUUID();
     const checkoutRace = await runWithRowsLocked(sizeColorVariant.id, null, [
       () => api(fashionManagerContext.page, `${baseUrl}/api/products/${fashionProduct.id}/variants`, {
         method: "PATCH", body: { id: sizeColorVariant.id, inventory: 12 },
       }).then(response => { assert.equal(response.status, 200); return response; }),
-      () => prepareInventoryCheckout(inventoryCustomer.page, fashion, customerUser.id, sizeColorVariant.id),
+      () => submitInventoryCheckout(inventoryCustomer.page, fashion, checkoutRaceKey),
     ]);
     assert.equal(checkoutRace[0].body.inventory, 12);
     const checkoutRaceOrder = checkoutRace[1].order;

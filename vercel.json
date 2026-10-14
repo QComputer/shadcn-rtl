@@ -1,5 +1,10 @@
 {
   "framework": "nextjs",
   "buildCommand": "pnpm run build",
-  "ignoreCommand": "node scripts/retail/ignore-r4-vercel.mjs"
+  "ignoreCommand": "node scripts/retail/ignore-r4-vercel.mjs",
+  "git": {
+    "deploymentEnabled": {
+      "codex/retail-h2-taxonomy-20261014": false
+    }
+  }
 }

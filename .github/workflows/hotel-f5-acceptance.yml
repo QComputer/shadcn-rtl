@@ -1,0 +1,123 @@
+name: Hotel F5 isolated acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_staging_browser:
+        description: Run authenticated CMS E2E against the separately provisioned SSO-protected F5 staging host
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hotel-f5-staging-acceptance
+  cancel-in-progress: false
+
+jobs:
+  postgres-17-migration-rehearsal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: hotel_f5_rehearsal
+          POSTGRES_USER: hotel_f5_ci
+          POSTGRES_PASSWORD: hotel_f5_ci_ephemeral_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hotel_f5_ci -d hotel_f5_rehearsal"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://hotel_f5_ci:hotel_f5_ci_ephemeral_only@127.0.0.1:5432/hotel_f5_rehearsal?schema=public
+      DIRECT_URL: postgresql://hotel_f5_ci:hotel_f5_ci_ephemeral_only@127.0.0.1:5432/hotel_f5_rehearsal?schema=public
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma validate
+      - run: pnpm exec prisma generate
+      - run: node scripts/hotel/verify-f5-pg17-rehearsal.mjs --before
+      - run: pnpm exec prisma migrate deploy
+      - run: node scripts/hotel/verify-f5-pg17-rehearsal.mjs --after-migrate
+      - name: Re-run the provenance-verified additive branding repair
+        shell: bash
+        run: |
+          git show 57e407077f88c22c62ff12ff15cc6c2602ee3c96:prisma/migrations/20260926160000_repair_organization_branding_columns/migration.sql > "$RUNNER_TEMP/branding-repair.sql"
+          echo "cfa7ed49b14f25ca88593525a6f269e189b6be1e78e760bb5073ecf40c98eb59  $RUNNER_TEMP/branding-repair.sql" | sha256sum --check
+          pnpm exec prisma db execute --schema prisma/schema.prisma --file "$RUNNER_TEMP/branding-repair.sql"
+      - run: pnpm exec prisma migrate deploy
+      - run: node scripts/hotel/verify-f5-pg17-rehearsal.mjs
+
+  authenticated-staging-browser:
+    if: inputs.run_staging_browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: hotel-f5-staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Materialize SSO state in runner temp storage
+        env:
+          HOTEL_F5_SSO_STATE_B64: ${{ secrets.HOTEL_F5_VERCEL_STORAGE_STATE_BASE64 }}
+        run: |
+          test -n "$HOTEL_F5_SSO_STATE_B64"
+          printf '%s' "$HOTEL_F5_SSO_STATE_B64" | base64 --decode > "$RUNNER_TEMP/hotel-f5-sso-state.json"
+          chmod 600 "$RUNNER_TEMP/hotel-f5-sso-state.json"
+      - name: Run isolated CMS workflow E2E
+        env:
+          HOTEL_F5_E2E_ENABLED: "1"
+          HOTEL_F5_APP_URL: ${{ vars.HOTEL_F5_APP_URL }}
+          HOTEL_F5_PUBLIC_PAGE_URL: ${{ vars.HOTEL_F5_PUBLIC_PAGE_URL }}
+          HOTEL_F5_PUBLIC_ORIGIN: ${{ vars.HOTEL_F5_PUBLIC_ORIGIN }}
+          HOTEL_F5_FOREIGN_PUBLIC_ORIGIN: ${{ vars.HOTEL_F5_FOREIGN_PUBLIC_ORIGIN }}
+          HOTEL_F5_UNKNOWN_DOMAIN_API_URL: ${{ vars.HOTEL_F5_UNKNOWN_DOMAIN_API_URL }}
+          HOTEL_F5_INACTIVE_DOMAIN_API_URL: ${{ vars.HOTEL_F5_INACTIVE_DOMAIN_API_URL }}
+          HOTEL_F5_FOREIGN_DOMAIN_API_URL: ${{ vars.HOTEL_F5_FOREIGN_DOMAIN_API_URL }}
+          HOTEL_F5_CAPABILITY_DISABLED_API_URL: ${{ vars.HOTEL_F5_CAPABILITY_DISABLED_API_URL }}
+          HOTEL_F5_PUBLIC_GATE_OFF_API_URL: ${{ vars.HOTEL_F5_PUBLIC_GATE_OFF_API_URL }}
+          HOTEL_F5_ORGANIZATION_ID: ${{ vars.HOTEL_F5_ORGANIZATION_ID }}
+          HOTEL_F5_PROPERTY_ID: ${{ vars.HOTEL_F5_PROPERTY_ID }}
+          HOTEL_F5_PROPERTY_SLUG: ${{ vars.HOTEL_F5_PROPERTY_SLUG }}
+          HOTEL_F5_FOREIGN_ORGANIZATION_ID: ${{ vars.HOTEL_F5_FOREIGN_ORGANIZATION_ID }}
+          HOTEL_F5_FOREIGN_PROPERTY_ID: ${{ vars.HOTEL_F5_FOREIGN_PROPERTY_ID }}
+          HOTEL_F5_AUTHOR_USERNAME: ${{ vars.HOTEL_F5_AUTHOR_USERNAME }}
+          HOTEL_F5_AUTHOR_PASSWORD: ${{ secrets.HOTEL_F5_AUTHOR_PASSWORD }}
+          HOTEL_F5_REVIEWER_USERNAME: ${{ vars.HOTEL_F5_REVIEWER_USERNAME }}
+          HOTEL_F5_REVIEWER_PASSWORD: ${{ secrets.HOTEL_F5_REVIEWER_PASSWORD }}
+          HOTEL_F5_MANAGER_USERNAME: ${{ vars.HOTEL_F5_MANAGER_USERNAME }}
+          HOTEL_F5_MANAGER_PASSWORD: ${{ secrets.HOTEL_F5_MANAGER_PASSWORD }}
+          HOTEL_F5_FOREIGN_USERNAME: ${{ vars.HOTEL_F5_FOREIGN_USERNAME }}
+          HOTEL_F5_FOREIGN_PASSWORD: ${{ secrets.HOTEL_F5_FOREIGN_PASSWORD }}
+          HOTEL_F5_SYNTHETIC_MEDIA_ID: ${{ vars.HOTEL_F5_SYNTHETIC_MEDIA_ID }}
+          HOTEL_F5_FOREIGN_MEDIA_IMAGE_ID: ${{ vars.HOTEL_F5_FOREIGN_MEDIA_IMAGE_ID }}
+          HOTEL_F5_FOREIGN_MEDIA_ASSOCIATION_ID: ${{ vars.HOTEL_F5_FOREIGN_MEDIA_ASSOCIATION_ID }}
+          HOTEL_F5_FIXTURE_TAG: ${{ vars.HOTEL_F5_FIXTURE_TAG }}
+          HOTEL_F5_VERCEL_STORAGE_STATE: ${{ runner.temp }}/hotel-f5-sso-state.json
+          HOTEL_F5_WEBSITE_GATE_ENABLED_FOR_TEST: ${{ vars.HOTEL_F5_WEBSITE_GATE_ENABLED_FOR_TEST }}
+          HOTEL_F5_BOOKING_GATE_DISABLED_FOR_TEST: ${{ vars.HOTEL_F5_BOOKING_GATE_DISABLED_FOR_TEST }}
+          HOTEL_F5_PAYMENT_GATE_DISABLED_FOR_TEST: ${{ vars.HOTEL_F5_PAYMENT_GATE_DISABLED_FOR_TEST }}
+          HOTEL_F5_NOTIFICATION_GATE_DISABLED_FOR_TEST: ${{ vars.HOTEL_F5_NOTIFICATION_GATE_DISABLED_FOR_TEST }}
+        run: pnpm exec playwright test --config=playwright.hotel-f5.config.mjs

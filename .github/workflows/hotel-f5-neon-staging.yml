@@ -78,18 +78,20 @@ jobs:
             test "$owner" = "neondb_owner"
           fi
           stage_url="$(node --input-type=module -e 'const url = new URL(process.env.HOTEL_F5_NEON_OWNER_URL); url.pathname = "/hotel_f5_staging"; process.stdout.write(url.toString())')"
-          if [[ "$created" == "1" ]]; then
-            public_count="$(psql "$stage_url" -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m','S','f')")"
-            ledger="$(psql "$stage_url" -v ON_ERROR_STOP=1 -Atqc "SELECT to_regclass('public._prisma_migrations') IS NULL")"
+          public_count="$(psql "$stage_url" -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m','S','f')")"
+          ledger="$(psql "$stage_url" -v ON_ERROR_STOP=1 -Atqc "SELECT to_regclass('public._prisma_migrations') IS NULL")"
+          if [[ "$ledger" == "t" ]]; then
             test "$public_count" = "0"
-            test "$ledger" = "t"
           fi
           role_exists="$(psql "$HOTEL_F5_NEON_OWNER_URL" -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM pg_roles WHERE rolname='hotel_f5_app'")"
+          [[ "$HOTEL_F5_APP_PASSWORD" =~ ^[A-Za-z0-9_-]{64}$ ]]
           if [[ "$role_exists" == "0" ]]; then
-            psql "$HOTEL_F5_NEON_OWNER_URL" -v ON_ERROR_STOP=1 -v app_password="$HOTEL_F5_APP_PASSWORD" -c "CREATE ROLE hotel_f5_app LOGIN PASSWORD :'app_password'"
+            role_sql="CREATE ROLE hotel_f5_app LOGIN PASSWORD '$HOTEL_F5_APP_PASSWORD'"
           else
-            psql "$HOTEL_F5_NEON_OWNER_URL" -v ON_ERROR_STOP=1 -v app_password="$HOTEL_F5_APP_PASSWORD" -c "ALTER ROLE hotel_f5_app LOGIN PASSWORD :'app_password'"
+            role_sql="ALTER ROLE hotel_f5_app LOGIN PASSWORD '$HOTEL_F5_APP_PASSWORD'"
           fi
+          printf '%s\n' "$role_sql" | psql "$HOTEL_F5_NEON_OWNER_URL" -v ON_ERROR_STOP=1
+          unset role_sql
           psql "$HOTEL_F5_NEON_OWNER_URL" -v ON_ERROR_STOP=1 -c 'GRANT CONNECT ON DATABASE hotel_f5_staging TO hotel_f5_app'
           node --input-type=module <<'NODE' >> "$GITHUB_ENV"
           const url = new URL(process.env.HOTEL_F5_NEON_OWNER_URL);

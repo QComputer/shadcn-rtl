@@ -2477,6 +2477,8 @@ model Order {
   id          String      @id @default(cuid())
   orderNumber String      @unique
   retailCheckoutKey String? @unique
+  retailPaymentDeadlineAt DateTime?
+  retailPaymentExpiredAt DateTime?
   type        OrderType
   status      OrderStatus @default(PENDING)
 
@@ -2554,6 +2556,7 @@ model Order {
   orderMessages OrderMessage[]
 
   @@index([organizationSlug])
+  @@index([retailCheckoutKey, retailPaymentDeadlineAt, paymentStatus, status])
   @@index([customerId])
   @@index([driverId])
   @@index([preparationProgressId])
@@ -2638,6 +2641,7 @@ model InventoryMovement {
   reason         InventoryMovementReason
   note           String?
   createdById    String?
+  retailReleaseKey String? @unique
 
   variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
   order   Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
@@ -4407,6 +4411,7 @@ model CouponRedemption {
   pointsSpent    Int      @default(0)
   metadata       Json?
   redeemedAt     DateTime @default(now())
+  releasedAt     DateTime?
 
   coupon       Coupon       @relation(fields: [couponId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -4417,6 +4422,7 @@ model CouponRedemption {
   @@index([organizationId, customerId, redeemedAt])
   @@index([couponId, redeemedAt])
   @@index([orderId])
+  @@index([organizationId, customerId, couponId, releasedAt])
 }
 
 model PushSubscription {

@@ -31,6 +31,7 @@ export type UssdOrderProjection = {
   paymentStatus: string;
   paymentMethod: string | null;
   totalToman: string;
+  paymentDeadlineAt?: string | null;
   customerId: string | null;
   guestCustomerId: string | null;
   guestPhone: string | null;

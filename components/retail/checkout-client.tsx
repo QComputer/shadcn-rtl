@@ -13,7 +13,7 @@ type PaymentMethod = {
 };
 type CartItem = { id?: string; name?: string; productName?: string; variantName?: string; quantity?: number; variant?: { name?: string; product?: { name?: string } } };
 type Cart = { items?: CartItem[] };
-type OrderResult = { orderNumber: string; total: string; paymentStatus: string; orderStatus: string; paymentMethod: PaymentMethod["method"]; trackingToken?: string | null; bankCardNumber?: string | null; bankAccountOwner?: string | null };
+type OrderResult = { orderNumber: string; total: string; paymentStatus: string; orderStatus: string; paymentMethod: PaymentMethod["method"]; paymentDeadlineAt?: string | null; trackingToken?: string | null; bankCardNumber?: string | null; bankAccountOwner?: string | null };
 
 const money = (value: number) => `${new Intl.NumberFormat("fa-IR").format(value)} تومان`;
 const statusText: Record<string, string> = {
@@ -140,7 +140,7 @@ export default function RetailCheckoutClient({ locale, organization, storefrontP
         {error && <p role="alert" className="mt-5 rounded-xl bg-[#fff1ed] p-4 text-sm text-[#8c3329]">{error}</p>}
         {order ? <section className="mt-7 rounded-2xl bg-white p-6 md:p-8">
           <h2 className="text-xl font-semibold">سفارش {order.orderNumber} ثبت شد</h2>
-          <dl className="mt-5 grid gap-4 sm:grid-cols-3"><div><dt className="text-xs text-[#77736a]">مبلغ سفارش</dt><dd className="mt-1 font-semibold">{money(Number(order.total))}</dd></div><div><dt className="text-xs text-[#77736a]">وضعیت پرداخت</dt><dd className="mt-1">{statusText[order.paymentStatus] ?? order.paymentStatus}</dd></div><div><dt className="text-xs text-[#77736a]">وضعیت سفارش</dt><dd className="mt-1">{statusText[order.orderStatus] ?? order.orderStatus}</dd></div></dl>
+          <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><div><dt className="text-xs text-[#77736a]">مبلغ سفارش</dt><dd className="mt-1 font-semibold">{money(Number(order.total))}</dd></div><div><dt className="text-xs text-[#77736a]">وضعیت پرداخت</dt><dd className="mt-1">{statusText[order.paymentStatus] ?? order.paymentStatus}</dd></div><div><dt className="text-xs text-[#77736a]">وضعیت سفارش</dt><dd className="mt-1">{statusText[order.orderStatus] ?? order.orderStatus}</dd></div>{order.paymentDeadlineAt && <div><dt className="text-xs text-[#77736a]">مهلت پرداخت</dt><dd className="mt-1">{new Intl.DateTimeFormat("fa-IR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.paymentDeadlineAt))}</dd></div>}</dl>
           {order.paymentMethod === "INOTI_USSD" && methods.find((method) => method.method === "INOTI_USSD")?.dialString && order.trackingToken && <div className="mt-7 rounded-2xl border border-[#e5e1d9] p-5 text-sm">
             <h3 className="font-semibold">پرداخت با کد دستوری</h3>
             <p className="mt-2">کد <b dir="ltr">{methods.find((method) => method.method === "INOTI_USSD")?.dialString}</b> را شماره‌گیری کنید و کد پیگیری زیر را وارد کنید.</p>

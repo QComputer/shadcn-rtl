@@ -14,6 +14,7 @@ import type {
   UssdProvider,
 } from "@/lib/integrations/inoti-ussd/types";
 import { processDuePaymentVerifications } from "@/lib/integrations/inoti-ussd/durable-verification";
+import { expireDueRetailPaymentOrders } from "@/lib/retail/payment-expiration.server";
 
 const databaseUrl = process.env.DATABASE_URL ?? "";
 const isDisposable = /(?:localhost|127\.0\.0\.1)(?::\d+)?\//i.test(databaseUrl);
@@ -22,10 +23,12 @@ class FixtureProvider implements UssdProvider {
   mode: "SUCCESS" | "NOT_FOUND" | "TIMEOUT" | "MALFORMED" = "SUCCESS";
   calls = 0;
   queries: InotiPaymentVerificationQuery[] = [];
+  beforeVerify: (() => Promise<void>) | null = null;
   getReadiness() { return { ready: true, transportSecure: true, code: "READY" as const }; }
   async verifyPayment(_profile: InotiCredentialProfile | null, query: InotiPaymentVerificationQuery): Promise<InotiVerificationResult> {
     this.calls += 1;
     this.queries.push(query);
+    await this.beforeVerify?.();
     if (this.mode === "NOT_FOUND") return { ok: false, code: "NOT_FOUND" };
     if (this.mode === "TIMEOUT") return { ok: false, code: "TIMEOUT" };
     if (this.mode === "MALFORMED") return { ok: false, code: "MALFORMED_RESPONSE" };
@@ -78,6 +81,7 @@ describe("BB-P2 PaymentRequest and iNoti lifecycle on disposable PostgreSQL", { 
   let orderA: Awaited<ReturnType<typeof prisma.order.create>>;
   let orderB: Awaited<ReturnType<typeof prisma.order.create>>;
   let retailOrder: Awaited<ReturnType<typeof prisma.order.create>>;
+  const retailOrderIds: string[] = [];
 
   before(async () => {
     organizationA = await prisma.organization.create({ data: { type: "SHOP", name: `P2 A ${suffix}`, slug: `p2-a-${suffix}` } });
@@ -107,9 +111,9 @@ describe("BB-P2 PaymentRequest and iNoti lifecycle on disposable PostgreSQL", { 
     await prisma.ussdSession.deleteMany({ where: { organizationId: { in: organizationIds } } });
     await prisma.auditLog.deleteMany({ where: { organizationId: { in: organizationIds } } });
     await prisma.businessEvent.deleteMany({ where: { organizationId: { in: organizationIds } } });
-    await prisma.payment.deleteMany({ where: { orderId: { in: [orderA.id, orderB.id, ...(retailOrder ? [retailOrder.id] : [])] } } });
+    await prisma.payment.deleteMany({ where: { orderId: { in: [orderA.id, orderB.id, ...retailOrderIds] } } });
     await prisma.paymentEvent.deleteMany({ where: { orderId: { in: [orderA.id, orderB.id] } } });
-    await prisma.order.deleteMany({ where: { id: { in: [orderA.id, orderB.id, ...(retailOrder ? [retailOrder.id] : [])] } } });
+    await prisma.order.deleteMany({ where: { id: { in: [orderA.id, orderB.id, ...retailOrderIds] } } });
     await prisma.paymentSettings.deleteMany({ where: { organizationSlug: organizationA.slug } });
     await prisma.organizationIntegration.deleteMany({ where: { organizationId: { in: organizationIds } } });
     await prisma.organization.deleteMany({ where: { id: { in: organizationIds } } });
@@ -193,6 +197,7 @@ describe("BB-P2 PaymentRequest and iNoti lifecycle on disposable PostgreSQL", { 
       organizationSlug: organizationA.slug, publicTrackingToken: trackingToken,
       retailCheckoutKey: randomUUID(), paymentMethod: "INOTI_USSD", paymentStatus: "PENDING", status: "PENDING",
     } });
+    retailOrderIds.push(retailOrder.id);
     const workflow = new InotiUssdWorkflow(repository, provider, credentials, async () => undefined, () => true, () => true);
     const start = new URLSearchParams({ mobile: "09123456789", sessionid: "910", call: `6655*alpha*2*${trackingToken}` });
     const payload = await workflow.handle(integrationA.publicId, null, start);
@@ -211,6 +216,65 @@ describe("BB-P2 PaymentRequest and iNoti lifecycle on disposable PostgreSQL", { 
     assert.equal(order.paymentStatus, "COMPLETED");
     assert.equal(order.status, "PENDING", "verified payment does not advance order fulfillment");
     assert.equal(provider.calls, 1);
+  });
+
+  it("expires an unpaid USSD retail order and reconciles a later verified callback", async () => {
+    provider.mode = "SUCCESS";
+    provider.calls = 0;
+    const trackingToken = suffix.replace(/[a-f]/g, (letter) => String(letter.charCodeAt(0) - 87)).slice(1, 17);
+    retailOrder = await prisma.order.create({ data: {
+      orderNumber: `P2-LATE-RETAIL-${suffix}`, type: "PICK_UP", subtotal: 17000, total: 17000,
+      organizationSlug: organizationA.slug, publicTrackingToken: trackingToken,
+      retailCheckoutKey: randomUUID(), retailPaymentDeadlineAt: new Date(Date.now() + 60_000),
+      paymentMethod: "INOTI_USSD", paymentStatus: "PENDING", status: "PENDING",
+    } });
+    retailOrderIds.push(retailOrder.id);
+    const workflow = new InotiUssdWorkflow(repository, provider, credentials, async () => undefined, () => true, () => true);
+    const started = await workflow.handle(integrationA.publicId, null,
+      new URLSearchParams({ mobile: "09123456789", sessionid: "911", call: `6655*alpha*2*${trackingToken}` }));
+    const [, factor] = started.split("|");
+    const intent = await prisma.ussdPaymentIntent.findFirstOrThrow({ where: { orderId: retailOrder.id } });
+    const requestId = intent.paymentRequestId!;
+    const attemptId = intent.providerAttemptId!;
+    const paymentDeadline = retailOrder.retailPaymentDeadlineAt!;
+    assert.equal((await prisma.paymentRequest.findUniqueOrThrow({ where: { id: requestId } })).expiresAt?.getTime(), paymentDeadline.getTime(),
+      "USSD PaymentRequest must inherit the immutable order deadline snapshot");
+    const elapsedDeadline = new Date(Date.now() - 1_000);
+    await prisma.order.update({ where: { id: retailOrder.id }, data: { retailPaymentDeadlineAt: elapsedDeadline } });
+
+    const handler = createInotiUssdCallbackHandler(workflow, async () => undefined);
+    let verificationEntered!: () => void;
+    let resumeVerification!: () => void;
+    const entered = new Promise<void>((resolve) => { verificationEntered = resolve; });
+    const resume = new Promise<void>((resolve) => { resumeVerification = resolve; });
+    provider.beforeVerify = async () => { verificationEntered(); await resume; };
+    const callbackPromise = handler(new Request(callbackUrl(integrationA.publicId, { codeName: "alpha", sessionId: "911", factor })),
+      { params: Promise.resolve({ publicIntegrationId: integrationA.publicId }) });
+    await entered;
+    let expiry: Awaited<ReturnType<typeof expireDueRetailPaymentOrders>> | null = null;
+    try { expiry = await expireDueRetailPaymentOrders({ organizationId: organizationA.id }); }
+    finally { resumeVerification(); provider.beforeVerify = null; }
+    assert.ok(expiry);
+    assert.equal(expiry.expired, 1, "expiry may win while provider verification has not yet committed evidence");
+    const expiredRequest = await prisma.paymentRequest.findUniqueOrThrow({ where: { id: requestId } });
+    assert.equal(expiredRequest.status, "EXPIRED");
+    assert.equal(expiredRequest.expiresAt?.getTime(), elapsedDeadline.getTime());
+    const response = await callbackPromise;
+    assert.equal(await response.text(), "پرداخت در حال بررسی است");
+    const after = await prisma.order.findUniqueOrThrow({ where: { id: retailOrder.id } });
+    assert.equal(after.status, "CANCELLED");
+    assert.equal(after.paymentStatus, "PENDING");
+    assert.equal((await prisma.paymentRequest.findUniqueOrThrow({ where: { id: requestId } })).status, "EXPIRED");
+    const attempt = await prisma.paymentProviderAttempt.findUniqueOrThrow({ where: { id: attemptId } });
+    assert.equal(attempt.status, "VERIFIED");
+    assert.match(JSON.stringify(attempt.verificationEvidence), /reconciliationRequired/);
+    assert.equal(provider.calls, 1);
+
+    await prisma.order.update({ where: { id: orderB.id }, data: { retailPaymentDeadlineAt: elapsedDeadline } });
+    assert.equal((await expireDueRetailPaymentOrders()).expired, 0,
+      "restaurant orders must remain outside the retail expiration scope");
+    assert.notEqual((await prisma.order.findUniqueOrThrow({ where: { id: orderB.id } })).status, "CANCELLED");
+    await prisma.order.update({ where: { id: orderB.id }, data: { retailPaymentDeadlineAt: null } });
   });
 
   it("persists encrypted callback correlation and settles from fresh bounded workers after retry and lease recovery", async () => {

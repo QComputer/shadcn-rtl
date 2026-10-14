@@ -107,6 +107,7 @@ async function checkoutWithReport(page, org, sku, reportType) {
   const orderNumber = (await orderHeading.innerText()).match(/RET-[A-Z0-9-]+/)?.[0];
   assert.ok(orderNumber, "the persisted order number must be shown after UI checkout");
   assert.ok(await page.getByText("در انتظار بررسی").count(), "checkout must leave payment pending");
+  await page.getByText("مهلت پرداخت").waitFor();
   const receiptRadio = page.getByLabel("بارگذاری تصویر رسید");
   const timeRadio = page.getByLabel("ثبت زمان پرداخت");
   assert.equal(await receiptRadio.isChecked(), true);

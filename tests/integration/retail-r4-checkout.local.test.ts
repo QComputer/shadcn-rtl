@@ -29,7 +29,7 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
   process.env.RETAIL_RECEIPT_TEST_STORAGE = "1";
   process.env.RETAIL_RECEIPT_LOCAL_ROOT = testRoot;
 
-  const [{ PrismaClient }, checkout, reports, cash, receiptStorage, inotiReadiness, catalog] = await Promise.all([
+  const [{ PrismaClient }, checkout, reports, cash, receiptStorage, inotiReadiness, catalog, expiration] = await Promise.all([
     import("@prisma/client"),
     import("@/lib/retail/checkout.server"),
     import("@/lib/retail/payment-reports.server"),
@@ -37,6 +37,7 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
     import("@/lib/retail/receipt-storage.server"),
     import("@/lib/retail/inoti-readiness.server"),
     import("@/lib/public-catalog/service.server"),
+    import("@/lib/retail/payment-expiration.server"),
   ]);
   const db = new PrismaClient({ log: ["error"] });
   const idempotencyKeys: string[] = [];
@@ -46,6 +47,7 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
   const cartIds = new Set<string>();
   const couponIds: string[] = [];
   const orderIds: string[] = [];
+  const paymentRequestIds: string[] = [];
   let secondaryCustomerId = "";
 
   try {
@@ -120,6 +122,8 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
     assert.equal(pctOrder.order.subtotal.toString(), "680000");
     assert.equal(pctOrder.order.discount.toString(), "20000");
     assert.equal(pctOrder.order.total.toString(), "660000");
+    assert.ok(Math.abs(pctOrder.order.retailPaymentDeadlineAt!.getTime() - pctOrder.order.createdAt.getTime() - 60 * 60_000) < 5_000,
+      "bank transfer deadline must use the persisted tenant policy and snapshot its configured duration");
     const bankPayment = await db.payment.findUniqueOrThrow({ where: { orderId: pctOrder.order.id } });
     assert.equal((bankPayment.metadata as { retailR4: { bankCardNumber: string } }).retailR4.bankCardNumber, "6037990000000000",
       "checkout must snapshot the merchant card details presented for this order");
@@ -184,6 +188,8 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
 
     // Counter cash can be confirmed by the merchant and settles the payment.
     const cashOrder = await checkoutOrder({ paymentMethod: "CASH", cashMode: "COUNTER" });
+    assert.ok(Math.abs(cashOrder.order.retailPaymentDeadlineAt!.getTime() - cashOrder.order.createdAt.getTime() - 120 * 60_000) < 5_000,
+      "cash deadline must be independent from the bank transfer deadline");
     const cashResult = await cash.confirmRetailCashCollection({ organizationId: fashion.id,
       orderNumber: cashOrder.order.orderNumber, actorUserId: manager.id });
     assert.equal(cashResult.paymentStatus, "COMPLETED");
@@ -208,8 +214,89 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
     assert.equal(races.filter((result) => result.status === "rejected").length, 1);
     assert.equal((await db.coupon.findUniqueOrThrow({ where: { id: singleUse.id } })).usedCount, 1);
     assert.equal((await db.productVariant.findUniqueOrThrow({ where: { id: variantId } })).inventory, 0);
+
+    // A bank report awaiting review protects an order past its deadline.
+    // Once rejected, expiry releases stock and coupon usage once while keeping
+    // both the report and redemption as durable evidence.
+    await db.productVariant.update({ where: { id: variantId }, data: { inventory: 20 } });
+    const expiringCoupon = await addCoupon({ code: `R4E-${codeSuffix}`, discountType: "FIXED_AMOUNT", discountValue: 1000 });
+    const reportProtected = await checkoutOrder({ couponCode: expiringCoupon.code });
+    const stockBeforeExpiry = (await db.productVariant.findUniqueOrThrow({ where: { id: variantId } })).inventory;
+    const pendingReport = await reports.submitBankTimeReport({ organizationSlug: fashion.slug,
+      orderNumber: reportProtected.order.orderNumber, customerId: customer.id,
+      reportedAt: new Date(Date.now() - 60_000).toISOString(), submittedLocalTime: "synthetic pending report" });
+    const expiredDeadline = new Date(Date.now() - 1_000);
+    await db.order.update({ where: { id: reportProtected.order.id }, data: { retailPaymentDeadlineAt: expiredDeadline } });
+    const held = await expiration.expireDueRetailPaymentOrders({ organizationId: fashion.id });
+    assert.equal(held.expired, 0, "a legitimate report awaiting merchant review must not expire");
+    assert.equal((await db.productVariant.findUniqueOrThrow({ where: { id: variantId } })).inventory, stockBeforeExpiry);
+    assert.equal((await db.coupon.findUniqueOrThrow({ where: { id: expiringCoupon.id } })).usedCount, 1);
+    await reports.reviewRetailPaymentReport({ organizationId: fashion.id, actorUserId: manager.id,
+      reportId: pendingReport.id, action: "REJECT", reason: "synthetic report rejected" });
+    const expiryRace = await Promise.all([
+      expiration.expireDueRetailPaymentOrders({ organizationId: fashion.id }),
+      expiration.expireDueRetailPaymentOrders({ organizationId: fashion.id }),
+    ]);
+    assert.equal(expiryRace.reduce((sum, result) => sum + result.expired, 0), 1,
+      "concurrent expiry retries must claim the unpaid order once");
+    const expiredOrder = await db.order.findUniqueOrThrow({ where: { id: reportProtected.order.id } });
+    assert.equal(expiredOrder.status, "CANCELLED");
+    assert.equal(expiredOrder.paymentStatus, "PENDING", "expiry must not invent a payment failure");
+    assert.ok(expiredOrder.retailPaymentExpiredAt);
+    assert.equal((await db.productVariant.findUniqueOrThrow({ where: { id: variantId } })).inventory, stockBeforeExpiry + 1);
+    assert.equal((await db.coupon.findUniqueOrThrow({ where: { id: expiringCoupon.id } })).usedCount, 0);
+    const releasedRedemption = await db.couponRedemption.findUniqueOrThrow({ where: { couponId_orderId: { couponId: expiringCoupon.id, orderId: reportProtected.order.id } } });
+    assert.ok(releasedRedemption.releasedAt, "coupon use is released without deleting its evidence row");
+    assert.equal((await db.retailPaymentReport.findUniqueOrThrow({ where: { id: pendingReport.id } })).status, "REJECTED");
+    assert.equal((await expiration.expireDueRetailPaymentOrders({ organizationId: fashion.id })).expired, 0);
+    assert.equal((await db.productVariant.findUniqueOrThrow({ where: { id: variantId } })).inventory, stockBeforeExpiry + 1);
+    const couponReused = await checkoutOrder({ couponCode: expiringCoupon.code });
+    assert.equal(couponReused.order.discount.toString(), "1000",
+      "an expired unpaid order releases its per-customer coupon reservation for a later checkout");
+    assert.equal((await db.coupon.findUniqueOrThrow({ where: { id: expiringCoupon.id } })).usedCount, 1);
+
+    // An authorized review that approves a pending bank report wins safely
+    // against a due-expiry scan and leaves stock committed as paid inventory.
+    const approvalOrder = await checkoutOrder();
+    const approvalReport = await reports.submitBankTimeReport({ organizationSlug: fashion.slug,
+      orderNumber: approvalOrder.order.orderNumber, customerId: customer.id,
+      reportedAt: new Date(Date.now() - 60_000).toISOString(), submittedLocalTime: "synthetic approval report" });
+    await db.order.update({ where: { id: approvalOrder.order.id }, data: { retailPaymentDeadlineAt: expiredDeadline } });
+    const approvalRace = await Promise.all([
+      expiration.expireDueRetailPaymentOrders({ organizationId: fashion.id }),
+      reports.reviewRetailPaymentReport({ organizationId: fashion.id, actorUserId: manager.id,
+        reportId: approvalReport.id, action: "APPROVE" }),
+    ]);
+    assert.equal(approvalRace[0].expired, 0);
+    assert.equal(approvalRace[1].status, "APPROVED");
+    assert.equal((await db.order.findUniqueOrThrow({ where: { id: approvalOrder.order.id } })).paymentStatus, "COMPLETED");
+    assert.equal((await expiration.expireDueRetailPaymentOrders({ organizationId: fashion.id })).expired, 0);
+
+    // Durable provider verification protects the order, and scoped sweeps
+    // cannot touch another tenant. Removing only the synthetic verification
+    // marker then allows that tenant's own expired order to be released.
+    const protectedMobile = await checkoutOrder({ organization: mobile.slug });
+    await db.order.update({ where: { id: protectedMobile.order.id }, data: { retailPaymentDeadlineAt: expiredDeadline } });
+    const verifiedRequest = await db.paymentRequest.create({ data: {
+      organizationId: mobile.id, orderId: protectedMobile.order.id, amountToman: BigInt(protectedMobile.order.total.toString()),
+      purpose: "ORDER_PAYMENT", status: "PENDING_VERIFICATION",
+    } });
+    paymentRequestIds.push(verifiedRequest.id);
+    const verifiedAttempt = await db.paymentProviderAttempt.create({ data: {
+      organizationId: mobile.id, paymentRequestId: verifiedRequest.id, provider: "INOTI_USSD",
+      amountToman: verifiedRequest.amountToman, status: "VERIFIED", verifiedAt: new Date(), verificationEvidence: { fixture: true },
+    } });
+    assert.equal((await expiration.expireDueRetailPaymentOrders({ organizationId: fashion.id })).expired, 0,
+      "fashion-scoped expiry must not cross into the mobile tenant");
+    assert.equal((await expiration.expireDueRetailPaymentOrders()).expired, 0,
+      "durably verified payment evidence must protect an order from expiry");
+    await db.paymentProviderAttempt.update({ where: { id: verifiedAttempt.id }, data: { verifiedAt: null } });
+    assert.equal((await expiration.expireDueRetailPaymentOrders({ organizationId: mobile.id })).expired, 1);
+    assert.equal((await db.order.findUniqueOrThrow({ where: { id: protectedMobile.order.id } })).status, "CANCELLED");
   } finally {
     if (orderIds.length) {
+      await db.paymentProviderAttempt.deleteMany({ where: { paymentRequestId: { in: paymentRequestIds } } });
+      await db.paymentRequest.deleteMany({ where: { id: { in: paymentRequestIds } } });
       const reportsToClean = await db.retailPaymentReport.findMany({ where: { orderId: { in: orderIds } }, select: { receiptKey: true } });
       for (const item of reportsToClean) if (item.receiptKey && !receiptKeys.includes(item.receiptKey)) receiptKeys.push(item.receiptKey);
       await db.retailPaymentReport.deleteMany({ where: { orderId: { in: orderIds } } });

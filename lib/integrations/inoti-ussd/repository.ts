@@ -5,6 +5,7 @@ import prisma from "@/lib/db";
 import { generateBazarBaazFactorId } from "@/lib/payments/payment-request.service";
 import { tomanToInotiRial } from "@/lib/integrations/inoti-ussd/currency";
 import { getRetailPaymentPolicy } from "@/lib/retail/payment-policy.server";
+import { expireRetailOrderAfterPaymentDeadlineTx } from "@/lib/retail/payment-expiration.server";
 import type {
   PaymentSettlementInput,
   PaymentSettlementResult,
@@ -212,6 +213,7 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
         paymentStatus: true,
         paymentMethod: true,
         retailCheckoutKey: true,
+        retailPaymentDeadlineAt: true,
         total: true,
         customerId: true,
         guestCustomerId: true,
@@ -221,7 +223,8 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
     if (!order?.publicTrackingToken) return null;
     if (order.retailCheckoutKey) {
       if (order.paymentMethod !== "INOTI_USSD" || order.paymentStatus !== "PENDING" ||
-          ["CANCELLED", "REFUNDED"].includes(order.status)) return null;
+          ["CANCELLED", "REFUNDED"].includes(order.status) ||
+          (order.retailPaymentDeadlineAt && order.retailPaymentDeadlineAt <= new Date())) return null;
       const policy = await getRetailPaymentPolicy(integration.organizationSlug);
       if (!policy.inotiUssdEnabled) return null;
     }
@@ -233,6 +236,7 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
       paymentStatus: order.paymentStatus,
       paymentMethod: order.paymentMethod,
       totalToman: order.total.toString(),
+      paymentDeadlineAt: order.retailPaymentDeadlineAt?.toISOString() ?? null,
       customerId: order.customerId,
       guestCustomerId: order.guestCustomerId,
       guestPhone: order.guestCustomer?.phone ?? null,
@@ -314,6 +318,7 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
                   currency: "TOMAN",
                   purpose: "ORDER_PAYMENT",
                   status: "AWAITING_CUSTOMER",
+                  expiresAt: input.order?.paymentDeadlineAt ? new Date(input.order.paymentDeadlineAt) : undefined,
                   metadata: { source: "INOTI_USSD", merchantFactorId, amountUnit: "TOMAN" },
                 },
               });
@@ -522,11 +527,15 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
         await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${intent.orderId} FOR UPDATE`;
       }
       const currentRetailOrder = intent.order?.retailCheckoutKey && intent.orderId
-        ? await tx.order.findUnique({ where: { id: intent.orderId }, select: { status: true, paymentStatus: true } })
+        ? await tx.order.findUnique({ where: { id: intent.orderId }, select: { status: true, paymentStatus: true, retailPaymentDeadlineAt: true } })
         : null;
       const currentPaymentRequest = intent.paymentRequestId
         ? await tx.paymentRequest.findUnique({ where: { id: intent.paymentRequestId }, select: { status: true } })
         : null;
+      const deadlineElapsed = Boolean(currentRetailOrder?.retailPaymentDeadlineAt && currentRetailOrder.retailPaymentDeadlineAt <= new Date());
+      const expiredAtDeadline = deadlineElapsed && intent.orderId
+        ? await expireRetailOrderAfterPaymentDeadlineTx(tx, intent.orderId, new Date())
+        : false;
       const cancelledRetailOrder = Boolean(currentRetailOrder && ["CANCELLED", "REFUNDED"].includes(currentRetailOrder.status));
 
       if (intent.status === "SETTLED") {
@@ -547,8 +556,8 @@ export class PrismaUssdIntegrationRepository implements UssdIntegrationRepositor
       }
 
       if (!intent.paymentRequest) throw new Error("PAYMENT_REQUEST_NOT_FOUND");
-      if (cancelledRetailOrder || ["EXPIRED", "CANCELLED", "PAID"].includes(currentPaymentRequest?.status ?? intent.paymentRequest.status)) {
-        const reconciliationStatus = cancelledRetailOrder ? "CANCELLED" : (currentPaymentRequest?.status ?? intent.paymentRequest.status);
+      if (cancelledRetailOrder || expiredAtDeadline || ["EXPIRED", "CANCELLED", "PAID"].includes(currentPaymentRequest?.status ?? intent.paymentRequest.status)) {
+        const reconciliationStatus = cancelledRetailOrder ? "CANCELLED" : expiredAtDeadline ? "EXPIRED" : (currentPaymentRequest?.status ?? intent.paymentRequest.status);
         const claim = await tx.ussdPaymentIntent.updateMany({
           where: { id: intent.id, status: { notIn: ["VERIFIED", "SETTLED"] } },
           data: {

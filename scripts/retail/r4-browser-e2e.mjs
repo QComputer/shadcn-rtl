@@ -129,7 +129,10 @@ async function runWithRowsLocked(variantId, orderId, operations) {
   let outcomes;
   try {
     outcomes = Promise.allSettled(operations.map((operation) => operation()));
-    for (let attempt = 0; attempt < 600; attempt += 1) {
+    // Release promptly after both HTTP-backed transactions are visibly queued;
+    // the manager's regular Prisma transaction timeout is intentionally shorter
+    // than the long cancellation/reconciliation service timeout.
+    for (let attempt = 0; attempt < 160; attempt += 1) {
       const rows = await prisma.$queryRaw`SELECT COUNT(DISTINCT pid)::int AS count
         FROM pg_stat_activity
         WHERE datname = current_database() AND pid <> pg_backend_pid()
@@ -313,7 +316,12 @@ async function main() {
     await prisma.order.update({ where: { id: expiryCheckout.order.id }, data: { retailPaymentDeadlineAt: new Date(Date.now() - 60_000) } });
     baseline = await prisma.productVariant.findUniqueOrThrow({ where: { id: sizeColorVariant.id }, select: { inventory: true } });
     beforeMovements = await movementIds(sizeColorVariant.id);
-    const expirationRace = await runWithRowsLocked(sizeColorVariant.id, expiryCheckout.order.id, [
+    // Expiration selects due orders with FOR UPDATE SKIP LOCKED. Holding the
+    // order row here would correctly make the worker skip it, not race it. Hold
+    // only the shared variant: expiry locks the order, then queues on inventory
+    // restoration while the manager's absolute stock edit queues on that same
+    // variant row.
+    const expirationRace = await runWithRowsLocked(sizeColorVariant.id, null, [
       () => api(fashionManagerContext.page, `${baseUrl}/api/products/${fashionProduct.id}/variants`, {
         method: "PATCH", body: { id: sizeColorVariant.id, inventory: 15 },
       }).then(response => { assert.equal(response.status, 200, `manager expiry-race stock edit failed: ${JSON.stringify(response.body)}`); return response; }),

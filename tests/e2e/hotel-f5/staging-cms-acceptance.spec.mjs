@@ -131,6 +131,16 @@ test("F5 synthetic author-to-publication workflow enforces RBAC, tenant and medi
     }
     await expect(editorTab).toBeVisible();
     await editorTab.click();
+    const reviewer = await login(env.HOTEL_F5_REVIEWER_USERNAME, env.HOTEL_F5_REVIEWER_PASSWORD, `/fa/dashboard/hotel-website/${orgId}/${propertyId}`);
+    reviewerPage = reviewer.page;
+    // Keep repeated staging runs deterministic by clearing only active publications
+    // belonging to this synthetic property through the authenticated CMS endpoint.
+    const existingRevisions = await readRevisions(reviewer.page);
+    const existingPublications = existingRevisions.flatMap((item) => item.publications ?? []).filter((item) => !item.revokedAt);
+    for (const existingPublication of existingPublications) {
+      const cleanupResponse = await mutation(reviewer.page, `${cmsApi}/publications/${encodeURIComponent(existingPublication.id)}/revoke`, { reason: "F5 synthetic acceptance reset" });
+      expect(cleanupResponse.status()).toBe(200);
+    }
     const beforeCount = (await readRevisions(author.page)).length;
     const initialPublic = await author.page.request.get(publicApiUrl);
     expect(initialPublic.status()).toBe(200);
@@ -219,8 +229,6 @@ test("F5 synthetic author-to-publication workflow enforces RBAC, tenant and medi
     await unauthorizedApiCheck(manager.page, `${cmsApi}/revisions/${encodeURIComponent(revisionId)}/review`, { decision: "APPROVED" });
     await unauthorizedApiCheck(manager.page, `${cmsApi}/revisions/${encodeURIComponent(revisionId)}/publish`);
 
-    const reviewer = await login(env.HOTEL_F5_REVIEWER_USERNAME, env.HOTEL_F5_REVIEWER_PASSWORD, `/fa/dashboard/hotel-website/${orgId}/${propertyId}`);
-    reviewerPage = reviewer.page;
     expect(reviewer.page.url()).toContain(`/fa/dashboard/hotel-website/${orgId}/${propertyId}`);
     const revisionButton = reviewer.page.locator('aside[aria-label="نسخه‌های محتوا"] button').filter({ hasText: `نسخه ${created.revisionNumber}` });
     await revisionButton.first().click();

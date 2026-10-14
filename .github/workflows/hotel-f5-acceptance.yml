@@ -60,6 +60,8 @@ jobs:
       - name: Re-run the provenance-verified additive branding repair
         shell: bash
         run: |
+          git fetch --no-tags origin refs/tags/hotel-f5-branding-repair-source:refs/tags/hotel-f5-branding-repair-source
+          test "$(git rev-parse refs/tags/hotel-f5-branding-repair-source)" = "57e407077f88c22c62ff12ff15cc6c2602ee3c96"
           git show 57e407077f88c22c62ff12ff15cc6c2602ee3c96:prisma/migrations/20260926160000_repair_organization_branding_columns/migration.sql > "$RUNNER_TEMP/branding-repair.sql"
           echo "cfa7ed49b14f25ca88593525a6f269e189b6be1e78e760bb5073ecf40c98eb59  $RUNNER_TEMP/branding-repair.sql" | sha256sum --check
           pnpm exec prisma db execute --schema prisma/schema.prisma --file "$RUNNER_TEMP/branding-repair.sql"

@@ -119,7 +119,7 @@ async function main() {
     const fashionManagerContext = await login(browser, fashionManager, `/fa/dashboard/products/${fashionProduct.id}`);
     const sizeColorVariant = await prisma.productVariant.findFirstOrThrow({ where: { product: { organizationId: fashionOrg.id, slug: "r4-synthetic-avid" }, sku: "R4-SYN-SHOE-42-BK" }, select: { id: true, inventory: true, optionValues: { select: { valueText: true, valueNumber: true, definition: { select: { key: true } } } } } });
     assert.ok(sizeColorVariant.optionValues.some(option => option.definition.key === "color" && option.valueText === "مشکی"));
-    assert.ok(sizeColorVariant.optionValues.some(option => option.definition.key === "size" && option.valueNumber === 42));
+    assert.ok(sizeColorVariant.optionValues.some(option => option.definition.key === "size" && Number(option.valueNumber) === 42));
     await fashionManagerContext.page.getByRole("button", { name: /مشکی.*۴۲/ }).click();
     await fashionManagerContext.page.locator('[role="dialog"] #inventory').fill("8");
     await fashionManagerContext.page.locator('[role="dialog"]').getByRole("button", { name: /ذخیره|Save/ }).click();

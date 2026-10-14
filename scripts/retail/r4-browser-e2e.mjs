@@ -30,13 +30,36 @@ async function capture(page, filename) {
 async function login(browser, email, callback = "/fa/retail/retail-r4-synthetic-fashion") {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
+  page.on("request", (request) => {
+    if (!request.url().includes("/api/auth/callback/credentials")) return;
+    const fields = new URLSearchParams(request.postData() ?? "");
+    console.error(JSON.stringify({
+      credentialsRequest: {
+        method: request.method(),
+        usernameMatches: fields.get("username") === email,
+        passwordMatches: fields.get("password") === password,
+        usernamePresent: fields.has("username"),
+        passwordPresent: fields.has("password"),
+      },
+    }));
+  });
+  page.on("response", (response) => {
+    if (!response.url().includes("/api/auth/callback/credentials")) return;
+    console.error(JSON.stringify({ credentialsResponse: { status: response.status(), url: new URL(response.url()).pathname } }));
+  });
   await page.route("https://fonts.googleapis.com/**", (route) => route.fulfill({ status: 200, contentType: "text/css", body: "" }));
   await page.route("https://fonts.gstatic.com/**", (route) => route.abort());
   await page.goto(`${baseUrl}/fa/login?callbackUrl=${encodeURIComponent(callback)}`);
   await page.locator("#username").fill(email);
   await page.locator("#password").fill(password);
   await page.locator('button[type="submit"]').click();
-  await page.waitForURL((url) => !url.pathname.endsWith("/login"), { timeout: 60000 });
+  try {
+    await page.waitForURL((url) => !url.pathname.endsWith("/login"), { timeout: 20000 });
+  } catch (error) {
+    await capture(page, `login-failure-${email.split("@")[0]}.png`);
+    console.error(JSON.stringify({ loginEmail: email, url: page.url(), title: await page.title(), bodyText: (await page.locator("body").innerText()).slice(0, 1200) }));
+    throw error;
+  }
   const sessionResponse = await context.request.get(`${baseUrl}/api/auth/session`);
   assert.equal(sessionResponse.status(), 200);
   assert.ok((await sessionResponse.json()).user?.id, `${email} must authenticate`);
@@ -84,6 +107,7 @@ async function checkoutWithReport(page, org, sku, reportType) {
   const orderNumber = (await orderHeading.innerText()).match(/RET-[A-Z0-9-]+/)?.[0];
   assert.ok(orderNumber, "the persisted order number must be shown after UI checkout");
   assert.ok(await page.getByText("در انتظار بررسی").count(), "checkout must leave payment pending");
+  await page.getByText("مهلت پرداخت").waitFor();
   const receiptRadio = page.getByLabel("بارگذاری تصویر رسید");
   const timeRadio = page.getByLabel("ثبت زمان پرداخت");
   assert.equal(await receiptRadio.isChecked(), true);
@@ -100,8 +124,9 @@ async function checkoutWithReport(page, org, sku, reportType) {
   const reportResponsePromise = page.waitForResponse((response) => response.url().includes("/bank-report?") && response.request().method() === "POST");
   await page.getByRole("button", { name: "ارسال گزارش پرداخت" }).click();
   const reportResponse = await reportResponsePromise;
-  assert.equal(reportResponse.status(), 201, `${reportType} submission must return a created report`);
-  const reportBody = await reportResponse.json();
+  const reportResponseBody = await reportResponse.text();
+  assert.equal(reportResponse.status(), 201, `${reportType} submission must return a created report: ${reportResponseBody.slice(0, 800)}`);
+  const reportBody = JSON.parse(reportResponseBody);
   await page.getByText("گزارش پرداخت ارسال شد.").waitFor({ timeout: 30000 });
   assert.equal(reportBody.report.kind, reportType === "RECEIPT" ? "BANK_RECEIPT" : "BANK_TIME");
   assert.equal(reportBody.report.status, "PENDING_REVIEW");

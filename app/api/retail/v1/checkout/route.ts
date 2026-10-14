@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       orderNumber: order.orderNumber, total: order.total.toString(),
       paymentStatus: order.paymentStatus, orderStatus: order.status, paymentMethod: order.paymentMethod,
+      paymentDeadlineAt: order.retailPaymentDeadlineAt?.toISOString() ?? null,
       ...(order.paymentMethod === "BANK_TRANSFER" ? {
         bankCardNumber: typeof bankSnapshot?.bankCardNumber === "string" ? bankSnapshot.bankCardNumber : null,
         bankAccountOwner: typeof bankSnapshot?.bankAccountOwner === "string" ? bankSnapshot.bankAccountOwner : null,

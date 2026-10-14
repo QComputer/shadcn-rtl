@@ -7,6 +7,12 @@ import { prisma } from "@/lib/db";
 import { getRetailInotiReadiness } from "@/lib/retail/inoti-readiness.server";
 
 const cashMode = z.enum(["COUNTER", "PICKUP", "COURIER"]);
+const paymentDeadlineMinutesSchema = z.object({
+  bankTransfer: z.number().int().min(5).max(43_200),
+  cash: z.number().int().min(5).max(43_200),
+  inotiUssd: z.number().int().min(5).max(43_200),
+}).strict();
+export const defaultRetailPaymentDeadlinesMinutes = { bankTransfer: 1_440, cash: 2_880, inotiUssd: 15 } as const;
 const policySchema = z.object({
   bankTransferEnabled: z.boolean(),
   cashEnabled: z.boolean(),
@@ -15,6 +21,7 @@ const policySchema = z.object({
   bankAccountOwner: z.string().trim().min(2).max(120).nullable(),
   cashModes: z.array(cashMode).min(1),
   cashBeforeConfirmation: z.boolean(),
+  paymentDeadlinesMinutes: paymentDeadlineMinutesSchema.default(defaultRetailPaymentDeadlinesMinutes),
 }).strict().superRefine((value, context) => {
   if (value.bankTransferEnabled && (!value.bankCardNumber || !value.bankAccountOwner)) {
     context.addIssue({ code: "custom", path: ["bankCardNumber"], message: "Bank details are required." });
@@ -33,6 +40,7 @@ const defaults: RetailPaymentPolicy = {
   bankTransferEnabled: false, cashEnabled: false, inotiUssdEnabled: false,
   bankCardNumber: null, bankAccountOwner: null,
   cashModes: ["COUNTER"], cashBeforeConfirmation: true,
+  paymentDeadlinesMinutes: defaultRetailPaymentDeadlinesMinutes,
 };
 
 function fromSettings(value: Prisma.JsonValue | null): RetailPaymentPolicy {
@@ -69,7 +77,8 @@ export async function saveRetailPaymentPolicy(organizationSlug: string, organiza
         inotiUssdEnabled: before.inotiUssdEnabled },
       newValue: { bankTransferEnabled: policy.bankTransferEnabled, cashEnabled: policy.cashEnabled,
         inotiUssdEnabled: policy.inotiUssdEnabled, cashModes: policy.cashModes,
-        cashBeforeConfirmation: policy.cashBeforeConfirmation },
+        cashBeforeConfirmation: policy.cashBeforeConfirmation,
+        paymentDeadlinesMinutes: policy.paymentDeadlinesMinutes },
     } });
     return policy;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });

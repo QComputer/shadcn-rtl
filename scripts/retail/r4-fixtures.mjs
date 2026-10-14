@@ -5,6 +5,7 @@ const slugs = ["retail-r4-synthetic-fashion", "retail-r4-synthetic-mobile", "ret
 const managerEmails = ["r4-synthetic-fashion-manager@example.test", "r4-synthetic-mobile-manager@example.test"];
 const customerEmail = "r4-synthetic-customer@example.test";
 const testPassword = process.env.RETAIL_R4_TEST_PASSWORD;
+const expectedDatabase = process.env.RETAIL_R4_EXPECTED_DATABASE || "bazarbaaz_retail_r4";
 if (!testPassword || testPassword.length < 12) {
   throw new Error("RETAIL_R4_TEST_PASSWORD must be set to a disposable test credential of at least 12 characters.");
 }
@@ -14,15 +15,15 @@ function assertDatabaseTarget() {
   for (const key of ["DATABASE_URL", "DIRECT_URL"]) {
     const url = new URL(process.env[key] ?? "");
     if (!/^postgres(ql)?:$/.test(url.protocol) || !["127.0.0.1", "localhost"].includes(url.hostname)) throw new Error(`${key} must target a local disposable PostgreSQL database`);
-    if (url.port !== "55433" || url.pathname !== "/bazarbaaz_retail_r4") throw new Error(`${key} does not match the verified retail R4 disposable database`);
+    if (url.port !== "55433" || url.pathname !== `/${expectedDatabase}`) throw new Error(`${key} does not match the verified retail disposable database`);
   }
-  if (process.env.LOCAL_PRISMA_EXPECTED_PORT !== "55433" || process.env.RETAIL_R4_EXPECTED_DATABASE !== "bazarbaaz_retail_r4") throw new Error("Missing explicit retail R4 disposable database identity guard");
+  if (process.env.LOCAL_PRISMA_EXPECTED_PORT !== "55433" || process.env.RETAIL_R4_EXPECTED_DATABASE !== expectedDatabase) throw new Error("Missing explicit retail disposable database identity guard");
 }
 
 async function verifyDatabase() {
   const rows = await prisma.$queryRaw`SELECT current_database() AS database, current_setting('server_version') AS version, current_setting('server_version_num')::int AS version_num`;
   const identity = rows[0];
-  if (identity.database !== "bazarbaaz_retail_r4" || identity.version_num < 170000 || identity.version_num >= 180000) throw new Error("Connected database is not the verified PostgreSQL 17 retail R4 fixture database");
+  if (identity.database !== expectedDatabase || identity.version_num < 170000 || identity.version_num >= 180000) throw new Error("Connected database is not the verified PostgreSQL 17 retail fixture database");
   return identity;
 }
 
@@ -94,7 +95,13 @@ async function seedFixtures() {
   const customer = await prisma.user.create({ data: { name: customerEmail, email: customerEmail, password, role: "CUSTOMER", isTeamMember: false, locale: "fa" } });
   await prisma.customerIdentity.create({ data: { organizationId: fashion.id, userId: customer.id, email: customerEmail, metadata: { syntheticFixture: "retail-r4" } } });
   await prisma.customerIdentity.create({ data: { organizationId: mobile.id, userId: customer.id, email: customerEmail, metadata: { syntheticFixture: "retail-r4" } } });
-  for (const organization of [fashion, mobile]) await prisma.paymentSettings.create({ data: { organizationSlug: organization.slug, settings: { retailR4: { bankTransferEnabled: true, cashEnabled: true, inotiUssdEnabled: false, bankCardNumber: "6037990000000000", bankAccountOwner: "Synthetic R4 Test", cashModes: organization.id === fashion.id ? ["COUNTER"] : ["COUNTER", "PICKUP", "COURIER"], cashBeforeConfirmation: organization.id === fashion.id } } } });
+  for (const email of [...managerEmails, customerEmail]) {
+    const user = await prisma.user.findUniqueOrThrow({ where: { email }, select: { password: true, isActive: true, deletedAt: true } });
+    if (!user.isActive || user.deletedAt || !user.password || !(await bcrypt.compare(testPassword, user.password))) {
+      throw new Error(`Synthetic browser login fixture failed credential verification for ${email}`);
+    }
+  }
+  for (const organization of [fashion, mobile]) await prisma.paymentSettings.create({ data: { organizationSlug: organization.slug, settings: { retailR4: { bankTransferEnabled: true, cashEnabled: true, inotiUssdEnabled: false, bankCardNumber: "6037990000000000", bankAccountOwner: "Synthetic R4 Test", cashModes: organization.id === fashion.id ? ["COUNTER"] : ["COUNTER", "PICKUP", "COURIER"], cashBeforeConfirmation: organization.id === fashion.id, paymentDeadlinesMinutes: { bankTransfer: 60, cash: 120, inotiUssd: 15 } } } } });
   for (const organization of [fashion, mobile]) await prisma.coupon.create({ data: { organizationId: organization.id, code: `R4SYN-${organization.slug.endsWith("fashion") ? "FASHION" : "MOBILE"}`, name: "[R4-SYNTHETIC] Test discount", discountType: "PERCENTAGE", discountValue: 10, minOrderTotal: 100000, maxDiscountAmount: 500000, usageLimit: 100, perCustomerLimit: 2, isActive: true } });
   const fashionCategory = await prisma.productCategory.create({ data: { name: "کتانی", slug: "sneakers", organizationId: fashion.id, organizationSlug: fashion.slug } });
   const phoneCategory = await prisma.productCategory.create({ data: { name: "گوشی هوشمند", slug: "smartphones", organizationId: mobile.id, organizationSlug: mobile.slug } });

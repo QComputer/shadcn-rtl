@@ -2,7 +2,7 @@ import "server-only";
 
 import { ensureNextLocalEnvLoaded } from "@/lib/env/load-next-env";
 import prisma from "@/lib/db";
-import type { InotiCredentialProfile, InotiCredentialProvider } from "@/lib/integrations/inoti-ussd/types";
+import type { InotiCredentialProfile, InotiCredentialProvider, InotiMerchantAccountKey } from "@/lib/integrations/inoti-ussd/types";
 
 ensureNextLocalEnvLoaded();
 
@@ -31,6 +31,7 @@ type ProfileDefinition = {
   endpointEnv?: string;
   smsTokenEnv?: string;
   ussdCodeNameEnv?: string;
+  ussdDialStringEnv?: string;
   ussdDialString?: string;
   organizationSlugs: readonly string[];
   platformOnly?: boolean;
@@ -44,6 +45,7 @@ const PROFILE_DEFINITIONS: readonly ProfileDefinition[] = [
     endpointEnv: "INOTI_PLATFORM_USSD_ENDPOINT",
     smsTokenEnv: "INOTI_PLATFORM_SMS_TOKEN",
     ussdCodeNameEnv: "INOTI_PLATFORM_USSD_CODE_NAME",
+    ussdDialStringEnv: "INOTI_PLATFORM_USSD_DIAL_STRING",
     organizationSlugs: [],
     platformOnly: true,
   },
@@ -63,7 +65,7 @@ const PROFILE_DEFINITIONS: readonly ProfileDefinition[] = [
     endpointEnv: "INOTI_CAFE_LEO_USSD_ENDPOINT",
     smsTokenEnv: "INOTI_CAFE_LEO_SMS_TOKEN",
     ussdCodeNameEnv: "INOTI_CAFE_LEO_USSD_CODE_NAME",
-    ussdDialString: "*6655*1*09126511010#",
+    ussdDialStringEnv: "INOTI_CAFE_LEO_USSD_DIAL_STRING",
     organizationSlugs: ["cafe-leo"],
   },
   {
@@ -103,6 +105,10 @@ function smsTokenConfigured(definition: ProfileDefinition) {
 
 function ussdCodeNameConfigured(definition: ProfileDefinition) {
   return hasValue(process.env[definition.ussdCodeNameEnv ?? ""]);
+}
+
+function ussdDialString(definition: ProfileDefinition) {
+  return definition.ussdDialString ?? process.env[definition.ussdDialStringEnv ?? ""]?.trim() ?? null;
 }
 
 async function organizationSlugFor(organizationId: string) {
@@ -171,7 +177,7 @@ export async function getInotiCredentialProfileState(input: {
       platformOnly: definition.platformOnly === true,
       ussdCodeNameConfigured: ussdCodeNameConfigured(definition),
       smsTokenConfigured: smsTokenConfigured(definition),
-      ussdDialStringConfigured: hasValue(definition.ussdDialString),
+      ussdDialStringConfigured: hasValue(ussdDialString(definition) ?? undefined),
     };
   }
   return {
@@ -181,7 +187,7 @@ export async function getInotiCredentialProfileState(input: {
     platformOnly: definition.platformOnly === true,
     ussdCodeNameConfigured: ussdCodeNameConfigured(definition),
     smsTokenConfigured: smsTokenConfigured(definition),
-    ussdDialStringConfigured: hasValue(definition.ussdDialString),
+    ussdDialStringConfigured: hasValue(ussdDialString(definition) ?? undefined),
   };
 }
 
@@ -202,7 +208,7 @@ export class EnvironmentInotiCredentialProvider implements InotiCredentialProvid
       endpoint: process.env[definition.endpointEnv ?? ""]?.trim() || DEFAULT_ENDPOINT,
       smsToken: process.env[definition.smsTokenEnv ?? ""]?.trim() || null,
       ussdCodeName: process.env[definition.ussdCodeNameEnv ?? ""]?.trim() || null,
-      ussdDialString: definition.ussdDialString ?? null,
+      ussdDialString: ussdDialString(definition),
     };
   }
 
@@ -221,7 +227,29 @@ export class EnvironmentInotiCredentialProvider implements InotiCredentialProvid
       endpoint: process.env[definition.endpointEnv ?? ""]?.trim() || DEFAULT_ENDPOINT,
       smsToken,
       ussdCodeName: process.env[definition.ussdCodeNameEnv ?? ""]?.trim() || null,
-      ussdDialString: definition.ussdDialString ?? null,
+      ussdDialString: ussdDialString(definition),
+    };
+  }
+
+  /** Resolve payment credentials from a trusted persisted account key. */
+  async resolvePaymentAccount(accountKey: InotiMerchantAccountKey): Promise<InotiCredentialProfile | null> {
+    const profileKey: InotiCredentialProfileKey = accountKey === "PLATFORM_OWNER"
+      ? "local-env:inoti:platform"
+      : "local-env:inoti:cafe-leo";
+    const definition = definitionFor(profileKey);
+    if (!definition || !credentialsConfigured(definition)) return null;
+    const username = process.env[definition.usernameEnv]?.trim();
+    const password = process.env[definition.passwordEnv]?.trim();
+    if (!username || !password) return null;
+    return {
+      organizationId: accountKey === "PLATFORM_OWNER" ? PLATFORM_ORGANIZATION_ID : "__cafe_leo_payment_account__",
+      profileKey: definition.key,
+      username,
+      password,
+      endpoint: process.env[definition.endpointEnv ?? ""]?.trim() || DEFAULT_ENDPOINT,
+      smsToken: null,
+      ussdCodeName: process.env[definition.ussdCodeNameEnv ?? ""]?.trim() || null,
+      ussdDialString: ussdDialString(definition),
     };
   }
 }

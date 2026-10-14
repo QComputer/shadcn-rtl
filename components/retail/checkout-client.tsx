@@ -13,7 +13,7 @@ type PaymentMethod = {
 };
 type CartItem = { id?: string; name?: string; productName?: string; variantName?: string; quantity?: number; variant?: { name?: string; product?: { name?: string } } };
 type Cart = { items?: CartItem[] };
-type OrderResult = { orderNumber: string; total: string; paymentStatus: string; orderStatus: string; paymentMethod: PaymentMethod["method"]; trackingToken?: string | null; bankCardNumber?: string | null; bankAccountOwner?: string | null };
+type OrderResult = { orderNumber: string; total: string; paymentStatus: string; orderStatus: string; paymentMethod: PaymentMethod["method"]; paymentDeadlineAt?: string | null; trackingToken?: string | null; bankCardNumber?: string | null; bankAccountOwner?: string | null };
 
 const money = (value: number) => `${new Intl.NumberFormat("fa-IR").format(value)} تومان`;
 const statusText: Record<string, string> = {
@@ -36,8 +36,10 @@ function isoWithLocalOffset(local: string) {
   return `${local.length === 16 ? `${local}:00` : local}${sign}${hh}:${mm}`;
 }
 
-export default function RetailCheckoutClient({ locale, organization }: { locale: string; organization: string }) {
+export default function RetailCheckoutClient({ locale, organization, storefrontPath, checkoutPath }: { locale: string; organization: string; storefrontPath?: string; checkoutPath?: string }) {
   const org = useMemo(() => decodeURIComponent(organization), [organization]);
+  const nativeStorefrontPath = appPath(storefrontPath ?? `/${encodeURIComponent(locale)}/retail/${encodeURIComponent(org)}`);
+  const nativeCheckoutPath = appPath(checkoutPath ?? `/${encodeURIComponent(locale)}/retail/${encodeURIComponent(org)}/checkout`);
   const [cart, setCart] = useState<Cart | null>(null);
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,7 +86,7 @@ export default function RetailCheckoutClient({ locale, organization }: { locale:
   const selectedMethod = methods.find((method) => method.method === paymentMethod);
   const availableCashModes = selectedMethod?.cashModes?.filter((mode) => mode === "COUNTER" ||
     (mode === "PICKUP" && type === "PICK_UP") || (mode === "COURIER" && type === "DELIVERY")) ?? [];
-  const loginHref = appPath(`/${encodeURIComponent(locale)}/login?callbackUrl=${encodeURIComponent(appPath(`/${encodeURIComponent(locale)}/retail/${encodeURIComponent(org)}/checkout`))}`);
+  const loginHref = appPath(`/${encodeURIComponent(locale)}/login?callbackUrl=${encodeURIComponent(nativeCheckoutPath)}`);
   const submitCheckout = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
@@ -132,13 +134,13 @@ export default function RetailCheckoutClient({ locale, organization }: { locale:
   const items = cart?.items ?? [];
   return <main dir="rtl" lang="fa" className="min-h-screen bg-[#f8f7f4] px-4 py-8 text-[#24241f] md:px-8">
     <div className="mx-auto max-w-3xl">
-      <a href={appPath(`/${encodeURIComponent(locale)}/retail/${encodeURIComponent(org)}`)} className="text-sm text-[#766d61]">بازگشت به فروشگاه</a>
+      <a href={nativeStorefrontPath} className="text-sm text-[#766d61]">بازگشت به فروشگاه</a>
       <h1 className="mt-5 text-3xl font-semibold">تکمیل سفارش</h1>
       {loading ? <p role="status" className="mt-8 rounded-2xl bg-white p-8">در حال دریافت اطلاعات…</p> : authenticated === false ? <section className="mt-7 rounded-2xl bg-white p-7"><p>برای مشاهده سبد خرید و ثبت سفارش، ابتدا وارد حساب کاربری شوید.</p><a className="mt-5 inline-block rounded-full bg-[#292a24] px-6 py-3 text-sm text-white" href={loginHref}>ورود به حساب کاربری</a></section> : <>
         {error && <p role="alert" className="mt-5 rounded-xl bg-[#fff1ed] p-4 text-sm text-[#8c3329]">{error}</p>}
         {order ? <section className="mt-7 rounded-2xl bg-white p-6 md:p-8">
           <h2 className="text-xl font-semibold">سفارش {order.orderNumber} ثبت شد</h2>
-          <dl className="mt-5 grid gap-4 sm:grid-cols-3"><div><dt className="text-xs text-[#77736a]">مبلغ سفارش</dt><dd className="mt-1 font-semibold">{money(Number(order.total))}</dd></div><div><dt className="text-xs text-[#77736a]">وضعیت پرداخت</dt><dd className="mt-1">{statusText[order.paymentStatus] ?? order.paymentStatus}</dd></div><div><dt className="text-xs text-[#77736a]">وضعیت سفارش</dt><dd className="mt-1">{statusText[order.orderStatus] ?? order.orderStatus}</dd></div></dl>
+          <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><div><dt className="text-xs text-[#77736a]">مبلغ سفارش</dt><dd className="mt-1 font-semibold">{money(Number(order.total))}</dd></div><div><dt className="text-xs text-[#77736a]">وضعیت پرداخت</dt><dd className="mt-1">{statusText[order.paymentStatus] ?? order.paymentStatus}</dd></div><div><dt className="text-xs text-[#77736a]">وضعیت سفارش</dt><dd className="mt-1">{statusText[order.orderStatus] ?? order.orderStatus}</dd></div>{order.paymentDeadlineAt && <div><dt className="text-xs text-[#77736a]">مهلت پرداخت</dt><dd className="mt-1">{new Intl.DateTimeFormat("fa-IR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.paymentDeadlineAt))}</dd></div>}</dl>
           {order.paymentMethod === "INOTI_USSD" && methods.find((method) => method.method === "INOTI_USSD")?.dialString && order.trackingToken && <div className="mt-7 rounded-2xl border border-[#e5e1d9] p-5 text-sm">
             <h3 className="font-semibold">پرداخت با کد دستوری</h3>
             <p className="mt-2">کد <b dir="ltr">{methods.find((method) => method.method === "INOTI_USSD")?.dialString}</b> را شماره‌گیری کنید و کد پیگیری زیر را وارد کنید.</p>

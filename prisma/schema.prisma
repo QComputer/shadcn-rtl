@@ -161,6 +161,11 @@ enum IntegrationProvider {
   OTHER
 }
 
+enum InotiPaymentMerchantAccountKey {
+  PLATFORM_OWNER
+  CAFE_LEO
+}
+
 enum IntegrationType {
   IMENU
   ICV
@@ -1153,6 +1158,7 @@ model Organization {
   claimRequests                OrganizationClaimRequest[]
   capabilities                 OrganizationCapability[]
   integrations                 OrganizationIntegration[]
+  inotiPaymentRouting          OrganizationInotiPaymentRouting?
   businessEvents               BusinessEvent[]
   customerIdentities           CustomerIdentity[]
   customerInteractions         CustomerInteraction[]
@@ -1470,6 +1476,21 @@ model OrganizationIntegration {
   @@index([type, status])
   @@index([provider, status])
   @@index([organizationId, status])
+}
+
+/// Trusted platform-managed USSD settlement routing. A missing row means the
+/// platform owner's shared merchant account. Tenant managers cannot edit this.
+model OrganizationInotiPaymentRouting {
+  organizationId     String                         @id
+  merchantAccountKey InotiPaymentMerchantAccountKey
+  updatedByUserId    String?
+  createdAt          DateTime                       @default(now())
+  updatedAt          DateTime                       @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  updatedBy    User?        @relation("InotiPaymentRoutingUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([merchantAccountKey])
 }
 
 model OrganizationIntegrationCapability {
@@ -1926,6 +1947,7 @@ model User {
   aiMediaUsageQuotes            AiMediaUsageQuote[]           @relation("AiMediaQuoteRequestedBy")
   aiMediaSpendHolds             AiMediaSpendHold[]            @relation("AiMediaSpendHoldRequestedBy")
   ussdSessions                  UssdSession[]                 @relation("UssdSessionCustomer")
+  updatedInotiPaymentRoutings   OrganizationInotiPaymentRouting[] @relation("InotiPaymentRoutingUpdatedBy")
   customerIdentities            CustomerIdentity[]            @relation("CustomerIdentityUser")
 
   denies                          Deny[]
@@ -2455,6 +2477,8 @@ model Order {
   id          String      @id @default(cuid())
   orderNumber String      @unique
   retailCheckoutKey String? @unique
+  retailPaymentDeadlineAt DateTime?
+  retailPaymentExpiredAt DateTime?
   type        OrderType
   status      OrderStatus @default(PENDING)
 
@@ -2532,6 +2556,7 @@ model Order {
   orderMessages OrderMessage[]
 
   @@index([organizationSlug])
+  @@index([retailCheckoutKey, retailPaymentDeadlineAt, paymentStatus, status])
   @@index([customerId])
   @@index([driverId])
   @@index([preparationProgressId])
@@ -2616,6 +2641,7 @@ model InventoryMovement {
   reason         InventoryMovementReason
   note           String?
   createdById    String?
+  retailReleaseKey String? @unique
 
   variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
   order   Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
@@ -2704,6 +2730,10 @@ model PaymentRequest {
   appointmentId         String?
   guestCustomerId       String?
   providerIntegrationId String?
+  merchantAccountKey    String?
+  credentialProfileKeySnapshot String?
+  merchantCodeName      String?
+  accountBoundAt        DateTime?
   amountToman           BigInt
   currency              String               @default("TOMAN")
   purpose               String
@@ -2740,6 +2770,9 @@ model PaymentProviderAttempt {
   organizationId        String
   paymentRequestId      String
   providerIntegrationId String?
+  merchantAccountKey    String?
+  credentialProfileKeySnapshot String?
+  merchantCodeName      String?
   provider              IntegrationProvider
   status                PaymentProviderAttemptStatus @default(CREATED)
   amountToman           BigInt
@@ -2766,6 +2799,7 @@ model PaymentProviderAttempt {
   @@unique([id, organizationId])
   @@unique([organizationId, idempotencyKey])
   @@unique([providerIntegrationId, merchantFactorId])
+  @@unique([merchantAccountKey, merchantFactorId])
   @@unique([providerIntegrationId, providerFactorId])
   @@unique([providerIntegrationId, rrn])
   @@index([organizationId, status, createdAt])
@@ -2812,7 +2846,10 @@ model UssdPaymentIntent {
   orderId              String?
   paymentRequestId     String?
   providerAttemptId    String?                 @unique
-  merchantFactorId     String                  @unique
+  merchantAccountKey   String
+  credentialProfileKeySnapshot String?
+  merchantCodeName     String
+  merchantFactorId     String
   amountRial           BigInt
   sessionIdHash        String
   mobileHash           String
@@ -2835,6 +2872,7 @@ model UssdPaymentIntent {
   callbackEvents UssdCallbackEvent[]
   verificationJob UssdPaymentVerificationJob?
 
+  @@unique([merchantAccountKey, merchantFactorId])
   @@unique([integrationId, orderId, sessionIdHash])
   @@unique([id, integrationId, organizationId])
   @@unique([providerAttemptId, organizationId])
@@ -4373,6 +4411,7 @@ model CouponRedemption {
   pointsSpent    Int      @default(0)
   metadata       Json?
   redeemedAt     DateTime @default(now())
+  releasedAt     DateTime?
 
   coupon       Coupon       @relation(fields: [couponId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -4383,6 +4422,7 @@ model CouponRedemption {
   @@index([organizationId, customerId, redeemedAt])
   @@index([couponId, redeemedAt])
   @@index([orderId])
+  @@index([organizationId, customerId, couponId, releasedAt])
 }
 
 model PushSubscription {

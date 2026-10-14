@@ -17,13 +17,15 @@ export async function confirmRetailCashCollection(input: {
   organizationId: string; orderNumber: string; actorUserId: string;
 }) {
   return prisma.$transaction(async (tx) => {
-    const order = await tx.order.findFirst({ where: { orderNumber: input.orderNumber,
+    const found = await tx.order.findFirst({ where: { orderNumber: input.orderNumber,
       organization: { id: input.organizationId }, retailCheckoutKey: { not: null }, deletedAt: null },
       include: { payment: true } });
-    if (!order) throw new ApiError(404, "Order not found.");
-    await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE`;
+    if (!found) throw new ApiError(404, "Order not found.");
+    await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${found.id} FOR UPDATE`;
+    const order = await tx.order.findFirstOrThrow({ where: { id: found.id, organization: { id: input.organizationId } }, include: { payment: true } });
     if (order.paymentMethod !== "CASH" || order.paymentStatus !== "PENDING" || !order.payment ||
-        ["CANCELLED", "REFUNDED"].includes(order.status)) throw new ApiError(409, "Cash collection is unavailable.");
+        ["CANCELLED", "REFUNDED"].includes(order.status) ||
+        (order.retailPaymentDeadlineAt && order.retailPaymentDeadlineAt <= new Date())) throw new ApiError(409, "Cash collection is unavailable.");
     const mode = cashMode(order.payment.metadata);
     if (mode === "COURIER" || !mode) throw new ApiError(409, "Courier cash requires merchant reconciliation.");
     if (mode === "PICKUP" && !["READY", "PICKED_UP"].includes(order.status)) {
@@ -51,12 +53,12 @@ export async function submitCourierCashCollection(input: {
   organizationSlug: string; orderNumber: string; actorUserId: string;
 }) {
   return prisma.$transaction(async (tx) => {
-    const order = await tx.order.findFirst({ where: { organizationSlug: input.organizationSlug,
+    const found = await tx.order.findFirst({ where: { organizationSlug: input.organizationSlug,
       orderNumber: input.orderNumber, retailCheckoutKey: { not: null }, deletedAt: null },
       include: { payment: true, organization: { select: { id: true } } } });
-    if (!order) throw new ApiError(404, "Order not found.");
-    await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE`;
-    const lockedOrder = await tx.order.findUniqueOrThrow({ where: { id: order.id },
+    if (!found) throw new ApiError(404, "Order not found.");
+    await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${found.id} FOR UPDATE`;
+    const lockedOrder = await tx.order.findUniqueOrThrow({ where: { id: found.id },
       include: { payment: true, organization: { select: { id: true } } } });
     if (lockedOrder.driverId !== input.actorUserId || !["PICKED_UP", "DELIVERED"].includes(lockedOrder.status)) {
       throw new ApiError(403, "Courier is not assigned to this order.");
@@ -67,7 +69,8 @@ export async function submitCourierCashCollection(input: {
     }, select: { id: true } });
     if (!membership) throw new ApiError(403, "Courier is not authorized.");
     if (lockedOrder.paymentMethod !== "CASH" || lockedOrder.paymentStatus !== "PENDING" ||
-        cashMode(lockedOrder.payment?.metadata ?? null) !== "COURIER") throw new ApiError(409, "Courier collection is unavailable.");
+        cashMode(lockedOrder.payment?.metadata ?? null) !== "COURIER" ||
+        (lockedOrder.retailPaymentDeadlineAt && lockedOrder.retailPaymentDeadlineAt <= new Date())) throw new ApiError(409, "Courier collection is unavailable.");
     const report = await tx.retailPaymentReport.create({ data: {
       organizationId: lockedOrder.organization.id, orderId: lockedOrder.id, submittedById: input.actorUserId,
       kind: "CASH_COLLECTION", status: "PENDING_REVIEW", cashMode: "COURIER",

@@ -19,7 +19,7 @@ type RetailView = {
 const toman = (amount: number) => `${new Intl.NumberFormat("fa-IR").format(amount)} تومان`;
 const attributeText = (attribute: { value: string | number | boolean; displayUnit: string | null }) => `${attribute.value}${attribute.displayUnit ? ` ${attribute.displayUnit}` : ""}`;
 
-export default function RetailLiveCatalog({ view, productSlug }: { view: RetailView; productSlug?: string }) {
+export default function RetailLiveCatalog({ view, productSlug, storefrontPath, checkoutPath }: { view: RetailView; productSlug?: string; storefrontPath?: string; checkoutPath?: string }) {
   const [products, setProducts] = useState(view.products);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
@@ -34,7 +34,8 @@ export default function RetailLiveCatalog({ view, productSlug }: { view: RetailV
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
   const params = useParams<{ locale: string }>();
   const locale = params.locale || "fa";
-  const base = appPath(`/${encodeURIComponent(locale)}/retail/${encodeURIComponent(view.identifier)}`);
+  const base = appPath(storefrontPath ?? `/${encodeURIComponent(locale)}/retail/${encodeURIComponent(view.identifier)}`);
+  const checkoutHref = appPath(checkoutPath ?? `/${encodeURIComponent(locale)}/retail/${encodeURIComponent(view.identifier)}/checkout`);
   const [cartNotice, setCartNotice] = useState("");
   const isFashion = view.theme === "FASHION";
 
@@ -98,7 +99,7 @@ export default function RetailLiveCatalog({ view, productSlug }: { view: RetailV
         body: JSON.stringify({ organization: view.identifier, variantId, quantity: 1 }),
       });
       if (response.status === 401) {
-        const callbackUrl = `${base}/checkout`;
+        const callbackUrl = checkoutHref;
         window.location.assign(appPath(`/${encodeURIComponent(locale)}/login?callbackUrl=${encodeURIComponent(callbackUrl)}`));
         return;
       }
@@ -135,7 +136,7 @@ export default function RetailLiveCatalog({ view, productSlug }: { view: RetailV
     <header className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 md:px-10">
       <a href={base} className="text-xl font-bold tracking-tight">{view.name}<span className="mr-2 text-[#9b7653]" aria-hidden>●</span></a>
       {!productSlug && <nav aria-label="ناوبری فروشگاه" className="hidden gap-8 text-sm md:flex"><a href={`${base}#categories`}>دسته‌بندی‌ها</a><a href={`${base}#products`}>محصولات</a></nav>}
-      <div className="flex items-center gap-2">{!view.previewOnly && <a href={`${base}/checkout`} className="min-h-11 rounded-full border border-[#d9d5cd] px-4 py-3 text-sm">سبد خرید</a>}<a href={`${base}#products`} className="min-h-11 rounded-full border border-[#d9d5cd] px-4 py-3 text-sm">مشاهده کالاها <span aria-hidden>⌕</span></a></div>
+      <div className="flex items-center gap-2">{!view.previewOnly && <a href={checkoutHref} className="min-h-11 rounded-full border border-[#d9d5cd] px-4 py-3 text-sm">سبد خرید</a>}<a href={`${base}#products`} className="min-h-11 rounded-full border border-[#d9d5cd] px-4 py-3 text-sm">مشاهده کالاها <span aria-hidden>⌕</span></a></div>
     </header>
     {!productSlug && <>
     <section className="mx-auto grid max-w-7xl gap-5 px-4 pb-8 md:grid-cols-[1fr_1.15fr] md:px-10">

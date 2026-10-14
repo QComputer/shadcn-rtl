@@ -29,10 +29,10 @@ describe("BB-P1 money migration acceptance", { skip: !isDisposable }, () => {
     })));
     const request = requests[0];
     const attempt = await prisma.paymentProviderAttempt.create({
-      data: { organizationId: organization.id, paymentRequestId: request.id, providerIntegrationId: integration.id, provider: "INOTI_USSD", status: "PENDING_VERIFICATION", amountToman: BigInt(220000), merchantFactorId: `BZ${suffix.slice(0, 32)}`, providerFactorId: `provider-${suffix}`, rrn: `rrn-${suffix}` },
+      data: { organizationId: organization.id, paymentRequestId: request.id, providerIntegrationId: integration.id, merchantAccountKey: `LEGACY_INTEGRATION:${integration.id}`, credentialProfileKeySnapshot: integration.credentialProfileKey, merchantCodeName: integration.codeName, provider: "INOTI_USSD", status: "PENDING_VERIFICATION", amountToman: BigInt(220000), merchantFactorId: `BZ${suffix.slice(0, 32)}`, providerFactorId: `provider-${suffix}`, rrn: `rrn-${suffix}` },
     });
     const intent = await prisma.ussdPaymentIntent.create({
-      data: { organizationId: organization.id, integrationId: integration.id, paymentRequestId: request.id, providerAttemptId: attempt.id, merchantFactorId: attempt.merchantFactorId!, amountRial: BigInt(2200000), sessionIdHash: "s".repeat(64), mobileHash: "m".repeat(64), mobileMasked: "0912***6789", status: "VERIFYING", providerFactorId: attempt.providerFactorId, rrn: attempt.rrn },
+      data: { organizationId: organization.id, integrationId: integration.id, paymentRequestId: request.id, providerAttemptId: attempt.id, merchantAccountKey: `LEGACY_INTEGRATION:${integration.id}`, credentialProfileKeySnapshot: integration.credentialProfileKey, merchantCodeName: integration.codeName, merchantFactorId: attempt.merchantFactorId!, amountRial: BigInt(2200000), sessionIdHash: "s".repeat(64), mobileHash: "m".repeat(64), mobileMasked: "0912***6789", status: "VERIFYING", providerFactorId: attempt.providerFactorId, rrn: attempt.rrn },
     });
 
     try {

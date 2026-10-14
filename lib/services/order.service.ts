@@ -12,6 +12,7 @@ import { requireActiveOrganizationCapability } from "@/lib/organization-capabili
 import { ApiError } from "@/lib/api-guards";
 import { updateOrderReadyTimeSchema } from "@/lib/validators/tenant-platform";
 import { toMoneyDecimal, toMoneyNumber } from "@/lib/money";
+import { releaseRetailCouponReservationsTx, restoreRetailInventoryTx } from "@/lib/retail/payment-expiration.server";
 
 const ALLOWED_ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING: ["PLACED", "ACCEPTED", "CANCELLED"],
@@ -1384,6 +1385,9 @@ if (!org?.slug) return
     const nextStatus = data.status as OrderStatus;
 
     const order = await prisma.$transaction(async (tx) => {
+      // Serialize retail cancellation against payment settlement and the expiry worker,
+      // then read the authoritative state after acquiring the lock.
+      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${id} FOR UPDATE`;
       const existingOrder = await tx.order.findUnique({
         where: { id },
         include: {
@@ -1452,18 +1456,27 @@ if (!org?.slug) return
         note: data.status === "CANCELLED" ? "Order cancelled" : "Order status updated",
       });
 
+      if (existingOrder.retailCheckoutKey && nextStatus === "CANCELLED") {
+        await releaseRetailCouponReservationsTx(tx, existingOrder.id, existingOrder.organization.id, new Date());
+      }
+
       if (shouldRestoreInventory) {
-        await this.restoreOrderInventory(tx, {
-          orderId: existingOrder.id,
-          items: existingOrder.items,
-          reason: nextStatus === "REFUNDED"
-            ? InventoryMovementReason.ORDER_REFUNDED
-            : InventoryMovementReason.ORDER_CANCELLED,
-          actorUserId: userId,
-          note: nextStatus === "REFUNDED"
-            ? "Inventory restored after order refund"
-            : "Inventory restored after order cancellation",
-        });
+        if (existingOrder.retailCheckoutKey && nextStatus === "CANCELLED") {
+          await restoreRetailInventoryTx(tx, { orderId: existingOrder.id, organizationId: existingOrder.organization.id,
+            reason: "CANCELLED", actorUserId: userId });
+        } else {
+          await this.restoreOrderInventory(tx, {
+            orderId: existingOrder.id,
+            items: existingOrder.items,
+            reason: nextStatus === "REFUNDED"
+              ? InventoryMovementReason.ORDER_REFUNDED
+              : InventoryMovementReason.ORDER_CANCELLED,
+            actorUserId: userId,
+            note: nextStatus === "REFUNDED"
+              ? "Inventory restored after order refund"
+              : "Inventory restored after order cancellation",
+          });
+        }
       }
 
       if (existingOrder.retailCheckoutKey && nextStatus === "CANCELLED") {

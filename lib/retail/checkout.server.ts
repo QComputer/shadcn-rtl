@@ -59,7 +59,7 @@ async function consumeCoupon(tx: Tx, input: {
       (current.expiresAt && current.expiresAt < now)) throw new ApiError(409, "Discount code is unavailable.");
   if (current.minOrderTotal && input.subtotal.lt(current.minOrderTotal)) throw new ApiError(409, "Order does not meet the discount minimum.");
   if (current.usageLimit !== null && current.usedCount >= current.usageLimit) throw new ApiError(409, "Discount usage limit reached.");
-  const usedByCustomer = await tx.couponRedemption.count({ where: { couponId: current.id, customerId: input.customerId } });
+  const usedByCustomer = await tx.couponRedemption.count({ where: { couponId: current.id, customerId: input.customerId, releasedAt: null } });
   if (current.perCustomerLimit !== null && usedByCustomer >= current.perCustomerLimit) throw new ApiError(409, "Customer discount limit reached.");
   const raw = current.discountType === "PERCENTAGE"
     ? input.subtotal.mul(current.discountValue).div(100) : current.discountValue;
@@ -78,7 +78,7 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
   await requireActiveOrganizationCapability({ organizationId: organization.id, capability: "SHOP" });
   const existing = await prisma.order.findFirst({
     where: { retailCheckoutKey: input.idempotencyKey, organizationSlug: organization.slug, customerId },
-    select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, paymentMethod: true, publicTrackingToken: true },
+    select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, paymentMethod: true, publicTrackingToken: true, retailPaymentDeadlineAt: true },
   });
   if (existing) return existing;
   const paymentPolicy = await requireEnabledRetailPaymentMethod(organization.slug, organization.id, input.paymentMethod);
@@ -134,18 +134,26 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
     if (input.paymentMethod === "INOTI_USSD" && (total.lte(0) || !total.isInteger())) {
       throw new ApiError(409, "USSD requires a positive whole-Toman order amount.");
     }
+    const createdAt = new Date();
+    const deadlineMinutes = input.paymentMethod === "BANK_TRANSFER"
+      ? activePolicy.data.paymentDeadlinesMinutes.bankTransfer
+      : input.paymentMethod === "CASH"
+        ? activePolicy.data.paymentDeadlinesMinutes.cash
+        : activePolicy.data.paymentDeadlinesMinutes.inotiUssd;
+    const retailPaymentDeadlineAt = new Date(createdAt.getTime() + deadlineMinutes * 60_000);
     const order = await tx.order.create({
       data: {
         orderNumber: `RET-${Date.now().toString(36).toUpperCase()}-${randomBytes(5).toString("hex").toUpperCase()}`,
         ...(input.paymentMethod === "INOTI_USSD" ? { publicTrackingToken: randomBytes(24).toString("base64url") } : {}),
         retailCheckoutKey: input.idempotencyKey,
+        retailPaymentDeadlineAt,
         type: input.type, status: "PENDING", subtotal, deliveryFee, tax: 0, discount, total,
         deliveryAddress: input.deliveryAddress ?? null, organizationSlug: organization.slug,
         customerId, paymentMethod: input.paymentMethod as PaymentMethod, paymentStatus: "PENDING",
         items: { create: items.map((item) => ({ productId: item.productId, variantId: item.variantId,
           quantity: item.quantity, price: item.price, discount: 0 })) },
       },
-      select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, paymentMethod: true, publicTrackingToken: true },
+      select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, paymentMethod: true, publicTrackingToken: true, retailPaymentDeadlineAt: true },
     });
     for (const item of items) {
       if (!item.trackInventory) continue;
@@ -168,6 +176,7 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
     } });
     await tx.payment.create({ data: { orderId: order.id, method: input.paymentMethod as PaymentMethod, amount: total, status: "PENDING",
       metadata: { retailR4: { cashMode: input.cashMode ?? null, cashBeforeConfirmation: activePolicy.data.cashBeforeConfirmation,
+        paymentDeadlineMinutes: deadlineMinutes, paymentDeadlineAt: retailPaymentDeadlineAt.toISOString(),
         ...(input.paymentMethod === "BANK_TRANSFER" ? { bankCardNumber: activePolicy.data.bankCardNumber,
           bankAccountOwner: activePolicy.data.bankAccountOwner } : {}) } } } });
     await tx.paymentEvent.create({ data: { orderId: order.id, previousStatus: null, newStatus: "PENDING",
@@ -184,7 +193,7 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
         const previous = await prisma.order.findFirst({ where: {
           retailCheckoutKey: input.idempotencyKey, organizationSlug: organization.slug, customerId,
-        }, select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, paymentMethod: true, publicTrackingToken: true } });
+        }, select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, paymentMethod: true, publicTrackingToken: true, retailPaymentDeadlineAt: true } });
         if (previous) return previous;
       }
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034" && attempt < 2) continue;

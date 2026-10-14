@@ -18,7 +18,7 @@ async function customerOrder(organizationSlug: string, orderNumber: string, cust
     where: { orderNumber, organizationSlug, customerId, retailCheckoutKey: { not: null },
       deletedAt: null, status: { notIn: ["CANCELLED", "REFUNDED"] } },
     select: { id: true, organization: { select: { id: true, slug: true } },
-      paymentMethod: true, paymentStatus: true, status: true },
+      paymentMethod: true, paymentStatus: true, status: true, retailPaymentDeadlineAt: true },
   });
   if (!order) throw new ApiError(404, "Order not found.");
   return order;
@@ -33,17 +33,25 @@ async function submitBankReport(input: {
   if (order.paymentMethod !== "BANK_TRANSFER" || order.paymentStatus !== "PENDING") {
     throw new ApiError(409, "This order is not awaiting a bank transfer report.");
   }
+  if (order.retailPaymentDeadlineAt && order.retailPaymentDeadlineAt <= new Date()) {
+    throw new ApiError(409, "The payment deadline for this order has passed.");
+  }
   const policy = await getRetailPaymentPolicy(order.organization.slug);
   if (!policy.bankTransferEnabled) throw new ApiError(409, "Bank transfer reporting is unavailable.");
-  const pending = await prisma.retailPaymentReport.findFirst({
-    where: { orderId: order.id, status: "PENDING_REVIEW" }, select: { id: true },
-  });
-  if (pending) throw new ApiError(409, "A payment report is already awaiting review.");
-  return prisma.retailPaymentReport.create({ data: {
-    organizationId: order.organization.id, orderId: order.id, submittedById: input.customerId,
-    kind: input.kind, receiptKey: input.receiptKey ?? null, reportedAt: input.reportedAt ?? null,
-    submittedContext: input.submittedContext ?? Prisma.JsonNull,
-  }, select: { id: true, kind: true, status: true, createdAt: true } });
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE`;
+    const current = await tx.order.findFirst({ where: { id: order.id, organization: { id: order.organization.id },
+      customerId: input.customerId, retailCheckoutKey: { not: null }, paymentMethod: "BANK_TRANSFER", paymentStatus: "PENDING",
+      status: { notIn: ["CANCELLED", "REFUNDED"] }, OR: [{ retailPaymentDeadlineAt: null }, { retailPaymentDeadlineAt: { gt: new Date() } }] }, select: { id: true } });
+    if (!current) throw new ApiError(409, "This order is no longer accepting a bank transfer report.");
+    const pending = await tx.retailPaymentReport.findFirst({ where: { orderId: order.id, status: "PENDING_REVIEW" }, select: { id: true } });
+    if (pending) throw new ApiError(409, "A payment report is already awaiting review.");
+    return tx.retailPaymentReport.create({ data: {
+      organizationId: order.organization.id, orderId: order.id, submittedById: input.customerId,
+      kind: input.kind, receiptKey: input.receiptKey ?? null, reportedAt: input.reportedAt ?? null,
+      submittedContext: input.submittedContext ?? Prisma.JsonNull,
+    }, select: { id: true, kind: true, status: true, createdAt: true } });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
 export async function submitBankTimeReport(input: {

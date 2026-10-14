@@ -145,5 +145,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: retail-h2-taxonomy-browser-evidence
-          path: artifacts/retail-h2-browser/
+          path: |
+            artifacts/retail-h2-browser/
+            artifacts/retail-r4-browser/
           if-no-files-found: warn

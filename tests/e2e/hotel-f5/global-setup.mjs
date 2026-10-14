@@ -1,5 +1,3 @@
-import { access } from "node:fs/promises";
-import { constants } from "node:fs";
 import { URL } from "node:url";
 
 const required = [
@@ -30,7 +28,7 @@ const required = [
   "HOTEL_F5_FOREIGN_MEDIA_IMAGE_ID",
   "HOTEL_F5_FOREIGN_MEDIA_ASSOCIATION_ID",
   "HOTEL_F5_FIXTURE_TAG",
-  "HOTEL_F5_VERCEL_STORAGE_STATE",
+  "HOTEL_F5_VERCEL_PROTECTION_BYPASS",
   "HOTEL_F5_WEBSITE_GATE_ENABLED_FOR_TEST",
   "HOTEL_F5_BOOKING_GATE_DISABLED_FOR_TEST",
   "HOTEL_F5_PAYMENT_GATE_DISABLED_FOR_TEST",
@@ -75,5 +73,7 @@ export default async function globalSetup() {
   if (!/^F5-SYNTHETIC-[A-Z0-9-]{4,40}$/.test(tag)) throw new Error("HOTEL_F5_FIXTURE_TAG must identify synthetic-only test content");
   if (process.env.HOTEL_F5_AUTHOR_USERNAME === process.env.HOTEL_F5_REVIEWER_USERNAME) throw new Error("Author and reviewer accounts must be distinct");
   if (process.env.HOTEL_F5_SYNTHETIC_MEDIA_ID === process.env.HOTEL_F5_FOREIGN_MEDIA_IMAGE_ID) throw new Error("The eligible and foreign-tenant media fixtures must be distinct");
-  await access(process.env.HOTEL_F5_VERCEL_STORAGE_STATE, constants.R_OK);
+  if (!/^[A-Za-z0-9]{32}$/.test(process.env.HOTEL_F5_VERCEL_PROTECTION_BYPASS)) {
+    throw new Error("HOTEL_F5_VERCEL_PROTECTION_BYPASS must be the project automation bypass configured for this isolated staging run");
+  }
 }

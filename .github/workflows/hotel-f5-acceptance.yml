@@ -217,13 +217,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - name: Materialize SSO state in runner temp storage
-        env:
-          HOTEL_F5_SSO_STATE_B64: ${{ secrets.HOTEL_F5_VERCEL_STORAGE_STATE_BASE64 }}
-        run: |
-          test -n "$HOTEL_F5_SSO_STATE_B64"
-          printf '%s' "$HOTEL_F5_SSO_STATE_B64" | base64 --decode > "$RUNNER_TEMP/hotel-f5-sso-state.json"
-          chmod 600 "$RUNNER_TEMP/hotel-f5-sso-state.json"
       - name: Run isolated CMS workflow E2E
         env:
           HOTEL_F5_E2E_ENABLED: "1"
@@ -253,7 +246,7 @@ jobs:
           HOTEL_F5_FOREIGN_MEDIA_IMAGE_ID: ${{ vars.HOTEL_F5_FOREIGN_MEDIA_IMAGE_ID }}
           HOTEL_F5_FOREIGN_MEDIA_ASSOCIATION_ID: ${{ vars.HOTEL_F5_FOREIGN_MEDIA_ASSOCIATION_ID }}
           HOTEL_F5_FIXTURE_TAG: ${{ vars.HOTEL_F5_FIXTURE_TAG }}
-          HOTEL_F5_VERCEL_STORAGE_STATE: ${{ runner.temp }}/hotel-f5-sso-state.json
+          HOTEL_F5_VERCEL_PROTECTION_BYPASS: ${{ secrets.HOTEL_F5_VERCEL_PROTECTION_BYPASS }}
           HOTEL_F5_WEBSITE_GATE_ENABLED_FOR_TEST: ${{ vars.HOTEL_F5_WEBSITE_GATE_ENABLED_FOR_TEST }}
           HOTEL_F5_BOOKING_GATE_DISABLED_FOR_TEST: ${{ vars.HOTEL_F5_BOOKING_GATE_DISABLED_FOR_TEST }}
           HOTEL_F5_PAYMENT_GATE_DISABLED_FOR_TEST: ${{ vars.HOTEL_F5_PAYMENT_GATE_DISABLED_FOR_TEST }}

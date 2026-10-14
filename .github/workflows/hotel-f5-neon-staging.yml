@@ -5,6 +5,12 @@ on:
     branches:
       - codex/hotel-damoon-f5-staging-20261013
   workflow_dispatch:
+    inputs:
+      provision_synthetic_fixtures:
+        description: Provision idempotent synthetic F5 CMS tenant/user/media fixtures after database identity and migration verification
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -23,6 +29,7 @@ jobs:
       HOTEL_F5_NEON_OWNER_URL: ${{ secrets.HOTEL_F5_NEON_OWNER_URL }}
       HOTEL_F5_NEON_EXPECTED_HOST: ${{ vars.HOTEL_F5_NEON_EXPECTED_HOST }}
       HOTEL_F5_APP_PASSWORD: ${{ secrets.HOTEL_F5_APP_PASSWORD }}
+      BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -140,3 +147,18 @@ jobs:
           runtime_identity="$(psql "$HOTEL_F5_RUNTIME_URL" -v ON_ERROR_STOP=1 -Atqc "SELECT current_database() || '|' || current_user")"
           test "$runtime_identity" = "hotel_f5_staging|hotel_f5_app"
           echo "Staging schema migration verified: ${count} successful source migrations; runtime connection uses the dedicated application role."
+      - name: Provision synthetic Hotel CMS users, tenant domains and media
+        if: inputs.provision_synthetic_fixtures
+        env:
+          HOTEL_F5_PUBLIC_HOST: ${{ vars.HOTEL_F5_PUBLIC_HOST }}
+          HOTEL_F5_FOREIGN_HOST: ${{ vars.HOTEL_F5_FOREIGN_HOST }}
+          HOTEL_F5_INACTIVE_HOST: ${{ vars.HOTEL_F5_INACTIVE_HOST }}
+          HOTEL_F5_CAP_DISABLED_HOST: ${{ vars.HOTEL_F5_CAP_DISABLED_HOST }}
+          HOTEL_F5_AUTHOR_PASSWORD: ${{ secrets.HOTEL_F5_AUTHOR_PASSWORD }}
+          HOTEL_F5_REVIEWER_PASSWORD: ${{ secrets.HOTEL_F5_REVIEWER_PASSWORD }}
+          HOTEL_F5_MANAGER_PASSWORD: ${{ secrets.HOTEL_F5_MANAGER_PASSWORD }}
+          HOTEL_F5_FOREIGN_PASSWORD: ${{ secrets.HOTEL_F5_FOREIGN_PASSWORD }}
+        run: |
+          export DATABASE_URL="$HOTEL_F5_MIGRATION_URL"
+          export DIRECT_URL="$HOTEL_F5_MIGRATION_URL"
+          node scripts/hotel/seed-f5-staging-fixtures.mjs

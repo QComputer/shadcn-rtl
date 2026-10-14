@@ -37,7 +37,9 @@ test("F5 synthetic author-to-publication workflow enforces RBAC, tenant and medi
   let revisionId;
 
   const newContext = async () => {
-    const context = await browser.newContext({ storageState: env.HOTEL_F5_VERCEL_STORAGE_STATE });
+    const context = await browser.newContext({
+      extraHTTPHeaders: { "x-vercel-protection-bypass": env.HOTEL_F5_VERCEL_PROTECTION_BYPASS },
+    });
     contexts.push(context);
     context.on("request", (request) => {
       if (/\/(availability|quotes?|holds|reservations|payments|checkout|inoti|sms|notifications)(\/|\?|$)/i.test(new URL(request.url()).pathname)) {

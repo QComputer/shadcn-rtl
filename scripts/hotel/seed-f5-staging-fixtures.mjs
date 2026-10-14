@@ -125,11 +125,23 @@ try {
     create: { id: foreignRevisionId, organizationId: foreign.organization.id, propertyId: foreign.property.id, pageId: foreign.page.id, revisionNumber: 1, status: "DRAFT", content: foreignContent, contentSha256: createHash("sha256").update(foreignCanonical).digest("hex"), createdByUserId: users.foreign.id },
     update: {},
   });
-  await prisma.hotelWebsiteMediaAssociation.upsert({
+  const foreignAssociation = await prisma.hotelWebsiteMediaAssociation.findUnique({
     where: { id: foreignAssociationId },
-    create: { id: foreignAssociationId, organizationId: foreign.organization.id, propertyId: foreign.property.id, pageId: foreign.page.id, revisionId: foreignRevisionId, imageId: imageIds.foreign, scope: "PROPERTY", roomTypeId: null, sortOrder: 0, slot: "GALLERY", altText: { fa: "رسانه مصنوعی مستأجر دیگر؛ تصویر واقعی هتل نیست" } },
-    update: { organizationId: foreign.organization.id, propertyId: foreign.property.id, pageId: foreign.page.id, revisionId: foreignRevisionId, imageId: imageIds.foreign, scope: "PROPERTY", roomTypeId: null, sortOrder: 0, slot: "GALLERY", altText: { fa: "رسانه مصنوعی مستأجر دیگر؛ تصویر واقعی هتل نیست" } },
+    select: { organizationId: true, propertyId: true, pageId: true, revisionId: true, imageId: true },
   });
+  if (foreignAssociation) {
+    if (foreignAssociation.organizationId !== foreign.organization.id
+      || foreignAssociation.propertyId !== foreign.property.id
+      || foreignAssociation.pageId !== foreign.page.id
+      || foreignAssociation.revisionId !== foreignRevisionId
+      || foreignAssociation.imageId !== imageIds.foreign) {
+      fail("reserved foreign media association is bound to unexpected immutable revision data");
+    }
+  } else {
+    await prisma.hotelWebsiteMediaAssociation.create({
+      data: { id: foreignAssociationId, organizationId: foreign.organization.id, propertyId: foreign.property.id, pageId: foreign.page.id, revisionId: foreignRevisionId, imageId: imageIds.foreign, scope: "PROPERTY", roomTypeId: null, sortOrder: 0, slot: "GALLERY", altText: { fa: "رسانه مصنوعی مستأجر دیگر؛ تصویر واقعی هتل نیست" } },
+    });
+  }
 
   const activePublications = await prisma.hotelWebsitePublication.count({ where: { organizationId: target.organization.id, revokedAt: null } });
   if (activePublications !== 0) fail("target must have no active publication before the acceptance run");

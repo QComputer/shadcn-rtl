@@ -95,6 +95,12 @@ async function seedFixtures() {
   const customer = await prisma.user.create({ data: { name: customerEmail, email: customerEmail, password, role: "CUSTOMER", isTeamMember: false, locale: "fa" } });
   await prisma.customerIdentity.create({ data: { organizationId: fashion.id, userId: customer.id, email: customerEmail, metadata: { syntheticFixture: "retail-r4" } } });
   await prisma.customerIdentity.create({ data: { organizationId: mobile.id, userId: customer.id, email: customerEmail, metadata: { syntheticFixture: "retail-r4" } } });
+  for (const email of [...managerEmails, customerEmail]) {
+    const user = await prisma.user.findUniqueOrThrow({ where: { email }, select: { password: true, isActive: true, deletedAt: true } });
+    if (!user.isActive || user.deletedAt || !user.password || !(await bcrypt.compare(testPassword, user.password))) {
+      throw new Error(`Synthetic browser login fixture failed credential verification for ${email}`);
+    }
+  }
   for (const organization of [fashion, mobile]) await prisma.paymentSettings.create({ data: { organizationSlug: organization.slug, settings: { retailR4: { bankTransferEnabled: true, cashEnabled: true, inotiUssdEnabled: false, bankCardNumber: "6037990000000000", bankAccountOwner: "Synthetic R4 Test", cashModes: organization.id === fashion.id ? ["COUNTER"] : ["COUNTER", "PICKUP", "COURIER"], cashBeforeConfirmation: organization.id === fashion.id } } } });
   for (const organization of [fashion, mobile]) await prisma.coupon.create({ data: { organizationId: organization.id, code: `R4SYN-${organization.slug.endsWith("fashion") ? "FASHION" : "MOBILE"}`, name: "[R4-SYNTHETIC] Test discount", discountType: "PERCENTAGE", discountValue: 10, minOrderTotal: 100000, maxDiscountAmount: 500000, usageLimit: 100, perCustomerLimit: 2, isActive: true } });
   const fashionCategory = await prisma.productCategory.create({ data: { name: "کتانی", slug: "sneakers", organizationId: fashion.id, organizationSlug: fashion.slug } });

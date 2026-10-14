@@ -36,7 +36,13 @@ async function login(browser, email, callback = "/fa/retail/retail-r4-synthetic-
   await page.locator("#username").fill(email);
   await page.locator("#password").fill(password);
   await page.locator('button[type="submit"]').click();
-  await page.waitForURL((url) => !url.pathname.endsWith("/login"), { timeout: 60000 });
+  try {
+    await page.waitForURL((url) => !url.pathname.endsWith("/login"), { timeout: 20000 });
+  } catch (error) {
+    await capture(page, `login-failure-${email.split("@")[0]}.png`);
+    console.error(JSON.stringify({ loginEmail: email, url: page.url(), title: await page.title(), bodyText: (await page.locator("body").innerText()).slice(0, 1200) }));
+    throw error;
+  }
   const sessionResponse = await context.request.get(`${baseUrl}/api/auth/session`);
   assert.equal(sessionResponse.status(), 200);
   assert.ok((await sessionResponse.json()).user?.id, `${email} must authenticate`);

@@ -9,8 +9,8 @@ const rial = (n: number) => new Intl.NumberFormat("fa-IR").format(n) + " توم�
 
 type LiveView = { identifier: string; name: string; description: string | null; theme: "FASHION" | "ELECTRONICS" | "GENERAL"; previewOnly: boolean; categories: Array<{ id: string; name: string; slug: string | null }>; products: PublicCatalogProduct[] };
 
-export default function RetailPreview({ store, productId, liveView }: { store?: Store; productId?: string; liveView?: LiveView }) {
-  if (liveView) return <RetailLiveCatalog view={liveView} productSlug={productId} />;
+export default function RetailPreview({ store, productId, liveView, storefrontPath, checkoutPath }: { store?: Store; productId?: string; liveView?: LiveView; storefrontPath?: string; checkoutPath?: string }) {
+  if (liveView) return <RetailLiveCatalog view={liveView} productSlug={productId} storefrontPath={storefrontPath} checkoutPath={checkoutPath} />;
   if (!store) return null;
   return <RetailPreviewFixture store={store} productId={productId} />;
 }

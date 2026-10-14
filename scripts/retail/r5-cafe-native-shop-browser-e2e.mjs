@@ -51,20 +51,17 @@ async function main() {
     const detail = detailEnvelope.data ?? detailEnvelope;
     const variant = detail.variants?.find((candidate) => candidate.orderable && candidate.id);
     assert.ok(variant, "Cafe Leo product must expose an available purchasable variant");
-    const cartResponse = await page.evaluate(async (variantId) => {
-      const response = await fetch("/api/retail/v1/cart", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ organization: "cafe-leo", variantId, quantity: 1 }),
-      });
-      return { status: response.status, body: await response.json().catch(() => ({})) };
-    }, variant.id);
-    assert.equal(cartResponse.status, 201, `authenticated customer can add Cafe Leo product to native Shop cart: ${JSON.stringify(cartResponse.body)}`);
-
-    // Exercise the existing Bazarbaaz Shop URL. Retail-configured shops render
-    // the shared R4 checkout engine here; restaurant checkouts stay on legacy flow.
-    await page.goto(`${baseUrl}/fa/cafe-leo/shop/checkout`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    const productLink = page.getByRole("link", { name: "[R5-SYNTHETIC] قهوه آزمایشی" }).first();
+    await productLink.click();
+    await page.getByRole("heading", { name: "[R5-SYNTHETIC] قهوه آزمایشی" }).waitFor();
+    assert.ok(await page.getByText(/۱۲۵٬۰۰۰/).count(), "native Shop product detail shows the persisted fixture price");
+    await capture(page, "cafe-native-product.png");
+    await page.getByRole("button", { name: "افزودن به سبد خرید" }).click();
+    await page.getByText("کالا به سبد خرید اضافه شد.", { exact: true }).waitFor();
+    await page.getByRole("link", { name: "سبد خرید" }).click();
+    await page.waitForURL((url) => url.pathname === "/fa/cafe-leo/shop/checkout", { timeout: 30000 });
+    // Retail-configured shops use the shared storefront/cart/checkout engine
+    // at native Shop paths; restaurant routes retain the legacy behavior.
     await page.getByRole("heading", { name: "تکمیل سفارش" }).waitFor({ timeout: 30000 });
     const method = page.locator("select").first();
     await method.waitFor();

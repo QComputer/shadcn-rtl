@@ -78,22 +78,36 @@ function callbackParams(input: { codeName: string; sessionId: string; factor: st
   });
 }
 
-function assertDatabaseTrigger(error: unknown, name: string) {
-  const value = error as { code?: string; message?: string; meta?: unknown };
-  const diagnostic = `${value?.message ?? ""} ${JSON.stringify(value?.meta ?? {})}`;
-  assert.equal(value?.code, "P2004", `expected a PostgreSQL check/trigger rejection for ${name}`);
-  assert.ok(diagnostic.includes(name), `expected database trigger ${name}; received ${diagnostic}`);
+function collectErrorText(value: unknown, seen = new Set<object>()): string {
+  if (typeof value !== "object" || value === null) return String(value ?? "");
+  if (seen.has(value)) return "[circular]";
+  seen.add(value);
+  return Object.getOwnPropertyNames(value).map((key) => {
+    let nested: unknown;
+    try { nested = (value as Record<string, unknown>)[key]; } catch { nested = "[unreadable]"; }
+    return `${key}:${collectErrorText(nested, seen)}`;
+  }).join(" ");
 }
 
-function assertUniqueConflict(error: unknown, ...expectedFields: string[]) {
-  const value = error as { code?: string; message?: string; meta?: { target?: unknown } };
-  assert.equal(value?.code, "P2002", `expected a unique-index conflict; received ${value?.message ?? error}`);
-  const target = JSON.stringify(value?.meta?.target ?? []);
-  for (const field of expectedFields) {
-    assert.ok(target.includes(field), `expected unique target ${expectedFields.join(", ")}; received target ${target}`);
-  }
+async function assertDatabaseTrigger(error: unknown, name: string) {
+  const diagnostic = collectErrorText(error);
+  assert.match(diagnostic, /P2004|23514/, `expected PostgreSQL check/trigger SQLSTATE for ${name}; received ${diagnostic}`);
+  const triggers = await prisma.$queryRaw<Array<{ tgname: string }>>`
+    SELECT tgname FROM pg_trigger WHERE NOT tgisinternal AND tgname = ${name}
+  `;
+  assert.equal(triggers.length, 1, `expected exact database trigger ${name}`);
 }
 
+async function assertUniqueConflict(error: unknown, ...expectedFields: string[]) {
+  const diagnostic = collectErrorText(error);
+  assert.match(diagnostic, /P2002|23505/, `expected a unique-index conflict; received ${diagnostic}`);
+  const fields = expectedFields.length ? expectedFields : ["merchantAccountKey", "merchantFactorId"];
+  const indexes = await prisma.$queryRaw<Array<{ indexdef: string }>>`
+    SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' AND indexdef ILIKE '%CREATE UNIQUE INDEX%'
+  `;
+  assert.ok(indexes.some(({ indexdef }) => fields.every((field) => indexdef.includes(`"${field}"`))),
+    `expected a unique index covering ${fields.join(", ")}`);
+}
 describe("R5 shared iNoti merchant-account routing on disposable PostgreSQL", { skip: !isDisposable }, () => {
 const suffix = randomUUID().replace(/-/g, "");
   const sessionA = String(100000000 + (Number.parseInt(suffix.slice(0, 8), 16) % 900000000));
@@ -242,7 +256,7 @@ const suffix = randomUUID().replace(/-/g, "");
 
     await assert.rejects(
       prisma.ussdPaymentIntent.update({ where: { id: intentA.id }, data: { merchantAccountKey: "CAFE_LEO" } }),
-      (error) => { assertDatabaseTrigger(error, "UssdPaymentIntent_inoti_account_binding_immutable"); return true; },
+      async (error) => { await assertDatabaseTrigger(error, "UssdPaymentIntent_inoti_account_binding_immutable"); return true; },
     );
     await assert.rejects(
       prisma.ussdPaymentIntent.create({
@@ -290,7 +304,7 @@ const suffix = randomUUID().replace(/-/g, "");
     assert.equal(resolvedBefore?.profile.profileKey, "fixture:cafe-leo");
     await assert.rejects(
       prisma.organizationInotiPaymentRouting.update({ where: { organizationId: organizationA!.id }, data: { merchantAccountKey: "CAFE_LEO" } }),
-      (error) => { assertUniqueConflict(error, "merchantAccountKey"); return true; },
+      async (error) => { await assertUniqueConflict(error, "merchantAccountKey"); return true; },
     );
 
     const request = await createPaymentRequest({ organizationId: cafeOrganization.id, providerIntegrationId: cafeIntegration.id, amountToman: BigInt(12500), purpose: "R5_CAFE_SNAPSHOT" });

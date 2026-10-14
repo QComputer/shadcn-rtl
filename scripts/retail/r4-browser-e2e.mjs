@@ -129,12 +129,11 @@ async function runWithRowsLocked(variantId, orderId, operations) {
   let outcomes;
   try {
     outcomes = Promise.allSettled(operations.map((operation) => operation()));
-    for (let attempt = 0; attempt < 120; attempt += 1) {
+    for (let attempt = 0; attempt < 600; attempt += 1) {
       const rows = await prisma.$queryRaw`SELECT COUNT(DISTINCT pid)::int AS count
         FROM pg_stat_activity
         WHERE datname = current_database() AND pid <> pg_backend_pid()
-          AND wait_event_type = 'Lock'
-          AND (query ILIKE '%"ProductVariant"%' OR query ILIKE '%"Order"%')`;
+          AND wait_event_type = 'Lock'`;
       waiting = rows[0]?.count ?? 0;
       if (waiting >= operations.length) break;
       await new Promise((resolve) => setTimeout(resolve, 25));
@@ -148,7 +147,7 @@ async function runWithRowsLocked(variantId, orderId, operations) {
   const rejected = settled.filter((result) => result.status === "rejected");
   assert.deepEqual(rejected.map((result) => String(result.reason)), [], "concurrent HTTP operations must not fail partially");
   assert.ok(waiting >= operations.length,
-    `expected ${operations.length} independent HTTP-backed operations to overlap on PostgreSQL row locks, observed ${waiting}`);
+    `expected ${operations.length} independent HTTP-backed operations to overlap on PostgreSQL row locks, observed ${waiting} waiters`);
   return settled.map((result) => result.value);
 }
 

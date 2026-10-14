@@ -89,6 +89,13 @@ function collectErrorText(value: unknown, seen = new Set<object>()): string {
   }).join(" ");
 }
 
+async function assertRejected(operation: () => Promise<unknown>, validate: (error: unknown) => void | Promise<void>) {
+  let rejected = false;
+  let caught: unknown;
+  try { await operation(); } catch (error) { rejected = true; caught = error; }
+  assert.equal(rejected, true, "expected database operation to reject");
+  await validate(caught);
+}
 async function assertDatabaseTrigger(error: unknown, name: string) {
   const diagnostic = collectErrorText(error);
   assert.match(diagnostic, /P2004|23514/, `expected PostgreSQL check/trigger SQLSTATE for ${name}; received ${diagnostic}`);
@@ -254,12 +261,12 @@ const suffix = randomUUID().replace(/-/g, "");
     assert.deepEqual(provider.calls.map((call) => call.profileKey), ["fixture:platform-owner", "fixture:platform-owner"]);
     assert.deepEqual(provider.calls.map((call) => call.query.merchantFactorId), [initiatedA.merchantFactorId, initiatedB.merchantFactorId]);
 
-    await assert.rejects(
-      prisma.ussdPaymentIntent.update({ where: { id: intentA.id }, data: { merchantAccountKey: "CAFE_LEO" } }),
-      async (error) => { await assertDatabaseTrigger(error, "UssdPaymentIntent_inoti_account_binding_immutable"); return true; },
+    await assertRejected(
+      () => prisma.ussdPaymentIntent.update({ where: { id: intentA.id }, data: { merchantAccountKey: "CAFE_LEO" } }),
+      (error) => assertDatabaseTrigger(error, "UssdPaymentIntent_inoti_account_binding_immutable"),
     );
-    await assert.rejects(
-      prisma.ussdPaymentIntent.create({
+    await assertRejected(
+      () => prisma.ussdPaymentIntent.create({
         data: {
           organizationId: organizationB.id,
           integrationId: integrationB.id,
@@ -275,8 +282,8 @@ const suffix = randomUUID().replace(/-/g, "");
       }),
       assertUniqueConflict,
     );
-    await assert.rejects(
-      prisma.paymentProviderAttempt.create({
+    await assertRejected(
+      () => prisma.paymentProviderAttempt.create({
         data: {
           organizationId: organizationB.id,
           paymentRequestId: requestB.id,
@@ -302,9 +309,9 @@ const suffix = randomUUID().replace(/-/g, "");
     const resolvedBefore = await resolveInotiPaymentAccount(cafeOrganization.id, credentialProvider);
     assert.equal(resolvedBefore?.merchantAccountKey, "CAFE_LEO");
     assert.equal(resolvedBefore?.profile.profileKey, "fixture:cafe-leo");
-    await assert.rejects(
-      prisma.organizationInotiPaymentRouting.update({ where: { organizationId: organizationA!.id }, data: { merchantAccountKey: "CAFE_LEO" } }),
-      async (error) => { await assertUniqueConflict(error, "merchantAccountKey"); return true; },
+    await assertRejected(
+      () => prisma.organizationInotiPaymentRouting.update({ where: { organizationId: organizationA!.id }, data: { merchantAccountKey: "CAFE_LEO" } }),
+      (error) => assertUniqueConflict(error, "merchantAccountKey"),
     );
 
     const request = await createPaymentRequest({ organizationId: cafeOrganization.id, providerIntegrationId: cafeIntegration.id, amountToman: BigInt(12500), purpose: "R5_CAFE_SNAPSHOT" });

@@ -50,8 +50,8 @@ try {
   const tenant = async (slug, name, host, websiteActive, domainActive) => {
     let organization = await prisma.organization.upsert({
       where: { slug },
-      create: { slug, name, type: "SHOP", vertical: "HOTEL", isActive: true },
-      update: { name, type: "SHOP", vertical: "HOTEL", isActive: true, deletedAt: null },
+      create: { slug, name, type: "SHOP", vertical: "HOTEL", isActive: true, capabilitiesInitializedAt: new Date() },
+      update: { name, type: "SHOP", vertical: "HOTEL", isActive: true, deletedAt: null, capabilitiesInitializedAt: new Date() },
     });
     const property = await prisma.hotelProperty.upsert({
       where: { organizationId_slug: { organizationId: organization.id, slug } },

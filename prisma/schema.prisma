@@ -161,6 +161,11 @@ enum IntegrationProvider {
   OTHER
 }
 
+enum InotiPaymentMerchantAccountKey {
+  PLATFORM_OWNER
+  CAFE_LEO
+}
+
 enum IntegrationType {
   IMENU
   ICV
@@ -390,6 +395,19 @@ enum PaymentMethod {
   INOTI_USSD
 }
 
+enum RetailPaymentReportKind {
+  BANK_RECEIPT
+  BANK_TIME
+  CASH_COLLECTION
+}
+
+enum RetailPaymentReportStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  CORRECTION_REQUESTED
+}
+
 enum InventoryMovementReason {
   INITIAL_STOCK
   MANUAL_ADJUSTMENT
@@ -413,6 +431,18 @@ enum AuditAction {
 enum ImageAccess {
   PUBLIC
   PRIVATE
+}
+
+enum RetailAttributeScope {
+  PRODUCT
+  VARIANT_OPTION
+}
+
+enum RetailAttributeValueType {
+  TEXT
+  NUMBER
+  BOOLEAN
+  ENUM
 }
 
 enum CustomerClubMembershipStatus {
@@ -1128,6 +1158,7 @@ model Organization {
   claimRequests                OrganizationClaimRequest[]
   capabilities                 OrganizationCapability[]
   integrations                 OrganizationIntegration[]
+  inotiPaymentRouting          OrganizationInotiPaymentRouting?
   businessEvents               BusinessEvent[]
   customerIdentities           CustomerIdentity[]
   customerInteractions         CustomerInteraction[]
@@ -1158,6 +1189,7 @@ model Organization {
   ussdPaymentIntents           UssdPaymentIntent[]
   ussdCallbackEvents           UssdCallbackEvent[]
   paymentRequests              PaymentRequest[]
+    retailPaymentReports         RetailPaymentReport[]
   paymentProviderAttempts      PaymentProviderAttempt[]
   paymentVerificationJobs      UssdPaymentVerificationJob[]
   ownedCollaborations          OrganizationCollaboration[]   @relation("CollaborationOwner")
@@ -1167,7 +1199,9 @@ model Organization {
   serviceCategories            ServiceCategory[]
   services                     Service[]
   productCategories            ProductCategory[]
+  productTags                  ProductTag[]
   products                     Product[]
+  retailAttributeDefinitions   RetailAttributeDefinition[]
   carts                        ShopCart[]
   orders                       Order[]
   followers                    Follow[]
@@ -1232,6 +1266,8 @@ model OrganizationBranding {
   logoUrl                   String?
   faviconUrl                String?
   appleTouchIconUrl         String?
+  retailPresentationTheme  String?                   // FASHION, ELECTRONICS, GENERAL; presentation only
+  retailPreviewOnly        Boolean                   @default(false)
   pwaIcon192Url             String?
   pwaIcon512Url             String?
   pwaMaskable192Url         String?
@@ -1445,6 +1481,21 @@ model OrganizationIntegration {
   @@index([type, status])
   @@index([provider, status])
   @@index([organizationId, status])
+}
+
+/// Trusted platform-managed USSD settlement routing. A missing row means the
+/// platform owner's shared merchant account. Tenant managers cannot edit this.
+model OrganizationInotiPaymentRouting {
+  organizationId     String                         @id
+  merchantAccountKey InotiPaymentMerchantAccountKey
+  updatedByUserId    String?
+  createdAt          DateTime                       @default(now())
+  updatedAt          DateTime                       @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  updatedBy    User?        @relation("InotiPaymentRoutingUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([merchantAccountKey])
 }
 
 model OrganizationIntegrationCapability {
@@ -1901,6 +1952,7 @@ model User {
   aiMediaUsageQuotes            AiMediaUsageQuote[]           @relation("AiMediaQuoteRequestedBy")
   aiMediaSpendHolds             AiMediaSpendHold[]            @relation("AiMediaSpendHoldRequestedBy")
   ussdSessions                  UssdSession[]                 @relation("UssdSessionCustomer")
+  updatedInotiPaymentRoutings   OrganizationInotiPaymentRouting[] @relation("InotiPaymentRoutingUpdatedBy")
   customerIdentities            CustomerIdentity[]            @relation("CustomerIdentityUser")
 
   denies                          Deny[]
@@ -2180,6 +2232,7 @@ model ProductCategory {
 
   organization Organization @relation(fields: [organizationId, organizationSlug], references: [id, slug])
   products     Product[]
+  categoryAssignments ProductCategoryAssignment[] @relation("AssignedCategoryProducts")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -2188,6 +2241,7 @@ model ProductCategory {
   @@index([organizationId])
   @@index([organizationSlug])
   @@index([organizationId, slug])
+  @@unique([id, organizationId])
   @@index([deletedAt])
 }
 
@@ -2251,6 +2305,9 @@ model Product {
   category            ProductCategory  @relation(fields: [categoryId], references: [id])
   aiPrimaryMediaAsset AiMediaAsset?    @relation("ProductAiPrimaryMediaAsset", fields: [aiPrimaryMediaAssetId], references: [id], onDelete: SetNull)
   variants            ProductVariant[]
+  attributeValues     ProductAttributeValue[]
+  categoryAssignments ProductCategoryAssignment[] @relation("ProductCategories")
+  tagAssignments      ProductTagAssignment[] @relation("ProductTags")
   orderItems          OrderItem[]
 
   createdAt DateTime  @default(now())
@@ -2258,6 +2315,7 @@ model Product {
   deletedAt DateTime?
 
   @@index([organizationId])
+  @@unique([id, organizationId])
   @@index([organizationSlug])
   @@index([organizationId, slug])
   @@index([organizationSlug, slug])
@@ -2266,6 +2324,50 @@ model Product {
   @@index([isActive])
   @@index([deletedAt])
   @@index([sku])
+}
+
+model ProductCategoryAssignment {
+  productId      String
+  categoryId     String
+  organizationId String
+  createdAt      DateTime @default(now())
+
+  product  Product         @relation("ProductCategories", fields: [productId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  category ProductCategory @relation("AssignedCategoryProducts", fields: [categoryId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+  @@index([organizationId, categoryId])
+  @@index([categoryId])
+}
+
+model ProductTag {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  normalizedName String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignments  ProductTagAssignment[]
+
+  @@unique([organizationId, normalizedName])
+  @@unique([id, organizationId])
+  @@index([organizationId])
+}
+
+model ProductTagAssignment {
+  productId      String
+  tagId          String
+  organizationId String
+  createdAt      DateTime @default(now())
+
+  product Product    @relation("ProductTags", fields: [productId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  tag     ProductTag @relation(fields: [tagId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@id([productId, tagId])
+  @@index([organizationId, tagId])
+  @@index([tagId])
 }
 
 model ProductVariant {
@@ -2286,6 +2388,7 @@ model ProductVariant {
   cartItems          ShopCartItem[]
   orderItems         OrderItem[]
   inventoryMovements InventoryMovement[]
+  optionValues       ProductVariantAttributeValue[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -2293,6 +2396,66 @@ model ProductVariant {
 
   @@index([productId])
   @@index([deletedAt])
+}
+
+// Tenant-configured retail attributes. PRODUCT definitions describe/filter the
+// product; VARIANT_OPTION definitions are assigned only to explicitly created
+// purchasable variants. No option combination generation is implied.
+model RetailAttributeDefinition {
+  id                String                    @id @default(cuid())
+  organizationId    String
+  key               String
+  label             String
+  localizedLabels   Json                      @default("{}")
+  scope             RetailAttributeScope
+  valueType         RetailAttributeValueType
+  displayUnit       String?
+  localizedUnits    Json                      @default("{}")
+  allowedValues     Json?
+  isFilterable      Boolean                   @default(false)
+  sortOrder         Int                       @default(0)
+  isActive          Boolean                   @default(true)
+  organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  productValues     ProductAttributeValue[]
+  variantValues     ProductVariantAttributeValue[]
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  @@unique([organizationId, key])
+  @@unique([id, organizationId])
+  @@index([organizationId, scope, isActive, sortOrder])
+}
+
+model ProductAttributeValue {
+  id             String                   @id @default(cuid())
+  productId      String
+  definitionId   String
+  valueText      String?
+  valueNumber    Decimal?                  @db.Decimal(18, 4)
+  valueBoolean   Boolean?
+  product        Product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  definition     RetailAttributeDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, definitionId])
+  @@index([definitionId, valueText])
+  @@index([definitionId, valueNumber])
+  @@index([definitionId, valueBoolean])
+}
+
+model ProductVariantAttributeValue {
+  id             String                   @id @default(cuid())
+  variantId      String
+  definitionId   String
+  valueText      String?
+  valueNumber    Decimal?                  @db.Decimal(18, 4)
+  valueBoolean   Boolean?
+  variant        ProductVariant           @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  definition     RetailAttributeDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
+
+  @@unique([variantId, definitionId])
+  @@index([definitionId, valueText])
+  @@index([definitionId, valueNumber])
+  @@index([definitionId, valueBoolean])
 }
 
 model ShopCart {
@@ -2367,6 +2530,9 @@ model GuestCustomer {
 model Order {
   id          String      @id @default(cuid())
   orderNumber String      @unique
+  retailCheckoutKey String? @unique
+  retailPaymentDeadlineAt DateTime?
+  retailPaymentExpiredAt DateTime?
   type        OrderType
   status      OrderStatus @default(PENDING)
 
@@ -2418,6 +2584,7 @@ model Order {
   paymentEvents      PaymentEvent[]
   ussdPaymentIntents UssdPaymentIntent[]
   paymentRequests    PaymentRequest[]
+  retailPaymentReports RetailPaymentReport[]
   statusHistory      OrderStatusHistory[]
   readyTimeHistory   OrderReadyTimeHistory[]
   inventoryMovements InventoryMovement[]
@@ -2443,6 +2610,7 @@ model Order {
   orderMessages OrderMessage[]
 
   @@index([organizationSlug])
+  @@index([retailCheckoutKey, retailPaymentDeadlineAt, paymentStatus, status])
   @@index([customerId])
   @@index([driverId])
   @@index([preparationProgressId])
@@ -2527,6 +2695,7 @@ model InventoryMovement {
   reason         InventoryMovementReason
   note           String?
   createdById    String?
+  retailReleaseKey String? @unique
 
   variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
   order   Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
@@ -2559,6 +2728,32 @@ model Payment {
   @@index([transactionId])
 }
 
+// Reports are claims or collection records until an authorized operator confirms
+// them. The financial truth remains Order.paymentStatus and Payment.status.
+model RetailPaymentReport {
+  id               String                    @id @default(cuid())
+  organizationId   String
+  orderId          String
+  submittedById    String
+  kind             RetailPaymentReportKind
+  status           RetailPaymentReportStatus @default(PENDING_REVIEW)
+  receiptKey       String?
+  reportedAt       DateTime?
+  submittedContext Json?
+  cashMode         String?
+  collectorId      String?
+  reviewedById     String?
+  reviewedAt       DateTime?
+  reviewReason     String?
+  createdAt        DateTime                  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, orderId, createdAt])
+  @@index([organizationId, status, createdAt])
+}
+
 model PaymentEvent {
   id             String         @id @default(cuid())
   orderId        String
@@ -2589,6 +2784,10 @@ model PaymentRequest {
   appointmentId         String?
   guestCustomerId       String?
   providerIntegrationId String?
+  merchantAccountKey    String?
+  credentialProfileKeySnapshot String?
+  merchantCodeName      String?
+  accountBoundAt        DateTime?
   amountToman           BigInt
   currency              String               @default("TOMAN")
   purpose               String
@@ -2625,6 +2824,9 @@ model PaymentProviderAttempt {
   organizationId        String
   paymentRequestId      String
   providerIntegrationId String?
+  merchantAccountKey    String?
+  credentialProfileKeySnapshot String?
+  merchantCodeName      String?
   provider              IntegrationProvider
   status                PaymentProviderAttemptStatus @default(CREATED)
   amountToman           BigInt
@@ -2651,6 +2853,7 @@ model PaymentProviderAttempt {
   @@unique([id, organizationId])
   @@unique([organizationId, idempotencyKey])
   @@unique([providerIntegrationId, merchantFactorId])
+  @@unique([merchantAccountKey, merchantFactorId])
   @@unique([providerIntegrationId, providerFactorId])
   @@unique([providerIntegrationId, rrn])
   @@index([organizationId, status, createdAt])
@@ -2697,7 +2900,10 @@ model UssdPaymentIntent {
   orderId              String?
   paymentRequestId     String?
   providerAttemptId    String?                 @unique
-  merchantFactorId     String                  @unique
+  merchantAccountKey   String
+  credentialProfileKeySnapshot String?
+  merchantCodeName     String
+  merchantFactorId     String
   amountRial           BigInt
   sessionIdHash        String
   mobileHash           String
@@ -2720,6 +2926,7 @@ model UssdPaymentIntent {
   callbackEvents UssdCallbackEvent[]
   verificationJob UssdPaymentVerificationJob?
 
+  @@unique([merchantAccountKey, merchantFactorId])
   @@unique([integrationId, orderId, sessionIdHash])
   @@unique([id, integrationId, organizationId])
   @@unique([providerAttemptId, organizationId])
@@ -4258,6 +4465,7 @@ model CouponRedemption {
   pointsSpent    Int      @default(0)
   metadata       Json?
   redeemedAt     DateTime @default(now())
+  releasedAt     DateTime?
 
   coupon       Coupon       @relation(fields: [couponId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -4268,6 +4476,7 @@ model CouponRedemption {
   @@index([organizationId, customerId, redeemedAt])
   @@index([couponId, redeemedAt])
   @@index([orderId])
+  @@index([organizationId, customerId, couponId, releasedAt])
 }
 
 model PushSubscription {

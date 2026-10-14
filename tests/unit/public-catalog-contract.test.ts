@@ -33,7 +33,7 @@ describe("Public Catalog API v1 contract", () => {
     assert.equal(product.slug, "mutable-presentation-slug");
     assert.deepEqual(product.price, { amount: 198000, currency: "TOMAN" });
     assert.deepEqual(product.listPrice, { amount: 220000, currency: "TOMAN" });
-    assert.deepEqual(product.media, { card: productInput.image, detail: productInput.image, alt: productInput.name });
+    assert.deepEqual(product.media, { card: productInput.image, detail: productInput.image, alt: productInput.name, gallery: [] });
     assert.equal(product.orderable, true);
     assert.equal(product.variants[1].orderable, false);
     const serialized = JSON.stringify(product);
@@ -48,17 +48,52 @@ describe("Public Catalog API v1 contract", () => {
 
   it("keeps the media boundary compatible with legacy images", () => {
     const product = serializePublicCatalogProduct({ ...productInput, image: null });
-    assert.deepEqual(product.media, { card: null, detail: null, alt: productInput.name });
+    assert.deepEqual(product.media, { card: null, detail: null, alt: productInput.name, gallery: [] });
     assert.equal("storageKey" in product.media, false);
     assert.equal("provider" in product.media, false);
   });
 
+  it("serializes typed product attributes and explicit variant options with reserved stock excluded", () => {
+    const product = serializePublicCatalogProduct({
+      ...productInput,
+      attributes: [
+        { key: "material", label: "جنس", valueType: "ENUM", valueText: "leather", displayUnit: null, filterable: true },
+        { key: "imei", label: "شناسه دستگاه", valueType: "TEXT", valueText: "test-only-identifier", displayUnit: null, filterable: false },
+      ],
+      variants: [{ id: "v1", sku: "SHOE-42-BK", name: "۴۲ / مشکی", price: 250000, inventory: 3, reservedQuantity: 2, allowBackOrder: false,
+        options: [{ key: "size", label: "سایز", valueType: "NUMBER", valueNumber: 42, displayUnit: "EU", filterable: true }] }],
+    });
+    assert.deepEqual(product.attributes[0], { key: "material", label: "جنس", valueType: "ENUM", value: "leather", displayUnit: null, filterable: true });
+    assert.equal(JSON.stringify(product).includes("test-only-identifier"), false);
+    assert.equal(product.variants[0].sku, "SHOE-42-BK");
+    assert.equal(product.variants[0].options[0].value, 42);
+    assert.equal(product.variants[0].orderable, true);
+    assert.deepEqual(product.price, { amount: 225000, currency: "TOMAN" });
+    assert.deepEqual(product.variants[0].listPrice, { amount: 250000, currency: "TOMAN" });
+  });
+
+  it("uses an orderable variant price for the catalog card when a cheaper option is unavailable", () => {
+    const product = serializePublicCatalogProduct({ ...productInput, discountType: "none", discountValue: 0, variants: [
+      { id: "sold-out", price: 100000, inventory: 0, allowBackOrder: false },
+      { id: "available", price: 150000, inventory: 1, allowBackOrder: false },
+    ] });
+    assert.deepEqual(product.price, { amount: 150000, currency: "TOMAN" });
+  });
+
   it("enforces bounded explicit pagination and query limits", () => {
-    assert.deepEqual(publicCatalogListQuerySchema.parse({}), { page: 1, limit: 20 });
+    assert.deepEqual(publicCatalogListQuerySchema.parse({}), { page: 1, limit: 20, sort: "featured" });
     assert.equal(publicCatalogListQuerySchema.parse({ limit: String(PUBLIC_CATALOG_MAX_PAGE_SIZE) }).limit, 50);
+    const attributeFilters = publicCatalogListQuerySchema.parse({ filter: ["ram:12", "storage:256"] });
+    assert.deepEqual("filter" in attributeFilters ? attributeFilters.filter : [], ["ram:12", "storage:256"]);
+    assert.equal(publicCatalogListQuerySchema.parse({ tag: "کفش روزمره" }).tag, "کفش روزمره");
+    assert.throws(() => publicCatalogListQuerySchema.parse({ tag: "x".repeat(65) }));
+    assert.throws(() => publicCatalogListQuerySchema.parse({ filter: ["ram:12", ...Array.from({ length: 12 }, (_, index) => `key${index}:value`)] }));
     assert.throws(() => publicCatalogListQuerySchema.parse({ page: "0" }));
     assert.throws(() => publicCatalogListQuerySchema.parse({ limit: "51" }));
     assert.throws(() => publicCatalogListQuerySchema.parse({ q: "x".repeat(101) }));
+    assert.deepEqual(publicCatalogListQuerySchema.parse({ minPrice: "100", maxPrice: "200", sort: "price-desc" }), { page: 1, limit: 20, minPrice: 100, maxPrice: 200, sort: "price-desc" });
+    assert.throws(() => publicCatalogListQuerySchema.parse({ minPrice: "201", maxPrice: "200" }));
+    assert.throws(() => publicCatalogListQuerySchema.parse({ sort: "unknown" }));
   });
 
   it("emits public non-credentialed CORS, cache headers, ETag, HEAD, and 304", async () => {
@@ -66,7 +101,7 @@ describe("Public Catalog API v1 contract", () => {
     const first = publicCatalogResponse(request, { ok: true });
     assert.equal(first.headers.get("access-control-allow-origin"), "*");
     assert.equal(first.headers.get("access-control-allow-credentials"), null);
-    assert.match(first.headers.get("cache-control") ?? "", /s-maxage=300/);
+    assert.match(first.headers.get("cache-control") ?? "", /s-maxage=15/);
     const etag = first.headers.get("etag");
     assert.ok(etag);
 

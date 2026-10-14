@@ -415,6 +415,7 @@ export class LoyaltyCouponsService {
       where: {
         couponId: coupon.id,
         customerId: input.customerId,
+        releasedAt: null,
       },
     })
     if (coupon.perCustomerLimit !== null && customerRedemptionCount >= coupon.perCustomerLimit) {

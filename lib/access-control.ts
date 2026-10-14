@@ -46,6 +46,7 @@ const ALL_AUTHENTICATED_ROLES: UserRole[] = [
 
 const ORG_MANAGEMENT_ROLES: UserRole[] = ["ADMIN", "MANAGER"]
 const APPOINTMENT_WORKFLOW_ROLES: UserRole[] = ["ADMIN", "MANAGER", "STAFF"]
+const RETAIL_CATALOG_MANAGEMENT_ROLES: UserRole[] = ["ADMIN", "MANAGER"]
 
 /**
  * Keep this registry aligned with localized dashboard page files.
@@ -70,6 +71,42 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
   "/dashboard/settings/organization": {
     allowedRoles: ORG_MANAGEMENT_ROLES,
     requiresOrgMembership: true,
+  },
+
+  "/dashboard/retail-catalog": {
+    allowedRoles: RETAIL_CATALOG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+    requiredCapability: "SHOP",
+  },
+
+  "/dashboard/retail-catalog/new": {
+    allowedRoles: RETAIL_CATALOG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+    requiredCapability: "SHOP",
+  },
+
+  "/dashboard/retail-catalog/[productId]": {
+    allowedRoles: RETAIL_CATALOG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+    requiredCapability: "SHOP",
+  },
+
+  "/dashboard/retail-discounts": {
+    allowedRoles: RETAIL_CATALOG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+    requiredCapability: "SHOP",
+  },
+
+  "/dashboard/retail-payment-settings": {
+    allowedRoles: RETAIL_CATALOG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+    requiredCapability: "SHOP",
+  },
+
+  "/dashboard/retail-payment-reports": {
+    allowedRoles: RETAIL_CATALOG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+    requiredCapability: "SHOP",
   },
 
   "/dashboard/business-activation": {

@@ -5,7 +5,7 @@ import type {
   IntegrationProvider,
   OrganizationCapabilityKey,
 } from "@prisma/client";
-import { randomUUID } from "node:crypto";
+import { randomInt } from "node:crypto";
 import { sanitizeIntegrationConfig, type IntegrationConfig } from "@/lib/integrations/organization-integrations";
 import { environmentInotiCredentialProvider } from "@/lib/integrations/inoti-ussd/credentials";
 import { inotiUssdProvider } from "@/lib/integrations/inoti-ussd/inoti-provider";
@@ -137,7 +137,7 @@ export class InotiUssdAdapter extends DryRunIntegrationAdapter {
     const result = await inotiUssdProvider.probeReadOnlyPayments({
       credentialProfile,
       codeName: credentialProfile?.ussdCodeName || context.codeName,
-      merchantFactorId: `BZ${randomUUID().replace(/-/g, "")}`,
+      merchantFactorId: randomInt(100_000_000, 1_000_000_000).toString(),
     });
     return {
       status: result.ok ? "CONNECTED" : "DEGRADED",

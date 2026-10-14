@@ -290,6 +290,8 @@ describe("iNoti USSD integration on disposable local PostgreSQL", () => {
             organizationId: organizationA.id,
             integrationId: integration.id,
             orderId: orderB.id,
+            merchantAccountKey: "LEGACY_INTEGRATION:test",
+            merchantCodeName: integration.codeName,
             merchantFactorId: `BZ${suffix.slice(0, 32)}`,
             amountRial: BigInt(25000),
             sessionIdHash: "x".repeat(64),
@@ -307,6 +309,9 @@ describe("iNoti USSD integration on disposable local PostgreSQL", () => {
         mobileHash: "m".repeat(64),
         mobileMasked: "0912***6789",
         amountToman: BigInt(1250),
+        merchantAccountKey: `LEGACY_INTEGRATION:${integration.id}`,
+        credentialProfileKeySnapshot: integration.credentialProfileKey ?? "fixture",
+        merchantCodeName: integration.codeName,
       });
       const sameIntent = await repository.createOrGetPaymentIntent({
         integration,
@@ -315,8 +320,22 @@ describe("iNoti USSD integration on disposable local PostgreSQL", () => {
         mobileHash: "m".repeat(64),
         mobileMasked: "0912***6789",
         amountToman: BigInt(1250),
+        merchantAccountKey: `LEGACY_INTEGRATION:${integration.id}`,
+        credentialProfileKeySnapshot: integration.credentialProfileKey ?? "fixture",
+        merchantCodeName: integration.codeName,
       });
       assert.equal(sameIntent.id, intent.id);
+      await assert.rejects(repository.createOrGetPaymentIntent({
+        integration,
+        order: scopedOrder,
+        sessionIdHash: "s".repeat(64),
+        mobileHash: "different-mobile-hash".padEnd(64, "x"),
+        mobileMasked: "0912***0000",
+        amountToman: BigInt(1250),
+        merchantAccountKey: `LEGACY_INTEGRATION:${integration.id}`,
+        credentialProfileKeySnapshot: integration.credentialProfileKey ?? "fixture",
+        merchantCodeName: integration.codeName,
+      }), /USSD_PAYMENT_INTENT_IDEMPOTENCY_CONFLICT/);
 
       await assert.rejects(
         prisma.ussdCallbackEvent.create({

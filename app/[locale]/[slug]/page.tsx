@@ -13,9 +13,9 @@ import { buildPublicMetadata } from "@/lib/seo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import ShopPage from "./shop/page";
-import ShopLayout from "./shop/layout";
+import { ShopLayoutContent } from "./shop/shop-layout-content";
 import AppointmentServicesPage from "./appointment/services/page";
-import AppointmentLayout from "./appointment/layout";
+import { AppointmentLayoutContent } from "./appointment/appointment-layout-content";
 import { OrganizationBrandHome } from "@/components/public/organization-brand-home";
 import { OrganizationVisitorChoice } from "@/components/public/organization-visitor-choice";
 import { appResourceUrl } from "@/lib/app-base-path";
@@ -152,17 +152,17 @@ export default async function OrganizationHomePage({ params }: Props) {
 
   if (publicHome.kind === "capability" && publicHome.capability === "SHOP") {
     return (
-      <ShopLayout params={params} organizationRootPath={organizationRootPath}>
+      <ShopLayoutContent params={params} organizationRootPath={organizationRootPath}>
         <ShopPage params={params} />
-      </ShopLayout>
+      </ShopLayoutContent>
     );
   }
 
   if (publicHome.kind === "capability" && publicHome.capability === "APPOINTMENT") {
     return (
-      <AppointmentLayout params={params} organizationRootPath={organizationRootPath}>
+      <AppointmentLayoutContent params={params} organizationRootPath={organizationRootPath}>
         <AppointmentServicesPage params={params} />
-      </AppointmentLayout>
+      </AppointmentLayoutContent>
     );
   }
 

@@ -51,7 +51,18 @@ export function jsonError(error: unknown, fallback = "Internal server error") {
  */
 export function requireSameOriginMutation(request: Request) {
   const origin = request.headers.get("origin");
-  const expectedOrigin = new URL(request.url).origin;
+  const requestUrl = new URL(request.url);
+  const requestHost = request.headers.get("host");
+  const forwardedProtocol = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const protocol = forwardedProtocol ? `${forwardedProtocol}:` : requestUrl.protocol;
+  let expectedOrigin = requestUrl.origin;
+  if (requestHost) {
+    try {
+      expectedOrigin = new URL(`${protocol}//${requestHost}`).origin;
+    } catch {
+      throw new ApiError(403, "Cross-origin request rejected");
+    }
+  }
   const fetchSite = request.headers.get("sec-fetch-site");
 
   if (!origin || origin !== expectedOrigin) {

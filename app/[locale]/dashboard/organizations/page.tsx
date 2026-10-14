@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db";
 import { supportedLocales, type SupportedLocale } from "@/lib/i18n";
 import { toPersianDigits } from "@/lib/persian";
 import { cn } from "@/lib/utils";
-import { buildOrganizationRootPath } from "@/lib/custom-domain-routing";
+import { publicOrganizationHref } from "@/lib/organization-public-href";
 
 export const dynamic = "force-dynamic";
 
@@ -215,10 +215,6 @@ function buildQuery(params: Record<string, string | number | undefined>) {
   }
   const text = query.toString();
   return text ? `?${text}` : "";
-}
-
-export function publicOrganizationHref<T extends { slug: string }>(locale: SupportedLocale, organization: T) {
-  return buildOrganizationRootPath({ locale, organizationSlug: organization.slug });
 }
 
 function statusBadgeClass(isActive: boolean) {

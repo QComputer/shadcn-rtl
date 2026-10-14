@@ -16,7 +16,7 @@ const integrationA: ResolvedInotiIntegration = {
   config: { orderStatusEnabled: true, paymentEnabled: true },
 };
 
-const factor = `BZ${"a".repeat(32)}`;
+const factor = "123456789";
 
 class FakeRepository implements UssdIntegrationRepository {
   integrations = new Map([[integrationA.publicId, integrationA]]);
@@ -48,6 +48,9 @@ class FakeRepository implements UssdIntegrationRepository {
       orderId: input.order.id,
       paymentRequestId: null,
       providerAttemptId: null,
+      merchantAccountKey: input.merchantAccountKey,
+      credentialProfileKeySnapshot: input.credentialProfileKeySnapshot,
+      merchantCodeName: input.merchantCodeName,
       merchantFactorId: factor,
       amountRial: tomanToInotiRial(input.amountToman),
       sessionIdHash: input.sessionIdHash,

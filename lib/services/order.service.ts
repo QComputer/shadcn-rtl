@@ -12,6 +12,7 @@ import { requireActiveOrganizationCapability } from "@/lib/organization-capabili
 import { ApiError } from "@/lib/api-guards";
 import { updateOrderReadyTimeSchema } from "@/lib/validators/tenant-platform";
 import { toMoneyDecimal, toMoneyNumber } from "@/lib/money";
+import { releaseRetailCouponReservationsTx, restoreRetailInventoryTx } from "@/lib/retail/payment-expiration.server";
 
 const ALLOWED_ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING: ["PLACED", "ACCEPTED", "CANCELLED"],
@@ -1384,10 +1385,14 @@ if (!org?.slug) return
     const nextStatus = data.status as OrderStatus;
 
     const order = await prisma.$transaction(async (tx) => {
+      // Serialize retail cancellation against payment settlement and the expiry worker,
+      // then read the authoritative state after acquiring the lock.
+      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${id} FOR UPDATE`;
       const existingOrder = await tx.order.findUnique({
         where: { id },
         include: {
           items: true,
+          payment: true,
           customer: {
             select: {
               id: true,
@@ -1416,6 +1421,20 @@ if (!org?.slug) return
       }
 
       assertAllowedStatusTransition(existingOrder.status, nextStatus);
+      if (existingOrder.retailCheckoutKey && nextStatus === "CANCELLED" &&
+          existingOrder.paymentStatus === "COMPLETED") {
+        throw new ApiError(409, "A paid retail order requires a separate refund review before cancellation.");
+      }
+      if (existingOrder.retailCheckoutKey && existingOrder.paymentMethod === "CASH" &&
+          nextStatus === "ACCEPTED" && existingOrder.paymentStatus !== "COMPLETED") {
+        const metadata = existingOrder.payment?.metadata;
+        const retail = metadata && typeof metadata === "object" && !Array.isArray(metadata)
+          ? (metadata as Record<string, unknown>).retailR4 : null;
+        if (retail && typeof retail === "object" && !Array.isArray(retail) &&
+            (retail as Record<string, unknown>).cashBeforeConfirmation === true) {
+          throw new ApiError(409, "Cash must be confirmed before accepting this order.");
+        }
+      }
 
       const shouldRestoreInventory =
         ["REFUNDED", "CANCELLED"].includes(nextStatus) &&
@@ -1437,17 +1456,34 @@ if (!org?.slug) return
         note: data.status === "CANCELLED" ? "Order cancelled" : "Order status updated",
       });
 
+      if (existingOrder.retailCheckoutKey && nextStatus === "CANCELLED") {
+        await releaseRetailCouponReservationsTx(tx, existingOrder.id, existingOrder.organization.id, new Date());
+      }
+
       if (shouldRestoreInventory) {
-        await this.restoreOrderInventory(tx, {
-          orderId: existingOrder.id,
-          items: existingOrder.items,
-          reason: nextStatus === "REFUNDED"
-            ? InventoryMovementReason.ORDER_REFUNDED
-            : InventoryMovementReason.ORDER_CANCELLED,
-          actorUserId: userId,
-          note: nextStatus === "REFUNDED"
-            ? "Inventory restored after order refund"
-            : "Inventory restored after order cancellation",
+        if (existingOrder.retailCheckoutKey && nextStatus === "CANCELLED") {
+          await restoreRetailInventoryTx(tx, { orderId: existingOrder.id, organizationId: existingOrder.organization.id,
+            reason: "CANCELLED", actorUserId: userId });
+        } else {
+          await this.restoreOrderInventory(tx, {
+            orderId: existingOrder.id,
+            items: existingOrder.items,
+            reason: nextStatus === "REFUNDED"
+              ? InventoryMovementReason.ORDER_REFUNDED
+              : InventoryMovementReason.ORDER_CANCELLED,
+            actorUserId: userId,
+            note: nextStatus === "REFUNDED"
+              ? "Inventory restored after order refund"
+              : "Inventory restored after order cancellation",
+          });
+        }
+      }
+
+      if (existingOrder.retailCheckoutKey && nextStatus === "CANCELLED") {
+        await tx.paymentRequest.updateMany({
+          where: { orderId: existingOrder.id, organizationId: existingOrder.organization.id,
+            status: { in: ["CREATED", "AWAITING_CUSTOMER", "PENDING_VERIFICATION", "FAILED"] } },
+          data: { status: "CANCELLED", cancelledAt: new Date() },
         });
       }
 
@@ -1622,6 +1658,7 @@ if (!org?.slug) return
           paymentStatus: true,
           paymentMethod: true,
           paymentId: true,
+          retailCheckoutKey: true,
           customerId: true,
           guestCustomerId: true,
           guestCustomer: {
@@ -1642,6 +1679,8 @@ if (!org?.slug) return
       if (!existingOrder) {
         throw new Error("Order not found");
       }
+
+      if (existingOrder.retailCheckoutKey) throw new ApiError(409, "Retail payments require the verified retail workflow.");
 
       const paidAt = nextStatus === "COMPLETED" ? new Date() : null;
 

@@ -4,9 +4,16 @@ import path from "node:path";
 const root = process.cwd();
 const migrationRoot = path.join(root, "prisma", "migrations");
 const h2Name = "20261014160000_retail_h2_product_taxonomy";
-const names = fs.readdirSync(migrationRoot, { withFileTypes: true })
-  .filter(item => item.isDirectory() && /^\d{14}_/.test(item.name))
-  .map(item => item.name).sort();
+const entries = fs.readdirSync(migrationRoot, { withFileTypes: true })
+  .filter(item => item.isDirectory());
+const missingSql = entries.filter(item => !fs.existsSync(path.join(migrationRoot, item.name, "migration.sql")));
+if (missingSql.length) {
+  throw new Error(`Migration directories without migration.sql: ${missingSql.map(item => item.name).join(", ")}`);
+}
+// Existing committed migrations include both 14-digit names without an
+// underscore and 8-digit legacy prefixes. Include every actual migration
+// directory rather than silently dropping those historical entries.
+const names = entries.map(item => item.name).sort();
 if (names.length !== 100 || names.at(-1) !== h2Name) {
   throw new Error(`Expected exactly 100 ordered R4+H2 migrations ending in ${h2Name}; found ${names.length} ending in ${names.at(-1)}`);
 }

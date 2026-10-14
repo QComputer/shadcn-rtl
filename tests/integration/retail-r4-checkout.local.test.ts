@@ -53,7 +53,7 @@ test("Retail R4 checkout, discount limits, and payment reports persist on the se
       SELECT current_database() AS database, current_setting('server_version') AS version,
         current_setting('server_version_num')::int AS version_num
     `;
-    assert.equal(identity[0]?.database, "bazarbaaz_retail_r4");
+    assert.equal(identity[0]?.database, process.env.RETAIL_R4_EXPECTED_DATABASE);
     assert.ok(identity[0]!.version_num >= 170000 && identity[0]!.version_num < 180000, `expected PostgreSQL 17, got ${identity[0]!.version}`);
 
     const fashion = await db.organization.findUniqueOrThrow({ where: { slug: "retail-r4-synthetic-fashion" } });

@@ -1,6 +1,9 @@
 name: Hotel F5 isolated acceptance
 
 on:
+  push:
+    branches:
+      - codex/hotel-damoon-f5-staging-20261013
   workflow_dispatch:
     inputs:
       run_staging_browser:

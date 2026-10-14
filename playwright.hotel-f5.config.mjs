@@ -1,4 +1,4 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices } from "playwright/test";
 import { resolve } from "node:path";
 
 const storageState = process.env.HOTEL_F5_VERCEL_STORAGE_STATE;

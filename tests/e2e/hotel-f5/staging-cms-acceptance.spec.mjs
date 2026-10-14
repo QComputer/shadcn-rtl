@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { test, expect } from "@playwright/test";
+import { test, expect } from "playwright/test";
 import { publicMediaApi, publicWebsiteApi, syntheticEditorial, websiteApiBase } from "./synthetic-fixtures.mjs";
 
 test("F5 deployment denies requests without a Vercel SSO session", async ({ browser }) => {
@@ -102,7 +102,9 @@ test("F5 synthetic author-to-publication workflow enforces RBAC, tenant and medi
     for (const name of ["HOTEL_F5_UNKNOWN_DOMAIN_API_URL", "HOTEL_F5_INACTIVE_DOMAIN_API_URL", "HOTEL_F5_FOREIGN_DOMAIN_API_URL", "HOTEL_F5_CAPABILITY_DISABLED_API_URL"]) {
       const requestOptions = name === "HOTEL_F5_UNKNOWN_DOMAIN_API_URL"
         ? { headers: { host: env.HOTEL_F5_UNKNOWN_DOMAIN_HOST } }
-        : {};
+        : name === "HOTEL_F5_CAPABILITY_DISABLED_API_URL"
+          ? { headers: { host: env.HOTEL_F5_CAP_DISABLED_HOST } }
+          : {};
       const response = await ssoContext.request.get(env[name], requestOptions);
       expect(response.status()).toBe(404);
       const text = await response.text();

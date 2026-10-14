@@ -65,7 +65,13 @@ async function main() {
     await page.getByRole("heading", { name: "تکمیل سفارش" }).waitFor({ timeout: 30000 });
     const method = page.locator("select").first();
     await method.waitFor();
-    assert.equal(await method.locator('option[value="INOTI_USSD"]').count(), 1, "Cafe Leo Shop must offer its configured dedicated USSD option");
+    const paymentMethodsResponse = await context.request.get(`${baseUrl}/api/retail/v1/payment-methods?organization=cafe-leo`);
+    const paymentMethodsStatus = paymentMethodsResponse.status();
+    const paymentMethodsBody = await paymentMethodsResponse.json().catch(() => ({}));
+    const availableMethods = Array.isArray(paymentMethodsBody.methods) ? paymentMethodsBody.methods.map((item) => item.method) : [];
+    console.log(JSON.stringify({ cafePaymentMethodsStatus: paymentMethodsStatus, availableMethods }));
+    assert.equal(await method.locator('option[value="INOTI_USSD"]').count(), 1,
+      `Cafe Leo Shop must offer its configured dedicated USSD option; API ${paymentMethodsStatus}, methods ${availableMethods.join(",")}`);
     await method.selectOption("INOTI_USSD");
     await capture(page, "cafe-native-checkout.png");
     await page.getByRole("button", { name: "ثبت سفارش" }).click();

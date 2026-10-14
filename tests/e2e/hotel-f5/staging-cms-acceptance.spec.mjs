@@ -137,7 +137,9 @@ test("F5 synthetic author-to-publication workflow enforces RBAC, tenant and medi
     expect(secondReplayResponse.status()).toBe(201);
     const firstReplayBody = await firstReplayResponse.json();
     const secondReplayBody = await secondReplayResponse.json();
-    expect(secondReplayBody).toEqual(firstReplayBody);
+    expect(firstReplayBody.replayed).toBe(false);
+    expect(secondReplayBody.replayed).toBe(true);
+    expect(secondReplayBody.result).toEqual(firstReplayBody.result);
     const replayConflict = await author.page.request.post(`${appOrigin}${cmsApi}/revisions`, {
       headers: { Origin: appOrigin, "Idempotency-Key": replayKey },
       data: { ...replayPayload, content: { ...replayPayload.content, title: { fa: "different request" } } },

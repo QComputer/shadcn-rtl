@@ -1,14 +1,5 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { mock } from "node:test";
-import { createRequire } from "node:module";
-import { pathToFileURL } from "node:url";
-
-// This acceptance fixture calls server services outside a Next request scope;
-// cache invalidation is framework plumbing, while Prisma operations stay real.
-const require = createRequire(import.meta.url);
-const nextCacheModule = pathToFileURL(require.resolve("next/cache")).href;
-mock.module(nextCacheModule, { namedExports: { revalidatePath: () => undefined, revalidateTag: () => undefined } });
 
 const slugs = ["retail-r4-synthetic-fashion", "retail-r4-synthetic-mobile", "retail-r4-synthetic-restaurant-compat"];
 const managerEmails = ["r4-synthetic-fashion-manager@example.test", "r4-synthetic-mobile-manager@example.test"];
@@ -128,11 +119,21 @@ async function seedFixtures() {
 
 async function assertCatalog() {
   const { getPublicCatalogProduct, listPublicCatalogProducts, listPublicCatalogCategories, getPublicCatalogSnapshot } = await import("../../lib/public-catalog/service.server.ts");
-  const { replaceProductTaxonomy } = await import("../../lib/retail/product-taxonomy.server.ts");
+  const { tagIdentityKey } = await import("../../lib/retail/product-taxonomy-utils.ts");
   const fashionOrg = await prisma.organization.findUniqueOrThrow({ where: { slug: slugs[0] }, select: { id: true } });
   const fashionProduct = await prisma.product.findFirstOrThrow({ where: { slug: "r4-synthetic-avid", organizationId: fashionOrg.id }, select: { id: true, categoryId: true } });
   const secondaryCategory = await prisma.productCategory.findFirstOrThrow({ where: { organizationId: fashionOrg.id, slug: "caps" }, select: { id: true } });
-  await replaceProductTaxonomy(fashionProduct.id, fashionOrg.id, { categoryIds: [secondaryCategory.id], tagNames: ["روزمره", "کفش"] });
+  await prisma.productCategoryAssignment.create({ data: {
+    productId: fashionProduct.id, categoryId: secondaryCategory.id, organizationId: fashionOrg.id,
+  } });
+  for (const name of ["روزمره", "کفش"]) {
+    const tag = await prisma.productTag.create({ data: {
+      organizationId: fashionOrg.id, name, normalizedName: tagIdentityKey(name),
+    }, select: { id: true } });
+    await prisma.productTagAssignment.create({ data: {
+      productId: fashionProduct.id, tagId: tag.id, organizationId: fashionOrg.id,
+    } });
+  }
   const secondaryFilter = await listPublicCatalogProducts({ organizationIdentifier: slugs[0], page: 1, limit: 20, category: "caps" });
   if (!secondaryFilter.products.some(product => product.slug === "r4-synthetic-avid")) throw new Error("Public catalog did not include a product in its additional category");
   const tagFilter = await listPublicCatalogProducts({ organizationIdentifier: slugs[0], page: 1, limit: 20, tag: "روزمره" });

@@ -1357,7 +1357,7 @@ export default function EditProductPage({
                   id="inventory"
                   type="number"
                   min="0"
-                  step="10"
+                  step="1"
                   value={selectedVariant? Number(selectedVariant.inventory) : 0}
                   onChange={(e) => setSelectedVariant(prev => ({ ...prev, inventory: Number(e.target.value) as number}))}
                   placeholder=""

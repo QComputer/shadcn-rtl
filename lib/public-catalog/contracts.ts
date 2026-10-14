@@ -10,6 +10,7 @@ export const publicCatalogListQuerySchema = z.object({
   page: z.coerce.number().int().positive().max(1_000_000).default(1),
   limit: z.coerce.number().int().positive().max(PUBLIC_CATALOG_MAX_PAGE_SIZE).default(PUBLIC_CATALOG_DEFAULT_PAGE_SIZE),
   category: z.string().trim().min(1).max(160).optional(),
+  tag: z.string().trim().min(1).max(64).optional(),
   q: z.string().trim().min(1).max(100).optional(),
   minPrice: z.coerce.number().finite().nonnegative().max(9_999_999_999.99).optional(),
   maxPrice: z.coerce.number().finite().nonnegative().max(9_999_999_999.99).optional(),

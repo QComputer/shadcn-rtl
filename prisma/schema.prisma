@@ -1193,6 +1193,7 @@ model Organization {
   serviceCategories            ServiceCategory[]
   services                     Service[]
   productCategories            ProductCategory[]
+  productTags                  ProductTag[]
   products                     Product[]
   retailAttributeDefinitions   RetailAttributeDefinition[]
   carts                        ShopCart[]
@@ -2205,6 +2206,7 @@ model ProductCategory {
 
   organization Organization @relation(fields: [organizationId, organizationSlug], references: [id, slug])
   products     Product[]
+  categoryAssignments ProductCategoryAssignment[] @relation("AssignedCategoryProducts")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -2213,6 +2215,7 @@ model ProductCategory {
   @@index([organizationId])
   @@index([organizationSlug])
   @@index([organizationId, slug])
+  @@unique([id, organizationId])
   @@index([deletedAt])
 }
 
@@ -2277,6 +2280,8 @@ model Product {
   aiPrimaryMediaAsset AiMediaAsset?    @relation("ProductAiPrimaryMediaAsset", fields: [aiPrimaryMediaAssetId], references: [id], onDelete: SetNull)
   variants            ProductVariant[]
   attributeValues     ProductAttributeValue[]
+  categoryAssignments ProductCategoryAssignment[] @relation("ProductCategories")
+  tagAssignments      ProductTagAssignment[] @relation("ProductTags")
   orderItems          OrderItem[]
 
   createdAt DateTime  @default(now())
@@ -2284,6 +2289,7 @@ model Product {
   deletedAt DateTime?
 
   @@index([organizationId])
+  @@unique([id, organizationId])
   @@index([organizationSlug])
   @@index([organizationId, slug])
   @@index([organizationSlug, slug])
@@ -2292,6 +2298,50 @@ model Product {
   @@index([isActive])
   @@index([deletedAt])
   @@index([sku])
+}
+
+model ProductCategoryAssignment {
+  productId      String
+  categoryId     String
+  organizationId String
+  createdAt      DateTime @default(now())
+
+  product  Product         @relation("ProductCategories", fields: [productId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  category ProductCategory @relation("AssignedCategoryProducts", fields: [categoryId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+  @@index([organizationId, categoryId])
+  @@index([categoryId])
+}
+
+model ProductTag {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  normalizedName String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignments  ProductTagAssignment[]
+
+  @@unique([organizationId, normalizedName])
+  @@unique([id, organizationId])
+  @@index([organizationId])
+}
+
+model ProductTagAssignment {
+  productId      String
+  tagId          String
+  organizationId String
+  createdAt      DateTime @default(now())
+
+  product Product    @relation("ProductTags", fields: [productId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  tag     ProductTag @relation(fields: [tagId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@id([productId, tagId])
+  @@index([organizationId, tagId])
+  @@index([tagId])
 }
 
 model ProductVariant {

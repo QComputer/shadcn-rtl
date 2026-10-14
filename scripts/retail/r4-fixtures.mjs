@@ -97,6 +97,7 @@ async function seedFixtures() {
   for (const organization of [fashion, mobile]) await prisma.paymentSettings.create({ data: { organizationSlug: organization.slug, settings: { retailR4: { bankTransferEnabled: true, cashEnabled: true, inotiUssdEnabled: false, bankCardNumber: "6037990000000000", bankAccountOwner: "Synthetic R4 Test", cashModes: organization.id === fashion.id ? ["COUNTER"] : ["COUNTER", "PICKUP", "COURIER"], cashBeforeConfirmation: organization.id === fashion.id } } } });
   for (const organization of [fashion, mobile]) await prisma.coupon.create({ data: { organizationId: organization.id, code: `R4SYN-${organization.slug.endsWith("fashion") ? "FASHION" : "MOBILE"}`, name: "[R4-SYNTHETIC] Test discount", discountType: "PERCENTAGE", discountValue: 10, minOrderTotal: 100000, maxDiscountAmount: 500000, usageLimit: 100, perCustomerLimit: 2, isActive: true } });
   const fashionCategory = await prisma.productCategory.create({ data: { name: "کتانی", slug: "sneakers", organizationId: fashion.id, organizationSlug: fashion.slug } });
+  await prisma.productCategory.create({ data: { name: "کلاه", slug: "caps", organizationId: fashion.id, organizationSlug: fashion.slug } });
   const phoneCategory = await prisma.productCategory.create({ data: { name: "گوشی هوشمند", slug: "smartphones", organizationId: mobile.id, organizationSlug: mobile.slug } });
   const restaurantCategory = await prisma.productCategory.create({ data: { name: "غذای روز", slug: "daily-menu", organizationId: restaurant.id, organizationSlug: restaurant.slug } });
   await Promise.all([
@@ -118,9 +119,27 @@ async function seedFixtures() {
 
 async function assertCatalog() {
   const { getPublicCatalogProduct, listPublicCatalogProducts, listPublicCatalogCategories, getPublicCatalogSnapshot } = await import("../../lib/public-catalog/service.server.ts");
+  const { replaceProductTaxonomy } = await import("../../lib/retail/product-taxonomy.server.ts");
+  const fashionOrg = await prisma.organization.findUniqueOrThrow({ where: { slug: slugs[0] }, select: { id: true } });
+  const fashionProduct = await prisma.product.findFirstOrThrow({ where: { slug: "r4-synthetic-avid", organizationId: fashionOrg.id }, select: { id: true, categoryId: true } });
+  const secondaryCategory = await prisma.productCategory.findFirstOrThrow({ where: { organizationId: fashionOrg.id, slug: "caps" }, select: { id: true } });
+  await replaceProductTaxonomy(fashionProduct.id, fashionOrg.id, { categoryIds: [secondaryCategory.id], tagNames: ["روزمره", "کفش"] });
+  const secondaryFilter = await listPublicCatalogProducts({ organizationIdentifier: slugs[0], page: 1, limit: 20, category: "caps" });
+  if (!secondaryFilter.products.some(product => product.slug === "r4-synthetic-avid")) throw new Error("Public catalog did not include a product in its additional category");
+  const tagFilter = await listPublicCatalogProducts({ organizationIdentifier: slugs[0], page: 1, limit: 20, tag: "روزمره" });
+  if (!tagFilter.products.some(product => product.slug === "r4-synthetic-avid")) throw new Error("Public catalog tag filter failed");
+  const foreignTagFilter = await listPublicCatalogProducts({ organizationIdentifier: slugs[1], page: 1, limit: 20, tag: "روزمره" });
+  if (foreignTagFilter.products.length) throw new Error("Cross-tenant tag filtering leaked a product");
+  const otherOrg = await prisma.organization.findUniqueOrThrow({ where: { slug: slugs[1] }, select: { id: true } });
+  const otherCategory = await prisma.productCategory.findFirstOrThrow({ where: { organizationId: otherOrg.id }, select: { id: true } });
+  let crossTenantRejected = false;
+  try { await prisma.productCategoryAssignment.create({ data: { productId: fashionProduct.id, categoryId: otherCategory.id, organizationId: fashionOrg.id } }); }
+  catch (error) { crossTenantRejected = error?.code === "P2003"; }
+  if (!crossTenantRejected) throw new Error("PostgreSQL composite foreign key did not reject a cross-tenant category assignment");
   const fashion = await getPublicCatalogProduct(slugs[0], "r4-synthetic-avid");
   const availableVariant = fashion.variants.find((variant) => variant.sku === "R4-SYN-SHOE-42-BK");
   if (availableVariant?.price.amount !== 600000 || availableVariant.orderable !== true) throw new Error("Fashion variant price/available stock mismatch");
+  if (!availableVariant.options.some(option => option.key === "color" && option.valueText === "مشکی") || !availableVariant.options.some(option => option.key === "size" && option.valueNumber === 42)) throw new Error("Size/color variant attributes were not preserved in the public catalog");
   if (fashion.media.gallery.length !== 0 || !fashion.media.card?.includes("preview-fashion")) throw new Error("Tenant media eligibility was not applied");
   if ("organizationId" in fashion || "inventory" in availableVariant) throw new Error("Private catalog fields leaked");
   const filtered = await listPublicCatalogProducts({ organizationIdentifier: slugs[1], page: 1, limit: 50, filter: ["ram:12"] });
@@ -130,7 +149,8 @@ async function assertCatalog() {
   const laterPage = await listPublicCatalogProducts({ organizationIdentifier: slugs[1], page: 2, limit: 1 });
   if (laterPage.pagination.total !== 1 || laterPage.products.length !== 0) throw new Error("Pagination totals were not stable across pages");
   const categories = await listPublicCatalogCategories(slugs[0]);
-  if (categories.categories[0]?.slug !== "sneakers") throw new Error("Tenant category listing failed");
+  if (!categories.categories.some(category => category.slug === "sneakers")) throw new Error("Tenant category listing failed");
+  if (categories.categories.find(category => category.slug === "caps")?.productCount !== 1) throw new Error("Public multi-category count did not include assigned products");
   const snapshot = await getPublicCatalogSnapshot(slugs[0]);
   if (snapshot.organization.theme !== "FASHION" || snapshot.organization.previewOnly !== false) throw new Error("Organization-scoped theme/preview config failed");
   let foreignProductHidden = false;

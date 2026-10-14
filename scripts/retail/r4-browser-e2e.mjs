@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { PrismaClient } from "@prisma/client";
 
 const playwrightEntry = process.env.RETAIL_R4_PLAYWRIGHT_ENTRY;
 if (!playwrightEntry) throw new Error("RETAIL_R4_PLAYWRIGHT_ENTRY must point at the local Playwright entry point.");
@@ -15,6 +16,7 @@ const customerEmail = "r4-synthetic-customer@example.test";
 const fashionManager = "r4-synthetic-fashion-manager@example.test";
 const mobileManager = "r4-synthetic-mobile-manager@example.test";
 const evidenceDir = path.resolve("artifacts/retail-r4-browser");
+const prisma = new PrismaClient();
 const receiptBytes = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j2ioAAAAASUVORK5CYII=", "base64");
 
 async function capture(page, filename) {
@@ -112,6 +114,44 @@ async function main() {
   await fs.mkdir(evidenceDir, { recursive: true });
   const browser = await chromium.launch({ headless: true });
   try {
+    const fashionOrg = await prisma.organization.findUniqueOrThrow({ where: { slug: fashion }, select: { id: true } });
+    const fashionProduct = await prisma.product.findFirstOrThrow({ where: { slug: "r4-synthetic-avid", organizationId: fashionOrg.id }, select: { id: true } });
+    const fashionManagerContext = await login(browser, fashionManager, `/fa/dashboard/products/${fashionProduct.id}`);
+    const sizeColorVariant = await prisma.productVariant.findFirstOrThrow({ where: { product: { organizationId: fashionOrg.id, slug: "r4-synthetic-avid" }, sku: "R4-SYN-SHOE-42-BK" }, select: { id: true, inventory: true, optionValues: { select: { valueText: true, valueNumber: true, definition: { select: { key: true } } } } } });
+    assert.ok(sizeColorVariant.optionValues.some(option => option.definition.key === "color" && option.valueText === "مشکی"));
+    assert.ok(sizeColorVariant.optionValues.some(option => option.definition.key === "size" && option.valueNumber === 42));
+    await fashionManagerContext.page.getByRole("button", { name: /مشکی.*۴۲/ }).click();
+    await fashionManagerContext.page.locator('[role="dialog"] #inventory').fill("8");
+    await fashionManagerContext.page.locator('[role="dialog"]').getByRole("button", { name: /ذخیره|Save/ }).click();
+    await fashionManagerContext.page.locator('[role="dialog"]').waitFor({ state: "hidden" });
+    const revisedStock = await prisma.productVariant.findUniqueOrThrow({ where: { id: sizeColorVariant.id }, select: { inventory: true } });
+    assert.equal(revisedStock.inventory, 8, "authorized manager stock change must persist for the selected size/color variant");
+    await fashionManagerContext.page.getByRole("heading", { name: "دسته‌بندی‌ها و تگ‌ها" }).waitFor();
+    const caps = fashionManagerContext.page.locator("label").filter({ hasText: "کلاه" }).locator("input[type=checkbox]");
+    await caps.check();
+    await fashionManagerContext.page.getByPlaceholder("مثلاً: اسپرت، راحت، مناسب پیاده‌روی").fill("روزمره، سبک هفتگی");
+    await fashionManagerContext.page.getByRole("button", { name: "ذخیره دسته‌بندی‌ها و تگ‌ها" }).click();
+    await fashionManagerContext.page.getByRole("status", { name: "دسته‌بندی‌ها و تگ‌ها ذخیره شدند." }).waitFor();
+    await capture(fashionManagerContext.page, "manager-product-taxonomy.png");
+    const taxonomy = await fashionManagerContext.context.request.get(`${baseUrl}/api/products/${fashionProduct.id}/taxonomy`);
+    assert.equal(taxonomy.status(), 200, "authorized manager must read taxonomy");
+    const taxonomyJson = await taxonomy.json();
+    assert.ok(taxonomyJson.categoryIds.length >= 2, "manager category selection persists");
+    assert.deepEqual(taxonomyJson.tags.map(tag => tag.name), ["روزمره", "سبک هفتگی"]);
+    const anonymousTaxonomy = await browser.newPage();
+    const anonymousResponse = await anonymousTaxonomy.request.get(`${baseUrl}/api/products/${fashionProduct.id}/taxonomy`);
+    assert.equal(anonymousResponse.status(), 401, "anonymous taxonomy reads must be rejected");
+    await anonymousTaxonomy.close();
+    const mobileMerchant = await login(browser, mobileManager, `/fa/dashboard/products/${fashionProduct.id}`);
+    const crossTenant = await mobileMerchant.context.request.get(`${baseUrl}/api/products/${fashionProduct.id}/taxonomy`);
+    assert.equal(crossTenant.status(), 403, "foreign tenant cannot read product taxonomy");
+    const crossTenantWrite = await api(mobileMerchant.page, `${baseUrl}/api/products/${fashionProduct.id}/taxonomy`, { method: "PATCH", body: { tagNames: ["foreign-write" ] } });
+    assert.equal(crossTenantWrite.status, 403, "foreign tenant cannot write product taxonomy");
+    await mobileMerchant.context.close();
+    const publicFiltered = await fashionManagerContext.context.request.get(`${baseUrl}/api/public/v1/organizations/${fashion}/products?category=caps&tag=%D8%B1%D9%88%D8%B2%D9%85%D8%B1%D9%87`);
+    assert.equal(publicFiltered.status(), 200);
+    assert.ok((await publicFiltered.text()).includes("r4-synthetic-avid"), "public category and tag filters expose the intended published product");
+    await fashionManagerContext.context.close();
     const customer = await login(browser, customerEmail);
     await customer.page.goto(`${baseUrl}/fa/retail/${fashion}`, { waitUntil: "domcontentloaded", timeout: 60000 });
     await customer.page.getByRole("heading", { level: 1 }).waitFor({ timeout: 30000 });
@@ -163,6 +203,7 @@ async function main() {
     console.log(JSON.stringify({ status: "PASSED", orderNumbers: [receipt.orderNumber, time.orderNumber], reportIds: [receipt.reportId, time.reportId], screenshots: evidenceDir, liveProviders: 0 }));
   } finally {
     await browser.close();
+    await prisma.$disconnect();
   }
 }
 

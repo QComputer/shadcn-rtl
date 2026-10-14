@@ -93,7 +93,16 @@ export class ProductService {
     const where: Record<string, unknown> = includeDeleted ? {} : { deletedAt: null };
 
     if (params.organizationId) where.organizationId = params.organizationId;
-    if (params.categoryId) where.categoryId = params.categoryId;
+    if (params.categoryId) {
+      // Primary or additional categories; keep category filters separate from
+      // search and inventory OR branches so conditions cannot override each other.
+      where.AND = [
+        { OR: [
+          { categoryId: params.categoryId },
+          { categoryAssignments: { some: { categoryId: params.categoryId } } },
+        ] },
+      ];
+    }
     if (params.isActive !== undefined) where.isActive = params.isActive;
 
     if (params.search) {
@@ -121,10 +130,14 @@ export class ProductService {
         { variants: { some: { deletedAt: null, inventory: { gt: 0 } } } },
       ];
       if (existingOr.length) {
-        where.AND = [{ OR: existingOr }, { OR: stockOr }];
+        where.AND = [...(Array.isArray(where.AND) ? where.AND : []), { OR: existingOr }, { OR: stockOr }];
         delete where.OR;
       } else {
-        where.OR = stockOr;
+        if (Array.isArray(where.AND)) {
+          where.AND = [...where.AND, { OR: stockOr }];
+        } else {
+          where.OR = stockOr;
+        }
       }
     }
 

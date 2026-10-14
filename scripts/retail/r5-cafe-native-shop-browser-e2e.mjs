@@ -91,7 +91,7 @@ async function main() {
     await confirmation.waitFor({ timeout: 30000 });
     const orderNumber = (await confirmation.innerText()).match(/RET-[A-Z0-9-]+/)?.[0];
     assert.ok(orderNumber, "native Cafe Shop checkout must create a persisted Bazarbaaz order");
-    await page.getByText("در انتظار بررسی").waitFor();
+    await page.getByText("در انتظار بررسی").first().waitFor();
     await page.getByText("R5CAFE", { exact: false }).waitFor();
     assert.ok(await page.locator("text=/تأیید ارائه‌دهنده/").count(), "customer must be told that payment remains pending until provider confirmation");
     await capture(page, "cafe-native-payment-pending.png");

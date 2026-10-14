@@ -76,10 +76,7 @@ async function checkoutWithReport(page, org, sku, reportType) {
   await page.goto(`${baseUrl}/fa/retail/${org}/checkout`, { waitUntil: "domcontentloaded" });
   await page.getByRole("heading", { name: "تکمیل سفارش" }).waitFor();
   await page.getByRole("button", { name: "ثبت سفارش" }).waitFor();
-  const receiptRadio = page.getByLabel("بارگذاری تصویر رسید");
-  const timeRadio = page.getByLabel("ثبت زمان پرداخت");
-  assert.equal(await receiptRadio.isChecked(), true);
-  assert.equal(await timeRadio.isChecked(), false);
+  assert.equal(await page.locator("select").inputValue(), "BANK_TRANSFER", "customer checkout must display the enabled bank method");
   if (reportType === "RECEIPT") await capture(page, "customer-checkout.png");
   await page.getByRole("button", { name: "ثبت سفارش" }).click();
   const orderHeading = page.getByRole("heading", { name: /^سفارش RET-[A-Z0-9-]+ ثبت شد$/ });
@@ -87,6 +84,10 @@ async function checkoutWithReport(page, org, sku, reportType) {
   const orderNumber = (await orderHeading.innerText()).match(/RET-[A-Z0-9-]+/)?.[0];
   assert.ok(orderNumber, "the persisted order number must be shown after UI checkout");
   assert.ok(await page.getByText("در انتظار بررسی").count(), "checkout must leave payment pending");
+  const receiptRadio = page.getByLabel("بارگذاری تصویر رسید");
+  const timeRadio = page.getByLabel("ثبت زمان پرداخت");
+  assert.equal(await receiptRadio.isChecked(), true);
+  assert.equal(await timeRadio.isChecked(), false);
   if (reportType === "RECEIPT") {
     await page.locator('input[type="file"]').setInputFiles({ name: "synthetic-r4-receipt.png", mimeType: "image/png", buffer: receiptBytes });
   } else {

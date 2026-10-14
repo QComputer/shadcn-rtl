@@ -114,6 +114,12 @@ const buildProviders = (): Provider[] => {
           },
         });
 
+        const isRetailR4Fixture = process.env.CI === "true" && identifier.endsWith("@example.test");
+        if (isRetailR4Fixture) {
+          const [database] = await prisma.$queryRaw<Array<{ database: string }>>`SELECT current_database() AS database`;
+          console.error("[retail-r4-auth-fixture]", JSON.stringify({ database: database?.database, userFound: Boolean(user), active: user?.isActive ?? null, deleted: Boolean(user?.deletedAt), passwordPresent: Boolean(user?.password) }));
+        }
+
         if (!user || !user.password) {
           throw new Error("Invalid username or password");
         }
@@ -127,6 +133,7 @@ const buildProviders = (): Provider[] => {
         }
 
         const validPassword = await bcrypt.compare(password, user.password);
+        if (isRetailR4Fixture) console.error("[retail-r4-auth-fixture]", JSON.stringify({ passwordMatches: validPassword }));
         if (!validPassword) {
           const failedLoginAttempts = user.failedLoginAttempts + 1;
           const shouldLock = failedLoginAttempts >= maxFailedAttempts;

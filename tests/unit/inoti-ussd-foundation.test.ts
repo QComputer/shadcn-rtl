@@ -710,7 +710,7 @@ describe("iNoti tenant-scoped workflow", () => {
     assert.equal(result, "1-وضعیت سفارش\n2-پرداخت سفارش");
   });
 
-  it("accepts the real provider CodeName and rejects the proven generated placeholder mismatch", async () => {
+  it("uses the credential profile CodeName instead of a stale generated integration CodeName", async () => {
     const realIntegration: ResolvedInotiIntegration = {
       ...integrationA,
       codeName: "87788778",
@@ -718,8 +718,18 @@ describe("iNoti tenant-scoped workflow", () => {
     };
     const repository = new FakeRepository();
     const provider = new FakeProvider();
+    const credentials = new FakeCredentialProvider();
+    credentials.resolveProfile = async (organizationId: string) => ({
+      organizationId,
+      profileKey: "INOTI_DEFAULT",
+      username: "x",
+      password: "y",
+      endpoint: "https://login.inoti.com/_services/ExternalUssdPay.asmx",
+      ussdCodeName: "87788778",
+      ussdDialString: "*6655*87788778*2#",
+    });
     repository.integrations.set(realIntegration.publicId, realIntegration);
-    const workflow = new InotiUssdWorkflow(repository, provider, new FakeCredentialProvider(), async () => undefined);
+    const workflow = new InotiUssdWorkflow(repository, provider, credentials, async () => undefined);
 
     assert.equal(await workflow.handle(realIntegration.publicId, null, query("6655*87788778", {
       sessionid: "123e4567-e89b-12d3-a456-426614174000",
@@ -730,7 +740,8 @@ describe("iNoti tenant-scoped workflow", () => {
     assert.equal(provider.calls, 0);
 
     repository.integrations.set(realIntegration.publicId, { ...realIntegration, codeName: "ussd-cmt666ew" });
-    assert.equal(await workflow.handle(realIntegration.publicId, null, query("6655*87788778")), "درخواست نامعتبر است");
+    assert.equal(await workflow.handle(realIntegration.publicId, null, query("6655*87788778")), "1-وضعیت سفارش");
+    assert.equal(await workflow.handle(realIntegration.publicId, null, query("6655*ussd-cmt666ew")), "درخواست نامعتبر است");
   });
 
   it("uses normalized UUID session identity for sessions and payment idempotency", async () => {

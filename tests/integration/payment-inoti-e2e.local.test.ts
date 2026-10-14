@@ -107,7 +107,7 @@ describe("BB-P2 PaymentRequest and iNoti lifecycle on disposable PostgreSQL", { 
     await prisma.ussdSession.deleteMany({ where: { organizationId: { in: organizationIds } } });
     await prisma.auditLog.deleteMany({ where: { organizationId: { in: organizationIds } } });
     await prisma.businessEvent.deleteMany({ where: { organizationId: { in: organizationIds } } });
-    await prisma.payment.deleteMany({ where: { orderId: { in: [orderA.id, orderB.id] } } });
+    await prisma.payment.deleteMany({ where: { orderId: { in: [orderA.id, orderB.id, ...(retailOrder ? [retailOrder.id] : [])] } } });
     await prisma.paymentEvent.deleteMany({ where: { orderId: { in: [orderA.id, orderB.id] } } });
     await prisma.order.deleteMany({ where: { id: { in: [orderA.id, orderB.id, ...(retailOrder ? [retailOrder.id] : [])] } } });
     await prisma.paymentSettings.deleteMany({ where: { organizationSlug: organizationA.slug } });

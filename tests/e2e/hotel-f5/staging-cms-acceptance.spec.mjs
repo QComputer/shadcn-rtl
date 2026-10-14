@@ -100,7 +100,10 @@ test("F5 synthetic author-to-publication workflow enforces RBAC, tenant and medi
     expect((await gateOff.json()).error).toBe("WEBSITE_DISABLED");
 
     for (const name of ["HOTEL_F5_UNKNOWN_DOMAIN_API_URL", "HOTEL_F5_INACTIVE_DOMAIN_API_URL", "HOTEL_F5_FOREIGN_DOMAIN_API_URL", "HOTEL_F5_CAPABILITY_DISABLED_API_URL"]) {
-      const response = await ssoContext.request.get(env[name]);
+      const requestOptions = name === "HOTEL_F5_UNKNOWN_DOMAIN_API_URL"
+        ? { headers: { host: env.HOTEL_F5_UNKNOWN_DOMAIN_HOST } }
+        : {};
+      const response = await ssoContext.request.get(env[name], requestOptions);
       expect(response.status()).toBe(404);
       const text = await response.text();
       expect(text).not.toContain(marker);

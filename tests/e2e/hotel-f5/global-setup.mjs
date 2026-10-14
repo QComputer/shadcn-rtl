@@ -7,6 +7,7 @@ const required = [
   "HOTEL_F5_PUBLIC_ORIGIN",
   "HOTEL_F5_FOREIGN_PUBLIC_ORIGIN",
   "HOTEL_F5_UNKNOWN_DOMAIN_API_URL",
+  "HOTEL_F5_UNKNOWN_DOMAIN_HOST",
   "HOTEL_F5_INACTIVE_DOMAIN_API_URL",
   "HOTEL_F5_FOREIGN_DOMAIN_API_URL",
   "HOTEL_F5_CAPABILITY_DISABLED_API_URL",
@@ -64,6 +65,9 @@ export default async function globalSetup() {
     if (!url.pathname.startsWith("/api/hotel/v1/website/properties/")) {
       throw new Error(`${name} must target the public Hotel website API`);
     }
+  }
+  if (!/^[a-z0-9.-]+\.vercel\.app$/.test(process.env.HOTEL_F5_UNKNOWN_DOMAIN_HOST) || process.env.HOTEL_F5_UNKNOWN_DOMAIN_HOST === new URL(process.env.HOTEL_F5_PUBLIC_ORIGIN).hostname) {
+    throw new Error("HOTEL_F5_UNKNOWN_DOMAIN_HOST must be a distinct unregistered synthetic Vercel hostname");
   }
   if (process.env.HOTEL_F5_WEBSITE_GATE_ENABLED_FOR_TEST !== "1") throw new Error("The Hotel website public-read gate must be explicitly enabled in isolated staging for this test run");
   for (const name of ["HOTEL_F5_BOOKING_GATE_DISABLED_FOR_TEST", "HOTEL_F5_PAYMENT_GATE_DISABLED_FOR_TEST", "HOTEL_F5_NOTIFICATION_GATE_DISABLED_FOR_TEST"]) {

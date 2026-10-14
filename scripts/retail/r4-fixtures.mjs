@@ -149,7 +149,7 @@ async function assertCatalog() {
   const fashion = await getPublicCatalogProduct(slugs[0], "r4-synthetic-avid");
   const availableVariant = fashion.variants.find((variant) => variant.sku === "R4-SYN-SHOE-42-BK");
   if (availableVariant?.price.amount !== 600000 || availableVariant.orderable !== true) throw new Error("Fashion variant price/available stock mismatch");
-  if (!availableVariant.options.some(option => option.key === "color" && option.valueText === "مشکی") || !availableVariant.options.some(option => option.key === "size" && option.valueNumber === 42)) throw new Error("Size/color variant attributes were not preserved in the public catalog");
+  if (!availableVariant.options.some(option => option.key === "color" && option.value === "مشکی") || !availableVariant.options.some(option => option.key === "size" && option.value === 42)) throw new Error("Size/color variant attributes were not preserved in the public catalog");
   if (fashion.media.gallery.length !== 0 || !fashion.media.card?.includes("preview-fashion")) throw new Error("Tenant media eligibility was not applied");
   if ("organizationId" in fashion || "inventory" in availableVariant) throw new Error("Private catalog fields leaked");
   const filtered = await listPublicCatalogProducts({ organizationIdentifier: slugs[1], page: 1, limit: 50, filter: ["ram:12"] });

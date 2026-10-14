@@ -4,7 +4,7 @@ import { CartBadge } from "@/components/shop/cart-badge";
 import { Button } from "@/components/ui/button";
 import { Metadata } from "next";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher";
-import { Home, Package, ShoppingCart, ShoppingBasket, User } from "lucide-react";
+import { Home, ShoppingCart, ShoppingBasket, User } from "lucide-react";
 import prisma from "@/lib/db";
 import Link from "next/link";
 import { notFound } from "next/navigation";

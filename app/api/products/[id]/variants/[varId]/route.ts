@@ -49,7 +49,10 @@ export async function PATCH(
 
     const body = await request.json();
     const data = updateProductVariantSchema.parse({ ...body, id: varId });
-    const variant = await productService.updateVariant(data, session.user.role, session.user.id);
+    // Persisted product membership is authoritative for tenant managers, whose global
+    // session role can remain STAFF for unrelated organizations and features.
+    const authorizedRole = session.user.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "MANAGER";
+    const variant = await productService.updateVariant(data, authorizedRole, session.user.id);
 
     return NextResponse.json(variant);
   } catch (error) {

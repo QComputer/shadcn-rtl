@@ -93,7 +93,16 @@ export class ProductService {
     const where: Record<string, unknown> = includeDeleted ? {} : { deletedAt: null };
 
     if (params.organizationId) where.organizationId = params.organizationId;
-    if (params.categoryId) where.categoryId = params.categoryId;
+    if (params.categoryId) {
+      // Primary or additional categories; keep category filters separate from
+      // search and inventory OR branches so conditions cannot override each other.
+      where.AND = [
+        { OR: [
+          { categoryId: params.categoryId },
+          { categoryAssignments: { some: { categoryId: params.categoryId } } },
+        ] },
+      ];
+    }
     if (params.isActive !== undefined) where.isActive = params.isActive;
 
     if (params.search) {
@@ -121,10 +130,14 @@ export class ProductService {
         { variants: { some: { deletedAt: null, inventory: { gt: 0 } } } },
       ];
       if (existingOr.length) {
-        where.AND = [{ OR: existingOr }, { OR: stockOr }];
+        where.AND = [...(Array.isArray(where.AND) ? where.AND : []), { OR: existingOr }, { OR: stockOr }];
         delete where.OR;
       } else {
-        where.OR = stockOr;
+        if (Array.isArray(where.AND)) {
+          where.AND = [...where.AND, { OR: stockOr }];
+        } else {
+          where.OR = stockOr;
+        }
       }
     }
 
@@ -428,24 +441,29 @@ export class ProductService {
       throw new ApiError(403, "Forbidden");
     }
 
-    const existing = await prisma.productVariant.findFirst({
-      where: { id: data.id, deletedAt: null },
-      select: { id: true, inventory: true },
-    });
-    if (!existing) throw new ApiError(404, "Product variant not found");
-
     const variant = await prisma.$transaction(async (tx) => {
+      // Read the inventory adjustment baseline while holding the same row lock
+      // used by checkout reservations and R5 release operations. This keeps the
+      // absolute stock edit and its movement record consistent under races.
+      const existing = await tx.$queryRaw<Array<{ id: string; inventory: number }>>`
+        SELECT "id", "inventory" FROM "ProductVariant"
+        WHERE "id" = ${data.id} AND "deletedAt" IS NULL
+        FOR UPDATE
+      `;
+      if (existing.length !== 1) throw new ApiError(404, "Product variant not found");
+
       const updated = await tx.productVariant.update({
         where: { id: data.id },
         data,
       });
 
-      if (typeof data.inventory === "number" && data.inventory !== existing.inventory) {
+      const inventoryBefore = existing[0]!.inventory;
+      if (typeof data.inventory === "number" && data.inventory !== inventoryBefore) {
         await tx.inventoryMovement.create({
           data: {
             variantId: updated.id,
-            quantityDelta: data.inventory - existing.inventory,
-            quantityBefore: existing.inventory,
+            quantityDelta: data.inventory - inventoryBefore,
+            quantityBefore: inventoryBefore,
             quantityAfter: data.inventory,
             reason: InventoryMovementReason.MANUAL_ADJUSTMENT,
             note: "Manual inventory adjustment from dashboard product variant update",

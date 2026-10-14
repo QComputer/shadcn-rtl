@@ -61,6 +61,7 @@ import {
   type NormalizedAiMediaStatus,
 } from "@/lib/ai-media/status"
 import { AiMediaAssetPicker } from "@/components/ai-media/ai-media-asset-picker"
+import { ProductTaxonomyEditor } from "@/components/dashboard/product-taxonomy-editor"
 
 const AI_JOB_POLL_INTERVAL_MS = 3000
 const AI_JOB_MAX_POLL_ATTEMPTS = 90
@@ -113,6 +114,7 @@ interface ProductCategory {
   id: string
   name: string
   organizationSlug?: string
+  isActive?: boolean
 }
 
 interface Product {
@@ -333,7 +335,7 @@ export default function EditProductPage({
           return res.json()
         })
         .then(data => data.product || data),
-      appFetch(`/api/product-categories`)
+      appFetch(`/api/product-categories?pageSize=100`)
         .then(res => res.json())
         .then(data => data.data || [])
 
@@ -1290,6 +1292,17 @@ export default function EditProductPage({
         </CardContent>
       </Card>
 
+      {product && (
+        <Card className="max-w-2xl">
+          <CardContent className="pt-6">
+            <ProductTaxonomyEditor
+              productId={product.id}
+              categories={categories.map(category => ({ id: category.id, name: category.name, isActive: category.isActive }))}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Edit Variant Dialog */}
       <Dialog open={(editVariantDialogOpen && !!selectedVariant)} onOpenChange={setEditVariantDialogOpen}>
         <DialogContent>
@@ -1344,7 +1357,7 @@ export default function EditProductPage({
                   id="inventory"
                   type="number"
                   min="0"
-                  step="10"
+                  step="1"
                   value={selectedVariant? Number(selectedVariant.inventory) : 0}
                   onChange={(e) => setSelectedVariant(prev => ({ ...prev, inventory: Number(e.target.value) as number}))}
                   placeholder=""

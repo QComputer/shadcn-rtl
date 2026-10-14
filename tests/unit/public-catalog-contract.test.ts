@@ -85,6 +85,8 @@ describe("Public Catalog API v1 contract", () => {
     assert.equal(publicCatalogListQuerySchema.parse({ limit: String(PUBLIC_CATALOG_MAX_PAGE_SIZE) }).limit, 50);
     const attributeFilters = publicCatalogListQuerySchema.parse({ filter: ["ram:12", "storage:256"] });
     assert.deepEqual("filter" in attributeFilters ? attributeFilters.filter : [], ["ram:12", "storage:256"]);
+    assert.equal(publicCatalogListQuerySchema.parse({ tag: "کفش روزمره" }).tag, "کفش روزمره");
+    assert.throws(() => publicCatalogListQuerySchema.parse({ tag: "x".repeat(65) }));
     assert.throws(() => publicCatalogListQuerySchema.parse({ filter: ["ram:12", ...Array.from({ length: 12 }, (_, index) => `key${index}:value`)] }));
     assert.throws(() => publicCatalogListQuerySchema.parse({ page: "0" }));
     assert.throws(() => publicCatalogListQuerySchema.parse({ limit: "51" }));

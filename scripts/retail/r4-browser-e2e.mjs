@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
+import { PrismaClient } from "@prisma/client";
 
 const playwrightEntry = process.env.RETAIL_R4_PLAYWRIGHT_ENTRY;
 if (!playwrightEntry) throw new Error("RETAIL_R4_PLAYWRIGHT_ENTRY must point at the local Playwright entry point.");
@@ -15,6 +17,7 @@ const customerEmail = "r4-synthetic-customer@example.test";
 const fashionManager = "r4-synthetic-fashion-manager@example.test";
 const mobileManager = "r4-synthetic-mobile-manager@example.test";
 const evidenceDir = path.resolve("artifacts/retail-r4-browser");
+const prisma = new PrismaClient();
 const receiptBytes = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j2ioAAAAASUVORK5CYII=", "base64");
 
 async function capture(page, filename) {
@@ -84,6 +87,99 @@ async function api(page, url, { method = "GET", body, form } = {}) {
   return response;
 }
 
+async function prepareInventoryCheckout(page, organizationSlug, customerId, variantId) {
+  const cart = await prisma.shopCart.upsert({
+    where: { organizationSlug_customerId: { organizationSlug, customerId } },
+    create: { organizationSlug, customerId },
+    update: { status: "ACTIVE" },
+  });
+  await prisma.shopCartItem.deleteMany({ where: { cartId: cart.id } });
+  await prisma.shopCartItem.create({ data: { cartId: cart.id, variantId, quantity: 1 } });
+  const idempotencyKey = randomUUID();
+  const response = await api(page, `${baseUrl}/api/retail/v1/checkout`, {
+    method: "POST",
+    body: { organization: organizationSlug, idempotencyKey, type: "PICK_UP", paymentMethod: "BANK_TRANSFER" },
+  });
+  assert.equal(response.status, 201, `synthetic checkout must succeed: ${JSON.stringify(response.body)}`);
+  const order = await prisma.order.findFirstOrThrow({ where: { retailCheckoutKey: idempotencyKey, organizationSlug } });
+  return { order, idempotencyKey };
+}
+
+async function runWithRowsLocked(variantId, orderId, operations) {
+  let markLocked;
+  let releaseLock;
+  const locked = new Promise((resolve) => { markLocked = resolve; });
+  const released = new Promise((resolve) => { releaseLock = resolve; });
+  const holder = prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "ProductVariant" WHERE "id" = ${variantId} FOR UPDATE`;
+    if (orderId) await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`;
+    markLocked();
+    await released;
+  }, { timeout: 45000 });
+  await locked;
+
+  let waiting = 0;
+  let outcomes;
+  try {
+    outcomes = Promise.allSettled(operations.map((operation) => operation()));
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      const rows = await prisma.$queryRaw`SELECT COUNT(DISTINCT pid)::int AS count
+        FROM pg_stat_activity
+        WHERE datname = current_database() AND pid <> pg_backend_pid()
+          AND wait_event_type = 'Lock'
+          AND (query ILIKE '%"ProductVariant"%' OR query ILIKE '%"Order"%')`;
+      waiting = rows[0]?.count ?? 0;
+      if (waiting >= operations.length) break;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+  } finally {
+    releaseLock();
+  }
+
+  const settled = await outcomes;
+  await holder;
+  assert.ok(waiting >= operations.length,
+    `expected ${operations.length} independent HTTP-backed operations to overlap on PostgreSQL row locks, observed ${waiting}`);
+  const rejected = settled.filter((result) => result.status === "rejected");
+  assert.deepEqual(rejected.map((result) => String(result.reason)), [], "concurrent HTTP operations must not fail partially");
+  return settled.map((result) => result.value);
+}
+
+async function assertMovementLedger(variantId, initialInventory, priorMovementIds) {
+  const [variant, movements] = await Promise.all([
+    prisma.productVariant.findUniqueOrThrow({ where: { id: variantId }, select: { inventory: true } }),
+    prisma.inventoryMovement.findMany({ where: { variantId }, select: {
+      id: true, quantityDelta: true, quantityBefore: true, quantityAfter: true,
+    } }),
+  ]);
+  const created = movements.filter((movement) => !priorMovementIds.has(movement.id));
+  assert.ok(created.length > 0, "every stock-changing race must produce inventory movement evidence");
+  for (const movement of created) {
+    assert.notEqual(movement.quantityBefore, null);
+    assert.notEqual(movement.quantityAfter, null);
+    assert.equal(movement.quantityAfter, movement.quantityBefore + movement.quantityDelta,
+      "movement snapshot must describe its actual inventory operation");
+  }
+  const totalDelta = created.reduce((sum, movement) => sum + movement.quantityDelta, 0);
+  assert.equal(variant.inventory, initialInventory + totalDelta,
+    "movement deltas must reconcile to final persisted inventory after a concurrent H2/R5 operation");
+  return variant.inventory;
+}
+
+async function setVariantStock(page, productId, variantId, inventory) {
+  const response = await api(page, `${baseUrl}/api/products/${productId}/variants`, {
+    method: "PATCH",
+    body: { id: variantId, inventory },
+  });
+  assert.equal(response.status, 200, `authorized variant stock edit must succeed: ${JSON.stringify(response.body)}`);
+  assert.equal(response.body.inventory, inventory);
+}
+
+async function movementIds(variantId) {
+  const rows = await prisma.inventoryMovement.findMany({ where: { variantId }, select: { id: true } });
+  return new Set(rows.map((row) => row.id));
+}
+
 async function checkoutWithReport(page, org, sku, reportType) {
   const detailResponse = await page.context().request.get(`${baseUrl}/api/public/v1/organizations/${org}/products/${sku}`);
   assert.equal(detailResponse.status(), 200, `published synthetic product ${sku} must be visible`);
@@ -137,6 +233,134 @@ async function main() {
   await fs.mkdir(evidenceDir, { recursive: true });
   const browser = await chromium.launch({ headless: true });
   try {
+    const fashionOrg = await prisma.organization.findUniqueOrThrow({ where: { slug: fashion }, select: { id: true } });
+    const fashionProduct = await prisma.product.findFirstOrThrow({ where: { slug: "r4-synthetic-avid", organizationId: fashionOrg.id }, select: { id: true } });
+    const fashionManagerContext = await login(browser, fashionManager, `/fa/dashboard/products/${fashionProduct.id}`);
+    const sizeColorVariant = await prisma.productVariant.findFirstOrThrow({ where: { product: { organizationId: fashionOrg.id, slug: "r4-synthetic-avid" }, sku: "R4-SYN-SHOE-42-BK" }, select: { id: true, inventory: true, optionValues: { select: { valueText: true, valueNumber: true, definition: { select: { key: true } } } } } });
+    assert.ok(sizeColorVariant.optionValues.some(option => option.definition.key === "color" && option.valueText === "مشکی"));
+    assert.ok(sizeColorVariant.optionValues.some(option => option.definition.key === "size" && Number(option.valueNumber) === 42));
+    await fashionManagerContext.page.getByRole("button", { name: /مشکی.*۴۲/ }).click();
+    await fashionManagerContext.page.locator('[role="dialog"] #inventory').fill("8");
+    const variantUpdatePromise = fashionManagerContext.page.waitForResponse(response => response.url().endsWith(`/api/products/${fashionProduct.id}/variants`) && response.request().method() === "PATCH");
+    await fashionManagerContext.page.locator('[role="dialog"]').getByRole("button", { name: /ذخیره|Save/ }).click();
+    const variantUpdateResponse = await variantUpdatePromise;
+    assert.equal(variantUpdateResponse.status(), 200, `variant inventory update failed: ${await variantUpdateResponse.text()}`);
+    assert.equal(variantUpdateResponse.request().postDataJSON().inventory, 8, "manager form must submit the requested stock value");
+    assert.equal((await variantUpdateResponse.json()).inventory, 8, "variant update response must contain the saved stock value");
+    await fashionManagerContext.page.locator('[role="dialog"]').waitFor({ state: "hidden" });
+    const revisedStock = await prisma.productVariant.findUniqueOrThrow({ where: { id: sizeColorVariant.id }, select: { inventory: true } });
+    assert.equal(revisedStock.inventory, 8, "authorized manager stock change must persist for the selected size/color variant");
+    await fashionManagerContext.page.getByRole("heading", { name: "دسته‌بندی‌ها و تگ‌ها" }).waitFor();
+    const caps = fashionManagerContext.page.locator("label").filter({ hasText: "کلاه" }).locator("input[type=checkbox]");
+    await caps.check();
+    await fashionManagerContext.page.getByPlaceholder("مثلاً: اسپرت، راحت، مناسب پیاده‌روی").fill("روزمره، سبک هفتگی");
+    const taxonomyPatchPromise = fashionManagerContext.page.waitForResponse(response => response.url().endsWith(`/api/products/${fashionProduct.id}/taxonomy`) && response.request().method() === "PATCH");
+    await fashionManagerContext.page.getByRole("button", { name: "ذخیره دسته‌بندی‌ها و تگ‌ها" }).click();
+    const taxonomyPatchResponse = await taxonomyPatchPromise;
+    assert.equal(taxonomyPatchResponse.status(), 200, `taxonomy update failed: ${await taxonomyPatchResponse.text()}`);
+    await fashionManagerContext.page.getByText("دسته‌بندی‌ها و تگ‌ها ذخیره شدند.", { exact: true }).waitFor();
+    await capture(fashionManagerContext.page, "manager-product-taxonomy.png");
+    const taxonomy = await fashionManagerContext.context.request.get(`${baseUrl}/api/products/${fashionProduct.id}/taxonomy`);
+    assert.equal(taxonomy.status(), 200, "authorized manager must read taxonomy");
+    const taxonomyJson = await taxonomy.json();
+    assert.ok(taxonomyJson.categoryIds.length >= 2, "manager category selection persists");
+    assert.deepEqual(taxonomyJson.tags.map(tag => tag.name), ["روزمره", "سبک هفتگی"]);
+    const anonymousTaxonomy = await browser.newPage();
+    const anonymousResponse = await anonymousTaxonomy.request.get(`${baseUrl}/api/products/${fashionProduct.id}/taxonomy`);
+    assert.equal(anonymousResponse.status(), 401, "anonymous taxonomy reads must be rejected");
+    await anonymousTaxonomy.close();
+    const mobileMerchant = await login(browser, mobileManager, `/fa/dashboard/products/${fashionProduct.id}`);
+    const crossTenant = await mobileMerchant.context.request.get(`${baseUrl}/api/products/${fashionProduct.id}/taxonomy`);
+    assert.equal(crossTenant.status(), 403, "foreign tenant cannot read product taxonomy");
+    const crossTenantWrite = await api(mobileMerchant.page, `${baseUrl}/api/products/${fashionProduct.id}/taxonomy`, { method: "PATCH", body: { tagNames: ["foreign-write" ] } });
+    assert.equal(crossTenantWrite.status, 403, "foreign tenant cannot write product taxonomy");
+    await mobileMerchant.context.close();
+    const publicFiltered = await fashionManagerContext.context.request.get(`${baseUrl}/api/public/v1/organizations/${fashion}/products?category=caps&tag=%D8%B1%D9%88%D8%B2%D9%85%D8%B1%D9%87`);
+    assert.equal(publicFiltered.status(), 200);
+    assert.ok((await publicFiltered.text()).includes("r4-synthetic-avid"), "public category and tag filters expose the intended published product");
+
+    // Exercise H2's absolute stock editing through the authenticated manager
+    // route against the same rows that R5 checkout, expiry, cancellation and
+    // payment approval mutate. The DB lock barrier proves real overlap.
+    const inventoryCustomer = await login(browser, customerEmail);
+    const customerUser = await prisma.user.findUniqueOrThrow({ where: { email: customerEmail }, select: { id: true } });
+
+    await setVariantStock(fashionManagerContext.page, fashionProduct.id, sizeColorVariant.id, 20);
+    let baseline = await prisma.productVariant.findUniqueOrThrow({ where: { id: sizeColorVariant.id }, select: { inventory: true } });
+    let beforeMovements = await movementIds(sizeColorVariant.id);
+    const checkoutRace = await runWithRowsLocked(sizeColorVariant.id, null, [
+      () => api(fashionManagerContext.page, `${baseUrl}/api/products/${fashionProduct.id}/variants`, {
+        method: "PATCH", body: { id: sizeColorVariant.id, inventory: 12 },
+      }).then(response => { assert.equal(response.status, 200); return response; }),
+      () => prepareInventoryCheckout(inventoryCustomer.page, fashion, customerUser.id, sizeColorVariant.id),
+    ]);
+    assert.equal(checkoutRace[0].body.inventory, 12);
+    const checkoutRaceOrder = checkoutRace[1].order;
+    assert.equal(checkoutRaceOrder.status, "PENDING");
+    const afterCheckoutRace = await assertMovementLedger(sizeColorVariant.id, baseline.inventory, beforeMovements);
+    assert.ok([11, 12].includes(afterCheckoutRace), `serialized checkout/stock edit should end at 11 or 12, got ${afterCheckoutRace}`);
+
+    await setVariantStock(fashionManagerContext.page, fashionProduct.id, sizeColorVariant.id, 20);
+    const expiryCheckout = await prepareInventoryCheckout(inventoryCustomer.page, fashion, customerUser.id, sizeColorVariant.id);
+    await prisma.order.update({ where: { id: expiryCheckout.order.id }, data: { retailPaymentDeadlineAt: new Date(Date.now() - 60_000) } });
+    baseline = await prisma.productVariant.findUniqueOrThrow({ where: { id: sizeColorVariant.id }, select: { inventory: true } });
+    beforeMovements = await movementIds(sizeColorVariant.id);
+    const expirationRace = await runWithRowsLocked(sizeColorVariant.id, expiryCheckout.order.id, [
+      () => api(fashionManagerContext.page, `${baseUrl}/api/products/${fashionProduct.id}/variants`, {
+        method: "PATCH", body: { id: sizeColorVariant.id, inventory: 15 },
+      }).then(response => { assert.equal(response.status, 200); return response; }),
+      () => api(inventoryCustomer.page, `${baseUrl}/api/internal/retail/payment-expiration?limit=100`, {
+        method: "POST",
+      }).then(response => { assert.equal(response.status, 200); assert.ok(response.body.expired >= 1); return response; }),
+    ]);
+    assert.equal(expirationRace[0].body.inventory, 15);
+    const expiredOrder = await prisma.order.findUniqueOrThrow({ where: { id: expiryCheckout.order.id }, select: { status: true } });
+    assert.equal(expiredOrder.status, "CANCELLED");
+    const afterExpirationRace = await assertMovementLedger(sizeColorVariant.id, baseline.inventory, beforeMovements);
+    assert.ok([15, 16].includes(afterExpirationRace), `serialized expiry/stock edit should end at 15 or 16, got ${afterExpirationRace}`);
+
+    await setVariantStock(fashionManagerContext.page, fashionProduct.id, sizeColorVariant.id, 20);
+    const cancellationCheckout = await prepareInventoryCheckout(inventoryCustomer.page, fashion, customerUser.id, sizeColorVariant.id);
+    baseline = await prisma.productVariant.findUniqueOrThrow({ where: { id: sizeColorVariant.id }, select: { inventory: true } });
+    beforeMovements = await movementIds(sizeColorVariant.id);
+    const cancellationRace = await runWithRowsLocked(sizeColorVariant.id, cancellationCheckout.order.id, [
+      () => api(fashionManagerContext.page, `${baseUrl}/api/products/${fashionProduct.id}/variants`, {
+        method: "PATCH", body: { id: sizeColorVariant.id, inventory: 15 },
+      }).then(response => { assert.equal(response.status, 200); return response; }),
+      () => api(fashionManagerContext.page, `${baseUrl}/api/orders/${cancellationCheckout.order.id}`, {
+        method: "DELETE",
+      }).then(response => { assert.equal(response.status, 200); return response; }),
+    ]);
+    assert.equal(cancellationRace[0].body.inventory, 15);
+    const cancelledOrder = await prisma.order.findUniqueOrThrow({ where: { id: cancellationCheckout.order.id }, select: { status: true } });
+    assert.equal(cancelledOrder.status, "CANCELLED");
+    const afterCancellationRace = await assertMovementLedger(sizeColorVariant.id, baseline.inventory, beforeMovements);
+    assert.ok([15, 16].includes(afterCancellationRace), `serialized cancellation/stock edit should end at 15 or 16, got ${afterCancellationRace}`);
+
+    await setVariantStock(fashionManagerContext.page, fashionProduct.id, sizeColorVariant.id, 20);
+    const reconciliationCheckout = await prepareInventoryCheckout(inventoryCustomer.page, fashion, customerUser.id, sizeColorVariant.id);
+    const bankReportResponse = await api(inventoryCustomer.page,
+      `${baseUrl}/api/retail/v1/orders/${reconciliationCheckout.order.orderNumber}/bank-report?organization=${fashion}`,
+      { method: "POST", body: { method: "TIME", reportedAt: new Date().toISOString(), submittedLocalTime: "synthetic H2/R5 concurrency acceptance" } });
+    assert.equal(bankReportResponse.status, 201, `synthetic bank-time report must be created: ${JSON.stringify(bankReportResponse.body)}`);
+    const reportId = bankReportResponse.body.report.id;
+    baseline = await prisma.productVariant.findUniqueOrThrow({ where: { id: sizeColorVariant.id }, select: { inventory: true } });
+    beforeMovements = await movementIds(sizeColorVariant.id);
+    const reconciliationRace = await runWithRowsLocked(sizeColorVariant.id, reconciliationCheckout.order.id, [
+      () => api(fashionManagerContext.page, `${baseUrl}/api/products/${fashionProduct.id}/variants`, {
+        method: "PATCH", body: { id: sizeColorVariant.id, inventory: 15 },
+      }).then(response => { assert.equal(response.status, 200); return response; }),
+      () => api(fashionManagerContext.page, `${baseUrl}/api/dashboard/retail/payment-reports/${reportId}`, {
+        method: "PATCH", body: { action: "APPROVE" },
+      }).then(response => { assert.equal(response.status, 200); return response; }),
+    ]);
+    assert.equal(reconciliationRace[0].body.inventory, 15);
+    const reconciledOrder = await prisma.order.findUniqueOrThrow({ where: { id: reconciliationCheckout.order.id }, select: { paymentStatus: true, status: true } });
+    assert.equal(reconciledOrder.paymentStatus, "COMPLETED");
+    const afterReconciliationRace = await assertMovementLedger(sizeColorVariant.id, baseline.inventory, beforeMovements);
+    assert.equal(afterReconciliationRace, 15, "payment settlement must not restore already reserved stock");
+    await inventoryCustomer.context.close();
+    await fashionManagerContext.context.close();
     const customer = await login(browser, customerEmail);
     await customer.page.goto(`${baseUrl}/fa/retail/${fashion}`, { waitUntil: "domcontentloaded", timeout: 60000 });
     await customer.page.getByRole("heading", { level: 1 }).waitFor({ timeout: 30000 });
@@ -188,6 +412,7 @@ async function main() {
     console.log(JSON.stringify({ status: "PASSED", orderNumbers: [receipt.orderNumber, time.orderNumber], reportIds: [receipt.reportId, time.reportId], screenshots: evidenceDir, liveProviders: 0 }));
   } finally {
     await browser.close();
+    await prisma.$disconnect();
   }
 }
 

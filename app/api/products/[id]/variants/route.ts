@@ -56,7 +56,10 @@ export async function PATCH(request: NextRequest) {
     if (!variant) throw new Error("Product variant not found");
     await requireProductAccess(session, variant.productId, ["ADMIN", "MANAGER"]);
 
-    const product = await productService.updateVariant(data, session.user.role, session.user.id);
+    // Persisted product membership is authoritative for tenant managers, whose global
+    // session role can remain STAFF for unrelated organizations and features.
+    const authorizedRole = session.user.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "MANAGER";
+    const product = await productService.updateVariant(data, authorizedRole, session.user.id);
     return NextResponse.json(product);
   } catch (error) {
     console.error("Error updating product variant:", error);

@@ -9,6 +9,7 @@ import type { PublicCatalogPagination, PublicCatalogProductsPage, PublicCatalogS
 import { publicCatalogProductsPageSchema, publicCatalogSnapshotSchema } from "@/lib/public-catalog/contracts";
 import { serializePublicCatalogCategory, serializePublicCatalogProduct } from "@/lib/public-catalog/serializers";
 import { Prisma, type Prisma as PrismaTypes } from "@prisma/client";
+import { tagIdentityKey } from "@/lib/retail/product-taxonomy-utils";
 
 const publicVariantSelect = {
   id: true, sku: true, name: true, price: true, inventory: true, reservedQuantity: true, allowBackOrder: true,
@@ -86,10 +87,13 @@ export async function listPublicCatalogCategories(organizationIdentifier: string
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }, { id: "asc" }],
     select: {
       id: true, slug: true, name: true, description: true, sortOrder: true, image: true,
-      _count: { select: { products: { where: { ...visibleProductWhere, organizationId: organization.id } } } },
+      _count: { select: { categoryAssignments: { where: {
+        organizationId: organization.id,
+        product: visibleProductWhereForTenant(organization.id),
+      } } } },
     },
   });
-    return { organization, categories: categories.map((category) => serializePublicCatalogCategory({ ...category, image: null, productCount: category._count.products })) };
+    return { organization, categories: categories.map((category) => serializePublicCatalogCategory({ ...category, image: null, productCount: category._count.categoryAssignments })) };
 }
 
 export async function getPublicCatalogCategory(organizationIdentifier: string, categoryIdentifier: string) {
@@ -98,15 +102,18 @@ export async function getPublicCatalogCategory(organizationIdentifier: string, c
     where: { organizationId: organization.id, ...visibleCategoryWhere, OR: [{ id: categoryIdentifier }, { slug: categoryIdentifier }] },
     select: {
       id: true, slug: true, name: true, description: true, sortOrder: true, image: true,
-      _count: { select: { products: { where: { ...visibleProductWhere, organizationId: organization.id } } } },
+      _count: { select: { categoryAssignments: { where: {
+        organizationId: organization.id,
+        product: visibleProductWhereForTenant(organization.id),
+      } } } },
     },
   });
   if (!category) throw new ApiError(404, "Category not found");
-  return serializePublicCatalogCategory({ ...category, image: null, productCount: category._count.products });
+  return serializePublicCatalogCategory({ ...category, image: null, productCount: category._count.categoryAssignments });
 }
 
 export async function listPublicCatalogProducts(input: {
-  organizationIdentifier: string; page: number; limit: number; category?: string; q?: string; filter?: string[];
+  organizationIdentifier: string; page: number; limit: number; category?: string; tag?: string; q?: string; filter?: string[];
   minPrice?: number; maxPrice?: number; sort?: "featured" | "price-asc" | "price-desc" | "name-asc" | "newest";
 }) {
   const organization = await requirePublicShop(input.organizationIdentifier);
@@ -120,7 +127,23 @@ export async function listPublicCatalogProducts(input: {
     categoryId = category.id;
   }
   const predicates: PrismaTypes.Sql[] = [Prisma.sql`p."organizationId" = ${organization.id}`, Prisma.sql`p."isActive" = true`, Prisma.sql`p."deletedAt" IS NULL`, Prisma.sql`c."organizationId" = ${organization.id}`, Prisma.sql`c."isActive" = true`, Prisma.sql`c."deletedAt" IS NULL`];
-  if (categoryId) predicates.push(Prisma.sql`p."categoryId" = ${categoryId}`);
+  if (categoryId) predicates.push(Prisma.sql`(
+    p."categoryId" = ${categoryId} OR EXISTS (
+      SELECT 1 FROM "ProductCategoryAssignment" pca
+      JOIN "ProductCategory" assignedCategory ON assignedCategory."id" = pca."categoryId"
+      WHERE pca."productId" = p."id" AND pca."organizationId" = ${organization.id}
+        AND pca."categoryId" = ${categoryId} AND assignedCategory."organizationId" = ${organization.id}
+        AND assignedCategory."isActive" = true AND assignedCategory."deletedAt" IS NULL
+    )
+  )`);
+  if (input.tag) {
+    const normalizedTag = tagIdentityKey(input.tag);
+    predicates.push(Prisma.sql`EXISTS (
+      SELECT 1 FROM "ProductTagAssignment" pta JOIN "ProductTag" pt ON pt."id" = pta."tagId"
+      WHERE pta."productId" = p."id" AND pta."organizationId" = ${organization.id}
+        AND pt."organizationId" = ${organization.id} AND pt."normalizedName" = ${normalizedTag}
+    )`);
+  }
   if (input.q) predicates.push(Prisma.sql`(p."name" ILIKE ${`%${input.q}%`} OR COALESCE(p."description", '') ILIKE ${`%${input.q}%`})`);
   for (const filter of input.filter ?? []) {
     const separator = filter.indexOf(":");

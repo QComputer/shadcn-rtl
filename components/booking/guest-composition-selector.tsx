@@ -11,15 +11,23 @@ import {
   type GuestCompositionDraft,
 } from "../../lib/booking/search-form-model";
 import styles from "./guest-composition-selector.module.css";
+import type { HotelPublicLocale } from "../../lib/hotel/public-api-contract";
 
 export interface GuestCompositionSelectorProps {
   value: GuestCompositionDraft;
   onChange: (next: GuestCompositionDraft) => void;
+  locale?: HotelPublicLocale;
 }
 
-const number = new Intl.NumberFormat("fa-IR", { useGrouping: false });
+const labels = {
+  fa: { open: "انتخاب ترکیب مهمانان", close: "بستن انتخاب مهمانان", preview: "مهمانان · نمونه", adults: "بزرگسال", children: "کودک", adultGroup: "تعداد بزرگسالان", childGroup: "تعداد کودکان", decreaseAdult: "کاهش بزرگسال", increaseAdult: "افزایش بزرگسال", decreaseChild: "کاهش کودک", increaseChild: "افزایش کودک", guestMix: "ترکیب مهمانان", none: "کودکی انتخاب نشده است.", ageHint: "سن کودک در قرارداد فعلی اختیاری است؛ اگر برای یکی وارد شود، برای همه لازم است.", age: "سن کودک", unset: "انتخاب نشده", years: "سال", done: "تأیید مهمانان" },
+  en: { open: "Choose guest composition", close: "Close guest selector", preview: "Guests · preview", adults: "Adults", children: "Children", adultGroup: "Number of adults", childGroup: "Number of children", decreaseAdult: "Decrease adults", increaseAdult: "Increase adults", decreaseChild: "Decrease children", increaseChild: "Increase children", guestMix: "Guest composition", none: "No children selected.", ageHint: "Child age is optional in the current contract; if entered for one child, enter it for every child.", age: "Child age", unset: "Not selected", years: "years", done: "Apply guests" },
+  ar: { open: "اختيار تكوين الضيوف", close: "إغلاق محدد الضيوف", preview: "الضيوف · معاينة", adults: "بالغون", children: "أطفال", adultGroup: "عدد البالغين", childGroup: "عدد الأطفال", decreaseAdult: "تقليل البالغين", increaseAdult: "زيادة البالغين", decreaseChild: "تقليل الأطفال", increaseChild: "زيادة الأطفال", guestMix: "تكوين الضيوف", none: "لم يتم اختيار أطفال.", ageHint: "عمر الطفل اختياري في العقد الحالي؛ إذا تم إدخاله لطفل، فيجب إدخاله لكل الأطفال.", age: "عمر الطفل", unset: "غير محدد", years: "سنة", done: "تطبيق الضيوف" },
+} as const satisfies Record<HotelPublicLocale, { [key: string]: string }>;
 
-export function GuestCompositionSelector({ value, onChange }: GuestCompositionSelectorProps) {
+export function GuestCompositionSelector({ value, onChange, locale = "fa" }: GuestCompositionSelectorProps) {
+  const text = labels[locale];
+  const number = new Intl.NumberFormat(locale, { useGrouping: false });
   const id = useId();
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<CSSProperties>({});
@@ -72,7 +80,7 @@ export function GuestCompositionSelector({ value, onChange }: GuestCompositionSe
     else if (!event.shiftKey && document.activeElement === controls.at(-1)) { event.preventDefault(); controls[0].focus(); }
   }
 
-  return <div className={styles.root} dir="rtl" data-testid="guest-selector">
+  return <div className={styles.root} dir={locale === "en" ? "ltr" : "rtl"} data-testid="guest-selector">
     <button
       type="button"
       ref={triggerRef}
@@ -80,44 +88,44 @@ export function GuestCompositionSelector({ value, onChange }: GuestCompositionSe
       aria-haspopup="dialog"
       aria-controls={open ? id : undefined}
       aria-expanded={open}
-      aria-label="انتخاب ترکیب مهمانان"
+      aria-label={text.open}
       onClick={() => setOpen((wasOpen) => !wasOpen)}
     >
       <UsersRound size={22} aria-hidden="true" className={styles.icon} />
-      <span className={styles.triggerText}><small>مهمانان · نمونه</small><strong>{number.format(value.adults)} بزرگسال{value.childAges.length ? `، ${number.format(value.childAges.length)} کودک` : ""}</strong></span>
+      <span className={styles.triggerText}><small>{text.preview}</small><strong>{number.format(value.adults)} {text.adults}{value.childAges.length ? ` · ${number.format(value.childAges.length)} ${text.children}` : ""}</strong></span>
       <ChevronDown size={16} aria-hidden="true" className={styles.chevron} />
     </button>
-    {open && createPortal(<div id={id} ref={popupRef} className={styles.popup} style={position} role="dialog" aria-modal="false" aria-label="ترکیب مهمانان" dir="rtl" onKeyDown={handleKeys}>
-      <div className={styles.heading}><strong>ترکیب مهمانان</strong><button type="button" aria-label="بستن انتخاب مهمانان" onClick={() => close()}><X size={19} /></button></div>
+    {open && createPortal(<div id={id} ref={popupRef} className={styles.popup} style={position} role="dialog" aria-modal="false" aria-label={text.guestMix} dir={locale === "en" ? "ltr" : "rtl"} onKeyDown={handleKeys}>
+      <div className={styles.heading}><strong>{text.guestMix}</strong><button type="button" aria-label={text.close} onClick={() => close()}><X size={19} /></button></div>
       <div className={styles.row}>
-        <span>بزرگسال</span>
-        <div className={styles.stepper} role="group" aria-label="تعداد بزرگسالان">
-          <button type="button" aria-label="کاهش بزرگسال" disabled={value.adults <= 1} onClick={() => onChange(setAdultCount(value, value.adults - 1))}><Minus size={17} /></button>
-          <output aria-label="تعداد بزرگسالان">{number.format(value.adults)}</output>
-          <button ref={adultsIncrementRef} type="button" aria-label="افزایش بزرگسال" disabled={value.adults >= 12} onClick={() => onChange(setAdultCount(value, value.adults + 1))}><Plus size={17} /></button>
+        <span>{text.adults}</span>
+        <div className={styles.stepper} role="group" aria-label={text.adultGroup}>
+          <button type="button" aria-label={text.decreaseAdult} disabled={value.adults <= 1} onClick={() => onChange(setAdultCount(value, value.adults - 1))}><Minus size={17} /></button>
+          <output aria-label={text.adultGroup}>{number.format(value.adults)}</output>
+          <button ref={adultsIncrementRef} type="button" aria-label={text.increaseAdult} disabled={value.adults >= 12} onClick={() => onChange(setAdultCount(value, value.adults + 1))}><Plus size={17} /></button>
         </div>
       </div>
       <div className={styles.row}>
-        <span>کودک</span>
-        <div className={styles.stepper} role="group" aria-label="تعداد کودکان">
-          <button type="button" aria-label="کاهش کودک" disabled={value.childAges.length === 0} onClick={() => onChange(removeChild(value))}><Minus size={17} /></button>
-          <output aria-label="تعداد کودکان">{number.format(value.childAges.length)}</output>
-          <button type="button" aria-label="افزایش کودک" disabled={value.childAges.length >= 12} onClick={() => onChange(addChild(value))}><Plus size={17} /></button>
+        <span>{text.children}</span>
+        <div className={styles.stepper} role="group" aria-label={text.childGroup}>
+          <button type="button" aria-label={text.decreaseChild} disabled={value.childAges.length === 0} onClick={() => onChange(removeChild(value))}><Minus size={17} /></button>
+          <output aria-label={text.childGroup}>{number.format(value.childAges.length)}</output>
+          <button type="button" aria-label={text.increaseChild} disabled={value.childAges.length >= 12} onClick={() => onChange(addChild(value))}><Plus size={17} /></button>
         </div>
       </div>
-      {value.childAges.length === 0 ? <p className={styles.hint}>کودکی انتخاب نشده است.</p> : <>
-        <p className={styles.hint}>سن کودک در قرارداد فعلی اختیاری است؛ اگر برای یکی وارد شود، برای همه لازم است.</p>
+      {value.childAges.length === 0 ? <p className={styles.hint}>{text.none}</p> : <>
+        <p className={styles.hint}>{text.ageHint}</p>
         <div className={styles.ageList}>
           {value.childAges.map((age, index) => <label key={index} className={styles.ageRow}>
-            <span>سن کودک {number.format(index + 1)}</span>
-            <select aria-label={`سن کودک ${index + 1}`} value={age ?? ""} onChange={(event) => onChange(setChildAge(value, index, event.target.value === "" ? null : Number(event.target.value)))}>
-              <option value="">انتخاب نشده</option>
-              {Array.from({ length: 18 }, (_, year) => <option key={year} value={year}>{number.format(year)} سال</option>)}
+            <span>{text.age} {number.format(index + 1)}</span>
+            <select aria-label={`${text.age} ${number.format(index + 1)}`} value={age ?? ""} onChange={(event) => onChange(setChildAge(value, index, event.target.value === "" ? null : Number(event.target.value)))}>
+              <option value="">{text.unset}</option>
+              {Array.from({ length: 18 }, (_, year) => <option key={year} value={year}>{number.format(year)} {text.years}</option>)}
             </select>
           </label>)}
         </div>
       </>}
-      <button type="button" className={styles.done} onClick={() => close()}>تأیید مهمانان</button>
+      <button type="button" className={styles.done} onClick={() => close()}>{text.done}</button>
     </div>, document.body)}
   </div>;
 }

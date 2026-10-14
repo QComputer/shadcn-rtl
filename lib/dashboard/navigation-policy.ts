@@ -25,6 +25,9 @@ export type DashboardNavigationKey =
   | "driverOrders"
   | "products"
   | "retailCatalog"
+  | "retailDiscounts"
+  | "retailPaymentSettings"
+  | "retailPaymentReports"
   | "productCategories"
   | "services"
   | "serviceCategories"
@@ -59,6 +62,9 @@ export const DASHBOARD_NAVIGATION_ITEMS = {
   driverOrders: "/driver-orders",
   products: "/products",
   retailCatalog: "/retail-catalog",
+  retailDiscounts: "/retail-discounts",
+  retailPaymentSettings: "/retail-payment-settings",
+  retailPaymentReports: "/retail-payment-reports",
   productCategories: "/product-categories",
   services: "/services",
   serviceCategories: "/service-categories",
@@ -89,11 +95,11 @@ export const DASHBOARD_NAVIGATION_GROUPS = [
   },
   {
     key: "catalog",
-    items: ["products", "retailCatalog", "productCategories", "services", "serviceCategories"],
+    items: ["products", "retailCatalog", "retailDiscounts", "productCategories", "services", "serviceCategories"],
   },
   {
     key: "teamAndSettings",
-    items: ["businessActivation", "reputation", "hotelWebsite", "members", "customerClub", "imports", "exports", "creativeStudio", "settings", "organizationSettings", "qrcode"],
+    items: ["businessActivation", "reputation", "hotelWebsite", "retailPaymentSettings", "retailPaymentReports", "members", "customerClub", "imports", "exports", "creativeStudio", "settings", "organizationSettings", "qrcode"],
   },
   {
     key: "platformAdmin",
@@ -115,6 +121,9 @@ export const ROLE_NAVIGATION_POLICY = {
   driverOrders: ["SUPER_ADMIN", "ADMIN", "MANAGER", "DRIVER"],
   products: ALL_OPERATIONS_ROLES,
   retailCatalog: ADMIN_MANAGER_ROLES,
+  retailDiscounts: ADMIN_MANAGER_ROLES,
+  retailPaymentSettings: ADMIN_MANAGER_ROLES,
+  retailPaymentReports: ADMIN_MANAGER_ROLES,
   productCategories: ADMIN_MANAGER_ROLES,
   services: ALL_OPERATIONS_ROLES,
   serviceCategories: ADMIN_MANAGER_ROLES,
@@ -154,6 +163,9 @@ export const DASHBOARD_ROUTE_POLICY = {
   "/retail-catalog": ROLE_NAVIGATION_POLICY.retailCatalog,
   "/retail-catalog/new": ROLE_NAVIGATION_POLICY.retailCatalog,
   "/retail-catalog/[productId]": ROLE_NAVIGATION_POLICY.retailCatalog,
+  "/retail-discounts": ROLE_NAVIGATION_POLICY.retailDiscounts,
+  "/retail-payment-settings": ROLE_NAVIGATION_POLICY.retailPaymentSettings,
+  "/retail-payment-reports": ROLE_NAVIGATION_POLICY.retailPaymentReports,
   "/product-categories": ROLE_NAVIGATION_POLICY.productCategories,
   "/services": ROLE_NAVIGATION_POLICY.services,
   "/services/new": ROLE_NAVIGATION_POLICY.services,

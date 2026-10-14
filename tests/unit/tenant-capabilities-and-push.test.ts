@@ -406,6 +406,30 @@ describe("capability-aware dashboard authorization", () => {
     }).hasAccess, false);
   });
 
+  it("exposes retail payment and discount pages only to SHOP managers", () => {
+    for (const key of ["retailDiscounts", "retailPaymentSettings", "retailPaymentReports"] as const) {
+      assert.equal(isDashboardNavigationItemVisible(key, "MANAGER", ["SHOP"]), true);
+      assert.equal(isDashboardNavigationItemVisible(key, "STAFF", ["SHOP"]), false);
+      assert.equal(isDashboardNavigationItemVisible(key, "MANAGER", ["APPOINTMENT"]), false);
+    }
+    for (const path of ["retail-discounts", "retail-payment-settings", "retail-payment-reports"]) {
+      assert.equal(getDashboardRouteAccessDecision({
+        locale: "fa", pathname: `/fa/dashboard/${path}`, role: "MANAGER", capabilities: ["SHOP"],
+      }).isAllowed, true);
+      assert.equal(getDashboardRouteAccessDecision({
+        locale: "fa", pathname: `/fa/dashboard/${path}`, role: "STAFF", capabilities: ["SHOP"],
+      }).isAllowed, false);
+      assert.equal(checkRouteAccess(`/fa/dashboard/${path}`, {
+        userId: "tenant-manager", userRole: "MANAGER", organizationId: "tenant-a",
+        organizationType: "SHOP", organizationCapabilities: ["SHOP"],
+      }).hasAccess, true);
+      assert.equal(checkRouteAccess(`/fa/dashboard/${path}`, {
+        userId: "tenant-manager", userRole: "MANAGER", organizationId: "tenant-a",
+        organizationType: "SHOP", organizationCapabilities: ["APPOINTMENT"],
+      }).hasAccess, false);
+    }
+  });
+
   it("allows Hotel website CMS routes only for management roles with HOTEL_WEBSITE", () => {
     const manager = {
       userId: "hotel-manager",

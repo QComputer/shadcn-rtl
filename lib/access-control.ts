@@ -91,6 +91,24 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     requiredCapability: "SHOP",
   },
 
+  "/dashboard/retail-discounts": {
+    allowedRoles: RETAIL_CATALOG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+    requiredCapability: "SHOP",
+  },
+
+  "/dashboard/retail-payment-settings": {
+    allowedRoles: RETAIL_CATALOG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+    requiredCapability: "SHOP",
+  },
+
+  "/dashboard/retail-payment-reports": {
+    allowedRoles: RETAIL_CATALOG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+    requiredCapability: "SHOP",
+  },
+
   "/dashboard/business-activation": {
     allowedRoles: ORG_MANAGEMENT_ROLES,
     requiresOrgMembership: true,

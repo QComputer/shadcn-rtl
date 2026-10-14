@@ -6,16 +6,16 @@ import { prisma } from "@/lib/db";
 type Tx = Prisma.TransactionClient;
 type RetailReleaseReason = "CANCELLED" | "EXPIRED";
 
-export async function releaseRetailCouponReservationsTx(tx: Tx, orderId: string, now: Date) {
+export async function releaseRetailCouponReservationsTx(tx: Tx, orderId: string, organizationId: string, now: Date) {
   const redemptions = await tx.couponRedemption.findMany({
-    where: { orderId, releasedAt: null },
+    where: { orderId, organizationId, releasedAt: null },
     select: { couponId: true },
     orderBy: { couponId: "asc" },
   });
   for (const couponId of [...new Set(redemptions.map((redemption) => redemption.couponId))]) {
-    await tx.$queryRaw`SELECT "id" FROM "Coupon" WHERE "id" = ${couponId} FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "Coupon" WHERE "id" = ${couponId} AND "organizationId" = ${organizationId} FOR UPDATE`;
     const current = await tx.couponRedemption.findMany({
-      where: { orderId, couponId, releasedAt: null },
+      where: { orderId, organizationId, couponId, releasedAt: null },
       select: { id: true, pointsSpent: true, metadata: true },
     });
     const redemptionIds = current.filter((redemption) => {
@@ -25,12 +25,12 @@ export async function releaseRetailCouponReservationsTx(tx: Tx, orderId: string,
     }).map((redemption) => redemption.id);
     if (!redemptionIds.length) continue;
     const released = await tx.couponRedemption.updateMany({
-      where: { id: { in: redemptionIds }, orderId, couponId, releasedAt: null },
+      where: { id: { in: redemptionIds }, orderId, organizationId, couponId, releasedAt: null },
       data: { releasedAt: now },
     });
     if (!released.count) continue;
     const decremented = await tx.coupon.updateMany({
-      where: { id: couponId, usedCount: { gte: released.count } },
+      where: { id: couponId, organizationId, usedCount: { gte: released.count } },
       data: { usedCount: { decrement: released.count } },
     });
     if (decremented.count !== 1) throw new Error("RETAIL_COUPON_RESERVATION_ACCOUNTING_MISMATCH");
@@ -38,7 +38,7 @@ export async function releaseRetailCouponReservationsTx(tx: Tx, orderId: string,
 }
 
 export async function restoreRetailInventoryTx(tx: Tx, input: {
-  orderId: string; reason: RetailReleaseReason; actorUserId?: string | null; now?: Date;
+  orderId: string; organizationId: string; reason: RetailReleaseReason; actorUserId?: string | null; now?: Date;
 }) {
   const now = input.now ?? new Date();
   const reservations = await tx.inventoryMovement.groupBy({
@@ -56,17 +56,21 @@ export async function restoreRetailInventoryTx(tx: Tx, input: {
       select: { id: true },
     });
     if (alreadyReleased) continue;
-    const variant = await tx.productVariant.update({
-      where: { id: reservation.variantId },
-      data: { inventory: { increment: quantity } },
-      select: { inventory: true },
-    });
+    const variants = await tx.$queryRaw<Array<{ inventory: number }>>`
+      UPDATE "ProductVariant" AS variant
+      SET "inventory" = variant."inventory" + ${quantity}
+      WHERE variant."id" = ${reservation.variantId}
+        AND EXISTS (SELECT 1 FROM "Product" product WHERE product."id" = variant."productId" AND product."organizationId" = ${input.organizationId})
+      RETURNING variant."inventory"
+    `;
+    if (variants.length !== 1) throw new Error("RETAIL_INVENTORY_TENANT_MISMATCH");
+    const inventory = variants[0]!.inventory;
     await tx.inventoryMovement.create({ data: {
       variantId: reservation.variantId,
       orderId: input.orderId,
       quantityDelta: quantity,
-      quantityBefore: variant.inventory - quantity,
-      quantityAfter: variant.inventory,
+      quantityBefore: inventory - quantity,
+      quantityAfter: inventory,
       reason: InventoryMovementReason.ORDER_CANCELLED,
       retailReleaseKey,
       createdById: input.actorUserId ?? null,
@@ -112,8 +116,8 @@ async function expireRetailOrderTx(tx: Tx, orderId: string, now: Date) {
     where: { orderId, organizationId: order.organization.id, status: { in: ["CREATED", "AWAITING_CUSTOMER", "PENDING_VERIFICATION", "FAILED"] } },
     data: { status: "EXPIRED", expiresAt: order.retailPaymentDeadlineAt },
   });
-  await releaseRetailCouponReservationsTx(tx, orderId, now);
-  await restoreRetailInventoryTx(tx, { orderId, reason: "EXPIRED", now });
+  await releaseRetailCouponReservationsTx(tx, orderId, order.organization.id, now);
+  await restoreRetailInventoryTx(tx, { orderId, organizationId: order.organization.id, reason: "EXPIRED", now });
   await tx.orderStatusHistory.create({ data: {
     orderId, previousStatus: order.status, newStatus: OrderStatus.CANCELLED,
     note: "Unpaid retail order expired; payment evidence remains available for reconciliation",

@@ -260,7 +260,7 @@ describe("BB-P2 PaymentRequest and iNoti lifecycle on disposable PostgreSQL", { 
     assert.equal(expiredRequest.status, "EXPIRED");
     assert.equal(expiredRequest.expiresAt?.getTime(), elapsedDeadline.getTime());
     const response = await callbackPromise;
-    assert.equal(await response.text(), "پرداخت در حال بررسی است");
+    assert.equal(await response.text(), "تایید پرداخت ناموفق بود");
     const after = await prisma.order.findUniqueOrThrow({ where: { id: retailOrder.id } });
     assert.equal(after.status, "CANCELLED");
     assert.equal(after.paymentStatus, "PENDING");

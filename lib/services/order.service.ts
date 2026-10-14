@@ -1457,12 +1457,13 @@ if (!org?.slug) return
       });
 
       if (existingOrder.retailCheckoutKey && nextStatus === "CANCELLED") {
-        await releaseRetailCouponReservationsTx(tx, existingOrder.id, new Date());
+        await releaseRetailCouponReservationsTx(tx, existingOrder.id, existingOrder.organization.id, new Date());
       }
 
       if (shouldRestoreInventory) {
         if (existingOrder.retailCheckoutKey && nextStatus === "CANCELLED") {
-          await restoreRetailInventoryTx(tx, { orderId: existingOrder.id, reason: "CANCELLED", actorUserId: userId });
+          await restoreRetailInventoryTx(tx, { orderId: existingOrder.id, organizationId: existingOrder.organization.id,
+            reason: "CANCELLED", actorUserId: userId });
         } else {
           await this.restoreOrderInventory(tx, {
             orderId: existingOrder.id,

@@ -114,6 +114,21 @@ test("F5 synthetic author-to-publication workflow enforces RBAC, tenant and medi
 
     const author = await login(env.HOTEL_F5_AUTHOR_USERNAME, env.HOTEL_F5_AUTHOR_PASSWORD, `/fa/dashboard/hotel-website/${orgId}/${propertyId}`);
     const editorTab = author.page.getByRole("button", { name: "ویرایش محتوا", exact: true });
+    if (!(await editorTab.isVisible().catch(() => false))) {
+      const sessionResponse = await author.page.request.get(`${appOrigin}/api/auth/session`);
+      const session = sessionResponse.ok() ? await sessionResponse.json() : null;
+      const bodyText = (await author.page.locator("body").innerText().catch(() => "")).replace(/\s+/g, " ").slice(0, 500);
+      console.log("F5 dashboard diagnostic", JSON.stringify({
+        path: new URL(author.page.url()).pathname,
+        pageTitle: await author.page.title(),
+        sessionStatus: sessionResponse.status(),
+        sessionUserPresent: Boolean(session?.user?.id),
+        sessionRole: session?.user?.role ?? null,
+        sessionOrganizationMatches: session?.user?.organizationId === orgId,
+        editorTabPresent: await editorTab.count(),
+        bodyText,
+      }));
+    }
     await expect(editorTab).toBeVisible();
     await editorTab.click();
     const beforeCount = (await readRevisions(author.page)).length;

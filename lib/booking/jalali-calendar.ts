@@ -15,16 +15,20 @@ export interface JalaliParts {
 const numericCalendar = new Intl.DateTimeFormat("fa-IR-u-ca-persian-nu-latn", {
   timeZone: "UTC", year: "numeric", month: "numeric", day: "numeric",
 });
-const longCalendar = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
-  timeZone: "UTC", year: "numeric", month: "long", day: "numeric",
-});
-const titleCalendar = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
-  timeZone: "UTC", year: "numeric", month: "long",
-});
-const accessibleCalendar = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
-  timeZone: "UTC", weekday: "long", year: "numeric", month: "long", day: "numeric",
-});
-const numberFormatter = new Intl.NumberFormat("fa-IR", { useGrouping: false });
+function calendarFormatter(locale: "fa" | "en" | "ar", options: Intl.DateTimeFormatOptions) {
+  const numbering = locale === "fa" ? "arabext" : locale === "ar" ? "arab" : "latn";
+  return new Intl.DateTimeFormat(`${locale}-u-ca-persian-nu-${numbering}`, { timeZone: "UTC", ...options });
+}
+
+const arabicJalaliMonths = ["فروردين", "أرديبهشت", "خرداد", "تير", "مرداد", "شهريور", "مهر", "آبان", "آذر", "دي", "بهمن", "اسفند"];
+function arabicJalaliDate(value: ISODate, includeWeekday = false) {
+  const date = parseISODate(value);
+  if (!date) return null;
+  const { year, month, day } = jalaliParts(value);
+  const number = new Intl.NumberFormat("ar-u-nu-arab", { useGrouping: false });
+  const weekday = includeWeekday ? `${new Intl.DateTimeFormat("ar", { timeZone: "UTC", weekday: "long" }).format(date)}، ` : "";
+  return `${weekday}${number.format(day)} ${arabicJalaliMonths[month - 1]} ${number.format(year)}`;
+}
 
 /** Returns null for malformed, impossible, or unsupported date-only values. */
 export function parseISODate(value: string): Date | null {
@@ -62,25 +66,32 @@ export function jalaliParts(value: ISODate): JalaliParts {
   return result;
 }
 
-export function jalaliDayLabel(value: ISODate): string {
+export function jalaliDayLabel(value: ISODate, locale: "fa" | "en" | "ar" = "fa"): string {
   const date = parseISODate(value);
-  return date ? longCalendar.format(date) : "انتخاب تاریخ شمسی";
+  if (!date) return ({ fa: "انتخاب تاریخ شمسی", en: "Select a Jalali date", ar: "اختر تاريخًا شمسيًا" })[locale];
+  if (locale === "ar") return arabicJalaliDate(value)!;
+  return calendarFormatter(locale, { year: "numeric", month: "long", day: "numeric" }).format(date);
 }
 
-export function jalaliAccessibleDay(value: ISODate): string {
+export function jalaliAccessibleDay(value: ISODate, locale: "fa" | "en" | "ar" = "fa"): string {
   const date = parseISODate(value);
   if (!date) throw new RangeError("Invalid date for calendar label");
-  return accessibleCalendar.format(date);
+  if (locale === "ar") return arabicJalaliDate(value, true)!;
+  return calendarFormatter(locale, { weekday: "long", year: "numeric", month: "long", day: "numeric" }).format(date);
 }
 
-export function jalaliMonthTitle(value: ISODate): string {
+export function jalaliMonthTitle(value: ISODate, locale: "fa" | "en" | "ar" = "fa"): string {
   const date = parseISODate(value);
   if (!date) throw new RangeError("Invalid calendar month");
-  return titleCalendar.format(date);
+  if (locale === "ar") {
+    const { year, month } = jalaliParts(value);
+    return `${arabicJalaliMonths[month - 1]} ${new Intl.NumberFormat("ar-u-nu-arab", { useGrouping: false }).format(year)}`;
+  }
+  return calendarFormatter(locale, { year: "numeric", month: "long" }).format(date);
 }
 
-export function persianDigits(value: number): string {
-  return numberFormatter.format(value);
+export function persianDigits(value: number, locale: "fa" | "en" | "ar" = "fa"): string {
+  return new Intl.NumberFormat(locale, { useGrouping: false }).format(value);
 }
 
 export function startOfJalaliMonth(value: ISODate): ISODate {

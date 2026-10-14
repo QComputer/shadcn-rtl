@@ -115,7 +115,7 @@ export function PublishedHotelWebsitePage({ propertySlug, locale }: { propertySl
           {website.propertyGallery.length > 0 && <a href="#gallery" onClick={() => setMenuOpen(false)}>{text.gallery}</a>}
         </nav>
         <a href="#booking" className={styles.cta}>{text.booking}</a>
-        <button className={styles.menuButton} type="button" aria-label={menuOpen ? "Close navigation" : "Open navigation"} aria-expanded={menuOpen} aria-controls="published-hotel-navigation" onClick={() => setMenuOpen((open) => !open)}>{menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}</button>
+        <button className={styles.menuButton} type="button" aria-label={menuOpen ? (locale === "fa" ? "بستن فهرست" : locale === "ar" ? "إغلاق القائمة" : "Close navigation") : (locale === "fa" ? "بازکردن فهرست" : locale === "ar" ? "فتح القائمة" : "Open navigation")} aria-expanded={menuOpen} aria-controls="published-hotel-navigation" onClick={() => setMenuOpen((open) => !open)}>{menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}</button>
       </header>
 
       <section id="home" className={styles.hero}>
@@ -134,8 +134,8 @@ export function PublishedHotelWebsitePage({ propertySlug, locale }: { propertySl
         <h2>{text.title}</h2>
         <p className={styles.previewNotice}>{text.noBooking} {text.previewOnly}</p>
         <div className={styles.bookingGrid}>
-          <fieldset><legend>{text.dates}</legend><JalaliDateRangePicker value={dates} onChange={(next) => { setDates(next); setFormMessage(""); }} /></fieldset>
-          <fieldset><legend>{text.guests}</legend><GuestCompositionSelector value={guests} onChange={(next) => { setGuests(next); setFormMessage(""); }} /></fieldset>
+          <fieldset><legend>{text.dates}</legend><JalaliDateRangePicker value={dates} locale={locale} onChange={(next) => { setDates(next); setFormMessage(""); }} /></fieldset>
+          <fieldset><legend>{text.guests}</legend><GuestCompositionSelector value={guests} locale={locale} onChange={(next) => { setGuests(next); setFormMessage(""); }} /></fieldset>
         </div>
         <button type="submit" className={styles.cta}>{text.title}</button>
         {formMessage && <p role="status" className={styles.formMessage}>{formMessage}</p>}
@@ -146,7 +146,7 @@ export function PublishedHotelWebsitePage({ propertySlug, locale }: { propertySl
         {(website.content.contact.phone || website.content.contact.email) && <address className={styles.propertyDescription}>{website.content.contact.phone && <a href={`tel:${website.content.contact.phone}`}>{website.content.contact.phone}</a>}{website.content.contact.email && <a href={`mailto:${website.content.contact.email}`}>{website.content.contact.email}</a>}</address>}
       </section>
 
-      {roomCount > 0 ? <section id="rooms" className={styles.rooms}><p className={styles.eyebrow}>{text.rooms}</p><RoomShowcase rooms={website.roomCards} direction={direction(locale)} /></section> : <section id="rooms" className={styles.rooms}><HotelDataState code="NO_PUBLISHED_ROOMS" locale={locale} /></section>}
+      {roomCount > 0 ? <section id="rooms" className={styles.rooms}><p className={styles.eyebrow}>{text.rooms}</p><RoomShowcase rooms={website.roomCards} direction={direction(locale)} locale={locale} /></section> : <section id="rooms" className={styles.rooms}><HotelDataState code="NO_PUBLISHED_ROOMS" locale={locale} /></section>}
 
       {website.propertyGallery.length > 0 ? <section id="gallery" className={styles.gallery} aria-label={text.gallery}>{website.propertyGallery.map((photo) => <figure key={`${photo.src}:${photo.sortOrder}`}><Image src={photo.src} alt={photo.alt} width={960} height={640} unoptimized sizes="(max-width: 700px) 100vw, 50vw" /><figcaption>{photo.alt || text.gallery}</figcaption></figure>)}</section> : <section id="gallery" className={styles.galleryEmpty}><p>{text.noGallery}</p></section>}
 

@@ -29,6 +29,14 @@ test("Jalali display maps Nowruz without altering ISO", () => {
   assert.match(jalaliMonthTitle("2025-03-21"), /فروردین/);
 });
 
+test("Jalali presentation localizes month names without changing canonical ISO", () => {
+  const iso = "2025-03-21";
+  assert.match(jalaliMonthTitle(iso, "en"), /1404/);
+  assert.match(jalaliMonthTitle(iso, "ar"), /١٤٠٤|۱۴۰۴/);
+  assert.notEqual(jalaliDayLabel(iso, "en"), jalaliDayLabel(iso, "fa"));
+  assert.equal(iso, "2025-03-21");
+});
+
 test("month navigation is reversible across year and leap boundaries", () => {
   for (const date of ["2025-03-20", "2025-03-21", "2024-02-28", "2026-10-12", "2026-12-30"]) {
     const first = startOfJalaliMonth(date);

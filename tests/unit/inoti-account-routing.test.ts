@@ -53,11 +53,12 @@ test("acceptance simulation never authorizes live iNoti payment calls", () => {
 
 test("production readiness reports the first missing CI provider prerequisite without exposing credentials", () => {
   const keys = ["NODE_ENV", "INOTI_USSD_LIVE_VERIFICATION_ENABLED", "INOTI_USSD_HASH_PEPPER"] as const;
-  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  const env = process.env as Record<string, string | undefined>;
+  const previous = Object.fromEntries(keys.map((key) => [key, env[key]]));
   try {
-    process.env.NODE_ENV = "production";
-    process.env.INOTI_USSD_LIVE_VERIFICATION_ENABLED = "true";
-    delete process.env.INOTI_USSD_HASH_PEPPER;
+    env.NODE_ENV = "production";
+    env.INOTI_USSD_LIVE_VERIFICATION_ENABLED = "true";
+    delete env.INOTI_USSD_HASH_PEPPER;
     const provider = new InotiUssdProvider();
     const readiness = provider.getReadiness(profileFor("CAFE_LEO"));
     assert.equal(readiness.ready, false);
@@ -67,8 +68,8 @@ test("production readiness reports the first missing CI provider prerequisite wi
   } finally {
     for (const key of keys) {
       const value = previous[key];
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
+      if (value === undefined) delete env[key];
+      else env[key] = value;
     }
   }
 });

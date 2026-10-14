@@ -112,6 +112,8 @@ jobs:
           INOTI_CAFE_LEO_USSD_ENDPOINT: https://127.0.0.1:59999/ExternalUssdPay.asmx
           INOTI_CAFE_LEO_USSD_CODE_NAME: R5CAFE
           INOTI_CAFE_LEO_USSD_DIAL_STRING: '*6655*R5CAFE*2#'
+          RETAIL_RECEIPT_TEST_STORAGE: "1"
+          RETAIL_RECEIPT_LOCAL_ROOT: ${{ runner.temp }}/retail-r5-private-receipts
         run: |
           mkdir -p artifacts/retail-r4-browser artifacts/retail-r5-browser
           pnpm start --port 3000 > artifacts/retail-r5-browser/next.log 2>&1 &

@@ -123,8 +123,9 @@ async function checkoutWithReport(page, org, sku, reportType) {
   const reportResponsePromise = page.waitForResponse((response) => response.url().includes("/bank-report?") && response.request().method() === "POST");
   await page.getByRole("button", { name: "ارسال گزارش پرداخت" }).click();
   const reportResponse = await reportResponsePromise;
-  assert.equal(reportResponse.status(), 201, `${reportType} submission must return a created report`);
-  const reportBody = await reportResponse.json();
+  const reportResponseBody = await reportResponse.text();
+  assert.equal(reportResponse.status(), 201, `${reportType} submission must return a created report: ${reportResponseBody.slice(0, 800)}`);
+  const reportBody = JSON.parse(reportResponseBody);
   await page.getByText("گزارش پرداخت ارسال شد.").waitFor({ timeout: 30000 });
   assert.equal(reportBody.report.kind, reportType === "RECEIPT" ? "BANK_RECEIPT" : "BANK_TIME");
   assert.equal(reportBody.report.status, "PENDING_REVIEW");

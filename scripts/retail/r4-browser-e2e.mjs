@@ -135,8 +135,11 @@ async function main() {
     const caps = fashionManagerContext.page.locator("label").filter({ hasText: "کلاه" }).locator("input[type=checkbox]");
     await caps.check();
     await fashionManagerContext.page.getByPlaceholder("مثلاً: اسپرت، راحت، مناسب پیاده‌روی").fill("روزمره، سبک هفتگی");
+    const taxonomyPatchPromise = fashionManagerContext.page.waitForResponse(response => response.url().endsWith(`/api/products/${fashionProduct.id}/taxonomy`) && response.request().method() === "PATCH");
     await fashionManagerContext.page.getByRole("button", { name: "ذخیره دسته‌بندی‌ها و تگ‌ها" }).click();
-    await fashionManagerContext.page.getByRole("status", { name: "دسته‌بندی‌ها و تگ‌ها ذخیره شدند." }).waitFor();
+    const taxonomyPatchResponse = await taxonomyPatchPromise;
+    assert.equal(taxonomyPatchResponse.status(), 200, `taxonomy update failed: ${await taxonomyPatchResponse.text()}`);
+    await fashionManagerContext.page.getByText("دسته‌بندی‌ها و تگ‌ها ذخیره شدند.", { exact: true }).waitFor();
     await capture(fashionManagerContext.page, "manager-product-taxonomy.png");
     const taxonomy = await fashionManagerContext.context.request.get(`${baseUrl}/api/products/${fashionProduct.id}/taxonomy`);
     assert.equal(taxonomy.status(), 200, "authorized manager must read taxonomy");

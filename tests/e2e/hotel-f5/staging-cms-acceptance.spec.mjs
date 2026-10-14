@@ -257,8 +257,9 @@ test("F5 synthetic author-to-publication workflow enforces RBAC, tenant and medi
     await expect(publicPage.getByText(/synthetic F5|تصویر مصنوعی تست F5|عکس واقعی هتل نیست/i)).toBeVisible();
 
     const revokeDialog = reviewer.page.waitForEvent("dialog");
-    await reviewer.page.getByRole("button", { name: "لغو انتشار فعلی" }).click();
+    const revokeClick = reviewer.page.getByRole("button", { name: "لغو انتشار فعلی" }).click();
     (await revokeDialog).accept();
+    await revokeClick;
     await expect(reviewer.page.getByRole("status")).toContainText("انتشار لغو شد");
     publicationRevoked = true;
     await checkPublicState("UNPUBLISHED");

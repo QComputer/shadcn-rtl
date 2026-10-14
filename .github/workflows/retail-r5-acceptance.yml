@@ -97,6 +97,11 @@ jobs:
         run: pnpm run build
       - name: Install Chromium for isolated browser acceptance
         run: pnpm exec playwright install --with-deps chromium
+      - name: Restore synthetic retail browser fixtures after reseeding regressions
+        run: |
+          pnpm db:seed
+          pnpm exec tsx scripts/retail/r4-fixtures.mjs seed
+          pnpm exec tsx scripts/retail/r5-cafe-fixtures.mjs seed
       - name: Start isolated acceptance server
         env:
           INOTI_ALLOW_LIVE_PAYMENTS: "true"

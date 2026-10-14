@@ -135,6 +135,72 @@ jobs:
           fi
           echo "Task-owned C1B2 container and volume cleanup attempted; no shared Docker resources were targeted."
 
+      - name: Create a uniquely labeled disposable C1B1 CMS acceptance database
+        id: c1b1-db
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_id="$(openssl rand -hex 8)"
+          volume="hotel-content-c1b1-${run_id}"
+          container_name="hotel-content-c1b1-${run_id}"
+          database="bazarbaaz_hotel_c1b1_${run_id}"
+          password="f5_c1b1_${run_id}_ephemeral_only"
+
+          docker volume create "$volume" >/dev/null
+          echo "HOTEL_CONTENT_C1B1_VOLUME_NAME=$volume" >> "$GITHUB_ENV"
+          echo "HOTEL_CONTENT_C1B1_RUN_ID=$run_id" >> "$GITHUB_ENV"
+
+          container_id="$(docker run --detach \
+            --name "$container_name" \
+            --label codex.task=hotel-content-c1b1-db-acceptance \
+            --label "codex.run_id=${run_id}" \
+            --mount "type=volume,source=${volume},target=/var/lib/postgresql/data" \
+            --publish 127.0.0.1:5433:5432 \
+            --env "POSTGRES_DB=${database}" \
+            --env POSTGRES_USER=c1b1_test \
+            --env "POSTGRES_PASSWORD=${password}" \
+            postgres:17-alpine)"
+          echo "HOTEL_CONTENT_C1B1_CONTAINER_ID=$container_id" >> "$GITHUB_ENV"
+
+          ready=0
+          for attempt in $(seq 1 40); do
+            if docker exec "$container_id" pg_isready -U c1b1_test -d "$database" >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          test "$ready" = 1
+
+          url="postgresql://c1b1_test:${password}@127.0.0.1:5433/${database}?schema=public"
+          {
+            echo "DATABASE_URL=${url}"
+            echo "DIRECT_URL=${url}"
+            echo "AI_MEDIA_LOCAL_DOCKER_E2E=1"
+            echo "HOTEL_CONTENT_C1B1_PG_ACCEPTANCE=1"
+          } >> "$GITHUB_ENV"
+
+          echo "Disposable C1B1 PostgreSQL 17 target started on loopback port 5433 with synthetic-only credentials and task/run labels."
+
+      - name: Migrate the disposable C1B1 CMS acceptance database
+        run: pnpm exec prisma migrate deploy
+
+      - name: Run C1B1 CMS authorization and transition acceptance
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-content-c1b1.postgres.local.test.ts
+
+      - name: Remove only the disposable C1B1 acceptance database resources
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "${HOTEL_CONTENT_C1B1_CONTAINER_ID:-}" ]]; then
+            docker rm --force "$HOTEL_CONTENT_C1B1_CONTAINER_ID" >/dev/null 2>&1 || true
+          fi
+          if [[ -n "${HOTEL_CONTENT_C1B1_VOLUME_NAME:-}" ]]; then
+            docker volume rm "$HOTEL_CONTENT_C1B1_VOLUME_NAME" >/dev/null 2>&1 || true
+          fi
+          echo "Task-owned C1B1 container and volume cleanup attempted; no shared Docker resources were targeted."
+
   authenticated-staging-browser:
     if: inputs.run_staging_browser
     runs-on: ubuntu-latest

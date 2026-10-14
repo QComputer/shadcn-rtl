@@ -5,6 +5,7 @@ import { Prisma, type UssdPaymentVerificationJobStatus } from "@prisma/client";
 import prisma from "@/lib/db";
 import { customerOrderLifecycleRouter } from "@/lib/notifications/customer-order-lifecycle-router";
 import { environmentInotiCredentialProvider } from "@/lib/integrations/inoti-ussd/credentials";
+import { resolveBoundInotiPaymentAccount } from "@/lib/integrations/inoti-ussd/account-routing.server";
 import {
   correlationFingerprint,
   correlationKeyReadiness,
@@ -199,11 +200,17 @@ export async function processDuePaymentVerifications(input: {
     }
 
     const integration = integrationProjection(job);
-    const credentials = await environmentInotiCredentialProvider.resolveProfile(job.organizationId, integration.credentialProfileKey);
+    const credentials = await resolveBoundInotiPaymentAccount({
+      organizationId: job.paymentIntent.organizationId,
+      merchantAccountKey: job.paymentIntent.merchantAccountKey,
+      credentialProfileKey: job.paymentIntent.credentialProfileKeySnapshot,
+      merchantCodeName: job.paymentIntent.merchantCodeName,
+      credentialProvider: environmentInotiCredentialProvider,
+    });
     let verification: InotiVerificationResult;
     try {
       verification = await provider.verifyPayment(credentials, {
-        codeName: integration.codeName,
+        codeName: job.paymentIntent.merchantCodeName,
         sessionId: correlation.sessionId,
         mobile: correlation.mobile,
         amountRial: job.paymentIntent.amountRial,

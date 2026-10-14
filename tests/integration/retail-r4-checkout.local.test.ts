@@ -12,11 +12,11 @@ function assertExactDatabaseTarget() {
     const url = new URL(process.env[key] ?? "");
     assert.ok(["127.0.0.1", "localhost"].includes(url.hostname), `${key} must use loopback`);
     assert.equal(url.port, "55433", `${key} must use the disposable R4 PostgreSQL port`);
-    assert.equal(url.pathname, "/bazarbaaz_retail_r4", `${key} must use the exact disposable R4 database`);
+    assert.equal(url.pathname, `/${process.env.RETAIL_R4_EXPECTED_DATABASE}`, `${key} must use the exact disposable R4/R5 database`);
   }
   assert.equal(process.env.DATABASE_URL, process.env.DIRECT_URL);
   assert.equal(process.env.LOCAL_PRISMA_EXPECTED_PORT, "55433");
-  assert.equal(process.env.RETAIL_R4_EXPECTED_DATABASE, "bazarbaaz_retail_r4");
+  assert.match(process.env.RETAIL_R4_EXPECTED_DATABASE ?? "", /^bazarbaaz_retail_(?:r4|r5)$/);
   assert.equal(process.env.AI_MEDIA_LOCAL_DOCKER_E2E, "1");
 }
 

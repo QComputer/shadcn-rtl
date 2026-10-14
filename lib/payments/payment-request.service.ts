@@ -1,6 +1,6 @@
 import "server-only";
 
-import { randomUUID } from "node:crypto";
+import { randomInt } from "node:crypto";
 import type { IntegrationProvider, PaymentProviderAttemptStatus, PaymentRequestStatus, Prisma } from "@prisma/client";
 import { ApiError } from "@/lib/api-guards";
 import prisma from "@/lib/db";
@@ -74,7 +74,7 @@ async function assertGuestCustomerBelongsToOrganization(input: { organizationId:
 }
 
 export function generateBazarBaazFactorId() {
-  return `BZ${randomUUID().replace(/-/g, "")}`;
+  return randomInt(100_000_000, 1_000_000_000).toString();
 }
 
 export async function createPaymentRequest(input: {

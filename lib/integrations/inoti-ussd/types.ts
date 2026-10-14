@@ -43,6 +43,9 @@ export type UssdPaymentIntentProjection = {
   orderId: string | null;
   paymentRequestId: string | null;
   providerAttemptId: string | null;
+  merchantAccountKey: string;
+  credentialProfileKeySnapshot: string | null;
+  merchantCodeName: string;
   merchantFactorId: string;
   amountRial: bigint;
   sessionIdHash: string;
@@ -105,8 +108,11 @@ export type InotiCredentialProfile = {
   ussdDialString?: string | null;
 };
 
+export type InotiMerchantAccountKey = "PLATFORM_OWNER" | "CAFE_LEO";
+
 export interface InotiCredentialProvider {
   resolveProfile(organizationId: string, profileKey: string | null): Promise<InotiCredentialProfile | null>;
+  resolvePaymentAccount?(accountKey: InotiMerchantAccountKey): Promise<InotiCredentialProfile | null>;
 }
 
 export interface UssdProvider {

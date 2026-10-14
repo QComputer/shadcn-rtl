@@ -19,6 +19,7 @@ import type {
 } from "@/lib/integrations/inoti-ussd/types";
 import { environmentInotiCredentialProvider } from "@/lib/integrations/inoti-ussd/credentials";
 import { inotiLivePaymentsAllowed } from "@/lib/integrations/inoti-runtime-safety";
+import { resolveBoundInotiPaymentAccount, resolveInotiPaymentAccount } from "@/lib/integrations/inoti-ussd/account-routing.server";
 import { describeSessionIdSyntax, sessionIdParseFailureReason } from "@/lib/integrations/inoti-ussd/session-syntax";
 import { hashInotiEvidence, maskInotiMobile } from "@/lib/integrations/inoti-ussd/evidence";
 import { correlationKeyReadiness } from "@/lib/integrations/inoti-ussd/correlation-envelope";
@@ -118,7 +119,10 @@ export class InotiUssdWorkflow {
   constructor(
     private readonly repository: UssdIntegrationRepository,
     private readonly provider: UssdProvider,
-    private readonly credentialProvider: { resolveProfile(organizationId: string, profileKey: string | null): Promise<InotiCredentialProfile | null> },
+    private readonly credentialProvider: {
+      resolveProfile(organizationId: string, profileKey: string | null): Promise<InotiCredentialProfile | null>;
+      resolvePaymentAccount?(accountKey: "PLATFORM_OWNER" | "CAFE_LEO"): Promise<InotiCredentialProfile | null>;
+    },
     private readonly notifyPayment: typeof customerOrderLifecycleRouter.notifyPaymentStatusChangedSafe =
       customerOrderLifecycleRouter.notifyPaymentStatusChangedSafe.bind(customerOrderLifecycleRouter),
     private readonly settlementAllowed: () => boolean = inotiLivePaymentsAllowed,
@@ -144,8 +148,13 @@ export class InotiUssdWorkflow {
     }
 
     let request: ParsedUssdRequest;
+    const callbackCandidate = searchParams.has("RRN") || searchParams.has("rrn");
+    const activePaymentAccount = callbackCandidate
+      ? null
+      : await resolveInotiPaymentAccount(integration.organizationId, this.credentialProvider, integration);
+    const expectedCodeName = callbackCandidate ? null : activePaymentAccount?.codeName ?? integration.codeName;
     try {
-      request = parseUssdQuery(searchParams, integration.codeName);
+      request = parseUssdQuery(searchParams, expectedCodeName);
     } catch (error) {
       if (error instanceof UssdParseError) {
         await this.recordEvent(
@@ -254,7 +263,7 @@ export class InotiUssdWorkflow {
     }
     if (command === "2") {
       await this.recordEvent(integration, sessionIdHash, "USSD_PAYMENT_SELECTED", { trackingToken });
-      return this.handlePaymentRequest(integration, request, trackingToken, sessionIdHash);
+      return this.handlePaymentRequest(integration, request, trackingToken, sessionIdHash, activePaymentAccount);
     }
     return this.rejectInvalidFlow(
       integration,
@@ -340,6 +349,7 @@ export class InotiUssdWorkflow {
     request: ParsedUssdRequest,
     trackingToken: string,
     sessionIdHash: string,
+    resolvedAccount: Awaited<ReturnType<typeof resolveInotiPaymentAccount>>,
   ) {
     const initiationPermitted = this.initiationAllowed
       ? this.initiationAllowed()
@@ -347,9 +357,9 @@ export class InotiUssdWorkflow {
     if (!integration.config.paymentEnabled || !initiationPermitted) {
       return "پرداخت در دسترس نیست";
     }
-    const credentialProfile = await this.credentialProvider.resolveProfile(integration.organizationId, integration.credentialProfileKey);
-    const readiness = this.provider.getReadiness(credentialProfile);
-    if (!readiness.ready) {
+    const account = resolvedAccount;
+    const readiness = this.provider.getReadiness(account?.profile ?? null);
+    if (!account || !readiness.ready || request.segments[1] !== account.codeName) {
       return "پرداخت در دسترس نیست";
     }
 
@@ -372,6 +382,9 @@ export class InotiUssdWorkflow {
       mobileHash: hashInotiEvidence(request.mobile),
       mobileMasked: maskInotiMobile(request.mobile),
       amountToman,
+      merchantAccountKey: account.merchantAccountKey,
+      credentialProfileKeySnapshot: account.credentialProfileKey,
+      merchantCodeName: account.codeName,
     });
     if (intent.status === "SETTLED") return "سفارش قبلا پرداخت شده است";
     if (intent.amountRial !== amountRial) return "مبلغ سفارش نامعتبر است";
@@ -388,8 +401,6 @@ export class InotiUssdWorkflow {
     request: ParsedUssdRequest,
     sessionIdHash: string,
   ) {
-    const credentialProfile = await this.credentialProvider.resolveProfile(integration.organizationId, integration.credentialProfileKey);
-    const readiness = this.provider.getReadiness(credentialProfile);
     const mobileHash = hashInotiEvidence(request.mobile);
     const callHash = hashInotiEvidence(request.call);
     const rrnHash = hashInotiEvidence(request.rrn ?? "");
@@ -399,22 +410,38 @@ export class InotiUssdWorkflow {
     const providerFactorId = factors[1] ?? "";
 
     if (
-      !readiness.ready ||
-      !/^BZ[A-Fa-f0-9]{32}$/.test(merchantFactorId) ||
+      !/^(?:\d{9}|BZ[A-Fa-f0-9]{32})$/.test(merchantFactorId) ||
       !/^[A-Za-z0-9_-]{1,64}$/.test(providerFactorId)
     ) {
       await this.repository.recordCallbackEvent({
         integration, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
-        outcome: "REJECTED", errorCode: readiness.ready ? "INVALID_PAYMENT_CALLBACK" : readiness.code,
+        outcome: "REJECTED", errorCode: "INVALID_PAYMENT_CALLBACK",
       });
       return PAYMENT_FAILED_RESPONSE;
     }
 
     const intent = await this.repository.findPaymentIntent(integration.id, merchantFactorId);
-    if (!intent || !sameText(intent.sessionIdHash, sessionIdHash) || !sameText(intent.mobileHash, mobileHash)) {
+    if (!intent || request.segments[1] !== intent.merchantCodeName ||
+        !sameText(intent.sessionIdHash, sessionIdHash) || !sameText(intent.mobileHash, mobileHash)) {
       await this.repository.recordCallbackEvent({
         integration, paymentIntentId: intent?.id, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
         outcome: "REJECTED", errorCode: "INTENT_CONTEXT_MISMATCH",
+      });
+      return PAYMENT_FAILED_RESPONSE;
+    }
+
+    const credentialProfile = await resolveBoundInotiPaymentAccount({
+      organizationId: intent.organizationId,
+      merchantAccountKey: intent.merchantAccountKey,
+      credentialProfileKey: intent.credentialProfileKeySnapshot,
+      merchantCodeName: intent.merchantCodeName,
+      credentialProvider: this.credentialProvider,
+    });
+    const readiness = this.provider.getReadiness(credentialProfile);
+    if (!readiness.ready) {
+      await this.repository.recordCallbackEvent({
+        integration, paymentIntentId: intent.id, idempotencyKey, sessionIdHash, mobileHash, callHash, rrnHash,
+        outcome: "REJECTED", errorCode: readiness.code,
       });
       return PAYMENT_FAILED_RESPONSE;
     }
@@ -486,7 +513,7 @@ export class InotiUssdWorkflow {
     }
 
     const verification = await this.provider.verifyPayment(credentialProfile, {
-      codeName: integration.codeName,
+      codeName: intent.merchantCodeName,
       sessionId: request.sessionId,
       mobile: request.mobile,
       amountRial: intent.amountRial,

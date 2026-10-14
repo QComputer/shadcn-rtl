@@ -44,7 +44,7 @@ const integrationB: ResolvedInotiIntegration = {
   organizationSlug: "tenant-b",
   codeName: "beta",
 };
-const factor = `BZ${"a".repeat(32)}`;
+const factor = "123456789";
 
 describe("iNoti public integration identity", () => {
   it("builds canonical Bazarbaaz callback URLs from stable UUID public IDs", () => {
@@ -176,13 +176,15 @@ describe("iNoti live read-only provider probes", () => {
 });
 
 class FakeCredentialProvider {
-  async resolveProfile(): Promise<InotiCredentialProfile | null> {
+  async resolveProfile(organizationId: string): Promise<InotiCredentialProfile | null> {
     return {
-      organizationId: "_organizationId",
+      organizationId,
       profileKey: "INOTI_DEFAULT",
       username: "x",
       password: "y",
       endpoint: "https://login.inoti.com/_services/ExternalUssdPay.asmx",
+      ussdCodeName: organizationId === "tenant-b" ? "beta" : "alpha",
+      ussdDialString: "*6655*test*2*1#",
     };
   }
 }
@@ -243,6 +245,9 @@ class FakeRepository implements UssdIntegrationRepository {
     mobileHash: string;
     mobileMasked: string;
     amountToman: bigint;
+    merchantAccountKey: string;
+    credentialProfileKeySnapshot: string;
+    merchantCodeName: string;
   }) {
     const key = `${input.integration.id}:${input.order.id}:${input.sessionIdHash}`;
     const existing = this.intents.get(key);
@@ -254,6 +259,9 @@ class FakeRepository implements UssdIntegrationRepository {
       orderId: input.order.id,
       paymentRequestId: null,
       providerAttemptId: null,
+      merchantAccountKey: input.merchantAccountKey,
+      credentialProfileKeySnapshot: input.credentialProfileKeySnapshot,
+      merchantCodeName: input.merchantCodeName,
       merchantFactorId: factor,
       amountRial: tomanToInotiRial(input.amountToman),
       sessionIdHash: input.sessionIdHash,

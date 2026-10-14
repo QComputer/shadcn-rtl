@@ -40,7 +40,7 @@ function readSingleQueryValue(searchParams: URLSearchParams, key: string, maxLen
   return value;
 }
 
-export function parseUssdQuery(searchParams: URLSearchParams, codeName: string): ParsedUssdRequest {
+export function parseUssdQuery(searchParams: URLSearchParams, codeName: string | null): ParsedUssdRequest {
   const mobileRaw = readSingleQueryValue(searchParams, "mobile", 32);
   const sessionRaw = normalizeDigits(readSingleQueryValue(searchParams, "sessionid", 64));
   const callRaw = normalizeDigits(readSingleQueryValue(searchParams, "call", 256));
@@ -62,7 +62,8 @@ export function parseUssdQuery(searchParams: URLSearchParams, codeName: string):
     throw new UssdParseError("INVALID_CALL");
   }
   const segments = call.split("*");
-  if (segments.length < 2 || segments.length > 10 || segments[0] !== "6655" || segments[1] !== codeName) {
+  if (segments.length < 2 || segments.length > 10 || segments[0] !== "6655" ||
+      !/^[A-Za-z0-9_-]{1,32}$/.test(segments[1] ?? "") || (codeName !== null && segments[1] !== codeName)) {
     throw new UssdParseError("INVALID_CALL_SCOPE");
   }
 

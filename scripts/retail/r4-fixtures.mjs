@@ -5,6 +5,7 @@ const slugs = ["retail-r4-synthetic-fashion", "retail-r4-synthetic-mobile", "ret
 const managerEmails = ["r4-synthetic-fashion-manager@example.test", "r4-synthetic-mobile-manager@example.test"];
 const customerEmail = "r4-synthetic-customer@example.test";
 const testPassword = process.env.RETAIL_R4_TEST_PASSWORD;
+const expectedDatabase = process.env.RETAIL_R4_EXPECTED_DATABASE || "bazarbaaz_retail_r4";
 if (!testPassword || testPassword.length < 12) {
   throw new Error("RETAIL_R4_TEST_PASSWORD must be set to a disposable test credential of at least 12 characters.");
 }
@@ -14,15 +15,15 @@ function assertDatabaseTarget() {
   for (const key of ["DATABASE_URL", "DIRECT_URL"]) {
     const url = new URL(process.env[key] ?? "");
     if (!/^postgres(ql)?:$/.test(url.protocol) || !["127.0.0.1", "localhost"].includes(url.hostname)) throw new Error(`${key} must target a local disposable PostgreSQL database`);
-    if (url.port !== "55433" || url.pathname !== "/bazarbaaz_retail_r4") throw new Error(`${key} does not match the verified retail R4 disposable database`);
+    if (url.port !== "55433" || url.pathname !== `/${expectedDatabase}`) throw new Error(`${key} does not match the verified retail disposable database`);
   }
-  if (process.env.LOCAL_PRISMA_EXPECTED_PORT !== "55433" || process.env.RETAIL_R4_EXPECTED_DATABASE !== "bazarbaaz_retail_r4") throw new Error("Missing explicit retail R4 disposable database identity guard");
+  if (process.env.LOCAL_PRISMA_EXPECTED_PORT !== "55433" || process.env.RETAIL_R4_EXPECTED_DATABASE !== expectedDatabase) throw new Error("Missing explicit retail disposable database identity guard");
 }
 
 async function verifyDatabase() {
   const rows = await prisma.$queryRaw`SELECT current_database() AS database, current_setting('server_version') AS version, current_setting('server_version_num')::int AS version_num`;
   const identity = rows[0];
-  if (identity.database !== "bazarbaaz_retail_r4" || identity.version_num < 170000 || identity.version_num >= 180000) throw new Error("Connected database is not the verified PostgreSQL 17 retail R4 fixture database");
+  if (identity.database !== expectedDatabase || identity.version_num < 170000 || identity.version_num >= 180000) throw new Error("Connected database is not the verified PostgreSQL 17 retail fixture database");
   return identity;
 }
 

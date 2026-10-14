@@ -53,6 +53,18 @@ Human cancellation, cash confirmation, bank-report submission, expiry, and iNoti
 
 The internal runner must be scheduled by a separately reviewed deployment configuration and supplied `RETAIL_PAYMENT_EXPIRATION_SECRET` (or the existing internal secret). This source change does not activate a scheduler. Rollout must first choose a disposition for old nullable-deadline R4 orders and operationally monitor expired-order and late-payment reconciliation counts. No Production migration, schedule change, or payment operation is part of this branch.
 
+### Expiration policy and disabled scheduler design
+
+The current new-order defaults are 24 hours for bank transfer (time to submit a receipt or transfer-time report), 48 hours for cash (to allow store-counter, pickup, or courier collection), and 15 minutes for iNoti USSD (a short-lived provider checkout). Merchants can change each independently within the validated 5-minute to 30-day range; checkout snapshots the selected value on the order. A bank report already awaiting review blocks expiry regardless of its original deadline. These defaults are implementation defaults, not production rollout approval.
+
+The proposed operator is a separately managed scheduled job that POSTs to `/api/internal/retail/payment-expiration` over TLS with a dedicated `RETAIL_PAYMENT_EXPIRATION_SECRET`, every five minutes, using a batch limit of at most 100. The route is POST-only, compares its bearer secret in constant time, and the worker selects deterministic batches with `SKIP LOCKED`; retries are safe because stock/coupon releases are idempotent. An operator should monitor scanned/expired counts and late-payment reconciliation. The schedule, secret provisioning, initial nullable-deadline order disposition, and alert thresholds remain disabled pending separate review; no cron resource or Production configuration is created here.
+
+### Cafe Leo readiness diagnosis and acceptance simulation
+
+The R5 Cafe Leo browser failure came from mixing read-only method readiness with live-payment authorization. In the previous GitHub Actions server step, the two live-payment gates were set true, provider verification was enabled, and placeholder Cafe credentials plus a HTTPS loopback endpoint were supplied. Because the server ran with `NODE_ENV=production` and no `INOTI_USSD_HASH_PEPPER` was configured, the provider's first failing readiness code was `MISSING_HASH_PEPPER`; the public method API returned an empty list. Credentials and provider payloads are never included in diagnostics.
+
+R5 acceptance now uses a separate, explicit GitHub Actions simulation switch and loopback-only endpoint check. It does not set either live-payment authorization gate or provider verification enablement. The simulation may expose the synthetic method and create a pending native checkout solely for browser assertions. `InotiPaymentLifecycleService` initiation and callback settlement continue to require `inotiLivePaymentsAllowed()`; simulation never satisfies that gate and cannot authorize a provider call. Cafe account resolution still uses the persisted `CAFE_LEO` binding, while all other organizations resolve the platform owner's account. The fixture asserts that Cafe Leo has no external catalog connection, import, or sync job, and browser monitoring covers both `iran.cafeleo.vip` and the seed's `iran.leocafe.vip` host variants.
+
 ## Target architecture and trust boundaries
 
 ### Effective account policy

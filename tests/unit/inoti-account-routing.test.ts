@@ -3,6 +3,8 @@ import test from "node:test";
 import { generateBazarBaazFactorId } from "@/lib/payments/payment-request.service";
 import { resolveBoundInotiPaymentAccount } from "@/lib/integrations/inoti-ussd/account-routing.server";
 import { buildInotiUssdPaymentDialPrefix } from "@/lib/integrations/inoti-ussd/callback-url";
+import { InotiUssdProvider } from "@/lib/integrations/inoti-ussd/inoti-provider";
+import { inotiAcceptanceSimulationAllowed, inotiLivePaymentsAllowed } from "@/lib/integrations/inoti-runtime-safety";
 import type { InotiCredentialProfile, InotiMerchantAccountKey } from "@/lib/integrations/inoti-ussd/types";
 
 const profileFor = (accountKey: InotiMerchantAccountKey): InotiCredentialProfile => ({
@@ -18,6 +20,57 @@ const profileFor = (accountKey: InotiMerchantAccountKey): InotiCredentialProfile
 test("allocates only numeric 9-digit factors", () => {
   const factors = Array.from({ length: 100 }, () => generateBazarBaazFactorId());
   for (const factor of factors) assert.match(factor, /^[1-9]\d{8}$/);
+});
+
+test("acceptance simulation never authorizes live iNoti payment calls", () => {
+  const keys = ["CI", "GITHUB_ACTIONS", "INOTI_USSD_ACCEPTANCE_SIMULATION", "INOTI_ALLOW_LIVE_PAYMENTS", "INOTI_RUNTIME_MUTATIONS_APPROVED"] as const;
+  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  try {
+    process.env.CI = "true";
+    process.env.INOTI_USSD_ACCEPTANCE_SIMULATION = "true";
+    delete process.env.INOTI_ALLOW_LIVE_PAYMENTS;
+    delete process.env.INOTI_RUNTIME_MUTATIONS_APPROVED;
+    delete process.env.GITHUB_ACTIONS;
+    assert.equal(inotiAcceptanceSimulationAllowed(), false,
+      "the acceptance switch alone must not activate outside the hosted GitHub Actions runner");
+    process.env.GITHUB_ACTIONS = "true";
+    assert.equal(inotiAcceptanceSimulationAllowed(), true);
+    assert.equal(inotiLivePaymentsAllowed(), false);
+
+    process.env.INOTI_ALLOW_LIVE_PAYMENTS = "true";
+    process.env.INOTI_RUNTIME_MUTATIONS_APPROVED = "true";
+    assert.equal(inotiAcceptanceSimulationAllowed(), false,
+      "simulation mode must be disabled whenever the separately reviewed live gate is enabled");
+    assert.equal(inotiLivePaymentsAllowed(), true);
+  } finally {
+    for (const key of keys) {
+      const value = previous[key];
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+
+test("production readiness reports the first missing CI provider prerequisite without exposing credentials", () => {
+  const keys = ["NODE_ENV", "INOTI_USSD_LIVE_VERIFICATION_ENABLED", "INOTI_USSD_HASH_PEPPER"] as const;
+  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  try {
+    process.env.NODE_ENV = "production";
+    process.env.INOTI_USSD_LIVE_VERIFICATION_ENABLED = "true";
+    delete process.env.INOTI_USSD_HASH_PEPPER;
+    const provider = new InotiUssdProvider();
+    const readiness = provider.getReadiness(profileFor("CAFE_LEO"));
+    assert.equal(readiness.ready, false);
+    assert.equal(readiness.code, "MISSING_HASH_PEPPER");
+    assert.equal("username" in readiness, false);
+    assert.equal("password" in readiness, false);
+  } finally {
+    for (const key of keys) {
+      const value = previous[key];
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
 });
 
 test("builds the payment CodeName prefix and leaves the final public order code to the checkout flow", () => {

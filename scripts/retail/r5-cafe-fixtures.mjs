@@ -92,14 +92,26 @@ async function seedCafeShop() {
   });
   const routing = await prisma.organizationInotiPaymentRouting.findUniqueOrThrow({ where: { organizationId: organization.id } });
   if (routing.merchantAccountKey !== "CAFE_LEO") throw new Error("Cafe Leo fixture must use the dedicated test account policy");
+  const [externalConnections, externalImports, externalSyncJobs] = await Promise.all([
+    prisma.externalCatalogConnection.count({ where: { organizationId: organization.id } }),
+    prisma.externalImportRun.count({ where: { organizationId: organization.id } }),
+    prisma.externalCatalogSyncJob.count({ where: { organizationId: organization.id } }),
+  ]);
+  if (externalConnections || externalImports || externalSyncJobs) {
+    throw new Error("Cafe Leo native Shop fixture must not create external catalog connections, imports, or sync jobs");
+  }
+  process.stdout.write(`${JSON.stringify({ event: "R5_CAFE_EXTERNAL_SYNC_ASSERTION", connections: 0, imports: 0, syncJobs: 0 })}\n`);
   const paymentSettings = await prisma.paymentSettings.findUniqueOrThrow({ where: { organizationSlug: organization.slug }, select: { settings: true } });
   const retailPolicy = paymentSettings.settings?.retailR4;
   if (!retailPolicy || typeof retailPolicy !== "object" || retailPolicy.inotiUssdEnabled !== true) {
     throw new Error("Cafe Leo fixture must persist the enabled R5 synthetic USSD policy");
   }
-  const { getRetailInotiReadiness } = await import("../../lib/retail/inoti-readiness.server.ts");
-  if (await getRetailInotiReadiness(organization.id) === null) {
-    throw new Error("Cafe Leo fixture is not eligible for the configured synthetic account in read-only readiness");
+  const { diagnoseRetailInotiReadiness } = await import("../../lib/retail/inoti-readiness.server.ts");
+  const readiness = await diagnoseRetailInotiReadiness(organization.id);
+  process.stdout.write(`${JSON.stringify({ event: "R5_CAFE_INOTI_READINESS", ready: readiness.ready,
+    mode: readiness.ready ? readiness.mode : null, reason: readiness.ready ? null : readiness.reason })}\n`);
+  if (!readiness.ready || readiness.mode !== "SIMULATED") {
+    throw new Error("Cafe Leo fixture requires the explicitly simulated loopback provider; readiness diagnostics are sanitized");
   }
   process.stdout.write(`R5 synthetic Cafe Leo Shop fixture created for ${organization.id}; no external provider or Cafe host used.\n`);
 }

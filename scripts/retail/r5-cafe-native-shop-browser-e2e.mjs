@@ -28,7 +28,8 @@ async function main() {
   const externalCafeRequests = [];
   context.on("request", (request) => {
     const url = new URL(request.url());
-    if (url.hostname === "iran.cafeleo.vip" || url.hostname.endsWith(".cafeleo.vip")) externalCafeRequests.push(request.url());
+    if (url.hostname === "iran.cafeleo.vip" || url.hostname.endsWith(".cafeleo.vip") ||
+        url.hostname === "iran.leocafe.vip" || url.hostname.endsWith(".leocafe.vip")) externalCafeRequests.push(request.url());
   });
   const page = await context.newPage();
   await page.route("https://fonts.googleapis.com/**", (route) => route.fulfill({ status: 200, contentType: "text/css", body: "" }));
@@ -74,7 +75,18 @@ async function main() {
       `Cafe Leo Shop must offer its configured dedicated USSD option; API ${paymentMethodsStatus}, methods ${availableMethods.join(",")}`);
     await method.selectOption("INOTI_USSD");
     await capture(page, "cafe-native-checkout.png");
+    const checkoutResponsePromise = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.pathname === "/api/retail/v1/checkout" && response.request().method() === "POST";
+    });
     await page.getByRole("button", { name: "ثبت سفارش" }).click();
+    const checkoutResponse = await checkoutResponsePromise;
+    assert.equal(checkoutResponse.status(), 201, "native Cafe Leo checkout must use the shared retail checkout API");
+    const checkoutBody = await checkoutResponse.json();
+    assert.equal(checkoutBody.paymentMethod, "INOTI_USSD");
+    assert.equal(checkoutBody.paymentStatus, "PENDING");
+    assert.ok(typeof checkoutBody.trackingToken === "string" && checkoutBody.trackingToken.length >= 24,
+      "the native checkout order must retain its Bazarbaaz payment correlation token");
     const confirmation = page.getByRole("heading", { name: /^سفارش RET-[A-Z0-9-]+ ثبت شد$/ });
     await confirmation.waitFor({ timeout: 30000 });
     const orderNumber = (await confirmation.innerText()).match(/RET-[A-Z0-9-]+/)?.[0];

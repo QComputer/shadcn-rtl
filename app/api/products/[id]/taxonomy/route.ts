@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jsonError, requireAuthSession, requireProductAccess, ApiError } from "@/lib/api-guards";
+import { jsonError, requireAuthSession, requireProductAccess, ApiError, requireSameOriginMutation } from "@/lib/api-guards";
 import { productTaxonomyPatchSchema, readProductTaxonomy, replaceProductTaxonomy } from "@/lib/retail/product-taxonomy.server";
 
 const responseHeaders = { "Cache-Control": "private, no-store" };
-
-function requireSameOrigin(request: NextRequest) {
-  const origin = request.headers.get("origin");
-  if (!origin || origin === "null" || origin !== new URL(request.url).origin ||
-      request.headers.get("sec-fetch-site") === "cross-site") {
-    throw new ApiError(403, "Forbidden origin");
-  }
-}
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -23,7 +15,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    requireSameOrigin(request);
+    requireSameOriginMutation(request);
     if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
       throw new ApiError(415, "Expected JSON");
     }

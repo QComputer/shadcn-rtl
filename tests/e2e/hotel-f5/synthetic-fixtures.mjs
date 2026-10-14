@@ -1,4 +1,13 @@
 /** Synthetic-only editorial values. Never replace with real Hotel records. */
+export const syntheticFixtureRequirements = Object.freeze({
+  targetTenant: { label: "F5 synthetic Hotel A", active: true, hotelWebsite: true, hotelBooking: false, host: "dedicated F5 staging host" },
+  foreignTenant: { label: "F5 synthetic Hotel B", active: true, hotelWebsite: true, hotelBooking: false, host: "separate F5 staging host" },
+  disabledTenant: { label: "F5 synthetic Hotel capability-negative", active: true, hotelWebsite: false, hotelBooking: false, host: "dedicated F5 staging host" },
+  accounts: ["ADMIN author", "distinct ADMIN reviewer", "MANAGER author/negative reviewer", "foreign-tenant ADMIN"],
+  media: ["target-owned PUBLIC PNG with synthetic-only alt text", "foreign-tenant PUBLIC image", "foreign-tenant published association ID"],
+  publication: "target and foreign content contain synthetic-only text; no real hotel copy or photography",
+});
+
 export function syntheticEditorial(marker) {
   return {
     title: `آزمایش محتوای مصنوعی ${marker}`,

@@ -6,7 +6,7 @@ Status: **blocked before Neon access, provisioning, database writes, or deployme
 
 - Intended database platform: the existing Bazarbaaz Neon project `aged-star-89488704`; no Render work is part of this plan.
 - Production references supplied by the owner (`br-small-queen-aii58cw9`, endpoint `ep-little-river-aifwxtf7`, database `neondb`) are identity references only. This task did not connect to them.
-- F5 must use a separately identified schema-only **root** branch. It is not to be treated as a normal child branch or as preserving the Production Prisma ledger. The branch option, entitlement, account limits, current branch count, and exact billing plan must be confirmed in the Neon account before creation.
+- F5 must use a separately identified schema-only **root** branch. It is not to be treated as a normal child branch or as preserving the Production Prisma ledger. Neon’s current docs state schema-only roots have plan-specific root allowances (Free 3, Launch 5, Scale 25) and schema-only storage caps (1/3/20 GB respectively). The actual account plan, entitlement, current root count and available storage must still be confirmed in the Neon account before creation.
 - Vercel must use a distinct F5 staging project/environment and a verified SSO-protected deployment. No Vercel configuration was changed.
 - Synthetic tenant, role, content, media and domain data only. Do not clone Production rows or credentials.
 - `HOTEL_WEBSITE_PUBLIC_OPERATIONAL_ENABLED` may only be enabled in authorized F5 staging for a bounded acceptance window. `HOTEL_BOOKING`, anonymous holds, payments, SMS/notifications and other operational business flows remain disabled.
@@ -53,7 +53,7 @@ These names are source facts only. They do not assert that these are the only mi
 
 ## Cost and entitlement notes (not account-verified)
 
-Neon's current public pricing page lists Free at $0 with 100 CU-hours per project/month and 1 GB storage, Launch at $0.106/CU-hour and $0.35/GB-month, and Scale at $0.222/CU-hour and $0.35/GB-month. The public comparison lists included branch counts and Launch/Scale extra branch-hours at $0.002/hour; actual cost depends on this project's plan, existing branch count, compute runtime/size, storage/history and account entitlements. No project billing or usage data was accessed, so the F5 branch cost cannot yet be quoted. Recheck pricing and project quotas immediately before provisioning.
+Neon's current public pricing page lists Free at $0 with 100 CU-hours per project/month and 1 GB project storage, Launch at $0.106/CU-hour and $0.35/GB-month, and Scale at $0.222/CU-hour and $0.35/GB-month. The comparison lists Free/Launch/Scale root allowances of 3/5/25 for schema-only branches; ordinary included branch counts and extra-branch charges are separate pricing dimensions. Actual F5 cost depends on this project's plan, root allowance usage, compute runtime/size, storage/history and account entitlements. No project billing or usage data was accessed, so the F5 branch cost cannot yet be quoted. Recheck pricing and quotas immediately before provisioning.
 
 ## Exact owner/operator actions still required
 
@@ -64,6 +64,8 @@ Neon's current public pricing page lists Free at $0 with 100 CU-hours per projec
 - Authorize the bounded staging-only migration and browser acceptance window after the above checks; this preparation has not used that authorization to create resources or write data.
 
 ## Browser suite contract
+
+The synthetic fixture specification is exported as `syntheticFixtureRequirements` in `tests/e2e/hotel-f5/synthetic-fixtures.mjs`: two active synthetic Hotel tenants with separate staging hosts and `HOTEL_WEBSITE` enabled but `HOTEL_BOOKING` disabled; a third synthetic tenant with website capability disabled; distinct ADMIN author and ADMIN reviewer, MANAGER and foreign-tenant ADMIN; target-owned synthetic PUBLIC PNG; foreign-tenant image and a foreign published association ID; and synthetic-only content. No real Hotel brand, Production record, credential, or photography may be used.
 
 The dedicated suite is `tests/e2e/hotel-f5/staging-cms-acceptance.spec.mjs`, configured by `playwright.hotel-f5.config.mjs`. It requires process-only variables (never commit an env file): `HOTEL_F5_E2E_ENABLED=1`; staging HTTPS app/public URLs; Vercel SSO-only storage state; synthetic target and foreign organization/property IDs and slugs; distinct ADMIN author and ADMIN reviewer credentials plus MANAGER and foreign-tenant credentials; target-owned synthetic public PNG image ID; foreign-tenant image ID and published association ID; a unique `F5-SYNTHETIC-...` fixture tag; public-gate-on F5 deployment and separate gate-off/unknown/inactive/foreign/capability-disabled API URLs; explicit confirmations that booking, payment, and notification gates are off.
 

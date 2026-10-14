@@ -41,6 +41,7 @@ jobs:
       RETAIL_RECEIPT_TEST_STORAGE: "1"
       RETAIL_RECEIPT_LOCAL_ROOT: /tmp/retail-h2-private-receipts
       AI_MEDIA_LOCAL_DOCKER_E2E: "1"
+      NODE_OPTIONS: --experimental-test-module-mocks
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

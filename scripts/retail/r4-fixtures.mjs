@@ -1,5 +1,14 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { mock } from "node:test";
+import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
+
+// This acceptance fixture calls server services outside a Next request scope;
+// cache invalidation is framework plumbing, while Prisma operations stay real.
+const require = createRequire(import.meta.url);
+const nextCacheModule = pathToFileURL(require.resolve("next/cache")).href;
+mock.module(nextCacheModule, { namedExports: { revalidatePath: () => undefined, revalidateTag: () => undefined } });
 
 const slugs = ["retail-r4-synthetic-fashion", "retail-r4-synthetic-mobile", "retail-r4-synthetic-restaurant-compat"];
 const managerEmails = ["r4-synthetic-fashion-manager@example.test", "r4-synthetic-mobile-manager@example.test"];

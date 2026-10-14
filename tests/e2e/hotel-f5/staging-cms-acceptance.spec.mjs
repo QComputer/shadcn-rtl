@@ -2,6 +2,20 @@ import { randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
 import { publicMediaApi, publicWebsiteApi, syntheticEditorial, websiteApiBase } from "./synthetic-fixtures.mjs";
 
+test("F5 deployment denies requests without a Vercel SSO session", async ({ browser }) => {
+  const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  try {
+    const page = await context.newPage();
+    const app = new URL(process.env.HOTEL_F5_APP_URL);
+    const response = await page.goto(app.toString(), { waitUntil: "domcontentloaded" });
+    const finalUrl = new URL(page.url());
+    const blockedOrRedirectedToSso = Boolean(response && [401, 403].includes(response.status())) || finalUrl.origin !== app.origin;
+    expect(blockedOrRedirectedToSso).toBe(true);
+  } finally {
+    await context.close();
+  }
+});
+
 test("F5 synthetic author-to-publication workflow enforces RBAC, tenant and media boundaries", async ({ browser }) => {
   const env = process.env;
   const appUrl = new URL(env.HOTEL_F5_APP_URL);

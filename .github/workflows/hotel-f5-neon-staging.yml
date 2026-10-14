@@ -1,6 +1,9 @@
 name: Hotel F5 Neon staging migration
 
 on:
+  push:
+    branches:
+      - codex/hotel-damoon-f5-staging-20261013
   workflow_dispatch:
 
 permissions:

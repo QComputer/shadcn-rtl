@@ -90,12 +90,11 @@ jobs:
         run: node scripts/retail/h2-r5-migration-reconcile.mjs
       - name: Verify exact ordered 102-migration chain and stage the 101-migration R5 base
         run: node scripts/retail/h2-migration-stage.mjs
-      - name: Verify clean base ledger and apply all 101 R5 migrations
+      - name: Apply all 101 R5 migrations to the identity-verified empty database
         env:
           H2_BASE_SCHEMA: ${{ runner.temp }}/retail-h2-r4-base-prisma/schema.prisma
           H2_BASE_MIGRATIONS: ${{ runner.temp }}/retail-h2-r4-base-prisma/migrations
         run: |
-          pnpm exec prisma migrate status --config prisma.h2-base.config.ts
           pnpm exec prisma migrate deploy --config prisma.h2-base.config.ts
           pnpm exec prisma migrate status --config prisma.h2-base.config.ts
       - name: Exercise R5 shared-account routing on the unseeded base database

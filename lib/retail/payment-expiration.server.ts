@@ -90,7 +90,8 @@ async function expireRetailOrderTx(tx: Tx, orderId: string, now: Date) {
   });
   if (!order || !order.retailCheckoutKey || !order.retailPaymentDeadlineAt || order.retailPaymentDeadlineAt > now ||
       order.retailPaymentExpiredAt || order.paymentStatus !== PaymentStatus.PENDING ||
-      [OrderStatus.CANCELLED, OrderStatus.REFUNDED, OrderStatus.PICKED_UP, OrderStatus.DELIVERED].includes(order.status)) {
+      order.status === OrderStatus.CANCELLED || order.status === OrderStatus.REFUNDED ||
+      order.status === OrderStatus.PICKED_UP || order.status === OrderStatus.DELIVERED) {
     return false;
   }
 

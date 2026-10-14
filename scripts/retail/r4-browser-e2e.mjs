@@ -69,9 +69,9 @@ async function login(browser, email, callback = "/fa/retail/retail-r4-synthetic-
   return { context, page };
 }
 
-async function api(page, url, { method = "GET", body, form } = {}) {
-  const response = await page.evaluate(async ({ url, method, body, formData }) => {
-    const options = { method, credentials: "same-origin", headers: {} };
+async function api(page, url, { method = "GET", body, form, headers = {} } = {}) {
+  const response = await page.evaluate(async ({ url, method, body, headers, formData }) => {
+    const options = { method, credentials: "same-origin", headers: { ...headers } };
     if (formData) {
       const data = new FormData();
       data.set("method", "RECEIPT");
@@ -83,7 +83,7 @@ async function api(page, url, { method = "GET", body, form } = {}) {
     }
     const result = await fetch(url, options);
     return { status: result.status, body: await result.json().catch(() => ({})) };
-  }, { url, method, body, formData: form ? { bytes: [...form] } : null });
+  }, { url, method, body, headers, formData: form ? { bytes: [...form] } : null });
   return response;
 }
 
@@ -316,9 +316,9 @@ async function main() {
     const expirationRace = await runWithRowsLocked(sizeColorVariant.id, expiryCheckout.order.id, [
       () => api(fashionManagerContext.page, `${baseUrl}/api/products/${fashionProduct.id}/variants`, {
         method: "PATCH", body: { id: sizeColorVariant.id, inventory: 15 },
-      }).then(response => { assert.equal(response.status, 200); return response; }),
+      }).then(response => { assert.equal(response.status, 200, `manager expiry-race stock edit failed: ${JSON.stringify(response.body)}`); return response; }),
       () => api(inventoryCustomer.page, `${baseUrl}/api/internal/retail/payment-expiration?limit=100`, {
-        method: "POST",
+        method: "POST", headers: { authorization: `Bearer ${process.env.RETAIL_PAYMENT_EXPIRATION_SECRET ?? ""}` },
       }).then(response => { assert.equal(response.status, 200); assert.ok(response.body.expired >= 1); return response; }),
     ]);
     assert.equal(expirationRace[0].body.inventory, 15);

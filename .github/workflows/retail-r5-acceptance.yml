@@ -67,8 +67,7 @@ jobs:
         run: pnpm exec prisma migrate deploy
       - name: Test R5 account routing on an unseeded database
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/inoti-shared-account-routing.local.test.ts
-      - name: Seed local synthetic regression fixtures
-        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs prisma/seed.ts
+
       - name: Seed fashion, electronics, and restaurant compatibility fixtures
         run: pnpm exec tsx scripts/retail/r4-fixtures.mjs seed
       - name: Seed Cafe Leo native Shop fixture in the disposable database

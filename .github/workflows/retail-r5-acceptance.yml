@@ -88,7 +88,7 @@ jobs:
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/retail-r4-checkout.local.test.ts
       - name: Verify R5 and restaurant iNoti regressions
         run: >-
-          pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test
+          pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test --test-concurrency=1
           tests/unit/inoti-account-routing.test.ts
           tests/unit/inoti-ussd-foundation.test.ts
           tests/unit/inoti-ussd-callback-activation.test.ts

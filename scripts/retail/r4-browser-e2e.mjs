@@ -30,6 +30,23 @@ async function capture(page, filename) {
 async function login(browser, email, callback = "/fa/retail/retail-r4-synthetic-fashion") {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
+  page.on("request", (request) => {
+    if (!request.url().includes("/api/auth/callback/credentials")) return;
+    const fields = new URLSearchParams(request.postData() ?? "");
+    console.error(JSON.stringify({
+      credentialsRequest: {
+        method: request.method(),
+        usernameMatches: fields.get("username") === email,
+        passwordMatches: fields.get("password") === password,
+        usernamePresent: fields.has("username"),
+        passwordPresent: fields.has("password"),
+      },
+    }));
+  });
+  page.on("response", (response) => {
+    if (!response.url().includes("/api/auth/callback/credentials")) return;
+    console.error(JSON.stringify({ credentialsResponse: { status: response.status(), url: new URL(response.url()).pathname } }));
+  });
   await page.route("https://fonts.googleapis.com/**", (route) => route.fulfill({ status: 200, contentType: "text/css", body: "" }));
   await page.route("https://fonts.gstatic.com/**", (route) => route.abort());
   await page.goto(`${baseUrl}/fa/login?callbackUrl=${encodeURIComponent(callback)}`);

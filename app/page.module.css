@@ -1,11 +1,12 @@
 .site {
-  --canvas: var(--damoon-ivory);
-  --wood: var(--damoon-wood);
-  --orange: var(--damoon-terracotta);
-  --green: var(--damoon-green);
-  --ink: var(--damoon-ink);
-  --muted: var(--damoon-muted);
-  --line: var(--damoon-line);
+  /* Keep the concept-only preview legible inside the shared locale shell. */
+  --canvas: var(--damoon-ivory, #f9f6f0);
+  --wood: var(--damoon-wood, #593b29);
+  --orange: var(--damoon-terracotta, #db5c2a);
+  --green: var(--damoon-green, #355d3e);
+  --ink: var(--damoon-ink, #241e19);
+  --muted: var(--damoon-muted, #5f554c);
+  --line: var(--damoon-line, #e6ded3);
   position: relative;
   min-height: 100vh;
   overflow: clip;
@@ -34,12 +35,12 @@
 .headerInner { direction: ltr; width: min(1520px, calc(100% - 64px)); height: 76px; margin: 0 auto; display: grid; grid-template-columns: minmax(190px, 1fr) auto minmax(190px, 1fr); align-items: center; gap: 22px; }
 .brand { direction: rtl; width: 194px; min-height: 54px; justify-self: start; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 5px 12px; border: 1px solid rgba(89,59,41,.13); border-radius: 7px; background: rgba(249,246,240,.4); color: var(--wood); text-decoration: none; line-height: 1.35; }
 .brandTitle { font-size: 23px; font-weight: 900; letter-spacing: -.035em; }
-.brandCaption { color: #81776f; font-size: 9px; margin-top: 2px; }
+.brandCaption { color: #62574f; font-size: 10px; margin-top: 2px; }
 .desktopNav { direction: rtl; display: flex; align-items: center; gap: clamp(17px, 2vw, 38px); white-space: nowrap; }
-.desktopNav a { position: relative; padding: 9px 0; color: #51473f; text-decoration: none; font-size: 13px; transition: color .18s ease; }
-.desktopNav a:hover, .desktopNav .navActive { color: var(--orange); }
+.desktopNav a { position: relative; padding: 9px 0; color: #493f37; text-decoration: none; font-size: 13px; transition: color .18s ease; }
+.desktopNav a:hover, .desktopNav .navActive { color: #a43e1e; }
 .navActive::after { position: absolute; right: 0; bottom: 0; width: 100%; height: 2px; background: var(--orange); content: ""; }
-.headerCta { justify-self: end; display: inline-flex; align-items: center; gap: 12px; padding: 12px 18px; color: var(--green); border: 1px solid #aebaa9; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 700; transition: background .18s ease, color .18s ease; }
+.headerCta { justify-self: end; display: inline-flex; align-items: center; gap: 12px; padding: 12px 18px; color: #294b31; border: 1px solid #8e9f88; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 700; transition: background .18s ease, color .18s ease; }
 .headerCta:hover { background: var(--green); color: white; }
 .menuButton { display: none; width: 44px; height: 44px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--wood); cursor: pointer; }
 .mobileNav { display: none; }
@@ -57,10 +58,11 @@
 .eyebrow { display: inline-flex; align-items: center; gap: 10px; color: var(--orange); font-size: 14px; font-weight: 700; }
 .eyebrow i { display: inline-block; width: 41px; height: 1px; background: var(--wood); }
 .heroCopy h1 { margin: 15px 0 3px; color: var(--wood); font-size: clamp(46px, 4vw, 67px); font-weight: 950; letter-spacing: -.06em; line-height: 1.12; white-space: nowrap; }
-.heroLead { margin: 7px 0 14px; color: var(--orange); font-size: clamp(17px, 1.6vw, 24px); font-weight: 700; }
-.heroText { max-width: 350px; margin: 0; color: #655c53; font-size: 14px; line-height: 2; }
-.primaryCta { width: fit-content; min-height: 51px; display: inline-flex; align-items: center; justify-content: center; gap: 18px; margin-top: 24px; padding: 0 22px; border-radius: 7px; background: var(--orange); box-shadow: 0 8px 17px rgba(219,92,42,.19); color: white; text-decoration: none; font-size: 14px; font-weight: 800; transition: transform .18s ease, background .18s ease; }
-.primaryCta:hover { transform: translateY(-2px); background: #bf4a20; }
+.heroLead { margin: 7px 0 14px; color: #a43e1e; font-size: clamp(17px, 1.6vw, 24px); font-weight: 700; }
+.heroText { max-width: 350px; margin: 0; color: #51483f; font-size: 14px; line-height: 2; }
+.primaryCta { width: fit-content; min-height: 51px; display: inline-flex; align-items: center; justify-content: center; gap: 18px; margin-top: 24px; padding: 0 22px; border-radius: 7px; background: #a94322; box-shadow: 0 8px 17px rgba(89,59,41,.18); color: white; text-decoration: none; font-size: 14px; font-weight: 800; transition: transform .18s ease, background .18s ease; }
+.primaryCta:hover { transform: translateY(-2px); background: #873419; }
+.primaryCta:focus-visible, .headerCta:focus-visible, .searchButton:focus-visible, .galleryControls button:focus-visible, .lobbyControls button:focus-visible, .galleryDots button:focus-visible { outline: 3px solid #25482e; outline-offset: 3px; }
 .searchPanel { position: absolute; z-index: 4; right: max(32px, calc((100vw - 1480px) / 2)); bottom: 21px; left: max(32px, calc((100vw - 1480px) / 2)); min-height: 85px; display: grid; grid-template-columns: 1fr 1fr 1fr minmax(220px, 1.2fr); align-items: stretch; padding: 10px 12px; border: 1px solid rgba(230,222,211,.85); border-radius: 13px; background: rgba(255,255,255,.96); box-shadow: 0 15px 40px rgba(45,33,22,.13); backdrop-filter: blur(12px); direction: ltr; }
 .searchSkeleton { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr 1fr minmax(220px, 1.2fr); align-items: center; gap: 14px; min-height: 58px; direction: ltr; }
 .searchSkeleton span { height: 42px; border-radius: 7px; background: #f1ede7; }
@@ -71,20 +73,20 @@
 .dateField:not(:nth-child(2))::after, .guestField::after { position: absolute; left: 0; top: 19%; width: 1px; height: 62%; background: var(--line); content: ""; }
 .fieldIcon { flex: none; color: var(--green); }
 .fieldText { min-width: 0; display: flex; flex: 1; flex-direction: column; gap: 5px; }
-.fieldLabel { color: #746a62; font-size: 11px; }
+.fieldLabel { color: #5e544b; font-size: 12px; }
 .dateField:focus-within { outline: 2px solid var(--green); outline-offset: 2px; }
 .dateDisplay { color: var(--wood); font-size: 13px; font-weight: 700; white-space: nowrap; }
 .dateInput { position: absolute; z-index: 3; inset: 0; width: 100%; height: 100%; min-width: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; }
-.fieldChevron { flex: none; color: #8d857c; }
-.searchButton { min-height: 58px; display: inline-flex; align-items: center; justify-content: center; gap: 13px; border: 0; border-radius: 8px; background: var(--orange); color: white; cursor: pointer; direction: rtl; font-weight: 800; font-size: 14px; transition: background .18s ease; }
-.searchButton:hover { background: #bf4a20; }
+.fieldChevron { flex: none; color: #665a50; }
+.searchButton { min-height: 58px; display: inline-flex; align-items: center; justify-content: center; gap: 13px; border: 0; border-radius: 8px; background: #a94322; color: white; cursor: pointer; direction: rtl; font-weight: 800; font-size: 14px; transition: background .18s ease; }
+.searchButton:hover { background: #873419; }
 .bookingMessage { position: absolute; top: calc(100% + 9px); right: 0; max-width: min(670px, 100%); margin: 0; padding: 9px 13px; border: 1px solid #d8c4ad; border-radius: 8px; background: #fffaf4; color: var(--wood); box-shadow: 0 5px 15px rgba(45,33,22,.1); direction: rtl; text-align: right; font-size: 12px; line-height: 1.7; }
-.noBookingNote { grid-column: 1 / -1; justify-self: end; margin: 0 9px 2px; color: #776e65; font-size: 9px; line-height: 1.5; text-align: right; }
+.noBookingNote { grid-column: 1 / -1; justify-self: end; margin: 0 9px 2px; color: #554a40; font-size: 10px; line-height: 1.5; text-align: right; }
 
 .showcase { width: min(1520px, calc(100% - 64px)); display: grid; grid-template-columns: minmax(190px,.78fr) minmax(380px,2.1fr) minmax(345px,1.58fr); align-items: start; gap: 24px; margin: 33px auto 68px; direction: ltr; }
 .aboutCopy { padding: 15px 0 0; scroll-margin-top: 18px; direction: rtl; text-align: right; }
 .aboutCopy h2 { margin: 15px 0 14px; color: var(--ink); font-size: clamp(26px, 2.25vw, 35px); letter-spacing: -.04em; line-height: 1.55; }
-.aboutCopy p { margin: 0; color: #6b625a; font-size: 13px; line-height: 2.1; }
+.aboutCopy p { margin: 0; color: #51483f; font-size: 13px; line-height: 2.1; }
 .outlineCta { min-height: 46px; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 12px; margin-top: 20px; border: 1px solid #a8b6a2; border-radius: 7px; color: var(--green); text-decoration: none; font-size: 13px; font-weight: 700; transition: background .18s ease; }
 .outlineCta:hover { background: #eef2eb; }
 .lobbyFigure { position: relative; min-width: 0; height: 335px; margin: 0; overflow: hidden; border-radius: 10px; background: #c7aa86; box-shadow: 0 10px 28px rgba(62,42,25,.1); }
@@ -107,21 +109,21 @@
 .roomImage { z-index: -1; object-fit: cover; transition: transform .35s ease; }
 .roomCard:hover .roomImage { transform: scale(1.06); }
 .conceptTag { position: absolute; top: 7px; right: 7px; padding: 4px 6px; border-radius: 999px; background: rgba(36,30,25,.63); color: white; font-size: 8px; }
-.roomTitle { position: absolute; z-index: 1; right: 9px; bottom: 9px; left: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 800; }
-.roomIndex { position: absolute; z-index: 1; left: 8px; bottom: 8px; color: rgba(255,255,255,.7); font-size: 9px; }
-.roomDisclaimer { margin: 7px 0 0; color: #7b7168; font-size: 10px; line-height: 1.7; }
+.roomTitle { position: absolute; z-index: 1; right: 9px; bottom: 9px; left: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 800; text-shadow: 0 1px 2px rgba(0,0,0,.45); }
+.roomIndex { position: absolute; z-index: 1; left: 8px; bottom: 8px; color: white; font-size: 10px; text-shadow: 0 1px 4px #211914; }
+.roomDisclaimer { margin: 7px 0 0; color: #554a40; font-size: 11px; line-height: 1.7; }
 .gallerySection .sectionHeading { margin-bottom: 9px; }
 .galleryCarousel { position: relative; height: 128px; overflow: hidden; border-radius: 8px; background: #967553; outline-offset: 4px; }
 .galleryImage { object-fit: cover; transition: opacity .2s ease; }
 .galleryCarousel::after { position: absolute; inset: 45% 0 0; background: linear-gradient(transparent, rgba(18,15,12,.73)); content: ""; pointer-events: none; }
-.galleryCaption { position: absolute; z-index: 1; right: 11px; bottom: 10px; max-width: calc(100% - 102px); color: white; font-size: 10px; line-height: 1.6; }
+.galleryCaption { position: absolute; z-index: 1; right: 11px; bottom: 10px; max-width: calc(100% - 102px); color: white; font-size: 11px; line-height: 1.6; text-shadow: 0 1px 3px rgba(0,0,0,.65); }
 .galleryControls { position: absolute; z-index: 2; left: 8px; bottom: 7px; display: flex; gap: 5px; }
 .galleryControls button { width: 31px; height: 31px; }
 .galleryDots { display: flex; justify-content: center; gap: 7px; margin-top: 9px; }
 .galleryDots button { width: 8px; height: 8px; padding: 0; border: 0; border-radius: 50%; background: #d6c8b9; cursor: pointer; transition: width .2s ease, background .2s ease; }
 .galleryDots button.dotActive { width: 19px; border-radius: 8px; background: var(--orange); }
 
-.footer { width: min(1520px, calc(100% - 64px)); display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: 0 auto; padding: 23px 0 30px; border-top: 1px solid var(--line); color: #6c625a; }
+.footer { width: min(1520px, calc(100% - 64px)); display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: 0 auto; padding: 23px 0 30px; border-top: 1px solid var(--line); color: #51483f; }
 .footerMark { display: flex; flex-direction: column; gap: 3px; color: var(--wood); font-weight: 800; }
 .footerMark small { color: #7b7168; font-size: 9px; font-weight: 400; }
 .footer p { max-width: 600px; margin: 0; font-size: 11px; line-height: 1.8; }
@@ -202,7 +204,7 @@
   .fieldChevron { width: 14px; }
   .searchButton { grid-column: 1 / -1; min-height: 46px; margin-top: 3px; font-size: 13px; }
   .bookingMessage { z-index: 5; top: calc(100% + 5px); right: 0; left: 0; max-width: none; font-size: 11px; }
-  .noBookingNote { display: block; margin: 6px 4px 2px; font-size: 8px; line-height: 1.7; }
+  .noBookingNote { display: block; margin: 6px 4px 2px; font-size: 10px; line-height: 1.7; }
   .showcase { width: calc(100% - 30px); display: flex; flex-direction: column; gap: 19px; margin: 34px auto 36px; direction: rtl; }
   .aboutCopy { order: 0; padding-top: 0; }
   .aboutCopy h2 { margin: 8px 0; font-size: 27px; }
@@ -213,10 +215,10 @@
   .sectionHeading h2 { font-size: 20px; }
   .roomGrid { gap: 7px; }
   .roomCard { height: clamp(112px, 34vw, 158px); border-radius: 7px; }
-  .roomTitle { right: 7px; bottom: 7px; left: 7px; font-size: 10px; }
-  .conceptTag { top: 5px; right: 5px; padding: 4px 5px; font-size: 7px; }
+  .roomTitle { right: 7px; bottom: 7px; left: 7px; font-size: 12px; }
+  .conceptTag { top: 5px; right: 5px; padding: 4px 6px; font-size: 9px; }
   .roomIndex { display: none; }
-  .roomDisclaimer { font-size: 9px; }
+  .roomDisclaimer { font-size: 10px; }
   .galleryCarousel { height: clamp(175px, 59vw, 280px); }
   .galleryCaption { right: 9px; bottom: 9px; max-width: calc(100% - 90px); font-size: 9px; }
   .footer { width: calc(100% - 30px); align-items: flex-start; flex-wrap: wrap; gap: 13px 20px; padding: 17px 0 22px; }
@@ -231,5 +233,5 @@
   .fieldIcon { display: none; }
   .dateField, .guestField { padding: 8px 5px; }
   .guestField { padding: 0; }
-  .roomTitle { font-size: 9px; }
+  .roomTitle { font-size: 11px; }
 }

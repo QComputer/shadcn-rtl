@@ -141,6 +141,8 @@ test("F5 synthetic author-to-publication workflow enforces RBAC, tenant and medi
       const cleanupResponse = await mutation(reviewer.page, `${cmsApi}/publications/${encodeURIComponent(existingPublication.id)}/revoke`, { reason: "F5 synthetic acceptance reset" });
       expect(cleanupResponse.status()).toBe(200);
     }
+    // Reviewer is logged in before author edits so the same independent session
+    // can clear prior state; refresh it after the author submits a new revision.
     const beforeCount = (await readRevisions(author.page)).length;
     const initialPublic = await author.page.request.get(publicApiUrl);
     expect(initialPublic.status()).toBe(200);
@@ -229,6 +231,7 @@ test("F5 synthetic author-to-publication workflow enforces RBAC, tenant and medi
     await unauthorizedApiCheck(manager.page, `${cmsApi}/revisions/${encodeURIComponent(revisionId)}/review`, { decision: "APPROVED" });
     await unauthorizedApiCheck(manager.page, `${cmsApi}/revisions/${encodeURIComponent(revisionId)}/publish`);
 
+    await reviewer.page.reload();
     expect(reviewer.page.url()).toContain(`/fa/dashboard/hotel-website/${orgId}/${propertyId}`);
     const revisionButton = reviewer.page.locator('aside[aria-label="نسخه‌های محتوا"] button').filter({ hasText: `نسخه ${created.revisionNumber}` });
     await revisionButton.first().click();

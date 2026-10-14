@@ -56,7 +56,10 @@ test("resolves verification credentials from the immutable account snapshot", as
 });
 
 test("rejects a mismatched account profile or CodeName snapshot", async () => {
-  const credentialProvider = { async resolvePaymentAccount(key: InotiMerchantAccountKey) { return profileFor(key); } };
+  const credentialProvider = {
+    async resolveProfile() { return null; },
+    async resolvePaymentAccount(key: InotiMerchantAccountKey) { return profileFor(key); },
+  };
   assert.equal(await resolveBoundInotiPaymentAccount({
     organizationId: "tenant-a",
     merchantAccountKey: "PLATFORM_OWNER",

@@ -113,6 +113,35 @@ test("F5 synthetic author-to-publication workflow enforces RBAC, tenant and medi
     expect(initialPublic.status()).toBe(200);
     expect((await initialPublic.json()).mode).toBe("UNPUBLISHED");
 
+    const replayKey = `f5-e2e-replay-${randomUUID()}`;
+    const replayPayload = {
+      content: {
+        title: { fa: `پیش‌نویس تکرارپذیری ${marker}` },
+        hero: { heading: { fa: `عنوان تکرارپذیری ${marker}` } },
+        introduction: { body: { fa: `داده مصنوعی آزمون idempotency ${marker}` } },
+        sections: [],
+        contact: {},
+      },
+      media: [],
+    };
+    const createReplayRequest = () => author.page.request.post(`${appOrigin}${cmsApi}/revisions`, {
+      headers: { Origin: appOrigin, "Idempotency-Key": replayKey },
+      data: replayPayload,
+    });
+    const firstReplayResponse = await createReplayRequest();
+    const secondReplayResponse = await createReplayRequest();
+    expect(firstReplayResponse.status()).toBe(201);
+    expect(secondReplayResponse.status()).toBe(201);
+    const firstReplayBody = await firstReplayResponse.json();
+    const secondReplayBody = await secondReplayResponse.json();
+    expect(secondReplayBody).toEqual(firstReplayBody);
+    const replayConflict = await author.page.request.post(`${appOrigin}${cmsApi}/revisions`, {
+      headers: { Origin: appOrigin, "Idempotency-Key": replayKey },
+      data: { ...replayPayload, content: { ...replayPayload.content, title: { fa: "different request" } } },
+    });
+    expect(replayConflict.status()).toBe(409);
+    expect((await readRevisions(author.page)).length).toBe(beforeCount + 1);
+
     const foreign = await login(env.HOTEL_F5_FOREIGN_USERNAME, env.HOTEL_F5_FOREIGN_PASSWORD, `/fa/dashboard/hotel-website/${orgId}/${propertyId}`);
     await expect(foreign.page.locator("body")).not.toContainText("ویرایش محتوا");
     const foreignRead = await foreign.page.request.get(`${appOrigin}${targetRevisionsApi}`);

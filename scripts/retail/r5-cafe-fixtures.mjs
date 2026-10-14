@@ -92,6 +92,15 @@ async function seedCafeShop() {
   });
   const routing = await prisma.organizationInotiPaymentRouting.findUniqueOrThrow({ where: { organizationId: organization.id } });
   if (routing.merchantAccountKey !== "CAFE_LEO") throw new Error("Cafe Leo fixture must use the dedicated test account policy");
+  const paymentSettings = await prisma.paymentSettings.findUniqueOrThrow({ where: { organizationSlug: organization.slug }, select: { settings: true } });
+  const retailPolicy = paymentSettings.settings?.retailR4;
+  if (!retailPolicy || typeof retailPolicy !== "object" || retailPolicy.inotiUssdEnabled !== true) {
+    throw new Error("Cafe Leo fixture must persist the enabled R5 synthetic USSD policy");
+  }
+  const { getRetailInotiReadiness } = await import("../../lib/retail/inoti-readiness.server.ts");
+  if (await getRetailInotiReadiness(organization.id) === null) {
+    throw new Error("Cafe Leo fixture is not eligible for the configured synthetic account in read-only readiness");
+  }
   process.stdout.write(`R5 synthetic Cafe Leo Shop fixture created for ${organization.id}; no external provider or Cafe host used.\n`);
 }
 

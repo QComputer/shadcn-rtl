@@ -73,7 +73,16 @@ jobs:
       - name: Seed fashion, electronics, and restaurant compatibility fixtures
         run: pnpm exec tsx scripts/retail/r4-fixtures.mjs seed
       - name: Seed Cafe Leo native Shop fixture in the disposable database
-        run: pnpm exec tsx scripts/retail/r5-cafe-fixtures.mjs seed
+        env:
+          INOTI_ALLOW_LIVE_PAYMENTS: "true"
+          INOTI_RUNTIME_MUTATIONS_APPROVED: "true"
+          INOTI_USSD_LIVE_VERIFICATION_ENABLED: "true"
+          INOTI_CAFE_LEO_USERNAME: r5-ci-placeholder
+          INOTI_CAFE_LEO_PASSWORD: r5-ci-placeholder
+          INOTI_CAFE_LEO_USSD_ENDPOINT: https://127.0.0.1:59999/ExternalUssdPay.asmx
+          INOTI_CAFE_LEO_USSD_CODE_NAME: R5CAFE
+          INOTI_CAFE_LEO_USSD_DIAL_STRING: '*6655*R5CAFE*2#'
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/retail/r5-cafe-fixtures.mjs seed
       - name: Retail checkout and payment integration acceptance
         env:
           RETAIL_R4_CHECKOUT_PG_ACCEPTANCE: "1"
@@ -98,10 +107,19 @@ jobs:
       - name: Install Chromium for isolated browser acceptance
         run: pnpm exec playwright install --with-deps chromium
       - name: Restore synthetic retail browser fixtures after reseeding regressions
+        env:
+          INOTI_ALLOW_LIVE_PAYMENTS: "true"
+          INOTI_RUNTIME_MUTATIONS_APPROVED: "true"
+          INOTI_USSD_LIVE_VERIFICATION_ENABLED: "true"
+          INOTI_CAFE_LEO_USERNAME: r5-ci-placeholder
+          INOTI_CAFE_LEO_PASSWORD: r5-ci-placeholder
+          INOTI_CAFE_LEO_USSD_ENDPOINT: https://127.0.0.1:59999/ExternalUssdPay.asmx
+          INOTI_CAFE_LEO_USSD_CODE_NAME: R5CAFE
+          INOTI_CAFE_LEO_USSD_DIAL_STRING: '*6655*R5CAFE*2#'
         run: |
           pnpm db:seed
           pnpm exec tsx scripts/retail/r4-fixtures.mjs seed
-          pnpm exec tsx scripts/retail/r5-cafe-fixtures.mjs seed
+          pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/retail/r5-cafe-fixtures.mjs seed
       - name: Start isolated acceptance server
         env:
           INOTI_ALLOW_LIVE_PAYMENTS: "true"

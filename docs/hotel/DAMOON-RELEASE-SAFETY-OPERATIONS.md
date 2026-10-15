@@ -61,4 +61,3 @@ Treat these as separately approved operations with their own recorded evidence:
 6. **Editorial publication and public operations:** require owner-approved factual property content and translations, separate CMS review/publication approval, and a distinct decision to open any operational capability. Keep `HOTEL_BOOKING`, holds, payments and notifications disabled unless separately approved. Public indexing remains off because persisted owner-provenance/indexing consent is absent; noindex is the default.
 
 No Production activation, public publication, indexing, or owner acceptance is asserted by this note. The principal owns final source, security, target, and release decisions.
-

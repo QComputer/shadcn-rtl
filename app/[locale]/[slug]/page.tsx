@@ -24,6 +24,8 @@ import { resolveHotelWebsiteFrontendContext } from "@/lib/hotel/website-frontend
 import { PublishedHotelWebsitePage } from "@/components/published-hotel-website-page";
 import { trustedHotelWebsiteHost } from "@/lib/hotel/trusted-website-host";
 import { HotelDataState } from "@/components/hotel-data-state";
+import { getPublishedHotelWebsite } from "@/lib/hotel/content/hotel-website-public.service";
+import { buildHotelWebsiteMetadata } from "@/lib/hotel/website-metadata";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -36,6 +38,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       id: true,
       name: true,
       slug: true,
+      vertical: true,
       description: true,
       logo: true,
       coverImage: true,
@@ -62,6 +65,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!organization) {
     return { title: "Organization Not Found" };
+  }
+
+  if (organization.vertical === "HOTEL") {
+    try {
+      const requestHeaders = await headers();
+      const host = trustedHotelWebsiteHost({
+        requestHost: requestHeaders.get("host"),
+        isCustomDomain: requestHeaders.get("x-bazar-custom-domain"),
+        tenantDomain: requestHeaders.get("x-bazar-tenant-domain"),
+      });
+      const context = await resolveHotelWebsiteFrontendContext({ host, organizationId: organization.id });
+      if (context.status !== "READY") {
+        return buildHotelWebsiteMetadata({ state: null, locale });
+      }
+      const state = await getPublishedHotelWebsite({ host, propertySlug: context.propertySlug, locale: locale === "en" || locale === "ar" ? locale : "fa" });
+      const seoContext = await getOrganizationRootSeoContext({ locale, slug });
+      return buildHotelWebsiteMetadata({ state, locale, seoContext });
+    } catch {
+      return buildHotelWebsiteMetadata({ state: null, locale });
+    }
   }
 
   const branding = resolveOrganizationBranding({

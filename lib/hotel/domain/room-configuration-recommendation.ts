@@ -162,7 +162,7 @@ function evaluateCandidate(
     review.push("CHILD_AGE_POLICY_REVIEW_REQUIRED");
   }
 
-  if (occupancy.childAges?.length && candidate.policy?.status === "APPROVED") {
+  if (occupancy.children > 0 && candidate.policy?.status === "APPROVED") {
     if (!candidate.policy.childAgeTreatment) review.push("CHILD_AGE_POLICY_MISSING");
     else if (candidate.policy.childAgeTreatment !== "AGE_INDEPENDENT") {
       review.push("CHILD_AGE_POLICY_REVIEW_REQUIRED");

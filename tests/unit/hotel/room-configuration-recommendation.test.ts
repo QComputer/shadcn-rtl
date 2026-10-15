@@ -77,6 +77,15 @@ describe("policy-based room configuration recommendation", () => {
     assert.deepEqual(result.evaluations[0].reasonCodes, ["CHILD_AGE_POLICY_MISSING"]);
   });
 
+  it("requires an explicit age-independent policy for children even when ages are omitted", () => {
+    const result = recommendRoomConfigurations({
+      occupancy: { adults: 1, children: 1 },
+      candidates: [room({ roomTypeId: "unknown-child-policy", policy: { status: "APPROVED" } })],
+    });
+    assert.equal(result.evaluations[0].eligibility, "REVIEW_REQUIRED");
+    assert.ok(result.evaluations[0].reasonCodes.includes("CHILD_AGE_POLICY_MISSING"));
+  });
+
   it("distinguishes complete from missing occupancy policy", () => {
     const result = recommendRoomConfigurations({
       occupancy: oneAdult,

@@ -29,4 +29,5 @@ const presentation = fixtureMode === "synthetic-public" && reviewPresentation ? 
   organizationId: reviewPresentation.organizationId, organizationSlug: reviewPresentation.organizationSlug,
   locale, propertySlug: reviewPresentation.propertySlug, contentProvenance: "SYNTHETIC" as const, website: reviewPresentation.website,
 } : reviewPresentation;
-createRoot(document.getElementById("root")!).render(<PublishedHotelWebsitePage propertySlug="synthetic-preview-property" locale={locale} presentation={presentation} />);
+// A supplied concept card must never enter ordinary public or CMS responses.
+createRoot(document.getElementById("root")!).render(<PublishedHotelWebsitePage propertySlug="synthetic-preview-property" locale={locale} presentation={presentation} syntheticRoomCards={[{ kind: "concept", id: "must-not-leak", title: "Synthetic card must not enter public or CMS content", images: [] }]} />);

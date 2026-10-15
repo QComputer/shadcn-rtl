@@ -12,6 +12,7 @@ import type { HotelPublicLocale } from "@/lib/hotel/public-api-contract";
 import type { HotelOrganizationSitePresentation } from "@/lib/hotel/organization-site-presentation";
 import { HotelDataState } from "@/components/hotel-data-state";
 import { RoomShowcase } from "@/components/rooms/room-showcase";
+import type { ConceptRoomCardData } from "@/lib/rooms/room-showcase-model";
 import { JalaliDateRangePicker } from "@/components/booking/jalali-date-range-picker";
 import { GuestCompositionSelector } from "@/components/booking/guest-composition-selector";
 import { todayLocalISO, type StayRange } from "@/lib/booking/jalali-calendar";
@@ -50,7 +51,7 @@ function presentationOrganizationId(presentation?: HotelOrganizationSitePresenta
   return presentation && "organizationId" in presentation ? presentation.organizationId : undefined;
 }
 
-export function PublishedHotelWebsitePage({ propertySlug, locale, presentation, tenantKey, organizationSlug }: { propertySlug: string; locale: HotelPublicLocale; presentation?: HotelOrganizationSitePresentation; tenantKey?: string; organizationSlug?: string }) {
+export function PublishedHotelWebsitePage({ propertySlug, locale, presentation, tenantKey, organizationSlug, syntheticRoomCards }: { propertySlug: string; locale: HotelPublicLocale; presentation?: HotelOrganizationSitePresentation; tenantKey?: string; organizationSlug?: string; syntheticRoomCards?: readonly ConceptRoomCardData[] }) {
   const scopeKey = `${tenantKey ?? presentationOrganizationId(presentation) ?? organizationSlug ?? "host-scoped"}:${propertySlug}:${locale}`;
   const [storedState, setStoredState] = useState<ScopedLoadState>(() => ({ scopeKey, value: initialLoadState(presentation, { propertySlug, locale, tenantKey }) }));
   const [menuOpen, setMenuOpen] = useState(false);
@@ -155,7 +156,10 @@ export function PublishedHotelWebsitePage({ propertySlug, locale, presentation, 
 
   const { website } = visibleState;
   const image = website.heroDesktop;
-  const roomCount = website.roomCards.length;
+  // Concept cards are an explicit private synthetic-preview input, never a
+  // fallback for public or authenticated CMS content/inventory.
+  const roomCards = visibleState.source === "SYNTHETIC_PREVIEW" && syntheticRoomCards ? syntheticRoomCards : website.roomCards;
+  const roomCount = roomCards.length;
 
   return (
       <main className={styles.shell} dir={direction(locale)} data-provenance={visibleState.source}>
@@ -198,7 +202,7 @@ export function PublishedHotelWebsitePage({ propertySlug, locale, presentation, 
         {(website.content.contact.phone || website.content.contact.email) && <address className={styles.propertyDescription}>{website.content.contact.phone && <a href={`tel:${website.content.contact.phone}`}>{website.content.contact.phone}</a>}{website.content.contact.email && <a href={`mailto:${website.content.contact.email}`}>{website.content.contact.email}</a>}</address>}
       </section>
 
-      {roomCount > 0 ? <section id="rooms" className={styles.rooms}><p className={styles.eyebrow}>{text.rooms}</p><RoomShowcase rooms={website.roomCards} direction={direction(locale)} locale={locale} /></section> : <section id="rooms" className={styles.rooms}><HotelDataState code="NO_PUBLISHED_ROOMS" locale={locale} /></section>}
+      {roomCount > 0 ? <section id="rooms" className={styles.rooms}><p className={styles.eyebrow}>{text.rooms}</p><RoomShowcase rooms={roomCards} direction={direction(locale)} locale={locale} /></section> : <section id="rooms" className={styles.rooms}><HotelDataState code="NO_PUBLISHED_ROOMS" locale={locale} /></section>}
 
       {website.propertyGallery.length > 0 ? <section id="gallery" className={styles.gallery} aria-label={text.gallery}>{website.propertyGallery.map((photo) => <figure key={`${photo.src}:${photo.sortOrder}`}>{unavailableImages.has(photo.src) ? <div className={styles.galleryUnavailable} role="status" data-testid="published-media-unavailable">{text.imageUnavailable}</div> : <Image src={photo.src} alt={photo.alt} width={960} height={640} unoptimized sizes="(max-width: 700px) 100vw, 50vw" onError={() => markImageUnavailable(photo.src)} />}<figcaption>{photo.alt || text.gallery}</figcaption></figure>)}</section> : <section id="gallery" className={styles.galleryEmpty}><p>{text.noGallery}</p></section>}
 

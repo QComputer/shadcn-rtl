@@ -1,0 +1,11 @@
+# Protected Damoon owner preview
+
+Self-contained synthetic presentation for the existing Vercel project `damoon-hotel-owner-preview` (`prj_mdMJzn5Jn6oTxDyVW5GrsnvqGPaC`). This is not the tenant's public website, real inventory, a CMS backend or a booking service. All images and room cards are explicitly conceptual; no verified Hotel facts, prices, capacity, contact details or owner-approved photography are asserted.
+
+The static entry reuses `PublishedHotelWebsitePage`, the accepted calendar, guest selector and room gallery. An explicit `SYNTHETIC_PREVIEW` presentation enables concept room cards; ordinary public/CMS presentations ignore that optional input. The regression fixture deliberately supplies such cards to public/CMS paths to prove they do not appear.
+
+Build with `node scripts/ops/build-damoon-owner-preview.mjs`. Add `--serve` for loopback port 4179, then run `node scripts/ops/verify-damoon-owner-preview.mjs`. Output is confined to ignored `.tmp/damoon-owner-preview-package/`; no dependency install or Next.js rebuild is required. The bundle dependency graph is checked for forbidden database/auth/provider modules. Existing conceptual images and two fonts are copied byte-for-byte.
+
+The package uses Vercel Build Output API v3, static files only, no functions or environment files, local assets, explicit `/fa`, `/en`, `/ar` routes, noindex metadata/headers, robots disallow, private no-store responses, and CSP `connect-src 'none'`/`form-action 'none'`. Its manifest records source commit and per-file SHA-256. Deploy only the generated package with `--prebuilt --target preview --skip-domain`, exact approved project and team, and sourceCommit metadata. Never deploy the combined app or use `--prod`, custom aliases, GitHub push or Production credentials for this preview.
+
+Preserve project SSO protection. Remote browser testing may use supported same-project short-lived Vercel OIDC authentication in memory, scoped to the deployment origin; tokens must never be logged, saved in screenshots, added to the bundle or returned to users. If that authentication path is unavailable, keep the protected deployment and report rendered remote acceptance as blocked rather than changing protection.

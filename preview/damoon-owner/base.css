@@ -1,0 +1,119 @@
+html {
+  scroll-behavior: auto;
+}
+
+body {
+  margin: 0;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn-Bold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 700 850;
+  font-display: swap;
+}
+
+.damoonOwnerPreview {
+  --font-vazirmatn: "Vazirmatn", Tahoma, sans-serif;
+  color: #30271f;
+  font-family: var(--font-vazirmatn);
+}
+
+.damoonOwnerPreview__bar {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  min-height: 68px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 10px clamp(18px, 5vw, 72px);
+  border-bottom: 1px solid #e8dfd3;
+  background: #fff;
+}
+
+.damoonOwnerPreview__brand {
+  color: #593b29;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.damoonOwnerPreview__locales {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.damoonOwnerPreview__locales a {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e7dfd4;
+  border-radius: 999px;
+  color: #51473f;
+  font-size: .78rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color .15s ease, color .15s ease;
+}
+
+.damoonOwnerPreview__locales a:hover,
+.damoonOwnerPreview__locales a[aria-current="page"] {
+  border-color: #593b29;
+  background: #593b29;
+  color: #fff;
+}
+
+.damoonOwnerPreview__locales a:focus-visible,
+.damoonOwnerPreview__brand:focus-visible {
+  outline: 3px solid #db5c2a;
+  outline-offset: 3px;
+}
+
+.damoonOwnerPreview__banner {
+  position: relative;
+  z-index: 9;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 12px clamp(18px, 5vw, 72px);
+  background: #f4ede2;
+  color: #593b29;
+  font-size: .84rem;
+  line-height: 1.8;
+}
+
+.damoonOwnerPreview__banner span {
+  flex: none;
+  color: #a94322;
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+.damoonOwnerPreview__banner p {
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .damoonOwnerPreview__locales a {
+    transition: none;
+  }
+}

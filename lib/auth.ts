@@ -151,6 +151,9 @@ const buildProviders = (): Provider[] => {
               where: {
                 userId: user.id,
                 isActive: true,
+                // Customer memberships must not select the active team tenant
+                // after recipient-bound organization access is activated.
+                role: { in: ["ADMIN", "MANAGER", "STAFF", "DRIVER"] },
                 organization: {
                   isActive: true,
                   deletedAt: null,

@@ -1385,6 +1385,12 @@ model OrganizationInvitation {
   status          OrganizationInvitationStatus @default(CREATED)
   createdByUserId String?
   claimedByUserId String?
+  // Nullable for legacy unbound invitations, which cannot use secure redemption.
+  recipientUserId   String?
+  recipientEmail    String?
+  recipientUsername String?
+  issuanceKey       String? @unique
+  requestSha256     String?
   metadata        Json?
   createdAt       DateTime                     @default(now())
   updatedAt       DateTime                     @updatedAt
@@ -1392,11 +1398,13 @@ model OrganizationInvitation {
   organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdByUser User?        @relation("OrganizationInvitationCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   claimedByUser User?        @relation("OrganizationInvitationClaimedBy", fields: [claimedByUserId], references: [id], onDelete: SetNull)
+  recipientUser User?        @relation("OrganizationInvitationRecipient", fields: [recipientUserId], references: [id], onDelete: Restrict)
 
   @@index([organizationId, status])
   @@index([expiresAt])
   @@index([createdByUserId])
   @@index([claimedByUserId])
+  @@index([recipientUserId, status])
 }
 
 model OrganizationClaimRequest {
@@ -1965,6 +1973,7 @@ model User {
   agentOrganizationAcquisitions   OrganizationAcquisition[] @relation("OrganizationAcquisitionAgent")
   createdOrganizationInvitations  OrganizationInvitation[]  @relation("OrganizationInvitationCreatedBy")
   claimedOrganizationInvitations  OrganizationInvitation[]  @relation("OrganizationInvitationClaimedBy")
+  receivedOrganizationInvitations OrganizationInvitation[]  @relation("OrganizationInvitationRecipient")
   organizationClaimRequests       OrganizationClaimRequest[] @relation("OrganizationClaimRequester")
   reviewedOrganizationClaims      OrganizationClaimRequest[] @relation("OrganizationClaimReviewedBy")
 

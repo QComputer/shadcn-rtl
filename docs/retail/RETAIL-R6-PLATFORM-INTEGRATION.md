@@ -17,10 +17,10 @@
 
 ## Evidence
 
-- Focused manifest, Retail start-path, install-manager, Service Worker, and approved-asset tests: 19 passed.
+- Focused manifest, Retail start-path, install-manager, Service Worker, approved-asset, and organization-branding tests: 34 passed across 6 suites.
 - E2E script syntax: `node --check tests/e2e/tenant-pwa-branding-ci.mjs` passed. The script now has a strict disposable PostgreSQL 17 CI target guard and synthetic Aka Shoes, Electronics, and Restaurant tenant coverage.
 - Targeted ESLint: exit 0, zero errors. Three warnings remain: two existing `any` warnings in the shared locale layout and the R6 offline-state initialization warning.
-- Existing organization-branding suite: 14 passed, 1 failed because its platform fallback assertion expects English `Bazarbaaz` while the current implementation returns Persian `بازارباز`. This is unrelated to R6 changes and is not hidden.
+- The organization-branding assertion was corrected to match the existing Persian platform fallback (`بازارباز`).
 - Full typecheck, production build, DB-backed browser E2E, screenshots, and genuine browser/OS installation were not run. Local free disk was about 1.73 GiB, and another Platform build process was active; remote CI would require a push, which is outside this task's authorization.
 
 ## Remaining acceptance gates

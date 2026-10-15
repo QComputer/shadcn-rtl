@@ -104,6 +104,9 @@ try {
   await writeFile(path.join(artifacts, "migration-manifest.json"), JSON.stringify(ledger, null, 2));
   console.log(`${ledger.length}/${names.length} migrations and file checksums verified`);
   await writeFile(path.join(artifacts, "postgres-tests.log"), command("PostgreSQL acceptance", ["--import", "tsx", "--require=./scripts/e2e/register-server-only.cjs", "--test", "tests/integration/organization-onboarding.postgres.local.test.ts"], env));
+  if (process.argv.includes("--security")) {
+    await writeFile(path.join(artifacts, "release-safety-tests.log"), command("Release safety PostgreSQL acceptance", ["--import", "tsx", "--require=./scripts/e2e/register-server-only.cjs", "--test", "tests/integration/release-safety.postgres.local.test.ts"], env));
+  }
   if (process.argv.includes("--browser") || process.argv.includes("--production-browser")) {
     const productionBrowser = process.argv.includes("--production-browser");
     const appPort = await unusedPort();

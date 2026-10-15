@@ -81,10 +81,12 @@ export async function requireAuthSession(): Promise<SessionWithUser> {
     throw new ApiError(401, "Unauthorized");
   }
 
+  const current = await prisma.user.findFirst({ where: { id: user.id, isActive: true, deletedAt: null }, select: { role: true } });
+  if (!current) throw new ApiError(401, "Unauthorized");
   return {
     user: {
       id: user.id,
-      role: user.role as UserRole,
+      role: current.role as UserRole,
       name: user.name ?? null,
       email: user.email ?? null,
       locale: user.locale ?? null,
@@ -108,7 +110,7 @@ export function isPrivilegedOrgRole(role?: string | null) {
 }
 
 export function getMembershipRole(membership: { role?: UserRole | null; user?: { role?: UserRole | null } } | null | undefined): UserRole | undefined {
-  return (membership?.role || membership?.user?.role || undefined) as UserRole | undefined;
+  return (membership?.role || undefined) as UserRole | undefined;
 }
 
 export async function getActiveMembership(
@@ -121,6 +123,7 @@ export async function getActiveMembership(
       isActive: true,
       ...(organizationId ? { organizationId } : {}),
     },
+    orderBy: [{ joinedAt: "asc" }, { id: "asc" }],
     include: {
       organization: {
         select: {
@@ -144,6 +147,11 @@ export async function getActiveMembership(
   });
 }
 
+async function assertPersistedPlatformAdmin(session: SessionWithUser) {
+  const user = await prisma.user.findFirst({ where: { id: session.user.id, role: "SUPER_ADMIN", isActive: true, deletedAt: null }, select: { id: true } });
+  if (!user) throw new ApiError(403, "Active platform administrator required");
+}
+
 export async function requireOrgAccess(
   session: SessionWithUser,
   organizationId: string,
@@ -156,6 +164,7 @@ export async function requireOrgAccess(
   }
 
   if (session.user.role === "SUPER_ADMIN") {
+    await assertPersistedPlatformAdmin(session);
     return null;
   }
 
@@ -193,13 +202,12 @@ export async function requireCurrentOrgAdminOrManager(
   }
 
   if (session.user.role === "SUPER_ADMIN") {
+    await assertPersistedPlatformAdmin(session);
     return null;
   }
 
-  const membership = await getActiveMembership(
-    userId,
-    session.user.organizationId ?? undefined,
-  );
+  if (!session.user.organizationId) throw new ApiError(403, "Explicit tenant context required");
+  const membership = await getActiveMembership(userId, session.user.organizationId);
   const membershipRole = getMembershipRole(membership);
   if (
     !membership ||
@@ -226,6 +234,7 @@ export async function resolveManageableOrganizationId(
   const role = session?.user?.role as UserRole | undefined;
 
   if (role === "SUPER_ADMIN") {
+    await assertPersistedPlatformAdmin(session);
     return requestedId;
   }
 
@@ -234,6 +243,7 @@ export async function resolveManageableOrganizationId(
     throw new ApiError(403, "Forbidden");
   }
 
+  if (requestedId !== membership.organizationId) throw new ApiError(403, "Tenant context mismatch");
   return membership.organizationId;
 }
 

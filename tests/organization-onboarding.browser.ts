@@ -122,6 +122,27 @@ try {
     await page.screenshot({ path: path.join(artifacts, `${user.name}-cms.png`), fullPage: true });
   }
   results.push({ name: "Admin and manager real credential login, verified activation, relogin and CMS navigation", status: "PASSED" });
+  // Exercise the legacy endpoints through real cookie-authenticated requests,
+  // using the same global CUSTOMER accounts as the accepted CMS workflow.
+  const adminMember = await db.organizationMember.findUniqueOrThrow({ where: { organizationId_userId: { organizationId: hotel.organizationId, userId: admin.id } } });
+  const legacyMutation = (page: Page, url: string, body: unknown) => page.evaluate(async ({ url, body }) => {
+    const response = await fetch(url, { method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    return { status: response.status, body: await response.json() };
+  }, { url, body });
+  assert.equal((await api(managerPage, `/api/organizations/${hotel.organizationId}/members`)).status, 200);
+  assert.equal((await legacyMutation(managerPage, `/api/organizations/${hotel.organizationId}/members/${adminMember.id}`, { isActive: false })).status, 403);
+  assert.equal((await legacyMutation(managerPage, `/api/users/${admin.id}`, { isActive: false })).status, 403);
+  assert.equal((await legacyMutation(adminPage, `/api/organizations/${hotel.organizationId}/members/${adminMember.id}`, { isActive: false })).status, 403);
+  for (const page of [adminPage, managerPage]) {
+    assert.equal((await legacyMutation(page, `/api/organizations/${hotel.organizationId}/capabilities`, { capabilities: ["HOTEL_BOOKING"] })).status, 403);
+  }
+  const safeProfile = await api(managerPage, `/api/users/${manager.id}`);
+  assert.equal(safeProfile.status, 200);
+  assert.match(safeProfile.cache ?? "", /no-store/);
+  assert.equal(safeProfile.body.memberships.every((member: { organizationId: string }) => member.organizationId === hotel.organizationId), true);
+  for (const secret of ["password", "lockedUntil", "failedLoginAttempts", "emailVerified"]) assert.equal(Object.hasOwn(safeProfile.body, secret), false);
+  assert.equal((await db.user.findUniqueOrThrow({ where: { id: admin.id } })).role, "CUSTOMER");
+  results.push({ name: "Legacy user/member endpoints preserve tenant roles, protect Admin authority and reject capability escalation", status: "PASSED" });
   const foreignUser = await makeUser(`foreign-manager-${runId}`);
   await db.organizationMember.create({ data: { organizationId: customerOrganization.id, organizationSlug: customerOrganization.slug, userId: foreignUser.id, role: "MANAGER" } });
   await db.user.update({ where: { id: foreignUser.id }, data: { isTeamMember: true } });

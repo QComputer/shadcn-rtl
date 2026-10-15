@@ -159,7 +159,7 @@ const buildProviders = (): Provider[] => {
                   deletedAt: null,
                 },
               },
-              orderBy: { joinedAt: "asc" },
+              orderBy: [{ joinedAt: "asc" }, { id: "asc" }],
               select: { organizationId: true },
             })
           : null;

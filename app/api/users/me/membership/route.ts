@@ -7,7 +7,7 @@ import { jsonError, requireAuthSession } from "@/lib/api-guards";
  * Get the current user's active organization memberships.
  *
  * Backward compatibility:
- * - `membership` returns the first active membership for existing UI.
+ * - `membership` resolves the session tenant, with deterministic staff selection only when no tenant is selected.
  * - `memberships` returns all active memberships for the Phase 3 multi-org path.
  */
 export async function GET() {
@@ -20,7 +20,7 @@ export async function GET() {
         isActive: true,
         organization: { isActive: true, deletedAt: null },
       },
-      orderBy: { joinedAt: "desc" },
+      orderBy: [{ joinedAt: "asc" }, { id: "asc" }],
       include: {
         organization: {
           select: {
@@ -55,15 +55,15 @@ export async function GET() {
 
     return NextResponse.json({
       membership:
-        normalizedMemberships.find((membership) => membership.organizationId === session.user.organizationId)
-        ?? normalizedMemberships[0]
-        ?? null,
+        session.user.organizationId
+          ? normalizedMemberships.find((membership) => membership.organizationId === session.user.organizationId) ?? null
+          : normalizedMemberships.find((membership) => ["ADMIN", "MANAGER", "STAFF", "DRIVER"].includes(membership.role)) ?? null,
       memberships: normalizedMemberships,
       message:
         normalizedMemberships.length === 0
           ? "No active organization membership found"
           : undefined,
-    });
+    }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     console.error("Error fetching organization membership:", error);
     return jsonError(error, "Internal server error");

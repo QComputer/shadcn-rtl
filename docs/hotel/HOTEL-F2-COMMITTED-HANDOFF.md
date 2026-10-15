@@ -91,6 +91,20 @@ All are local, synthetic-data component screenshots under:
 
 No files were pushed, merged, or deployed; no database, Production configuration, live booking, payment, or notification operation was performed.
 
+## H4 room-configuration foundation
+
+The Hotel-owned pure service `lib/hotel/domain/room-configuration-recommendation.ts` evaluates advisory single-room compatibility from an explicit guest composition, declared room capacity/bed configuration, and a caller-supplied policy status. It reuses `validateOccupancy` and `validateOccupancyFitsRoom`; it does not query persistence, availability, rates, or booking services. Stable reason codes are localization-ready keys. Compatible candidates are ordered by smallest remaining declared occupancy capacity, then bed capacity, then ordinal room-type ID.
+
+Policy and information gaps fail closed as `REVIEW_REQUIRED` (including absent/conflicting occupancy policy, incomplete room facts, age-sensitive policy without an explicit age-independent declaration, or missing accessibility data). Extra-bed and multi-room requests return `POLICY_REQUIRED`; no configuration for either is inferred. The current public room-category contract exposes declared adult/child/total limits, beds, size, and gallery but no approved extra-bed, age-threshold, or multi-room allocation policy. `wheelchair_accessible` is the only accessibility signal in the inspected Hotel amenity contract; it must not be treated as a full accessibility assessment.
+
+Focused tests:
+
+```powershell
+node --import tsx --test tests/unit/hotel/room-configuration-recommendation.test.ts tests/unit/hotel/recommendation.test.ts tests/unit/hotel/stay-dates.test.ts
+```
+
+The new module is deliberately separate from `lib/hotel/domain/recommendation.ts`, which remains the availability/rate ranking service. The configuration result makes no availability, price, or bookability claim. Callers must pass only tenant-scoped, authoritative room data and an explicit policy state; actual Hotel Damoon capacities and policies remain owner-controlled business data and are not approved by these synthetic tests.
+
 ## F2.1 guest-experience hardening
 
 - Hotel source commit: `0c1cc170b54705386a61ca38ecdfd65c74742685`

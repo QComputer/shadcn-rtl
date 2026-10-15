@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
+import { Home, LayoutGrid, Share2, ShoppingBag, UserRound } from "lucide-react";
 import { appPath } from "@/lib/app-base-path";
 import type { PublicCatalogProduct } from "@/lib/public-catalog/contracts";
 
@@ -10,6 +11,7 @@ type RetailView = {
   identifier: string;
   name: string;
   description: string | null;
+  branding: { logo: string | null; cover: string | null };
   theme: "FASHION" | "ELECTRONICS" | "GENERAL";
   previewOnly: boolean;
   categories: Array<{ id: string; slug: string | null; name: string }>;
@@ -31,13 +33,47 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
   const [variantChoice, setVariantChoice] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [page, setPage] = useState(1);
+  const [retryKey, setRetryKey] = useState(0);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
+  const [online, setOnline] = useState<boolean | null>(null);
+  const [reconnected, setReconnected] = useState(false);
+  const [standalone, setStandalone] = useState(false);
+  const [shareMessage, setShareMessage] = useState("");
+  const reconnectTimer = useRef<number | null>(null);
   const params = useParams<{ locale: string }>();
   const locale = params.locale || "fa";
   const base = appPath(storefrontPath ?? `/${encodeURIComponent(locale)}/retail/${encodeURIComponent(view.identifier)}`);
   const checkoutHref = appPath(checkoutPath ?? `/${encodeURIComponent(locale)}/retail/${encodeURIComponent(view.identifier)}/checkout`);
+  const accountHref = appPath(`/${encodeURIComponent(locale)}/${encodeURIComponent(view.identifier)}/shop/profile`);
   const [cartNotice, setCartNotice] = useState("");
   const isFashion = view.theme === "FASHION";
+
+  useEffect(() => {
+    setOnline(navigator.onLine);
+    const onOffline = () => {
+      setOnline(false);
+      setReconnected(false);
+    };
+    const onOnline = () => {
+      setOnline(true);
+      setReconnected(true);
+      setRetryKey((current) => current + 1);
+      if (reconnectTimer.current !== null) window.clearTimeout(reconnectTimer.current);
+      reconnectTimer.current = window.setTimeout(() => setReconnected(false), 3200);
+    };
+    const displayMode = window.matchMedia("(display-mode: standalone)");
+    const updateDisplayMode = () => setStandalone(displayMode.matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);
+    updateDisplayMode();
+    displayMode.addEventListener("change", updateDisplayMode);
+    window.addEventListener("offline", onOffline);
+    window.addEventListener("online", onOnline);
+    return () => {
+      displayMode.removeEventListener("change", updateDisplayMode);
+      window.removeEventListener("offline", onOffline);
+      window.removeEventListener("online", onOnline);
+      if (reconnectTimer.current !== null) window.clearTimeout(reconnectTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (productSlug) return;
@@ -63,7 +99,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
       }
     }, 180);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [view.identifier, query, category, filter, page, productSlug]);
+  }, [view.identifier, query, category, filter, page, productSlug, retryKey]);
 
   const availableFilters = useMemo(() => {
     const options = new Map<string, Set<string>>();
@@ -110,6 +146,26 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
       setCartNotice(error instanceof Error ? error.message : "افزودن کالا به سبد خرید ممکن نشد.");
     }
   };
+  const shareStore = async () => {
+    setShareMessage("");
+    const shareData = { title: view.name, text: `فروشگاه ${view.name}`, url: window.location.href };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        setShareMessage("نشانی فروشگاه به اشتراک گذاشته شد.");
+        return;
+      }
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(window.location.href);
+        setShareMessage("نشانی فروشگاه کپی شد.");
+        return;
+      }
+      setShareMessage("برای نگه‌داشتن فروشگاه، نشانی آن را از نوار آدرس مرورگر کپی کنید.");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setShareMessage("اشتراک‌گذاری انجام نشد. نشانی را از نوار آدرس مرورگر کپی کنید.");
+    }
+  };
   const renderProduct = (product: PublicCatalogProduct) => {
     const image = product.media.card;
     const selectedId = variantChoice[product.id] ?? product.variants.find((variant) => variant.orderable)?.id ?? product.variants[0]?.id;
@@ -131,13 +187,26 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
     </article>;
   };
 
-  return <main dir="rtl" lang="fa" className="min-h-screen bg-[#f8f7f4] text-[#24241f]">
+  return <main dir="rtl" lang="fa" data-retail-display-mode={standalone ? "standalone" : "browser"} className="min-h-screen bg-[#f8f7f4] pb-24 text-[#24241f] md:pb-0">
     {view.previewOnly && <div className="bg-[#252720] px-4 py-2 text-center text-xs text-white">پیش‌نمایش نمایشی · این محصولات و تصاویر نمونه هستند و برای خرید واقعی نیستند</div>}
-    <header className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 md:px-10">
-      <a href={base} className="text-xl font-bold tracking-tight">{view.name}<span className="mr-2 text-[#9b7653]" aria-hidden>●</span></a>
+    {online === false && <div role="status" aria-live="polite" className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-950">اتصال اینترنت قطع است. اطلاعات همین صفحه در دسترس می‌ماند؛ برای تازه‌کردن محصولات یا ادامه خرید دوباره متصل شوید.</div>}
+    {reconnected && online && <div role="status" aria-live="polite" className="border-b border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm text-emerald-950">اتصال برقرار شد؛ فهرست فروشگاه دوباره بررسی می‌شود.</div>}
+    <header className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 md:px-10 md:py-5">
+      <a href={base} className="flex min-w-0 items-center gap-3 text-lg font-bold tracking-tight md:text-xl" aria-label={`صفحه اصلی فروشگاه ${view.name}`}>
+        {view.branding.logo && <Image src={view.branding.logo} width={42} height={42} unoptimized alt={view.name} className="h-10 w-10 shrink-0 rounded-xl object-contain" />}
+        <span className="truncate">{view.name}</span>
+      </a>
       {!productSlug && <nav aria-label="ناوبری فروشگاه" className="hidden gap-8 text-sm md:flex"><a href={`${base}#categories`}>دسته‌بندی‌ها</a><a href={`${base}#products`}>محصولات</a></nav>}
-      <div className="flex items-center gap-2">{!view.previewOnly && <a href={checkoutHref} className="min-h-11 rounded-full border border-[#d9d5cd] px-4 py-3 text-sm">سبد خرید</a>}<a href={`${base}#products`} className="min-h-11 rounded-full border border-[#d9d5cd] px-4 py-3 text-sm">مشاهده کالاها <span aria-hidden>⌕</span></a></div>
+      <div className="flex shrink-0 items-center gap-2">{!view.previewOnly && <><a href={accountHref} className="hidden min-h-11 items-center rounded-full border border-[#d9d5cd] px-4 py-3 text-sm sm:flex">حساب من</a><a href={checkoutHref} className="min-h-11 rounded-full border border-[#d9d5cd] px-3 py-2.5 text-sm sm:px-4 sm:py-3">سبد خرید</a></>}<a href={`${base}#products`} className="hidden min-h-11 items-center rounded-full border border-[#d9d5cd] px-4 py-3 text-sm sm:flex">مشاهده کالاها <span aria-hidden>⌕</span></a></div>
     </header>
+    <section aria-label="دسترسی و نصب فروشگاه" className="mx-auto flex max-w-7xl flex-col gap-3 px-4 pb-4 md:flex-row md:items-center md:justify-between md:px-10">
+      <div className="flex items-start gap-3 rounded-2xl border border-[#e2dfd8] bg-white/80 p-4">
+        <span className="mt-0.5 rounded-full bg-[#f1eee8] p-2 text-[#756047]" aria-hidden><Share2 className="h-4 w-4" /></span>
+        <div><p className="text-sm font-semibold">دسترسی به {view.name}</p><p className="mt-1 text-xs leading-6 text-[#6e6a60]">{standalone ? "این صفحه در حالت تمام‌صفحه نمایش داده می‌شود؛ نام و نشان برنامه نصب‌شده را پلتفرم تعیین می‌کند." : "نصب اختصاصی این فروشگاه از این مسیر هنوز تأیید نشده است. می‌توانید نشانی همین فروشگاه را ذخیره یا هم‌رسانی کنید."}</p></div>
+      </div>
+      <button type="button" onClick={() => void shareStore()} className="min-h-11 shrink-0 rounded-full border border-[#d9d5cd] bg-white px-5 py-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b7653]">هم‌رسانی نشانی فروشگاه</button>
+      {shareMessage && <p role="status" aria-live="polite" className="text-xs text-[#6e6a60] md:basis-full">{shareMessage}</p>}
+    </section>
     {!productSlug && <>
     <section className="mx-auto grid max-w-7xl gap-5 px-4 pb-8 md:grid-cols-[1fr_1.15fr] md:px-10">
       <div className="flex min-h-[340px] flex-col justify-center rounded-[2rem] bg-[#e9e5dc] p-8 md:min-h-[460px] md:p-14">
@@ -161,7 +230,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
           <label className="sr-only" htmlFor="retail-sort">مرتب‌سازی</label><select id="retail-sort" value={sort} onChange={(event) => setSort(event.target.value)} className="min-h-11 rounded-xl border border-[#ddd9d0] bg-white px-4 py-3 text-sm"><option value="featured">پیشنهادی</option><option value="name">نام محصول</option><option value="price-asc">قیمت: کم به زیاد</option><option value="price-desc">قیمت: زیاد به کم</option></select>
         </div>
       </div>
-      {error ? <div role="alert" className="mt-8 rounded-2xl bg-white p-10 text-center text-[#8c3329]">دریافت محصولات ممکن نشد. چند لحظه دیگر دوباره تلاش کنید.</div> : busy ? <p role="status" className="mt-8 rounded-2xl bg-white p-10 text-center">در حال دریافت محصولات…</p> : sortedProducts.length ? <><div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 xl:grid-cols-4">{sortedProducts.map(renderProduct)}</div><nav aria-label="صفحه‌های محصولات" className="mt-8 flex items-center justify-center gap-4"><button disabled={pagination.page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} className="min-h-11 rounded-full border border-[#d9d5cd] px-5 disabled:opacity-40">قبلی</button><span className="text-sm" aria-live="polite">صفحه {new Intl.NumberFormat("fa-IR").format(pagination.page)} از {new Intl.NumberFormat("fa-IR").format(pagination.totalPages)}</span><button disabled={pagination.page >= pagination.totalPages} onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))} className="min-h-11 rounded-full border border-[#d9d5cd] px-5 disabled:opacity-40">بعدی</button></nav></> : <div className="mt-8 rounded-2xl bg-white p-10 text-center text-[#6e6a60]">محصولی با این مشخصات پیدا نشد. فیلترها را تغییر دهید.</div>}
+      {error ? <div role="alert" className="mt-8 rounded-2xl bg-white p-8 text-center text-[#8c3329]"><p>{online === false ? "اتصال اینترنت برقرار نیست. پس از اتصال دوباره تلاش کنید." : "دریافت محصولات ممکن نشد. اتصال را بررسی کنید و دوباره تلاش کنید."}</p><button type="button" onClick={() => { setError(false); setRetryKey((current) => current + 1); }} className="mt-4 min-h-11 rounded-full border border-[#d9d5cd] px-5 text-sm text-[#24241f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b7653]">تلاش دوباره</button></div> : busy ? <p role="status" className="mt-8 rounded-2xl bg-white p-10 text-center">در حال دریافت محصولات…</p> : sortedProducts.length ? <><div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 xl:grid-cols-4">{sortedProducts.map(renderProduct)}</div><nav aria-label="صفحه‌های محصولات" className="mt-8 flex items-center justify-center gap-4"><button disabled={pagination.page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} className="min-h-11 rounded-full border border-[#d9d5cd] px-5 disabled:opacity-40">قبلی</button><span className="text-sm" aria-live="polite">صفحه {new Intl.NumberFormat("fa-IR").format(pagination.page)} از {new Intl.NumberFormat("fa-IR").format(pagination.totalPages)}</span><button disabled={pagination.page >= pagination.totalPages} onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))} className="min-h-11 rounded-full border border-[#d9d5cd] px-5 disabled:opacity-40">بعدی</button></nav></> : <div className="mt-8 rounded-2xl bg-white p-10 text-center text-[#6e6a60]">محصولی با این مشخصات پیدا نشد. فیلترها را تغییر دهید.</div>}
       {cartNotice && <p role="status" aria-live="polite" className="mt-5 text-center text-sm text-[#6e6a60]">{cartNotice}</p>}
       <p className="mt-6 text-center text-xs text-[#77736a]">قیمت و وضعیت موجودی از فهرست منتشرشده فروشگاه دریافت شده‌اند.</p>
     </section>
@@ -179,5 +248,11 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
         </div></article>}
     </section>}
     <footer className="border-t border-[#e1ded7] bg-[#f0eee8] px-5 py-8 text-center text-sm text-[#6e6a60]">{view.name} · فروشگاه خرده‌فروشی بازارباز</footer>
+    <nav aria-label="پیمایش موبایل فروشگاه" className={`fixed inset-x-0 bottom-0 z-40 grid ${view.previewOnly ? "grid-cols-2" : "grid-cols-4"} border-t border-[#e2dfd8] bg-[#fffefa]/95 px-2 pt-2 shadow-[0_-6px_24px_rgba(36,36,31,.08)] backdrop-blur md:hidden`} style={{ paddingBottom: "max(.5rem, env(safe-area-inset-bottom))" }}>
+      <a href={base} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[10px] text-[#4c4a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#9b7653]"><Home className="h-4 w-4" /><span>فروشگاه</span></a>
+      <a href={`${base}#categories`} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[10px] text-[#4c4a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#9b7653]"><LayoutGrid className="h-4 w-4" /><span>دسته‌ها</span></a>
+      {!view.previewOnly && <a href={checkoutHref} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[10px] text-[#4c4a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#9b7653]"><ShoppingBag className="h-4 w-4" /><span>سبد</span></a>}
+      {!view.previewOnly && <a href={accountHref} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[10px] text-[#4c4a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#9b7653]"><UserRound className="h-4 w-4" /><span>حساب</span></a>}
+    </nav>
   </main>;
 }

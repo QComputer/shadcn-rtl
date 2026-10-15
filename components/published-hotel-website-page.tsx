@@ -9,6 +9,7 @@ import {
   type PublishedHotelWebsite,
 } from "@/lib/hotel-website-public-adapter";
 import type { HotelPublicLocale } from "@/lib/hotel/public-api-contract";
+import type { HotelOrganizationSitePresentation } from "@/lib/hotel/organization-site-presentation";
 import { HotelDataState } from "@/components/hotel-data-state";
 import { RoomShowcase } from "@/components/rooms/room-showcase";
 import { JalaliDateRangePicker } from "@/components/booking/jalali-date-range-picker";
@@ -21,7 +22,8 @@ type LoadState =
   | Readonly<{ status: "LOADING" }>
   | Readonly<{ status: "ERROR"; code: "UNAVAILABLE_PROPERTY" | "PUBLICATION_DISABLED" | "TEMPORARY_UNAVAILABLE" | "MISSING_TRANSLATION" }>
   | Readonly<{ status: "UNPUBLISHED" }>
-  | Readonly<{ status: "READY"; website: PublishedHotelWebsite }>;
+  | Readonly<{ status: "READY"; website: PublishedHotelWebsite; source: "PUBLISHED" | "AUTHENTICATED_CMS_PREVIEW" | "SYNTHETIC_PREVIEW" }>;
+type ScopedLoadState = Readonly<{ scopeKey: string; value: LoadState }>;
 
 const labels = {
   fa: { home: "صفحهٔ اصلی", nav: "پیمایش اصلی", about: "دربارهٔ ما", rooms: "دسته‌های اقامت", gallery: "گالری", booking: "پیش‌نمایش تاریخ", title: "بررسی تاریخ‌ها", dates: "تاریخ ورود و خروج", guests: "ترکیب مهمانان", noBooking: "رزرو و بررسی موجودی در این صفحه فعال نیست.", previewOnly: "فرم فقط برای پیش‌نمایش رابط کاربری است؛ هیچ درخواستی ارسال نمی‌شود.", invalid: "لطفاً تاریخ‌ها و ترکیب مهمانان را بررسی کنید.", noGallery: "تصویر تأییدشده‌ای برای نمایش در این بخش منتشر نشده است.", imageUnavailable: "تصویر منتشرشده موقتاً در دسترس نیست." },
@@ -31,8 +33,25 @@ const labels = {
 
 function direction(locale: HotelPublicLocale) { return locale === "en" ? "ltr" : "rtl"; }
 
-export function PublishedHotelWebsitePage({ propertySlug, locale, organizationSlug }: { propertySlug: string; locale: HotelPublicLocale; organizationSlug?: string }) {
-  const [state, setState] = useState<LoadState>({ status: "LOADING" });
+function initialLoadState(presentation: HotelOrganizationSitePresentation | undefined, expected: { propertySlug: string; locale: HotelPublicLocale; tenantKey?: string }): LoadState {
+  if (!presentation) return { status: "LOADING" };
+  if (presentation.propertySlug !== expected.propertySlug || presentation.locale !== expected.locale || (expected.tenantKey && (!('organizationId' in presentation) || presentation.organizationId !== expected.tenantKey))) {
+    return { status: "ERROR", code: "UNAVAILABLE_PROPERTY" };
+  }
+  if (presentation.status === "PUBLISHED" || presentation.status === "PREVIEW") {
+    return { status: "READY", website: presentation.website, source: presentation.status === "PUBLISHED" ? "PUBLISHED" : presentation.source };
+  }
+  if (presentation.status === "UNPUBLISHED") return { status: "UNPUBLISHED" };
+  return { status: "ERROR", code: presentation.code };
+}
+
+function presentationOrganizationId(presentation?: HotelOrganizationSitePresentation) {
+  return presentation && "organizationId" in presentation ? presentation.organizationId : undefined;
+}
+
+export function PublishedHotelWebsitePage({ propertySlug, locale, presentation, tenantKey, organizationSlug }: { propertySlug: string; locale: HotelPublicLocale; presentation?: HotelOrganizationSitePresentation; tenantKey?: string; organizationSlug?: string }) {
+  const scopeKey = `${tenantKey ?? presentationOrganizationId(presentation) ?? organizationSlug ?? "host-scoped"}:${propertySlug}:${locale}`;
+  const [storedState, setStoredState] = useState<ScopedLoadState>(() => ({ scopeKey, value: initialLoadState(presentation, { propertySlug, locale, tenantKey }) }));
   const [menuOpen, setMenuOpen] = useState(false);
   const [unavailableImages, setUnavailableImages] = useState<ReadonlySet<string>>(() => new Set());
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -41,6 +60,11 @@ export function PublishedHotelWebsitePage({ propertySlug, locale, organizationSl
   const [guests, setGuests] = useState<GuestCompositionDraft>(initialGuests);
   const [formMessage, setFormMessage] = useState("");
   const text = labels[locale];
+  const reviewLabel = locale === "fa"
+    ? "پیش‌نمایش خصوصی محتوا؛ این نسخه برای بازبینی است و صفحهٔ عمومی یا رزرو محسوب نمی‌شود."
+    : locale === "ar"
+      ? "معاينة خاصة للمحتوى؛ هذه النسخة للمراجعة وليست صفحة عامة أو حجزًا."
+      : "Private content preview. This version is for review, not a public page or booking.";
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -67,7 +91,9 @@ export function PublishedHotelWebsitePage({ propertySlug, locale, organizationSl
   }
 
   useEffect(() => {
+    if (presentation) return;
     const controller = new AbortController();
+    const setScopedState = (value: LoadState) => setStoredState({ scopeKey, value });
     async function load() {
       try {
         const base = `/api/hotel/v1/website/properties/${encodeURIComponent(propertySlug)}`;
@@ -90,28 +116,28 @@ export function PublishedHotelWebsitePage({ propertySlug, locale, organizationSl
         if (failedResponse) {
           const errorBody = failedResponse === websiteResponse ? websiteBody : roomsBody;
           const code = publishedHotelWebsiteErrorState(failedResponse.status, errorBody);
-          setState({ status: "ERROR", code });
+          setScopedState({ status: "ERROR", code });
           return;
         }
         const snapshot = adaptPublishedHotelWebsite(websiteBody, roomsBody, { propertySlug, locale });
         if (snapshot.status === "UNPUBLISHED") {
-          setState({ status: "UNPUBLISHED" });
+          setScopedState({ status: "UNPUBLISHED" });
           return;
         }
         const website = snapshot.value;
         if (!website.content.title || !website.content.hero.heading || !website.content.introduction.body) {
-          setState({ status: "ERROR", code: "MISSING_TRANSLATION" });
+          setScopedState({ status: "ERROR", code: "MISSING_TRANSLATION" });
           return;
         }
-        setState({ status: "READY", website });
+        setScopedState({ status: "READY", website, source: "PUBLISHED" });
       } catch {
         if (controller.signal.aborted) return;
-        setState({ status: "ERROR", code: "TEMPORARY_UNAVAILABLE" });
+        setScopedState({ status: "ERROR", code: "TEMPORARY_UNAVAILABLE" });
       }
     }
     void load();
     return () => controller.abort();
-  }, [propertySlug, locale, organizationSlug]);
+  }, [propertySlug, locale, organizationSlug, presentation, scopeKey]);
 
   function submitPreview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -119,16 +145,20 @@ export function PublishedHotelWebsitePage({ propertySlug, locale, organizationSl
     setFormMessage("issue" in result ? text.invalid : text.previewOnly);
   }
 
-  if (state.status === "LOADING") return <main className={styles.shell} dir={direction(locale)}><HotelDataState code="LOADING" locale={locale} /></main>;
-  if (state.status === "UNPUBLISHED") return <main className={styles.shell} dir={direction(locale)}><HotelDataState code="NO_APPROVED_CONTENT" locale={locale} /></main>;
-  if (state.status === "ERROR") return <main className={styles.shell} dir={direction(locale)}><HotelDataState code={state.code} locale={locale} /></main>;
+  const visibleState = presentation
+    ? initialLoadState(presentation, { propertySlug, locale, tenantKey })
+    : storedState.scopeKey === scopeKey ? storedState.value : { status: "LOADING" as const };
+  if (visibleState.status === "LOADING") return <main className={styles.shell} dir={direction(locale)}><HotelDataState code="LOADING" locale={locale} /></main>;
+  if (visibleState.status === "UNPUBLISHED") return <main className={styles.shell} dir={direction(locale)}><HotelDataState code="NO_APPROVED_CONTENT" locale={locale} /></main>;
+  if (visibleState.status === "ERROR") return <main className={styles.shell} dir={direction(locale)}><HotelDataState code={visibleState.code} locale={locale} /></main>;
 
-  const { website } = state;
+  const { website } = visibleState;
   const image = website.heroDesktop;
   const roomCount = website.roomCards.length;
 
   return (
-    <main className={styles.shell} dir={direction(locale)} data-provenance="PUBLISHED">
+      <main className={styles.shell} dir={direction(locale)} data-provenance={visibleState.source}>
+      {visibleState.source !== "PUBLISHED" && <aside className={styles.previewNotice} role="status" data-testid="hotel-owner-preview-label">{reviewLabel}</aside>}
       <header className={styles.header}>
         <a href="#home" className={styles.brand} aria-label={website.content.title ?? text.home}>{website.content.title}</a>
         <nav ref={menuRef} id="published-hotel-navigation" aria-label={text.nav} className={`${styles.nav} ${menuOpen ? styles.navOpen : ""}`}>

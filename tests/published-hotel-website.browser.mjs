@@ -271,6 +271,47 @@ try {
     results.push({ viewport: "390x844", locale: "fa", status: "PASS", uiState: scenario.name, internalDetailsHidden: true });
     await page.close();
   }
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    const page = await browser.newPage({ viewport });
+    const requested = [];
+    const pageErrors = [];
+    page.on("request", (request) => requested.push(new URL(request.url()).pathname));
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    await page.route("http://hotel-f2.test/**", (route) => new URL(route.request().url()).pathname === "/" ? route.fulfill({ status: 200, contentType: "text/html", body: '<!doctype html><html lang="fa" dir="rtl"><head><meta name="viewport" content="width=device-width,initial-scale=1" /></head><body style="margin:0"><div id="root"></div></body></html>' }) : route.fallback());
+    await page.route("**/uploads/synthetic-preview.webp", (route) => route.fulfill({ status: 200, contentType: "image/svg+xml", body: svg("Conceptual preview only") }));
+    await page.goto("http://hotel-f2.test/?locale=fa&mode=review");
+    await page.addScriptTag({ content: bundle.text });
+    await page.getByTestId("hotel-owner-preview-label").waitFor();
+    assert.equal(await page.locator('main[data-provenance="AUTHENTICATED_CMS_PREVIEW"]').count(), 1);
+    assert.equal(await page.getByRole("heading", { name: "محتوای مفهومی برای بازبینی" }).count(), 1);
+    assert.equal(await page.getByRole("button", { name: "انتخاب تاریخ ورود شمسی" }).count(), 1, "preview retains the Jalali date control");
+    assert.equal(await page.locator('[data-testid="room-showcase"]').count(), 0, "preview does not invent room categories");
+    assert.equal(requested.some((path) => path.startsWith("/api/")), false, "preloaded private preview does not trigger a public or mutation API request");
+    assert.equal(requested.some((path) => /holds|payments|availability|quote|notification|sms/i.test(path)), false);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    if (viewport.width === 390) await page.screenshot({ path: `${artifacts}/organization-owner-preview-mobile.png`, fullPage: false });
+    else await page.screenshot({ path: `${artifacts}/organization-owner-preview-desktop.png`, fullPage: false });
+    assert.deepEqual(pageErrors, []);
+    results.push({ viewport: `${viewport.width}x${viewport.height}`, locale: "fa", status: "PASS", ownerPreviewLabeled: true, noPublicOrMutationRequests: true, noInventedRooms: true });
+    await page.close();
+  }
+  for (const locale of ["en", "ar"]) {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const requested = [];
+    page.on("request", (request) => requested.push(new URL(request.url()).pathname));
+    await page.route("http://hotel-f2.test/**", (route) => new URL(route.request().url()).pathname === "/" ? route.fulfill({ status: 200, contentType: "text/html", body: '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1" /></head><body style="margin:0"><div id="root"></div></body></html>' }) : route.fallback());
+    await page.route("**/uploads/synthetic-preview.webp", (route) => route.fulfill({ status: 200, contentType: "image/svg+xml", body: svg("Conceptual preview only") }));
+    await page.goto(`http://hotel-f2.test/?locale=${locale}&mode=review`);
+    await page.addScriptTag({ content: bundle.text });
+    const expectedHeading = locale === "en" ? "Conceptual content for review" : "محتوى تصوري للمراجعة";
+    await page.getByTestId("hotel-owner-preview-label").waitFor();
+    assert.equal(await page.getByRole("heading", { name: expectedHeading }).count(), 1);
+    assert.equal(await page.locator("main").getAttribute("dir"), locale === "en" ? "ltr" : "rtl");
+    assert.equal(requested.some((path) => path.startsWith("/api/")), false);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    results.push({ viewport: "390x844", locale, status: "PASS", ownerPreviewLocalized: true, direction: locale === "en" ? "LTR" : "RTL", noApiRequests: true });
+    await page.close();
+  }
   process.stdout.write(`${JSON.stringify({ status: "PASS", fixtures: "synthetic browser-only C1B2-shaped responses", cases: results, screenshots: artifacts.replaceAll("\\", "/") })}\n`);
 } finally {
   await browser.close();

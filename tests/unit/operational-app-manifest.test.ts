@@ -7,7 +7,8 @@ describe("operational app manifest", () => {
   it("keeps the platform fallback inside each build topology", () => {
     const root = buildOperationalAppManifest({ basePath: "" });
     const path = buildOperationalAppManifest({ basePath: "/app" });
-    assert.equal(root.name, "Bazarbaaz | بازارباز");
+    assert.equal(root.name, "بازارباز");
+    assert.equal(root.short_name, "بازارباز");
     assert.equal(root.start_url, "/fa");
     assert.equal(root.scope, "/");
     assert.equal(path.start_url, "/app/fa");

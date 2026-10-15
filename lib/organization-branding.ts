@@ -93,7 +93,7 @@ export function resolveOrganizationBranding(input: {
 export function resolvePlatformFallbackBranding(): ResolvedOrganizationBranding {
   return {
     organizationId: "platform",
-    displayName: "Bazarbaaz",
+    displayName: "بازارباز",
     shortName: "بازارباز",
     logo: BAZARBAAZ_LOGO,
     favicon: BAZARBAAZ_FAVICON,

@@ -12,7 +12,7 @@
 .mainStroke,
 .accentStroke {
   fill: none;
-  stroke-width: 84;
+  stroke-width: 72;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -31,9 +31,11 @@
 .wordmarkFa {
   fill: var(--bb-main);
   font-family: Vazirmatn, "Noto Sans Arabic", Tahoma, Arial, sans-serif;
-  font-size: 205px;
+  font-size: 230px;
   font-weight: 600;
 }
+
+.bilingualFa { font-size: 92px; font-weight: 500; }
 
 .accentText { fill: var(--bb-accent); }
 

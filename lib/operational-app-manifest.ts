@@ -57,10 +57,10 @@ export function buildOperationalAppManifest(input: {
   const isPlatform = platform || (!tenant && !branding);
   const name = tenant
     ? (tenant.displayName || tenant.shortName || "Tenant website")
-    : (branding?.displayName || "Bazarbaaz | بازارباز");
+    : (branding?.displayName || "بازارباز");
   const shortName = tenant
     ? (tenant.shortName || tenant.displayName || "Website")
-    : (branding?.shortName || "Bazarbaaz");
+    : (branding?.shortName || "بازارباز");
   const startUrl = appPath(`/${locale}`, basePath);
   const icons = tenant
     ? [

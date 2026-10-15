@@ -26,7 +26,7 @@ export function BazarbaazLogo({
   ...props
 }: BazarbaazLogoProps) {
   const isMark = variant === "mark";
-  const viewBox = isMark ? "0 0 1000 1000" : "0 0 1950 650";
+  const viewBox = isMark ? "0 0 1000 1000" : language === "both" ? "0 0 1900 760" : "0 0 1900 620";
 
   return (
     <svg
@@ -37,28 +37,18 @@ export function BazarbaazLogo({
       className={cls(styles.logo, styles[theme], className)}
       {...props}
     >
-      <g className={styles.mark}>
-        <path d="M170 120 V880" className={styles.mainStroke} />
-        <path
-          d="M300 120 H520 C690 120 815 240 815 400 C815 455 790 505 748 545"
-          className={styles.accentStroke}
-        />
-        <path
-          d="M300 500 H620 C706 500 770 527 800 565"
-          className={styles.mainStroke}
-        />
-        <path
-          d="M805 655 C822 710 813 765 780 810 C742 860 675 880 590 880 H300"
-          className={styles.mainStroke}
-        />
+      <g className={styles.mark} transform={isMark ? undefined : "translate(40,-70) scale(0.68)"}>
+        <path d="M300 170 V830" className={styles.mainStroke} />
+        <path d="M470 220 H635 A105 105 0 0 1 635 430" className={styles.accentStroke} />
+        <path d="M470 500 H650 A150 150 0 0 1 650 800 H470" className={styles.mainStroke} />
       </g>
 
       {!isMark && (
-        <g transform="translate(720 0)">
+        <g>
           {(language === "en" || language === "both") && (
             <text
-              x="0"
-              y={language === "both" ? 325 : 390}
+              x="780"
+              y={language === "both" ? 360 : 375}
               className={cls(styles.wordmark, wordmarkClassName)}
             >
               Bazarbaaz
@@ -66,9 +56,9 @@ export function BazarbaazLogo({
           )}
           {(language === "fa" || language === "both") && (
             <text
-              x="0"
-              y={language === "both" ? 465 : 390}
-              className={cls(styles.wordmarkFa, language === "both" && styles.accentText, wordmarkClassName)}
+              x="780"
+              y={language === "both" ? 505 : 375}
+              className={cls(styles.wordmarkFa, language === "both" && styles.bilingualFa, language === "both" && styles.accentText, wordmarkClassName)}
               direction="rtl"
             >
               بازارباز

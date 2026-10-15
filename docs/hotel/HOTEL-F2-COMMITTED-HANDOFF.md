@@ -90,3 +90,53 @@ All are local, synthetic-data component screenshots under:
 4. Materialize isolated dependencies, generate Prisma Client from the exact integrated schema, then run full typecheck, focused tests, lint, production build, and real staging/browser security acceptance.
 
 No files were pushed, merged, or deployed; no database, Production configuration, live booking, payment, or notification operation was performed.
+
+## F2.1 guest-experience hardening
+
+- Hotel source commit: `0c1cc170b54705386a61ca38ecdfd65c74742685`
+- Branch: `codex/hotel-damoon-f2-public-integration`
+- Parent: `8fe48e1d1ad6d04714f3f2f28fadb73cc6a0ef3a`
+- Scope: keyboard and touch interaction fixes in the Hotel-owned published page, room showcase, and Jalali picker. No shared routing, metadata, tenant, Prisma, or booking backend code changed.
+
+### F2.1 changed source and tests
+
+- `components/booking/guest-composition-selector.module.css`
+- `components/booking/jalali-date-range-picker.module.css`
+- `components/booking/jalali-date-range-picker.tsx`
+- `components/published-hotel-website-page.module.css`
+- `components/published-hotel-website-page.tsx`
+- `components/rooms/room-showcase.module.css`
+- `components/rooms/room-showcase.tsx`
+- `tests/published-hotel-website.browser.mjs`
+
+The public page now labels its navigation correctly and transfers focus into the mobile disclosure and back to its trigger on Escape/close. Keyboard date and room-gallery movement follows LTR versus RTL reading direction. Small interactive controls meet a 44px minimum on mobile. Failed approved-media requests replace broken images with localized, visible unavailable states; the original opaque media URLs remain unchanged and no preview image fallback was added.
+
+### F2.1 verification
+
+Passed on synthetic, browser-intercepted data only:
+
+```powershell
+node --import tsx --test tests/hotel-website-public-adapter.test.mjs tests/jalali-calendar.test.mjs tests/search-form-model.test.mjs tests/room-showcase-model.test.mjs
+```
+
+Result: **30 passed, 0 failed**.
+
+```powershell
+node --import tsx tests/published-hotel-website.browser.mjs
+```
+
+Result: **10 browser cases passed, 0 failed**: fa at 1440x900 and 390x844; en and ar at 390x844; plus unpublished, unavailable property, website-disabled, temporary-error, missing-translation, and empty-room states. Coverage includes Jalali keyboard selection with Gregorian ISO values, directional gallery keys, focus restoration, mobile-nav Escape, reduced motion, 44px touch targets, media URL preservation, failed-image fallback, no horizontal overflow, and absence of booking/payment/notification requests. These are component browser tests with synthetic fixtures, not live staging evidence.
+
+Focused TypeScript compilation passed for the Hotel UI graph (9 roots, 294 source files) using the repository compiler options and an in-memory CSS-module declaration. Targeted ESLint on the three changed TSX files and the browser harness passed with exit code 0. CSS files are not included in the ESLint configuration. `git diff --check` passed. The full-project typecheck and production build were not rerun: their accepted F2 baseline blockers remain stale generated Prisma types and the shared root layout/dependency setup; this F2.1 change does not touch those shared surfaces.
+
+### F2.1 screenshots and metadata integration note
+
+New viewport screenshots (fullPage false) are local review artifacts under:
+
+`C:\Users\disso\.codex\worktrees\hotel-damoon-f2-public-integration\shadcn-rtl\artifacts\hotel-f2-1\`
+
+Includes desktop/mobile initial page, Jalali calendar open, and room gallery open. Screenshots use only clearly synthetic browser fixtures and are not committed.
+
+The shared route `app/[locale]/[slug]/page.tsx` owns `generateMetadata`; it currently derives organization-level metadata and does not resolve the localized published Hotel revision or set publication-aware indexing metadata. It was intentionally not changed. Platform integration should add a trusted-host, published-revision metadata adapter and a safe no-index response for unpublished/unavailable Hotel content, without adding unverified business claims. No Hotel-owned server metadata boundary currently exists to implement this safely in isolation.
+
+F2.1 does not resolve missing owner-approved photography, translations, property facts, or business copy. No production API, staging database, publication workflow, live booking, payment, notification, or deployment was exercised.

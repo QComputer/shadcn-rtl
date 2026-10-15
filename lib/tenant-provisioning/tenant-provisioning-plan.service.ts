@@ -89,6 +89,9 @@ export type TenantProvisioningPlanDto = {
     consentAccepted: boolean;
     createdAt: string;
   } | null;
+  executionConfiguration?: Prisma.JsonValue | null;
+  approvedExecutionSha256?: string | null;
+  executionReceipt?: Prisma.JsonValue | null;
   auditEvents?: {
     id: string;
     action: string;
@@ -202,6 +205,9 @@ function isValidEmail(input: string | null | undefined) {
 
 function toDto(plan: Prisma.TenantProvisioningPlanGetPayload<{ include: { requestDemoLead: true } }>): TenantProvisioningPlanDto {
   return {
+    executionConfiguration: plan.executionConfiguration,
+    approvedExecutionSha256: plan.approvedExecutionSha256,
+    executionReceipt: plan.executionReceipt,
     id: plan.id,
     requestDemoLeadId: plan.requestDemoLeadId,
     sourceType: plan.sourceType,

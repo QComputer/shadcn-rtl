@@ -1,2 +1,3 @@
 # Keep this new migration byte-stable on Windows; historical SQL is untouched.
 prisma/migrations/20261015160000_bound_organization_invitations/migration.sql text eol=lf
+prisma/migrations/20261015190000_universal_provisioning_execution/migration.sql text eol=lf

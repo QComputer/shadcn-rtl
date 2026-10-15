@@ -4908,6 +4908,12 @@ model TenantProvisioningPlan {
   proposedDemoContent  Boolean @default(false)
   proposedCustomDomain String?
 
+  executionConfiguration Json?
+  approvedExecutionSnapshot Json?
+  approvedExecutionSha256 String?
+  executionReceipt Json?
+  executedAt DateTime?
+
   validationVersion Int       @default(0)
   validationResult  Json?
   validationErrors  Json?

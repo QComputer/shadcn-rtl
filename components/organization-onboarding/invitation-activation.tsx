@@ -33,7 +33,7 @@ export function InvitationActivation({ locale }: { locale: "fa" | "en" | "ar" })
     <p className="text-sm text-muted-foreground">{text.intro}</p>
     {status === "SUCCESS" ? <div className="space-y-4" role="status">
       <p>{text.success}</p>
-      <button type="button" className="min-h-11 rounded-md bg-primary px-4 py-2 text-primary-foreground" onClick={() => void signOut({ callbackUrl: appPath(`/${locale}/login?callbackUrl=${encodeURIComponent(appPath(`/${locale}/dashboard/hotel-website`))}`) })}>{text.again}</button>
+      <button type="button" className="min-h-11 rounded-md bg-primary px-4 py-2 text-primary-foreground" onClick={() => void signOut({ callbackUrl: appPath(`/${locale}/login?callbackUrl=${encodeURIComponent(appPath(`/${locale}/dashboard`))}`) })}>{text.again}</button>
     </div> : <form onSubmit={submit} className="space-y-4">
       <label htmlFor="organization-invitation-token" className="block text-sm font-medium">{text.token}</label>
       <input id="organization-invitation-token" type="password" dir="ltr" autoComplete="off" spellCheck={false} autoCapitalize="none" minLength={43} maxLength={43} pattern="[A-Za-z0-9_-]{43}" required value={token} disabled={status === "PENDING"} onChange={(event) => setToken(event.target.value)} className="min-h-11 w-full rounded-md border bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />

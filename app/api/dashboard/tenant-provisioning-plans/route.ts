@@ -1,6 +1,9 @@
+import { provisioningError as jsonError } from "@/lib/tenant-provisioning/http";
+import { readOnboardingBody } from "@/lib/organization-onboarding/http";
+import { universalProvisioningService } from "@/lib/tenant-provisioning/universal-provisioning.service";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { jsonError, requireAuthSession, requireRole } from "@/lib/api-guards";
+import { requireAuthSession, requireRole, requireSameOriginMutation } from "@/lib/api-guards";
 import {
   createTenantProvisioningPlan,
   listTenantProvisioningPlans,
@@ -17,7 +20,7 @@ export async function GET() {
     requireRole(session, ["SUPER_ADMIN"]);
 
     const items = await listTenantProvisioningPlans();
-    return NextResponse.json({ items });
+    return NextResponse.json({ items }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return jsonError(error, "Failed to fetch tenant provisioning plans");
   }
@@ -28,7 +31,14 @@ export async function POST(request: NextRequest) {
     const session = await requireAuthSession();
     requireRole(session, ["SUPER_ADMIN"]);
 
-    const body = createPlanSchema.parse(await request.json());
+    requireSameOriginMutation(request);
+    const raw: unknown = await readOnboardingBody(request);
+    if (raw && typeof raw === "object" && "manual" in raw) {
+      const manual = z.object({ manual: z.unknown() }).strict().parse(raw);
+      const plan = await universalProvisioningService.create({ userId: session.user.id, role: session.user.role }, manual.manual, request.headers.get("idempotency-key") ?? "");
+      return NextResponse.json(plan, { status: 201, headers: { "Cache-Control": "private, no-store" } });
+    }
+    const body = createPlanSchema.parse(raw);
     const plan = await createTenantProvisioningPlan({
       requestDemoLeadId: body.requestDemoLeadId,
       idempotencyKey: body.idempotencyKey,

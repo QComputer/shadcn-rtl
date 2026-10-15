@@ -8,6 +8,8 @@ import {
   redeemOrganizationInvitationSchema, type BootstrapHotelOrganizationInput, type IssueBoundInvitationInput,
 } from "./contract";
 
+import { initializeOrganizationTx } from "./initialize-organization";
+
 type Tx = Prisma.TransactionClient;
 export type OnboardingActor = { userId: string; role: UserRole };
 export class OrganizationOnboardingError extends Error {
@@ -34,7 +36,7 @@ export class OrganizationOnboardingService {
     }
   }
 
-  private async actor(tx: Tx, actor: OnboardingActor, platformOnly: boolean) {
+  async assertActorTx(tx: Tx, actor: OnboardingActor, platformOnly: boolean) {
     const user = await tx.user.findFirst({ where: { id: actor.userId, isActive: true, deletedAt: null }, select: { id: true, role: true, email: true, emailVerified: true, name: true, lockedUntil: true } });
     if (!user || (user.lockedUntil && user.lockedUntil > new Date())) return fail(403, "ACTIVE_IDENTITY_REQUIRED");
     if (platformOnly && (actor.role !== "SUPER_ADMIN" || user.role !== "SUPER_ADMIN")) return fail(403, "PLATFORM_ADMIN_REQUIRED");
@@ -60,7 +62,7 @@ export class OrganizationOnboardingService {
     onboardingIdempotencyKeySchema.parse(key);
     const fingerprint = digest(JSON.stringify(input));
     return this.transaction(async (tx) => {
-      await this.actor(tx, actor, true);
+      await this.assertActorTx(tx, actor, true);
       const existing = await tx.organization.findUnique({ where: { slug: input.slug }, include: { acquisition: true } });
       if (existing) {
         const marker = existing.acquisition?.metadata as Prisma.JsonObject | null;
@@ -76,14 +78,9 @@ export class OrganizationOnboardingService {
         { metadata: { path: ["key"], equals: key } },
       ] }, select: { id: true } });
       if (duplicate) return fail(409, "IDEMPOTENCY_CONFLICT");
-      const now = new Date();
-      const organization = await tx.organization.create({ data: { name: input.name, slug: input.slug, type: "SHOP", vertical: "HOTEL", locale: input.locale,
-        isOpen: false, capabilitiesInitializedAt: now,
-        capabilities: { create: { key: "HOTEL_WEBSITE", status: "ACTIVE", enabledAt: now } },
-      } });
-      await tx.organizationSettings.create({ data: { organizationSlug: organization.slug } });
-      await tx.paymentSettings.create({ data: { organizationSlug: organization.slug, paymentCondition: false } });
-      const property = await tx.hotelProperty.create({ data: { organizationId: organization.id, organizationSlug: organization.slug, name: input.property.name, slug: input.property.slug } });
+      const initialized = await initializeOrganizationTx(tx, { ...input, type: "SHOP", vertical: "HOTEL", capabilities: ["HOTEL_WEBSITE"] });
+      const { organization } = initialized;
+      const property = initialized.property!;
       await tx.organizationAcquisition.create({ data: { organizationId: organization.id, sourceType: "BAZARBAAZ_TEAM", industryKey: "OTHER", createdByUserId: actor.userId,
         metadata: { workflow: "SECURE_HOTEL_BOOTSTRAP_V1", key, fingerprint },
       } });
@@ -94,21 +91,47 @@ export class OrganizationOnboardingService {
     });
   }
 
-  async issueInvitation(actor: OnboardingActor, unparsed: IssueBoundInvitationInput, key: string) {
+  async invitationOrganizationTx(tx: Tx, organizationId: string) {
+    const existing = await tx.organization.findUnique({ where: { id: organizationId }, select: { vertical: true } });
+    // Preserve the accepted Hotel scope/error contract, including revocation.
+    if (existing?.vertical === "HOTEL") return this.hotel(tx, organizationId);
+    const organization = await tx.organization.findFirst({ where: { id: organizationId, isActive: true, deletedAt: null,
+      capabilities: { some: { status: "ACTIVE", enabledAt: { not: null }, disabledAt: null } },
+    }, select: { id: true, slug: true, vertical: true, acquisition: { select: { metadata: true } } } });
+    if (!organization) return fail(403, "ACTIVE_ORGANIZATION_REQUIRED");
+    if (organization.vertical === "HOTEL") return this.hotel(tx, organizationId);
+    const metadata = organization.acquisition?.metadata as Prisma.JsonObject | null;
+    if (metadata?.workflow !== "UNIVERSAL_PROVISIONING_V1") return fail(403, "SECURE_PROVISIONING_REQUIRED");
+    return organization;
+  }
+
+  async assertInvitationRecipientTx(tx: Tx, input: Omit<IssueBoundInvitationInput, "organizationId">, organizationId?: string) {
+    const recipient = await tx.user.findFirst({ where: { id: input.recipientUserId, name: input.recipientUsername, email: input.recipientEmail,
+      emailVerified: { not: null }, isActive: true, deletedAt: null }, select: { id: true, role: true } });
+    if (!recipient || recipient.role !== "CUSTOMER") return fail(409, "VERIFIED_RECIPIENT_IDENTITY_REQUIRED");
+    await this.verifyEmail(tx, recipient.id, input.recipientEmail);
+    const other = await tx.organizationMember.findFirst({ where: { userId: recipient.id, isActive: true,
+      role: { in: ["ADMIN", "MANAGER", "STAFF", "DRIVER", "SUPER_ADMIN"] }, ...(organizationId ? { organizationId: { not: organizationId } } : {}),
+    }, select: { id: true } });
+    if (other) return fail(409, "RECIPIENT_MEMBERSHIP_CONFLICT");
+    if (organizationId) {
+      const membership = await tx.organizationMember.findUnique({ where: { organizationId_userId: { organizationId, userId: recipient.id } } });
+      if (membership && (!membership.isActive || membership.role !== input.invitedRole)) return fail(409, "RECIPIENT_MEMBERSHIP_CONFLICT");
+    }
+    return recipient;
+  }
+
+  async issueInvitation(actor: OnboardingActor, input: IssueBoundInvitationInput, key: string) {
+    return this.transaction((tx) => this.issueInvitationTx(tx, actor, input, key));
+  }
+
+  async issueInvitationTx(tx: Tx, actor: OnboardingActor, unparsed: IssueBoundInvitationInput, key: string) {
     const input = issueBoundInvitationSchema.parse(unparsed);
     onboardingIdempotencyKeySchema.parse(key);
     const fingerprint = digest(JSON.stringify(input));
-    return this.transaction(async (tx) => {
-      await this.actor(tx, actor, true);
-      const organization = await this.hotel(tx, input.organizationId);
-      const recipient = await tx.user.findFirst({ where: { id: input.recipientUserId, name: input.recipientUsername, email: input.recipientEmail,
-        emailVerified: { not: null }, isActive: true, deletedAt: null }, select: { id: true, role: true } });
-      if (!recipient || recipient.role !== "CUSTOMER") return fail(409, "VERIFIED_RECIPIENT_IDENTITY_REQUIRED");
-      await this.verifyEmail(tx, recipient.id, input.recipientEmail);
-      const otherMembership = await tx.organizationMember.findFirst({ where: { userId: recipient.id, isActive: true, role: { in: ["ADMIN", "MANAGER", "STAFF", "DRIVER", "SUPER_ADMIN"] }, organizationId: { not: organization.id } }, select: { id: true } });
-      if (otherMembership) return fail(409, "RECIPIENT_MEMBERSHIP_CONFLICT");
-      const membership = await tx.organizationMember.findUnique({ where: { organizationId_userId: { organizationId: organization.id, userId: recipient.id } } });
-      if (membership && (!membership.isActive || membership.role !== input.invitedRole)) return fail(409, "RECIPIENT_MEMBERSHIP_CONFLICT");
+    await this.assertActorTx(tx, actor, true);
+    const organization = await this.invitationOrganizationTx(tx, input.organizationId);
+    const recipient = await this.assertInvitationRecipientTx(tx, input, organization.id);
       const existing = await tx.organizationInvitation.findUnique({ where: { issuanceKey: key } });
       if (existing) {
         if (existing.createdByUserId !== actor.userId || existing.requestSha256 !== fingerprint) return fail(409, "IDEMPOTENCY_CONFLICT");
@@ -126,13 +149,12 @@ export class OrganizationOnboardingService {
         organizationId: organization.id, organizationSlug: organization.slug, newValue: { invitedRole: input.invitedRole, recipientUserId: recipient.id },
       } });
       return { invitationId: invitation.id, status: invitation.status, expiresAt: invitation.expiresAt.toISOString(), oneTimeToken: token, replayed: false };
-    });
   }
 
   async redeemInvitation(actor: OnboardingActor, token: string) {
     redeemOrganizationInvitationSchema.parse({ token });
     return this.transaction(async (tx) => {
-      const user = await this.actor(tx, actor, false);
+      const user = await this.assertActorTx(tx, actor, false);
       const invitation = await tx.organizationInvitation.findUnique({ where: { tokenHash: digest(token) } });
       if (!invitation || !invitation.recipientUserId || invitation.recipientUserId !== user.id) return fail(404, "INVITATION_INVALID");
       if (user.role !== "CUSTOMER" || !user.emailVerified || user.email !== invitation.recipientEmail || user.name !== invitation.recipientUsername) return fail(403, "VERIFIED_RECIPIENT_IDENTITY_REQUIRED");
@@ -141,7 +163,7 @@ export class OrganizationOnboardingService {
       if (invitation.status === "CLAIMED") return fail(409, "INVITATION_ALREADY_USED");
       if (invitation.status === "EXPIRED" || invitation.expiresAt <= new Date()) return fail(410, "INVITATION_EXPIRED");
       if (!["CREATED", "SENT"].includes(invitation.status) || !["ADMIN", "MANAGER"].includes(invitation.invitedRole)) return fail(409, "INVITATION_STATE_CONFLICT");
-      const organization = await this.hotel(tx, invitation.organizationId);
+      const organization = await this.invitationOrganizationTx(tx, invitation.organizationId);
       const otherMembership = await tx.organizationMember.findFirst({ where: { userId: user.id, isActive: true, organizationId: { not: organization.id }, role: { in: ["ADMIN", "MANAGER", "STAFF", "DRIVER", "SUPER_ADMIN"] } }, select: { id: true } });
       if (otherMembership) return fail(409, "RECIPIENT_MEMBERSHIP_CONFLICT");
       const prior = await tx.organizationMember.findUnique({ where: { organizationId_userId: { organizationId: organization.id, userId: user.id } } });
@@ -160,7 +182,7 @@ export class OrganizationOnboardingService {
 
   async revokeInvitation(actor: OnboardingActor, invitationId: string) {
     return this.transaction(async (tx) => {
-      await this.actor(tx, actor, true);
+      await this.assertActorTx(tx, actor, true);
       const invitation = await tx.organizationInvitation.findUnique({ where: { id: invitationId } });
       if (!invitation?.recipientUserId) return fail(404, "INVITATION_INVALID");
       if (invitation.status === "REVOKED") return { revoked: true, replayed: true };

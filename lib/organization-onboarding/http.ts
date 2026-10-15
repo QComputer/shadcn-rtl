@@ -6,7 +6,7 @@ import { OrganizationOnboardingError, type OnboardingActor } from "./service";
 
 const headers = { "Cache-Control": "private, no-store, max-age=0", "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff" };
 
-async function readBody(request: Request) {
+export async function readOnboardingBody(request: Request) {
   if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type") ?? "")) throw new ApiError(400, "JSON_REQUIRED");
   const reader = request.body?.getReader();
   if (!reader) throw new ApiError(400, "INVALID_JSON");
@@ -34,7 +34,7 @@ export async function onboardingMutation(request: Request, policy: { platformOnl
     const session = await requireAuthSession();
     if (policy.platformOnly && session.user.role !== "SUPER_ADMIN") throw new ApiError(403, "PLATFORM_ADMIN_REQUIRED");
     const key = policy.idempotency ? onboardingIdempotencyKeySchema.parse(request.headers.get("idempotency-key")) : "";
-    const body = await readBody(request);
+    const body = await readOnboardingBody(request);
     return NextResponse.json(await handler({ userId: session.user.id, role: session.user.role }, body, key), { headers });
   } catch (error) {
     if (error instanceof OrganizationOnboardingError) return NextResponse.json({ error: error.code }, { status: error.status, headers });

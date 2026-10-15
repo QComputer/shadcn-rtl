@@ -28,7 +28,8 @@ const approveApi = read("app/api/dashboard/tenant-provisioning-plans/[planId]/ap
 const markReadyApi = read("app/api/dashboard/tenant-provisioning-plans/[planId]/mark-ready/route.ts");
 const cancelApi = read("app/api/dashboard/tenant-provisioning-plans/[planId]/cancel/route.ts");
 const returnApi = read("app/api/dashboard/tenant-provisioning-plans/[planId]/return-for-review/route.ts");
-const executionApi = exists("app/api/dashboard/tenant-provisioning-plans/[planId]/execute/route.ts");
+const executionApi = read("app/api/dashboard/tenant-provisioning-plans/[planId]/execute/route.ts");
+const executionService = read("lib/tenant-provisioning/universal-provisioning.service.ts");
 const listPage = read("app/[locale]/dashboard/tenant-provisioning/page.tsx");
 const listClient = read("app/[locale]/dashboard/tenant-provisioning/tenant-provisioning-client.tsx");
 const detailPage = read("app/[locale]/dashboard/tenant-provisioning/[planId]/page.tsx");
@@ -70,7 +71,15 @@ add("validate endpoint exists", /validateTenantProvisioningPlan/.test(validateAp
 add("approve endpoint exists", /approveTenantProvisioningPlan/.test(approveApi));
 add("mark-ready endpoint exists", /markTenantProvisioningPlanReady/.test(markReadyApi));
 add("return/cancel endpoints exist", /returnTenantProvisioningPlanForReview/.test(returnApi) && /cancelTenantProvisioningPlan/.test(cancelApi));
-add("no execution endpoint added", !executionApi);
+// P13 remains a non-executing dry run; the approved P14 extension now owns
+// execution through its explicitly guarded adapter rather than this service.
+add("P14 execution is a platform-only idempotent adapter", /onboardingMutation/.test(executionApi)
+  && /platformOnly: true/.test(executionApi) && /idempotency: true/.test(executionApi)
+  && /universalProvisioningService\.execute/.test(executionApi));
+add("P14 binds approval and execution receipt", /approvedExecutionSnapshot/.test(executionService)
+  && /approvedExecutionSha256/.test(executionService) && /executionReceipt/.test(executionService));
+add("P14 executes serializably with atomic audit", /TransactionIsolationLevel\.Serializable/.test(executionService)
+  && /await this\.audit\(tx, actor, planId/.test(executionService));
 for (const [name, content] of Object.entries({ listApi, detailApi, validateApi, approveApi, markReadyApi, cancelApi, returnApi })) {
   add(`${name} enforces SUPER_ADMIN server-side`, /requireAuthSession/.test(content) && /requireRole\(session,\s*\["SUPER_ADMIN"\]\)/.test(content));
 }

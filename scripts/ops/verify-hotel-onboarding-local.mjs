@@ -12,6 +12,7 @@ import { validateDatabaseIdentity, assertMatchingIdentitySources } from "../db/h
 // No repository .env connection is consumed: every DB child receives the exact
 // task-created loopback URL, verified independently from Docker and host SQL.
 assert.equal(process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production", false);
+if (process.argv.includes("--p14-browser-only")) assert.ok(process.argv.includes("--p14") && process.argv.includes("--production-browser"));
 const require = createRequire(import.meta.url);
 const { Client } = createRequire(require.resolve("@prisma/adapter-pg"))("pg");
 const runId = randomBytes(6).toString("hex");
@@ -91,7 +92,7 @@ try {
     HOTEL_ONBOARDING_PG_ACCEPTANCE: "1", HOTEL_ONBOARDING_RUN_ID: runId, HOTEL_ONBOARDING_CONTAINER_ID: containerId, HOTEL_ONBOARDING_ARTIFACTS: artifacts };
   const prisma = require.resolve("prisma/build/index.js");
   const names = (await readdir("prisma/migrations", { withFileTypes: true })).filter((item) => item.isDirectory()).map((item) => item.name).sort();
-  assert.equal(names.at(-1), "20261015160000_bound_organization_invitations");
+  assert.equal(names.at(-1), "20261015190000_universal_provisioning_execution");
   await writeFile(path.join(artifacts, "migrate-deploy.log"), command("Migration deploy", [prisma, "migrate", "deploy"], env));
   const ledger = (await client.query('SELECT migration_name, checksum, finished_at, rolled_back_at FROM "_prisma_migrations" ORDER BY migration_name')).rows;
   assert.deepEqual(ledger.map((row) => row.migration_name), names);
@@ -104,6 +105,9 @@ try {
   await writeFile(path.join(artifacts, "migration-manifest.json"), JSON.stringify(ledger, null, 2));
   console.log(`${ledger.length}/${names.length} migrations and file checksums verified`);
   await writeFile(path.join(artifacts, "postgres-tests.log"), command("PostgreSQL acceptance", ["--import", "tsx", "--require=./scripts/e2e/register-server-only.cjs", "--test", "tests/integration/organization-onboarding.postgres.local.test.ts"], env));
+  if (process.argv.includes("--p14")) {
+    await writeFile(path.join(artifacts, "p14-postgres-tests.log"), command("P14 PostgreSQL acceptance", ["--import", "tsx", "--require=./scripts/e2e/register-server-only.cjs", "--test", "tests/integration/universal-provisioning.postgres.local.test.ts"], env));
+  }
   if (process.argv.includes("--security")) {
     await writeFile(path.join(artifacts, "release-safety-tests.log"), command("Release safety PostgreSQL acceptance", ["--import", "tsx", "--require=./scripts/e2e/register-server-only.cjs", "--test", "tests/integration/release-safety.postgres.local.test.ts"], env));
   }
@@ -125,7 +129,7 @@ try {
       if (attempt > 120) throw new Error("TASK_SERVER_NOT_READY");
       await pause(500);
     }
-    const browserLog = await new Promise((resolve, reject) => {
+    const browserLog = process.argv.includes("--p14-browser-only") ? "Hotel browser regression reused from the preceding accepted-source run; not repeated." : await new Promise((resolve, reject) => {
       const browser = spawn(process.execPath, ["--import", "tsx", "--require=./scripts/e2e/register-server-only.cjs", "tests/organization-onboarding.browser.ts"], { env: appEnv, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
       let output = "";
       browser.stdout.on("data", (chunk) => { output += chunk.toString(); process.stdout.write(chunk); });
@@ -133,6 +137,19 @@ try {
       browser.once("error", reject);
       browser.once("exit", (code) => { writeFile(path.join(artifacts, "browser-tests.log"), output).then(() => code === 0 ? resolve(output) : reject(new Error("BROWSER_ACCEPTANCE_FAILED")), reject); });
     });
+    if (process.argv.includes("--p14")) {
+      // Keep the event loop free to drain the production server's output.
+      // A synchronous browser child can fill those pipes and stall HTTP work.
+      await new Promise((resolve, reject) => {
+        const browser = spawn(process.execPath, ["--import", "tsx", "--require=./scripts/e2e/register-server-only.cjs", "tests/universal-provisioning.browser.ts"], { env: appEnv, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+        let output = "";
+        browser.stdout.on("data", (chunk) => { output += chunk.toString(); process.stdout.write(chunk); });
+        browser.stderr.on("data", (chunk) => { output += chunk.toString(); process.stderr.write(chunk); });
+        browser.once("error", reject);
+        browser.once("exit", (code) => { writeFile(path.join(artifacts, "p14-browser-tests.log"), output).then(() => code === 0 ? resolve(output) : reject(new Error("P14_BROWSER_ACCEPTANCE_FAILED")), reject); });
+      });
+      report.checks.push({ label: "P14 authenticated browser acceptance", exitCode: 0 });
+    }
     report.checks.push({ label: productionBrowser ? "Authenticated production-server browser acceptance" : "Authenticated development-server browser acceptance", exitCode: 0 });
     console.log(browserLog);
   }

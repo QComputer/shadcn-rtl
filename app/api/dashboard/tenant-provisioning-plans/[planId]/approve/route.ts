@@ -1,9 +1,12 @@
+import { provisioningError as jsonError } from "@/lib/tenant-provisioning/http";
+import { prisma } from "@/lib/db";
+import { universalProvisioningService } from "@/lib/tenant-provisioning/universal-provisioning.service";
 import { NextRequest, NextResponse } from "next/server";
-import { jsonError, requireAuthSession, requireRole } from "@/lib/api-guards";
+import { requireAuthSession, requireRole, requireSameOriginMutation } from "@/lib/api-guards";
 import { approveTenantProvisioningPlan } from "@/lib/tenant-provisioning/tenant-provisioning-plan.service";
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ planId: string }> },
 ) {
   try {
@@ -11,6 +14,9 @@ export async function POST(
     requireRole(session, ["SUPER_ADMIN"]);
 
     const { planId } = await params;
+    requireSameOriginMutation(request);
+    const current = await prisma.tenantProvisioningPlan.findUnique({ where: { id: planId }, select: { executionConfiguration: true } });
+    if (current?.executionConfiguration) return NextResponse.json(await universalProvisioningService.approve({ userId: session.user.id, role: session.user.role }, planId), { headers: { "Cache-Control": "private, no-store" } });
     const plan = await approveTenantProvisioningPlan(planId, session.user.id);
     return NextResponse.json(plan);
   } catch (error) {

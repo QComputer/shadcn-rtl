@@ -76,11 +76,13 @@ async function activate(page: Page, user: typeof admin, token: string) {
   assert.equal(await page.locator("#organization-invitation-token").count(), 0);
   await page.screenshot({ path: path.join(artifacts, `${user.name}-activation.png`), fullPage: true });
   await page.getByRole("button", { name: "خروج و ورود دوباره" }).click();
-  await page.waitForURL(/\/fa\/login/);
+  await page.waitForURL(/\/fa\/login/, { waitUntil: "domcontentloaded" });
   await page.locator("#username").fill(user.name);
   await page.locator("#password").fill(password!);
   await page.locator('button[type="submit"]').click();
-  await page.waitForURL(`${base}/fa/dashboard/hotel-website`);
+  await page.waitForURL(`${base}/fa/dashboard`, { waitUntil: "domcontentloaded" });
+  await page.locator('a[href="/fa/dashboard/hotel-website"]').first().click();
+  await page.waitForURL(`${base}/fa/dashboard/hotel-website`, { waitUntil: "domcontentloaded" });
 }
 
 const mediaFilename = `hotel-onboarding-${runId}.png`;

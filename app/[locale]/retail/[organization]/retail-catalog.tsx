@@ -44,7 +44,9 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
   const locale = params.locale || "fa";
   const base = appPath(storefrontPath ?? `/${encodeURIComponent(locale)}/retail/${encodeURIComponent(view.identifier)}`);
   const checkoutHref = appPath(checkoutPath ?? `/${encodeURIComponent(locale)}/retail/${encodeURIComponent(view.identifier)}/checkout`);
-  const accountHref = appPath(`/${encodeURIComponent(locale)}/${encodeURIComponent(view.identifier)}/shop/profile`);
+  const accountHref = appPath(storefrontPath
+    ? `${storefrontPath}/profile`
+    : `/${encodeURIComponent(locale)}/retail/${encodeURIComponent(view.identifier)}/account`);
   const [cartNotice, setCartNotice] = useState("");
   const isFashion = view.theme === "FASHION";
 

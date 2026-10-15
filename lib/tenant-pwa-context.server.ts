@@ -6,10 +6,11 @@ import { resolveActiveTenantForHost } from "@/lib/domains/domain-resolver.server
 import { resolveOrganizationEndpointForTenant } from "@/lib/organization-endpoints.server";
 import { resolveTenantPwaBranding, type TenantPwaBranding } from "@/lib/organization-branding";
 import { resolveAppBasePath } from "@/lib/app-base-path";
+import { resolveTenantShopStartPath } from "@/lib/tenant-retail-pwa";
 
 export type TenantPwaRequestContext =
   | { kind: "platform"; organizationId: "platform" }
-  | { kind: "tenant"; organizationId: string; branding: TenantPwaBranding; locale: "fa" | "en" | "ar" }
+  | { kind: "tenant"; organizationId: string; branding: TenantPwaBranding; locale: "fa" | "en" | "ar"; storefrontStartPath: string | null }
   | { kind: "unknown" };
 
 type HeaderReader = { get(name: string): string | null };
@@ -23,22 +24,46 @@ async function loadTenant(organizationId: string, preferredLocale?: string | nul
     where: { id: organizationId, isActive: true, deletedAt: null, isPlatformOwner: false },
     select: {
       id: true,
+      slug: true,
       name: true,
       logo: true,
       locale: true,
-      branding: true,
+      branding: {
+        select: {
+          organizationId: true,
+          displayName: true,
+          shortName: true,
+          logoUrl: true,
+          faviconUrl: true,
+          appleTouchIconUrl: true,
+          pwaIcon192Url: true,
+          pwaIcon512Url: true,
+          pwaMaskable192Url: true,
+          pwaMaskable512Url: true,
+          themeColor: true,
+          backgroundColor: true,
+          retailPresentationTheme: true,
+        },
+      },
+      capabilities: { where: { key: "SHOP", status: "ACTIVE" }, select: { id: true }, take: 1 },
     },
   });
   if (!organization) return { kind: "unknown" };
+  const branding = resolveTenantPwaBranding({
+    organizationId: organization.id,
+    name: organization.name,
+    logo: organization.logo,
+    branding: organization.branding,
+  });
+  const resolvedLocale = locale(preferredLocale || organization.locale);
   return {
     kind: "tenant",
     organizationId: organization.id,
-    locale: locale(preferredLocale || organization.locale),
-    branding: resolveTenantPwaBranding({
-      organizationId: organization.id,
-      name: organization.name,
-      logo: organization.logo,
-      branding: organization.branding,
+    locale: resolvedLocale,
+    branding,
+    storefrontStartPath: resolveTenantShopStartPath({
+      locale: resolvedLocale,
+      hasActiveShopCapability: organization.capabilities.length > 0,
     }),
   };
 }

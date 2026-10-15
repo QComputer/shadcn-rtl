@@ -29,7 +29,7 @@ export default async function ShopProductPage({ params }: { params: Promise<Para
   const products = catalog.products.some((product) => product.id === detail.id) ? catalog.products : [...catalog.products, detail];
   const storefrontPath = `/${encodeURIComponent(locale)}/${encodeURIComponent(slug)}/shop`;
   return <RetailPreview liveView={{ identifier: catalog.organization.identifier, name: catalog.organization.name,
-    description: catalog.organization.description, theme: catalog.organization.theme,
+    description: catalog.organization.description, branding: catalog.organization.branding, theme: catalog.organization.theme,
     previewOnly: catalog.organization.previewOnly,
     categories: catalog.categories.map(({ id, slug: categorySlug, name }) => ({ id, slug: categorySlug, name })), products }}
     productId={detail.slug ?? detail.id} storefrontPath={storefrontPath} checkoutPath={`${storefrontPath}/checkout`} />;

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ApiError } from "@/lib/api-guards";
 import { getPublicCatalogProduct, getPublicCatalogSnapshot } from "@/lib/public-catalog/service.server";
 import RetailPreview from "@/app/[locale]/retail-preview/[store]/retail-preview";
+import { tenantPwaManifestHref } from "@/lib/tenant-retail-pwa";
 
 export const dynamic = "force-dynamic";
 type Params = { locale: string; organization: string; product: string };
@@ -18,7 +19,11 @@ async function load(params: Promise<Params>) {
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { catalog, detail } = await load(params);
-  return { title: `${detail.name} | ${catalog.organization.name}`, description: detail.description ?? detail.name };
+  return {
+    title: `${detail.name} | ${catalog.organization.name}`,
+    description: detail.description ?? detail.name,
+    manifest: tenantPwaManifestHref({ organizationIdentifier: catalog.organization.identifier, locale: "fa", entry: "retail" }),
+  };
 }
 
 export default async function PublicRetailProductPage({ params }: { params: Promise<Params> }) {

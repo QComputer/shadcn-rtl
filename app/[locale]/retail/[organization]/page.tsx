@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ApiError } from "@/lib/api-guards";
 import { getPublicCatalogSnapshot } from "@/lib/public-catalog/service.server";
 import RetailPreview from "@/app/[locale]/retail-preview/[store]/retail-preview";
+import { tenantPwaManifestHref } from "@/lib/tenant-retail-pwa";
 
 export const dynamic = "force-dynamic";
 type Params = { locale: string; organization: string };
@@ -16,7 +17,11 @@ async function load(params: Promise<Params>) {
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const catalog = await load(params);
-  return { title: catalog.organization.name, description: catalog.organization.description ?? `محصولات منتشرشده ${catalog.organization.name}` };
+  return {
+    title: catalog.organization.name,
+    description: catalog.organization.description ?? `محصولات منتشرشده ${catalog.organization.name}`,
+    manifest: tenantPwaManifestHref({ organizationIdentifier: catalog.organization.identifier, locale: "fa", entry: "retail" }),
+  };
 }
 
 export default async function PublicRetailStorefront({ params }: { params: Promise<Params> }) {

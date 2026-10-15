@@ -26,6 +26,28 @@ const organizations = [];
 let server;
 let browser;
 
+function assertExplicitCiDatabaseTarget() {
+  const expectedDatabase = "bazarbaaz_tenant_pwa_ci";
+  const expectedUser = "tenant_pwa_ci";
+  for (const key of ["DATABASE_URL", "DIRECT_URL"]) {
+    const raw = process.env[key];
+    assert.ok(raw, `${key} must be explicitly configured for the disposable PWA CI database`);
+    const target = new URL(raw);
+    assert.equal(target.protocol, "postgresql:", `${key} must use PostgreSQL`);
+    assert.equal(target.hostname, "127.0.0.1", `${key} must target the CI loopback service`);
+    assert.equal(target.port, "5432", `${key} must target the isolated CI port`);
+    assert.equal(decodeURIComponent(target.username), expectedUser, `${key} must use the synthetic CI role`);
+    assert.equal(target.pathname.slice(1), expectedDatabase, `${key} must target the exact disposable database`);
+  }
+}
+
+async function verifyCiDatabaseIdentity() {
+  const [identity] = await prisma.$queryRaw`SELECT current_database() AS database, current_user AS "user", current_setting('server_version_num')::int AS version_num`;
+  assert.equal(identity.database, "bazarbaaz_tenant_pwa_ci");
+  assert.equal(identity.user, "tenant_pwa_ci");
+  assert.ok(identity.version_num >= 170000 && identity.version_num < 180000, "PostgreSQL 17 is required");
+}
+
 async function reservePort() {
   const listener = createServer();
   await new Promise((resolve, reject) => {
@@ -38,7 +60,7 @@ async function reservePort() {
   return address.port;
 }
 
-async function createTenant({ suffix, host, active = true, verified = true, label, shortName = label, assets, withBranding = true }) {
+async function createTenant({ suffix, host, active = true, verified = true, label, shortName = label, assets, withBranding = true, retailTheme = null, logoUrl = null }) {
   const organization = await prisma.organization.create({
     data: {
       type: "SHOP",
@@ -50,6 +72,9 @@ async function createTenant({ suffix, host, active = true, verified = true, labe
     select: { id: true, slug: true },
   });
   organizations.push(organization.id);
+  if (retailTheme) {
+    await prisma.organizationCapability.create({ data: { organizationId: organization.id, key: "SHOP", status: "ACTIVE", enabledAt: new Date() } });
+  }
   await prisma.organizationDomain.create({
     data: {
       organizationId: organization.id,
@@ -70,6 +95,7 @@ async function createTenant({ suffix, host, active = true, verified = true, labe
         organizationId: organization.id,
         displayName: label,
         shortName,
+        logoUrl,
         faviconUrl: assets.favicon,
         appleTouchIconUrl: assets.apple,
         pwaIcon192Url: assets.icon192,
@@ -78,6 +104,7 @@ async function createTenant({ suffix, host, active = true, verified = true, labe
         pwaMaskable512Url: assets.maskable512,
         themeColor: suffix === "alpha" ? "#13579B" : "#9B5713",
         backgroundColor: "#FFFFFF",
+        ...(retailTheme ? { retailPresentationTheme: retailTheme, retailPreviewOnly: false } : {}),
       },
     });
   }
@@ -125,11 +152,11 @@ async function waitForServer() {
   throw new Error("Production Next.js server did not become ready within 60 seconds");
 }
 
-async function installInvitationFor({ host, locale = "fa", title, iconPath, screenshot, viewport, theme = "light" }) {
+async function installInvitationFor({ host, locale = "fa", path = null, title, iconPath, screenshot, viewport, theme = "light" }) {
   const page = await browser.newPage({ viewport });
   try {
     await page.addInitScript((value) => localStorage.setItem("shadcn-rtl-theme", value), theme);
-    const response = await page.goto(`http://${host}:${port}/${locale}`, { waitUntil: "domcontentloaded" });
+    const response = await page.goto(`http://${host}:${port}${path || `/${locale}`}`, { waitUntil: "domcontentloaded" });
     assert.equal(response?.status(), 200, `install page loads for ${host}`);
     await page.waitForFunction((value) =>
       document.documentElement.classList.contains(value) && document.documentElement.dataset.theme === value,
@@ -177,6 +204,33 @@ async function installInvitationFor({ host, locale = "fa", title, iconPath, scre
   }
 }
 
+async function retailStorefrontEvidence({ host, path, name, logoPath, screenshot, viewport }) {
+  const page = await browser.newPage({ viewport });
+  try {
+    const response = await page.goto(`http://${host}:${port}${path}`, { waitUntil: "domcontentloaded" });
+    assert.equal(response?.status(), 200, `Retail storefront route loads for ${host}${path}`);
+    await page.locator('[data-retail-display-mode="browser"]').waitFor({ state: "visible" });
+    const brand = page.locator(`header img[alt="${name}"]`);
+    await brand.waitFor({ state: "visible" });
+    const image = await brand.evaluate((element) => ({ src: element.getAttribute("src"), complete: element.complete, width: element.naturalWidth, height: element.naturalHeight }));
+    assert.ok(image.src?.includes(logoPath), `correct tenant logo on Retail storefront: ${image.src}`);
+    assert.equal(image.complete, true);
+    assert.ok(image.width > 0 && image.height > 0);
+    const manifestHref = await page.locator('link[rel="manifest"]').getAttribute("href");
+    assert.ok(manifestHref?.includes("pwa-manifest"), `Retail page advertises its tenant manifest: ${manifestHref}`);
+    const mobileNavigation = page.getByRole("navigation", { name: "پیمایش موبایل فروشگاه" });
+    if (viewport.width < 768) await mobileNavigation.waitFor({ state: "visible" });
+    await page.screenshot({ path: `${artifactDir}/${screenshot}`, fullPage: true });
+    await page.context().setOffline(true);
+    await page.getByRole("status").filter({ hasText: "اتصال اینترنت قطع است" }).waitFor({ state: "visible" });
+    await page.context().setOffline(false);
+    await page.getByRole("status").filter({ hasText: "اتصال برقرار شد" }).waitFor({ state: "visible" });
+    return { host, path, title: await page.title(), logo: image.src, viewport, screenshot, offlineReconnect: "PASS" };
+  } finally {
+    await page.close();
+  }
+}
+
 async function assertNoInstallInvitation(host, locale = "fa", extraHTTPHeaders = {}) {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, extraHTTPHeaders });
   try {
@@ -194,12 +248,16 @@ async function assertNoInstallInvitation(host, locale = "fa", extraHTTPHeaders =
 }
 
 try {
+  assertExplicitCiDatabaseTarget();
+  await verifyCiDatabaseIdentity();
   const gammaAssetRoot = genericAssetRoot;
   const alpha = await createTenant({
     suffix: "alpha",
     host: hosts.alpha,
     label: "آکا شوز",
     shortName: "آکا",
+    retailTheme: "FASHION",
+    logoUrl: "/brand/tenants/aka-shoes/brand/aka-shoes-logo-square-brand-1024.png",
     assets: {
       favicon: "/brand/tenants/aka-shoes/browser/favicon.ico",
       apple: "/brand/tenants/aka-shoes/pwa/apple-touch-icon-180.png",
@@ -223,11 +281,13 @@ try {
       maskable512: "/brand/tenants/restaurant-13/brand/production-ready/icon-maskable-512.png",
     },
   });
-  await createTenant({
+  const gamma = await createTenant({
     suffix: "gamma",
     host: hosts.gamma,
     label: "برند آزمایشی سوم",
     shortName: "سوم",
+    retailTheme: "ELECTRONICS",
+    logoUrl: `${gammaAssetRoot}/icon-192.png`,
     assets: {
       favicon: `${gammaAssetRoot}/icon-192.png`,
       apple: `${gammaAssetRoot}/apple-180.png`,
@@ -257,6 +317,8 @@ try {
   assert.equal(alphaManifest.lang, "fa");
   assert.equal(alphaManifest.dir, "rtl");
   assert.equal(alphaManifest.display, "standalone");
+  assert.equal(alphaManifest.start_url, "/fa/shop", "custom-domain Aka PWA opens the canonical tenant shop route");
+  assert.equal(alphaManifest.id, "/fa/shop", "Aka installed-app identity is organization storefront scoped");
   assert.equal(alphaManifest.icons.length, 4);
   assert.ok(alphaManifest.icons.every((entry) => entry.src.includes("/brand/tenants/aka-shoes/")));
   assert.ok(!JSON.stringify(alphaManifest).includes("restaurant-13"));
@@ -268,11 +330,45 @@ try {
   assert.equal(betaManifest.icons.length, 4);
   assert.ok(betaManifest.icons.every((entry) => entry.src.includes("/brand/tenants/restaurant-13/")));
   assert.ok(!JSON.stringify(betaManifest).includes("aka-shoes"));
+  assert.equal(betaManifest.start_url, "/fa", "restaurant manifest retains its existing public entry route");
 
   const gammaResult = await manifestFor(hosts.gamma);
   assert.equal(gammaResult.manifest.name, "برند آزمایشی سوم");
   assert.equal(gammaResult.manifest.icons.length, 4);
   assert.ok(gammaResult.manifest.icons.every((entry) => entry.src.includes(gammaAssetRoot)));
+  assert.equal(gammaResult.manifest.start_url, "/fa/shop", "synthetic Electronics tenant opens its own custom-domain shop route");
+  assert.equal(gammaResult.manifest.name, "برند آزمایشی سوم");
+  assert.ok(!JSON.stringify(gammaResult.manifest).includes("aka-shoes"));
+
+  for (const tenant of [
+    { org: alpha, logoPath: "aka-shoes/brand/aka-shoes-logo-square-brand-1024.png", expectedName: "آکا شوز" },
+    { org: gamma, logoPath: "__pwa-ci-generic/icon-192.png", expectedName: "برند آزمایشی سوم" },
+  ]) {
+    const response = await responseFor("localhost", `/api/public/v1/organizations/${encodeURIComponent(tenant.org.slug)}/pwa-manifest?locale=fa&entry=retail`);
+    assert.equal(response?.status, 200, `tenant path manifest resolves for ${tenant.expectedName}`);
+    const manifest = JSON.parse(response.body.toString("utf8"));
+    assert.equal(manifest.name, tenant.expectedName);
+    assert.equal(manifest.start_url, `/fa/${tenant.org.slug}/shop`);
+  }
+  const crossTenantManifest = await responseFor(hosts.alpha, `/api/public/v1/organizations/${encodeURIComponent(gamma.slug)}/pwa-manifest?locale=fa&entry=retail`);
+  assert.equal(crossTenantManifest?.status, 404, "a tenant host cannot request another tenant's install identity");
+  const retailStorefronts = [];
+  retailStorefronts.push(await retailStorefrontEvidence({
+    host: hosts.alpha,
+    path: "/fa/shop",
+    name: "آکا شوز",
+    logoPath: "aka-shoes/brand/aka-shoes-logo-square-brand-1024.png",
+    screenshot: "retail-aka-shoes-mobile.png",
+    viewport: { width: 390, height: 844 },
+  }));
+  retailStorefronts.push(await retailStorefrontEvidence({
+    host: hosts.gamma,
+    path: "/fa/shop",
+    name: "برند آزمایشی سوم",
+    logoPath: "__pwa-ci-generic/icon-192.png",
+    screenshot: "retail-synthetic-electronics-desktop.png",
+    viewport: { width: 1440, height: 1000 },
+  }));
 
   const platformResult = await manifestFor("localhost");
   assert.match(platformResult.manifest.name, /Bazarbaaz|بازارباز/i);
@@ -379,9 +475,10 @@ try {
   const invitations = [];
   for (const scenario of [
     { host: "localhost", title: "نصب اپ بازارباز", iconPath: "/icons/icon-192x192.png", screenshot: "install-platform-fa-mobile.png", viewport: { width: 390, height: 844 } },
-    { host: hosts.alpha, title: "نصب اپ آکا شوز", iconPath: "/brand/tenants/aka-shoes/pwa/icon-192x192.png", screenshot: "install-aka-fa-mobile.png", viewport: { width: 390, height: 844 }, theme: "dark" },
+    { host: hosts.alpha, path: "/fa/shop", title: "نصب اپ آکا شوز", iconPath: "/brand/tenants/aka-shoes/pwa/icon-192x192.png", screenshot: "install-aka-fa-mobile.png", viewport: { width: 390, height: 844 }, theme: "dark" },
+    { host: "localhost", path: `/fa/retail/${alpha.slug}`, title: "نصب اپ آکا شوز", iconPath: "/brand/tenants/aka-shoes/pwa/icon-192x192.png", screenshot: "install-aka-path-retail-desktop.png", viewport: { width: 1280, height: 900 } },
     { host: hosts.beta, title: "نصب اپ رستوران 13", iconPath: "/brand/tenants/restaurant-13/brand/production-ready/icon-192.png", screenshot: "install-restaurant-fa-desktop.png", viewport: { width: 1280, height: 900 } },
-    { host: hosts.gamma, title: "نصب اپ برند آزمایشی سوم", iconPath: `${gammaAssetRoot}/icon-192.png`, screenshot: "install-generic-fa-mobile.png", viewport: { width: 390, height: 844 } },
+    { host: hosts.gamma, path: "/fa/shop", title: "نصب اپ برند آزمایشی سوم", iconPath: `${gammaAssetRoot}/icon-192.png`, screenshot: "install-synthetic-electronics-fa-mobile.png", viewport: { width: 390, height: 844 } },
     { host: hosts.alpha, locale: "en", title: "Install app آکا شوز", iconPath: "/brand/tenants/aka-shoes/pwa/icon-192x192.png", screenshot: "install-aka-en-desktop.png", viewport: { width: 1280, height: 900 } },
     { host: hosts.beta, locale: "ar", title: "تثبيت تطبيق رستوران 13", iconPath: "/brand/tenants/restaurant-13/brand/production-ready/icon-192.png", screenshot: "install-restaurant-ar-mobile.png", viewport: { width: 390, height: 844 }, theme: "dark" },
   ]) {
@@ -401,6 +498,7 @@ try {
   assert.equal(incompleteFavicon?.status, 404, "incomplete tenant branding does not fall back to a platform favicon");
 
   console.log("tenant-pwa-http-evidence", JSON.stringify({
+    retailStorefronts,
     manifests: {
       platform: { status: platformResult.response.status, name: platformResult.manifest.name, short_name: platformResult.manifest.short_name, display: platformResult.manifest.display, icons: platformResult.manifest.icons.map(({ src, sizes, purpose }) => ({ src, sizes, purpose })) },
       alpha: { status: alphaResult.response.status, name: alphaManifest.name, short_name: alphaManifest.short_name, id: alphaManifest.id, start_url: alphaManifest.start_url, scope: alphaManifest.scope, display: alphaManifest.display, lang: alphaManifest.lang, dir: alphaManifest.dir, icons: alphaManifest.icons.map(({ src, sizes, purpose }) => ({ src, sizes, purpose })) },

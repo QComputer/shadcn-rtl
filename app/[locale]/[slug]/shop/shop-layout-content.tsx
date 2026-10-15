@@ -22,6 +22,7 @@ import { ShopRouteProvider } from "@/lib/contexts/shop-route-context";
 import { OrganizationRootNavigationProvider } from "@/lib/contexts/organization-root-navigation-context";
 import { buildOrganizationRootPath } from "@/lib/custom-domain-routing";
 import { appResourceUrl } from "@/lib/app-base-path";
+import { tenantPwaManifestHref } from "@/lib/tenant-retail-pwa";
 
 export interface ShopLayoutContentProps {
   children: React.ReactNode;
@@ -77,7 +78,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
       branding: organization.branding,
     });
 
-    return buildPublicMetadata({
+    const publicMetadata = buildPublicMetadata({
       locale,
       baseUrl: seoContext.baseUrl,
       path: seoContext.path,
@@ -91,6 +92,9 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
         apple: tenantIcons.apple.map(({ url }) => ({ url: appResourceUrl(url) })),
       },
     });
+    return organization.branding?.retailPresentationTheme
+      ? { ...publicMetadata, manifest: tenantPwaManifestHref({ organizationIdentifier: organization.slug, locale: locale === "en" || locale === "ar" ? locale : "fa", entry: "shop" }) }
+      : publicMetadata;
   } catch {
     return {
       title: "بازارباز",

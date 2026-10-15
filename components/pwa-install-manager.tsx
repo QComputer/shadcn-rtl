@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Image from "next/image"
+import { usePathname } from "next/navigation"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -14,11 +15,9 @@ type PwaInstallManagerProps = {
   enabled: boolean
   locale: string
   basePath: string
-  appName: string
-  appIcon: string | null
 }
 
-type InstallIdentity = { name: string; icon: string }
+type InstallIdentity = { name: string; icon: string; pathname: string }
 
 type InstallManifest = {
   display?: string
@@ -26,7 +25,7 @@ type InstallManifest = {
   icons?: Array<{ src?: string; sizes?: string; purpose?: string }>
 }
 
-function manifestInstallIdentity(manifest: InstallManifest, appName: string, appIcon: string | null): InstallIdentity | null {
+function manifestInstallIdentity(manifest: InstallManifest): InstallIdentity | null {
   if (manifest.display !== "standalone" || !manifest.name?.trim()) return null
   const icons = manifest.icons || []
   const regular = icons.find((icon) => icon.sizes === "192x192" && icon.purpose?.includes("any"))
@@ -41,8 +40,7 @@ function manifestInstallIdentity(manifest: InstallManifest, appName: string, app
     return null
   }
   if (iconUrl.username || iconUrl.password || (iconUrl.protocol !== "https:" && iconUrl.origin !== window.location.origin)) return null
-  const serverIcon = appIcon ? new URL(appIcon, window.location.origin).href : null
-  return { name: serverIcon === iconUrl.href && appName.trim() ? appName.trim() : manifest.name.trim(), icon: iconUrl.href }
+  return { name: manifest.name.trim(), icon: iconUrl.href }
 }
 
 const copy = {
@@ -68,11 +66,12 @@ export function canRegisterServiceWorker() {
   return window.isSecureContext
 }
 
-export function PwaInstallManager({ enabled, locale, basePath, appName, appIcon }: PwaInstallManagerProps) {
+export function PwaInstallManager({ enabled, locale, basePath }: PwaInstallManagerProps) {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const [readyIcon, setReadyIcon] = useState<string | null>(null)
   const [identity, setIdentity] = useState<InstallIdentity | null>(null)
+  const pathname = usePathname()
   // Rewrites may also leave the parent layout's locale behind the browser URL.
   const publicPath = typeof window === "undefined"
     ? ""
@@ -90,14 +89,22 @@ export function PwaInstallManager({ enabled, locale, basePath, appName, appIcon 
     // A custom-domain page rewrite can change the Host seen by the layout.
     // Read back the current origin's trusted, non-cacheable manifest before
     // displaying an invitation or registering this origin's worker.
-    void fetch(`${basePath}/manifest.webmanifest`, { cache: "no-store", credentials: "same-origin" })
+    const advertisedManifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')?.href
+    const fallbackManifest = new URL(`${basePath}/manifest.webmanifest`, window.location.origin).href
+    void Promise.resolve()
+      .then(() => {
+        const manifestUrl = new URL(advertisedManifest || fallbackManifest, window.location.href)
+        if (manifestUrl.origin !== window.location.origin) throw new Error("cross-origin manifest")
+        return fetch(manifestUrl, { cache: "no-store", credentials: "same-origin" })
+      })
       .then(async (response) => response.ok ? response.json() as Promise<InstallManifest> : null)
       .then((manifest) => {
-        if (active) setIdentity(manifest ? manifestInstallIdentity(manifest, appName, appIcon) : null)
+        const resolved = manifest ? manifestInstallIdentity(manifest) : null
+        if (active) setIdentity(resolved ? { ...resolved, pathname } : null)
       })
       .catch(() => { if (active) setIdentity(null) })
     return () => { active = false }
-  }, [enabled, basePath, appName, appIcon])
+  }, [enabled, basePath, pathname])
 
   useEffect(() => {
     if (!identity) return
@@ -149,9 +156,10 @@ export function PwaInstallManager({ enabled, locale, basePath, appName, appIcon 
     setDismissed(true)
   }
 
-  if (!enabled || !identity || readyIcon !== identity.icon || dismissed || !installPrompt) return null
+  const currentIdentity = identity?.pathname === pathname ? identity : null
+  if (!enabled || !currentIdentity || readyIcon !== currentIdentity.icon || dismissed || !installPrompt) return null
 
-  const { name, icon } = identity
+  const { name, icon } = currentIdentity
 
   return (
     <div

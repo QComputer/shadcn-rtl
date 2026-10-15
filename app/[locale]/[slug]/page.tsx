@@ -20,11 +20,9 @@ import { OrganizationBrandHome } from "@/components/public/organization-brand-ho
 import { OrganizationVisitorChoice } from "@/components/public/organization-visitor-choice";
 import { appResourceUrl } from "@/lib/app-base-path";
 import { resolveOrganizationHomeContent } from "@/lib/organization-home-content";
-import { resolveHotelWebsiteFrontendContext } from "@/lib/hotel/website-frontend-context.server";
+import { readHotelOrganizationSite } from "@/lib/hotel/organization-site-public.server";
 import { PublishedHotelWebsitePage } from "@/components/published-hotel-website-page";
 import { trustedHotelWebsiteHost } from "@/lib/hotel/trusted-website-host";
-import { HotelDataState } from "@/components/hotel-data-state";
-import { getPublishedHotelWebsite } from "@/lib/hotel/content/hotel-website-public.service";
 import { buildHotelWebsiteMetadata } from "@/lib/hotel/website-metadata";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
@@ -75,14 +73,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         isCustomDomain: requestHeaders.get("x-bazar-custom-domain"),
         tenantDomain: requestHeaders.get("x-bazar-tenant-domain"),
       });
-      const organizationSlug = requestHeaders.get("x-bazar-custom-domain") === "true" ? null : slug;
-      const context = await resolveHotelWebsiteFrontendContext({ host, organizationId: organization.id, organizationSlug });
-      if (context.status !== "READY") {
-        return buildHotelWebsiteMetadata({ state: null, locale });
-      }
-      const state = await getPublishedHotelWebsite({ host, propertySlug: context.propertySlug, locale: locale === "en" || locale === "ar" ? locale : "fa", organizationSlug });
+      const presentation = await readHotelOrganizationSite(host, organization.id, organization.slug, locale === "en" || locale === "ar" ? locale : "fa", requestHeaders.get("x-bazar-custom-domain") === "true");
       const seoContext = await getOrganizationRootSeoContext({ locale, slug });
-      return buildHotelWebsiteMetadata({ state, locale, seoContext });
+      return buildHotelWebsiteMetadata({ state: null, presentation, locale, seoContext });
     } catch {
       return buildHotelWebsiteMetadata({ state: null, locale });
     }
@@ -145,22 +138,12 @@ export default async function OrganizationHomePage({ params }: Props) {
   // from the actual request Host and never falls through to preview data.
   if (organization.vertical === "HOTEL") {
     const localeCode = locale === "en" || locale === "ar" ? locale : "fa";
-    const context = await resolveHotelWebsiteFrontendContext({
-      // For custom-domain rewrites the proxy has already authenticated and
-      // normalized the tenant host. The internal rewrite keeps the platform
-      // request Host, so use only the proxy-provided tenant header there.
-      host: trustedHotelWebsiteHost({
-        requestHost: requestHeaders.get("host"),
-        isCustomDomain: requestHeaders.get("x-bazar-custom-domain"),
-        tenantDomain: requestHeaders.get("x-bazar-tenant-domain"),
-      }),
-      organizationId: organization.id,
-      organizationSlug: isCustomDomain ? null : slug,
-    });
-    if (context.status !== "READY") {
-      return <HotelDataState code="UNAVAILABLE_PROPERTY" locale={localeCode} />;
-    }
-    return <PublishedHotelWebsitePage propertySlug={context.propertySlug} locale={localeCode} organizationSlug={isCustomDomain ? undefined : slug} />;
+    const presentation = await readHotelOrganizationSite(trustedHotelWebsiteHost({
+      requestHost: requestHeaders.get("host"),
+      isCustomDomain: requestHeaders.get("x-bazar-custom-domain"),
+      tenantDomain: requestHeaders.get("x-bazar-tenant-domain"),
+    }), organization.id, organization.slug, localeCode, isCustomDomain);
+    return <PublishedHotelWebsitePage key={`${organization.id}:${localeCode}`} propertySlug={presentation.propertySlug} locale={localeCode} presentation={presentation} />;
   }
 
   const publicHome = resolveOrganizationPublicHome({

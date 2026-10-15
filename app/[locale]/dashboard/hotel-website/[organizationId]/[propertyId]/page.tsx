@@ -30,6 +30,7 @@ export default async function HotelWebsitePropertyDashboardPage({
     <HotelCmsWorkspace
       key={`${organization.id}:${property.id}`}
       scope={{ organizationId: organization.id, propertyId: property.id }}
+      siteScope={{ organizationSlug: organization.slug, propertySlug: property.slug }}
       role={organization.role}
       propertyLabel={`${organization.name} · ${property.name}`}
     />

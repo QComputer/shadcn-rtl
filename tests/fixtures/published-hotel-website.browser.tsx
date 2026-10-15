@@ -11,7 +11,8 @@ const reviewCopy = {
   ar: { title: "معاينة دامون اصطناعية", heading: "محتوى تصوري للمراجعة", subtitle: "لا يتضمن ذلك أي ادعاء حقيقي عن الفندق.", intro: "تُستخدم هذه البيانات في اختبار المتصفح فقط.", alt: "صورة اختبار تصورية" },
 } as const;
 
-const reviewMode = new URLSearchParams(window.location.search).get("mode") === "review";
+const fixtureMode = new URLSearchParams(window.location.search).get("mode");
+const reviewMode = fixtureMode === "review" || fixtureMode === "synthetic-public";
 const reviewPresentation = reviewMode ? adaptAuthenticatedHotelWebsitePreview({
   mode: "PREVIEW", locale, revisionId: "synthetic-revision", revisionNumber: 1, status: "DRAFT", pageKey: "HOME",
   content: {
@@ -23,4 +24,9 @@ const reviewPresentation = reviewMode ? adaptAuthenticatedHotelWebsitePreview({
   media: [{ imageId: "synthetic-preview-image", src: "/uploads/synthetic-preview.webp", scope: "PROPERTY", roomTypeId: null, slot: "HERO_DESKTOP", sortOrder: 0, altText: { [locale]: reviewCopy[locale].alt } }],
 }, { organizationId: "synthetic-organization-id", organizationSlug: "damoon-hotel", propertySlug: "synthetic-preview-property", locale }) : undefined;
 
-createRoot(document.getElementById("root")!).render(<PublishedHotelWebsitePage propertySlug="synthetic-preview-property" locale={locale} presentation={reviewPresentation} />);
+const presentation = fixtureMode === "synthetic-public" && reviewPresentation ? {
+  status: "PUBLISHED" as const, source: "PUBLIC_API" as const,
+  organizationId: reviewPresentation.organizationId, organizationSlug: reviewPresentation.organizationSlug,
+  locale, propertySlug: reviewPresentation.propertySlug, contentProvenance: "SYNTHETIC" as const, website: reviewPresentation.website,
+} : reviewPresentation;
+createRoot(document.getElementById("root")!).render(<PublishedHotelWebsitePage propertySlug="synthetic-preview-property" locale={locale} presentation={presentation} />);

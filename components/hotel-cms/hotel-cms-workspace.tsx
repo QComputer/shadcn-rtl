@@ -13,12 +13,15 @@ import {
   type HotelCmsScope,
 } from "@/lib/hotel-cms/hotel-cms-api";
 import { addFaqItem, addFeatureItem, addSection, blankDraft, checkDraftMinimum, localized, locales, setLocalized } from "@/lib/hotel-cms/hotel-cms-editor";
+import { PublishedHotelWebsitePage } from "@/components/published-hotel-website-page";
+import { adaptAuthenticatedHotelWebsitePreview } from "@/lib/hotel/organization-site-presentation";
 import styles from "./hotel-cms-workspace.module.css";
 
 type CmsRole = "ADMIN" | "MANAGER" | "SUPER_ADMIN";
 type Props = {
   /** These IDs must be obtained and authorized by a platform SERVER route. */
   scope: HotelCmsScope;
+  siteScope?: { organizationSlug: string; propertySlug: string };
   role: CmsRole;
   propertyLabel: string;
 };
@@ -35,7 +38,7 @@ function InlineField({ label, value, onChange, multiline = false, placeholder = 
     : <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />}</label>;
 }
 
-export function HotelCmsWorkspace({ scope, role, propertyLabel }: Props) {
+export function HotelCmsWorkspace({ scope, role, propertyLabel, siteScope }: Props) {
   const organizationId = scope.organizationId;
   const propertyId = scope.propertyId;
   const api = useMemo(() => createHotelCmsApi({ organizationId, propertyId }), [organizationId, propertyId]);
@@ -47,6 +50,12 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel }: Props) {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [tab, setTab] = useState<"editor" | "preview" | "history">("editor");
   const [preview, setPreview] = useState<Awaited<ReturnType<typeof api.preview>> | null>(null);
+  const previewPresentation = useMemo(() => {
+    if (!preview || !siteScope) return null;
+    try {
+      return adaptAuthenticatedHotelWebsitePreview(preview, { organizationId, ...siteScope, locale: preview.locale });
+    } catch { return null; }
+  }, [preview, siteScope, organizationId]);
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -102,7 +111,7 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel }: Props) {
   }
   async function selectRevision(id: string) {
     if (hasUnsavedChanges && !window.confirm("تغییرات ذخیره‌نشده کنار گذاشته شود؟")) return;
-    resetMessages(); setBusy(true);
+    resetMessages(); setBusy(true); setPreview(null);
     try {
       const version = await api.preview(id, locale);
       // Current eligible media is returned by C1B1; never silently discard
@@ -123,7 +132,7 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel }: Props) {
   }
   async function openPreview() {
     if (!selectedId) { setError("ابتدا یک نسخه ذخیره‌شده را انتخاب کنید."); return; }
-    resetMessages(); setBusy(true);
+    resetMessages(); setBusy(true); setPreview(null);
     try {
       setPreview(await api.preview(selectedId, locale)); setTab("preview");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "پیش‌نمایش در دسترس نیست."); }
@@ -240,6 +249,7 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel }: Props) {
         </div>}
         {tab === "preview" && <div className={styles.editor}>
           <div className={styles.previewFlag}>پیش‌نمایش خصوصی · غیرقابل نمایش عمومی</div>
+          {previewPresentation && <PublishedHotelWebsitePage key={`${scopeKey}:${preview?.revisionId}:${preview?.locale}`} propertySlug={previewPresentation.propertySlug} locale={previewPresentation.locale} tenantKey={organizationId} presentation={previewPresentation} />}
           {preview ? <><div className={styles.toolbar}><h2>نسخه {preview.revisionNumber}</h2><span>{statusFa[preview.status]}</span></div>
             <h2>{localized(preview.content.hero.heading, preview.locale) || "ترجمه این عنوان موجود نیست"}</h2>
             <p>{localized(preview.content.hero.subheading, preview.locale)}</p>

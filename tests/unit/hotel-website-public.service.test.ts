@@ -3,6 +3,7 @@ import test from "node:test";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import {
   getPublishedHotelWebsite,
+  getPublishedHotelOrganizationSnapshot,
   isEligibleHotelWebsiteImage,
   listPublishedHotelWebsiteRoomCategories,
   resolveHotelWebsiteTenantForHost,
@@ -154,4 +155,33 @@ test("current image eligibility rejects wrong ownership, access, MIME and untrus
   assert.equal(isEligibleHotelWebsiteImage(image({ access: "PRIVATE" }), "org-a"), false);
   assert.equal(isEligibleHotelWebsiteImage(image({ mimeType: "image/svg+xml" }), "org-a"), false);
   assert.equal(isEligibleHotelWebsiteImage(image({ url: "https://attacker.example/hotel.jpg" }), "org-a"), false);
+});
+
+
+test("organization server snapshot enforces trusted organization ID and one repeatable-read transaction", async () => {
+  let transactions = 0;
+  const tx = txWith({ publication: publication() });
+  const db = { $transaction: async (callback: (client: Prisma.TransactionClient) => Promise<unknown>, options: unknown) => {
+    transactions++;
+    assert.deepEqual(options, { isolationLevel: "RepeatableRead" });
+    return callback(tx);
+  } } as unknown as PrismaClient;
+  const input = { host: "bazarbaaz.ir", organizationSlug: "hotel-a", expectedOrganizationId: "org-a", propertySlug: "hotel-a", locale: "en" as const, db };
+  const result = await getPublishedHotelOrganizationSnapshot(input, dependencies);
+  assert.equal(transactions, 1);
+  assert.equal(result?.website.mode, "PUBLISHED");
+  assert.equal(result?.rooms.mode, "PUBLISHED");
+  assert.equal(await getPublishedHotelOrganizationSnapshot({ ...input, expectedOrganizationId: "org-b" }, dependencies), null);
+});
+
+
+test("empty optional translations produce null fields rather than hiding an otherwise published page", async () => {
+  const raw = publication();
+  const tx = txWith({ publication: { ...raw, revision: { ...raw.revision, content: { ...content, hero: { ...content.hero, eyebrow: {} }, introduction: { ...content.introduction, heading: {} }, sections: [{ key: "text", order: 1, visible: true, kind: "TEXT", heading: {}, body: { en: "Visible" } }] } } } });
+  const result = await getPublishedHotelWebsite({ host: "hotel.example", propertySlug: "hotel-a", locale: "en", db: dbFor(tx) }, dependencies);
+  assert.equal(result?.mode, "PUBLISHED");
+  if (result?.mode !== "PUBLISHED") return;
+  assert.equal(result.content.hero.eyebrow, null);
+  assert.equal(result.content.introduction.heading, null);
+  assert.equal(result.content.sections[0].heading, null);
 });

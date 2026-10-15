@@ -83,6 +83,7 @@ function localize(value: Prisma.JsonValue, locale: HotelPublicLocale): unknown {
   if (!value || typeof value !== "object") return value;
   const record = value as Record<string, Prisma.JsonValue>;
   const keys = Object.keys(record);
+  if (keys.length === 0) return null;
   if (keys.length > 0 && keys.every((key) => key === "fa" || key === "en" || key === "ar") && keys.every((key) => typeof record[key] === "string")) {
     return typeof record[locale] === "string" && record[locale].trim() ? record[locale] : null;
   }
@@ -187,7 +188,10 @@ function serializeGallery(items: ReturnType<typeof eligibleMedia>, scope: "PROPE
 
 export async function getPublishedHotelWebsite(input: { host: string | null; propertySlug: string; locale: HotelPublicLocale; organizationSlug?: string | null; db?: Db }, dependencies: HotelWebsitePublicDependencies = defaultDependencies) {
   const db = input.db ?? defaultPrisma;
-  return db.$transaction(async (tx) => {
+  return db.$transaction((tx) => getPublishedHotelWebsiteInTransaction(tx, input, dependencies), { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+}
+
+async function getPublishedHotelWebsiteInTransaction(tx: Tx, input: Parameters<typeof getPublishedHotelWebsite>[0], dependencies: HotelWebsitePublicDependencies) {
     const tenant = await dependencies.resolveTenant(input.host, tx, input.organizationSlug);
     if (!tenant) return null;
     const property = await activeProperty(tx, tenant.organizationId, input.propertySlug);
@@ -207,12 +211,14 @@ export async function getPublishedHotelWebsite(input: { host: string | null; pro
     const content = safeContent(publication.revision.content, input.locale);
     if (!content) return null;
     return { mode: "PUBLISHED" as const, locale: input.locale, propertySlug: property.slug, revisionNumber: publication.revision.revisionNumber, content, propertyGallery, roomGalleries };
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
 }
 
 export async function listPublishedHotelWebsiteRoomCategories(input: { host: string | null; propertySlug: string; locale: HotelPublicLocale; organizationSlug?: string | null; db?: Db }, dependencies: HotelWebsitePublicDependencies = defaultDependencies) {
   const db = input.db ?? defaultPrisma;
-  return db.$transaction(async (tx) => {
+  return db.$transaction((tx) => listPublishedHotelWebsiteRoomCategoriesInTransaction(tx, input, dependencies), { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+}
+
+async function listPublishedHotelWebsiteRoomCategoriesInTransaction(tx: Tx, input: Parameters<typeof listPublishedHotelWebsiteRoomCategories>[0], dependencies: HotelWebsitePublicDependencies) {
     const tenant = await dependencies.resolveTenant(input.host, tx, input.organizationSlug);
     if (!tenant) return null;
     const property = await activeProperty(tx, tenant.organizationId, input.propertySlug);
@@ -231,6 +237,21 @@ export async function listPublishedHotelWebsiteRoomCategories(input: { host: str
       roomCategories.push({ slug: room.slug, name, description: room.description ? safePlainText(room.description) : null, localizedText: localizedScalar(room.localizedContent, input.locale), maxAdults: room.maxAdults, maxChildren: room.maxChildren, maxOccupancy: room.maxOccupancy, ...(beds ? { beds } : {}), sizeSqm: room.sizeSqm, gallery: roomMedia });
     }
     return { mode: "PUBLISHED" as const, locale: input.locale, propertySlug: property.slug, roomCategories };
+}
+
+/** One database snapshot for server-rendered content, rooms and metadata. The
+ * expected ID is trusted server context; URL slugs never establish authority. */
+export async function getPublishedHotelOrganizationSnapshot(
+  input: Parameters<typeof getPublishedHotelWebsite>[0] & { expectedOrganizationId: string },
+  dependencies: HotelWebsitePublicDependencies = defaultDependencies,
+) {
+  const db = input.db ?? defaultPrisma;
+  return db.$transaction(async (tx) => {
+    const tenant = await dependencies.resolveTenant(input.host, tx, input.organizationSlug);
+    if (!tenant || tenant.organizationId !== input.expectedOrganizationId) return null;
+    const website = await getPublishedHotelWebsiteInTransaction(tx, input, dependencies);
+    const rooms = await listPublishedHotelWebsiteRoomCategoriesInTransaction(tx, input, dependencies);
+    return website && rooms ? { website, rooms } : null;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
 }
 

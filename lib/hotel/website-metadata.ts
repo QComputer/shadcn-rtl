@@ -1,3 +1,4 @@
+import { hotelOrganizationRobots, type HotelOrganizationSitePresentation } from "@/lib/hotel/organization-site-presentation";
 import type { Metadata } from "next";
 import { buildLocaleAlternates } from "@/lib/seo";
 import type { TenantSeoContext } from "@/lib/custom-domain-seo";
@@ -6,11 +7,11 @@ import type { getPublishedHotelWebsite } from "@/lib/hotel/content/hotel-website
 type HotelWebsiteMetadataState = Awaited<ReturnType<typeof getPublishedHotelWebsite>>;
 type HotelSeoContext = Pick<TenantSeoContext, "baseUrl" | "path" | "alternatePath">;
 
-const noIndexRobots: NonNullable<Metadata["robots"]> = {
+const noIndexRobots = {
   index: false,
   follow: false,
   googleBot: { index: false, follow: false, noimageindex: true },
-};
+} satisfies NonNullable<Metadata["robots"]>;
 
 /**
  * Build metadata only from the currently published, localized Hotel revision.
@@ -19,10 +20,15 @@ const noIndexRobots: NonNullable<Metadata["robots"]> = {
  */
 export function buildHotelWebsiteMetadata(input: {
   state: HotelWebsiteMetadataState;
+  presentation?: HotelOrganizationSitePresentation;
   locale: string;
   seoContext?: HotelSeoContext;
 }): Metadata {
-  if (input.state?.mode !== "PUBLISHED" || !input.seoContext) {
+  const presentation = input.presentation;
+  const published = presentation
+    ? presentation.status === "PUBLISHED" && presentation.contentProvenance !== "SYNTHETIC" ? presentation.website : null
+    : input.state?.mode === "PUBLISHED" ? input.state : null;
+  if (!published || published.locale !== input.locale || !published.content.title?.trim() || !published.content.hero.heading?.trim() || !published.content.introduction.body?.trim() || !input.seoContext) {
     return {
       title: "Hotel website unavailable",
       description: "",
@@ -33,7 +39,7 @@ export function buildHotelWebsiteMetadata(input: {
     };
   }
 
-  const content = input.state.content;
+  const content = published.content;
   const title = content.title?.trim() || content.hero.heading?.trim() || "Hotel website";
   const description = content.introduction.body?.trim() || content.hero.subheading?.trim() || "";
   const alternates = buildLocaleAlternates(
@@ -49,7 +55,13 @@ export function buildHotelWebsiteMetadata(input: {
     title,
     description,
     alternates,
-    robots: { index: true, follow: true },
+    robots: { ...noIndexRobots, ...hotelOrganizationRobots({
+      status: presentation?.status ?? "PUBLISHED",
+      source: presentation?.status === "PUBLISHED" ? presentation.source : undefined,
+      contentProvenance: presentation?.status === "PUBLISHED" ? presentation.contentProvenance : "UNKNOWN",
+      // No persisted explicit indexing approval exists in the current contract.
+      approvedForIndexing: false,
+    }) },
     openGraph: { type: "website", title, description, url: canonical, images: [] },
     twitter: { card: "summary", title, description, images: [] },
   };

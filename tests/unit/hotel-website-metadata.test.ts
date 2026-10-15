@@ -33,6 +33,7 @@ describe("published Hotel website metadata", () => {
     });
 
     assert.equal(metadata.title, "هتل نمونه");
+    assert.equal(typeof metadata.robots === "object" && metadata.robots.index, false, "editorial publication alone is not owner indexing approval");
     assert.equal(metadata.description, "توضیح تأییدشده");
     assert.deepEqual(metadata.alternates?.canonical, "https://hotel.example/fa");
     assert.deepEqual(metadata.alternates?.languages, {
@@ -58,4 +59,15 @@ describe("published Hotel website metadata", () => {
     assert.equal(unavailable.robots && typeof unavailable.robots === "object" ? unavailable.robots.index : undefined, false);
     assert.equal(unavailable.alternates?.canonical, null);
   });
+});
+
+
+it("does not expose metadata from missing or mismatched locale translations", () => {
+  const state = { mode: "PUBLISHED" as const, locale: "fa" as const, propertySlug: "main", revisionNumber: 1, content: { title: null, hero: { heading: null }, introduction: { body: null }, sections: [], contact: {} }, propertyGallery: [], roomGalleries: [] };
+  for (const candidate of [state, { ...state, locale: "en" as const }]) {
+    const result = buildHotelWebsiteMetadata({ locale: "fa", state: candidate, seoContext });
+    assert.equal(result.description, "");
+    assert.equal(typeof result.robots === "object" && result.robots.index, false);
+    assert.equal(result.alternates?.canonical, null);
+  }
 });

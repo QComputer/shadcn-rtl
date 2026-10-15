@@ -38,12 +38,12 @@ export type HotelOrganizationSitePresentation =
 
 type PreviewStatus = Extract<HotelOrganizationSitePresentation, { status: "PREVIEW" }>;
 const eligiblePreviewImageSource = z.string().refine((value) => {
-  if (/^\/uploads\/[A-Za-z0-9_.-]+$/.test(value)) return true;
+  if (/^\/uploads\/[A-Za-z0-9_.-]+$/.test(value)) return !value.split("/").at(-1)!.includes("..");
   try {
     const url = new URL(value);
-    return url.protocol === "https:"
+    return url.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash && !url.port
       && url.hostname.endsWith(".public.blob.vercel-storage.com")
-      && /^[A-Za-z0-9_.-]+$/.test(url.pathname.split("/").at(-1) ?? "");
+      && /^[A-Za-z0-9_.-]+$/.test(url.pathname.split("/").at(-1) ?? "") && !url.pathname.split("/").at(-1)!.includes("..");
   } catch { return false; }
 });
 const previewSourceSchema = z.object({
@@ -70,6 +70,7 @@ function localized(value: unknown, locale: HotelPublicLocale): unknown {
   if (!value || typeof value !== "object") return value;
   const record = value as Record<string, unknown>;
   const keys = Object.keys(record);
+  if (keys.length === 0) return null;
   if (keys.length && keys.every((key) => key === "fa" || key === "en" || key === "ar")) {
     const selected = record[locale];
     return typeof selected === "string" && selected.trim() ? selected : null;
@@ -148,6 +149,9 @@ export function adaptHotelOrganizationPublicRead(
 ): HotelOrganizationSitePresentation {
   if (!expected.organizationId || !expected.organizationSlug) throw new Error("Trusted Platform organization context is required");
   const snapshot = adaptPublishedHotelWebsite(websiteRaw, roomsRaw, expected);
+  if (snapshot.status === "PUBLISHED" && (!snapshot.value.content.title?.trim() || !snapshot.value.content.hero.heading?.trim() || !snapshot.value.content.introduction.body?.trim())) {
+    return { status: "UNAVAILABLE", locale: expected.locale, propertySlug: expected.propertySlug, code: "MISSING_TRANSLATION" };
+  }
   return snapshot.status === "UNPUBLISHED"
     ? { status: "UNPUBLISHED", locale: expected.locale, propertySlug: expected.propertySlug }
     : { status: "PUBLISHED", source: "PUBLIC_API", organizationId: expected.organizationId, organizationSlug: expected.organizationSlug, contentProvenance: expected.contentProvenance, locale: expected.locale, propertySlug: expected.propertySlug, website: snapshot.value };

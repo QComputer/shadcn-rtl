@@ -7,6 +7,7 @@ export type HotelCmsDashboardProperty = { id: string; name: string; slug: string
 export type HotelCmsDashboardOrganization = {
   id: string;
   name: string;
+  slug: string;
   role: "ADMIN" | "MANAGER" | "SUPER_ADMIN";
   properties: HotelCmsDashboardProperty[];
 };
@@ -82,6 +83,7 @@ export async function listHotelCmsDashboardOrganizations(input: {
     select: {
       id: true,
       name: true,
+      slug: true,
       hotelProperties: {
         where: { isActive: true, deletedAt: null },
         orderBy: { name: "asc" },
@@ -93,6 +95,7 @@ export async function listHotelCmsDashboardOrganizations(input: {
   return organizations.map((organization) => ({
     id: organization.id,
     name: organization.name,
+    slug: organization.slug,
     role: isPlatformAdmin ? "SUPER_ADMIN" : tenantRoles.get(organization.id) ?? "MANAGER",
     properties: organization.hotelProperties,
   }));

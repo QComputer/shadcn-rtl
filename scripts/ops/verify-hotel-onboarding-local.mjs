@@ -104,14 +104,15 @@ try {
   await writeFile(path.join(artifacts, "migration-manifest.json"), JSON.stringify(ledger, null, 2));
   console.log(`${ledger.length}/${names.length} migrations and file checksums verified`);
   await writeFile(path.join(artifacts, "postgres-tests.log"), command("PostgreSQL acceptance", ["--import", "tsx", "--require=./scripts/e2e/register-server-only.cjs", "--test", "tests/integration/organization-onboarding.postgres.local.test.ts"], env));
-  if (process.argv.includes("--browser")) {
+  if (process.argv.includes("--browser") || process.argv.includes("--production-browser")) {
+    const productionBrowser = process.argv.includes("--production-browser");
     const appPort = await unusedPort();
     report.applicationPort = appPort;
-    const appEnv = { ...env, NODE_ENV: "development", NEXTAUTH_SECRET: randomBytes(32).toString("hex"), AUTH_TRUST_HOST: "true", NEXTAUTH_URL: `http://bazarbaaz.ir:${appPort}`,
+    const appEnv = { ...env, NODE_ENV: productionBrowser ? "production" : "development", NEXTAUTH_SECRET: randomBytes(32).toString("hex"), AUTH_TRUST_HOST: "true", NEXTAUTH_URL: `http://bazarbaaz.ir:${appPort}`,
       NEXT_PUBLIC_APP_URL: `http://bazarbaaz.ir:${appPort}`, NEXT_TELEMETRY_DISABLED: "1", HOTEL_WEBSITE_PUBLIC_OPERATIONAL_ENABLED: "1",
-      HOTEL_ONBOARDING_APP_PORT: String(appPort), HOTEL_ONBOARDING_TEST_PASSWORD: randomBytes(24).toString("base64url"), PWA_ENABLED: "false", NEXT_PUBLIC_PWA_ENABLED: "false",
+      HOTEL_ONBOARDING_SERVER_MODE: productionBrowser ? "PRODUCTION" : "DEVELOPMENT", HOTEL_ONBOARDING_APP_PORT: String(appPort), HOTEL_ONBOARDING_TEST_PASSWORD: randomBytes(24).toString("base64url"), PWA_ENABLED: "false", NEXT_PUBLIC_PWA_ENABLED: "false",
       GOOGLE_CLIENT_ID: "", GOOGLE_CLIENT_SECRET: "", VERCEL: "", APP_PATH: "", NEXT_PUBLIC_APP_BASE_PATH: "" };
-    server = spawn(process.execPath, [require.resolve("next/dist/bin/next"), "dev", "--webpack", "--hostname", "127.0.0.1", "--port", String(appPort)], { env: appEnv, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+    server = spawn(process.execPath, [require.resolve("next/dist/bin/next"), ...(productionBrowser ? ["start"] : ["dev", "--webpack"]), "--hostname", "127.0.0.1", "--port", String(appPort)], { env: appEnv, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
     const collect = (chunk) => { const text = chunk.toString().split(databaseUrl).join("<task-db>").split(password).join("<redacted>"); serverLog += text; appendFileSync(path.join(artifacts, "application.log"), text); };
     server.stdout.on("data", collect);
     server.stderr.on("data", collect);
@@ -129,7 +130,7 @@ try {
       browser.once("error", reject);
       browser.once("exit", (code) => { writeFile(path.join(artifacts, "browser-tests.log"), output).then(() => code === 0 ? resolve(output) : reject(new Error("BROWSER_ACCEPTANCE_FAILED")), reject); });
     });
-    report.checks.push({ label: "Authenticated development-server browser acceptance", exitCode: 0 });
+    report.checks.push({ label: productionBrowser ? "Authenticated production-server browser acceptance" : "Authenticated development-server browser acceptance", exitCode: 0 });
     console.log(browserLog);
   }
   report.status = "PASSED";

@@ -1,66 +1,27 @@
-# Hotel organization-site presentation handoff
+# Hotel organization-site integration boundary
 
-Status: Hotel-owned presentation adapter and owner-preview mode are implemented. Platform route/data wiring is still required before `/[locale]/damoon-hotel` can display published Hotel data on the shared Bazarbaaz host.
+**Status: local integrated acceptance passed; Production activation remains blocked by the preflight below.** The shared organization route supports the canonical platform host with a public `organizationSlug` route selector. That slug selects the organization on the server; it is not browser tenant authority, an authentication credential, or an authorization decision. Custom-domain resolution remains restricted to verified host-to-organization mappings. Do not accept a tenant ID or slug from a browser header/query as authority.
 
-## Hotel-owned files
+## Trusted public route and data flow
 
-- `lib/hotel/organization-site-presentation.ts` validates the existing F5 public reads and authenticated CMS preview response into a serializable presentation union. It preserves association media URLs from public responses, localizes CMS preview fields, drops invisible editorial sections, and never converts `UNPUBLISHED` to preview data.
-- `components/published-hotel-website-page.tsx` accepts a preloaded presentation from a server parent. Without that prop it retains its existing custom-domain, no-store F5 API behavior. `PREVIEW` presentation is explicitly labeled and does not trigger a public read.
-- `tests/unit/hotel/organization-site-presentation.test.ts` and additions to `tests/fixtures/published-hotel-website.browser.tsx` / `tests/published-hotel-website.browser.mjs` cover organization-scoped DTO validation and synthetic private preview.
+The generic route at `app/[locale]/[slug]/page.tsx` resolves the active organization from the public slug, then selects the Hotel presentation only for a Hotel organization with its persisted active website capability and eligible active property. Server-side Hotel reads go through server-only `readHotelOrganizationSite`, which scopes reads to that trusted database organization/property and calls `getPublishedHotelOrganizationSnapshot` with `RepeatableRead` isolation. React `cache` is request-only for the shared metadata/render pass; it is not a cross-request publication or tenant cache.
 
-The adapter is a presentation boundary, not an authorization mechanism. Public payloads must come from the published F5 service. `AUTHENTICATED_CMS_PREVIEW` must come from `GET /api/organizations/{organizationId}/hotels/{propertyId}/website/revisions/{revisionId}/preview`, whose existing authenticated service checks session, active membership, Hotel website capability, property scope and currently eligible media. A route must not label arbitrary client-provided JSON as an authenticated preview.
+The presentation adapter in `lib/hotel/organization-site-presentation.ts` validates the existing F5 public-read and authenticated CMS-preview DTOs into a serializable union. `components/published-hotel-website-page.tsx` renders a preloaded presentation and retains its existing verified-custom-domain API behavior when no preloaded prop is supplied. `PUBLISHED` uses eligible published data; `UNPUBLISHED` shows the localized no-approved-content state; `UNAVAILABLE` remains unavailable; none may fall back to preview or synthetic content.
 
-## Platform route contract required
+Published association media URLs remain opaque association URLs and preserve `organizationSlug` through the platform-host path. Each request revalidates association ownership, organization/property binding, current publication, and media eligibility. This protects future fetches after revocation or eligibility changes. It cannot recall or erase a raw public download that a consumer already obtained; do not describe revocation as retroactive erasure.
 
-The current generic organization page at `app/[locale]/[slug]/page.tsx` already resolves an active organization record, but its Hotel presentation context requires a verified Hotel request domain. On `bazarbaaz.ir/damoon-hotel`, the host is the platform host, so the Hotel host resolver correctly returns unavailable. Do not weaken that check or infer a tenant from an untrusted browser header.
+## CMS preview and indexing
 
-Platform should select the Hotel presentation only after its normal server-side organization lookup and active capability checks, then provide a server-created context containing:
+The accepted presentation renderer is wired into the existing authenticated CMS preview tab using the existing preview API response. That response must continue to come from `GET /api/organizations/{organizationId}/hotels/{propertyId}/website/revisions/{revisionId}/preview`; its session, active membership, capability, property, role, and media checks remain the authority. Preview is explicitly private, labeled in fa/en/ar, and must not be inserted into public metadata or shared caches.
 
-```ts
-{
-  organizationId: string;       // from the resolved active database organization
-  organizationSlug: string;     // canonical resolved slug; expected damoon-hotel
-  vertical: "HOTEL";
-  hotelWebsiteActive: true;     // persisted active capability, not client state
-  propertySlug: string;         // server-selected active property
-  locale: "fa" | "en" | "ar";
-}
-```
+Hotel dashboard routes remain `noindex`. Public organization metadata also defaults to `noindex` because there is no persisted owner-provenance and indexing-consent contract yet. Do not enable indexing based only on slug, publication state, CMS approval, or the presence of copy. If such a contract is added later, it needs persisted owner-approved provenance and explicit indexing consent evaluated on the same trusted server path as rendering.
 
-The slug is a public route selector, not proof of user identity. Hotel data reads must be scoped to the resolved organization ID and property ID in server code. The existing public F5 reads and media route resolve tenant from `Host`; they cannot currently return Damoon content/media on the Bazarbaaz host. The integrated implementation therefore needs a server-only trusted-organization read path reusing `getPublishedHotelWebsite`, `listPublishedHotelWebsiteRoomCategories`, room publication checks and media eligibility. For each image request, the media association must be rechecked against that same organization/property, current approved publication, current PUBLIC image eligibility and current room approval. Do not implement this by accepting an organization ID from a browser query/header or by copying a publication snapshot into an unscoped cache.
+## Presentation and product boundary
 
-`PublishedHotelWebsitePage` receives the result of `adaptHotelOrganizationPublicRead(website, rooms, expectedContext)`. The adapter rejects property/locale mismatches and leaves backend media URLs unchanged. Platform integration must also provide a trusted media URL path that remains association-ID based and revalidates publication/tenant ownership when fetched; until that exists, organization-hosted pages with galleries must not render the host-bound F5 media URL as if it were authorized for the platform host.
+The existing Hotel-owned presentation, localized fa/en/ar fields, and CMS content model remain the source of copy and approved assets. Keep RTL for fa/ar and LTR for en. Empty translations remain empty; do not fill them with another locale or fixtures. Property/CMS publication remains a separate editorial action and does not imply booking availability or financial setup. Keep `HOTEL_BOOKING` absent unless separately authorized and implemented. Search and booking affordances remain preview-only where the published service does not provide those operations.
 
-## Public, owner-preview and indexing behavior
+For the intended public target, `https://bazarbaaz.ir/damoon-hotel` is the canonical-platform-host route using `organizationSlug=damoon-hotel`. The expected localized route behavior must be checked at the authorized deployment. This document contains no Production route, migration, content-publication, authorization, or browser acceptance claim.
 
-- `PUBLISHED` is rendered only from validated F5 public response DTOs. No preview or fixture fallback is permitted.
-- `UNPUBLISHED` uses the localized no-approved-content state and never includes draft text/media.
-- `UNAVAILABLE` remains an unavailable/error state; it does not silently render conceptual data.
-- `PREVIEW` can be created only from the existing CMS preview route response. That API enforces authenticated Hotel membership and its current role policy. It is labeled “private content preview” in fa/en/ar, does not issue public reads when preloaded, remains preview-only for booking, and omits room categories because the preview API does not provide the published room-category DTO.
-- `hotelOrganizationRobots` returns noindex/nofollow by default. Indexing is permitted only when Platform explicitly supplies `PUBLIC_API`, owner-approved content provenance, explicit indexing approval, active organization, and active `HOTEL_WEBSITE`. Synthetic, preview, unpublished, unavailable or unknown-provenance content remains noindex.
-- The shared `generateMetadata` in the organization route is Platform-owned. It must call the same server-side publication/provenance gate as rendering; do not index content based only on a localized slug or client component state.
+## Focused acceptance evidence
 
-## Exact Platform-owned integration changes
-
-1. In the generic organization route, select the Hotel presentation through generic `vertical`/capability contracts and pass trusted resolved organization context; do not add a Damoon-specific platform condition.
-2. Add a server-only organization-scoped public read adapter (or equivalent internal service contract) that reuses the F5 publication, capability and media validation logic. Keep existing domain-based public APIs unchanged for `damoon-hotel.ir`.
-3. Provide association-ID media delivery bound to the resolved organization for platform-host pages, with per-request publication and media eligibility revalidation and `no-store` behavior.
-4. Update generic organization metadata to noindex unpublished, unavailable, synthetic and unknown-provenance states, and to emit localized title/description only from eligible published content.
-5. For owner review, render only a payload returned by the existing session-protected preview route. Keep it private/noindex and do not add preview data to public caches.
-
-Do not modify Platform routing/authentication, Prisma, PWA, or global tenant resolution as part of this Hotel handoff.
-
-## Visual and operation boundaries
-
-The existing F1.4 ivory/natural wood/green/terracotta page, fa/en/ar text, Jalali picker, guest selector and room gallery are reused. Search remains client-side validation/preview only. No availability, quote, hold, payment or notification request is made. Do not display conceptual fixtures as official Hotel assets or claims.
-
-Current backend/owner-approved Hotel Damoon photography, confirmed room categories, factual descriptions, amenities, policies and verified translations remain content dependencies. CMS publication approval does not by itself prove that conceptual data is factual; Platform must separately mark provenance before enabling indexing.
-
-## Validation
-
-```powershell
-pnpm exec tsx --test tests/unit/hotel/organization-site-presentation.test.ts tests/hotel-website-public-adapter.test.mjs
-node --import tsx tests/published-hotel-website.browser.mjs
-```
-
-Browser fixtures are synthetic and local. They do not prove integrated Platform route wiring, production domain behavior or real CMS authorization.
+See `HOTEL-INTEGRATED-ONBOARDING-ACCEPTANCE.md` for the exact local PostgreSQL, production-server Chromium, focused regression and build evidence. Canonical platform routes were tested with actual F5 API responses and synthetic fixtures; custom-domain security regressions passed at the source/service level. No new deployed custom-domain, real owner-content or Production acceptance is claimed.

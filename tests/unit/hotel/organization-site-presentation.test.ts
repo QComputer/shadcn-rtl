@@ -36,13 +36,39 @@ function previewPayload() {
 
 test("organization public adapter consumes only matching F5 published scope and preserves media URLs", () => {
   const [website, rooms] = publicPayload();
-  const presentation = adaptHotelOrganizationPublicRead(website, rooms, expected);
+  const queryMediaUrl = "/api/hotel/v1/website/media/opaque-media-id-1?organizationSlug=damoon-hotel";
+  const websiteWithTenantMedia = {
+    ...(website as object),
+    propertyGallery: [{ src: queryMediaUrl, altText: "تصویر ساختگی", sortOrder: 0, slot: "HERO_DESKTOP" }],
+  };
+  const presentation = adaptHotelOrganizationPublicRead(websiteWithTenantMedia, rooms, expected);
   assert.equal(presentation.status, "PUBLISHED");
   if (presentation.status !== "PUBLISHED") return;
   assert.equal(presentation.source, "PUBLIC_API");
-  assert.equal(presentation.website.heroDesktop?.src, "/api/hotel/v1/website/media/opaque-media-id-1");
+  assert.equal(presentation.website.heroDesktop?.src, queryMediaUrl);
   assert.deepEqual(presentation.website.roomCards, []);
   assert.throws(() => adaptHotelOrganizationPublicRead(website, rooms, { ...expected, propertySlug: "other-property" }));
+  assert.throws(() => adaptHotelOrganizationPublicRead(website, { ...(rooms as object), locale: "en" }, expected));
+  assert.throws(() => adaptHotelOrganizationPublicRead({ ...(website as object), locale: "en" }, rooms, expected));
+});
+
+test("published organization adapter rejects a missing required locale translation", () => {
+  const [website, rooms] = publicPayload();
+  const missingTranslation = {
+    ...(website as object),
+    content: {
+      title: null,
+      hero: { heading: null },
+      introduction: { body: null },
+      sections: [],
+      contact: {},
+    },
+  };
+
+  assert.deepEqual(
+    adaptHotelOrganizationPublicRead(missingTranslation, rooms, expected),
+    { status: "UNAVAILABLE", locale: expected.locale, propertySlug: expected.propertySlug, code: "MISSING_TRANSLATION" },
+  );
 });
 
 test("organization route can represent unpublished and unavailable without falling back to preview", () => {
@@ -74,6 +100,8 @@ test("synthetic preview stays noindex even when the source shape resembles publi
   assert.deepEqual(hotelOrganizationRobots({ status: presentation.status, source: presentation.source, approvedForIndexing: true, websiteCapabilityActive: true, organizationActive: true }), { index: false, follow: false });
   assert.deepEqual(hotelOrganizationRobots({ status: "PUBLISHED", source: "PUBLIC_API", contentProvenance: "OWNER_APPROVED", approvedForIndexing: true, websiteCapabilityActive: true, organizationActive: true }), { index: true, follow: true });
   assert.deepEqual(hotelOrganizationRobots({ status: "PUBLISHED", source: "PUBLIC_API", approvedForIndexing: true }), { index: false, follow: false });
+  assert.deepEqual(hotelOrganizationRobots({ status: "PUBLISHED", source: "PUBLIC_API", contentProvenance: "UNKNOWN", approvedForIndexing: true, websiteCapabilityActive: true, organizationActive: true }), { index: false, follow: false });
+  assert.deepEqual(hotelOrganizationRobots({ status: "PUBLISHED", source: "PUBLIC_API", contentProvenance: "SYNTHETIC", approvedForIndexing: true, websiteCapabilityActive: true, organizationActive: true }), { index: false, follow: false });
 });
 
 test("preview rejects wrong locale, malformed payload, and missing trusted organization scope", () => {
@@ -81,4 +109,29 @@ test("preview rejects wrong locale, malformed payload, and missing trusted organ
   assert.throws(() => adaptAuthenticatedHotelWebsitePreview(previewPayload(), { ...expected, organizationId: "" }));
   assert.throws(() => adaptAuthenticatedHotelWebsitePreview({ ...previewPayload(), pageKey: "OTHER" }, expected));
   assert.throws(() => adaptAuthenticatedHotelWebsitePreview({ ...previewPayload(), media: [{ ...previewPayload().media[0], src: "https://untrusted.example/secret.jpg" }] }, expected));
+});
+
+for (const src of ["javascript:alert(1)", "//untrusted.example/secret.jpg", "https://untrusted.example/secret.jpg", "/uploads/../secret.jpg", "/uploads/..", "https://user:secret@fixture.public.blob.vercel-storage.com/image.png", "https://fixture.public.blob.vercel-storage.com/image.png?token=untrusted", "not a URL"]) {
+  test(`preview rejects unsafe image source ${src}`, () => {
+    assert.throws(
+      () => adaptAuthenticatedHotelWebsitePreview({ ...previewPayload(), media: [{ ...previewPayload().media[0], src }] }, expected),
+    );
+  });
+}
+
+test("preview rejects missing requested-locale translation", () => {
+  assert.throws(
+    () => adaptAuthenticatedHotelWebsitePreview({ ...previewPayload(), content: { ...previewPayload().content, title: { en: "English only" } } }, expected),
+    "preview with missing requested-locale translation should be rejected",
+  );
+});
+
+
+test("private preview accepts empty optional translations without inventing text", () => {
+  const raw = previewPayload();
+  raw.content.hero = { ...raw.content.hero, eyebrow: {} } as typeof raw.content.hero;
+  raw.content.sections = [{ key: "text", order: 1, visible: true, kind: "TEXT", heading: {}, body: { fa: "Visible text" } }];
+  const result = adaptAuthenticatedHotelWebsitePreview(raw, expected);
+  assert.equal(result.website.content.hero.eyebrow, null);
+  assert.equal(result.website.content.sections[0].heading, null);
 });

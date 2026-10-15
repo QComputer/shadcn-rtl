@@ -38,6 +38,7 @@ function initialLoadState(presentation: HotelOrganizationSitePresentation | unde
   if (presentation.propertySlug !== expected.propertySlug || presentation.locale !== expected.locale || (expected.tenantKey && (!('organizationId' in presentation) || presentation.organizationId !== expected.tenantKey))) {
     return { status: "ERROR", code: "UNAVAILABLE_PROPERTY" };
   }
+  if (presentation.status === "PUBLISHED" && presentation.contentProvenance === "SYNTHETIC") return { status: "ERROR", code: "UNAVAILABLE_PROPERTY" };
   if (presentation.status === "PUBLISHED" || presentation.status === "PREVIEW") {
     return { status: "READY", website: presentation.website, source: presentation.status === "PUBLISHED" ? "PUBLISHED" : presentation.source };
   }

@@ -8,7 +8,7 @@ import { chromium } from "playwright";
 const testRequire = createRequire(import.meta.url);
 const requireFromTsx = createRequire(testRequire.resolve("tsx/package.json"));
 const esbuild = requireFromTsx("esbuild");
-const artifacts = fileURLToPath(new URL("../artifacts/hotel-f2-1/", import.meta.url));
+const artifacts = process.env.HOTEL_WEBSITE_BROWSER_ARTIFACTS ? pathUtils.resolve(process.env.HOTEL_WEBSITE_BROWSER_ARTIFACTS) : fileURLToPath(new URL("../artifacts/hotel-f2-1/", import.meta.url));
 await mkdir(artifacts, { recursive: true });
 
 const bundleResult = await esbuild.build({
@@ -312,6 +312,17 @@ try {
     results.push({ viewport: "390x844", locale, status: "PASS", ownerPreviewLocalized: true, direction: locale === "en" ? "LTR" : "RTL", noApiRequests: true });
     await page.close();
   }
+  const syntheticPage = await browser.newPage();
+  const syntheticRequests = [];
+  syntheticPage.on("request", (request) => syntheticRequests.push(new URL(request.url()).pathname));
+  await syntheticPage.route("http://hotel-f2.test/**", (route) => route.fulfill({ status: 200, contentType: "text/html", body: '<!doctype html><html><body><div id="root"></div></body></html>' }));
+  await syntheticPage.goto("http://hotel-f2.test/?mode=synthetic-public");
+  await syntheticPage.addScriptTag({ content: bundle.text });
+  await syntheticPage.locator('[data-hotel-state="UNAVAILABLE_PROPERTY"]').waitFor();
+  assert.equal(await syntheticPage.getByRole("heading", { name: "محتوای مفهومی برای بازبینی" }).count(), 0);
+  assert.equal(syntheticRequests.some((url) => url.startsWith("/api/")), false);
+  results.push({ status: "PASS", knownSyntheticPublicPresentationRejected: true, noApiRequests: true });
+  await syntheticPage.close();
   process.stdout.write(`${JSON.stringify({ status: "PASS", fixtures: "synthetic browser-only C1B2-shaped responses", cases: results, screenshots: artifacts.replaceAll("\\", "/") })}\n`);
 } finally {
   await browser.close();

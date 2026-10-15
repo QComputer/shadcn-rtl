@@ -58,6 +58,7 @@ const files = [];
 async function inventory(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const file = path.join(directory, entry.name);
+    if (file === path.join(site, "preview-manifest.json")) continue; // A manifest cannot hash its own previous version.
     if (entry.isDirectory()) await inventory(file);
     else { const bytes = await readFile(file); files.push({ path: path.relative(output, file).replaceAll("\\", "/"), bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") }); }
   }

@@ -18,7 +18,7 @@
 .hint { margin: 13px 0; color: #665e54; font-size: 12px; line-height: 1.8; }
 .ageList { display: grid; gap: 7px; }
 .ageRow { font-size: 13px; }
-.ageRow select { min-height: 40px; min-width: 128px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--wood); font: inherit; }
+.ageRow select { min-height: 44px; min-width: 128px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--wood); font: inherit; }
 .done { width: 100%; min-height: 44px; margin-top: 17px; border: 0; border-radius: 8px; background: var(--green); color: white; font: inherit; font-weight: 700; cursor: pointer; }
 @media (max-width: 700px) {
   .trigger { min-height: 70px; padding: 9px; gap: 8px; }

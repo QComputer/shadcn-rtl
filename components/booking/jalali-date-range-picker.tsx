@@ -128,7 +128,13 @@ export function JalaliDateRangePicker({ value, onChange, minDate, maxDate, disab
   }
 
   function handleDayKeyboard(event: KeyboardEvent<HTMLButtonElement>, iso: ISODate) {
-    const offsets: Record<string, number> = { ArrowRight: -1, ArrowLeft: 1, ArrowDown: 7, ArrowUp: -7 };
+    const isRtl = locale !== "en";
+    const offsets: Record<string, number> = {
+      ArrowRight: isRtl ? -1 : 1,
+      ArrowLeft: isRtl ? 1 : -1,
+      ArrowDown: 7,
+      ArrowUp: -7,
+    };
     let next: ISODate | undefined;
     if (event.key in offsets) next = shiftISODate(iso, offsets[event.key]);
     if (event.key === "Home") next = shiftISODate(iso, -((new Date(`${iso}T12:00:00Z`).getUTCDay() + 1) % 7));

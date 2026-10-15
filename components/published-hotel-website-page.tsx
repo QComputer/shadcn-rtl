@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Menu, X } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   adaptPublishedHotelWebsite,
   publishedHotelWebsiteErrorState,
@@ -24,9 +24,9 @@ type LoadState =
   | Readonly<{ status: "READY"; website: PublishedHotelWebsite }>;
 
 const labels = {
-  fa: { home: "صفحهٔ اصلی", about: "دربارهٔ ما", rooms: "دسته‌های اقامت", gallery: "گالری", booking: "پیش‌نمایش تاریخ", title: "بررسی تاریخ‌ها", dates: "تاریخ ورود و خروج", guests: "ترکیب مهمانان", noBooking: "رزرو و بررسی موجودی در این صفحه فعال نیست.", previewOnly: "فرم فقط برای پیش‌نمایش رابط کاربری است؛ هیچ درخواستی ارسال نمی‌شود.", invalid: "لطفاً تاریخ‌ها و ترکیب مهمانان را بررسی کنید.", noGallery: "تصویر تأییدشده‌ای برای نمایش در این بخش منتشر نشده است." },
-  en: { home: "Home", about: "About", rooms: "Accommodation", gallery: "Gallery", booking: "Date preview", title: "Review dates", dates: "Arrival and departure", guests: "Guest composition", noBooking: "Booking and availability checks are not active here.", previewOnly: "This form is UI preview only; no request will be sent.", invalid: "Please review the dates and guest composition.", noGallery: "No approved image has been published for this section." },
-  ar: { home: "الرئيسية", about: "عن الفندق", rooms: "فئات الإقامة", gallery: "المعرض", booking: "معاينة التواريخ", title: "مراجعة التواريخ", dates: "الوصول والمغادرة", guests: "تكوين الضيوف", noBooking: "الحجز والتحقق من التوفر غير مفعّلين هنا.", previewOnly: "هذا النموذج لمعاينة الواجهة فقط؛ لن يتم إرسال أي طلب.", invalid: "يرجى مراجعة التواريخ وتكوين الضيوف.", noGallery: "لم تُنشر صورة معتمدة لهذا القسم." },
+  fa: { home: "صفحهٔ اصلی", nav: "پیمایش اصلی", about: "دربارهٔ ما", rooms: "دسته‌های اقامت", gallery: "گالری", booking: "پیش‌نمایش تاریخ", title: "بررسی تاریخ‌ها", dates: "تاریخ ورود و خروج", guests: "ترکیب مهمانان", noBooking: "رزرو و بررسی موجودی در این صفحه فعال نیست.", previewOnly: "فرم فقط برای پیش‌نمایش رابط کاربری است؛ هیچ درخواستی ارسال نمی‌شود.", invalid: "لطفاً تاریخ‌ها و ترکیب مهمانان را بررسی کنید.", noGallery: "تصویر تأییدشده‌ای برای نمایش در این بخش منتشر نشده است.", imageUnavailable: "تصویر منتشرشده موقتاً در دسترس نیست." },
+  en: { home: "Home", nav: "Primary navigation", about: "About", rooms: "Accommodation", gallery: "Gallery", booking: "Date preview", title: "Review dates", dates: "Arrival and departure", guests: "Guest composition", noBooking: "Booking and availability checks are not active here.", previewOnly: "This form is UI preview only; no request will be sent.", invalid: "Please review the dates and guest composition.", noGallery: "No approved image has been published for this section.", imageUnavailable: "This published image is temporarily unavailable." },
+  ar: { home: "الرئيسية", nav: "التنقل الرئيسي", about: "عن الفندق", rooms: "فئات الإقامة", gallery: "المعرض", booking: "معاينة التواريخ", title: "مراجعة التواريخ", dates: "الوصول والمغادرة", guests: "تكوين الضيوف", noBooking: "الحجز والتحقق من التوفر غير مفعّلين هنا.", previewOnly: "هذا النموذج لمعاينة الواجهة فقط؛ لن يتم إرسال أي طلب.", invalid: "يرجى مراجعة التواريخ وتكوين الضيوف.", noGallery: "لم تُنشر صورة معتمدة لهذا القسم.", imageUnavailable: "الصورة المنشورة غير متاحة مؤقتًا." },
 } satisfies Record<HotelPublicLocale, Record<string, string>>;
 
 function direction(locale: HotelPublicLocale) { return locale === "en" ? "ltr" : "rtl"; }
@@ -34,6 +34,9 @@ function direction(locale: HotelPublicLocale) { return locale === "en" ? "ltr" :
 export function PublishedHotelWebsitePage({ propertySlug, locale }: { propertySlug: string; locale: HotelPublicLocale }) {
   const [state, setState] = useState<LoadState>({ status: "LOADING" });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [unavailableImages, setUnavailableImages] = useState<ReadonlySet<string>>(() => new Set());
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLElement | null>(null);
   const [dates, setDates] = useState<StayRange>({ checkIn: "", checkOut: "" });
   const [guests, setGuests] = useState<GuestCompositionDraft>(initialGuests);
   const [formMessage, setFormMessage] = useState("");
@@ -41,10 +44,27 @@ export function PublishedHotelWebsitePage({ propertySlug, locale }: { propertySl
 
   useEffect(() => {
     if (!menuOpen) return;
-    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setMenuOpen(false); };
+    const focusFrame = requestAnimationFrame(() => menuRef.current?.querySelector<HTMLAnchorElement>("a")?.focus());
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setMenuOpen(false);
+      requestAnimationFrame(() => menuButtonRef.current?.focus());
+    };
     window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
+    return () => { cancelAnimationFrame(focusFrame); window.removeEventListener("keydown", closeOnEscape); };
   }, [menuOpen]);
+
+  function closeMobileMenu() {
+    setMenuOpen(false);
+    if (window.matchMedia("(max-width: 700px)").matches) {
+      requestAnimationFrame(() => menuButtonRef.current?.focus());
+    }
+  }
+
+  function markImageUnavailable(src: string) {
+    setUnavailableImages((current) => new Set(current).add(src));
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -110,17 +130,17 @@ export function PublishedHotelWebsitePage({ propertySlug, locale }: { propertySl
     <main className={styles.shell} dir={direction(locale)} data-provenance="PUBLISHED">
       <header className={styles.header}>
         <a href="#home" className={styles.brand} aria-label={website.content.title ?? text.home}>{website.content.title}</a>
-        <nav id="published-hotel-navigation" aria-label={text.home} className={`${styles.nav} ${menuOpen ? styles.navOpen : ""}`}>
-          <a href="#home" onClick={() => setMenuOpen(false)}>{text.home}</a><a href="#about" onClick={() => setMenuOpen(false)}>{text.about}</a><a href="#rooms" onClick={() => setMenuOpen(false)}>{text.rooms}</a>
-          {website.propertyGallery.length > 0 && <a href="#gallery" onClick={() => setMenuOpen(false)}>{text.gallery}</a>}
+        <nav ref={menuRef} id="published-hotel-navigation" aria-label={text.nav} className={`${styles.nav} ${menuOpen ? styles.navOpen : ""}`}>
+          <a href="#home" onClick={closeMobileMenu}>{text.home}</a><a href="#about" onClick={closeMobileMenu}>{text.about}</a><a href="#rooms" onClick={closeMobileMenu}>{text.rooms}</a>
+          {website.propertyGallery.length > 0 && <a href="#gallery" onClick={closeMobileMenu}>{text.gallery}</a>}
         </nav>
         <a href="#booking" className={styles.cta}>{text.booking}</a>
-        <button className={styles.menuButton} type="button" aria-label={menuOpen ? (locale === "fa" ? "بستن فهرست" : locale === "ar" ? "إغلاق القائمة" : "Close navigation") : (locale === "fa" ? "بازکردن فهرست" : locale === "ar" ? "فتح القائمة" : "Open navigation")} aria-expanded={menuOpen} aria-controls="published-hotel-navigation" onClick={() => setMenuOpen((open) => !open)}>{menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}</button>
+        <button ref={menuButtonRef} className={styles.menuButton} type="button" aria-label={menuOpen ? (locale === "fa" ? "بستن فهرست" : locale === "ar" ? "إغلاق القائمة" : "Close navigation") : (locale === "fa" ? "بازکردن فهرست" : locale === "ar" ? "فتح القائمة" : "Open navigation")} aria-expanded={menuOpen} aria-controls="published-hotel-navigation" onClick={() => menuOpen ? closeMobileMenu() : setMenuOpen(true)}>{menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}</button>
       </header>
 
       <section id="home" className={styles.hero}>
         <div className={styles.heroVisual}>
-          {image ? <picture className={styles.heroPicture}>{website.heroMobile && <source media="(max-width: 800px)" srcSet={website.heroMobile.src} />}<Image src={image.src} alt={image.alt} fill priority unoptimized sizes="(max-width: 800px) 100vw, 68vw" className={styles.heroImage} /></picture> : <div className={styles.imageEmpty}>{text.noGallery}</div>}
+          {image && !unavailableImages.has(image.src) ? <picture className={styles.heroPicture}>{website.heroMobile && <source media="(max-width: 800px)" srcSet={website.heroMobile.src} />}<Image src={image.src} alt={image.alt} fill priority unoptimized sizes="(max-width: 800px) 100vw, 68vw" className={styles.heroImage} onError={() => markImageUnavailable(image.src)} /></picture> : <div className={styles.imageEmpty} role="status" data-testid={image ? "published-hero-image-unavailable" : undefined}>{image ? text.imageUnavailable : text.noGallery}</div>}
         </div>
         <div className={styles.heroCopy}>
           {website.content.hero.eyebrow && <p className={styles.eyebrow}>{website.content.hero.eyebrow}</p>}
@@ -148,7 +168,7 @@ export function PublishedHotelWebsitePage({ propertySlug, locale }: { propertySl
 
       {roomCount > 0 ? <section id="rooms" className={styles.rooms}><p className={styles.eyebrow}>{text.rooms}</p><RoomShowcase rooms={website.roomCards} direction={direction(locale)} locale={locale} /></section> : <section id="rooms" className={styles.rooms}><HotelDataState code="NO_PUBLISHED_ROOMS" locale={locale} /></section>}
 
-      {website.propertyGallery.length > 0 ? <section id="gallery" className={styles.gallery} aria-label={text.gallery}>{website.propertyGallery.map((photo) => <figure key={`${photo.src}:${photo.sortOrder}`}><Image src={photo.src} alt={photo.alt} width={960} height={640} unoptimized sizes="(max-width: 700px) 100vw, 50vw" /><figcaption>{photo.alt || text.gallery}</figcaption></figure>)}</section> : <section id="gallery" className={styles.galleryEmpty}><p>{text.noGallery}</p></section>}
+      {website.propertyGallery.length > 0 ? <section id="gallery" className={styles.gallery} aria-label={text.gallery}>{website.propertyGallery.map((photo) => <figure key={`${photo.src}:${photo.sortOrder}`}>{unavailableImages.has(photo.src) ? <div className={styles.galleryUnavailable} role="status" data-testid="published-media-unavailable">{text.imageUnavailable}</div> : <Image src={photo.src} alt={photo.alt} width={960} height={640} unoptimized sizes="(max-width: 700px) 100vw, 50vw" onError={() => markImageUnavailable(photo.src)} />}<figcaption>{photo.alt || text.gallery}</figcaption></figure>)}</section> : <section id="gallery" className={styles.galleryEmpty}><p>{text.noGallery}</p></section>}
 
       {website.content.sections.filter((section) => section.visible).sort((a, b) => a.order - b.order).map((section) => (
         <section className={styles.editorial} key={section.key}>

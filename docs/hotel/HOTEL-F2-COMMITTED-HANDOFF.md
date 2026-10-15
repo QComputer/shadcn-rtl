@@ -93,6 +93,8 @@ No files were pushed, merged, or deployed; no database, Production configuration
 
 ## H4 room-configuration foundation
 
+Local source commits: `86385fe95326f3ded712a34f77b46d8026f2f3f7` (initial service and tests), `c37c8f29e2774dfaf8bb970f9a281a7b1da99bae` (explicit child-policy requirement). H4 handoff commits: `f1794de462478e14f2c7d8fec5abcb2bf83695a9` and this update. No push or merge was performed.
+
 The Hotel-owned pure service `lib/hotel/domain/room-configuration-recommendation.ts` evaluates advisory single-room compatibility from an explicit guest composition, declared room capacity/bed configuration, and a caller-supplied policy status. It reuses `validateOccupancy` and `validateOccupancyFitsRoom`; it does not query persistence, availability, rates, or booking services. Stable reason codes are localization-ready keys. Compatible candidates are ordered by smallest remaining declared occupancy capacity, then bed capacity, then ordinal room-type ID.
 
 Policy and information gaps fail closed as `REVIEW_REQUIRED` (including absent/conflicting occupancy policy, incomplete room facts, age-sensitive policy without an explicit age-independent declaration, or missing accessibility data). Extra-bed and multi-room requests return `POLICY_REQUIRED`; no configuration for either is inferred. The current public room-category contract exposes declared adult/child/total limits, beds, size, and gallery but no approved extra-bed, age-threshold, or multi-room allocation policy. `wheelchair_accessible` is the only accessibility signal in the inspected Hotel amenity contract; it must not be treated as a full accessibility assessment.

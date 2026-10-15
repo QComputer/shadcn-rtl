@@ -631,7 +631,8 @@ export async function proxy(request: NextRequest) {
       ? `/${locale}`
       : `/${locale}${pathname}`;
 
-    const newUrl = new URL(appPath(newPath), request.url);
+    const newUrl = request.nextUrl.clone();
+    newUrl.pathname = appPath(newPath);
     const response = NextResponse.redirect(newUrl);
 
     // Set locale cookie

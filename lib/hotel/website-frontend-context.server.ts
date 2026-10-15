@@ -15,8 +15,9 @@ export type HotelWebsiteFrontendContext =
 export async function resolveHotelWebsiteFrontendContext(input: {
   host: string | null;
   organizationId: string;
+  organizationSlug?: string | null;
 }): Promise<HotelWebsiteFrontendContext> {
-  const tenant = await resolveHotelWebsiteTenantForHost(input.host);
+  const tenant = await resolveHotelWebsiteTenantForHost(input.host, undefined, input.organizationSlug);
   if (!tenant || tenant.organizationId !== input.organizationId) return { status: "UNAVAILABLE" };
 
   const properties = await prisma.hotelProperty.findMany({

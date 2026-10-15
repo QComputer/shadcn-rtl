@@ -62,6 +62,25 @@ test("tenant resolver fails closed for unknown, inactive, non-Hotel or unenabled
   assert.equal(await resolveHotelWebsiteTenantForHost("hotel.example", tx), null);
 });
 
+test("platform-hosted Hotel resolution is slug-scoped, capability-gated, and unavailable from other hosts", async () => {
+  const calls: unknown[] = [];
+  const tx = {
+    organization: { findFirst: async (args: unknown) => { calls.push(args); return { id: "org-damoon" }; } },
+  } as unknown as Prisma.TransactionClient;
+  assert.deepEqual(await resolveHotelWebsiteTenantForHost("bazarbaaz.ir", tx, "damoon-hotel"), { organizationId: "org-damoon" });
+  assert.equal(calls.length, 1);
+  assert.deepEqual((calls[0] as { where: unknown }).where, {
+    slug: "damoon-hotel",
+    isActive: true,
+    deletedAt: null,
+    vertical: "HOTEL",
+    capabilities: { some: { key: "HOTEL_WEBSITE", status: "ACTIVE", enabledAt: { not: null }, disabledAt: null } },
+  });
+  assert.equal(await resolveHotelWebsiteTenantForHost("attacker.example", tx, "damoon-hotel"), null);
+  assert.equal(await resolveHotelWebsiteTenantForHost("bazarbaaz.ir", tx, "damoon/other"), null);
+  assert.equal(calls.length, 1, "untrusted host and malformed slug do not query an organization");
+});
+
 test("published editorial response selects requested locale and omits address without an explicit visibility contract", async () => {
   const result = await getPublishedHotelWebsite({ host: "hotel.example", propertySlug: "hotel-a", locale: "en", db: dbFor(txWith({ publication: publication() })) }, dependencies);
   assert.equal(result?.mode, "PUBLISHED");
@@ -87,6 +106,14 @@ test("published property gallery uses opaque association routes and never return
   assert.deepEqual((result.content as { sections: Array<{ key: string; order: number }> }).sections.map(({ key, order }) => ({ key, order })), [{ key: "intro", order: 1 }, { key: "story", order: 2 }]);
   assert.equal(JSON.stringify(result).includes("private-image-id"), false);
   assert.equal(JSON.stringify(result).includes("hotel.jpg"), false);
+});
+
+test("platform-hosted gallery links retain the public organization slug for safe media resolution", async () => {
+  const media = [{ id: "association-123", scope: "PROPERTY", roomTypeId: null, slot: "GALLERY", sortOrder: 0, altText: {}, image: image() }];
+  const result = await getPublishedHotelWebsite({ host: "bazarbaaz.ir", organizationSlug: "damoon-hotel", propertySlug: "hotel-a", locale: "fa", db: dbFor(txWith({ publication: publication(media) })) }, dependencies);
+  assert.equal(result?.mode, "PUBLISHED");
+  if (!result || result.mode !== "PUBLISHED") return;
+  assert.equal(result.propertyGallery[0]?.src, "/api/hotel/v1/website/media/association-123?organizationSlug=damoon-hotel");
 });
 
 test("foreign, private, unsupported and malformed image URLs are excluded from the public gallery", async () => {

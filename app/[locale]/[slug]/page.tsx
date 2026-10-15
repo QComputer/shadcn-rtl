@@ -75,11 +75,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         isCustomDomain: requestHeaders.get("x-bazar-custom-domain"),
         tenantDomain: requestHeaders.get("x-bazar-tenant-domain"),
       });
-      const context = await resolveHotelWebsiteFrontendContext({ host, organizationId: organization.id });
+      const organizationSlug = requestHeaders.get("x-bazar-custom-domain") === "true" ? null : slug;
+      const context = await resolveHotelWebsiteFrontendContext({ host, organizationId: organization.id, organizationSlug });
       if (context.status !== "READY") {
         return buildHotelWebsiteMetadata({ state: null, locale });
       }
-      const state = await getPublishedHotelWebsite({ host, propertySlug: context.propertySlug, locale: locale === "en" || locale === "ar" ? locale : "fa" });
+      const state = await getPublishedHotelWebsite({ host, propertySlug: context.propertySlug, locale: locale === "en" || locale === "ar" ? locale : "fa", organizationSlug });
       const seoContext = await getOrganizationRootSeoContext({ locale, slug });
       return buildHotelWebsiteMetadata({ state, locale, seoContext });
     } catch {
@@ -154,11 +155,12 @@ export default async function OrganizationHomePage({ params }: Props) {
         tenantDomain: requestHeaders.get("x-bazar-tenant-domain"),
       }),
       organizationId: organization.id,
+      organizationSlug: isCustomDomain ? null : slug,
     });
     if (context.status !== "READY") {
       return <HotelDataState code="UNAVAILABLE_PROPERTY" locale={localeCode} />;
     }
-    return <PublishedHotelWebsitePage propertySlug={context.propertySlug} locale={localeCode} />;
+    return <PublishedHotelWebsitePage propertySlug={context.propertySlug} locale={localeCode} organizationSlug={isCustomDomain ? undefined : slug} />;
   }
 
   const publicHome = resolveOrganizationPublicHome({

@@ -31,7 +31,7 @@ const labels = {
 
 function direction(locale: HotelPublicLocale) { return locale === "en" ? "ltr" : "rtl"; }
 
-export function PublishedHotelWebsitePage({ propertySlug, locale }: { propertySlug: string; locale: HotelPublicLocale }) {
+export function PublishedHotelWebsitePage({ propertySlug, locale, organizationSlug }: { propertySlug: string; locale: HotelPublicLocale; organizationSlug?: string }) {
   const [state, setState] = useState<LoadState>({ status: "LOADING" });
   const [menuOpen, setMenuOpen] = useState(false);
   const [unavailableImages, setUnavailableImages] = useState<ReadonlySet<string>>(() => new Set());
@@ -78,9 +78,10 @@ export function PublishedHotelWebsitePage({ propertySlug, locale }: { propertySl
           headers: { accept: "application/json" },
           signal: controller.signal,
         };
+        const tenantQuery = organizationSlug ? `&organizationSlug=${encodeURIComponent(organizationSlug)}` : "";
         const [websiteResponse, roomsResponse] = await Promise.all([
-          fetch(`${base}?locale=${locale}`, options),
-          fetch(`${base}/room-categories?locale=${locale}`, options),
+          fetch(`${base}?locale=${locale}${tenantQuery}`, options),
+          fetch(`${base}/room-categories?locale=${locale}${tenantQuery}`, options),
         ]);
         const [websiteBody, roomsBody]: [unknown, unknown] = await Promise.all([
           websiteResponse.json().catch(() => null), roomsResponse.json().catch(() => null),
@@ -110,7 +111,7 @@ export function PublishedHotelWebsitePage({ propertySlug, locale }: { propertySl
     }
     void load();
     return () => controller.abort();
-  }, [propertySlug, locale]);
+  }, [propertySlug, locale, organizationSlug]);
 
   function submitPreview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

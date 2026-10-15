@@ -47,9 +47,16 @@ test("website and room routes pass trusted host and locale, validate response, a
   assert.equal(rooms.headers.get("cache-control"), "no-store, max-age=0");
   assert.deepEqual(await rooms.json(), publishedRooms);
   assert.deepEqual(calls, [
-    { name: "website", input: { host: "hotel-a.example", propertySlug: "hotel-a", locale: "en" } },
-    { name: "rooms", input: { host: "hotel-a.example", propertySlug: "hotel-a", locale: "en" } },
+    { name: "website", input: { host: "hotel-a.example", propertySlug: "hotel-a", locale: "en", organizationSlug: null } },
+    { name: "rooms", input: { host: "hotel-a.example", propertySlug: "hotel-a", locale: "en", organizationSlug: null } },
   ]);
+});
+
+test("platform organization slug is forwarded to the public Hotel resolver on platform-hosted reads", { concurrency: false }, async () => {
+  calls.length = 0;
+  const website = await websiteGET(request("/api/hotel/v1/website/properties/hotel-a?locale=fa&organizationSlug=damoon-hotel"), { params: Promise.resolve({ propertySlug: "hotel-a" }) });
+  assert.equal(website.status, 200);
+  assert.deepEqual(calls, [{ name: "website", input: { host: "hotel-a.example", propertySlug: "hotel-a", locale: "fa", organizationSlug: "damoon-hotel" } }]);
 });
 
 test("media route redirects only through its opaque association endpoint and sends safe no-store headers", { concurrency: false }, async () => {
@@ -60,7 +67,7 @@ test("media route redirects only through its opaque association endpoint and sen
   assert.equal(response.headers.get("cache-control"), "no-store, max-age=0");
   assert.equal(response.headers.get("referrer-policy"), "no-referrer");
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
-  assert.deepEqual(calls, [{ name: "media", input: { host: "hotel-a.example", associationId: "assoc-12345678" } }]);
+  assert.deepEqual(calls, [{ name: "media", input: { host: "hotel-a.example", associationId: "assoc-12345678", organizationSlug: null } }]);
 });
 
 test("bad locale, slug, and media association fail without service access", { concurrency: false }, async () => {

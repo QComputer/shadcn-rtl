@@ -11,8 +11,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ prop
   const { propertySlug } = await params;
   const parsed = propertySlugSchema.safeParse(propertySlug);
   if (!parsed.success) return publicHotelJson({ error: "INVALID_REQUEST" }, 400);
+  const organizationSlug = new URL(request.url).searchParams.get("organizationSlug");
+  if (organizationSlug !== null && !/^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?$/.test(organizationSlug)) return publicHotelJson({ error: "INVALID_REQUEST" }, 400);
   try {
-    const result = await listPublishedHotelWebsiteRoomCategories({ host: request.headers.get("host"), propertySlug: parsed.data, locale: locale.locale });
+    const result = await listPublishedHotelWebsiteRoomCategories({ host: request.headers.get("host"), propertySlug: parsed.data, locale: locale.locale, organizationSlug });
     if (!result) return publicHotelJson({ error: "NOT_FOUND" }, 404);
     return publicHotelJson(hotelWebsiteRoomCategoriesResponseSchema.parse(result));
   } catch {

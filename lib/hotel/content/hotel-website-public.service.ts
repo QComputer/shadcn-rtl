@@ -2,7 +2,7 @@ import "server-only";
 
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { prisma as defaultPrisma } from "@/lib/db-runtime";
-import { normalizeDomainHost } from "@/lib/custom-domain-routing";
+import { CANONICAL_PLATFORM_HOST, normalizeDomainHost } from "@/lib/custom-domain-routing";
 import { hotelWebsiteContentSchema } from "@/lib/hotel/content/hotel-website-contract";
 import { hotelWebsitePublicContentSchema } from "@/lib/hotel/content/hotel-website-public-contract";
 import { isCurrentHotelPublicationApproved } from "@/lib/hotel/services/hotel-publication.service";
@@ -13,7 +13,7 @@ type Tx = Prisma.TransactionClient;
 type EligibleImage = { id: string; organizationId: string | null; filename: string | null; url: string; mimeType: string | null; access: "PUBLIC" | "PRIVATE" };
 
 export type HotelWebsitePublicDependencies = {
-  resolveTenant(host: string | null | undefined, tx: Tx): Promise<{ organizationId: string } | null>;
+  resolveTenant(host: string | null | undefined, tx: Tx, organizationSlug?: string | null): Promise<{ organizationId: string } | null>;
   isRoomApproved(input: { organizationId: string; propertyId: string; resourceType: "ROOM_TYPE"; resourceId: string; scope: "availability" }, tx: Tx): Promise<boolean>;
 };
 
@@ -33,9 +33,29 @@ export function isEligibleHotelWebsiteImage(image: EligibleImage, organizationId
   } catch { return false; }
 }
 
-export async function resolveHotelWebsiteTenantForHost(host: string | null | undefined, db: Tx | Db = defaultPrisma) {
+export async function resolveHotelWebsiteTenantForHost(host: string | null | undefined, db: Tx | Db = defaultPrisma, organizationSlug?: string | null) {
   const normalizedDomain = normalizeDomainHost(host);
   if (!normalizedDomain) return null;
+  if (organizationSlug) {
+    // A platform-hosted public organization path may name its tenant by its
+    // public slug. This is allowed only on the canonical platform origin; a
+    // custom/unknown host must continue resolving exclusively by verified
+    // OrganizationDomain records.
+    if (normalizedDomain !== CANONICAL_PLATFORM_HOST || !/^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?$/.test(organizationSlug)) return null;
+    const organization = await db.organization.findFirst({
+      where: {
+        slug: organizationSlug,
+        isActive: true,
+        deletedAt: null,
+        vertical: "HOTEL",
+        capabilities: {
+          some: { key: "HOTEL_WEBSITE", status: "ACTIVE", enabledAt: { not: null }, disabledAt: null },
+        },
+      },
+      select: { id: true },
+    });
+    return organization ? { organizationId: organization.id } : null;
+  }
   const domain = await db.organizationDomain.findUnique({
     where: { normalizedDomain },
     select: {
@@ -156,19 +176,19 @@ function eligibleMedia(publication: NonNullable<Awaited<ReturnType<typeof findCu
   );
 }
 
-function serializeGallery(items: ReturnType<typeof eligibleMedia>, scope: "PROPERTY" | "ROOM_CATEGORY", locale: HotelPublicLocale) {
+function serializeGallery(items: ReturnType<typeof eligibleMedia>, scope: "PROPERTY" | "ROOM_CATEGORY", locale: HotelPublicLocale, organizationSlug?: string | null) {
   return items.filter((item) => item.scope === scope).map((item) => ({
-    src: `/api/hotel/v1/website/media/${encodeURIComponent(item.id)}`,
+    src: `/api/hotel/v1/website/media/${encodeURIComponent(item.id)}${organizationSlug ? `?organizationSlug=${encodeURIComponent(organizationSlug)}` : ""}`,
     altText: localizedScalar(item.altText, locale),
     sortOrder: item.sortOrder,
     slot: item.slot,
   }));
 }
 
-export async function getPublishedHotelWebsite(input: { host: string | null; propertySlug: string; locale: HotelPublicLocale; db?: Db }, dependencies: HotelWebsitePublicDependencies = defaultDependencies) {
+export async function getPublishedHotelWebsite(input: { host: string | null; propertySlug: string; locale: HotelPublicLocale; organizationSlug?: string | null; db?: Db }, dependencies: HotelWebsitePublicDependencies = defaultDependencies) {
   const db = input.db ?? defaultPrisma;
   return db.$transaction(async (tx) => {
-    const tenant = await dependencies.resolveTenant(input.host, tx);
+    const tenant = await dependencies.resolveTenant(input.host, tx, input.organizationSlug);
     if (!tenant) return null;
     const property = await activeProperty(tx, tenant.organizationId, input.propertySlug);
     if (!property) return null;
@@ -181,19 +201,19 @@ export async function getPublishedHotelWebsite(input: { host: string | null; pro
     for (const room of roomTypes) {
       if (await dependencies.isRoomApproved({ organizationId: tenant.organizationId, propertyId: property.id, resourceType: "ROOM_TYPE", resourceId: room.id, scope: "availability" }, tx)) approvedRoomIds.add(room.id);
     }
-    const propertyGallery = serializeGallery(media, "PROPERTY", input.locale);
+    const propertyGallery = serializeGallery(media, "PROPERTY", input.locale, input.organizationSlug);
     const roomGalleries = [...new Set(media.flatMap((item) => item.roomTypeId && approvedRoomIds.has(item.roomTypeId) && item.roomType?.slug ? [item.roomType.slug] : []))]
-      .map((roomTypeSlug) => ({ roomTypeSlug, items: serializeGallery(media.filter((item) => item.roomType?.slug === roomTypeSlug), "ROOM_CATEGORY", input.locale) }));
+      .map((roomTypeSlug) => ({ roomTypeSlug, items: serializeGallery(media.filter((item) => item.roomType?.slug === roomTypeSlug), "ROOM_CATEGORY", input.locale, input.organizationSlug) }));
     const content = safeContent(publication.revision.content, input.locale);
     if (!content) return null;
     return { mode: "PUBLISHED" as const, locale: input.locale, propertySlug: property.slug, revisionNumber: publication.revision.revisionNumber, content, propertyGallery, roomGalleries };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
 }
 
-export async function listPublishedHotelWebsiteRoomCategories(input: { host: string | null; propertySlug: string; locale: HotelPublicLocale; db?: Db }, dependencies: HotelWebsitePublicDependencies = defaultDependencies) {
+export async function listPublishedHotelWebsiteRoomCategories(input: { host: string | null; propertySlug: string; locale: HotelPublicLocale; organizationSlug?: string | null; db?: Db }, dependencies: HotelWebsitePublicDependencies = defaultDependencies) {
   const db = input.db ?? defaultPrisma;
   return db.$transaction(async (tx) => {
-    const tenant = await dependencies.resolveTenant(input.host, tx);
+    const tenant = await dependencies.resolveTenant(input.host, tx, input.organizationSlug);
     if (!tenant) return null;
     const property = await activeProperty(tx, tenant.organizationId, input.propertySlug);
     if (!property) return null;
@@ -206,7 +226,7 @@ export async function listPublishedHotelWebsiteRoomCategories(input: { host: str
       if (!(await dependencies.isRoomApproved({ organizationId: tenant.organizationId, propertyId: property.id, resourceType: "ROOM_TYPE", resourceId: room.id, scope: "availability" }, tx))) continue;
       const name = safePlainText(room.name);
       if (!name) continue;
-      const roomMedia = serializeGallery(media.filter((item) => item.roomTypeId === room.id), "ROOM_CATEGORY", input.locale);
+      const roomMedia = serializeGallery(media.filter((item) => item.roomTypeId === room.id), "ROOM_CATEGORY", input.locale, input.organizationSlug);
       const beds = safeBeds(room.beds);
       roomCategories.push({ slug: room.slug, name, description: room.description ? safePlainText(room.description) : null, localizedText: localizedScalar(room.localizedContent, input.locale), maxAdults: room.maxAdults, maxChildren: room.maxChildren, maxOccupancy: room.maxOccupancy, ...(beds ? { beds } : {}), sizeSqm: room.sizeSqm, gallery: roomMedia });
     }
@@ -214,10 +234,10 @@ export async function listPublishedHotelWebsiteRoomCategories(input: { host: str
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
 }
 
-export async function getPublishedHotelWebsiteMedia(input: { host: string | null; associationId: string; db?: Db }) {
+export async function getPublishedHotelWebsiteMedia(input: { host: string | null; associationId: string; organizationSlug?: string | null; db?: Db }) {
   const db = input.db ?? defaultPrisma;
   return db.$transaction(async (tx) => {
-    const tenant = await resolveHotelWebsiteTenantForHost(input.host, tx);
+    const tenant = await resolveHotelWebsiteTenantForHost(input.host, tx, input.organizationSlug);
     if (!tenant) return null;
     const association = await tx.hotelWebsiteMediaAssociation.findFirst({
       where: {

@@ -64,10 +64,12 @@ function normalizeLocale(locale: string | undefined): SupportedLocale {
 
 export default async function LocaleLayout({
   children,
+  params,
 }: {
   children: React.ReactNode;
+  params: Promise<{ locale: string }>;
 }) {
-  const headersList = await headers();
+  const [headersList, { locale: routeLocale }] = await Promise.all([headers(), params]);
   const pwaContext = await resolveTenantPwaRequestContext(headersList).catch(() => ({ kind: "unknown" as const }));
   const appBasePath = resolveAppBasePath();
   const pwaAppName = pwaContext.kind === "tenant"
@@ -96,9 +98,7 @@ export default async function LocaleLayout({
     baseUrl = getPublicBaseUrl();
   }
   const pathname = headersList.get("x-url-pathname") || "/";
-  const pathParts = pathname.split("/").filter(Boolean);
-  const localeFromPath = pathParts[0];
-  const locale = normalizeLocale(localeFromPath);
+  const locale = normalizeLocale(routeLocale);
   const dict = getDictionary(locale)
   const footerContext = headersList.get("x-bazar-public-footer-context") || "platform";
   const showPlatformFooter = footerContext === "platform";

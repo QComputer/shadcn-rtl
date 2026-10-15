@@ -23,23 +23,11 @@ export function LocaleProvider({
   children,
   defaultLocale = "fa"
 }: LocaleProviderProps) {
-  const [locale, setLocaleState] = React.useState<SupportedLocale>(defaultLocale)
+  // The localized route is authoritative. Cookies choose a locale only before
+  // the server redirects to that route; they must not override /en with /fa.
+  const locale = defaultLocale
   const router = useRouter()
   const pathname = usePathname()
-
-  React.useEffect(() => {
-    // Get locale from cookie on mount
-    if (typeof window !== "undefined") {
-      const cookieLocale = document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("locale="))
-        ?.split("=")[1] as SupportedLocale | undefined
-
-      if (cookieLocale && supportedLocales.includes(cookieLocale)) {
-        setLocaleState(cookieLocale)
-      }
-    }
-  }, [])
 
   React.useEffect(() => {
     // Update document direction when locale changes
@@ -49,8 +37,6 @@ export function LocaleProvider({
   }, [locale])
 
   const setLocale = React.useCallback((newLocale: SupportedLocale) => {
-    setLocaleState(newLocale)
-    
     // Set cookie
     document.cookie = `locale=${newLocale};path=${appCookiePath()};max-age=31536000`
     

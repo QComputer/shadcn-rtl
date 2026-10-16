@@ -4,6 +4,7 @@ import {
   countVisibleProductsByCategory,
   getShopMenuProductAvailability,
   getVisibleShopMenuProducts,
+  sortShopMenuCategories,
   type ShopMenuCategory,
   type ShopMenuProduct,
 } from "../../lib/shop-menu-filter";
@@ -80,6 +81,23 @@ const categories = [
 ];
 
 describe("shop menu in-page category filtering", () => {
+  it("sorts public category responses by category and product order with stable tie-breakers", () => {
+    const unordered = [
+      { id: "cat-z", name: "Beta", sortOrder: 1, products: [
+        product({ id: "p-z", name: "Alpha", sortOrder: 4, organizationSlug: "shop" }),
+        product({ id: "p-c", name: "Alpha", sortOrder: 2, organizationSlug: "shop" }),
+      ] },
+      { id: "cat-a", name: "Alpha", sortOrder: 1, products: [
+        product({ id: "p-b", name: "Beta", sortOrder: 1, organizationSlug: "shop" }),
+        product({ id: "p-a", name: "Alpha", sortOrder: 1, organizationSlug: "shop" }),
+      ] },
+    ];
+    const sorted = sortShopMenuCategories(unordered);
+    assert.deepEqual(sorted.map((item) => item.id), ["cat-a", "cat-z"]);
+    assert.deepEqual(sorted[0].products.map((item) => item.id), ["p-a", "p-b"]);
+    assert.deepEqual(sorted[1].products.map((item) => item.id), ["p-c", "p-z"]);
+  });
+
   it("initial state displays all visible products in stable sort order", () => {
     assert.deepEqual(
       getVisibleShopMenuProducts(categories, { selectedCategoryId: null }).map((item) => item.id),

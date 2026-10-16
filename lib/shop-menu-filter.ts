@@ -19,6 +19,7 @@ export type ShopMenuProduct = {
 export type ShopMenuCategory<TProduct extends ShopMenuProduct = ShopMenuProduct> = {
   id: string;
   name: string;
+  sortOrder?: number;
   products: TProduct[];
   isActive: boolean;
   deletedAt: boolean | null;
@@ -28,6 +29,26 @@ export type VisibleShopProduct<TProduct extends ShopMenuProduct = ShopMenuProduc
   categoryId: string;
   categoryName: string;
 };
+
+export function sortShopMenuCategories<
+  TProduct extends Pick<ShopMenuProduct, "id" | "name" | "sortOrder">,
+  TCategory extends { id: string; name: string; sortOrder?: number; products: TProduct[] },
+>(categories: readonly TCategory[]): Array<TCategory & { products: TProduct[] }> {
+  return categories
+    .map((category) => ({
+      ...category,
+      products: [...category.products].sort((a, b) =>
+        a.sortOrder - b.sortOrder ||
+        a.name.localeCompare(b.name) ||
+        a.id.localeCompare(b.id)
+      ),
+    }))
+    .sort((a, b) =>
+      (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+      a.name.localeCompare(b.name) ||
+      a.id.localeCompare(b.id)
+    );
+}
 
 export function getShopMenuProductInventory(product: ShopMenuProduct): number {
   if (!product.trackInventory) return Infinity;

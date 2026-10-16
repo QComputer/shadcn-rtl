@@ -64,6 +64,20 @@ export async function verifyNativeInstall({ browser, origin, manifest, startPath
     installPage.on("pageerror", error => pageErrors.push(String(error.message).slice(0,300)));
     try {
       await installPage.goto(startUrl, { waitUntil: "domcontentloaded" });
+      const pageManifest = await installPage.evaluate(async () => {
+        const link = document.querySelector('link[rel="manifest"]');
+        if (!link) return null;
+        const response = await fetch(link.href, { cache: "no-store", credentials: "same-origin" });
+        return { href: link.href, status: response.status, manifest: await response.json().catch(() => null) };
+      });
+      assert.equal(pageManifest?.status, 200, "the installed storefront must advertise a working manifest");
+      assert.equal(pageManifest.manifest?.name, manifest.name, "the actual page manifest must match the tenant identity");
+      assert.equal(pageManifest.manifest?.short_name, manifest.short_name);
+      assert.equal(new URL(pageManifest.manifest?.id, origin).href, manifestId);
+      assert.equal(pageManifest.manifest?.start_url, manifest.start_url);
+      assert.equal(pageManifest.manifest?.scope, manifest.scope);
+      assert.deepEqual(pageManifest.manifest?.icons?.map(({ src, sizes, purpose }) => ({ src, sizes, purpose })), manifest.icons.map(({ src, sizes, purpose }) => ({ src, sizes, purpose })));
+      evidence.pageManifest = { href: pageManifest.href, status: pageManifest.status, name: pageManifest.manifest.name, short_name: pageManifest.manifest.short_name, id: pageManifest.manifest.id, start_url: pageManifest.manifest.start_url, scope: pageManifest.manifest.scope, icons: pageManifest.manifest.icons };
       await installPage.waitForFunction(async () => Boolean((await navigator.serviceWorker.ready).active), undefined, { polling: 250 });
       await installPage.goto(startUrl, { waitUntil: "domcontentloaded" });
       await installPage.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
@@ -92,11 +106,12 @@ export async function verifyNativeInstall({ browser, origin, manifest, startPath
     // A launch may return a tab target ID while Playwright exposes its child
     // page target. Match an actual standalone window, never an ordinary tab.
     let appPage;
+    const expectedLaunchPath = new URL(startUrl).pathname;
     for (let i = 0; i < 40 && !appPage; i++) {
       for (const context of browser.contexts()) for (const page of context.pages()) {
         try {
-          const actual = await page.evaluate(() => ({ origin: location.origin, standalone: matchMedia("(display-mode: standalone)").matches }));
-          if (actual.origin === origin && actual.standalone) appPage = page;
+          const actual = await page.evaluate(() => ({ origin: location.origin, pathname: location.pathname, standalone: matchMedia("(display-mode: standalone)").matches }));
+          if (actual.origin === origin && actual.pathname === expectedLaunchPath && actual.standalone) appPage = page;
         } catch { /* A closing or not-yet-loaded target is not evidence. */ }
       }
       if (!appPage) await delay(250);
@@ -135,7 +150,7 @@ export async function verifyNativeInstall({ browser, origin, manifest, startPath
     const processed = await target.send("Page.getAppManifest", { manifestId });
     const identity = processed.data ? JSON.parse(processed.data) : processed.manifest;
     assert.equal(identity.name, manifest.name);
-    evidence.processedManifest = { url: processed.url, name: identity.name, id: identity.id, icons: identity.icons };
+    evidence.processedManifest = { url: processed.url, name: identity.name, id: identity.id, scope: identity.scope, start_url: identity.start_url, short_name: identity.short_name, icons: identity.icons };
     const screenshot = await target.send("Page.captureScreenshot", { format: "png" });
     writeFileSync(`${artifactDir}/native-${label}.png`, Buffer.from(screenshot.data, "base64"));
     const deepLink = new URL(`${new URL(startUrl).pathname}/profile`, origin).href;

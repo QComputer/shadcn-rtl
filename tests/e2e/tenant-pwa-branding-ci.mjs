@@ -8,6 +8,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import os from "node:os";
 import { setTimeout as delay } from "node:timers/promises";
+import bcrypt from "bcryptjs";
 import { chromium } from "playwright";
 import { PrismaClient } from "@prisma/client";
 import { genericAssetDirectory, genericAssetRoot } from "../../scripts/e2e/prepare-tenant-pwa-fixtures.mjs";
@@ -109,20 +110,22 @@ async function createTenant({ suffix, host, active = true, verified = true, labe
   if (retailTheme) {
     await prisma.organizationCapability.create({ data: { organizationId: organization.id, key: "SHOP", status: "ACTIVE", enabledAt: new Date() } });
   }
-  await prisma.organizationDomain.create({
-    data: {
-      organizationId: organization.id,
-      domain: host,
-      normalizedDomain: host,
-      status: active ? (verified ? "ACTIVE" : "VERIFYING") : "DISABLED",
-      type: "CUSTOM",
-      providerVerified: active && verified,
-      dnsConfigured: active && verified,
-      sslReady: active && verified,
-      activatedAt: active && verified ? new Date() : null,
-      isPrimary: true,
-    },
-  });
+  if (host) {
+    await prisma.organizationDomain.create({
+      data: {
+        organizationId: organization.id,
+        domain: host,
+        normalizedDomain: host,
+        status: active ? (verified ? "ACTIVE" : "VERIFYING") : "DISABLED",
+        type: "CUSTOM",
+        providerVerified: active && verified,
+        dnsConfigured: active && verified,
+        sslReady: active && verified,
+        activatedAt: active && verified ? new Date() : null,
+        isPrimary: true,
+      },
+    });
+  }
   if (active && withBranding) {
     await prisma.organizationBranding.create({
       data: {
@@ -250,6 +253,66 @@ async function installInvitationFor({ host, locale = "fa", path = null, nextPath
   }
 }
 
+async function verifySameOriginPathCustomerAccess({ browser, first, second, origin, runId }) {
+  const suffix = randomBytes(6).toString("hex");
+  const username = `pwa-path-customer-${runId}-${suffix}`.toLowerCase();
+  const email = `${username}@example.invalid`;
+  const password = randomBytes(24).toString("base64url");
+  const user = await prisma.user.create({
+    data: { name: username, email, password: await bcrypt.hash(password, 12), role: "CUSTOMER", emailVerified: new Date(), firstName: "Synthetic", lastName: suffix, isActive: true },
+  });
+  const context = await browser.newContext();
+  try {
+    await prisma.emailVerification.create({ data: {
+      userId: user.id,
+      email,
+      token: randomBytes(32).toString("hex"),
+      verifiedAt: new Date(),
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    } });
+    const page = await context.newPage();
+    const checks = [];
+    for (const tenant of [first, second]) {
+      const profilePath = `/fa/${tenant.slug}/shop/profile`;
+      const login = new URL("/fa/login", origin);
+      login.searchParams.set("callbackUrl", profilePath);
+      if (tenant === first) {
+        await page.goto(login.toString(), { waitUntil: "domcontentloaded" });
+        await page.locator("#username").fill(username);
+        await page.locator("#password").fill(password);
+        await page.locator('button[type="submit"]').click();
+      } else {
+        await page.goto(new URL(profilePath, origin).toString(), { waitUntil: "domcontentloaded" });
+      }
+      await page.waitForURL((url) => url.origin === origin && url.pathname === profilePath, { waitUntil: "domcontentloaded" });
+      await page.getByRole("heading", { name: tenant.name, exact: true }).waitFor();
+      const ownProfile = await page.evaluate(async () => {
+        const response = await fetch("/api/users/me", { credentials: "same-origin", cache: "no-store" });
+        return { status: response.status, body: await response.json().catch(() => ({})) };
+      });
+      assert.equal(ownProfile.status, 200, "the same-origin customer session remains authenticated");
+      assert.equal(ownProfile.body.id, user.id);
+      assert.equal(ownProfile.body.name, username);
+      assert.equal(ownProfile.body.email, email);
+      const publicOrganization = await page.evaluate(async (slug) => {
+        const response = await fetch(`/api/public/organizations/${encodeURIComponent(slug)}`, { cache: "no-store" });
+        return { status: response.status, body: await response.json().catch(() => ({})) };
+      }, tenant.slug);
+      assert.equal(publicOrganization.status, 200);
+      const organization = publicOrganization.body.organization || publicOrganization.body;
+      assert.equal(organization.slug, tenant.slug);
+      assert.equal(organization.name, tenant.name);
+      checks.push({ slug: tenant.slug, profilePath, renderedOrganization: tenant.name, authenticatedUserId: ownProfile.body.id, customerDtoSafe: !Object.hasOwn(ownProfile.body, "password") });
+    }
+    const cookieMetadata = (await context.cookies(origin)).map(({ name, domain, path, httpOnly, secure, sameSite }) => ({ name, domain, path, httpOnly, secure, sameSite }));
+    assert.ok(cookieMetadata.some(({ name }) => /(?:auth|session)/i.test(name)), "the same-origin profile carries an authentication cookie");
+    return { status: "PASSED", origin, sharedOriginCookieStorage: true, cookieMetadata, checks, note: "Same-origin tenants share browser cookies by design; tenant data resolution was verified against each persisted path organization." };
+  } finally {
+    await context.close();
+    await prisma.user.deleteMany({ where: { id: user.id, name: username, email } });
+  }
+}
+
 async function retailStorefrontEvidence({ host, path, name, logoPath, screenshot, viewport }) {
   const page = await browser.newPage({ viewport });
   try {
@@ -365,6 +428,36 @@ try {
       maskable512: `${gammaAssetRoot}/maskable-512.png`,
     },
   });
+  const delta = await createTenant({
+    suffix: "delta",
+    label: "آکا شوز مسیر",
+    shortName: "آکا مسیر",
+    retailTheme: "FASHION",
+    logoUrl: "/brand/tenants/aka-shoes/brand/aka-shoes-logo-square-brand-1024.png",
+    assets: {
+      favicon: "/brand/tenants/aka-shoes/browser/favicon.ico",
+      apple: "/brand/tenants/aka-shoes/pwa/apple-touch-icon-180.png",
+      icon192: "/brand/tenants/aka-shoes/pwa/icon-192x192.png",
+      icon512: "/brand/tenants/aka-shoes/pwa/icon-512x512.png",
+      maskable192: "/brand/tenants/aka-shoes/pwa/maskable-192x192.png",
+      maskable512: "/brand/tenants/aka-shoes/pwa/maskable-512x512.png",
+    },
+  });
+  const epsilon = await createTenant({
+    suffix: "epsilon",
+    label: "برند آزمایشی مسیر",
+    shortName: "آزمایشی",
+    retailTheme: "ELECTRONICS",
+    logoUrl: `${gammaAssetRoot}/icon-192.png`,
+    assets: {
+      favicon: `${gammaAssetRoot}/icon-192.png`,
+      apple: `${gammaAssetRoot}/apple-180.png`,
+      icon192: `${gammaAssetRoot}/icon-192.png`,
+      icon512: `${gammaAssetRoot}/icon-512.png`,
+      maskable192: `${gammaAssetRoot}/maskable-192.png`,
+      maskable512: `${gammaAssetRoot}/maskable-512.png`,
+    },
+  });
   await createTenant({ suffix: "broken", host: hosts.broken, label: "Unavailable assets", assets: {
     favicon: `${gammaAssetRoot}/icon-192.png`, apple: `${gammaAssetRoot}/apple-180.png`, icon192: `${gammaAssetRoot}/icon-192.png`, icon512: `${gammaAssetRoot}/missing-512.png`, maskable192: `${gammaAssetRoot}/maskable-192.png`, maskable512: `${gammaAssetRoot}/maskable-512.png`,
   } });
@@ -392,7 +485,7 @@ try {
   await waitForServer();
 
   const chromeExecutable = process.env.CHROME_EXECUTABLE_PATH || process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || process.env.CHROME_EXECUTABLE || process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe";
-  const insecureFixtureOrigins = Object.values(hosts).map((host) => `http://${host}:${port}`).join(",");
+  const insecureFixtureOrigins = [...Object.values(hosts).map((host) => `http://${host}:${port}`), `http://localhost:${port}`].join(",");
   const launchOptions = {
     headless: process.env.PWA_HEADED !== "1",
     ...(existsSync(chromeExecutable) ? { executablePath: chromeExecutable } : {}),
@@ -443,8 +536,8 @@ try {
   assert.equal((await manifestFor(hosts.alpha)).manifest.name, "آکا شوز", "restored synthetic branding is immediately served");
   const pathManifests = [];
   for (const tenant of [
-    { org: alpha, logoPath: "aka-shoes/brand/aka-shoes-logo-square-brand-1024.png", expectedName: "آکا شوز" },
-    { org: gamma, logoPath: "__pwa-ci-generic/icon-192.png", expectedName: "برند آزمایشی سوم" },
+    { org: delta, logoPath: "aka-shoes/brand/aka-shoes-logo-square-brand-1024.png", expectedName: "آکا شوز مسیر" },
+    { org: epsilon, logoPath: "__pwa-ci-generic/icon-192.png", expectedName: "برند آزمایشی مسیر" },
   ]) {
     const response = await responseFor("localhost", `/api/public/v1/organizations/${encodeURIComponent(tenant.org.slug)}/pwa-manifest?locale=fa&entry=retail`);
     assert.equal(response?.status, 200, `tenant path manifest resolves for ${tenant.expectedName}`);
@@ -592,9 +685,33 @@ try {
   writeFileSync(`${artifactDir}/service-worker.json`, JSON.stringify(workerEvidence, null, 2));
   const accountEvidence = await verifyRetailAccount({ browser, prisma, origin: `http://localhost:${port}`, slug: alpha.slug, artifactDir, runId });
   writeFileSync(`${artifactDir}/retail-account.json`, JSON.stringify(accountEvidence, null, 2));
+  const sameOriginCustomerEvidence = await verifySameOriginPathCustomerAccess({
+    browser,
+    first: await prisma.organization.findUniqueOrThrow({ where: { id: delta.id }, select: { slug: true, name: true } }),
+    second: await prisma.organization.findUniqueOrThrow({ where: { id: epsilon.id }, select: { slug: true, name: true } }),
+    origin: `http://localhost:${port}`,
+    runId,
+  });
+  writeFileSync(`${artifactDir}/same-origin-customer-session.json`, JSON.stringify(sameOriginCustomerEvidence, null, 2));
   nativeInstallEvidence.push(await verifyNativeInstall({ browser, origin: `http://${hosts.alpha}:${port}`, manifest: alphaManifest, startPath: alphaManifest.start_url, artifactDir, label: "alpha-custom-host" }));
   nativeInstallEvidence.push(await verifyNativeInstall({ browser, origin: `http://${hosts.gamma}:${port}`, manifest: gammaResult.manifest, startPath: gammaResult.manifest.start_url, artifactDir, label: "gamma-custom-host" }));
+  const platformPathOrigin = `http://localhost:${port}`;
+  const alphaPathManifest = pathManifests.find(({ slug }) => slug === delta.slug)?.manifest;
+  const gammaPathManifest = pathManifests.find(({ slug }) => slug === epsilon.slug)?.manifest;
+  assert.ok(alphaPathManifest && gammaPathManifest, "two persisted tenant path manifests are required for same-origin installation");
+  assert.notEqual(alphaPathManifest.id, gammaPathManifest.id, "path tenants must have distinct install identities");
+  assert.notEqual(alphaPathManifest.scope, gammaPathManifest.scope, "path tenants must have distinct app scopes");
+  nativeInstallEvidence.push(await verifyNativeInstall({ browser, origin: platformPathOrigin, manifest: alphaPathManifest, startPath: alphaPathManifest.start_url, artifactDir, label: "alpha-platform-path" }));
+  nativeInstallEvidence.push(await verifyNativeInstall({ browser, origin: platformPathOrigin, manifest: gammaPathManifest, startPath: gammaPathManifest.start_url, artifactDir, label: "gamma-platform-path" }));
   writeFileSync(`${artifactDir}/native-installation.json`, JSON.stringify(nativeInstallEvidence, null, 2));
+  const pathApps = nativeInstallEvidence.filter(({ label }) => label.endsWith("-platform-path"));
+  if (pathApps.every(({ status }) => status === "INSTALLED_AND_LAUNCHED_STANDALONE")) {
+    assert.equal(new URL(pathApps[0].launch.url).origin, new URL(pathApps[1].launch.url).origin, "both path apps must share one origin");
+    assert.notEqual(pathApps[0].manifestId, pathApps[1].manifestId, "same-origin installed apps must retain separate manifest IDs");
+    assert.notEqual(pathApps[0].processedManifest.scope, pathApps[1].processedManifest.scope, "same-origin installed apps must retain separate manifest scopes");
+    assert.deepEqual(pathApps[0].coexistingManifestIds.filter((id) => id.startsWith(platformPathOrigin)), [pathApps[0].manifestId], "the first same-origin install is registered under its own identity");
+    assert.deepEqual(pathApps[1].coexistingManifestIds.filter((id) => id.startsWith(platformPathOrigin)).sort(), pathApps.map(({ manifestId }) => manifestId).sort(), "the second same-origin install coexists with the first under a distinct identity");
+  }
   assert.ok(nativeInstallEvidence.every(({ status }) => status !== "APPLICATION_ASSERTION_FAILED" && status !== "INSTALL_FAILED"), "supported native installations must pass application assertions");
 
   const faviconEvidence = [];
@@ -649,6 +766,7 @@ try {
     assetHttpMimeAndDimensions: "PASS",
     assetHttpBytesMatchApprovedFiles: "PASS",
     retailAccount: accountEvidence.status || "RECORDED",
+    sameOriginCustomerAccess: sameOriginCustomerEvidence.status,
     nativeInstallAttempts: nativeInstallEvidence.map(({ label, status, android }) => ({ label, status, android })),
     metadataAndScreenshots: "PASS",
     visibleInstallInvitations: "PASS",

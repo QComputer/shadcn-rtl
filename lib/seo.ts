@@ -32,6 +32,8 @@ export type PublicSeoInput = {
   type?: "website" | "article";
   alternatePath?: (locale: SupportedLocale) => string;
   icons?: Metadata["icons"];
+  applicationName?: string | null;
+  siteName?: string | null;
 };
 
 export type SeoOrganization = {
@@ -185,6 +187,7 @@ export function buildPublicMetadata(input: PublicSeoInput): Metadata {
     keywords: input.keywords,
     alternates,
     icons: input.icons,
+    applicationName: input.applicationName || undefined,
     robots: {
       index: true,
       follow: true,
@@ -200,7 +203,7 @@ export function buildPublicMetadata(input: PublicSeoInput): Metadata {
       title: input.title || DEFAULT_TITLE,
       description,
       url: alternates.canonical,
-      siteName: DEFAULT_TITLE,
+      siteName: input.siteName || DEFAULT_TITLE,
       images: [{ url: image, width: 1200, height: 630, alt: input.title || DEFAULT_TITLE }],
       locale: localeConfig[locale].languageCode.replace("-", "_"),
       alternateLocale: supportedLocales

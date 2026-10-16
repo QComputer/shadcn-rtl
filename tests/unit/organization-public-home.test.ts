@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   activePublicBusinessCapabilities,
   assertDefaultPublicCapabilityAllowed,
+  assertPublicHomeModeAllowed,
   getConfiguredDefaultPublicCapability,
   getPublicExperienceOwnership,
   resolveOrganizationPublicHome,
@@ -11,6 +12,20 @@ import {
 
 const active = (key: string) => ({ key: key as any, status: "ACTIVE" });
 const inactive = (key: string) => ({ key: key as any, status: "INACTIVE" });
+
+describe("organization homepage selection", () => {
+  it("allows only active capabilities and an existing brand provider", () => {
+    const input = { activePublicCapabilities: ["SHOP"] as const, brandLandingProvider: null };
+    assert.doesNotThrow(() => assertPublicHomeModeAllowed({ ...input, mode: "AUTO" }));
+    assert.doesNotThrow(() => assertPublicHomeModeAllowed({ ...input, mode: "SHOP" }));
+    assert.throws(() => assertPublicHomeModeAllowed({ ...input, mode: "APPOINTMENT" }));
+    assert.throws(() => assertPublicHomeModeAllowed({ ...input, mode: "BRAND" }));
+    assert.doesNotThrow(() => assertPublicHomeModeAllowed({ ...input, mode: "VISITOR_CHOICE" }));
+    assert.doesNotThrow(() => assertPublicHomeModeAllowed({
+      ...input, mode: "BRAND", brandLandingProvider: "CUSTOM_INTERNAL",
+    }));
+  });
+});
 
 describe("organization public home resolution", () => {
   it("formalizes public-experience ownership independently from capabilities", () => {

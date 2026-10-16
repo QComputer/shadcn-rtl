@@ -109,6 +109,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       icon: tenantIcons.icon.map(({ url }) => ({ url: appResourceUrl(url) })),
       apple: tenantIcons.apple.map(({ url }) => ({ url: appResourceUrl(url) })),
     },
+    applicationName: branding.displayName,
+    siteName: branding.displayName,
   });
 }
 

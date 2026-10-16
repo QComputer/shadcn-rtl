@@ -68,6 +68,8 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   const [savingCapabilities, setSavingCapabilities] = useState(false)
   const [defaultPublicCapability, setDefaultPublicCapability] = useState<BusinessCapability | "AUTO">("AUTO")
   const [savingDefaultPublicCapability, setSavingDefaultPublicCapability] = useState(false)
+  const [publicHomeMode, setPublicHomeMode] = useState<"AUTO" | "SHOP" | "APPOINTMENT" | "BRAND" | "VISITOR_CHOICE">("AUTO")
+  const [savingPublicHomeMode, setSavingPublicHomeMode] = useState(false)
   //const [paymentSettings, setPaymentSettings ] = useState<PaymentSettings|null>(null)
 
   // Form state
@@ -114,6 +116,8 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
       })
 .then(settings => {
        setSettings(settings)
+       setPublicHomeMode(["SHOP", "APPOINTMENT", "BRAND", "VISITOR_CHOICE"].includes(settings.publicHomeMode)
+         ? settings.publicHomeMode as typeof publicHomeMode : "AUTO")
        setDefaultPreparationMinutes(settings.defaultPreparationMinutes || 30)
        const configuredDefaultPublicCapability = readDefaultPublicCapability(settings)
        setDefaultPublicCapability(configuredDefaultPublicCapability ?? "AUTO")
@@ -527,6 +531,31 @@ const handleOpen = async (e: React.FormEvent) => {
     }
   }
 
+  const handleSavePublicHomeMode = async () => {
+    if (!organization?.id) return
+    setSavingPublicHomeMode(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const response = await appFetch(`/api/organizations/${organization.id}/settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ publicHomeMode }),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        throw new Error(data?.error || "ذخیره صفحه اصلی ناموفق بود")
+      }
+      setSettings(await response.json())
+      setSuccess("صفحه اصلی کسب‌وکار ذخیره شد")
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "ذخیره صفحه اصلی ناموفق بود")
+    } finally {
+      setSavingPublicHomeMode(false)
+    }
+  }
+
   if (!mounted || loading) {
     return (
       <div className="p-6 space-y-4">
@@ -624,6 +653,32 @@ const handleOpen = async (e: React.FormEvent) => {
             ذخیره قابلیت‌ها
           </Button>
         </CardFooter>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>صفحه اصلی کسب‌وکار</CardTitle>
+          <CardDescription>تجربه‌ای را که در ریشه دامنه یا صفحه سازمان نمایش داده می‌شود انتخاب کنید.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+          <div className="space-y-2">
+            <Label htmlFor="public-home-mode">تجربه اصلی</Label>
+            <Select value={publicHomeMode} onValueChange={(value) => setPublicHomeMode(value as typeof publicHomeMode)}>
+              <SelectTrigger id="public-home-mode"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="AUTO">خودکار بر اساس قابلیت‌های فعال</SelectItem>
+                {capabilities.includes("SHOP") ? <SelectItem value="SHOP">فروشگاه</SelectItem> : null}
+                {capabilities.includes("APPOINTMENT") ? <SelectItem value="APPOINTMENT">نوبت‌دهی</SelectItem> : null}
+                {capabilities.length > 0 ? <SelectItem value="VISITOR_CHOICE">انتخاب بازدیدکننده</SelectItem> : null}
+                {settings?.brandLandingProvider ? <SelectItem value="BRAND">صفحه معرفی برند</SelectItem> : null}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button type="button" onClick={handleSavePublicHomeMode} disabled={savingPublicHomeMode}>
+            {savingPublicHomeMode ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Save className="me-2 h-4 w-4" />}
+            ذخیره
+          </Button>
+        </CardContent>
       </Card>
 
       <Card>

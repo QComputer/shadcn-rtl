@@ -114,6 +114,21 @@ export function assertDefaultPublicCapabilityAllowed(input: {
   }
 }
 
+export function assertPublicHomeModeAllowed(input: {
+  mode: PublicHomeMode;
+  activePublicCapabilities: readonly BusinessCapability[];
+  brandLandingProvider: BrandLandingProvider;
+}) {
+  if (input.mode === "AUTO") return;
+  if (input.mode === "SHOP" || input.mode === "APPOINTMENT") {
+    if (input.activePublicCapabilities.includes(input.mode)) return;
+    throw new Error("Homepage mode requires an active public capability");
+  }
+  if (input.mode === "VISITOR_CHOICE" && input.activePublicCapabilities.length > 0) return;
+  if (input.mode === "BRAND" && input.brandLandingProvider) return;
+  throw new Error("Homepage mode is not available for this organization");
+}
+
 export function resolveOrganizationPublicHome(input: {
   capabilities: PublicBusinessCapabilityRecord[] | null | undefined;
   settings?: unknown;

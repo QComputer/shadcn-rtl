@@ -1,0 +1,11 @@
+{
+  "mode": "synthetic",
+  "projectId": "synthetic-local-only",
+  "branchId": "synthetic-local-only",
+  "endpointId": "synthetic-local-only",
+  "host": "127.0.0.1",
+  "port": 5432,
+  "database": "bb_reconciliation_synthetic_replace_with_run_id",
+  "expectedPostgresMajor": 17,
+  "readOnlyRole": "bb_reconciliation_ro"
+}

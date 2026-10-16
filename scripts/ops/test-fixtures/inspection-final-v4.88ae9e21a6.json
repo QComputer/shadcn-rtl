@@ -1,0 +1,182 @@
+{
+  "status": "READ_ONLY_INSPECTION_PASSED",
+  "generatedAt": "2026-10-16T08:22:22.149Z",
+  "target": {
+    "mode": "synthetic",
+    "projectId": "synthetic-local-only",
+    "branchId": "synthetic-local-only",
+    "endpointId": "synthetic-local-only",
+    "host": "127.0.0.1",
+    "database": "bb_reconciliation_synthetic_88ae9e21a6",
+    "role": "bb_reconciliation_ro",
+    "schema": "public",
+    "postgresMajor": 17
+  },
+  "transactionReadOnly": true,
+  "rolePrivileges": {
+    "superuser": false,
+    "createDatabase": false,
+    "createRole": false,
+    "replication": false,
+    "bypassRls": false,
+    "databaseCreate": false,
+    "schemaCreate": false,
+    "noRoleMemberships": true,
+    "noPublicTableWritePrivileges": true,
+    "noPublicSequencePrivileges": true,
+    "noPublicApplicationDataSelect": true
+  },
+  "migrations": [
+    {
+      "migrationName": "synthetic_fixture_migration",
+      "checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "startedat": "2026-10-16T08:10:47.275Z",
+      "finishedat": "2026-10-16T08:10:47.275Z",
+      "rolledbackat": null,
+      "state": "SUCCEEDED"
+    }
+  ],
+  "schema": {
+    "columns": [
+      {
+        "tableName": "_prisma_migrations",
+        "columnName": "migration_name",
+        "dataType": "text",
+        "udtName": "text",
+        "nullable": false
+      },
+      {
+        "tableName": "_prisma_migrations",
+        "columnName": "checksum",
+        "dataType": "text",
+        "udtName": "text",
+        "nullable": false
+      },
+      {
+        "tableName": "_prisma_migrations",
+        "columnName": "started_at",
+        "dataType": "timestamp with time zone",
+        "udtName": "timestamptz",
+        "nullable": false
+      },
+      {
+        "tableName": "_prisma_migrations",
+        "columnName": "finished_at",
+        "dataType": "timestamp with time zone",
+        "udtName": "timestamptz",
+        "nullable": true
+      },
+      {
+        "tableName": "_prisma_migrations",
+        "columnName": "rolled_back_at",
+        "dataType": "timestamp with time zone",
+        "udtName": "timestamptz",
+        "nullable": true
+      },
+      {
+        "tableName": "organizationbranding",
+        "columnName": "id",
+        "dataType": "text",
+        "udtName": "text",
+        "nullable": false
+      },
+      {
+        "tableName": "organizationbranding",
+        "columnName": "organizationid",
+        "dataType": "text",
+        "udtName": "text",
+        "nullable": false
+      },
+      {
+        "tableName": "organizationbranding",
+        "columnName": "displayname",
+        "dataType": "text",
+        "udtName": "text",
+        "nullable": true
+      },
+      {
+        "tableName": "organizationbranding",
+        "columnName": "applicationname",
+        "dataType": "text",
+        "udtName": "text",
+        "nullable": true
+      },
+      {
+        "tableName": "organizationbranding",
+        "columnName": "monochromeiconurl",
+        "dataType": "text",
+        "udtName": "text",
+        "nullable": true
+      },
+      {
+        "tableName": "organizationbranding",
+        "columnName": "markurl",
+        "dataType": "text",
+        "udtName": "text",
+        "nullable": true
+      },
+      {
+        "tableName": "organizationbranding",
+        "columnName": "logoinverseurl",
+        "dataType": "text",
+        "udtName": "text",
+        "nullable": true
+      },
+      {
+        "tableName": "organizationbranding",
+        "columnName": "deletedat",
+        "dataType": "timestamp(3) without time zone",
+        "udtName": "timestamp",
+        "nullable": true
+      }
+    ],
+    "constraints": [
+      {
+        "relation": "organizationbranding",
+        "name": "organizationbranding_organizationid_key",
+        "type": "u",
+        "definition": "UNIQUE (organizationid)"
+      },
+      {
+        "relation": "organizationbranding",
+        "name": "organizationbranding_pkey",
+        "type": "p",
+        "definition": "PRIMARY KEY (id)"
+      }
+    ],
+    "indexes": [
+      {
+        "schema": "public",
+        "table": "organizationbranding",
+        "name": "organizationbranding_displayname_idx",
+        "definition": "CREATE INDEX organizationbranding_displayname_idx ON public.organizationbranding USING btree (displayname)"
+      },
+      {
+        "schema": "public",
+        "table": "organizationbranding",
+        "name": "organizationbranding_organizationid_key",
+        "definition": "CREATE UNIQUE INDEX organizationbranding_organizationid_key ON public.organizationbranding USING btree (organizationid)"
+      },
+      {
+        "schema": "public",
+        "table": "organizationbranding",
+        "name": "organizationbranding_pkey",
+        "definition": "CREATE UNIQUE INDEX organizationbranding_pkey ON public.organizationbranding USING btree (id)"
+      }
+    ],
+    "enums": [
+      {
+        "schema": "public",
+        "name": "syntheticstatus",
+        "label": "READY",
+        "order": 1
+      },
+      {
+        "schema": "public",
+        "name": "syntheticstatus",
+        "label": "BLOCKED",
+        "order": 2
+      }
+    ]
+  }
+}

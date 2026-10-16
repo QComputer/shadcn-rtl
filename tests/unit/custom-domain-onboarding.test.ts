@@ -19,6 +19,7 @@ let getSld: any;
 let getTld: any;
 let normalizeDomainInput: any;
 let addProjectDomainToVercel: any;
+let inspectProjectDomainOnVercel: any;
 let verifyProjectDomainOnVercel: any;
 let removeProjectDomainFromVercel: any;
 let getVercelDomainAutomationState: any;
@@ -69,6 +70,7 @@ before(async () => {
   } = await import("@/lib/domains/domain-normalization.server"));
   ({
     addProjectDomainToVercel,
+    inspectProjectDomainOnVercel,
     verifyProjectDomainOnVercel,
     removeProjectDomainFromVercel,
     getVercelDomainAutomationState,
@@ -220,6 +222,39 @@ describe("provider disabled mode (vercel automation)", () => {
     );
   });
 
+  it("inspects an existing project domain with GET while provider mutations are disabled", async () => {
+    clearProviderEnv();
+    process.env.VERCEL_PROJECT_ID = "prj_test";
+    process.env.VERCEL_API_TOKEN = "secret_token";
+    let request: { url: string; init: RequestInit } | undefined;
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      request = { url, init };
+      return new Response(JSON.stringify({ name: "www.shop.example.ir", projectId: "prj_test", verified: true }),
+        { status: 200, headers: { "content-type": "application/json" } });
+    }) as typeof fetch;
+
+    const result = await inspectProjectDomainOnVercel("www.shop.example.ir");
+    assert.equal(result.ok, true);
+    assert.equal(result.verified, true);
+    assert.equal(result.status, "ACTIVE");
+    assert.equal(request?.init.method, "GET");
+    assert.match(request?.url ?? "", /\/domains\/www\.shop\.example\.ir/);
+  });
+
+  it("rejects an existing-domain response for a different Vercel project or hostname", async () => {
+    clearProviderEnv();
+    process.env.VERCEL_PROJECT_ID = "prj_test";
+    process.env.VERCEL_API_TOKEN = "secret_token";
+    globalThis.fetch = (async () => new Response(JSON.stringify({ name: "other.example.ir", projectId: "prj_other", verified: true }),
+      { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch;
+
+    const result = await inspectProjectDomainOnVercel("shop.example.ir");
+    assert.equal(result.ok, false);
+    assert.equal(result.verified, false);
+    assert.equal(result.status, "ERROR");
+    assert.equal(result.message, "Vercel returned a different project or hostname.");
+  });
+
   it("throws ApiError(403) when exact mutation acknowledgement is missing", async () => {
     clearProviderEnv();
     process.env.CUSTOM_DOMAIN_REAL_MUTATION_ENABLED = "true";
@@ -270,7 +305,8 @@ describe("provider disabled mode (vercel automation)", () => {
       calls.push({ url, init });
       return new Response(JSON.stringify({
         projectId: "prj_test",
-        verified: url.includes("/verify"),
+        name: "shop.example.ir",
+        verified: url.includes("/verify") || init.method === "GET",
         verification: [{ type: "TXT", domain: "_vercel.shop.example.ir", value: "verify-token" }],
       }), { status: 200, headers: { "content-type": "application/json" } });
     }) as typeof fetch;
@@ -291,6 +327,9 @@ describe("provider disabled mode (vercel automation)", () => {
     assert.equal("raw" in remove, false);
 
     assert.equal(calls.length, 3);
+    assert.equal(calls[0].init.method, "POST");
+    assert.equal(calls[1].init.method, "POST");
+    assert.equal(calls[2].init.method, "DELETE");
     assert.equal((calls[0].init.headers as Record<string, string>).Authorization, "Bearer secret_token");
   });
 

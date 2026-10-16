@@ -342,6 +342,39 @@ export async function verifyProjectDomainOnVercel(domainInput: string): Promise<
   return resultFromProjectDomainResponse({ action: "check", domain, body: body as VercelProjectDomainResponse });
 }
 
+/** Read the existing project-domain record without attempting Vercel's
+ * write-capable /verify operation. This is suitable for checking domains
+ * already attached to the project while provider mutations remain disabled. */
+export async function inspectProjectDomainOnVercel(domainInput: string): Promise<VercelDomainAutomationResult> {
+  const domain = normalizeDomainHost(domainInput);
+  if (!domain) throw new ApiError(400, "Domain is required");
+  if (isVercelDomainAutomationDryRun()) return dryRunResult("check", domain);
+
+  const rawHostname = domainInput.trim().toLowerCase().replace(/\.$/, "");
+  const requestedDomain = rawHostname.startsWith("www.") ? `www.${domain}` : domain;
+  const expectedProjectId = getRequiredEnv("VERCEL_PROJECT_ID");
+  const { response, body } = await vercelFetch(getDomainEndpoint(requestedDomain), { method: "GET" });
+  if (!response.ok) {
+    return {
+      ok: false, dryRun: false, action: "check", domain, verified: false, status: "ERROR",
+      message: errorMessageFromBody(body, `Vercel domain inspection failed with status ${response.status}.`),
+      verification: [], verificationToken: null, dnsRecords: getRecommendedVercelDnsRecords(domain),
+    };
+  }
+
+  const projectDomain = body as VercelProjectDomainResponse;
+  if (normalizeDomainHost(projectDomain.name) !== domain || projectDomain.projectId !== expectedProjectId) {
+    return {
+      ok: false, dryRun: false, action: "check", domain, verified: false, status: "ERROR",
+      message: "Vercel returned a different project or hostname.",
+      verification: [], verificationToken: null, projectId: projectDomain.projectId || null,
+      dnsRecords: getRecommendedVercelDnsRecords(domain),
+    };
+  }
+
+  return resultFromProjectDomainResponse({ action: "check", domain, body: projectDomain, message: "Existing Vercel project-domain status inspected." });
+}
+
 export async function removeProjectDomainFromVercel(domainInput: string): Promise<VercelDomainAutomationResult> {
   const domain = normalizeDomainHost(domainInput);
   if (!domain) throw new ApiError(400, "Domain is required");

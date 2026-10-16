@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/lib/audit-log";
-import { jsonError, requireAuthSession, requireOrgAccess } from "@/lib/api-guards";
+import { jsonError, requireAuthSession } from "@/lib/api-guards";
 import { assertDomainOwnership } from "@/lib/domains/domain-authorization.server";
 import {
   addProjectDomainToVercel,
+  inspectProjectDomainOnVercel,
   removeProjectDomainFromVercel,
   verifyProjectDomainOnVercel,
   type VercelDomainAutomationResult,
@@ -15,7 +16,7 @@ import { revalidatePath } from "next/cache";
 import { organizationPublicRouteCapabilities, type CapabilityRecord } from "@/lib/organization-capabilities";
 
 const organizationDomainActionSchema = z.object({
-  action: z.enum(["add", "check", "remove"]),
+  action: z.enum(["add", "check", "verify", "remove"]),
 });
 
 function getClientMeta(request: NextRequest) {
@@ -62,9 +63,10 @@ function revalidateOrganizationPublicPaths(organization: { slug: string; type: "
   }
 }
 
-async function runVercelAction(action: "add" | "check" | "remove", domain: string) {
+async function runVercelAction(action: "add" | "check" | "verify" | "remove", domain: string) {
   if (action === "add") return addProjectDomainToVercel(domain);
-  if (action === "check") return verifyProjectDomainOnVercel(domain);
+  if (action === "check") return inspectProjectDomainOnVercel(domain);
+  if (action === "verify") return verifyProjectDomainOnVercel(domain);
   return removeProjectDomainFromVercel(domain);
 }
 

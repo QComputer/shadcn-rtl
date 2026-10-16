@@ -1,1 +1,6 @@
 demo/
+artifacts/
+docs/
+bazar-baz-current.dump
+.env*
+*.pem

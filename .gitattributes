@@ -1,3 +1,31 @@
-# Keep this new migration byte-stable on Windows; historical SQL is untouched.
-prisma/migrations/20261015160000_bound_organization_invitations/migration.sql text eol=lf
-prisma/migrations/20261015190000_universal_provisioning_execution/migration.sql text eol=lf
+# Prisma records checksums of migration.sql checkout bytes. Pin them on every OS.
+prisma/migrations/*/migration.sql text eol=lf
+
+# Production recorded these historical migrations with CRLF bytes.
+# Preserve those checksums without editing their committed SQL content.
+prisma/migrations/20260815000500_organization_integration_foundation/migration.sql text eol=crlf
+prisma/migrations/20260815000600_relax_integration_capability_links/migration.sql text eol=crlf
+prisma/migrations/20260815000700_integration_runtime_foundation/migration.sql text eol=crlf
+prisma/migrations/20260815000800_customer_identity_foundation/migration.sql text eol=crlf
+prisma/migrations/20260815000900_demo_universe_backend_foundation/migration.sql text eol=crlf
+prisma/migrations/20260815001000_demo_public_api_events/migration.sql text eol=crlf
+prisma/migrations/20260815001100_demo_conceptual_roles/migration.sql text eol=crlf
+prisma/migrations/20260815001200_external_catalog_foundation/migration.sql text eol=crlf
+prisma/migrations/20260815001300_demo_scenario_foundation/migration.sql text eol=crlf
+prisma/migrations/20260815001400_external_catalog_approval_workflow/migration.sql text eol=crlf
+prisma/migrations/20260815001500_business_entity_graph_seo_foundation/migration.sql text eol=crlf
+prisma/migrations/20260815001600_seo_content_iam_foundation/migration.sql text eol=crlf
+prisma/migrations/20260815001700_business_acquisition_onboarding_foundation/migration.sql text eol=crlf
+prisma/migrations/20260815001800_business_activation_plan_foundation/migration.sql text eol=crlf
+prisma/migrations/20260815001900_owner_activation_task_flow/migration.sql text eol=crlf
+prisma/migrations/20260815002000_customer_trust_reputation_foundation/migration.sql text eol=crlf
+prisma/migrations/20260815002100_pilot_workspace_foundation/migration.sql text eol=crlf
+prisma/migrations/20260815002200_growth_intelligence_foundation/migration.sql text eol=crlf
+prisma/migrations/20260823000100_real_inoti_runtime_foundation/migration.sql text eol=crlf
+prisma/migrations/20260823000200_platform_inoti_integration_owner/migration.sql text eol=crlf
+prisma/migrations/20260827_organization_branding/migration.sql text eol=crlf
+prisma/migrations/20260827_public_home_mode/migration.sql text eol=crlf
+prisma/migrations/20260830000100_reconcile_payment_money_semantics/migration.sql text eol=crlf
+prisma/migrations/20260830000200_inoti_payment_e2e/migration.sql text eol=crlf
+prisma/migrations/20260830000300_tenant_branding_extensions/migration.sql text eol=crlf
+prisma/migrations/20260831000100_inoti_durable_payment_reconciliation/migration.sql text eol=crlf

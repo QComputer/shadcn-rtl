@@ -41,7 +41,7 @@ export async function getPublicOrganizationReadModel(slug: string) {
       },
       products: {
         where: { isActive: true, deletedAt: null },
-        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }, { id: "asc" }],
         take: 100,
         select: {
           id: true,

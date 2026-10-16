@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }, { id: "asc" }],
         take: MAX_RESULTS_PER_GROUP,
       }),
       prisma.service.findMany({

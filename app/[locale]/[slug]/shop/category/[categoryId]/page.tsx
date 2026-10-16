@@ -119,7 +119,7 @@ async function getShopCategory(slug: string, categoryId: string, pagination: Cat
             },
           },
         },
-        orderBy: [{ sortOrder: "desc" }, { name: "asc" }],
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }, { id: "asc" }],
         skip: pagination.skip,
         take: pagination.take,
       },

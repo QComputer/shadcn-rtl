@@ -83,14 +83,14 @@ describe("shop menu in-page category filtering", () => {
   it("initial state displays all visible products in stable sort order", () => {
     assert.deepEqual(
       getVisibleShopMenuProducts(categories, { selectedCategoryId: null }).map((item) => item.id),
-      ["p_sold_out", "p_other", "p_margherita", "p_juice", "p_pepperoni", "p_coffee"],
+      ["p_coffee", "p_pepperoni", "p_juice", "p_margherita", "p_other", "p_sold_out"],
     );
   });
 
   it("clicking a category filters in place by stable category id", () => {
     assert.deepEqual(
       getVisibleShopMenuProducts(categories, { selectedCategoryId: "cat_pizza" }).map((item) => item.id),
-      ["p_sold_out", "p_margherita", "p_pepperoni"],
+      ["p_pepperoni", "p_margherita", "p_sold_out"],
     );
   });
 
@@ -137,10 +137,22 @@ describe("shop menu in-page category filtering", () => {
     assert.deepEqual(cartState, { variantId: "variant_1", quantity: 2 });
   });
 
-  it("product ordering is preserved after filtering", () => {
+  it("public product ordering is ascending after filtering", () => {
     assert.deepEqual(
       getVisibleShopMenuProducts(categories, { selectedCategoryId: "cat_pizza" }).map((item) => item.sortOrder),
-      [90, 40, 20],
+      [20, 40, 90],
+    );
+  });
+
+  it("uses ascending name and then id as deterministic tie-breakers", () => {
+    const tied = [
+      product({ id: "p_z", name: "Beta", sortOrder: 1, organizationSlug: "chakme" }),
+      product({ id: "p_b", name: "Alpha", sortOrder: 1, organizationSlug: "chakme" }),
+      product({ id: "p_a", name: "Alpha", sortOrder: 1, organizationSlug: "chakme" }),
+    ];
+    assert.deepEqual(
+      getVisibleShopMenuProducts([category({ id: "cat_tied", name: "Tied", products: tied })], { selectedCategoryId: null }).map((item) => item.id),
+      ["p_a", "p_b", "p_z"],
     );
   });
 

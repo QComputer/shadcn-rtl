@@ -94,7 +94,11 @@ export function getVisibleShopMenuProducts<TProduct extends ShopMenuProduct>(
     );
   }
 
-  return products.sort((a, b) => b.sortOrder - a.sortOrder);
+  return products.sort((a, b) =>
+    a.sortOrder - b.sortOrder ||
+    a.name.localeCompare(b.name) ||
+    a.id.localeCompare(b.id)
+  );
 }
 
 export function countVisibleProductsByCategory<TProduct extends ShopMenuProduct>(

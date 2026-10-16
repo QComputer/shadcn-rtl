@@ -24,6 +24,7 @@ export type TenantPwaBranding = {
   appleTouchIcon: string | null;
   themeColor: string | null;
   backgroundColor: string | null;
+  retailPresentationTheme: string | null;
   pwaIcons: {
     icon192: string | null;
     icon512: string | null;
@@ -129,6 +130,7 @@ export function resolveTenantPwaBranding(input: {
     pwaMaskable512Url?: string | null;
     themeColor?: string | null;
     backgroundColor?: string | null;
+    retailPresentationTheme?: string | null;
   } | null;
 }): TenantPwaBranding {
   const branding = input.branding?.organizationId === input.organizationId
@@ -143,6 +145,7 @@ export function resolveTenantPwaBranding(input: {
     appleTouchIcon: branding?.appleTouchIconUrl ?? null,
     themeColor: branding?.themeColor ?? null,
     backgroundColor: branding?.backgroundColor ?? null,
+    retailPresentationTheme: branding?.retailPresentationTheme ?? null,
     pwaIcons: {
       icon192: branding?.pwaIcon192Url ?? null,
       icon512: branding?.pwaIcon512Url ?? null,

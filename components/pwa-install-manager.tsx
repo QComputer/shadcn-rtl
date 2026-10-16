@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Image from "next/image"
+import { usePathname } from "next/navigation"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -14,11 +15,9 @@ type PwaInstallManagerProps = {
   enabled: boolean
   locale: string
   basePath: string
-  appName: string
-  appIcon: string | null
 }
 
-type InstallIdentity = { name: string; icon: string }
+type InstallIdentity = { name: string; icon: string; pathname: string; assets: Array<{ url: string; size: number }> }
 
 type InstallManifest = {
   display?: string
@@ -26,7 +25,7 @@ type InstallManifest = {
   icons?: Array<{ src?: string; sizes?: string; purpose?: string }>
 }
 
-function manifestInstallIdentity(manifest: InstallManifest, appName: string, appIcon: string | null): InstallIdentity | null {
+function manifestInstallIdentity(manifest: InstallManifest): Omit<InstallIdentity, "pathname"> | null {
   if (manifest.display !== "standalone" || !manifest.name?.trim()) return null
   const icons = manifest.icons || []
   const regular = icons.find((icon) => icon.sizes === "192x192" && icon.purpose?.includes("any"))
@@ -34,15 +33,17 @@ function manifestInstallIdentity(manifest: InstallManifest, appName: string, app
   const hasMaskable192 = icons.some((icon) => icon.sizes === "192x192" && icon.purpose?.includes("maskable"))
   const hasMaskable512 = icons.some((icon) => icon.sizes === "512x512" && icon.purpose?.includes("maskable"))
   if (!regular?.src || !has512 || !hasMaskable192 || !hasMaskable512) return null
-  let iconUrl: URL
-  try {
-    iconUrl = new URL(regular.src, window.location.origin)
-  } catch {
-    return null
+  const assets: InstallIdentity["assets"] = []
+  for (const [size, purpose] of [[192, "any"], [512, "any"], [192, "maskable"], [512, "maskable"]] as const) {
+    const candidate = icons.find((entry) => entry.sizes === `${size}x${size}` && entry.purpose?.includes(purpose))
+    if (!candidate?.src) return null
+    try {
+      const url = new URL(candidate.src, window.location.origin)
+      if (url.username || url.password || (url.protocol !== "https:" && url.origin !== window.location.origin)) return null
+      assets.push({ url: url.href, size })
+    } catch { return null }
   }
-  if (iconUrl.username || iconUrl.password || (iconUrl.protocol !== "https:" && iconUrl.origin !== window.location.origin)) return null
-  const serverIcon = appIcon ? new URL(appIcon, window.location.origin).href : null
-  return { name: serverIcon === iconUrl.href && appName.trim() ? appName.trim() : manifest.name.trim(), icon: iconUrl.href }
+  return { name: manifest.name.trim(), icon: assets[0].url, assets }
 }
 
 const copy = {
@@ -68,11 +69,12 @@ export function canRegisterServiceWorker() {
   return window.isSecureContext
 }
 
-export function PwaInstallManager({ enabled, locale, basePath, appName, appIcon }: PwaInstallManagerProps) {
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+export function PwaInstallManager({ enabled, locale, basePath }: PwaInstallManagerProps) {
+  const [installPrompt, setInstallPrompt] = useState<{ event: BeforeInstallPromptEvent; pathname: string } | null>(null)
   const [dismissed, setDismissed] = useState(false)
-  const [readyIcon, setReadyIcon] = useState<string | null>(null)
+  const [readyIdentity, setReadyIdentity] = useState<InstallIdentity | null>(null)
   const [identity, setIdentity] = useState<InstallIdentity | null>(null)
+  const pathname = usePathname()
   // Rewrites may also leave the parent layout's locale behind the browser URL.
   const publicPath = typeof window === "undefined"
     ? ""
@@ -90,24 +92,34 @@ export function PwaInstallManager({ enabled, locale, basePath, appName, appIcon 
     // A custom-domain page rewrite can change the Host seen by the layout.
     // Read back the current origin's trusted, non-cacheable manifest before
     // displaying an invitation or registering this origin's worker.
-    void fetch(`${basePath}/manifest.webmanifest`, { cache: "no-store", credentials: "same-origin" })
+    const advertisedManifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')?.href
+    const fallbackManifest = new URL(`${basePath}/manifest.webmanifest`, window.location.origin).href
+    void Promise.resolve()
+      .then(() => {
+        const manifestUrl = new URL(advertisedManifest || fallbackManifest, window.location.href)
+        if (manifestUrl.origin !== window.location.origin) throw new Error("cross-origin manifest")
+        return fetch(manifestUrl, { cache: "no-store", credentials: "same-origin" })
+      })
       .then(async (response) => response.ok ? response.json() as Promise<InstallManifest> : null)
       .then((manifest) => {
-        if (active) setIdentity(manifest ? manifestInstallIdentity(manifest, appName, appIcon) : null)
+        const resolved = manifest ? manifestInstallIdentity(manifest) : null
+        if (active) setIdentity(resolved ? { ...resolved, pathname } : null)
       })
       .catch(() => { if (active) setIdentity(null) })
     return () => { active = false }
-  }, [enabled, basePath, appName, appIcon])
+  }, [enabled, basePath, pathname])
 
   useEffect(() => {
     if (!identity) return
     let active = true
-    const image = new window.Image()
-    image.onload = () => {
-      if (active) setReadyIcon(image.naturalWidth >= 192 && image.naturalWidth === image.naturalHeight ? identity.icon : null)
-    }
-    image.onerror = () => { if (active) setReadyIcon(null) }
-    image.src = identity.icon
+    void Promise.all(identity.assets.map(({ url, size }) => new Promise<boolean>((resolve) => {
+      const image = new window.Image()
+      image.onload = () => resolve(image.naturalWidth >= size && image.naturalWidth === image.naturalHeight)
+      image.onerror = () => resolve(false)
+      image.src = url
+    }))).then((eligible) => {
+      if (active) setReadyIdentity(eligible.every(Boolean) ? identity : null)
+    })
     return () => { active = false }
   }, [identity])
 
@@ -123,7 +135,7 @@ export function PwaInstallManager({ enabled, locale, basePath, appName, appIcon 
 
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault()
-      setInstallPrompt(event as BeforeInstallPromptEvent)
+      setInstallPrompt({ event: event as BeforeInstallPromptEvent, pathname })
       setDismissed(false)
     }
 
@@ -139,19 +151,20 @@ export function PwaInstallManager({ enabled, locale, basePath, appName, appIcon 
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
       window.removeEventListener("appinstalled", handleAppInstalled)
     }
-  }, [enabled])
+  }, [enabled, pathname])
 
   const install = async () => {
-    if (!installPrompt) return
-    await installPrompt.prompt()
-    await installPrompt.userChoice.catch(() => undefined)
+    if (!installPrompt || installPrompt.pathname !== pathname) return
+    await installPrompt.event.prompt()
+    await installPrompt.event.userChoice.catch(() => undefined)
     setInstallPrompt(null)
     setDismissed(true)
   }
 
-  if (!enabled || !identity || readyIcon !== identity.icon || dismissed || !installPrompt) return null
+  const currentIdentity = identity?.pathname === pathname ? identity : null
+  if (!enabled || !currentIdentity || readyIdentity !== currentIdentity || dismissed || !installPrompt || installPrompt.pathname !== pathname) return null
 
-  const { name, icon } = identity
+  const { name, icon } = currentIdentity
 
   return (
     <div
@@ -167,7 +180,7 @@ export function PwaInstallManager({ enabled, locale, basePath, appName, appIcon 
           width={40}
           height={40}
           unoptimized
-          onError={() => setReadyIcon(null)}
+          onError={() => setReadyIdentity(null)}
           className="h-10 w-10 shrink-0 rounded-lg object-contain"
         />
         <span data-testid="pwa-install-title" className="truncate font-medium">{`${text.title} ${name}`}</span>

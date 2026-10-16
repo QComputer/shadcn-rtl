@@ -4,6 +4,26 @@ import type { ResolvedOrganizationBranding, TenantPwaBranding } from "@/lib/orga
 
 type AppBasePath = "" | "/app";
 
+function safeTenantStartPath(value: string | null | undefined, locale: "fa" | "en" | "ar"): string | null {
+  if (!value || !value.startsWith(`/${locale}/`) || value.includes("\\")) return null;
+  try {
+    const parsed = new URL(value, "https://tenant.invalid");
+    const parts = parsed.pathname.split("/");
+    if (parsed.origin !== "https://tenant.invalid" || parsed.search || parsed.hash || parts[1] !== locale) return null;
+    if (parts.length === 3 && parts[2] === "shop") return `/${locale}/shop`;
+    const retailPath = parts.length === 4 && parts[2] === "retail";
+    const organizationShopPath = parts.length === 4 && parts[3] === "shop";
+    if (!retailPath && !organizationShopPath) return null;
+    const identifier = decodeURIComponent(retailPath ? parts[3] : parts[2]);
+    if (!identifier || identifier === "." || identifier === ".." || /[\\/?#\u0000-\u001f]/.test(identifier)) return null;
+    return retailPath
+      ? `/${locale}/retail/${encodeURIComponent(identifier)}`
+      : `/${locale}/${encodeURIComponent(identifier)}/shop`;
+  } catch {
+    return null;
+  }
+}
+
 function safeIconUrl(value: string | null | undefined, basePath: AppBasePath): string | null {
   if (!value) return null;
   if (value.startsWith("/") && !value.startsWith("//") && !value.includes("\\")) {
@@ -48,6 +68,7 @@ export function buildOperationalAppManifest(input: {
   basePath: AppBasePath;
   branding?: ResolvedOrganizationBranding | null;
   tenantBranding?: TenantPwaBranding | null;
+  tenantStartPath?: string | null;
   locale?: "fa" | "en" | "ar";
 }): MetadataRoute.Manifest {
   const { basePath, branding, tenantBranding } = input;
@@ -61,7 +82,13 @@ export function buildOperationalAppManifest(input: {
   const shortName = tenant
     ? (tenant.shortName || tenant.displayName || "Website")
     : (branding?.shortName || "بازارباز");
-  const startUrl = appPath(`/${locale}`, basePath);
+  const tenantStartPath = tenant ? safeTenantStartPath(input.tenantStartPath, locale) : null;
+  const startUrl = appPath(tenantStartPath ?? `/${locale}`, basePath);
+  // Verified custom hosts have a single tenant per origin; their canonical
+  // localized and default-locale Shop links must remain inside the app. Shared
+  // platform origins retain the exact organization storefront path scope.
+  const originTenant = tenantStartPath === `/${locale}/shop`;
+  const scope = tenantStartPath && !originTenant ? appPath(tenantStartPath, basePath) : appPath("/", basePath);
   const icons = tenant
     ? [
         icon(safeIconUrl(tenant.pwaIcons.icon192, basePath), "192x192", "any"),
@@ -93,7 +120,7 @@ export function buildOperationalAppManifest(input: {
       ? { description: installable ? `${name} website` : `${name} website app identity is not configured` }
       : { description: branding ? `${name} operational application powered by Bazarbaaz` : "Bazarbaaz multi-business platform" }),
     start_url: startUrl,
-    scope: appPath("/", basePath),
+    scope,
     display: installable ? "standalone" : "browser",
     orientation: "portrait",
     dir: locale === "en" ? "ltr" : "rtl",

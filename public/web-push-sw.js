@@ -10,8 +10,8 @@ const withoutBasePath = (path) => self.__BAZAR_BAZ_BASE_PATH && path.startsWith(
   : path;
 
 self.__BAZAR_BAZ_PWA_CACHE = {
-  version: "p100-tenant-branded-pwa",
-  staticCacheName: `${staticCachePrefix}p100`,
+  version: "p101-tenant-safe-offline",
+  staticCacheName: `${staticCachePrefix}p101`,
   offlineUrl: withBasePath("/offline.html"),
   staticAssets: [
     "/offline.html",
@@ -113,6 +113,25 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
+// Derive notification identity from its same-origin tenant destination. Never
+// accept a payload-supplied organization ID or manifest URL.
+function notificationManifestUrl(destination) {
+  try {
+    const target = new URL(destination || "/", self.location.origin);
+    if (target.origin !== self.location.origin) return null;
+    const parts = withoutBasePath(target.pathname).split("/").filter(Boolean);
+    if (["fa", "en", "ar"].includes(parts[0])) {
+      const slug = parts[1] === "retail" ? parts[2] : parts[2] === "shop" ? parts[1] : null;
+      if (slug) {
+        const decoded = decodeURIComponent(slug);
+        if (!decoded || decoded === "." || decoded === ".." || /[\\/?#\u0000-\u001f]/.test(decoded)) return null;
+        return withBasePath("/api/public/v1/organizations/" + encodeURIComponent(decoded) + "/pwa-manifest") + "?locale=" + parts[0] + "&entry=shop";
+      }
+    }
+    return PWA_CACHE.manifestUrl;
+  } catch { return null; }
+}
+
 self.addEventListener("push", (event) => {
   let payload = {
     title: "",
@@ -129,8 +148,9 @@ self.addEventListener("push", (event) => {
   }
 
   event.waitUntil(
-    fetch(PWA_CACHE.manifestUrl, { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : null)
+    Promise.resolve(notificationManifestUrl(payload.url))
+      .then((manifestUrl) => manifestUrl ? fetch(manifestUrl, { cache: "no-store" }) : null)
+      .then((response) => response?.ok ? response.json() : null)
       .catch(() => null)
       .then((manifest) => {
         const icons = Array.isArray(manifest?.icons) ? manifest.icons : [];

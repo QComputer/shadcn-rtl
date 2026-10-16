@@ -26,11 +26,14 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  return NextResponse.redirect(new URL(destination, request.url), {
+  // A relative Location preserves the verified tenant origin even when the
+  // runtime constructs request.url using an internal listener hostname.
+  return new NextResponse(null, {
     status: 307,
     headers: {
       "Cache-Control": "private, no-store, max-age=0",
       "X-Content-Type-Options": "nosniff",
+      Location: destination,
     },
   });
 }

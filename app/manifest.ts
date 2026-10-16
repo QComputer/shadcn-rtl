@@ -13,7 +13,12 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const context = await resolveTenantPwaRequestContext(requestHeaders).catch(() => ({ kind: "unknown" as const }));
   const locale = requestHeaders.get("x-bazar-tenant-public-locale");
   if (context.kind === "tenant") {
-    return buildOperationalAppManifest({ basePath, tenantBranding: context.branding, locale: context.locale });
+    return buildOperationalAppManifest({
+      basePath,
+      tenantBranding: context.branding,
+      tenantStartPath: context.storefrontStartPath,
+      locale: context.locale,
+    });
   }
   if (context.kind === "platform") {
     return buildOperationalAppManifest({ basePath, branding: resolvePlatformFallbackBranding(), locale: locale === "en" || locale === "ar" ? locale : "fa" });

@@ -133,7 +133,7 @@ describe("organization branding resolution", () => {
     const fallback = resolvePlatformFallbackBranding();
 
     assert.equal(fallback.organizationId, "platform");
-    assert.equal(fallback.displayName, "Bazarbaaz");
+    assert.equal(fallback.displayName, "بازارباز");
     assert.equal(fallback.logo, "/brand/marks/bazarbaaz-mark.svg");
     assert.equal(fallback.favicon, "/icons/favicon.svg");
     assert.equal(fallback.appleTouchIcon, "/icons/apple-touch-icon.png");

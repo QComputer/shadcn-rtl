@@ -72,16 +72,6 @@ export default async function LocaleLayout({
   const [headersList, { locale: routeLocale }] = await Promise.all([headers(), params]);
   const pwaContext = await resolveTenantPwaRequestContext(headersList).catch(() => ({ kind: "unknown" as const }));
   const appBasePath = resolveAppBasePath();
-  const pwaAppName = pwaContext.kind === "tenant"
-    ? pwaContext.branding.displayName
-    : pwaContext.kind === "platform"
-      ? "بازارباز"
-      : "";
-  const pwaAppIcon = pwaContext.kind === "tenant"
-    ? safeTenantAssetUrl(pwaContext.branding.pwaIcons.icon192, appBasePath)
-    : pwaContext.kind === "platform"
-      ? appResourceUrl(resolvePlatformFallbackBranding().pwaIcons.icon192, appBasePath)
-      : null;
   const pwaInstallReady = pwaContext.kind === "platform"
     || (pwaContext.kind === "tenant" && isTenantPwaInstallable(pwaContext.branding));
   const tenantPublicBaseUrlHeader = headersList.get('x-bazar-tenant-public-base-url');
@@ -134,7 +124,7 @@ export default async function LocaleLayout({
               <ErrorBoundary>
                 <ThemeProvider defaultTheme="dark" storageKey="shadcn-rtl-theme">
                   {children}
-                  <PwaInstallManager enabled={process.env.PWA_ENABLED !== "false" && pwaInstallReady} locale={locale} basePath={appBasePath} appName={pwaAppName} appIcon={pwaAppIcon} />
+                  <PwaInstallManager enabled={process.env.PWA_ENABLED !== "false" && pwaInstallReady} locale={locale} basePath={appBasePath} />
                 </ThemeProvider>
               </ErrorBoundary>
             </AuthProvider>

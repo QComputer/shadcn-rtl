@@ -25,9 +25,9 @@ for (const [name, value] of [["DATABASE_URL", databaseUrl], ["DIRECT_URL", direc
 const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
 try {
   const [identity] = await prisma.$queryRaw`
-    SELECT current_database() AS database,
-           current_schema() AS schema,
-           current_user AS "user",
+    SELECT current_database()::text AS database,
+           current_schema()::text AS schema,
+           current_user::text AS "user",
            current_setting('server_version_num')::int AS version_num
   `;
   assert.equal(identity.database, expectedDatabase, "connected database identity");

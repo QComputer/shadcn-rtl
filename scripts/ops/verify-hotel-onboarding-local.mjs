@@ -104,12 +104,24 @@ try {
   report.migrations = ledger.length;
   await writeFile(path.join(artifacts, "migration-manifest.json"), JSON.stringify(ledger, null, 2));
   console.log(`${ledger.length}/${names.length} migrations and file checksums verified`);
-  await writeFile(path.join(artifacts, "postgres-tests.log"), command("PostgreSQL acceptance", ["--import", "tsx", "--require=./scripts/e2e/register-server-only.cjs", "--test", "tests/integration/organization-onboarding.postgres.local.test.ts"], env));
+  if (!process.argv.includes("--pwa")) await writeFile(path.join(artifacts, "postgres-tests.log"), command("PostgreSQL acceptance", ["--import", "tsx", "--require=./scripts/e2e/register-server-only.cjs", "--test", "tests/integration/organization-onboarding.postgres.local.test.ts"], env));
   if (process.argv.includes("--p14")) {
     await writeFile(path.join(artifacts, "p14-postgres-tests.log"), command("P14 PostgreSQL acceptance", ["--import", "tsx", "--require=./scripts/e2e/register-server-only.cjs", "--test", "tests/integration/universal-provisioning.postgres.local.test.ts"], env));
   }
   if (process.argv.includes("--security")) {
     await writeFile(path.join(artifacts, "release-safety-tests.log"), command("Release safety PostgreSQL acceptance", ["--import", "tsx", "--require=./scripts/e2e/register-server-only.cjs", "--test", "tests/integration/release-safety.postgres.local.test.ts"], env));
+  }
+  if (process.argv.includes("--pwa")) {
+    await writeFile(path.join(artifacts, "pwa-proxy-regressions.log"), command("PWA proxy regressions", ["--import", "tsx", "--require=./scripts/e2e/register-server-only.cjs", "--test", "tests/unit/app-base-path-proxy.test.ts", "tests/unit/forwarded-app-resolver.test.ts", "tests/integration/forwarded-app-resolver.local.test.ts"], env));
+    const pwaEnv = { ...env, LOCAL_PWA_ACCEPTANCE: "1", PWA_HEADED: "1", PWA_BROWSER_ARTIFACTS: artifacts, CHROME_EXECUTABLE_PATH: "C:/Program Files/Google/Chrome/Application/chrome.exe", PWA_ENABLED: "true", NEXT_PUBLIC_PWA_ENABLED: "true", AUTH_TRUST_HOST: "true", NEXTAUTH_SECRET: randomBytes(32).toString("hex"), INTERNAL_API_SECRET: randomBytes(32).toString("hex"), CUSTOM_DOMAIN_RESOLVER_SECRET: randomBytes(32).toString("hex"), NEXTAUTH_URL: "http://localhost:3000", NEXT_PUBLIC_APP_URL: "http://localhost:3000", GOOGLE_CLIENT_ID: "", GOOGLE_CLIENT_SECRET: "", APP_PATH: "", NEXT_PUBLIC_APP_BASE_PATH: "" };
+    await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, ["tests/e2e/tenant-pwa-branding-ci.mjs"], { env: pwaEnv, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+      let output = "";
+      for (const stream of [child.stdout, child.stderr]) stream.on("data", chunk => { output += chunk.toString(); process.stdout.write(chunk); });
+      child.once("error", reject);
+      child.once("exit", code => { writeFile(path.join(artifacts, "pwa-browser.log"), output).then(() => code === 0 ? resolve() : reject(new Error("PWA_BROWSER_ACCEPTANCE_FAILED")), reject); });
+    });
+    report.checks.push({ label: "R6 production-server PWA browser acceptance", exitCode: 0 });
   }
   if (process.argv.includes("--browser") || process.argv.includes("--production-browser")) {
     const productionBrowser = process.argv.includes("--production-browser");

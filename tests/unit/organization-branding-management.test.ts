@@ -31,4 +31,25 @@ describe("organization branding management contract", () => {
     assert.deepEqual(organizationBrandingPatchSchema.parse(patch), patch);
     assert.equal(organizationBrandingPatchSchema.safeParse({ themeColor: "red" }).success, false);
   });
+
+  it("accepts the current settings form fields and rejects retired or presentation-only fields", () => {
+    const formPatch = {
+      displayName: "Example Store",
+      shortName: "Example",
+      logoUrl: "/brand/example/logo.svg",
+      faviconUrl: "/brand/example/favicon.ico",
+      appleTouchIconUrl: "/brand/example/apple.png",
+      pwaIcon192Url: "/brand/example/icon-192.png",
+      pwaIcon512Url: "/brand/example/icon-512.png",
+      pwaMaskable192Url: "/brand/example/maskable-192.png",
+      pwaMaskable512Url: "/brand/example/maskable-512.png",
+      ogImageUrl: "/brand/example/og.png",
+      themeColor: "#123456",
+      backgroundColor: "#ffffff",
+    };
+    assert.deepEqual(organizationBrandingPatchSchema.parse(formPatch), formPatch);
+    assert.deepEqual(organizationBrandingPatchSchema.parse({ ...formPatch, faviconUrl: null }), { ...formPatch, faviconUrl: null });
+    assert.equal(organizationBrandingPatchSchema.safeParse({ applicationName: "Legacy app field" }).success, false);
+    assert.equal(organizationBrandingPatchSchema.safeParse({ retailPresentationTheme: "MODERN" }).success, false);
+  });
 });

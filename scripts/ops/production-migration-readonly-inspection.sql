@@ -4,6 +4,12 @@
 
 BEGIN TRANSACTION READ ONLY;
 
+\if :{?verify_neon_identity}
+\else
+  \echo REFUSED: explicitly set verify_neon_identity=true for Production or false for synthetic-only rehearsal
+  SELECT 1 / 0;
+\endif
+
 SELECT current_database() = :'expected_database' AS database_ok,
        current_user = :'expected_role' AS effective_role_ok,
        session_user = :'expected_role' AS session_role_ok,
@@ -38,67 +44,89 @@ FROM pg_roles r WHERE r.rolname = current_user
 \if :database_ok
 \else
   \echo REFUSED: connected database does not match the explicitly expected database
-  \quit 21
+  SELECT 1 / 0;
 \endif
 \if :effective_role_ok
 \else
   \echo REFUSED: effective role mismatch
-  \quit 22
+  SELECT 1 / 0;
 \endif
 \if :session_role_ok
 \else
   \echo REFUSED: session role mismatch
-  \quit 23
+  SELECT 1 / 0;
 \endif
 \if :schema_ok
 \else
   \echo REFUSED: expected public schema is not active
-  \quit 24
+  SELECT 1 / 0;
 \endif
 \if :version_ok
 \else
   \echo REFUSED: PostgreSQL major version mismatch
-  \quit 25
+  SELECT 1 / 0;
 \endif
 \if :read_only_ok
 \else
   \echo REFUSED: transaction is not read-only
-  \quit 26
+  SELECT 1 / 0;
 \endif
 \if :role_flags_ok
 \else
   \echo REFUSED: role has elevated cluster/database attributes
-  \quit 27
+  SELECT 1 / 0;
 \endif
 \if :database_no_create_ok
 \else
   \echo REFUSED: role can create objects in the database
-  \quit 28
+  SELECT 1 / 0;
 \endif
 \if :no_role_memberships_ok
 \else
   \echo REFUSED: role inherits or can assume another role
-  \quit 33
+  SELECT 1 / 0;
 \endif
 \if :schema_no_create_ok
 \else
   \echo REFUSED: role can create objects in public schema
-  \quit 29
+  SELECT 1 / 0;
 \endif
 \if :no_public_table_writes_ok
 \else
   \echo REFUSED: role has write grants on public tables
-  \quit 30
+  SELECT 1 / 0;
 \endif
 \if :no_public_sequence_access_ok
 \else
   \echo REFUSED: role has access to public sequences
-  \quit 31
+  SELECT 1 / 0;
 \endif
 \if :no_public_application_data_select_ok
 \else
   \echo REFUSED: role can read public application tables beyond the migration ledger
-  \quit 34
+  SELECT 1 / 0;
+\endif
+
+\if :verify_neon_identity
+SELECT COALESCE(current_setting('neon.project_id', true), '') = :'expected_project_id' AS neon_project_ok,
+       COALESCE(current_setting('neon.branch_id', true), '') = :'expected_branch_id' AS neon_branch_ok,
+       COALESCE(current_setting('neon.endpoint_id', true), '') = :'expected_endpoint_id' AS neon_endpoint_ok
+\gset
+\if :neon_project_ok
+\else
+  \echo REFUSED: server-reported Neon project identity mismatch
+  SELECT 1 / 0;
+\endif
+\if :neon_branch_ok
+\else
+  \echo REFUSED: server-reported Neon branch identity mismatch
+  SELECT 1 / 0;
+\endif
+\if :neon_endpoint_ok
+\else
+  \echo REFUSED: server-reported Neon endpoint identity mismatch
+  SELECT 1 / 0;
+\endif
 \endif
 
 \echo SECTION: identity and read-only authority
@@ -107,7 +135,10 @@ SELECT current_database()::text AS database,
        session_user::text AS session_role,
        current_schema()::text AS schema,
        (current_setting('server_version_num')::integer / 10000)::integer AS postgres_major,
-       current_setting('transaction_read_only')::text AS transaction_read_only;
+       current_setting('transaction_read_only')::text AS transaction_read_only,
+       current_setting('neon.project_id', true)::text AS neon_project_id,
+       current_setting('neon.branch_id', true)::text AS neon_branch_id,
+       current_setting('neon.endpoint_id', true)::text AS neon_endpoint_id;
 
 \echo SECTION: migration ledger metadata only (migration logs and table data excluded)
 SELECT migration_name::text AS migration_name, checksum::text AS checksum,

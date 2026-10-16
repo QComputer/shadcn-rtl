@@ -88,6 +88,13 @@ function validateConnectionUrl(url, target) {
   return parsed;
 }
 
+export function neonServerIdentityMatches(identity, target) {
+  if (target.mode !== "production") return true;
+  return identity.neonProjectId === target.projectId
+    && identity.neonBranchId === target.branchId
+    && identity.neonEndpointId === target.endpointId;
+}
+
 async function collectInspection(client, target) {
   return client.$transaction(async transaction => {
     // Fixed SQL only; transaction is made read-only before any inspection query.
@@ -101,10 +108,13 @@ async function collectInspection(client, target) {
              session_user::text AS "sessionRole",
              current_schema()::text AS schema,
              (current_setting('server_version_num')::integer / 10000)::integer AS "postgresMajor",
-             current_setting('transaction_read_only')::text AS "transactionReadOnly"
+             current_setting('transaction_read_only')::text AS "transactionReadOnly",
+             current_setting('neon.project_id', true)::text AS "neonProjectId",
+             current_setting('neon.branch_id', true)::text AS "neonBranchId",
+             current_setting('neon.endpoint_id', true)::text AS "neonEndpointId"
     `;
     const identity = identityRows[0];
-    if (identity.database !== target.database || identity.effectiveRole !== target.readOnlyRole || identity.sessionRole !== target.readOnlyRole || identity.schema !== "public" || identity.postgresMajor !== target.expectedPostgresMajor || identity.transactionReadOnly !== "on") {
+    if (identity.database !== target.database || identity.effectiveRole !== target.readOnlyRole || identity.sessionRole !== target.readOnlyRole || identity.schema !== "public" || identity.postgresMajor !== target.expectedPostgresMajor || identity.transactionReadOnly !== "on" || !neonServerIdentityMatches(identity, target)) {
       throw new Error("Connected database identity or transaction mode differs from the attested target; inspection aborted.");
     }
 
@@ -227,6 +237,11 @@ async function main() {
         role: data.identity.effectiveRole,
         schema: data.identity.schema,
         postgresMajor: data.identity.postgresMajor,
+        neonServerIdentity: {
+          projectId: data.identity.neonProjectId,
+          branchId: data.identity.neonBranchId,
+          endpointId: data.identity.neonEndpointId,
+        },
       },
       transactionReadOnly: data.identity.transactionReadOnly === "on",
       rolePrivileges: data.role,

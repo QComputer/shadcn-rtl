@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { neonServerIdentityMatches } from "./inspect-production-migration-metadata.mjs";
+import { neonServerIdentityMatches, runtimeDeploymentMatches } from "./inspect-production-migration-metadata.mjs";
 
 const target = {
   mode: "production",
@@ -36,6 +36,14 @@ test("rejects missing server-reported Neon identity for Production", () => {
 
 test("does not require Neon server identity for loopback synthetic PostgreSQL", () => {
   assert.equal(neonServerIdentityMatches({}, { mode: "synthetic" }), true);
+});
+
+test("requires the runtime attestation to name the exact active deployment", () => {
+  const expected = { deploymentId: "dpl_expected" };
+  assert.equal(runtimeDeploymentMatches({ deploymentId: "dpl_expected" }, expected), true);
+  assert.equal(runtimeDeploymentMatches({ deploymentId: "dpl_other" }, expected), false);
+  assert.equal(runtimeDeploymentMatches({}, expected), false);
+  assert.equal(runtimeDeploymentMatches({ deploymentId: "dpl_expected" }, {}), false);
 });
 
 test("psql refusal branches stop with a nonzero SQL error under ON_ERROR_STOP", () => {

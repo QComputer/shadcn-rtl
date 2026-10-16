@@ -54,7 +54,7 @@ function validateProductionAttestations(target) {
   };
   const valuesMatch = [
     runtime?.verified === true,
-    runtime?.deploymentId,
+    runtimeDeploymentMatches(runtime, target),
     recent(runtime?.verifiedAt),
     runtime?.database?.host === target.host,
     runtime?.database?.name === target.database,
@@ -93,6 +93,12 @@ export function neonServerIdentityMatches(identity, target) {
   return identity.neonProjectId === target.projectId
     && identity.neonBranchId === target.branchId
     && identity.neonEndpointId === target.endpointId;
+}
+
+export function runtimeDeploymentMatches(runtime, target) {
+  return typeof target.deploymentId === "string"
+    && target.deploymentId.length > 0
+    && runtime?.deploymentId === target.deploymentId;
 }
 
 async function collectInspection(client, target) {

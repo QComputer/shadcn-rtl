@@ -130,8 +130,10 @@ test("missing and placeholder ids never issue an organization settings request",
 
   assert.equal(organizationSettingsApiPath("noId"), null);
   assert.equal(organizationSettingsApiPath("undefined"), null);
-  assert.equal(organizationSettingsApiPath("bad-id"), null);
-  assert.equal(organizationSettingsApiPath("c123"), null);
+  assert.equal(organizationSettingsApiPath("bad/id"), null);
+  assert.equal(organizationSettingsApiPath("bad\\id"), null);
+  assert.equal(organizationSettingsApiPath("legacy_org_shop"), "/api/organizations/legacy_org_shop/settings");
+  assert.equal(organizationSettingsApiPath("legacy-tenant-13"), "/api/organizations/legacy-tenant-13/settings");
   assert.equal(organizationSettingsApiPath(null), null);
   await assert.rejects(
     requestOrganizationSettings(fetcher, "noId"),

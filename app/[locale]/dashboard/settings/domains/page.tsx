@@ -96,8 +96,16 @@ function resolveOrganizationId(domains: OrganizationDomain[]): string | null {
   return domains[0]?.organizationId ?? null;
 }
 
-export default function OrganizationDomainsPage({ params }: { params: Promise<{ locale: string }> }) {
+export default function OrganizationDomainsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ organizationId?: string }>;
+}) {
   const resolvedParams = use(params);
+  const resolvedSearchParams = use(searchParams);
+  const requestedOrganizationId = resolvedSearchParams.organizationId?.trim() || null;
   const locale = (resolvedParams.locale || "fa") as SupportedLocale;
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null);
   const [domains, setDomains] = useState<OrganizationDomain[]>([]);
@@ -120,7 +128,12 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
       setLoading(true);
       try {
         const [domainsRes, vercelRes] = await Promise.all([
-          appFetch("/api/dashboard/organization-domains", { cache: "no-store" }),
+          appFetch(
+            requestedOrganizationId
+              ? `/api/dashboard/organization-domains?organizationId=${encodeURIComponent(requestedOrganizationId)}`
+              : "/api/dashboard/organization-domains",
+            { cache: "no-store" },
+          ),
           appFetch("/api/dashboard/organization-domains/vercel-automation", { cache: "no-store" }),
         ]);
 
@@ -142,7 +155,7 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
     }
 
     void load();
-  }, [locale, t]);
+  }, [locale, requestedOrganizationId, t]);
 
   async function handleAddDomain(event: React.FormEvent) {
     event.preventDefault();
@@ -192,6 +205,11 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(result.error || "Failed to verify domain");
+      }
+
+      if (result.domain) {
+        const updatedDomain = result.domain as OrganizationDomain;
+        setDomains((current) => current.map((item) => item.id === updatedDomain.id ? updatedDomain : item));
       }
 
       const vercelData = result.vercel as { verification?: VerificationRecord[]; dnsRecords?: DnsRecord[] } | undefined;
@@ -298,6 +316,7 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
     setTimeout(() => setCopiedToken((current) => (current === value ? null : current)), 2000);
   }
 
+  const automationBlocksChecks = !vercelState?.configured;
   const automationBlocksMutations = !vercelState?.configured || !vercelState?.realMutationsEnabled;
 
   if (loading) {
@@ -396,7 +415,7 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
                         variant="outline"
                         size="sm"
                         onClick={() => handleVerifyDomain(domain)}
-                        disabled={submitting || automationBlocksMutations || domain.status === "DISABLED" || domain.status === "REMOVED"}
+                        disabled={submitting || automationBlocksChecks || domain.status === "DISABLED" || domain.status === "REMOVED"}
                       >
                         <RefreshCw className="h-4 w-4 ml-1" />
                         بررسی

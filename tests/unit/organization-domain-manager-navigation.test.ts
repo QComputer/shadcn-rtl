@@ -76,12 +76,15 @@ describe("platform organization domain navigation and Check flow", () => {
 
     const managerPage = readFileSync("app/[locale]/dashboard/settings/domains/page.tsx", "utf8")
     assert.match(managerPage, /organizationDomainCheckRequest\(domain\.id\)/)
+    assert.match(managerPage, /domain\.displayKind \|\| domain\.kind/)
+    assert.doesNotMatch(managerPage, /dashboard\.domains\.counterpartMissing/)
     const organizationApi = readFileSync("app/api/dashboard/organization-domains/[domainId]/vercel/route.ts", "utf8")
     assert.match(organizationApi, /assertDomainOwnership/)
     assert.match(organizationApi, /if \(action === "check"\) return inspectProjectDomainOnVercel\(domain\)/)
     assert.match(organizationApi, /writeAuditLog\(/)
 
     const shopManager = readFileSync("components/dashboard/shop-domain-manager.tsx", "utf8")
+    assert.match(shopManager, /counterpartMissing/)
     assert.match(shopManager, /\/api\/dashboard\/shop-domains\/\$\{domainId\}\/vercel/)
     assert.match(readFileSync("app/api/dashboard/shop-domains/[domainId]/vercel/route.ts", "utf8"), /Only shop domains can be synced with Vercel from this tool/)
   })

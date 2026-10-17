@@ -14,6 +14,8 @@ let ApiError: any;
 let normalizeDomainHost: any;
 let validateRawDomain: any;
 let isApexDomain: any;
+let getDomainPresentationKind: any;
+let getApexDomainInfo: any;
 let getDomainLabels: any;
 let getSld: any;
 let getTld: any;
@@ -63,6 +65,8 @@ before(async () => {
     normalizeDomainHost,
     validateRawDomain,
     isApexDomain,
+    getDomainPresentationKind,
+    getApexDomainInfo,
     getDomainLabels,
     getSld,
     getTld,
@@ -185,8 +189,12 @@ describe("domain normalization", () => {
 
   it("detects apex vs subdomain", () => {
     assert.equal(isApexDomain("example.ir"), true);
+    assert.equal(isApexDomain("www.example.ir"), false);
     assert.equal(isApexDomain("shop.example.ir"), false);
     assert.equal(isApexDomain("a.b.shop.example.ir"), false);
+    assert.equal(getDomainPresentationKind("www.example.ir"), "SUBDOMAIN");
+    assert.equal(getApexDomainInfo("www.example.ir").isApex, false);
+    assert.equal(getApexDomainInfo("www.example.ir").recommendedAlias, "example.ir");
   });
 
   it("extracts labels, sld and tld", () => {
@@ -210,6 +218,11 @@ describe("domain normalization", () => {
     const sub = normalizeDomainInput({ rawDomain: "shop.example.ir", organizationId: "org_1" });
     assert.equal(sub.kind, "SUBDOMAIN");
     assert.equal(sub.isApex, false);
+
+    const www = normalizeDomainInput({ rawDomain: "www.example.ir", organizationId: "org-1" });
+    assert.equal(www.normalizedDomain, "example.ir");
+    assert.equal(www.kind, "SUBDOMAIN");
+    assert.equal(www.isApex, false);
   });
 });
 
@@ -237,8 +250,25 @@ describe("provider disabled mode (vercel automation)", () => {
     assert.equal(result.ok, true);
     assert.equal(result.verified, true);
     assert.equal(result.status, "ACTIVE");
+    assert.equal(result.domain, "www.shop.example.ir");
+    assert.deepEqual(result.dnsRecords, [], "a verified alias must not show setup DNS guidance");
     assert.equal(request?.init.method, "GET");
     assert.match(request?.url ?? "", /\/domains\/www\.shop\.example\.ir/);
+  });
+
+  it("suggests DNS records for the exact unverified www hostname instead of the canonical apex", async () => {
+    clearProviderEnv();
+    process.env.VERCEL_PROJECT_ID = "prj_test";
+    process.env.VERCEL_API_TOKEN = "secret_token";
+    globalThis.fetch = (async () => new Response(JSON.stringify({ name: "www.shop.example.ir", projectId: "prj_test", verified: false }),
+      { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch;
+
+    const result = await inspectProjectDomainOnVercel("www.shop.example.ir");
+    assert.equal(result.status, "DNS_REQUIRED");
+    assert.equal(result.domain, "www.shop.example.ir");
+    assert.deepEqual(result.dnsRecords.map((record: { type: string; name: string }) => [record.type, record.name]), [
+      ["CNAME", "www.shop.example.ir"],
+    ]);
   });
 
   it("rejects an existing-domain response for a different Vercel project or hostname", async () => {
@@ -251,6 +281,19 @@ describe("provider disabled mode (vercel automation)", () => {
     const result = await inspectProjectDomainOnVercel("shop.example.ir");
     assert.equal(result.ok, false);
     assert.equal(result.verified, false);
+    assert.equal(result.status, "ERROR");
+    assert.equal(result.message, "Vercel returned a different project or hostname.");
+  });
+
+  it("does not treat an apex registration as proof that the requested www alias is registered", async () => {
+    clearProviderEnv();
+    process.env.VERCEL_PROJECT_ID = "prj_test";
+    process.env.VERCEL_API_TOKEN = "secret_token";
+    globalThis.fetch = (async () => new Response(JSON.stringify({ name: "shop.example.ir", projectId: "prj_test", verified: true }),
+      { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch;
+
+    const result = await inspectProjectDomainOnVercel("www.shop.example.ir");
+    assert.equal(result.ok, false);
     assert.equal(result.status, "ERROR");
     assert.equal(result.message, "Vercel returned a different project or hostname.");
   });

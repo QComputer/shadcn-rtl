@@ -19,6 +19,7 @@ type OrganizationDomain = {
   domain: string;
   normalizedDomain: string;
   kind: "APEX" | "SUBDOMAIN";
+  displayKind?: "APEX" | "SUBDOMAIN";
   provider: "VERCEL";
   status: string;
   isPrimary: boolean;
@@ -403,7 +404,7 @@ export default function OrganizationDomainsPage({
                     <div className="space-y-1">
                       <p className="font-medium">{domain.domain}</p>
                       <p className="text-xs text-muted-foreground">
-                        {domain.kind ? kindCopy[domain.kind] || domain.kind : "—"}{domain.organization ? ` · ${domain.organization.name}` : ""}
+                        {(domain.displayKind || domain.kind) ? kindCopy[domain.displayKind || domain.kind] || domain.displayKind || domain.kind : "—"}{domain.organization ? ` · ${domain.organization.name}` : ""}
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -492,17 +493,6 @@ export default function OrganizationDomainsPage({
                         </div>
                       )}
 
-                      {domain.apexInfo && domain.kind === "APEX" && domain.apexInfo.recommendedAlias && (
-                        <div className="rounded-md border border-amber-500/40 bg-amber-50 dark:bg-amber-900/20 p-3 text-sm text-amber-800 dark:text-amber-200">
-                          {t("dashboard.domains.apexWwwWarning") || "برای دامنه آپیکس، توصیه می‌شود بلافاصله زیردامنه www"} {domain.apexInfo.recommendedAlias} {t("dashboard.domains.counterpartMissing") || "را هم ثبت کنید تا پایداری سئو حفظ شود."}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {domain.kind && domain.kind === "APEX" && selectedDomainId !== domain.id && (
-                    <div className="rounded-md border border-amber-500/40 bg-amber-50 dark:bg-amber-900/20 p-3 text-sm text-amber-800 dark:text-amber-200">
-                      {t("dashboard.domains.apexRecommendation") || "دامنه آپیکس شناسایی شد. توصیه می‌شود www"} {domain.apexInfo?.recommendedAlias} {t("dashboard.domains.counterpartMissing") || "را هم ثبت کنید."}
                     </div>
                   )}
                 </div>

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/lib/audit-log";
 import { ApiError, jsonError, requireAuthSession, requireOrgAccess } from "@/lib/api-guards";
-import { validateRawDomain, normalizeDomainInput, getApexDomainInfo, getDefaultDomainStatus } from "@/lib/domains/domain-normalization.server";
+import { validateRawDomain, normalizeDomainInput, getApexDomainInfo, getDefaultDomainStatus, getDomainPresentationKind } from "@/lib/domains/domain-normalization.server";
 import { customDomainLocales } from "@/lib/custom-domain-routing";
 import { revalidatePath } from "next/cache";
 import { organizationPublicRouteCapabilities, type CapabilityRecord } from "@/lib/organization-capabilities";
@@ -63,7 +63,10 @@ function domainForResponse(domain: {
 }) {
   return {
     ...domain,
-    apexInfo: getApexDomainInfo(domain.normalizedDomain || domain.domain),
+    // `normalizedDomain` intentionally folds www into the tenant's canonical
+    // host. Keep presentation classification based on the stored hostname.
+    displayKind: getDomainPresentationKind(domain.domain),
+    apexInfo: getApexDomainInfo(domain.domain),
   };
 }
 

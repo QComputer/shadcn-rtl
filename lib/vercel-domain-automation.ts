@@ -1,5 +1,6 @@
 import { ApiError } from "@/lib/api-guards";
 import { normalizeDomainHost } from "@/lib/custom-domain-routing";
+import { getHostnamePreservingWww } from "@/lib/domains/domain-normalization.server";
 
 export type VercelVerificationRecord = {
   type: string;
@@ -164,11 +165,12 @@ function assertVercelDomainMutationAllowed() {
 }
 
 export function getRecommendedVercelDnsRecords(domainInput: string, verification: VercelVerificationRecord[] = []): VercelDnsRecord[] {
-  const domain = normalizeDomainHost(domainInput);
+  const domain = getHostnamePreservingWww(domainInput);
+  const canonicalDomain = normalizeDomainHost(domainInput);
   const records: VercelDnsRecord[] = [];
 
   if (domain) {
-    if (isApexDomain(domain)) {
+    if (domain === canonicalDomain && isApexDomain(domain)) {
       records.push({
         type: "A",
         name: "@",
@@ -262,7 +264,7 @@ function resultFromProjectDomainResponse(input: {
     projectId: input.body.projectId || null,
     verificationToken: getVerificationToken(verification),
     verification,
-    dnsRecords: getRecommendedVercelDnsRecords(input.domain, verification),
+    dnsRecords: verified ? [] : getRecommendedVercelDnsRecords(input.domain, verification),
   };
 }
 
@@ -350,8 +352,7 @@ export async function inspectProjectDomainOnVercel(domainInput: string): Promise
   if (!domain) throw new ApiError(400, "Domain is required");
   if (isVercelDomainAutomationDryRun()) return dryRunResult("check", domain);
 
-  const rawHostname = domainInput.trim().toLowerCase().replace(/\.$/, "");
-  const requestedDomain = rawHostname.startsWith("www.") ? `www.${domain}` : domain;
+  const requestedDomain = getHostnamePreservingWww(domainInput);
   const expectedProjectId = getRequiredEnv("VERCEL_PROJECT_ID");
   const { response, body } = await vercelFetch(getDomainEndpoint(requestedDomain), { method: "GET" });
   if (!response.ok) {
@@ -363,7 +364,7 @@ export async function inspectProjectDomainOnVercel(domainInput: string): Promise
   }
 
   const projectDomain = body as VercelProjectDomainResponse;
-  if (normalizeDomainHost(projectDomain.name) !== domain || projectDomain.projectId !== expectedProjectId) {
+  if (getHostnamePreservingWww(projectDomain.name) !== requestedDomain || projectDomain.projectId !== expectedProjectId) {
     return {
       ok: false, dryRun: false, action: "check", domain, verified: false, status: "ERROR",
       message: "Vercel returned a different project or hostname.",
@@ -372,7 +373,7 @@ export async function inspectProjectDomainOnVercel(domainInput: string): Promise
     };
   }
 
-  return resultFromProjectDomainResponse({ action: "check", domain, body: projectDomain, message: "Existing Vercel project-domain status inspected." });
+  return resultFromProjectDomainResponse({ action: "check", domain: requestedDomain, body: projectDomain, message: "Existing Vercel project-domain status inspected." });
 }
 
 export async function removeProjectDomainFromVercel(domainInput: string): Promise<VercelDomainAutomationResult> {

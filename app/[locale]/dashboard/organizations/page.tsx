@@ -8,6 +8,7 @@ import { supportedLocales, type SupportedLocale } from "@/lib/i18n";
 import { toPersianDigits } from "@/lib/persian";
 import { cn } from "@/lib/utils";
 import { publicOrganizationHref } from "@/lib/organization-public-href";
+import { organizationDomainsHref } from "@/lib/domains/organization-domain-manager";
 
 export const dynamic = "force-dynamic";
 
@@ -513,7 +514,7 @@ export default async function OrganizationsPage({
                       {copy.publicPage}
                     </Link>
                     <Link
-                      href={`/${locale}/dashboard/settings/domains?organizationId=${encodeURIComponent(organization.id)}`}
+                      href={organizationDomainsHref(locale, organization.id)}
                       className="inline-flex h-8 items-center justify-center rounded-lg border bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       {copy.domainManager}

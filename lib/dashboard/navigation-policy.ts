@@ -187,6 +187,7 @@ export const DASHBOARD_ROUTE_POLICY = {
   "/business-activation": ROLE_NAVIGATION_POLICY.businessActivation,
   "/reputation": ROLE_NAVIGATION_POLICY.reputation,
   "/settings": ROLE_NAVIGATION_POLICY.settings,
+  "/settings/domains": ROLE_NAVIGATION_POLICY.settings,
   "/settings/organization": ROLE_NAVIGATION_POLICY.organizationSettings,
   "/qrcode": ROLE_NAVIGATION_POLICY.qrcode,
   "/organizations": ROLE_NAVIGATION_POLICY.organizations,

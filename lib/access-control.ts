@@ -63,6 +63,11 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     isUniversal: true,
   },
 
+  "/dashboard/settings/domains": {
+    allowedRoles: ORG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+  },
+
   "/dashboard/notifications": {
     allowedRoles: ALL_AUTHENTICATED_ROLES,
     isUniversal: true,
@@ -477,6 +482,12 @@ export function getRedirectPathForRole(role: UserRole): string {
     default:
       return "/dashboard/settings"
   }
+}
+
+/** Preserve platform authority when a Super Admin has an organization selected. */
+export function effectiveDashboardRole(globalRole: UserRole, membershipRole?: UserRole | null): UserRole {
+  if (globalRole === "SUPER_ADMIN") return "SUPER_ADMIN"
+  return membershipRole ?? globalRole
 }
 
 export interface NavItem {

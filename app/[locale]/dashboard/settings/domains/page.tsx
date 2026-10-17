@@ -1,5 +1,6 @@
 "use client";
 import { appFetch } from "@/lib/app-base-path";
+import { organizationDomainCheckRequest } from "@/lib/domains/organization-domain-manager";
 
 import { use, useEffect, useMemo, useState } from "react";
 import { Loader2, Plus, RefreshCw, Trash2, CheckCircle2, AlertTriangle, Copy } from "lucide-react";
@@ -196,11 +197,8 @@ export default function OrganizationDomainsPage({
   async function handleVerifyDomain(domain: OrganizationDomain) {
     setSubmitting(true);
     try {
-      const response = await appFetch(`/api/dashboard/organization-domains/${domain.id}/vercel`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "check" }),
-      });
+      const request = organizationDomainCheckRequest(domain.id);
+      const response = await appFetch(request.url, request.init);
 
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {

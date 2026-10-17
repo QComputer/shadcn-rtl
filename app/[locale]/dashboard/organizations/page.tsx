@@ -61,7 +61,7 @@ const copyByLocale = {
     title: "سازمان‌ها",
     subtitle: "نمای منتشرشده مدیریت سازمان‌های پلتفرم؛ فقط مدیر کل می‌تواند این صفحه را ببیند.",
     create: "افزودن سازمان",
-    manageDomains: "مدیریت دامنه‌ها",
+    manageDomains: "مدیریت دامنه‌های فروشگاه",
     searchPlaceholder: "جستجوی نام، اسلاگ، ایمیل یا تلفن...",
     allTypes: "همه نوع‌ها",
     allStatuses: "همه وضعیت‌ها",
@@ -98,7 +98,7 @@ const copyByLocale = {
     title: "Organizations",
     subtitle: "Published platform organization management view. Only super admins can access it.",
     create: "Add organization",
-    manageDomains: "Manage domains",
+    manageDomains: "Manage shop domains",
     searchPlaceholder: "Search name, slug, email, or phone...",
     allTypes: "All types",
     allStatuses: "All statuses",
@@ -135,7 +135,7 @@ const copyByLocale = {
     title: "المؤسسات",
     subtitle: "صفحة إدارة مؤسسات المنصة المنشورة. الوصول متاح للمدير العام فقط.",
     create: "إضافة مؤسسة",
-    manageDomains: "إدارة النطاقات",
+    manageDomains: "إدارة نطاقات المتجر",
     searchPlaceholder: "ابحث بالاسم أو الرابط أو البريد أو الهاتف...",
     allTypes: "كل الأنواع",
     allStatuses: "كل الحالات",
@@ -368,7 +368,7 @@ export default async function OrganizationsPage({
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
-            href={`/${locale}/dashboard/settings/domains`}
+            href={`/${locale}/dashboard/shop-domains`}
             className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-background px-3 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Globe2 className="h-4 w-4" aria-hidden="true" />

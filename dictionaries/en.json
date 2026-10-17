@@ -40,7 +40,15 @@
     "processing": "Processing",
     "more": "More",
     "saving": "Saving",
-    "deactivate": "Deactivate"
+    "deactivate": "Deactivate",
+    "retry": "Retry"
+  },
+  "organizationSettings": {
+    "errors": {
+      "fetch": "Could not load organization settings. Please try again.",
+      "missingOrganization": "No active organization is selected for this account.",
+      "forbidden": "You do not have access to this organization’s settings. Select an organization you are authorized to manage."
+    }
   },
   "shop": {
     "categoryFilter": "Category filter",

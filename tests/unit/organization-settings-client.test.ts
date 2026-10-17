@@ -38,12 +38,39 @@ test("initial load, direct navigation, and refresh use the authenticated active 
   assert.equal(requests.some((request) => request.url.includes("noId")), false);
 });
 
-test("a selected membership change uses only the newly session-authorized organization", () => {
+test("a selected membership change uses only the newly session-authorized organization", async () => {
+  const requests: string[] = [];
+  const fetcher = async (url: string) => {
+    requests.push(url);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => url === "/api/users/me/membership"
+        ? { memberships: [restaurantMembership, anotherMembership] }
+        : { organization: { id: url.split("/")[3] } },
+    } as Response;
+  };
+
+  const first = await loadOrganizationSettings(fetcher, {
+    role: "ADMIN",
+    organizationId: restaurantMembership.organizationId,
+  });
+  const switched = await loadOrganizationSettings(fetcher, {
+    role: "ADMIN",
+    organizationId: anotherMembership.organizationId,
+  });
+
   const selected = resolveOrganizationSettingsId({
     session: { role: "MANAGER", organizationId: anotherMembership.organizationId },
     memberships: [restaurantMembership, anotherMembership],
   });
+  assert.equal(first.organizationId, restaurantMembership.organizationId);
+  assert.equal(switched.organizationId, anotherMembership.organizationId);
   assert.equal(selected, anotherMembership.organizationId);
+  assert.deepEqual(requests.filter((url) => url.endsWith("/settings")), [
+    "/api/organizations/restaurant-13-id/settings",
+    "/api/organizations/other-tenant-id/settings",
+  ]);
 });
 
 test("a stale session organization, missing id, or unauthorized URL selection fails closed", () => {
@@ -72,6 +99,28 @@ test("SUPER_ADMIN requires an explicit organization selection", () => {
   }), restaurantMembership.organizationId);
 });
 
+test("a foreign URL selection fails before a scoped settings request is sent", async () => {
+  const requests: string[] = [];
+  const fetcher = async (url: string) => {
+    requests.push(url);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ memberships: [restaurantMembership, anotherMembership] }),
+    } as Response;
+  };
+
+  await assert.rejects(
+    loadOrganizationSettings(
+      fetcher,
+      { role: "ADMIN", organizationId: restaurantMembership.organizationId },
+      anotherMembership.organizationId,
+    ),
+    (error: unknown) => error instanceof OrganizationSettingsScopeError && error.reason === "forbidden",
+  );
+  assert.deepEqual(requests, ["/api/users/me/membership"]);
+});
+
 test("missing and placeholder ids never issue an organization settings request", async () => {
   const requests: string[] = [];
   const fetcher = async (url: string) => {
@@ -89,7 +138,7 @@ test("missing and placeholder ids never issue an organization settings request",
   assert.deepEqual(requests, []);
 });
 
-test("settings GET and PUT target the validated organization id", async () => {
+test("settings GET, PATCH, and PUT target the validated organization id", async () => {
   const requests: Array<{ url: string; method: string }> = [];
   const fetcher = async (url: string, init?: RequestInit) => {
     requests.push({ url, method: init?.method ?? "GET" });
@@ -97,9 +146,11 @@ test("settings GET and PUT target the validated organization id", async () => {
   };
 
   await requestOrganizationSettings(fetcher, restaurantMembership.organizationId, { method: "GET" });
+  await requestOrganizationSettings(fetcher, restaurantMembership.organizationId, { method: "PATCH" });
   await requestOrganizationSettings(fetcher, restaurantMembership.organizationId, { method: "PUT" });
   assert.deepEqual(requests, [
     { url: "/api/organizations/restaurant-13-id/settings", method: "GET" },
+    { url: "/api/organizations/restaurant-13-id/settings", method: "PATCH" },
     { url: "/api/organizations/restaurant-13-id/settings", method: "PUT" },
   ]);
 });

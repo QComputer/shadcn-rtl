@@ -45,6 +45,9 @@ export default function OrganizationSettingsPage({ params, searchParams }: { par
   const locale = resolvedParams.locale || "fa"
   const router = useRouter()
   const { data: session, status: sessionStatus } = useSession()
+  const sessionUserId = session?.user?.id
+  const sessionUserRole = session?.user?.role
+  const sessionOrganizationId = session?.user?.organizationId
   const requestedOrganizationId = resolvedSearchParams.organizationId?.trim() || null
   const { theme: currentTheme, setTheme } = useTheme()
   
@@ -136,10 +139,10 @@ export default function OrganizationSettingsPage({ params, searchParams }: { par
 
     const load = async () => {
       try {
-        if (!session?.user) throw new OrganizationSettingsScopeError("membership")
+        if (!sessionUserId) throw new OrganizationSettingsScopeError("membership")
         const { response } = await loadOrganizationSettings(
           appFetch,
-          { role: session.user.role, organizationId: session.user.organizationId },
+          { role: sessionUserRole, organizationId: sessionOrganizationId },
           requestedOrganizationId,
         )
         const settings = await response.json()
@@ -188,7 +191,7 @@ export default function OrganizationSettingsPage({ params, searchParams }: { par
 
     void load()
     return () => { active = false }
-  }, [sessionStatus, session?.user?.id, session?.user?.role, session?.user?.organizationId, requestedOrganizationId, reloadKey, locale])
+  }, [sessionStatus, sessionUserId, sessionUserRole, sessionOrganizationId, requestedOrganizationId, reloadKey, locale])
 
   const t = (key: string): string => {
     return getDictValue(dict ?? getDictionary(locale), key)

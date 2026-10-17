@@ -96,6 +96,8 @@ export function sanitizedProxyBoundaryHeaders(request: NextRequest) {
     "x-bazar-tenant-public-path",
     "x-bazar-organization-root-zone",
     "x-bazar-public-footer-context",
+    "x-url-pathname",
+    "x-bazar-dashboard-return-to",
     "x-forwarded-host",
   ]) {
     requestHeaders.delete(name);
@@ -103,8 +105,19 @@ export function sanitizedProxyBoundaryHeaders(request: NextRequest) {
   return requestHeaders;
 }
 
+function setRequestRouteHeaders(request: NextRequest, requestHeaders: Headers) {
+  const configuredBasePath = resolveAppBasePath();
+  let pathname = request.nextUrl.pathname;
+  if (configuredBasePath && (pathname === configuredBasePath || pathname.startsWith(`${configuredBasePath}/`))) {
+    pathname = pathname.slice(configuredBasePath.length) || "/";
+  }
+  requestHeaders.set("x-url-pathname", pathname);
+  requestHeaders.set("x-bazar-dashboard-return-to", `${pathname}${request.nextUrl.search}`);
+}
+
 function withFooterContext(request: NextRequest, context: PublicFooterContext) {
   const requestHeaders = sanitizedProxyBoundaryHeaders(request);
+  setRequestRouteHeaders(request, requestHeaders);
   requestHeaders.set("x-bazar-public-footer-context", context);
   return { request: { headers: requestHeaders } };
 }
@@ -187,6 +200,7 @@ function buildTenantRewriteHeaders(
   publicPath: string,
 ) {
   const requestHeaders = sanitizedProxyBoundaryHeaders(request);
+  setRequestRouteHeaders(request, requestHeaders);
   requestHeaders.set("x-bazar-custom-domain", "true");
   requestHeaders.set("x-bazar-tenant-domain", normalizedHost);
   requestHeaders.set("x-bazar-tenant-slug", tenant.slug);
@@ -212,6 +226,7 @@ function buildForwardedAppRewriteHeaders(
   publicPath: string,
 ) {
   const requestHeaders = sanitizedProxyBoundaryHeaders(request);
+  setRequestRouteHeaders(request, requestHeaders);
   requestHeaders.set("x-bazar-custom-domain", "true");
   requestHeaders.set("x-bazar-tenant-domain", forwardedHost);
   requestHeaders.set("x-bazar-tenant-slug", tenant.slug);

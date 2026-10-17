@@ -4,6 +4,7 @@ import { describe, it } from "node:test"
 import { checkRouteAccess, effectiveDashboardRole } from "@/lib/access-control"
 import { getDashboardRouteAccessDecision } from "@/lib/dashboard/navigation-policy"
 import { organizationDomainCheckRequest, organizationDomainsHref } from "@/lib/domains/organization-domain-manager"
+import { dashboardLoginCallbackUrl } from "@/lib/dashboard/login-callback"
 
 const organizationId = "cmvbltspu0000jt08zfn7xltj"
 const domainId = "cmvblttif000fjt085yf5712p"
@@ -16,6 +17,22 @@ describe("platform organization domain navigation and Check flow", () => {
     )
     const organizationsPage = readFileSync("app/[locale]/dashboard/organizations/page.tsx", "utf8")
     assert.match(organizationsPage, /href=\{organizationDomainsHref\(locale, organization\.id\)\}/)
+  })
+
+  it("preserves a safe organization-scoped dashboard destination through login", () => {
+    const requested = `/fa/dashboard/settings/domains?organizationId=${organizationId}`
+    assert.equal(dashboardLoginCallbackUrl(requested, "fa"), requested)
+    assert.equal(dashboardLoginCallbackUrl("//attacker.example/fa/dashboard", "fa"), "/fa/dashboard")
+    assert.equal(dashboardLoginCallbackUrl("/en/dashboard/settings/domains?organizationId=x", "fa"), "/fa/dashboard")
+    assert.equal(dashboardLoginCallbackUrl("/fa/dashboard/../admin", "fa"), "/fa/dashboard")
+    assert.equal(dashboardLoginCallbackUrl(null, "fa"), "/fa/dashboard")
+
+    const layout = readFileSync("app/[locale]/dashboard/layout.tsx", "utf8")
+    assert.match(layout, /x-bazar-dashboard-return-to/)
+    const proxySource = readFileSync("proxy.ts", "utf8")
+    assert.match(proxySource, /"x-bazar-dashboard-return-to"/)
+    assert.match(proxySource, /requestHeaders\.delete\(name\)/)
+    assert.match(proxySource, /requestHeaders\.set\("x-bazar-dashboard-return-to", `\$\{pathname\}\$\{request\.nextUrl\.search\}`\)/)
   })
 
   it("does not downgrade global SUPER_ADMIN access because of a selected org membership", () => {

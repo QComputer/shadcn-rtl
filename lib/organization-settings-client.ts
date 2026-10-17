@@ -19,11 +19,11 @@ export class OrganizationSettingsScopeError extends Error {
   }
 }
 
-const INVALID_ORGANIZATION_IDS = new Set(["noid", "undefined", "null"]);
+const ORGANIZATION_CUID_PATTERN = /^c[a-z0-9]{24}$/i;
 
 export function organizationSettingsApiPath(organizationId: string | null | undefined) {
   const id = organizationId?.trim();
-  if (!id || INVALID_ORGANIZATION_IDS.has(id.toLowerCase()) || /[/?#]/.test(id)) {
+  if (!id || !ORGANIZATION_CUID_PATTERN.test(id)) {
     return null;
   }
 

@@ -8,8 +8,8 @@ import {
   resolveOrganizationSettingsId,
 } from "@/lib/organization-settings-client";
 
-const restaurantMembership = { organizationId: "restaurant-13-id" };
-const anotherMembership = { organizationId: "other-tenant-id" };
+const restaurantMembership = { organizationId: "c123456789012345678901234" };
+const anotherMembership = { organizationId: "c123456789012345678901235" };
 
 test("initial load, direct navigation, and refresh use the authenticated active membership", async () => {
   const requests: Array<{ url: string; method: string }> = [];
@@ -20,7 +20,7 @@ test("initial load, direct navigation, and refresh use the authenticated active 
       status: 200,
       json: async () => url === "/api/users/me/membership"
         ? { memberships: [restaurantMembership] }
-        : { organization: { id: "restaurant-13-id" } },
+        : { organization: { id: restaurantMembership.organizationId } },
     } as Response;
   };
   const session = { role: "ADMIN", organizationId: restaurantMembership.organizationId };
@@ -31,9 +31,9 @@ test("initial load, direct navigation, and refresh use the authenticated active 
   }
 
   assert.deepEqual(requests.filter((request) => request.url.endsWith("/settings")), [
-    { url: "/api/organizations/restaurant-13-id/settings", method: "GET" },
-    { url: "/api/organizations/restaurant-13-id/settings", method: "GET" },
-    { url: "/api/organizations/restaurant-13-id/settings", method: "GET" },
+    { url: "/api/organizations/c123456789012345678901234/settings", method: "GET" },
+    { url: "/api/organizations/c123456789012345678901234/settings", method: "GET" },
+    { url: "/api/organizations/c123456789012345678901234/settings", method: "GET" },
   ]);
   assert.equal(requests.some((request) => request.url.includes("noId")), false);
 });
@@ -68,8 +68,8 @@ test("a selected membership change uses only the newly session-authorized organi
   assert.equal(switched.organizationId, anotherMembership.organizationId);
   assert.equal(selected, anotherMembership.organizationId);
   assert.deepEqual(requests.filter((url) => url.endsWith("/settings")), [
-    "/api/organizations/restaurant-13-id/settings",
-    "/api/organizations/other-tenant-id/settings",
+    "/api/organizations/c123456789012345678901234/settings",
+    "/api/organizations/c123456789012345678901235/settings",
   ]);
 });
 
@@ -130,6 +130,8 @@ test("missing and placeholder ids never issue an organization settings request",
 
   assert.equal(organizationSettingsApiPath("noId"), null);
   assert.equal(organizationSettingsApiPath("undefined"), null);
+  assert.equal(organizationSettingsApiPath("bad-id"), null);
+  assert.equal(organizationSettingsApiPath("c123"), null);
   assert.equal(organizationSettingsApiPath(null), null);
   await assert.rejects(
     requestOrganizationSettings(fetcher, "noId"),
@@ -149,8 +151,8 @@ test("settings GET, PATCH, and PUT target the validated organization id", async 
   await requestOrganizationSettings(fetcher, restaurantMembership.organizationId, { method: "PATCH" });
   await requestOrganizationSettings(fetcher, restaurantMembership.organizationId, { method: "PUT" });
   assert.deepEqual(requests, [
-    { url: "/api/organizations/restaurant-13-id/settings", method: "GET" },
-    { url: "/api/organizations/restaurant-13-id/settings", method: "PATCH" },
-    { url: "/api/organizations/restaurant-13-id/settings", method: "PUT" },
+    { url: "/api/organizations/c123456789012345678901234/settings", method: "GET" },
+    { url: "/api/organizations/c123456789012345678901234/settings", method: "PATCH" },
+    { url: "/api/organizations/c123456789012345678901234/settings", method: "PUT" },
   ]);
 });

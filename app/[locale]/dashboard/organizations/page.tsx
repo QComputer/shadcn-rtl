@@ -368,7 +368,7 @@ export default async function OrganizationsPage({
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
-            href={`/${locale}/dashboard/shop-domains`}
+            href={`/${locale}/dashboard/settings/domains`}
             className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-background px-3 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Globe2 className="h-4 w-4" aria-hidden="true" />

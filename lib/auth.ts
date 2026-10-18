@@ -103,16 +103,22 @@ const buildProviders = (): Provider[] => {
         const lockDurationMs = 15 * 60 * 1000;
         const maxFailedAttempts = 5;
 
-        const user = await prisma.user.findFirst({
+        const matchedUsers = await prisma.user.findMany({
           where: {
             deletedAt: null,
             OR: [
-              { name: identifier },
+              { name: { equals: identifier, mode: "insensitive" } },
               { email: identifier },
               { phone: identifier },
             ],
           },
+          take: 2,
         });
+
+        // Case-folded legacy username collisions must fail closed rather than
+        // authenticating whichever record the database happens to return first.
+        if (matchedUsers.length !== 1) throw new Error("Invalid username or password");
+        const user = matchedUsers[0];
 
         if (!user || !user.password) {
           throw new Error("Invalid username or password");

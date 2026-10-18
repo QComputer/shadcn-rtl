@@ -7,7 +7,8 @@ import { organizationService } from "@/lib/services/organization.service";
 
 // Validation schema for registration - only username and password required
 const registerSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters").max(50, "Username must be less than 50 characters"),
+  username: z.string().trim().min(3, "Username must be at least 3 characters").max(50, "Username must be less than 50 characters")
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/, "Username contains unsupported characters").transform((value) => value.toLowerCase()),
   password: z.string().min(6, "Password must be at least 6 characters"),
   orgSlug: z.string().optional()
 });
@@ -29,8 +30,8 @@ export async function POST(request: NextRequest) {
     const { username, password, orgSlug } = validation.data;
 
     // Check if username already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { name: username },
+    const existingUser = await prisma.user.findFirst({
+      where: { name: { equals: username, mode: "insensitive" } },
     });
 
     if (existingUser) {

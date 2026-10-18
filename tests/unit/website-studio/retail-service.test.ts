@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ApiError } from "@/lib/api-guards";
-import { RetailWebsiteService, type StudioPrincipal } from "@/lib/website-studio/retail.service";
+import { RetailWebsiteService, retailWebsiteScope, type StudioPrincipal } from "@/lib/website-studio/retail.service";
 import { initialRetailContent, type RetailContent } from "@/lib/website-studio/retail-contract";
 
 const org = { id: "org-1", name: "نمونه", slug: "sample", description: null, phone: null, email: null, address: null };
@@ -49,6 +49,9 @@ function draft(requestId = "7a0c5b5d-5957-4822-8a7f-06d35dc76c93", baseRevisionI
 }
 
 test("authorization uses organization scope, current active membership, and active SHOP capability organization", async () => {
+  assert.equal("vertical" in retailWebsiteScope, false, "SHOP capability, not a taxonomy list, gates website editing");
+  assert.deepEqual(retailWebsiteScope.capabilities, { some: { key: "SHOP", status: "ACTIVE", enabledAt: { not: null } } });
+
   const wrongScope = mockService();
   await assert.rejects(wrongScope.service.load(principal, "org-2"), (error: unknown) => error instanceof ApiError && error.status === 403);
   assert.equal(wrongScope.calls.membership, 0);

@@ -10,11 +10,11 @@ export type StudioPrincipal = { userId: string; role: UserRole; organizationId?:
 type Tx = Prisma.TransactionClient;
 type RevisionRow = { id: string; content: Prisma.JsonValue; createdAt: Date; requestId: string; createdBy: string };
 
-// Existing retailers (including Aka Shoes) may be unclassified. SHOP grants
-// the capability; the optional business taxonomy is never changed by editing.
+// Website editing is gated by the active SHOP capability, not by taxonomy.
+// This keeps legacy organizations and future SHOP verticals usable without
+// guessing or rewriting their business classification.
 export const retailWebsiteScope: Prisma.OrganizationWhereInput = {
   isActive: true, deletedAt: null,
-  OR: [{ vertical: null }, { vertical: { in: ["SHOE_STORE", "CLOTHING_STORE", "PHARMACY", "SUPERMARKET", "FLORIST"] } }],
   capabilities: { some: { key: "SHOP", status: "ACTIVE", enabledAt: { not: null } } },
 };
 

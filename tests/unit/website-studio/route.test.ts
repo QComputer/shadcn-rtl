@@ -73,12 +73,13 @@ function chunkedRequest(body: string, headers: Record<string, string>) {
       controller.close();
     },
   });
-  return new Request("https://app.example/api/organizations/org-route/website", {
+  const init: RequestInit & { duplex: "half" } = {
     method: "POST",
     headers: { "content-type": "application/json", ...headers },
     body: stream,
     duplex: "half",
-  });
+  };
+  return new Request("https://app.example/api/organizations/org-route/website", init);
 }
 
 test("website API requires authentication for reads and writes and returns private no-store responses", async () => {

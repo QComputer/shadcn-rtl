@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { ArrowDown, ArrowUp, Check, Eye, LoaderCircle, Plus, RefreshCw, Save, Smartphone, Trash2, Monitor } from "lucide-react";
 import { retailContentSchema, type RetailContent, type RetailSection, type WebsiteMedia, type WebsiteRevision } from "@/lib/website-studio/retail-contract";
 import { moveWebsiteSection, isEligibleWebsiteImage } from "@/lib/website-studio/core";
@@ -35,7 +36,8 @@ function retailValidationMessage(content: RetailContent) {
 }
 
 function ImagePicker({ label, value, media, disabled, onChange }: { label: string; value: string; media: WebsiteMedia[]; disabled: boolean; onChange: (id: string) => void }) {
-  return <label className={styles.field}><span>{label}</span><select value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}><option value="">بدون تصویر</option>{media.map((image) => <option key={image.id} value={image.id}>{image.filename || "تصویر تأییدشده"}</option>)}</select>{value && media.find((image) => image.id === value) && <img className={styles.thumb} src={media.find((image) => image.id === value)!.url} alt="پیش‌نمایش تصویر تأییدشده" />}</label>;
+  const selectedImage = media.find((image) => image.id === value);
+  return <label className={styles.field}><span>{label}</span><select value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}><option value="">بدون تصویر</option>{media.map((image) => <option key={image.id} value={image.id}>{image.filename || "تصویر تأییدشده"}</option>)}</select>{selectedImage && <Image className={styles.thumb} src={selectedImage.url} alt="پیش‌نمایش تصویر تأییدشده" width={320} height={200} unoptimized />}</label>;
 }
 
 export function RetailStudio({ organizationId, locale }: Props) {
@@ -52,22 +54,21 @@ export function RetailStudio({ organizationId, locale }: Props) {
   const usableMedia = useMemo(() => (payload?.media ?? []).filter(isEligibleWebsiteImage), [payload?.media]);
   const ordered = useMemo(() => [...(content?.sections ?? [])].sort((a, b) => a.order - b.order || a.key.localeCompare(b.key)), [content]);
 
-  const load = useCallback(async (signal?: AbortSignal) => {
-    setError("");
+  const fetchPayload = useCallback(async (signal?: AbortSignal): Promise<ApiPayload> => {
     const response = await fetch(endpoint, { credentials: "same-origin", cache: "no-store", signal });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(responseError(data, "بارگذاری وب‌سایت انجام نشد."));
-    if (!signal?.aborted) {
-      const result = data as ApiPayload;
-      setPayload(result); setContent(result.content); setDirty(false); setNotice("");
-    }
+    return data as ApiPayload;
   }, [endpoint]);
 
   useEffect(() => {
     const controller = new AbortController();
-    void load(controller.signal).catch((cause) => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "بارگذاری وب‌سایت انجام نشد."); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    void fetchPayload(controller.signal).then((result) => {
+      if (controller.signal.aborted) return;
+      setPayload(result); setContent(result.content); setDirty(false); setNotice(""); setError("");
+    }).catch((cause) => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "بارگذاری وب‌سایت انجام نشد."); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [load]);
+  }, [fetchPayload]);
   useEffect(() => {
     if (!dirty) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
@@ -80,7 +81,10 @@ export function RetailStudio({ organizationId, locale }: Props) {
   async function refresh() {
     if (dirty && !window.confirm("با بازخوانی، تغییرات ذخیره‌نشده کنار گذاشته می‌شوند. ادامه می‌دهید؟")) return;
     setLoading(true); setBusy(true);
-    try { await load(); } catch (cause) { setError(cause instanceof Error ? cause.message : "بازخوانی انجام نشد."); } finally { setLoading(false); setBusy(false); }
+    try {
+      const result = await fetchPayload();
+      setPayload(result); setContent(result.content); setDirty(false); setNotice(""); setError("");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "بازخوانی انجام نشد."); } finally { setLoading(false); setBusy(false); }
   }
   async function save() {
     if (!content || busy) return;

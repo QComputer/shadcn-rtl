@@ -53,6 +53,8 @@
 .previewDesktop { max-width:100%; }
 .previewMobile { max-width:390px; }
 .previewViewport iframe { display:block; width:100%; height:min(78vh,900px); min-height:620px; border:0; background:#fff; }
+.previewDesktop iframe { width:1024px; }
+.previewMobile iframe { width:min(390px, 100%); }
 .previewMedia a { color:#386b57; }
 .previewMedia figcaption { font-size:.8rem; color:var(--quiet); }
 .activity { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.55rem; }

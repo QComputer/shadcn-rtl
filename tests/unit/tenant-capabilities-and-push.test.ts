@@ -440,8 +440,11 @@ describe("capability-aware dashboard authorization", () => {
     };
     assert.equal(checkRouteAccess("/fa/dashboard/hotel-website", manager).hasAccess, true);
     assert.equal(checkRouteAccess("/fa/dashboard/hotel-website/org-a/property-a", manager).hasAccess, true);
+    assert.equal(checkRouteAccess("/fa/dashboard/hotel-website/org-a/property-a/preview/revision-a", manager).hasAccess, true);
     assert.equal(checkRouteAccess("/fa/dashboard/hotel-website", { ...manager, organizationCapabilities: [] }).hasAccess, false);
+    assert.equal(checkRouteAccess("/fa/dashboard/hotel-website/org-a/property-a/preview/revision-a", { ...manager, organizationCapabilities: [] }).hasAccess, false);
     assert.equal(checkRouteAccess("/fa/dashboard/hotel-website", { ...manager, userRole: "STAFF" }).hasAccess, false);
+    assert.equal(checkRouteAccess("/fa/dashboard/hotel-website/org-a/property-a/preview/revision-a", { ...manager, userRole: "STAFF" }).hasAccess, false);
   });
 
   it("allows Retail catalog pages only for organization managers with SHOP", () => {

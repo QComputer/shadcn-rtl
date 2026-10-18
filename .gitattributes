@@ -29,3 +29,4 @@ prisma/migrations/20260830000100_reconcile_payment_money_semantics/migration.sql
 prisma/migrations/20260830000200_inoti_payment_e2e/migration.sql text eol=crlf
 prisma/migrations/20260830000300_tenant_branding_extensions/migration.sql text eol=crlf
 prisma/migrations/20260831000100_inoti_durable_payment_reconciliation/migration.sql text eol=crlf
+prisma/migrations/20261018150000_tenant_website_revisions/migration.sql text eol=lf

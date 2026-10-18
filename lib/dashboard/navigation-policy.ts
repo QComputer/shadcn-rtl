@@ -47,6 +47,7 @@ export type DashboardNavigationKey =
   | "requestDemoLeads"
   | "tenantProvisioning"
   | "businessAcquisition"
+  | "websiteStudio"
   | "hotelWebsite"
   | "pilots"
 
@@ -84,6 +85,7 @@ export const DASHBOARD_NAVIGATION_ITEMS = {
   requestDemoLeads: "/request-demo-leads",
   tenantProvisioning: "/tenant-provisioning",
   businessAcquisition: "/business-acquisition",
+  websiteStudio: "/website-studio",
   hotelWebsite: "/hotel-website",
   pilots: "/pilots",
 } as const satisfies Record<DashboardNavigationKey, string>
@@ -99,7 +101,7 @@ export const DASHBOARD_NAVIGATION_GROUPS = [
   },
   {
     key: "teamAndSettings",
-    items: ["businessActivation", "reputation", "hotelWebsite", "retailPaymentSettings", "retailPaymentReports", "members", "customerClub", "imports", "exports", "creativeStudio", "settings", "organizationSettings", "qrcode"],
+    items: ["businessActivation", "reputation", "websiteStudio", "hotelWebsite", "retailPaymentSettings", "retailPaymentReports", "members", "customerClub", "imports", "exports", "creativeStudio", "settings", "organizationSettings", "qrcode"],
   },
   {
     key: "platformAdmin",
@@ -143,6 +145,7 @@ export const ROLE_NAVIGATION_POLICY = {
   requestDemoLeads: ["SUPER_ADMIN"],
   tenantProvisioning: ["SUPER_ADMIN"],
   businessAcquisition: ["SUPER_ADMIN"],
+  websiteStudio: MANAGEMENT_ROLES,
   hotelWebsite: MANAGEMENT_ROLES,
   pilots: ["SUPER_ADMIN"],
 } as const satisfies Record<DashboardNavigationKey, readonly DashboardRole[]>
@@ -204,6 +207,9 @@ export const DASHBOARD_ROUTE_POLICY = {
   "/tenant-provisioning": ROLE_NAVIGATION_POLICY.tenantProvisioning,
   "/tenant-provisioning/[planId]": ROLE_NAVIGATION_POLICY.tenantProvisioning,
   "/business-acquisition": ROLE_NAVIGATION_POLICY.businessAcquisition,
+  "/website-studio": ROLE_NAVIGATION_POLICY.websiteStudio,
+  "/website-studio/[organizationId]": ROLE_NAVIGATION_POLICY.websiteStudio,
+  "/website-studio/[organizationId]/preview/[revisionId]": ROLE_NAVIGATION_POLICY.websiteStudio,
   "/hotel-website": ROLE_NAVIGATION_POLICY.hotelWebsite,
   "/hotel-website/[organizationId]/[propertyId]": ROLE_NAVIGATION_POLICY.hotelWebsite,
   "/hotel-website/[organizationId]/[propertyId]/preview/[revisionId]": ROLE_NAVIGATION_POLICY.hotelWebsite,

@@ -1,3 +1,4 @@
+import { moveWebsiteSection } from "@/lib/website-studio/core";
 import type { HotelWebsiteContent, HotelWebsiteMediaAssociationInput } from "@/lib/hotel/content/hotel-website-contract";
 import type { HotelCmsDraft, HotelCmsLocale } from "./hotel-cms-api";
 
@@ -77,22 +78,7 @@ export function addTextSection(content: EditorContent): EditorContent { return a
 
 /** Reorders sections using the persisted order field while leaving all other
  * section data untouched. Sorting is deterministic for legacy drafts. */
-export function moveSection(content: EditorContent, key: string, direction: -1 | 1): EditorContent {
-  const ordered = [...content.sections].sort((a, b) => a.order - b.order || a.key.localeCompare(b.key));
-  const index = ordered.findIndex((section) => section.key === key);
-  const nextIndex = index + direction;
-  if (index < 0 || nextIndex < 0 || nextIndex >= ordered.length) return content;
-  const current = ordered[index]!;
-  const neighbor = ordered[nextIndex]!;
-  return {
-    ...content,
-    sections: content.sections.map((section) => section.key === current.key
-      ? { ...section, order: neighbor.order }
-      : section.key === neighbor.key
-        ? { ...section, order: current.order }
-        : section),
-  };
-}
+export const moveSection = moveWebsiteSection<EditorContent>;
 
 export function addFeatureItem(section: Extract<EditorContent["sections"][number], { kind: "FEATURE_LIST" }>) {
   if (section.items.length >= 30) return section;

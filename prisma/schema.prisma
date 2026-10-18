@@ -1150,6 +1150,7 @@ model Organization {
   // Relations
   members                      OrganizationMember[]
   hotelProperties              HotelProperty[]
+  tenantWebsiteRevisions       TenantWebsiteRevision[]
   acquisition                  OrganizationAcquisition?
   activationPlan               OrganizationActivationPlan?
   activationTasks              OrganizationActivationTask[]
@@ -1953,6 +1954,7 @@ model User {
   aiMediaJobEvents              AiMediaJobEvent[]             @relation("AiMediaJobEventActor")
   aiMediaAssets                 AiMediaAsset[]                @relation("AiMediaAssetRequestedBy")
   createdHotelWebsiteRevisions          HotelWebsiteContentRevision[] @relation("HotelWebsiteRevisionCreatedBy")
+  tenantWebsiteRevisions                TenantWebsiteRevision[]
   hotelWebsiteReviews                   HotelWebsiteContentReview[]   @relation("HotelWebsiteReviewActor")
   hotelWebsitePublications              HotelWebsitePublication[]     @relation("HotelWebsitePublicationActor")
   revokedHotelWebsitePublications       HotelWebsitePublication[]     @relation("HotelWebsitePublicationRevoker")
@@ -5599,4 +5601,18 @@ model HotelPaymentAllocation {
 
   @@unique([hotelReservationId, kind])
   @@index([organizationId, hotelReservationId])
+}
+
+/// Immutable private organization website drafts. Retail publication is intentionally absent.
+model TenantWebsiteRevision {
+  id String @id @default(uuid())
+  organizationId String
+  content Json
+  createdBy String
+  requestId String
+  createdAt DateTime @default(now())
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  creator User @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  @@unique([organizationId, requestId])
+  @@index([organizationId, createdAt(sort: Desc), id(sort: Desc)])
 }

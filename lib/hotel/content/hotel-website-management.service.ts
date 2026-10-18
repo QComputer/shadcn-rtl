@@ -1,4 +1,5 @@
 import "server-only";
+import { isEligibleWebsiteImage as isEligibleImage } from "@/lib/website-studio/core";
 
 import { createHash } from "node:crypto";
 import { Prisma, type AuditAction, type PrismaClient, type UserRole } from "@prisma/client";
@@ -54,15 +55,6 @@ function safeJson(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }
 
-function isEligibleImage(image: { filename: string | null; url: string; mimeType: string | null }) {
-  if (!image.filename || !/^[A-Za-z0-9_.-]+$/.test(image.filename)) return false;
-  if (!image.mimeType || !["image/jpeg", "image/png", "image/webp", "image/gif"].includes(image.mimeType)) return false;
-  if (image.url === `/uploads/${image.filename}`) return true;
-  try {
-    const url = new URL(image.url);
-    return url.protocol === "https:" && url.hostname.endsWith(".public.blob.vercel-storage.com") && url.pathname.split("/").at(-1) === image.filename;
-  } catch { return false; }
-}
 
 export class HotelWebsiteManagementService {
   constructor(private readonly db: Db = defaultPrisma) {}

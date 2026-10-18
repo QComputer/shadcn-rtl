@@ -119,6 +119,10 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     requiresOrgMembership: true,
   },
 
+  "/dashboard/website-studio": { allowedRoles: ORG_MANAGEMENT_ROLES, requiresOrgMembership: true },
+  "/dashboard/website-studio/[organizationId]": { allowedRoles: ORG_MANAGEMENT_ROLES, requiresOrgMembership: true },
+  "/dashboard/website-studio/[organizationId]/preview/[revisionId]": { allowedRoles: ORG_MANAGEMENT_ROLES, requiresOrgMembership: true },
+
   "/dashboard/hotel-website": {
     allowedRoles: ORG_MANAGEMENT_ROLES,
     requiresOrgMembership: true,

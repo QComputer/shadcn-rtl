@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { usePathname } from "next/navigation"
 import { toast } from "react-toastify"
 import ToastProvider from "@/components/ToastProvider"
 import { SocketProvider } from "@/context/SocketContext"
@@ -128,7 +129,12 @@ function DashboardNotificationPoller() {
 
 export function DashboardShell({ children, locale }: DashboardShellProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const pathname = usePathname()
   const copy = getDashboardShellCopy(locale)
+
+  // The server preview page independently authenticates and authorizes its
+  // revision. Render only the site inside the responsive preview iframe.
+  if (/\/dashboard\/website-studio\/[^/]+\/preview\/[^/]+\/?$/.test(pathname)) return <>{children}</>
 
   return (
     <ToastProvider>

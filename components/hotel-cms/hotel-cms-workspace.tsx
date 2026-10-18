@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { StudioField } from "@/components/website-studio/studio-field";
 import type { HotelWebsiteContent } from "@/lib/hotel/content/hotel-website-contract";
 import { OrganizationBrandingForm, type BrandingValues } from "@/components/organization-branding-form";
 import {
@@ -34,9 +35,7 @@ const localeNames: Record<HotelCmsLocale, string> = { fa: "فارسی", en: "Eng
 function InlineField({ label, value, onChange, multiline = false, placeholder = "" }: {
   label: string; value: string; onChange: (value: string) => void; multiline?: boolean; placeholder?: string;
 }) {
-  return <label className={styles.field}><span>{label}</span>{multiline
-    ? <textarea value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} rows={4} />
-    : <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />}</label>;
+  return <StudioField className={styles.field} label={label} value={value} onChange={onChange} multiline={multiline} placeholder={placeholder} />;
 }
 
 export function HotelCmsWorkspace({ scope, role, propertyLabel }: Props) {

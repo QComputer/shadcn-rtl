@@ -82,6 +82,8 @@ describe("platform organization domain navigation and Check flow", () => {
     assert.match(organizationApi, /assertDomainOwnership/)
     assert.match(organizationApi, /if \(action === "check"\) return inspectProjectDomainOnVercel\(domain\)/)
     assert.match(organizationApi, /writeAuditLog\(/)
+    assert.match(organizationApi, /displayKind: getDomainPresentationKind\(updated\.domain\)/)
+    assert.match(organizationApi, /apexInfo: getApexDomainInfo\(updated\.domain\)/)
 
     const shopManager = readFileSync("components/dashboard/shop-domain-manager.tsx", "utf8")
     assert.match(shopManager, /counterpartMissing/)

@@ -14,6 +14,7 @@ import {
 import { customDomainLocales } from "@/lib/custom-domain-routing";
 import { revalidatePath } from "next/cache";
 import { organizationPublicRouteCapabilities, type CapabilityRecord } from "@/lib/organization-capabilities";
+import { getApexDomainInfo, getDomainPresentationKind } from "@/lib/domains/domain-normalization.server";
 
 const organizationDomainActionSchema = z.object({
   action: z.enum(["add", "check", "verify", "remove"]),
@@ -109,7 +110,17 @@ export async function POST(
       // Cache revalidation must not break Vercel mutations.
     }
 
-    return NextResponse.json({ domain: updated, vercel });
+    return NextResponse.json({
+      domain: {
+        ...updated,
+        // Keep the submitted hostname's presentation after Check. The stored
+        // kind may represent the tenant's canonical apex, while `www` remains
+        // a subdomain alias in the organization-domain manager.
+        displayKind: getDomainPresentationKind(updated.domain),
+        apexInfo: getApexDomainInfo(updated.domain),
+      },
+      vercel,
+    });
   } catch (error) {
     return parseError(error);
   }

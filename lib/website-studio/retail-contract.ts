@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isEligibleWebsiteImage } from "./core";
 
 const text = z.string().trim().max(5000);
 export const websiteDestination = z.string().trim().max(1000).refine((value) => {
@@ -24,9 +25,18 @@ export const retailContentSchema = z.object({
 });
 export type RetailContent = z.infer<typeof retailContentSchema>;
 export type RetailSection = RetailContent["sections"][number];
-export type WebsiteMedia = { id: string; url: string; filename: string | null; mimeType: string | null };
+export type WebsiteMedia = { id: string; url: string; filename: string | null; mimeType: string | null; source?: "TENANT_BRAND"; alt?: string };
 export type WebsiteRevision = { id: string; content: RetailContent; createdAt: string };
 export const saveRetailDraftSchema = z.object({ content: retailContentSchema, baseRevisionId: z.string().max(128).nullable(), requestId: z.string().uuid() }).strict();
+
+const tenantBrandPath = /^\/brand\/tenants\/([a-z0-9-]+)\/home\/(?:[a-z0-9-]+\/)*[a-z0-9-]+\.webp$/;
+export function isEligibleRetailWebsiteMedia(image: WebsiteMedia): boolean {
+  if (image.source !== "TENANT_BRAND") return isEligibleWebsiteImage(image);
+  const match = tenantBrandPath.exec(image.url);
+  if (!match || image.id !== `brand:${match[1]}:${image.url}`) return false;
+  const filename = image.url.split("/").at(-1);
+  return Boolean(filename && image.filename === filename && image.mimeType === "image/webp" && image.id.length <= 128);
+}
 
 export function referencedWebsiteImages(content: RetailContent) {
   return [...new Set(content.sections.flatMap((s) => s.kind === "GALLERY" ? s.imageIds : "imageId" in s && s.imageId ? [s.imageId] : []))];

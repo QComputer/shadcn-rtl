@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { ArrowDown, ArrowUp, Check, Eye, LoaderCircle, Plus, RefreshCw, Save, Smartphone, Trash2, Monitor } from "lucide-react";
-import { retailContentSchema, type RetailContent, type RetailSection, type WebsiteMedia, type WebsiteRevision } from "@/lib/website-studio/retail-contract";
-import { moveWebsiteSection, isEligibleWebsiteImage } from "@/lib/website-studio/core";
+import { isEligibleRetailWebsiteMedia, referencedWebsiteImages, retailContentSchema, type RetailContent, type RetailSection, type WebsiteMedia, type WebsiteRevision } from "@/lib/website-studio/retail-contract";
+import { moveWebsiteSection } from "@/lib/website-studio/core";
 import { StudioField } from "./studio-field";
 import styles from "./retail-studio.module.css";
 
@@ -37,7 +37,7 @@ function retailValidationMessage(content: RetailContent) {
 
 function ImagePicker({ label, value, media, disabled, onChange }: { label: string; value: string; media: WebsiteMedia[]; disabled: boolean; onChange: (id: string) => void }) {
   const selectedImage = media.find((image) => image.id === value);
-  return <label className={styles.field}><span>{label}</span><select value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}><option value="">بدون تصویر</option>{media.map((image) => <option key={image.id} value={image.id}>{image.filename || "تصویر تأییدشده"}</option>)}</select>{selectedImage && <Image className={styles.thumb} src={selectedImage.url} alt="پیش‌نمایش تصویر تأییدشده" width={320} height={200} unoptimized />}</label>;
+  return <label className={styles.field}><span>{label}</span><select aria-label={label} value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}><option value="">بدون تصویر</option>{media.map((image) => <option key={image.id} value={image.id}>{image.alt || image.filename || "تصویر تأییدشده"}</option>)}</select>{selectedImage && <Image className={styles.thumb} src={selectedImage.url} alt="پیش‌نمایش تصویر تأییدشده" width={320} height={200} unoptimized />}</label>;
 }
 
 export function RetailStudio({ organizationId, locale }: Props) {
@@ -51,7 +51,8 @@ export function RetailStudio({ organizationId, locale }: Props) {
   const [dirty, setDirty] = useState(false);
   const [view, setView] = useState<"edit" | "preview">("edit");
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
-  const usableMedia = useMemo(() => (payload?.media ?? []).filter(isEligibleWebsiteImage), [payload?.media]);
+  const usableMedia = useMemo(() => (payload?.media ?? []).filter(isEligibleRetailWebsiteMedia), [payload?.media]);
+  const missingMedia = content ? referencedWebsiteImages(content).filter((id) => !usableMedia.some((image) => image.id === id)) : [];
   const ordered = useMemo(() => [...(content?.sections ?? [])].sort((a, b) => a.order - b.order || a.key.localeCompare(b.key)), [content]);
 
   const fetchPayload = useCallback(async (signal?: AbortSignal): Promise<ApiPayload> => {
@@ -114,6 +115,7 @@ export function RetailStudio({ organizationId, locale }: Props) {
   return <main className={styles.shell} dir="rtl" lang={locale}>
     <header className={styles.header}><div><p className={styles.eyebrow}>استودیوی وب‌سایت فروشگاه</p><h1>{payload?.organization.name ?? "مدیریت وب‌سایت"}</h1><p>محتوای صفحه فروشگاه را ویرایش و پیش‌نمایش خصوصی آن را بررسی کنید.</p></div><div className={styles.headerButtons}><span className={styles.privateBadge}>پیش‌نویس خصوصی</span><button type="button" disabled={busy || loading} onClick={() => void refresh()}><RefreshCw size={16} /> بازخوانی</button></div></header>
     {error && <div role="alert" className={styles.alert}>{error}<button type="button" disabled={busy} onClick={() => void refresh()}>تلاش دوباره</button></div>}
+    {missingMedia.length > 0 && <div role="status" className={styles.alert}>بعضی تصاویر نسخه ذخیره‌شده در این محیط در دسترس نیستند. برای ذخیره نسخه بعدی، تصویر جایگزین را از رسانه‌های تأییدشده انتخاب کنید.</div>}
     {notice && <div role="status" className={styles.success}><Check size={17} />{notice}</div>}
     <div className={styles.workspace}>
       <nav className={styles.tabs} aria-label="نمای استودیو"><button type="button" aria-pressed={view === "edit"} onClick={() => setView("edit")}>ویرایش محتوا</button><button type="button" disabled={!payload?.revision} onClick={openPreview} aria-pressed={view === "preview"}><Eye size={16} /> پیش‌نمایش ذخیره‌شده</button></nav>

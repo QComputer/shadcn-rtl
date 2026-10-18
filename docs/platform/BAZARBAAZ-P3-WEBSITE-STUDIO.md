@@ -10,11 +10,13 @@ Retail supports Hero, About, Gallery, Features and Contact. All five sections ha
 - `components/website-studio/studio-field.tsx` provides the common labeled editor field used by both Studios.
 - Hotel retains its property, revision, review, media-association and publication services and records.
 - Retail uses organization-owned immutable `TenantWebsiteRevision` records. There is no Retail publication endpoint or pointer from a public storefront to these records.
-- The existing taxonomy has specific retailer verticals such as `SHOE_STORE`, rather than a `RETAIL` enum. Existing unclassified organizations, including Aka Shoes, remain eligible through their active SHOP capability. Hotel and explicitly classified Restaurant organizations are excluded from the Retail adapter.
+- The existing taxonomy is optional and does not grant or restrict capabilities. The Retail adapter uses the active SHOP capability, including for existing unclassified organizations such as Aka Shoes. Hotel properties continue to use their existing HOTEL_WEBSITE adapter.
 
 ## Private application flow
 
 `GET /api/organizations/:id/website` loads the newest revision, organization-derived initial content, and eligible organization images.
+
+The media adapter also reuses the organization's existing published homepage asset registry, with stable tenant-scoped references. It does not copy images or create catalog/media records. Legacy local upload URLs are omitted when Blob delivery is not configured; existing draft references are retained with a replacement warning. Hotel media delivery is unchanged.
 
 `POST` accepts `{ content, baseRevisionId, requestId }`. Current active user, tenant context, membership and capability are checked server-side. ADMIN and MANAGER editing follows the existing Hotel editor policy. Current SUPER_ADMIN role is verified against the database.
 

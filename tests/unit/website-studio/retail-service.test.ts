@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ApiError } from "@/lib/api-guards";
+import { tenantBrandWebsiteMedia } from "@/lib/website-studio/brand-media";
 import { RetailWebsiteService, retailWebsiteScope, type StudioPrincipal } from "@/lib/website-studio/retail.service";
 import { initialRetailContent, type RetailContent } from "@/lib/website-studio/retail-contract";
 
@@ -72,6 +73,22 @@ test("saving rejects media outside the eligible public organization set", async 
   const { service, calls } = mockService();
   await assert.rejects(service.save(principal, "org-1", draft(undefined, null, next)), (error: unknown) => error instanceof ApiError && error.status === 422);
   assert.equal(calls.insert, 0);
+});
+
+test("saving accepts current tenant registry media and rejects another tenant's brand image id", async () => {
+  const akaMedia = tenantBrandWebsiteMedia("aka-shoes");
+  assert.ok(akaMedia.length > 0);
+  const selected = akaMedia[0]!;
+  const withBrandImage = structuredClone(content);
+  withBrandImage.sections = withBrandImage.sections.map((section) => section.kind === "HERO" ? { ...section, imageId: selected.id } : section);
+  const aka = mockService({ organization: { ...org, slug: "aka-shoes" }, images: [] });
+  const saved = await aka.service.save(principal, "org-1", draft(undefined, null, withBrandImage));
+  assert.deepEqual(saved.content, withBrandImage);
+  assert.equal(aka.calls.insert, 1);
+
+  const restaurant = mockService({ organization: { ...org, slug: "italiano-13" }, images: [] });
+  await assert.rejects(restaurant.service.save(principal, "org-1", draft(undefined, null, withBrandImage)), (error: unknown) => error instanceof ApiError && error.status === 422);
+  assert.equal(restaurant.calls.insert, 0);
 });
 
 test("saving checks the latest revision and returns 409 for a stale base", async () => {

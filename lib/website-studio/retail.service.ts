@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient, type UserRole } from "@prisma/client";
 import { prisma } from "@/lib/db-runtime";
 import { ApiError } from "@/lib/api-guards";
-import { isEligibleWebsiteImage } from "./core";
+import { retailWebsiteMedia } from "./brand-media";
 import { initialRetailContent, referencedWebsiteImages, retailContentSchema, saveRetailDraftSchema, type WebsiteRevision } from "./retail-contract";
 
 export type StudioPrincipal = { userId: string; role: UserRole; organizationId?: string | null };
@@ -38,9 +38,9 @@ export class RetailWebsiteService {
     return org;
   }
 
-  private async media(tx: Tx, organizationId: string) {
+  private async media(tx: Tx, organizationId: string, organizationSlug: string) {
     const images = await tx.image.findMany({ where: { organizationId, access: "PUBLIC" }, select: { id: true, url: true, filename: true, mimeType: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }] });
-    return images.filter(isEligibleWebsiteImage);
+    return retailWebsiteMedia(organizationSlug, images);
   }
 
   async load(principal: StudioPrincipal, organizationId: string, revisionId?: string) {
@@ -50,7 +50,7 @@ export class RetailWebsiteService {
         ? await tx.$queryRaw<RevisionRow[]>`SELECT * FROM "TenantWebsiteRevision" WHERE "organizationId"=${organizationId} AND id=${revisionId} LIMIT 1`
         : await tx.$queryRaw<RevisionRow[]>`SELECT * FROM "TenantWebsiteRevision" WHERE "organizationId"=${organizationId} ORDER BY "createdAt" DESC, id DESC LIMIT 1`;
       if (revisionId && !rows[0]) throw new ApiError(404, "نسخه در دسترس نیست.");
-      const media = await this.media(tx, organizationId);
+      const media = await this.media(tx, organizationId, organization.slug);
       const row = rows[0];
       const revision: WebsiteRevision | null = row ? { id: row.id, createdAt: row.createdAt.toISOString(), content: retailContentSchema.parse(row.content) } : null;
       const content = revision?.content ?? initialRetailContent(organization);
@@ -72,7 +72,7 @@ export class RetailWebsiteService {
       }
       const latest = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "TenantWebsiteRevision" WHERE "organizationId"=${organizationId} ORDER BY "createdAt" DESC, id DESC LIMIT 1`;
       if ((latest[0]?.id ?? null) !== parsed.baseRevisionId) throw new ApiError(409, "نسخه جدیدتری ذخیره شده است. صفحه را بازخوانی کنید.");
-      const media = await this.media(tx, organizationId);
+      const media = await this.media(tx, organizationId, org.slug);
       if (referencedWebsiteImages(parsed.content).some((id) => !media.some((image) => image.id === id))) throw new ApiError(422, "تصویر باید عمومی و متعلق به همین سازمان باشد.");
       const id = randomUUID();
       const [row] = await tx.$queryRaw<RevisionRow[]>`INSERT INTO "TenantWebsiteRevision" (id,"organizationId",content,"createdBy","requestId","createdAt") VALUES (${id},${organizationId},${JSON.stringify(parsed.content)}::jsonb,${principal.userId},${parsed.requestId},GREATEST(clock_timestamp(),COALESCE((SELECT MAX("createdAt") + INTERVAL '1 millisecond' FROM "TenantWebsiteRevision" WHERE "organizationId"=${organizationId}),clock_timestamp()))) RETURNING *`;

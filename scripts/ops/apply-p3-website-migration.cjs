@@ -1,14 +1,19 @@
 // Apply only this additive migration to the owner-authorized DEMO database.
 // Usage: node --use-env-proxy scripts/ops/apply-p3-website-migration.cjs <env-file>
-const fs = require('node:fs');
-const { createHash, randomUUID } = require('node:crypto');
-require('dotenv').config({ path: process.argv[2] || '.env.local', quiet: true, override: true });
-const { neon } = require('@neondatabase/serverless');
-const sql = neon(process.env.DATABASE_URL);
-const migration = '20261018150000_tenant_website_revisions';
-const source = fs.readFileSync(`prisma/migrations/${migration}/migration.sql`, 'utf8');
-const checksum = createHash('sha256').update(source).digest('hex');
 (async () => {
+  const [fs, crypto, dotenvModule, neonModule] = await Promise.all([
+    import('node:fs'),
+    import('node:crypto'),
+    import('dotenv'),
+    import('@neondatabase/serverless'),
+  ]);
+  const { createHash, randomUUID } = crypto;
+  (dotenvModule.default ?? dotenvModule).config({ path: process.argv[2] || '.env.local', quiet: true, override: true });
+  const { neon } = neonModule;
+  const sql = neon(process.env.DATABASE_URL);
+  const migration = '20261018150000_tenant_website_revisions';
+  const source = fs.readFileSync(`prisma/migrations/${migration}/migration.sql`, 'utf8');
+  const checksum = createHash('sha256').update(source).digest('hex');
   const [identity] = await sql.query(`SELECT current_setting('neon.project_id',true) AS project,current_setting('neon.branch_id',true) AS branch,current_database() AS db`);
   if (identity.project !== 'aged-star-89488704' || identity.branch !== 'br-small-queen-aii58cw9' || identity.db !== 'neondb') throw new Error('Refused: DEMO database identity mismatch');
   const applied = await sql.query('SELECT checksum,finished_at FROM "_prisma_migrations" WHERE migration_name=$1 AND rolled_back_at IS NULL', [migration]);

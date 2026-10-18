@@ -63,11 +63,9 @@ export type HotelCmsSectionKind = EditorContent["sections"][number]["kind"];
 export function addSection(content: EditorContent, kind: HotelCmsSectionKind): EditorContent {
   if (content.sections.length >= 40) return content;
   const keys = new Set(content.sections.map((section) => section.key));
-  const orders = new Set(content.sections.map((section) => section.order));
   let index = 1;
   while (keys.has(`section-${index}`)) index++;
-  let order = 0;
-  while (orders.has(order)) order++;
+  const order = content.sections.reduce((maximum, section) => Math.max(maximum, section.order), -1) + 1;
   const common = { key: `section-${index}`, order, visible: true };
   const section: EditorContent["sections"][number] =
     kind === "TEXT" ? { ...common, kind, heading: {}, body: {} } :
@@ -76,6 +74,25 @@ export function addSection(content: EditorContent, kind: HotelCmsSectionKind): E
   return { ...content, sections: [...content.sections, section] };
 }
 export function addTextSection(content: EditorContent): EditorContent { return addSection(content, "TEXT"); }
+
+/** Reorders sections using the persisted order field while leaving all other
+ * section data untouched. Sorting is deterministic for legacy drafts. */
+export function moveSection(content: EditorContent, key: string, direction: -1 | 1): EditorContent {
+  const ordered = [...content.sections].sort((a, b) => a.order - b.order || a.key.localeCompare(b.key));
+  const index = ordered.findIndex((section) => section.key === key);
+  const nextIndex = index + direction;
+  if (index < 0 || nextIndex < 0 || nextIndex >= ordered.length) return content;
+  const current = ordered[index]!;
+  const neighbor = ordered[nextIndex]!;
+  return {
+    ...content,
+    sections: content.sections.map((section) => section.key === current.key
+      ? { ...section, order: neighbor.order }
+      : section.key === neighbor.key
+        ? { ...section, order: current.order }
+        : section),
+  };
+}
 
 export function addFeatureItem(section: Extract<EditorContent["sections"][number], { kind: "FEATURE_LIST" }>) {
   if (section.items.length >= 30) return section;

@@ -32,6 +32,20 @@ test('new text section has a distinct key and ordering while preserving previous
   assert.deepEqual(second.sections.map((s) => s.order), [0,1]);
   assert.deepEqual(content.sections, []);
 });
+test('sections can be reordered without changing content or visibility and new sections append', async () => {
+  const { addSection, moveSection } = await import('../../../lib/hotel-cms/hotel-cms-editor.ts');
+  let content = addSection(blankDraft().content, 'TEXT');
+  content = addSection(content, 'FAQ');
+  content.sections[0].body = { fa: 'approved text' };
+  content.sections[1].visible = false;
+  const moved = moveSection(content, 'section-2', -1);
+  assert.deepEqual(moved.sections.slice().sort((a,b)=>a.order-b.order).map((section) => section.key), ['section-2', 'section-1']);
+  assert.deepEqual(moved.sections.find((section) => section.key === 'section-1').body, { fa: 'approved text' });
+  assert.equal(moved.sections.find((section) => section.key === 'section-2').visible, false);
+  const appended = addSection(moved, 'TEXT');
+  assert.equal(appended.sections.find((section) => section.key === 'section-3').order, 2);
+  assert.equal(moveSection(content, 'section-1', -1), content);
+});
 test('cross-room image scope, duplicates, and missing image id reject local draft', () => {
   const draft = blankDraft();
   draft.content.title={fa:'نام'};draft.content.hero.heading={fa:'عنوان'};draft.content.introduction.body={fa:'معرفی'};

@@ -171,6 +171,28 @@ export class HotelWebsiteManagementService {
     } });
   }
 
+  /** Returns only media that the same organization may attach to a website
+   * revision. Private, foreign, malformed, and non-public storage URLs never
+   * enter the editor's picker. */
+  async listAvailableMedia(principal: Principal, scope: Scope) {
+    return this.db.$transaction(async (tx) => {
+      await this.authorize(principal, scope, tx);
+      const images = await tx.image.findMany({
+        where: { organizationId: scope.organizationId, access: "PUBLIC" },
+        orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+        take: 100,
+        select: { id: true, filename: true, url: true, mimeType: true, createdAt: true },
+      });
+      return images.filter(isEligibleImage).map((image) => ({
+        imageId: image.id,
+        src: image.url,
+        filename: image.filename!,
+        mimeType: image.mimeType!,
+        createdAt: image.createdAt.toISOString(),
+      }));
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }
+
   async listRevisions(principal: Principal, scope: Scope) {
     return this.db.$transaction(async (tx) => {
       await this.authorize(principal, scope, tx);

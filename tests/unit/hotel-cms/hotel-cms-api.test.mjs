@@ -22,6 +22,15 @@ test('GET revisions uses exact C1B1 route with credentials, no-store and no muta
   assert.equal(calls[0].request.cache, 'no-store');
   assert.equal(calls[0].request.headers['Idempotency-Key'], undefined);
 });
+test('approved media GET uses tenant-scoped CMS route without mutation headers', async () => {
+  const { fetchImpl, calls } = fake(async () => json([{ imageId: 'image-a', src: '/uploads/a.jpg', filename: 'a.jpg', mimeType: 'image/jpeg', createdAt: '2026-10-18T00:00:00Z' }]));
+  const api = createHotelCmsApi(scope, { fetchImpl });
+  assert.equal((await api.listAvailableMedia())[0].imageId, 'image-a');
+  assert.equal(calls[0].url, `${base}/media`);
+  assert.equal(calls[0].request.method, 'GET');
+  assert.equal(calls[0].request.cache, 'no-store');
+  assert.equal(calls[0].request.headers['Idempotency-Key'], undefined);
+});
 test('POST sends C1A content/media shape and stable actor-bound idempotency key after transport error', async () => {
   const { fetchImpl, calls } = fake(async (_, __, index) => {
     if (index === 1) throw new Error('network dropped after commit');

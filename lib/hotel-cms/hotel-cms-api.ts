@@ -30,6 +30,7 @@ export type HotelCmsPreview = {
   content: HotelWebsiteContent;
   media: Array<{ imageId: string; src: string; scope: "PROPERTY" | "ROOM_CATEGORY"; roomTypeId: string | null; slot: string; sortOrder: number; altText: Record<string, string> }>;
 };
+export type HotelCmsAvailableMedia = { imageId: string; src: string; filename: string; mimeType: string; createdAt: string };
 export type HotelCmsHistory = {
   reviews: Array<{ id: string; pageId: string; revisionId: string; action: string; note: string | null; actorUserId: string; createdAt: string }>;
   publications: Array<{ id: string; pageId: string; revisionId: string; publishedAt: string; publishedByUserId: string; revokedAt: string | null; revokedByUserId: string | null; revocationReason: string | null }>;
@@ -122,6 +123,14 @@ export function createHotelCmsApi(
   }
 
   return {
+    listAvailableMedia: async (signal?: AbortSignal): Promise<HotelCmsAvailableMedia[]> => {
+      const data = await request<unknown>("/media", { signal });
+      return asArray(data).map((item) => {
+        const row = asObject(item);
+        if (typeof row.imageId !== "string" || typeof row.src !== "string" || typeof row.filename !== "string" || typeof row.mimeType !== "string" || typeof row.createdAt !== "string") throw new Error("Invalid approved media response");
+        return row as HotelCmsAvailableMedia;
+      });
+    },
     listRevisions: async (signal?: AbortSignal): Promise<HotelCmsRevision[]> => {
       const data = await request<unknown>("/revisions", { signal });
       return asArray(data).map((item) => {

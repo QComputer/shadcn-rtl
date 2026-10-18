@@ -1,20 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import type { HotelWebsiteContent } from "@/lib/hotel/content/hotel-website-contract";
+import { OrganizationBrandingForm, type BrandingValues } from "@/components/organization-branding-form";
 import {
   createHotelCmsApi,
   HotelCmsRequestError,
   type HotelCmsDraft,
   type HotelCmsHistory,
+  type HotelCmsAvailableMedia,
   type HotelCmsLocale,
   type HotelCmsMedia,
   type HotelCmsRevision,
   type HotelCmsScope,
 } from "@/lib/hotel-cms/hotel-cms-api";
-import { addFaqItem, addFeatureItem, addSection, blankDraft, checkDraftMinimum, localized, locales, setLocalized } from "@/lib/hotel-cms/hotel-cms-editor";
-import { PublishedHotelWebsitePage } from "@/components/published-hotel-website-page";
-import { adaptAuthenticatedHotelWebsitePreview } from "@/lib/hotel/organization-site-presentation";
+import { addFaqItem, addFeatureItem, addSection, blankDraft, checkDraftMinimum, localized, locales, moveSection, setLocalized } from "@/lib/hotel-cms/hotel-cms-editor";
 import styles from "./hotel-cms-workspace.module.css";
 
 type CmsRole = "ADMIN" | "MANAGER" | "SUPER_ADMIN";
@@ -38,7 +39,7 @@ function InlineField({ label, value, onChange, multiline = false, placeholder = 
     : <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />}</label>;
 }
 
-export function HotelCmsWorkspace({ scope, role, propertyLabel, siteScope }: Props) {
+export function HotelCmsWorkspace({ scope, role, propertyLabel }: Props) {
   const organizationId = scope.organizationId;
   const propertyId = scope.propertyId;
   const api = useMemo(() => createHotelCmsApi({ organizationId, propertyId }), [organizationId, propertyId]);
@@ -48,14 +49,13 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel, siteScope }: Pro
   const [history, setHistory] = useState<HotelCmsHistory>({ reviews: [], publications: [] });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [tab, setTab] = useState<"editor" | "preview" | "history">("editor");
+  const [tab, setTab] = useState<"editor" | "preview" | "brand" | "history">("editor");
   const [preview, setPreview] = useState<Awaited<ReturnType<typeof api.preview>> | null>(null);
-  const previewPresentation = useMemo(() => {
-    if (!preview || !siteScope) return null;
-    try {
-      return adaptAuthenticatedHotelWebsitePreview(preview, { organizationId, ...siteScope, locale: preview.locale });
-    } catch { return null; }
-  }, [preview, siteScope, organizationId]);
+  const [availableMedia, setAvailableMedia] = useState<HotelCmsAvailableMedia[]>([]);
+  const [mediaLoading, setMediaLoading] = useState(true);
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
+  const [previewRefresh, setPreviewRefresh] = useState(0);
+  const [branding, setBranding] = useState<BrandingValues | undefined>();
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -65,25 +65,41 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel, siteScope }: Pro
   const loading = loadedScope !== scopeKey;
   const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
   const selected = revisions.find((revision) => revision.revisionId === selectedId) ?? null;
+  const orderedSections = [...draft.content.sections].sort((a, b) => a.order - b.order || a.key.localeCompare(b.key));
   const activePublication = revisions.flatMap((rev) => rev.publications.map((pub) => ({ ...pub, revisionNumber: rev.revisionNumber }))).find((pub) => !pub.revokedAt) ?? null;
 
   const reload = useCallback(async (signal?: AbortSignal) => {
-    const [items, activity] = await Promise.all([api.listRevisions(signal), api.history(signal)]);
-    if (!signal?.aborted) { setRevisions(items); setHistory(activity); }
+    const [items, activity, media] = await Promise.all([api.listRevisions(signal), api.history(signal), api.listAvailableMedia(signal)]);
+    if (!signal?.aborted) { setRevisions(items); setHistory(activity); setAvailableMedia(media); setMediaLoading(false); }
   }, [api]);
 
   useEffect(() => {
     const controller = new AbortController();
-    void Promise.all([api.listRevisions(controller.signal), api.history(controller.signal)]).then(([items, activity]) => {
+    void Promise.all([api.listRevisions(controller.signal), api.history(controller.signal), api.listAvailableMedia(controller.signal)]).then(async ([items, activity, media]) => {
       if (!controller.signal.aborted) {
         setRevisions(items);
         setHistory(activity);
+        setAvailableMedia(media);
+        setMediaLoading(false);
         setLoadedScope(scopeKey);
+        const savedDraft = items.find((item) => item.status === "DRAFT");
+        if (savedDraft) {
+          const savedPreview = await api.preview(savedDraft.revisionId, "fa", controller.signal);
+          if (!controller.signal.aborted) {
+            setDraft({
+              content: savedPreview.content,
+              media: savedPreview.media.map((item) => ({ imageId: item.imageId, scope: item.scope, roomTypeId: item.roomTypeId, slot: item.slot as HotelCmsMedia["slot"], sortOrder: item.sortOrder, altText: item.altText })),
+            });
+            setSelectedId(savedDraft.revisionId);
+            setPreview(savedPreview);
+          }
+        }
       }
     }).catch((cause) => {
       if (!controller.signal.aborted) {
         setError(cause instanceof Error ? cause.message : "بارگذاری محتوا ممکن نشد.");
         setLoadedScope(scopeKey);
+        setMediaLoading(false);
       }
     });
     return () => controller.abort();
@@ -97,6 +113,10 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel, siteScope }: Pro
     setDraft((current) => ({ ...current, media: transform(current.media) }));
     setHasUnsavedChanges(true);
   };
+  const onBrandingChange = useCallback((values: BrandingValues) => {
+    setBranding(values);
+  }, []);
+  const onBrandingSaved = useCallback(() => setPreviewRefresh((value) => value + 1), []);
   function resetMessages() { setError(""); setNotice(""); }
   async function perform(action: () => Promise<unknown>, success: string, post?: () => void) {
     resetMessages(); setBusy(true);
@@ -134,7 +154,7 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel, siteScope }: Pro
     if (!selectedId) { setError("ابتدا یک نسخه ذخیره‌شده را انتخاب کنید."); return; }
     resetMessages(); setBusy(true); setPreview(null);
     try {
-      setPreview(await api.preview(selectedId, locale)); setTab("preview");
+      setPreview(await api.preview(selectedId, locale)); setTab("preview"); setPreviewRefresh((value) => value + 1);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "پیش‌نمایش در دسترس نیست."); }
     finally { setBusy(false); }
   }
@@ -188,6 +208,7 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel, siteScope }: Pro
         <nav className={styles.tabs} aria-label="بخش‌های مدیریت">
           <button aria-current={tab === "editor" ? "page" : undefined} onClick={() => setTab("editor")}>ویرایش محتوا</button>
           <button aria-current={tab === "preview" ? "page" : undefined} onClick={() => void openPreview()}>پیش‌نمایش ذخیره‌شده</button>
+          {isAdmin && <button aria-current={tab === "brand" ? "page" : undefined} onClick={() => setTab("brand")}>هویت بصری</button>}
           <button aria-current={tab === "history" ? "page" : undefined} onClick={() => setTab("history")}>تاریخچه</button>
         </nav>
         {tab === "editor" && <div className={styles.editor}>
@@ -210,8 +231,12 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel, siteScope }: Pro
             <button type="button" disabled={busy || draft.content.sections.length >= 40} onClick={() => update((c) => addSection(c, "FAQ"))}>+ پرسش‌های متداول</button>
           </div></div>
           {draft.content.sections.length === 0 && <p className={styles.muted}>هنوز بخشی اضافه نشده است.</p>}
-          {draft.content.sections.map((section, index) => <div key={section.key} className={styles.sectionCard}>
-            <div className={styles.sectionHeading}><strong>بخش {index + 1} · {section.kind}</strong><button onClick={() => update((c) => ({ ...c, sections: c.sections.filter((s) => s.key !== section.key) }))}>حذف</button></div>
+          {orderedSections.map((section, index) => <div key={section.key} className={styles.sectionCard}>
+            <div className={styles.sectionHeading}><strong>بخش {index + 1} · {section.kind}</strong><div className={styles.headerActions}>
+              <button type="button" aria-label={`انتقال بخش ${index + 1} به بالا`} disabled={busy || index === 0} onClick={() => update((c) => moveSection(c, section.key, -1))}>بالا ↑</button>
+              <button type="button" aria-label={`انتقال بخش ${index + 1} به پایین`} disabled={busy || index === orderedSections.length - 1} onClick={() => update((c) => moveSection(c, section.key, 1))}>پایین ↓</button>
+              <button type="button" disabled={busy} onClick={() => update((c) => ({ ...c, sections: c.sections.filter((s) => s.key !== section.key) }))}>حذف</button>
+            </div></div>
             {section.kind === "TEXT" ? <>
               <InlineField label="عنوان بخش" value={localized(section.heading, locale)} onChange={(value) => update((c) => ({ ...c, sections: c.sections.map((s) => s.key === section.key && s.kind === "TEXT" ? { ...s, heading: setLocalized(s.heading, locale, value) } : s) }))} />
               <InlineField label="متن بخش" multiline value={localized(section.body, locale)} onChange={(value) => update((c) => ({ ...c, sections: c.sections.map((s) => s.key === section.key && s.kind === "TEXT" ? { ...s, body: setLocalized(s.body, locale, value) } : s) }))} />
@@ -235,9 +260,13 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel, siteScope }: Pro
             <label className={styles.checkbox}><input type="checkbox" checked={section.visible} onChange={(event) => update((c) => ({ ...c, sections: c.sections.map((s) => s.key === section.key ? { ...s, visible: event.target.checked } : s) }))} />نمایش بخش</label>
           </div>)}
           <div className={styles.sectionHeading}><h3>تصاویر پیوست</h3><button disabled={busy || draft.media.length >= 80} onClick={() => updateMedia((media) => [...media, { imageId: "", scope: "PROPERTY", roomTypeId: null, slot: "GALLERY", sortOrder: Math.max(-1, ...media.filter((m) => m.scope === "PROPERTY" && m.slot === "GALLERY").map((m) => m.sortOrder)) + 1, altText: {} }])}>+ افزودن تصویر</button></div>
-          <p className={styles.muted}>فعلاً باید شناسه تصویری را وارد کنید که از قبل در رسانه‌های همین سازمان بارگذاری و عمومی شده است. تصویر جدید از این صفحه آپلود نمی‌شود. در API عمومی فعلی فقط تصاویر جایگاه «گالری» نمایش داده می‌شوند؛ تصاویر اصلی دسکتاپ و موبایل برای توسعه آینده ذخیره می‌شوند.</p>
+          <p className={styles.muted}>فقط تصاویر عمومیِ تأییدشده و متعلق به همین سازمان در فهرست هستند. این صفحه تصویری آپلود نمی‌کند.</p>
           {draft.media.map((item, index) => <div className={styles.mediaRow} key={index}>
-            <InlineField label="شناسه تصویر" value={item.imageId} onChange={(value) => updateMedia((media) => media.map((m, i) => i === index ? { ...m, imageId: value } : m))} />
+            <label className={styles.field}><span>تصویر تأییدشده</span><select value={item.imageId} onChange={(event) => updateMedia((media) => media.map((m, i) => i === index ? { ...m, imageId: event.target.value } : m))} disabled={busy || mediaLoading}>
+              <option value="">انتخاب تصویر سازمان</option>
+              {availableMedia.map((image) => <option key={image.imageId} value={image.imageId}>{image.filename}</option>)}
+            </select></label>
+            {item.imageId && availableMedia.find((image) => image.imageId === item.imageId) && <Image className={styles.mediaThumb} src={availableMedia.find((image) => image.imageId === item.imageId)!.src} width={260} height={170} unoptimized alt="پیش‌نمایش تصویر تأییدشده" />}
             <label className={styles.field}><span>محل نمایش</span><select value={item.scope} onChange={(event) => updateMedia((media) => media.map((m, i) => i === index ? { ...m, scope: event.target.value as HotelCmsMedia["scope"], roomTypeId: event.target.value === "PROPERTY" ? null : "" } : m))}><option value="PROPERTY">هتل</option><option value="ROOM_CATEGORY">نوع اتاق</option></select></label>
             {item.scope === "ROOM_CATEGORY" && <InlineField label="شناسه نوع اتاق" value={item.roomTypeId ?? ""} onChange={(value) => updateMedia((media) => media.map((m, i) => i === index ? { ...m, roomTypeId: value } : m))} />}
             <label className={styles.field}><span>جایگاه</span><select value={item.slot} onChange={(event) => updateMedia((media) => media.map((m, i) => i === index ? { ...m, slot: event.target.value as HotelCmsMedia["slot"] } : m))}><option value="GALLERY">گالری</option><option value="HERO_DESKTOP">تصویر اصلی دسکتاپ</option><option value="HERO_MOBILE">تصویر اصلی موبایل</option></select></label>
@@ -249,14 +278,18 @@ export function HotelCmsWorkspace({ scope, role, propertyLabel, siteScope }: Pro
         </div>}
         {tab === "preview" && <div className={styles.editor}>
           <div className={styles.previewFlag}>پیش‌نمایش خصوصی · غیرقابل نمایش عمومی</div>
-          {previewPresentation && <PublishedHotelWebsitePage key={`${scopeKey}:${preview?.revisionId}:${preview?.locale}`} propertySlug={previewPresentation.propertySlug} locale={previewPresentation.locale} tenantKey={organizationId} presentation={previewPresentation} />}
-          {preview ? <><div className={styles.toolbar}><h2>نسخه {preview.revisionNumber}</h2><span>{statusFa[preview.status]}</span></div>
-            <h2>{localized(preview.content.hero.heading, preview.locale) || "ترجمه این عنوان موجود نیست"}</h2>
-            <p>{localized(preview.content.hero.subheading, preview.locale)}</p>
-            <div className={styles.previewBody}>{localized(preview.content.introduction.body, preview.locale) || "ترجمه معرفی موجود نیست"}</div>
-            <p className={styles.muted}>تعداد رسانه‌های مجاز فعلی: {preview.media.length}</p>
-            <div className={styles.previewMedia}>{preview.media.map((item) => <figure key={`${item.imageId}-${item.slot}-${item.sortOrder}`}><span>{item.slot} · {item.scope}</span><a href={item.src} target="_blank" rel="noopener noreferrer">مشاهده فایل پیوست</a><figcaption>{localized(item.altText, preview.locale) || "متن جایگزین ندارد"}</figcaption></figure>)}</div>
-          </> : <p className={styles.muted}>برای دیدن پیش‌نمایش، یک نسخه ذخیره‌شده انتخاب کنید.</p>}
+          <div className={styles.toolbar}><h2>{selected ? `پیش‌نمایش نسخه ${selected.revisionNumber}` : "پیش‌نمایش نسخه ذخیره‌شده"}</h2><div className={styles.headerActions}>
+            <button type="button" aria-pressed={previewDevice === "desktop"} onClick={() => setPreviewDevice("desktop")}>رومیزی</button>
+            <button type="button" aria-pressed={previewDevice === "mobile"} onClick={() => setPreviewDevice("mobile")}>موبایل</button>
+          </div></div>
+          {preview && selectedId ? <div className={`${styles.previewViewport} ${previewDevice === "mobile" ? styles.previewMobile : styles.previewDesktop}`}>
+            <iframe key={`${scopeKey}:${selectedId}:${locale}:${previewDevice}:${previewRefresh}`} title="پیش‌نمایش خصوصی وب‌سایت" src={`/${locale}/dashboard/hotel-website/${encodeURIComponent(organizationId)}/${encodeURIComponent(propertyId)}/preview/${encodeURIComponent(selectedId)}?locale=${locale}`} />
+          </div> : <p className={styles.muted}>برای پیش‌نمایش، یک نسخه ذخیره‌شده را از فهرست انتخاب کنید.</p>}
+        </div>}
+        {tab === "brand" && isAdmin && <div className={styles.editor}>
+          <div className={styles.explain}>هویت بصری از تنظیمات رسمی سازمان ذخیره می‌شود و جدا از پیش‌نویس محتوایی است. پیش‌نمایش خصوصی پس از ذخیره، نام، لوگو و رنگ‌های ثبت‌شده را نمایش می‌دهد.</div>
+          {branding?.displayName && <p className={styles.muted}>نام نمایشی فعلی: {branding.displayName}</p>}
+          <OrganizationBrandingForm key={organizationId} organizationId={organizationId} onValuesChange={onBrandingChange} onSaved={onBrandingSaved} />
         </div>}
         {tab === "history" && <div className={styles.editor}><h2>تاریخچه بررسی و انتشار</h2>
           <h3>انتشارها</h3>{history.publications.length === 0 ? <p className={styles.muted}>انتشاری ثبت نشده است.</p> : <ul className={styles.activity}>{history.publications.map((record) => <li key={record.id}><strong>{record.revokedAt ? "لغوشده" : "منتشرشده"}</strong><span>شناسه نسخه: {record.revisionId}</span><time>{new Date(record.publishedAt).toLocaleString("fa-IR")}</time></li>)}</ul>}

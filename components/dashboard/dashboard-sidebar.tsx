@@ -169,7 +169,7 @@ const roleAwareNavigationCopy = {
       requestDemoLeads: "درخواست‌های دمو",
       tenantProvisioning: "آماده‌سازی ایجاد کسب‌وکار",
       businessAcquisition: "جذب کسب‌وکار",
-      hotelWebsite: "وب‌سایت هتل",
+      hotelWebsite: "استودیو وب‌سایت هتل",
       pilots: "عملیات پایلوت",
     },
     roles: {
@@ -225,7 +225,7 @@ const roleAwareNavigationCopy = {
       requestDemoLeads: "Demo requests",
       tenantProvisioning: "Tenant provisioning",
       businessAcquisition: "Business acquisition",
-      hotelWebsite: "Hotel website",
+      hotelWebsite: "Hotel website studio",
       pilots: "Pilot operations",
     },
     roles: {
@@ -281,7 +281,7 @@ const roleAwareNavigationCopy = {
       requestDemoLeads: "طلبات العرض التجريبي",
       tenantProvisioning: "إعداد إنشاء النشاط",
       businessAcquisition: "اكتساب الأعمال",
-      hotelWebsite: "موقع الفندق",
+      hotelWebsite: "استوديو موقع الفندق",
       pilots: "عمليات التجربة",
     },
     roles: {

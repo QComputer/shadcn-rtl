@@ -48,6 +48,11 @@
 .previewBody { white-space:pre-wrap; line-height:2; }
 .previewMedia { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:.8rem; }
 .previewMedia figure { border:1px solid var(--line); border-radius:.6rem; padding:1rem; margin:0; display:flex; flex-direction:column; gap:.4rem; overflow-wrap:anywhere; }
+.mediaThumb { display:block; width:min(260px,100%); max-height:170px; object-fit:contain; border:1px solid var(--line); border-radius:.6rem; background:#fff; }
+.previewViewport { width:100%; overflow:auto; margin:0 auto; border:1px solid var(--line); border-radius:.85rem; background:#fff; box-shadow:0 10px 30px rgba(52,38,25,.08); transition:max-width .2s ease; }
+.previewDesktop { max-width:100%; }
+.previewMobile { max-width:390px; }
+.previewViewport iframe { display:block; width:100%; height:min(78vh,900px); min-height:620px; border:0; background:#fff; }
 .previewMedia a { color:#386b57; }
 .previewMedia figcaption { font-size:.8rem; color:var(--quiet); }
 .activity { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.55rem; }

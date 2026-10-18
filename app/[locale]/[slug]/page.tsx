@@ -131,6 +131,7 @@ export default async function OrganizationHomePage({ params }: Props) {
       email: true,
       capabilities: { select: { key: true, status: true } },
       settings: { select: { settings: true, publicHomeMode: true, brandLandingProvider: true } },
+      branding: { select: { displayName: true, logoUrl: true, themeColor: true, backgroundColor: true } },
     },
   });
 
@@ -145,7 +146,7 @@ export default async function OrganizationHomePage({ params }: Props) {
       isCustomDomain: requestHeaders.get("x-bazar-custom-domain"),
       tenantDomain: requestHeaders.get("x-bazar-tenant-domain"),
     }), organization.id, organization.slug, localeCode, isCustomDomain);
-    return <PublishedHotelWebsitePage key={`${organization.id}:${localeCode}`} propertySlug={presentation.propertySlug} locale={localeCode} presentation={presentation} />;
+    return <PublishedHotelWebsitePage key={`${organization.id}:${localeCode}`} propertySlug={presentation.propertySlug} locale={localeCode} presentation={presentation} branding={organization.branding} />;
   }
 
   const publicHome = resolveOrganizationPublicHome({

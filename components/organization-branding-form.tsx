@@ -21,7 +21,7 @@ type BrandingField =
   | "themeColor"
   | "backgroundColor";
 
-type BrandingValues = Record<BrandingField, string>;
+export type BrandingValues = Record<BrandingField, string>;
 
 const fields: ReadonlyArray<{ name: BrandingField; label: string; kind?: "color" }> = [
   { name: "displayName", label: "نام نمایشی عمومی" },
@@ -40,7 +40,7 @@ const fields: ReadonlyArray<{ name: BrandingField; label: string; kind?: "color"
 
 const emptyValues = (): BrandingValues => Object.fromEntries(fields.map(({ name }) => [name, ""])) as BrandingValues;
 
-export function OrganizationBrandingForm({ organizationId }: { organizationId: string }) {
+export function OrganizationBrandingForm({ organizationId, onValuesChange, onSaved }: { organizationId: string; onValuesChange?: (values: BrandingValues) => void; onSaved?: () => void }) {
   const [values, setValues] = useState<BrandingValues>(emptyValues);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -60,7 +60,9 @@ export function OrganizationBrandingForm({ organizationId }: { organizationId: s
       })
       .then((data) => {
         if (!data) return;
-        setValues(Object.fromEntries(fields.map(({ name }) => [name, typeof data[name] === "string" ? data[name] : ""])) as BrandingValues);
+        const next = Object.fromEntries(fields.map(({ name }) => [name, typeof data[name] === "string" ? data[name] : ""])) as BrandingValues;
+        setValues(next);
+        onValuesChange?.(next);
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
@@ -70,10 +72,12 @@ export function OrganizationBrandingForm({ organizationId }: { organizationId: s
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [organizationId]);
+  }, [organizationId, onValuesChange]);
 
   function update(name: BrandingField, value: string) {
-    setValues((current) => ({ ...current, [name]: value }));
+    const next = { ...values, [name]: value };
+    setValues(next);
+    onValuesChange?.(next);
   }
 
   async function save() {
@@ -93,7 +97,10 @@ export function OrganizationBrandingForm({ organizationId }: { organizationId: s
         return;
       }
       if (!response.ok) throw new Error(data.error || "ذخیره هویت بصری سازمان ناموفق بود");
-      setValues(Object.fromEntries(fields.map(({ name }) => [name, typeof data[name] === "string" ? data[name] : ""])) as BrandingValues);
+      const next = Object.fromEntries(fields.map(({ name }) => [name, typeof data[name] === "string" ? data[name] : ""])) as BrandingValues;
+      setValues(next);
+      onValuesChange?.(next);
+      onSaved?.();
       setMessage("هویت بصری سازمان ذخیره شد");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "ذخیره هویت بصری سازمان ناموفق بود");

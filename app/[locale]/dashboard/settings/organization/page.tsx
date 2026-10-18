@@ -17,6 +17,7 @@ import { ShopStatusBadge } from "@/components/ShopStatusBadge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { BUSINESS_CAPABILITY_REGISTRY, type BusinessCapability } from "@/lib/business-capability-registry"
 import { OrganizationBrandingForm } from "@/components/organization-branding-form"
+import { automaticPublicCapabilityLabel } from "@/lib/organization-capability-label"
 import { loadOrganizationSettings, OrganizationSettingsScopeError, requestOrganizationSettings } from "@/lib/organization-settings-client"
 
 interface ImageRecord {
@@ -747,9 +748,7 @@ const handleOpen = async (e: React.FormEvent) => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="AUTO">
-                  {capabilities.length === 1
-                    ? `خودکار: ${businessCapabilityLabels[capabilities[0]]}`
-                    : "صفحه عمومی سازمان"}
+                  {automaticPublicCapabilityLabel(capabilities, businessCapabilityLabels, "صفحه عمومی سازمان")}
                 </SelectItem>
                 {capabilities
                   .filter((capability) => BUSINESS_CAPABILITY_REGISTRY[capability]?.publicSurface)

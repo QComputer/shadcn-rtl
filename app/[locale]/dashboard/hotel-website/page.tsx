@@ -4,9 +4,9 @@ import { auth } from "@/lib/auth";
 import { listHotelCmsDashboardOrganizations } from "@/lib/hotel-cms/hotel-cms-dashboard-context.server";
 
 const copy = {
-  fa: { title: "وب‌سایت هتل", intro: "محتوای تأییدشده هر ملک را در نسخه‌های مستقل مدیریت کنید.", choose: "انتخاب ملک", empty: "برای این سازمان ملک فعالی ثبت نشده است.", none: "هیچ وب‌سایت هتل فعالی برای مدیریت در دسترس نیست." },
-  en: { title: "Hotel website", intro: "Manage each property's content as an independent revision.", choose: "Open property", empty: "This organization has no active properties.", none: "No active Hotel websites are available to manage." },
-  ar: { title: "موقع الفندق", intro: "أدر محتوى كل عقار ضمن إصدارات مستقلة.", choose: "فتح العقار", empty: "لا توجد عقارات نشطة لهذه المؤسسة.", none: "لا توجد مواقع فندقية نشطة للإدارة." },
+  fa: { title: "استودیو وب‌سایت هتل", intro: "محتوا، بخش‌ها، رسانه و نسخه‌های خصوصی هر ملک را مدیریت کنید.", choose: "ویرایش وب‌سایت", empty: "برای این سازمان ملک فعالی ثبت نشده است.", none: "هیچ وب‌سایت هتل فعالی برای مدیریت در دسترس نیست." },
+  en: { title: "Hotel website studio", intro: "Manage content, sections, media, and private revisions for each property.", choose: "Edit website", empty: "This organization has no active properties.", none: "No active Hotel websites are available to manage." },
+  ar: { title: "استوديو موقع الفندق", intro: "أدر المحتوى والأقسام والوسائط والمسودات الخاصة لكل عقار.", choose: "تحرير الموقع", empty: "لا توجد عقارات نشطة لهذه المؤسسة.", none: "لا توجد مواقع فندقية نشطة للإدارة." },
 } as const;
 
 export default async function HotelWebsiteDashboardPage({

@@ -14,6 +14,7 @@
 }
 .header { position: relative; z-index: 8; width: min(1520px, calc(100% - 64px)); min-height: 78px; display: grid; grid-template-columns: minmax(170px,1fr) auto minmax(170px,1fr); align-items: center; gap: 24px; margin: 0 auto; border-bottom: 1px solid rgba(89,59,41,.1); background: #fff; }
 .brand { min-width: 0; justify-self: start; color: var(--wood); font-size: clamp(1rem,1.5vw,1.3rem); font-weight: 850; text-decoration: none; }
+.brandLogo { display:block; width:auto; max-width:min(168px, 30vw); height:auto; max-height:48px; object-fit:contain; }
 .nav { display: flex; align-items: center; justify-content: center; gap: clamp(18px,3vw,42px); white-space: nowrap; }
 .nav a { position: relative; display: inline-flex; min-height: 44px; align-items: center; padding: 9px 0; color: #51473f; font-size: .9rem; text-decoration: none; transition: color .18s ease; }
 .nav a:hover { color: var(--terra); }

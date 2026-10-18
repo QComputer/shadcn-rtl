@@ -51,7 +51,9 @@ function presentationOrganizationId(presentation?: HotelOrganizationSitePresenta
   return presentation && "organizationId" in presentation ? presentation.organizationId : undefined;
 }
 
-export function PublishedHotelWebsitePage({ propertySlug, locale, presentation, tenantKey, organizationSlug, syntheticRoomCards }: { propertySlug: string; locale: HotelPublicLocale; presentation?: HotelOrganizationSitePresentation; tenantKey?: string; organizationSlug?: string; syntheticRoomCards?: readonly ConceptRoomCardData[] }) {
+export type HotelWebsiteBranding = Readonly<{ displayName?: string | null; logoUrl?: string | null; themeColor?: string | null; backgroundColor?: string | null }>;
+
+export function PublishedHotelWebsitePage({ propertySlug, locale, presentation, tenantKey, organizationSlug, syntheticRoomCards, branding }: { propertySlug: string; locale: HotelPublicLocale; presentation?: HotelOrganizationSitePresentation; tenantKey?: string; organizationSlug?: string; syntheticRoomCards?: readonly ConceptRoomCardData[]; branding?: HotelWebsiteBranding }) {
   const scopeKey = `${tenantKey ?? presentationOrganizationId(presentation) ?? organizationSlug ?? "host-scoped"}:${propertySlug}:${locale}`;
   const [storedState, setStoredState] = useState<ScopedLoadState>(() => ({ scopeKey, value: initialLoadState(presentation, { propertySlug, locale, tenantKey }) }));
   const [menuOpen, setMenuOpen] = useState(false);
@@ -162,10 +164,15 @@ export function PublishedHotelWebsitePage({ propertySlug, locale, presentation, 
   const roomCount = roomCards.length;
 
   return (
-      <main className={styles.shell} dir={direction(locale)} data-provenance={visibleState.source}>
+      <main className={styles.shell} dir={direction(locale)} data-provenance={visibleState.source} style={{
+        ...(branding?.themeColor && /^#[0-9a-fA-F]{6}$/.test(branding.themeColor) ? { "--terra": branding.themeColor } : {}),
+        ...(branding?.backgroundColor && /^#[0-9a-fA-F]{6}$/.test(branding.backgroundColor) ? { "--ivory": branding.backgroundColor } : {}),
+      }}>
       {visibleState.source !== "PUBLISHED" && <aside className={styles.previewNotice} role="status" data-testid="hotel-owner-preview-label">{reviewLabel}</aside>}
       <header className={styles.header}>
-        <a href="#home" className={styles.brand} aria-label={website.content.title ?? text.home}>{website.content.title}</a>
+        <a href="#home" className={styles.brand} aria-label={branding?.displayName || website.content.title || text.home}>
+          {branding?.logoUrl ? <Image src={branding.logoUrl} alt={branding.displayName || website.content.title || text.home} width={168} height={48} unoptimized className={styles.brandLogo} /> : (branding?.displayName || website.content.title)}
+        </a>
         <nav ref={menuRef} id="published-hotel-navigation" aria-label={text.nav} className={`${styles.nav} ${menuOpen ? styles.navOpen : ""}`}>
           <a href="#home" onClick={closeMobileMenu}>{text.home}</a><a href="#about" onClick={closeMobileMenu}>{text.about}</a><a href="#rooms" onClick={closeMobileMenu}>{text.rooms}</a>
           {website.propertyGallery.length > 0 && <a href="#gallery" onClick={closeMobileMenu}>{text.gallery}</a>}

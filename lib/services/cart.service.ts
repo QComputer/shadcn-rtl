@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import type { AddToCartInput, UpdateCartItemInput } from "@/lib/validators";
 import { Decimal } from "@prisma/client/runtime/library";
@@ -6,6 +7,7 @@ import { activePublicBusinessCapabilities } from "@/lib/organization-public-home
 import { toMoneyDecimal, toMoneyNumber } from "@/lib/money";
 import { supportedLocales } from "@/lib/i18n";
 import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing";
+import { ApiError } from "@/lib/api-guards";
 
 const cartInclude = {
   items: {
@@ -15,18 +17,23 @@ const cartInclude = {
           product: {
             select: {
               id: true,
+              organizationId: true,
               name: true,
+              sku: true,
               image: true,
               basePrice: true,
               discountType: true,
               discountValue: true,
             },
           },
+          optionValues: { select: { valueText: true, valueNumber: true, valueBoolean: true, definition: { select: { organizationId: true, key: true, label: true, valueType: true, displayUnit: true, isActive: true, scope: true } } } },
         },
       },
     },
   },
-} as const;
+} satisfies Prisma.ShopCartInclude;
+
+type NormalizedCartSource = Prisma.ShopCartGetPayload<{ include: typeof cartInclude }>;
 
 function ensureCartOwner(
   cart: { customerId: string | null; sessionId: string | null },
@@ -45,11 +52,11 @@ function ensureCartOwner(
   }
 }
 
-function normalizeCart(cart: any | null) {
+function normalizeCart(cart: NormalizedCartSource | null) {
   if (!cart) return null;
 
   let subtotal = new Decimal(0);
-  for (const item of cart.items) {
+  const items = cart.items.map((item) => {
     const basePrice = toMoneyDecimal(item.variant.price ?? item.variant.product.basePrice, "cart item price");
     const discountType = item.variant.product.discountType;
     const discountValue = item.variant.product.discountValue === null
@@ -59,18 +66,30 @@ function normalizeCart(cart: any | null) {
     // Apply product discount
     let price = basePrice;
     if (discountType === "percentage" && discountValue.gt(0)) {
-      price = basePrice.mul(new Decimal(1).sub(discountValue.div(100)));
+      price = basePrice.mul(new Decimal(1).sub(Decimal.min(discountValue, 100).div(100)));
     } else if (discountType === "fixed" && discountValue.gt(0)) {
       price = Decimal.max(new Decimal(0), basePrice.sub(discountValue));
     }
     
     subtotal = subtotal.add(price.mul(item.quantity));
-  }
+    const options = item.variant.optionValues
+      .filter((value) => value.definition.organizationId === item.variant.product.organizationId && value.definition.isActive && value.definition.scope === "VARIANT_OPTION")
+      .map((value) => ({
+        key: value.definition.key, label: value.definition.label, valueType: value.definition.valueType, displayUnit: value.definition.displayUnit,
+        value: value.valueText !== null ? value.valueText : value.valueNumber !== null ? Number(value.valueNumber.toString()) : value.valueBoolean,
+      }));
+    const variant = { ...item.variant };
+    Reflect.deleteProperty(variant, "optionValues");
+    const product = { ...variant.product };
+    Reflect.deleteProperty(product, "organizationId");
+    return { ...item, unitPrice: price.toNumber(), variant: { ...variant, product, options } };
+  });
 
   return {
     ...cart,
+    items,
     subtotal: subtotal.toNumber(),
-    itemCount: cart.items.reduce((sum, item) => sum + item.quantity, 0),
+    itemCount: items.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0),
   };
 }
 
@@ -245,9 +264,9 @@ export class CartService {
     if (
       variant.product.trackInventory &&
       !variant.allowBackOrder &&
-      variant.inventory < requestedQuantity
+      variant.inventory - variant.reservedQuantity < requestedQuantity
     ) {
-      throw new Error("Insufficient inventory for requested quantity");
+      throw new ApiError(409, "Only the currently available stock can be added to the cart.");
     }
 
     const item = existingItem
@@ -272,6 +291,7 @@ export class CartService {
     data: UpdateCartItemInput,
     customerId?: string | null,
     sessionId?: string | null,
+    organizationSlug?: string,
   ) {
     const cartItem = await prisma.shopCartItem.findUnique({
       where: { id: cartItemId },
@@ -294,13 +314,14 @@ export class CartService {
     }
 
     ensureCartOwner(cartItem.cart, customerId, sessionId);
+    if (organizationSlug && cartItem.cart.organizationSlug !== organizationSlug) throw new ApiError(404, "Cart item not found.");
 
     if (
       cartItem.variant.product.trackInventory &&
       !cartItem.variant.allowBackOrder &&
-      cartItem.variant.inventory < data.quantity
+      cartItem.variant.inventory - cartItem.variant.reservedQuantity < data.quantity
     ) {
-      throw new Error("Insufficient inventory");
+      throw new ApiError(409, "Only the currently available stock can be added to the cart.");
     }
 
     const updatedItem = await prisma.shopCartItem.update({
@@ -316,6 +337,7 @@ export class CartService {
     cartItemId: string,
     customerId?: string | null,
     sessionId?: string | null,
+    organizationSlug?: string,
   ) {
     const cartItem = await prisma.shopCartItem.findUnique({
       where: { id: cartItemId },
@@ -338,6 +360,7 @@ export class CartService {
     }
 
     ensureCartOwner(cartItem.cart, customerId, sessionId);
+    if (organizationSlug && cartItem.cart.organizationSlug !== organizationSlug) throw new ApiError(404, "Cart item not found.");
 
     await prisma.shopCartItem.delete({
       where: { id: cartItemId },
@@ -505,7 +528,7 @@ export class CartService {
         const mergedQuantity = (existingItem?.quantity ?? 0) + item.quantity;
         const quantity =
           variant.product.trackInventory && !variant.allowBackOrder
-            ? Math.min(mergedQuantity, Math.max(variant.inventory, 0))
+            ? Math.min(mergedQuantity, Math.max(variant.inventory - variant.reservedQuantity, 0))
             : mergedQuantity;
 
         if (quantity <= 0) {

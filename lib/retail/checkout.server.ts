@@ -100,11 +100,18 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
     }
     const cart = await tx.shopCart.findUnique({
       where: { organizationSlug_customerId: { organizationSlug: organization.slug, customerId } },
-      include: { items: { include: { variant: { include: { product: true } } } } },
+      include: { items: { include: { variant: { include: {
+        product: true,
+        optionValues: { include: { definition: true } },
+      } } } } },
     });
     if (!cart || cart.items.length === 0) throw new ApiError(409, "Cart is empty.");
     let subtotal = money(0);
-    const items: Array<{ variantId: string; productId: string; quantity: number; price: Prisma.Decimal; trackInventory: boolean; allowBackOrder: boolean }> = [];
+    const items: Array<{
+      variantId: string; productId: string; quantity: number; price: Prisma.Decimal;
+      trackInventory: boolean; allowBackOrder: boolean; skuSnapshot: string | null;
+      productNameSnapshot: string; variantNameSnapshot: string | null; variantOptionsSnapshot: Prisma.InputJsonArray;
+    }> = [];
     for (const line of cart.items) {
       const variant = line.variant;
       const product = variant.product;
@@ -120,7 +127,19 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
       const price = discountedUnitPrice(product, variant.price);
       subtotal = subtotal.add(price.mul(line.quantity));
       items.push({ variantId: variant.id, productId: product.id, quantity: line.quantity,
-        price, trackInventory: product.trackInventory, allowBackOrder: variant.allowBackOrder });
+        price, trackInventory: product.trackInventory, allowBackOrder: variant.allowBackOrder,
+        productNameSnapshot: product.name, skuSnapshot: variant.sku, variantNameSnapshot: variant.name,
+        variantOptionsSnapshot: variant.optionValues
+          .filter(({ definition }) => definition.organizationId === organization.id && definition.isActive && definition.scope === "VARIANT_OPTION")
+          .slice()
+          .sort((left, right) => left.definition.key.localeCompare(right.definition.key))
+          .map(({ definition, valueText, valueNumber, valueBoolean }) => ({
+            key: definition.key,
+            label: definition.label,
+            value: valueText ?? valueNumber?.toString() ?? valueBoolean ?? null,
+            displayUnit: definition.displayUnit,
+          })),
+      });
     }
 
     const settings = await tx.organizationSettings.findUnique({ where: { organizationSlug: organization.slug }, select: { deliveryFee: true } });
@@ -151,7 +170,10 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
         deliveryAddress: input.deliveryAddress ?? null, organizationSlug: organization.slug,
         customerId, paymentMethod: input.paymentMethod as PaymentMethod, paymentStatus: "PENDING",
         items: { create: items.map((item) => ({ productId: item.productId, variantId: item.variantId,
-          quantity: item.quantity, price: item.price, discount: 0 })) },
+          quantity: item.quantity, price: item.price, discount: 0,
+          productNameSnapshot: item.productNameSnapshot,
+          skuSnapshot: item.skuSnapshot, variantNameSnapshot: item.variantNameSnapshot,
+          variantOptionsSnapshot: item.variantOptionsSnapshot })) },
       },
       select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, paymentMethod: true, publicTrackingToken: true, retailPaymentDeadlineAt: true },
     });

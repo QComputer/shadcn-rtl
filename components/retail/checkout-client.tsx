@@ -11,18 +11,36 @@ type PaymentMethod = {
   bankAccountOwner?: string | null;
   dialString?: string;
 };
-type CartItem = { id?: string; name?: string; productName?: string; variantName?: string; quantity?: number; variant?: { name?: string; product?: { name?: string } } };
-type Cart = { items?: CartItem[] };
+type CartOption = { key?: string; label?: string; value: string | number | boolean; displayUnit?: string | null };
+type CartItem = { id?: string; unitPrice?: number; name?: string; productName?: string; variantName?: string; quantity?: number; variant?: { id?: string; name?: string | null; sku?: string | null; price?: number | string | null; options?: CartOption[]; product?: { id?: string; name?: string; basePrice?: number | string; discountType?: "percentage" | "fixed" | null; discountValue?: number | string | null } } };
+type Cart = { items?: CartItem[]; subtotal?: number; itemCount?: number };
 type OrderResult = { orderNumber: string; total: string; paymentStatus: string; orderStatus: string; paymentMethod: PaymentMethod["method"]; paymentDeadlineAt?: string | null; trackingToken?: string | null; bankCardNumber?: string | null; bankAccountOwner?: string | null };
 
 const money = (value: number) => `${new Intl.NumberFormat("fa-IR").format(value)} تومان`;
+const numeric = (value: number | string | null | undefined) => {
+  const result = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(result) ? result : null;
+};
+function itemUnitPrice(item: CartItem) {
+  if (typeof item.unitPrice === "number" && Number.isFinite(item.unitPrice)) return item.unitPrice;
+  const rawPrice = numeric(item.variant?.price) ?? numeric(item.variant?.product?.basePrice);
+  if (rawPrice === null) return null;
+  const discount = numeric(item.variant?.product?.discountValue) ?? 0;
+  if (item.variant?.product?.discountType === "percentage" && discount > 0) return rawPrice * (1 - discount / 100);
+  if (item.variant?.product?.discountType === "fixed" && discount > 0) return Math.max(0, rawPrice - discount);
+  return rawPrice;
+}
+const optionText = (option: CartOption) => `${option.label ? `${option.label}: ` : ""}${option.value}${option.displayUnit ? ` ${option.displayUnit}` : ""}`;
 const statusText: Record<string, string> = {
   PENDING: "در انتظار بررسی", PAID: "پرداخت‌شده", UNPAID: "پرداخت‌نشده", AWAITING_PAYMENT: "در انتظار پرداخت",
   CONFIRMED: "تأییدشده", PROCESSING: "در حال آماده‌سازی", COMPLETED: "تکمیل‌شده", CANCELLED: "لغوشده",
 };
 const cashModeText: Record<string, string> = { COUNTER: "پرداخت در پیشخوان فروشگاه", PICKUP: "پرداخت هنگام تحویل حضوری", COURIER: "پرداخت به پیک هنگام تحویل" };
 const errorMessage = (value: unknown) => {
-  if (value && typeof value === "object" && "error" in value && typeof value.error === "string") return value.error;
+  if (value && typeof value === "object" && "error" in value && typeof value.error === "string") {
+    if (/currently available stock|insufficient inventory/i.test(value.error)) return "موجودی این گزینه برای این تعداد کافی نیست. تعداد را کم کنید یا کالا را حذف کنید.";
+    return value.error;
+  }
   return "درخواست انجام نشد. لطفاً دوباره تلاش کنید.";
 };
 
@@ -57,6 +75,7 @@ export default function RetailCheckoutClient({ locale, organization, storefrontP
   const [reportedAt, setReportedAt] = useState("");
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [reportMessage, setReportMessage] = useState("");
+  const [cartItemBusy, setCartItemBusy] = useState<Record<string, boolean>>({});
   const checkoutKey = useRef<string | null>(null);
 
   useEffect(() => {
@@ -132,6 +151,28 @@ export default function RetailCheckoutClient({ locale, organization, storefrontP
   };
 
   const items = cart?.items ?? [];
+  const changeCartItem = async (item: CartItem, quantity: number | null) => {
+    if (!item.id) return;
+    setError("");
+    setCartItemBusy((current) => ({ ...current, [item.id!]: true }));
+    try {
+      const response = await fetch(appPath("/api/retail/v1/cart"), {
+        method: quantity === null ? "DELETE" : "PATCH", credentials: "same-origin",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify({ organization: org, itemId: item.id, ...(quantity === null ? {} : { quantity }) }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(errorMessage(body));
+      const refreshed = await fetch(appPath(`/api/retail/v1/cart?organization=${encodeURIComponent(org)}`), { credentials: "same-origin", cache: "no-store", headers: { accept: "application/json" } });
+      const refreshedBody = await refreshed.json().catch(() => ({}));
+      if (!refreshed.ok) throw new Error(errorMessage(refreshedBody));
+      setCart(refreshedBody.cart ?? null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "به‌روزرسانی سبد خرید انجام نشد.");
+    } finally {
+      setCartItemBusy((current) => ({ ...current, [item.id!]: false }));
+    }
+  };
   return <main dir="rtl" lang="fa" className="min-h-screen bg-[#f8f7f4] px-4 py-8 text-[#24241f] md:px-8">
     <div className="mx-auto max-w-3xl">
       <a href={nativeStorefrontPath} className="text-sm text-[#766d61]">بازگشت به فروشگاه</a>
@@ -156,7 +197,7 @@ export default function RetailCheckoutClient({ locale, organization, storefrontP
             </>}
           </div>}
         </section> : !items.length ? <section className="mt-7 rounded-2xl bg-white p-7"><p>سبد خرید شما خالی است.</p></section> : <>
-          <section className="mt-7 rounded-2xl bg-white p-6"><h2 className="font-semibold">اقلام سبد خرید</h2><ul className="mt-4 divide-y divide-[#eeeae3]">{items.map((item, index) => <li key={item.id ?? index} className="flex justify-between gap-4 py-3 text-sm"><span>{item.productName ?? item.variant?.product?.name ?? item.name ?? "کالای فروشگاه"}{(item.variantName ?? item.variant?.name) ? ` · ${item.variantName ?? item.variant?.name}` : ""}</span><span>تعداد: {new Intl.NumberFormat("fa-IR").format(item.quantity ?? 1)}</span></li>)}</ul><p className="mt-4 text-xs text-[#77736a]">مبلغ نهایی پس از محاسبه و تأیید سرور نمایش داده می‌شود.</p></section>
+          <section className="mt-7 rounded-2xl bg-white p-6"><h2 className="font-semibold">اقلام سبد خرید</h2><ul className="mt-4 divide-y divide-[#eeeae3]">{items.map((item, index) => { const quantity = item.quantity ?? 1; const unitPrice = itemUnitPrice(item); const linePrice = unitPrice === null ? null : unitPrice * quantity; const actionBusy = item.id ? cartItemBusy[item.id] : false; const title = item.productName ?? item.variant?.product?.name ?? item.name ?? "کالای فروشگاه"; const variantLabel = item.variant?.options?.length ? item.variant.options.map(optionText).join(" · ") : item.variantName ?? item.variant?.name; return <li key={item.id ?? index} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="font-medium">{title}</p>{variantLabel && <p className="mt-1 text-sm text-[#6e6a60]">گزینه: {variantLabel}</p>}{item.variant?.sku && <p className="mt-1 text-xs text-[#77736a]" dir="ltr">SKU: {item.variant.sku}</p>}<p className="mt-2 text-sm">{unitPrice === null ? "قیمت در دسترس نیست" : money(unitPrice)} × {new Intl.NumberFormat("fa-IR").format(quantity)}{linePrice !== null && <strong className="mr-3">{money(linePrice)}</strong>}</p></div><div className="flex shrink-0 items-center gap-2"><button type="button" aria-label={`کم‌کردن تعداد ${title}`} disabled={actionBusy || quantity <= 1 || !item.id} onClick={() => void changeCartItem(item, quantity - 1)} className="h-10 w-10 rounded-full border border-[#ddd9d0] disabled:opacity-40">−</button><span className="min-w-8 text-center" aria-live="polite">{new Intl.NumberFormat("fa-IR").format(quantity)}</span><button type="button" aria-label={`زیادکردن تعداد ${title}`} disabled={actionBusy || quantity >= 99 || !item.id} onClick={() => void changeCartItem(item, quantity + 1)} className="h-10 w-10 rounded-full border border-[#ddd9d0] disabled:opacity-40">+</button><button type="button" disabled={actionBusy || !item.id} onClick={() => void changeCartItem(item, null)} className="mr-2 min-h-10 rounded-full border border-[#e7c9c4] px-3 text-xs text-[#8c3329] disabled:opacity-40">حذف</button></div></li>; })}</ul><div className="mt-4 border-t border-[#eeeae3] pt-4 text-sm"><span className="text-[#77736a]">جمع کالاها، محاسبه‌شده در سرور</span><strong className="float-left">{typeof cart?.subtotal === "number" ? money(cart.subtotal) : "پس از محاسبه سرور"}</strong></div><p className="mt-3 text-xs text-[#77736a]">قیمت نهایی و موجودی هنگام ثبت سفارش دوباره در سرور بررسی می‌شود.</p></section>
           <form onSubmit={(event) => void submitCheckout(event)} className="mt-5 space-y-5 rounded-2xl bg-white p-6 md:p-8">
             <fieldset><legend className="font-semibold">روش دریافت</legend><div className="mt-3 flex gap-5 text-sm"><label className="flex items-center gap-2"><input type="radio" name="type" checked={type === "PICK_UP"} onChange={() => { setType("PICK_UP"); if (cashMode === "COURIER") setCashMode("COUNTER"); }} />دریافت حضوری</label><label className="flex items-center gap-2"><input type="radio" name="type" checked={type === "DELIVERY"} onChange={() => { setType("DELIVERY"); if (cashMode === "PICKUP") setCashMode("COUNTER"); }} />ارسال با پیک</label></div></fieldset>
             {type === "DELIVERY" && <label className="block text-sm">نشانی تحویل<textarea required value={deliveryAddress} onChange={(event) => setDeliveryAddress(event.target.value)} className="mt-2 min-h-24 w-full rounded-xl border border-[#ddd9d0] p-3" /></label>}

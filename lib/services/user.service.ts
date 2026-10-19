@@ -1,37 +1,22 @@
+import { publicUserSelect, toPublicUserDto } from "./user-public-dto";
+import { organizationMembershipService, type MembershipActor } from "./organization-membership.service";
 import { prisma } from "@/lib/db";
-import { revalidatePath } from "next/cache";
-import { hasPermission, type UserRole, type Permission } from "@/lib/types";
+import { type UserRole } from "@/lib/types";
 
 export class UserService {
 
-  async getById(id: string) {
-    return prisma.user.findUnique({
-      where: { id },
-      include: {
-        memberOf: true,
-        businessHours: true,
-      },
-    });
+  async getById(id: string, organizationId?: string) {
+    const user = await prisma.user.findUnique({ where: { id, deletedAt: null }, select: publicUserSelect(organizationId) });
+    return user ? toPublicUserDto(user) : null;
   }
 
-  async getByName(name: string) {
-    return prisma.user.findUnique({
-      where: { name },
-      include: {
-        memberOf: true,
-        businessHours: true,
-      },
-    });
+  async getByName(name: string, organizationId?: string) {
+    const user = await prisma.user.findUnique({ where: { name, deletedAt: null }, select: publicUserSelect(organizationId) });
+    return user ? toPublicUserDto(user) : null;
   }
 
-  async delete(id: string) {
-    await prisma.organizationMember.deleteMany({
-      where: { userId: id }
-    })
-
-    return prisma.user.delete({
-      where: { id },
-    });
+  async delete(id: string, actor: MembershipActor) {
+    return organizationMembershipService.changeGlobalUser(actor, id, { deletedAt: new Date(), isActive: false });
   }
 
   async getBusinessHours(id: string) {
@@ -78,32 +63,20 @@ export class UserService {
     return businessHours;
   }
 
-  async updateRole(id: string, role: UserRole) {
-    return prisma.user.update({
-      where: { id },
-      data: { role },
-    });
+  async updateRole(id: string, role: UserRole, actor: MembershipActor) {
+    return organizationMembershipService.changeGlobalUser(actor, id, { role });
   }
 
-  async updateMembershipIsActive(id: string, isActive: boolean) {
-    return prisma.organizationMember.update({
-      where: { id },
-      data: { isActive },
-    });
+  async updateMembershipIsActive(id: string, isActive: boolean, actor: MembershipActor, organizationId: string) {
+    return organizationMembershipService.change(actor, organizationId, id, { isActive });
   }
 
-  async updateUserIsActive(id: string, isActive: boolean) {
-    return prisma.user.update({
-      where: { id },
-      data: { isActive },
-    });
+  async updateUserIsActive(id: string, isActive: boolean, actor: MembershipActor) {
+    return organizationMembershipService.changeGlobalUser(actor, id, { isActive });
   }
 
-  async update(id: string, data: any) {
-    return prisma.user.update({
-      where: { id },
-      data,
-    });
+  async update(id: string, data: { deletedAt?: Date; isActive?: boolean; role?: UserRole }, actor: MembershipActor) {
+    return organizationMembershipService.changeGlobalUser(actor, id, data);
   }
 
   async copyBusinessHours(userId: string, organizationId: string) {

@@ -58,8 +58,8 @@ export async function GET(request: NextRequest) {
           locale: true,
           createdAt: true,
           memberOf: {
-            where: session.user.role === "SUPER_ADMIN" ? undefined : { isActive: true },
-            orderBy: { joinedAt: "desc" },
+            where: session.user.role === "SUPER_ADMIN" ? undefined : { organizationId: session.user.organizationId, isActive: true },
+            orderBy: [{ joinedAt: "asc" }, { id: "asc" }],
             include: {
               organization: {
                 select: { id: true, name: true, slug: true, type: true },
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
-    });
+    }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     console.error("Error listing users:", error);
     return jsonError(error, "Internal server error");

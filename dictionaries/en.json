@@ -40,7 +40,15 @@
     "processing": "Processing",
     "more": "More",
     "saving": "Saving",
-    "deactivate": "Deactivate"
+    "deactivate": "Deactivate",
+    "retry": "Retry"
+  },
+  "organizationSettings": {
+    "errors": {
+      "fetch": "Could not load organization settings. Please try again.",
+      "missingOrganization": "No active organization is selected for this account.",
+      "forbidden": "You do not have access to this organization’s settings. Select an organization you are authorized to manage."
+    }
   },
   "shop": {
     "categoryFilter": "Category filter",
@@ -316,7 +324,35 @@
     "comparedToLastMonth": "Compared to last month",
     "menu": "Menu",
     "viewAll": "View All",
-    "recentAppointments": "Recent appointments"
+    "recentAppointments": "Recent appointments",
+    "domains": {
+      "title": "Organization domains",
+      "description": "Review and manage domains connected to this organization.",
+      "loadError": "Could not load organization domains.",
+      "addSuccess": "The domain was added to the organization.",
+      "verifySuccess": "The domain status was checked with Vercel.",
+      "confirmDisable": "Are you sure you want to disable this domain?",
+      "disableSuccess": "The domain was disabled.",
+      "confirmRemove": "Remove this domain from the Vercel project?",
+      "removeSuccess": "The domain was removed from the Vercel project.",
+      "automationMissing": "Vercel connection is not configured",
+      "automationMissingDescription": "Vercel connection settings must be configured in the application environment to check domains.",
+      "automationDryRun": "Vercel domain changes are disabled",
+      "automationDryRunDescription": "Changes are disabled in this mode; checking a domain only reads its existing status.",
+      "addTitle": "Add a domain to the organization",
+      "addDescription": "Enter a hostname. Adding an application mapping alone does not change DNS or publish content.",
+      "domainLabel": "Domain name",
+      "primaryLabel": "Make this the organization’s primary domain after verification",
+      "addButton": "Add domain",
+      "listTitle": "Connected domains",
+      "empty": "No domain has been registered for this organization yet.",
+      "verificationRecords": "Domain ownership verification records",
+      "copied": "Record copied.",
+      "copy": "Copy",
+      "dnsRecords": "Suggested DNS records",
+      "apexWwwWarning": "A counterpart domain was not found in the organization mappings.",
+      "apexRecommendation": "A root domain was detected; check its www alias as well."
+    }
   },
   "user": {
     "title": "User",

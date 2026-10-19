@@ -51,10 +51,27 @@ describe("APP_PATH browser-visible redirects", () => {
     assert.equal(locationPath(await proxy(platformRequest("/login"))), "/fa/login");
   });
 
+  it("redirects an unlocalized organization path to Persian and preserves its query", async () => {
+    process.env.VERCEL_URL = "bazarbaaz-app.vercel.app";
+    delete process.env.APP_BASE_PATH;
+    delete process.env.NEXT_PUBLIC_APP_BASE_PATH;
+
+    const response = await proxy(platformRequest("/damoon-hotel?campaign=owner-preview"));
+    assert.equal(locationPath(response), "/fa/damoon-hotel");
+    assert.equal(new URL(response.headers.get("location")!).search, "?campaign=owner-preview");
+  });
+
   it("runs proxy sanitization for the manifest route without redirecting it", async () => {
     process.env.VERCEL_URL = "bazarbaaz-app.vercel.app";
     assert.ok(config.matcher.includes("/manifest.webmanifest"));
     const response = await proxy(platformRequest("/manifest.webmanifest"));
+    assert.equal(response.headers.get("location"), null);
+  });
+
+  it("runs the trusted proxy boundary for the dynamic browser favicon route", async () => {
+    process.env.VERCEL_URL = "bazarbaaz-app.vercel.app";
+    assert.ok(config.matcher.includes("/favicon.ico"));
+    const response = await proxy(platformRequest("/favicon.ico"));
     assert.equal(response.headers.get("location"), null);
   });
 

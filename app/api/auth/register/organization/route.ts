@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { signIn } from "@/lib/auth";
-import { ApiError, jsonError } from "@/lib/api-guards";
+import { ApiError, jsonError, requireSameOriginMutation } from "@/lib/api-guards";
 import { slugSchema } from "@/lib/validators";
 
 const organizationRegisterSchema = z.object({
@@ -11,7 +11,9 @@ const organizationRegisterSchema = z.object({
     .string()
     .trim()
     .min(3, "Username must be at least 3 characters")
-    .max(50, "Username must be less than 50 characters"),
+    .max(50, "Username must be less than 50 characters")
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/, "Username contains unsupported characters")
+    .transform((value) => value.toLowerCase()),
   password: z.string().min(6, "Password must be at least 6 characters"),
   orgSlug: slugSchema,
   orgName: z
@@ -24,6 +26,7 @@ const organizationRegisterSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    requireSameOriginMutation(request);
     const body = await request.json();
     const validation = organizationRegisterSchema.safeParse(body);
 
@@ -36,8 +39,8 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     const { user, organization, member } = await prisma.$transaction(async (tx) => {
-      const existingUser = await tx.user.findUnique({
-        where: { name: username },
+      const existingUser = await tx.user.findFirst({
+        where: { name: { equals: username, mode: "insensitive" } },
         select: { id: true },
       });
 
@@ -58,7 +61,9 @@ export async function POST(request: NextRequest) {
         data: {
           name: username,
           password: hashedPassword,
-          role: "ADMIN",
+          // Privilege is granted by the organization membership below; public signup
+          // must never create a globally privileged account.
+          role: "CUSTOMER",
           isActive: true,
           isTeamMember: true,
           locale: "fa",

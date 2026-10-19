@@ -6,7 +6,6 @@ import Link from "next/link"
 import {
   Users,
   Search,
-  Plus,
   Mail,
   Phone,
   MapPin,
@@ -42,6 +41,8 @@ import { toJalali } from "@/lib/jalali-adapter"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { ClientOrganization as Organization, ClientUser as User } from "@/lib/client-model-types"
+import { OrganizationAccountProvisioner } from "@/components/users/organization-account-provisioner"
+import { OrganizationAccountPasswordReset } from "@/components/users/organization-account-password-reset"
 
 // Sample data
 const roleConfig: Record<string, { label: string; icon: typeof ChessKing; color: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -55,7 +56,7 @@ const roleConfig: Record<string, { label: string; icon: typeof ChessKing; color:
 
 
 export default function UsersPage({ params }: { params: Promise<{ locale: string }> }) {
-  const {user} = useAuth()
+  const {user, membershipRole, organizationMembership} = useAuth()
   
   // Access control check
   const { hasAccess, isLoading: accessLoading } = useDashboardAccess()
@@ -83,7 +84,7 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
     useEffect(() => {
       if (mounted && user) {
         fetchUsers()
-        fetchOrganizations()
+        if (user.role === "SUPER_ADMIN") fetchOrganizations()
       }
     }, [mounted, user])
   
@@ -342,10 +343,11 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
             {users.length && toPersianDigits(users.length.toString())} {t("navigation.users") || "مشتریان"}
           </p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 ml-2" />
-          {t("common.add") || "افزودن"}
-        </Button>
+        {user ? <OrganizationAccountProvisioner
+          userRole={user.role}
+          membershipRole={membershipRole}
+          organizationId={organizationMembership?.organizationId}
+        /> : null}
       </div>
 
       {/* Search */}
@@ -461,6 +463,9 @@ export default function UsersPage({ params }: { params: Promise<{ locale: string
             <ShoppingBag className="h-4 w-4" />
           </div>
         </div>
+        {organizationMembership?.organizationId && selectedUser.id !== user?.id && user && (user.role === "SUPER_ADMIN" || membershipRole === "ADMIN") && selectedUser.role !== "SUPER_ADMIN" ? (
+          <OrganizationAccountPasswordReset organizationId={organizationMembership.organizationId} userId={selectedUser.id} />
+        ) : null}
         <div className="mt-4 flex items-center justify-between">
           <Badge variant={selectedUser.isActive ? "default" : "destructive"}>
             {selectedUser.isActive ? (t("common.active") || "فعال") : (t("common.inactive") || "غیرفعال")}

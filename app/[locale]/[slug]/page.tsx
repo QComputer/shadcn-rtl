@@ -7,19 +7,23 @@ import prisma from "@/lib/db";
 import { buildOrganizationPublicPath, buildOrganizationRootPath } from "@/lib/custom-domain-routing";
 import { activePublicBusinessCapabilities, resolveOrganizationPublicHome } from "@/lib/organization-public-home";
 import { getPublicOrganizationReadModel } from "@/lib/public-experience/organization-public-read-model.service";
-import { resolveOrganizationBranding } from "@/lib/organization-branding";
+import { resolveOrganizationBranding, resolveTenantPageIcons } from "@/lib/organization-branding";
 import { getOrganizationRootSeoContext } from "@/lib/custom-domain-seo";
 import { buildPublicMetadata } from "@/lib/seo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import ShopPage from "./shop/page";
-import ShopLayout from "./shop/layout";
+import { ShopLayoutContent } from "./shop/shop-layout-content";
 import AppointmentServicesPage from "./appointment/services/page";
-import AppointmentLayout from "./appointment/layout";
+import { AppointmentLayoutContent } from "./appointment/appointment-layout-content";
 import { OrganizationBrandHome } from "@/components/public/organization-brand-home";
 import { OrganizationVisitorChoice } from "@/components/public/organization-visitor-choice";
 import { appResourceUrl } from "@/lib/app-base-path";
 import { resolveOrganizationHomeContent } from "@/lib/organization-home-content";
+import { readHotelOrganizationSite } from "@/lib/hotel/organization-site-public.server";
+import { PublishedHotelWebsitePage } from "@/components/published-hotel-website-page";
+import { trustedHotelWebsiteHost } from "@/lib/hotel/trusted-website-host";
+import { buildHotelWebsiteMetadata } from "@/lib/hotel/website-metadata";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -32,6 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       id: true,
       name: true,
       slug: true,
+      vertical: true,
       description: true,
       logo: true,
       coverImage: true,
@@ -47,6 +52,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           appleTouchIconUrl: true,
           pwaIcon192Url: true,
           pwaIcon512Url: true,
+          pwaMaskable192Url: true,
+          pwaMaskable512Url: true,
           ogImageUrl: true,
           source: true,
         },
@@ -58,11 +65,33 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: "Organization Not Found" };
   }
 
+  if (organization.vertical === "HOTEL") {
+    try {
+      const requestHeaders = await headers();
+      const host = trustedHotelWebsiteHost({
+        requestHost: requestHeaders.get("host"),
+        isCustomDomain: requestHeaders.get("x-bazar-custom-domain"),
+        tenantDomain: requestHeaders.get("x-bazar-tenant-domain"),
+      });
+      const presentation = await readHotelOrganizationSite(host, organization.id, organization.slug, locale === "en" || locale === "ar" ? locale : "fa", requestHeaders.get("x-bazar-custom-domain") === "true");
+      const seoContext = await getOrganizationRootSeoContext({ locale, slug });
+      return buildHotelWebsiteMetadata({ state: null, presentation, locale, seoContext });
+    } catch {
+      return buildHotelWebsiteMetadata({ state: null, locale });
+    }
+  }
+
   const branding = resolveOrganizationBranding({
     organizationId: organization.id,
     name: organization.name,
     logo: organization.logo,
     coverImage: organization.coverImage,
+    branding: organization.branding,
+  });
+  const tenantIcons = resolveTenantPageIcons({
+    organizationId: organization.id,
+    name: organization.name,
+    logo: organization.logo,
     branding: organization.branding,
   });
   const homeContent = resolveOrganizationHomeContent({ organizationSlug: slug, locale });
@@ -77,9 +106,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     image: branding.ogImage,
     alternatePath: seoContext.alternatePath,
     icons: {
-      icon: [{ url: appResourceUrl(branding.favicon) }],
-      apple: [{ url: appResourceUrl(branding.appleTouchIcon) }],
+      icon: tenantIcons.icon.map(({ url }) => ({ url: appResourceUrl(url) })),
+      apple: tenantIcons.apple.map(({ url }) => ({ url: appResourceUrl(url) })),
     },
+    applicationName: branding.displayName,
+    siteName: branding.displayName,
   });
 }
 
@@ -90,18 +121,34 @@ export default async function OrganizationHomePage({ params }: Props) {
   const organization = await prisma.organization.findFirst({
     where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
     select: {
+      id: true,
       name: true,
       slug: true,
+      vertical: true,
       description: true,
       address: true,
       phone: true,
       email: true,
       capabilities: { select: { key: true, status: true } },
       settings: { select: { settings: true, publicHomeMode: true, brandLandingProvider: true } },
+      branding: { select: { displayName: true, logoUrl: true, themeColor: true, backgroundColor: true } },
     },
   });
 
   if (!organization) notFound();
+
+  // Hotel publication is a distinct informational surface. It is resolved
+  // from the actual request Host and never falls through to preview data.
+  if (organization.vertical === "HOTEL") {
+    const localeCode = locale === "en" || locale === "ar" ? locale : "fa";
+    const presentation = await readHotelOrganizationSite(trustedHotelWebsiteHost({
+      requestHost: requestHeaders.get("host"),
+      isCustomDomain: requestHeaders.get("x-bazar-custom-domain"),
+      tenantDomain: requestHeaders.get("x-bazar-tenant-domain"),
+    }), organization.id, organization.slug, localeCode, isCustomDomain);
+    return <PublishedHotelWebsitePage key={`${organization.id}:${localeCode}`} propertySlug={presentation.propertySlug} locale={localeCode} presentation={presentation} branding={organization.branding} />;
+  }
+
   const publicHome = resolveOrganizationPublicHome({
     capabilities: organization.capabilities,
     settings: organization.settings?.settings,
@@ -116,17 +163,17 @@ export default async function OrganizationHomePage({ params }: Props) {
 
   if (publicHome.kind === "capability" && publicHome.capability === "SHOP") {
     return (
-      <ShopLayout params={params} organizationRootPath={organizationRootPath}>
+      <ShopLayoutContent params={params} organizationRootPath={organizationRootPath}>
         <ShopPage params={params} />
-      </ShopLayout>
+      </ShopLayoutContent>
     );
   }
 
   if (publicHome.kind === "capability" && publicHome.capability === "APPOINTMENT") {
     return (
-      <AppointmentLayout params={params} organizationRootPath={organizationRootPath}>
+      <AppointmentLayoutContent params={params} organizationRootPath={organizationRootPath}>
         <AppointmentServicesPage params={params} />
-      </AppointmentLayout>
+      </AppointmentLayoutContent>
     );
   }
 

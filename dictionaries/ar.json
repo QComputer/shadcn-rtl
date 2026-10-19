@@ -40,7 +40,15 @@
     "processing": "قيد المعالجة",
     "more": "المزيد",
     "saving": "جارٍ الحفظ",
-    "deactivate": "تعطيل"
+    "deactivate": "تعطيل",
+    "retry": "إعادة المحاولة"
+  },
+  "organizationSettings": {
+    "errors": {
+      "fetch": "تعذر تحميل إعدادات المؤسسة. يُرجى المحاولة مرة أخرى.",
+      "missingOrganization": "لم يتم تحديد مؤسسة نشطة لهذا الحساب.",
+      "forbidden": "لا تملك صلاحية الوصول إلى إعدادات هذه المؤسسة. اختر مؤسسة مخولًا بإدارتها."
+    }
   },
   "shop": {
     "categoryFilter": "تصفية الفئات",
@@ -316,7 +324,35 @@
     "comparedToLastMonth": "مقارنة بالشهر الماضي",
     "menu": "القائمة",
     "viewAll": "عرض الكل",
-    "recentAppointments": "المواعيد الأخيرة"
+    "recentAppointments": "المواعيد الأخيرة",
+    "domains": {
+      "title": "نطاقات المؤسسة",
+      "description": "راجع النطاقات المرتبطة بهذه المؤسسة وأدرها.",
+      "loadError": "تعذر تحميل نطاقات المؤسسة.",
+      "addSuccess": "تمت إضافة النطاق إلى المؤسسة.",
+      "verifySuccess": "تم فحص حالة النطاق لدى Vercel.",
+      "confirmDisable": "هل تريد بالتأكيد تعطيل هذا النطاق؟",
+      "disableSuccess": "تم تعطيل النطاق.",
+      "confirmRemove": "هل تريد إزالة هذا النطاق من مشروع Vercel؟",
+      "removeSuccess": "تمت إزالة النطاق من مشروع Vercel.",
+      "automationMissing": "اتصال Vercel غير مهيأ",
+      "automationMissingDescription": "يجب إعداد اتصال Vercel في بيئة التطبيق لفحص النطاقات.",
+      "automationDryRun": "تغييرات النطاق في Vercel معطلة",
+      "automationDryRunDescription": "التغييرات معطلة في هذا الوضع؛ فحص النطاق يقرأ حالته الحالية فقط.",
+      "addTitle": "إضافة نطاق إلى المؤسسة",
+      "addDescription": "أدخل اسم المضيف. إضافة الربط داخل التطبيق وحدها لا تغير DNS ولا تنشر المحتوى.",
+      "domainLabel": "اسم النطاق",
+      "primaryLabel": "اجعل هذا النطاق رئيسياً للمؤسسة بعد التحقق",
+      "addButton": "إضافة النطاق",
+      "listTitle": "النطاقات المرتبطة",
+      "empty": "لم يتم تسجيل نطاق لهذه المؤسسة بعد.",
+      "verificationRecords": "سجلات التحقق من ملكية النطاق",
+      "copied": "تم نسخ السجل.",
+      "copy": "نسخ",
+      "dnsRecords": "سجلات DNS المقترحة",
+      "apexWwwWarning": "لم يتم العثور على النطاق المقابل ضمن روابط المؤسسة.",
+      "apexRecommendation": "تم اكتشاف نطاق الجذر؛ تحقق أيضاً من عنوان www المقابل."
+    }
   },
   "user": {
     "title": "مستخدم",

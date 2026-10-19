@@ -8,7 +8,7 @@ import {
   useSession,
 } from "next-auth/react"
 import { type UserRole, type OrganizationType } from "@/lib/types"
-import { checkRouteAccess, type UserAccessContext, type AccessCheckResult} from "@/lib/access-control"
+import { checkRouteAccess, effectiveDashboardRole, type UserAccessContext, type AccessCheckResult} from "@/lib/access-control"
 
 
 export interface AuthUser {
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Build access context for permission checks
   const membershipRole = (organizationMembership?.role || session?.user?.role || null) as UserRole | null
-  const effectiveRole = membershipRole || authUser?.role || null
+  const effectiveRole = authUser ? effectiveDashboardRole(authUser.role, membershipRole) : null
 
   const accessContext: UserAccessContext | null = authUser ? {
     userId: authUser.id,

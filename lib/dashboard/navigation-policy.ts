@@ -24,6 +24,10 @@ export type DashboardNavigationKey =
   | "orders"
   | "driverOrders"
   | "products"
+  | "retailCatalog"
+  | "retailDiscounts"
+  | "retailPaymentSettings"
+  | "retailPaymentReports"
   | "productCategories"
   | "services"
   | "serviceCategories"
@@ -43,6 +47,8 @@ export type DashboardNavigationKey =
   | "requestDemoLeads"
   | "tenantProvisioning"
   | "businessAcquisition"
+  | "websiteStudio"
+  | "hotelWebsite"
   | "pilots"
 
 export type DashboardNavigationGroupKey = "operations" | "catalog" | "teamAndSettings" | "platformAdmin"
@@ -56,6 +62,10 @@ export const DASHBOARD_NAVIGATION_ITEMS = {
   orders: "/orders",
   driverOrders: "/driver-orders",
   products: "/products",
+  retailCatalog: "/retail-catalog",
+  retailDiscounts: "/retail-discounts",
+  retailPaymentSettings: "/retail-payment-settings",
+  retailPaymentReports: "/retail-payment-reports",
   productCategories: "/product-categories",
   services: "/services",
   serviceCategories: "/service-categories",
@@ -75,6 +85,8 @@ export const DASHBOARD_NAVIGATION_ITEMS = {
   requestDemoLeads: "/request-demo-leads",
   tenantProvisioning: "/tenant-provisioning",
   businessAcquisition: "/business-acquisition",
+  websiteStudio: "/website-studio",
+  hotelWebsite: "/hotel-website",
   pilots: "/pilots",
 } as const satisfies Record<DashboardNavigationKey, string>
 
@@ -85,11 +97,11 @@ export const DASHBOARD_NAVIGATION_GROUPS = [
   },
   {
     key: "catalog",
-    items: ["products", "productCategories", "services", "serviceCategories"],
+    items: ["products", "retailCatalog", "retailDiscounts", "productCategories", "services", "serviceCategories"],
   },
   {
     key: "teamAndSettings",
-    items: ["businessActivation", "reputation", "members", "customerClub", "imports", "exports", "creativeStudio", "settings", "organizationSettings", "qrcode"],
+    items: ["businessActivation", "reputation", "websiteStudio", "hotelWebsite", "retailPaymentSettings", "retailPaymentReports", "members", "customerClub", "imports", "exports", "creativeStudio", "settings", "organizationSettings", "qrcode"],
   },
   {
     key: "platformAdmin",
@@ -110,6 +122,10 @@ export const ROLE_NAVIGATION_POLICY = {
   orders: ALL_OPERATIONS_ROLES,
   driverOrders: ["SUPER_ADMIN", "ADMIN", "MANAGER", "DRIVER"],
   products: ALL_OPERATIONS_ROLES,
+  retailCatalog: ADMIN_MANAGER_ROLES,
+  retailDiscounts: ADMIN_MANAGER_ROLES,
+  retailPaymentSettings: ADMIN_MANAGER_ROLES,
+  retailPaymentReports: ADMIN_MANAGER_ROLES,
   productCategories: ADMIN_MANAGER_ROLES,
   services: ALL_OPERATIONS_ROLES,
   serviceCategories: ADMIN_MANAGER_ROLES,
@@ -129,6 +145,8 @@ export const ROLE_NAVIGATION_POLICY = {
   requestDemoLeads: ["SUPER_ADMIN"],
   tenantProvisioning: ["SUPER_ADMIN"],
   businessAcquisition: ["SUPER_ADMIN"],
+  websiteStudio: MANAGEMENT_ROLES,
+  hotelWebsite: MANAGEMENT_ROLES,
   pilots: ["SUPER_ADMIN"],
 } as const satisfies Record<DashboardNavigationKey, readonly DashboardRole[]>
 
@@ -145,6 +163,12 @@ export const DASHBOARD_ROUTE_POLICY = {
   "/products": ROLE_NAVIGATION_POLICY.products,
   "/products/new": ROLE_NAVIGATION_POLICY.products,
   "/products/[id]": ROLE_NAVIGATION_POLICY.products,
+  "/retail-catalog": ROLE_NAVIGATION_POLICY.retailCatalog,
+  "/retail-catalog/new": ROLE_NAVIGATION_POLICY.retailCatalog,
+  "/retail-catalog/[productId]": ROLE_NAVIGATION_POLICY.retailCatalog,
+  "/retail-discounts": ROLE_NAVIGATION_POLICY.retailDiscounts,
+  "/retail-payment-settings": ROLE_NAVIGATION_POLICY.retailPaymentSettings,
+  "/retail-payment-reports": ROLE_NAVIGATION_POLICY.retailPaymentReports,
   "/product-categories": ROLE_NAVIGATION_POLICY.productCategories,
   "/services": ROLE_NAVIGATION_POLICY.services,
   "/services/new": ROLE_NAVIGATION_POLICY.services,
@@ -166,6 +190,7 @@ export const DASHBOARD_ROUTE_POLICY = {
   "/business-activation": ROLE_NAVIGATION_POLICY.businessActivation,
   "/reputation": ROLE_NAVIGATION_POLICY.reputation,
   "/settings": ROLE_NAVIGATION_POLICY.settings,
+  "/settings/domains": ROLE_NAVIGATION_POLICY.settings,
   "/settings/organization": ROLE_NAVIGATION_POLICY.organizationSettings,
   "/qrcode": ROLE_NAVIGATION_POLICY.qrcode,
   "/organizations": ROLE_NAVIGATION_POLICY.organizations,
@@ -182,6 +207,12 @@ export const DASHBOARD_ROUTE_POLICY = {
   "/tenant-provisioning": ROLE_NAVIGATION_POLICY.tenantProvisioning,
   "/tenant-provisioning/[planId]": ROLE_NAVIGATION_POLICY.tenantProvisioning,
   "/business-acquisition": ROLE_NAVIGATION_POLICY.businessAcquisition,
+  "/website-studio": ROLE_NAVIGATION_POLICY.websiteStudio,
+  "/website-studio/[organizationId]": ROLE_NAVIGATION_POLICY.websiteStudio,
+  "/website-studio/[organizationId]/preview/[revisionId]": ROLE_NAVIGATION_POLICY.websiteStudio,
+  "/hotel-website": ROLE_NAVIGATION_POLICY.hotelWebsite,
+  "/hotel-website/[organizationId]/[propertyId]": ROLE_NAVIGATION_POLICY.hotelWebsite,
+  "/hotel-website/[organizationId]/[propertyId]/preview/[revisionId]": ROLE_NAVIGATION_POLICY.hotelWebsite,
   "/pilots": ROLE_NAVIGATION_POLICY.pilots,
   "/pilots/[organizationId]": ROLE_NAVIGATION_POLICY.pilots,
 } as const satisfies Record<string, readonly DashboardRole[]>
@@ -207,11 +238,13 @@ export function getDashboardRoleFromUser(user: SidebarRoleContext | null | undef
 export function isDashboardNavigationItemVisible(
   key: DashboardNavigationKey,
   role: DashboardRole,
-  capabilities: readonly BusinessCapability[] = [],
+  capabilities: readonly string[] = [],
 ): boolean {
   const allowedRoles: readonly DashboardRole[] = ROLE_NAVIGATION_POLICY[key]
   if (!allowedRoles.includes(role) && role !== "SUPER_ADMIN") return false
   if (role === "SUPER_ADMIN") return true
+
+  if (key === "hotelWebsite") return capabilities.includes("HOTEL_WEBSITE")
 
   const requiredCapability = requiredCapabilityForNavigation(key)
   return !requiredCapability || capabilities.includes(requiredCapability)

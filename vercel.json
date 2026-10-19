@@ -1,4 +1,13 @@
 {
   "framework": "nextjs",
-  "buildCommand": "pnpm run build"
+  "buildCommand": "pnpm run build",
+  "ignoreCommand": "node scripts/retail/ignore-r4-vercel.mjs",
+  "git": {
+    "deploymentEnabled": {
+      "codex/tenant-pwa-branding-fix-20261013": false,
+      "codex/retail-h2-taxonomy-20261014": false,
+      "codex/retail-h2-r5-integration-20261014": false,
+      "codex/platform-combined-integration-20261015": false
+    }
+  }
 }

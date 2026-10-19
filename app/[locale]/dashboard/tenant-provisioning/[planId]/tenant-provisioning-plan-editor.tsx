@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { UniversalProvisioningWizard } from "@/components/organization-onboarding/universal-provisioning-wizard";
 
 type Locale = "fa" | "en" | "ar";
 
@@ -35,6 +36,7 @@ type AuditEvent = {
 type Plan = {
   id: string;
   status: string;
+  executionConfiguration?: unknown | null;
   proposedOrganizationType: "SHOP" | "APPOINTMENT";
   proposedName: string;
   proposedSlug: string;
@@ -86,6 +88,7 @@ export function TenantProvisioningPlanEditor({ locale, planId }: { locale: Local
   });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [configureExecution, setConfigureExecution] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -154,6 +157,8 @@ export function TenantProvisioningPlanEditor({ locale, planId }: { locale: Local
   }
 
   const checks = plan?.validationResult?.checks || [];
+
+  if (plan?.executionConfiguration || configureExecution) return <UniversalProvisioningWizard locale={locale} planId={planId} />;
 
   return (
     <main className="space-y-6" dir={locale === "en" ? "ltr" : "rtl"}>
@@ -302,6 +307,7 @@ export function TenantProvisioningPlanEditor({ locale, planId }: { locale: Local
                 <CardDescription>تأیید فقط برای فاز اجرای بعدی است و اجرا انجام نمی‌دهد.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-2">
+                {!plan.executionConfiguration && ["DRAFT", "NEEDS_REVIEW", "READY"].includes(plan.status) && <Button type="button" variant="outline" onClick={() => setConfigureExecution(true)} disabled={busy}>تنظیم برای ایجاد سازمان</Button>}
                 <Button onClick={saveDraft} disabled={busy}>ذخیره پیش‌نویس</Button>
                 <Button variant="outline" onClick={() => request(`/api/dashboard/tenant-provisioning-plans/${planId}/validate`, { method: "POST" }).then(load)} disabled={busy}>اجرای dry run</Button>
                 <Button variant="outline" onClick={() => request(`/api/dashboard/tenant-provisioning-plans/${planId}/mark-ready`, { method: "POST" }).then(load)} disabled={busy || plan.status !== "READY"}>ثبت READY</Button>

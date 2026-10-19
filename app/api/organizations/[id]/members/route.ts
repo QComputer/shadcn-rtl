@@ -1,105 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { organizationService } from "@/lib/services/organization.service";
-import { hasPermission } from "@/lib/types";
-import { ApiError, jsonError, requireAuthSession, requireOrgAccess } from "@/lib/api-guards";
-
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+import { parseManagedMemberRole } from "@/lib/services/organization-membership.service";
+import { ApiError, jsonError, requireAuthSession, requireOrgAccess, requireSameOriginMutation } from "@/lib/api-guards";
+import { z } from "zod";
+const input = z.object({ userId: z.string().trim().min(1).max(128), role: z.unknown().optional() }).strict();
+const privateHeaders = { "Cache-Control": "private, no-store" };
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await requireAuthSession();
     const { id } = await params;
-    if (!hasPermission(session.user.role, "org:read")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const members =
-      session.user.role === "SUPER_ADMIN"
-        ? await organizationService.getMembers(id)
-        : session?.user?.organizationId
-          ? session.user.role == "ADMIN" || session.user.role == "MANAGER"
-            ? await organizationService.getMembers(session.user.organizationId)
-            : [await organizationService.getAMemberByUserId(session.user.id)]
-          : [];
-
-    return NextResponse.json(members);
-  } catch (error) {
-    console.error("Error getting members:", error);
-    return jsonError(error, "Internal server error");
-  }
+    await requireOrgAccess(session, id, ["ADMIN", "MANAGER"]);
+    return NextResponse.json(await organizationService.getMembers(id), { headers: privateHeaders });
+  } catch (error) { return jsonError(error); }
 }
-
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await requireAuthSession();
+    requireSameOriginMutation(request);
     const { id } = await params;
-
-
-    if (!hasPermission(session.user.role, "org:manage_members")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const organizationId = session.user.role === "SUPER_ADMIN" ? id : session.user.organizationId || id;
-    await requireOrgAccess(session, organizationId, ["ADMIN", "MANAGER"]);
-
-    const body = await request.json();
-    const { userId, role } = body;
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: "User ID is required" },
-        { status: 400 },
-      );
-    }
-
-    const member = await organizationService.addMember(
-      organizationId,
-      userId,
-      role || "STAFF",
-      session.user.id,
-    );
-
-    return NextResponse.json(member, { status: 201 });
-  } catch (error) {
-    console.error("Error adding member:", error);
-    return jsonError(error, "Internal server error");
-  }
+    await requireOrgAccess(session, id, ["ADMIN", "MANAGER"]);
+    const parsed = input.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) throw new ApiError(400, "Invalid member request");
+    const role = parseManagedMemberRole(parsed.data.role ?? "STAFF");
+    const member = await organizationService.addMember(id, parsed.data.userId, role, { userId: session.user.id, organizationId: session.user.organizationId });
+    return NextResponse.json(member, { status: 201, headers: privateHeaders });
+  } catch (error) { return jsonError(error); }
 }
-/*
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
-    const session = await requireAuthSession();
-    const { id } = await params;
-    const body = await request.json();
-    const {userId, role} = body
-
-    const memberShip = await prisma.organizationMember.upsert({
-      where: { userId: userId },
-      update: { organizationId: id, isActive: true },
-      create: { organizationId: id, organizationSlug, userId: userId, isActive: true },
-    });
-
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: { role, isTeamMember: true },
-    });
-
-    return NextResponse.json({ user, memberShip});
-  } catch (error) {
-    console.error("Error updating user organization-membership:", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
-      { status: 500 },
-    );
-  }
-}
-*/

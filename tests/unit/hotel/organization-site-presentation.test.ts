@@ -1,0 +1,137 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  adaptAuthenticatedHotelWebsitePreview,
+  adaptHotelOrganizationPublicRead,
+  adaptSyntheticHotelPreview,
+  hotelOrganizationRobots,
+} from "@/lib/hotel/organization-site-presentation";
+
+const expected = { organizationId: "org-damoon-test", organizationSlug: "damoon-hotel", propertySlug: "damoon-test-property", locale: "fa" as const, contentProvenance: "SYNTHETIC" as const };
+
+function publicPayload() {
+  return [
+    {
+      mode: "PUBLISHED", locale: "fa", propertySlug: expected.propertySlug, revisionNumber: 2,
+      content: { title: "دادهٔ ساختگی آزمون", hero: { heading: "نمایش مصنوعی آزمون" }, introduction: { body: "این متن فقط برای آزمون رابط است." }, sections: [], contact: {} },
+      propertyGallery: [{ src: "/api/hotel/v1/website/media/opaque-media-id-1", altText: "تصویر ساختگی", sortOrder: 0, slot: "HERO_DESKTOP" }], roomGalleries: [],
+    },
+    { mode: "PUBLISHED", locale: "fa", propertySlug: expected.propertySlug, roomCategories: [] },
+  ];
+}
+
+function previewPayload() {
+  return {
+    mode: "PREVIEW", locale: "fa", revisionId: "revision-123", revisionNumber: 3, status: "DRAFT", pageKey: "HOME",
+    content: {
+      title: { fa: "عنوان پیش‌نویس مصنوعی" },
+      hero: { heading: { fa: "پیش‌نمایش خصوصی مصنوعی" } },
+      introduction: { body: { fa: "محتوای ساختگی فقط برای مرور." } },
+      sections: [{ key: "private-note", order: 1, visible: false, kind: "TEXT", heading: {}, body: { fa: "نباید نمایش داده شود." } }],
+      contact: {},
+    },
+    media: [{ imageId: "synthetic-image", src: "/uploads/synthetic-preview.webp", scope: "PROPERTY", roomTypeId: null, slot: "HERO_DESKTOP", sortOrder: 0, altText: { fa: "تصویر مفهومی ساختگی" } }],
+  };
+}
+
+test("organization public adapter consumes only matching F5 published scope and preserves media URLs", () => {
+  const [website, rooms] = publicPayload();
+  const queryMediaUrl = "/api/hotel/v1/website/media/opaque-media-id-1?organizationSlug=damoon-hotel";
+  const websiteWithTenantMedia = {
+    ...(website as object),
+    propertyGallery: [{ src: queryMediaUrl, altText: "تصویر ساختگی", sortOrder: 0, slot: "HERO_DESKTOP" }],
+  };
+  const presentation = adaptHotelOrganizationPublicRead(websiteWithTenantMedia, rooms, expected);
+  assert.equal(presentation.status, "PUBLISHED");
+  if (presentation.status !== "PUBLISHED") return;
+  assert.equal(presentation.source, "PUBLIC_API");
+  assert.equal(presentation.website.heroDesktop?.src, queryMediaUrl);
+  assert.deepEqual(presentation.website.roomCards, []);
+  assert.throws(() => adaptHotelOrganizationPublicRead(website, rooms, { ...expected, propertySlug: "other-property" }));
+  assert.throws(() => adaptHotelOrganizationPublicRead(website, { ...(rooms as object), locale: "en" }, expected));
+  assert.throws(() => adaptHotelOrganizationPublicRead({ ...(website as object), locale: "en" }, rooms, expected));
+});
+
+test("published organization adapter rejects a missing required locale translation", () => {
+  const [website, rooms] = publicPayload();
+  const missingTranslation = {
+    ...(website as object),
+    content: {
+      title: null,
+      hero: { heading: null },
+      introduction: { body: null },
+      sections: [],
+      contact: {},
+    },
+  };
+
+  assert.deepEqual(
+    adaptHotelOrganizationPublicRead(missingTranslation, rooms, expected),
+    { status: "UNAVAILABLE", locale: expected.locale, propertySlug: expected.propertySlug, code: "MISSING_TRANSLATION" },
+  );
+});
+
+test("organization route can represent unpublished and unavailable without falling back to preview", () => {
+  const [website, rooms] = publicPayload();
+  const unpublished = adaptHotelOrganizationPublicRead({ mode: "UNPUBLISHED", locale: "fa", propertySlug: expected.propertySlug, content: null, propertyGallery: [], roomGalleries: [] }, { mode: "UNPUBLISHED", locale: "fa", propertySlug: expected.propertySlug, roomCategories: [] }, expected);
+  assert.equal(unpublished.status, "UNPUBLISHED");
+  assert.equal(hotelOrganizationRobots({ status: unpublished.status }).index, false);
+  assert.throws(() => adaptHotelOrganizationPublicRead({ ...website as object, propertySlug: "foreign" }, rooms, expected));
+});
+
+test("private CMS preview is localized, labeled as review-only data, and excludes invisible sections", () => {
+  const presentation = adaptAuthenticatedHotelWebsitePreview(previewPayload(), expected);
+  assert.equal(presentation.status, "PREVIEW");
+  if (presentation.status !== "PREVIEW") return;
+  assert.equal(presentation.source, "AUTHENTICATED_CMS_PREVIEW");
+  assert.equal(presentation.revisionStatus, "DRAFT");
+  assert.equal(presentation.website.content.title, "عنوان پیش‌نویس مصنوعی");
+  assert.deepEqual(presentation.website.content.sections, []);
+  assert.equal(presentation.website.heroDesktop?.src, "/uploads/synthetic-preview.webp");
+  assert.deepEqual(hotelOrganizationRobots({ status: presentation.status, source: presentation.source, approvedForIndexing: true, websiteCapabilityActive: true, organizationActive: true }), { index: false, follow: false });
+});
+
+test("synthetic preview stays noindex even when the source shape resembles published data", () => {
+  const [website, rooms] = publicPayload();
+  const presentation = adaptSyntheticHotelPreview(website, rooms, expected);
+  assert.equal(presentation.status, "PREVIEW");
+  if (presentation.status !== "PREVIEW") return;
+  assert.equal(presentation.source, "SYNTHETIC_PREVIEW");
+  assert.deepEqual(hotelOrganizationRobots({ status: presentation.status, source: presentation.source, approvedForIndexing: true, websiteCapabilityActive: true, organizationActive: true }), { index: false, follow: false });
+  assert.deepEqual(hotelOrganizationRobots({ status: "PUBLISHED", source: "PUBLIC_API", contentProvenance: "OWNER_APPROVED", approvedForIndexing: true, websiteCapabilityActive: true, organizationActive: true }), { index: true, follow: true });
+  assert.deepEqual(hotelOrganizationRobots({ status: "PUBLISHED", source: "PUBLIC_API", approvedForIndexing: true }), { index: false, follow: false });
+  assert.deepEqual(hotelOrganizationRobots({ status: "PUBLISHED", source: "PUBLIC_API", contentProvenance: "UNKNOWN", approvedForIndexing: true, websiteCapabilityActive: true, organizationActive: true }), { index: false, follow: false });
+  assert.deepEqual(hotelOrganizationRobots({ status: "PUBLISHED", source: "PUBLIC_API", contentProvenance: "SYNTHETIC", approvedForIndexing: true, websiteCapabilityActive: true, organizationActive: true }), { index: false, follow: false });
+});
+
+test("preview rejects wrong locale, malformed payload, and missing trusted organization scope", () => {
+  assert.throws(() => adaptAuthenticatedHotelWebsitePreview({ ...previewPayload(), locale: "en" }, expected));
+  assert.throws(() => adaptAuthenticatedHotelWebsitePreview(previewPayload(), { ...expected, organizationId: "" }));
+  assert.throws(() => adaptAuthenticatedHotelWebsitePreview({ ...previewPayload(), pageKey: "OTHER" }, expected));
+  assert.throws(() => adaptAuthenticatedHotelWebsitePreview({ ...previewPayload(), media: [{ ...previewPayload().media[0], src: "https://untrusted.example/secret.jpg" }] }, expected));
+});
+
+for (const src of ["javascript:alert(1)", "//untrusted.example/secret.jpg", "https://untrusted.example/secret.jpg", "/uploads/../secret.jpg", "/uploads/..", "https://user:secret@fixture.public.blob.vercel-storage.com/image.png", "https://fixture.public.blob.vercel-storage.com/image.png?token=untrusted", "not a URL"]) {
+  test(`preview rejects unsafe image source ${src}`, () => {
+    assert.throws(
+      () => adaptAuthenticatedHotelWebsitePreview({ ...previewPayload(), media: [{ ...previewPayload().media[0], src }] }, expected),
+    );
+  });
+}
+
+test("preview rejects missing requested-locale translation", () => {
+  assert.throws(
+    () => adaptAuthenticatedHotelWebsitePreview({ ...previewPayload(), content: { ...previewPayload().content, title: { en: "English only" } } }, expected),
+    "preview with missing requested-locale translation should be rejected",
+  );
+});
+
+
+test("private preview accepts empty optional translations without inventing text", () => {
+  const raw = previewPayload();
+  raw.content.hero = { ...raw.content.hero, eyebrow: {} } as typeof raw.content.hero;
+  raw.content.sections = [{ key: "text", order: 1, visible: true, kind: "TEXT", heading: {}, body: { fa: "Visible text" } }];
+  const result = adaptAuthenticatedHotelWebsitePreview(raw, expected);
+  assert.equal(result.website.content.hero.eyebrow, null);
+  assert.equal(result.website.content.sections[0].heading, null);
+});

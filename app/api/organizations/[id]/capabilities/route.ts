@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { ApiError, jsonError, requireAuthSession } from "@/lib/api-guards";
+import { ApiError, jsonError, requireAuthSession, requireRole, requireSameOriginMutation } from "@/lib/api-guards";
 import prisma from "@/lib/db";
 import { requireTenantContext } from "@/lib/tenant-context";
 import { organizationCapabilityKeys, replaceOrganizationCapabilitiesSchema } from "@/lib/validators/tenant-platform";
@@ -30,7 +31,7 @@ export async function GET(
       },
     });
     if (!organization) throw new ApiError(404, "Organization not found");
-    return NextResponse.json(organization);
+    return NextResponse.json(organization, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return jsonError(error);
   }
@@ -43,7 +44,9 @@ export async function PUT(
   try {
     const session = await requireAuthSession();
     const { id } = await params;
-    await requireTenantContext(session, id, ["ADMIN", "MANAGER"]);
+    requireSameOriginMutation(request);
+    requireRole(session, ["SUPER_ADMIN"]);
+    await requireTenantContext(session, id, ["ADMIN"]);
 
     const parsed = replaceOrganizationCapabilitiesSchema.safeParse({
       ...(await request.json()),
@@ -98,7 +101,7 @@ export async function PUT(
         await tx.organizationSettings.update({
           where: { id: settings.id },
           data: {
-            settings: writeDefaultPublicCapabilitySetting(settings.settings, null) as any,
+            settings: writeDefaultPublicCapabilitySetting(settings.settings, null) as Prisma.InputJsonValue,
           },
         });
       }
@@ -135,7 +138,7 @@ export async function PUT(
       }
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return jsonError(error);
   }

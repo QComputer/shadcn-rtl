@@ -9,6 +9,7 @@ import { tomanToInotiRial } from "@/lib/integrations/inoti-ussd/currency";
 import type { InotiCredentialProvider, UssdProvider } from "@/lib/integrations/inoti-ussd/types";
 import type { UssdIntegrationRepository } from "@/lib/integrations/inoti-ussd/repository";
 import { inotiLivePaymentsAllowed } from "@/lib/integrations/inoti-runtime-safety";
+import { resolveBoundInotiPaymentAccount, resolveInotiPaymentAccount } from "@/lib/integrations/inoti-ussd/account-routing.server";
 
 type DbClient = Prisma.TransactionClient | typeof prisma;
 
@@ -42,9 +43,6 @@ export class InotiPaymentLifecycleService {
       throw new ApiError(400, "Invalid session");
     }
 
-    const profile = await this.credentialProvider.resolveProfile(integration.organizationId, integration.credentialProfileKey);
-    if (!this.provider.getReadiness(profile).ready) throw new ApiError(503, "Payment provider is unavailable");
-
     const request = await this.db.paymentRequest.findFirst({
       where: {
         id: input.paymentRequestId,
@@ -52,11 +50,36 @@ export class InotiPaymentLifecycleService {
         providerIntegrationId: integration.id,
         currency: "TOMAN",
       },
-      select: { id: true, amountToman: true, status: true },
+      select: {
+        id: true,
+        amountToman: true,
+        status: true,
+        merchantAccountKey: true,
+        credentialProfileKeySnapshot: true,
+        merchantCodeName: true,
+      },
     });
     if (!request) throw new ApiError(404, "Payment request not found");
     if (!["CREATED", "AWAITING_CUSTOMER", "PENDING_VERIFICATION"].includes(request.status)) {
       throw new ApiError(409, "Payment request is not initiable");
+    }
+
+    const account = request.merchantAccountKey && request.merchantCodeName
+      ? await resolveBoundInotiPaymentAccount({
+          organizationId: integration.organizationId,
+          merchantAccountKey: request.merchantAccountKey,
+          credentialProfileKey: request.credentialProfileKeySnapshot,
+          merchantCodeName: request.merchantCodeName,
+          credentialProvider: this.credentialProvider,
+        }).then((profile) => profile ? {
+          merchantAccountKey: request.merchantAccountKey!,
+          credentialProfileKey: request.credentialProfileKeySnapshot ?? "",
+          codeName: request.merchantCodeName!,
+          profile,
+        } : null)
+      : await resolveInotiPaymentAccount(integration.organizationId, this.credentialProvider, integration);
+    if (!account || !this.provider.getReadiness(account.profile).ready) {
+      throw new ApiError(503, "Payment provider is unavailable");
     }
 
     const intent = await this.repository.createOrGetPaymentIntent({
@@ -66,6 +89,9 @@ export class InotiPaymentLifecycleService {
       mobileHash: hashInotiEvidence(mobile),
       mobileMasked: maskInotiMobile(mobile),
       amountToman: request.amountToman,
+      merchantAccountKey: account.merchantAccountKey,
+      credentialProfileKeySnapshot: account.credentialProfileKey,
+      merchantCodeName: account.codeName,
     });
     const amountRial = tomanToInotiRial(request.amountToman);
     if (intent.amountRial !== amountRial) throw new ApiError(409, "Provider amount mismatch");

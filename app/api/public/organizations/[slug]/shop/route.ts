@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { canReadAiMediaEntityAttachmentColumns } from "@/lib/services/ai-media-entity-attachment-service";
 import { hasOrganizationCapability } from "@/lib/organization-capabilities";
+import { sortShopMenuCategories } from "@/lib/shop-menu-filter";
 
 export async function GET(
   request: NextRequest,
@@ -47,6 +48,7 @@ export async function GET(
         name: true,
         slug: true,
         description: true,
+        sortOrder: true,
         image: true,
         products: {
           select: {
@@ -73,14 +75,17 @@ export async function GET(
                 sku: true,
                 price: true,
                 inventory: true,
+                allowBackOrder: true,
                 deletedAt: true,
               },
             },
           },
+          orderBy: [{ sortOrder: "asc" }, { name: "asc" }, { id: "asc" }],
         },
         isActive: true,
         deletedAt: true,
       },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }, { id: "asc" }],
     });
     
     // Get product categories with products
@@ -96,7 +101,7 @@ export async function GET(
           category.products.length > 0,
       );
 
-    const categories = activeCategories
+    const categories = sortShopMenuCategories(activeCategories)
     // Get organization settings without mutating public GET state and without loading
     // the Organization relation. Some deployed databases do not yet have newer
     // Organization columns such as lat/lng, so this route must select only the

@@ -1,8 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-label="Bazarbaaz logo mark">
-
-
-<path d="M170 120 V880" stroke="#F8FAFC" stroke-width="72" stroke-linecap="round"/>
-<path d="M300 120 H535 C700 120 815 245 815 400 C815 462 790 510 750 545" stroke="#F8FAFC" stroke-width="72" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M300 500 H625 C705 500 768 528 800 568" stroke="#F8FAFC" stroke-width="72" fill="none" stroke-linecap="round"/>
-<path d="M806 652 C820 708 810 763 777 808 C738 858 674 880 590 880 H300" stroke="#F8FAFC" stroke-width="72" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M300 170 V830" stroke="#F8FAFC" stroke-width="72" stroke-linecap="round" fill="none"/>
+<path d="M470 220 H635 A105 105 0 0 1 635 430" stroke="#3B82F6" stroke-width="72" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<path d="M470 500 H650 A150 150 0 0 1 650 800 H470" stroke="#F8FAFC" stroke-width="72" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
 </svg>

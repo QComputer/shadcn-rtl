@@ -44,6 +44,35 @@ export function jsonError(error: unknown, fallback = "Internal server error") {
   return NextResponse.json({ error: safeMessage }, { status });
 }
 
+/**
+ * Cookie-authenticated state changes must not be callable cross-origin.
+ * The expected origin is derived from the request URL, never from a forwarded
+ * host supplied by the client.
+ */
+export function requireSameOriginMutation(request: Request) {
+  const origin = request.headers.get("origin");
+  const requestUrl = new URL(request.url);
+  const requestHost = request.headers.get("host");
+  const forwardedProtocol = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const protocol = forwardedProtocol ? `${forwardedProtocol}:` : requestUrl.protocol;
+  let expectedOrigin = requestUrl.origin;
+  if (requestHost) {
+    try {
+      expectedOrigin = new URL(`${protocol}//${requestHost}`).origin;
+    } catch {
+      throw new ApiError(403, "Cross-origin request rejected");
+    }
+  }
+  const fetchSite = request.headers.get("sec-fetch-site");
+
+  if (!origin || origin !== expectedOrigin) {
+    throw new ApiError(403, "Cross-origin request rejected");
+  }
+  if (fetchSite && !["same-origin", "same-site", "none"].includes(fetchSite)) {
+    throw new ApiError(403, "Cross-origin request rejected");
+  }
+}
+
 export async function requireAuthSession(): Promise<SessionWithUser> {
   const session = await auth();
   const user = session?.user;
@@ -52,10 +81,12 @@ export async function requireAuthSession(): Promise<SessionWithUser> {
     throw new ApiError(401, "Unauthorized");
   }
 
+  const current = await prisma.user.findFirst({ where: { id: user.id, isActive: true, deletedAt: null }, select: { role: true } });
+  if (!current) throw new ApiError(401, "Unauthorized");
   return {
     user: {
       id: user.id,
-      role: user.role as UserRole,
+      role: current.role as UserRole,
       name: user.name ?? null,
       email: user.email ?? null,
       locale: user.locale ?? null,
@@ -79,7 +110,7 @@ export function isPrivilegedOrgRole(role?: string | null) {
 }
 
 export function getMembershipRole(membership: { role?: UserRole | null; user?: { role?: UserRole | null } } | null | undefined): UserRole | undefined {
-  return (membership?.role || membership?.user?.role || undefined) as UserRole | undefined;
+  return (membership?.role || undefined) as UserRole | undefined;
 }
 
 export async function getActiveMembership(
@@ -92,6 +123,7 @@ export async function getActiveMembership(
       isActive: true,
       ...(organizationId ? { organizationId } : {}),
     },
+    orderBy: [{ joinedAt: "asc" }, { id: "asc" }],
     include: {
       organization: {
         select: {
@@ -115,6 +147,11 @@ export async function getActiveMembership(
   });
 }
 
+async function assertPersistedPlatformAdmin(session: SessionWithUser) {
+  const user = await prisma.user.findFirst({ where: { id: session.user.id, role: "SUPER_ADMIN", isActive: true, deletedAt: null }, select: { id: true } });
+  if (!user) throw new ApiError(403, "Active platform administrator required");
+}
+
 export async function requireOrgAccess(
   session: SessionWithUser,
   organizationId: string,
@@ -127,6 +164,7 @@ export async function requireOrgAccess(
   }
 
   if (session.user.role === "SUPER_ADMIN") {
+    await assertPersistedPlatformAdmin(session);
     return null;
   }
 
@@ -164,13 +202,12 @@ export async function requireCurrentOrgAdminOrManager(
   }
 
   if (session.user.role === "SUPER_ADMIN") {
+    await assertPersistedPlatformAdmin(session);
     return null;
   }
 
-  const membership = await getActiveMembership(
-    userId,
-    session.user.organizationId ?? undefined,
-  );
+  if (!session.user.organizationId) throw new ApiError(403, "Explicit tenant context required");
+  const membership = await getActiveMembership(userId, session.user.organizationId);
   const membershipRole = getMembershipRole(membership);
   if (
     !membership ||
@@ -197,6 +234,7 @@ export async function resolveManageableOrganizationId(
   const role = session?.user?.role as UserRole | undefined;
 
   if (role === "SUPER_ADMIN") {
+    await assertPersistedPlatformAdmin(session);
     return requestedId;
   }
 
@@ -205,6 +243,7 @@ export async function resolveManageableOrganizationId(
     throw new ApiError(403, "Forbidden");
   }
 
+  if (requestedId !== membership.organizationId) throw new ApiError(403, "Tenant context mismatch");
   return membership.organizationId;
 }
 

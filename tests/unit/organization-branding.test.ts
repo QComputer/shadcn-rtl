@@ -3,9 +3,43 @@ import { describe, it } from "node:test";
 import {
   resolveOrganizationBranding,
   resolvePlatformFallbackBranding,
+  resolveTenantPwaBranding,
+  resolveTenantPageIcons,
 } from "@/lib/organization-branding";
 
 describe("organization branding resolution", () => {
+  it("does not borrow platform assets when tenant PWA fields are absent or belong to another org", () => {
+    const tenant = resolveTenantPwaBranding({
+      organizationId: "tenant-1",
+      name: "Tenant One",
+      logo: null,
+      branding: {
+        organizationId: "some-other-tenant",
+        faviconUrl: "/other/favicon.png",
+        pwaIcon192Url: "/other/icon.png",
+      },
+    });
+    assert.equal(tenant.displayName, "Tenant One");
+    assert.equal(tenant.favicon, null);
+    assert.equal(tenant.pwaIcons.icon192, null);
+    assert.equal(tenant.pwaIcons.maskable192, null);
+    assert.deepEqual(resolveTenantPageIcons({ organizationId: "tenant-1", name: "Tenant One", logo: null }).icon, []);
+  });
+
+  it("keeps tenant icon metadata isolated and rejects unsafe schemes", () => {
+    const iconsA = resolveTenantPageIcons({
+      organizationId: "tenant-a", name: "A", logo: null,
+      branding: { organizationId: "tenant-a", pwaIcon192Url: "/a/192.png", appleTouchIconUrl: "https://assets.example/a.png" },
+    });
+    const iconsB = resolveTenantPageIcons({
+      organizationId: "tenant-b", name: "B", logo: null,
+      branding: { organizationId: "tenant-b", pwaIcon192Url: "javascript:alert(1)" },
+    });
+    assert.equal(iconsA.icon[0]?.url, "/a/192.png");
+    assert.equal(iconsA.apple[0]?.url, "https://assets.example/a.png");
+    assert.deepEqual(iconsB.icon, []);
+  });
+
   it("resolves organization-specific branding when present", () => {
     const branding = resolveOrganizationBranding({
       organizationId: "org-1",
@@ -99,7 +133,7 @@ describe("organization branding resolution", () => {
     const fallback = resolvePlatformFallbackBranding();
 
     assert.equal(fallback.organizationId, "platform");
-    assert.equal(fallback.displayName, "Bazarbaaz");
+    assert.equal(fallback.displayName, "بازارباز");
     assert.equal(fallback.logo, "/brand/marks/bazarbaaz-mark.svg");
     assert.equal(fallback.favicon, "/icons/favicon.svg");
     assert.equal(fallback.appleTouchIcon, "/icons/apple-touch-icon.png");

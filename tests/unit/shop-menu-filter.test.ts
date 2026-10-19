@@ -2,7 +2,9 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   countVisibleProductsByCategory,
+  getShopMenuProductAvailability,
   getVisibleShopMenuProducts,
+  sortShopMenuCategories,
   type ShopMenuCategory,
   type ShopMenuProduct,
 } from "../../lib/shop-menu-filter";
@@ -79,17 +81,34 @@ const categories = [
 ];
 
 describe("shop menu in-page category filtering", () => {
+  it("sorts public category responses by category and product order with stable tie-breakers", () => {
+    const unordered = [
+      { id: "cat-z", name: "Beta", sortOrder: 1, products: [
+        product({ id: "p-z", name: "Alpha", sortOrder: 4, organizationSlug: "shop" }),
+        product({ id: "p-c", name: "Alpha", sortOrder: 2, organizationSlug: "shop" }),
+      ] },
+      { id: "cat-a", name: "Alpha", sortOrder: 1, products: [
+        product({ id: "p-b", name: "Beta", sortOrder: 1, organizationSlug: "shop" }),
+        product({ id: "p-a", name: "Alpha", sortOrder: 1, organizationSlug: "shop" }),
+      ] },
+    ];
+    const sorted = sortShopMenuCategories(unordered);
+    assert.deepEqual(sorted.map((item) => item.id), ["cat-a", "cat-z"]);
+    assert.deepEqual(sorted[0].products.map((item) => item.id), ["p-a", "p-b"]);
+    assert.deepEqual(sorted[1].products.map((item) => item.id), ["p-c", "p-z"]);
+  });
+
   it("initial state displays all visible products in stable sort order", () => {
     assert.deepEqual(
       getVisibleShopMenuProducts(categories, { selectedCategoryId: null }).map((item) => item.id),
-      ["p_other", "p_margherita", "p_juice", "p_pepperoni", "p_coffee"],
+      ["p_coffee", "p_pepperoni", "p_juice", "p_margherita", "p_other", "p_sold_out"],
     );
   });
 
   it("clicking a category filters in place by stable category id", () => {
     assert.deepEqual(
       getVisibleShopMenuProducts(categories, { selectedCategoryId: "cat_pizza" }).map((item) => item.id),
-      ["p_margherita", "p_pepperoni"],
+      ["p_pepperoni", "p_margherita", "p_sold_out"],
     );
   });
 
@@ -97,7 +116,7 @@ describe("shop menu in-page category filtering", () => {
     const filtered = getVisibleShopMenuProducts(categories, { selectedCategoryId: "cat_drinks" });
     const restored = getVisibleShopMenuProducts(categories, { selectedCategoryId: null });
     assert.equal(filtered.length, 2);
-    assert.equal(restored.length, 5);
+    assert.equal(restored.length, 6);
   });
 
   it("Persian category labels work without slug parsing", () => {
@@ -136,10 +155,22 @@ describe("shop menu in-page category filtering", () => {
     assert.deepEqual(cartState, { variantId: "variant_1", quantity: 2 });
   });
 
-  it("product ordering is preserved after filtering", () => {
+  it("public product ordering is ascending after filtering", () => {
     assert.deepEqual(
       getVisibleShopMenuProducts(categories, { selectedCategoryId: "cat_pizza" }).map((item) => item.sortOrder),
-      [40, 20],
+      [20, 40, 90],
+    );
+  });
+
+  it("uses ascending name and then id as deterministic tie-breakers", () => {
+    const tied = [
+      product({ id: "p_z", name: "Beta", sortOrder: 1, organizationSlug: "chakme" }),
+      product({ id: "p_b", name: "Alpha", sortOrder: 1, organizationSlug: "chakme" }),
+      product({ id: "p_a", name: "Alpha", sortOrder: 1, organizationSlug: "chakme" }),
+    ];
+    assert.deepEqual(
+      getVisibleShopMenuProducts([category({ id: "cat_tied", name: "Tied", products: tied })], { selectedCategoryId: null }).map((item) => item.id),
+      ["p_a", "p_b", "p_z"],
     );
   });
 
@@ -152,9 +183,15 @@ describe("shop menu in-page category filtering", () => {
     assert.equal(ids.includes("p_hidden"), false);
   });
 
-  it("sold-out tracked products remain hidden", () => {
+  it("sold-out tracked products remain visible for unavailable presentation", () => {
     const ids = getVisibleShopMenuProducts(categories, { selectedCategoryId: "cat_pizza" }).map((item) => item.id);
-    assert.equal(ids.includes("p_sold_out"), false);
+    assert.equal(ids.includes("p_sold_out"), true);
+    assert.deepEqual(getShopMenuProductAvailability(categories[0].products[3]), {
+      tracksInventory: true,
+      inventory: 0,
+      isOutOfStock: true,
+      canPurchase: false,
+    });
   });
 
   it("tenant-scoped source data can be asserted by callers before rendering", () => {
@@ -223,6 +260,6 @@ describe("shop menu in-page category filtering", () => {
   });
 
   it("visible category counts use the same availability policy as products", () => {
-    assert.equal(countVisibleProductsByCategory(categories[0]), 2);
+    assert.equal(countVisibleProductsByCategory(categories[0]), 3);
   });
 });

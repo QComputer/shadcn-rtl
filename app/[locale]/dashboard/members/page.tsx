@@ -22,6 +22,9 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { toPersianDigits } from "@/lib/persian"
+import { useAuth } from "@/hooks/use-auth"
+import { OrganizationAccountProvisioner } from "@/components/users/organization-account-provisioner"
+import { OrganizationAccountPasswordReset } from "@/components/users/organization-account-password-reset"
 
 type ManageableMemberRole = "ADMIN" | "MANAGER" | "STAFF" | "DRIVER"
 type MemberStatusValue = "active" | "inactive"
@@ -79,10 +82,12 @@ async function readError(response: Response, fallback: string) {
 export default function OrganizationMembersPage({ params }: { params: Promise<{ locale: string }> }) {
   const resolvedParams = use(params)
   const locale = resolvedParams.locale || "fa"
+  const { user } = useAuth()
 
   const [searchQuery, setSearchQuery] = useState("")
   const [members, setMembers] = useState<Member[]>([])
   const [organizationId, setOrganizationId] = useState<string | null>(null)
+  const [membershipRole, setMembershipRole] = useState<ManageableMemberRole | null>(null)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
@@ -115,6 +120,7 @@ export default function OrganizationMembersPage({ params }: { params: Promise<{ 
     const membershipData = await membershipResponse.json()
     const orgId = membershipData?.membership?.organizationId
     if (!orgId) throw new Error("No active organization membership")
+    setMembershipRole(membershipData.membership.role ?? null)
 
     const membersResponse = await appFetch(`/api/organizations/${orgId}/members`, { cache: "no-store", signal })
     if (!membersResponse.ok) {
@@ -232,10 +238,13 @@ export default function OrganizationMembersPage({ params }: { params: Promise<{ 
             {toPersianDigits(members.length.toString())} عضو، {toPersianDigits(activeCount.toString())} فعال
           </p>
         </div>
-        <Button variant="outline" onClick={refreshMembers} disabled={refreshing || updating}>
-          <RefreshCw className={refreshing ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
-          تازه‌سازی
-        </Button>
+        <div className="flex gap-2">
+          {user && organizationId && membershipRole === "ADMIN" ? <OrganizationAccountProvisioner userRole={user.role} membershipRole={membershipRole} organizationId={organizationId} /> : null}
+          <Button variant="outline" onClick={refreshMembers} disabled={refreshing || updating}>
+            <RefreshCw className={refreshing ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
+            تازه‌سازی
+          </Button>
+        </div>
       </div>
 
       <div className="relative">
@@ -357,6 +366,10 @@ export default function OrganizationMembersPage({ params }: { params: Promise<{ 
                   )}
                 </CardContent>
               </Card>
+
+              {user && organizationId && membershipRole === "ADMIN" && selectedMember.user.id !== user.id && selectedMember.role !== "ADMIN" ? (
+                <OrganizationAccountPasswordReset organizationId={organizationId} userId={selectedMember.user.id} />
+              ) : null}
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2">

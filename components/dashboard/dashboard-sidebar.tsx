@@ -17,6 +17,7 @@ import {
   MapPinned,
   Menu,
   Package,
+  BadgePercent,
   QrCode,
   Settings,
   ShieldCheck,
@@ -87,6 +88,10 @@ const NAVIGATION_ICONS = {
   orders: ShoppingCart,
   driverOrders: MapPinned,
   products: Package,
+  retailCatalog: Package,
+  retailDiscounts: BadgePercent,
+  retailPaymentSettings: Settings,
+  retailPaymentReports: ClipboardList,
   productCategories: Tags,
   services: Wrench,
   serviceCategories: Tags,
@@ -106,6 +111,8 @@ const NAVIGATION_ICONS = {
   requestDemoLeads: Inbox,
   tenantProvisioning: ListChecks,
   businessAcquisition: Store,
+  websiteStudio: Globe2,
+  hotelWebsite: Building2,
   pilots: BriefcaseBusiness,
 } satisfies Record<DashboardNavigationKey, DashboardIcon>
 
@@ -140,6 +147,10 @@ const roleAwareNavigationCopy = {
       orders: "سفارش‌ها",
       driverOrders: "رانندگی و تحویل",
       products: "محصولات",
+      retailCatalog: "کاتالوگ فروشگاه",
+      retailDiscounts: "کدهای تخفیف فروشگاه",
+      retailPaymentSettings: "روش‌های پرداخت فروشگاه",
+      retailPaymentReports: "گزارش‌های پرداخت فروشگاه",
       productCategories: "دسته‌های محصول",
       services: "خدمات",
       serviceCategories: "دسته‌های خدمت",
@@ -159,6 +170,8 @@ const roleAwareNavigationCopy = {
       requestDemoLeads: "درخواست‌های دمو",
       tenantProvisioning: "آماده‌سازی ایجاد کسب‌وکار",
       businessAcquisition: "جذب کسب‌وکار",
+      websiteStudio: "استودیو وب‌سایت",
+      hotelWebsite: "استودیو وب‌سایت هتل",
       pilots: "عملیات پایلوت",
     },
     roles: {
@@ -191,6 +204,10 @@ const roleAwareNavigationCopy = {
       orders: "Orders",
       driverOrders: "Driving & delivery",
       products: "Products",
+      retailCatalog: "Retail catalog",
+      retailDiscounts: "Retail discount codes",
+      retailPaymentSettings: "Retail payment methods",
+      retailPaymentReports: "Retail payment reports",
       productCategories: "Product categories",
       services: "Services",
       serviceCategories: "Service categories",
@@ -210,6 +227,8 @@ const roleAwareNavigationCopy = {
       requestDemoLeads: "Demo requests",
       tenantProvisioning: "Tenant provisioning",
       businessAcquisition: "Business acquisition",
+      websiteStudio: "Website studio",
+      hotelWebsite: "Hotel website studio",
       pilots: "Pilot operations",
     },
     roles: {
@@ -242,6 +261,10 @@ const roleAwareNavigationCopy = {
       orders: "الطلبات",
       driverOrders: "القيادة والتوصيل",
       products: "المنتجات",
+      retailCatalog: "فهرس المتجر",
+      retailDiscounts: "رموز خصم المتجر",
+      retailPaymentSettings: "طرق دفع المتجر",
+      retailPaymentReports: "تقارير دفع المتجر",
       productCategories: "فئات المنتجات",
       services: "الخدمات",
       serviceCategories: "فئات الخدمات",
@@ -261,6 +284,8 @@ const roleAwareNavigationCopy = {
       requestDemoLeads: "طلبات العرض التجريبي",
       tenantProvisioning: "إعداد إنشاء النشاط",
       businessAcquisition: "اكتساب الأعمال",
+      websiteStudio: "استوديو الموقع",
+      hotelWebsite: "استوديو موقع الفندق",
       pilots: "عمليات التجربة",
     },
     roles: {
@@ -336,7 +361,7 @@ function SidebarContent({
         </div>
       </div>
 
-      <ScrollArea className="min-h-0 flex-1 px-3 py-3">
+      <ScrollArea dir={locale === "fa" || locale === "ar" ? "rtl" : "ltr"} className="min-h-0 flex-1 px-3 py-3">
         <nav aria-label={copy.sectionLabel} className="space-y-5">
           {visibleGroups.map((group) => (
             <section key={group.key} className="space-y-2">

@@ -1,10 +1,11 @@
+import { organizationMembershipService, type MembershipActor, type ManagedMemberRole } from "./organization-membership.service";
 import { prisma } from "@/lib/db";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { createOrganizationSchema, pageSizeSchema, updateOrganizationSchema } from "@/lib/validators";
 import type { CreateOrganizationInput, UpdateOrganizationInput } from "@/lib/validators";
-import { hasPermission, type UserRole, type Permission } from "@/lib/types";
+import { hasPermission, type UserRole } from "@/lib/types";
 import { supportedLocales } from "@/lib/i18n";
 import { assertOrganizationSlugAllowed } from "@/lib/organization-slugs";
+import { parseBusinessVertical } from "@/lib/business-verticals";
 import { buildOrganizationPublicPath, buildOrganizationRootPath } from "@/lib/custom-domain-routing";
 
 function revalidateOrganizationPublicPages(slug: string) {
@@ -13,6 +14,16 @@ function revalidateOrganizationPublicPages(slug: string) {
     revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: slug, surface: "shop" }));
     revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: slug, surface: "shop", subPath: "/profile" }));
     revalidatePath(buildOrganizationPublicPath({ locale, organizationSlug: slug, surface: "appointment" }));
+  }
+}
+
+export class BusinessVerticalAssignmentError extends Error {
+  constructor(
+    readonly code: "FORBIDDEN" | "INVALID_VERTICAL" | "NOT_FOUND" | "CONFLICT",
+    message: string,
+  ) {
+    super(message);
+    this.name = "BusinessVerticalAssignmentError";
   }
 }
 
@@ -99,7 +110,7 @@ export class OrganizationService {
 
       await tx.user.update({
         where: { id: userId },
-        data: { isTeamMember: true, role: "ADMIN" },
+        data: { isTeamMember: true },
       });
 
       return organization;
@@ -231,6 +242,82 @@ export class OrganizationService {
     revalidateOrganizationPublicPages(organization.slug);
     revalidateTag("home-page", "max");
     return organization;
+  }
+
+  /** Assign an unset organization's vertical through a platform-only workflow. */
+  async setBusinessVertical(
+    id: string,
+    vertical: string,
+    userRole: UserRole,
+    actorId: string,
+  ) {
+    if (userRole !== "SUPER_ADMIN" || !actorId) {
+      throw new BusinessVerticalAssignmentError("FORBIDDEN", "Only a platform SUPER_ADMIN can assign a business vertical");
+    }
+
+    const parsed = parseBusinessVertical(vertical);
+    if (!parsed) {
+      throw new BusinessVerticalAssignmentError("INVALID_VERTICAL", "Unknown business vertical");
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const organization = await tx.organization.findUnique({
+        where: { id },
+        select: { id: true, slug: true, vertical: true, type: true },
+      });
+      if (!organization) {
+        throw new BusinessVerticalAssignmentError("NOT_FOUND", "Organization not found");
+      }
+      if (organization.vertical === parsed) {
+        return { organization, changed: false };
+      }
+      if (organization.vertical !== null) {
+        throw new BusinessVerticalAssignmentError("CONFLICT", "Organization already has a different business vertical");
+      }
+
+      // Compare-and-set makes concurrent assignments safe: exactly one
+      // different vertical can win, while an identical racing assignment is
+      // treated as idempotent after the failed compare.
+      const updated = await tx.organization.updateMany({
+        where: { id, vertical: null },
+        data: { vertical: parsed },
+      });
+      if (updated.count === 0) {
+        const latest = await tx.organization.findUnique({
+          where: { id },
+          select: { id: true, slug: true, vertical: true, type: true },
+        });
+        if (!latest) {
+          throw new BusinessVerticalAssignmentError("NOT_FOUND", "Organization not found");
+        }
+        if (latest.vertical === parsed) {
+          return { organization: latest, changed: false };
+        }
+        throw new BusinessVerticalAssignmentError("CONFLICT", "Organization was assigned a different business vertical concurrently");
+      }
+
+      const assigned = { ...organization, vertical: parsed };
+      await tx.auditLog.create({
+        data: {
+          action: "UPDATE",
+          entityType: "Organization",
+          entityId: organization.id,
+          description: "Business vertical assigned by platform administrator",
+          previousValue: { vertical: organization.vertical },
+          newValue: { vertical: parsed },
+          userId: actorId,
+          organizationId: organization.id,
+          organizationSlug: organization.slug,
+        },
+      });
+      return { organization: assigned, changed: true };
+    });
+
+    if (result.changed) {
+      revalidateOrganizationPublicPages(result.organization.slug);
+      revalidateTag("home-page", "max");
+    }
+    return result;
   }
 
   async delete(id: string, userRole: UserRole) {
@@ -367,8 +454,8 @@ export class OrganizationService {
             lastName: true,
             avatar: true,
             isActive: true,
-            businessHours: true,
-            providedServices: true,
+            businessHours: { where: { organizationId } },
+            providedServices: { where: { organizationId, deletedAt: null } },
           },
         },
       },
@@ -398,63 +485,8 @@ export class OrganizationService {
     });
   }
 
-  async addMember(
-    organizationId: string,
-    userId: string,
-    role: "ADMIN" | "MANAGER" | "STAFF",
-    addedBy: string,
-  ) {
-    // Check if user is already a member
-    const existingMember = await prisma.organizationMember.findUnique({
-      where: {
-        organizationId_userId: { organizationId, userId },
-      },
-    });
-
-    if (existingMember) {
-      throw new Error("User is already a member");
-    }
-
-    const org = await prisma.organization.findUnique({
-      where: { id: organizationId },
-      select: { slug: true },
-    });
-
-    if (!org) {
-      throw new Error("Organization not found");
-    }
-
-    const member = await prisma.organizationMember.create({
-      data: {
-        organizationId,
-        organizationSlug: org.slug,
-        userId,
-        role,
-        isActive: true,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            role: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
-    });
-
-    // Update user's isTeamMember flag and role
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        isTeamMember: true,
-        role,
-      },
-    });
-
+  async addMember(organizationId: string, userId: string, role: ManagedMemberRole, actor: MembershipActor) {
+    const member = await organizationMembershipService.add(actor, organizationId, userId, role);
     revalidatePath(`/dashboard/organizations/${organizationId}/members`);
     return member;
   }
@@ -504,51 +536,16 @@ export class OrganizationService {
     return member;
   }
 
-  async updateMemberRole(
-    organizationId: string,
-    userId: string,
-    role: "ADMIN" | "MANAGER" | "STAFF" | "DRIVER" | "CUSTOMER",
-  ) {
-    const member = await prisma.organizationMember.update({
-      where: { organizationId_userId: { organizationId, userId } },
-      data: { role },
-      include: { user: true, organization: true },
-    });
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        isTeamMember: role !== "CUSTOMER",
-        role,
-      },
-    });
-
-    revalidatePath(`/dashboard/organizations/${organizationId}/members`);
-    return member;
+  async updateMemberRole(organizationId: string, userId: string, role: ManagedMemberRole, actor: MembershipActor) {
+    const member = await prisma.organizationMember.findUnique({ where: { organizationId_userId: { organizationId, userId } }, select: { id: true } });
+    if (!member) throw new Error("Organization member not found");
+    return organizationMembershipService.change(actor, organizationId, member.id, { role });
   }
 
-  async removeMember(organizationId: string, userId: string) {
-    await prisma.organizationMember.delete({
-      where: {
-        organizationId_userId: { organizationId, userId },
-      },
-    });
-
-    const remainingMembership = await prisma.organizationMember.findFirst({
-      where: { userId, isActive: true },
-    });
-
-    if (!remainingMembership) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          isTeamMember: false,
-          role: "CUSTOMER",
-        },
-      });
-    }
-
-    revalidatePath(`/dashboard/organizations/${organizationId}/members`);
+  async removeMember(organizationId: string, userId: string, actor: MembershipActor) {
+    const member = await prisma.organizationMember.findUnique({ where: { organizationId_userId: { organizationId, userId } }, select: { id: true } });
+    if (!member) throw new Error("Organization member not found");
+    return organizationMembershipService.change(actor, organizationId, member.id, { isActive: false });
   }
 
   async getBusinessHours(organizationId: string) {
@@ -690,7 +687,7 @@ export class OrganizationService {
       },
     });
 
-    return member?.role ?? member?.user?.role;
+    return member?.role;
   }
 }
 

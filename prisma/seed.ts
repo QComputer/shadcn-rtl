@@ -30,6 +30,9 @@ async function mainDev(): Promise<SeedContext> {
   await prisma.conversation.deleteMany();
   await prisma.follow.deleteMany();
   await prisma.review.deleteMany();
+  await prisma.ussdPaymentVerificationJob.deleteMany();
+  await prisma.ussdCallbackEvent.deleteMany();
+  await prisma.ussdPaymentIntent.deleteMany();
   await prisma.paymentProviderAttempt.deleteMany();
   await prisma.paymentRequest.deleteMany();
   await prisma.payment.deleteMany();

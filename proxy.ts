@@ -96,6 +96,8 @@ export function sanitizedProxyBoundaryHeaders(request: NextRequest) {
     "x-bazar-tenant-public-path",
     "x-bazar-organization-root-zone",
     "x-bazar-public-footer-context",
+    "x-url-pathname",
+    "x-bazar-dashboard-return-to",
     "x-forwarded-host",
   ]) {
     requestHeaders.delete(name);
@@ -103,8 +105,19 @@ export function sanitizedProxyBoundaryHeaders(request: NextRequest) {
   return requestHeaders;
 }
 
+function setRequestRouteHeaders(request: NextRequest, requestHeaders: Headers) {
+  const configuredBasePath = resolveAppBasePath();
+  let pathname = request.nextUrl.pathname;
+  if (configuredBasePath && (pathname === configuredBasePath || pathname.startsWith(`${configuredBasePath}/`))) {
+    pathname = pathname.slice(configuredBasePath.length) || "/";
+  }
+  requestHeaders.set("x-url-pathname", pathname);
+  requestHeaders.set("x-bazar-dashboard-return-to", `${pathname}${request.nextUrl.search}`);
+}
+
 function withFooterContext(request: NextRequest, context: PublicFooterContext) {
   const requestHeaders = sanitizedProxyBoundaryHeaders(request);
+  setRequestRouteHeaders(request, requestHeaders);
   requestHeaders.set("x-bazar-public-footer-context", context);
   return { request: { headers: requestHeaders } };
 }
@@ -187,6 +200,7 @@ function buildTenantRewriteHeaders(
   publicPath: string,
 ) {
   const requestHeaders = sanitizedProxyBoundaryHeaders(request);
+  setRequestRouteHeaders(request, requestHeaders);
   requestHeaders.set("x-bazar-custom-domain", "true");
   requestHeaders.set("x-bazar-tenant-domain", normalizedHost);
   requestHeaders.set("x-bazar-tenant-slug", tenant.slug);
@@ -212,6 +226,7 @@ function buildForwardedAppRewriteHeaders(
   publicPath: string,
 ) {
   const requestHeaders = sanitizedProxyBoundaryHeaders(request);
+  setRequestRouteHeaders(request, requestHeaders);
   requestHeaders.set("x-bazar-custom-domain", "true");
   requestHeaders.set("x-bazar-tenant-domain", forwardedHost);
   requestHeaders.set("x-bazar-tenant-slug", tenant.slug);
@@ -292,7 +307,7 @@ export async function proxy(request: NextRequest) {
           locale,
           browserPathname,
         );
-        const isAppResource = pathname === "/manifest.webmanifest";
+        const isAppResource = pathname === "/manifest.webmanifest" || pathname === "/favicon.ico";
         const operationalRoute = pathname.startsWith("/api") || isAppResource
           ? null
           : resolveOperationalAppRoute(pathname, tenant.slug);
@@ -366,6 +381,40 @@ export async function proxy(request: NextRequest) {
         response.headers.set("x-locale", operationalLocale);
         response.headers.set("x-direction", localeConfig[operationalLocale].dir);
       }
+      return withSecurityHeaders(response);
+    }
+
+    // Hotel websites are an informational vertical and do not require SHOP or
+    // APPOINTMENT capabilities. Keep their active-domain root on the existing
+    // organization route; the page and public APIs independently enforce
+    // HOTEL_WEBSITE and publication state before returning content.
+    if (tenant.vertical === "HOTEL") {
+      const splitPath = splitLocalePrefix(pathname);
+      const locale = splitPath.locale || defaultLocale;
+      const requestHeaders = buildTenantRewriteHeaders(
+        request,
+        normalizedHost,
+        tenant,
+        locale,
+        buildTenantPublicPath(locale, splitPath.pathnameWithoutLocale),
+      );
+      let response: NextResponse;
+      if (splitPath.pathnameWithoutLocale === "/") {
+        const hotelHomeUrl = request.nextUrl.clone();
+        hotelHomeUrl.pathname = buildOrganizationRootPath({ locale, organizationSlug: tenant.slug });
+        // Use a tenant-domain redirect here. A Next rewrite changes the Host
+        // observed by the App Router during local and production server runs,
+        // which would make the downstream host-based Hotel check fail closed.
+        response = NextResponse.redirect(hotelHomeUrl, 308);
+      } else if (splitPath.pathnameWithoutLocale === `/${tenant.slug}`) {
+        response = NextResponse.next({ request: { headers: requestHeaders } });
+      } else {
+        const notFoundUrl = request.nextUrl.clone();
+        notFoundUrl.pathname = `/${locale}/not-found`;
+        response = NextResponse.rewrite(notFoundUrl, { request: { headers: requestHeaders } });
+      }
+      response.headers.set("x-locale", locale);
+      response.headers.set("x-direction", localeConfig[locale].dir);
       return withSecurityHeaders(response);
     }
 
@@ -597,7 +646,8 @@ export async function proxy(request: NextRequest) {
       ? `/${locale}`
       : `/${locale}${pathname}`;
 
-    const newUrl = new URL(appPath(newPath), request.url);
+    const newUrl = request.nextUrl.clone();
+    newUrl.pathname = appPath(newPath);
     const response = NextResponse.redirect(newUrl);
 
     // Set locale cookie
@@ -644,6 +694,7 @@ export const config = {
     "/robots.txt",
     "/sitemap.xml",
     "/manifest.webmanifest",
+    "/favicon.ico",
     "/api/:path*",
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
   ],

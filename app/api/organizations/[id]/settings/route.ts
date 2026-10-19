@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { updateOrganizationSettingsSchema, updatePreparationDefaultsSchema } from "@/lib/validators";
-import { ApiError, jsonError, requireAuthSession, resolveManageableOrganizationId } from "@/lib/api-guards";
+import { ApiError, jsonError, requireAuthSession, requireSameOriginMutation, resolveManageableOrganizationId } from "@/lib/api-guards";
 import { writeAuditLog } from "@/lib/audit-log";
 import {
   activePublicBusinessCapabilities,
   assertDefaultPublicCapabilityAllowed,
+  assertPublicHomeModeAllowed,
   isPublicBusinessCapability,
   writeDefaultPublicCapabilitySetting,
+  type PublicHomeMode,
   type PublicBusinessCapabilityRecord,
 } from "@/lib/organization-public-home";
 import type { BusinessCapability } from "@/lib/business-capability-registry";
@@ -124,6 +126,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    requireSameOriginMutation(request);
     const session = await requireAuthSession();
     const { id } = await params;
     const organizationId = await resolveManageableOrganizationId(session, id);
@@ -131,11 +134,39 @@ export async function PATCH(
     const body = await request.json();
     const data: Record<string, unknown> = {};
     const hasDefaultPublicCapability = Object.prototype.hasOwnProperty.call(body, "defaultPublicCapability");
+    const hasPublicHomeMode = Object.prototype.hasOwnProperty.call(body, "publicHomeMode");
     const hasPreparationMinutes = Object.prototype.hasOwnProperty.call(body, "defaultPreparationMinutes");
     let defaultPublicCapabilityForAudit: string | null | undefined;
 
     if (hasPreparationMinutes) {
       Object.assign(data, updatePreparationDefaultsSchema.parse(body));
+    }
+
+    if (hasPublicHomeMode) {
+      const mode = body.publicHomeMode;
+      if (!["AUTO", "SHOP", "APPOINTMENT", "BRAND", "VISITOR_CHOICE"].includes(mode)) {
+        throw new ApiError(400, "Invalid homepage mode");
+      }
+      const organization = await prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: {
+          capabilities: { select: { key: true, status: true } },
+          settings: { select: { brandLandingProvider: true } },
+        },
+      });
+      if (!organization) throw new ApiError(404, "Organization not found");
+      try {
+        assertPublicHomeModeAllowed({
+          mode: mode as PublicHomeMode,
+          activePublicCapabilities: activePublicBusinessCapabilities(
+            organization.capabilities as PublicBusinessCapabilityRecord[],
+          ),
+          brandLandingProvider: organization.settings?.brandLandingProvider ?? null,
+        });
+      } catch {
+        throw new ApiError(400, "Homepage mode is not available for this organization");
+      }
+      data.publicHomeMode = mode;
     }
 
     if (hasDefaultPublicCapability) {
@@ -182,13 +213,17 @@ export async function PATCH(
       action: "UPDATE",
       entityType: "OrganizationPreparationSettings",
       entityId: settings.id,
-      description: hasDefaultPublicCapability
+      description: hasPublicHomeMode
+        ? "Updated business homepage mode"
+        : hasDefaultPublicCapability
         ? "Updated default public capability"
         : "Updated default order preparation time",
       userId: session.user.id,
       organizationId,
       organizationSlug,
-      newValue: hasDefaultPublicCapability
+      newValue: hasPublicHomeMode
+        ? { publicHomeMode: data.publicHomeMode }
+        : hasDefaultPublicCapability
         ? { defaultPublicCapability: defaultPublicCapabilityForAudit ?? null }
         : data,
     });

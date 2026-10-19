@@ -7,7 +7,8 @@ import { prisma } from "@/lib/db";
 import { supportedLocales, type SupportedLocale } from "@/lib/i18n";
 import { toPersianDigits } from "@/lib/persian";
 import { cn } from "@/lib/utils";
-import { buildOrganizationRootPath } from "@/lib/custom-domain-routing";
+import { publicOrganizationHref } from "@/lib/organization-public-href";
+import { organizationDomainsHref } from "@/lib/domains/organization-domain-manager";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +62,7 @@ const copyByLocale = {
     title: "سازمان‌ها",
     subtitle: "نمای منتشرشده مدیریت سازمان‌های پلتفرم؛ فقط مدیر کل می‌تواند این صفحه را ببیند.",
     create: "افزودن سازمان",
-    manageDomains: "مدیریت دامنه‌ها",
+    manageDomains: "مدیریت دامنه‌های فروشگاه",
     searchPlaceholder: "جستجوی نام، اسلاگ، ایمیل یا تلفن...",
     allTypes: "همه نوع‌ها",
     allStatuses: "همه وضعیت‌ها",
@@ -98,7 +99,7 @@ const copyByLocale = {
     title: "Organizations",
     subtitle: "Published platform organization management view. Only super admins can access it.",
     create: "Add organization",
-    manageDomains: "Manage domains",
+    manageDomains: "Manage shop domains",
     searchPlaceholder: "Search name, slug, email, or phone...",
     allTypes: "All types",
     allStatuses: "All statuses",
@@ -135,7 +136,7 @@ const copyByLocale = {
     title: "المؤسسات",
     subtitle: "صفحة إدارة مؤسسات المنصة المنشورة. الوصول متاح للمدير العام فقط.",
     create: "إضافة مؤسسة",
-    manageDomains: "إدارة النطاقات",
+    manageDomains: "إدارة نطاقات المتجر",
     searchPlaceholder: "ابحث بالاسم أو الرابط أو البريد أو الهاتف...",
     allTypes: "كل الأنواع",
     allStatuses: "كل الحالات",
@@ -215,10 +216,6 @@ function buildQuery(params: Record<string, string | number | undefined>) {
   }
   const text = query.toString();
   return text ? `?${text}` : "";
-}
-
-export function publicOrganizationHref<T extends { slug: string }>(locale: SupportedLocale, organization: T) {
-  return buildOrganizationRootPath({ locale, organizationSlug: organization.slug });
 }
 
 function statusBadgeClass(isActive: boolean) {
@@ -517,7 +514,7 @@ export default async function OrganizationsPage({
                       {copy.publicPage}
                     </Link>
                     <Link
-                      href={`/${locale}/dashboard/shop-domains`}
+                      href={organizationDomainsHref(locale, organization.id)}
                       className="inline-flex h-8 items-center justify-center rounded-lg border bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       {copy.domainManager}

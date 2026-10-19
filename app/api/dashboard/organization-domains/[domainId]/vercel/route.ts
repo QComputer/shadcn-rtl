@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/lib/audit-log";
-import { jsonError, requireAuthSession, requireOrgAccess } from "@/lib/api-guards";
+import { jsonError, requireAuthSession } from "@/lib/api-guards";
 import { assertDomainOwnership } from "@/lib/domains/domain-authorization.server";
 import {
   addProjectDomainToVercel,
+  inspectProjectDomainOnVercel,
   removeProjectDomainFromVercel,
   verifyProjectDomainOnVercel,
   type VercelDomainAutomationResult,
@@ -13,9 +14,10 @@ import {
 import { customDomainLocales } from "@/lib/custom-domain-routing";
 import { revalidatePath } from "next/cache";
 import { organizationPublicRouteCapabilities, type CapabilityRecord } from "@/lib/organization-capabilities";
+import { getApexDomainInfo, getDomainPresentationKind } from "@/lib/domains/domain-normalization.server";
 
 const organizationDomainActionSchema = z.object({
-  action: z.enum(["add", "check", "remove"]),
+  action: z.enum(["add", "check", "verify", "remove"]),
 });
 
 function getClientMeta(request: NextRequest) {
@@ -62,9 +64,10 @@ function revalidateOrganizationPublicPaths(organization: { slug: string; type: "
   }
 }
 
-async function runVercelAction(action: "add" | "check" | "remove", domain: string) {
+async function runVercelAction(action: "add" | "check" | "verify" | "remove", domain: string) {
   if (action === "add") return addProjectDomainToVercel(domain);
-  if (action === "check") return verifyProjectDomainOnVercel(domain);
+  if (action === "check") return inspectProjectDomainOnVercel(domain);
+  if (action === "verify") return verifyProjectDomainOnVercel(domain);
   return removeProjectDomainFromVercel(domain);
 }
 
@@ -107,7 +110,17 @@ export async function POST(
       // Cache revalidation must not break Vercel mutations.
     }
 
-    return NextResponse.json({ domain: updated, vercel });
+    return NextResponse.json({
+      domain: {
+        ...updated,
+        // Keep the submitted hostname's presentation after Check. The stored
+        // kind may represent the tenant's canonical apex, while `www` remains
+        // a subdomain alias in the organization-domain manager.
+        displayKind: getDomainPresentationKind(updated.domain),
+        apexInfo: getApexDomainInfo(updated.domain),
+      },
+      vercel,
+    });
   } catch (error) {
     return parseError(error);
   }

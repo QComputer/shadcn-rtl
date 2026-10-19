@@ -97,9 +97,14 @@ export function TenantProvisioningClient({ locale }: { locale: Locale }) {
             این مرحله فقط اطلاعات و پیش‌نیازهای ایجاد فضای کسب‌وکار را بررسی می‌کند و هنوز هیچ سازمان، حساب کاربری یا اشتراکی ایجاد نشده است.
           </p>
         </div>
-        <Button variant="outline" onClick={load} disabled={loading}>
-          تازه‌سازی
-        </Button>
+        <div className="flex gap-2">
+          <Link href={`/${locale}/dashboard/tenant-provisioning/new`}>
+            <Button>راه‌اندازی هدایت‌شده</Button>
+          </Link>
+          <Button variant="outline" onClick={load} disabled={loading}>
+            تازه‌سازی
+          </Button>
+        </div>
       </div>
 
       {error && <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}

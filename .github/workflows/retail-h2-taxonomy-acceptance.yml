@@ -1,0 +1,151 @@
+name: Retail H2 taxonomy acceptance
+
+on:
+  push:
+    branches:
+      - codex/retail-h2-taxonomy-20261014
+
+permissions:
+  contents: read
+
+jobs:
+  h2-taxonomy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: retail_r4
+          POSTGRES_DB: bazarbaaz_retail_r4
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 127.0.0.1:55433:5432
+        options: >-
+          --health-cmd "pg_isready -U retail_r4 -d bazarbaaz_retail_r4"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+          --label bazarbaaz.task=retail-h2-taxonomy
+          --label bazarbaaz.run=${{ github.run_id }}-${{ github.run_attempt }}
+    env:
+      DATABASE_URL: postgresql://retail_r4@127.0.0.1:55433/bazarbaaz_retail_r4?schema=public
+      DIRECT_URL: postgresql://retail_r4@127.0.0.1:55433/bazarbaaz_retail_r4?schema=public
+      LOCAL_PRISMA_EXPECTED_PORT: "55433"
+      RETAIL_R4_EXPECTED_DATABASE: bazarbaaz_retail_r4
+      AUTH_TRUST_HOST: "true"
+      AUTH_URL: http://127.0.0.1:3000
+      NEXTAUTH_URL: http://127.0.0.1:3000
+      NEXT_TELEMETRY_DISABLED: "1"
+      CI: "true"
+      RETAIL_RECEIPT_TEST_STORAGE: "1"
+      RETAIL_RECEIPT_LOCAL_ROOT: /tmp/retail-h2-private-receipts
+      AI_MEDIA_LOCAL_DOCKER_E2E: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Create ephemeral test credentials
+        shell: bash
+        run: |
+          auth_secret="$(openssl rand -hex 32)"
+          test_password="$(openssl rand -hex 20)"
+          echo "::add-mask::$auth_secret"
+          echo "::add-mask::$test_password"
+          echo "NEXTAUTH_SECRET=$auth_secret" >> "$GITHUB_ENV"
+          echo "RETAIL_R4_TEST_PASSWORD=$test_password" >> "$GITHUB_ENV"
+      - name: Frozen dependency install
+        run: pnpm install --frozen-lockfile
+      - name: Prisma generation and schema validation
+        run: |
+          pnpm exec prisma generate
+          pnpm exec prisma validate
+      - name: Verify exact loopback disposable database and empty schema
+        run: node scripts/retail/h2-preflight.mjs
+      - name: Verify H2 branch is excluded from Vercel builds
+        run: |
+          VERCEL_GIT_COMMIT_REF=codex/retail-h2-taxonomy-20261014 node scripts/retail/ignore-r4-vercel.mjs
+          VERCEL_GIT_COMMIT_REF=codex/retail-r4-checkout-20261013 node scripts/retail/ignore-r4-vercel.mjs
+          if VERCEL_GIT_COMMIT_REF=main node scripts/retail/ignore-r4-vercel.mjs; then
+            echo "Main must retain its normal deployment behavior"
+            exit 1
+          fi
+      - name: Verify ordered R4 plus H2 manifest and prepare R4 migration stage
+        run: node scripts/retail/h2-migration-stage.mjs
+      - name: Apply the first 99 R4 migrations
+        env:
+          H2_BASE_SCHEMA: ${{ runner.temp }}/retail-h2-r4-base-prisma/schema.prisma
+          H2_BASE_MIGRATIONS: ${{ runner.temp }}/retail-h2-r4-base-prisma/migrations
+        run: pnpm exec prisma migrate deploy --config prisma.h2-base.config.ts
+      - name: Seed three synthetic legacy products before H2 migration
+        run: pnpm exec tsx scripts/retail/h2-legacy-product-preservation.mjs seed
+      - name: Apply H2 migration and verify all 100 migrations plus legacy products
+        run: |
+          pnpm exec prisma migrate deploy
+          pnpm exec prisma migrate status
+          pnpm exec tsx scripts/retail/h2-legacy-product-preservation.mjs verify
+      - name: Seed synthetic manager, tenant, and catalog fixtures
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/retail/r4-fixtures.mjs seed
+      - name: Verify public catalog, taxonomy filters, and tenant constraints
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs scripts/retail/r4-fixtures.mjs verify
+      - name: Focused unit, route, and R4 regression tests
+        run: >-
+          pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test
+          tests/unit/retail-h2-product-taxonomy.test.mjs
+          tests/unit/public-catalog-contract.test.ts
+          tests/unit/retail-attribute-validation.test.ts
+          tests/unit/tenant-capabilities-and-push.test.ts
+          tests/unit/shop-menu-filter.test.ts
+          tests/unit/hotel-management-api-security.test.ts
+          tests/integration/order-price-snapshot.local.test.ts
+      - name: ESLint on reviewed H2 files
+        run: >-
+          pnpm exec eslint
+          'app/[locale]/dashboard/products/[id]/page.tsx'
+          'app/api/products/[id]/taxonomy/route.ts'
+          components/dashboard/product-taxonomy-editor.tsx
+          lib/public-catalog/contracts.ts lib/public-catalog/route-handlers.server.ts
+          lib/public-catalog/service.server.ts lib/retail/product-taxonomy.server.ts
+          lib/retail/product-taxonomy-utils.ts lib/services/product.service.ts
+          scripts/retail/h2-preflight.mjs scripts/retail/h2-migration-stage.mjs
+          scripts/retail/h2-legacy-product-preservation.mjs
+          prisma.h2-base.config.ts
+          scripts/retail/r4-browser-e2e.mjs scripts/retail/r4-fixtures.mjs
+          tests/unit/retail-h2-product-taxonomy.test.mjs tests/unit/public-catalog-contract.test.ts
+      - name: TypeScript
+        run: pnpm run typecheck
+      - name: Production build
+        run: pnpm run build
+      - name: Install Chromium for isolated browser acceptance
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Start isolated production server
+        run: |
+          mkdir -p artifacts/retail-h2-browser
+          pnpm start --port 3000 > artifacts/retail-h2-browser/next.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/fa/login >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat artifacts/retail-h2-browser/next.log
+          exit 1
+      - name: Authenticated manager taxonomy and R4 storefront browser acceptance
+        env:
+          RETAIL_R4_BASE_URL: http://127.0.0.1:3000
+          RETAIL_R4_PLAYWRIGHT_ENTRY: ${{ github.workspace }}/node_modules/playwright/index.mjs
+        run: |
+          set -o pipefail
+          node scripts/retail/r4-browser-e2e.mjs 2>&1 | tee artifacts/retail-h2-browser/browser.log
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retail-h2-taxonomy-browser-evidence
+          path: |
+            artifacts/retail-h2-browser/
+            artifacts/retail-r4-browser/
+          if-no-files-found: warn

@@ -2,6 +2,7 @@
 import { appFetch } from "@/lib/app-base-path";
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { Save, User, Bell, Lock, Palette, Globe, Loader2, X } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,6 +16,9 @@ import type { ClientBusinessHour as BusinessHour, ClientOrganization as Organiza
 import { ShopStatusBadge } from "@/components/ShopStatusBadge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { BUSINESS_CAPABILITY_REGISTRY, type BusinessCapability } from "@/lib/business-capability-registry"
+import { OrganizationBrandingForm } from "@/components/organization-branding-form"
+import { automaticPublicCapabilityLabel } from "@/lib/organization-capability-label"
+import { loadOrganizationSettings, OrganizationSettingsScopeError, requestOrganizationSettings } from "@/lib/organization-settings-client"
 
 interface ImageRecord {
   id: number;
@@ -36,16 +40,22 @@ function readDefaultPublicCapability(settings: OrganizationSettings | null): Bus
   return candidate === "SHOP" || candidate === "APPOINTMENT" ? candidate : null;
 }
 
-export default function OrganizationSettingsPage({ params }: { params: Promise<{ locale: string }> }) {
+export default function OrganizationSettingsPage({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams?: Promise<{ organizationId?: string }> }) {
   const resolvedParams = use(params)
+  const resolvedSearchParams = searchParams ? use(searchParams) : {}
   const locale = resolvedParams.locale || "fa"
   const router = useRouter()
+  const { data: session, status: sessionStatus } = useSession()
+  const sessionUserId = session?.user?.id
+  const sessionUserRole = session?.user?.role
+  const sessionOrganizationId = session?.user?.organizationId
+  const requestedOrganizationId = resolvedSearchParams.organizationId?.trim() || null
   const { theme: currentTheme, setTheme } = useTheme()
   
   const [mounted, setMounted] = useState(false)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(true)
+  const [reloadKey, setReloadKey] = useState(0)
   const [savingSettings, setSavingSettings] = useState(false)
   const [savingOrganization, setSavingOrganization] = useState(false)
   const [savingImages, setSavingImages] = useState(false)
@@ -67,6 +77,8 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
   const [savingCapabilities, setSavingCapabilities] = useState(false)
   const [defaultPublicCapability, setDefaultPublicCapability] = useState<BusinessCapability | "AUTO">("AUTO")
   const [savingDefaultPublicCapability, setSavingDefaultPublicCapability] = useState(false)
+  const [publicHomeMode, setPublicHomeMode] = useState<"AUTO" | "SHOP" | "APPOINTMENT" | "BRAND" | "VISITOR_CHOICE">("AUTO")
+  const [savingPublicHomeMode, setSavingPublicHomeMode] = useState(false)
   //const [paymentSettings, setPaymentSettings ] = useState<PaymentSettings|null>(null)
 
   // Form state
@@ -101,57 +113,95 @@ export default function OrganizationSettingsPage({ params }: { params: Promise<{
     }, [locale])
   
   useEffect(() => {
-    if (!saving) return
-    
+    let active = true
     setLoading(true)
+    setError(null)
+    setOrganization(null)
+    setSettings(null)
+    setBusinessHours(null)
+    setCapabilities([])
+    setName("")
+    setAddress("")
+    setPhone("")
+    setDescription("")
+    setLat(undefined)
+    setLng(undefined)
+    setCardNumber("")
+    setCardOwnerName("")
+    setPaymentMethodInt("0")
+    setPaymentCondition(false)
+    setIsOpen(false)
+    setLogo("")
+    setCoverImage("")
+    setLogoPreview(null)
+    setCoverImagePreview(null)
 
-    // Fetch user profile
-    appFetch(`/api/organizations/noId/settings`)
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch organization settings")
-        return res.json()
-      })
-.then(settings => {
-       setSettings(settings)
-       setDefaultPreparationMinutes(settings.defaultPreparationMinutes || 30)
-       const configuredDefaultPublicCapability = readDefaultPublicCapability(settings)
-       setDefaultPublicCapability(configuredDefaultPublicCapability ?? "AUTO")
-       setOrganization(settings.organization)
-       setCapabilities(
-         settings.organization.capabilitiesInitializedAt
-           ? (settings.organization.capabilities || [])
-               .filter((capability: { status: string }) => capability.status === "ACTIVE")
-               .map((capability: { key: BusinessCapability }) => capability.key)
-           : settings.organization.type
-             ? [settings.organization.type]
-             : [],
-       )
-       setName(settings.organization.name)
-       setAddress(settings.organization.address || "")
-       setPhone(settings.organization.phone || "")
-       setDescription(settings.organization.description || "")
-       setLat(settings.organization.lat ?? undefined)
-       setLng(settings.organization.lng ?? undefined)
-       setBusinessHours(settings.organization.businessHours)
-      //setPaymentSettings(settings.organization.paymentSettings)
-      settings.organization?.paymentSettings?.paymentMethodInt && setPaymentMethodInt(settings.organization.paymentSettings.paymentMethodInt.toString())
-      if (typeof settings.organization?.paymentSettings?.paymentCondition === "boolean") setPaymentCondition(settings.organization.paymentSettings.paymentCondition)
-      settings.organization?.paymentSettings?.cardNumber && setCardNumber(settings.organization.paymentSettings.cardNumber)
-      settings.organization?.paymentSettings?.cardOwnerName && setCardOwnerName(settings.organization.paymentSettings.cardOwnerName)
-      setIsOpen(settings.organization?.isOpen || false)
+    if (sessionStatus === "loading") return () => { active = false }
+
+    const load = async () => {
+      try {
+        if (!sessionUserId) throw new OrganizationSettingsScopeError("membership")
+        const { response } = await loadOrganizationSettings(
+          appFetch,
+          { role: sessionUserRole, organizationId: sessionOrganizationId },
+          requestedOrganizationId,
+        )
+        const settings = await response.json()
+        if (!active) return
+        setSettings(settings)
+        setPublicHomeMode(["SHOP", "APPOINTMENT", "BRAND", "VISITOR_CHOICE"].includes(settings.publicHomeMode)
+          ? settings.publicHomeMode as typeof publicHomeMode : "AUTO")
+        setDefaultPreparationMinutes(settings.defaultPreparationMinutes || 30)
+        const configuredDefaultPublicCapability = readDefaultPublicCapability(settings)
+        setDefaultPublicCapability(configuredDefaultPublicCapability ?? "AUTO")
+        setOrganization(settings.organization)
+        setCapabilities(
+          settings.organization.capabilitiesInitializedAt
+            ? (settings.organization.capabilities || [])
+                .filter((capability: { status: string }) => capability.status === "ACTIVE")
+                .map((capability: { key: BusinessCapability }) => capability.key)
+            : settings.organization.type
+              ? [settings.organization.type]
+              : [],
+        )
+        setName(settings.organization.name)
+        setAddress(settings.organization.address || "")
+        setPhone(settings.organization.phone || "")
+        setDescription(settings.organization.description || "")
+        setLat(settings.organization.lat ?? undefined)
+        setLng(settings.organization.lng ?? undefined)
+        setBusinessHours(settings.organization.businessHours)
+        settings.organization?.paymentSettings?.paymentMethodInt && setPaymentMethodInt(settings.organization.paymentSettings.paymentMethodInt.toString())
+        if (typeof settings.organization?.paymentSettings?.paymentCondition === "boolean") setPaymentCondition(settings.organization.paymentSettings.paymentCondition)
+        settings.organization?.paymentSettings?.cardNumber && setCardNumber(settings.organization.paymentSettings.cardNumber)
+        settings.organization?.paymentSettings?.cardOwnerName && setCardOwnerName(settings.organization.paymentSettings.cardOwnerName)
+        setIsOpen(settings.organization?.isOpen || false)
         setLoading(false)
-        setSaving(false)
-      })
-      .catch(err => {
-        setError(err.message)
+      } catch (err) {
+        if (!active) return
+        const reason = err instanceof OrganizationSettingsScopeError ? err.reason : "membership"
+        const key = reason === "forbidden"
+          ? "organizationSettings.errors.forbidden"
+          : reason === "missing"
+            ? "organizationSettings.errors.missingOrganization"
+            : "organizationSettings.errors.fetch"
+        setError(getDictValue(getDictionary(locale), key))
         setLoading(false)
-        setSaving(false)
-      })
-  }, [saving])
+      }
+    }
+
+    void load()
+    return () => { active = false }
+  }, [sessionStatus, sessionUserId, sessionUserRole, sessionOrganizationId, requestedOrganizationId, reloadKey, locale])
 
   const t = (key: string): string => {
-    if (!dict) return key
-    return getDictValue(dict, key)
+    return getDictValue(dict ?? getDictionary(locale), key)
+  }
+  const organizationSettingsHref = (targetLocale: string) => {
+    const path = `/${targetLocale}/dashboard/settings/organization`
+    return requestedOrganizationId
+      ? `${path}?organizationId=${encodeURIComponent(requestedOrganizationId)}`
+      : path
   }
   const handleCoverImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -195,7 +245,7 @@ const handleClose = async (e: React.FormEvent) => {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update ")
     } finally {
-      setSaving(true)
+      setReloadKey((current) => current + 1)
     }
   }
 
@@ -217,7 +267,7 @@ const handleOpen = async (e: React.FormEvent) => {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to close")
     } finally {
-      setSaving(true)
+      setReloadKey((current) => current + 1)
     }
   }
 
@@ -304,7 +354,7 @@ const handleOpen = async (e: React.FormEvent) => {
       
       // If locale changed, redirect to new locale
       if (selectedLocale !== locale) {
-        router.push(`/${selectedLocale}/dashboard/settings/organization`)
+        router.push(organizationSettingsHref(selectedLocale))
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save updates")
@@ -351,7 +401,6 @@ const handleOpen = async (e: React.FormEvent) => {
   
   const handleSaveSettings = async()=> {
     if (!organization) return
-    setSaving(true)
     setError(null)
     setSuccess(null)
     try {
@@ -372,12 +421,12 @@ const handleOpen = async (e: React.FormEvent) => {
       
       // If locale changed, redirect to new locale
       if (selectedLocale !== locale) {
-        router.push(`/${selectedLocale}/dashboard/settings/organization`)
+        router.push(organizationSettingsHref(selectedLocale))
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save")
     } finally {
-      setSaving(false)
+      setReloadKey((current) => current + 1)
     }
   }
 
@@ -386,7 +435,7 @@ const handleOpen = async (e: React.FormEvent) => {
     setSavingPreparationSettings(true)
     setError(null)
     try {
-      const response = await appFetch(`/api/organizations/${organization.id}/settings`, {
+      const response = await requestOrganizationSettings(appFetch, organization.id, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ defaultPreparationMinutes }),
@@ -435,7 +484,7 @@ const handleOpen = async (e: React.FormEvent) => {
       
       // If locale changed, redirect to new locale
       if (selectedLocale !== locale) {
-        router.push(`/${selectedLocale}/dashboard/settings/organization`)
+        router.push(organizationSettingsHref(selectedLocale))
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save")
@@ -504,7 +553,7 @@ const handleOpen = async (e: React.FormEvent) => {
     setError(null)
     setSuccess(null)
     try {
-      const response = await appFetch(`/api/organizations/${organization.id}/settings`, {
+      const response = await requestOrganizationSettings(appFetch, organization.id, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -523,6 +572,31 @@ const handleOpen = async (e: React.FormEvent) => {
       setError(err instanceof Error ? err.message : "ذخیره صفحه پیش‌فرض دامنه ناموفق بود")
     } finally {
       setSavingDefaultPublicCapability(false)
+    }
+  }
+
+  const handleSavePublicHomeMode = async () => {
+    if (!organization?.id) return
+    setSavingPublicHomeMode(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const response = await requestOrganizationSettings(appFetch, organization.id, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ publicHomeMode }),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        throw new Error(data?.error || "ذخیره صفحه اصلی ناموفق بود")
+      }
+      setSettings(await response.json())
+      setSuccess("صفحه اصلی کسب‌وکار ذخیره شد")
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "ذخیره صفحه اصلی ناموفق بود")
+    } finally {
+      setSavingPublicHomeMode(false)
     }
   }
 
@@ -545,8 +619,8 @@ const handleOpen = async (e: React.FormEvent) => {
         <Card>
           <CardContent className="py-8 text-center">
             <p className="text-destructive">{error}</p>
-            <Button className="mt-4" onClick={() => window.location.reload()}>
-              {t("comon.retry")}
+            <Button className="mt-4" onClick={() => setReloadKey((current) => current + 1)}>
+              {t("common.retry")}
             </Button>
           </CardContent>
         </Card>
@@ -556,7 +630,6 @@ const handleOpen = async (e: React.FormEvent) => {
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
-
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold">{t("navigation.settingsOrganization")}</h2>
@@ -564,6 +637,7 @@ const handleOpen = async (e: React.FormEvent) => {
           {t("organization.settings")}
         </p>
       </div>
+      {organization?.id && <OrganizationBrandingForm key={organization.id} organizationId={organization.id} />}
       {error && (
         <div className="p-4 bg-destructive/10 border border-destructive text-destructive rounded-lg">
           {error}
@@ -627,6 +701,32 @@ const handleOpen = async (e: React.FormEvent) => {
 
       <Card>
         <CardHeader>
+          <CardTitle>صفحه اصلی کسب‌وکار</CardTitle>
+          <CardDescription>تجربه‌ای را که در ریشه دامنه یا صفحه سازمان نمایش داده می‌شود انتخاب کنید.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+          <div className="space-y-2">
+            <Label htmlFor="public-home-mode">تجربه اصلی</Label>
+            <Select value={publicHomeMode} onValueChange={(value) => setPublicHomeMode(value as typeof publicHomeMode)}>
+              <SelectTrigger id="public-home-mode"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="AUTO">خودکار بر اساس قابلیت‌های فعال</SelectItem>
+                {capabilities.includes("SHOP") ? <SelectItem value="SHOP">فروشگاه</SelectItem> : null}
+                {capabilities.includes("APPOINTMENT") ? <SelectItem value="APPOINTMENT">نوبت‌دهی</SelectItem> : null}
+                {capabilities.length > 0 ? <SelectItem value="VISITOR_CHOICE">انتخاب بازدیدکننده</SelectItem> : null}
+                {settings?.brandLandingProvider ? <SelectItem value="BRAND">صفحه معرفی برند</SelectItem> : null}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button type="button" onClick={handleSavePublicHomeMode} disabled={savingPublicHomeMode}>
+            {savingPublicHomeMode ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Save className="me-2 h-4 w-4" />}
+            ذخیره
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Globe className="h-5 w-5" />
             صفحه پیش‌فرض دامنه
@@ -648,9 +748,7 @@ const handleOpen = async (e: React.FormEvent) => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="AUTO">
-                  {capabilities.length === 1
-                    ? `خودکار: ${businessCapabilityLabels[capabilities[0]]}`
-                    : "صفحه عمومی سازمان"}
+                  {automaticPublicCapabilityLabel(capabilities, businessCapabilityLabels, "صفحه عمومی سازمان")}
                 </SelectItem>
                 {capabilities
                   .filter((capability) => BUSINESS_CAPABILITY_REGISTRY[capability]?.publicSurface)

@@ -16,3 +16,10 @@ export function buildInotiUssdCallbackPath(publicIntegrationId: string) {
 export function buildInotiUssdCallbackUrl(publicIntegrationId: string) {
   return `${INOTI_USSD_CANONICAL_CALLBACK_ORIGIN}${buildInotiUssdCallbackPath(publicIntegrationId)}`;
 }
+
+export function buildInotiUssdPaymentDialPrefix(codeName: string) {
+  if (!/^[A-Za-z0-9_-]{1,32}$/.test(codeName)) {
+    throw new Error("Invalid iNoti USSD payment CodeName");
+  }
+  return `*6655*${codeName}*2`;
+}

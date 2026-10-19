@@ -1,6 +1,9 @@
+import { provisioningError as jsonError } from "@/lib/tenant-provisioning/http";
+import { readOnboardingBody } from "@/lib/organization-onboarding/http";
+import { universalProvisioningService } from "@/lib/tenant-provisioning/universal-provisioning.service";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { jsonError, requireAuthSession, requireRole } from "@/lib/api-guards";
+import { requireAuthSession, requireRole, requireSameOriginMutation } from "@/lib/api-guards";
 import {
   getTenantProvisioningPlan,
   updateTenantProvisioningPlan,
@@ -34,7 +37,8 @@ export async function GET(
 
     const { planId } = await params;
     const plan = await getTenantProvisioningPlan(planId);
-    return NextResponse.json(plan);
+    if (plan.executionConfiguration) return NextResponse.json({ ...plan, ...(await universalProvisioningService.detail({ userId: session.user.id, role: session.user.role }, planId)) }, { headers: { "Cache-Control": "private, no-store" } });
+    return NextResponse.json(plan, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return jsonError(error, "Failed to fetch tenant provisioning plan");
   }
@@ -49,7 +53,13 @@ export async function PATCH(
     requireRole(session, ["SUPER_ADMIN"]);
 
     const { planId } = await params;
-    const body = updatePlanSchema.parse(await request.json());
+    requireSameOriginMutation(request);
+    const raw: unknown = await readOnboardingBody(request);
+    if (raw && typeof raw === "object" && "executionConfiguration" in raw) {
+      const configured = z.object({ executionConfiguration: z.unknown() }).strict().parse(raw);
+      return NextResponse.json(await universalProvisioningService.configure({ userId: session.user.id, role: session.user.role }, planId, configured.executionConfiguration), { headers: { "Cache-Control": "private, no-store" } });
+    }
+    const body = updatePlanSchema.parse(raw);
     const plan = await updateTenantProvisioningPlan(planId, body, session.user.id);
     return NextResponse.json(plan);
   } catch (error) {

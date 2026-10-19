@@ -48,6 +48,30 @@ enum OrganizationCapabilityKey {
   ICV
   EBC
   SMS
+  // Hotel booking capability (H3-B0). Separate from any Business Vertical:
+  // an organization assigned the HOTEL vertical does NOT gain this capability,
+  // and activation remains an explicit, audited operation.
+  HOTEL_BOOKING
+  // Public Hotel website/content, independent from booking operations.
+  HOTEL_WEBSITE
+}
+
+enum HotelWebsiteRevisionStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum HotelWebsiteMediaScope {
+  PROPERTY
+  ROOM_CATEGORY
+}
+
+enum HotelWebsiteReviewAction {
+  SUBMITTED
+  APPROVED
+  REJECTED
 }
 
 enum OrganizationCapabilityStatus {
@@ -135,6 +159,11 @@ enum IntegrationProvider {
   PAYMENT
   SMS
   OTHER
+}
+
+enum InotiPaymentMerchantAccountKey {
+  PLATFORM_OWNER
+  CAFE_LEO
 }
 
 enum IntegrationType {
@@ -366,6 +395,19 @@ enum PaymentMethod {
   INOTI_USSD
 }
 
+enum RetailPaymentReportKind {
+  BANK_RECEIPT
+  BANK_TIME
+  CASH_COLLECTION
+}
+
+enum RetailPaymentReportStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  CORRECTION_REQUESTED
+}
+
 enum InventoryMovementReason {
   INITIAL_STOCK
   MANUAL_ADJUSTMENT
@@ -389,6 +431,18 @@ enum AuditAction {
 enum ImageAccess {
   PUBLIC
   PRIVATE
+}
+
+enum RetailAttributeScope {
+  PRODUCT
+  VARIANT_OPTION
+}
+
+enum RetailAttributeValueType {
+  TEXT
+  NUMBER
+  BOOLEAN
+  ENUM
 }
 
 enum CustomerClubMembershipStatus {
@@ -1081,6 +1135,12 @@ model Organization {
   isOpen                    Boolean          @default(true)
   isPlatformOwner           Boolean          @default(false)
   capabilitiesInitializedAt DateTime?
+  // Business Vertical (H3-B0). Taxonomy only: it never grants a capability and is
+  // never inferred from `type`. Nullable so existing organizations stay unclassified
+  // rather than being silently reclassified. Deliberately TEXT, not an enum, so a
+  // newer deploy can write a vertical an older deploy will not misread.
+  // Validation lives in lib/business-verticals.ts.
+  vertical                  String?
 
   // Timestamps & Soft Delete
   createdAt DateTime  @default(now())
@@ -1089,6 +1149,8 @@ model Organization {
 
   // Relations
   members                      OrganizationMember[]
+  hotelProperties              HotelProperty[]
+  tenantWebsiteRevisions       TenantWebsiteRevision[]
   acquisition                  OrganizationAcquisition?
   activationPlan               OrganizationActivationPlan?
   activationTasks              OrganizationActivationTask[]
@@ -1097,6 +1159,7 @@ model Organization {
   claimRequests                OrganizationClaimRequest[]
   capabilities                 OrganizationCapability[]
   integrations                 OrganizationIntegration[]
+  inotiPaymentRouting          OrganizationInotiPaymentRouting?
   businessEvents               BusinessEvent[]
   customerIdentities           CustomerIdentity[]
   customerInteractions         CustomerInteraction[]
@@ -1127,6 +1190,7 @@ model Organization {
   ussdPaymentIntents           UssdPaymentIntent[]
   ussdCallbackEvents           UssdCallbackEvent[]
   paymentRequests              PaymentRequest[]
+    retailPaymentReports         RetailPaymentReport[]
   paymentProviderAttempts      PaymentProviderAttempt[]
   paymentVerificationJobs      UssdPaymentVerificationJob[]
   ownedCollaborations          OrganizationCollaboration[]   @relation("CollaborationOwner")
@@ -1136,7 +1200,9 @@ model Organization {
   serviceCategories            ServiceCategory[]
   services                     Service[]
   productCategories            ProductCategory[]
+  productTags                  ProductTag[]
   products                     Product[]
+  retailAttributeDefinitions   RetailAttributeDefinition[]
   carts                        ShopCart[]
   orders                       Order[]
   followers                    Follow[]
@@ -1176,6 +1242,7 @@ model Organization {
   aiMediaJobEvents             AiMediaJobEvent[]
   aiMediaImports               AiMediaImport[]
   aiMediaAssets                AiMediaAsset[]
+  hotelWebsitePages             HotelWebsitePage[]
   aiMediaUsageQuotes           AiMediaUsageQuote[]
   aiMediaSpendHolds            AiMediaSpendHold[]
   workerContributionMirrors    WorkerContributionMirror[]
@@ -1200,8 +1267,14 @@ model OrganizationBranding {
   logoUrl                   String?
   faviconUrl                String?
   appleTouchIconUrl         String?
+  retailPresentationTheme  String?                   // FASHION, ELECTRONICS, GENERAL; presentation only
+  retailPreviewOnly        Boolean                   @default(false)
   pwaIcon192Url             String?
   pwaIcon512Url             String?
+  pwaMaskable192Url         String?
+  pwaMaskable512Url         String?
+  themeColor                String?
+  backgroundColor           String?
   ogImageUrl                String?
   source                    OrganizationBrandingSource @default(BAZARBAAZ_MANAGED)
   externalSourceUrl         String?
@@ -1313,6 +1386,12 @@ model OrganizationInvitation {
   status          OrganizationInvitationStatus @default(CREATED)
   createdByUserId String?
   claimedByUserId String?
+  // Nullable for legacy unbound invitations, which cannot use secure redemption.
+  recipientUserId   String?
+  recipientEmail    String?
+  recipientUsername String?
+  issuanceKey       String? @unique
+  requestSha256     String?
   metadata        Json?
   createdAt       DateTime                     @default(now())
   updatedAt       DateTime                     @updatedAt
@@ -1320,11 +1399,13 @@ model OrganizationInvitation {
   organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdByUser User?        @relation("OrganizationInvitationCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   claimedByUser User?        @relation("OrganizationInvitationClaimedBy", fields: [claimedByUserId], references: [id], onDelete: SetNull)
+  recipientUser User?        @relation("OrganizationInvitationRecipient", fields: [recipientUserId], references: [id], onDelete: Restrict)
 
   @@index([organizationId, status])
   @@index([expiresAt])
   @@index([createdByUserId])
   @@index([claimedByUserId])
+  @@index([recipientUserId, status])
 }
 
 model OrganizationClaimRequest {
@@ -1409,6 +1490,21 @@ model OrganizationIntegration {
   @@index([type, status])
   @@index([provider, status])
   @@index([organizationId, status])
+}
+
+/// Trusted platform-managed USSD settlement routing. A missing row means the
+/// platform owner's shared merchant account. Tenant managers cannot edit this.
+model OrganizationInotiPaymentRouting {
+  organizationId     String                         @id
+  merchantAccountKey InotiPaymentMerchantAccountKey
+  updatedByUserId    String?
+  createdAt          DateTime                       @default(now())
+  updatedAt          DateTime                       @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  updatedBy    User?        @relation("InotiPaymentRoutingUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([merchantAccountKey])
 }
 
 model OrganizationIntegrationCapability {
@@ -1857,9 +1953,16 @@ model User {
   aiMediaJobMirrors             AiMediaJobMirror[]            @relation("AiMediaJobRequestedBy")
   aiMediaJobEvents              AiMediaJobEvent[]             @relation("AiMediaJobEventActor")
   aiMediaAssets                 AiMediaAsset[]                @relation("AiMediaAssetRequestedBy")
+  createdHotelWebsiteRevisions          HotelWebsiteContentRevision[] @relation("HotelWebsiteRevisionCreatedBy")
+  tenantWebsiteRevisions                TenantWebsiteRevision[]
+  hotelWebsiteReviews                   HotelWebsiteContentReview[]   @relation("HotelWebsiteReviewActor")
+  hotelWebsitePublications              HotelWebsitePublication[]     @relation("HotelWebsitePublicationActor")
+  revokedHotelWebsitePublications       HotelWebsitePublication[]     @relation("HotelWebsitePublicationRevoker")
+  hotelWebsiteOperations                HotelWebsiteOperation[]       @relation("HotelWebsiteOperationActor")
   aiMediaUsageQuotes            AiMediaUsageQuote[]           @relation("AiMediaQuoteRequestedBy")
   aiMediaSpendHolds             AiMediaSpendHold[]            @relation("AiMediaSpendHoldRequestedBy")
   ussdSessions                  UssdSession[]                 @relation("UssdSessionCustomer")
+  updatedInotiPaymentRoutings   OrganizationInotiPaymentRouting[] @relation("InotiPaymentRoutingUpdatedBy")
   customerIdentities            CustomerIdentity[]            @relation("CustomerIdentityUser")
 
   denies                          Deny[]
@@ -1872,6 +1975,7 @@ model User {
   agentOrganizationAcquisitions   OrganizationAcquisition[] @relation("OrganizationAcquisitionAgent")
   createdOrganizationInvitations  OrganizationInvitation[]  @relation("OrganizationInvitationCreatedBy")
   claimedOrganizationInvitations  OrganizationInvitation[]  @relation("OrganizationInvitationClaimedBy")
+  receivedOrganizationInvitations OrganizationInvitation[]  @relation("OrganizationInvitationRecipient")
   organizationClaimRequests       OrganizationClaimRequest[] @relation("OrganizationClaimRequester")
   reviewedOrganizationClaims      OrganizationClaimRequest[] @relation("OrganizationClaimReviewedBy")
 
@@ -2139,6 +2243,7 @@ model ProductCategory {
 
   organization Organization @relation(fields: [organizationId, organizationSlug], references: [id, slug])
   products     Product[]
+  categoryAssignments ProductCategoryAssignment[] @relation("AssignedCategoryProducts")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -2147,6 +2252,7 @@ model ProductCategory {
   @@index([organizationId])
   @@index([organizationSlug])
   @@index([organizationId, slug])
+  @@unique([id, organizationId])
   @@index([deletedAt])
 }
 
@@ -2167,7 +2273,9 @@ model Image {
   uploadedBy   User?         @relation("UploadedImages", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
   organization Organization? @relation("OrganizationImages", fields: [organizationId], references: [id], onDelete: SetNull)
   products     Product[]
+  hotelWebsiteMedia HotelWebsiteMediaAssociation[]
 
+  @@unique([id, organizationId])
   @@index([uploadedByUserId])
   @@index([organizationId])
   @@index([purpose])
@@ -2208,6 +2316,9 @@ model Product {
   category            ProductCategory  @relation(fields: [categoryId], references: [id])
   aiPrimaryMediaAsset AiMediaAsset?    @relation("ProductAiPrimaryMediaAsset", fields: [aiPrimaryMediaAssetId], references: [id], onDelete: SetNull)
   variants            ProductVariant[]
+  attributeValues     ProductAttributeValue[]
+  categoryAssignments ProductCategoryAssignment[] @relation("ProductCategories")
+  tagAssignments      ProductTagAssignment[] @relation("ProductTags")
   orderItems          OrderItem[]
 
   createdAt DateTime  @default(now())
@@ -2215,6 +2326,7 @@ model Product {
   deletedAt DateTime?
 
   @@index([organizationId])
+  @@unique([id, organizationId])
   @@index([organizationSlug])
   @@index([organizationId, slug])
   @@index([organizationSlug, slug])
@@ -2223,6 +2335,50 @@ model Product {
   @@index([isActive])
   @@index([deletedAt])
   @@index([sku])
+}
+
+model ProductCategoryAssignment {
+  productId      String
+  categoryId     String
+  organizationId String
+  createdAt      DateTime @default(now())
+
+  product  Product         @relation("ProductCategories", fields: [productId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  category ProductCategory @relation("AssignedCategoryProducts", fields: [categoryId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+  @@index([organizationId, categoryId])
+  @@index([categoryId])
+}
+
+model ProductTag {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  normalizedName String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignments  ProductTagAssignment[]
+
+  @@unique([organizationId, normalizedName])
+  @@unique([id, organizationId])
+  @@index([organizationId])
+}
+
+model ProductTagAssignment {
+  productId      String
+  tagId          String
+  organizationId String
+  createdAt      DateTime @default(now())
+
+  product Product    @relation("ProductTags", fields: [productId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  tag     ProductTag @relation(fields: [tagId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@id([productId, tagId])
+  @@index([organizationId, tagId])
+  @@index([tagId])
 }
 
 model ProductVariant {
@@ -2243,6 +2399,7 @@ model ProductVariant {
   cartItems          ShopCartItem[]
   orderItems         OrderItem[]
   inventoryMovements InventoryMovement[]
+  optionValues       ProductVariantAttributeValue[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -2250,6 +2407,66 @@ model ProductVariant {
 
   @@index([productId])
   @@index([deletedAt])
+}
+
+// Tenant-configured retail attributes. PRODUCT definitions describe/filter the
+// product; VARIANT_OPTION definitions are assigned only to explicitly created
+// purchasable variants. No option combination generation is implied.
+model RetailAttributeDefinition {
+  id                String                    @id @default(cuid())
+  organizationId    String
+  key               String
+  label             String
+  localizedLabels   Json                      @default("{}")
+  scope             RetailAttributeScope
+  valueType         RetailAttributeValueType
+  displayUnit       String?
+  localizedUnits    Json                      @default("{}")
+  allowedValues     Json?
+  isFilterable      Boolean                   @default(false)
+  sortOrder         Int                       @default(0)
+  isActive          Boolean                   @default(true)
+  organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  productValues     ProductAttributeValue[]
+  variantValues     ProductVariantAttributeValue[]
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  @@unique([organizationId, key])
+  @@unique([id, organizationId])
+  @@index([organizationId, scope, isActive, sortOrder])
+}
+
+model ProductAttributeValue {
+  id             String                   @id @default(cuid())
+  productId      String
+  definitionId   String
+  valueText      String?
+  valueNumber    Decimal?                  @db.Decimal(18, 4)
+  valueBoolean   Boolean?
+  product        Product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  definition     RetailAttributeDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, definitionId])
+  @@index([definitionId, valueText])
+  @@index([definitionId, valueNumber])
+  @@index([definitionId, valueBoolean])
+}
+
+model ProductVariantAttributeValue {
+  id             String                   @id @default(cuid())
+  variantId      String
+  definitionId   String
+  valueText      String?
+  valueNumber    Decimal?                  @db.Decimal(18, 4)
+  valueBoolean   Boolean?
+  variant        ProductVariant           @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  definition     RetailAttributeDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
+
+  @@unique([variantId, definitionId])
+  @@index([definitionId, valueText])
+  @@index([definitionId, valueNumber])
+  @@index([definitionId, valueBoolean])
 }
 
 model ShopCart {
@@ -2297,7 +2514,7 @@ model ShopCartItem {
   @@index([variantId])
 }
 
-// Guest Customer 
+// Guest Customer
 model GuestCustomer {
   id        String  @id @default(cuid())
   name      String
@@ -2324,6 +2541,9 @@ model GuestCustomer {
 model Order {
   id          String      @id @default(cuid())
   orderNumber String      @unique
+  retailCheckoutKey String? @unique
+  retailPaymentDeadlineAt DateTime?
+  retailPaymentExpiredAt DateTime?
   type        OrderType
   status      OrderStatus @default(PENDING)
 
@@ -2375,6 +2595,7 @@ model Order {
   paymentEvents      PaymentEvent[]
   ussdPaymentIntents UssdPaymentIntent[]
   paymentRequests    PaymentRequest[]
+  retailPaymentReports RetailPaymentReport[]
   statusHistory      OrderStatusHistory[]
   readyTimeHistory   OrderReadyTimeHistory[]
   inventoryMovements InventoryMovement[]
@@ -2400,6 +2621,7 @@ model Order {
   orderMessages OrderMessage[]
 
   @@index([organizationSlug])
+  @@index([retailCheckoutKey, retailPaymentDeadlineAt, paymentStatus, status])
   @@index([customerId])
   @@index([driverId])
   @@index([preparationProgressId])
@@ -2484,6 +2706,7 @@ model InventoryMovement {
   reason         InventoryMovementReason
   note           String?
   createdById    String?
+  retailReleaseKey String? @unique
 
   variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
   order   Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
@@ -2516,6 +2739,32 @@ model Payment {
   @@index([transactionId])
 }
 
+// Reports are claims or collection records until an authorized operator confirms
+// them. The financial truth remains Order.paymentStatus and Payment.status.
+model RetailPaymentReport {
+  id               String                    @id @default(cuid())
+  organizationId   String
+  orderId          String
+  submittedById    String
+  kind             RetailPaymentReportKind
+  status           RetailPaymentReportStatus @default(PENDING_REVIEW)
+  receiptKey       String?
+  reportedAt       DateTime?
+  submittedContext Json?
+  cashMode         String?
+  collectorId      String?
+  reviewedById     String?
+  reviewedAt       DateTime?
+  reviewReason     String?
+  createdAt        DateTime                  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, orderId, createdAt])
+  @@index([organizationId, status, createdAt])
+}
+
 model PaymentEvent {
   id             String         @id @default(cuid())
   orderId        String
@@ -2546,6 +2795,10 @@ model PaymentRequest {
   appointmentId         String?
   guestCustomerId       String?
   providerIntegrationId String?
+  merchantAccountKey    String?
+  credentialProfileKeySnapshot String?
+  merchantCodeName      String?
+  accountBoundAt        DateTime?
   amountToman           BigInt
   currency              String               @default("TOMAN")
   purpose               String
@@ -2582,6 +2835,9 @@ model PaymentProviderAttempt {
   organizationId        String
   paymentRequestId      String
   providerIntegrationId String?
+  merchantAccountKey    String?
+  credentialProfileKeySnapshot String?
+  merchantCodeName      String?
   provider              IntegrationProvider
   status                PaymentProviderAttemptStatus @default(CREATED)
   amountToman           BigInt
@@ -2608,6 +2864,7 @@ model PaymentProviderAttempt {
   @@unique([id, organizationId])
   @@unique([organizationId, idempotencyKey])
   @@unique([providerIntegrationId, merchantFactorId])
+  @@unique([merchantAccountKey, merchantFactorId])
   @@unique([providerIntegrationId, providerFactorId])
   @@unique([providerIntegrationId, rrn])
   @@index([organizationId, status, createdAt])
@@ -2654,7 +2911,10 @@ model UssdPaymentIntent {
   orderId              String?
   paymentRequestId     String?
   providerAttemptId    String?                 @unique
-  merchantFactorId     String                  @unique
+  merchantAccountKey   String
+  credentialProfileKeySnapshot String?
+  merchantCodeName     String
+  merchantFactorId     String
   amountRial           BigInt
   sessionIdHash        String
   mobileHash           String
@@ -2677,6 +2937,7 @@ model UssdPaymentIntent {
   callbackEvents UssdCallbackEvent[]
   verificationJob UssdPaymentVerificationJob?
 
+  @@unique([merchantAccountKey, merchantFactorId])
   @@unique([integrationId, orderId, sessionIdHash])
   @@unique([id, integrationId, organizationId])
   @@unique([providerAttemptId, organizationId])
@@ -4215,6 +4476,7 @@ model CouponRedemption {
   pointsSpent    Int      @default(0)
   metadata       Json?
   redeemedAt     DateTime @default(now())
+  releasedAt     DateTime?
 
   coupon       Coupon       @relation(fields: [couponId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -4225,6 +4487,7 @@ model CouponRedemption {
   @@index([organizationId, customerId, redeemedAt])
   @@index([couponId, redeemedAt])
   @@index([orderId])
+  @@index([organizationId, customerId, couponId, releasedAt])
 }
 
 model PushSubscription {
@@ -4647,6 +4910,12 @@ model TenantProvisioningPlan {
   proposedDemoContent  Boolean @default(false)
   proposedCustomDomain String?
 
+  executionConfiguration Json?
+  approvedExecutionSnapshot Json?
+  approvedExecutionSha256 String?
+  executionReceipt Json?
+  executedAt DateTime?
+
   validationVersion Int       @default(0)
   validationResult  Json?
   validationErrors  Json?
@@ -4673,4 +4942,677 @@ model TenantProvisioningPlan {
   @@index([status, createdAt])
   @@index([proposedSlug])
   @@index([createdAt])
+}
+
+// =============================================================================
+// Hotel Vertical persistence (H3-B1)
+//
+// Design source: docs/HOTEL-PERSISTENCE-DESIGN.md and docs/HOTEL-H2-CLOSURE.md.
+//
+// Cross-cutting rules applied to every model below:
+//
+//  * Tenant isolation. Every row carries `organizationId`. Parent tables expose
+//    `@@unique([id, organizationId])` and children reference them with a
+//    COMPOSITE foreign key `[parentId, organizationId]`, so a cross-tenant
+//    reference is impossible at the database level rather than merely
+//    forbidden by application code. This mirrors the existing
+//    `OrganizationIntegration` pattern.
+//
+//  * Money. `BigInt`, integer TOMAN. No Float, no Decimal in the money path.
+//    Rial conversion happens only at the provider boundary (see
+//    docs/HOTEL-PAYMENT-INTEGRATION.md).
+//
+//  * Dates. `date` columns are `@db.Date` (a property-local calendar day), never
+//    an instant. This is the fix for the off-by-one class of bug that comes from
+//    storing a local calendar day as a timestamp.
+//
+//  * A stay is `[checkIn, checkOut)`. The checkout day is NOT an occupied night.
+//
+//  * No `now()` in any index or constraint predicate. Hold expiry and inventory
+//    release are transactional application concerns (H3-C), not predicate logic.
+// =============================================================================
+
+/// A hotel property. An organization may own several; Hotel Damoon starts with
+/// one. Identity is its own cuid, NOT the organization's public slug.
+model HotelProperty {
+  id             String  @id @default(cuid())
+  organizationId String
+  /// Denormalised for slug-based read paths (matches OrganizationSettings).
+  /// Not an authorisation key.
+  organizationSlug String
+  slug           String
+  name           String
+  description    String?
+  localizedContent Json?
+  /// IANA zone, e.g. "Asia/Tehran". Defines the property-local calendar.
+  timezone       String  @default("Asia/Tehran")
+  currency       String  @default("TOMAN")
+  /// "HH:mm" property-local. checkOutTime < checkInTime is NORMAL for hotels.
+  checkInTime    String  @default("14:00")
+  checkOutTime   String  @default("11:00")
+  minStayNights  Int     @default(1)
+  maxStayNights  Int     @default(30)
+  addressLine1   String?
+  city           String?
+  latitude       Decimal? @db.Decimal(9, 6)
+  longitude      Decimal? @db.Decimal(9, 6)
+  isActive       Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organization         Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  roomTypes            HotelRoomType[]
+  rooms                HotelRoom[]
+  amenities            HotelAmenity[]
+  ratePlans            HotelRatePlan[]
+  cancellationPolicies HotelCancellationPolicy[]
+  inventory            HotelInventory[]
+  inventoryAdjustments HotelInventoryAdjustment[]
+  holds                HotelBookingHold[]
+  reservations         HotelReservation[]
+  websitePages         HotelWebsitePage[]
+  websiteMedia         HotelWebsiteMediaAssociation[]
+  websiteOperations    HotelWebsiteOperation[]
+
+  @@unique([organizationId, slug])
+  @@unique([id, organizationId])
+  @@index([organizationId, isActive])
+}
+
+/// A sellable room category. Distinct from a physical room.
+model HotelRoomType {
+  id             String  @id @default(cuid())
+  organizationId String
+  propertyId     String
+  slug           String
+  name           String
+  description    String?
+  localizedContent Json?
+  // Occupancy limits as real columns so the database can index and constrain
+  // them. Mirrors HotelCapacity in lib/hotel/domain/types.ts.
+  maxAdults      Int
+  maxChildren    Int     @default(0)
+  maxOccupancy   Int
+  /// Bed shapes, e.g. [{ kind: "queen", count: 1 }]. Validated against
+  /// BED_CAPACITY in application code; JSON avoids a migration per bed kind.
+  beds           Json
+  sizeSqm        Int?
+  /// Default sellable count per night used when seeding inventory.
+  totalAllotment Int     @default(0)
+  isActive       Boolean @default(true)
+  sortOrder      Int     @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  property     HotelProperty       @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  rooms        HotelRoom[]
+  amenities    HotelRoomTypeAmenity[]
+  ratePlans    HotelRatePlan[]
+  inventory    HotelInventory[]
+  websiteMedia HotelWebsiteMediaAssociation[]
+  holds        HotelBookingHold[]
+  reservations HotelReservation[]
+
+  @@unique([propertyId, slug])
+  @@unique([id, organizationId])
+  /// Lets children enforce that a room type belongs to the SAME PROPERTY, not just
+  /// the same organization. Without this, inventory or a rate plan could reference a
+  /// room type from a sibling property (H3-B1 integrity gap, fixed here).
+  @@unique([id, propertyId])
+  @@index([organizationId, propertyId, isActive])
+}
+
+/// A physical, assignable room. Room codes are unique per PROPERTY, never
+/// globally, so two hotels may both have "101".
+model HotelRoom {
+  id             String  @id @default(cuid())
+  organizationId String
+  propertyId     String
+  roomTypeId     String
+  /// Human label shown at the front desk.
+  code           String
+  floor          String?
+  description    String?
+  isOutOfService Boolean @default(false)
+  isActive       Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  property         HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  roomType         HotelRoomType @relation(fields: [roomTypeId, propertyId], references: [id, propertyId], onDelete: Restrict)
+  reservationRooms HotelReservationRoom[]
+
+  @@unique([propertyId, code])
+  @@unique([id, organizationId])
+  @@index([organizationId, roomTypeId, isActive])
+}
+
+/// An amenity the property actually offers. Never seeded by inference.
+model HotelAmenity {
+  id             String  @id @default(cuid())
+  organizationId String
+  propertyId     String
+  /// Mirrors HotelAmenityKey in lib/hotel/domain/types.ts.
+  key            String
+  label          String
+  description    String?
+  localizedContent Json?
+  isActive       Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  roomTypes HotelRoomTypeAmenity[]
+
+  @@unique([propertyId, key])
+  @@unique([id, organizationId])
+  @@index([organizationId, propertyId, isActive])
+}
+
+/// Join: which amenities a room type offers.
+model HotelRoomTypeAmenity {
+  id             String @id @default(cuid())
+  organizationId String
+  roomTypeId     String
+  amenityId      String
+
+  roomType HotelRoomType @relation(fields: [roomTypeId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  amenity  HotelAmenity  @relation(fields: [amenityId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([roomTypeId, amenityId])
+  @@index([organizationId, amenityId])
+}
+
+/// A sellable rate for a room type. Money in integer TOMAN.
+model HotelRatePlan {
+  id             String  @id @default(cuid())
+  organizationId String
+  propertyId     String
+  roomTypeId     String
+  code           String
+  name           String
+  description    String?
+  localizedContent Json?
+  currency       String  @default("TOMAN")
+  baseNightlyRate BigInt
+  mealPlan       String  @default("none")
+  minNights      Int     @default(1)
+  /// 0 = unbounded.
+  maxNights      Int     @default(0)
+  isRefundable   Boolean @default(true)
+  validFrom      DateTime? @db.Date
+  validTo        DateTime? @db.Date
+  cancellationPolicyId String?
+  isActive       Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  property      HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  roomType      HotelRoomType @relation(fields: [roomTypeId, propertyId], references: [id, propertyId], onDelete: Cascade)
+  cancellationPolicy HotelCancellationPolicy? @relation(fields: [cancellationPolicyId, propertyId, organizationId], references: [id, propertyId, organizationId], onDelete: Restrict)
+  nightlyRates  HotelNightlyRate[]
+
+  @@unique([propertyId, code])
+  @@unique([id, organizationId])
+  @@index([organizationId, propertyId, roomTypeId, isActive])
+}
+
+/// Date-specific price / stay restriction. Narrowest matching window wins.
+model HotelNightlyRate {
+  id             String  @id @default(cuid())
+  organizationId String
+  propertyId     String
+  ratePlanId     String
+  from           DateTime @db.Date
+  to             DateTime @db.Date
+  nightlyRate    BigInt?
+  minNights      Int?
+  maxNights      Int?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  ratePlan HotelRatePlan @relation(fields: [ratePlanId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([ratePlanId, from, to])
+  @@index([organizationId, propertyId, from, to])
+}
+
+/// Cancellation terms. `version` increments on every edit so a snapshot taken at
+/// booking time stays attributable. Retention is stored in BASIS POINTS (0-10000)
+/// so the persisted value is integral; the domain uses a 0..1 fraction.
+model HotelCancellationPolicy {
+  id             String  @id @default(cuid())
+  organizationId String
+  propertyId     String
+  key            String
+  name           String
+  description    String?
+  freeCancellationCutoffHours Int
+  fullCancellationRetention  Int  @default(0)
+  isActive       Boolean @default(true)
+  version        Int     @default(1)
+  localizedContent Json?
+  /// Ordered JSON tiers. Each tier contains cutoffHours, retentionBasisPoints,
+  /// and penaltyBasis (RESERVATION_TOTAL or FIRST_NIGHT).
+  cancellationTiers Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  ratePlans HotelRatePlan[]
+
+  @@unique([propertyId, key])
+  @@unique([id, organizationId])
+  @@unique([id, propertyId, organizationId])
+  @@index([organizationId, propertyId, isActive])
+}
+
+/// One row per (roomType, date). THE UNIT OF CONTENTION for H3-C.
+model HotelInventory {
+  id             String   @id @default(cuid())
+  organizationId String
+  propertyId     String
+  roomTypeId     String
+  /// Property-local calendar day, never an instant.
+  date           DateTime @db.Date
+  allotment      Int      @default(0)
+  booked         Int      @default(0)
+  held           Int      @default(0)
+  /// Physically unusable rooms that night (maintenance).
+  outOfService   Int      @default(0)
+  closedToArrival  Boolean @default(false)
+  closedToDeparture Boolean @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  roomType HotelRoomType @relation(fields: [roomTypeId, propertyId], references: [id, propertyId], onDelete: Cascade)
+
+  @@unique([roomTypeId, date])
+  @@index([organizationId, propertyId, date])
+}
+
+/// Auditable manual correction. Inventory is never edited without one.
+model HotelInventoryAdjustment {
+  id             String   @id @default(cuid())
+  organizationId String
+  propertyId     String
+  roomTypeId     String
+  date           DateTime @db.Date
+  allotmentDelta     Int @default(0)
+  outOfServiceDelta  Int @default(0)
+  reason         String
+  createdByUserId String?
+  createdAt      DateTime @default(now())
+
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([organizationId, propertyId, date])
+}
+
+/// Durable request-level idempotency for manual inventory adjustments.
+/// The row is created and completed in the same transaction as the inventory
+/// update and its audit record.
+model HotelInventoryIdempotency {
+  id                 String    @id
+  organizationId     String
+  operationScope     String
+  idempotencyKey     String
+  requestFingerprint String
+  status             String    @default("PROCESSING")
+  resultJson         Json?
+  createdAt          DateTime  @default(now())
+  completedAt        DateTime?
+
+  @@unique([organizationId, operationScope, idempotencyKey])
+  @@index([organizationId, operationScope, createdAt])
+}
+
+/// Explicit, auditable approval for exposing the current hotel resource revision.
+/// Approval is never inferred from isActive or from a custom domain.
+model HotelPublicationApproval {
+  id             String    @id
+  organizationId String
+  propertyId     String
+  resourceType   String
+  resourceId     String
+  resourceRevision String
+  scope          Json
+  status         String    @default("APPROVED")
+  approvedByUserId String
+  approvedAt     DateTime  @default(now())
+  revokedAt      DateTime?
+  revokedByUserId String?
+  revokedReason  String?
+
+  @@unique([organizationId, propertyId, resourceType, resourceId, resourceRevision])
+  @@index([organizationId, propertyId, resourceType, resourceId, status])
+}
+
+/// Generic Hotel website content container. The counter is advanced atomically
+/// while creating a new immutable revision; it is not coupled to booking state.
+model HotelWebsitePage {
+  id              String   @id @default(cuid())
+  organizationId  String
+  propertyId      String
+  pageKey         String   @default("HOME")
+  revisionCounter Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization                   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  property     HotelProperty                  @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  revisions    HotelWebsiteContentRevision[]
+  publications HotelWebsitePublication[]
+  reviews      HotelWebsiteContentReview[]
+  media        HotelWebsiteMediaAssociation[]
+
+  @@unique([id, organizationId, propertyId])
+  @@unique([organizationId, propertyId, pageKey])
+  @@index([organizationId, propertyId])
+}
+
+/// Snapshot fields are immutable; a trigger in the migration rejects changes
+/// to content, hash, scope, sequence and creator while allowing review status
+/// transitions. Editing always inserts another revision.
+model HotelWebsiteContentRevision {
+  id              String                     @id @default(cuid())
+  organizationId  String
+  propertyId      String
+  pageId          String
+  revisionNumber  Int
+  status          HotelWebsiteRevisionStatus @default(DRAFT)
+  content         Json
+  contentSha256   String                     @db.Char(64)
+  createdByUserId String
+  createdAt       DateTime                   @default(now())
+
+  page         HotelWebsitePage               @relation(fields: [pageId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade)
+  createdBy    User                           @relation("HotelWebsiteRevisionCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  media        HotelWebsiteMediaAssociation[]
+  reviews      HotelWebsiteContentReview[]
+  publications HotelWebsitePublication[]
+
+  @@unique([id, organizationId, propertyId])
+  @@unique([pageId, revisionNumber])
+  @@index([organizationId, propertyId, pageId, createdAt])
+}
+
+/// References existing tenant-owned Image rows. Gallery order and localized
+/// alt text are revision-scoped so a published revision cannot drift.
+model HotelWebsiteMediaAssociation {
+  id             String                 @id @default(cuid())
+  organizationId String
+  propertyId     String
+  pageId         String
+  revisionId     String
+  imageId        String
+  scope          HotelWebsiteMediaScope
+  roomTypeId     String?
+  sortOrder      Int
+  slot           String                 @default("GALLERY")
+  altText        Json
+  createdAt      DateTime               @default(now())
+
+  page     HotelWebsitePage            @relation(fields: [pageId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade)
+  revision HotelWebsiteContentRevision @relation(fields: [revisionId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade)
+  image    Image                       @relation(fields: [imageId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  property HotelProperty               @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  roomType HotelRoomType?              @relation(fields: [roomTypeId, propertyId], references: [id, propertyId], onDelete: Cascade)
+
+  @@index([organizationId, propertyId, revisionId, scope, roomTypeId, sortOrder])
+  @@index([imageId, organizationId])
+}
+
+/// Publication points to one approved immutable revision. A new draft does not
+/// replace this pointer; revocation preserves the historical publication row.
+model HotelWebsitePublication {
+  id                String    @id @default(cuid())
+  organizationId    String
+  propertyId        String
+  pageId            String
+  revisionId        String
+  publishedByUserId String
+  publishedAt       DateTime  @default(now())
+  revokedByUserId   String?
+  revokedAt         DateTime?
+  revocationReason  String?
+
+  page        HotelWebsitePage            @relation(fields: [pageId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade)
+  revision    HotelWebsiteContentRevision @relation(fields: [revisionId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade)
+  publishedBy User                        @relation("HotelWebsitePublicationActor", fields: [publishedByUserId], references: [id], onDelete: Restrict)
+  revokedBy   User?                       @relation("HotelWebsitePublicationRevoker", fields: [revokedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, propertyId, pageId, publishedAt])
+  @@index([organizationId, propertyId, revisionId])
+}
+
+/// Append-only review history for an exact revision; audit failure must abort
+/// any future review/publication transaction.
+model HotelWebsiteContentReview {
+  id             String                   @id @default(cuid())
+  organizationId String
+  propertyId     String
+  pageId         String
+  revisionId     String
+  actorUserId    String
+  action         HotelWebsiteReviewAction
+  note           String?
+  createdAt      DateTime                 @default(now())
+
+  page     HotelWebsitePage            @relation(fields: [pageId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade)
+  revision HotelWebsiteContentRevision @relation(fields: [revisionId, organizationId, propertyId], references: [id, organizationId, propertyId], onDelete: Cascade)
+  actor    User                        @relation("HotelWebsiteReviewActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, propertyId, pageId, createdAt])
+  @@index([revisionId, action, createdAt])
+}
+
+/// Durable per-property replay records for C1B1 editorial mutations. The row
+/// and its business/audit write are committed in the same transaction.
+model HotelWebsiteOperation {
+  id               String   @id @default(cuid())
+  organizationId   String
+  propertyId       String
+  actorUserId      String
+  operation        String
+  idempotencyKey   String
+  requestSha256    String   @db.Char(64)
+  response         Json?
+  createdAt        DateTime @default(now())
+
+  property HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  actor    User          @relation("HotelWebsiteOperationActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, propertyId, operation, idempotencyKey])
+  @@index([organizationId, propertyId, createdAt])
+}
+
+/// A temporary, expiring claim on inventory while the guest completes payment.
+/// `status` is authoritative; expiry is evaluated by a scheduler in a later
+/// milestone, NOT by a `now()` predicate here.
+model HotelBookingHold {
+  id             String   @id @default(cuid())
+  organizationId String
+  propertyId     String
+  roomTypeId     String
+  reference      String
+  quantity       Int      @default(1)
+  checkIn        DateTime @db.Date
+  checkOut       DateTime @db.Date
+  expiresAt      DateTime
+  status         String   @default("ACTIVE")
+  ratePlanId     String?
+  currency       String   @default("TOMAN")
+  totalAmount    BigInt?
+  nightlyRates   Json?
+  cancellationPolicySnapshot Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  property     HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  roomType     HotelRoomType @relation(fields: [roomTypeId, propertyId], references: [id, propertyId], onDelete: Cascade)
+  reservation  HotelReservation?
+
+  @@unique([organizationId, reference])
+  @@unique([id, organizationId])
+  @@index([status, expiresAt])
+  @@index([organizationId, propertyId, status, expiresAt])
+}
+
+/// Prepared durable coordination for anonymous hold requests.
+/// This model is additive and remains unapplied until separately authorized.
+model HotelBookingHoldIdempotency {
+  id                 String    @id
+  organizationId     String
+  operationScope     String
+  idempotencyKey     String
+  requestFingerprint String
+  status             String    @default("PROCESSING")
+  holdId             String?
+  resultJson         Json?
+  createdAt          DateTime  @default(now())
+  completedAt        DateTime?
+
+  @@unique([organizationId, operationScope, idempotencyKey])
+  @@index([organizationId, operationScope, createdAt])
+}
+
+/// A reservation. Distinct from a hold: a reservation is a durable record whose
+/// lifecycle is `status`.
+model HotelReservation {
+  id             String   @id @default(cuid())
+  organizationId String
+  propertyId     String
+  roomTypeId     String
+  ratePlanId     String
+  reference      String
+  /// Mirrors ReservationStatus in lib/hotel/domain/booking-state.ts:
+  /// HELD | PENDING_PAYMENT | CONFIRMED | CHECKED_IN | CHECKED_OUT |
+  /// CANCELLED | NO_SHOW | EXPIRED | REFUNDED
+  status         String   @default("PENDING_PAYMENT")
+  checkIn        DateTime @db.Date
+  /// EXCLUSIVE: the checkout day is not an occupied night.
+  checkOut       DateTime @db.Date
+  currency       String   @default("TOMAN")
+  totalAmount    BigInt
+  paidAmount     BigInt   @default(0)
+  refundedAmount BigInt   @default(0)
+  /// Denormalised for reporting; the SNAPSHOT below is authoritative.
+  cancellationPolicyKey String
+  /// Frozen terms agreed at booking time. A later policy edit must NOT change
+  /// an existing reservation's refund. Shape: ReservationCancellationPolicySnapshot
+  /// in lib/hotel/domain/types.ts.
+  cancellationPolicySnapshot Json
+  guestCustomerId String?
+  holdId         String?  @unique
+  /// One reservation per (tenant, client-supplied key): the idempotency guard.
+  idempotencyKey String
+  confirmedAt    DateTime?
+  checkedInAt    DateTime?
+  checkedOutAt   DateTime?
+  cancelledAt    DateTime?
+  cancellationReason String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  /// Optimistic-lock counter for compare-and-set transitions (H3-C).
+  version        Int      @default(0)
+
+  property   HotelProperty @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  roomType   HotelRoomType @relation(fields: [roomTypeId, propertyId], references: [id, propertyId], onDelete: Restrict)
+  hold       HotelBookingHold? @relation(fields: [holdId], references: [id], onDelete: SetNull)
+  nights     HotelReservationRoom[]
+  guests     HotelReservationGuest[]
+  allocations HotelPaymentAllocation[]
+
+  @@unique([organizationId, reference])
+  @@unique([organizationId, idempotencyKey])
+  @@unique([id, organizationId])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, propertyId, checkIn, checkOut])
+  @@index([organizationId, holdId])
+}
+
+/// One row per occupied night: the per-night allocation ledger.
+/// Presence of a row IS the claim. Cancelling deletes the rows (H3-C).
+model HotelReservationRoom {
+  id             String   @id @default(cuid())
+  organizationId String
+  reservationId  String
+  /// Property-local calendar day. Half-open semantics: the reservation's
+  /// checkOut date has NO row.
+  date           DateTime @db.Date
+  roomTypeId     String
+  /// Physical assignment when the property assigns rooms explicitly.
+  roomId         String?
+  /// Rate snapshot for this night, integer TOMAN.
+  rate           BigInt
+
+  reservation HotelReservation @relation(fields: [reservationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  room        HotelRoom?       @relation(fields: [roomId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  /// One row per reservation per night.
+  @@unique([reservationId, date])
+  /// Backs the PostgreSQL EXCLUDE constraint that stops one physical room being
+  /// allocated twice on the same night (see migration 20261003070000).
+  @@unique([roomId, date])
+  @@index([organizationId, date, roomTypeId])
+  @@index([organizationId, reservationId])
+}
+
+model HotelReservationGuest {
+  id             String   @id @default(cuid())
+  organizationId String
+  reservationId  String
+  fullName       String
+  isPrimary      Boolean  @default(false)
+  isChild        Boolean  @default(false)
+  age            Int?
+  /// Hashed, never plaintext (mirrors CustomerIdentity.phoneHash).
+  phoneHash      String?
+  createdAt      DateTime @default(now())
+
+  reservation HotelReservation @relation(fields: [reservationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([reservationId, fullName])
+  @@index([organizationId, reservationId])
+}
+
+/// Links a reservation to a payment request. Deliberately has NO foreign key to
+/// PaymentRequest yet: `PaymentRequest.hotelReservationId` is added in H3-E, and
+/// a polymorphic FK is not expressible. The unique public id is stored so the
+/// link is still durable and auditable in the meantime.
+model HotelPaymentAllocation {
+  id             String   @id @default(cuid())
+  organizationId String
+  hotelReservationId String
+  /// Opaque public id of the PaymentRequest. Never a raw provider reference.
+  paymentRequestPublicId String @unique
+  /// DEPOSIT | BALANCE | REFUND
+  kind           String
+  amountToman    BigInt
+  createdAt      DateTime @default(now())
+
+  reservation HotelReservation @relation(fields: [hotelReservationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([hotelReservationId, kind])
+  @@index([organizationId, hotelReservationId])
+}
+
+/// Immutable private organization website drafts. Retail publication is intentionally absent.
+model TenantWebsiteRevision {
+  id String @id @default(uuid())
+  organizationId String
+  content Json
+  createdBy String
+  requestId String
+  createdAt DateTime @default(now())
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  creator User @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  @@unique([organizationId, requestId])
+  @@index([organizationId, createdAt(sort: Desc), id(sort: Desc)])
 }

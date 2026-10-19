@@ -14,11 +14,14 @@ let ApiError: any;
 let normalizeDomainHost: any;
 let validateRawDomain: any;
 let isApexDomain: any;
+let getDomainPresentationKind: any;
+let getApexDomainInfo: any;
 let getDomainLabels: any;
 let getSld: any;
 let getTld: any;
 let normalizeDomainInput: any;
 let addProjectDomainToVercel: any;
+let inspectProjectDomainOnVercel: any;
 let verifyProjectDomainOnVercel: any;
 let removeProjectDomainFromVercel: any;
 let getVercelDomainAutomationState: any;
@@ -62,6 +65,8 @@ before(async () => {
     normalizeDomainHost,
     validateRawDomain,
     isApexDomain,
+    getDomainPresentationKind,
+    getApexDomainInfo,
     getDomainLabels,
     getSld,
     getTld,
@@ -69,6 +74,7 @@ before(async () => {
   } = await import("@/lib/domains/domain-normalization.server"));
   ({
     addProjectDomainToVercel,
+    inspectProjectDomainOnVercel,
     verifyProjectDomainOnVercel,
     removeProjectDomainFromVercel,
     getVercelDomainAutomationState,
@@ -183,8 +189,12 @@ describe("domain normalization", () => {
 
   it("detects apex vs subdomain", () => {
     assert.equal(isApexDomain("example.ir"), true);
+    assert.equal(isApexDomain("www.example.ir"), false);
     assert.equal(isApexDomain("shop.example.ir"), false);
     assert.equal(isApexDomain("a.b.shop.example.ir"), false);
+    assert.equal(getDomainPresentationKind("www.example.ir"), "SUBDOMAIN");
+    assert.equal(getApexDomainInfo("www.example.ir").isApex, false);
+    assert.equal(getApexDomainInfo("www.example.ir").recommendedAlias, "example.ir");
   });
 
   it("extracts labels, sld and tld", () => {
@@ -208,6 +218,11 @@ describe("domain normalization", () => {
     const sub = normalizeDomainInput({ rawDomain: "shop.example.ir", organizationId: "org_1" });
     assert.equal(sub.kind, "SUBDOMAIN");
     assert.equal(sub.isApex, false);
+
+    const www = normalizeDomainInput({ rawDomain: "www.example.ir", organizationId: "org-1" });
+    assert.equal(www.normalizedDomain, "example.ir");
+    assert.equal(www.kind, "SUBDOMAIN");
+    assert.equal(www.isApex, false);
   });
 });
 
@@ -218,6 +233,69 @@ describe("provider disabled mode (vercel automation)", () => {
       () => addProjectDomainToVercel("shop.example.ir"),
       (err: any) => err instanceof ApiError && err.status === 403,
     );
+  });
+
+  it("inspects an existing project domain with GET while provider mutations are disabled", async () => {
+    clearProviderEnv();
+    process.env.VERCEL_PROJECT_ID = "prj_test";
+    process.env.VERCEL_API_TOKEN = "secret_token";
+    let request: { url: string; init: RequestInit } | undefined;
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      request = { url, init };
+      return new Response(JSON.stringify({ name: "www.shop.example.ir", projectId: "prj_test", verified: true }),
+        { status: 200, headers: { "content-type": "application/json" } });
+    }) as typeof fetch;
+
+    const result = await inspectProjectDomainOnVercel("www.shop.example.ir");
+    assert.equal(result.ok, true);
+    assert.equal(result.verified, true);
+    assert.equal(result.status, "ACTIVE");
+    assert.equal(result.domain, "www.shop.example.ir");
+    assert.deepEqual(result.dnsRecords, [], "a verified alias must not show setup DNS guidance");
+    assert.equal(request?.init.method, "GET");
+    assert.match(request?.url ?? "", /\/domains\/www\.shop\.example\.ir/);
+  });
+
+  it("suggests DNS records for the exact unverified www hostname instead of the canonical apex", async () => {
+    clearProviderEnv();
+    process.env.VERCEL_PROJECT_ID = "prj_test";
+    process.env.VERCEL_API_TOKEN = "secret_token";
+    globalThis.fetch = (async () => new Response(JSON.stringify({ name: "www.shop.example.ir", projectId: "prj_test", verified: false }),
+      { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch;
+
+    const result = await inspectProjectDomainOnVercel("www.shop.example.ir");
+    assert.equal(result.status, "DNS_REQUIRED");
+    assert.equal(result.domain, "www.shop.example.ir");
+    assert.deepEqual(result.dnsRecords.map((record: { type: string; name: string }) => [record.type, record.name]), [
+      ["CNAME", "www.shop.example.ir"],
+    ]);
+  });
+
+  it("rejects an existing-domain response for a different Vercel project or hostname", async () => {
+    clearProviderEnv();
+    process.env.VERCEL_PROJECT_ID = "prj_test";
+    process.env.VERCEL_API_TOKEN = "secret_token";
+    globalThis.fetch = (async () => new Response(JSON.stringify({ name: "other.example.ir", projectId: "prj_other", verified: true }),
+      { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch;
+
+    const result = await inspectProjectDomainOnVercel("shop.example.ir");
+    assert.equal(result.ok, false);
+    assert.equal(result.verified, false);
+    assert.equal(result.status, "ERROR");
+    assert.equal(result.message, "Vercel returned a different project or hostname.");
+  });
+
+  it("does not treat an apex registration as proof that the requested www alias is registered", async () => {
+    clearProviderEnv();
+    process.env.VERCEL_PROJECT_ID = "prj_test";
+    process.env.VERCEL_API_TOKEN = "secret_token";
+    globalThis.fetch = (async () => new Response(JSON.stringify({ name: "shop.example.ir", projectId: "prj_test", verified: true }),
+      { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch;
+
+    const result = await inspectProjectDomainOnVercel("www.shop.example.ir");
+    assert.equal(result.ok, false);
+    assert.equal(result.status, "ERROR");
+    assert.equal(result.message, "Vercel returned a different project or hostname.");
   });
 
   it("throws ApiError(403) when exact mutation acknowledgement is missing", async () => {
@@ -270,7 +348,8 @@ describe("provider disabled mode (vercel automation)", () => {
       calls.push({ url, init });
       return new Response(JSON.stringify({
         projectId: "prj_test",
-        verified: url.includes("/verify"),
+        name: "shop.example.ir",
+        verified: url.includes("/verify") || init.method === "GET",
         verification: [{ type: "TXT", domain: "_vercel.shop.example.ir", value: "verify-token" }],
       }), { status: 200, headers: { "content-type": "application/json" } });
     }) as typeof fetch;
@@ -291,6 +370,9 @@ describe("provider disabled mode (vercel automation)", () => {
     assert.equal("raw" in remove, false);
 
     assert.equal(calls.length, 3);
+    assert.equal(calls[0].init.method, "POST");
+    assert.equal(calls[1].init.method, "POST");
+    assert.equal(calls[2].init.method, "DELETE");
     assert.equal((calls[0].init.headers as Record<string, string>).Authorization, "Bearer secret_token");
   });
 
@@ -614,6 +696,7 @@ describe("ACTIVE-only routing (resolveActiveTenantForHost)", () => {
       locale: "en",
       organizationId: "org_1",
       organizationType: "SHOP",
+      vertical: null,
       capabilities: ["SHOP"],
       publicHomeMode: null,
       brandLandingProvider: null,
@@ -651,6 +734,7 @@ describe("ACTIVE-only routing (resolveActiveTenantForHost)", () => {
       locale: "fa",
       organizationId: "org_1",
       organizationType: "APPOINTMENT",
+      vertical: null,
       capabilities: ["APPOINTMENT"],
       publicHomeMode: null,
       brandLandingProvider: null,
@@ -673,6 +757,16 @@ describe("ACTIVE-only routing (resolveActiveTenantForHost)", () => {
         source: "BAZARBAAZ_MANAGED",
       },
     });
+  });
+
+  it("retains Hotel vertical identity for domain-based informational websites", async () => {
+    const tenant = await resolveActiveTenantForHost(makePrisma("ACTIVE", {
+      vertical: "HOTEL",
+      capabilities: [{ key: "HOTEL_WEBSITE", status: "ACTIVE", enabledAt: new Date(), disabledAt: null }],
+    }), "hotel.example.ir");
+    assert.equal(tenant?.vertical, "HOTEL");
+    assert.deepEqual(tenant?.capabilities, []);
+    assert.deepEqual(tenant?.publicHome, { kind: "generic", reason: "NO_PUBLIC_CAPABILITY" });
   });
 
   it("resolves the same organization branding independently of host routing", async () => {

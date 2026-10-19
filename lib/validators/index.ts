@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isReservedOrganizationSlug } from "@/lib/organization-slugs";
+import { BUSINESS_VERTICALS } from "@/lib/business-verticals";
 
 // Common validation patterns
 export const passwordSchema = z
@@ -59,6 +60,10 @@ export const createOrganizationSchema = z.object({
   slug: slugSchema,
   type: z.enum(["SHOP", "APPOINTMENT"]).default("SHOP"),
   capabilities: z.array(z.enum(["SHOP", "APPOINTMENT"])).max(2).optional(),
+  // Business Vertical (H3-B0). Optional and independent of `type`/capabilities:
+  // omitting it leaves the organization unclassified, which is a valid state.
+  // Validated against the registry so unknown/future values cannot be stored.
+  vertical: z.enum(BUSINESS_VERTICALS).optional(),
   description: z.string().max(5000).optional(),
   address: z.string().max(500).optional(),
   phone: phoneSchema.optional(),
@@ -72,6 +77,9 @@ export const createOrganizationSchema = z.object({
 
 export const updateOrganizationSchema = z.object({
   name: z.string().min(2).max(200).optional(),
+  // Vertical assignment is intentionally excluded from tenant organization
+  // updates. Use the platform-admin vertical assignment endpoint instead.
+  vertical: z.never().optional(),
   description: z.string().max(5000).optional(),
   address: z.string().max(500).optional(),
   phone: phoneSchema.optional(),

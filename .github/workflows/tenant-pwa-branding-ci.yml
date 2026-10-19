@@ -1,0 +1,131 @@
+name: Tenant PWA branding acceptance
+
+on:
+  push:
+    branches:
+      - codex/tenant-pwa-branding-fix-20261013
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tenant-pwa-branding-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  acceptance:
+    name: Isolated database, build, and browser acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: tenant_pwa_ci
+          POSTGRES_PASSWORD: tenant_pwa_ci_only
+          POSTGRES_DB: bazarbaaz_tenant_pwa_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tenant_pwa_ci -d bazarbaaz_tenant_pwa_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      CI: true
+      DATABASE_URL: postgresql://tenant_pwa_ci:tenant_pwa_ci_only@127.0.0.1:5432/bazarbaaz_tenant_pwa_ci?schema=public
+      DIRECT_URL: postgresql://tenant_pwa_ci:tenant_pwa_ci_only@127.0.0.1:5432/bazarbaaz_tenant_pwa_ci?schema=public
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: tenant-pwa-ci-only-not-a-production-secret
+      INTERNAL_API_SECRET: tenant-pwa-ci-only-not-a-production-secret
+      CUSTOM_DOMAIN_RESOLVER_SECRET: tenant-pwa-ci-only-not-a-production-secret
+      PWA_ENABLED: "true"
+
+    steps:
+      - name: Check out feature branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm exec prisma generate
+
+      - name: Validate Prisma schema
+        run: pnpm exec prisma validate
+
+      - name: Verify exact empty CI database identity
+        run: node scripts/e2e/verify-tenant-pwa-ci-db.mjs before
+
+      - name: Apply the exact committed migration chain
+        run: pnpm exec prisma migrate deploy
+
+      - name: Verify migrated database status
+        run: pnpm exec prisma migrate status
+
+      - name: Verify the complete migration ledger
+        run: node scripts/e2e/verify-tenant-pwa-ci-db.mjs after
+
+      - name: Run focused PWA, manifest, asset, and proxy tests
+        env:
+          AI_MEDIA_LOCAL_DOCKER_E2E: "1"
+        run: >-
+          pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test
+          tests/unit/app-base-path-proxy.test.ts
+          tests/unit/forwarded-app-resolver.test.ts
+          tests/unit/operational-app-manifest.test.ts
+          tests/unit/organization-branding.test.ts
+          tests/unit/organization-branding-management.test.ts
+          tests/unit/tenant-pwa-approved-assets.test.ts
+          tests/unit/tenant-pwa-service-worker.test.ts
+          tests/unit/pwa-install-manager.test.ts
+
+      - name: Run PostgreSQL-backed trusted proxy regression
+        env:
+          AI_MEDIA_LOCAL_DOCKER_E2E: "1"
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/forwarded-app-resolver.local.test.ts
+
+      - name: TypeScript validation
+        run: pnpm typecheck
+
+      - name: Targeted PWA lint
+        run: pnpm exec eslint components/pwa-install-manager.tsx 'app/[locale]/layout.tsx' tests/unit/pwa-install-manager.test.ts tests/unit/tenant-pwa-service-worker.test.ts
+
+      - name: Prepare synthetic third-tenant artwork before build
+        run: node scripts/e2e/prepare-tenant-pwa-fixtures.mjs
+
+      - name: Production Next.js build
+        run: pnpm run build
+
+      - name: Install Chromium for production-mode browser acceptance
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Route synthetic tenant hosts to the ephemeral runner
+        run: echo "127.0.0.1 tenant-alpha.pwa-ci.test tenant-beta.pwa-ci.test tenant-gamma.pwa-ci.test tenant-inactive.pwa-ci.test tenant-unverified.pwa-ci.test tenant-incomplete.pwa-ci.test tenant-unknown.pwa-ci.test" | sudo tee -a /etc/hosts
+
+      - name: Run production-mode tenant manifest and favicon browser acceptance
+        env:
+          AI_MEDIA_LOCAL_DOCKER_E2E: "1"
+        run: node tests/e2e/tenant-pwa-branding-ci.mjs
+
+      - name: Upload browser screenshots and server log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tenant-pwa-branding-${{ github.sha }}
+          path: artifacts/tenant-pwa-ci/
+          if-no-files-found: ignore
+          retention-days: 7

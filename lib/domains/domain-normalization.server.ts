@@ -66,9 +66,25 @@ export function validateRawDomain(rawDomain: string): string {
 }
 
 export function isApexDomain(domain: string): boolean {
-  const normalized = normalizeDomainHost(domain);
-  if (!normalized) return false;
-  return normalized.split(".").length === 2;
+  const hostname = getHostnamePreservingWww(domain);
+  if (!hostname) return false;
+  return hostname.split(".").length === 2;
+}
+
+/** Classifies the hostname as entered/stored. Tenant routing intentionally
+ * canonicalizes www to its apex, but presentation must preserve that alias. */
+export function getHostnamePreservingWww(value: string | undefined | null): string {
+  const raw = (value || "").trim();
+  if (!raw) return "";
+  try {
+    return new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`).hostname.toLowerCase().replace(/\.$/, "");
+  } catch {
+    return raw.toLowerCase().replace(/\.$/, "");
+  }
+}
+
+export function getDomainPresentationKind(domain: string): "APEX" | "SUBDOMAIN" {
+  return isApexDomain(domain) ? "APEX" : "SUBDOMAIN";
 }
 
 export function getDomainLabels(domain: string): string[] {
@@ -91,7 +107,7 @@ export function getTld(domain: string): string {
 
 export function normalizeDomainInput(input: DomainNormalizationInput): NormalizedDomain {
   const normalizedDomain = validateRawDomain(input.rawDomain);
-  const kind = input.kind ?? (isApexDomain(normalizedDomain) ? "APEX" : "SUBDOMAIN");
+  const kind = input.kind ?? getDomainPresentationKind(input.rawDomain);
   const provider = input.provider ?? "VERCEL";
   const labels = getDomainLabels(normalizedDomain);
 
@@ -108,13 +124,13 @@ export function normalizeDomainInput(input: DomainNormalizationInput): Normalize
 }
 
 export function getApexDomainInfo(domain: string): ApexDomainInfo {
-  const normalized = normalizeDomainHost(domain);
+  const normalized = getHostnamePreservingWww(domain);
 
   if (!normalized) {
     throw new ApiError(400, "Domain is required to determine apex info");
   }
 
-  const labels = getDomainLabels(normalized);
+  const labels = normalized.split(".").filter(Boolean);
 
   if (labels.length <= 2) {
     return {
@@ -124,14 +140,12 @@ export function getApexDomainInfo(domain: string): ApexDomainInfo {
     };
   }
 
-  const sld = labels[labels.length - 2];
-  const tld = labels[labels.length - 1];
-  const apex = `${sld}.${tld}`;
+  const apex = labels.slice(-2).join(".");
 
   return {
     isApex: false,
     primaryLabel: apex,
-    recommendedAlias: `www.${apex}`,
+    recommendedAlias: normalized.startsWith("www.") ? apex : `www.${apex}`,
   };
 }
 
@@ -174,14 +188,15 @@ export function getRecommendedVercelDnsRecords(
   domainInput: string,
   verification: { domain: string; value: string; type?: string; reason?: string }[] = [],
 ): { type: "A" | "CNAME" | "TXT"; name: string; value: string; purpose: string }[] {
-  const domain = normalizeDomainHost(domainInput);
+  const domain = getHostnamePreservingWww(domainInput);
+  const canonicalDomain = normalizeDomainHost(domainInput);
   const records: { type: "A" | "CNAME" | "TXT"; name: string; value: string; purpose: string }[] = [];
 
   if (!domain) {
     return records;
   }
 
-  if (isApexDomain(domain)) {
+  if (domain === canonicalDomain && isApexDomain(domain)) {
     records.push({
       type: "A",
       name: "@",

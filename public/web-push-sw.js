@@ -1,4 +1,7 @@
 self.__BAZAR_BAZ_BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
+const cacheScope = encodeURIComponent(self.__BAZAR_BAZ_BASE_PATH || "root");
+const staticCachePrefix = `bazar-baz-static-${cacheScope}-`;
+const legacyStaticCacheName = `bazar-baz-static-p99${self.__BAZAR_BAZ_BASE_PATH || "-root"}`;
 const withBasePath = (path) => self.__BAZAR_BAZ_BASE_PATH && !path.startsWith(`${self.__BAZAR_BAZ_BASE_PATH}/`)
   ? `${self.__BAZAR_BAZ_BASE_PATH}${path}`
   : path;
@@ -7,16 +10,13 @@ const withoutBasePath = (path) => self.__BAZAR_BAZ_BASE_PATH && path.startsWith(
   : path;
 
 self.__BAZAR_BAZ_PWA_CACHE = {
-  version: "p98-offline-shell",
-  staticCacheName: `bazar-baz-static-p98${self.__BAZAR_BAZ_BASE_PATH || "-root"}`,
+  version: "p101-tenant-safe-offline",
+  staticCacheName: `${staticCachePrefix}p101`,
   offlineUrl: withBasePath("/offline.html"),
   staticAssets: [
     "/offline.html",
-    "/manifest.webmanifest",
-    "/icons/icon-192x192.png",
-    "/icons/icon-512x512.png",
-    "/icons/icon-maskable-512x512.png",
   ].map(withBasePath),
+  manifestUrl: withBasePath("/manifest.webmanifest"),
   bypassPathPrefixes: [
     "/api/",
     "/uploads/",
@@ -50,7 +50,10 @@ self.addEventListener("activate", (event) => {
       .then((cacheNames) =>
         Promise.all(
           cacheNames
-            .filter((cacheName) => cacheName.startsWith("bazar-baz-") && cacheName !== PWA_CACHE.staticCacheName)
+            .filter((cacheName) =>
+              (cacheName.startsWith(staticCachePrefix) || cacheName === legacyStaticCacheName) &&
+              cacheName !== PWA_CACHE.staticCacheName,
+            )
             .map((cacheName) => caches.delete(cacheName)),
         ),
       )
@@ -67,8 +70,7 @@ function shouldBypassCache(url) {
 function isStaticAsset(url) {
   return (
     withoutBasePath(url.pathname).startsWith("/_next/static/") ||
-    PWA_CACHE.staticAssets.includes(url.pathname) ||
-    withoutBasePath(url.pathname) === "/favicon.ico"
+    PWA_CACHE.staticAssets.includes(url.pathname)
   );
 }
 
@@ -81,12 +83,12 @@ async function networkFirstNavigation(request) {
 }
 
 async function cacheFirstStaticAsset(request) {
-  const cachedResponse = await caches.match(request);
+  const cache = await caches.open(PWA_CACHE.staticCacheName);
+  const cachedResponse = await cache.match(request);
   if (cachedResponse) return cachedResponse;
 
   const networkResponse = await fetch(request);
   if (networkResponse.ok) {
-    const cache = await caches.open(PWA_CACHE.staticCacheName);
     await cache.put(request, networkResponse.clone());
   }
   return networkResponse;
@@ -111,9 +113,28 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
+// Derive notification identity from its same-origin tenant destination. Never
+// accept a payload-supplied organization ID or manifest URL.
+function notificationManifestUrl(destination) {
+  try {
+    const target = new URL(destination || "/", self.location.origin);
+    if (target.origin !== self.location.origin) return null;
+    const parts = withoutBasePath(target.pathname).split("/").filter(Boolean);
+    if (["fa", "en", "ar"].includes(parts[0])) {
+      const slug = parts[1] === "retail" ? parts[2] : parts[2] === "shop" ? parts[1] : null;
+      if (slug) {
+        const decoded = decodeURIComponent(slug);
+        if (!decoded || decoded === "." || decoded === ".." || /[\\/?#\u0000-\u001f]/.test(decoded)) return null;
+        return withBasePath("/api/public/v1/organizations/" + encodeURIComponent(decoded) + "/pwa-manifest") + "?locale=" + parts[0] + "&entry=shop";
+      }
+    }
+    return PWA_CACHE.manifestUrl;
+  } catch { return null; }
+}
+
 self.addEventListener("push", (event) => {
   let payload = {
-    title: "Bazarbaaz",
+    title: "",
     body: "You have a new notification.",
     url: "/",
   };
@@ -127,12 +148,23 @@ self.addEventListener("push", (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(payload.title || "Bazarbaaz", {
-      body: payload.body || "",
-      icon: withBasePath("/icons/icon-192x192.png"),
-      badge: withBasePath("/icons/icon-maskable-192x192.png"),
-      data: { url: withBasePath(payload.url || "/") },
-    }),
+    Promise.resolve(notificationManifestUrl(payload.url))
+      .then((manifestUrl) => manifestUrl ? fetch(manifestUrl, { cache: "no-store" }) : null)
+      .then((response) => response?.ok ? response.json() : null)
+      .catch(() => null)
+      .then((manifest) => {
+        const icons = Array.isArray(manifest?.icons) ? manifest.icons : [];
+        const regular = icons.find((candidate) => typeof candidate?.src === "string" && String(candidate.purpose || "any").includes("any"));
+        const maskable = icons.find((candidate) => typeof candidate?.src === "string" && String(candidate.purpose || "").includes("maskable"));
+        const iconUrl = regular?.src ? new URL(regular.src, self.location.origin).href : undefined;
+        const badgeUrl = maskable?.src ? new URL(maskable.src, self.location.origin).href : iconUrl;
+        return self.registration.showNotification(payload.title || manifest?.short_name || manifest?.name || "Notification", {
+          body: payload.body || "",
+          ...(iconUrl ? { icon: iconUrl } : {}),
+          ...(badgeUrl ? { badge: badgeUrl } : {}),
+          data: { url: withBasePath(payload.url || "/") },
+        });
+      }),
   );
 });
 

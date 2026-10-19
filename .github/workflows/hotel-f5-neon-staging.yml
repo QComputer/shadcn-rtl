@@ -1,0 +1,164 @@
+name: Hotel F5 Neon staging migration
+
+on:
+  push:
+    branches:
+      - codex/hotel-damoon-f5-staging-20261013
+  workflow_dispatch:
+    inputs:
+      provision_synthetic_fixtures:
+        description: Provision idempotent synthetic F5 CMS tenant/user/media fixtures after database identity and migration verification
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hotel-f5-neon-staging-migration
+  cancel-in-progress: false
+
+jobs:
+  migrate-staging:
+    if: github.ref == 'refs/heads/codex/hotel-damoon-f5-staging-20261013'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: hotel-f5-staging
+    env:
+      HOTEL_F5_NEON_OWNER_URL: ${{ secrets.HOTEL_F5_NEON_OWNER_URL }}
+      HOTEL_F5_NEON_EXPECTED_HOST: ${{ vars.HOTEL_F5_NEON_EXPECTED_HOST }}
+      HOTEL_F5_APP_PASSWORD: ${{ secrets.HOTEL_F5_APP_PASSWORD }}
+      BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+      - name: Verify F5-only database identity and empty application schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOTEL_F5_NEON_OWNER_URL"
+          test -n "$HOTEL_F5_NEON_EXPECTED_HOST"
+          test -n "$HOTEL_F5_APP_PASSWORD"
+          node --input-type=module <<'NODE'
+          const url = new URL(process.env.HOTEL_F5_NEON_OWNER_URL);
+          if (!['postgres:', 'postgresql:'].includes(url.protocol)) throw new Error('Expected PostgreSQL connection URL');
+          if (url.hostname !== process.env.HOTEL_F5_NEON_EXPECTED_HOST) throw new Error('Staging endpoint identity mismatch');
+          if (url.hostname === 'ep-little-river-aifwxtf7') throw new Error('Production endpoint is forbidden');
+          if (url.pathname !== '/neondb') throw new Error('Expected newly provisioned default database');
+          if (decodeURIComponent(url.username) !== 'neondb_owner') throw new Error('Expected the isolated staging project owner role');
+          NODE
+          identity="$(psql "$HOTEL_F5_NEON_OWNER_URL" -v ON_ERROR_STOP=1 -Atqc "SELECT current_database() || '|' || current_user || '|' || current_setting('server_version_num')")"
+          IFS='|' read -r db role version <<< "$identity"
+          test "$db" = "neondb"
+          test "$role" = "neondb_owner"
+          test "${version:0:2}" = "18"
+          public_count="$(psql "$HOTEL_F5_NEON_OWNER_URL" -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m','S','f')")"
+          test "$public_count" = "0"
+          ledger="$(psql "$HOTEL_F5_NEON_OWNER_URL" -v ON_ERROR_STOP=1 -Atqc "SELECT to_regclass('public._prisma_migrations') IS NULL")"
+          test "$ledger" = "t"
+          echo "Verified new Neon endpoint, isolated project owner, PostgreSQL 18, and empty public schema; provider-managed non-public metadata is not used by the app."
+      - name: Create dedicated staging database and runtime role
+        shell: bash
+        run: |
+          set -euo pipefail
+          exists="$(psql "$HOTEL_F5_NEON_OWNER_URL" -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM pg_database WHERE datname='hotel_f5_staging'")"
+          created=0
+          if [[ "$exists" == "0" ]]; then
+            psql "$HOTEL_F5_NEON_OWNER_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE hotel_f5_staging OWNER neondb_owner'
+            created=1
+            printf 'HOTEL_F5_DB_CREATED=1\n' >> "$GITHUB_ENV"
+          else
+            owner="$(psql "$HOTEL_F5_NEON_OWNER_URL" -v ON_ERROR_STOP=1 -Atqc "SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname='hotel_f5_staging'")"
+            test "$owner" = "neondb_owner"
+          fi
+          stage_url="$(node --input-type=module -e 'const url = new URL(process.env.HOTEL_F5_NEON_OWNER_URL); url.pathname = "/hotel_f5_staging"; process.stdout.write(url.toString())')"
+          public_count="$(psql "$stage_url" -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m','S','f')")"
+          ledger="$(psql "$stage_url" -v ON_ERROR_STOP=1 -Atqc "SELECT to_regclass('public._prisma_migrations') IS NULL")"
+          if [[ "$ledger" == "t" ]]; then
+            test "$public_count" = "0"
+          fi
+          role_exists="$(psql "$HOTEL_F5_NEON_OWNER_URL" -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM pg_roles WHERE rolname='hotel_f5_app'")"
+          [[ "$HOTEL_F5_APP_PASSWORD" =~ ^[A-Za-z0-9_-]{64}$ ]]
+          if [[ "$role_exists" == "0" ]]; then
+            role_sql="CREATE ROLE hotel_f5_app LOGIN PASSWORD '$HOTEL_F5_APP_PASSWORD'"
+          else
+            role_sql="ALTER ROLE hotel_f5_app LOGIN PASSWORD '$HOTEL_F5_APP_PASSWORD'"
+          fi
+          printf '%s\n' "$role_sql" | psql "$HOTEL_F5_NEON_OWNER_URL" -v ON_ERROR_STOP=1
+          unset role_sql
+          psql "$HOTEL_F5_NEON_OWNER_URL" -v ON_ERROR_STOP=1 -c 'GRANT CONNECT ON DATABASE hotel_f5_staging TO hotel_f5_app'
+          node --input-type=module <<'NODE' >> "$GITHUB_ENV"
+          const url = new URL(process.env.HOTEL_F5_NEON_OWNER_URL);
+          url.username = 'neondb_owner';
+          url.pathname = '/hotel_f5_staging';
+          process.stdout.write(`HOTEL_F5_MIGRATION_URL=${url.toString()}\n`);
+          url.username = 'hotel_f5_app';
+          url.password = process.env.HOTEL_F5_APP_PASSWORD;
+          process.stdout.write(`HOTEL_F5_RUNTIME_URL=${url.toString()}\n`);
+          NODE
+      - name: Install locked project dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate schema and generate Prisma client
+        run: |
+          export DATABASE_URL="$HOTEL_F5_NEON_OWNER_URL"
+          export DIRECT_URL="$HOTEL_F5_NEON_OWNER_URL"
+          pnpm exec prisma validate
+          pnpm exec prisma generate
+      - name: Apply accepted Hotel migration chain to the dedicated staging database
+        run: |
+          export DATABASE_URL="$HOTEL_F5_MIGRATION_URL"
+          export DIRECT_URL="$HOTEL_F5_MIGRATION_URL"
+          pnpm exec prisma migrate deploy
+      - name: Reapply provenance-verified additive branding repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DATABASE_URL="$HOTEL_F5_MIGRATION_URL"
+          export DIRECT_URL="$HOTEL_F5_MIGRATION_URL"
+          git fetch --no-tags origin refs/tags/hotel-f5-branding-repair-source:refs/tags/hotel-f5-branding-repair-source
+          test "$(git rev-parse refs/tags/hotel-f5-branding-repair-source)" = "57e407077f88c22c62ff12ff15cc6c2602ee3c96"
+          git show 57e407077f88c22c62ff12ff15cc6c2602ee3c96:prisma/migrations/20260926160000_repair_organization_branding_columns/migration.sql > "$RUNNER_TEMP/branding-repair.sql"
+          echo "cfa7ed49b14f25ca88593525a6f269e189b6be1e78e760bb5073ecf40c98eb59  $RUNNER_TEMP/branding-repair.sql" | sha256sum --check
+          pnpm exec prisma db execute --schema prisma/schema.prisma --file "$RUNNER_TEMP/branding-repair.sql"
+      - name: Verify migration state and grant runtime privileges
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DATABASE_URL="$HOTEL_F5_MIGRATION_URL"
+          export DIRECT_URL="$HOTEL_F5_MIGRATION_URL"
+          pnpm exec prisma migrate deploy
+          count="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atqc 'SELECT count(*) FROM public._prisma_migrations WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL')"
+          expected="$(find prisma/migrations -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+          test "$count" = "$expected"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'GRANT USAGE ON SCHEMA public TO hotel_f5_app; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO hotel_f5_app; GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO hotel_f5_app; ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO hotel_f5_app; ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO hotel_f5_app'
+          runtime_identity="$(psql "$HOTEL_F5_RUNTIME_URL" -v ON_ERROR_STOP=1 -Atqc "SELECT current_database() || '|' || current_user")"
+          test "$runtime_identity" = "hotel_f5_staging|hotel_f5_app"
+          echo "Staging schema migration verified: ${count} successful source migrations; runtime connection uses the dedicated application role."
+      - name: Provision synthetic Hotel CMS users, tenant domains and media
+        if: inputs.provision_synthetic_fixtures
+        env:
+          HOTEL_F5_PUBLIC_HOST: ${{ vars.HOTEL_F5_PUBLIC_HOST }}
+          HOTEL_F5_FOREIGN_HOST: ${{ vars.HOTEL_F5_FOREIGN_HOST }}
+          HOTEL_F5_INACTIVE_HOST: ${{ vars.HOTEL_F5_INACTIVE_HOST }}
+          HOTEL_F5_CAP_DISABLED_HOST: ${{ vars.HOTEL_F5_CAP_DISABLED_HOST }}
+          HOTEL_F5_AUTHOR_PASSWORD: ${{ secrets.HOTEL_F5_AUTHOR_PASSWORD }}
+          HOTEL_F5_REVIEWER_PASSWORD: ${{ secrets.HOTEL_F5_REVIEWER_PASSWORD }}
+          HOTEL_F5_MANAGER_PASSWORD: ${{ secrets.HOTEL_F5_MANAGER_PASSWORD }}
+          HOTEL_F5_FOREIGN_PASSWORD: ${{ secrets.HOTEL_F5_FOREIGN_PASSWORD }}
+        run: |
+          export DATABASE_URL="$HOTEL_F5_MIGRATION_URL"
+          export DIRECT_URL="$HOTEL_F5_MIGRATION_URL"
+          node scripts/hotel/seed-f5-staging-fixtures.mjs

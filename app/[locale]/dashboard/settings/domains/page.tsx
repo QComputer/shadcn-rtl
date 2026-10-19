@@ -1,5 +1,6 @@
 "use client";
 import { appFetch } from "@/lib/app-base-path";
+import { organizationDomainCheckRequest } from "@/lib/domains/organization-domain-manager";
 
 import { use, useEffect, useMemo, useState } from "react";
 import { Loader2, Plus, RefreshCw, Trash2, CheckCircle2, AlertTriangle, Copy } from "lucide-react";
@@ -18,6 +19,7 @@ type OrganizationDomain = {
   domain: string;
   normalizedDomain: string;
   kind: "APEX" | "SUBDOMAIN";
+  displayKind?: "APEX" | "SUBDOMAIN";
   provider: "VERCEL";
   status: string;
   isPrimary: boolean;
@@ -96,8 +98,16 @@ function resolveOrganizationId(domains: OrganizationDomain[]): string | null {
   return domains[0]?.organizationId ?? null;
 }
 
-export default function OrganizationDomainsPage({ params }: { params: Promise<{ locale: string }> }) {
+export default function OrganizationDomainsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ organizationId?: string }>;
+}) {
   const resolvedParams = use(params);
+  const resolvedSearchParams = use(searchParams);
+  const requestedOrganizationId = resolvedSearchParams.organizationId?.trim() || null;
   const locale = (resolvedParams.locale || "fa") as SupportedLocale;
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null);
   const [domains, setDomains] = useState<OrganizationDomain[]>([]);
@@ -120,7 +130,12 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
       setLoading(true);
       try {
         const [domainsRes, vercelRes] = await Promise.all([
-          appFetch("/api/dashboard/organization-domains", { cache: "no-store" }),
+          appFetch(
+            requestedOrganizationId
+              ? `/api/dashboard/organization-domains?organizationId=${encodeURIComponent(requestedOrganizationId)}`
+              : "/api/dashboard/organization-domains",
+            { cache: "no-store" },
+          ),
           appFetch("/api/dashboard/organization-domains/vercel-automation", { cache: "no-store" }),
         ]);
 
@@ -142,7 +157,7 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
     }
 
     void load();
-  }, [locale, t]);
+  }, [locale, requestedOrganizationId, t]);
 
   async function handleAddDomain(event: React.FormEvent) {
     event.preventDefault();
@@ -183,15 +198,17 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
   async function handleVerifyDomain(domain: OrganizationDomain) {
     setSubmitting(true);
     try {
-      const response = await appFetch(`/api/dashboard/organization-domains/${domain.id}/vercel`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "check" }),
-      });
+      const request = organizationDomainCheckRequest(domain.id);
+      const response = await appFetch(request.url, request.init);
 
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(result.error || "Failed to verify domain");
+      }
+
+      if (result.domain) {
+        const updatedDomain = result.domain as OrganizationDomain;
+        setDomains((current) => current.map((item) => item.id === updatedDomain.id ? updatedDomain : item));
       }
 
       const vercelData = result.vercel as { verification?: VerificationRecord[]; dnsRecords?: DnsRecord[] } | undefined;
@@ -298,6 +315,7 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
     setTimeout(() => setCopiedToken((current) => (current === value ? null : current)), 2000);
   }
 
+  const automationBlocksChecks = !vercelState?.configured;
   const automationBlocksMutations = !vercelState?.configured || !vercelState?.realMutationsEnabled;
 
   if (loading) {
@@ -386,7 +404,7 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
                     <div className="space-y-1">
                       <p className="font-medium">{domain.domain}</p>
                       <p className="text-xs text-muted-foreground">
-                        {domain.kind ? kindCopy[domain.kind] || domain.kind : "—"}{domain.organization ? ` · ${domain.organization.name}` : ""}
+                        {(domain.displayKind || domain.kind) ? kindCopy[domain.displayKind || domain.kind] || domain.displayKind || domain.kind : "—"}{domain.organization ? ` · ${domain.organization.name}` : ""}
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -396,7 +414,7 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
                         variant="outline"
                         size="sm"
                         onClick={() => handleVerifyDomain(domain)}
-                        disabled={submitting || automationBlocksMutations || domain.status === "DISABLED" || domain.status === "REMOVED"}
+                        disabled={submitting || automationBlocksChecks || domain.status === "DISABLED" || domain.status === "REMOVED"}
                       >
                         <RefreshCw className="h-4 w-4 ml-1" />
                         بررسی
@@ -475,17 +493,6 @@ export default function OrganizationDomainsPage({ params }: { params: Promise<{ 
                         </div>
                       )}
 
-                      {domain.apexInfo && domain.kind === "APEX" && domain.apexInfo.recommendedAlias && (
-                        <div className="rounded-md border border-amber-500/40 bg-amber-50 dark:bg-amber-900/20 p-3 text-sm text-amber-800 dark:text-amber-200">
-                          {t("dashboard.domains.apexWwwWarning") || "برای دامنه آپیکس، توصیه می‌شود بلافاصله زیردامنه www"} {domain.apexInfo.recommendedAlias} {t("dashboard.domains.counterpartMissing") || "را هم ثبت کنید تا پایداری سئو حفظ شود."}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {domain.kind && domain.kind === "APEX" && selectedDomainId !== domain.id && (
-                    <div className="rounded-md border border-amber-500/40 bg-amber-50 dark:bg-amber-900/20 p-3 text-sm text-amber-800 dark:text-amber-200">
-                      {t("dashboard.domains.apexRecommendation") || "دامنه آپیکس شناسایی شد. توصیه می‌شود www"} {domain.apexInfo?.recommendedAlias} {t("dashboard.domains.counterpartMissing") || "را هم ثبت کنید."}
                     </div>
                   )}
                 </div>

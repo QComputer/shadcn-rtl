@@ -24,7 +24,7 @@ import { normalizePushOrigin } from "@/lib/push-origin";
 import { buildMinimalWebPushPayload } from "@/lib/push-payload";
 import { resolveActiveTenantForHost } from "@/lib/domains/domain-resolver.server";
 import { isPlatformHost } from "@/lib/custom-domain-routing";
-import { publicOrganizationHref } from "@/app/[locale]/dashboard/organizations/page";
+import { publicOrganizationHref } from "@/lib/organization-public-href";
 import { getIntegrationAdapter, listIntegrationAdapters } from "@/lib/integrations/runtime/registry";
 import { listInotiServiceMappings } from "@/lib/integrations/inoti-account-management";
 import {
@@ -404,6 +404,63 @@ describe("capability-aware dashboard authorization", () => {
       organizationType: "SHOP",
       organizationCapabilities: ["SHOP"],
     }).hasAccess, false);
+  });
+
+  it("exposes retail payment and discount pages only to SHOP managers", () => {
+    for (const key of ["retailDiscounts", "retailPaymentSettings", "retailPaymentReports"] as const) {
+      assert.equal(isDashboardNavigationItemVisible(key, "MANAGER", ["SHOP"]), true);
+      assert.equal(isDashboardNavigationItemVisible(key, "STAFF", ["SHOP"]), false);
+      assert.equal(isDashboardNavigationItemVisible(key, "MANAGER", ["APPOINTMENT"]), false);
+    }
+    for (const path of ["retail-discounts", "retail-payment-settings", "retail-payment-reports"]) {
+      assert.equal(getDashboardRouteAccessDecision({
+        locale: "fa", pathname: `/fa/dashboard/${path}`, role: "MANAGER", capabilities: ["SHOP"],
+      }).isAllowed, true);
+      assert.equal(getDashboardRouteAccessDecision({
+        locale: "fa", pathname: `/fa/dashboard/${path}`, role: "STAFF", capabilities: ["SHOP"],
+      }).isAllowed, false);
+      assert.equal(checkRouteAccess(`/fa/dashboard/${path}`, {
+        userId: "tenant-manager", userRole: "MANAGER", organizationId: "tenant-a",
+        organizationType: "SHOP", organizationCapabilities: ["SHOP"],
+      }).hasAccess, true);
+      assert.equal(checkRouteAccess(`/fa/dashboard/${path}`, {
+        userId: "tenant-manager", userRole: "MANAGER", organizationId: "tenant-a",
+        organizationType: "SHOP", organizationCapabilities: ["APPOINTMENT"],
+      }).hasAccess, false);
+    }
+  });
+
+  it("allows Hotel website CMS routes only for management roles with HOTEL_WEBSITE", () => {
+    const manager = {
+      userId: "hotel-manager",
+      userRole: "MANAGER" as const,
+      organizationId: "hotel-a",
+      organizationType: "SHOP" as const,
+      organizationCapabilities: ["HOTEL_WEBSITE"],
+    };
+    assert.equal(checkRouteAccess("/fa/dashboard/hotel-website", manager).hasAccess, true);
+    assert.equal(checkRouteAccess("/fa/dashboard/hotel-website/org-a/property-a", manager).hasAccess, true);
+    assert.equal(checkRouteAccess("/fa/dashboard/hotel-website/org-a/property-a/preview/revision-a", manager).hasAccess, true);
+    assert.equal(checkRouteAccess("/fa/dashboard/hotel-website", { ...manager, organizationCapabilities: [] }).hasAccess, false);
+    assert.equal(checkRouteAccess("/fa/dashboard/hotel-website/org-a/property-a/preview/revision-a", { ...manager, organizationCapabilities: [] }).hasAccess, false);
+    assert.equal(checkRouteAccess("/fa/dashboard/hotel-website", { ...manager, userRole: "STAFF" }).hasAccess, false);
+    assert.equal(checkRouteAccess("/fa/dashboard/hotel-website/org-a/property-a/preview/revision-a", { ...manager, userRole: "STAFF" }).hasAccess, false);
+  });
+
+  it("allows Retail catalog pages only for organization managers with SHOP", () => {
+    const manager = {
+      userId: "retail-manager",
+      userRole: "MANAGER" as const,
+      organizationId: "retail-a",
+      organizationType: "SHOP" as const,
+      organizationCapabilities: ["SHOP"],
+    };
+    assert.equal(checkRouteAccess("/fa/dashboard/retail-catalog", manager).hasAccess, true);
+    assert.equal(checkRouteAccess("/en/dashboard/retail-catalog/new", manager).hasAccess, true);
+    assert.equal(checkRouteAccess("/fa/dashboard/retail-catalog/product-a", manager).hasAccess, true);
+    assert.equal(checkRouteAccess("/fa/dashboard/retail-catalog", { ...manager, userRole: "STAFF" }).hasAccess, false);
+    assert.equal(checkRouteAccess("/fa/dashboard/retail-catalog", { ...manager, organizationCapabilities: [] }).hasAccess, false);
+    assert.equal(checkRouteAccess("/fa/dashboard/retail-catalog", { ...manager, organizationId: undefined }).hasAccess, false);
   });
 });
 

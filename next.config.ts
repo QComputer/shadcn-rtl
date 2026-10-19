@@ -10,6 +10,11 @@ const securityHeaders = [
 ];
 
 const appBasePath = resolveAppBasePath();
+// Next expects hostname patterns here, not a full URL (scheme or port).
+function configuredDevelopmentHost() {
+  try { return new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").hostname; }
+  catch { return "localhost"; }
+}
 
 const nextConfig: NextConfig = {
   basePath: appBasePath || undefined,
@@ -17,7 +22,7 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: [
     "192.168.1.6",
     "*.localtest.me",
-    process.env.NEXT_PUBLIC_APP_URL || "localhost:3000",
+    configuredDevelopmentHost(),
   ],
   logging: {
     incomingRequests: {
@@ -33,5 +38,14 @@ const nextConfig: NextConfig = {
     ];
   },
 };
+
+if (process.env.BAZARBAAZ_BUILD_CACHE === "off") {
+  nextConfig.webpack = (config, { dev }) => {
+    if (!dev) {
+      config.cache = false;
+    }
+    return config;
+  };
+}
 
 export default nextConfig;

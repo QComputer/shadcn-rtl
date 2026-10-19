@@ -7,27 +7,42 @@ const root = process.cwd();
 const checks = [];
 const add = (name, pass, detail = "") => checks.push({ name, pass: Boolean(pass), detail });
 
-const expected = {
-  "prisma/migrations/20260628000300_export_hub_foundation/migration.sql": "4974061a2ac04ba878d11b7ce20aec9f2bcc2f6ffd98adca69893cdee9ed58a3",
-  "prisma/migrations/20260707000200_export_hub_extend_data_types/migration.sql": "a024000331ef7d5383ac8043e618619470487911bb35d0662169a38c13465b68",
+const paths = {
+  foundation: "prisma/migrations/20260628000300_export_hub_foundation/migration.sql",
+  corrected: "prisma/migrations/20260707000200_export_hub_extend_data_types/migration.sql",
+};
+
+// The foundation migration remains byte-for-byte immutable. The recovery decision
+// in DATABASE_MIGRATION_CHAIN_RECOVERY.md explicitly permits one exact, reviewed
+// correction to the not-yet-deployed duplicate enum-extension migration.
+const expectedChecksums = {
+  [paths.foundation]: "4974061a2ac04ba878d11b7ce20aec9f2bcc2f6ffd98adca69893cdee9ed58a3",
+  [paths.corrected]: "7781531739ffd2a222e9a0e73d1cd762109aa96179ea14b011bfe752e449dc5f",
 };
 
 function read(rel) {
   return fs.readFileSync(path.join(root, rel));
 }
 
-for (const [rel, checksum] of Object.entries(expected)) {
+for (const [rel, checksum] of Object.entries(expectedChecksums)) {
   const bytes = read(rel);
   const actual = createHash("sha256").update(bytes).digest("hex");
-  add(`${rel} matches Production checksum`, actual === checksum, actual);
+  const kind = rel === paths.foundation ? "immutable Production" : "reviewed recovery";
+  add(`${rel} matches exact ${kind} checksum`, actual === checksum, actual);
 }
 
-const extendMigration = read("prisma/migrations/20260707000200_export_hub_extend_data_types/migration.sql").toString("utf8");
-const foundationMigration = read("prisma/migrations/20260628000300_export_hub_foundation/migration.sql").toString("utf8");
-add("extend migration is not edited into idempotent variant", !/IF\s+NOT\s+EXISTS/i.test(extendMigration));
-add("foundation migration keeps Production checksum enum labels", /CUSTOMERS/.test(foundationMigration) && /FANPAGE_POSTS/.test(foundationMigration));
-add("legacy replay issue is documented", fs.existsSync(path.join(root, "docs/db/LEGACY_MIGRATION_BASELINE_STRATEGY.md")));
-add("migration audit document exists", fs.existsSync(path.join(root, "docs/db/MIGRATION_IMMUTABILITY_AUDIT.md")));
+const corrected = read(paths.corrected).toString("utf8");
+const foundation = read(paths.foundation).toString("utf8");
+const recoveryDocPath = "docs/database/DATABASE_MIGRATION_CHAIN_RECOVERY.md";
+const recoveryDoc = read(recoveryDocPath).toString("utf8");
+
+add("recovery decision is explicitly CASE A in-place correction", /CASE A[\s\S]{0,80}correct the not-yet-deployed migration in place/i.test(recoveryDoc));
+add("recovery records no Production migration was run", /No Production migration was run/i.test(recoveryDoc));
+add("corrected migration uses guarded enum blocks", /DO\s+\$\$[\s\S]*IF\s+NOT\s+EXISTS/i.test(corrected));
+add("corrected migration checks ExportDataType labels through pg_enum", /pg_enum/i.test(corrected) && /typname\s*=\s*'ExportDataType'/i.test(corrected) && /enumlabel\s*=\s*'CUSTOMERS'/i.test(corrected) && /enumlabel\s*=\s*'FANPAGE_POSTS'/i.test(corrected));
+add("corrected migration does not drop or recreate ExportDataType", !/\b(?:DROP|CREATE)\s+TYPE\s+"ExportDataType"/i.test(corrected));
+add("corrected migration has no destructive table or data operation", !/\b(?:DROP\s+TABLE|TRUNCATE|DELETE\s+FROM|UPDATE\s+"AiMediaAsset"|ALTER\s+TABLE\s+"AiMediaAsset"\s+DROP)\b/i.test(corrected));
+add("foundation defines the intended ExportDataType labels", /CREATE TYPE "ExportDataType" AS ENUM\s*\('PRODUCTS',\s*'PRODUCT_CATEGORIES',\s*'ORDERS',\s*'CUSTOMERS',\s*'FANPAGE_POSTS'\)/i.test(foundation));
 
 for (const check of checks) console.log(`${check.pass ? "PASS" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`);
 const failed = checks.filter((check) => !check.pass);

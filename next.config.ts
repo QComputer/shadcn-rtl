@@ -39,4 +39,13 @@ const nextConfig: NextConfig = {
   },
 };
 
+if (process.env.BAZARBAAZ_BUILD_CACHE === "off") {
+  nextConfig.webpack = (config, { dev }) => {
+    if (!dev) {
+      config.cache = false;
+    }
+    return config;
+  };
+}
+
 export default nextConfig;

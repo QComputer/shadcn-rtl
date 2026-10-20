@@ -54,7 +54,7 @@ function isoWithLocalOffset(local: string) {
   return `${local.length === 16 ? `${local}:00` : local}${sign}${hh}:${mm}`;
 }
 
-export default function RetailCheckoutClient({ locale, organization, storefrontPath, checkoutPath }: { locale: string; organization: string; storefrontPath?: string; checkoutPath?: string }) {
+export default function RetailCheckoutClient({ locale, organization, storefrontPath, checkoutPath, cartOnly = false }: { locale: string; organization: string; storefrontPath?: string; checkoutPath?: string; cartOnly?: boolean }) {
   const org = useMemo(() => decodeURIComponent(organization), [organization]);
   const nativeStorefrontPath = appPath(storefrontPath ?? `/${encodeURIComponent(locale)}/retail/${encodeURIComponent(org)}`);
   const nativeCheckoutPath = appPath(checkoutPath ?? `/${encodeURIComponent(locale)}/retail/${encodeURIComponent(org)}/checkout`);
@@ -105,7 +105,7 @@ export default function RetailCheckoutClient({ locale, organization, storefrontP
   const selectedMethod = methods.find((method) => method.method === paymentMethod);
   const availableCashModes = selectedMethod?.cashModes?.filter((mode) => mode === "COUNTER" ||
     (mode === "PICKUP" && type === "PICK_UP") || (mode === "COURIER" && type === "DELIVERY")) ?? [];
-  const loginHref = appPath(`/${encodeURIComponent(locale)}/login?callbackUrl=${encodeURIComponent(nativeCheckoutPath)}`);
+  const loginHref = appPath(`/${encodeURIComponent(locale)}/login?callbackUrl=${encodeURIComponent(cartOnly ? `${nativeStorefrontPath}/cart` : nativeCheckoutPath)}`);
   const submitCheckout = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
@@ -176,7 +176,7 @@ export default function RetailCheckoutClient({ locale, organization, storefrontP
   return <main dir="rtl" lang="fa" className="min-h-screen bg-[#f8f7f4] px-4 py-8 text-[#24241f] md:px-8">
     <div className="mx-auto max-w-3xl">
       <a href={nativeStorefrontPath} className="text-sm text-[#766d61]">بازگشت به فروشگاه</a>
-      <h1 className="mt-5 text-3xl font-semibold">تکمیل سفارش</h1>
+      <h1 className="mt-5 text-3xl font-semibold">{cartOnly ? "سبد خرید" : "تکمیل سفارش"}</h1>
       {loading ? <p role="status" className="mt-8 rounded-2xl bg-white p-8">در حال دریافت اطلاعات…</p> : authenticated === false ? <section className="mt-7 rounded-2xl bg-white p-7"><p>برای مشاهده سبد خرید و ثبت سفارش، ابتدا وارد حساب کاربری شوید.</p><a className="mt-5 inline-block rounded-full bg-[#292a24] px-6 py-3 text-sm text-white" href={loginHref}>ورود به حساب کاربری</a></section> : <>
         {error && <p role="alert" className="mt-5 rounded-xl bg-[#fff1ed] p-4 text-sm text-[#8c3329]">{error}</p>}
         {order ? <section className="mt-7 rounded-2xl bg-white p-6 md:p-8">
@@ -198,14 +198,14 @@ export default function RetailCheckoutClient({ locale, organization, storefrontP
           </div>}
         </section> : !items.length ? <section className="mt-7 rounded-2xl bg-white p-7"><p>سبد خرید شما خالی است.</p></section> : <>
           <section className="mt-7 rounded-2xl bg-white p-6"><h2 className="font-semibold">اقلام سبد خرید</h2><ul className="mt-4 divide-y divide-[#eeeae3]">{items.map((item, index) => { const quantity = item.quantity ?? 1; const unitPrice = itemUnitPrice(item); const linePrice = unitPrice === null ? null : unitPrice * quantity; const actionBusy = item.id ? cartItemBusy[item.id] : false; const title = item.productName ?? item.variant?.product?.name ?? item.name ?? "کالای فروشگاه"; const variantLabel = item.variant?.options?.length ? item.variant.options.map(optionText).join(" · ") : item.variantName ?? item.variant?.name; return <li key={item.id ?? index} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="font-medium">{title}</p>{variantLabel && <p className="mt-1 text-sm text-[#6e6a60]">گزینه: {variantLabel}</p>}{item.variant?.sku && <p className="mt-1 text-xs text-[#77736a]" dir="ltr">SKU: {item.variant.sku}</p>}<p className="mt-2 text-sm">{unitPrice === null ? "قیمت در دسترس نیست" : money(unitPrice)} × {new Intl.NumberFormat("fa-IR").format(quantity)}{linePrice !== null && <strong className="mr-3">{money(linePrice)}</strong>}</p></div><div className="flex shrink-0 items-center gap-2"><button type="button" aria-label={`کم‌کردن تعداد ${title}`} disabled={actionBusy || quantity <= 1 || !item.id} onClick={() => void changeCartItem(item, quantity - 1)} className="h-10 w-10 rounded-full border border-[#ddd9d0] disabled:opacity-40">−</button><span className="min-w-8 text-center" aria-live="polite">{new Intl.NumberFormat("fa-IR").format(quantity)}</span><button type="button" aria-label={`زیادکردن تعداد ${title}`} disabled={actionBusy || quantity >= 99 || !item.id} onClick={() => void changeCartItem(item, quantity + 1)} className="h-10 w-10 rounded-full border border-[#ddd9d0] disabled:opacity-40">+</button><button type="button" disabled={actionBusy || !item.id} onClick={() => void changeCartItem(item, null)} className="mr-2 min-h-10 rounded-full border border-[#e7c9c4] px-3 text-xs text-[#8c3329] disabled:opacity-40">حذف</button></div></li>; })}</ul><div className="mt-4 border-t border-[#eeeae3] pt-4 text-sm"><span className="text-[#77736a]">جمع کالاها، محاسبه‌شده در سرور</span><strong className="float-left">{typeof cart?.subtotal === "number" ? money(cart.subtotal) : "پس از محاسبه سرور"}</strong></div><p className="mt-3 text-xs text-[#77736a]">قیمت نهایی و موجودی هنگام ثبت سفارش دوباره در سرور بررسی می‌شود.</p></section>
-          <form onSubmit={(event) => void submitCheckout(event)} className="mt-5 space-y-5 rounded-2xl bg-white p-6 md:p-8">
+          {cartOnly ? <a href={nativeCheckoutPath} className="mt-5 block min-h-12 rounded-full bg-[#292a24] px-6 py-3 text-center text-sm text-white">ادامه و ثبت سفارش</a> : <form onSubmit={(event) => void submitCheckout(event)} className="mt-5 space-y-5 rounded-2xl bg-white p-6 md:p-8">
             <fieldset><legend className="font-semibold">روش دریافت</legend><div className="mt-3 flex gap-5 text-sm"><label className="flex items-center gap-2"><input type="radio" name="type" checked={type === "PICK_UP"} onChange={() => { setType("PICK_UP"); if (cashMode === "COURIER") setCashMode("COUNTER"); }} />دریافت حضوری</label><label className="flex items-center gap-2"><input type="radio" name="type" checked={type === "DELIVERY"} onChange={() => { setType("DELIVERY"); if (cashMode === "PICKUP") setCashMode("COUNTER"); }} />ارسال با پیک</label></div></fieldset>
             {type === "DELIVERY" && <label className="block text-sm">نشانی تحویل<textarea required value={deliveryAddress} onChange={(event) => setDeliveryAddress(event.target.value)} className="mt-2 min-h-24 w-full rounded-xl border border-[#ddd9d0] p-3" /></label>}
             <label className="block text-sm">کد تخفیف (اختیاری)<input value={couponCode} onChange={(event) => setCouponCode(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-[#ddd9d0] px-3" /></label>
             <label className="block text-sm">روش پرداخت<select required value={paymentMethod} onChange={(event) => { setPaymentMethod(event.target.value); const nextCash = methods.find((method) => method.method === event.target.value)?.cashModes?.[0]; setCashMode(nextCash ?? ""); }} className="mt-2 min-h-11 w-full rounded-xl border border-[#ddd9d0] bg-white px-3"><option value="">انتخاب کنید</option>{methods.map((method) => <option key={method.method} value={method.method}>{method.label}</option>)}</select></label>
             {selectedMethod?.method === "CASH" && !!availableCashModes.length && <label className="block text-sm">شیوه پرداخت نقدی<select value={cashMode} onChange={(event) => setCashMode(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-[#ddd9d0] bg-white px-3">{availableCashModes.map((mode) => <option key={mode} value={mode}>{cashModeText[mode] ?? mode}</option>)}</select></label>}
             <button disabled={busy || !methods.length} className="min-h-12 w-full rounded-full bg-[#292a24] px-6 py-3 text-sm text-white disabled:opacity-50">{busy ? "در حال ثبت سفارش…" : "ثبت سفارش"}</button>
-          </form>
+          </form>}
         </>}
       </>}
     </div>

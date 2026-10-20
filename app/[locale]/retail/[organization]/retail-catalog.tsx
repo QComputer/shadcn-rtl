@@ -65,7 +65,7 @@ const cartErrorText = (value: unknown) => value instanceof Error && /currently a
   ? "موجودی این گزینه برای این تعداد کافی نیست. تعداد را کم کنید یا گزینه دیگری را انتخاب کنید."
   : value instanceof Error ? value.message : "افزودن کالا به سبد خرید ممکن نشد.";
 
-export default function RetailLiveCatalog({ view, productSlug, storefrontPath, checkoutPath }: { view: RetailView; productSlug?: string; storefrontPath?: string; checkoutPath?: string }) {
+export default function RetailLiveCatalog({ view, productSlug, storefrontPath, checkoutPath, embedded = false }: { view: RetailView; productSlug?: string; storefrontPath?: string; checkoutPath?: string; embedded?: boolean }) {
   const [products, setProducts] = useState(view.products);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
@@ -243,7 +243,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
     {view.previewOnly && <div className="bg-[#252720] px-4 py-2 text-center text-xs text-white">پیش‌نمایش نمایشی · این محصولات و تصاویر نمونه هستند و برای خرید واقعی نیستند</div>}
     {online === false && <div role="status" aria-live="polite" className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-950">اتصال اینترنت قطع است. اطلاعات همین صفحه در دسترس می‌ماند؛ برای تازه‌کردن محصولات یا ادامه خرید دوباره متصل شوید.</div>}
     {reconnected && online && <div role="status" aria-live="polite" className="border-b border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm text-emerald-950">اتصال برقرار شد؛ فهرست فروشگاه دوباره بررسی می‌شود.</div>}
-    <header className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 md:px-10 md:py-5">
+    {!embedded && <><header className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 md:px-10 md:py-5">
       <a href={base} className="flex min-w-0 items-center gap-3 text-lg font-bold tracking-tight md:text-xl" aria-label={`صفحه اصلی فروشگاه ${view.name}`}>
         {view.branding.logo && <Image src={view.branding.logo} width={42} height={42} unoptimized alt={view.name} className="h-10 w-10 shrink-0 rounded-xl object-contain" />}
         <span className="truncate">{view.name}</span>
@@ -258,7 +258,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
       </div>
       <button type="button" onClick={() => void shareStore()} className="min-h-11 shrink-0 rounded-full border border-[#d9d5cd] bg-white px-5 py-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b7653]">هم‌رسانی نشانی فروشگاه</button>
       {shareMessage && <p role="status" aria-live="polite" className="text-xs text-[#6e6a60] md:basis-full">{shareMessage}</p>}
-    </section>
+    </section></>}
     {!productSlug && <>
     <section className="mx-auto grid max-w-7xl gap-5 px-4 pb-8 md:grid-cols-[1fr_1.15fr] md:px-10">
       <div className="flex min-h-[340px] flex-col justify-center rounded-[2rem] bg-[#e9e5dc] p-8 md:min-h-[460px] md:p-14">
@@ -310,12 +310,12 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
           {(detail.brand || detail.attributes.length > 0 || detail.variants.some((variant) => variant.options.length > 0)) && <section className="mt-8 border-t border-[#dfdcd4] pt-5"><h2 className="text-lg font-semibold">مشخصات محصول</h2><dl className="mt-3 divide-y divide-[#e8e5de]">{detail.brand && <div className="flex justify-between gap-4 py-3 text-sm"><dt className="text-[#77736a]">برند</dt><dd className="font-medium">{detail.brand}</dd></div>}{detail.attributes.map((attribute) => <div key={attribute.key} className="flex justify-between gap-4 py-3 text-sm"><dt className="text-[#77736a]">{attribute.label}</dt><dd className="font-medium">{attributeText(attribute)}</dd></div>)}{selectedVariantFor(detail)?.options.map((option) => <div key={option.key} className="flex justify-between gap-4 py-3 text-sm"><dt className="text-[#77736a]">{option.label}</dt><dd className="font-medium">{attributeText(option)}</dd></div>)}</dl></section>}
         </div></article>}
     </section>}
-    <footer className="border-t border-[#e1ded7] bg-[#f0eee8] px-5 py-8 text-center text-sm text-[#6e6a60]">{view.name} · فروشگاه خرده‌فروشی بازارباز</footer>
+    {!embedded && <><footer className="border-t border-[#e1ded7] bg-[#f0eee8] px-5 py-8 text-center text-sm text-[#6e6a60]">{view.name} · فروشگاه خرده‌فروشی بازارباز</footer>
     <nav aria-label="پیمایش موبایل فروشگاه" className={`fixed inset-x-0 bottom-0 z-40 grid ${view.previewOnly ? "grid-cols-2" : "grid-cols-4"} border-t border-[#e2dfd8] bg-[#fffefa]/95 px-2 pt-2 shadow-[0_-6px_24px_rgba(36,36,31,.08)] backdrop-blur md:hidden`} style={{ paddingBottom: "max(.5rem, env(safe-area-inset-bottom))" }}>
       <a href={base} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[10px] text-[#4c4a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#9b7653]"><Home className="h-4 w-4" /><span>فروشگاه</span></a>
       <a href={`${base}#categories`} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[10px] text-[#4c4a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#9b7653]"><LayoutGrid className="h-4 w-4" /><span>دسته‌ها</span></a>
       {!view.previewOnly && <a href={checkoutHref} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[10px] text-[#4c4a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#9b7653]"><ShoppingBag className="h-4 w-4" /><span>سبد</span></a>}
       {!view.previewOnly && <a href={accountHref} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[10px] text-[#4c4a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#9b7653]"><UserRound className="h-4 w-4" /><span>حساب</span></a>}
-    </nav>
+    </nav></>}
   </main>;
 }

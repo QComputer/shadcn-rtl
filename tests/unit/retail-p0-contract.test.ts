@@ -21,6 +21,18 @@ const validCreate = {
 };
 
 describe("Retail P0 catalog contracts", () => {
+  it("accepts explicit boolean inventory policies and preserves omitted updates", () => {
+    for (const trackInventory of [true, false]) {
+      assert.equal(retailProductCreateSchema.parse({ ...validCreate, trackInventory }).trackInventory, trackInventory);
+      assert.equal(retailProductUpdateSchema.parse({ trackInventory }).trackInventory, trackInventory);
+    }
+    assert.equal(retailProductUpdateSchema.parse({ name: "Legacy" }).trackInventory, undefined);
+    for (const trackInventory of ["false", 0, 1, null]) {
+      assert.equal(retailProductUpdateSchema.safeParse({ trackInventory }).success, false);
+      assert.equal(retailProductCreateSchema.safeParse({ ...validCreate, trackInventory }).success, false);
+    }
+  });
+
   it("accepts generic brand, taxonomy, typed option assignments, variant SKUs, and ordered galleries", () => {
     const result = retailProductCreateSchema.safeParse(validCreate);
     assert.equal(result.success, true);

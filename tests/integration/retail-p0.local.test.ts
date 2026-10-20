@@ -154,6 +154,7 @@ test("Retail P0 merchant catalog, public projection, cart, and checkout persist 
     productIds.push(created.id);
     productSlug = created.slug;
     variantIds.push(...created.variants.map((variant: { id: string }) => variant.id));
+    assert.equal(created.trackInventory, true, "new products retain tracked inventory by default");
     assert.equal(created.brand, "Generic Atelier");
     assert.deepEqual(new Set(created.categoryIds), new Set([categoryA.id, categoryA2.id]));
     assert.deepEqual(created.tags.map((tag: { name: string }) => tag.name).sort(), ["Everyday", "New season"]);
@@ -308,6 +309,50 @@ test("Retail P0 merchant catalog, public projection, cart, and checkout persist 
       { key: color.key, label: color.label, value: "Red", displayUnit: null },
       { key: size.key, label: size.label, value: "L", displayUnit: null },
     ], "order option labels and values remain the checkout-time snapshot");
+
+    // Controlled legacy-style fixture: policy-only edits preserve stock, media,
+    // snapshots and tenant boundaries. Never run this against a shared database.
+    const beforePolicy = await merchant.getMerchantRetailProduct(context, created.id);
+    const movementsBeforePolicy = await db.inventoryMovement.count({ where: { variantId: firstVariant.id } });
+    const untracked = await merchant.updateMerchantRetailProduct(context, manager.id, created.id, { trackInventory: false });
+    assert.equal(untracked.trackInventory, false);
+    assert.deepEqual(untracked.variants, beforePolicy.variants);
+    assert.deepEqual(untracked.imageIds, beforePolicy.imageIds);
+    assert.equal((await merchant.getMerchantRetailProduct(context, created.id)).trackInventory, false);
+    await merchant.updateMerchantRetailProduct(context, manager.id, created.id, { description: "Policy omitted" });
+    assert.equal((await merchant.getMerchantRetailProduct(context, created.id)).trackInventory, false, "omitted policy retains legacy setting");
+    assert.equal(await db.inventoryMovement.count({ where: { variantId: firstVariant.id } }), movementsBeforePolicy);
+    await assert.rejects(() => merchant.updateMerchantRetailProduct({ ...context, organizationId: organizationB.id, organizationSlug: orgBSlug }, manager.id, created.id, { trackInventory: true }), /Product not found/);
+    await db.productVariant.update({ where: { id: firstVariant.id }, data: { reservedQuantity: 0 } });
+    await merchant.updateMerchantRetailProduct(context, manager.id, created.id, { variantUpdates: [{ id: firstVariant.id, inventory: 0, allowBackOrder: false }] });
+    const runCheckout = (actor: string, key: string) => checkoutModule.createRetailCheckout(actor, { organization: orgASlug, idempotencyKey: key, type: "PICK_UP", paymentMethod: "CASH", cashMode: "COUNTER" });
+    await carts.addItem(orgASlug, customer.id, null, { variantId: firstVariant.id, quantity: 1 });
+    const untrackedKey = randomUUID();
+    await runCheckout(customer.id, untrackedKey);
+    const untrackedOrder = await db.order.findFirstOrThrow({ where: { retailCheckoutKey: untrackedKey } });
+    orderIds.push(untrackedOrder.id);
+    assert.equal((await db.productVariant.findUniqueOrThrow({ where: { id: firstVariant.id } })).inventory, 0, "untracked sales do not decrement inventory");
+    assert.equal(await db.inventoryMovement.count({ where: { orderId: untrackedOrder.id } }), 0);
+    await carts.addItem(orgASlug, customer.id, null, { variantId: firstVariant.id, quantity: 1 });
+    const enabledPolicy = await merchant.updateMerchantRetailProduct(context, manager.id, created.id, { trackInventory: true });
+    assert.equal(enabledPolicy.trackInventory, true);
+    assert.equal(enabledPolicy.variants.find(v => v.id === firstVariant.id)!.inventory, 0);
+    const rejectedKey = randomUUID();
+    await assert.rejects(() => runCheckout(customer.id, rejectedKey), /stock|inventory|available/i);
+    assert.equal(await db.order.count({ where: { retailCheckoutKey: rejectedKey } }), 0, "checkout rechecks policy even for carts filled while untracked");
+    await merchant.updateMerchantRetailProduct(context, manager.id, created.id, { variantUpdates: [{ id: firstVariant.id, inventory: 1 }] });
+    await carts.addItem(orgASlug, otherCustomer.id, null, { variantId: firstVariant.id, quantity: 1 });
+    const secondCart = await db.shopCart.findFirstOrThrow({ where: { organizationSlug: orgASlug, customerId: otherCustomer.id } });
+    cartIds.push(secondCart.id);
+    const raceKeys = [randomUUID(), randomUUID()];
+    const outcomes = await Promise.allSettled([runCheckout(customer.id, raceKeys[0]!), runCheckout(otherCustomer.id, raceKeys[1]!)]);
+    assert.equal(outcomes.filter(result => result.status === "fulfilled").length, 1, "only one buyer can purchase the last tracked unit");
+    const raceOrders = await db.order.findMany({ where: { retailCheckoutKey: { in: raceKeys } } });
+    orderIds.push(...raceOrders.map(row => row.id));
+    assert.equal(raceOrders.length, 1);
+    assert.equal((await db.productVariant.findUniqueOrThrow({ where: { id: firstVariant.id } })).inventory, 0);
+    assert.equal(await db.inventoryMovement.count({ where: { orderId: raceOrders[0]!.id, reason: "ORDER_CREATED", quantityDelta: -1 } }), 1);
+    assert.deepEqual(await db.orderItem.findFirstOrThrow({ where: { id: historicalOrderItem.id } }), historicalOrderItem, "policy and inventory edits leave historical snapshots unchanged");
 
     await merchant.updateMerchantRetailProduct(context, manager.id, created.id, { isActive: false });
     await assert.rejects(() => catalog.getPublicCatalogProduct(orgASlug, productSlug), /Product not found/);

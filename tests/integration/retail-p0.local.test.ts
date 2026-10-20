@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { mock, test } from "node:test";
+import { buildLegacyProductMediaBackfillSql } from "../../scripts/retail/backfill-legacy-product-media.mjs";
 
 const enabled = process.env.RETAIL_P0_PG_ACCEPTANCE === "1";
 
@@ -103,6 +104,42 @@ test("Retail P0 merchant catalog, public projection, cart, and checkout persist 
     ]);
     imageIds.push(...images.map((image) => image.id));
     const [productImage, variantImage, foreignImage, privateImage] = images;
+    // Legacy records retain their identity and scalar price; only verified media
+    // associations are repaired. No inventory or variants are fabricated.
+    const legacyCases = await Promise.all([
+      { slug: "legacy-owned", image: productImage.url },
+      { slug: "legacy-foreign", image: foreignImage.url },
+      { slug: "legacy-private", image: privateImage.url },
+      { slug: "legacy-modern", image: productImage.url, images: { connect: { id: variantImage.id } } },
+      { slug: "legacy-deleted", image: productImage.url, deletedAt: new Date() },
+    ].map((fixture) => db.product.create({ data: {
+      organizationId: organizationA.id, organizationSlug: orgASlug,
+      categoryId: categoryA.id, name: `Legacy ${fixture.slug} ${suffix}`,
+      basePrice: 3480, isActive: true, ...fixture, slug: `${fixture.slug}-${suffix}`,
+    } })));
+    productIds.push(...legacyCases.map((product) => product.id));
+    const backfillOptions = { organizationId: organizationA.id, expectedDatabase: "retail_p0_20261019" };
+    const dryRun = await db.$queryRawUnsafe<Array<{ productId: string; imageId: string }>>(buildLegacyProductMediaBackfillSql(backfillOptions));
+    assert.deepEqual(dryRun.map((row) => [row.productId, row.imageId]), [[legacyCases[0].id, productImage.id]]);
+    assert.deepEqual(await db.$queryRawUnsafe(buildLegacyProductMediaBackfillSql({ ...backfillOptions, expectedDatabase: "wrong_database" })), []);
+    await db.$transaction((tx) => tx.$queryRawUnsafe(buildLegacyProductMediaBackfillSql({ ...backfillOptions, apply: true })), { isolationLevel: "Serializable" });
+    assert.deepEqual(await db.$queryRawUnsafe(buildLegacyProductMediaBackfillSql({ ...backfillOptions, apply: true })), [], "backfill is idempotent");
+    const legacy = await merchant.updateMerchantRetailProduct(context, manager.id, legacyCases[0].id, {
+      description: "Verified legacy metadata update", imageIds: [productImage.id], variantUpdates: [], newVariants: [],
+    });
+    assert.equal(legacy.variants.length, 0);
+    assert.deepEqual(legacy.imageIds, [productImage.id]);
+    assert.equal((await db.product.findUniqueOrThrow({ where: { id: legacy.id } })).basePrice.toString(), "3480");
+    const legacyPublic = await catalog.getPublicCatalogProduct(orgASlug, legacyCases[0].slug!);
+    assert.equal(legacyPublic.orderable, false);
+    assert.equal(legacyPublic.media.detail, productImage.url);
+    await assert.rejects(() => merchant.updateMerchantRetailProduct(context, manager.id, legacy.id, { isActive: true }), /at least one variant/);
+    await assert.rejects(() => merchant.updateMerchantRetailProduct(context, manager.id, legacy.id, { imageIds: [foreignImage.id] }), /image/i);
+    await merchant.updateMerchantRetailProduct(context, manager.id, legacy.id, { isActive: false });
+    assert.deepEqual((await db.product.findUniqueOrThrow({ where: { id: legacyCases[3].id }, include: { images: true } })).images.map((image) => image.id), [variantImage.id], "existing modern gallery remains untouched");
+    for (const unsafe of [legacyCases[1], legacyCases[2], legacyCases[4]]) {
+      assert.equal(await db.image.count({ where: { products: { some: { id: unsafe.id } } } }), 0, "private, foreign, and deleted legacy records are skipped");
+    }
     const variants = [
       { name: "Red S", sku: `${skuPrefix}-RS`, price: 1200, inventory: 5, allowBackOrder: false, options: [{ definitionId: color.id, value: "Red" }, { definitionId: size.id, value: "S" }], imageIds: [variantImage.id, productImage.id] },
       { name: "Red M", sku: `${skuPrefix}-RM`, price: 1300, inventory: 4, allowBackOrder: false, options: [{ definitionId: color.id, value: "Red" }, { definitionId: size.id, value: "M" }], imageIds: [] },
@@ -153,7 +190,7 @@ test("Retail P0 merchant catalog, public projection, cart, and checkout persist 
     }), /active category belonging to this store/i);
     const duplicateSkuInput = { name: `Duplicate SKU ${suffix}`, description: null, categoryId: categoryA.id, imageIds: [productImage.id], attributes: [], variants: [{ ...variants[0], sku: variants[0].sku }] };
     await assert.rejects(() => merchant.createMerchantRetailProduct(context, manager.id, duplicateSkuInput), /SKU or product identifier is already in use/i);
-    assert.equal(await db.product.count({ where: { organizationId: organizationA.id, name: { contains: suffix } } }), 1, "all rejected creates roll back");
+    assert.equal(await db.product.count({ where: { organizationId: organizationA.id, name: { contains: suffix }, id: { notIn: legacyCases.map((product) => product.id) } } }), 1, "all rejected creates roll back");
 
     const firstVariant = created.variants[0];
     await db.productVariant.update({ where: { id: firstVariant.id }, data: { reservedQuantity: 2 } });

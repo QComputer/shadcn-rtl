@@ -31,6 +31,21 @@ function newVariant(definitions: Definition[]): VariantDraft {
   return { name: "", sku: "", price: "", inventory: "0", reservedQuantity: 0, allowBackOrder: false, options: Object.fromEntries(definitions.filter((definition) => definition.scope === "VARIANT_OPTION").map((definition) => [definition.id, ""])), imageIds: [] };
 }
 
+function restoreVariants(variants: VariantRecord[]): VariantDraft[] {
+  return variants.map((variant) => ({
+    id: variant.id, name: variant.name ?? "", sku: variant.sku ?? "",
+    price: variant.price === null ? "" : String(variant.price),
+    inventory: String(variant.inventory), reservedQuantity: variant.reservedQuantity,
+    allowBackOrder: variant.allowBackOrder,
+    options: Object.fromEntries(variant.options.map((option) => [option.definitionId, String(option.value)])),
+    imageIds: variant.imageIds ?? [],
+  }));
+}
+
+function recordSnapshot(product: ProductRecord) {
+  return JSON.stringify({ name: product.name, brand: product.brand ?? "", slug: product.slug ?? "", description: product.description ?? "", categoryId: product.category.id, categoryIds: product.categoryIds ?? [product.category.id], tagText: (product.tags ?? []).map((tag) => tag.name).join(", "), attributes: Object.fromEntries(product.attributes.map((attribute) => [attribute.definitionId, String(attribute.value)])), variants: restoreVariants(product.variants), selectedImageIds: product.images.map((image) => image.id) });
+}
+
 function valueFromInput(definition: Definition, value: string): string | number | boolean {
   if (definition.valueType === "NUMBER") return Number(value);
   if (definition.valueType === "BOOLEAN") return value === "true";
@@ -87,6 +102,30 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
   const [matrixDefinitions, setMatrixDefinitions] = useState<[string, string]>(["", ""]);
   const [imageGroupDefinitionId, setImageGroupDefinitionId] = useState("");
   const [imageGroupValue, setImageGroupValue] = useState("");
+  const [savedState, setSavedState] = useState<string | null>(null);
+  const editorState = JSON.stringify({ name, brand, slug, description, categoryId, categoryIds, tagText, attributes, variants, selectedImageIds });
+  const unsaved = savedState !== null && savedState !== editorState;
+  const leaveWarning = locale === "fa" ? "تغییرات ذخیره نشده‌اند. بدون ذخیره خارج می‌شوید؟" : locale === "ar" ? "لم يتم حفظ التغييرات. هل تريد المغادرة؟" : "You have unsaved changes. Leave without saving?";
+
+  useEffect(() => {
+    if (!unsaved) return;
+    const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    const beforeNavigate = (event: MouseEvent) => {
+      const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
+      if (!(link instanceof HTMLAnchorElement) || link.target === "_blank" || link.href === window.location.href || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
+      if (!window.confirm(leaveWarning)) { event.preventDefault(); event.stopPropagation(); }
+    };
+    // Chromium's Navigation API also covers client-side Back/Forward, which
+    // does not emit beforeunload when the router reuses the current document.
+    const navigation = (window as Window & { navigation?: EventTarget }).navigation;
+    const beforeHistoryNavigate = (event: Event & { navigationType?: string }) => {
+      if (event.navigationType === "traverse" && event.cancelable && !window.confirm(leaveWarning)) event.preventDefault();
+    };
+    window.addEventListener("beforeunload", beforeUnload);
+    document.addEventListener("click", beforeNavigate, true);
+    navigation?.addEventListener("navigate", beforeHistoryNavigate);
+    return () => { window.removeEventListener("beforeunload", beforeUnload); document.removeEventListener("click", beforeNavigate, true); navigation?.removeEventListener("navigate", beforeHistoryNavigate); };
+  }, [unsaved, leaveWarning]);
 
   const productAttributeDefinitions = useMemo(() => definitions.filter((definition) => definition.scope === "PRODUCT"), [definitions]);
   const optionDefinitions = useMemo(() => definitions.filter((definition) => definition.scope === "VARIANT_OPTION"), [definitions]);
@@ -95,6 +134,12 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
     let cancelled = false;
     async function load() {
       setBusy(true);
+      setSavedState(null);
+      setNotice("");
+      setPreview(false);
+      setMatrixDefinitions(["", ""]);
+      setImageGroupDefinitionId("");
+      setImageGroupValue("");
       setError("");
       try {
         const requests = ["/api/dashboard/retail/attributes", "/api/dashboard/retail/categories", "/api/dashboard/retail/media", "/api/dashboard/retail/context"].map((url) => fetch(url, { credentials: "same-origin" }));
@@ -111,6 +156,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
         setOrganizationSlug(contextData.organizationSlug ?? "");
         if (productData?.product) {
           const product = productData.product as ProductRecord;
+          setSavedState(recordSnapshot(product));
           setName(product.name);
           setBrand(product.brand ?? "");
           setSlug(product.slug ?? "");
@@ -126,20 +172,13 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
             return [...merged.values()];
           });
           setSelectedImageIds(product.images.map((image) => image.id));
-          setVariants(product.variants.map((variant) => ({
-            id: variant.id,
-            name: variant.name ?? "",
-            sku: variant.sku ?? "",
-            price: variant.price === null ? "" : String(variant.price),
-            inventory: String(variant.inventory),
-            reservedQuantity: variant.reservedQuantity,
-            allowBackOrder: variant.allowBackOrder,
-            options: Object.fromEntries(variant.options.map((option) => [option.definitionId, String(option.value)])),
-            imageIds: variant.imageIds ?? [],
-          })));
+          setVariants(restoreVariants(product.variants));
         } else {
+          setName(""); setBrand(""); setSlug(""); setDescription("");
+          setCategoryId(""); setCategoryIds([]); setTagText(""); setAttributes({}); setPublished(false);
           setVariants([newVariant(defs)]);
           setSelectedImageIds([]);
+          setSavedState(JSON.stringify({ name: "", brand: "", slug: "", description: "", categoryId: "", categoryIds: [], tagText: "", attributes: {}, variants: [newVariant(defs)], selectedImageIds: [] }));
         }
       } catch {
         if (!cancelled) setError(t.genericError);
@@ -165,7 +204,9 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
     if (!firstValues.length || !secondValues.length) return;
     const combinations = firstValues.flatMap((firstValue) => secondValues.map((secondValue) => ({ firstValue, secondValue })));
     setVariants((current) => {
-      const next = [...current];
+      // Replace the untouched initial row, while keeping every merchant-entered
+      // or persisted variant when generating a color × size matrix.
+      const next = current.filter((variant) => variant.id || variant.name.trim() || variant.sku.trim() || variant.price || variant.inventory !== "0" || variant.allowBackOrder || variant.imageIds.length || Object.values(variant.options).some(Boolean));
       for (const { firstValue, secondValue } of combinations) {
         const options = { [first.id]: firstValue, [second.id]: secondValue };
         const existingIndex = next.findIndex((variant) => variant.options[first.id] === firstValue && variant.options[second.id] === secondValue);
@@ -219,7 +260,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
     setSaving(true); setError(""); setNotice("");
     try {
       if (!categoryId) throw new Error("missing-category");
-      if (!variants.length || variants.some((variant) => !variant.name.trim() || !variant.price || !Number.isFinite(Number(variant.price)) || Number(variant.price) <= 0 || !Number.isInteger(Number(variant.inventory)) || Number(variant.inventory) < variant.reservedQuantity) || (action === "publish" && variants.some((variant) => !variant.sku.trim()))) throw new Error(t.variantsRequired);
+      if ((!variants.length && (!productId || action === "publish")) || variants.some((variant) => !variant.name.trim() || !variant.price || !Number.isFinite(Number(variant.price)) || Number(variant.price) <= 0 || !Number.isInteger(Number(variant.inventory)) || Number(variant.inventory) < variant.reservedQuantity) || (action === "publish" && variants.some((variant) => !variant.sku.trim()))) throw new Error(t.variantsRequired);
       if (action === "publish" && selectedImageIds.length === 0) throw new Error(t.variantsRequired);
       const variantInput = variants.map((variant) => ({
         name: variant.name.trim(), sku: variant.sku.trim() || null, price: Number(variant.price), inventory: Number(variant.inventory), allowBackOrder: variant.allowBackOrder,
@@ -246,6 +287,14 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
         return;
       }
       const updated = data.product as ProductRecord;
+      setName(updated.name); setBrand(updated.brand ?? ""); setDescription(updated.description ?? "");
+      setCategoryId(updated.category.id); setCategoryIds(updated.categoryIds ?? [updated.category.id]);
+      setTagText((updated.tags ?? []).map((tag) => tag.name).join(", "));
+      setAttributes(Object.fromEntries(updated.attributes.map((attribute) => [attribute.definitionId, String(attribute.value)])));
+      setSelectedImageIds(updated.images.map((image) => image.id));
+      setVariants(restoreVariants(updated.variants));
+      setSlug(updated.slug ?? "");
+      setSavedState(recordSnapshot(updated));
       setPublished(updated.isActive);
       setNotice(action === "publish" ? t.publishNotice : action === "unpublish" ? t.unpublishNotice : t.saved);
       if (action === "publish") setPreview(false);
@@ -269,6 +318,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
       <ErrorMessage text={error} />
       {notice && <p role="status" className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm text-emerald-800 dark:text-emerald-200">{notice}</p>}
       {!published && <div className="rounded-lg border border-amber-400/50 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/20 dark:text-amber-100">{t.draft}</div>}
+      {productId && variants.length === 0 && <p role="status" className="rounded-lg border border-amber-400/50 bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950/20 dark:text-amber-100">{locale === "fa" ? "اطلاعات خرید این محصول قدیمی هنوز تکمیل نشده است. تصویر و مشخصات را می‌توانید ذخیره کنید؛ برای فعال شدن خرید، گونه‌های واقعی رنگ و سایز را با شناسه کالا، قیمت و موجودی دقیق وارد کنید." : locale === "ar" ? "بيانات شراء هذا المنتج القديم غير مكتملة. يمكنك حفظ الصور والتفاصيل؛ أضف خيارات حقيقية مع الرمز والسعر والمخزون لتمكين الشراء." : "This legacy product has no purchase options yet. You can save images and details; add real variants with accurate SKU, price and stock before enabling purchases."}</p>}
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <fieldset disabled={saving || fileBusy} className="min-w-0 space-y-5 border-0 p-0">

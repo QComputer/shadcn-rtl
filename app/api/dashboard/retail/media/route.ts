@@ -10,7 +10,14 @@ export async function GET() {
   try {
     const { context } = await requireRetailMerchantContext();
     const images = await prisma.image.findMany({
-      where: { organizationId: context.organizationId, purpose: "retail-product", access: "PUBLIC" },
+      where: {
+        organizationId: context.organizationId,
+        access: "PUBLIC",
+        OR: [
+          { purpose: "retail-product" },
+          { products: { some: { organizationId: context.organizationId, deletedAt: null } } },
+        ],
+      },
       orderBy: { createdAt: "desc" },
       take: 100,
       select: { id: true, url: true, filename: true, mimeType: true, sizeBytes: true, access: true },

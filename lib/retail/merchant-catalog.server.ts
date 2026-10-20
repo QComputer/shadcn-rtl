@@ -475,7 +475,9 @@ export async function updateMerchantRetailProduct(context: TenantContext, actorU
     }
     const variants = await tx.productVariant.findMany({ where: { productId, deletedAt: null }, select: { price: true, sku: true } });
     const shouldBePublished = data.isActive ?? existing.isActive;
-    if (shouldBePublished) {
+    // Legacy published products may have no structured inventory yet. Keep
+    // metadata editable, but require complete inventory for an explicit publish.
+    if (shouldBePublished && (data.isActive === true || variants.length > 0)) {
       if (!images && (await tx.product.count({ where: { id: productId, images: { some: { organizationId: context.organizationId, access: "PUBLIC" } } } })) === 0) throw new ApiError(400, "Add at least one public image owned by this store before publishing.");
       if (images && images.length === 0) throw new ApiError(400, "Add at least one public image owned by this store before publishing.");
       if (variants.length === 0 || variants.some((variant) => variant.price === null || variant.price.lessThanOrEqualTo(0))) throw new ApiError(400, "Every published product needs at least one variant with a price greater than zero.");
@@ -483,7 +485,7 @@ export async function updateMerchantRetailProduct(context: TenantContext, actorU
       await requireOwnedCategory(tx, context.organizationId, nextCategoryId);
     }
     const minimumPrice = variants.reduce<Prisma.Decimal | null>((lowest, variant) => variant.price && (!lowest || variant.price.lessThan(lowest) ? variant.price : lowest), null);
-    if (!minimumPrice) throw new ApiError(400, "A product must keep at least one priced variant.");
+    if (variants.length > 0 && !minimumPrice) throw new ApiError(400, "A product must keep at least one priced variant.");
     const updated = await tx.product.update({ where: { id: productId }, data: {
       ...(data.name === undefined ? {} : { name: data.name }),
       ...(data.brand === undefined ? {} : { brand: data.brand }),
@@ -492,7 +494,7 @@ export async function updateMerchantRetailProduct(context: TenantContext, actorU
       ...(data.categoryId === undefined ? {} : { categoryId: data.categoryId }),
       ...(images === undefined ? {} : { image: images[0]?.url ?? null, images: { set: data.imageIds?.map((id) => ({ id })) ?? [] } }),
       ...(data.isActive === undefined ? {} : { isActive: data.isActive }),
-      basePrice: minimumPrice,
+      ...(minimumPrice ? { basePrice: minimumPrice } : {}),
     }, select: merchantProductSelect });
     return updated;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });

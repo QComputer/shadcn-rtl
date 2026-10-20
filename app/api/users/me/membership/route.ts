@@ -28,6 +28,7 @@ export async function GET() {
             name: true,
             slug: true,
             type: true,
+            vertical: true,
             capabilitiesInitializedAt: true,
             capabilities: {
               where: { status: "ACTIVE" },
@@ -45,6 +46,7 @@ export async function GET() {
       organizationName: membership.organization.name,
       organizationSlug: membership.organization.slug,
       organizationType: membership.organization.type,
+      organizationVertical: membership.organization.vertical,
       organizationCapabilities: membership.organization.capabilitiesInitializedAt
         ? membership.organization.capabilities.map((capability) => capability.key)
         : [membership.organization.type],

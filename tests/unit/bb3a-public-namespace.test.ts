@@ -165,12 +165,13 @@ describe("BB-3A custom-domain public namespace", () => {
   });
 
   it("shares organization branding across root and both capability surfaces", () => {
-    for (const file of [
-      "app/[locale]/[slug]/page.tsx",
-      "app/[locale]/[slug]/shop/layout.tsx",
-      "app/[locale]/[slug]/appointment/layout.tsx",
+    assert.match(readFileSync("app/[locale]/[slug]/page.tsx", "utf8"), /resolveOrganizationBranding/);
+    for (const [route, content] of [
+      ["app/[locale]/[slug]/shop/layout.tsx", "app/[locale]/[slug]/shop/shop-layout-content.tsx"],
+      ["app/[locale]/[slug]/appointment/layout.tsx", "app/[locale]/[slug]/appointment/appointment-layout-content.tsx"],
     ]) {
-      assert.match(readFileSync(file, "utf8"), /resolveOrganizationBranding/, file);
+      assert.match(readFileSync(route, "utf8"), /LayoutContent \{\.\.\.props\}/, route);
+      assert.match(readFileSync(content, "utf8"), /resolveOrganizationBranding/, content);
     }
   });
 
@@ -197,11 +198,12 @@ describe("BB-3A custom-domain public namespace", () => {
     assert.match(rootLinkSource, /return <a href=\{navigation\.href\}/);
     assert.match(rootLinkSource, /return <Link href=\{navigation\.href\}/);
 
-    for (const file of [
-      "app/[locale]/[slug]/shop/layout.tsx",
-      "app/[locale]/[slug]/appointment/layout.tsx",
+    for (const [route, content] of [
+      ["app/[locale]/[slug]/shop/layout.tsx", "app/[locale]/[slug]/shop/shop-layout-content.tsx"],
+      ["app/[locale]/[slug]/appointment/layout.tsx", "app/[locale]/[slug]/appointment/appointment-layout-content.tsx"],
     ]) {
-      assert.match(readFileSync(file, "utf8"), /OrganizationRootNavigationProvider/);
+      assert.match(readFileSync(route, "utf8"), /LayoutContent \{\.\.\.props\}/, route);
+      assert.match(readFileSync(content, "utf8"), /OrganizationRootNavigationProvider/, content);
     }
     assert.match(readFileSync("lib/contexts/organization-root-navigation-context.tsx", "utf8"), /mode: "next"/);
   });
@@ -242,6 +244,8 @@ describe("BB-3A custom-domain public namespace", () => {
   });
 
   it("keeps static locale routes alongside the dynamic organization root", () => {
+    assert.equal(existsSync("app/(platform-root)/layout.tsx"), true);
+    assert.equal(existsSync("app/[locale]/layout.tsx"), true);
     assert.equal(existsSync("app/[locale]/[slug]/page.tsx"), true);
     for (const entry of readdirSync("app/[locale]", { withFileTypes: true })) {
       if (entry.isDirectory() && entry.name !== "[slug]") {

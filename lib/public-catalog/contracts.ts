@@ -31,7 +31,9 @@ export type PublicCatalogVariant = {
   orderable: boolean;
   sku: string | null;
   options: PublicCatalogAttribute[];
+  media?: PublicCatalogVariantMedia;
 };
+export type PublicCatalogVariantMedia = { gallery: string[] };
 export type PublicCatalogAttribute = {
   key: string;
   label: string;
@@ -53,6 +55,7 @@ export type PublicCatalogProduct = {
   id: string;
   slug: string | null;
   name: string;
+  brand?: string | null;
   description: string | null;
   category: { id: string; slug: string | null; name: string };
   price: PublicCatalogMoney;
@@ -70,13 +73,14 @@ export const publicCatalogAttributeSchema = z.object({
   value: z.union([z.string(), z.number().finite(), z.boolean()]), displayUnit: z.string().nullable(), filterable: z.boolean(),
 }).strict();
 export const publicCatalogProductSchema = z.object({
-  id: z.string().min(1), slug: z.string().nullable(), name: z.string().min(1), description: z.string().nullable(),
+  id: z.string().min(1), slug: z.string().nullable(), name: z.string().min(1), brand: z.string().nullable().optional(), description: z.string().nullable(),
   category: z.object({ id: z.string().min(1), slug: z.string().nullable(), name: z.string().min(1) }).strict(),
   price: publicCatalogMoneySchema, listPrice: publicCatalogMoneySchema.nullable(),
   media: z.object({ card: z.string().nullable(), detail: z.string().nullable(), alt: z.string(), gallery: z.array(z.string()) }).strict(),
   orderable: z.boolean(), attributes: z.array(publicCatalogAttributeSchema),
   variants: z.array(z.object({ id: z.string().min(1), name: z.string().nullable(), price: publicCatalogMoneySchema,
-    listPrice: publicCatalogMoneySchema.nullable(), orderable: z.boolean(), sku: z.string().nullable(), options: z.array(publicCatalogAttributeSchema) }).strict()),
+    listPrice: publicCatalogMoneySchema.nullable(), orderable: z.boolean(), sku: z.string().nullable(), options: z.array(publicCatalogAttributeSchema),
+    media: z.object({ gallery: z.array(z.string()) }).strict().optional() }).strict()),
   purchase: z.object({ href: z.string(), productId: z.string() }).strict().nullable(),
 }).strict();
 export const publicCatalogCategorySchema = z.object({ id: z.string(), slug: z.string().nullable(), name: z.string(), description: z.string().nullable(), sortOrder: z.number().int(), image: z.string().nullable(), productCount: z.number().int().nonnegative() }).strict();

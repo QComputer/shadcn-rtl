@@ -14,10 +14,11 @@ import { tagIdentityKey } from "@/lib/retail/product-taxonomy-utils";
 const publicVariantSelect = {
   id: true, sku: true, name: true, price: true, inventory: true, reservedQuantity: true, allowBackOrder: true,
   optionValues: { where: { definition: { isActive: true, scope: "VARIANT_OPTION" } }, select: { valueText: true, valueNumber: true, valueBoolean: true, definition: { select: { organizationId: true, key: true, label: true, localizedLabels: true, valueType: true, displayUnit: true, isFilterable: true } } } },
+  galleryImages: { orderBy: { sortOrder: "asc" }, select: { image: { select: { url: true, organizationId: true, access: true } } } },
 } satisfies Prisma.ProductVariantSelect;
 const publicCategorySelect = { id: true, slug: true, name: true } satisfies Prisma.ProductCategorySelect;
 const publicProductSelect = {
-  id: true, slug: true, name: true, description: true, basePrice: true, image: true, images: { select: { url: true, organizationId: true, access: true } },
+  id: true, slug: true, name: true, brand: true, description: true, basePrice: true, image: true, images: { select: { url: true, organizationId: true, access: true } },
   discountType: true, discountValue: true, trackInventory: true,
   category: { select: publicCategorySelect },
   attributeValues: { where: { definition: { isActive: true, scope: "PRODUCT" } }, select: { valueText: true, valueNumber: true, valueBoolean: true, definition: { select: { organizationId: true, key: true, label: true, localizedLabels: true, valueType: true, displayUnit: true, isFilterable: true } } } },
@@ -46,7 +47,7 @@ function retailProduct(product: Prisma.ProductGetPayload<{ select: typeof public
     image: primary,
     images: eligibleImages.filter((url) => url !== primary),
     attributes: product.attributeValues.map((value) => publicAttribute(value, organizationId)).filter((value) => value !== null),
-    variants: product.variants.map((variant) => ({ ...variant, options: variant.optionValues.map((value) => publicAttribute(value, organizationId)).filter((value) => value !== null) })),
+    variants: product.variants.map((variant) => ({ ...variant, media: { gallery: variant.galleryImages.filter((entry) => entry.image.access === "PUBLIC" && entry.image.organizationId === organizationId && isSafePublicMediaUrl(entry.image.url)).map((entry) => entry.image.url) }, options: variant.optionValues.map((value) => publicAttribute(value, organizationId)).filter((value) => value !== null) })),
   };
 }
 

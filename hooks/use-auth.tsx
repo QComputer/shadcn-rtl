@@ -29,6 +29,7 @@ export interface OrganizationMembership {
   organizationName: string;
   organizationSlug: string;
   organizationType: OrganizationType;
+  organizationVertical?: string | null;
   organizationCapabilities: OrganizationType[];
   isActive: boolean;
 }

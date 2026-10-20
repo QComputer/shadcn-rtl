@@ -2,6 +2,7 @@
 import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { OrganizationRootLink } from "@/components/public/organization-root-link"
 import {
@@ -130,10 +131,12 @@ interface ShopData {
 
 
 export default function ShopPage({
-  params
+  params, modernProductExperience = false
 }: {
   params: Promise<{ locale: string; slug: string }>
+  modernProductExperience?: boolean
 }) {
+  const router = useRouter()
   const resolvedParams = use(params)
   const locale = resolvedParams.locale
   const slug = resolvedParams.slug
@@ -165,6 +168,7 @@ export default function ShopPage({
     if (!product) return
 
     if (product.variants?.length > 1){
+      if (modernProductExperience) { router.push(productHref(product)); return }
     //console.log('-------product:',product);
 
       setAddingToCart(product.id)
@@ -596,7 +600,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
                   <Button
                   size="default"
                   className={"flex-1 gap-2"}
-                  disabled={addingToCart == product.id}
+                  disabled={addingToCart == product.id || (modernProductExperience && !product.variants.length)}
                   onClick={() => handleAddToCart(product)}
                 >
                   {addedToCart_VariantId == product.variants[0]?.id ? (
@@ -679,7 +683,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
 
                                 <Button
                                 className={"flex-1 gap-2 w-28"}
-                                disabled={addingToCart == product.id}
+                                disabled={addingToCart == product.id || (modernProductExperience && !product.variants.length)}
                                 onClick={() => handleAddToCart(product)}
                               >
                                 {(product.variants?.length>0 && addedToCart_VariantId == product.variants[0]?.id) ? (

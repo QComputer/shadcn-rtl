@@ -9,6 +9,7 @@ import {
   type PublicCatalogProduct,
   type PublicCatalogPurchase,
   type PublicCatalogVariant,
+  type PublicCatalogVariantMedia,
 } from "@/lib/public-catalog/contracts";
 
 type MoneyLike = number | string | { toString(): string };
@@ -64,11 +65,11 @@ export function serializePublicCatalogCategory(input: {
 }
 
 export function serializePublicCatalogProduct(input: {
-  id: string; slug?: string | null; name: string; description?: string | null; image?: string | null; images?: string[];
+  id: string; slug?: string | null; name: string; brand?: string | null; description?: string | null; image?: string | null; images?: string[];
   basePrice: MoneyLike; discountType?: string | null; discountValue?: MoneyLike | null; trackInventory: boolean;
   category: { id: string; slug?: string | null; name: string };
   attributes?: Array<Parameters<typeof attributeValue>[0]>;
-  variants: Array<{ id: string; sku?: string | null; name?: string | null; price?: MoneyLike | null; inventory: number; reservedQuantity?: number; allowBackOrder: boolean; options?: Array<Parameters<typeof attributeValue>[0]> }>;
+  variants: Array<{ id: string; sku?: string | null; name?: string | null; price?: MoneyLike | null; inventory: number; reservedQuantity?: number; allowBackOrder: boolean; options?: Array<Parameters<typeof attributeValue>[0]>; media?: PublicCatalogVariantMedia }>;
   purchase?: PublicCatalogPurchase | null;
 }): PublicCatalogProduct {
   const productBase = amount(input.basePrice);
@@ -84,6 +85,7 @@ export function serializePublicCatalogProduct(input: {
       orderable: !input.trackInventory || variant.allowBackOrder || variant.inventory - (variant.reservedQuantity ?? 0) > 0,
       sku: variant.sku ?? null,
       options: (variant.options ?? []).map(attributeValue).filter((value): value is PublicCatalogAttribute => value !== null),
+      ...(variant.media ? { media: variant.media } : {}),
     };
   });
   const attributes = (input.attributes ?? []).map(attributeValue).filter((value): value is PublicCatalogAttribute => value !== null);
@@ -95,6 +97,7 @@ export function serializePublicCatalogProduct(input: {
     id: input.id,
     slug: input.slug ?? null,
     name: input.name,
+    ...(input.brand === undefined ? {} : { brand: input.brand }),
     description: input.description ?? null,
     category: { id: input.category.id, slug: input.category.slug ?? null, name: input.category.name },
     price: money(displayPrice),

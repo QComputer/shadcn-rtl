@@ -22,7 +22,7 @@ interface CartDrawerProps {
 
 export function CartDrawer({ organizationSlug, locale = "fa", trigger, open, onOpenChange, children }: CartDrawerProps) {
   
-  const { cart, isLoading, summary, updateQuantity, removeItem } = useCart();
+  const { cart, isLoading, summary, updateQuantity, removeItem, refreshCart } = useCart();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const { productsHref, checkoutHref } = useShopRoutePaths({
     productsHref: buildShopProductsPath({ locale, shopSlug: organizationSlug }),
@@ -61,7 +61,10 @@ export function CartDrawer({ organizationSlug, locale = "fa", trigger, open, onO
   );
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={(nextOpen) => {
+      if (nextOpen) void refreshCart();
+      onOpenChange?.(nextOpen);
+    }}>
       <SheetTrigger asChild>
         {children || trigger || defaultTrigger}
       </SheetTrigger>

@@ -3,25 +3,28 @@ import { prisma } from "@/lib/db";
 import { getPublicCatalogSnapshot } from "@/lib/public-catalog/service.server";
 import RetailPreview from "@/app/[locale]/retail-preview/[store]/retail-preview";
 import LegacyShopClient from "./legacy-shop-client";
+import { hasModernRetailProductExperience } from "@/lib/retail/shop-experience";
 
 export const dynamic = "force-dynamic";
 type Params = { locale: string; slug: string };
 
 async function loadPublishedRetail(slug: string, locale: string) {
-  if (locale !== "fa") return null;
+  if (locale !== "fa") return { catalog: null, modernProductExperience: false };
   const organization = await prisma.organization.findFirst({
     where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
-    select: { branding: { select: { retailPresentationTheme: true, retailPreviewOnly: true } } },
+    select: { settings: { select: { settings: true } }, branding: { select: { retailPresentationTheme: true, retailPreviewOnly: true } } },
   });
-  if (!organization?.branding?.retailPresentationTheme || organization.branding.retailPreviewOnly) return null;
-  try { return await getPublicCatalogSnapshot(slug); }
-  catch (error) { if (error instanceof ApiError && error.status === 404) return null; throw error; }
+  const modernProductExperience = Boolean(organization && hasModernRetailProductExperience(organization.settings?.settings, organization.branding ?? {}));
+  // Product capability activation must not opt a tenant into a new homepage.
+  if (!organization?.branding?.retailPresentationTheme || organization.branding.retailPreviewOnly) return { catalog: null, modernProductExperience };
+  try { return { catalog: await getPublicCatalogSnapshot(slug), modernProductExperience }; }
+  catch (error) { if (error instanceof ApiError && error.status === 404) return { catalog: null, modernProductExperience }; throw error; }
 }
 
 export default async function ShopPage({ params }: { params: Promise<Params> }) {
   const { locale, slug } = await params;
-  const catalog = await loadPublishedRetail(slug, locale);
-  if (!catalog) return <LegacyShopClient params={Promise.resolve({ locale, slug })} />;
+  const { catalog, modernProductExperience } = await loadPublishedRetail(slug, locale);
+  if (!catalog) return <LegacyShopClient params={Promise.resolve({ locale, slug })} modernProductExperience={modernProductExperience} />;
   const storefrontPath = `/${encodeURIComponent(locale)}/${encodeURIComponent(slug)}/shop`;
   const checkoutPath = `${storefrontPath}/checkout`;
   return <RetailPreview liveView={{

@@ -1,6 +1,9 @@
 import RetailCheckoutClient from "@/components/retail/checkout-client";
 import { prisma } from "@/lib/db";
 import LegacyCheckoutClient from "./legacy-checkout-client";
+import { hasModernRetailProductExperience } from "@/lib/retail/shop-experience";
+import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
+import { buildShopProductsPath } from "@/lib/shop-public-paths";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +16,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   const organization = await prisma.organization.findFirst({
     where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
     select: {
+      settings: { select: { settings: true } },
       branding: {
         select: {
           retailPresentationTheme: true,
@@ -22,13 +26,12 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
     },
   });
 
-  const hasPublishedRetailPresentation = Boolean(
-    organization?.branding?.retailPresentationTheme &&
-    organization.branding.retailPreviewOnly === false,
-  );
+  const hasPublishedRetailPresentation = Boolean(organization && hasModernRetailProductExperience(organization.settings?.settings, organization.branding ?? {}));
 
   if (hasPublishedRetailPresentation) {
-    return <RetailCheckoutClient locale={locale} organization={slug} storefrontPath={`/${encodeURIComponent(locale)}/${encodeURIComponent(slug)}/shop`} checkoutPath={`/${encodeURIComponent(locale)}/${encodeURIComponent(slug)}/shop/checkout`} />;
+    const seo = await getShopTenantSeoContext({ locale, slug });
+    const storefrontPath = buildShopProductsPath({ locale, shopSlug: slug, isCustomDomain: seo.isCustomDomain });
+    return <RetailCheckoutClient locale={locale} organization={slug} storefrontPath={storefrontPath} checkoutPath={`${storefrontPath}/checkout`} />;
   }
 
   return <LegacyCheckoutClient locale={locale} slug={slug} />;

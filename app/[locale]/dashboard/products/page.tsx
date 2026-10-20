@@ -74,6 +74,13 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
   // Access control check
   const { hasAccess, isLoading: accessLoading } = useDashboardAccess()
   const { organizationMembership } = useAuth()
+  const canUseRetailCatalog = organizationMembership?.organizationType === "SHOP"
+    && organizationMembership.organizationCapabilities.includes("SHOP")
+    && !["RESTAURANT", "HOTEL"].includes(organizationMembership.organizationVertical ?? "")
+  // Unclassified legacy shops can also be restaurants. Keep their existing
+  // destinations, while offering an explicit route to Retail management.
+  const useRetailCatalog = canUseRetailCatalog
+    && ["SHOE_STORE", "CLOTHING_STORE", "PHARMACY", "SUPERMARKET", "FLORIST"].includes(organizationMembership.organizationVertical ?? "")
   
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -195,13 +202,13 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
             {toPersianDigits(total.toString())} {t("navigation.products") || "محصول"}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link href={`/${locale}/dashboard/retail-catalog`}>
+        <div className="flex flex-wrap gap-2">
+          {canUseRetailCatalog ? <Link href={`/${locale}/dashboard/retail-catalog`}>
             <Button variant="outline">
               <Package className="h-4 w-4 me-2" />
-              {locale === "en" ? "Retail catalog" : locale === "ar" ? "فهرس المتجر" : "کاتالوگ فروشگاه"}
+              {locale === "en" ? "Manage retail catalog" : locale === "ar" ? "إدارة كتالوج المتجر" : "مدیریت کاتالوگ فروشگاه"}
             </Button>
-          </Link>
+          </Link> : null}
           <Link href={`/${locale}/dashboard/product-categories`}>
             <Button variant="outline">
               <FolderOpen className="h-4 w-4 ml-2" />
@@ -211,7 +218,7 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
           <Button variant="outline" size="icon" onClick={() => fetchProducts()}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
-          <Link href={`/${locale}/dashboard/products/new`}>
+          <Link href={useRetailCatalog ? `/${locale}/dashboard/retail-catalog/new` : `/${locale}/dashboard/products/new`}>
             <Button>
               <Plus className="h-4 w-4 ml-2" />
               {t("common.add") || "Add Product"}
@@ -282,7 +289,7 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
               }
             </p>
             {!searchQuery && (
-            <Link href={`/${locale}/dashboard/products/new`}>
+                <Link href={useRetailCatalog ? `/${locale}/dashboard/retail-catalog/new` : `/${locale}/dashboard/products/new`}>
             <Button>
               <Plus className="h-4 w-4 ml-2" />
               {t("common.add") || "Add Product"}
@@ -302,7 +309,7 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
             const isLowStock = product.trackInventory && totalInventory <= product.lowStockThreshold
             
             return (
-            <Link key={locale+product.id} href={`/${locale}/dashboard/products/${product.id}`}>
+             <Link key={locale+product.id} href={useRetailCatalog ? `/${locale}/dashboard/retail-catalog/${product.id}` : `/${locale}/dashboard/products/${product.id}`}>
               <Card key={locale+"card"+product.id} className="hover:shadow-md transition-shadow overflow-hidden">
                 <div className="aspect-square bg-muted relative">
                   {product.image ? (

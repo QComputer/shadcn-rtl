@@ -72,11 +72,13 @@ function Gallery({ images, alt }: PremiumProductGalleryProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <div className="space-y-4" dir="rtl" onKeyDown={onGalleryKeyDown} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div className="space-y-4" dir="rtl" onKeyDown={onGalleryKeyDown}>
         <DialogTrigger asChild>
           <button
             type="button"
             aria-label="بزرگ‌نمایی تصویر محصول"
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
             className="group relative block aspect-[4/5] w-full overflow-hidden rounded-3xl border border-stone-200/80 bg-[#f7f6f3] text-right shadow-[0_18px_50px_-38px_rgba(28,25,23,0.35)] outline-none transition-[border-color,box-shadow] hover:border-stone-300 focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 motion-reduce:transition-none"
           >
             {!loaded && <div className="absolute inset-0 animate-pulse bg-stone-200/60 motion-reduce:animate-none" aria-hidden="true" />}

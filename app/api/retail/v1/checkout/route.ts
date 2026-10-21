@@ -1,7 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ApiError, jsonError, requireAuthSession, requireSameOriginMutation } from "@/lib/api-guards";
-import { createRetailCheckout, retailCheckoutInput } from "@/lib/retail/checkout.server";
+import { createRetailCheckout, findRetailCheckoutRecovery } from "@/lib/retail/checkout.server";
+import { retailCheckoutInput } from "@/lib/retail/checkout.contract";
 import { prisma } from "@/lib/db";
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await requireAuthSession();
+    const organization = request.nextUrl.searchParams.get("organization")?.trim() ?? "";
+    const idempotencyKey = request.nextUrl.searchParams.get("idempotencyKey")?.trim() ?? "";
+    if (!organization || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) throw new ApiError(400, "Checkout recovery details are invalid.");
+    const order = await findRetailCheckoutRecovery(session.user.id, organization, idempotencyKey);
+    if (!order) throw new ApiError(404, "Checkout order not found.");
+    return NextResponse.json({ orderNumber: order.orderNumber, total: order.total.toString(), paymentStatus: order.paymentStatus,
+      orderStatus: order.status, paymentMethod: order.paymentMethod, paymentDeadlineAt: order.retailPaymentDeadlineAt?.toISOString() ?? null,
+      ...(order.paymentMethod === "INOTI_USSD" ? { trackingToken: order.publicTrackingToken } : {}) },
+      { headers: { "Cache-Control": "no-store" } });
+  } catch (error) { return jsonError(error, "Could not recover checkout."); }
+}
 
 export async function POST(request: NextRequest) {
   try {

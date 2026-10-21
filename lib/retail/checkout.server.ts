@@ -1,36 +1,24 @@
 import "server-only";
 
 import { randomBytes } from "node:crypto";
-import { InventoryMovementReason, OrderType, PaymentMethod, Prisma } from "@prisma/client";
-import { z } from "zod";
+import { InventoryMovementReason, PaymentMethod, Prisma } from "@prisma/client";
 import { ApiError } from "@/lib/api-guards";
 import { prisma } from "@/lib/db";
 import { requireActiveOrganizationCapability } from "@/lib/organization-capabilities.server";
 import { requireEnabledRetailPaymentMethod, retailPaymentPolicyInput } from "@/lib/retail/payment-policy.server";
+import { quoteInTransaction, sameReviewToken } from "@/lib/retail/checkout-quote.server";
+import { type CheckoutInput } from "@/lib/retail/checkout.contract";
 
 const money = (value: Prisma.Decimal | number | string) => new Prisma.Decimal(value);
 const code = (value: string) => value.trim().toUpperCase();
 
-export const retailCheckoutInput = z.object({
-  organization: z.string().trim().min(1).max(120),
-  idempotencyKey: z.string().uuid(),
-  type: z.nativeEnum(OrderType),
-  deliveryAddress: z.string().trim().min(8).max(500).optional(),
-  couponCode: z.string().trim().min(2).max(40).optional(),
-  paymentMethod: z.enum(["BANK_TRANSFER", "CASH", "INOTI_USSD"]),
-  cashMode: z.enum(["COUNTER", "PICKUP", "COURIER"]).optional(),
-}).strict().superRefine((value, context) => {
-  if (value.type === "DELIVERY" && !value.deliveryAddress) {
-    context.addIssue({ code: "custom", path: ["deliveryAddress"], message: "Delivery address is required." });
-  }
-  if (value.paymentMethod === "CASH" && !value.cashMode) context.addIssue({ code: "custom", path: ["cashMode"], message: "Cash collection mode is required." });
-  if (value.paymentMethod !== "CASH" && value.cashMode) context.addIssue({ code: "custom", path: ["cashMode"], message: "Cash mode is only valid for cash payment." });
-  if (value.cashMode === "PICKUP" && value.type !== "PICK_UP") context.addIssue({ code: "custom", path: ["cashMode"], message: "Pickup cash requires customer pickup." });
-  if (value.cashMode === "COURIER" && value.type !== "DELIVERY") context.addIssue({ code: "custom", path: ["cashMode"], message: "Courier cash requires delivery." });
-});
-
-type CheckoutInput = z.infer<typeof retailCheckoutInput>;
 type Tx = Prisma.TransactionClient;
+
+export async function findRetailCheckoutRecovery(customerId: string, organizationSlug: string, idempotencyKey: string) {
+  return prisma.order.findFirst({ where: { retailCheckoutKey: idempotencyKey, organizationSlug, customerId, deletedAt: null },
+    select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, paymentMethod: true,
+      publicTrackingToken: true, retailPaymentDeadlineAt: true } });
+}
 
 function discountedUnitPrice(product: {
   basePrice: Prisma.Decimal; discountType: string | null; discountValue: Prisma.Decimal | null;
@@ -76,10 +64,7 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
   });
   if (!organization || organization.branding?.retailPreviewOnly) throw new ApiError(404, "Storefront is unavailable.");
   await requireActiveOrganizationCapability({ organizationId: organization.id, capability: "SHOP" });
-  const existing = await prisma.order.findFirst({
-    where: { retailCheckoutKey: input.idempotencyKey, organizationSlug: organization.slug, customerId },
-    select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, paymentMethod: true, publicTrackingToken: true, retailPaymentDeadlineAt: true },
-  });
+  const existing = await findRetailCheckoutRecovery(customerId, organization.slug, input.idempotencyKey);
   if (existing) return existing;
   const paymentPolicy = await requireEnabledRetailPaymentMethod(organization.slug, organization.id, input.paymentMethod);
   if (input.cashMode && !paymentPolicy.cashModes.includes(input.cashMode)) throw new ApiError(409, "Cash collection mode is unavailable.");
@@ -106,6 +91,11 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
       } } } } },
     });
     if (!cart || cart.items.length === 0) throw new ApiError(409, "Cart is empty.");
+    if (input.reviewToken) {
+      const fresh = await quoteInTransaction(tx, organization, customerId, input);
+      if (!sameReviewToken(fresh.quote.reviewToken, input.reviewToken)) throw new ApiError(409, "Checkout details changed. Review the updated quote before placing the order.");
+      if (fresh.quote.issues.length) throw new ApiError(409, fresh.quote.issues[0]);
+    }
     let subtotal = money(0);
     const items: Array<{
       variantId: string; productId: string; quantity: number; price: Prisma.Decimal;
@@ -142,9 +132,11 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
       });
     }
 
-    const settings = await tx.organizationSettings.findUnique({ where: { organizationSlug: organization.slug }, select: { deliveryFee: true } });
-    const deliveryFee = input.type === "DELIVERY" ? money(settings?.deliveryFee ?? 0) : money(0);
-    if (!deliveryFee.isFinite() || deliveryFee.lt(0)) throw new ApiError(409, "Delivery fee is unavailable.");
+    const settings = await tx.organizationSettings.findUnique({ where: { organizationSlug: organization.slug }, select: { deliveryFee: true, enablePickup: true, enableDelivery: true } });
+    if (input.type === "PICK_UP" && settings?.enablePickup === false) throw new ApiError(409, "Customer pickup is unavailable.");
+    if (input.type === "DELIVERY" && settings?.enableDelivery === false) throw new ApiError(409, "Delivery is unavailable.");
+    const deliveryFee = input.type === "DELIVERY" && settings?.deliveryFee !== null && settings?.deliveryFee !== undefined ? money(settings.deliveryFee) : money(0);
+    if (input.type === "DELIVERY" && (settings?.deliveryFee === null || settings?.deliveryFee === undefined || !deliveryFee.isFinite() || deliveryFee.lt(0))) throw new ApiError(409, "Delivery fee is unavailable.");
     const applied = input.couponCode ? await consumeCoupon(tx, {
       organizationId: organization.id, customerId, couponCode: input.couponCode, subtotal,
     }) : null;
@@ -167,7 +159,9 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
         retailCheckoutKey: input.idempotencyKey,
         retailPaymentDeadlineAt,
         type: input.type, status: "PENDING", subtotal, deliveryFee, tax: 0, discount, total,
-        deliveryAddress: input.deliveryAddress ?? null, organizationSlug: organization.slug,
+        deliveryAddress: input.deliveryAddress ?? null,
+        notes: [input.recipientName ? `تحویل‌گیرنده: ${input.recipientName}` : null, input.recipientMobile ? `شماره تماس تحویل‌گیرنده: ${input.recipientMobile}` : null, input.deliveryNotes ? `توضیحات تحویل: ${input.deliveryNotes}` : null].filter(Boolean).join("\n") || null,
+        organizationSlug: organization.slug,
         customerId, paymentMethod: input.paymentMethod as PaymentMethod, paymentStatus: "PENDING",
         items: { create: items.map((item) => ({ productId: item.productId, variantId: item.variantId,
           quantity: item.quantity, price: item.price, discount: 0,
@@ -213,9 +207,7 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
     try { return await run(); }
     catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-        const previous = await prisma.order.findFirst({ where: {
-          retailCheckoutKey: input.idempotencyKey, organizationSlug: organization.slug, customerId,
-        }, select: { id: true, orderNumber: true, total: true, paymentStatus: true, status: true, paymentMethod: true, publicTrackingToken: true, retailPaymentDeadlineAt: true } });
+        const previous = await findRetailCheckoutRecovery(customerId, organization.slug, input.idempotencyKey);
         if (previous) return previous;
       }
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034" && attempt < 2) continue;

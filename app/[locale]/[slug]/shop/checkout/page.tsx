@@ -31,7 +31,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   if (hasPublishedRetailPresentation) {
     const seo = await getShopTenantSeoContext({ locale, slug });
     const storefrontPath = buildShopProductsPath({ locale, shopSlug: slug, isCustomDomain: seo.isCustomDomain });
-    return <RetailCheckoutClient locale={locale} organization={slug} storefrontPath={storefrontPath} checkoutPath={`${storefrontPath}/checkout`} />;
+    return <RetailCheckoutClient embedded locale={locale} organization={slug} storefrontPath={storefrontPath} checkoutPath={`${storefrontPath}/checkout`} />;
   }
 
   return <LegacyCheckoutClient locale={locale} slug={slug} />;

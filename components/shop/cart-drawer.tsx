@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react"
+import { RetailCartDrawer } from "@/components/retail/retail-cart-drawer";
 import Link from "next/link";
 import { getCartItemUnitPrice, useCart } from "@/lib/contexts/cart-context";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,8 @@ import { formatToman, toPersianDigits } from "@/lib/persian";
 import { buildShopCheckoutPath, buildShopOrderPath, buildShopProductsPath } from "@/lib/shop-public-paths";
 import { useShopRoutePaths } from "@/lib/contexts/shop-route-context";
 
-interface CartDrawerProps {
+export interface CartDrawerProps {
+  retail?: boolean;
   organizationSlug: string;
   locale?: string;
   trigger?: React.ReactNode;
@@ -20,7 +22,7 @@ interface CartDrawerProps {
   children?: React.ReactNode;
 }
 
-export function CartDrawer({ organizationSlug, locale = "fa", trigger, open, onOpenChange, children }: CartDrawerProps) {
+function LegacyCartDrawer({ organizationSlug, locale = "fa", trigger, open, onOpenChange, children }: CartDrawerProps) {
   
   const { cart, isLoading, summary, updateQuantity, removeItem, refreshCart } = useCart();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -210,3 +212,5 @@ export function CartDrawer({ organizationSlug, locale = "fa", trigger, open, onO
     </Sheet>
   );
 }
+
+export function CartDrawer(props: CartDrawerProps) { return props.retail ? <RetailCartDrawer {...props} /> : <LegacyCartDrawer {...props} />; }

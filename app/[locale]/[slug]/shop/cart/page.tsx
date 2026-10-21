@@ -17,7 +17,7 @@ export default async function ShopCartPage({ params }: { params: Promise<{ local
   if (organization && hasModernRetailProductExperience(organization.settings?.settings, organization.branding ?? {})) {
     const seo = await getShopTenantSeoContext({ locale, slug });
     const storefrontPath = buildShopProductsPath({ locale, shopSlug: slug, isCustomDomain: seo.isCustomDomain });
-    return <RetailCheckoutClient locale={locale} organization={slug} storefrontPath={storefrontPath} checkoutPath={`${storefrontPath}/checkout`} cartOnly />;
+    return <RetailCheckoutClient embedded locale={locale} organization={slug} storefrontPath={storefrontPath} checkoutPath={`${storefrontPath}/checkout`} cartOnly />;
   }
   return <CartPage />;
 }

@@ -8,6 +8,7 @@ import { toMoneyDecimal, toMoneyNumber } from "@/lib/money";
 import { supportedLocales } from "@/lib/i18n";
 import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing";
 import { ApiError } from "@/lib/api-guards";
+import { orderedImages, readGallerySettings } from "@/lib/retail/product-galleries";
 
 const cartInclude = {
   items: {
@@ -18,15 +19,25 @@ const cartInclude = {
             select: {
               id: true,
               organizationId: true,
+              organizationSlug: true,
+              slug: true,
               name: true,
+              brand: true,
               sku: true,
               image: true,
+              gallerySettings: true,
+              images: { select: { id: true, url: true, organizationId: true, access: true } },
+              isActive: true,
+              deletedAt: true,
+              trackInventory: true,
+              category: { select: { organizationId: true, isActive: true, deletedAt: true } },
               basePrice: true,
               discountType: true,
               discountValue: true,
             },
           },
           optionValues: { select: { valueText: true, valueNumber: true, valueBoolean: true, definition: { select: { organizationId: true, key: true, label: true, valueType: true, displayUnit: true, isActive: true, scope: true } } } },
+          galleryImages: { orderBy: { sortOrder: "asc" }, select: { image: { select: { url: true, organizationId: true, access: true } } } },
         },
       },
     },
@@ -57,6 +68,12 @@ function normalizeCart(cart: NormalizedCartSource | null) {
 
   let subtotal = new Decimal(0);
   const items = cart.items.map((item) => {
+    // A corrupt legacy cart must fail closed before any foreign product fields,
+    // prices, option values, or media are projected to its owner.
+    if (item.variant.product.organizationSlug !== cart.organizationSlug ||
+        item.variant.product.category.organizationId !== item.variant.product.organizationId) {
+      throw new ApiError(404, "Cart contains an unavailable item.");
+    }
     const basePrice = toMoneyDecimal(item.variant.price ?? item.variant.product.basePrice, "cart item price");
     const discountType = item.variant.product.discountType;
     const discountValue = item.variant.product.discountValue === null
@@ -80,9 +97,30 @@ function normalizeCart(cart: NormalizedCartSource | null) {
       }));
     const variant = { ...item.variant };
     Reflect.deleteProperty(variant, "optionValues");
+    Reflect.deleteProperty(variant, "galleryImages");
+    const isSafeUrl = (url: string) => url.startsWith("/") && !url.startsWith("//") || (() => { try { return new URL(url).protocol === "https:"; } catch { return false; } })();
+    const productImages = orderedImages(item.variant.product.images, readGallerySettings(item.variant.product.gallerySettings)?.productImageIds ?? [])
+      .filter((image) => image.access === "PUBLIC" && (!image.organizationId || image.organizationId === item.variant.product.organizationId) && isSafeUrl(image.url));
+    const productGallery = productImages.map((image) => image.url);
+    const primary = item.variant.product.image && productGallery.includes(item.variant.product.image) ? item.variant.product.image : productGallery[0] ?? null;
+    const variantGallery = item.variant.galleryImages.filter(({ image }) => image.access === "PUBLIC" && image.organizationId === item.variant.product.organizationId && isSafeUrl(image.url)).map(({ image }) => image.url);
     const product = { ...variant.product };
     Reflect.deleteProperty(product, "organizationId");
-    return { ...item, unitPrice: price.toNumber(), variant: { ...variant, product, options } };
+    Reflect.deleteProperty(product, "organizationSlug");
+    Reflect.deleteProperty(product, "gallerySettings");
+    Reflect.deleteProperty(product, "images");
+    Reflect.deleteProperty(product, "isActive");
+    Reflect.deleteProperty(product, "deletedAt");
+    Reflect.deleteProperty(product, "trackInventory");
+    Reflect.deleteProperty(product, "category");
+    const orderable = item.variant.product.organizationSlug === cart.organizationSlug &&
+      item.variant.product.category.organizationId === item.variant.product.organizationId && item.variant.product.category.isActive && !item.variant.product.category.deletedAt &&
+      item.variant.product.isActive && !item.variant.product.deletedAt && !item.variant.deletedAt &&
+      (!item.variant.product.trackInventory || item.variant.allowBackOrder || item.variant.inventory - item.variant.reservedQuantity >= item.quantity);
+    const reason = !item.variant.product.isActive || item.variant.product.deletedAt || item.variant.deletedAt || item.variant.product.organizationSlug !== cart.organizationSlug ||
+      !item.variant.product.category.isActive || item.variant.product.category.deletedAt || item.variant.product.category.organizationId !== item.variant.product.organizationId ? "unavailable" : orderable ? null : "insufficient_stock";
+    const maxQuantity = !item.variant.product.trackInventory || item.variant.allowBackOrder ? null : Math.max(0, item.variant.inventory - item.variant.reservedQuantity);
+    return { ...item, unitPrice: price.toNumber(), availability: { orderable, maxQuantity, reason }, variant: { ...variant, media: { image: variantGallery[0] ?? primary, gallery: variantGallery.length ? variantGallery : productGallery }, product: { ...product, image: primary }, options } };
   });
 
   return {

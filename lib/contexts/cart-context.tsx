@@ -270,3 +270,8 @@ export function useCart() {
   }
   return context;
 }
+
+/** Product pages can also render outside the legacy shop layout. */
+export function useOptionalCart() {
+  return useContext(CartContext);
+}

@@ -12,6 +12,10 @@ import {
 } from "@/lib/seo";
 import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
 import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing";
+import { hasModernRetailProductExperience } from "@/lib/retail/shop-experience";
+import { getPublicCatalogProduct } from "@/lib/public-catalog/service.server";
+import { verifiedRetailProductJsonLd } from "@/lib/retail/product-detail";
+import { ApiError } from "@/lib/api-guards";
 
 type ProductDetailLayoutProps = {
   children: React.ReactNode;
@@ -50,6 +54,8 @@ async function getPublicProduct(slug: string, productId: string) {
           slug: true,
           logo: true,
           coverImage: true,
+          settings: { select: { settings: true } },
+          branding: { select: { retailPresentationTheme: true, retailPreviewOnly: true } },
         },
       },
       category: {
@@ -106,7 +112,9 @@ export default async function ProductDetailLayout({ children, params }: ProductD
   const seoContext = await getShopTenantSeoContext({ locale, slug, subPath: `/product/${productSegment}` });
   const path = seoContext.path;
   const productUploadedShareImage = product.image || product.organization.coverImage || product.organization.logo;
-  const productJsonLd = {
+  const modern = hasModernRetailProductExperience(product.organization.settings?.settings, product.organization.branding ?? {});
+  const verified = modern ? await getPublicCatalogProduct(slug, productId).catch(error => { if (error instanceof ApiError && error.status === 404) return null; throw error; }) : null;
+  const productJsonLd = modern ? verified ? verifiedRetailProductJsonLd(verified, getCanonicalUrl(path, seoContext.baseUrl)) : null : {
     "@context": "https://schema.org",
     "@type": "Product",
     "@id": `${getCanonicalUrl(path, seoContext.baseUrl)}#product`,
@@ -132,7 +140,7 @@ export default async function ProductDetailLayout({ children, params }: ProductD
     <>
       <JsonLd
         data={[
-          productJsonLd,
+          ...(productJsonLd ? [productJsonLd] : []),
           buildBreadcrumbJsonLd([
             { name: "Home", path: seoContext.isCustomDomain ? "/" : `/${locale}` },
             { name: product.organization.name, path: buildOrganizationPublicPath({ locale, organizationSlug: slug, surface: "shop", isCustomDomain: seoContext.isCustomDomain }) },

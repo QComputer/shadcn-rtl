@@ -4,8 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { Home, LayoutGrid, Share2, ShoppingBag, UserRound } from "lucide-react";
+import { PremiumProductDetail } from "@/components/retail/premium-product-detail";
 import { appPath } from "@/lib/app-base-path";
-import { chooseVariant, findVariantOption, optionDimensions, resolveSelectedVariant, resolveVariantGallery, retailAttributeText, type RetailProduct, type RetailVariant } from "@/lib/retail/variant-selection";
+import { chooseVariant, findVariantOption, optionDimensions, resolveSelectedVariant, retailAttributeText, type RetailProduct, type RetailVariant } from "@/lib/retail/variant-selection";
 
 type RetailView = {
   identifier: string;
@@ -75,7 +76,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
   const [sort, setSort] = useState("featured");
   const [error, setError] = useState(false);
   const [variantChoice, setVariantChoice] = useState<Record<string, string>>({});
-  const [galleryChoice, setGalleryChoice] = useState<Record<string, number>>({});
+
   const [busy, setBusy] = useState(false);
   const [page, setPage] = useState(1);
   const [retryKey, setRetryKey] = useState(0);
@@ -239,6 +240,8 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
     </article>;
   };
 
+  if (productSlug && detail) return <PremiumProductDetail key={detail.id} product={detail} organization={view.identifier} storeName={view.name} logo={view.branding.logo} storefrontPath={base} checkoutPath={checkoutHref} accountPath={accountHref} embedded={embedded} previewOnly={view.previewOnly} />;
+
   return <main dir="rtl" lang="fa" data-retail-display-mode={standalone ? "standalone" : "browser"} className="min-h-screen bg-[#f8f7f4] pb-24 text-[#24241f] md:pb-0">
     {view.previewOnly && <div className="bg-[#252720] px-4 py-2 text-center text-xs text-white">پیش‌نمایش نمایشی · این محصولات و تصاویر نمونه هستند و برای خرید واقعی نیستند</div>}
     {online === false && <div role="status" aria-live="polite" className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-950">اتصال اینترنت قطع است. اطلاعات همین صفحه در دسترس می‌ماند؛ برای تازه‌کردن محصولات یا ادامه خرید دوباره متصل شوید.</div>}
@@ -287,29 +290,6 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
       <p className="mt-6 text-center text-xs text-[#77736a]">قیمت و وضعیت موجودی از فهرست منتشرشده فروشگاه دریافت شده‌اند.</p>
     </section>
     </>}
-    {productSlug && <section className="mx-auto max-w-7xl px-5 pb-20 md:px-10">
-      {!detail ? <div role="status" className="rounded-2xl bg-white p-10 text-center">محصول پیدا نشد یا منتشر نیست.</div> : <article className="grid gap-8 md:grid-cols-2">
-        {(() => {
-          const current = selectedVariantFor(detail);
-          const gallery = resolveVariantGallery(detail, current);
-          const hasVariantGallery = Boolean(current?.media?.gallery.length);
-          const images = [...new Set([...(hasVariantGallery ? [] : [detail.media.detail ?? detail.media.card]), ...gallery, ...(hasVariantGallery ? [] : [detail.media.detail ?? detail.media.card])].filter((src): src is string => !!src))];
-          const activeIndex = Math.min(galleryChoice[detail.id] ?? 0, Math.max(0, images.length - 1));
-          const activeImage = images[activeIndex];
-          return <div><div className="relative block aspect-square w-full overflow-hidden rounded-3xl bg-[#e9e5dc]">{activeImage ? <Image fill unoptimized priority sizes="(max-width: 768px) 100vw, 50vw" src={activeImage} alt={detail.media.alt || detail.name} className="object-cover" /> : <span className="grid h-full place-items-center text-[#77736a]">تصویری برای این کالا ثبت نشده است</span>}</div>
-            {images.length > 1 && <div className="mt-3 flex gap-3 overflow-x-auto pb-2" role="group" aria-label="تصاویر محصول">{images.map((src, index) => <button key={`${src}-${index}`} type="button" aria-label={`نمای ${index + 1}`} aria-pressed={activeIndex === index} onClick={() => setGalleryChoice((state) => ({ ...state, [detail.id]: index }))} className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border-2 bg-[#e9e5dc] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#9b7653] ${activeIndex === index ? "border-[#292a24]" : "border-transparent"}`}><Image fill unoptimized sizes="80px" src={src} alt={`${detail.media.alt || detail.name} · نمای ${index + 1}`} className="object-cover" /></button>)}</div>}</div>;
-        })()}
-        <div className="py-2 md:py-8"><a href={`${base}#products`} className="text-sm text-[#766d61]">← بازگشت به محصولات</a><span className="mt-6 block text-sm text-[#92704e]">{detail.category.name}</span><h1 className="mt-3 text-3xl font-semibold md:text-4xl">{detail.name}</h1><p className="mt-4 whitespace-pre-line leading-8 text-[#67655e]">{detail.description}</p>
-          {detail.variants.length > 0 ? <>{(() => { const variant = selectedVariantFor(detail)!; const dimensions = optionDimensions(detail); const selectVariant = (next: RetailVariant) => { setVariantChoice((current) => ({ ...current, [detail.id]: next.id })); setGalleryChoice((current) => ({ ...current, [detail.id]: 0 })); }; return <>
-            {dimensions.color && <VariantDimension product={detail} dimension={dimensions.color} selected={variant} onChange={selectVariant} />}
-            {dimensions.size && <VariantDimension product={detail} dimension={dimensions.size} selected={variant} onChange={selectVariant} />}
-            {!dimensions.color && !dimensions.size && <label htmlFor="detail-variant" className="mt-7 block text-sm font-medium">انتخاب گزینه<select id="detail-variant" value={variant.id} onChange={(event) => { const next = detail.variants.find((item) => item.id === event.target.value); if (next) selectVariant(next); }} className="mt-2 min-h-12 w-full rounded-xl border border-[#ddd9d0] bg-white px-4 py-3">{detail.variants.map((item) => <option key={item.id} value={item.id}>{item.name ?? item.options.map((option) => `${option.label}: ${attributeText(option)}`).join(" · ")}</option>)}</select></label>}
-            <strong className="mt-6 block text-xl">{toman(variant.price.amount)}</strong>{variant.sku && <span className="mt-1 block text-sm text-[#77736a]" dir="ltr">SKU: {variant.sku}</span>}<span className={`mt-2 block text-sm ${variant.orderable ? "text-emerald-700" : "text-[#a45041]"}`}>{variant.orderable ? "موجود" : "این گزینه ناموجود است"}</span></>; })()}</> : <><strong className="mt-6 block text-xl">{toman(detail.price.amount)}</strong><span className="mt-2 block text-sm">اطلاعات گزینه‌های خرید هنوز تکمیل نشده است</span></>}
-          {(() => { const variant = selectedVariantFor(detail); return <button aria-label={`افزودن ${detail.name} به سبد خرید`} disabled={view.previewOnly || !variant?.orderable} onClick={() => void addToCart(variant?.id)} className="mt-5 min-h-12 w-full rounded-full bg-[#292a24] px-7 py-4 text-sm text-white disabled:cursor-not-allowed disabled:bg-[#eeece7] disabled:text-[#77736a]">{view.previewOnly ? "پیش‌نمایش فروشگاه" : variant?.orderable ? "افزودن به سبد خرید" : !detail.variants.length ? "خرید پس از تکمیل اطلاعات محصول" : "این گزینه ناموجود است"}</button>; })()}
-          {cartNotice && <p role="status" aria-live="polite" className="mt-3 text-sm text-[#6e6a60]">{cartNotice}</p>}
-          {(detail.brand || detail.attributes.length > 0 || detail.variants.some((variant) => variant.options.length > 0)) && <section className="mt-8 border-t border-[#dfdcd4] pt-5"><h2 className="text-lg font-semibold">مشخصات محصول</h2><dl className="mt-3 divide-y divide-[#e8e5de]">{detail.brand && <div className="flex justify-between gap-4 py-3 text-sm"><dt className="text-[#77736a]">برند</dt><dd className="font-medium">{detail.brand}</dd></div>}{detail.attributes.map((attribute) => <div key={attribute.key} className="flex justify-between gap-4 py-3 text-sm"><dt className="text-[#77736a]">{attribute.label}</dt><dd className="font-medium">{attributeText(attribute)}</dd></div>)}{selectedVariantFor(detail)?.options.map((option) => <div key={option.key} className="flex justify-between gap-4 py-3 text-sm"><dt className="text-[#77736a]">{option.label}</dt><dd className="font-medium">{attributeText(option)}</dd></div>)}</dl></section>}
-        </div></article>}
-    </section>}
     {!embedded && <><footer className="border-t border-[#e1ded7] bg-[#f0eee8] px-5 py-8 text-center text-sm text-[#6e6a60]">{view.name} · فروشگاه خرده‌فروشی بازارباز</footer>
     <nav aria-label="پیمایش موبایل فروشگاه" className={`fixed inset-x-0 bottom-0 z-40 grid ${view.previewOnly ? "grid-cols-2" : "grid-cols-4"} border-t border-[#e2dfd8] bg-[#fffefa]/95 px-2 pt-2 shadow-[0_-6px_24px_rgba(36,36,31,.08)] backdrop-blur md:hidden`} style={{ paddingBottom: "max(.5rem, env(safe-area-inset-bottom))" }}>
       <a href={base} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[10px] text-[#4c4a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#9b7653]"><Home className="h-4 w-4" /><span>فروشگاه</span></a>

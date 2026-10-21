@@ -262,7 +262,10 @@ export class InotiUssdWorkflow {
       return this.handleOrderStatus(integration, trackingToken);
     }
     if (command === "2") {
-      await this.recordEvent(integration, sessionIdHash, "USSD_PAYMENT_SELECTED", { trackingToken });
+      await this.recordEvent(integration, sessionIdHash, "USSD_PAYMENT_SELECTED", {
+        trackingTokenPresent: true,
+        trackingTokenLength: trackingToken.length,
+      });
       return this.handlePaymentRequest(integration, request, trackingToken, sessionIdHash, activePaymentAccount);
     }
     return this.rejectInvalidFlow(

@@ -6,23 +6,29 @@ import { assertRetailMutationOrigin, requireRetailMerchantContext } from "@/lib/
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const { context } = await requireRetailMerchantContext();
+    const q = (request.nextUrl.searchParams.get("q") ?? "").trim().slice(0, 200);
+    const cursor = request.nextUrl.searchParams.get("cursor");
+    const paginated = request.nextUrl.searchParams.has("q") || request.nextUrl.searchParams.has("cursor");
+    const limit = paginated ? 24 : 100;
     const images = await prisma.image.findMany({
       where: {
         organizationId: context.organizationId,
         access: "PUBLIC",
+        ...(q ? { AND: [{ OR: [{ filename: { contains: q, mode: "insensitive" as const } }, { products: { some: { organizationId: context.organizationId, deletedAt: null, name: { contains: q, mode: "insensitive" as const } } } }] }] } : {}),
         OR: [
           { purpose: "retail-product" },
           { products: { some: { organizationId: context.organizationId, deletedAt: null } } },
         ],
       },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-      select: { id: true, url: true, filename: true, mimeType: true, sizeBytes: true, access: true },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      take: limit + 1,
+      select: { id: true, url: true, filename: true, mimeType: true, sizeBytes: true, access: true, products: { where: { organizationId: context.organizationId, deletedAt: null }, take: 3, select: { name: true } } },
     });
-    return NextResponse.json({ images });
+    return NextResponse.json({ images: images.slice(0, limit).map(({ products, ...image }) => ({ ...image, productNames: products.map(product => product.name) })), nextCursor: images.length > limit ? images[limit - 1]!.id : null });
   } catch (error) {
     return jsonError(error, "Could not load store images.");
   }

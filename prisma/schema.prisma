@@ -2294,6 +2294,7 @@ model Product {
 
   image                 String?
   images                Image[]
+  gallerySettings       Json?
   aiPrimaryMediaAssetId String?
   sku                   String?
   isActive              Boolean @default(true)

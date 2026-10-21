@@ -1,3 +1,4 @@
+import { readGallerySettings, orderedImages } from "@/lib/retail/product-galleries";
 import "server-only";
 
 import { ApiError } from "@/lib/api-guards";
@@ -18,7 +19,7 @@ const publicVariantSelect = {
 } satisfies Prisma.ProductVariantSelect;
 const publicCategorySelect = { id: true, slug: true, name: true } satisfies Prisma.ProductCategorySelect;
 const publicProductSelect = {
-  id: true, slug: true, name: true, brand: true, description: true, basePrice: true, image: true, images: { select: { url: true, organizationId: true, access: true } },
+  id: true, slug: true, name: true, brand: true, description: true, basePrice: true, image: true, gallerySettings: true, images: { select: { id: true, url: true, organizationId: true, access: true } },
   discountType: true, discountValue: true, trackInventory: true,
   category: { select: publicCategorySelect },
   attributeValues: { where: { definition: { isActive: true, scope: "PRODUCT" } }, select: { valueText: true, valueNumber: true, valueBoolean: true, definition: { select: { organizationId: true, key: true, label: true, localizedLabels: true, valueType: true, displayUnit: true, isFilterable: true } } } },
@@ -40,8 +41,9 @@ function isSafePublicMediaUrl(value: string) {
 }
 
 function retailProduct(product: Prisma.ProductGetPayload<{ select: typeof publicProductSelect }>, organizationId: string) {
-  const eligibleImages = product.images.filter((image) => image.access === "PUBLIC" && (!image.organizationId || image.organizationId === organizationId) && isSafePublicMediaUrl(image.url)).map((image) => image.url);
-  const primary = product.image && eligibleImages.includes(product.image) ? product.image : eligibleImages[0] ?? null;
+  const gallerySettings = readGallerySettings(product.gallerySettings);
+  const eligibleImages = orderedImages(product.images, gallerySettings?.productImageIds ?? []).filter((image) => image.access === "PUBLIC" && (!image.organizationId || image.organizationId === organizationId) && isSafePublicMediaUrl(image.url)).map((image) => image.url);
+  const primary = gallerySettings ? eligibleImages[0] ?? null : product.image && eligibleImages.includes(product.image) ? product.image : eligibleImages[0] ?? null;
   return {
     ...product,
     image: primary,

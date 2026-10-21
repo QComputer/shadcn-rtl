@@ -310,6 +310,113 @@ test("Retail P0 merchant catalog, public projection, cart, and checkout persist 
       { key: size.key, label: size.label, value: "L", displayUnit: null },
     ], "order option labels and values remain the checkout-time snapshot");
 
+    const redMVariant = created.variants.find((variant: { name: string }) => variant.name === "Red M")!;
+    const blueSVariant = created.variants.find((variant: { name: string }) => variant.name === "Blue S")!;
+    const blueMVariant = created.variants.find((variant: { name: string }) => variant.name === "Blue M")!;
+    const colorGallerySettings = (redImageIds: string[], blueImageIds: string[]) => ({
+      version: 1 as const,
+      productImageIds: [variantImage.id, productImage.id],
+      colors: [
+        { definitionId: color.id, value: "Red", imageIds: redImageIds },
+        { definitionId: color.id, value: "Blue", imageIds: blueImageIds },
+      ],
+    });
+    const gallerySeed = await merchant.updateMerchantRetailProduct(context, manager.id, created.id, {
+      imageIds: [variantImage.id, productImage.id],
+      gallerySettings: colorGallerySettings([variantImage.id], [productImage.id]),
+      variantUpdates: created.variants.map((variant: { id: string }) => ({
+        id: variant.id,
+        galleryMode: variant.id === firstVariant.id ? "OVERRIDE" : "INHERIT",
+      })),
+      newVariants: [{
+        name: "Red S gallery inherit", sku: `${skuPrefix}-RS-GALLERY`, price: 1225, inventory: 2,
+        allowBackOrder: false, galleryMode: "INHERIT",
+        options: [{ definitionId: color.id, value: "Red" }, { definitionId: size.id, value: "S" }], imageIds: [],
+      }],
+    });
+    const inheritedRedS = gallerySeed.variants.find((variant: { sku: string | null }) => variant.sku === `${skuPrefix}-RS-GALLERY`)!;
+    variantIds.push(inheritedRedS.id);
+    assert.deepEqual(gallerySeed.imageIds, [variantImage.id, productImage.id], "saved product image order follows gallery settings");
+    assert.deepEqual(gallerySeed.variants.find((variant: { id: string }) => variant.id === firstVariant.id)?.imageIds, [productImage.id, variantImage.id], "explicit variant override keeps its existing order");
+    assert.deepEqual(gallerySeed.variants.find((variant: { id: string }) => variant.id === redMVariant.id)?.imageIds, [variantImage.id]);
+    assert.deepEqual(gallerySeed.variants.find((variant: { id: string }) => variant.id === blueSVariant.id)?.imageIds, [productImage.id]);
+    assert.deepEqual(inheritedRedS.imageIds, [variantImage.id], "new Red S variant inherits the Red gallery");
+
+    const changedGalleries = await merchant.updateMerchantRetailProduct(context, manager.id, created.id, {
+      gallerySettings: colorGallerySettings([productImage.id], [variantImage.id]),
+      variantUpdates: [
+        { id: firstVariant.id, galleryMode: "OVERRIDE" },
+        { id: blueMVariant.id, galleryMode: "OVERRIDE", imageIds: [] },
+      ],
+    });
+    assert.deepEqual(changedGalleries.variants.find((variant: { id: string }) => variant.id === firstVariant.id)?.imageIds, [productImage.id, variantImage.id], "explicit same-as-default override survives later color gallery changes");
+    assert.deepEqual(changedGalleries.variants.find((variant: { id: string }) => variant.id === redMVariant.id)?.imageIds, [productImage.id], "inherited Red gallery follows its updated color group");
+    assert.deepEqual(changedGalleries.variants.find((variant: { id: string }) => variant.id === blueSVariant.id)?.imageIds, [variantImage.id], "inherited Blue gallery follows its updated color group");
+    assert.deepEqual(changedGalleries.variants.find((variant: { id: string }) => variant.id === inheritedRedS.id)?.imageIds, [productImage.id]);
+    assert.deepEqual(changedGalleries.variants.find((variant: { id: string }) => variant.id === blueMVariant.id)?.imageIds, [], "explicit empty override remains empty");
+    assert.deepEqual(changedGalleries.gallerySettings?.overrides.sort(), [blueMVariant.id, firstVariant.id].sort());
+
+    const galleryState = async () => {
+      const [merchantProduct, persisted] = await Promise.all([
+        merchant.getMerchantRetailProduct(context, created.id),
+        db.product.findUniqueOrThrow({ where: { id: created.id }, include: { variants: {
+          where: { deletedAt: null }, orderBy: { id: "asc" }, include: { galleryImages: { orderBy: { sortOrder: "asc" } } },
+        } } }),
+      ]);
+      return {
+        imageIds: merchantProduct.imageIds,
+        gallerySettings: persisted.gallerySettings,
+        variantImages: Object.fromEntries(persisted.variants.map((variant) => [variant.id, variant.galleryImages.map((entry) => entry.imageId)])),
+      };
+    };
+    const beforeRejectedGalleryUpdates = await galleryState();
+    await assert.rejects(() => merchant.updateMerchantRetailProduct(context, manager.id, created.id, {
+      imageIds: [variantImage.id, productImage.id],
+      gallerySettings: colorGallerySettings([productImage.id], [foreignImage.id]),
+    }), /image/i, "foreign gallery images are rejected");
+    assert.deepEqual(await galleryState(), beforeRejectedGalleryUpdates, "foreign image rejection rolls back all gallery state");
+    await assert.rejects(() => merchant.updateMerchantRetailProduct(context, manager.id, created.id, {
+      imageIds: [variantImage.id, productImage.id],
+      gallerySettings: {
+        ...colorGallerySettings([productImage.id], [variantImage.id]),
+        colors: [{ definitionId: foreignColor.id, value: "Red", imageIds: [productImage.id] }],
+      },
+    }), /belong to this store/i, "foreign color definitions are rejected");
+    assert.deepEqual(await galleryState(), beforeRejectedGalleryUpdates, "foreign definition rejection rolls back all gallery state");
+    await assert.rejects(() => merchant.updateMerchantRetailProduct(context, manager.id, created.id, {
+      imageIds: [variantImage.id, productImage.id],
+      gallerySettings: { ...colorGallerySettings([productImage.id], [variantImage.id]), productImageIds: [productImage.id] },
+    }), /match the product's assigned images/i, "gallery image membership must match assigned product images");
+    assert.deepEqual(await galleryState(), beforeRejectedGalleryUpdates, "product image membership rejection rolls back all gallery state");
+
+    await merchant.updateMerchantRetailProduct(context, manager.id, created.id, { description: "Gallery metadata omitted" });
+    assert.deepEqual(await galleryState(), beforeRejectedGalleryUpdates, "omitting gallery metadata preserves its order, settings, and variant galleries");
+    const publicGallery = await catalog.getPublicCatalogProduct(orgASlug, productSlug);
+    assert.deepEqual([publicGallery.media.detail, ...publicGallery.media.gallery], [variantImage.url, productImage.url], "public catalog preserves product media order");
+    assert.deepEqual(publicGallery.variants.find((variant: { id: string }) => variant.id === firstVariant.id)?.media.gallery, [productImage.url, variantImage.url], "public catalog retains explicit variant gallery order");
+    assert.deepEqual(publicGallery.variants.find((variant: { id: string }) => variant.id === inheritedRedS.id)?.media.gallery, [productImage.url], "public catalog reflects inherited color gallery");
+    assert.deepEqual(publicGallery.variants.find((variant: { id: string }) => variant.id === blueMVariant.id)?.media.gallery, [], "public catalog preserves explicit empty variant override");
+
+    const legacyGalleryEdit = await merchant.updateMerchantRetailProduct(context, manager.id, created.id, {
+      variantUpdates: [{ id: blueSVariant.id, imageIds: [productImage.id, variantImage.id] }],
+    });
+    assert.equal(legacyGalleryEdit.variants.find((variant: { id: string }) => variant.id === blueSVariant.id)?.galleryMode, "OVERRIDE", "legacy API gallery edits remain explicit after reload");
+    await merchant.updateMerchantRetailProduct(context, manager.id, created.id, {
+      gallerySettings: colorGallerySettings([productImage.id], [variantImage.id]),
+      variantUpdates: [{ id: blueSVariant.id, galleryMode: "INHERIT" }],
+      newVariants: [{ name: "Red L explicit legacy gallery", sku: `${skuPrefix}-RL-GALLERY`, price: 1225, inventory: 2,
+        allowBackOrder: false, options: [{ definitionId: color.id, value: "Red" }, { definitionId: size.id, value: "L" }], imageIds: [variantImage.id] }],
+    });
+    const newOverride = (await merchant.getMerchantRetailProduct(context, created.id)).variants.find((variant: { sku: string | null }) => variant.sku === `${skuPrefix}-RL-GALLERY`)!;
+    variantIds.push(newOverride.id);
+    assert.equal(newOverride.galleryMode, "OVERRIDE");
+    assert.deepEqual(newOverride.imageIds, [variantImage.id], "new variants without a gallery mode preserve submitted images");
+    await merchant.updateMerchantRetailProduct(context, manager.id, created.id, {
+      gallerySettings: { ...colorGallerySettings([productImage.id], [variantImage.id]), productImageIds: [productImage.id, variantImage.id] },
+    });
+    assert.deepEqual((await merchant.getMerchantRetailProduct(context, created.id)).imageIds, [productImage.id, variantImage.id]);
+    assert.equal((await catalog.getPublicCatalogProduct(orgASlug, productSlug)).media.detail, productImage.url, "metadata-only ordering changes the public primary image");
+
     // Controlled legacy-style fixture: policy-only edits preserve stock, media,
     // snapshots and tenant boundaries. Never run this against a shared database.
     const beforePolicy = await merchant.getMerchantRetailProduct(context, created.id);

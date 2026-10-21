@@ -3,17 +3,20 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
-import { ArrowLeft, Eye, ImagePlus, Plus, Save, Store, Trash2, UploadCloud } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Eye, Plus, Save, Store, Trash2 } from "lucide-react";
+
+import { AssignedGallery, RetailMediaPicker } from "./retail-media-picker";
+import { colorGroupKey, inferColorGallery, type GallerySettings, type GallerySettingsInput } from "@/lib/retail/product-galleries";
 
 type Locale = "fa" | "en" | "ar";
 type Definition = { id: string; key: string; label: string; scope: "PRODUCT" | "VARIANT_OPTION"; valueType: "TEXT" | "NUMBER" | "BOOLEAN" | "ENUM"; displayUnit: string | null; allowedValues: unknown };
 type Category = { id: string; name: string; isActive: boolean };
 type ImageItem = { id: string; url: string; filename?: string | null };
 type Attribute = { definitionId: string; value: string | number | boolean };
-type ProductRecord = { id: string; name: string; brand: string | null; slug: string | null; description: string | null; isActive: boolean; trackInventory: boolean; category: { id: string; name: string; isActive: boolean }; categoryIds: string[]; tags: Array<{ id: string; name: string }>; imageIds: string[]; images: ImageItem[]; attributes: Attribute[]; variants: VariantRecord[] };
-type VariantRecord = { id: string; name: string | null; sku: string | null; price: number | null; inventory: number; reservedQuantity: number; allowBackOrder: boolean; options: Attribute[]; imageIds: string[]; images: ImageItem[] };
-type VariantDraft = { id?: string; name: string; sku: string; price: string; inventory: string; reservedQuantity: number; allowBackOrder: boolean; options: Record<string, string>; imageIds: string[] };
+type ProductRecord = { id: string; name: string; brand: string | null; slug: string | null; description: string | null; isActive: boolean; trackInventory: boolean; gallerySettings: GallerySettings | null; galleryMedia?: ImageItem[]; category: { id: string; name: string; isActive: boolean }; categoryIds: string[]; tags: Array<{ id: string; name: string }>; imageIds: string[]; images: ImageItem[]; attributes: Attribute[]; variants: VariantRecord[] };
+type VariantRecord = { galleryMode?: "INHERIT" | "OVERRIDE" | null; id: string; name: string | null; sku: string | null; price: number | null; inventory: number; reservedQuantity: number; allowBackOrder: boolean; options: Attribute[]; imageIds: string[]; images: ImageItem[] };
+type VariantDraft = { galleryMode: "INHERIT" | "OVERRIDE"; id?: string; name: string; sku: string; price: string; inventory: string; reservedQuantity: number; allowBackOrder: boolean; options: Record<string, string>; imageIds: string[] };
 
 const strings = {
   fa: {
@@ -28,11 +31,12 @@ const strings = {
 } as const;
 
 function newVariant(definitions: Definition[]): VariantDraft {
-  return { name: "", sku: "", price: "", inventory: "0", reservedQuantity: 0, allowBackOrder: false, options: Object.fromEntries(definitions.filter((definition) => definition.scope === "VARIANT_OPTION").map((definition) => [definition.id, ""])), imageIds: [] };
+  return { galleryMode: "INHERIT", name: "", sku: "", price: "", inventory: "0", reservedQuantity: 0, allowBackOrder: false, options: Object.fromEntries(definitions.filter((definition) => definition.scope === "VARIANT_OPTION").map((definition) => [definition.id, ""])), imageIds: [] };
 }
 
 function restoreVariants(variants: VariantRecord[]): VariantDraft[] {
   return variants.map((variant) => ({
+    galleryMode: variant.galleryMode ?? (variant.imageIds.length ? "OVERRIDE" : "INHERIT"),
     id: variant.id, name: variant.name ?? "", sku: variant.sku ?? "",
     price: variant.price === null ? "" : String(variant.price),
     inventory: String(variant.inventory), reservedQuantity: variant.reservedQuantity,
@@ -42,8 +46,23 @@ function restoreVariants(variants: VariantRecord[]): VariantDraft[] {
   }));
 }
 
-function recordSnapshot(product: ProductRecord) {
-  return JSON.stringify({ trackInventory: product.trackInventory, name: product.name, brand: product.brand ?? "", slug: product.slug ?? "", description: product.description ?? "", categoryId: product.category.id, categoryIds: product.categoryIds ?? [product.category.id], tagText: (product.tags ?? []).map((tag) => tag.name).join(", "), attributes: Object.fromEntries(product.attributes.map((attribute) => [attribute.definitionId, String(attribute.value)])), variants: restoreVariants(product.variants), selectedImageIds: product.images.map((image) => image.id) });
+type ColorGallery = GallerySettingsInput["colors"][number];
+function galleryEditor(product: ProductRecord, definitions: Definition[]) {
+  const variants = restoreVariants(product.variants);
+  const color = definitions.find(def => def.scope === "VARIANT_OPTION" && /colou?r|رنگ/i.test(`${def.key} ${def.label}`));
+  if (product.gallerySettings) return { colors: product.gallerySettings.colors, variants };
+  const colors: ColorGallery[] = [];
+  if (color) for (const value of [...new Set(variants.map(variant => variant.options[color.id]).filter(Boolean))]) {
+    const matching = variants.filter(variant => variant.options[color.id] === value);
+    const inferred = inferColorGallery(matching);
+    colors.push({ definitionId: color.id, value, imageIds: inferred.imageIds });
+    for (const variant of matching) variant.galleryMode = inferred.overrideIds.includes(variant.id!) ? "OVERRIDE" : "INHERIT";
+  }
+  return { colors, variants };
+}
+function recordSnapshot(product: ProductRecord, definitions: Definition[]) {
+  const gallery = galleryEditor(product, definitions);
+  return JSON.stringify({ colorGalleries: gallery.colors, trackInventory: product.trackInventory, name: product.name, brand: product.brand ?? "", slug: product.slug ?? "", description: product.description ?? "", categoryId: product.category.id, categoryIds: product.categoryIds ?? [product.category.id], tagText: (product.tags ?? []).map((tag) => tag.name).join(", "), attributes: Object.fromEntries(product.attributes.map((attribute) => [attribute.definitionId, String(attribute.value)])), variants: gallery.variants, selectedImageIds: product.imageIds });
 }
 
 function valueFromInput(definition: Definition, value: string): string | number | boolean {
@@ -80,6 +99,8 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
   const rtl = locale === "fa" || locale === "ar";
   const [definitions, setDefinitions] = useState<Definition[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [colorGalleries, setColorGalleries] = useState<ColorGallery[]>([]);
+  const [picker, setPicker] = useState<{ kind: "product" } | { kind: "color"; key: string } | { kind: "variant"; index: number } | null>(null);
   const [images, setImages] = useState<ImageItem[]>([]);
   const [selectedImageIds, setSelectedImageIds] = useState<string[]>([]);
   const [name, setName] = useState("");
@@ -102,10 +123,8 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
   const [preview, setPreview] = useState(false);
   const [fileBusy, setFileBusy] = useState(false);
   const [matrixDefinitions, setMatrixDefinitions] = useState<[string, string]>(["", ""]);
-  const [imageGroupDefinitionId, setImageGroupDefinitionId] = useState("");
-  const [imageGroupValue, setImageGroupValue] = useState("");
   const [savedState, setSavedState] = useState<string | null>(null);
-  const editorState = JSON.stringify({ trackInventory, name, brand, slug, description, categoryId, categoryIds, tagText, attributes, variants, selectedImageIds });
+  const editorState = JSON.stringify({ colorGalleries, trackInventory, name, brand, slug, description, categoryId, categoryIds, tagText, attributes, variants, selectedImageIds });
   const unsaved = savedState !== null && savedState !== editorState;
   const leaveWarning = locale === "fa" ? "تغییرات ذخیره نشده‌اند. بدون ذخیره خارج می‌شوید؟" : locale === "ar" ? "لم يتم حفظ التغييرات. هل تريد المغادرة؟" : "You have unsaved changes. Leave without saving?";
 
@@ -140,25 +159,24 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
       setNotice("");
       setPreview(false);
       setMatrixDefinitions(["", ""]);
-      setImageGroupDefinitionId("");
-      setImageGroupValue("");
       setError("");
       try {
-        const requests = ["/api/dashboard/retail/attributes", "/api/dashboard/retail/categories", "/api/dashboard/retail/media", "/api/dashboard/retail/context"].map((url) => fetch(url, { credentials: "same-origin" }));
+        const requests = ["/api/dashboard/retail/attributes", "/api/dashboard/retail/categories", "/api/dashboard/retail/context"].map((url) => fetch(url, { credentials: "same-origin" }));
         if (productId) requests.push(fetch(`/api/dashboard/retail/catalog/${productId}`, { credentials: "same-origin" }));
         const responses = await Promise.all(requests);
         const payloads = await Promise.all(responses.map((response) => response.json()));
         if (responses.some((response) => !response.ok)) throw new Error("load-failed");
         if (cancelled) return;
-        const [definitionData, categoryData, mediaData, contextData, productData] = payloads;
+        const [definitionData, categoryData, contextData, productData] = payloads;
         const defs: Definition[] = definitionData.definitions ?? [];
         setDefinitions(defs);
         setCategories(categoryData.categories ?? []);
-        setImages(mediaData.images ?? []);
+        setImages([]); setPicker(null);
         setOrganizationSlug(contextData.organizationSlug ?? "");
         if (productData?.product) {
           const product = productData.product as ProductRecord;
-          setSavedState(recordSnapshot(product));
+          setSavedState(recordSnapshot(product, defs));
+          setColorGalleries(galleryEditor(product, defs).colors);
           setName(product.name);
           setBrand(product.brand ?? "");
           setSlug(product.slug ?? "");
@@ -172,17 +190,17 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
           setAttributes(Object.fromEntries(product.attributes.map((attribute) => [attribute.definitionId, String(attribute.value)])));
           setImages((current) => {
             const merged = new Map(current.map((image) => [image.id, image]));
-            for (const image of product.images) merged.set(image.id, image);
+            for (const image of [...product.images, ...product.variants.flatMap(variant => variant.images), ...(product.galleryMedia ?? [])]) merged.set(image.id, image);
             return [...merged.values()];
           });
-          setSelectedImageIds(product.images.map((image) => image.id));
-          setVariants(restoreVariants(product.variants));
+          setSelectedImageIds(product.imageIds);
+          setVariants(galleryEditor(product, defs).variants);
         } else {
           setName(""); setBrand(""); setSlug(""); setDescription("");
           setCategoryId(""); setCategoryIds([]); setTagText(""); setAttributes({}); setPublished(false); setTrackInventory(true); setLoadedInventory({});
-          setVariants([newVariant(defs)]);
+          setVariants([newVariant(defs)]); setColorGalleries([]);
           setSelectedImageIds([]);
-          setSavedState(JSON.stringify({ trackInventory: true, name: "", brand: "", slug: "", description: "", categoryId: "", categoryIds: [], tagText: "", attributes: {}, variants: [newVariant(defs)], selectedImageIds: [] }));
+          setSavedState(JSON.stringify({ colorGalleries: [], trackInventory: true, name: "", brand: "", slug: "", description: "", categoryId: "", categoryIds: [], tagText: "", attributes: {}, variants: [newVariant(defs)], selectedImageIds: [] }));
         }
       } catch {
         if (!cancelled) setError(t.genericError);
@@ -224,43 +242,45 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
     });
   }
 
-  function toggleVariantImage(index: number, imageId: string) {
-    const variant = variants[index];
-    if (!variant) return;
-    const imageIds = variant.imageIds.includes(imageId) ? variant.imageIds.filter((id) => id !== imageId) : [...variant.imageIds, imageId];
-    updateVariant(index, { imageIds });
+  const imageById = useMemo(() => new Map(images.map(image => [image.id, image])), [images]);
+  const assignedImages = (ids: string[]) => ids.flatMap(id => imageById.has(id) ? [imageById.get(id)!] : []);
+  const colorDefinition = optionDefinitions.find(def => colorGalleries.some(group => group.definitionId === def.id)) ?? optionDefinitions.find(def => /colou?r|رنگ/i.test(`${def.key} ${def.label}`));
+  const colorValues = colorDefinition ? [...new Set(variants.map(variant => variant.options[colorDefinition.id]).filter(Boolean))] : [];
+  const visibleColors = colorDefinition ? colorValues.map(value => colorGalleries.find(group => group.definitionId === colorDefinition.id && group.value === value) ?? { definitionId: colorDefinition.id, value, imageIds: [] }) : [];
+  function changeGallery(target: NonNullable<typeof picker>, ids: string[]) {
+    if (target.kind === "product") setSelectedImageIds(ids);
+    else if (target.kind === "variant") updateVariant(target.index, { galleryMode: "OVERRIDE", imageIds: ids });
+    else {
+      const group = visibleColors.find(color => colorGroupKey(color.definitionId, color.value) === target.key);
+      if (group) setColorGalleries(current => [...current.filter(color => colorGroupKey(color.definitionId, color.value) !== target.key), { ...group, imageIds: ids }]);
+    }
   }
-
-  function applyGalleryToMatchingVariants() {
-    if (!imageGroupDefinitionId || !imageGroupValue) return;
-    setVariants((current) => current.map((variant) => variant.options[imageGroupDefinitionId] === imageGroupValue ? { ...variant, imageIds: [...selectedImageIds] } : variant));
+  function galleryIds(target: NonNullable<typeof picker>) {
+    return target.kind === "product" ? selectedImageIds : target.kind === "variant" ? variants[target.index]?.imageIds ?? [] : visibleColors.find(color => colorGroupKey(color.definitionId, color.value) === target.key)?.imageIds ?? [];
   }
-
-  async function uploadImages(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []);
-    if (!files.length) return;
+  async function uploadToGallery(target: NonNullable<typeof picker>, files: File[]) {
+    if (galleryIds(target).length + files.length > 20) { setError(locale === "fa" ? "حداکثر ۲۰ تصویر در هر گالری مجاز است." : "Maximum 20 images per gallery."); return; }
     setFileBusy(true); setError("");
     try {
-      const uploads = await Promise.all(files.map(async (file) => {
+      const uploads: ImageItem[] = [];
+      for (const file of files) {
         const form = new FormData(); form.set("file", file);
         const response = await fetch("/api/dashboard/retail/media", { method: "POST", credentials: "same-origin", body: form });
-        const data = await response.json();
-        if (!response.ok) throw new Error("image-upload-failed");
-        return data.image as ImageItem;
-      }));
-      setImages((current) => [...new Map([...current, ...uploads].map((image) => [image.id, image])).values()]);
-      setSelectedImageIds((current) => [...new Set([...current, ...uploads.map((image) => image.id)])].slice(0, 20));
-    } catch { setError(t.uploadError); }
-    finally { setFileBusy(false); event.target.value = ""; }
+        const data = await response.json(); if (!response.ok) throw new Error(t.uploadError); uploads.push(data.image as ImageItem);
+      }
+      setImages(current => [...new Map([...current, ...uploads].map(image => [image.id, image])).values()]);
+      changeGallery(target, [...galleryIds(target), ...uploads.map(image => image.id)]);
+    } catch { setError(t.uploadError); throw new Error(t.uploadError); }
+    finally { setFileBusy(false); }
   }
-
-  const selectedImages = images.filter((image) => selectedImageIds.includes(image.id));
+  const selectedImages = assignedImages(selectedImageIds);
 
   function buildAssignments(scope: "PRODUCT" | "VARIANT_OPTION", values: Record<string, string>) {
     return definitions.filter((definition) => definition.scope === scope && values[definition.id] !== undefined && values[definition.id] !== "").map((definition) => ({ definitionId: definition.id, value: valueFromInput(definition, values[definition.id]!) }));
   }
 
   async function saveProduct(action: "save" | "publish" | "unpublish") {
+    if (saving || fileBusy) return;
     setSaving(true); setError(""); setNotice("");
     try {
       if (!categoryId) throw new Error("missing-category");
@@ -268,19 +288,19 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
       if ((!variants.length && (!productId || action === "publish")) || variants.some((variant) => !variant.name.trim() || !variant.price || !Number.isFinite(Number(variant.price)) || Number(variant.price) <= 0 || !Number.isInteger(Number(variant.inventory)) || Number(variant.inventory) < variant.reservedQuantity) || (action === "publish" && variants.some((variant) => !variant.sku.trim()))) throw new Error(t.variantsRequired);
       if (action === "publish" && selectedImageIds.length === 0) throw new Error(t.variantsRequired);
       const variantInput = variants.map((variant) => ({
-        name: variant.name.trim(), sku: variant.sku.trim() || null, price: Number(variant.price), inventory: Number(variant.inventory), allowBackOrder: variant.allowBackOrder,
+        name: variant.name.trim(), sku: variant.sku.trim() || null, price: Number(variant.price), inventory: Number(variant.inventory), galleryMode: variant.galleryMode, allowBackOrder: variant.allowBackOrder,
         options: buildAssignments("VARIANT_OPTION", variant.options), imageIds: variant.imageIds,
       }));
       const productAttributes = buildAssignments("PRODUCT", attributes);
       const categoriesToSave = [...new Set([categoryId, ...categoryIds].filter(Boolean))];
       const tagNames = [...new Set(tagText.split(/[,،\n]/u).map((tag) => tag.trim()).filter(Boolean))];
       const payload = productId ? {
-        trackInventory, name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
-        variantUpdates: variants.filter((variant) => variant.id).map((variant) => ({ id: variant.id!, name: variant.name.trim(), sku: variant.sku.trim() || null, price: Number(variant.price), ...(variant.inventory === loadedInventory[variant.id!] ? {} : { inventory: Number(variant.inventory) }), allowBackOrder: variant.allowBackOrder, options: variantInput[variants.indexOf(variant)]!.options, imageIds: variant.imageIds })),
+        trackInventory, gallerySettings: { version: 1 as const, productImageIds: selectedImageIds, colors: visibleColors }, name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
+        variantUpdates: variants.filter((variant) => variant.id).map((variant) => ({ id: variant.id!, name: variant.name.trim(), sku: variant.sku.trim() || null, price: Number(variant.price), ...(variant.inventory === loadedInventory[variant.id!] ? {} : { inventory: Number(variant.inventory) }), allowBackOrder: variant.allowBackOrder, galleryMode: variant.galleryMode, options: variantInput[variants.indexOf(variant)]!.options, imageIds: variant.imageIds })),
         newVariants: variantInput.filter((_, index) => !variants[index]?.id),
         ...(action === "publish" ? { isActive: true } : action === "unpublish" ? { isActive: false } : {}),
       } : {
-        trackInventory, name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
+        trackInventory, gallerySettings: { version: 1 as const, productImageIds: selectedImageIds, colors: visibleColors }, name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
         variants: variantInput,
       };
       const response = await fetch(productId ? `/api/dashboard/retail/catalog/${productId}` : "/api/dashboard/retail/catalog", { method: productId ? "PATCH" : "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
@@ -296,10 +316,11 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
       setCategoryId(updated.category.id); setCategoryIds(updated.categoryIds ?? [updated.category.id]);
       setTagText((updated.tags ?? []).map((tag) => tag.name).join(", "));
       setAttributes(Object.fromEntries(updated.attributes.map((attribute) => [attribute.definitionId, String(attribute.value)])));
-      setSelectedImageIds(updated.images.map((image) => image.id));
-      setVariants(restoreVariants(updated.variants));
+      setSelectedImageIds(updated.imageIds);
+      setVariants(galleryEditor(updated, definitions).variants);
+      setColorGalleries(galleryEditor(updated, definitions).colors);
       setSlug(updated.slug ?? "");
-      setSavedState(recordSnapshot(updated));
+      setSavedState(recordSnapshot(updated, definitions));
       setPublished(updated.isActive);
       setTrackInventory(updated.trackInventory);
       setLoadedInventory(Object.fromEntries(updated.variants.map(v => [v.id, String(v.inventory)])));
@@ -348,40 +369,40 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
             {productAttributeDefinitions.length === 0 ? <p className="text-sm text-muted-foreground sm:col-span-2">{t.noDefinitions} <Link className="text-primary underline" href={`/${locale}/dashboard/retail-catalog`}>{t.back}</Link></p> : <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2"><h2 className="font-semibold sm:col-span-2">{t.productAttributes}</h2>{productAttributeDefinitions.map((definition) => <AttributeControl key={definition.id} definition={definition} locale={locale} value={attributes[definition.id] ?? ""} onChange={(value) => setAttributes((current) => ({ ...current, [definition.id]: value }))} />)}</div>}
           </section>
 
+          <section className="space-y-5 rounded-xl border bg-card p-4">
+            <AssignedGallery locale={locale} title={locale === "fa" ? "گالری محصول" : "Product gallery"} description={locale === "fa" ? "فقط تصاویر همین محصول نمایش داده می‌شوند. تصویر نخست، تصویر اصلی است؛ انتخاب از کتابخانه فقط با تأیید شما انجام می‌شود." : "Assigned product images only. The first image is primary."} images={selectedImages} disabled={saving || fileBusy} onChange={setSelectedImageIds} onOpenLibrary={() => setPicker({ kind: "product" })} onUpload={files => uploadToGallery({ kind: "product" }, files)} />
+            {visibleColors.map(color => { const key = colorGroupKey(color.definitionId, color.value); return <div key={key} className="border-t pt-4"><AssignedGallery locale={locale} title={`${locale === "fa" ? "گالری رنگ" : "Color gallery"}: ${color.value}`} description={locale === "fa" ? "برای همه سایزهای این رنگ استفاده می‌شود؛ گالری‌های اختصاصی گونه‌ها حفظ می‌شوند. تغییرات پس از ذخیره اعمال می‌شوند." : "Shared across sizes of this color; variant overrides are preserved."} images={assignedImages(color.imageIds)} disabled={saving || fileBusy} onChange={ids => changeGallery({ kind: "color", key }, ids)} onOpenLibrary={() => setPicker({ kind: "color", key })} onUpload={files => uploadToGallery({ kind: "color", key }, files)} /></div>; })}
+          </section>
           <section className="space-y-4 rounded-xl border bg-card p-4">
             <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold">{t.variant}</h2><p className="mt-1 text-xs text-muted-foreground">{t.variantsRequired}</p></div><button type="button" onClick={() => setVariants((current) => [...current, newVariant(definitions)])} className="rounded-lg border px-3 py-2 text-sm hover:bg-muted"><Plus className="me-1 inline size-4" />{t.addVariant}</button></div>
             {optionDefinitions.length >= 2 && <div className="grid gap-3 rounded-lg bg-muted/30 p-3 sm:grid-cols-[1fr_1fr_auto]"><div className="sm:col-span-3"><h3 className="text-sm font-semibold">{t.matrix}</h3><p className="text-xs text-muted-foreground">{t.matrixHelp}</p></div><label className="space-y-1 text-xs font-medium"><span>{t.firstOption}</span><select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={matrixDefinitions[0]} onChange={(event) => setMatrixDefinitions([event.target.value, matrixDefinitions[1]])}><option value="">{t.choose}</option>{optionDefinitions.map((definition) => <option key={definition.id} value={definition.id}>{definition.label}</option>)}</select></label><label className="space-y-1 text-xs font-medium"><span>{t.secondOption}</span><select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={matrixDefinitions[1]} onChange={(event) => setMatrixDefinitions([matrixDefinitions[0], event.target.value])}><option value="">{t.choose}</option>{optionDefinitions.filter((definition) => definition.id !== matrixDefinitions[0]).map((definition) => <option key={definition.id} value={definition.id}>{definition.label}</option>)}</select></label><button type="button" disabled={!matrixDefinitions[0] || !matrixDefinitions[1]} onClick={generateVariantMatrix} className="self-end rounded-md border px-3 py-2 text-sm disabled:opacity-50">{t.generate}</button></div>}
-            {optionDefinitions.length > 0 && <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[1fr_1fr_auto]"><label className="space-y-1 text-xs font-medium"><span>{t.sameOption}</span><select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={imageGroupDefinitionId} onChange={(event) => { setImageGroupDefinitionId(event.target.value); setImageGroupValue(""); }}><option value="">{t.choose}</option>{optionDefinitions.map((definition) => <option key={definition.id} value={definition.id}>{definition.label}</option>)}</select></label><label className="space-y-1 text-xs font-medium"><span>{t.optionValue}</span><select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={imageGroupValue} onChange={(event) => setImageGroupValue(event.target.value)} disabled={!imageGroupDefinitionId}><option value="">{t.choose}</option>{allowedValues(optionDefinitions.find((definition) => definition.id === imageGroupDefinitionId) ?? optionDefinitions[0]!).map((value) => <option key={value} value={value}>{value}</option>)}</select></label><button type="button" disabled={!imageGroupDefinitionId || !imageGroupValue || !selectedImageIds.length} onClick={applyGalleryToMatchingVariants} className="self-end rounded-md border px-3 py-2 text-sm disabled:opacity-50">{t.applyGallery}</button></div>}
             <div className="space-y-4">{variants.map((variant, index) => <div key={variant.id ?? `new-${index}`} className="grid gap-3 rounded-lg border bg-muted/10 p-3 sm:grid-cols-2 xl:grid-cols-3">
               <label className="space-y-1 text-xs font-medium"><span>{t.variantName}</span><input required maxLength={200} value={variant.name} onChange={(event) => updateVariant(index, { name: event.target.value })} className="w-full rounded-md border bg-background px-3 py-2 text-sm" /></label>
               <label className="space-y-1 text-xs font-medium"><span>{t.sku}</span><input maxLength={100} value={variant.sku} onChange={(event) => updateVariant(index, { sku: event.target.value })} className="w-full rounded-md border bg-background px-3 py-2 text-sm" /></label>
               <label className="space-y-1 text-xs font-medium"><span>{t.price}</span><input required type="number" min="0.01" step="0.01" value={variant.price} onChange={(event) => updateVariant(index, { price: event.target.value })} className="w-full rounded-md border bg-background px-3 py-2 text-sm" /></label>
               <label className="space-y-1 text-xs font-medium"><span>{t.inventory}</span><input required type="number" min={variant.reservedQuantity} max={1_000_000_000} step="1" value={variant.inventory} onChange={(event) => updateVariant(index, { inventory: event.target.value })} className="w-full rounded-md border bg-background px-3 py-2 text-sm" /><small className="block text-muted-foreground">{t.reserved}: {variant.reservedQuantity}</small></label>
               {optionDefinitions.map((definition) => <AttributeControl key={definition.id} definition={definition} locale={locale} value={variant.options[definition.id] ?? ""} onChange={(value) => updateVariant(index, { options: { ...variant.options, [definition.id]: value } })} />)}
-              <div className="space-y-2 sm:col-span-2 xl:col-span-3"><span className="text-xs font-medium">{t.variantImages}</span><div className="flex flex-wrap gap-2">{images.map((image) => { const checked = variant.imageIds.includes(image.id); return <button key={image.id} type="button" aria-pressed={checked} onClick={() => toggleVariantImage(index, image.id)} className={`size-16 overflow-hidden rounded-md border ${checked ? "ring-2 ring-primary" : "opacity-70"}`}><Image src={image.url} alt="" width={64} height={64} unoptimized className="size-full object-cover" /></button>; })}{images.length === 0 && <span className="text-xs text-muted-foreground">{t.noImage}</span>}</div><button type="button" className="text-xs text-primary underline" onClick={() => updateVariant(index, { imageIds: [...selectedImageIds] })}>{locale === "fa" ? "استفاده از گالری محصول" : locale === "ar" ? "استخدام معرض المنتج" : "Use product gallery"}</button></div>
+              <div className="space-y-2 sm:col-span-2 xl:col-span-3">
+                <label className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={variant.galleryMode === "OVERRIDE"} onChange={event => updateVariant(index, { galleryMode: event.target.checked ? "OVERRIDE" : "INHERIT", ...(event.target.checked ? { imageIds: [...(visibleColors.find(group => variant.options[group.definitionId] === group.value)?.imageIds.length ? visibleColors.find(group => variant.options[group.definitionId] === group.value)!.imageIds : selectedImageIds)] } : {}) })} />{locale === "fa" ? "گالری اختصاصی این گونه" : "Override gallery for this variant"}</label>
+                {variant.galleryMode === "OVERRIDE" ? <AssignedGallery locale={locale} title={`${t.variantImages}: ${variant.name || index + 1}`} images={assignedImages(variant.imageIds)} disabled={saving || fileBusy} onChange={ids => changeGallery({ kind: "variant", index }, ids)} onOpenLibrary={() => setPicker({ kind: "variant", index })} onUpload={files => uploadToGallery({ kind: "variant", index }, files)} /> : <p className="text-xs text-muted-foreground">{locale === "fa" ? "از گالری رنگ پیروی می‌کند؛ اگر رنگ گالری نداشته باشد، تصاویر محصول نمایش داده می‌شوند." : "Uses the color gallery, falling back to the product gallery."}</p>}
+              </div>
               <label className="flex items-center gap-2 text-xs font-medium sm:col-span-2 xl:col-span-3"><input type="checkbox" checked={variant.allowBackOrder} disabled={!trackInventory} onChange={(event) => updateVariant(index, { allowBackOrder: event.target.checked })} />{t.backorder}</label>
               {!variant.id && variants.length > 1 && <button className="justify-self-start rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/5" type="button" onClick={() => setVariants((current) => current.filter((_, currentIndex) => currentIndex !== index))}><Trash2 className="me-1 inline size-3.5" />{t.removeVariant}</button>}
             </div>)}</div>
             <p className="text-xs text-muted-foreground">{currency}</p>
           </section>
 
-          <section className="space-y-3 rounded-xl border bg-card p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold">{t.images}</h2><p className="mt-1 text-xs text-muted-foreground">{t.public}</p></div><label className="cursor-pointer rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted"><UploadCloud className="me-2 inline size-4" />{fileBusy ? t.deleting : t.upload}<input className="sr-only" type="file" accept="image/*" multiple disabled={fileBusy} onChange={(event) => void uploadImages(event)} /></label></div>
-            {images.length === 0 ? <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground"><ImagePlus className="mx-auto mb-2 size-5" />{t.noImage}</p> : <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{images.map((image) => {
-              const selected = selectedImageIds.includes(image.id);
-              return <div key={image.id} className={`overflow-hidden rounded-lg border ${selected ? "ring-2 ring-primary" : "opacity-65"}`}><button type="button" className="block aspect-square w-full bg-muted" aria-pressed={selected} aria-label={`${selected ? t.remove : t.upload}: ${image.filename ?? image.id}`} onClick={() => setSelectedImageIds((current) => selected ? current.filter((id) => id !== image.id) : current.length < 20 ? [...current, image.id] : current)}><Image src={image.url} alt="" width={320} height={320} unoptimized className="h-full w-full object-cover" /></button><p className="truncate px-2 py-1 text-xs">{image.filename ?? image.id}</p></div>;
-            })}</div>}
-          </section>
           <div className="flex flex-wrap gap-2">
-            <button disabled={saving || !name.trim()} type="button" onClick={() => void saveProduct("save")} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Save className="me-2 inline size-4" />{saving ? t.deleting : productId ? t.saveChanges : t.save}</button>
+            <button disabled={saving || fileBusy || !name.trim()} type="button" onClick={() => void saveProduct("save")} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Save className="me-2 inline size-4" />{saving ? t.deleting : productId ? t.saveChanges : t.save}</button>
             <button type="button" onClick={() => setPreview((current) => !current)} className="rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-muted"><Eye className="me-2 inline size-4" />{preview ? t.closePreview : t.preview}</button>
-            {productId && !published && <button disabled={saving} type="button" onClick={() => void saveProduct("publish")} className="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">{t.publish}</button>}
-            {productId && published && <button disabled={saving} type="button" onClick={() => void saveProduct("unpublish")} className="rounded-lg border border-amber-500/50 px-4 py-2.5 text-sm font-semibold text-amber-800 hover:bg-amber-50 dark:text-amber-200">{t.unpublish}</button>}
+            {productId && !published && <button disabled={saving || fileBusy} type="button" onClick={() => void saveProduct("publish")} className="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">{t.publish}</button>}
+            {productId && published && <button disabled={saving || fileBusy} type="button" onClick={() => void saveProduct("unpublish")} className="rounded-lg border border-amber-500/50 px-4 py-2.5 text-sm font-semibold text-amber-800 hover:bg-amber-50 dark:text-amber-200">{t.unpublish}</button>}
           </div>
         </fieldset>
 
         {preview && <aside className="sticky top-4 overflow-hidden rounded-xl border bg-card shadow-sm"><div className="border-b bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">{t.previewBanner}</div>{selectedImages[0] ? <Image src={selectedImages[0].url} alt="" width={640} height={480} unoptimized className="aspect-[4/3] w-full object-cover" /> : <div className="grid aspect-[4/3] place-items-center bg-muted text-sm text-muted-foreground">{t.noImage}</div>}<div className="space-y-3 p-4"><h2 className="text-lg font-semibold">{name || t.titleNew}</h2><p className="whitespace-pre-wrap text-sm text-muted-foreground">{description}</p>{attributes && <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">{productAttributeDefinitions.filter((definition) => attributes[definition.id]).map((definition) => <div key={definition.id}><dt className="text-xs text-muted-foreground">{definition.label}</dt><dd>{attributes[definition.id]}{definition.displayUnit ? ` ${definition.displayUnit}` : ""}</dd></div>)}</dl>}<div className="divide-y rounded-lg border">{variants.map((variant, index) => <div key={variant.id ?? index} className="flex items-center justify-between gap-2 p-3 text-sm"><span>{variant.name || `${t.variant} ${index + 1}`}{Object.entries(variant.options).filter(([, value]) => value).map(([id, value]) => <small key={id} className="ms-2 text-muted-foreground">{optionDefinitions.find((definition) => definition.id === id)?.label}: {value}</small>)}</span><span className="font-semibold">{Number(variant.price || 0).toLocaleString(locale)} {currency}</span></div>)}</div><button disabled className="w-full rounded-lg bg-muted px-4 py-2 text-sm text-muted-foreground" type="button">{t.previewBanner}</button></div></aside>}
       </div>
+      {picker && <RetailMediaPicker locale={locale} open onOpenChange={open => { if (!open) setPicker(null); }} selectedIds={galleryIds(picker)} disabled={saving || fileBusy} onConfirm={(ids, media) => { setImages(current => [...new Map([...current, ...media].map(image => [image.id, image])).values()]); changeGallery(picker, ids); }} />}
     </main>
   );
 }

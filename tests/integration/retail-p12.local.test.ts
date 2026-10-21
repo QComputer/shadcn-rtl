@@ -56,7 +56,7 @@ test("Retail P1.2 quote, snapshot, tenant recovery, rollback, and overlapping st
     users.push(a.id, b.id, c.id);
     const category = await db.productCategory.create({ data: { organizationId: org.id, organizationSlug: slug, name: "P1.2", slug: `p12-${suffix}` } });
     const product = await db.product.create({ data: { organizationId: org.id, organizationSlug: slug, categoryId: category.id,
-      name: "P1.2 synthetic item", slug: `item-${suffix}`, basePrice: 1000, trackInventory: true,
+      name: "P1.2 synthetic item", slug: `item-${suffix}`, image: "/legacy-p12-image.png", basePrice: 1000, trackInventory: true,
       discountType: "none", discountValue: 0 } });
     productIds.push(product.id);
     const variant = await db.productVariant.create({ data: { productId: product.id, name: "Blue / M", sku: `P12-${suffix}`, price: 1000, inventory: 5 } });
@@ -97,6 +97,7 @@ test("Retail P1.2 quote, snapshot, tenant recovery, rollback, and overlapping st
     const projectedVariant = normalizedCart!.items[0]!.variant as Record<string, unknown>;
     assert.equal(Object.prototype.hasOwnProperty.call(projectedVariant, "galleryImages"), false, "cart API must not leak raw image relations");
     assert.deepEqual((projectedVariant.media as { gallery: string[] }).gallery, [ownedGalleryImage.url], "only the cart tenant's public gallery image is projected");
+    assert.equal((projectedVariant.product as { image: string | null }).image, "/legacy-p12-image.png", "legacy scalar image remains available to the old cart drawer");
     const coupon = await db.coupon.create({ data: { organizationId: org.id, code: `P12-${suffix}`.toUpperCase(),
       name: "Synthetic", discountType: "PERCENTAGE", discountValue: 10, usageLimit: 1, perCustomerLimit: 1 } });
     couponIds.push(coupon.id);

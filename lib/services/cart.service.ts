@@ -120,7 +120,7 @@ function normalizeCart(cart: NormalizedCartSource | null) {
     const reason = !item.variant.product.isActive || item.variant.product.deletedAt || item.variant.deletedAt || item.variant.product.organizationSlug !== cart.organizationSlug ||
       !item.variant.product.category.isActive || item.variant.product.category.deletedAt || item.variant.product.category.organizationId !== item.variant.product.organizationId ? "unavailable" : orderable ? null : "insufficient_stock";
     const maxQuantity = !item.variant.product.trackInventory || item.variant.allowBackOrder ? null : Math.max(0, item.variant.inventory - item.variant.reservedQuantity);
-    return { ...item, unitPrice: price.toNumber(), availability: { orderable, maxQuantity, reason }, variant: { ...variant, media: { image: variantGallery[0] ?? primary, gallery: variantGallery.length ? variantGallery : productGallery }, product: { ...product, image: primary }, options } };
+    return { ...item, unitPrice: price.toNumber(), availability: { orderable, maxQuantity, reason }, variant: { ...variant, media: { image: variantGallery[0] ?? primary, gallery: variantGallery.length ? variantGallery : productGallery }, product, options } };
   });
 
   return {

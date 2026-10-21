@@ -1,213 +1,148 @@
 "use client";
-
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { ArrowRight, LoaderCircle, ShoppingBag, UserRound } from "lucide-react";
 import { appPath } from "@/lib/app-base-path";
+import { useOptionalCart } from "@/lib/contexts/cart-context";
+import { checkoutDigits, checkoutError, checkoutFormErrors, checkoutMoney, checkoutQuantityValid, type CheckoutCart, type CheckoutCartItem, type CheckoutOrder, type CheckoutPaymentMethod, type CheckoutQuote } from "@/lib/retail/checkout-presentation";
+import { PremiumCartItems } from "./premium-cart-items";
+import { PremiumOrderConfirmation } from "./premium-order-confirmation";
+import { RetailPaymentFollowup } from "./retail-payment-followup";
 
-type PaymentMethod = {
-  method: "BANK_TRANSFER" | "CASH" | "INOTI_USSD";
-  label: string;
-  cashModes?: string[];
-  bankCardNumber?: string | null;
-  bankAccountOwner?: string | null;
-  dialString?: string;
-};
-type CartOption = { key?: string; label?: string; value: string | number | boolean; displayUnit?: string | null };
-type CartItem = { id?: string; unitPrice?: number; name?: string; productName?: string; variantName?: string; quantity?: number; variant?: { id?: string; name?: string | null; sku?: string | null; price?: number | string | null; options?: CartOption[]; product?: { id?: string; name?: string; basePrice?: number | string; discountType?: "percentage" | "fixed" | null; discountValue?: number | string | null } } };
-type Cart = { items?: CartItem[]; subtotal?: number; itemCount?: number };
-type OrderResult = { orderNumber: string; total: string; paymentStatus: string; orderStatus: string; paymentMethod: PaymentMethod["method"]; paymentDeadlineAt?: string | null; trackingToken?: string | null; bankCardNumber?: string | null; bankAccountOwner?: string | null };
-
-const money = (value: number) => `${new Intl.NumberFormat("fa-IR").format(value)} تومان`;
-const numeric = (value: number | string | null | undefined) => {
-  const result = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(result) ? result : null;
-};
-function itemUnitPrice(item: CartItem) {
-  if (typeof item.unitPrice === "number" && Number.isFinite(item.unitPrice)) return item.unitPrice;
-  const rawPrice = numeric(item.variant?.price) ?? numeric(item.variant?.product?.basePrice);
-  if (rawPrice === null) return null;
-  const discount = numeric(item.variant?.product?.discountValue) ?? 0;
-  if (item.variant?.product?.discountType === "percentage" && discount > 0) return rawPrice * (1 - discount / 100);
-  if (item.variant?.product?.discountType === "fixed" && discount > 0) return Math.max(0, rawPrice - discount);
-  return rawPrice;
+type Draft = { type: "PICK_UP" | "DELIVERY"; deliveryAddress: string; recipientName: string; recipientMobile: string; deliveryNotes: string; couponCode: string; paymentMethod: string; cashMode: string };
+const initial: Draft = { type: "PICK_UP", deliveryAddress: "", recipientName: "", recipientMobile: "", deliveryNotes: "", couponCode: "", paymentMethod: "", cashMode: "" };
+const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stone-700";
+const field = "mt-2 min-h-12 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 outline-none focus:border-stone-700 focus:ring-1 focus:ring-stone-700 disabled:bg-stone-100";
+const panel = "rounded-3xl border border-stone-200/80 bg-white/80 p-5 sm:p-7";
+const cashLabels: Record<string, string> = { COUNTER: "پرداخت در پیشخوان فروشگاه", PICKUP: "پرداخت هنگام دریافت حضوری", COURIER: "پرداخت هنگام تحویل سفارش" };
+const modes = (methods: CheckoutPaymentMethod[], draft: Draft) => methods.find(m => m.method === draft.paymentMethod)?.cashModes?.filter(m => m === "COUNTER" || (m === "PICKUP" && draft.type === "PICK_UP") || (m === "COURIER" && draft.type === "DELIVERY")) ?? [];
+function stored(key: string) { try { return sessionStorage.getItem(key); } catch { return null; } }
+function save(key: string, value: string | null) { try { if (value === null) sessionStorage.removeItem(key); else sessionStorage.setItem(key, value); } catch { /* The in-memory lock still protects this page. */ } }
+function restore(value: string | null): Partial<Draft> { try { const data = JSON.parse(value ?? "{}"); return Object.fromEntries(Object.keys(initial).flatMap(k => typeof data[k] === "string" && data[k].length <= 500 && (k !== "type" || ["PICK_UP", "DELIVERY"].includes(data[k])) ? [[k, data[k]]] : [])); } catch { return {}; } }
+function payload(org: string, d: Draft) {
+  const mobile = checkoutDigits(d.recipientMobile).replace(/[\s-]/g, "");
+  return { organization: org, type: d.type, ...(d.type === "DELIVERY" && d.deliveryAddress.trim().length >= 8 ? { deliveryAddress: d.deliveryAddress.trim() } : {}), ...(d.recipientName.trim().length >= 2 ? { recipientName: d.recipientName.trim() } : {}), ...(/^(?:09\d{9}|\+989\d{9})$/.test(mobile) ? { recipientMobile: mobile } : {}), ...(d.deliveryNotes.trim() ? { deliveryNotes: d.deliveryNotes.trim() } : {}), ...(d.couponCode.trim() ? { couponCode: d.couponCode.trim() } : {}), ...(d.paymentMethod ? { paymentMethod: d.paymentMethod } : {}), ...(d.paymentMethod === "CASH" && d.cashMode ? { cashMode: d.cashMode } : {}) };
 }
-const optionText = (option: CartOption) => `${option.label ? `${option.label}: ` : ""}${option.value}${option.displayUnit ? ` ${option.displayUnit}` : ""}`;
-const statusText: Record<string, string> = {
-  PENDING: "در انتظار بررسی", PAID: "پرداخت‌شده", UNPAID: "پرداخت‌نشده", AWAITING_PAYMENT: "در انتظار پرداخت",
-  CONFIRMED: "تأییدشده", PROCESSING: "در حال آماده‌سازی", COMPLETED: "تکمیل‌شده", CANCELLED: "لغوشده",
-};
-const cashModeText: Record<string, string> = { COUNTER: "پرداخت در پیشخوان فروشگاه", PICKUP: "پرداخت هنگام تحویل حضوری", COURIER: "پرداخت به پیک هنگام تحویل" };
-const errorMessage = (value: unknown) => {
-  if (value && typeof value === "object" && "error" in value && typeof value.error === "string") {
-    if (/currently available stock|insufficient inventory/i.test(value.error)) return "موجودی این گزینه برای این تعداد کافی نیست. تعداد را کم کنید یا کالا را حذف کنید.";
-    return value.error;
-  }
-  return "درخواست انجام نشد. لطفاً دوباره تلاش کنید.";
-};
-
-function isoWithLocalOffset(local: string) {
-  const date = new Date(local);
-  if (Number.isNaN(date.getTime())) throw new Error("زمان پرداخت را به‌درستی وارد کنید.");
-  const offset = -date.getTimezoneOffset();
-  const sign = offset >= 0 ? "+" : "-";
-  const hh = String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0");
-  const mm = String(Math.abs(offset) % 60).padStart(2, "0");
-  return `${local.length === 16 ? `${local}:00` : local}${sign}${hh}:${mm}`;
+export async function retailRequest<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(appPath(url), { credentials: "same-origin", cache: "no-store", ...init, headers: { accept: "application/json", ...(init?.body instanceof FormData ? {} : { "content-type": "application/json" }), ...init?.headers } });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) { if (response.status === 401) throw new Error("AUTH_REQUIRED"); throw new Error(checkoutError(body)); }
+  return body as T;
 }
-
-export default function RetailCheckoutClient({ locale, organization, storefrontPath, checkoutPath, cartOnly = false }: { locale: string; organization: string; storefrontPath?: string; checkoutPath?: string; cartOnly?: boolean }) {
-  const org = useMemo(() => decodeURIComponent(organization), [organization]);
-  const nativeStorefrontPath = appPath(storefrontPath ?? `/${encodeURIComponent(locale)}/retail/${encodeURIComponent(org)}`);
-  const nativeCheckoutPath = appPath(checkoutPath ?? `/${encodeURIComponent(locale)}/retail/${encodeURIComponent(org)}/checkout`);
-  const [cart, setCart] = useState<Cart | null>(null);
-  const [methods, setMethods] = useState<PaymentMethod[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
-  const [error, setError] = useState("");
-  const [type, setType] = useState<"PICK_UP" | "DELIVERY">("PICK_UP");
-  const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [couponCode, setCouponCode] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [cashMode, setCashMode] = useState("");
-  const [order, setOrder] = useState<OrderResult | null>(null);
-  const [reportMode, setReportMode] = useState<"RECEIPT" | "TIME">("RECEIPT");
-  const [receipt, setReceipt] = useState<File | null>(null);
-  const [reportedAt, setReportedAt] = useState("");
-  const [reportSubmitted, setReportSubmitted] = useState(false);
-  const [reportMessage, setReportMessage] = useState("");
-  const [cartItemBusy, setCartItemBusy] = useState<Record<string, boolean>>({});
-  const checkoutKey = useRef<string | null>(null);
-
+export default function RetailCheckoutClient({ locale, organization, storefrontPath, checkoutPath, cartOnly = false, embedded = false, drawer = false }: { locale: string; organization: string; storefrontPath?: string; checkoutPath?: string; cartOnly?: boolean; embedded?: boolean; drawer?: boolean }) {
+  const org = decodeURIComponent(organization), store = appPath(storefrontPath ?? `/${locale}/retail/${encodeURIComponent(org)}`), checkout = appPath(checkoutPath ?? `${store}/checkout`), cartPath = `${store}/cart`;
+  const context = useOptionalCart();
+  const [cart, setCart] = useState<CheckoutCart | null>(null), [methods, setMethods] = useState<CheckoutPaymentMethod[]>([]), [draft, setDraft] = useState<Draft>(initial);
+  const [quote, setQuote] = useState<CheckoutQuote | null>(null), [customer, setCustomer] = useState<CheckoutQuote["customer"] | null>(null), [fulfillment, setFulfillment] = useState<CheckoutQuote["fulfillment"]>([]);
+  const [order, setOrder] = useState<CheckoutOrder | null>(null), [loading, setLoading] = useState(true), [authenticated, setAuthenticated] = useState(true), [busy, setBusy] = useState(false), [busyItemId, setBusyItemId] = useState<string | null>(null), [reviewed, setReviewed] = useState(false);
+  const [error, setError] = useState(""), [notice, setNotice] = useState(""), [errors, setErrors] = useState<Record<string, string>>({}), [reload, setReload] = useState(0);
+  const lock = useRef(false), key = useRef<string | null>(null), scope = useRef(""), alert = useRef<HTMLDivElement>(null), form = useRef<HTMLFormElement>(null);
   useEffect(() => {
     let cancelled = false;
-    const query = `?organization=${encodeURIComponent(org)}`;
-    void Promise.all([
-      fetch(appPath(`/api/retail/v1/cart${query}`), { credentials: "same-origin", cache: "no-store", headers: { accept: "application/json" } }),
-      fetch(appPath(`/api/retail/v1/payment-methods${query}`), { credentials: "same-origin", cache: "no-store", headers: { accept: "application/json" } }),
-    ]).then(async ([cartResponse, methodsResponse]) => {
-      if (cancelled) return;
-      if (cartResponse.status === 401 || methodsResponse.status === 401) { setAuthenticated(false); return; }
-      const [cartBody, methodsBody] = await Promise.all([cartResponse.json(), methodsResponse.json()]);
-      if (!cartResponse.ok) throw new Error(errorMessage(cartBody));
-      if (!methodsResponse.ok) throw new Error(errorMessage(methodsBody));
-      setCart(cartBody.cart ?? null);
-      const available = Array.isArray(methodsBody.methods) ? methodsBody.methods as PaymentMethod[] : [];
-      setMethods(available);
-      setPaymentMethod(available[0]?.method ?? "");
-      const firstCash = available.find((method) => method.method === "CASH")?.cashModes?.[0];
-      setCashMode(firstCash ?? "");
-      setAuthenticated(true);
-    }).catch((reason: unknown) => { if (!cancelled) setError(reason instanceof Error ? reason.message : "دریافت سبد خرید ممکن نشد."); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [org]);
-
-  const selectedMethod = methods.find((method) => method.method === paymentMethod);
-  const availableCashModes = selectedMethod?.cashModes?.filter((mode) => mode === "COUNTER" ||
-    (mode === "PICKUP" && type === "PICK_UP") || (mode === "COURIER" && type === "DELIVERY")) ?? [];
-  const loginHref = appPath(`/${encodeURIComponent(locale)}/login?callbackUrl=${encodeURIComponent(cartOnly ? `${nativeStorefrontPath}/cart` : nativeCheckoutPath)}`);
-  const submitCheckout = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError("");
-    if (type === "DELIVERY" && !deliveryAddress.trim()) { setError("نشانی تحویل را وارد کنید."); return; }
-    if (!paymentMethod) { setError("روش پرداخت را انتخاب کنید."); return; }
-    if (selectedMethod?.method === "CASH" && !availableCashModes.includes(cashMode)) { setError("شیوه پرداخت نقدی را انتخاب کنید."); return; }
-    setBusy(true);
-    try {
-      const response = await fetch(appPath("/api/retail/v1/checkout"), {
-        method: "POST", credentials: "same-origin", headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify({ organization: org, idempotencyKey: checkoutKey.current ??= crypto.randomUUID(), type, ...(type === "DELIVERY" ? { deliveryAddress: deliveryAddress.trim() } : {}), ...(couponCode.trim() ? { couponCode: couponCode.trim() } : {}), paymentMethod, ...(selectedMethod?.method === "CASH" && cashMode ? { cashMode } : {}) }),
-      });
-      const body = await response.json().catch(() => ({}));
-      if (response.status === 401) { setAuthenticated(false); return; }
-      if (!response.ok) throw new Error(errorMessage(body));
-      if (typeof body.orderNumber !== "string" || typeof body.total !== "string" || typeof body.paymentStatus !== "string" || typeof body.orderStatus !== "string" || typeof body.paymentMethod !== "string") throw new Error("پاسخ تأیید سفارش کامل نیست.");
-      setOrder(body as OrderResult);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "ثبت سفارش ممکن نشد."); }
-    finally { setBusy(false); }
-  };
-
-  const submitBankReport = async () => {
-    if (!order) return;
-    setError(""); setReportMessage("");
-    try {
-      let response: Response;
-      const url = appPath(`/api/retail/v1/orders/${encodeURIComponent(order.orderNumber)}/bank-report?organization=${encodeURIComponent(org)}`);
-      if (reportMode === "RECEIPT") {
-        if (!receipt) { setError("یک تصویر رسید را انتخاب کنید."); return; }
-        const form = new FormData(); form.set("method", "RECEIPT"); form.set("receipt", receipt);
-        response = await fetch(url, { method: "POST", credentials: "same-origin", body: form });
-      } else {
-        if (!reportedAt) { setError("زمان پرداخت را وارد کنید."); return; }
-        let reportedAtIso: string;
-        try { reportedAtIso = isoWithLocalOffset(reportedAt); } catch (reason) { setError(reason instanceof Error ? reason.message : "زمان نامعتبر است."); return; }
-        response = await fetch(url, { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ method: "TIME", reportedAt: reportedAtIso, submittedLocalTime: reportedAt }) });
-      }
-      const body = await response.json().catch(() => ({}));
-      if (response.status === 401) { setAuthenticated(false); return; }
-      if (!response.ok) throw new Error(errorMessage(body));
-      setReportSubmitted(true); setReportMessage("گزارش پرداخت ارسال شد.");
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "ارسال گزارش پرداخت ممکن نشد."); }
-  };
-
-  const items = cart?.items ?? [];
-  const changeCartItem = async (item: CartItem, quantity: number | null) => {
-    if (!item.id) return;
-    setError("");
-    setCartItemBusy((current) => ({ ...current, [item.id!]: true }));
-    try {
-      const response = await fetch(appPath("/api/retail/v1/cart"), {
-        method: quantity === null ? "DELETE" : "PATCH", credentials: "same-origin",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify({ organization: org, itemId: item.id, ...(quantity === null ? {} : { quantity }) }),
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(errorMessage(body));
-      const refreshed = await fetch(appPath(`/api/retail/v1/cart?organization=${encodeURIComponent(org)}`), { credentials: "same-origin", cache: "no-store", headers: { accept: "application/json" } });
-      const refreshedBody = await refreshed.json().catch(() => ({}));
-      if (!refreshed.ok) throw new Error(errorMessage(refreshedBody));
-      setCart(refreshedBody.cart ?? null);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "به‌روزرسانی سبد خرید انجام نشد.");
-    } finally {
-      setCartItemBusy((current) => ({ ...current, [item.id!]: false }));
+    async function load() {
+      try {
+        const [cartResult, paymentResult, session] = await Promise.all([
+          retailRequest<{ cart: CheckoutCart | null }>(`/api/retail/v1/cart?organization=${encodeURIComponent(org)}`),
+          cartOnly ? Promise.resolve({ methods: [] as CheckoutPaymentMethod[] }) : retailRequest<{ methods: CheckoutPaymentMethod[] }>(`/api/retail/v1/payment-methods?organization=${encodeURIComponent(org)}`),
+          retailRequest<{ user?: { id?: string } }>("/api/auth/session"),
+        ]);
+        if (cancelled) return;
+        if (!session.user?.id) throw new Error("AUTH_REQUIRED");
+        scope.current = `retail-checkout:${org}:${session.user.id}`; key.current = stored(`${scope.current}:key`);
+        setCart(cartResult.cart); setMethods(paymentResult.methods); setAuthenticated(true);
+        const explicit = new URLSearchParams(window.location.search).get("order");
+        const recovery = key.current && !explicit ? await retailRequest<{ orderNumber: string | null }>(`/api/retail/v1/checkout?organization=${encodeURIComponent(org)}&idempotencyKey=${encodeURIComponent(key.current)}`) : null;
+        const orderNumber = explicit ?? recovery?.orderNumber;
+        if (orderNumber && !cartOnly) {
+          const result = await retailRequest<{ order: CheckoutOrder }>(`/api/retail/v1/orders/${encodeURIComponent(orderNumber)}?organization=${encodeURIComponent(org)}`);
+          if (!cancelled) { setOrder(result.order); save(`${scope.current}:key`, null); key.current = null; }
+          return;
+        }
+        const saved = restore(stored(`${scope.current}:draft`));
+        let next: Draft = { ...initial, ...saved, paymentMethod: saved.paymentMethod ?? paymentResult.methods[0]?.method ?? "" };
+        if (cartResult.cart?.items.length && !cartOnly) {
+          const result = await retailRequest<{ quote: CheckoutQuote }>("/api/retail/v1/checkout/quote", { method: "POST", body: JSON.stringify({ organization: org, type: "PICK_UP" }) });
+          if (cancelled) return;
+          setCustomer(result.quote.customer); setFulfillment(result.quote.fulfillment); setQuote(result.quote);
+          next = { ...next, recipientName: saved.recipientName ?? result.quote.customer.name ?? "", recipientMobile: saved.recipientMobile ?? result.quote.customer.mobile ?? "" };
+          if (!result.quote.fulfillment.some(m => m.type === next.type) && result.quote.fulfillment[0]) next.type = result.quote.fulfillment[0].type;
+        }
+        if (!modes(paymentResult.methods, next).includes(next.cashMode)) next.cashMode = modes(paymentResult.methods, next)[0] ?? "";
+        if (!cancelled) setDraft(next);
+      } catch (e) { if (!cancelled) { if (e instanceof Error && e.message === "AUTH_REQUIRED") setAuthenticated(false); else setError(checkoutError(e)); } }
+      finally { if (!cancelled) setLoading(false); }
     }
-  };
-  return <main dir="rtl" lang="fa" className="min-h-screen bg-[#f8f7f4] px-4 py-8 text-[#24241f] md:px-8">
-    <div className="mx-auto max-w-3xl">
-      <a href={nativeStorefrontPath} className="text-sm text-[#766d61]">بازگشت به فروشگاه</a>
-      <h1 className="mt-5 text-3xl font-semibold">{cartOnly ? "سبد خرید" : "تکمیل سفارش"}</h1>
-      {loading ? <p role="status" className="mt-8 rounded-2xl bg-white p-8">در حال دریافت اطلاعات…</p> : authenticated === false ? <section className="mt-7 rounded-2xl bg-white p-7"><p>برای مشاهده سبد خرید و ثبت سفارش، ابتدا وارد حساب کاربری شوید.</p><a className="mt-5 inline-block rounded-full bg-[#292a24] px-6 py-3 text-sm text-white" href={loginHref}>ورود به حساب کاربری</a></section> : <>
-        {error && <p role="alert" className="mt-5 rounded-xl bg-[#fff1ed] p-4 text-sm text-[#8c3329]">{error}</p>}
-        {order ? <section className="mt-7 rounded-2xl bg-white p-6 md:p-8">
-          <h2 className="text-xl font-semibold">سفارش {order.orderNumber} ثبت شد</h2>
-          <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><div><dt className="text-xs text-[#77736a]">مبلغ سفارش</dt><dd className="mt-1 font-semibold">{money(Number(order.total))}</dd></div><div><dt className="text-xs text-[#77736a]">وضعیت پرداخت</dt><dd className="mt-1">{statusText[order.paymentStatus] ?? order.paymentStatus}</dd></div><div><dt className="text-xs text-[#77736a]">وضعیت سفارش</dt><dd className="mt-1">{statusText[order.orderStatus] ?? order.orderStatus}</dd></div>{order.paymentDeadlineAt && <div><dt className="text-xs text-[#77736a]">مهلت پرداخت</dt><dd className="mt-1">{new Intl.DateTimeFormat("fa-IR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.paymentDeadlineAt))}</dd></div>}</dl>
-          {order.paymentMethod === "INOTI_USSD" && methods.find((method) => method.method === "INOTI_USSD")?.dialString && order.trackingToken && <div className="mt-7 rounded-2xl border border-[#e5e1d9] p-5 text-sm">
-            <h3 className="font-semibold">پرداخت با کد دستوری</h3>
-            <p className="mt-2">کد <b dir="ltr">{methods.find((method) => method.method === "INOTI_USSD")?.dialString}</b> را شماره‌گیری کنید و کد پیگیری زیر را وارد کنید.</p>
-            <p className="mt-3 break-all rounded-lg bg-[#f8f7f4] p-3 font-mono" dir="ltr">{order.trackingToken}</p>
-            <p className="mt-3 text-[#766d61]">پرداخت تا زمان تأیید ارائه‌دهنده در انتظار می‌ماند. کد پیگیری را فقط در درگاه کد دستوری همین فروشگاه وارد کنید.</p>
-          </div>}
-          {order.paymentMethod === "BANK_TRANSFER" && <div className="mt-7 border-t border-[#e5e1d9] pt-6"><h3 className="font-semibold">گزارش پرداخت بانکی</h3>
-            {order.bankCardNumber && <p className="mt-3 text-sm">شماره کارت: <b dir="ltr">{order.bankCardNumber}</b></p>}{order.bankAccountOwner && <p className="mt-1 text-sm">به نام: {order.bankAccountOwner}</p>}
-            {reportSubmitted ? <p role="status" className="mt-4 text-sm text-emerald-800">{reportMessage}</p> : <>
-              <fieldset className="mt-5"><legend className="text-sm">یکی از روش‌های گزارش را انتخاب کنید</legend><div className="mt-2 flex flex-wrap gap-4 text-sm"><label className="flex items-center gap-2"><input type="radio" name="reportMode" checked={reportMode === "RECEIPT"} onChange={() => setReportMode("RECEIPT")} />بارگذاری تصویر رسید</label><label className="flex items-center gap-2"><input type="radio" name="reportMode" checked={reportMode === "TIME"} onChange={() => setReportMode("TIME")} />ثبت زمان پرداخت</label></div></fieldset>
-              {reportMode === "RECEIPT" ? <label className="mt-4 block text-sm">تصویر رسید<input className="mt-2 block w-full rounded-xl border border-[#ddd9d0] bg-white p-3" type="file" accept="image/*" onChange={(event) => setReceipt(event.target.files?.[0] ?? null)} /></label> : <label className="mt-4 block text-sm">زمان پرداخت<input className="mt-2 block min-h-12 w-full rounded-xl border border-[#ddd9d0] bg-white px-3" type="datetime-local" value={reportedAt} onChange={(event) => setReportedAt(event.target.value)} /></label>}
-              <button disabled={busy} onClick={() => void submitBankReport()} className="mt-5 min-h-11 rounded-full bg-[#292a24] px-6 py-3 text-sm text-white disabled:opacity-50">{busy ? "در حال ارسال…" : "ارسال گزارش پرداخت"}</button>
-            </>}
-          </div>}
-        </section> : !items.length ? <section className="mt-7 rounded-2xl bg-white p-7"><p>سبد خرید شما خالی است.</p></section> : <>
-          <section className="mt-7 rounded-2xl bg-white p-6"><h2 className="font-semibold">اقلام سبد خرید</h2><ul className="mt-4 divide-y divide-[#eeeae3]">{items.map((item, index) => { const quantity = item.quantity ?? 1; const unitPrice = itemUnitPrice(item); const linePrice = unitPrice === null ? null : unitPrice * quantity; const actionBusy = item.id ? cartItemBusy[item.id] : false; const title = item.productName ?? item.variant?.product?.name ?? item.name ?? "کالای فروشگاه"; const variantLabel = item.variant?.options?.length ? item.variant.options.map(optionText).join(" · ") : item.variantName ?? item.variant?.name; return <li key={item.id ?? index} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="font-medium">{title}</p>{variantLabel && <p className="mt-1 text-sm text-[#6e6a60]">گزینه: {variantLabel}</p>}{item.variant?.sku && <p className="mt-1 text-xs text-[#77736a]" dir="ltr">SKU: {item.variant.sku}</p>}<p className="mt-2 text-sm">{unitPrice === null ? "قیمت در دسترس نیست" : money(unitPrice)} × {new Intl.NumberFormat("fa-IR").format(quantity)}{linePrice !== null && <strong className="mr-3">{money(linePrice)}</strong>}</p></div><div className="flex shrink-0 items-center gap-2"><button type="button" aria-label={`کم‌کردن تعداد ${title}`} disabled={actionBusy || quantity <= 1 || !item.id} onClick={() => void changeCartItem(item, quantity - 1)} className="h-10 w-10 rounded-full border border-[#ddd9d0] disabled:opacity-40">−</button><span className="min-w-8 text-center" aria-live="polite">{new Intl.NumberFormat("fa-IR").format(quantity)}</span><button type="button" aria-label={`زیادکردن تعداد ${title}`} disabled={actionBusy || quantity >= 99 || !item.id} onClick={() => void changeCartItem(item, quantity + 1)} className="h-10 w-10 rounded-full border border-[#ddd9d0] disabled:opacity-40">+</button><button type="button" disabled={actionBusy || !item.id} onClick={() => void changeCartItem(item, null)} className="mr-2 min-h-10 rounded-full border border-[#e7c9c4] px-3 text-xs text-[#8c3329] disabled:opacity-40">حذف</button></div></li>; })}</ul><div className="mt-4 border-t border-[#eeeae3] pt-4 text-sm"><span className="text-[#77736a]">جمع کالاها، محاسبه‌شده در سرور</span><strong className="float-left">{typeof cart?.subtotal === "number" ? money(cart.subtotal) : "پس از محاسبه سرور"}</strong></div><p className="mt-3 text-xs text-[#77736a]">قیمت نهایی و موجودی هنگام ثبت سفارش دوباره در سرور بررسی می‌شود.</p></section>
-          {cartOnly ? <a href={nativeCheckoutPath} className="mt-5 block min-h-12 rounded-full bg-[#292a24] px-6 py-3 text-center text-sm text-white">ادامه و ثبت سفارش</a> : <form onSubmit={(event) => void submitCheckout(event)} className="mt-5 space-y-5 rounded-2xl bg-white p-6 md:p-8">
-            <fieldset><legend className="font-semibold">روش دریافت</legend><div className="mt-3 flex gap-5 text-sm"><label className="flex items-center gap-2"><input type="radio" name="type" checked={type === "PICK_UP"} onChange={() => { setType("PICK_UP"); if (cashMode === "COURIER") setCashMode("COUNTER"); }} />دریافت حضوری</label><label className="flex items-center gap-2"><input type="radio" name="type" checked={type === "DELIVERY"} onChange={() => { setType("DELIVERY"); if (cashMode === "PICKUP") setCashMode("COUNTER"); }} />ارسال با پیک</label></div></fieldset>
-            {type === "DELIVERY" && <label className="block text-sm">نشانی تحویل<textarea required value={deliveryAddress} onChange={(event) => setDeliveryAddress(event.target.value)} className="mt-2 min-h-24 w-full rounded-xl border border-[#ddd9d0] p-3" /></label>}
-            <label className="block text-sm">کد تخفیف (اختیاری)<input value={couponCode} onChange={(event) => setCouponCode(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-[#ddd9d0] px-3" /></label>
-            <label className="block text-sm">روش پرداخت<select required value={paymentMethod} onChange={(event) => { setPaymentMethod(event.target.value); const nextCash = methods.find((method) => method.method === event.target.value)?.cashModes?.[0]; setCashMode(nextCash ?? ""); }} className="mt-2 min-h-11 w-full rounded-xl border border-[#ddd9d0] bg-white px-3"><option value="">انتخاب کنید</option>{methods.map((method) => <option key={method.method} value={method.method}>{method.label}</option>)}</select></label>
-            {selectedMethod?.method === "CASH" && !!availableCashModes.length && <label className="block text-sm">شیوه پرداخت نقدی<select value={cashMode} onChange={(event) => setCashMode(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-[#ddd9d0] bg-white px-3">{availableCashModes.map((mode) => <option key={mode} value={mode}>{cashModeText[mode] ?? mode}</option>)}</select></label>}
-            <button disabled={busy || !methods.length} className="min-h-12 w-full rounded-full bg-[#292a24] px-6 py-3 text-sm text-white disabled:opacity-50">{busy ? "در حال ثبت سفارش…" : "ثبت سفارش"}</button>
-          </form>}
-        </>}
-      </>}
-    </div>
-  </main>;
+    void load(); return () => { cancelled = true; };
+  }, [org, cartOnly, reload]);
+  function update(patch: Partial<Draft>) {
+    const next = { ...draft, ...patch };
+    if (patch.type || patch.paymentMethod) { const available = modes(methods, next); if (!available.includes(next.cashMode)) next.cashMode = available[0] ?? ""; }
+    setDraft(next); setReviewed(false); setErrors({}); setError(""); setNotice(""); if (scope.current) save(`${scope.current}:draft`, JSON.stringify(next));
+  }
+  function fail(e: unknown) { setError(checkoutError(e)); requestAnimationFrame(() => alert.current?.focus()); }
+  async function mutate(item: CheckoutCartItem, quantity: number | null) {
+    if (lock.current || (quantity !== null && !checkoutQuantityValid(quantity, quantity < item.quantity ? null : item.availability?.maxQuantity ?? null))) return;
+    lock.current = true; setBusy(true); setBusyItemId(item.id); setError(""); setNotice("");
+    try {
+      await retailRequest("/api/retail/v1/cart", { method: quantity === null ? "DELETE" : "PATCH", body: JSON.stringify({ organization: org, itemId: item.id, ...(quantity === null ? {} : { quantity }) }) });
+      const result = await retailRequest<{ cart: CheckoutCart | null }>(`/api/retail/v1/cart?organization=${encodeURIComponent(org)}`);
+      setCart(result.cart); setReviewed(false); setQuote(null); setNotice(quantity === null ? "کالا از سبد حذف شد." : "تعداد و مبلغ سبد به‌روز شد."); void context?.refreshCart();
+    } catch (e) { fail(e); } finally { lock.current = false; setBusy(false); setBusyItemId(null); }
+  }
+  async function submit(event: FormEvent) {
+    event.preventDefault(); if (lock.current) return;
+    const invalid = checkoutFormErrors(draft, modes(methods, draft));
+    if (!fulfillment.some(m => m.type === draft.type)) invalid.type = "روش دریافت فعالی برای سفارش انتخاب نشده است.";
+    if (Object.keys(invalid).length) { setErrors(invalid); setError("اطلاعات مشخص‌شده را کامل کنید."); requestAnimationFrame(() => form.current?.querySelector<HTMLElement>("[aria-invalid=true]")?.focus()); return; }
+    lock.current = true; setBusy(true); setError(""); setNotice("");
+    try {
+      if (!reviewed || !quote) {
+        const result = await retailRequest<{ quote: CheckoutQuote }>("/api/retail/v1/checkout/quote", { method: "POST", body: JSON.stringify(payload(org, draft)) });
+        const freshCart = await retailRequest<{ cart: CheckoutCart | null }>(`/api/retail/v1/cart?organization=${encodeURIComponent(org)}`);
+        const consistent = freshCart.cart?.items.length === result.quote.items.length && result.quote.items.every(line => freshCart.cart?.items.some(item => item.id === line.id && item.variant.id === line.variantId && item.quantity === line.quantity));
+        setQuote(result.quote); setFulfillment(result.quote.fulfillment);
+        setCart(freshCart.cart ? { ...freshCart.cart, subtotal: result.quote.subtotal, items: freshCart.cart.items.map(item => { const fresh = result.quote.items.find(line => line.id === item.id && line.variantId === item.variant.id); return fresh ? { ...item, unitPrice: fresh.unitPrice, availability: { orderable: fresh.orderable, reason: fresh.reason, maxQuantity: item.availability?.maxQuantity ?? null } } : item; }) } : null);
+        setReviewed(!!consistent && result.quote.issues.length === 0 && result.quote.items.every(i => i.orderable));
+        setNotice(!consistent ? "سبد خرید در جای دیگری تغییر کرده است. اقلام به‌روز را دوباره بررسی کنید." : result.quote.issues.length ? result.quote.issues.map(issue => checkoutError({ error: issue })).join(" ") : "مبلغ و موجودی بررسی شد. خلاصه سفارش را بخوانید و ثبت نهایی را تأیید کنید."); return;
+      }
+      key.current ??= crypto.randomUUID(); save(`${scope.current}:key`, key.current);
+      const result = await retailRequest<{ orderNumber: string }>("/api/retail/v1/checkout", { method: "POST", body: JSON.stringify({ ...payload(org, draft), idempotencyKey: key.current, reviewToken: quote.reviewToken }) });
+      const confirmed = await retailRequest<{ order: CheckoutOrder }>(`/api/retail/v1/orders/${encodeURIComponent(result.orderNumber)}?organization=${encodeURIComponent(org)}`);
+      setOrder(confirmed.order); setCart(null); key.current = null; save(`${scope.current}:key`, null); save(`${scope.current}:draft`, null);
+      const url = new URL(window.location.href); url.searchParams.set("order", result.orderNumber); window.history.replaceState({}, "", url); void context?.refreshCart(); window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (e) { setReviewed(false); setQuote(null); fail(e); } finally { lock.current = false; setBusy(false); }
+  }
+  const items = cart?.items ?? [], valid = items.length > 0 && items.every(i => i.availability?.orderable !== false), total = reviewed && quote ? quote.total : cart?.subtotal ?? 0;
+  const login = appPath(`/${locale}/login?callbackUrl=${encodeURIComponent(cartOnly ? cartPath : checkout)}`);
+  const action = (mobile = false) => cartOnly ? <a href={checkout} aria-disabled={!valid || busy} onClick={e => { if (!valid || busy) e.preventDefault(); }} className={`${focus} flex min-h-14 flex-1 items-center justify-center rounded-2xl px-5 py-4 text-sm font-semibold ${valid && !busy ? "bg-stone-900 text-white" : "bg-stone-200 text-stone-500"}`}>ادامه به تکمیل سفارش</a> : <button type="submit" form="retail-checkout-form" disabled={busy || !valid || !methods.length || !fulfillment.length} aria-label={mobile ? "ادامه سفارش در نوار خرید" : undefined} className={`${focus} flex min-h-14 flex-1 items-center justify-center gap-2 rounded-2xl bg-stone-900 px-5 py-4 text-sm font-semibold text-white disabled:bg-stone-200 disabled:text-stone-500`}>{busy && <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />}{busy ? "در حال بررسی…" : reviewed ? "ثبت نهایی سفارش" : "بررسی مبلغ و موجودی"}</button>;
+  const fieldError = (name: string) => errors[name] && <p id={`error-${name}`} className="mt-2 text-xs leading-6 text-rose-800">{errors[name]}</p>;
+  return <div dir="rtl" lang="fa" data-premium-checkout data-mode={cartOnly ? "cart" : "checkout"} className={`bg-[#fcfbf8] text-stone-900 ${drawer ? "px-4 py-4" : "min-h-screen px-5 pb-52 pt-7 md:px-10 md:pb-16"}`}><div className={`mx-auto ${drawer ? "max-w-lg" : "max-w-6xl"}`}>
+    {!drawer && <a href={store} className={`${focus} mb-7 inline-flex min-h-11 items-center gap-2 text-xs text-stone-500`}><ArrowRight className="size-4" />بازگشت به فروشگاه</a>}
+    <header className="mb-7 flex flex-wrap items-end justify-between gap-3"><div><p className="mb-2 text-xs text-stone-500">{cartOnly ? "انتخاب‌های شما" : "یک قدم تا ثبت سفارش"}</p><h1 className="text-2xl font-semibold sm:text-3xl">{order ? "سفارش شما" : cartOnly ? "سبد خرید" : "تکمیل سفارش"}</h1></div>{!cartOnly && !order && <a className={`${focus} min-h-11 py-3 text-sm underline underline-offset-4`} href={cartPath}>ویرایش سبد خرید</a>}</header>
+    {error && <div ref={alert} tabIndex={-1} role="alert" className="mb-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm leading-7 text-rose-900">{error}{!cart && <button type="button" onClick={() => { setError(""); setLoading(true); setReload(n => n + 1); }} className={`${focus} ms-3 underline`}>تلاش دوباره</button>}</div>}
+    {notice && <p role="status" className="mb-5 rounded-2xl bg-stone-100 p-4 text-sm leading-7">{notice}</p>}
+    {loading ? <section aria-busy="true" aria-label="در حال دریافت سبد" className="space-y-4">{[0,1].map(i => <div key={i} className="h-36 animate-pulse rounded-3xl bg-stone-200/60 motion-reduce:animate-none" />)}<p role="status" className="text-sm text-stone-500">در حال دریافت اطلاعات فروشگاه…</p></section> : !authenticated ? <section className={`${panel} space-y-5 py-10 text-center`}><UserRound className="mx-auto size-9 text-stone-400" /><h2 className="text-lg font-semibold">سبد شما همراه حساب شماست</h2><p className="text-sm leading-7 text-stone-500">برای دیدن سبد و ادامه خرید وارد حساب شوید؛ پس از ورود به همین صفحه برمی‌گردید.</p><a href={login} className={`${focus} inline-flex min-h-12 items-center rounded-xl bg-stone-900 px-7 text-sm text-white`}>ورود و ادامه خرید</a></section> : order ? <PremiumOrderConfirmation order={order} storefrontPath={store}><RetailPaymentFollowup organization={org} order={order} methods={methods} /></PremiumOrderConfirmation> : !items.length ? <section data-empty-cart className={`${panel} py-14 text-center`}><ShoppingBag className="mx-auto mb-5 size-12 text-stone-400" /><h2 className="text-lg font-semibold">سبد خریدتان هنوز خالی است</h2><p className="mt-3 text-sm leading-7 text-stone-500">رنگ و اندازه دلخواهتان را از صفحه محصول انتخاب کنید.</p><a href={store} className={`${focus} mt-7 inline-flex min-h-12 items-center rounded-xl bg-stone-900 px-6 text-sm text-white`}>دیدن محصولات فروشگاه</a></section> : <>
+      <div className={`grid items-start gap-7 ${drawer ? "" : "lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10"}`}><div className="min-w-0 space-y-5">
+        {cartOnly ? <section className={panel}><h2 className="text-sm font-semibold">کالاهای انتخاب‌شده <span className="ms-2 font-normal text-stone-500">{new Intl.NumberFormat("fa-IR").format(cart?.itemCount ?? 0)} عدد</span></h2><PremiumCartItems items={items} storefrontPath={store} busy={busy} busyItemId={busyItemId} onQuantity={(item,q) => void mutate(item,q)} onRemove={item => void mutate(item,null)} /></section> : <form id="retail-checkout-form" ref={form} onSubmit={e => void submit(e)} noValidate className="space-y-5">
+          <fieldset disabled={busy} className={panel}><legend className="sr-only">اطلاعات و روش دریافت</legend><h2 className="mb-4 text-base font-semibold">اطلاعات خریدار</h2><p className="text-sm leading-7">{customer?.name ?? "حساب کاربری شما"}{customer?.mobile && <bdi className="ms-3 text-stone-500">{customer.mobile}</bdi>}</p><p className="mt-2 text-xs leading-6 text-stone-500">سفارش به همین حساب متصل می‌شود؛ ایمیل لازم نیست.</p>
+            <h2 className="mb-4 mt-7 border-t border-stone-200 pt-6 text-base font-semibold">روش دریافت</h2>{!fulfillment.length ? <p role="status" className="text-sm leading-7 text-amber-800">فروشگاه هنوز روش دریافت معتبری تنظیم نکرده است.</p> : <div className="grid gap-3 sm:grid-cols-2">{fulfillment.map(m => <label key={m.type} className={`flex min-h-20 cursor-pointer items-center gap-3 rounded-2xl border p-4 ${draft.type === m.type ? "border-stone-900 bg-stone-100" : "border-stone-200"}`}><input type="radio" name="type" value={m.type} checked={draft.type === m.type} onChange={() => update({type:m.type})} className="size-4 accent-stone-900" /><span><strong className="block text-sm font-medium">{m.type === "PICK_UP" ? "دریافت حضوری" : "ارسال به نشانی شما"}</strong><span className="mt-1 block text-xs text-stone-500">{m.type === "PICK_UP" ? "بدون هزینه ارسال" : checkoutMoney(m.fee)}</span></span></label>)}</div>}{fieldError("type")}
+            {draft.type === "DELIVERY" && <div data-delivery-fields className="mt-5 space-y-4 border-t border-stone-200 pt-5"><div className="grid gap-4 sm:grid-cols-2"><label className="text-sm">نام گیرنده<input name="recipientName" autoComplete="shipping name" maxLength={120} value={draft.recipientName} aria-invalid={!!errors.recipientName} aria-describedby={errors.recipientName ? "error-recipientName" : undefined} onChange={e=>update({recipientName:e.target.value})} className={field} />{fieldError("recipientName")}</label><label className="text-sm">شماره همراه گیرنده<input name="recipientMobile" autoComplete="shipping tel" inputMode="tel" dir="ltr" maxLength={24} value={draft.recipientMobile} aria-invalid={!!errors.recipientMobile} aria-describedby={errors.recipientMobile ? "error-recipientMobile" : undefined} onChange={e=>update({recipientMobile:e.target.value})} className={field} />{fieldError("recipientMobile")}</label></div>
+              {customer?.address && <button type="button" onClick={()=>update({deliveryAddress:customer.address??""})} className={`${focus} min-h-11 text-xs underline underline-offset-4`}>استفاده از نشانی ذخیره‌شده حساب</button>}
+              <label className="block text-sm">نشانی کامل تحویل<textarea name="deliveryAddress" autoComplete="shipping street-address" maxLength={500} value={draft.deliveryAddress} aria-invalid={!!errors.deliveryAddress} aria-describedby={errors.deliveryAddress ? "error-deliveryAddress" : "address-hint"} onChange={e=>update({deliveryAddress:e.target.value})} className={`${field} min-h-28 resize-y`} />{fieldError("deliveryAddress")}<span id="address-hint" className="mt-2 block text-xs leading-6 text-stone-500">استان، شهر، خیابان، پلاک و واحد را در همین نشانی بنویسید.</span></label>
+              <label className="block text-sm">توضیحات تحویل (اختیاری)<textarea name="deliveryNotes" maxLength={500} value={draft.deliveryNotes} onChange={e=>update({deliveryNotes:e.target.value})} className={`${field} min-h-20 resize-y`} /></label></div>}
+          </fieldset>
+          <fieldset disabled={busy} className={panel}><legend className="sr-only">انتخاب پرداخت</legend><h2 className="mb-4 text-base font-semibold">روش پرداخت</h2>{!methods.length ? <p role="status" className="text-sm leading-7 text-amber-800">روش پرداخت فعالی برای این فروشگاه ثبت نشده است.</p> : <div className="space-y-3">{methods.map(m=><label key={m.method} className={`flex min-h-16 cursor-pointer items-center gap-3 rounded-2xl border p-4 ${draft.paymentMethod===m.method?"border-stone-900 bg-stone-100":"border-stone-200"}`}><input type="radio" name="paymentMethod" value={m.method} checked={draft.paymentMethod===m.method} onChange={()=>update({paymentMethod:m.method})} className="size-4 accent-stone-900" /><span className="text-sm font-medium">{m.label}</span></label>)}</div>}{fieldError("paymentMethod")}
+            {draft.paymentMethod==="CASH" && <div className="mt-4"><label className="block text-sm">شیوه پرداخت نقدی<select name="cashMode" value={draft.cashMode} aria-invalid={!!errors.cashMode} onChange={e=>update({cashMode:e.target.value})} className={field}><option value="">انتخاب کنید</option>{modes(methods,draft).map(m=><option value={m} key={m}>{cashLabels[m]??m}</option>)}</select>{fieldError("cashMode")}</label><p className="mt-3 text-xs leading-6 text-stone-500">ثبت سفارش نقدی به معنی پرداخت شدن آن نیست؛ پرداخت جداگانه ثبت و بررسی می‌شود.</p></div>}
+          </fieldset>
+          <section className={panel}><div className="mb-4 flex items-center justify-between gap-3"><h2 className="text-base font-semibold">مرور کالاها</h2><a href={cartPath} className={`${focus} min-h-11 py-3 text-xs underline underline-offset-4`}>ویرایش تعداد یا حذف</a></div><PremiumCartItems items={items} storefrontPath={store} busy={busy} busyItemId={null} onQuantity={()=>undefined} onRemove={()=>undefined} compact /></section>
+        </form>}
+      </div><aside aria-label="خلاصه سفارش" className={`${panel} min-w-0 space-y-5 lg:sticky lg:top-6`}><h2 className="text-base font-semibold">{cartOnly?"خلاصه سبد":"خلاصه سفارش"}</h2>
+        <dl className="space-y-4 text-sm"><div className="flex justify-between gap-3"><dt className="text-stone-500">جمع کالاها</dt><dd className="tabular-nums">{checkoutMoney(reviewed&&quote?quote.subtotal:cart?.subtotal??0)}</dd></div>{reviewed&&quote&&quote.discount>0&&<div className="flex justify-between gap-3 text-emerald-800"><dt>تخفیف تأییدشده</dt><dd>{checkoutMoney(quote.discount)}</dd></div>}<div className="flex justify-between gap-3"><dt className="text-stone-500">هزینه دریافت</dt><dd className="text-end">{cartOnly?"در تکمیل سفارش مشخص می‌شود":fulfillment.find(m=>m.type===draft.type)?checkoutMoney(fulfillment.find(m=>m.type===draft.type)!.fee):"نیازمند تنظیم فروشگاه"}</dd></div><div className="flex justify-between gap-3 border-t border-stone-200 pt-5 text-base font-semibold"><dt>{cartOnly?"جمع کالاها":reviewed?"مبلغ نهایی":"جمع کالاها پیش از بررسی"}</dt><dd data-checkout-total className="tabular-nums">{checkoutMoney(total)}</dd></div></dl>
+        {!cartOnly&&<><details className="border-t border-stone-200 pt-4"><summary className={`${focus} min-h-11 cursor-pointer py-3 text-xs`}>کد تخفیف دارید؟</summary><label className="mt-2 block text-xs">کد تخفیف (اختیاری)<input name="couponCode" form="retail-checkout-form" value={draft.couponCode} maxLength={40} disabled={busy} onChange={e=>update({couponCode:e.target.value})} className={field} /><span className="mt-2 block leading-6 text-stone-500">اعتبار و مبلغ تخفیف هنگام بررسی محاسبه می‌شود.</span></label></details><div className="border-t border-stone-200 pt-4 text-xs leading-7 text-stone-500"><p>دریافت: {draft.type==="DELIVERY"?"ارسال به نشانی":"حضوری"}</p>{draft.type==="DELIVERY"&&draft.deliveryAddress&&<p className="mt-1 break-words">{draft.deliveryAddress}</p>}<p className="mt-1">پرداخت: {methods.find(m=>m.method===draft.paymentMethod)?.label??"انتخاب نشده"}</p></div></>}
+        {!valid&&<p role="status" className="text-xs leading-7 text-amber-800">تعداد یا وضعیت کالاهای مشخص‌شده را در سبد اصلاح کنید.</p>}
+        <div className="flex">{action()}</div><p className="text-[11px] leading-6 text-stone-500">{cartOnly?"موجودی و مبلغ نهایی پیش از ثبت سفارش دوباره بررسی می‌شود.":reviewed?"ثبت نهایی همین اقلام و مبلغ تأییدشده را ارسال می‌کند. تغییر هزینه یا موجودی نیازمند بررسی دوباره است.":"با دکمه بررسی سفارشی ثبت نمی‌شود؛ ابتدا مبلغ و موجودی را ببینید."}</p>{cartOnly&&<a href={store} className={`${focus} flex min-h-11 items-center justify-center text-xs`}>ادامه خرید</a>}
+      </aside></div>
+      {!drawer&&<div data-checkout-action className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 border-t border-stone-200 bg-[#fcfbf8]/95 px-4 py-3 backdrop-blur md:hidden"><div className="mx-auto flex max-w-lg items-center gap-3"><div className="min-w-24 text-xs"><strong className="block tabular-nums">{checkoutMoney(total)}</strong><span className="mt-1 block text-[10px] text-stone-500">{reviewed?"مبلغ نهایی":"پیش از بررسی"}</span></div>{action(true)}</div></div>}
+    </>}
+    {!embedded&&!drawer&&<nav aria-label="پیمایش موبایل فروشگاه" className="fixed inset-x-0 bottom-0 z-50 flex h-[calc(4rem+env(safe-area-inset-bottom))] items-start justify-around border-t border-stone-200 bg-[#fcfbf8] px-4 pt-3 text-xs md:hidden"><a href={store} className={`${focus} min-h-11 px-5 py-2`}>فروشگاه</a><a href={cartPath} className={`${focus} min-h-11 px-5 py-2`}>سبد خرید</a></nav>}
+  </div></div>;
 }

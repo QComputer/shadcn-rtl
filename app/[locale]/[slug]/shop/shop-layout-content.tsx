@@ -1,3 +1,4 @@
+import { hasModernRetailProductExperience } from "@/lib/retail/shop-experience";
 import { CartProvider } from "@/lib/contexts/cart-context";
 import { CartDrawer } from "@/components/shop/cart-drawer";
 import { CartBadge } from "@/components/shop/cart-badge";
@@ -118,6 +119,7 @@ type ShopLayoutOrganization = {
   capabilitiesInitializedAt: Date | null;
   capabilities: Array<{ key: "SHOP" | "APPOINTMENT"; status: "ACTIVE" | "INACTIVE" }>;
   settings: { settings: unknown } | null;
+  branding: { retailPresentationTheme: string | null; retailPreviewOnly: boolean } | null;
 };
 
 export async function ShopLayoutContent({ children, params, organizationRootPath }: ShopLayoutContentProps) {
@@ -133,6 +135,7 @@ const organization = await prisma.organization.findFirst({
     capabilitiesInitializedAt: true,
     capabilities: { select: { key: true, status: true } },
     settings: { select: { settings: true } },
+    branding: { select: { retailPresentationTheme: true, retailPreviewOnly: true } },
   },
 }) as ShopLayoutOrganization | null;
 
@@ -219,7 +222,7 @@ const organization = await prisma.organization.findFirst({
                 <ShopLocationDialog lat={organization.lat} lng={organization.lng} name={organization.name} locale={locale} />
               )}
               <FollowButton organizationId={organization.id} locale={locale} />
-              <CartDrawer organizationSlug={slug} locale={locale}>
+              <CartDrawer retail={hasModernRetailProductExperience(organization.settings?.settings, organization.branding ?? {})} organizationSlug={slug} locale={locale}>
                 <Button variant="ghost" size="icon" className="relative">
                   <CartBadge />
                 </Button>
@@ -266,7 +269,7 @@ const organization = await prisma.organization.findFirst({
               <ShoppingCart className="h-5 w-5" />
               <span>{t("navigation.checkout")}</span>
             </Link>
-            <CartDrawer organizationSlug={slug} locale={locale}>
+            <CartDrawer retail={hasModernRetailProductExperience(organization.settings?.settings, organization.branding ?? {})} organizationSlug={slug} locale={locale}>
               <button className="flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground w-full">
                 <ShoppingCart className="h-5 w-5" />
                 <span>{t("navigation.cart") || "سبد"}</span>

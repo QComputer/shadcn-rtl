@@ -1,0 +1,19 @@
+"use client";
+import { useRef, useState } from "react";
+import type { CheckoutOrder, CheckoutPaymentMethod } from "@/lib/retail/checkout-presentation";
+import { checkoutError } from "@/lib/retail/checkout-presentation";
+import { appPath } from "@/lib/app-base-path";
+export function RetailPaymentFollowup({ organization, order, methods }: { organization: string; order: CheckoutOrder; methods: CheckoutPaymentMethod[] }) {
+  const [mode,setMode]=useState<"RECEIPT"|"TIME">("RECEIPT"),[file,setFile]=useState<File|null>(null),[time,setTime]=useState(""),[busy,setBusy]=useState(false),[message,setMessage]=useState(""),[done,setDone]=useState(false); const lock=useRef(false);
+  async function submit(){if(lock.current)return; lock.current=true;setBusy(true);setMessage("");try{
+    let body: FormData|string;
+    if(mode==="RECEIPT"){if(!file)throw new Error("تصویر رسید را انتخاب کنید.");const data=new FormData();data.set("method","RECEIPT");data.set("receipt",file);body=data;}
+    else{if(!time||Number.isNaN(new Date(time).getTime()))throw new Error("زمان پرداخت معتبر وارد کنید.");body=JSON.stringify({method:"TIME",reportedAt:new Date(time).toISOString(),submittedLocalTime:time});}
+    const response=await fetch(appPath(`/api/retail/v1/orders/${encodeURIComponent(order.orderNumber)}/bank-report?organization=${encodeURIComponent(organization)}`),{method:"POST",credentials:"same-origin",headers:body instanceof FormData?{}:{"content-type":"application/json"},body});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(checkoutError(result));setDone(true);setMessage("گزارش ارسال شد؛ پرداخت پس از بررسی تأیید می‌شود.");
+  }catch(e){setMessage(checkoutError(e));}finally{lock.current=false;setBusy(false);}}
+  if(order.paymentMethod==="INOTI_USSD")return <section className="space-y-3 rounded-2xl border p-5 text-sm leading-7"><h2 className="font-semibold">پرداخت با کد دستوری</h2><p>پرداخت تا تأیید ارائه‌دهنده در انتظار می‌ماند.</p>{methods.find(m=>m.method==="INOTI_USSD")?.dialString&&<bdi>{methods.find(m=>m.method==="INOTI_USSD")?.dialString}</bdi>}{order.trackingToken&&<p className="break-all font-mono" dir="ltr">{order.trackingToken}</p>}</section>;
+  if(order.paymentMethod!=="BANK_TRANSFER"||order.paymentStatus==="PAID")return null;
+  return <section className="space-y-4 rounded-2xl border border-stone-200 p-5"><h2 className="font-semibold">گزارش پرداخت بانکی</h2>{order.bankCardNumber&&<p className="text-sm">شماره کارت: <bdi>{order.bankCardNumber}</bdi></p>}{order.bankAccountOwner&&<p className="text-sm">به نام: {order.bankAccountOwner}</p>}
+    {!done&&<><fieldset disabled={busy}><legend className="text-sm">روش گزارش</legend><div className="flex gap-4"><label className="flex min-h-11 items-center gap-2 text-sm"><input type="radio" name="reportMode" checked={mode==="RECEIPT"} onChange={()=>setMode("RECEIPT")} />تصویر رسید</label><label className="flex min-h-11 items-center gap-2 text-sm"><input type="radio" name="reportMode" checked={mode==="TIME"} onChange={()=>setMode("TIME")} />زمان پرداخت</label></div></fieldset>{mode==="RECEIPT"?<label className="block text-sm">تصویر رسید<input type="file" accept="image/*" onChange={e=>setFile(e.target.files?.[0]??null)} className="mt-2 block min-h-12 w-full rounded-xl border p-3" /></label>:<label className="block text-sm">زمان پرداخت<input type="datetime-local" value={time} onChange={e=>setTime(e.target.value)} className="mt-2 block min-h-12 w-full rounded-xl border p-3" /></label>}<button type="button" disabled={busy} onClick={()=>void submit()} className="min-h-12 rounded-xl bg-stone-900 px-6 text-sm text-white focus-visible:outline focus-visible:outline-offset-4 disabled:opacity-50">{busy?"در حال ارسال…":"ارسال گزارش پرداخت"}</button></>}{message&&<p role={done?"status":"alert"} className="text-sm leading-7">{message}</p>}
+  </section>;
+}

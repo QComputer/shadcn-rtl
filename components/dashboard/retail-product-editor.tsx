@@ -11,7 +11,7 @@ type Definition = { id: string; key: string; label: string; scope: "PRODUCT" | "
 type Category = { id: string; name: string; isActive: boolean };
 type ImageItem = { id: string; url: string; filename?: string | null };
 type Attribute = { definitionId: string; value: string | number | boolean };
-type ProductRecord = { id: string; name: string; brand: string | null; slug: string | null; description: string | null; isActive: boolean; category: { id: string; name: string; isActive: boolean }; categoryIds: string[]; tags: Array<{ id: string; name: string }>; imageIds: string[]; images: ImageItem[]; attributes: Attribute[]; variants: VariantRecord[] };
+type ProductRecord = { id: string; name: string; brand: string | null; slug: string | null; description: string | null; isActive: boolean; trackInventory: boolean; category: { id: string; name: string; isActive: boolean }; categoryIds: string[]; tags: Array<{ id: string; name: string }>; imageIds: string[]; images: ImageItem[]; attributes: Attribute[]; variants: VariantRecord[] };
 type VariantRecord = { id: string; name: string | null; sku: string | null; price: number | null; inventory: number; reservedQuantity: number; allowBackOrder: boolean; options: Attribute[]; imageIds: string[]; images: ImageItem[] };
 type VariantDraft = { id?: string; name: string; sku: string; price: string; inventory: string; reservedQuantity: number; allowBackOrder: boolean; options: Record<string, string>; imageIds: string[] };
 
@@ -43,7 +43,7 @@ function restoreVariants(variants: VariantRecord[]): VariantDraft[] {
 }
 
 function recordSnapshot(product: ProductRecord) {
-  return JSON.stringify({ name: product.name, brand: product.brand ?? "", slug: product.slug ?? "", description: product.description ?? "", categoryId: product.category.id, categoryIds: product.categoryIds ?? [product.category.id], tagText: (product.tags ?? []).map((tag) => tag.name).join(", "), attributes: Object.fromEntries(product.attributes.map((attribute) => [attribute.definitionId, String(attribute.value)])), variants: restoreVariants(product.variants), selectedImageIds: product.images.map((image) => image.id) });
+  return JSON.stringify({ trackInventory: product.trackInventory, name: product.name, brand: product.brand ?? "", slug: product.slug ?? "", description: product.description ?? "", categoryId: product.category.id, categoryIds: product.categoryIds ?? [product.category.id], tagText: (product.tags ?? []).map((tag) => tag.name).join(", "), attributes: Object.fromEntries(product.attributes.map((attribute) => [attribute.definitionId, String(attribute.value)])), variants: restoreVariants(product.variants), selectedImageIds: product.images.map((image) => image.id) });
 }
 
 function valueFromInput(definition: Definition, value: string): string | number | boolean {
@@ -92,6 +92,8 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
   const [attributes, setAttributes] = useState<Record<string, string>>({});
   const [variants, setVariants] = useState<VariantDraft[]>([]);
   const [published, setPublished] = useState(false);
+  const [trackInventory, setTrackInventory] = useState(true);
+  const [loadedInventory, setLoadedInventory] = useState<Record<string, string>>({});
   const [organizationSlug, setOrganizationSlug] = useState("");
   const [busy, setBusy] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -103,7 +105,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
   const [imageGroupDefinitionId, setImageGroupDefinitionId] = useState("");
   const [imageGroupValue, setImageGroupValue] = useState("");
   const [savedState, setSavedState] = useState<string | null>(null);
-  const editorState = JSON.stringify({ name, brand, slug, description, categoryId, categoryIds, tagText, attributes, variants, selectedImageIds });
+  const editorState = JSON.stringify({ trackInventory, name, brand, slug, description, categoryId, categoryIds, tagText, attributes, variants, selectedImageIds });
   const unsaved = savedState !== null && savedState !== editorState;
   const leaveWarning = locale === "fa" ? "تغییرات ذخیره نشده‌اند. بدون ذخیره خارج می‌شوید؟" : locale === "ar" ? "لم يتم حفظ التغييرات. هل تريد المغادرة؟" : "You have unsaved changes. Leave without saving?";
 
@@ -165,6 +167,8 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
           setCategoryIds(product.categoryIds ?? [product.category.id]);
           setTagText((product.tags ?? []).map((tag) => tag.name).join(", "));
           setPublished(product.isActive);
+          setTrackInventory(product.trackInventory);
+          setLoadedInventory(Object.fromEntries(product.variants.map(v => [v.id, String(v.inventory)])));
           setAttributes(Object.fromEntries(product.attributes.map((attribute) => [attribute.definitionId, String(attribute.value)])));
           setImages((current) => {
             const merged = new Map(current.map((image) => [image.id, image]));
@@ -175,10 +179,10 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
           setVariants(restoreVariants(product.variants));
         } else {
           setName(""); setBrand(""); setSlug(""); setDescription("");
-          setCategoryId(""); setCategoryIds([]); setTagText(""); setAttributes({}); setPublished(false);
+          setCategoryId(""); setCategoryIds([]); setTagText(""); setAttributes({}); setPublished(false); setTrackInventory(true); setLoadedInventory({});
           setVariants([newVariant(defs)]);
           setSelectedImageIds([]);
-          setSavedState(JSON.stringify({ name: "", brand: "", slug: "", description: "", categoryId: "", categoryIds: [], tagText: "", attributes: {}, variants: [newVariant(defs)], selectedImageIds: [] }));
+          setSavedState(JSON.stringify({ trackInventory: true, name: "", brand: "", slug: "", description: "", categoryId: "", categoryIds: [], tagText: "", attributes: {}, variants: [newVariant(defs)], selectedImageIds: [] }));
         }
       } catch {
         if (!cancelled) setError(t.genericError);
@@ -260,6 +264,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
     setSaving(true); setError(""); setNotice("");
     try {
       if (!categoryId) throw new Error("missing-category");
+      if (variants.some(v => !v.inventory.trim() || !Number.isInteger(Number(v.inventory)) || Number(v.inventory) < v.reservedQuantity || Number(v.inventory) > 1_000_000_000)) throw new Error(locale === "fa" ? "موجودی باید عدد صحیح بین صفر و یک میلیارد و حداقل برابر مقدار رزروشده باشد." : locale === "ar" ? "أدخل كمية صحيحة بين صفر ومليار لا تقل عن المحجوز." : "Inventory must be an integer from zero to one billion, and at least the reserved quantity.");
       if ((!variants.length && (!productId || action === "publish")) || variants.some((variant) => !variant.name.trim() || !variant.price || !Number.isFinite(Number(variant.price)) || Number(variant.price) <= 0 || !Number.isInteger(Number(variant.inventory)) || Number(variant.inventory) < variant.reservedQuantity) || (action === "publish" && variants.some((variant) => !variant.sku.trim()))) throw new Error(t.variantsRequired);
       if (action === "publish" && selectedImageIds.length === 0) throw new Error(t.variantsRequired);
       const variantInput = variants.map((variant) => ({
@@ -270,12 +275,12 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
       const categoriesToSave = [...new Set([categoryId, ...categoryIds].filter(Boolean))];
       const tagNames = [...new Set(tagText.split(/[,،\n]/u).map((tag) => tag.trim()).filter(Boolean))];
       const payload = productId ? {
-        name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
-        variantUpdates: variants.filter((variant) => variant.id).map((variant) => ({ id: variant.id!, name: variant.name.trim(), sku: variant.sku.trim() || null, price: Number(variant.price), inventory: Number(variant.inventory), allowBackOrder: variant.allowBackOrder, options: variantInput[variants.indexOf(variant)]!.options, imageIds: variant.imageIds })),
+        trackInventory, name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
+        variantUpdates: variants.filter((variant) => variant.id).map((variant) => ({ id: variant.id!, name: variant.name.trim(), sku: variant.sku.trim() || null, price: Number(variant.price), ...(variant.inventory === loadedInventory[variant.id!] ? {} : { inventory: Number(variant.inventory) }), allowBackOrder: variant.allowBackOrder, options: variantInput[variants.indexOf(variant)]!.options, imageIds: variant.imageIds })),
         newVariants: variantInput.filter((_, index) => !variants[index]?.id),
         ...(action === "publish" ? { isActive: true } : action === "unpublish" ? { isActive: false } : {}),
       } : {
-        name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
+        trackInventory, name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
         variants: variantInput,
       };
       const response = await fetch(productId ? `/api/dashboard/retail/catalog/${productId}` : "/api/dashboard/retail/catalog", { method: productId ? "PATCH" : "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
@@ -296,6 +301,8 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
       setSlug(updated.slug ?? "");
       setSavedState(recordSnapshot(updated));
       setPublished(updated.isActive);
+      setTrackInventory(updated.trackInventory);
+      setLoadedInventory(Object.fromEntries(updated.variants.map(v => [v.id, String(v.inventory)])));
       setNotice(action === "publish" ? t.publishNotice : action === "unpublish" ? t.unpublishNotice : t.saved);
       if (action === "publish") setPreview(false);
       if (action === "unpublish") setPreview(true);
@@ -322,6 +329,14 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <fieldset disabled={saving || fileBusy} className="min-w-0 space-y-5 border-0 p-0">
+          <section className="space-y-3 rounded-xl border bg-card p-4" aria-labelledby="inventory-policy-title">
+            <h2 id="inventory-policy-title" className="font-semibold">{locale === "fa" ? "سیاست موجودی" : locale === "ar" ? "سياسة المخزون" : "Inventory policy"}</h2>
+            <label className="flex min-h-11 items-center gap-3 text-sm font-medium"><input type="checkbox" checked={trackInventory} onChange={event => setTrackInventory(event.target.checked)} />{locale === "fa" ? "کنترل موجودی محصول" : locale === "ar" ? "تتبع مخزون المنتج" : "Track product inventory"}</label>
+            <p role="status" className={`rounded-lg p-3 text-sm ${trackInventory ? "bg-emerald-50 text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-100" : "bg-amber-50 text-amber-950 dark:bg-amber-950/30 dark:text-amber-100"}`}>
+              {locale === "fa" ? (trackInventory ? "کنترل موجودی فعال است: خرید بر اساس موجودی هر گونه و مقدار رزروشده بررسی می‌شود. برای جلوگیری از فروش بیش از موجودی، پذیرش سفارش در نبود موجودی را برای گونه‌ها خاموش نگه دارید." : "کنترل موجودی خاموش است: فروش به تعداد ثبت‌شده محدود نمی‌شود و خرید موجودی را کم نمی‌کند. تعداد هر گونه همچنان قابل ویرایش است؛ عدد صفر به‌تنهایی فروش را متوقف نمی‌کند.") : locale === "ar" ? (trackInventory ? "يُفحص مخزون كل خيار والكمية المحجوزة. عطّل الطلب عند نفاد المخزون لمنع البيع الزائد." : "البيع غير محدود بالكميات المسجلة ولا ينقص المخزون. الصفر لا يوقف البيع.") : (trackInventory ? "Purchases check each variant’s stock and reservations. Keep back-ordering off to prevent overselling." : "Sales are not limited by recorded quantities and do not decrement stock. Zero does not stop sales.")}
+            </p>
+            <p className="text-xs text-muted-foreground">{locale === "fa" ? "تغییر این گزینه تعداد موجودی را تغییر نمی‌دهد. فقط تعداد واقعی و تأییدشده هر گونه را وارد کنید؛ تغییرات پس از ذخیره اعمال می‌شوند." : locale === "ar" ? "تغيير السياسة لا يغير الكميات. أدخل الأعداد الفعلية؛ تُطبق التغييرات بعد الحفظ." : "Changing this policy does not change quantities. Enter confirmed counts; changes apply after saving."}</p>
+          </section>
           <section className="grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2">
             <label className="space-y-1.5 text-sm font-medium"><span>{t.name}</span><input required minLength={2} maxLength={200} value={name} onChange={(event) => setName(event.target.value)} className="w-full rounded-lg border bg-background px-3 py-2.5" /></label>
             <label className="space-y-1.5 text-sm font-medium"><span>{t.brand}</span><input maxLength={160} value={brand} onChange={(event) => setBrand(event.target.value)} className="w-full rounded-lg border bg-background px-3 py-2.5" /></label>
@@ -341,10 +356,10 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
               <label className="space-y-1 text-xs font-medium"><span>{t.variantName}</span><input required maxLength={200} value={variant.name} onChange={(event) => updateVariant(index, { name: event.target.value })} className="w-full rounded-md border bg-background px-3 py-2 text-sm" /></label>
               <label className="space-y-1 text-xs font-medium"><span>{t.sku}</span><input maxLength={100} value={variant.sku} onChange={(event) => updateVariant(index, { sku: event.target.value })} className="w-full rounded-md border bg-background px-3 py-2 text-sm" /></label>
               <label className="space-y-1 text-xs font-medium"><span>{t.price}</span><input required type="number" min="0.01" step="0.01" value={variant.price} onChange={(event) => updateVariant(index, { price: event.target.value })} className="w-full rounded-md border bg-background px-3 py-2 text-sm" /></label>
-              <label className="space-y-1 text-xs font-medium"><span>{t.inventory}</span><input required type="number" min={variant.reservedQuantity} step="1" value={variant.inventory} onChange={(event) => updateVariant(index, { inventory: event.target.value })} className="w-full rounded-md border bg-background px-3 py-2 text-sm" /><small className="block text-muted-foreground">{t.reserved}: {variant.reservedQuantity}</small></label>
+              <label className="space-y-1 text-xs font-medium"><span>{t.inventory}</span><input required type="number" min={variant.reservedQuantity} max={1_000_000_000} step="1" value={variant.inventory} onChange={(event) => updateVariant(index, { inventory: event.target.value })} className="w-full rounded-md border bg-background px-3 py-2 text-sm" /><small className="block text-muted-foreground">{t.reserved}: {variant.reservedQuantity}</small></label>
               {optionDefinitions.map((definition) => <AttributeControl key={definition.id} definition={definition} locale={locale} value={variant.options[definition.id] ?? ""} onChange={(value) => updateVariant(index, { options: { ...variant.options, [definition.id]: value } })} />)}
               <div className="space-y-2 sm:col-span-2 xl:col-span-3"><span className="text-xs font-medium">{t.variantImages}</span><div className="flex flex-wrap gap-2">{images.map((image) => { const checked = variant.imageIds.includes(image.id); return <button key={image.id} type="button" aria-pressed={checked} onClick={() => toggleVariantImage(index, image.id)} className={`size-16 overflow-hidden rounded-md border ${checked ? "ring-2 ring-primary" : "opacity-70"}`}><Image src={image.url} alt="" width={64} height={64} unoptimized className="size-full object-cover" /></button>; })}{images.length === 0 && <span className="text-xs text-muted-foreground">{t.noImage}</span>}</div><button type="button" className="text-xs text-primary underline" onClick={() => updateVariant(index, { imageIds: [...selectedImageIds] })}>{locale === "fa" ? "استفاده از گالری محصول" : locale === "ar" ? "استخدام معرض المنتج" : "Use product gallery"}</button></div>
-              <label className="flex items-center gap-2 text-xs font-medium sm:col-span-2 xl:col-span-3"><input type="checkbox" checked={variant.allowBackOrder} onChange={(event) => updateVariant(index, { allowBackOrder: event.target.checked })} />{t.backorder}</label>
+              <label className="flex items-center gap-2 text-xs font-medium sm:col-span-2 xl:col-span-3"><input type="checkbox" checked={variant.allowBackOrder} disabled={!trackInventory} onChange={(event) => updateVariant(index, { allowBackOrder: event.target.checked })} />{t.backorder}</label>
               {!variant.id && variants.length > 1 && <button className="justify-self-start rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/5" type="button" onClick={() => setVariants((current) => current.filter((_, currentIndex) => currentIndex !== index))}><Trash2 className="me-1 inline size-3.5" />{t.removeVariant}</button>}
             </div>)}</div>
             <p className="text-xs text-muted-foreground">{currency}</p>

@@ -44,6 +44,7 @@ export const retailProductCreateSchema = z.object({
   imageIds: z.array(z.string().min(1).max(64)).max(20).default([]),
   attributes: z.array(assignmentSchema).max(80).default([]),
   variants: z.array(variantCreateSchema).min(1).max(100),
+  trackInventory: z.boolean().optional(),
 }).strict().superRefine((input, context) => {
   const seen = new Set<string>();
   for (const attribute of input.attributes) {
@@ -80,6 +81,7 @@ export const retailProductUpdateSchema = z.object({
   newVariants: z.array(variantCreateSchema).max(100).optional(),
   variantUpdates: z.array(variantUpdateSchema).max(100).optional(),
   isActive: z.boolean().optional(),
+  trackInventory: z.boolean().optional(),
 }).strict().superRefine((input, context) => {
   if (input.imageIds && new Set(input.imageIds).size !== input.imageIds.length) context.addIssue({ code: "custom", path: ["imageIds"], message: "Duplicate product images are not allowed." });
   if (input.variantUpdates) for (const variant of input.variantUpdates) if (variant.imageIds && new Set(variant.imageIds).size !== variant.imageIds.length) context.addIssue({ code: "custom", path: ["variantUpdates"], message: "Duplicate variant images are not allowed." });
@@ -99,7 +101,7 @@ export const retailDefinitionSchema = retailAttributeDefinitionInputSchema;
 
 const merchantProductSelect = {
   id: true, name: true, brand: true, slug: true, description: true, basePrice: true, image: true, isActive: true, organizationId: true,
-  categoryId: true, createdAt: true, updatedAt: true,
+  categoryId: true, trackInventory: true, createdAt: true, updatedAt: true,
   category: { select: { id: true, name: true, slug: true, isActive: true } },
   images: { select: { id: true, url: true, access: true, organizationId: true }, orderBy: { createdAt: "asc" } },
   categoryAssignments: { where: { category: { deletedAt: null, isActive: true } }, select: { categoryId: true } },
@@ -135,6 +137,7 @@ function serializeMerchantProduct(product: MerchantProduct) {
     description: product.description,
     basePrice: Number(product.basePrice.toString()),
     isActive: product.isActive,
+    trackInventory: product.trackInventory,
     category: product.category,
     images: product.images.filter((image) => image.access === "PUBLIC" && image.organizationId === product.organizationId).map((image) => ({ id: image.id, url: image.url })),
     imageIds: product.images.filter((image) => image.access === "PUBLIC" && image.organizationId === product.organizationId).map((image) => image.id),
@@ -400,7 +403,7 @@ export async function createMerchantRetailProduct(context: TenantContext, actorU
       image: images[0]?.url ?? null,
       images: { connect: data.imageIds.map((id) => ({ id })) },
       isActive: false,
-      trackInventory: true,
+      trackInventory: data.trackInventory ?? true,
       lowStockThreshold: 0,
       discountType: "none",
       discountValue: 0,
@@ -494,6 +497,7 @@ export async function updateMerchantRetailProduct(context: TenantContext, actorU
       ...(data.categoryId === undefined ? {} : { categoryId: data.categoryId }),
       ...(images === undefined ? {} : { image: images[0]?.url ?? null, images: { set: data.imageIds?.map((id) => ({ id })) ?? [] } }),
       ...(data.isActive === undefined ? {} : { isActive: data.isActive }),
+      ...(data.trackInventory === undefined ? {} : { trackInventory: data.trackInventory }),
       ...(minimumPrice ? { basePrice: minimumPrice } : {}),
     }, select: merchantProductSelect });
     return updated;

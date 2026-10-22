@@ -21,6 +21,7 @@ function LoginForm({ locale }: { locale: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get("callbackUrl") || appPath(`/${locale}/dashboard`)
+  const passwordChanged = searchParams.get("security") === "password-changed"
 
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
@@ -127,6 +128,7 @@ function LoginForm({ locale }: { locale: string }) {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {passwordChanged && <p role="status" className="rounded-lg border p-3 text-sm leading-6">رمز عبور تغییر کرد و همه نشست‌های قبلی پایان یافتند. با رمز جدید وارد شوید.</p>}
               {error && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}

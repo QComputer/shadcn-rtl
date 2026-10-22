@@ -5,6 +5,7 @@ import { Prisma, type PrismaClient, type UserRole } from "@prisma/client";
 import { prisma as defaultPrisma } from "@/lib/db-runtime";
 import { ApiError } from "@/lib/api-guards";
 import type { ProvisionOrganizationAccountInput } from "./contract";
+import { auditCredentialChange, validateNewPassword } from "@/lib/security/password.server";
 
 export type ProvisioningActor = {
   userId: string;
@@ -134,6 +135,7 @@ export class OrganizationAccountProvisioningService {
   }
 
   async resetPassword(actor: ProvisioningActor, organizationId: string, targetUserId: string, newPassword: string) {
+    validateNewPassword(newPassword);
     if (actor.userId === targetUserId) throw new ApiError(400, "Use the account password-change flow for your own password");
     return this.transaction(async (tx) => {
       const authorization = await this.authorize(tx, actor, organizationId);
@@ -150,6 +152,7 @@ export class OrganizationAccountProvisioningService {
       }
 
       const passwordHash = await this.hashPassword(newPassword);
+      await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${targetUserId} FOR UPDATE`;
       await tx.user.update({
         where: { id: targetUserId },
         data: { password: passwordHash, failedLoginAttempts: 0, lockedUntil: null },
@@ -167,6 +170,7 @@ export class OrganizationAccountProvisioningService {
           newValue: { passwordReset: true, membershipRole: membership.role },
         },
       });
+      await auditCredentialChange(tx, targetUserId, actor.userId, "Administrator reset password; all previous sessions invalidated");
       return { success: true, userId: targetUserId, organizationId };
     });
   }

@@ -43,6 +43,7 @@ function makeService(options: {
       create: async ({ data }: { data: Record<string, unknown> }) => { writes.membership = data; return { id: "membership-created", role: data.role }; },
     },
     auditLog: { create: async ({ data }: { data: Record<string, unknown> }) => { writes.audits.push(data); return data; } },
+    passwordReset: { updateMany: async () => ({ count: 0 }) },
   };
   const db = { $transaction: async (callback: (arg: unknown) => unknown) => callback(tx) };
   const service = new OrganizationAccountProvisioningService(db as never, async (password) => { writes.hashes.push(password); return `hashed:${password}`; });
@@ -114,4 +115,12 @@ test("password reset is organization-scoped, rejects self-service misuse, and ne
   await assert.rejects(targetAdminService.resetPassword(actor, "org-damoon", "other-admin", "new-secret"), /cannot reset another administrator/);
   const platformTarget = makeService({ actor: { role: "SUPER_ADMIN" }, membershipRole: "ADMIN", targetUserRole: "SUPER_ADMIN" });
   await assert.rejects(platformTarget.service.resetPassword(superAdmin, "org-damoon", "user-target", "new-secret"), /Platform administrator credentials/);
+});
+
+test("manager and ordinary membership do not grant organization credential-reset authority", async () => {
+  for (const role of ["MANAGER", "STAFF", "CUSTOMER", "DRIVER", "USER"]) {
+    const { service } = makeService({ actor: { role: "CUSTOMER" }, actorMembershipRole: role, membershipRole: "CUSTOMER" });
+    await assert.rejects(service.resetPassword({ userId: "actor-1", sessionRole: "CUSTOMER", sessionOrganizationId: "org-damoon" },
+      "org-damoon", "user-target", "synthetic-password"), /administrator membership required/);
+  }
 });

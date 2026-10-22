@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { compare, hash } from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { ApiError, jsonError, requireAuthSession } from "@/lib/api-guards";
+import { ApiError, jsonError, requireAuthSession, requireSameOriginMutation } from "@/lib/api-guards";
+import { AccountSecurityError, changeAccountPassword } from "@/lib/security/password.server";
 import { getClientIp, checkRateLimit } from "@/lib/rate-limit";
 import { writeAuditLog } from "@/lib/audit-log";
 
@@ -172,8 +172,11 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  let actorId: string | undefined;
   try {
+    requireSameOriginMutation(request);
     const session = await requireAuthSession();
+    actorId = session.user.id;
     const clientIp = getClientIp(request.headers);
     const rateLimit = checkRateLimit({
       key: `password-change:${session.user.id}:${clientIp}`,
@@ -194,37 +197,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = changePasswordSchema.parse(body);
 
-    const user = await prisma.user.findFirst({
-      where: { id: session.user.id, deletedAt: null, isActive: true },
-      select: { id: true, password: true },
-    });
-
-    if (!user) throw new ApiError(404, "User not found");
-
-    const isValid = await compare(data.currentPassword, user.password);
-    if (!isValid) {
-      throw new ApiError(400, "Current password is incorrect");
-    }
-
-    const hashedPassword = await hash(data.newPassword, 12);
-
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: { password: hashedPassword },
-    });
-
-    await writeAuditLog({
-      action: "RESET_PASSWORD",
-      entityType: "User",
-      entityId: session.user.id,
-      description: "User changed their own password",
-      userId: session.user.id,
-      ipAddress: clientIp,
-      userAgent: request.headers.get("user-agent"),
-    });
-
-    return NextResponse.json({ success: true, message: "Password changed successfully" });
+    await changeAccountPassword(session.user.id, data.currentPassword, data.newPassword);
+    return NextResponse.json({ success: true, signInRequired: true, message: "رمز عبور تغییر کرد و تمام نشست‌های قبلی پایان یافتند. دوباره وارد شوید." });
   } catch (error) {
+    if (error instanceof AccountSecurityError) {
+      if (actorId) await writeAuditLog({ action: "UPDATE", entityType: "AccountSecurityRejected", entityId: actorId,
+        userId: actorId, description: "Password change rejected; credential values omitted" });
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Validation error", details: error.issues },

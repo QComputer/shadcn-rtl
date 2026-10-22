@@ -1,5 +1,7 @@
 "use client";
 import { appFetch } from "@/lib/app-base-path";
+import { appPath } from "@/lib/app-base-path";
+import { signOut } from "next-auth/react";
 
 import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -222,11 +224,11 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
     setMessage(null);
 
     if (newPassword !== confirmPassword) {
-      setPasswordError("Passwords do not match");
+      setPasswordError("رمز جدید و تکرار آن یکسان نیستند.");
       return;
     }
-    if (newPassword.length < 8) {
-      setPasswordError("Password must be at least 8 characters");
+    if (newPassword.length < 8 || new TextEncoder().encode(newPassword).length > 72) {
+      setPasswordError("رمز باید حداقل ۸ نویسه و حداکثر ۷۲ بایت باشد.");
       return;
     }
 
@@ -243,8 +245,8 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setMessage("رمز عبور با موفقیت تغییر کرد");
-      toast.success("رمز عبور با موفقیت تغییر کرد", { position: "top-center" });
+      setMessage("رمز تغییر کرد و تمام نشست‌ها پایان یافتند. دوباره وارد شوید.");
+      await signOut({ callbackUrl: appPath(`/${locale}/login?security=password-changed`) });
     } catch (passwordChangeError) {
       setPasswordError(passwordChangeError instanceof Error ? passwordChangeError.message : "Failed to change password");
     } finally {
@@ -380,13 +382,13 @@ export default function SettingsPage({ params }: { params: Promise<{ locale: str
           <Card>
             <CardHeader>
               <CardTitle>امنیت حساب</CardTitle>
-              <CardDescription>رمز عبور جدید باید حداقل ۸ کاراکتر باشد.</CardDescription>
+              <CardDescription>رمز جدید باید حداقل ۸ نویسه باشد. پس از ذخیره، تمام نشست‌های این حساب در همه سازمان‌ها و دستگاه‌ها، از جمله همین نشست، پایان می‌یابند و باید دوباره وارد شوید.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {passwordError && <div className="p-3 bg-destructive/10 border border-destructive text-destructive rounded-lg text-sm">{passwordError}</div>}
               <div className="space-y-2">
                 <Label htmlFor="currentPassword">رمز عبور فعلی</Label>
-                <Input id="currentPassword" type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
+                <Input id="currentPassword" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">

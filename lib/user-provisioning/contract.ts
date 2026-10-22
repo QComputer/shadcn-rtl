@@ -15,7 +15,7 @@ export const provisionOrganizationAccountSchema = z.object({
 }).strict();
 
 export const resetOrganizationAccountPasswordSchema = z.object({
-  password: z.string().min(6).max(128),
+  password: z.string().min(8).max(128).refine(value => new TextEncoder().encode(value).length <= 72, "Password exceeds bcrypt byte limit"),
 }).strict();
 
 export type ProvisionOrganizationAccountInput = z.infer<typeof provisionOrganizationAccountSchema>;

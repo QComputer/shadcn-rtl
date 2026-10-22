@@ -55,7 +55,7 @@ test("provision and password reset reject unauthenticated, cross-origin, malform
 test("password-reset route passes only authorized scope and validated replacement value", async () => {
   calls.length = 0;
   session = { user: { id: "admin-13", role: "CUSTOMER", organizationId: "org-damoon" } };
-  const response = await reset(request("https://app.example/api/organizations/org-damoon/users/target-user/password", { password: "secret2" }), { params: Promise.resolve({ id: "org-damoon", userId: "target-user" }) });
+  const response = await reset(request("https://app.example/api/organizations/org-damoon/users/target-user/password", { password: "test-secret2" }), { params: Promise.resolve({ id: "org-damoon", userId: "target-user" }) });
   assert.equal(response.status, 200);
-  assert.deepEqual(calls[0], { method: "resetPassword", args: [{ userId: "admin-13", sessionRole: "CUSTOMER", sessionOrganizationId: "org-damoon" }, "org-damoon", "target-user", "secret2"] });
+  assert.deepEqual(calls[0], { method: "resetPassword", args: [{ userId: "admin-13", sessionRole: "CUSTOMER", sessionOrganizationId: "org-damoon" }, "org-damoon", "target-user", "test-secret2"] });
 });

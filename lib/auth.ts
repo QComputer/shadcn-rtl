@@ -16,6 +16,8 @@ import type { Provider } from "next-auth/providers"
 import bcrypt from "bcryptjs";
 import type { UserRole } from "./types";
 import { appCookiePath, appPath } from "./app-base-path";
+import { credentialBinding } from "./security/credential-binding";
+import { validateSessionCredential } from "./security/session-credential.server";
 
 /**
  * NextAuth Type Extensions
@@ -24,6 +26,7 @@ import { appCookiePath, appPath } from "./app-base-path";
  */
 declare module "next-auth" {
   interface User {
+    credentialBinding?: string;
     role?: UserRole;
     locale?: string;
     isTeamMember?: boolean;
@@ -188,6 +191,7 @@ const buildProviders = (): Provider[] => {
           theme: user.theme,
           isTeamMember: user.isTeamMember || false,
           organizationId: organizationMember?.organizationId || null,
+          credentialBinding: credentialBinding(user.id, user.password, nextAuthSecret!),
         };
       }
     }),
@@ -257,7 +261,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.locale = user.locale;
         token.theme = user.theme;
         token.organizationId = user.organizationId;
+        // Bind to the credential actually verified by the provider, not a
+        // later password fetched after a concurrent reset.
+        token.credentialBinding = user.credentialBinding;
+        if (!user.credentialBinding) return null;
       }
+      const current = await validateSessionCredential(token, nextAuthSecret!);
+      if (!current) return null;
+      token.credentialBinding = current.binding;
+      token.role = current.user.role;
       return token;
     },
 
@@ -294,16 +306,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             isActive: true,
             deletedAt: true,
             lockedUntil: true,
+            password: true,
+            role: true,
+            locale: true,
+            theme: true,
+            isTeamMember: true,
           },
         });
 
         const now = new Date();
-        return Boolean(
+        const allowed = Boolean(
           existingUser &&
             existingUser.isActive &&
             !existingUser.deletedAt &&
             (!existingUser.lockedUntil || existingUser.lockedUntil <= now),
         );
+        if (allowed && existingUser) {
+          user.id = existingUser.id;
+          user.role = existingUser.role;
+          user.locale = existingUser.locale;
+          user.theme = existingUser.theme;
+          user.isTeamMember = existingUser.isTeamMember;
+          user.credentialBinding = credentialBinding(existingUser.id, existingUser.password, nextAuthSecret!);
+          const member = existingUser.isTeamMember ? await prisma.organizationMember.findFirst({
+            where: { userId: existingUser.id, isActive: true, role: { in: ["ADMIN", "MANAGER", "STAFF", "DRIVER"] }, organization: { isActive: true, deletedAt: null } },
+            orderBy: [{ joinedAt: "asc" }, { id: "asc" }], select: { organizationId: true },
+          }) : null;
+          user.organizationId = member?.organizationId ?? null;
+        }
+        return allowed;
       }
 
       if (account?.provider === "credentials") {
@@ -328,5 +359,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 
   // Enable debug logging in development
-  debug: process.env.NODE_ENV === "development",
+  debug: false,
 });

@@ -615,6 +615,7 @@ export function isCustomDomainApplicationPath(pathname: string) {
 
   return (
     pathnameWithoutLocale === "/login" ||
+    pathnameWithoutLocale === "/forgot-password" ||
     pathnameWithoutLocale === "/register" ||
     pathnameWithoutLocale.startsWith("/register/") ||
     pathnameWithoutLocale === "/dashboard" ||

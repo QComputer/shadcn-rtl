@@ -13,6 +13,7 @@ import dynamic from "next/dynamic"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { useTheme } from "@/hooks/use-theme"
 import type { ClientBusinessHour as BusinessHour, ClientOrganization as Organization, ClientOrganizationSettings as OrganizationSettings, ClientPaymentSettings as PaymentSettings } from "@/lib/client-model-types"
+import { RetailFulfillmentSettings } from "@/components/retail/fulfillment-settings";
 import { ShopStatusBadge } from "@/components/ShopStatusBadge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { BUSINESS_CAPABILITY_REGISTRY, type BusinessCapability } from "@/lib/business-capability-registry"
@@ -637,6 +638,7 @@ const handleOpen = async (e: React.FormEvent) => {
           {t("organization.settings")}
         </p>
       </div>
+      {organization?.id && capabilities.includes("SHOP") && <RetailFulfillmentSettings key={`fulfillment-${organization.id}`} organizationId={organization.id} /> }
       {organization?.id && <OrganizationBrandingForm key={organization.id} organizationId={organization.id} />}
       {error && (
         <div className="p-4 bg-destructive/10 border border-destructive text-destructive rounded-lg">

@@ -6,6 +6,7 @@ import { ApiError } from "@/lib/api-guards";
 import type { TenantContext } from "@/lib/tenant-context";
 import { orderService } from "@/lib/services/order.service";
 import { canConfirmRetailCashCollection, formatVariantOptionsSnapshot, getRetailCashModeFromPaymentMetadata } from "@/lib/order-presentation";
+import { readFulfillmentEvent, handoverInputSchema } from "@/lib/retail/fulfillment";
 import { retailOrderActions } from "@/lib/retail/order-operations";
 import { orderedImages, readGallerySettings } from "@/lib/retail/product-galleries";
 
@@ -13,10 +14,11 @@ const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((v) => !Number.isNaN
 export const merchantOrderQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(100000).default(1), pageSize: z.coerce.number().int().min(1).max(50).default(20),
   query: z.string().trim().max(100).default(""), status: z.nativeEnum(OrderStatus).optional(),
+  type: z.enum(["PICK_UP", "DELIVERY"]).optional(), queue: z.enum(["fulfillment"]).optional(),
   paymentStatus: z.nativeEnum(PaymentStatus).optional(), from: date.optional(), to: date.optional(),
   sort: z.enum(["newest", "oldest", "highest"]).default("newest"),
 }).strict().refine((v) => !v.from || !v.to || v.from <= v.to, "بازه تاریخ معتبر نیست.");
-export const merchantOrderActionSchema = z.object({status: z.nativeEnum(OrderStatus), expectedStatus: z.nativeEnum(OrderStatus)}).strict();
+export const merchantOrderActionSchema = z.object({status: z.nativeEnum(OrderStatus), expectedStatus: z.nativeEnum(OrderStatus), handover: handoverInputSchema.optional()}).strict().refine(input => !input.handover || ["PICKED_UP", "DELIVERED"].includes(input.status), "اطلاعات تحویل فقط هنگام تحویل به مشتری، پیک یا تحویل نهایی ثبت می‌شود.");
 
 function assertMerchant(context: TenantContext) {
   if (!["ADMIN", "MANAGER", "SUPER_ADMIN"].includes(context.role)) throw new ApiError(403, "دسترسی مدیریت سفارش ندارید.");
@@ -38,12 +40,14 @@ function summary(order: Prisma.OrderGetPayload<{select: typeof select}>) {
 export async function listMerchantRetailOrders(context: TenantContext, input: z.infer<typeof merchantOrderQuerySchema>) {
   assertMerchant(context);
   const base: Prisma.OrderWhereInput = { organizationSlug: context.organizationSlug, deletedAt: null,
+    ...(input.type && {type: input.type}),
+    ...(input.queue ? {retailCheckoutKey: {not: null}, OR: [{status: {in: ["ACCEPTED", "PREPARING", "READY"]}}, {type: "DELIVERY", status: "PICKED_UP"}]} : {}),
     ...(input.paymentStatus && { paymentStatus: input.paymentStatus }),
     ...(input.from || input.to ? { createdAt: { ...(input.from && { gte: new Date(input.from + "T00:00:00+03:30") }),
       ...(input.to && { lt: new Date(new Date(input.to + "T00:00:00+03:30").getTime() + 86400000) }) } } : {}),
-    ...(input.query ? { OR: [ { orderNumber: { contains: input.query, mode: "insensitive" } },
+    ...(input.query ? { AND: [{ OR: [ { orderNumber: { contains: input.query, mode: "insensitive" } },
       { customer: { is: { OR: [{name: {contains: input.query, mode: "insensitive"}}, {firstName: {contains: input.query, mode: "insensitive"}}, {lastName: {contains: input.query, mode: "insensitive"}}, {phone: {contains: input.query}}] } } },
-      { guestCustomer: { is: { OR: [{name: {contains: input.query, mode: "insensitive"}}, {phone: {contains: input.query}}] } } } ] } : {}),
+      { guestCustomer: { is: { OR: [{name: {contains: input.query, mode: "insensitive"}}, {phone: {contains: input.query}}] } } } ] }] } : {}),
   };
   const where = {...base, ...(input.status && {status: input.status})};
   const [orders, total, counts] = await Promise.all([
@@ -61,6 +65,9 @@ export async function getMerchantRetailOrder(context: TenantContext, orderNumber
       items: {include: {product: {select: {organizationId: true, gallerySettings: true, images: {select: {id: true, url: true, access: true, organizationId: true}}}},
         variant: {select: {productId: true, galleryImages: {orderBy: {sortOrder: "asc"}, select: {image: {select: {url: true, access: true, organizationId: true}}}}}}}}}});
   if (!order) throw new ApiError(404, "سفارش پیدا نشد.");
+  const actors = await prisma.user.findMany({where: {id: {in: [...new Set(order.statusHistory.flatMap(entry => entry.changedById ? [entry.changedById] : []))]},
+    OR: [{role: "SUPER_ADMIN"}, {memberOf: {some: {organizationId: context.organizationId}}}]}, select: {id: true, name: true, firstName: true, lastName: true}});
+  const actorNames = new Map(actors.map(actor => [actor.id, [actor.firstName, actor.lastName].filter(Boolean).join(" ") || actor.name]));
   const safeImage = (image: {url: string; access: string; organizationId: string | null}) => image.organizationId === context.organizationId && image.access === "PUBLIC" &&
     (image.url.startsWith("/") && !image.url.startsWith("//") || (() => { try {return new URL(image.url).protocol === "https:";} catch {return false;} })());
   const metadata = order.payment?.metadata;
@@ -74,7 +81,8 @@ export async function getMerchantRetailOrder(context: TenantContext, orderNumber
       options: formatVariantOptionsSnapshot(item.variantOptionsSnapshot), variantName: item.variantNameSnapshot,
       quantity: item.quantity, unitPrice: Number(item.price), lineTotal: Number(item.price.mul(item.quantity).sub(item.discount)),
       imageUrl: images.find(safeImage)?.url ?? null};
-  }), history: order.statusHistory.map(({id,previousStatus,newStatus,note,createdAt}) => ({id,previousStatus,newStatus,note,createdAt})),
+  }), history: order.statusHistory.map(({id,previousStatus,newStatus,note,createdAt}) => ({id,previousStatus,newStatus,note: readFulfillmentEvent(note) ? null : note,createdAt})),
+    fulfillmentHistory: order.statusHistory.filter(entry => readFulfillmentEvent(entry.note)).map(entry => ({id: entry.id, status: entry.newStatus, at: entry.createdAt, actorId: entry.changedById, actorName: entry.changedById ? actorNames.get(entry.changedById) ?? null : null, details: readFulfillmentEvent(entry.note)})),
     actions: (order.retailCheckoutKey ? retailOrderActions(order) : []).filter((action) => !(action.status === "ACCEPTED" && order.paymentMethod === "CASH" && order.paymentStatus !== "COMPLETED" && cashBeforeConfirmation)), canConfirmCash: canConfirmRetailCashCollection({...order, retailCashMode: getRetailCashModeFromPaymentMetadata(order.payment?.metadata)}),
     legacyOrder: !order.retailCheckoutKey,
     imageNotice: "تصویر از گالری فعلی همان محصول است؛ نام، مشخصات و مبالغ از سوابق خرید نمایش داده می‌شوند." };
@@ -84,6 +92,6 @@ export async function changeMerchantRetailOrder(context: TenantContext, orderNum
   const order = await prisma.order.findFirst({where: {organizationSlug: context.organizationSlug, orderNumber, retailCheckoutKey: {not: null}, deletedAt: null}, select: {id: true}});
   if (!order) throw new ApiError(404, "سفارش پیدا نشد.");
   await orderService.updateStatus(order.id, {status: input.status}, context.role, context.actorUserId,
-    {organizationSlug: context.organizationSlug, expectedStatus: input.expectedStatus});
+    {organizationSlug: context.organizationSlug, expectedStatus: input.expectedStatus, handover: input.handover});
   return getMerchantRetailOrder(context, orderNumber);
 }

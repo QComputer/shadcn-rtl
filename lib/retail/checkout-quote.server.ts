@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { ApiError } from "@/lib/api-guards";
 import { prisma } from "@/lib/db";
 import { requireActiveOrganizationCapability } from "@/lib/organization-capabilities.server";
+import { readFulfillmentDetails } from "@/lib/retail/fulfillment";
 import { type QuoteInput } from "@/lib/retail/checkout.contract";
 
 const money = (value: Prisma.Decimal | number | string) => new Prisma.Decimal(value);
@@ -56,7 +57,9 @@ export async function quoteInTransaction(tx: Tx, organization: { id: string; slu
     items.push({ id: line.id, variantId: variant.id, quantity: line.quantity, unitPrice: price.toNumber(), lineTotal: price.mul(line.quantity).toNumber(), orderable, reason });
     facts.push([line.id, variant.id, line.quantity, price.toString(), product.trackInventory, variant.inventory, variant.reservedQuantity, variant.allowBackOrder, reason]);
   }
-  const settings = await tx.organizationSettings.findUnique({ where: { organizationSlug: organization.slug }, select: { deliveryFee: true, enablePickup: true, enableDelivery: true } });
+  const settings = await tx.organizationSettings.findUnique({ where: { organizationSlug: organization.slug }, select: { deliveryFee: true, enablePickup: true, enableDelivery: true, settings: true, organization: {select: {address: true, phone: true}} } });
+  const fulfillmentInfo = {...readFulfillmentDetails(settings?.settings), contact: settings?.organization.phone ?? null};
+  if (!fulfillmentInfo.pickupAddress) fulfillmentInfo.pickupAddress = settings?.organization.address ?? "";
   const deliveryFeeConfigured = settings?.deliveryFee !== null && settings?.deliveryFee !== undefined;
   const deliveryFee = input.type === "DELIVERY" && deliveryFeeConfigured ? money(settings!.deliveryFee!) : money(0);
   const fulfillmentIssue = input.type === "PICK_UP" && settings?.enablePickup === false
@@ -84,9 +87,9 @@ export async function quoteInTransaction(tx: Tx, organization: { id: string; slu
   }
   const total = Prisma.Decimal.max(0, subtotal.add(deliveryFee).sub(discount));
   const issues = [...(hasUnorderable ? ["Cart contains unavailable or insufficient-stock items."] : []), ...(couponIssue ? [couponIssue] : []), ...(fulfillmentIssue ? [fulfillmentIssue] : [])];
-  const factsHash = createHash("sha256").update(JSON.stringify([organization.id, customerId, input.type, input.deliveryAddress ?? null, input.recipientName ?? null, input.recipientMobile ?? null, input.deliveryNotes ?? null, input.paymentMethod ?? null, input.cashMode ?? null, facts, subtotal.toString(), discount.toString(), deliveryFee.toString(), total.toString(), couponFacts])).digest("base64url");
+  const factsHash = createHash("sha256").update(JSON.stringify([organization.id, customerId, input.type, input.deliveryAddress ?? null, input.recipientName ?? null, input.recipientMobile ?? null, input.deliveryNotes ?? null, input.paymentMethod ?? null, input.cashMode ?? null, facts, subtotal.toString(), discount.toString(), deliveryFee.toString(), total.toString(), couponFacts, settings?.enablePickup ?? true, settings?.enableDelivery ?? true, fulfillmentInfo])).digest("base64url");
   return { quote: { reviewToken: factsHash, subtotal: subtotal.toNumber(), discount: discount.toNumber(), deliveryFee: deliveryFee.toNumber(), total: total.toNumber(), currency: "TOMAN" as const,
-    items, fulfillment: [ ...(settings?.enablePickup === false ? [] : [{ type: "PICK_UP" as const, label: "Customer pickup", fee: 0 }]), ...(settings?.enableDelivery === false || !deliveryFeeConfigured || !deliveryFee.isFinite() || deliveryFee.lt(0) ? [] : [{ type: "DELIVERY" as const, label: "Delivery", fee: money(settings!.deliveryFee!).toNumber() }]) ], issues } };
+    items, fulfillmentInfo, fulfillment: [ ...(settings?.enablePickup === false ? [] : [{ type: "PICK_UP" as const, label: "Customer pickup", fee: 0 }]), ...(settings?.enableDelivery === false || !deliveryFeeConfigured || !deliveryFee.isFinite() || deliveryFee.lt(0) ? [] : [{ type: "DELIVERY" as const, label: "Delivery", fee: money(settings!.deliveryFee!).toNumber() }]) ], issues } };
 }
 
 export function sameReviewToken(expected: string, received: string) { return expected === received; }

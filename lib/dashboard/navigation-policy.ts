@@ -24,6 +24,7 @@ export type DashboardNavigationKey =
   | "orders"
   | "driverOrders"
   | "products"
+  | "retailOrders"
   | "retailCatalog"
   | "retailDiscounts"
   | "retailPaymentSettings"
@@ -62,6 +63,7 @@ export const DASHBOARD_NAVIGATION_ITEMS = {
   orders: "/orders",
   driverOrders: "/driver-orders",
   products: "/products",
+  retailOrders: "/retail-orders",
   retailCatalog: "/retail-catalog",
   retailDiscounts: "/retail-discounts",
   retailPaymentSettings: "/retail-payment-settings",
@@ -93,7 +95,7 @@ export const DASHBOARD_NAVIGATION_ITEMS = {
 export const DASHBOARD_NAVIGATION_GROUPS = [
   {
     key: "operations",
-    items: ["overview", "notifications", "notificationOperations", "appointments", "calendar", "orders", "driverOrders"],
+    items: ["overview", "notifications", "notificationOperations", "appointments", "calendar", "orders", "retailOrders", "driverOrders"],
   },
   {
     key: "catalog",
@@ -122,6 +124,7 @@ export const ROLE_NAVIGATION_POLICY = {
   orders: ALL_OPERATIONS_ROLES,
   driverOrders: ["SUPER_ADMIN", "ADMIN", "MANAGER", "DRIVER"],
   products: ALL_OPERATIONS_ROLES,
+  retailOrders: ADMIN_MANAGER_ROLES,
   retailCatalog: ADMIN_MANAGER_ROLES,
   retailDiscounts: ADMIN_MANAGER_ROLES,
   retailPaymentSettings: ADMIN_MANAGER_ROLES,
@@ -163,6 +166,7 @@ export const DASHBOARD_ROUTE_POLICY = {
   "/products": ROLE_NAVIGATION_POLICY.products,
   "/products/new": ROLE_NAVIGATION_POLICY.products,
   "/products/[id]": ROLE_NAVIGATION_POLICY.products,
+  "/retail-orders": ROLE_NAVIGATION_POLICY.retailOrders,
   "/retail-catalog": ROLE_NAVIGATION_POLICY.retailCatalog,
   "/retail-catalog/new": ROLE_NAVIGATION_POLICY.retailCatalog,
   "/retail-catalog/[productId]": ROLE_NAVIGATION_POLICY.retailCatalog,

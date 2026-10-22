@@ -13,6 +13,7 @@ import { ApiError } from "@/lib/api-guards";
 import { updateOrderReadyTimeSchema } from "@/lib/validators/tenant-platform";
 import { toMoneyDecimal, toMoneyNumber } from "@/lib/money";
 import { releaseRetailCouponReservationsTx, restoreRetailInventoryTx } from "@/lib/retail/payment-expiration.server";
+import { isRetailOrderTransitionAllowed } from "@/lib/retail/order-operations";
 import { getRetailCashModeFromPaymentMetadata } from "@/lib/order-presentation";
 
 const ALLOWED_ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
@@ -1375,6 +1376,7 @@ if (!org?.slug) return
     data: UpdateOrderStatusInput,
     userRole: UserRole,
     userId: string,
+    guard?: { organizationSlug: string; expectedStatus: OrderStatus },
   ) {
     if (!hasPermission(userRole, "order:update")) {
       throw new Error("Unauthorized");
@@ -1430,6 +1432,15 @@ if (!org?.slug) return
         throw new Error("Order not found");
       }
 
+      if (guard && (existingOrder.deletedAt || existingOrder.organizationSlug !== guard.organizationSlug || !existingOrder.retailCheckoutKey)) {
+        throw new ApiError(404, "سفارش فروشگاهی پیدا نشد.");
+      }
+      if (guard && existingOrder.status !== nextStatus && existingOrder.status !== guard.expectedStatus) {
+        throw new ApiError(409, "وضعیت سفارش تغییر کرده است؛ دوباره بررسی کنید.");
+      }
+      if (existingOrder.retailCheckoutKey && !isRetailOrderTransitionAllowed(existingOrder, nextStatus)) {
+        throw new ApiError(409, "این عملیات در وضعیت فعلی سفارش مجاز نیست. بازگشت کالا و بازپرداخت نیازمند بررسی جداگانه است.");
+      }
       if (existingOrder.status === nextStatus) {
         return {
           order: existingOrder,

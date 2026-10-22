@@ -39,3 +39,11 @@ test("Retail order dashboard has an explicit SHOP-scoped ADMIN/MANAGER route pol
   }
   assert.equal(checkRouteAccess("/dashboard/unknown-order-actions", {...base, userRole: "ADMIN"}).hasAccess, false);
 });
+
+import { retailOrderStatusLabel } from "@/lib/retail/order-operations";
+
+test("dispatch and customer collection have distinct labels for the same persisted status", () => {
+  assert.equal(retailOrderStatusLabel("PICKED_UP", "DELIVERY"), "تحویل به پیک");
+  assert.equal(retailOrderStatusLabel("PICKED_UP", "PICK_UP"), "دریافت‌شده توسط مشتری");
+  assert.notEqual(retailOrderStatusLabel("PICKED_UP", "DELIVERY"), retailOrderStatusLabel("DELIVERED", "DELIVERY"));
+});

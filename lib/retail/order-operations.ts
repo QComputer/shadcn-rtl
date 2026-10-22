@@ -27,3 +27,8 @@ export function retailOrderActions(order: RetailOperationalOrder): Array<{ statu
 export function isRetailOrderTransitionAllowed(order: RetailOperationalOrder, next: OrderStatus) {
   return order.status === next || retailOrderActions(order).some((action) => action.status === next);
 }
+
+export function retailOrderStatusLabel(status: string, type?: string) {
+  if (status === "PICKED_UP") return type === "DELIVERY" ? "تحویل به پیک" : type === "PICK_UP" ? "دریافت‌شده توسط مشتری" : "تحویل به مشتری / پیک";
+  return retailOrderStatusLabels[status as OrderStatus] ?? status;
+}

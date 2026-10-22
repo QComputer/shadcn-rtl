@@ -36,7 +36,7 @@ The shared OrderService validates the Retail graph under the existing row lock, 
 
 Local evidence: `C:/Users/disso/.codex/artifacts/retail-r1-20261022/` (not committed).
 
-- 7 focused unit tests passed (workflow, payment separation, dashboard route policy and snapshot presentation).
+- 8 focused unit tests passed (workflow, payment separation, dashboard route policy and snapshot presentation).
 - R1 PostgreSQL contract and existing P1.3 order/financial contract passed on guarded PostgreSQL 16, loopback port 54713, database retail_p0_20261019. The R1 test observes an actual blocked row-lock request before releasing a conflicting update.
 - Existing Retail P0 PostgreSQL catalog/cart/checkout regression passed, including snapshots and inventory concurrency.
 - TypeScript and scoped ESLint passed; full optimized Next production build passed locally. The final commit's complete Vercel Preview build remains a release gate.

@@ -13,6 +13,7 @@ import { ApiError } from "@/lib/api-guards";
 import { updateOrderReadyTimeSchema } from "@/lib/validators/tenant-platform";
 import { toMoneyDecimal, toMoneyNumber } from "@/lib/money";
 import { releaseRetailCouponReservationsTx, restoreRetailInventoryTx } from "@/lib/retail/payment-expiration.server";
+import { getRetailCashModeFromPaymentMetadata } from "@/lib/order-presentation";
 
 const ALLOWED_ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING: ["PLACED", "ACCEPTED", "CANCELLED"],
@@ -874,7 +875,7 @@ const newOrder = await tx.order.create({
   }
 
   async getById(id: string) {
-    return prisma.order.findUnique({
+    const order = await prisma.order.findUnique({
       where: { id },
       include: {
         customer: {
@@ -948,6 +949,7 @@ const newOrder = await tx.order.create({
         promotion: true,
       },
     });
+    return order ? { ...order, retailCashMode: order.retailCheckoutKey && order.paymentMethod === "CASH" ? getRetailCashModeFromPaymentMetadata(order.payment?.metadata) : null } : null;
   }
 
   async listAll(params: {
@@ -1176,13 +1178,21 @@ if (!org?.slug) return
               estimatedEndTime: true,
             },
           },
+          payment: { select: { metadata: true } },
         },
       }),
       prisma.order.count({ where }),
     ]);
 
+    const presentedOrders = data.map(({ payment, ...order }) => ({
+      ...order,
+      retailCashMode: order.retailCheckoutKey && order.paymentMethod === "CASH"
+        ? getRetailCashModeFromPaymentMetadata(payment?.metadata)
+        : null,
+    }));
+
     return {
-      data,
+      data: presentedOrders,
       total,
       page,
       pageSize,
@@ -1420,7 +1430,23 @@ if (!org?.slug) return
         throw new Error("Order not found");
       }
 
+      if (existingOrder.status === nextStatus) {
+        return {
+          order: existingOrder,
+          orderNumber: existingOrder.orderNumber,
+          previousStatus: existingOrder.status,
+          customerId: existingOrder.customerId,
+          guestCustomerId: existingOrder.guestCustomerId,
+          guestCustomer: existingOrder.guestCustomer,
+          organization: existingOrder.organization,
+          changed: false,
+        };
+      }
+
       assertAllowedStatusTransition(existingOrder.status, nextStatus);
+      if (existingOrder.retailCheckoutKey && nextStatus === "REFUNDED") {
+        throw new ApiError(409, "Retail refunds require a separate verified refund workflow.");
+      }
       if (existingOrder.retailCheckoutKey && nextStatus === "CANCELLED" &&
           existingOrder.paymentStatus === "COMPLETED") {
         throw new ApiError(409, "A paid retail order requires a separate refund review before cancellation.");
@@ -1495,8 +1521,13 @@ if (!org?.slug) return
         guestCustomerId: existingOrder.guestCustomerId,
         guestCustomer: existingOrder.guestCustomer,
         organization: existingOrder.organization,
+        changed: true,
       };
     });
+
+    if (!order.changed) {
+      return order.order;
+    }
 
     customerOrderLifecycleRouter.notifyOrderStatusChangedSafe({
       organizationId: order.organization.id,

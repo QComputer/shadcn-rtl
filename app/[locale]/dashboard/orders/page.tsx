@@ -1,7 +1,7 @@
 "use client"
 import { appFetch } from "@/lib/app-base-path";
 
-import { useState, useEffect, use } from "react"
+import { useState, useEffect, useRef, use } from "react"
 import dayjs, { Dayjs } from "dayjs"
 
 import {
@@ -50,6 +50,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
+import {
+  canCancelOrder,
+  canConfirmRetailCashCollection,
+  formatVariantOptionsSnapshot,
+  shouldLinkRetailPaymentReports,
+  shouldUseGenericPaymentControls,
+  type RetailCashMode,
+} from "@/lib/order-presentation"
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb"
 import { useDashboardAccess, useAuth } from "@/hooks/use-auth"
 import { formatPersianDate, formatRelativePersianTime, formatToman, toPersianDigits } from "@/lib/persian"
@@ -60,6 +68,10 @@ interface OrderItem {
   id: string
   quantity: number
   price: number
+  productNameSnapshot: string | null
+  skuSnapshot: string | null
+  variantNameSnapshot: string | null
+  variantOptionsSnapshot: unknown
   product: {
     id: string
     name: string
@@ -118,6 +130,17 @@ interface Order {
   
   paymentStatus: "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED"
   paymentId: string
+  paymentMethod: "CASH" | "BANK_TRANSFER" | "INOTI_USSD" | null
+  retailCheckoutKey: string | null
+  retailCashMode: RetailCashMode | null
+  statusHistory?: Array<{
+    id: string
+    previousStatus: Order["status"] | null
+    newStatus: Order["status"]
+    note: string | null
+    createdAt: string
+    changedById: string | null
+  }>
 }
 
 interface OrdersResponse {
@@ -201,8 +224,11 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [updating, setUpdating] = useState(false)
+  const [cashCollectionOrder, setCashCollectionOrder] = useState<Order | null>(null)
+  const [confirmingCashCollection, setConfirmingCashCollection] = useState(false)
+  const cashCollectionLock = useRef(false)
 
-    const handleViewOrder = (order: Order) => {
+  const handleViewOrder = async (order: Order) => {
     setSelectedOrder(order)
     setPreparationTime(dayjs(order.preparationProgress?.estimatedEndTime) || null)
     setPreparationMinutes(order.preparationMinutesSnapshot || 30)
@@ -210,6 +236,14 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
     setPickupTime(dayjs(order.pickupProgress?.estimatedEndTime)|| null)
     setDeliveryTime(dayjs(order.deliveryProgress?.estimatedEndTime)|| null)
     setDetailDialogOpen(true)
+    try {
+      const response = await appFetch(`/api/orders/${order.id}`)
+      if (!response.ok) return
+      const details = await response.json() as Order
+      setSelectedOrder((current) => current?.id === order.id ? details : current)
+    } catch {
+      // The list data remains usable if the optional detail/history request fails.
+    }
   }
   useEffect(() => {
     setMounted(true)
@@ -377,6 +411,28 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
       setError(err instanceof Error ? err.message : "Failed to update order payment status")
     } finally {
       setUpdating(false)
+    }
+  }
+
+  const handleConfirmRetailCashCollection = async () => {
+    if (!cashCollectionOrder || cashCollectionLock.current) return
+    cashCollectionLock.current = true
+    setConfirmingCashCollection(true)
+    try {
+      const response = await appFetch(
+        `/api/dashboard/retail/orders/${encodeURIComponent(cashCollectionOrder.orderNumber)}/cash-collection`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" },
+      )
+      const result = await response.json().catch(() => ({})) as { error?: string }
+      if (!response.ok) throw new Error(result.error || "تأیید دریافت وجه انجام نشد.")
+      setSelectedOrder(current => current?.id === cashCollectionOrder.id ? { ...current, paymentStatus: "COMPLETED" } : current)
+      setCashCollectionOrder(null)
+      await fetchOrders()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تأیید دریافت وجه انجام نشد.")
+    } finally {
+      cashCollectionLock.current = false
+      setConfirmingCashCollection(false)
     }
   }
 
@@ -681,7 +737,10 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
               <div className="space-y-2">
                 <span className="text-sm text-muted-foreground">انتقال وضعیت:</span>
                 <div className="flex flex-wrap gap-2">
-                  {ALLOWED_TRANSITIONS[selectedOrder.status]?.map((nextStatus) => (
+                  {ALLOWED_TRANSITIONS[selectedOrder.status]?.filter((nextStatus) =>
+                    (nextStatus !== "REFUNDED" || !selectedOrder.retailCheckoutKey) &&
+                    (nextStatus !== "CANCELLED" || canCancelOrder(selectedOrder))
+                  ).map((nextStatus) => (
                     <Button
                       key={nextStatus}
                       variant="outline"
@@ -692,7 +751,7 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                       {TRANSITION_LABELS[nextStatus]}
                     </Button>
                   ))}
-                  {selectedOrder.status !== "CANCELLED" && selectedOrder.status !== "REFUNDED" && (
+                  {canCancelOrder(selectedOrder) && (
                     <Button
                       variant="destructive"
                       size="sm"
@@ -703,7 +762,30 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                     </Button>
                   )}
                 </div>
+                {selectedOrder.retailCheckoutKey && selectedOrder.paymentStatus === "COMPLETED" && (
+                  <p className="text-xs text-muted-foreground">
+                    بازپرداخت سفارش پرداخت‌شده از این بخش انجام نمی‌شود؛ وضعیت مالی باید جداگانه رسیدگی شود.
+                  </p>
+                )}
               </div>
+
+              {selectedOrder.statusHistory && selectedOrder.statusHistory.length > 0 && (
+                <div className="space-y-2 rounded-md border p-3">
+                  <p className="text-sm font-medium">تاریخچه وضعیت سفارش</p>
+                  {selectedOrder.statusHistory.slice(0, 5).map((entry) => (
+                    <div key={entry.id} className="border-t pt-2 text-xs">
+                      <div className="flex justify-between gap-2">
+                        <span>
+                          {entry.previousStatus ? statusConfig[entry.previousStatus]?.label : "—"}
+                          {" ← "}{statusConfig[entry.newStatus]?.label ?? entry.newStatus}
+                        </span>
+                        <span className="text-muted-foreground">{formatPersianDate(entry.createdAt)}</span>
+                      </div>
+                      {entry.note && <p className="mt-1 text-muted-foreground">{entry.note}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <Card>
                 <CardHeader className="pb-2">
@@ -819,16 +901,43 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
 
                 </CardContent>
 
-                <CardFooter>
-                    {selectedOrder.paymentStatus !== "COMPLETED" ? <Button  variant={'default'} className='bg-green-500 text-green-900' onClick={()=>handleUpdatePaymentStatus(selectedOrder.id, "COMPLETED")}>
-                    تایید پرداخت
-                  </Button>
-                  : 
-                  <Button  variant={'destructive'} onClick={()=>handleUpdatePaymentStatus(selectedOrder.id, "FAILED")}>
-                    عدم تایید پرداخت
-                  </Button>
-                    }
-                </CardFooter>
+                {shouldUseGenericPaymentControls(selectedOrder) ? (
+                  <CardFooter>
+                    {selectedOrder.paymentStatus !== "COMPLETED" ? (
+                      <Button variant="default" className="bg-green-500 text-green-900" disabled={updating}
+                        onClick={() => handleUpdatePaymentStatus(selectedOrder.id, "COMPLETED")}>
+                        تایید پرداخت
+                      </Button>
+                    ) : (
+                      <Button variant="destructive" disabled={updating}
+                        onClick={() => handleUpdatePaymentStatus(selectedOrder.id, "FAILED")}>
+                        عدم تایید پرداخت
+                      </Button>
+                    )}
+                  </CardFooter>
+                ) : (
+                  <CardFooter className="flex flex-col items-start gap-3">
+                    {canConfirmRetailCashCollection(selectedOrder) && ["ADMIN", "MANAGER"].includes(user?.role ?? "") && (
+                      <Button disabled={confirmingCashCollection}
+                        onClick={() => setCashCollectionOrder(selectedOrder)}>
+                        {confirmingCashCollection ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                        تأیید دریافت نقدی
+                      </Button>
+                    )}
+                    {canConfirmRetailCashCollection(selectedOrder) && !["ADMIN", "MANAGER"].includes(user?.role ?? "") && (
+                      <p className="text-xs text-muted-foreground">تأیید دریافت وجه باید توسط مدیر فروشگاه انجام شود.</p>
+                    )}
+                    {shouldLinkRetailPaymentReports(selectedOrder) && (
+                      <a className="text-sm text-primary underline underline-offset-4"
+                        href={`/${locale}/dashboard/retail-payment-reports`}>
+                        بررسی پرداخت و گزارش‌های سفارش‌های فروشگاه
+                      </a>
+                    )}
+                    {selectedOrder.paymentStatus === "COMPLETED" && (
+                      <p className="text-xs text-muted-foreground">پرداخت این سفارش ثبت شده است؛ تغییر یا بازپرداخت آن از این بخش انجام نمی‌شود.</p>
+                    )}
+                  </CardFooter>
+                )}
               </Card>
 
 {/* Driver Assignment */}
@@ -894,10 +1003,14 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
                     {selectedOrder.items.map((item) => (
                       <div key={locale+item.id} className="flex items-center justify-between py-2 border-b last:border-0">
                         <div>
-                          <p className="font-medium">{item.product?.name}</p>
-                          {item.variant && (
-                            <p className="text-sm text-muted-foreground">{item.variant.name}</p>
+                          <p className="font-medium">{item.productNameSnapshot || item.product?.name}</p>
+                          {(item.variantNameSnapshot || item.variant?.name) && (
+                            <p className="text-sm text-muted-foreground">{item.variantNameSnapshot || item.variant?.name}</p>
                           )}
+                          {item.skuSnapshot && <p className="text-xs text-muted-foreground">SKU: {item.skuSnapshot}</p>}
+                          {formatVariantOptionsSnapshot(item.variantOptionsSnapshot).map((option) => (
+                            <p key={option} className="text-xs text-muted-foreground">{option}</p>
+                          ))}
                           <p className="text-sm text-muted-foreground">
                             {toPersianDigits(item.quantity.toString())} × {formatToman(item.price)}
                           </p>
@@ -961,6 +1074,29 @@ export default function OrdersPage({ params }: { params: Promise<{ locale: strin
           <DialogFooter>
             <Button variant="outline" onClick={() => setDetailDialogOpen(false)}>
              <X/> بستن
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={cashCollectionOrder !== null} onOpenChange={(open) => {
+        if (!open && !confirmingCashCollection) setCashCollectionOrder(null)
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>تأیید دریافت وجه نقد</DialogTitle>
+            <DialogDescription>
+              با تأیید، ثبت می‌کنید که مبلغ {cashCollectionOrder ? formatToman(cashCollectionOrder.total) : ""}
+              برای سفارش {cashCollectionOrder?.orderNumber ?? ""} واقعاً دریافت شده است.
+              این کار وضعیت پرداخت را تکمیل می‌کند.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" disabled={confirmingCashCollection}
+              onClick={() => setCashCollectionOrder(null)}>بازگشت</Button>
+            <Button disabled={confirmingCashCollection} onClick={handleConfirmRetailCashCollection}>
+              {confirmingCashCollection ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              تأیید دریافت وجه
             </Button>
           </DialogFooter>
         </DialogContent>

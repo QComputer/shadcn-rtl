@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || "guest_session_id";
+import { PUBLIC_ORDER_ORGANIZATION_READER_ROLES, isOrganizationOrderReaderRole } from "@/lib/order-access-policy";
 
 export async function GET(
   request: NextRequest,
@@ -116,16 +117,21 @@ export async function GET(
       trackingToken === order.publicTrackingToken,
     );
     const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
-    const hasOrganizationAccess = Boolean(
-      session?.user?.id &&
-      (await prisma.organizationMember.findFirst({
+    const organizationMembership = session?.user?.id
+      ? await prisma.organizationMember.findFirst({
         where: {
           userId: session.user.id,
           organizationSlug: order.organizationSlug,
           isActive: true,
+          user: { isActive: true, deletedAt: null },
+          organization: { isActive: true, deletedAt: null },
+          role: { in: [...PUBLIC_ORDER_ORGANIZATION_READER_ROLES] },
         },
-        select: { id: true },
-      })),
+        select: { role: true },
+      })
+      : null;
+    const hasOrganizationAccess = Boolean(
+      organizationMembership && isOrganizationOrderReaderRole(organizationMembership.role),
     );
 
     if (!isOwner && !isSameGuestSession && !isTrackingTokenMatch && !isSuperAdmin && !hasOrganizationAccess) {

@@ -13,6 +13,7 @@ import { ApiError } from "@/lib/api-guards";
 import { updateOrderReadyTimeSchema } from "@/lib/validators/tenant-platform";
 import { toMoneyDecimal, toMoneyNumber } from "@/lib/money";
 import { releaseRetailCouponReservationsTx, restoreRetailInventoryTx } from "@/lib/retail/payment-expiration.server";
+import { fulfillmentEventNote, type HandoverInput } from "@/lib/retail/fulfillment";
 import { isRetailOrderTransitionAllowed } from "@/lib/retail/order-operations";
 import { getRetailCashModeFromPaymentMetadata } from "@/lib/order-presentation";
 
@@ -1376,7 +1377,7 @@ if (!org?.slug) return
     data: UpdateOrderStatusInput,
     userRole: UserRole,
     userId: string,
-    guard?: { organizationSlug: string; expectedStatus: OrderStatus },
+    guard?: { organizationSlug: string; expectedStatus: OrderStatus; handover?: HandoverInput },
   ) {
     if (!hasPermission(userRole, "order:update")) {
       throw new Error("Unauthorized");
@@ -1490,7 +1491,8 @@ if (!org?.slug) return
         previousStatus: existingOrder.status,
         newStatus: nextStatus,
         changedById: userId,
-        note: data.status === "CANCELLED" ? "Order cancelled" : "Order status updated",
+        note: guard?.handover && existingOrder.retailCheckoutKey && ["PICKED_UP", "DELIVERED"].includes(nextStatus)
+          ? fulfillmentEventNote(guard.handover) : data.status === "CANCELLED" ? "Order cancelled" : "Order status updated",
       });
 
       if (existingOrder.retailCheckoutKey && nextStatus === "CANCELLED") {

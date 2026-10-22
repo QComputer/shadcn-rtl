@@ -1,4 +1,5 @@
 "use client";
+import { retailOrderStatusLabel } from "@/lib/retail/order-operations";
 import { appFetch } from "@/lib/app-base-path";
 
 import React, { useState, useEffect, use } from "react";
@@ -56,6 +57,7 @@ interface Progress {
 }
 
 interface Order {
+  retailCheckoutKey?: string | null;
   id: string
   orderNumber: string
   type: "DELIVERY" | "PICK_UP"
@@ -311,7 +313,7 @@ const paymentStatusConfig: Record<Order["paymentStatus"], { label: string; icon:
                 <CardTitle className="flex items-center justify-between">
                   <span>{t("order.status")}</span>
                   <Badge className={statusConfig[data.order.status].color}>
-                    {t("order."+data.order.status)}
+                    {data.order.retailCheckoutKey ? retailOrderStatusLabel(data.order.status, data.order.type) : t("order."+data.order.status)}
                   </Badge>
                 </CardTitle>
               </CardHeader>

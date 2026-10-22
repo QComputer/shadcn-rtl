@@ -29,6 +29,7 @@ export function isRetailOrderTransitionAllowed(order: RetailOperationalOrder, ne
 }
 
 export function retailOrderStatusLabel(status: string, type?: string) {
+  if (status === "READY" && type) return type === "DELIVERY" ? "آماده ارسال" : "آماده دریافت حضوری";
   if (status === "PICKED_UP") return type === "DELIVERY" ? "تحویل به پیک" : type === "PICK_UP" ? "دریافت‌شده توسط مشتری" : "تحویل به مشتری / پیک";
   return retailOrderStatusLabels[status as OrderStatus] ?? status;
 }

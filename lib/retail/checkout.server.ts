@@ -1,3 +1,4 @@
+import { readFulfillmentDetails } from "@/lib/retail/fulfillment";
 import "server-only";
 
 import { randomBytes } from "node:crypto";
@@ -132,7 +133,7 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
       });
     }
 
-    const settings = await tx.organizationSettings.findUnique({ where: { organizationSlug: organization.slug }, select: { deliveryFee: true, enablePickup: true, enableDelivery: true } });
+    const settings = await tx.organizationSettings.findUnique({ where: { organizationSlug: organization.slug }, select: { deliveryFee: true, enablePickup: true, enableDelivery: true, settings: true, organization: {select: {address: true, phone: true}} } });
     if (input.type === "PICK_UP" && settings?.enablePickup === false) throw new ApiError(409, "Customer pickup is unavailable.");
     if (input.type === "DELIVERY" && settings?.enableDelivery === false) throw new ApiError(409, "Delivery is unavailable.");
     const deliveryFee = input.type === "DELIVERY" && settings?.deliveryFee !== null && settings?.deliveryFee !== undefined ? money(settings.deliveryFee) : money(0);
@@ -192,6 +193,7 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
     } });
     await tx.payment.create({ data: { orderId: order.id, method: input.paymentMethod as PaymentMethod, amount: total, status: "PENDING",
       metadata: { retailR4: { cashMode: input.cashMode ?? null, cashBeforeConfirmation: activePolicy.data.cashBeforeConfirmation,
+        fulfillmentInfo: {...readFulfillmentDetails(settings?.settings), pickupAddress: readFulfillmentDetails(settings?.settings).pickupAddress || settings?.organization.address || "", contact: settings?.organization.phone ?? null},
         paymentDeadlineMinutes: deadlineMinutes, paymentDeadlineAt: retailPaymentDeadlineAt.toISOString(),
         ...(input.paymentMethod === "BANK_TRANSFER" ? { bankCardNumber: activePolicy.data.bankCardNumber,
           bankAccountOwner: activePolicy.data.bankAccountOwner } : {}) } } } });

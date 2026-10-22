@@ -1,3 +1,5 @@
+import { retailOrderStatusLabel } from "@/lib/retail/order-operations";
+import type { FulfillmentDetails, customerFulfillment } from "@/lib/retail/fulfillment";
 export type CheckoutOption = { key?: string; label?: string; value: string | number | boolean | null; displayUnit?: string | null };
 export type CheckoutCartItem = {
   id: string; variantId?: string; quantity: number; unitPrice: number;
@@ -10,6 +12,7 @@ export type CheckoutCart = { id?: string; items: CheckoutCartItem[]; subtotal: n
 export type CheckoutQuote = {
   reviewToken: string; subtotal: number; discount: number; deliveryFee: number; total: number; currency: "TOMAN";
   items: Array<{ id: string; variantId: string; quantity: number; unitPrice: number; lineTotal: number; orderable: boolean; reason: string | null }>;
+  fulfillmentInfo?: FulfillmentDetails & {contact: string | null};
   fulfillment: Array<{ type: "PICK_UP" | "DELIVERY"; label: string; fee: number }>;
   customer: { name: string | null; mobile: string | null; address?: string | null }; issues: string[];
 };
@@ -18,6 +21,8 @@ export type CheckoutOrder = {
   orderNumber: string; total: number; subtotal: number; discount: number; deliveryFee: number;
   orderStatus: string; paymentStatus: string; paymentMethod: string | null; type: string;
   deliveryAddress: string | null; notes?: string | null; createdAt: string;
+  fulfillmentInfo?: (FulfillmentDetails & {contact: string | null}) | null;
+  fulfillment?: ReturnType<typeof customerFulfillment>;
   trackingToken?: string | null; paymentDeadlineAt?: string | null; bankCardNumber?: string | null; bankAccountOwner?: string | null;
   items: Array<{ id: string; productName: string; variantName: string | null; sku: string | null; options: CheckoutOption[]; quantity: number; unitPrice: number; lineTotal: number; image?: string | null }>;
 };
@@ -32,7 +37,8 @@ export function checkoutPaymentState(status: string) {
   const states: Record<string, string> = { PENDING: "پرداخت در انتظار است", UNPAID: "پرداخت نشده", AWAITING_PAYMENT: "در انتظار پرداخت", PAID: "پرداخت شده", COMPLETED: "پرداخت تکمیل شده", FAILED: "پرداخت ناموفق", CANCELLED: "پرداخت لغو شده", REFUNDED: "وجه بازگردانده شده" };
   return states[status] ?? "وضعیت پرداخت نیازمند بررسی است";
 }
-export function checkoutOrderState(status: string) {
+export function checkoutOrderState(status: string, type?: string) {
+  if (type) return retailOrderStatusLabel(status, type);
   const states: Record<string, string> = { PENDING: "ثبت‌شده؛ در انتظار بررسی فروشگاه", CONFIRMED: "تأیید شده", PROCESSING: "در حال آماده‌سازی", PREPARING: "در حال آماده‌سازی", READY: "آماده تحویل", DELIVERING: "در حال ارسال", DELIVERED: "تحویل داده شده", COMPLETED: "تکمیل شده", CANCELLED: "لغو شده" };
   return states[status] ?? "وضعیت سفارش نیازمند بررسی است";
 }

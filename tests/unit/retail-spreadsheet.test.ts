@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import * as XLSX from "xlsx";
+import {parseProductSpreadsheet} from "../../lib/import-hub/spreadsheet-parser";
 import {
   boolCell,
   decimalCell,
@@ -11,6 +12,18 @@ import {
 } from "../../lib/import-hub/retail-spreadsheet";
 
 const readCsv = (content: string) => readRetailSpreadsheet({ format: "CSV", content, mode: "CREATE" });
+
+test("patched SheetJS preserves the legacy P69 spreadsheet contract",()=>{
+  const [major,minor,patch]=XLSX.version.split(".").map(Number);
+  assert.ok(major>0||minor>20||minor===20&&patch>=3,"untrusted workbook imports require SheetJS 0.20.3 or newer");
+  const book=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([["name","price","stock","sku"],["محصول قدیمی آزمایشی","1250000","3","000LEGACY"]]),"Legacy");
+  const rows=parseProductSpreadsheet({type:"EXCEL",fileBase64:XLSX.write(book,{type:"base64",bookType:"xlsx"})});
+  assert.equal(rows[0].name,"محصول قدیمی آزمایشی");
+  assert.equal(rows[0].basePrice,"1250000.00");
+  assert.equal(rows[0].stock,3);
+  assert.equal(rows[0].sku,"000LEGACY");
+});
 
 test("rejects malformed or oversized expanded XLSX archives before workbook parsing", () => {
   assert.throws(()=>readRetailSpreadsheet({format:"XLSX",content:Buffer.from("not a zip").toString("base64"),mode:"CREATE"}));

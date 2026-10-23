@@ -117,6 +117,7 @@ async function plan(tx:Tx,context:TenantContext,input:RetailImportInput) {
       const hasVariant=creating||Boolean(d.variant_id)||["sku","variant_name","stock","price_toman"].some(k=>Boolean(d[k]));
       if(!hasVariant){row.warnings.push("این ردیف فقط اطلاعات محصول را تغییر می‌دهد؛ گونه‌ای حذف یا ایجاد نمی‌شود.");continue;}
       try{
+        if(input.mode==="UPDATE"&&!old)throw new Error("در حالت فقط به‌روزرسانی، شناسه گونه موجود لازم است؛ برای افزودن گونه، ایجاد یا به‌روزرسانی را انتخاب کنید.");
         const v:Record<string,unknown>={};
         if(d.variant_name)v.name=d.variant_name;
         if(d.sku){if(d.sku==="[[CLEAR]]"||/\s/.test(d.sku))throw new Error("SKU بدون فاصله و غیرخالی لازم است.");v.sku=d.sku;if(seenSku.has(d.sku)||skuOwners.some(owner=>owner.sku===d.sku&&owner.id!==old?.id))throw new Error("SKU تکراری یا در حال استفاده است.");seenSku.add(d.sku);}

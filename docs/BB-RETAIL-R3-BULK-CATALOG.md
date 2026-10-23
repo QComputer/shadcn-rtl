@@ -24,9 +24,13 @@ Source-of-truth and route/API inventory docs were read and checked against code;
 
 No new persistence system or migration. Completed Retail drafts are marked IMPORTED and are not passed to the legacy DRAFT approval publisher.
 
+The existing SheetJS dependency is pinned to the official 0.20.3 tarball with lockfile integrity. The previous npm 0.18.5 release predates the publisher's documented prototype-pollution fix. Legacy P69 runtime parsing and the Retail CSV/XLSX contracts are tested against the patched dependency. See https://docs.sheetjs.com/docs/getting-started/installation/nodejs/ .
+
 ## Matching / cells / units
 
 One row per variant. product_key groups new rows and supplies the default normalized slug; product_id identifies an existing same-tenant product, variant_id identifies its existing variant. UPSERT chooses update only with product_id; it never guesses by display name or SKU. A missing existing ID is an error. A colliding normalized slug is an error, not a suffixed duplicate.
+
+UPDATE mode never inserts variants: variant fields require an existing variant_id. To add new variants to an identified product, use explicit UPSERT mode and review its creation counts.
 
 Blank or omitted cells mean keep existing values. [[CLEAR]] explicitly clears optional brand/description, additional taxonomy, gallery lists or an attribute assignment. Required name/category, price, stock and booleans cannot be cleared. Omitted rows never delete variants/products. New variants require explicit SKU, price and stock. New products always remain drafts; publish existing products only via explicit published=true and normal catalog publication validation.
 

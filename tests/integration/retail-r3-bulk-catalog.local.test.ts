@@ -196,6 +196,9 @@ test("Retail R3 bulk catalog import preview, execution, idempotency, and export"
     assert.ok(roundTripProduct.some((row) => row.data.gallery_mode === "INHERIT"));
 
     const firstVariant = product.variants[0]!;
+    const updateCannotCreate=await catalog.previewRetailImport(context,{...csv([{product_id:product.id,sku:"NEW-IN-UPDATE-"+suffix,price_toman:"1000",stock:"1"}]),mode:"UPDATE"});
+    assert.equal(updateCannotCreate.counts.variantsCreate,0);
+    assert.ok(updateCannotCreate.counts.invalidRows>0,"UPDATE-only must not insert a new variant");
     const changedRows = [{ product_id: product.id, product_name: "", variant_id: firstVariant.id, price_toman: "1777" }];
     const changedInput = { ...csv(changedRows), mode: "UPDATE" as const };
     const changePreview = await catalog.previewRetailImport(managerContext, changedInput);

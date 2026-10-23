@@ -1,0 +1,2 @@
+import {ApiError} from "@/lib/api-guards";
+export async function readImportBody(request:Request){const length=Number(request.headers.get("content-length")||0);if(length>2_000_000)throw new ApiError(413,"فایل بزرگ‌تر از حد مجاز است.");const text=await request.text();if(text.length>2_000_000)throw new ApiError(413,"فایل بزرگ‌تر از حد مجاز است.");try{return JSON.parse(text);}catch{throw new ApiError(400,"درخواست معتبر نیست.");}}

@@ -26,7 +26,8 @@ const packageJson = read("package.json")
 const validateProject = read("scripts/quality/validate-project.mjs")
 const reviewDraftsBlock = service.match(/async reviewDrafts[\s\S]*?async resolveReimportDrafts/)?.[0] ?? ""
 
-add("xlsx dependency is declared", /"xlsx":\s*"\^0\.18\.5"/.test(packageJson))
+// npm's legacy 0.18.5 tarball predates the security fixes; use the publisher's pinned distribution.
+add("patched xlsx dependency is declared", JSON.parse(packageJson).dependencies?.xlsx === "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz")
 add("ImportedProductDraft has row number", /model\s+ImportedProductDraft\s*{[^}]*rowNumber\s+Int\?/.test(schema))
 add("ImportedProductDraft has stock", /model\s+ImportedProductDraft\s*{[^}]*stock\s+Int\?/.test(schema))
 add("ImportedProductDraft has errors JSON", /model\s+ImportedProductDraft\s*{[^}]*errors\s+Json\?/.test(schema))

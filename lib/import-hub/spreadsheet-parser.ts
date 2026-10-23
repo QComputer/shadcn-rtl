@@ -61,47 +61,15 @@ function parseExcelRows(fileBase64: string): string[][] {
   })
 }
 
-function parseCsvRows(input: string): string[][] {
-  const rows: string[][] = []
-  let row: string[] = []
-  let field = ""
-  let inQuotes = false
-
-  for (let index = 0; index < input.length; index += 1) {
-    const char = input[index]
-    const next = input[index + 1]
-
-    if (char === "\"") {
-      if (inQuotes && next === "\"") {
-        field += "\""
-        index += 1
-      } else {
-        inQuotes = !inQuotes
-      }
-      continue
-    }
-
-    if (char === "," && !inQuotes) {
-      row.push(field)
-      field = ""
-      continue
-    }
-
-    if ((char === "\n" || char === "\r") && !inQuotes) {
-      if (char === "\r" && next === "\n") index += 1
-      row.push(field)
-      rows.push(row)
-      row = []
-      field = ""
-      continue
-    }
-
-    field += char
+export function parseCsvRows(source:string, maxRows=1000) {
+  const rows:string[][]=[];let row:string[]=[],field="",quoted=false,closed=false;
+  for(let i=0;i<source.length;i++){
+    const c=source[i];
+    if(c==='"'){if(quoted&&source[i+1]==='"'){field+='"';i++;}else if(quoted){quoted=false;closed=true;}else if(!field&&!closed)quoted=true;else throw new Error("نقل‌قول CSV معتبر نیست.");}
+    else if(!quoted&&(c===","||c==="\n"||c==="\r")){row.push(field);field="";closed=false;if(c!==","){if(c==="\r"&&source[i+1]==="\n")i++;rows.push(row);row=[];if(rows.length>maxRows+1)throw new Error("تعداد ردیف‌های CSV بیش از حد مجاز است.");}}
+    else {if(closed&&!/\s/.test(c))throw new Error("پس از نقل‌قول باید جداکننده باشد.");if(!closed)field+=c;}
   }
-
-  row.push(field)
-  rows.push(row)
-  return rows.filter((csvRow) => csvRow.some((cell) => cell.trim().length > 0))
+  if(quoted)throw new Error("نقل‌قول CSV بسته نشده است.");row.push(field);if(row.some(x=>x.trim()))rows.push(row);return rows;
 }
 
 function normalizeProductRow(headers: string[], row: string[], rowNumber: number): ParsedProductDraftRow {

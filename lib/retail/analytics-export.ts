@@ -3,7 +3,10 @@ import { writeRetailSpreadsheet } from "@/lib/import-hub/retail-spreadsheet";
 
 /** Same bounded page/snapshot and filter semantics as the on-screen report, no customer PII. */
 export function exportRetailAnalytics(report: RetailAnalyticsReport, kind: AnalyticsQuery["report"], format: "CSV" | "XLSX") {
-  const context = { "از تاریخ محلی": report.range.from, "تا تاریخ محلی": report.range.to, "منطقه زمانی": report.range.timezone, "واحد پول": "تومان", "صفحه عملکرد": String(report.page), "فیلترها": JSON.stringify(report.filters) };
+  const scope = kind === "products" ? `صفحه فعلی عملکرد؛ حداکثر ${report.pageSize} ردیف، نه تمام نتایج`
+    : kind === "inventory" ? "هشدارهای موجودی نمایش‌داده‌شده؛ حداکثر ۲۵ ردیف، نه تمام موجودی فروشگاه"
+      : "شاخص‌های تجمیعی مطابق بازه و فیلترهای گزارش؛ نه فهرست کامل سفارش‌ها";
+  const context: Record<string, string> = { "از تاریخ محلی": report.range.from, "تا تاریخ محلی": report.range.to, "منطقه زمانی": report.range.timezone, "واحد پول": "تومان", "دامنه خروجی": scope, ...(kind === "products" ? { "صفحه عملکرد": String(report.page) } : {}), "فیلترها": JSON.stringify(report.filters) };
   const entries: Record<string, string>[] = kind === "products" ? report.products.map(row => ({
     "شناسه محصول": row.productId, "شناسه واریانت": row.variantId ?? "", "نام هنگام خرید": row.name, SKU: row.sku ?? "", "گزینه‌های هنگام خرید": JSON.stringify(row.options), "تعداد تأییدشده": String(row.quantity), "ارزش اقلام به تومان": row.value,
   })) : kind === "inventory" ? report.inventory.rows.map(row => ({

@@ -53,7 +53,7 @@ describe("Retail R5 analytics query and range contracts", () => {
   it("exports bounded product rows as safe CSV and XLSX, and an empty report as headers only", () => {
     const report = {
       range: { from: "2026-04-01", to: "2026-04-01", timezone: "Asia/Tehran" },
-      page: 1, filters: { status: "DELIVERED" },
+      page: 1, pageSize: 20, filters: { status: "DELIVERED" },
       summary: { orders: 1, actionRequired: 0, fulfilled: 1, cancelled: 0, grossValue: "205.15", verifiedCollected: "205.15", pendingCollection: "0", averageOrderValue: "205.15", unitsSold: 2, subtotal: "200.20", shipping: "10.05", tax: "0", discount: "5.10", paymentMismatches: 0 },
       trends: [], statuses: [], productTotal: 1,
       products: [{ productId: "product-1", variantId: null, name: "=HYPERLINK(\"bad\")", sku: "000007", options: { size: "M" }, quantity: 2, value: "195.15" }],
@@ -70,6 +70,8 @@ describe("Retail R5 analytics query and range contracts", () => {
     const rows = XLSX.utils.sheet_to_json<Record<string, string>>(xlsx.Sheets.Retail!, { defval: "" });
     assert.equal(rows.length, 1);
     assert.equal(rows[0]?.SKU, "000007");
+    assert.match(rows[0]?.["دامنه خروجی"] ?? "", /صفحه فعلی.*20/);
+    assert.equal(rows[0]?.["صفحه عملکرد"], "1");
     assert.equal(rows[0]?.["نام هنگام خرید"], '=HYPERLINK("bad")');
     assert.equal(rows[0]?.["ارزش اقلام به تومان"], "195.15");
 
@@ -77,6 +79,18 @@ describe("Retail R5 analytics query and range contracts", () => {
     const emptyCsv = exportRetailAnalytics(emptyReport, "products", "CSV").toString("utf8");
     assert.ok(emptyCsv.includes("منطقه زمانی"));
     assert.equal(emptyCsv.split("\r\n").length, 1);
+    const inventoryReport = { ...report, inventory: { ...report.inventory, rows: [{ productId: "product-1", variantId: "variant-1", name: "کالا", sku: "000007", quantity: 2, allowBackOrder: false }] } };
+    for (const format of ["CSV", "XLSX"] as const) {
+      const bytes = exportRetailAnalytics(inventoryReport, "inventory", format);
+      const workbook = XLSX.read(bytes, { type: "buffer" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const inventoryRows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: "" });
+      assert.match(inventoryRows[0]?.["دامنه خروجی"] ?? "", /۲۵.*نه تمام/);
+      assert.equal(Object.hasOwn(inventoryRows[0], "صفحه عملکرد"), false);
+    }
+    const summaryCsv = exportRetailAnalytics(report, "summary", "CSV").toString("utf8");
+    assert.doesNotMatch(summaryCsv, /صفحه عملکرد/);
+    assert.match(summaryCsv, /شاخص‌های تجمیعی/);
   });
 });
 

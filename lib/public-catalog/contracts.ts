@@ -12,9 +12,12 @@ export const publicCatalogListQuerySchema = z.object({
   category: z.string().trim().min(1).max(160).optional(),
   tag: z.string().trim().min(1).max(64).optional(),
   q: z.string().trim().min(1).max(100).optional(),
+  brand: z.string().trim().min(1).max(120).optional(),
+  saved: z.literal("1").optional(),
+  available: z.enum(["true", "false"]).transform(value=>value==="true").optional(),
   minPrice: z.coerce.number().finite().nonnegative().max(9_999_999_999.99).optional(),
   maxPrice: z.coerce.number().finite().nonnegative().max(9_999_999_999.99).optional(),
-  sort: z.enum(["featured", "price-asc", "price-desc", "name-asc", "newest"]).default("featured"),
+  sort: z.enum(["featured", "price-asc", "price-desc", "name-asc", "newest", "relevance"]).default("featured"),
   filter: z.union([publicCatalogAttributeFilterSchema, z.array(publicCatalogAttributeFilterSchema).max(12)]).optional(),
 }).strict().superRefine((query, context) => {
   if (query.minPrice !== undefined && query.maxPrice !== undefined && query.minPrice > query.maxPrice) context.addIssue({ code: "custom", path: ["minPrice"], message: "Minimum price cannot be greater than maximum price." });

@@ -1202,6 +1202,7 @@ model Organization {
   productCategories            ProductCategory[]
   productTags                  ProductTag[]
   products                     Product[]
+  productFavorites             ProductFavorite[]
   retailAttributeDefinitions   RetailAttributeDefinition[]
   carts                        ShopCart[]
   orders                       Order[]
@@ -1904,6 +1905,7 @@ model User {
   orders                        Order[]                       @relation("CustomerOrderRelation")
   assignedDeliveries            Order[]                       @relation("DriverOrderRelation")
   following                     Follow[]
+  productFavorites              ProductFavorite[]
   customerClubMemberships       CustomerClubMembership[]
   fanpagePosts                  FanpagePost[]
   sentMessages                  Message[]                     @relation("SentMessages")
@@ -2323,6 +2325,7 @@ model Product {
   categoryAssignments ProductCategoryAssignment[] @relation("ProductCategories")
   tagAssignments      ProductTagAssignment[] @relation("ProductTags")
   orderItems          OrderItem[]
+  favorites           ProductFavorite[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -2352,6 +2355,21 @@ model ProductCategoryAssignment {
   @@id([productId, categoryId])
   @@index([organizationId, categoryId])
   @@index([categoryId])
+}
+
+model ProductFavorite {
+  organizationId String
+  userId         String
+  productId      String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([organizationId, userId, productId])
+  @@index([userId, organizationId])
+  @@index([organizationId])
 }
 
 model ProductTag {

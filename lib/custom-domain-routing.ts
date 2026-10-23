@@ -440,8 +440,10 @@ export function classifyPublicSurfaceCapability(surface: OrganizationPublicSurfa
   return surface === "shop" ? "SHOP" as const : "APPOINTMENT" as const;
 }
 
+export const SHOP_PUBLIC_SUBPATHS = ["/discover"] as const;
+
 const RESERVED_CUSTOM_DOMAIN_SEGMENTS: Record<OrganizationPublicSurface, Set<string>> = {
-  shop: new Set(["category", "product", "cart", "checkout", "order", "profile", "fanpage"]),
+  shop: new Set(["category", "product", "cart", "checkout", "order", "profile", "fanpage", "discover"]),
   appointment: new Set(["services", "booking", "my-appointments", "appointment", "fanpage", "staff"]),
 };
 
@@ -479,7 +481,7 @@ export function parseCustomDomainCapabilityPath(pathname: string): CustomDomainC
 export const CUSTOM_DOMAIN_CAPABILITY_EDGE_PREFIXES = ["/shop", "/appointment"] as const;
 
 const LEGACY_CUSTOM_DOMAIN_SURFACES = [
-  { surface: "shop", prefixes: ["/product", "/category", "/cart", "/checkout", "/order", "/profile", "/fanpage"] },
+  { surface: "shop", prefixes: ["/product", "/category", "/cart", "/checkout", "/order", "/profile", "/fanpage", ...SHOP_PUBLIC_SUBPATHS] },
   { surface: "appointment", prefixes: ["/services", "/booking", "/my-appointments"] },
 ] as const;
 
@@ -589,6 +591,7 @@ export function isSeoIndexableShopSubPath(subPath: string) {
     normalizedSubPath === "/" ||
     normalizedSubPath === "/profile" ||
     normalizedSubPath === "/fanpage" ||
+    normalizedSubPath === "/discover" ||
     normalizedSubPath.startsWith("/category/") ||
     normalizedSubPath.startsWith("/product/")
   );

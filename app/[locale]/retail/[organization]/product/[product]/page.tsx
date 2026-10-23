@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ApiError } from "@/lib/api-guards";
-import { getPublicCatalogProduct, getPublicCatalogSnapshot } from "@/lib/public-catalog/service.server";
+import { getPublicCatalogProduct, getPublicCatalogSnapshot, getRelatedPublicProducts } from "@/lib/public-catalog/service.server";
 import RetailPreview from "@/app/[locale]/retail-preview/[store]/retail-preview";
 import { tenantPwaManifestHref } from "@/lib/tenant-retail-pwa";
 import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
 import { buildPublicMetadata, getCanonicalUrl } from "@/lib/seo";
 import { verifiedRetailProductJsonLd } from "@/lib/retail/product-detail";
 import { JsonLd } from "@/components/seo/json-ld";
+import { RelatedProducts } from "@/components/retail/related-products";
+import { buildShopProductsPath } from "@/lib/shop-public-paths";
 
 export const dynamic = "force-dynamic";
 type Params = { locale: string; organization: string; product: string };
@@ -32,10 +34,13 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 
 export default async function PublicRetailProductPage({ params }: { params: Promise<Params> }) {
   const { catalog, detail } = await load(params);
+  const relatedProducts = await getRelatedPublicProducts(catalog.organization.identifier, detail.id);
   const products = catalog.products.some((product) => product.id === detail.id) ? catalog.products : [...catalog.products, detail];
   const seo = await getShopTenantSeoContext({ locale: "fa", slug: catalog.organization.identifier, subPath: `/product/${detail.slug ?? detail.id}` });
+  const storefrontPath = buildShopProductsPath({ locale: "fa", shopSlug: catalog.organization.identifier, isCustomDomain: seo.isCustomDomain });
   return <><JsonLd data={verifiedRetailProductJsonLd(detail, getCanonicalUrl(seo.path, seo.baseUrl))} /><RetailPreview liveView={{ identifier: catalog.organization.identifier, name: catalog.organization.name,
     description: catalog.organization.description, branding: catalog.organization.branding, theme: catalog.organization.theme,
     previewOnly: catalog.organization.previewOnly,
-    categories: catalog.categories.map((category) => ({ id: category.id, slug: category.slug, name: category.name })), products }} productId={detail.slug ?? detail.id} /></>;
+    categories: catalog.categories.map((category) => ({ id: category.id, slug: category.slug, name: category.name })), products }} productId={detail.slug ?? detail.id} />
+    <RelatedProducts products={relatedProducts} storefrontPath={storefrontPath} /></>;
 }

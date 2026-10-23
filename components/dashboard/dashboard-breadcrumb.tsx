@@ -30,6 +30,7 @@ interface DashboardBreadcrumbProps {
 const defaultRouteLabels: Record<string, string> = {
   dashboard: "داشبورد",
   orders: "سفارش‌ها",
+  "retail-analytics": "آمار و گزارش فروشگاه",
   products: "محصولات",
   appointments: "نوبت‌ها",
   "my-appointments": "نوبت‌ها من",

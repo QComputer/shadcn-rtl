@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { toPersianDigits } from "@/lib/persian"
+import { BulkCatalog } from "@/components/retail/bulk-catalog"
 
 type SourceType =
   | "INSTAGRAM"
@@ -669,6 +670,8 @@ export default function ImportHubPage({ params }: { params: Promise<{ locale: st
           <span>{error}</span>
         </div>
       )}
+
+      <BulkCatalog locale={locale === "en" ? "en" : "fa"} />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(280px,420px)_1fr]">
         <Card>

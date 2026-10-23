@@ -104,7 +104,7 @@ export const retailCategoryCreateSchema = createProductCategorySchema.omit({ ima
 export const retailCategoryUpdateSchema = updateProductCategorySchema.omit({ image: true }).strict();
 export const retailDefinitionSchema = retailAttributeDefinitionInputSchema;
 
-const merchantProductSelect = {
+export const merchantProductSelect = {
   id: true, name: true, brand: true, slug: true, description: true, basePrice: true, image: true, isActive: true, organizationId: true,
   categoryId: true, trackInventory: true, gallerySettings: true, createdAt: true, updatedAt: true,
   category: { select: { id: true, name: true, slug: true, isActive: true } },
@@ -133,7 +133,7 @@ function assignmentValue(value: { valueText: string | null; valueNumber: Prisma.
   return value.valueBoolean;
 }
 
-function serializeMerchantProduct(product: MerchantProduct) {
+export function serializeMerchantProduct(product: MerchantProduct) {
   const gallerySettings = readGallerySettings(product.gallerySettings);
   const productImages = orderedImages(product.images, gallerySettings?.productImageIds ?? []);
   return {
@@ -434,9 +434,9 @@ export async function getMerchantRetailProduct(context: TenantContext, productId
   return { ...result, galleryMedia };
 }
 
-export async function createMerchantRetailProduct(context: TenantContext, actorUserId: string, data: z.infer<typeof retailProductCreateSchema>) {
+export async function createMerchantRetailProduct(context: TenantContext, actorUserId: string, data: z.infer<typeof retailProductCreateSchema>, transaction?: Prisma.TransactionClient) {
   try {
-  const product = await prisma.$transaction(async (tx) => {
+  const write = async (tx: Prisma.TransactionClient) => {
     const category = await requireOwnedCategory(tx, context.organizationId, data.categoryId);
     const images = await requireOwnedImages(tx, context.organizationId, data.imageIds);
     let categories: string[];
@@ -473,8 +473,9 @@ export async function createMerchantRetailProduct(context: TenantContext, actorU
     if (data.gallerySettings) await saveGallerySettings(tx, context.organizationId, product.id, data.gallerySettings, galleryModes);
     await assertDistinctVariantCombinations(tx, product.id);
     return tx.product.findUniqueOrThrow({ where: { id: product.id }, select: merchantProductSelect });
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-  revalidateRetailStorefront(context.organizationSlug, product.id);
+  };
+  const product = transaction ? await write(transaction) : await prisma.$transaction(write, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  if (!transaction) revalidateRetailStorefront(context.organizationSlug, product.id);
   return serializeMerchantProduct(product);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new ApiError(409, "A SKU or product identifier is already in use.");
@@ -482,9 +483,9 @@ export async function createMerchantRetailProduct(context: TenantContext, actorU
   }
 }
 
-export async function updateMerchantRetailProduct(context: TenantContext, actorUserId: string, productId: string, data: z.infer<typeof retailProductUpdateSchema>) {
+export async function updateMerchantRetailProduct(context: TenantContext, actorUserId: string, productId: string, data: z.infer<typeof retailProductUpdateSchema>, transaction?: Prisma.TransactionClient) {
   try {
-  const product = await prisma.$transaction(async (tx) => {
+  const write = async (tx: Prisma.TransactionClient) => {
     const existing = await tx.product.findFirst({ where: { id: productId, organizationId: context.organizationId, deletedAt: null }, select: { id: true, name: true, isActive: true, categoryId: true, gallerySettings: true } });
     if (!existing) throw new ApiError(404, "Product not found.");
     if (data.categoryId) await requireOwnedCategory(tx, context.organizationId, data.categoryId);
@@ -575,8 +576,9 @@ export async function updateMerchantRetailProduct(context: TenantContext, actorU
       }
     }
     return tx.product.findUniqueOrThrow({ where: { id: productId }, select: merchantProductSelect });
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-  revalidateRetailStorefront(context.organizationSlug, product.id);
+  };
+  const product = transaction ? await write(transaction) : await prisma.$transaction(write, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  if (!transaction) revalidateRetailStorefront(context.organizationSlug, product.id);
   return serializeMerchantProduct(product);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new ApiError(409, "A SKU or product identifier is already in use.");

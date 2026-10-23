@@ -1,0 +1,5 @@
+import {NextRequest,NextResponse} from "next/server";
+import {jsonError,ApiError} from "@/lib/api-guards";
+import {requireRetailMerchantContext} from "@/lib/retail/merchant-context.server";
+import {downloadRetailCatalog} from "@/lib/import-hub/retail-catalog.server";
+export async function GET(request:NextRequest){try{const {context}=await requireRetailMerchantContext();const kind=request.nextUrl.searchParams.get("kind"),format=request.nextUrl.searchParams.get("format");if(!["template","export"].includes(kind||"")||!["CSV","XLSX"].includes(format||""))throw new ApiError(400,"قالب خروجی معتبر نیست.");const data=await downloadRetailCatalog(context,kind as "template"|"export",format as "CSV"|"XLSX");return new NextResponse(new Uint8Array(data),{headers:{"Cache-Control":"private, no-store","Content-Type":format==="CSV"?"text/csv; charset=utf-8":"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet","Content-Disposition":'attachment; filename="retail-'+kind+'.'+format.toLowerCase()+'"',"X-Content-Type-Options":"nosniff"}});}catch(e){return jsonError(e,"خروجی کاتالوگ آماده نشد.");}}

@@ -11,21 +11,21 @@ type Product = { id: string; name: string; brand?: string | null; slug: string |
 
 const copy = {
   fa: {
-    title: "کاتالوگ فروشگاه", intro: "محصولات، ویژگی‌ها و دسته‌بندی‌های فروشگاه را مدیریت کنید.",
+    title: "کاتالوگ فروشگاه", intro: "محصولات، ویژگی‌ها و دسته‌بندی‌های فروشگاه را مدیریت کنید.", bulkImport: "ورود و خروج گروهی",
     addProduct: "افزودن محصول", reload: "بارگذاری دوباره", published: "منتشرشده", draft: "پیش‌نویس", category: "دسته‌بندی",
     variants: "گونه‌های خرید", price: "کمترین قیمت", status: "وضعیت", actions: "مدیریت", edit: "ویرایش و پیش‌نمایش", empty: "هنوز محصولی ثبت نشده است.", search: "جست‌وجوی نام یا برند", all: "همه وضعیت‌ها", clear: "پاک‌کردن فیلتر", retry: "تلاش دوباره", stock: "موجودی کل", noMatches: "محصولی با این جست‌وجو پیدا نشد.", page: "صفحه", of: "از",
     categories: "دسته‌بندی‌ها", categoryName: "نام دسته‌بندی", categoryDescription: "توضیحات (اختیاری)", addCategory: "ثبت دسته‌بندی", active: "فعال", inactive: "غیرفعال", deactivate: "غیرفعال‌کردن", activate: "فعال‌کردن",
     attributes: "ویژگی‌های قابل‌تنظیم", key: "کلید (لاتین)", label: "نام نمایشی", scope: "کاربرد", productAttribute: "ویژگی محصول", variantOption: "گزینه گونه خرید", valueType: "نوع مقدار", text: "متن", number: "عدد", boolean: "بله/خیر", enum: "فهرست انتخابی", unit: "واحد نمایش", allowed: "گزینه‌ها با ویرگول جدا شوند", filterable: "در فیلترها نمایش داده شود", addAttribute: "ثبت ویژگی", error: "ذخیره انجام نشد. ورودی‌ها را بررسی و دوباره تلاش کنید.", loading: "در حال بارگذاری…",
   },
   en: {
-    title: "Retail catalog", intro: "Manage this store’s products, attributes, and categories.",
+    title: "Retail catalog", intro: "Manage this store’s products, attributes, and categories.", bulkImport: "Bulk import and export",
     addProduct: "Add product", reload: "Reload", published: "Published", draft: "Draft", category: "Category",
     variants: "Variants", price: "Lowest price", status: "Status", actions: "Manage", edit: "Edit and preview", empty: "No products yet.", search: "Search name or brand", all: "All statuses", clear: "Clear filters", retry: "Try again", stock: "Total stock", noMatches: "No products match these filters.", page: "Page", of: "of",
     categories: "Categories", categoryName: "Category name", categoryDescription: "Description (optional)", addCategory: "Add category", active: "Active", inactive: "Inactive", deactivate: "Deactivate", activate: "Activate",
     attributes: "Configurable attributes", key: "Key (Latin)", label: "Display label", scope: "Usage", productAttribute: "Product attribute", variantOption: "Variant option", valueType: "Value type", text: "Text", number: "Number", boolean: "Yes/no", enum: "Choice list", unit: "Display unit", allowed: "Choices separated by commas", filterable: "Show in filters", addAttribute: "Add attribute", error: "Could not save. Check the fields and try again.", loading: "Loading…",
   },
   ar: {
-    title: "كتالوج المتجر", intro: "إدارة منتجات المتجر وسماته وفئاته.",
+    title: "كتالوج المتجر", intro: "إدارة منتجات المتجر وسماته وفئاته.", bulkImport: "استيراد وتصدير جماعي",
     addProduct: "إضافة منتج", reload: "إعادة التحميل", published: "منشور", draft: "مسودة", category: "الفئة",
     variants: "الخيارات", price: "أقل سعر", status: "الحالة", actions: "الإدارة", edit: "تعديل ومعاينة", empty: "لا توجد منتجات بعد.", search: "البحث بالاسم أو العلامة التجارية", all: "كل الحالات", clear: "مسح عوامل التصفية", retry: "أعد المحاولة", stock: "إجمالي المخزون", noMatches: "لا توجد منتجات تطابق عوامل التصفية.", page: "الصفحة", of: "من",
     categories: "الفئات", categoryName: "اسم الفئة", categoryDescription: "الوصف (اختياري)", addCategory: "إضافة فئة", active: "نشطة", inactive: "غير نشطة", deactivate: "تعطيل", activate: "تفعيل",
@@ -120,6 +120,7 @@ export function RetailCatalogManager({ locale }: { locale: Locale }) {
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div><h1 className="text-2xl font-bold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{t.intro}</p></div>
         <div className="flex flex-wrap gap-2">
+          <Link className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted" href={`/${locale}/dashboard/imports#retail-bulk`}>{t.bulkImport}</Link>
           <button className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted" type="button" onClick={() => void load()} aria-label={t.reload}><RefreshCw className="me-2 inline size-4" />{t.reload}</button>
           <Link className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90" href={`/${locale}/dashboard/retail-catalog/new`}><PackagePlus className="me-2 inline size-4" />{t.addProduct}</Link>
         </div>

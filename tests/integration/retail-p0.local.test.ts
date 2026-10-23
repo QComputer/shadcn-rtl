@@ -154,6 +154,7 @@ test("Retail P0 merchant catalog, public projection, cart, and checkout persist 
     productIds.push(created.id);
     productSlug = created.slug;
     variantIds.push(...created.variants.map((variant: { id: string }) => variant.id));
+    for (const variant of created.variants) assert.match(variant.id, /^c[a-z0-9]{24}$/, "new variants must retain the cart API's CUID contract");
     assert.equal(created.trackInventory, true, "new products retain tracked inventory by default");
     assert.equal(created.brand, "Generic Atelier");
     assert.deepEqual(new Set(created.categoryIds), new Set([categoryA.id, categoryA2.id]));

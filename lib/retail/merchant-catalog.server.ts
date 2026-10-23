@@ -1,5 +1,5 @@
 import "server-only";
-import { randomUUID } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { gallerySettingsInputSchema, readGallerySettings, orderedImages, type GallerySettingsInput } from "@/lib/retail/product-galleries";
 
 import { Prisma, RetailAttributeScope, RetailAttributeValueType } from "@prisma/client";
@@ -326,9 +326,10 @@ async function createVariants(tx: Prisma.TransactionClient, input: {
   const definitions = await requireDefinitions(tx, input.organizationId, assignments, RetailAttributeScope.VARIANT_OPTION);
   await requireOwnedImages(tx, input.organizationId, [...new Set(input.variants.flatMap(v => v.imageIds))]);
   // createMany gives rows the same creation timestamp. Keep the existing
-  // createdAt/id projection in input order rather than random UUID order.
-  const batchId = randomUUID();
-  const variants = input.variants.map((variant, index) => ({ id: `${batchId}-${String(index).padStart(3, "0")}`, variant }));
+  // createdAt/id projection in input order. Preserve the 25-character CUID
+  // contract enforced by the existing cart API; never relax its validation.
+  const batchId = "c" + randomBytes(10).toString("hex");
+  const variants = input.variants.map((variant, index) => ({ id: `${batchId}${index.toString(36).padStart(4, "0")}`, variant }));
   const options: Prisma.ProductVariantAttributeValueCreateManyInput[] = [];
   for (const { id, variant } of variants) for (const assignment of variant.options) {
     const definition = definitions.get(assignment.definitionId)!;

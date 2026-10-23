@@ -171,6 +171,7 @@ test("Retail R3 bulk catalog import preview, execution, idempotency, and export"
     productIds.push(product.id);
     assert.equal(product.name, "پیراهن آزمایشی");
     assert.equal(product.variants.length, 6);
+    for (const variant of product.variants) assert.match(variant.id, /^c[a-z0-9]{24}$/, "imported variants must remain valid cart API identifiers");
     const productWithAttributes = await db.product.findUniqueOrThrow({ where: { id: product.id }, include: { attributeValues: { include: { definition: true } } } });
     assert.ok(productWithAttributes.attributeValues.some((attribute) => attribute.definition.key === "material" && attribute.valueText === "پنبه"));
     assert.ok(product.variants.some((variant) => variant.sku?.startsWith("00")), "leading zero SKU is retained");

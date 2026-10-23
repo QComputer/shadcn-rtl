@@ -79,6 +79,3 @@ export function FavoriteButton({ organization, productId, initialSaved, favorite
     {pending ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> : <Heart aria-hidden="true" className={`size-[18px] ${saved ? "fill-rose-600 text-rose-600" : ""}`} />}
   </button>{error && <span role="alert" className="absolute end-0 top-full z-20 mt-2 w-56 rounded-lg border bg-white p-2 text-xs text-red-700 shadow">{error}</span>}</span>;
 }
-
-
-

@@ -87,6 +87,3 @@ export async function ProductDiscoveryPage(props: PageProps) {
     logo={organization.logo} storefrontPath={storefront.path} initialProducts={initial.products}
     initialPagination={initial.pagination} facets={facets} initialQuery={getValue(query, "q") ?? ""} />;
 }
-
-
-

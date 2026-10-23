@@ -171,16 +171,3 @@ export function ProductDiscovery({ organization, storeName, logo, storefrontPath
     <Sheet open={mobileFilters} onOpenChange={setMobileFilters}><SheetContent side="right" dir="rtl" className="flex h-[100dvh] w-[min(88vw,380px)] flex-col gap-0 overflow-y-auto bg-[#fcfbf8] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-stone-900" aria-describedby={undefined}><SheetHeader className="mb-6 border-b border-stone-200 pb-4 text-right"><SheetTitle className="text-base">فیلتر محصولات</SheetTitle></SheetHeader>{controls(true)}</SheetContent></Sheet>
   </section></div>;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

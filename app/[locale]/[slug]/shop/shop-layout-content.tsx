@@ -204,8 +204,8 @@ const organization = await prisma.organization.findFirst({
         {/* Shop Header */}
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container flex h-16 pr-5 pl-2 justify-between ">
-            <span className="flex items-center text-lg md:text-xl">
-              <Link href={productsHref}>
+            <span className="flex min-w-0 items-center text-lg md:text-xl">
+              <Link href={productsHref} className="truncate">
               {organization?.name}
               </Link>
               </span>
@@ -217,7 +217,7 @@ const organization = await prisma.organization.findFirst({
                 </Link>
               ))}
             </nav>
-            <div className="flex items-center gap-2 ">
+            <div className="flex shrink-0 items-center gap-2 max-[360px]:gap-0">
               {organization.lat != null && organization.lng != null && (
                 <ShopLocationDialog lat={organization.lat} lng={organization.lng} name={organization.name} locale={locale} />
               )}

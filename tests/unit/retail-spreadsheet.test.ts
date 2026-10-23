@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import * as XLSX from "xlsx";
 import {parseProductSpreadsheet} from "../../lib/import-hub/spreadsheet-parser";
+import { retailExportBatches } from "../../lib/import-hub/retail-batches";
 import {
   boolCell,
   decimalCell,
@@ -83,8 +84,26 @@ test("rejects unknown and duplicate headers and malformed quoted CSV", () => {
   assert.throws(() => readCsv('product_key,product_name\np1,"closed"oops'), /پس از نقل‌قول/);
 });
 
-test("enforces the 50-row and 1 MB file limits", () => {
-  const rows = ["product_key,product_name", ...Array.from({ length: 51 }, (_, i) => `p${i},Item ${i}`)];
-  assert.throws(() => readCsv(rows.join("\n")), /۵۰/);
+test("accepts 500 CSV/XLSX rows and enforces row and 1 MB file limits", () => {
+  const values = Array.from({ length: 500 }, (_, i) => ({ product_key: `p${Math.floor(i/50)}`, sku: `000${i}` }));
+  for (const format of ["CSV", "XLSX"] as const) {
+    const data = writeRetailSpreadsheet(values, format);
+    assert.equal(readRetailSpreadsheet({ format, content: data.toString(format==="CSV"?"utf8":"base64"), mode:"CREATE" }).length,500);
+    const extra = writeRetailSpreadsheet([...values,{product_key:"p1",sku:"EXTRA"}],format);
+    assert.throws(()=>readRetailSpreadsheet({format,content:extra.toString(format==="CSV"?"utf8":"base64"),mode:"CREATE"}));
+  }
   assert.throws(() => readCsv(`product_key,product_name\np1,${"x".repeat(1_000_001)}`), /یک مگابایت/);
+});
+
+test("export batches preserve every row, product grouping and per-product write limits", () => {
+  const input = Array.from({length:13},(_,i)=>({id:String(i),rows:i===0?240:50}));
+  const batches=retailExportBatches(input);
+  const seen=new Set<string>();
+  for(const batch of batches){
+    assert.ok(batch.length<=10);
+    assert.ok(batch.reduce((n,p)=>n+p.rows,0)<=500);
+    assert.equal(new Set(batch.map(p=>p.id)).size,batch.length);
+    for(const p of batch){assert.ok(p.rows<=100);for(let offset=p.offset;offset<p.offset+p.rows;offset++){const key=`${p.id}:${offset}`;assert.ok(!seen.has(key));seen.add(key);}}
+  }
+  assert.equal(seen.size,840);
 });

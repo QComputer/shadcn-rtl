@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { gallerySettingsInputSchema, readGallerySettings, orderedImages, type GallerySettingsInput } from "@/lib/retail/product-galleries";
 
 import { Prisma, RetailAttributeScope, RetailAttributeValueType } from "@prisma/client";
@@ -315,39 +316,33 @@ async function writeAssignments(
   }
 }
 
-async function createVariant(tx: Prisma.TransactionClient, input: {
-  organizationId: string; productId: string; actorUserId: string; variant: z.infer<typeof variantCreateSchema>;
+async function createVariants(tx: Prisma.TransactionClient, input: {
+  organizationId: string; productId: string; actorUserId: string; variants: Array<z.infer<typeof variantCreateSchema>>;
 }) {
-  const variant = await tx.productVariant.create({
-    data: {
-      productId: input.productId,
-      name: input.variant.name,
-      sku: input.variant.sku || null,
-      price: new Prisma.Decimal(input.variant.price),
-      inventory: input.variant.inventory,
-      allowBackOrder: input.variant.allowBackOrder,
-    },
-    select: { id: true },
-  });
-  if (input.variant.inventory > 0) {
-    await tx.inventoryMovement.create({ data: {
-      variantId: variant.id,
-      quantityDelta: input.variant.inventory,
-      quantityBefore: 0,
-      quantityAfter: input.variant.inventory,
-      reason: "INITIAL_STOCK",
-      note: "Initial stock entered by the organization in retail catalog management.",
-      createdById: input.actorUserId,
-    } });
+  if (!input.variants.length) return [];
+  // Validate the same tenant/type rules once per product, then persist bounded
+  // sets. Avoid a network round trip for every attribute and stock movement.
+  const assignments = [...new Map(input.variants.flatMap(v => v.options).map(a => [a.definitionId, a])).values()];
+  const definitions = await requireDefinitions(tx, input.organizationId, assignments, RetailAttributeScope.VARIANT_OPTION);
+  await requireOwnedImages(tx, input.organizationId, [...new Set(input.variants.flatMap(v => v.imageIds))]);
+  // createMany gives rows the same creation timestamp. Keep the existing
+  // createdAt/id projection in input order rather than random UUID order.
+  const batchId = randomUUID();
+  const variants = input.variants.map((variant, index) => ({ id: `${batchId}-${String(index).padStart(3, "0")}`, variant }));
+  const options: Prisma.ProductVariantAttributeValueCreateManyInput[] = [];
+  for (const { id, variant } of variants) for (const assignment of variant.options) {
+    const definition = definitions.get(assignment.definitionId)!;
+    const allowedValues = Array.isArray(definition.allowedValues) ? definition.allowedValues.filter((value): value is string => typeof value === "string") : null;
+    const typed = validateRetailAttributeValue({ valueType: definition.valueType, allowedValues }, assignment.value);
+    options.push({ variantId: id, definitionId: definition.id, ...typed });
   }
-  await writeAssignments(tx, {
-    organizationId: input.organizationId,
-    variantId: variant.id,
-    assignments: input.variant.options,
-    scope: RetailAttributeScope.VARIANT_OPTION,
-  });
-  await replaceVariantImages(tx, input.organizationId, variant.id, input.variant.imageIds);
-  return variant.id;
+  await tx.productVariant.createMany({ data: variants.map(({ id, variant }) => ({ id, productId: input.productId, name: variant.name, sku: variant.sku || null, price: new Prisma.Decimal(variant.price), inventory: variant.inventory, allowBackOrder: variant.allowBackOrder })) });
+  const movements = variants.filter(v => v.variant.inventory > 0).map(({ id, variant }) => ({ variantId: id, quantityDelta: variant.inventory, quantityBefore: 0, quantityAfter: variant.inventory, reason: "INITIAL_STOCK" as const, note: "Initial stock entered by the organization in retail catalog management.", createdById: input.actorUserId }));
+  if (movements.length) await tx.inventoryMovement.createMany({ data: movements });
+  if (options.length) await tx.productVariantAttributeValue.createMany({ data: options });
+  const images = variants.flatMap(({ id, variant }) => variant.imageIds.map((imageId, sortOrder) => ({ variantId: id, imageId, sortOrder })));
+  if (images.length) await tx.productVariantImage.createMany({ data: images });
+  return variants.map(v => v.id);
 }
 
 function revalidateRetailStorefront(organizationSlug: string, productId?: string) {
@@ -466,10 +461,8 @@ export async function createMerchantRetailProduct(context: TenantContext, actorU
     await writeAssignments(tx, { organizationId: context.organizationId, productId: product.id, assignments: data.attributes, scope: RetailAttributeScope.PRODUCT });
     await replaceProductTaxonomy(tx, { organizationId: context.organizationId, productId: product.id, primaryCategoryId: category.id, categoryIds: categories, tagNames: data.tagNames });
     const galleryModes = new Map<string, "INHERIT" | "OVERRIDE">();
-    for (const variant of data.variants) {
-      const id = await createVariant(tx, { organizationId: context.organizationId, productId: product.id, actorUserId, variant });
-      if (variant.galleryMode) galleryModes.set(id, variant.galleryMode);
-    }
+    const variantIds = await createVariants(tx, { organizationId: context.organizationId, productId: product.id, actorUserId, variants: data.variants });
+    data.variants.forEach((variant, index) => { if (variant.galleryMode) galleryModes.set(variantIds[index], variant.galleryMode); });
     if (data.gallerySettings) await saveGallerySettings(tx, context.organizationId, product.id, data.gallerySettings, galleryModes);
     await assertDistinctVariantCombinations(tx, product.id);
     return tx.product.findUniqueOrThrow({ where: { id: product.id }, select: merchantProductSelect });
@@ -496,8 +489,10 @@ export async function updateMerchantRetailProduct(context: TenantContext, actorU
     }
     const galleryModes = new Map<string, "INHERIT" | "OVERRIDE">();
     if (data.variantUpdates) {
+      const currentVariants = await tx.productVariant.findMany({ where: { id: { in: data.variantUpdates.map(v => v.id) }, productId, deletedAt: null }, select: { id: true, inventory: true, reservedQuantity: true } });
+      const inventoryMovements: Prisma.InventoryMovementCreateManyInput[] = [];
       for (const update of data.variantUpdates) {
-        const current = await tx.productVariant.findFirst({ where: { id: update.id, productId, deletedAt: null }, select: { id: true, inventory: true, reservedQuantity: true } });
+        const current = currentVariants.find(v => v.id === update.id);
         if (!current) throw new ApiError(400, "A variant does not belong to this product.");
         if (update.galleryMode || update.imageIds !== undefined) galleryModes.set(current.id, update.galleryMode ?? "OVERRIDE");
         if (update.inventory !== undefined && update.inventory < current.reservedQuantity) throw new ApiError(409, "Stock cannot be set below the quantity already reserved by customer carts or orders.");
@@ -515,7 +510,7 @@ export async function updateMerchantRetailProduct(context: TenantContext, actorU
         }
         if (update.imageIds !== undefined) await replaceVariantImages(tx, context.organizationId, current.id, update.imageIds);
         if (update.inventory !== undefined && update.inventory !== current.inventory) {
-          await tx.inventoryMovement.create({ data: {
+          inventoryMovements.push({
             variantId: next.id,
             quantityDelta: update.inventory - current.inventory,
             quantityBefore: current.inventory,
@@ -523,15 +518,14 @@ export async function updateMerchantRetailProduct(context: TenantContext, actorU
             reason: "MANUAL_ADJUSTMENT",
             note: "Inventory adjusted by the organization in retail catalog management.",
             createdById: actorUserId,
-          } });
+          });
         }
       }
+      if (inventoryMovements.length) await tx.inventoryMovement.createMany({ data: inventoryMovements });
     }
     if (data.newVariants) {
-      for (const variant of data.newVariants) {
-        const id = await createVariant(tx, { organizationId: context.organizationId, productId, actorUserId, variant });
-        galleryModes.set(id, variant.galleryMode ?? "OVERRIDE");
-      }
+      const ids = await createVariants(tx, { organizationId: context.organizationId, productId, actorUserId, variants: data.newVariants });
+      data.newVariants.forEach((variant, index) => galleryModes.set(ids[index], variant.galleryMode ?? "OVERRIDE"));
     }
     await assertDistinctVariantCombinations(tx, productId);
     const nextCategoryId = data.categoryId ?? existing.categoryId;

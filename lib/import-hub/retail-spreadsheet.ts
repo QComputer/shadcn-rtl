@@ -5,7 +5,8 @@ import { z } from "zod";
 
 export const retailImportInput = z.object({format:z.enum(["CSV","XLSX"]),content:z.string().min(1).max(1_400_000),mode:z.enum(["CREATE","UPDATE","UPSERT"])}).strict();
 export type RetailImportInput = z.infer<typeof retailImportInput>;
-export const MAX_RETAIL_ROWS=50;
+import { MAX_RETAIL_ROWS } from "./retail-batches";
+export { MAX_RETAIL_ROWS } from "./retail-batches";
 export const retailColumns=["product_key","product_id","variant_id","product_name","slug","brand","description","category_id","category_ids","tags","published","track_inventory","variant_name","sku","price_toman","stock","allow_backorder","image_ids","gallery_mode","variant_image_ids","color_attribute","color_value","color_image_ids"];
 export const normalizeDigits=(s:string)=>s.replace(/[۰-۹٠-٩]/g,c=>String(c.charCodeAt(0)-(c>="۰"&&c<="۹"?1776:1632)));
 export const splitIds=(s:string)=>s==="[[CLEAR]]"?[]:s.split("|").map(x=>x.trim()).filter(Boolean);
@@ -53,11 +54,11 @@ export function readRetailSpreadsheet(input:RetailImportInput) {
     const book=XLSX.read(buffer,{type:"buffer",sheetRows:MAX_RETAIL_ROWS+2,cellFormula:true,cellText:true});
     const sheet=book.Sheets[book.SheetNames[0]];if(!sheet)throw new Error("برگه‌ای در فایل نیست.");
     const range=XLSX.utils.decode_range(sheet["!fullref"]||sheet["!ref"]||"A1");
-    if(range.e.r>MAX_RETAIL_ROWS||range.e.c>80)throw new Error("حداکثر ۵۰ ردیف و ۸۱ ستون مجاز است.");
+    if(range.e.r>MAX_RETAIL_ROWS||range.e.c>80)throw new Error("حداکثر ۵۰۰ ردیف و ۸۱ ستون مجاز است.");
     for(const [key,cell] of Object.entries(sheet))if(!key.startsWith("!")&&cell.f)throw new Error("فرمول در فایل ورودی مجاز نیست؛ مقادیر را به متن تبدیل کنید.");
     table=XLSX.utils.sheet_to_json<string[]>(sheet,{header:1,raw:false,defval:"",blankrows:true});
   }
-  if(table.length<2||table.length>MAX_RETAIL_ROWS+1)throw new Error("فایل باید بین ۱ تا ۵۰ ردیف کالا داشته باشد.");
+  if(table.length<2||table.length>MAX_RETAIL_ROWS+1)throw new Error("فایل باید بین ۱ تا ۵۰۰ ردیف کالا داشته باشد.");
   const headers=table[0].map(x=>String(x).trim().toLowerCase());
   if(headers.length>81||new Set(headers).size!==headers.length||headers.some(x=>!x||(!retailColumns.includes(x)&&! /^(product_)?attribute:[a-z0-9_-]+$/.test(x))))throw new Error("نام ستون ناشناخته یا تکراری است؛ از فایل الگو استفاده کنید.");
   if(!headers.includes("product_key")&&!headers.includes("product_id"))throw new Error("ستون شناسه یا کلید محصول لازم است.");

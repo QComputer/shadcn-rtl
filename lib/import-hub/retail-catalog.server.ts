@@ -12,6 +12,7 @@ import { validateRetailAttributeValue } from "@/lib/retail/attribute-validation"
 import { readGallerySettings } from "@/lib/retail/product-galleries";
 import { normalizeDetailSlug } from "@/lib/detail-slugs";
 import { readRetailSpreadsheet,retailImportInput,splitIds,decimalCell,stockCell,boolCell,writeRetailSpreadsheet,type RetailImportInput } from "./retail-spreadsheet";
+import { MAX_RETAIL_PRODUCTS, retailExportBatches } from "./retail-batches";
 
 type Tx=Prisma.TransactionClient;
 type Create=z.infer<typeof retailProductCreateSchema>;
@@ -31,12 +32,17 @@ async function authorize(context:TenantContext) {
 }
 export async function retailImportMetadata(context:TenantContext) {
   await authorize(context);
-  const [categories,definitions,media,jobs]=await Promise.all([
+  const [categories,definitions,media,jobs,exportProducts]=await Promise.all([
     prisma.productCategory.findMany({where:{organizationId:context.organizationId,isActive:true,deletedAt:null},select:{id:true,name:true},take:200,orderBy:{id:"asc"}}),
     prisma.retailAttributeDefinition.findMany({where:{organizationId:context.organizationId,isActive:true},select:{id:true,key:true,label:true,scope:true},take:80,orderBy:{id:"asc"}}),
     prisma.image.findMany({where:{organizationId:context.organizationId,access:"PUBLIC"},select:{id:true,url:true},take:200,orderBy:{id:"asc"}}),
     prisma.externalImportJob.findMany({where:{organizationId:context.organizationId,summary:{path:["contract"],equals:contract}},select:{id:true,status:true,createdAt:true,summary:true},take:10,orderBy:{createdAt:"desc"}}),
-  ]);return {categories,definitions,media,jobs};
+    prisma.product.findMany({where:{organizationId:context.organizationId,deletedAt:null},select:{id:true,variants:{where:{deletedAt:null},select:{id:true}}},take:501,orderBy:{id:"asc"}}),
+  ]);
+  const exportAvailable=exportProducts.length<=500&&exportProducts.reduce((n,p)=>n+Math.max(1,p.variants.length),0)<=1000;
+  const exportBatches=exportAvailable?retailExportBatches(exportProducts.map(p=>({id:p.id,rows:Math.max(1,p.variants.length)}))).map((batch,index)=>({index:index+1,products:batch.length,rows:batch.reduce((n,p)=>n+p.rows,0)})):[];
+  const exportVersion=hash(exportProducts.map(p=>[p.id,p.variants.map(v=>v.id).sort()]));
+  return {categories,definitions,media,jobs,exportBatches,exportAvailable,exportVersion};
 }
 function secret() {const key=process.env.NEXTAUTH_SECRET||process.env.AUTH_SECRET;if(!key)throw new ApiError(503,"پیکربندی امن پیش‌نمایش فراهم نیست.");return key;}
 function signature(body:string){return createHmac("sha256",secret()).update("retail-import:"+body).digest("base64url");}
@@ -66,7 +72,7 @@ async function plan(tx:Tx,context:TenantContext,input:RetailImportInput) {
   const fingerprint=hash([stored,definitions,categories,media,skuOwners]);
   const rows=source.map(row=>({...row,productKey:row.data.product_id||row.data.product_key||"",sku:row.data.sku||null,action:"UNCHANGED",errors:[] as string[],warnings:[] as string[]}));
   const groups=new Map<string,typeof rows>();for(const row of rows){if(!row.productKey)row.errors.push("کلید محصول یا شناسه محصول لازم است.");const group=groups.get(row.productKey)||[];group.push(row);groups.set(row.productKey,group);}
-  if(groups.size>10)throw new ApiError(400,"حداکثر ۱۰ محصول در هر دسته مجاز است.");
+  if(groups.size>MAX_RETAIL_PRODUCTS)throw new ApiError(400,"حداکثر ۱۰ محصول در هر دسته مجاز است.");
   const changes:Array<{key:string;productId?:string;create?:Create;update?:Update}>=[];
   const counts={productsCreate:0,variantsCreate:0,productsUpdate:0,variantsUpdate:0,unchanged:0,invalidRows:0,warnings:0};
   const seenSku=new Set<string>(),seenVariants=new Set<string>(),seenProducts=new Set<string>();
@@ -125,7 +131,7 @@ async function plan(tx:Tx,context:TenantContext,input:RetailImportInput) {
         if(d.stock){v.inventory=stockCell(d.stock);if(old&&(v.inventory as number)<old.reservedQuantity)throw new Error("موجودی کمتر از تعداد رزروشده مجاز نیست.");}
         if(d.allow_backorder)v.allowBackOrder=boolCell(d.allow_backorder);
         if(d.gallery_mode){if(!["INHERIT","OVERRIDE"].includes(d.gallery_mode))throw new Error("gallery_mode باید INHERIT یا OVERRIDE باشد.");v.galleryMode=d.gallery_mode;}
-        if(d.variant_image_ids){v.imageIds=splitIds(d.variant_image_ids);v.galleryMode=d.gallery_mode||"OVERRIDE";}
+        if(d.variant_image_ids){v.imageIds=splitIds(d.variant_image_ids);if(d.gallery_mode||!old||hash(v.imageIds)!==hash(old.imageIds))v.galleryMode=d.gallery_mode||"OVERRIDE";}
         for(const id of v.imageIds as string[]||[])if(!media.some(m=>m.id===id))throw new Error("تصویر گونه متعلق به این فروشگاه نیست.");
         const options=old?.options.map(o=>({definitionId:o.definitionId,value:o.value as string|number|boolean}))||[];
         let changedOptions=false;
@@ -191,7 +197,7 @@ async function plan(tx:Tx,context:TenantContext,input:RetailImportInput) {
 }
 function normalizeAttributeNumber(value:string){return value.replace(/[۰-۹٠-٩]/g,c=>String(c.charCodeAt(0)-(c>="۰"&&c<="۹"?1776:1632)));}
 export async function previewRetailImport(context:TenantContext,raw:RetailImportInput) {
-  await authorize(context);const input=retailImportInput.parse(raw);const result=await prisma.$transaction(tx=>plan(tx,context,input),{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead});
+  await authorize(context);const input=retailImportInput.parse(raw);const result=await prisma.$transaction(tx=>plan(tx,context,input),{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,maxWait:5000,timeout:30000});
   return {rows:result.rows,counts:result.counts,token:tokenFor(context,input,result.fingerprint)};
 }
 export async function executeRetailImport(context:TenantContext,raw:z.infer<typeof executeSchema>) {
@@ -207,22 +213,30 @@ export async function executeRetailImport(context:TenantContext,raw:z.infer<type
       const job=await tx.externalImportJob.create({data:{organizationId:context.organizationId,type:input.format==="CSV"?"CSV":"EXCEL",status:"COMPLETED",inputText:"retail-r3:"+parsed.idempotencyKey,consentConfirmed:true,consentText:"Explicit retail catalog preview confirmation",requestedByUserId:context.actorUserId,startedAt:new Date(),completedAt:new Date(),summary:json({contract,inputHash:hash(input),mode:input.mode,counts:result.counts})}});
       for(const change of result.changes){
         const product=change.create?await createMerchantRetailProduct(context,context.actorUserId,change.create,tx):await updateMerchantRetailProduct(context,context.actorUserId,change.productId!,change.update!,tx);
-        for(const row of result.source.filter(r=>(r.data.product_id||r.data.product_key)===change.key))await tx.importedProductDraft.create({data:{organizationId:context.organizationId,jobId:job.id,status:"IMPORTED",name:product.name,sku:row.data.sku||null,rawData:json(row.data),currency:"TOMAN",rowNumber:row.rowNumber,importedAt:new Date(),importedProductId:product.id,reviewedAt:new Date(),reviewedByUserId:context.actorUserId}});
+        await tx.importedProductDraft.createMany({data:result.source.filter(r=>(r.data.product_id||r.data.product_key)===change.key).map(row=>({organizationId:context.organizationId,jobId:job.id,status:"IMPORTED" as const,name:product.name,sku:row.data.sku||null,rawData:json(row.data),currency:"TOMAN",rowNumber:row.rowNumber,importedAt:new Date(),importedProductId:product.id,reviewedAt:new Date(),reviewedByUserId:context.actorUserId}))});
       }
       await tx.auditLog.create({data:{action:"CREATE",entityType:"ExternalImportJob",entityId:job.id,userId:context.actorUserId,organizationId:context.organizationId,organizationSlug:context.organizationSlug,description:"Retail bulk catalog import applied atomically",newValue:json({contract,mode:input.mode,counts:result.counts})}});
       return {jobId:job.id,status:job.status,counts:result.counts};
-    },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,maxWait:5000,timeout:30000});
+    },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,maxWait:5000,timeout:90000});
     for(const locale of ["fa","en","ar"])revalidatePath("/"+locale+"/"+context.organizationSlug+"/shop","layout");return result;
-  }catch(e){if(e instanceof Prisma.PrismaClientKnownRequestError&&["P2034","P2002"].includes(e.code))throw new ApiError(409,"کاتالوگ هم‌زمان تغییر کرد یا شناسه تکراری است؛ پیش‌نمایش تازه بگیرید.");throw e;}
+  }catch(e){if(e instanceof Prisma.PrismaClientKnownRequestError&&["P2034","P2002","P2028"].includes(e.code))throw new ApiError(409,"کاتالوگ تغییر کرده یا زمان پردازش پایان یافته است؛ هیچ تغییر ناقصی ثبت نشده است. پیش‌نمایش تازه بگیرید و دوباره تلاش کنید.");throw e;}
 }
 
-export async function downloadRetailCatalog(context:TenantContext,kind:"template"|"export",format:"CSV"|"XLSX") {
+export async function downloadRetailCatalog(context:TenantContext,kind:"template"|"export",format:"CSV"|"XLSX",batchIndex=1,expectedExportVersion?:string) {
   await authorize(context);
   if(kind==="template"){
     const category=await prisma.productCategory.findFirst({where:{organizationId:context.organizationId,isActive:true,deletedAt:null},select:{id:true},orderBy:{id:"asc"}});
-    return writeRetailSpreadsheet([{product_key:"synthetic-example-001",product_name:"کالای نمونه آزمایشی — فقط الگو",category_id:category?.id||"شناسه دسته‌بندی را وارد کنید",variant_name:"گزینه نمونه",sku:"000123",price_toman:"2500000",stock:"0",track_inventory:"true",allow_backorder:"false",published:"false"}],format);
+    const definitions=await prisma.retailAttributeDefinition.findMany({where:{organizationId:context.organizationId,isActive:true,scope:"VARIANT_OPTION"},select:{key:true,valueType:true,allowedValues:true},orderBy:{key:"asc"}});
+    const color=definitions.find(d=>d.key==="color"),size=definitions.find(d=>d.key==="size");
+    const values=(d:typeof color,fallback:string[])=>!d?[]:d.valueType==="ENUM"?(Array.isArray(d.allowedValues)?d.allowedValues.filter((v):v is string=>typeof v==="string"):[]):d.valueType==="TEXT"?fallback:d.valueType==="NUMBER"?fallback.filter(v=>/^\d+$/.test(v)):[];
+    const colors=values(color,["رنگ نمونه اول","رنگ نمونه دوم"]).slice(0,2),sizes=values(size,["38","39","40","41","42","43"]).slice(0,6);
+    // Only reference definitions/ENUM values that actually exist in this tenant.
+    // If absent, keep a generic six-variant sample; never create definitions.
+    const combinations=colors.length&&sizes.length?colors.flatMap(c=>sizes.map(s=>({c,s}))):Array.from({length:6},(_,i)=>({c:"",s:String(i+1)}));
+    return writeRetailSpreadsheet(combinations.map(({c,s},index)=>({product_key:"synthetic-example-001",product_name:"کالای نمونه آزمایشی — فقط الگو",category_id:category?.id||"شناسه دسته‌بندی را وارد کنید",variant_name:c?`${c} / ${s}`:`گزینه نمونه ${s}`,sku:`000EXAMPLE-${String(index+1).padStart(3,"0")}`,price_toman:"2500000",stock:"0",track_inventory:"true",allow_backorder:"false",published:"false",...(c&&color&&size?{["attribute:"+color.key]:c,["attribute:"+size.key]:s}:{})})),format);
   }
   const products=await prisma.product.findMany({where:{organizationId:context.organizationId,deletedAt:null},select:merchantProductSelect,orderBy:{id:"asc"},take:501});
+  if(expectedExportVersion&&expectedExportVersion!==hash(products.map(p=>[p.id,p.variants.map(v=>v.id).sort()])))throw new ApiError(409,"ترکیب کاتالوگ تغییر کرده است؛ فهرست را تازه‌سازی کنید و همه دسته‌های خروجی را دوباره دانلود کنید.");
   if(products.length>500||products.reduce((n,p)=>n+Math.max(1,p.variants.length),0)>1000)throw new ApiError(400,"خروجی حداکثر ۱۰۰۰ گونه است؛ برای کاتالوگ بزرگ‌تر خروجی محدودشده لازم است.");
   const rows:Record<string,string>[]=[];
   for(const raw of products){
@@ -231,12 +245,20 @@ export async function downloadRetailCatalog(context:TenantContext,kind:"template
     for(const attribute of p.attributes)common["product_attribute:"+attribute.key]=String(attribute.value);
     if(!p.variants.length)rows.push(common);
     for(const v of p.variants){
-      const row={...common,variant_id:v.id,variant_name:v.name,sku:v.sku||"",price_toman:v.price===null?"":String(v.price),stock:String(v.inventory),allow_backorder:String(v.allowBackOrder),gallery_mode:v.galleryMode||"OVERRIDE",variant_image_ids:v.imageIds.length?v.imageIds.join("|"):"[[CLEAR]]"} as Record<string,string>;
+      const row={...common,variant_id:v.id,variant_name:v.name,sku:v.sku||"",price_toman:v.price===null?"":String(v.price),stock:String(v.inventory),allow_backorder:String(v.allowBackOrder),gallery_mode:v.galleryMode||"",variant_image_ids:v.imageIds.length?v.imageIds.join("|"):"[[CLEAR]]"} as Record<string,string>;
       for(const option of v.options)row["attribute:"+option.key]=String(option.value);
       const color=p.gallerySettings?.colors.find(c=>v.options.some(o=>o.definitionId===c.definitionId&&String(o.value)===c.value));
       if(color){row.color_attribute=v.options.find(o=>o.definitionId===color.definitionId)!.key;row.color_value=color.value;row.color_image_ids=color.imageIds.length?color.imageIds.join("|"):"[[CLEAR]]";}
       rows.push(row);
     }
   }
-  return writeRetailSpreadsheet(rows,format);
+  if(!Number.isSafeInteger(batchIndex)||batchIndex<1)throw new ApiError(400,"شماره دسته خروجی معتبر نیست.");
+  const grouped=products.map(p=>({id:p.id,rows:rows.filter(row=>row.product_id===p.id)}));
+  const batches=retailExportBatches(grouped.map(p=>({id:p.id,rows:p.rows.length})));
+  if(!batches.length&&batchIndex===1)return writeRetailSpreadsheet([],format);
+  const batch=batches[batchIndex-1];if(!batch)throw new ApiError(400,"دسته خروجی وجود ندارد؛ فهرست را تازه‌سازی کنید.");
+  const selected=batch.flatMap(part=>grouped.find(p=>p.id===part.id)!.rows.slice(part.offset,part.offset+part.rows));
+  const data=writeRetailSpreadsheet(selected,format);
+  if(data.length>1_000_000)throw new ApiError(400,"اندازه این دسته خروجی برای ورود مجدد بیش از یک مگابایت است؛ متن یا تصاویر مرجع را در فایل کوچک‌تری ویرایش کنید.");
+  return data;
 }

@@ -179,7 +179,14 @@ async function plan(tx:Tx,context:TenantContext,input:RetailImportInput) {
     }catch(e){fail(e instanceof z.ZodError?"اطلاعات محصول ناقص است: "+e.issues.map(x=>x.path.join(".")).join("، "):(e as Error).message);}
   }
   counts.invalidRows=rows.filter(r=>r.errors.length).length;counts.warnings=rows.reduce((n,r)=>n+r.warnings.length,0);
-  return {fingerprint,rows:rows.map(({rowNumber,productKey,sku,action,errors,warnings,data})=>({rowNumber,productKey,sku,action,errors,warnings,values:data})),counts,changes,source};
+  return {fingerprint,rows:rows.map(({rowNumber,productKey,sku,action,errors,warnings,data})=>{
+    const existing=products.find(p=>p.id===data.product_id);
+    const variant=existing?.variants.find(v=>v.id===data.variant_id);
+    const values:Record<string,string>={product_name:existing?.name||groups.get(productKey)?.find(r=>r.data.product_name)?.data.product_name||"",variant_name:variant?.name||"",sku:variant?.sku||"",price_toman:variant?.price===null||variant?.price===undefined?"":String(variant.price),stock:variant?String(variant.inventory):""};
+    for(const option of variant?.options||[])values["attribute:"+option.key]=String(option.value);
+    for(const [key,value] of Object.entries(data))if(value)values[key]=value;
+    return {rowNumber,productKey,sku:sku||variant?.sku||null,action,errors,warnings,values};
+  }),counts,changes,source};
 }
 function normalizeAttributeNumber(value:string){return value.replace(/[۰-۹٠-٩]/g,c=>String(c.charCodeAt(0)-(c>="۰"&&c<="۹"?1776:1632)));}
 export async function previewRetailImport(context:TenantContext,raw:RetailImportInput) {

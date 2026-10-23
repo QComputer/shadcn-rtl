@@ -200,6 +200,9 @@ test("Retail R3 bulk catalog import preview, execution, idempotency, and export"
     const changedInput = { ...csv(changedRows), mode: "UPDATE" as const };
     const changePreview = await catalog.previewRetailImport(managerContext, changedInput);
     assert.equal(changePreview.counts.variantsUpdate, 1);
+    assert.equal(changePreview.rows[0].values.product_name,product.name,"minimal update files must identify the existing product for merchant review");
+    assert.equal(changePreview.rows[0].sku,firstVariant.sku);
+    assert.equal(changePreview.rows[0].values.stock,String(firstVariant.inventory),"omitted inventory is displayed as retained, not an invented count");
     const changedResult = await catalog.executeRetailImport(managerContext, {
       ...changedInput, token: changePreview.token, idempotencyKey: randomUUID(), confirmed: true,
     });

@@ -44,7 +44,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { PublicImage } from "@/components/public/public-image"
 import { getProductPrimaryMediaUrl } from "@/lib/ai-media/entity-primary-media"
-import { buildShopProductPath, isShopCustomDomainPathname } from "@/lib/shop-public-paths"
+import { buildShopProductPath, buildShopPublicPath, isShopCustomDomainPathname } from "@/lib/shop-public-paths"
 import {
   countVisibleProductsByCategory,
   getShopMenuProductInventory,
@@ -457,6 +457,7 @@ const getDisplayPrice = (product: Product): PriceInfo => {
                 className="pr-10"
               />
             </div>
+            {modernProductExperience && <Link href={buildShopPublicPath({ locale, shopSlug: slug, subPath: "/discover", isCustomDomain })} className="inline-flex h-10 shrink-0 items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">جست‌وجوی پیشرفته</Link>}
             <div className="flex gap-1">
               <Button
                 variant={viewMode === "grid" ? "default" : "outline"}

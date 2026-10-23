@@ -278,8 +278,10 @@ test("Retail R3 bulk catalog import preview, execution, idempotency, and export"
     }), (error: unknown) => error instanceof ApiError && error.status === 409);
     await db.productVariant.update({ where: { id: firstVariant.id }, data: { inventory: firstVariant.inventory } });
 
-    const conflictRowsA = [{ product_id: product.id, variant_id: firstVariant.id, price_toman: "1991" }];
-    const conflictRowsB = [{ product_id: product.id, variant_id: firstVariant.id, price_toman: "1992" }];
+    const concurrentStockBefore=(await db.productVariant.findUniqueOrThrow({where:{id:firstVariant.id}})).inventory;
+    const concurrentMovementsBefore=await db.inventoryMovement.count({where:{variantId:firstVariant.id,reason:"MANUAL_ADJUSTMENT"}});
+    const conflictRowsA = [{ product_id: product.id, variant_id: firstVariant.id, stock: String(concurrentStockBefore+1) }];
+    const conflictRowsB = [{ product_id: product.id, variant_id: firstVariant.id, stock: String(concurrentStockBefore+2) }];
     const conflictA = csv(conflictRowsA); conflictA.mode = "UPDATE";
     const conflictB = csv(conflictRowsB); conflictB.mode = "UPDATE";
     const [previewA, previewB] = await Promise.all([catalog.previewRetailImport(context, conflictA), catalog.previewRetailImport(context, conflictB)]);
@@ -320,6 +322,8 @@ test("Retail R3 bulk catalog import preview, execution, idempotency, and export"
     assert.equal(fulfilled.length, 1);
     assert.equal(rejected.length, 1);
     assert.ok(rejected[0]!.status === "rejected" && rejected[0]!.reason instanceof ApiError && rejected[0]!.reason.status === 409);
+    assert.ok([concurrentStockBefore+1,concurrentStockBefore+2].includes((await db.productVariant.findUniqueOrThrow({where:{id:firstVariant.id}})).inventory));
+    assert.equal(await db.inventoryMovement.count({where:{variantId:firstVariant.id,reason:"MANUAL_ADJUSTMENT"}}),concurrentMovementsBefore+1,"only the committed concurrent stock update creates a ledger entry");
     const concurrentJob = fulfilled[0] as PromiseFulfilledResult<{ jobId: string }>;
     jobIds.push(concurrentJob.value.jobId);
     const jobAudit = await db.auditLog.findFirst({ where: { entityId: executed.jobId, entityType: "ExternalImportJob", organizationId: organization.id } });

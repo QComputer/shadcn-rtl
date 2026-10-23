@@ -84,6 +84,12 @@ export const dashboardRouteConfig: Record<string, RouteAccessConfig> = {
     requiredCapability: "SHOP",
   },
 
+  "/dashboard/retail-analytics": {
+    allowedRoles: RETAIL_CATALOG_MANAGEMENT_ROLES,
+    requiresOrgMembership: true,
+    requiredCapability: "SHOP",
+  },
+
   "/dashboard/retail-catalog": {
     allowedRoles: RETAIL_CATALOG_MANAGEMENT_ROLES,
     requiresOrgMembership: true,

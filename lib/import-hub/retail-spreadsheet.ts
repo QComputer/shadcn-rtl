@@ -68,8 +68,8 @@ export function readRetailSpreadsheet(input:RetailImportInput) {
     return {rowNumber:i+2,data};
   }).filter(x=>Object.values(x.data).some(Boolean));
 }
-export function writeRetailSpreadsheet(rows:Record<string,string>[],format:"CSV"|"XLSX") {
-  const columns=[...new Set([...retailColumns,...rows.flatMap(r=>Object.keys(r))])];
+export function writeRetailSpreadsheet(rows:Record<string,string>[],format:"CSV"|"XLSX", explicitColumns?: readonly string[]) {
+  const columns=explicitColumns ? [...explicitColumns] : [...new Set([...retailColumns,...rows.flatMap(r=>Object.keys(r))])];
   const table=[columns,...rows.map(row=>columns.map(key=>row[key]??""))];
   if(format==="XLSX"){const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet(table),"Retail");return XLSX.write(book,{type:"buffer",bookType:"xlsx"}) as Buffer;}
   const escape=(s:string)=>'"'+(/^(\s*[=+\-@]|[\t\r\n])/.test(s)?"'"+s:s).replaceAll('"','""')+'"';

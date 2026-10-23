@@ -15,8 +15,8 @@ type CapabilityDefinition = {
  */
 export const BUSINESS_CAPABILITY_REGISTRY = {
   SHOP: {
-    dashboardNavigation: ["orders", "driverOrders", "products", "productCategories", "retailCatalog", "retailOrders", "retailDiscounts", "retailPaymentSettings", "retailPaymentReports"],
-    dashboardRoutes: ["/orders", "/driver-orders", "/products", "/product-categories", "/retail-catalog", "/retail-orders", "/retail-discounts", "/retail-payment-settings", "/retail-payment-reports"],
+    dashboardNavigation: ["orders", "driverOrders", "products", "productCategories", "retailCatalog", "retailOrders", "retailAnalytics", "retailDiscounts", "retailPaymentSettings", "retailPaymentReports"],
+    dashboardRoutes: ["/orders", "/driver-orders", "/products", "/product-categories", "/retail-catalog", "/retail-orders", "/retail-analytics", "/retail-discounts", "/retail-payment-settings", "/retail-payment-reports"],
     publicSurface: "shop",
     publicEntryPath: "/shop",
   },

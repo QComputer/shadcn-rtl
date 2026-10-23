@@ -99,6 +99,11 @@ test("Retail R3 bulk catalog import preview, execution, idempotency, and export"
     productIds.push(foreignProduct.id);
 
     const rows = baseRows(category.id, productImage.id, redImage.id, blueImage.id);
+    for (const format of ["CSV", "XLSX"] as const) {
+      const oversized=spreadsheet.writeRetailSpreadsheet(Array.from({length:501},()=>rows[0]!),format);
+      await assert.rejects(()=>catalog.previewRetailImport(context,{format,content:oversized.toString(format==="CSV"?"utf8":"base64"),mode:"CREATE"}),
+        (error:unknown)=>error instanceof ApiError&&error.status===400,"over-limit files must return useful client validation, not an internal error");
+    }
     const input = csv(rows);
     const beforePreview = await db.product.count({ where: { organizationId: organization.id } });
     const preview = await catalog.previewRetailImport(managerContext, input);

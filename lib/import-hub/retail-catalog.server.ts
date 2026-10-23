@@ -57,7 +57,10 @@ function verifyToken(token:string,context:TenantContext,input:RetailImportInput,
   if(data.org!==context.organizationId||data.actor!==context.actorUserId||data.input!==hash(input)||data.fingerprint!==fingerprint||data.expires<Date.now())throw new ApiError(409,"کاتالوگ یا پیش‌نمایش تغییر کرده یا منقضی شده است؛ دوباره بررسی کنید.");
 }
 async function plan(tx:Tx,context:TenantContext,input:RetailImportInput) {
-  const source=readRetailSpreadsheet(input);if(!source.length)throw new ApiError(400,"فایل خالی است.");
+  let source:ReturnType<typeof readRetailSpreadsheet>;
+  try { source=readRetailSpreadsheet(input); }
+  catch(error) { throw new ApiError(400,error instanceof Error?error.message:"فایل معتبر نیست."); }
+  if(!source.length)throw new ApiError(400,"فایل خالی است.");
   const ids=source.map(r=>r.data.product_id).filter(Boolean);
   const slugs=source.map(r=>r.data.slug||r.data.product_key).filter(Boolean).map(value=>normalizeDetailSlug(value));
   const skuValues=source.map(r=>r.data.sku).filter(Boolean);

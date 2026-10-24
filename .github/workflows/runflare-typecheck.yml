@@ -1,0 +1,46 @@
+name: RunFlare TypeScript
+
+on:
+  push:
+    branches:
+      - main
+      - codex/bb-r6-2a-runtime-storage
+  pull_request:
+    branches:
+      - main
+      - codex/bb-r6-2a-runtime-storage
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck:
+    name: RunFlare TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_RUNTIME_ADAPTER: postgresql
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: runflare_typecheck_placeholder
+      PGUSER: runflare_typecheck_placeholder
+      PGPASSWORD: runflare_typecheck_placeholder
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate
+      - name: Generate Next.js route types
+        run: pnpm exec next typegen
+      - name: TypeScript check
+        run: pnpm exec tsc --noEmit

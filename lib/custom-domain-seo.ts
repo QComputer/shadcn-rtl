@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import prisma from "@/lib/db";
+import { getActivePrimaryOrganizationDomain } from "@/lib/domains/primary-domain.server";
 import {
   buildOrganizationPublicPath,
   buildOrganizationRootPath,
@@ -29,14 +30,28 @@ export async function getOrganizationRootSeoContext(input: {
     : defaultCustomDomainLocale;
   const isCustomDomain = customDomainEnabled && headerSlug === input.slug;
 
+  // Requests already served on a trusted tenant host take precedence. On the
+  // platform host, use the verified active primary domain for root metadata so
+  // it agrees with the platform-to-tenant canonical redirect.
+  const primaryDomain = !isCustomDomain
+    ? await getActivePrimaryOrganizationDomain(input.slug)
+    : null;
+  const usesPrimaryDomain = !isCustomDomain && !!primaryDomain;
+  const canonicalBaseUrl = isCustomDomain
+    ? customBaseUrl
+    : usesPrimaryDomain
+      ? `https://${primaryDomain}`
+      : undefined;
+  const rootUsesCustomDomain = isCustomDomain || usesPrimaryDomain;
+
   return {
     isCustomDomain,
-    baseUrl: isCustomDomain ? customBaseUrl : undefined,
-    path: buildOrganizationRootPath({ locale, organizationSlug: input.slug, isCustomDomain }),
+    baseUrl: canonicalBaseUrl,
+    path: buildOrganizationRootPath({ locale, organizationSlug: input.slug, isCustomDomain: rootUsesCustomDomain }),
     alternatePath: (nextLocale: CustomDomainLocale) => buildOrganizationRootPath({
       locale: nextLocale,
       organizationSlug: input.slug,
-      isCustomDomain,
+      isCustomDomain: rootUsesCustomDomain,
     }),
   };
 }

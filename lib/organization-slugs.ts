@@ -8,6 +8,7 @@ const CURRENT_LOCALE_ROUTE_SLUGS = [
   "domain-not-configured",
   "external-root",
   "features",
+  "forgot-password",
   "hotel-preview",
   "login",
   "onboarding",

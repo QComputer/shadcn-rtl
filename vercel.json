@@ -4,6 +4,7 @@
   "ignoreCommand": "node scripts/retail/ignore-r4-vercel.mjs",
   "git": {
     "deploymentEnabled": {
+      "codex/bb-r6-1-runflare-readiness": false,
       "codex/tenant-pwa-branding-fix-20261013": false,
       "codex/retail-h2-taxonomy-20261014": false,
       "codex/retail-h2-r5-integration-20261014": false,

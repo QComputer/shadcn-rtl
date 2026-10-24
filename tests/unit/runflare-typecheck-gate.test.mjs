@@ -68,8 +68,55 @@ test('opted-in gate reads HEAD and remote and does not print or need a token', a
   const result = await runRunflareTypecheckGate({
     env: { RUNFLARE_SKIP_DUPLICATE_TYPECHECK: '1' },
     git: args => { gitCalls.push(args); return args[0] === 'rev-parse' ? sha : 'git@github.com:QComputer/shadcn-rtl.git'; },
-    fetchImpl: async url => ({ ok: true, json: async () => ({ check_runs: [run(sha)] }) }),
+    fetchImpl: async () => ({ ok: true, json: async () => ({ check_runs: [run(sha)] }) }),
   });
   assert.deepEqual(gitCalls, [['rev-parse', 'HEAD'], ['remote', 'get-url', 'origin']]);
   assert.deepEqual(result, { required: true, sha });
+});
+
+test('source archive fallback requires a pinned SHA matching public main and its exact successful check', async () => {
+  const urls = [];
+  let mainQueries = 0;
+  const result = await runRunflareTypecheckGate({
+    env: { RUNFLARE_SKIP_DUPLICATE_TYPECHECK: '1', RUNFLARE_SOURCE_COMMIT_SHA: sha },
+    git: () => { throw new Error('Git metadata is unavailable'); },
+    fetchImpl: async url => {
+      urls.push(url);
+      if (url.endsWith('/commits/main')) {
+        mainQueries += 1;
+        return { ok: true, json: async () => ({ sha }) };
+      }
+      assert.ok(url.endsWith(`/commits/${sha}/check-runs?per_page=100`));
+      return { ok: true, json: async () => ({ check_runs: [run(sha)] }) };
+    },
+  });
+  assert.deepEqual(result, { required: true, sha });
+  assert.equal(urls.length, 3);
+  assert.equal(mainQueries, 2);
+});
+
+test('source archive fallback fails closed when pin is absent or stale', async () => {
+  const noGit = () => { throw new Error('Git metadata is unavailable'); };
+  await assert.rejects(runRunflareTypecheckGate({
+    env: { RUNFLARE_SKIP_DUPLICATE_TYPECHECK: '1' }, git: noGit,
+    fetchImpl: async () => { throw new Error('GitHub must not be queried without a valid pin'); },
+  }), /requires RUNFLARE_SOURCE_COMMIT_SHA/);
+  await assert.rejects(runRunflareTypecheckGate({
+    env: { RUNFLARE_SKIP_DUPLICATE_TYPECHECK: '1', RUNFLARE_SOURCE_COMMIT_SHA: sha }, git: noGit,
+    fetchImpl: async url => {
+      assert.ok(url.endsWith('/commits/main'));
+      return { ok: true, json: async () => ({ sha: otherSha }) };
+    },
+  }), /does not match the current main branch tip/);
+  let mainQueries = 0;
+  await assert.rejects(runRunflareTypecheckGate({
+    env: { RUNFLARE_SKIP_DUPLICATE_TYPECHECK: '1', RUNFLARE_SOURCE_COMMIT_SHA: sha }, git: noGit,
+    fetchImpl: async url => {
+      if (url.endsWith('/commits/main')) {
+        mainQueries += 1;
+        return { ok: true, json: async () => ({ sha: mainQueries === 1 ? sha : otherSha }) };
+      }
+      return { ok: true, json: async () => ({ check_runs: [run(sha)] }) };
+    },
+  }), /does not match the current main branch tip/);
 });

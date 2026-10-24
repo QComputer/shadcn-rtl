@@ -9,17 +9,6 @@ const globalForPrisma = globalThis as unknown as {
   bazarBazPrisma: PrismaClient | undefined;
 };
 
-function getRuntimeDatabaseUrl() {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error("Database runtime configuration is missing DATABASE_URL.");
-  }
-  if (!/^postgres(ql)?:\/\//.test(databaseUrl)) {
-    throw new Error("Database runtime configuration must use a PostgreSQL URL.");
-  }
-  return databaseUrl;
-}
-
 function shouldUseHermeticLocalRuntime(databaseUrl: string) {
   const localDockerE2eEnabled = process.env.AI_MEDIA_LOCAL_DOCKER_E2E === "1";
   const localPostgresUrl = /(?:localhost|127\.0\.0\.1)/i.test(databaseUrl) && !/neon/i.test(databaseUrl);
@@ -37,8 +26,8 @@ function shouldUseHermeticLocalRuntime(databaseUrl: string) {
 }
 
 function createPrismaClient() {
-  const databaseUrl = getRuntimeDatabaseUrl();
-  const configuration = resolveDatabaseRuntimeConfiguration(databaseUrl, process.env);
+  const configuration = resolveDatabaseRuntimeConfiguration(process.env.DATABASE_URL, process.env);
+  const databaseUrl = configuration.connectionString;
 
   if (configuration.adapter === "postgresql") {
     return new PrismaClient({

@@ -160,13 +160,19 @@ export function planMediaTransfer({ references = [], blobObjects = [] } = {}) {
       if (APPLICATION_STORAGE_NAMESPACES.has(segments[0])) {
         if (segments[1] !== tenants[0]) blocked.add('target-namespace-ownership-mismatch');
         else targetKey = key;
+      } else if (segments.length === 1) {
+        // Historical Image URLs are /uploads/<filename>; normalizeKey removes that alias.
+        targetKey = `tenants/${tenants[0]}/uploads/${segments[0]}`;
+      } else if (segments[0] === tenants[0]) {
+        // Legacy tenant-relative keys are known from Image records; retain their relative path.
+        targetKey = `tenants/${tenants[0]}/uploads/${segments.slice(1).join('/')}`;
       } else {
-        targetKey = `tenants/${tenants[0]}/uploads/${segments.at(-1)}`;
+        blocked.add('unsupported-source-key-family');
       }
     }
     return { sourceKey: key, targetKey, tenantId: tenants.length === 1 ? tenants[0] : null, access: access.length === 1 ? access[0] : 'ambiguous', referenceCount: r?.references.length ?? 0,
       referenceFamilies: [...new Set(r?.references ?? [])].sort(), objectCount: sourceObjects.length, bytes: blob?.sizeBytes ?? null,
-      expectedBytes: expectedSize, sha256: blob?.sha256 ?? expectedHash, status: blocked.size ? 'blocked' : 'planned', blockers: [...blocked].sort() };
+      expectedBytes: expectedSize, sha256: blob?.sha256 ?? expectedHash, status: blocked.size ? 'blocked' : 'metadata-planned', verifiedContent: false, blockers: [...blocked].sort() };
   });
   const targetCounts = new Map();
   for (const item of manifest) if (item.targetKey) targetCounts.set(item.targetKey, (targetCounts.get(item.targetKey) ?? 0) + 1);

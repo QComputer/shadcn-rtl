@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { filterPgSessionJwtToc, planDatabaseTransfer, planMediaTransfer } from '../../scripts/migration/runflare/planner.mjs';
 
 const dbInput = () => ({
@@ -102,14 +105,15 @@ test('media planner blocks ownership conflicts, alias collisions, and unsafe pat
 
 test('media manifest is deterministic and resolves public/uploads aliases and known checksums', () => {
   const data = {
-    references: [{ url: 'https://cdn.example/uploads/tenant/logo.png?sig=redacted', tenantId: 'tenant_1', access: 'public', family: 'branding', sizeBytes: 3, sha256: 'a'.repeat(64) }],
+    references: [{ url: 'https://cdn.example/uploads/tenant/logo.png?sig=redacted', tenantId: 'tenant', access: 'public', family: 'branding', sizeBytes: 3, sha256: 'a'.repeat(64) }],
     blobObjects: [{ key: 'tenant/logo.png', sizeBytes: 3, sha256: 'a'.repeat(64) }],
   };
   const a = planMediaTransfer(data); const b = planMediaTransfer(data);
   assert.deepEqual(a, b);
-  assert.equal(a.entries[0].targetKey, 'tenants/tenant_1/uploads/logo.png');
+  assert.equal(a.entries[0].targetKey, 'tenants/tenant/uploads/logo.png');
   assert.equal(a.entries[0].access, 'public');
-  assert.equal(a.entries[0].status, 'planned');
+  assert.equal(a.entries[0].status, 'metadata-planned');
+  assert.equal(a.entries[0].verifiedContent, false);
   assert.equal(a.entries[0].bytes, 3);
 });
 
@@ -124,21 +128,45 @@ test('media planner preserves adapter namespaces and rejects backslash or percen
   const bySource = new Map(plan.entries.map((entry) => [entry.sourceKey, entry]));
   assert.equal(bySource.get('creative-studio/org-a/assets/a.webp').targetKey, 'creative-studio/org-a/assets/a.webp');
   assert.equal(bySource.get('retail-payment/org-a/receipt.png').targetKey, 'retail-payment/org-a/receipt.png');
-  assert.equal(bySource.get('org-a/public/logo.png').targetKey, 'tenants/org-a/uploads/logo.png');
+  assert.equal(bySource.get('org-a/public/logo.png').targetKey, 'tenants/org-a/uploads/public/logo.png');
   assert.equal(bySource.get(null).status, 'blocked');
   assert.ok(plan.entries.filter((entry) => entry.sourceKey === null).every((entry) => entry.blockers.includes('invalid-or-traversal-key')));
 });
 
-test('media planner blocks flattened target collisions and namespace ownership mismatch', () => {
+test('media planner preserves known tenant paths and blocks unknown nested families and namespace ownership mismatch', () => {
   const plan = planMediaTransfer({ references: [
     { key: 'first/logo.png', tenantId: 'org-a', access: 'public' },
     { key: 'second/logo.png', tenantId: 'org-a', access: 'public' },
     { key: 'creative-studio/org-b/assets/private.png', tenantId: 'org-a', access: 'private' },
+    { key: 'org-a/catalog/products/logo.png', tenantId: 'org-a', access: 'public' },
   ] });
-  assert.ok(plan.entries.filter((entry) => entry.targetKey === 'tenants/org-a/uploads/logo.png').every((entry) => entry.blockers.includes('target-key-collision')));
+  const unsupported = plan.entries.filter((entry) => entry.sourceKey?.includes('/logo.png') && !entry.sourceKey.startsWith('org-a/'));
+  assert.ok(unsupported.every((entry) => entry.targetKey === null && entry.blockers.includes('unsupported-source-key-family')));
+  assert.equal(plan.entries.find((entry) => entry.sourceKey === 'org-a/catalog/products/logo.png').targetKey, 'tenants/org-a/uploads/catalog/products/logo.png');
   const wrongOwner = plan.entries.find((entry) => entry.sourceKey?.startsWith('creative-studio/'));
   assert.equal(wrongOwner.targetKey, null);
   assert.ok(wrongOwner.blockers.includes('target-namespace-ownership-mismatch'));
+});
+
+test('TOC CLI writes a reviewed filtered TOC exclusively and reports hashes plus excluded IDs', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'runflare-toc-'));
+  try {
+    const input = join(dir, 'source.toc'); const output = join(dir, 'filtered.toc');
+    const toc = ['; archive header', '1; 0 0 EXTENSION - pg_session_jwt', '2; 0 0 COMMENT - EXTENSION pg_session_jwt', '3; 0 0 FUNCTION pgrst pre_config()'].join('\n') + '\n';
+    await writeFile(input, toc);
+    const digest = createHash('sha256').update(toc).digest('hex');
+    const args = ['scripts/migration/runflare/plan.mjs', '--filter-pg-session-jwt-toc', '--input', input, '--output', output, '--expected-sha256', digest, '--target-extension-absent', '--reviewed'];
+    const result = spawnSync(process.execPath, args, { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    const summary = JSON.parse(result.stdout);
+    assert.deepEqual(summary.excludedTocIds, ['1', '2']);
+    assert.equal(summary.sourceSha256, digest);
+    assert.equal(summary.created, true);
+    assert.match(await readFile(output, 'utf8'), /FUNCTION pgrst pre_config/);
+    const overwrite = spawnSync(process.execPath, args, { encoding: 'utf8' });
+    assert.notEqual(overwrite.status, 0);
+    assert.match(overwrite.stderr, /EEXIST/);
+  } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
 test('CLI requires dry-run, outputs plan only, and refuses bad target without executing commands', () => {

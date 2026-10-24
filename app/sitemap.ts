@@ -125,7 +125,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ]);
 
     for (const organization of organizations) {
-      entries.push(...localizedEntries((locale) => buildOrganizationRootPath({ locale, organizationSlug: organization.slug }), organization.updatedAt));
+      // Active primary-domain roots are published by that tenant host's
+      // sitemap. Keep the platform sitemap from advertising a duplicate root.
+      if (organization.domains.length === 0) {
+        entries.push(...localizedEntries((locale) => buildOrganizationRootPath({ locale, organizationSlug: organization.slug }), organization.updatedAt));
+      }
 
       if (hasOrganizationCapability({ legacyType: organization.type, capabilitiesInitializedAt: organization.capabilitiesInitializedAt, capabilities: organization.capabilities }, "SHOP")) {
         // Shops with active primary custom domains publish their public SEO

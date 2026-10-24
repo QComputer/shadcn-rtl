@@ -16,6 +16,7 @@ import {
   isPlatformHost,
   normalizeDomainHost,
   parseShopPlatformPath,
+  parseOrganizationRootPlatformPath,
   parseLegacyPlatformCapabilityPath,
   splitLocalePrefix,
   isSeoIndexableShopSubPath,
@@ -190,6 +191,23 @@ async function resolvePrimaryDomainForShop(
 
   const data = (await response.json().catch(() => null)) as { domain?: string } | null;
   return data?.domain || null;
+}
+
+async function resolvePrimaryDomainForOrganizationRoot(request: NextRequest, slug: string): Promise<string | null> {
+  const url = new URL(appPath("/api/internal/organization-primary-domain"), request.url);
+  url.searchParams.set("slug", slug);
+  const secret = process.env.CUSTOM_DOMAIN_RESOLVER_SECRET || process.env.INTERNAL_API_SECRET || "";
+  const response = await fetch(url, {
+    headers: secret ? { "x-internal-secret": secret } : undefined,
+    cache: "no-store",
+  });
+  if (!response.ok) return null;
+  const result = await response.json() as { domain?: string; slug?: string };
+  const domain = result.domain;
+  // Do not trust request headers, arbitrary URLs or mismatched resolver results.
+  if (result.slug !== slug || !domain || !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i.test(domain)
+    || isPlatformHost(domain) || /^\d+(?:\.\d+){3}$/.test(domain)) return null;
+  return domain;
 }
 
 function buildTenantRewriteHeaders(
@@ -575,6 +593,21 @@ export async function proxy(request: NextRequest) {
     const notConfiguredUrl = request.nextUrl.clone();
     notConfiguredUrl.pathname = `/${defaultLocale}/domain-not-configured`;
     return withSecurityHeaders(NextResponse.rewrite(notConfiguredUrl));
+  }
+
+  const organizationRoot = isPlatformHost(normalizedHost) ? parseOrganizationRootPlatformPath(pathname) : null;
+  if (organizationRoot) {
+    const primaryDomain = await resolvePrimaryDomainForOrganizationRoot(request, organizationRoot.slug);
+    if (primaryDomain) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.protocol = "https:";
+      redirectUrl.host = primaryDomain;
+      redirectUrl.port = "";
+      redirectUrl.pathname = buildOrganizationRootPath({
+        locale: organizationRoot.locale, organizationSlug: organizationRoot.slug, isCustomDomain: true,
+      });
+      return withSecurityHeaders(NextResponse.redirect(redirectUrl, 308));
+    }
   }
 
   const legacyPlatformCapabilityPath = parseLegacyPlatformCapabilityPath(pathname);

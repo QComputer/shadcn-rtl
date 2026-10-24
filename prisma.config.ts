@@ -3,6 +3,9 @@
 // npm install --save-dev prisma dotenv
 import "dotenv/config";
 import { defineConfig, env } from "prisma/config";
+import { applyPrismaPostgresEnvironment } from "./lib/database-runtime-config";
+
+applyPrismaPostgresEnvironment(process.env);
 
 export default defineConfig({
   schema: "prisma/schema.prisma",

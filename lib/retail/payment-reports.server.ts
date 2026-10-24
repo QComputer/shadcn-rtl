@@ -73,11 +73,11 @@ export async function submitBankReceiptReport(input: {
   // covers changes that happen while storage is in progress.
   const order = await customerOrder(input.organizationSlug, input.orderNumber, input.customerId);
   if (order.paymentMethod !== "BANK_TRANSFER" || order.paymentStatus !== "PENDING") throw new ApiError(409, "Bank transfer reporting is unavailable.");
-  const receiptKey = await storeRetailReceipt(input.buffer, input.mimeType);
+  const receiptKey = await storeRetailReceipt(input.buffer, input.mimeType, order.organization.id);
   try {
     return await submitBankReport({ ...input, kind: "BANK_RECEIPT", receiptKey });
   } catch (error) {
-    try { await removeRetailReceipt(receiptKey); }
+    try { await removeRetailReceipt(receiptKey, order.organization.id); }
     catch (cleanupError) { console.error("[retail-payment] receipt compensation failed", cleanupError); }
     throw error;
   }

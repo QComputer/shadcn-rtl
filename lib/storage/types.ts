@@ -1,4 +1,4 @@
-export type ApplicationStorageProvider = "vercel-blob" | "local-test";
+export type ApplicationStorageProvider = "vercel-blob" | "persistent-disk" | "local-test";
 
 export type ApplicationStorageAccess = "public" | "private";
 

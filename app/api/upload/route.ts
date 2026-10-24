@@ -43,7 +43,8 @@ export async function POST(req: NextRequest) {
     validateImageBuffer(buffer, file.type, file.size);
 
     const filename = createStoredImageFilename(file.type, purpose);
-    const result = await writeStoredImage(filename, buffer, access);
+    if (access !== "PUBLIC" && access !== "PRIVATE") throw new ApiError(400, "Invalid media access policy");
+    const result = await writeStoredImage(filename, buffer, access, organizationId);
 
     const image = await prisma.image.create({
       data: {

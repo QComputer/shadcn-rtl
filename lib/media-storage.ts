@@ -2,6 +2,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { ApiError } from "@/lib/api-guards";
 import { uploadToBlob, deleteFromBlob } from "@/lib/blob-storage";
+import { removeTenantDiskImage, storeTenantDiskImage, usesPersistentMedia } from "@/lib/storage/tenant-image-storage.server";
 
 export const MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024;
 
@@ -82,8 +83,13 @@ function normalizeImageContentType(contentType: string) {
   return contentType.split(";")[0]?.trim().toLowerCase() || "application/octet-stream";
 }
 
-export async function writeStoredImage(filename: string, buffer: Buffer, access: "PUBLIC" | "PRIVATE" = "PRIVATE") {
+export async function writeStoredImage(filename: string, buffer: Buffer, access: "PUBLIC" | "PRIVATE" = "PRIVATE", organizationId?: string | null) {
   const pathname = getBlobPathname(filename);
+  if (usesPersistentMedia()) {
+    const stored = await storeTenantDiskImage({ organizationId, filename: pathname, buffer,
+      mimeType: getMimeTypeFromFilename(pathname), access: access === "PUBLIC" ? "public" : "private" });
+    return { pathname, url: stored.url };
+  }
   const blob = await uploadToBlob(pathname, buffer, getMimeTypeFromFilename(filename), access);
   return {
     pathname,
@@ -119,12 +125,16 @@ export async function copyRemoteImageToBlob(
   return writeStoredImage(filename, buffer, "PUBLIC");
 }
 
-export async function deleteStoredImage(filename?: string | null) {
+export async function deleteStoredImage(filename?: string | null, organizationId?: string | null) {
   if (!filename) return;
   const pathname = getBlobPathname(path.basename(filename));
+  if (usesPersistentMedia()) {
+    await removeTenantDiskImage(organizationId, pathname);
+    return;
+  }
   try {
     await deleteFromBlob(pathname);
-  } catch (error: any) {
-    if (error?.code !== "ENOENT") throw error;
+  } catch (error: unknown) {
+    if (!(error instanceof Error) || (error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
 }

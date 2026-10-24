@@ -1,3 +1,5 @@
+import { resolveDatabaseRuntimeConfiguration } from "./database-runtime-config";
+
 export type RuntimeEnvIssueSeverity = "error" | "warning";
 
 export type RuntimeEnvIssue = {
@@ -12,6 +14,7 @@ export type RuntimeEnvValidation = {
   summary: {
     nodeEnv: string;
     hasDatabaseUrl: boolean;
+    hasDatabaseConfiguration: boolean;
     hasNextAuthSecret: boolean;
     publicAppUrlConfigured: boolean;
     deployedAppUrlConfigured: boolean;
@@ -64,7 +67,22 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
   const isProduction = nodeEnv === "production";
   const issues: RuntimeEnvIssue[] = [];
 
-  if (!hasValue(process.env.DATABASE_URL)) {
+  const hasDatabaseUrl = hasValue(process.env.DATABASE_URL);
+  const explicitPostgres = process.env.DATABASE_RUNTIME_ADAPTER?.trim() === "postgresql";
+  let hasDatabaseConfiguration = hasDatabaseUrl;
+  if (explicitPostgres) {
+    try {
+      resolveDatabaseRuntimeConfiguration(process.env.DATABASE_URL, process.env);
+      hasDatabaseConfiguration = true;
+    } catch (error) {
+      hasDatabaseConfiguration = false;
+      issues.push({
+        name: "DATABASE_RUNTIME_CONFIGURATION",
+        severity: "error",
+        message: error instanceof Error ? error.message : "Invalid PostgreSQL environment configuration.",
+      });
+    }
+  } else if (!hasDatabaseUrl) {
     issues.push({
       name: "DATABASE_URL",
       severity: "error",
@@ -374,7 +392,8 @@ export function validateRuntimeEnvironment(): RuntimeEnvValidation {
     issues,
     summary: {
       nodeEnv,
-      hasDatabaseUrl: hasValue(process.env.DATABASE_URL),
+      hasDatabaseUrl,
+      hasDatabaseConfiguration,
       hasNextAuthSecret: hasValue(process.env.NEXTAUTH_SECRET),
       publicAppUrlConfigured: isProbablyUrl(process.env.NEXT_PUBLIC_APP_URL),
       deployedAppUrlConfigured: isProbablyUrl(process.env.NEXT_PUBLIC_DEPLOYED_APP_URL),

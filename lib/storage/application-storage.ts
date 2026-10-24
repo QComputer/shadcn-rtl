@@ -58,6 +58,10 @@ export async function getApplicationStorageAdapter(): Promise<ApplicationStorage
     const { createVercelBlobApplicationStorage } = await import("@/lib/storage/vercel-blob-storage");
     return createVercelBlobApplicationStorage();
   }
+  if (adapter === "persistent-disk") {
+    const { createPersistentDiskApplicationStorage } = await import("@/lib/storage/persistent-disk-storage");
+    return createPersistentDiskApplicationStorage();
+  }
   throw new Error("Unsupported application storage adapter");
 }
 

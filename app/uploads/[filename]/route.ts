@@ -5,6 +5,7 @@ import { getFromBlob } from "@/lib/blob-storage";
 import { prisma } from "@/lib/db";
 import fs from "fs/promises";
 import path from "path";
+import { readTenantDiskImage, usesPersistentMedia } from "@/lib/storage/tenant-image-storage.server";
 
 export const runtime = "nodejs";
 
@@ -40,11 +41,20 @@ export async function GET(
         filename: pathname,
         access: "PUBLIC",
       },
-      select: { id: true, url: true },
+      select: { id: true, url: true, organizationId: true },
     });
 
     if (!image) {
       return new NextResponse("File not found", { status: 404 });
+    }
+
+    if (usesPersistentMedia()) {
+      const asset = await readTenantDiskImage(image.organizationId, pathname);
+      if (!asset || asset.metadata.access !== "public") return new NextResponse("File not found", { status: 404 });
+      return new NextResponse(new Uint8Array(asset.buffer), { headers: {
+        "Content-Type": asset.metadata.mimeType, "Cache-Control": "public, max-age=86400, immutable",
+        "X-Content-Type-Options": "nosniff",
+      } });
     }
 
     // If image has a blob URL, redirect to it
@@ -90,8 +100,8 @@ export async function GET(
     }
 
     return new NextResponse("File not found", { status: 404 });
-  } catch (error: any) {
-    if (error?.code === "ENOENT" || error?.message === "Blob not found") {
+  } catch (error: unknown) {
+    if (error instanceof Error && ((error as NodeJS.ErrnoException).code === "ENOENT" || error.message === "Blob not found")) {
       return new NextResponse("File not found", { status: 404 });
     }
 

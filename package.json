@@ -340,7 +340,7 @@
     "leaflet": "^1.9.4",
     "lucide-react": "^0.563.0",
     "mime": "^4.1.0",
-    "next": "^16.1.6",
+    "next": "16.2.7",
     "next-auth": "^5.0.0-beta.30",
     "next-sitemap": "^4.2.3",
     "qrcode": "^1.5.4",
@@ -369,7 +369,7 @@
     "@types/ws": "^8.18.1",
     "dotenv": "^17.4.2",
     "eslint": "^9.39.4",
-    "eslint-config-next": "^16.1.6",
+    "eslint-config-next": "16.2.7",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "playwright": "^1.61.1",
@@ -380,5 +380,6 @@
     "typescript": "^5"
   },
   "buildCacheBuster": "tailwind-postcss-2026-05-20-1831",
-  "packageManager": "pnpm@10.15.0"
+  "packageManager": "pnpm@10.15.0",
+  "engines": { "node": "24.x" }
 }

@@ -1,7 +1,9 @@
 import { neonConfig } from "@neondatabase/serverless";
 import { PrismaNeon } from "@prisma/adapter-neon";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 import ws from "ws";
+import { resolveDatabaseRuntimeConfiguration } from "./database-runtime-config";
 
 const globalForPrisma = globalThis as unknown as {
   bazarBazPrisma: PrismaClient | undefined;
@@ -36,6 +38,19 @@ function shouldUseHermeticLocalRuntime(databaseUrl: string) {
 
 function createPrismaClient() {
   const databaseUrl = getRuntimeDatabaseUrl();
+  const configuration = resolveDatabaseRuntimeConfiguration(databaseUrl, process.env);
+
+  if (configuration.adapter === "postgresql") {
+    return new PrismaClient({
+      adapter: new PrismaPg({
+        connectionString: configuration.connectionString,
+        max: configuration.max,
+        connectionTimeoutMillis: configuration.connectionTimeoutMillis,
+        idleTimeoutMillis: configuration.idleTimeoutMillis,
+      }),
+      log: ["error"],
+    });
+  }
 
   if (shouldUseHermeticLocalRuntime(databaseUrl)) {
     return new PrismaClient({

@@ -10,7 +10,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const { context, session } = await requireRetailMerchantContext();
     const { id } = await params;
     const key = await getRetailReceiptForMerchant(context.organizationId, id);
-    const { buffer, contentType } = await readRetailReceipt(key);
+    const { buffer, contentType } = await readRetailReceipt(key, context.organizationId);
     await prisma.auditLog.create({ data: { action: "CREATE", entityType: "RetailPaymentReceiptAccess",
       entityId: id, description: "Merchant accessed private retail receipt", userId: session.user.id,
       organizationId: context.organizationId } });

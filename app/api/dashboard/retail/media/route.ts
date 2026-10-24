@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     validateImageBuffer(buffer, file.type, file.size);
     const filename = createStoredImageFilename(file.type, "retail-product");
-    const stored = await writeStoredImage(filename, buffer, "PUBLIC");
+    const stored = await writeStoredImage(filename, buffer, "PUBLIC", context.organizationId);
     const image = await prisma.image.create({ data: {
       url: stored.url,
       filename: stored.pathname,

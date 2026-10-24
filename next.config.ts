@@ -17,6 +17,11 @@ function configuredDevelopmentHost() {
 }
 
 const nextConfig: NextConfig = {
+  // RunFlare prebuild requires a successful independent exact-SHA CI typecheck.
+  // Vercel and ordinary builds always retain Next's built-in TypeScript check.
+  typescript: {
+    ignoreBuildErrors: process.env.RUNFLARE_SKIP_DUPLICATE_TYPECHECK === "1" && !process.env.VERCEL,
+  },
   basePath: appBasePath || undefined,
   env: { NEXT_PUBLIC_APP_BASE_PATH: appBasePath },
   allowedDevOrigins: [

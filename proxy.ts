@@ -16,6 +16,7 @@ import {
   isPlatformHost,
   normalizeDomainHost,
   parseShopPlatformPath,
+  parseOrganizationRootPlatformPath,
   parseLegacyPlatformCapabilityPath,
   splitLocalePrefix,
   isSeoIndexableShopSubPath,
@@ -29,6 +30,7 @@ import {
 } from "@/lib/custom-domain-routing";
 import { getPublicFooterContextForPathname, type PublicFooterContext } from "@/lib/public-footer-context";
 import { appCookiePath, appPath, resolveAppBasePath } from "@/lib/app-base-path";
+import { getActivePrimaryOrganizationDomain } from "@/lib/domains/primary-domain.server";
 import {
   extractProxyCredential,
   resolveTrustedForwardedAppTenant,
@@ -575,6 +577,21 @@ export async function proxy(request: NextRequest) {
     const notConfiguredUrl = request.nextUrl.clone();
     notConfiguredUrl.pathname = `/${defaultLocale}/domain-not-configured`;
     return withSecurityHeaders(NextResponse.rewrite(notConfiguredUrl));
+  }
+
+  const organizationRoot = isPlatformHost(normalizedHost) ? parseOrganizationRootPlatformPath(pathname) : null;
+  if (organizationRoot) {
+    const primaryDomain = await getActivePrimaryOrganizationDomain(organizationRoot.slug);
+    if (primaryDomain) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.protocol = "https:";
+      redirectUrl.host = primaryDomain;
+      redirectUrl.port = "";
+      redirectUrl.pathname = buildOrganizationRootPath({
+        locale: organizationRoot.locale, organizationSlug: organizationRoot.slug, isCustomDomain: true,
+      });
+      return withSecurityHeaders(NextResponse.redirect(redirectUrl, 308));
+    }
   }
 
   const legacyPlatformCapabilityPath = parseLegacyPlatformCapabilityPath(pathname);

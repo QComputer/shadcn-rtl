@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { isReservedOrganizationSlug } from "@/lib/organization-slugs";
 
 export const customDomainLocales = ["fa", "en", "ar"] as const;
 export type CustomDomainLocale = (typeof customDomainLocales)[number];
@@ -264,11 +265,17 @@ export function buildOrganizationRootPath(input: {
   organizationSlug: string;
   isCustomDomain?: boolean;
 }) {
-  if (input.isCustomDomain) return "/";
   const locale = isSupportedCustomDomainLocale(input.locale)
     ? input.locale
     : defaultCustomDomainLocale;
+  if (input.isCustomDomain) return locale === defaultCustomDomainLocale ? "/" : `/${locale}`;
   return `/${locale}/${input.organizationSlug}`;
+}
+
+export function parseOrganizationRootPlatformPath(pathname: string): { locale: CustomDomainLocale; slug: string } | null {
+  const match = pathname.match(/^\/(fa|en|ar)\/([a-z0-9][a-z0-9_-]*)\/?$/i);
+  if (!match || !isSupportedCustomDomainLocale(match[1]) || isReservedOrganizationSlug(match[2])) return null;
+  return { locale: match[1], slug: match[2] };
 }
 
 /**

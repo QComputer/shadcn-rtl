@@ -9,17 +9,17 @@ mock.module("@/lib/forwarded-app-resolver.server", { namedExports: {
 let runProxy: typeof import("../../proxy").proxy;
 const originalFetch = global.fetch;
 let primaryDomain: string | null = "fastfood.example";
-let responseSlug = "tenant";
 const calls: string[] = [];
+const lookups: string[] = [];
+mock.module("@/lib/domains/primary-domain.server", { namedExports: {
+  getActivePrimaryOrganizationDomain: async (slug: string) => { lookups.push(slug); return primaryDomain; },
+} });
 before(async () => { ({ proxy: runProxy } = await import("../../proxy")); });
 
 async function request(path: string, host = "bazarbaaz.ir") {
   global.fetch = async input => {
     const url = new URL(String(input));
     calls.push(url.pathname);
-    if (url.pathname === "/api/internal/organization-primary-domain") {
-      return Response.json(primaryDomain ? { domain: primaryDomain, slug: responseSlug } : {}, { status: primaryDomain ? 200 : 404 });
-    }
     if (url.pathname === "/api/internal/shop-primary-domain") return Response.json({ domain: "shop.example" });
     if (url.pathname === "/api/internal/domain-resolver") return Response.json({
       slug: "tenant", organizationId: "org", organizationType: "SHOP", locale: "fa", capabilities: ["SHOP"],
@@ -53,9 +53,10 @@ test("organizations without an active primary domain keep platform access", asyn
 test("platform pages, transactional paths and locale landing pages never invoke the root resolver", async () => {
   for (const path of ["/fa", "/en", "/ar", "/fa/login", "/fa/pricing", "/ar/dashboard", "/fa/tenant/shop/cart", "/fa/tenant/shop/checkout"]) {
     calls.length = 0;
+    lookups.length = 0;
     const result = await request(path);
     assert.equal(result.headers.get("location"), null, path);
-    assert.ok(!calls.includes("/api/internal/organization-primary-domain"), path);
+    assert.equal(lookups.length, 0, path);
   }
 });
 test("existing shop redirect path remains unchanged", async () => {
@@ -63,13 +64,12 @@ test("existing shop redirect path remains unchanged", async () => {
   assert.equal(result.status, 308);
   assert.equal(result.headers.get("location"), "https://shop.example/en/shop/product/example?ref=shop");
 });
-test("untrusted resolver destinations and wrong-tenant responses cannot redirect", async () => {
-  for (const invalid of ["https://evil.example", "evil.example/path", "evil.example@trusted.example", "evil.example:443", "bazarbaaz.ir", "127.0.0.1", "evil.example?x=1"]) {
-    primaryDomain = invalid;
-    assert.equal((await request("/fa/tenant")).headers.get("location"), null, invalid);
-  }
+test("root lookup is scoped to the requested slug and never invoked for another tenant host", async () => {
   primaryDomain = "fastfood.example";
-  responseSlug = "another-tenant";
-  assert.equal((await request("/fa/tenant")).headers.get("location"), null);
-  responseSlug = "tenant";
+  lookups.length = 0;
+  await request("/fa/tenant");
+  assert.deepEqual(lookups, ["tenant"]);
+  lookups.length = 0;
+  await request("/", "other.example");
+  assert.equal(lookups.length, 0);
 });

@@ -10,6 +10,7 @@ let runProxy: typeof import("../../proxy").proxy;
 const originalFetch = global.fetch;
 let primaryDomain: string | null = "fastfood.example";
 const calls: string[] = [];
+const resolverOrigins: string[] = [];
 const lookups: string[] = [];
 mock.module("@/lib/domains/primary-domain.server", { namedExports: {
   getActivePrimaryOrganizationDomain: async (slug: string) => { lookups.push(slug); return primaryDomain; },
@@ -20,6 +21,7 @@ async function request(path: string, host = "bazarbaaz.ir") {
   global.fetch = async input => {
     const url = new URL(String(input));
     calls.push(url.pathname);
+    resolverOrigins.push(url.origin);
     if (url.pathname === "/api/internal/shop-primary-domain") return Response.json({ domain: "shop.example" });
     if (url.pathname === "/api/internal/domain-resolver") return Response.json({
       slug: "tenant", organizationId: "org", organizationType: "SHOP", locale: "fa", capabilities: ["SHOP"],
@@ -43,6 +45,30 @@ test("custom tenant roots load through the existing rewrite without redirect loo
     const result = await request(path, "www.fastfood.example");
     assert.equal(result.headers.get("location"), null);
     assert.ok(result.headers.get("x-middleware-rewrite")?.includes("/tenant"));
+  }
+});
+test("custom-domain resolver calls use the local HTTP app origin, not the incoming HTTPS host", async () => {
+  const originalPort = process.env.PORT;
+  process.env.PORT = "43127";
+  resolverOrigins.length = 0;
+  try {
+    await request("/", "www.fastfood.example");
+    assert.deepEqual(resolverOrigins, ["http://127.0.0.1:43127"]);
+  } finally {
+    if (originalPort === undefined) delete process.env.PORT;
+    else process.env.PORT = originalPort;
+  }
+});
+test("primary-shop resolver calls use the configured local HTTP app port", async () => {
+  const originalPort = process.env.PORT;
+  process.env.PORT = "43128";
+  resolverOrigins.length = 0;
+  try {
+    await request("/en/tenant/shop/product/example?ref=shop");
+    assert.deepEqual(resolverOrigins, ["http://127.0.0.1:43128"]);
+  } finally {
+    if (originalPort === undefined) delete process.env.PORT;
+    else process.env.PORT = originalPort;
   }
 });
 test("organizations without an active primary domain keep platform access", async () => {

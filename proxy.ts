@@ -152,11 +152,24 @@ export function isRTL(locale: Locale): boolean {
 }
 
 
+function internalApiUrl(pathname: string): URL | null {
+  // Middleware must call the local Next server directly. Building this URL from
+  // request.url sends custom-domain traffic back through the public TLS edge,
+  // which may terminate HTTPS before forwarding plain HTTP to this service.
+  const rawPort = process.env.PORT?.trim() || "3000";
+  if (!/^\d+$/.test(rawPort)) return null;
+
+  const port = Number(rawPort);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) return null;
+
+  return new URL(appPath(pathname), `http://127.0.0.1:${port}`);
+}
+
 async function resolveTenantForCustomDomain(
-  request: NextRequest,
   normalizedHost: string,
 ): Promise<ResolvedCustomDomain | null> {
-  const resolverUrl = new URL(appPath("/api/internal/domain-resolver"), request.url);
+  const resolverUrl = internalApiUrl("/api/internal/domain-resolver");
+  if (!resolverUrl) return null;
   resolverUrl.searchParams.set("host", normalizedHost);
 
   const resolverSecret = process.env.CUSTOM_DOMAIN_RESOLVER_SECRET || process.env.INTERNAL_API_SECRET || "";
@@ -175,10 +188,10 @@ async function resolveTenantForCustomDomain(
 }
 
 async function resolvePrimaryDomainForShop(
-  request: NextRequest,
   slug: string,
 ): Promise<string | null> {
-  const resolverUrl = new URL(appPath("/api/internal/shop-primary-domain"), request.url);
+  const resolverUrl = internalApiUrl("/api/internal/shop-primary-domain");
+  if (!resolverUrl) return null;
   resolverUrl.searchParams.set("slug", slug);
 
   const resolverSecret = process.env.CUSTOM_DOMAIN_RESOLVER_SECRET || process.env.INTERNAL_API_SECRET || "";
@@ -344,7 +357,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!isPlatformHost(normalizedHost) && !isCustomDomainBypassPath(pathname)) {
-    const tenant = await resolveTenantForCustomDomain(request, normalizedHost);
+    const tenant = await resolveTenantForCustomDomain(normalizedHost);
 
     if (!tenant) {
       const notConfiguredUrl = request.nextUrl.clone();
@@ -616,7 +629,7 @@ export async function proxy(request: NextRequest) {
     isSeoIndexableShopSubPath(platformShopPath.subPath) &&
     request.headers.get("x-bazar-custom-domain") !== "true"
   ) {
-    const primaryDomain = await resolvePrimaryDomainForShop(request, platformShopPath.slug);
+    const primaryDomain = await resolvePrimaryDomainForShop(platformShopPath.slug);
 
     if (primaryDomain) {
       const redirectUrl = request.nextUrl.clone();

@@ -2,6 +2,9 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { signOut } from "next-auth/react"
+import { appPath } from "@/lib/app-base-path"
+import { useState } from "react"
 import {
   Activity,
   Bell,
@@ -31,6 +34,7 @@ import {
   Rocket,
   Star,
   BriefcaseBusiness,
+  LogOut,
 } from "lucide-react"
 import { BazarbaazLogo } from "@/components/brand/BazarbaazLogo"
 import { Button } from "@/components/ui/button"
@@ -133,6 +137,9 @@ const roleAwareNavigationCopy = {
     sectionLabel: "ناوبری داشبورد",
     openMenu: "باز کردن منوی داشبورد",
     closeMenu: "بستن منوی داشبورد",
+    signOut: "خروج از حساب",
+    signingOut: "در حال خروج…",
+    signOutError: "خروج انجام نشد. دوباره تلاش کنید.",
     signedInAs: "سطح دسترسی",
     groups: {
       operations: "عملیات",
@@ -192,6 +199,9 @@ const roleAwareNavigationCopy = {
     sectionLabel: "Dashboard navigation",
     openMenu: "Open dashboard menu",
     closeMenu: "Close dashboard menu",
+    signOut: "Sign out",
+    signingOut: "Signing out…",
+    signOutError: "Could not sign out. Please try again.",
     signedInAs: "Access level",
     groups: {
       operations: "Operations",
@@ -251,6 +261,9 @@ const roleAwareNavigationCopy = {
     sectionLabel: "تنقل لوحة التحكم",
     openMenu: "فتح قائمة لوحة التحكم",
     closeMenu: "إغلاق قائمة لوحة التحكم",
+    signOut: "تسجيل الخروج",
+    signingOut: "جارٍ تسجيل الخروج…",
+    signOutError: "تعذر تسجيل الخروج. حاول مرة أخرى.",
     signedInAs: "مستوى الوصول",
     groups: {
       operations: "العمليات",
@@ -310,6 +323,9 @@ const roleAwareNavigationCopy = {
   sectionLabel: string
   openMenu: string
   closeMenu: string
+  signOut: string
+  signingOut: string
+  signOutError: string
   signedInAs: string
   groups: Record<"operations" | "catalog" | "teamAndSettings" | "platformAdmin", string>
   items: Record<DashboardNavigationKey, string>
@@ -354,6 +370,21 @@ function SidebarContent({
   const pathname = usePathname()
   const copy = getNavigationCopy(locale)
   const visibleGroups = getVisibleNavGroups(role, capabilities)
+  const [isSigningOut, setIsSigningOut] = useState(false)
+  const [signOutError, setSignOutError] = useState(false)
+
+  const handleSignOut = async () => {
+    if (isSigningOut) return
+    setIsSigningOut(true)
+    setSignOutError(false)
+    try {
+      await signOut({ callbackUrl: appPath(`/${locale}`) })
+      onNavigate?.()
+    } catch {
+      setSignOutError(true)
+      setIsSigningOut(false)
+    }
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background text-foreground" dir={locale === "fa" || locale === "ar" ? "rtl" : "ltr"}>
@@ -406,6 +437,13 @@ function SidebarContent({
           ))}
         </nav>
       </ScrollArea>
+      <div className="border-t px-3 py-3">
+        <Button type="button" variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive" onClick={handleSignOut} disabled={isSigningOut}>
+          <LogOut className="me-3 h-4 w-4" aria-hidden="true" />
+          <span>{isSigningOut ? copy.signingOut : copy.signOut}</span>
+        </Button>
+        {signOutError && <p role="alert" className="px-3 pt-2 text-xs text-destructive">{copy.signOutError}</p>}
+      </div>
     </div>
   )
 }

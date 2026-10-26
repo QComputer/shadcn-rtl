@@ -1,58 +1,40 @@
-import { ArrowDown, Building2, DatabaseZap, LineChart, Sparkles } from "lucide-react";
+"use client";
 
-const transformationSteps = [
-  { label: "کسب‌وکار", detail: "منو، خدمات، مشتری", icon: Building2 },
-  { label: "ساختار داده", detail: "گراف، CRM، SEO", icon: DatabaseZap },
-  { label: "رشد دیجیتال", detail: "حضور عمومی و تبدیل", icon: LineChart },
-];
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import { getBusinessShowcaseSamples } from "@/lib/public-experience/business-showcase";
 
-export function HomepageHeroVisual() {
+export function HomepageHeroVisual({ locale }: { locale: string }) {
+  const samples = getBusinessShowcaseSamples(locale === "en" || locale === "ar" ? locale : "fa");
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [reduced, setReduced] = useState(true);
+  const labels = locale === "en" ? { title: "Real businesses on Bazarbaaz", pause: "Pause slideshow", play: "Play slideshow", visit: "View business", slide: "Choose example" } : locale === "ar" ? { title: "أعمال حقيقية على بازارباز", pause: "إيقاف العرض", play: "تشغيل العرض", visit: "زيارة النشاط", slide: "اختيار المثال" } : { title: "کسب‌وکارهای واقعی در بازارباز", pause: "توقف نمایش خودکار", play: "پخش خودکار", visit: "مشاهده کسب‌وکار", slide: "انتخاب نمونه" };
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduced(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    if (paused || hovered || focused || reduced) return;
+    const timer = window.setInterval(() => {
+      if (!document.hidden) setActive(value => (value + 1) % 3);
+    }, 6000);
+    return () => window.clearInterval(timer);
+  }, [paused, hovered, focused, reduced]);
+  const sample = samples[active];
   return (
-    <div className="relative mx-auto w-full max-w-xl" aria-label="مسیر تبدیل کسب‌وکار سنتی به حضور دیجیتال">
-      <div className="grid gap-3 sm:grid-cols-3">
-        {transformationSteps.map((step, index) => {
-          const Icon = step.icon;
-          return (
-            <div
-              key={step.label}
-              className="relative overflow-hidden rounded-lg border bg-card p-4 shadow-sm motion-safe:animate-[bazar-rise_900ms_ease-out_both]"
-              style={{ animationDelay: `${index * 120}ms` }}
-            >
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <Icon className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <div>
-                  <p className="text-sm font-bold">{step.label}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{step.detail}</p>
-                </div>
-              </div>
-              {index < transformationSteps.length - 1 ? (
-                <ArrowDown className="absolute end-4 top-4 hidden h-4 w-4 rotate-90 text-muted-foreground sm:block" aria-hidden="true" />
-              ) : null}
-            </div>
-          );
-        })}
+    <section aria-label={labels.title} aria-roledescription="carousel" className="mx-auto w-full max-w-2xl overflow-hidden rounded-2xl border bg-card shadow-2xl" onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} onFocusCapture={() => setFocused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false); }}>
+      <div className="flex items-center justify-between border-b bg-muted/50 px-4 py-3"><span className="text-sm font-semibold">{labels.title}</span><span aria-hidden="true" className="flex gap-1.5"><i className="h-2 w-2 rounded-full bg-primary/30" /><i className="h-2 w-2 rounded-full bg-primary/50" /><i className="h-2 w-2 rounded-full bg-primary" /></span></div>
+      <div className="relative aspect-[1100/760] overflow-hidden bg-muted">
+        {samples.map((item, index) => <div key={item.id} aria-hidden={index !== active} className={`absolute inset-0 motion-safe:transition-opacity motion-safe:duration-700 ${index === active ? "opacity-100" : "pointer-events-none opacity-0"}`}><Image src={item.image} alt={item.alt} fill priority={index === 0} sizes="(max-width: 768px) 100vw, 600px" className="object-cover" /></div>)}
       </div>
-
-      <div className="mt-4 rounded-lg border bg-background p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-bold">Bazarbaaz operating layer</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">Public site, catalog, CRM, SEO, content workflow, dry-run integrations</p>
-          </div>
-          <Sparkles className="h-5 w-5 shrink-0 text-primary motion-safe:animate-pulse" aria-hidden="true" />
-        </div>
-        <div className="mt-4 grid grid-cols-5 gap-2" aria-hidden="true">
-          {[62, 74, 48, 86, 68].map((height, index) => (
-            <span
-              key={index}
-              className="block rounded-sm bg-primary/70 motion-safe:animate-[bazar-bars_1.8s_ease-in-out_infinite]"
-              style={{ height, animationDelay: `${index * 140}ms` }}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t p-4"><a href={sample.href} className="text-sm font-bold underline underline-offset-4">{sample.name} · {labels.visit}</a><button type="button" onClick={() => setPaused(value => !value)} aria-pressed={paused} className="rounded-lg border px-3 py-2 text-xs hover:bg-accent">{paused ? labels.play : labels.pause}</button></div>
+      <div className="flex flex-wrap gap-2 px-4 pb-4" aria-label={labels.slide}>{samples.map((item, index) => <button type="button" key={item.id} onClick={() => { setActive(index); setPaused(true); }} aria-pressed={index === active} className={`rounded-full border px-3 py-2 text-xs transition ${index === active ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}>{item.name}</button>)}</div>
+    </section>
   );
 }

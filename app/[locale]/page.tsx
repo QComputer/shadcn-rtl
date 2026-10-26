@@ -1,28 +1,21 @@
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/seo/json-ld";
 import { BazarBaazHomepage } from "@/components/public-experience/bazarbaaz-homepage";
-import { getPublicDemoExperience } from "@/lib/public-experience/demo-experience.service";
-import { buildHomepageViewModel } from "@/lib/public-experience/homepage-view-model";
 import { getCanonicalUrl } from "@/lib/seo";
 
-type Locale = "fa" | "en" | "ar"
+type Locale = "fa" | "en" | "ar";
 
 function normalizeLocale(locale: string | undefined): Locale {
-  if (locale === "en" || locale === "ar" || locale === "fa") return locale
-  return "fa"
+  return locale === "en" || locale === "ar" ? locale : "fa";
 }
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
-  title: "بازارباز | از کسب‌وکار سنتی تا حضور دیجیتال هوشمند",
-  description:
-    "بازارباز تجربه عمومی، منو یا خدمات دیجیتال، CRM، SEO، محتوا و دموهای تعاملی را برای کسب‌وکارهای محلی در یک لایه عملیاتی نمایش می‌دهد.",
+  title: "بازارباز | راه‌اندازی و مدیریت آنلاین کسب‌وکار",
+  description: "صفحه کسب‌وکارت را آنلاین بساز، محصولات و خدماتت را معرفی کن و کارهای روزانه را از یک پنل مدیریت کن.",
   alternates: { canonical: getCanonicalUrl("/fa") },
   openGraph: {
-    title: "بازارباز | حضور دیجیتال هوشمند برای کسب‌وکارهای محلی",
-    description:
-      "یک تجربه investor/customer-facing برای دیدن قابلیت‌های واقعی بازارباز: صفحه کسب‌وکار، منو، CRM، SEO، محتوا و Demo Universe.",
+    title: "بازارباز | کسب‌وکارت را آنلاین راه بینداز",
+    description: "یک صفحه آنلاین برای کسب‌وکارت بساز و سفارش‌ها، خدمات و ارتباط با مشتریانت را مدیریت کن.",
     url: getCanonicalUrl("/fa"),
     siteName: "بازارباز",
     images: [{ url: getCanonicalUrl("/og-image"), width: 1200, height: 630 }],
@@ -31,37 +24,28 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "بازارباز | حضور دیجیتال هوشمند برای کسب‌وکارهای محلی",
-    description: "تجربه عمومی و دموی تعاملی بازارباز برای کسب‌وکار، مشتری و سرمایه‌گذار.",
+    title: "بازارباز | راه‌اندازی آنلاین کسب‌وکار",
+    description: "صفحه کسب‌وکارت را بساز و از یک پنل مدیریت کن.",
     images: [getCanonicalUrl("/og-image")],
   },
-}
+};
 
-export default async function HomePage({
-  params,
-}: {
-  params: Promise<{ locale: string }>
-}) {
-  const resolvedParams = await params
-  const locale = normalizeLocale(resolvedParams.locale)
-  const demoExperience = await getPublicDemoExperience()
-  const model = buildHomepageViewModel(demoExperience)
+export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale: rawLocale } = await params;
+  const locale = normalizeLocale(rawLocale);
 
   return (
     <>
-      <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@type": "SoftwareApplication",
-          name: "Bazarbaaz",
-          applicationCategory: "BusinessApplication",
-          operatingSystem: "Web",
-          url: getCanonicalUrl(`/${locale}`),
-          description: metadata.description,
-          offers: { "@type": "Offer", availability: "https://schema.org/PreOrder" },
-        }}
-      />
-      <BazarBaazHomepage model={model} locale={locale} />
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: "Bazarbaaz",
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web",
+        url: getCanonicalUrl(`/${locale}`),
+        description: metadata.description,
+      }} />
+      <BazarBaazHomepage locale={locale} />
     </>
-  )
+  );
 }

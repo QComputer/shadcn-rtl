@@ -151,6 +151,34 @@ export function getPlatformCanonicalRedirectTarget(
   return null;
 }
 
+/**
+ * Returns a fixed-origin HTTPS URL only for production requests to the
+ * canonical platform host that the trusted ingress reports as HTTP. The
+ * forwarded protocol's first value is the client-facing scheme. The request
+ * URL contributes only path and query; its host is never used as a redirect
+ * destination. Missing headers, development, and tenant/custom hosts are
+ * intentionally unchanged.
+ */
+export function getPlatformHttpToHttpsRedirectLocation(input: {
+  rawHost: string | null | undefined;
+  forwardedProto: string | null | undefined;
+  requestUrl: string | URL;
+  isProduction: boolean;
+}): string | null {
+  if (!input.isProduction) return null;
+  if (input.forwardedProto?.split(",")[0]?.trim().toLowerCase() !== "http") return null;
+  if (normalizeDomainHost(input.rawHost) !== CANONICAL_PLATFORM_HOST) return null;
+
+  const target = new URL(input.requestUrl);
+  target.protocol = "https:";
+  target.host = CANONICAL_PLATFORM_HOST;
+  target.port = "";
+  target.username = "";
+  target.password = "";
+  target.hash = "";
+  return target.toString();
+}
+
 export function isSupportedCustomDomainLocale(value: string | undefined | null): value is CustomDomainLocale {
   return customDomainLocales.includes(value as CustomDomainLocale);
 }

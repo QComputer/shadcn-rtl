@@ -8,6 +8,7 @@ import {
   buildTenantPublicPath,
   extractForwardedHost,
   getPlatformCanonicalRedirectTarget,
+  getPlatformHttpToHttpsRedirectLocation,
   CANONICAL_PLATFORM_HOST,
   getShopSubPathFromPlatformPath,
   getAppointmentSubPathFromPlatformPath,
@@ -344,6 +345,20 @@ export async function proxy(request: NextRequest) {
         return withSecurityHeaders(response);
       }
     }
+  }
+
+  // RunFlare's edge terminates TLS and forwards the browser scheme through
+  // X-Forwarded-Proto. This runs after trusted APP_PATH requests have returned
+  // through their existing tenant rewrite, so platform Host + tenant
+  // X-Forwarded-Host requests keep their established behavior.
+  const httpsRedirectLocation = getPlatformHttpToHttpsRedirectLocation({
+    rawHost: hostHeader,
+    forwardedProto: request.headers.get("x-forwarded-proto"),
+    requestUrl: request.nextUrl.toString(),
+    isProduction: process.env.NODE_ENV === "production",
+  });
+  if (httpsRedirectLocation) {
+    return withSecurityHeaders(NextResponse.redirect(httpsRedirectLocation, 308));
   }
 
   if (!isPlatformHost(normalizedHost) && pathname.startsWith("/api/auth")) {

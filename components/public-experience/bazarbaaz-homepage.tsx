@@ -5,7 +5,8 @@ import { BazarbaazLogo } from "@/components/brand/BazarbaazLogo";
 import { DashboardEntryLink } from "@/components/public-experience/dashboard-entry-link";
 import { HomepageHeroVisual } from "@/components/public-experience/homepage-hero-visual";
 import { getBusinessShowcaseSamples } from "@/lib/public-experience/business-showcase";
-import { buttonVariants } from "@/components/ui/button";
+// Keep link styling server-safe; the shared Button module is a client boundary.
+const actionClass = "inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-5 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 type Locale = "fa" | "en" | "ar";
 
@@ -93,7 +94,7 @@ export function BazarBaazHomepage({ locale }: { locale: string }) {
           </nav>
           <div className="flex shrink-0 items-center gap-2">
             <DashboardEntryLink locale={lang} />
-            <Link href={startHref} className={buttonVariants({ size: "sm", className: "rounded-lg" })}>{copy.start}<ArrowLeft className="ms-2 h-4 w-4" aria-hidden="true" /></Link>
+            <Link href={startHref} className={`${actionClass} bg-primary text-primary-foreground hover:opacity-90`}>{copy.start}<ArrowLeft className="ms-2 h-4 w-4" aria-hidden="true" /></Link>
           </div>
         </div>
         <nav aria-label={lang === "fa" ? "ناوبری اصلی" : lang === "ar" ? "التنقل الرئيسي" : "Main navigation"} className="container mx-auto flex gap-5 overflow-x-auto px-4 pb-3 text-sm font-medium text-muted-foreground md:hidden">
@@ -111,8 +112,8 @@ export function BazarBaazHomepage({ locale }: { locale: string }) {
             <h1 className="text-4xl font-black leading-[1.3] tracking-tight sm:text-5xl lg:text-6xl">{copy.title}</h1>
             <p className="mt-5 max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">{copy.intro}</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href={startHref} className={buttonVariants({ size: "lg", className: "rounded-xl px-6 shadow-lg shadow-primary/15" })}>{copy.start}<ArrowLeft className="ms-2 h-4 w-4" aria-hidden="true" /></Link>
-              <a href="#examples" className={buttonVariants({ size: "lg", variant: "outline", className: "rounded-xl bg-background/80 px-6" })}>{copy.examples}<ArrowUpLeft className="ms-2 h-4 w-4" aria-hidden="true" /></a>
+              <Link href={startHref} className={`${actionClass} bg-primary text-primary-foreground shadow-lg shadow-primary/15 hover:opacity-90`}>{copy.start}<ArrowLeft className="ms-2 h-4 w-4" aria-hidden="true" /></Link>
+              <a href="#examples" className={`${actionClass} border bg-background/80 hover:bg-accent`}>{copy.examples}<ArrowUpLeft className="ms-2 h-4 w-4" aria-hidden="true" /></a>
             </div>
             <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
               {copy.promises.map((item) => <span key={item} className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-primary" aria-hidden="true" />{item}</span>)}
@@ -145,7 +146,7 @@ export function BazarBaazHomepage({ locale }: { locale: string }) {
           <div className="container mx-auto px-4">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div><p className="text-sm font-bold text-primary">{copy.showcaseEyebrow}</p><h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">{copy.showcaseTitle}</h2></div>
-              <Link href={startHref} className={buttonVariants({ variant: "ghost", className: "rounded-lg" })}>{copy.start}<ArrowLeft className="ms-2 h-4 w-4" aria-hidden="true" /></Link>
+              <Link href={startHref} className={`${actionClass} hover:bg-accent`}>{copy.start}<ArrowLeft className="ms-2 h-4 w-4" aria-hidden="true" /></Link>
             </div>
             <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {showcaseSamples.map((sample) => (
@@ -180,7 +181,7 @@ export function BazarBaazHomepage({ locale }: { locale: string }) {
           <div className="container mx-auto overflow-hidden rounded-3xl bg-primary px-6 py-10 text-center text-primary-foreground sm:px-10 sm:py-14">
             <h2 className="text-2xl font-black sm:text-3xl">{copy.finalTitle}</h2>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-primary-foreground/80 sm:text-base">{copy.finalBody}</p>
-            <Link href={startHref} className={buttonVariants({ size: "lg", variant: "secondary", className: "mt-6 rounded-xl px-7 font-bold" })}>{copy.start}<ArrowLeft className="ms-2 h-4 w-4" aria-hidden="true" /></Link>
+            <Link href={startHref} className={`${actionClass} mt-6 bg-secondary px-7 text-secondary-foreground hover:opacity-90`}>{copy.start}<ArrowLeft className="ms-2 h-4 w-4" aria-hidden="true" /></Link>
           </div>
         </section>
       </main>

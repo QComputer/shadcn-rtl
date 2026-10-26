@@ -1,4 +1,4 @@
-import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing";
+import { buildOrganizationPublicPath, buildOrganizationRootPath } from "@/lib/custom-domain-routing";
 
 function normalizeSubPath(subPath: string) {
   if (!subPath || subPath === "/") return "/";
@@ -73,12 +73,18 @@ export function isShopCustomDomainPathname(input: {
   locale: string;
   shopSlug: string;
 }) {
+  const platformOrganizationRoot = buildOrganizationRootPath({ locale: input.locale, organizationSlug: input.shopSlug });
   const platformRoot = buildOrganizationPublicPath({
     locale: input.locale,
     organizationSlug: input.shopSlug,
     surface: "shop",
   });
-  return !(input.pathname === platformRoot || input.pathname.startsWith(`${platformRoot}/`));
+  return !(
+    input.pathname === platformOrganizationRoot ||
+    input.pathname === `${platformOrganizationRoot}/` ||
+    input.pathname === platformRoot ||
+    input.pathname.startsWith(`${platformRoot}/`)
+  );
 }
 
 export function buildShopCategoryPath(input: {

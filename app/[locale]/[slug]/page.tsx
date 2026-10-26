@@ -24,6 +24,7 @@ import { readHotelOrganizationSite } from "@/lib/hotel/organization-site-public.
 import { PublishedHotelWebsitePage } from "@/components/published-hotel-website-page";
 import { trustedHotelWebsiteHost } from "@/lib/hotel/trusted-website-host";
 import { buildHotelWebsiteMetadata } from "@/lib/hotel/website-metadata";
+import { usesRetailProductWorkspace } from "@/lib/retail/product-workspace";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -124,6 +125,7 @@ export default async function OrganizationHomePage({ params }: Props) {
       id: true,
       name: true,
       slug: true,
+      type: true,
       vertical: true,
       description: true,
       address: true,
@@ -162,9 +164,14 @@ export default async function OrganizationHomePage({ params }: Props) {
   });
 
   if (publicHome.kind === "capability" && publicHome.capability === "SHOP") {
+    const retailGoodsShop = usesRetailProductWorkspace({
+      organizationType: organization.type,
+      organizationVertical: organization.vertical,
+      organizationCapabilities: activePublicBusinessCapabilities(organization.capabilities),
+    });
     return (
       <ShopLayoutContent params={params} organizationRootPath={organizationRootPath}>
-        <ShopPage params={params} />
+        <ShopPage params={params} forcePublishedRetailCatalog={retailGoodsShop} />
       </ShopLayoutContent>
     );
   }

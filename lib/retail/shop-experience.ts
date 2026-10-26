@@ -24,3 +24,14 @@ export function hasModernRetailProductExperience(
 
   return retailCatalog.productExperience === "VARIANTS_V1";
 }
+
+export function shouldLoadPublishedRetailCatalog(input: {
+  locale: string;
+  forcePublishedCatalog?: boolean;
+  hasPresentationTheme: boolean;
+  previewOnly: boolean;
+}) {
+  return input.locale === "fa"
+    && !input.previewOnly
+    && (input.forcePublishedCatalog === true || input.hasPresentationTheme);
+}

@@ -3,27 +3,41 @@ import { prisma } from "@/lib/db";
 import { getPublicCatalogSnapshot } from "@/lib/public-catalog/service.server";
 import RetailPreview from "@/app/[locale]/retail-preview/[store]/retail-preview";
 import LegacyShopClient from "./legacy-shop-client";
-import { hasModernRetailProductExperience } from "@/lib/retail/shop-experience";
+import { hasModernRetailProductExperience, shouldLoadPublishedRetailCatalog } from "@/lib/retail/shop-experience";
 
 export const dynamic = "force-dynamic";
 type Params = { locale: string; slug: string };
 
-async function loadPublishedRetail(slug: string, locale: string) {
+async function loadPublishedRetail(slug: string, locale: string, forcePublishedCatalog = false) {
   if (locale !== "fa") return { catalog: null, modernProductExperience: false };
   const organization = await prisma.organization.findFirst({
     where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
     select: { settings: { select: { settings: true } }, branding: { select: { retailPresentationTheme: true, retailPreviewOnly: true } } },
   });
   const modernProductExperience = Boolean(organization && hasModernRetailProductExperience(organization.settings?.settings, organization.branding ?? {}));
-  // Product capability activation must not opt a tenant into a new homepage.
-  if (!organization?.branding?.retailPresentationTheme || organization.branding.retailPreviewOnly) return { catalog: null, modernProductExperience };
+  // The organization root may reuse the catalog for explicitly classified retail-goods
+  // verticals. This does not publish preview-only storefronts or change /shop defaults.
+  if (!shouldLoadPublishedRetailCatalog({
+    locale,
+    forcePublishedCatalog,
+    hasPresentationTheme: Boolean(organization?.branding?.retailPresentationTheme),
+    previewOnly: organization?.branding?.retailPreviewOnly === true,
+  })) {
+    return { catalog: null, modernProductExperience };
+  }
   try { return { catalog: await getPublicCatalogSnapshot(slug), modernProductExperience }; }
   catch (error) { if (error instanceof ApiError && error.status === 404) return { catalog: null, modernProductExperience }; throw error; }
 }
 
-export default async function ShopPage({ params }: { params: Promise<Params> }) {
+export default async function ShopPage({
+  params,
+  forcePublishedRetailCatalog = false,
+}: {
+  params: Promise<Params>;
+  forcePublishedRetailCatalog?: boolean;
+}) {
   const { locale, slug } = await params;
-  const { catalog, modernProductExperience } = await loadPublishedRetail(slug, locale);
+  const { catalog, modernProductExperience } = await loadPublishedRetail(slug, locale, forcePublishedRetailCatalog);
   if (!catalog) return <LegacyShopClient params={Promise.resolve({ locale, slug })} modernProductExperience={modernProductExperience} />;
   const storefrontPath = `/${encodeURIComponent(locale)}/${encodeURIComponent(slug)}/shop`;
   const checkoutPath = `${storefrontPath}/checkout`;

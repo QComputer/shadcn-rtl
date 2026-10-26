@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { jsonError, requireAuthSession } from "@/lib/api-guards";
+import { hasModernRetailProductExperience } from "@/lib/retail/shop-experience";
 
 /**
  * GET /api/users/me/membership
@@ -34,6 +35,8 @@ export async function GET() {
               where: { status: "ACTIVE" },
               select: { key: true },
             },
+            settings: { select: { settings: true } },
+            branding: { select: { retailPresentationTheme: true, retailPreviewOnly: true } },
             isOpen: true,
           },
         },
@@ -50,6 +53,10 @@ export async function GET() {
       organizationCapabilities: membership.organization.capabilitiesInitializedAt
         ? membership.organization.capabilities.map((capability) => capability.key)
         : [membership.organization.type],
+      organizationRetailProductExperience: hasModernRetailProductExperience(
+        membership.organization.settings?.settings,
+        membership.organization.branding ?? {},
+      ),
       organizationIsOpen: membership.organization.isOpen,
       role: membership.role,
       isActive: membership.isActive,

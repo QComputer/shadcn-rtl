@@ -246,7 +246,16 @@ describe("shop menu in-page category filtering", () => {
   it("distinguishes platform-shaped shop URLs from custom-domain shop URLs", () => {
     assert.equal(isShopCustomDomainPathname({ pathname: "/product/p1", locale: "fa", shopSlug: "sicily" }), true);
     assert.equal(isShopCustomDomainPathname({ pathname: "/shop", locale: "fa", shopSlug: "sicily" }), true);
+    assert.equal(isShopCustomDomainPathname({ pathname: "/fa/sicily", locale: "fa", shopSlug: "sicily" }), false);
+    assert.equal(isShopCustomDomainPathname({ pathname: "/fa/sicily/", locale: "fa", shopSlug: "sicily" }), false);
+    assert.equal(isShopCustomDomainPathname({ pathname: "/fa/sicily/shop", locale: "fa", shopSlug: "sicily" }), false);
     assert.equal(isShopCustomDomainPathname({ pathname: "/fa/sicily/shop/product/p1", locale: "fa", shopSlug: "sicily" }), false);
+  });
+
+  it("keeps product links tenant-scoped when the menu is rendered at the platform organization root", () => {
+    const isCustomDomain = isShopCustomDomainPathname({ pathname: "/fa/cafe-leo", locale: "fa", shopSlug: "cafe-leo" });
+    assert.equal(buildShopProductPath({ locale: "fa", shopSlug: "cafe-leo", productSegment: "cold-coffee-1", isCustomDomain }),
+      "/fa/cafe-leo/shop/product/cold-coffee-1");
   });
 
   it("encoded Persian legacy category slugs still decode", () => {

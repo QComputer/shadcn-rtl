@@ -1,9 +1,11 @@
 import { ApiError } from "@/lib/api-guards";
 import { prisma } from "@/lib/db";
 import { getPublicCatalogSnapshot } from "@/lib/public-catalog/service.server";
-import RetailPreview from "@/app/[locale]/retail-preview/[store]/retail-preview";
+import RetailLiveCatalog from "@/app/[locale]/retail/[organization]/retail-catalog";
 import LegacyShopClient from "./legacy-shop-client";
 import { hasModernRetailProductExperience, shouldLoadPublishedRetailCatalog } from "@/lib/retail/shop-experience";
+import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
+import { buildShopProductsPath } from "@/lib/shop-public-paths";
 
 export const dynamic = "force-dynamic";
 type Params = { locale: string; slug: string };
@@ -39,16 +41,17 @@ export default async function ShopPage({
   const { locale, slug } = await params;
   const { catalog, modernProductExperience } = await loadPublishedRetail(slug, locale, forcePublishedRetailCatalog);
   if (!catalog) return <LegacyShopClient params={Promise.resolve({ locale, slug })} modernProductExperience={modernProductExperience} />;
-  const storefrontPath = `/${encodeURIComponent(locale)}/${encodeURIComponent(slug)}/shop`;
+  const seo = await getShopTenantSeoContext({ locale, slug });
+  const storefrontPath = buildShopProductsPath({ locale, shopSlug: slug, isCustomDomain: seo.isCustomDomain });
   const checkoutPath = `${storefrontPath}/checkout`;
-  return <RetailPreview liveView={{
-    identifier: catalog.organization.identifier,
-    name: catalog.organization.name,
-    description: catalog.organization.description,
-    branding: catalog.organization.branding,
-    theme: catalog.organization.theme,
-    previewOnly: catalog.organization.previewOnly,
-    categories: catalog.categories.map(({ id, slug: categorySlug, name }) => ({ id, slug: categorySlug, name })),
-    products: catalog.products,
-  }} storefrontPath={storefrontPath} checkoutPath={checkoutPath} />;
+  return <RetailLiveCatalog view={{
+      identifier: catalog.organization.identifier,
+      name: catalog.organization.name,
+      description: catalog.organization.description,
+      branding: catalog.organization.branding,
+      theme: catalog.organization.theme,
+      previewOnly: catalog.organization.previewOnly,
+      categories: catalog.categories.map(({ id, slug: categorySlug, name }) => ({ id, slug: categorySlug, name })),
+      products: catalog.products,
+    }} storefrontPath={storefrontPath} checkoutPath={checkoutPath} embedded />;
 }

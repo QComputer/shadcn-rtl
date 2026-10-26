@@ -3,9 +3,10 @@ import { prisma } from "@/lib/db";
 import { getPublicCatalogSnapshot } from "@/lib/public-catalog/service.server";
 import RetailLiveCatalog from "@/app/[locale]/retail/[organization]/retail-catalog";
 import LegacyShopClient from "./legacy-shop-client";
-import { hasModernRetailProductExperience, shouldLoadPublishedRetailCatalog } from "@/lib/retail/shop-experience";
+import { hasModernRetailProductExperience, shouldLoadRetailShopCatalog } from "@/lib/retail/shop-experience";
 import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
 import { buildShopProductsPath } from "@/lib/shop-public-paths";
+import { activePublicBusinessCapabilities } from "@/lib/organization-public-home";
 
 export const dynamic = "force-dynamic";
 type Params = { locale: string; slug: string };
@@ -14,17 +15,26 @@ async function loadPublishedRetail(slug: string, locale: string, forcePublishedC
   if (locale !== "fa") return { catalog: null, modernProductExperience: false };
   const organization = await prisma.organization.findFirst({
     where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
-    select: { settings: { select: { settings: true } }, branding: { select: { retailPresentationTheme: true, retailPreviewOnly: true } } },
+    select: {
+      type: true,
+      vertical: true,
+      capabilities: { select: { key: true, status: true } },
+      settings: { select: { settings: true } },
+      branding: { select: { retailPresentationTheme: true, retailPreviewOnly: true } },
+    },
   });
   const modernProductExperience = Boolean(organization && hasModernRetailProductExperience(organization.settings?.settings, organization.branding ?? {}));
-  // The organization root may reuse the catalog for explicitly classified retail-goods
-  // verticals. This does not publish preview-only storefronts or change /shop defaults.
-  if (!shouldLoadPublishedRetailCatalog({
+  const retailCatalogTenant = Boolean(organization && shouldLoadRetailShopCatalog({
     locale,
     forcePublishedCatalog,
     hasPresentationTheme: Boolean(organization?.branding?.retailPresentationTheme),
     previewOnly: organization?.branding?.retailPreviewOnly === true,
-  })) {
+    organizationType: organization.type,
+    organizationVertical: organization.vertical,
+    organizationCapabilities: activePublicBusinessCapabilities(organization.capabilities),
+    modernProductExperience,
+  }));
+  if (!retailCatalogTenant) {
     return { catalog: null, modernProductExperience };
   }
   try { return { catalog: await getPublicCatalogSnapshot(slug), modernProductExperience }; }

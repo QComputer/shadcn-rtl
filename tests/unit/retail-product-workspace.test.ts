@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { usesRetailProductWorkspace } from "@/lib/retail/product-workspace";
-import { shouldLoadPublishedRetailCatalog } from "@/lib/retail/shop-experience";
+import { shouldLoadPublishedRetailCatalog, shouldLoadRetailShopCatalog } from "@/lib/retail/shop-experience";
 
 test("retail product organizations use the full catalog workspace", () => {
   assert.equal(usesRetailProductWorkspace({ organizationType: "SHOP", organizationVertical: "SHOE_STORE", organizationCapabilities: ["SHOP"] }), true);
@@ -53,4 +53,22 @@ test("a retail-goods root can use the published catalog without changing shop de
     hasPresentationTheme: false,
     previewOnly: false,
   }), false);
+});
+
+test("the shop route uses the retail catalog for explicitly opted-in unclassified shops", () => {
+  const base = {
+    locale: "fa",
+    hasPresentationTheme: false,
+    previewOnly: false,
+    organizationType: "SHOP",
+    organizationVertical: null,
+    organizationCapabilities: ["SHOP"],
+    modernProductExperience: true,
+  } as const;
+
+  assert.equal(shouldLoadRetailShopCatalog(base), true);
+  assert.equal(shouldLoadRetailShopCatalog({ ...base, modernProductExperience: false }), false);
+  assert.equal(shouldLoadRetailShopCatalog({ ...base, organizationVertical: "RESTAURANT" }), false);
+  assert.equal(shouldLoadRetailShopCatalog({ ...base, previewOnly: true }), false);
+  assert.equal(shouldLoadRetailShopCatalog({ ...base, locale: "en" }), false);
 });

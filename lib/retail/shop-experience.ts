@@ -1,3 +1,5 @@
+import { usesRetailProductWorkspace } from "@/lib/retail/product-workspace";
+
 type RetailShopBranding = {
   retailPresentationTheme?: string | null;
   retailPreviewOnly?: boolean | null;
@@ -34,4 +36,29 @@ export function shouldLoadPublishedRetailCatalog(input: {
   return input.locale === "fa"
     && !input.previewOnly
     && (input.forcePublishedCatalog === true || input.hasPresentationTheme);
+}
+
+export function shouldLoadRetailShopCatalog(input: {
+  locale: string;
+  forcePublishedCatalog?: boolean;
+  hasPresentationTheme: boolean;
+  previewOnly: boolean;
+  organizationType?: string | null;
+  organizationVertical?: string | null;
+  organizationCapabilities?: readonly string[] | null;
+  modernProductExperience?: boolean;
+}) {
+  const qualifiedRetailTenant = usesRetailProductWorkspace({
+    organizationType: input.organizationType,
+    organizationVertical: input.organizationVertical,
+    organizationCapabilities: input.organizationCapabilities,
+    organizationRetailProductExperience: input.modernProductExperience,
+  });
+
+  return shouldLoadPublishedRetailCatalog({
+    locale: input.locale,
+    forcePublishedCatalog: input.forcePublishedCatalog === true || qualifiedRetailTenant,
+    hasPresentationTheme: input.hasPresentationTheme,
+    previewOnly: input.previewOnly,
+  });
 }

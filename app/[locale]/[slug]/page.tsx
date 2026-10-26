@@ -25,6 +25,7 @@ import { PublishedHotelWebsitePage } from "@/components/published-hotel-website-
 import { trustedHotelWebsiteHost } from "@/lib/hotel/trusted-website-host";
 import { buildHotelWebsiteMetadata } from "@/lib/hotel/website-metadata";
 import { usesRetailProductWorkspace } from "@/lib/retail/product-workspace";
+import { hasModernRetailProductExperience } from "@/lib/retail/shop-experience";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -133,7 +134,7 @@ export default async function OrganizationHomePage({ params }: Props) {
       email: true,
       capabilities: { select: { key: true, status: true } },
       settings: { select: { settings: true, publicHomeMode: true, brandLandingProvider: true } },
-      branding: { select: { displayName: true, logoUrl: true, themeColor: true, backgroundColor: true } },
+      branding: { select: { displayName: true, logoUrl: true, themeColor: true, backgroundColor: true, retailPresentationTheme: true, retailPreviewOnly: true } },
     },
   });
 
@@ -168,6 +169,10 @@ export default async function OrganizationHomePage({ params }: Props) {
       organizationType: organization.type,
       organizationVertical: organization.vertical,
       organizationCapabilities: activePublicBusinessCapabilities(organization.capabilities),
+      organizationRetailProductExperience: hasModernRetailProductExperience(
+        organization.settings?.settings,
+        organization.branding ?? {},
+      ),
     });
     return (
       <ShopLayoutContent params={params} organizationRootPath={organizationRootPath}>

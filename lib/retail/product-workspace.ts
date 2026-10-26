@@ -10,9 +10,14 @@ export function usesRetailProductWorkspace(membership: {
   organizationType?: string | null;
   organizationVertical?: string | null;
   organizationCapabilities?: readonly string[] | null;
+  organizationRetailProductExperience?: boolean;
 } | null | undefined, legacyEditor = false) {
+  const vertical = membership?.organizationVertical ?? null;
+  const hasSupportedVertical = RETAIL_PRODUCT_WORKSPACE_VERTICALS.has(vertical ?? "");
+  const hasExplicitUnclassifiedRetailOptIn = !vertical && membership?.organizationRetailProductExperience === true;
+
   return !legacyEditor
     && membership?.organizationType === "SHOP"
     && membership.organizationCapabilities?.includes("SHOP") === true
-    && RETAIL_PRODUCT_WORKSPACE_VERTICALS.has(membership.organizationVertical ?? "");
+    && (hasSupportedVertical || hasExplicitUnclassifiedRetailOptIn);
 }

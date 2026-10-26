@@ -31,6 +31,7 @@ export interface OrganizationMembership {
   organizationType: OrganizationType;
   organizationVertical?: string | null;
   organizationCapabilities: OrganizationType[];
+  organizationRetailProductExperience?: boolean;
   isActive: boolean;
 }
 

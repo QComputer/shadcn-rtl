@@ -1,40 +1,57 @@
 import { ApiError } from "@/lib/api-guards";
 import { prisma } from "@/lib/db";
 import { getPublicCatalogSnapshot } from "@/lib/public-catalog/service.server";
-import RetailPreview from "@/app/[locale]/retail-preview/[store]/retail-preview";
+import RetailLiveCatalog from "@/app/[locale]/retail/[organization]/retail-catalog";
 import LegacyShopClient from "./legacy-shop-client";
-import { hasModernRetailProductExperience } from "@/lib/retail/shop-experience";
+import { hasModernRetailProductExperience, shouldLoadPublishedRetailCatalog } from "@/lib/retail/shop-experience";
+import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
+import { buildShopProductsPath } from "@/lib/shop-public-paths";
 
 export const dynamic = "force-dynamic";
 type Params = { locale: string; slug: string };
 
-async function loadPublishedRetail(slug: string, locale: string) {
+async function loadPublishedRetail(slug: string, locale: string, forcePublishedCatalog = false) {
   if (locale !== "fa") return { catalog: null, modernProductExperience: false };
   const organization = await prisma.organization.findFirst({
     where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
     select: { settings: { select: { settings: true } }, branding: { select: { retailPresentationTheme: true, retailPreviewOnly: true } } },
   });
   const modernProductExperience = Boolean(organization && hasModernRetailProductExperience(organization.settings?.settings, organization.branding ?? {}));
-  // Product capability activation must not opt a tenant into a new homepage.
-  if (!organization?.branding?.retailPresentationTheme || organization.branding.retailPreviewOnly) return { catalog: null, modernProductExperience };
+  // The organization root may reuse the catalog for explicitly classified retail-goods
+  // verticals. This does not publish preview-only storefronts or change /shop defaults.
+  if (!shouldLoadPublishedRetailCatalog({
+    locale,
+    forcePublishedCatalog,
+    hasPresentationTheme: Boolean(organization?.branding?.retailPresentationTheme),
+    previewOnly: organization?.branding?.retailPreviewOnly === true,
+  })) {
+    return { catalog: null, modernProductExperience };
+  }
   try { return { catalog: await getPublicCatalogSnapshot(slug), modernProductExperience }; }
   catch (error) { if (error instanceof ApiError && error.status === 404) return { catalog: null, modernProductExperience }; throw error; }
 }
 
-export default async function ShopPage({ params }: { params: Promise<Params> }) {
+export default async function ShopPage({
+  params,
+  forcePublishedRetailCatalog = false,
+}: {
+  params: Promise<Params>;
+  forcePublishedRetailCatalog?: boolean;
+}) {
   const { locale, slug } = await params;
-  const { catalog, modernProductExperience } = await loadPublishedRetail(slug, locale);
+  const { catalog, modernProductExperience } = await loadPublishedRetail(slug, locale, forcePublishedRetailCatalog);
   if (!catalog) return <LegacyShopClient params={Promise.resolve({ locale, slug })} modernProductExperience={modernProductExperience} />;
-  const storefrontPath = `/${encodeURIComponent(locale)}/${encodeURIComponent(slug)}/shop`;
+  const seo = await getShopTenantSeoContext({ locale, slug });
+  const storefrontPath = buildShopProductsPath({ locale, shopSlug: slug, isCustomDomain: seo.isCustomDomain });
   const checkoutPath = `${storefrontPath}/checkout`;
-  return <RetailPreview liveView={{
-    identifier: catalog.organization.identifier,
-    name: catalog.organization.name,
-    description: catalog.organization.description,
-    branding: catalog.organization.branding,
-    theme: catalog.organization.theme,
-    previewOnly: catalog.organization.previewOnly,
-    categories: catalog.categories.map(({ id, slug: categorySlug, name }) => ({ id, slug: categorySlug, name })),
-    products: catalog.products,
-  }} storefrontPath={storefrontPath} checkoutPath={checkoutPath} />;
+  return <RetailLiveCatalog view={{
+      identifier: catalog.organization.identifier,
+      name: catalog.organization.name,
+      description: catalog.organization.description,
+      branding: catalog.organization.branding,
+      theme: catalog.organization.theme,
+      previewOnly: catalog.organization.previewOnly,
+      categories: catalog.categories.map(({ id, slug: categorySlug, name }) => ({ id, slug: categorySlug, name })),
+      products: catalog.products,
+    }} storefrontPath={storefrontPath} checkoutPath={checkoutPath} embedded />;
 }

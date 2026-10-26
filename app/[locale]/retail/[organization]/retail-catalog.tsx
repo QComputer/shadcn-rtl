@@ -176,6 +176,12 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
   }, [products, sort, minimumPrice, maximumPrice]);
 
   const detail = productSlug ? products.find((product) => product.slug === productSlug || product.id === productSlug) : undefined;
+  const heroProduct = view.products.find((product) => product.media.detail || product.media.card) ?? view.products[0];
+  const heroImage = view.branding.cover || heroProduct?.media.detail || heroProduct?.media.card || null;
+  const categoryProducts = view.categories.map((item) => ({
+    ...item,
+    product: view.products.find((product) => product.category.id === item.id && product.media.card),
+  }));
   const addToCart = async (variantId?: string) => {
     if (!variantId || view.previewOnly) return;
     setCartNotice("");
@@ -263,18 +269,30 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
       {shareMessage && <p role="status" aria-live="polite" className="text-xs text-[#6e6a60] md:basis-full">{shareMessage}</p>}
     </section></>}
     {!productSlug && <>
-    <section className="mx-auto grid max-w-7xl gap-5 px-4 pb-8 md:grid-cols-[1fr_1.15fr] md:px-10">
-      <div className="flex min-h-[340px] flex-col justify-center rounded-[2rem] bg-[#e9e5dc] p-8 md:min-h-[460px] md:p-14">
-        <span className="text-xs font-semibold tracking-[.18em] text-[#8a6849]">{isFashion ? "انتخاب‌های این فصل" : view.theme === "ELECTRONICS" ? "فناوری، با مشخصات روشن" : "فروشگاه خرده‌فروشی"}</span>
-        <h1 className="mt-5 max-w-lg text-4xl font-semibold leading-[1.4] md:text-6xl">{isFashion ? <>سادگی‌ای که<br />به چشم می‌آید.</> : <>انتخابی دقیق،<br />برای هر روز.</>}</h1>
-        <p className="mt-5 max-w-md leading-8 text-[#67655e]">{view.description ?? "محصولات و مشخصات این فروشگاه از فهرست منتشرشده آن نمایش داده می‌شوند."}</p>
-        <a href={`${base}#products`} className="mt-8 w-fit rounded-full bg-[#292a24] px-7 py-3 text-sm text-white">دیدن محصولات <span className="mr-2">←</span></a>
+    <section className="mx-auto grid max-w-7xl gap-4 px-4 pb-8 md:grid-cols-[.88fr_1.12fr] md:px-10">
+      <div className="flex min-h-[360px] flex-col justify-center rounded-[2rem] bg-[#e9e5dc] p-7 sm:p-10 md:min-h-[500px] md:p-14">
+        <div className="mb-8 flex items-center gap-3">
+          {view.branding.logo && <Image src={view.branding.logo} width={48} height={48} unoptimized alt="" className="size-12 rounded-xl bg-white object-contain p-1" />}
+          <div><p className="text-xs font-semibold tracking-[.12em] text-[#8a6849]">{isFashion ? "ویترین پوشاک و کفش" : view.theme === "ELECTRONICS" ? "فروشگاه لوازم الکترونیکی" : "فروشگاه خرده‌فروشی"}</p><p className="mt-1 text-sm font-medium">{view.name}</p></div>
+        </div>
+        <h1 className="max-w-xl text-4xl font-semibold leading-[1.4] md:text-6xl">{isFashion ? <>استایل خودت را<br />از اینجا پیدا کن.</> : <>انتخابی دقیق،<br />برای هر روز.</>}</h1>
+        <p className="mt-5 max-w-md leading-8 text-[#67655e]">{view.description ?? "محصولات منتشرشده فروشگاه را ببینید و گزینه مناسب خود را انتخاب کنید."}</p>
+        <div className="mt-8 flex flex-wrap gap-3"><a href={`${base}#products`} className="min-h-12 rounded-full bg-[#292a24] px-7 py-3.5 text-sm font-semibold text-white">مشاهده محصولات <span className="mr-2" aria-hidden>←</span></a>{view.categories[0] && <button type="button" onClick={() => { setCategory(view.categories[0]!.slug ?? view.categories[0]!.id); setPage(1); document.getElementById("products")?.scrollIntoView({ behavior: "smooth" }); }} className="min-h-12 rounded-full border border-[#cfc9bd] px-6 py-3 text-sm">دسته‌بندی‌ها</button>}</div>
       </div>
-      <div id="categories" className="flex min-h-[340px] flex-col justify-center overflow-hidden rounded-[2rem] bg-[#e5e1d8] p-7 md:min-h-[460px]">
-        <span className="text-xs text-[#8a6849]">{view.theme === "ELECTRONICS" ? "مشخصات قابل بررسی" : "دسته‌بندی محصولات"}</span>
-        <h2 className="mt-3 text-3xl font-semibold">{view.categories.length ? "کالاها، مرتب و روشن" : "محصولات فروشگاه"}</h2>
-        <div className="mt-6 flex flex-wrap gap-3">{view.categories.map((item) => <button key={item.id} onClick={() => { setCategory(category === (item.slug ?? item.id) ? "" : item.slug ?? item.id); setPage(1); }} className={`min-h-11 rounded-full px-5 py-3 text-sm ${category === (item.slug ?? item.id) ? "bg-[#292a24] text-white" : "bg-white text-[#55534c]"}`}>{item.name}</button>)}</div>
+      <div className="relative min-h-[360px] overflow-hidden rounded-[2rem] bg-[#d8d2c7] md:min-h-[500px]">
+        {heroImage ? <Image src={heroImage} alt={heroProduct?.media.alt || view.name} fill unoptimized priority sizes="(max-width: 768px) 100vw, 55vw" className="object-cover" /> : <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-[#eeeae3] to-[#c9c1b4] p-8 text-center text-[#655d51]"><span className="text-lg font-medium">{view.name}</span></div>}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent p-6 pt-24 text-white md:p-9 md:pt-32">
+          <p className="text-xs text-white/80">{heroProduct ? heroProduct.category.name : "محصولات فروشگاه"}</p>
+          {heroProduct ? <><h2 className="mt-2 text-2xl font-semibold md:text-3xl">{heroProduct.name}</h2><div className="mt-4 flex flex-wrap items-center gap-4"><span className="text-sm">{toman(heroProduct.price.amount)}</span><a href={`${base}/product/${encodeURIComponent(heroProduct.slug ?? heroProduct.id)}`} className="min-h-11 rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#292a24]">جزئیات محصول</a></div></> : <h2 className="mt-2 text-2xl font-semibold">{view.name}</h2>}
+        </div>
       </div>
+    </section>
+    <section id="categories" className="mx-auto max-w-7xl px-4 py-8 md:px-10">
+      <div className="flex items-end justify-between gap-4 border-b border-[#e1ded7] pb-4"><div><span className="text-xs text-[#8a6849]">{isFashion ? "انتخاب بر اساس دسته" : "دسته‌بندی محصولات"}</span><h2 className="mt-2 text-2xl font-semibold">دسته‌بندی‌ها</h2></div><a href={`${base}#products`} className="text-sm text-[#726c61]">همه محصولات ←</a></div>
+      {categoryProducts.length ? <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{categoryProducts.map((item) => <button key={item.id} type="button" onClick={() => { const value = item.slug ?? item.id; setCategory(category === value ? "" : value); setPage(1); document.getElementById("products")?.scrollIntoView({ behavior: "smooth" }); }} aria-pressed={category === (item.slug ?? item.id)} className={`group relative min-h-36 overflow-hidden rounded-2xl text-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b7653] ${category === (item.slug ?? item.id) ? "ring-2 ring-[#292a24]" : ""}`}>
+        {item.product?.media.card ? <Image src={item.product.media.card} alt="" fill unoptimized sizes="(max-width: 768px) 50vw, 25vw" className="object-cover transition-transform duration-300 group-hover:scale-105" /> : <span className="absolute inset-0 bg-gradient-to-br from-[#e9e5dc] to-[#d3cdc2]" />}
+        <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" /><span className="absolute inset-x-0 bottom-0 p-4 text-sm font-semibold text-white">{item.name}<span className="mt-1 block text-[11px] font-normal text-white/80">مشاهده محصولات این دسته</span></span>
+      </button>)}</div> : <p className="mt-5 rounded-xl bg-white p-5 text-sm text-[#6e6a60]">دسته‌بندی فعالی برای نمایش ثبت نشده است.</p>}
     </section>
     <section id="products" className="mx-auto max-w-7xl px-5 pb-20 pt-7 md:px-10">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><span className="text-xs text-[#92704e]">فهرست منتشرشده فروشگاه</span><h2 className="mt-2 text-3xl font-semibold">{view.theme === "ELECTRONICS" ? "دستگاه‌ها و مشخصات" : "محصولات فروشگاه"}</h2></div>

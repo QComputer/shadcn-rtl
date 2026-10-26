@@ -2,7 +2,7 @@
 import { appFetch } from "@/lib/app-base-path";
 // TOODO: add deleting a Variant 
 import { useState, useEffect, use, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing"
 import { ArrowRight, Save, Loader2, Trash2, ArrowLeft, Plus, ChevronLeftIcon, ChevronRightIcon, X, Sparkles, Clock, RotateCcw, Ban } from "lucide-react"
@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { getDictionary, getDictValue } from "@/lib/dictionary"
 import { formatToman, toPersianDigits } from "@/lib/persian"
-import { useDashboardAccess } from "@/hooks/use-auth"
+import { useAuth, useDashboardAccess } from "@/hooks/use-auth"
 import { useSession } from "next-auth/react"
 import { isRTL } from "@/lib/i18n"
 import { SlugPreviewActions } from "@/components/dashboard/slug-preview-actions"
@@ -62,6 +62,7 @@ import {
 } from "@/lib/ai-media/status"
 import { AiMediaAssetPicker } from "@/components/ai-media/ai-media-asset-picker"
 import { ProductTaxonomyEditor } from "@/components/dashboard/product-taxonomy-editor"
+import { usesRetailProductWorkspace } from "@/lib/retail/product-workspace"
 
 const AI_JOB_POLL_INTERVAL_MS = 3000
 const AI_JOB_MAX_POLL_ATTEMPTS = 90
@@ -153,6 +154,9 @@ export default function EditProductPage({
   const router = useRouter()
   
   const { hasAccess, isLoading: accessLoading } = useDashboardAccess()
+  const { organizationMembership } = useAuth()
+  const searchParams = useSearchParams()
+  const useRetailWorkspace = usesRetailProductWorkspace(organizationMembership, searchParams.get("legacy") === "1")
   
   const [mounted, setMounted] = useState(false)
   const [dict, setDict] = useState<ReturnType<typeof getDictionary> | null>(null)
@@ -321,6 +325,12 @@ export default function EditProductPage({
   //console.log(newVariant);
 
   },[newVariant])
+
+  useEffect(() => {
+    if (!accessLoading && hasAccess && useRetailWorkspace) {
+      router.replace(`/${locale}/dashboard/retail-catalog/${encodeURIComponent(productId)}`)
+    }
+  }, [accessLoading, hasAccess, useRetailWorkspace, locale, productId, router])
   // Fetch product and categories
   useEffect(() => {
     if (!hasAccess || accessLoading) return
@@ -858,7 +868,7 @@ export default function EditProductPage({
     )
   }
 
-  if (loading) {
+  if (useRetailWorkspace || loading) {
     return (
       <div className="p-6 space-y-4">
         <Skeleton className="h-8 w-48" />

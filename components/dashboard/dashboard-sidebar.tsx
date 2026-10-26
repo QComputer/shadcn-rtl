@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
+import { appPath } from "@/lib/app-base-path"
 import { useState } from "react"
 import {
   Activity,
@@ -377,7 +378,7 @@ function SidebarContent({
     setIsSigningOut(true)
     setSignOutError(false)
     try {
-      await signOut({ callbackUrl: `/${locale}` })
+      await signOut({ callbackUrl: appPath(`/${locale}`) })
       onNavigate?.()
     } catch {
       setSignOutError(true)

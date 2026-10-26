@@ -341,6 +341,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
     <main className="space-y-5 p-4 lg:p-6" dir={rtl ? "rtl" : "ltr"} lang={locale}>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div><Link href={`/${locale}/dashboard/retail-catalog`} className="mb-2 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" />{t.back}</Link><h1 className="text-2xl font-bold">{productId ? t.titleEdit : t.titleNew}</h1><p className="mt-1 text-sm text-muted-foreground">{t.intro}</p></div>
+        {productId && <Link href={`/${locale}/dashboard/products/${encodeURIComponent(productId)}?legacy=1`} className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted">{locale === "fa" ? "ابزارهای تکمیلی محصول" : locale === "ar" ? "أدوات إضافية للمنتج" : "Additional product tools"}</Link>}
         {published && organizationSlug && <Link href={`/${locale}/${encodeURIComponent(organizationSlug)}/shop`} target="_blank" rel="noreferrer" className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"><Store className="me-2 inline size-4" />{t.storeLink}</Link>}
       </header>
       <ErrorMessage text={error} />

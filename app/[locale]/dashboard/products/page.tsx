@@ -29,6 +29,7 @@ import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb
 import { useDashboardAccess, useAuth } from "@/hooks/use-auth"
 import { formatToman, toPersianDigits } from "@/lib/persian"
 import Image from "next/image"
+import { usesRetailProductWorkspace } from "@/lib/retail/product-workspace"
 
 interface ProductVariant {
   id: string
@@ -79,8 +80,7 @@ export default function ProductsPage({ params }: { params: Promise<{ locale: str
     && !["RESTAURANT", "HOTEL"].includes(organizationMembership.organizationVertical ?? "")
   // Unclassified legacy shops can also be restaurants. Keep their existing
   // destinations, while offering an explicit route to Retail management.
-  const useRetailCatalog = canUseRetailCatalog
-    && ["SHOE_STORE", "CLOTHING_STORE", "PHARMACY", "SUPERMARKET", "FLORIST"].includes(organizationMembership.organizationVertical ?? "")
+  const useRetailCatalog = canUseRetailCatalog && usesRetailProductWorkspace(organizationMembership)
   
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")

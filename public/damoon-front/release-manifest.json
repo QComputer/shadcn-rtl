@@ -1,7 +1,7 @@
 {
   "site": "damoon",
   "contentMode": "DEVELOPMENT_WITH_CONCEPT_IMAGES",
-  "builtAt": "2026-10-27T19:27:05.126Z",
+  "builtAt": "2026-10-27T20:37:35.385Z",
   "files": {
     "about/index.html": "8d5ff447cccfa222900a076b41ce4add36ca5994712d5218485b145cc47e912d",
     "app.js": "ca54fedf503539ed568d80478d11f047f7b8e76a1a08e42f029f593aadd87f4c",
@@ -46,7 +46,7 @@
     "rooms/single/index.html": "8d5ff447cccfa222900a076b41ce4add36ca5994712d5218485b145cc47e912d",
     "rooms/suite-3-bed/index.html": "8d5ff447cccfa222900a076b41ce4add36ca5994712d5218485b145cc47e912d",
     "rooms/suite-4-5-bed/index.html": "8d5ff447cccfa222900a076b41ce4add36ca5994712d5218485b145cc47e912d",
-    "styles.css": "6da6073f7c992a4fe375b75331773735c9ee94f0e5d4edcb51ffa4d724bd08d1",
+    "styles.css": "b393180fa0843e0272cee6aa5bfffd4348bbd7fe0c50e36a110e131bcb5dcf72",
     "theme-tokens.css": "e45530f56d3674ed13e018a9fa5e92e438f28ef89970751c221e0d588e1fb336",
     "themes.js": "5324a1d7d3676762c109041dd1c8210e8818bd72a01523251ed1bf612fd88f52",
     "virtual-tour/index.html": "8d5ff447cccfa222900a076b41ce4add36ca5994712d5218485b145cc47e912d"

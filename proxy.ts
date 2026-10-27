@@ -29,6 +29,7 @@ import {
   resolveOperationalAppRoute,
   type ResolvedCustomDomain,
 } from "@/lib/custom-domain-routing";
+import { resolveDamoonPublicRoute, type DamoonPublicRoute } from "@/lib/damoon-public-route";
 import { getPublicFooterContextForPathname, type PublicFooterContext } from "@/lib/public-footer-context";
 import { appCookiePath, appPath, resolveAppBasePath } from "@/lib/app-base-path";
 import { getActivePrimaryOrganizationDomain } from "@/lib/domains/primary-domain.server";
@@ -80,6 +81,55 @@ function withSecurityHeaders(response: NextResponse): NextResponse {
     response.headers.set(key, value);
   }
   return response;
+}
+
+const damoonContentSecurityPolicy = [
+  "default-src 'none'",
+  "script-src 'self'",
+  "style-src 'self'",
+  "font-src 'self'",
+  "img-src 'self' data:",
+  "connect-src 'self'",
+  "media-src 'self'",
+  "frame-src 'none'",
+  "form-action 'none'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "frame-ancestors 'none'",
+].join("; ");
+
+function withDamoonPublicHeaders(response: NextResponse): NextResponse {
+  withSecurityHeaders(response);
+  response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+  response.headers.set("Cache-Control", "private, no-store, max-age=0");
+  response.headers.set("Content-Security-Policy", damoonContentSecurityPolicy);
+  return response;
+}
+
+function damoonPublicResponse(request: NextRequest, route: DamoonPublicRoute): NextResponse {
+  if (route.kind === "redirect") {
+    const target = request.nextUrl.clone();
+    target.host = request.headers.get("host") || target.host;
+    target.pathname = route.pathname;
+    return withDamoonPublicHeaders(NextResponse.redirect(target, 308));
+  }
+  if (route.kind === "robots") {
+    return withDamoonPublicHeaders(new NextResponse(
+      request.method === "HEAD" ? null : route.body,
+      { headers: { "Content-Type": "text/plain; charset=utf-8" } },
+    ));
+  }
+  if (route.kind === "not-found") {
+    return withDamoonPublicHeaders(new NextResponse(null, { status: 404 }));
+  }
+  if (route.kind === "no-content") {
+    return withDamoonPublicHeaders(new NextResponse(null, { status: 204 }));
+  }
+
+  const target = request.nextUrl.clone();
+  target.pathname = route.pathname;
+  const requestHeaders = sanitizedProxyBoundaryHeaders(request);
+  return withDamoonPublicHeaders(NextResponse.rewrite(target, { request: { headers: requestHeaders } }));
 }
 
 export function sanitizedProxyBoundaryHeaders(request: NextRequest) {
@@ -276,6 +326,13 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostHeader = request.headers.get("host") || request.nextUrl.host;
   const normalizedHost = normalizeDomainHost(hostHeader);
+
+  const damoonRoute = resolveDamoonPublicRoute({
+    hostHeader: request.headers.get("host"),
+    pathname,
+    method: request.method,
+  });
+  if (damoonRoute) return damoonPublicResponse(request, damoonRoute);
 
   const canonicalRedirectTarget = getPlatformCanonicalRedirectTarget(hostHeader);
   if (canonicalRedirectTarget) {

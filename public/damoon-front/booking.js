@@ -3,14 +3,15 @@ import {
   jalaliMonthGrid,
   jalaliMonthTitle,
   moveJalaliMonth,
-  persianDigits,
   selectStayDate,
   todayLocalISO,
   validateStayRange,
 } from "./calendar.js";
+import { localeForPath, normalizePath } from "./content.js";
+import translations from "./translations.js";
 
 const STORAGE_KEY = "damoon-stay-selection-v1";
-const WEEKDAYS = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
+const FA_WEEKDAYS = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
 const GUEST_OPTIONS = Array.from({ length: 8 }, (_, index) => index + 1);
 
 function validArrival(value, minISO) {
@@ -62,13 +63,33 @@ function initialSelection(minISO) {
 }
 
 function routeRoomDetail() {
-  const path = window.location.pathname.replace(/\/+$/, "") || "/";
-  const localizedPath = path.startsWith("/fa/") ? path.slice(3) : path;
-  return /^\/rooms\/(single|double|suite-3-bed|suite-4-5-bed)$/.test(localizedPath);
+  return /^\/rooms\/(single|double|suite-3-bed|suite-4-5-bed)$/.test(normalizePath(window.location.pathname));
 }
 
-function rangeSummary(range) {
-  return `${jalaliAccessibleDay(range.checkIn, "fa")} تا ${jalaliAccessibleDay(range.checkOut, "fa")}`;
+function rangeSummary(range, locale) {
+  const separator = locale === "fa" ? " تا " : locale === "ar" ? " إلى " : " – ";
+  return `${jalaliAccessibleDay(range.checkIn, locale)}${separator}${jalaliAccessibleDay(range.checkOut, locale)}`;
+}
+
+const faUi = {
+  bookingSummary: "انتخاب فعلی", guests: "تعداد مهمانان", guestCountOne: "{count} مهمان", guestCountOther: "{count} مهمان", checkIn: "تاریخ ورود", checkOut: "تاریخ خروج", datePlanningOnly: "انتخاب تاریخ برای هماهنگی اقامت؛ رزرو آنلاین هنوز فعال نیست.", contactForStay: "تماس برای هماهنگی این اقامت", stayPlanning: "برنامه‌ریزی اقامت", selectStayDates: "تاریخ اقامتتان را انتخاب کنید", selectArrivalDate: "انتخاب تاریخ ورود", selectDepartureDate: "انتخاب تاریخ خروج", selectDate: "انتخاب تاریخ", selectGuestCount: "تعداد مهمانان", bookingSubmit: "بررسی گزینه‌های اقامت", calendar: "تاریخ ورود و خروج", closeCalendar: "بستن تقویم", previousMonth: "ماه قبل", nextMonth: "ماه بعد", chooseArrivalFirst: "ابتدا روز ورود را انتخاب کنید.", chooseDepartureNext: "حالا روز خروج را انتخاب کنید.", arrivalCannotBePast: "تاریخ ورود نمی‌تواند در گذشته باشد.", departureAfterArrival: "تاریخ خروج باید پس از تاریخ ورود باشد.", selectBothDates: "ابتدا تاریخ ورود و خروج را انتخاب کنید.",
+};
+
+function weekdayLabels(locale) {
+  if (locale === "fa") return FA_WEEKDAYS;
+  const saturday = Date.UTC(2023, 2, 25);
+  return Array.from({ length: 7 }, (_, index) => new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" }).format(new Date(saturday + index * 86400000)));
+}
+
+function formattedCount(value, locale) {
+  return new Intl.NumberFormat(locale, { useGrouping: false }).format(value);
+}
+
+function guestCountLabel(value, locale, ui) {
+  if (locale === "fa") return `${formattedCount(value, locale)} مهمان`;
+  const category = new Intl.PluralRules(locale).select(value);
+  const key = `guestCount${category[0].toUpperCase()}${category.slice(1)}`;
+  return (ui[key] || ui.guestCountOther).replace("{count}", formattedCount(value, locale));
 }
 
 function escapeHtml(value) {
@@ -77,8 +98,11 @@ function escapeHtml(value) {
   })[char]);
 }
 
-export function mountBooking(slot, { routeHref = (path) => path } = {}) {
+export function mountBooking(slot, { routeHref = (path) => path, locale = localeForPath(window.location.pathname) } = {}) {
   if (!(slot instanceof Element)) return () => {};
+
+  const ui = translations[locale]?.ui || faUi;
+  const weekdays = weekdayLabels(locale);
 
   const today = todayLocalISO();
   let { range, guests } = initialSelection(today);
@@ -103,30 +127,30 @@ export function mountBooking(slot, { routeHref = (path) => path } = {}) {
     contactUrl.searchParams.set("checkOut", range.checkOut);
     contactUrl.searchParams.set("guests", String(guests));
     slot.innerHTML = `<section class="booking-summary" aria-labelledby="booking-summary-title">
-      <div class="booking-summary__details"><p class="booking-kicker">انتخاب فعلی</p><h2 id="booking-summary-title">${escapeHtml(rangeSummary(range))}</h2><p>${persianDigits(guests, "fa")} مهمان · انتخاب تاریخ برای هماهنگی اقامت؛ رزرو آنلاین هنوز فعال نیست.</p></div>
-      <a class="booking-submit" href="${escapeHtml(contactUrl.href)}">تماس برای هماهنگی این اقامت</a>
+      <div class="booking-summary__details"><p class="booking-kicker">${escapeHtml(ui.bookingSummary)}</p><h2 id="booking-summary-title">${escapeHtml(rangeSummary(range, locale))}</h2><p>${escapeHtml(guestCountLabel(guests, locale, ui))} · ${escapeHtml(ui.datePlanningOnly)}</p></div>
+      <a class="booking-submit" href="${escapeHtml(contactUrl.href)}">${escapeHtml(ui.contactForStay)}</a>
     </section>`;
     return () => {};
   }
 
   slot.innerHTML = `<section class="booking-strip" aria-labelledby="booking-title">
-    <div class="booking-strip__heading"><p class="booking-kicker">برنامه‌ریزی اقامت</p><h2 id="booking-title">تاریخ اقامتتان را انتخاب کنید</h2><p>انتخاب تاریخ برای هماهنگی اقامت؛ رزرو آنلاین هنوز فعال نیست.</p></div>
+    <div class="booking-strip__heading"><p class="booking-kicker">${escapeHtml(ui.stayPlanning)}</p><h2 id="booking-title">${escapeHtml(ui.selectStayDates)}</h2><p>${escapeHtml(ui.datePlanningOnly)}</p></div>
     <form class="booking-form" novalidate>
       <div class="booking-form__fields">
-        <button class="booking-field" type="button" data-date-field="checkIn" aria-haspopup="dialog" aria-controls="booking-calendar" aria-expanded="false" aria-label="انتخاب تاریخ ورود"><span>تاریخ ورود</span><strong data-date-value="checkIn">انتخاب تاریخ</strong><span class="booking-field__icon" aria-hidden="true">⌄</span></button>
-        <button class="booking-field" type="button" data-date-field="checkOut" aria-haspopup="dialog" aria-controls="booking-calendar" aria-expanded="false" aria-label="انتخاب تاریخ خروج"><span>تاریخ خروج</span><strong data-date-value="checkOut">انتخاب تاریخ</strong><span class="booking-field__icon" aria-hidden="true">⌄</span></button>
-        <label class="booking-field booking-field--guests"><span>تعداد مهمانان</span><select aria-label="تعداد مهمانان">${GUEST_OPTIONS.map((count) => `<option value="${count}">${persianDigits(count, "fa")} مهمان</option>`).join("")}</select><span class="booking-field__icon" aria-hidden="true">⌄</span></label>
-        <button class="booking-submit" type="submit">بررسی گزینه‌های اقامت</button>
+        <button class="booking-field" type="button" data-date-field="checkIn" aria-haspopup="dialog" aria-controls="booking-calendar" aria-expanded="false" aria-label="${escapeHtml(ui.selectArrivalDate)}"><span>${escapeHtml(ui.checkIn)}</span><strong data-date-value="checkIn">${escapeHtml(ui.selectDate)}</strong><span class="booking-field__icon" aria-hidden="true">⌄</span></button>
+        <button class="booking-field" type="button" data-date-field="checkOut" aria-haspopup="dialog" aria-controls="booking-calendar" aria-expanded="false" aria-label="${escapeHtml(ui.selectDepartureDate)}"><span>${escapeHtml(ui.checkOut)}</span><strong data-date-value="checkOut">${escapeHtml(ui.selectDate)}</strong><span class="booking-field__icon" aria-hidden="true">⌄</span></button>
+        <label class="booking-field booking-field--guests"><span>${escapeHtml(ui.guests)}</span><select aria-label="${escapeHtml(ui.selectGuestCount)}">${GUEST_OPTIONS.map((count) => `<option value="${count}">${escapeHtml(guestCountLabel(count, locale, ui))}</option>`).join("")}</select><span class="booking-field__icon" aria-hidden="true">⌄</span></label>
+        <button class="booking-submit" type="submit">${escapeHtml(ui.bookingSubmit)}</button>
       </div>
       <p class="booking-message" role="status" aria-live="polite"></p>
     </form>
     <dialog id="booking-calendar" class="booking-calendar" aria-labelledby="booking-calendar-title">
       <div class="booking-calendar__panel">
-        <div class="booking-calendar__top"><div><p class="booking-kicker">انتخاب تاریخ ${activeSegment === "checkIn" ? "ورود" : "خروج"}</p><h3 id="booking-calendar-title">تاریخ ورود و خروج</h3></div><button class="booking-calendar__close" type="button" data-calendar-close aria-label="بستن تقویم">×</button></div>
-        <div class="booking-calendar__month"><button type="button" data-month-prev aria-label="ماه قبل">‹</button><h4 data-month-title></h4><button type="button" data-month-next aria-label="ماه بعد">›</button></div>
-        <div class="booking-calendar__weekdays" role="row">${WEEKDAYS.map((day) => `<span role="columnheader">${day}</span>`).join("")}</div>
+        <div class="booking-calendar__top"><div><p class="booking-kicker" data-calendar-active-label></p><h3 id="booking-calendar-title">${escapeHtml(ui.calendar)}</h3></div><button class="booking-calendar__close" type="button" data-calendar-close aria-label="${escapeHtml(ui.closeCalendar)}">×</button></div>
+        <div class="booking-calendar__month"><button type="button" data-month-prev aria-label="${escapeHtml(ui.previousMonth)}">‹</button><h4 data-month-title></h4><button type="button" data-month-next aria-label="${escapeHtml(ui.nextMonth)}">›</button></div>
+        <div class="booking-calendar__weekdays" role="row">${weekdays.map((day) => `<span role="columnheader">${escapeHtml(day)}</span>`).join("")}</div>
         <div class="booking-calendar__days" role="grid" aria-labelledby="booking-calendar-title"></div>
-        <p class="booking-calendar__hint">${activeSegment === "checkIn" ? "ابتدا روز ورود را انتخاب کنید." : "حالا روز خروج را انتخاب کنید."}</p>
+        <p class="booking-calendar__hint" data-calendar-hint></p>
       </div>
     </dialog>
   </section>`;
@@ -134,18 +158,18 @@ export function mountBooking(slot, { routeHref = (path) => path } = {}) {
   const form = slot.querySelector(".booking-form");
   const dialog = slot.querySelector(".booking-calendar");
   const message = slot.querySelector(".booking-message");
-  const guestSelect = slot.querySelector("select[aria-label='تعداد مهمانان']");
+  const guestSelect = slot.querySelector("select[aria-label]");
   const dateValues = Object.fromEntries([...slot.querySelectorAll("[data-date-value]")].map((node) => [node.dataset.dateValue, node]));
   guestSelect.value = String(guests);
 
   function updateFields() {
     for (const segment of ["checkIn", "checkOut"]) {
       const iso = range[segment];
-      dateValues[segment].textContent = iso ? jalaliAccessibleDay(iso, "fa") : "انتخاب تاریخ";
+      dateValues[segment].textContent = iso ? jalaliAccessibleDay(iso, locale) : ui.selectDate;
       const button = slot.querySelector(`[data-date-field="${segment}"]`);
       button.setAttribute("aria-label", iso
-        ? `تاریخ ${segment === "checkIn" ? "ورود" : "خروج"}: ${jalaliAccessibleDay(iso, "fa")}`
-        : `انتخاب تاریخ ${segment === "checkIn" ? "ورود" : "خروج"}`);
+        ? `${segment === "checkIn" ? ui.checkIn : ui.checkOut}: ${jalaliAccessibleDay(iso, locale)}`
+        : segment === "checkIn" ? ui.selectArrivalDate : ui.selectDepartureDate);
     }
     guestSelect.value = String(guests);
   }
@@ -156,10 +180,11 @@ export function mountBooking(slot, { routeHref = (path) => path } = {}) {
   }
 
   function drawCalendar() {
-    slot.querySelector("[data-month-title]").textContent = jalaliMonthTitle(monthCursor, "fa");
-    slot.querySelector("#booking-calendar-title").textContent = `انتخاب تاریخ ${activeSegment === "checkIn" ? "ورود" : "خروج"}`;
-    slot.querySelector(".booking-calendar__top .booking-kicker").textContent = `انتخاب تاریخ ${activeSegment === "checkIn" ? "ورود" : "خروج"}`;
-    slot.querySelector(".booking-calendar__hint").textContent = activeSegment === "checkIn" ? "ابتدا روز ورود را انتخاب کنید." : "حالا روز خروج را انتخاب کنید.";
+    slot.querySelector("[data-month-title]").textContent = jalaliMonthTitle(monthCursor, locale);
+    const activeDateLabel = activeSegment === "checkIn" ? ui.selectArrivalDate : ui.selectDepartureDate;
+    slot.querySelector("#booking-calendar-title").textContent = activeDateLabel;
+    slot.querySelector("[data-calendar-active-label]").textContent = activeDateLabel;
+    slot.querySelector("[data-calendar-hint]").textContent = activeSegment === "checkIn" ? ui.chooseArrivalFirst : ui.chooseDepartureNext;
     const days = jalaliMonthGrid(monthCursor, today);
     const rows = Array.from({ length: 6 }, (_, rowIndex) => days.slice(rowIndex * 7, rowIndex * 7 + 7));
     slot.querySelector(".booking-calendar__days").innerHTML = rows.map((week) => `<div class="booking-calendar__week" role="row">${week.map((day) => {
@@ -174,7 +199,7 @@ export function mountBooking(slot, { routeHref = (path) => path } = {}) {
         isEnd && "is-range-end",
         inRange && "is-in-range",
       ].filter(Boolean).join(" ");
-      return `<div role="gridcell" aria-selected="${isStart || isEnd}"><button class="${classes}" type="button" data-calendar-day="${day.iso}" aria-label="${escapeHtml(jalaliAccessibleDay(day.iso, "fa"))}"${day.disabled ? " disabled" : ""}${focusISO === day.iso ? ' data-focus-target="true"' : ""}>${persianDigits(day.jalaliDay, "fa")}</button></div>`;
+      return `<div role="gridcell" aria-selected="${isStart || isEnd}"><button class="${classes}" type="button" data-calendar-day="${day.iso}" aria-label="${escapeHtml(jalaliAccessibleDay(day.iso, locale))}"${day.disabled ? " disabled" : ""}${focusISO === day.iso ? ' data-focus-target="true"' : ""}>${formattedCount(day.jalaliDay, locale)}</button></div>`;
     }).join("")}</div>`).join("");
     if (focusISO) {
       const focusTarget = slot.querySelector('[data-focus-target="true"]');
@@ -239,10 +264,10 @@ export function mountBooking(slot, { routeHref = (path) => path } = {}) {
     const validation = validateStayRange(range, today);
     if (validation !== "OK") {
       message.textContent = validation === "PAST"
-        ? "تاریخ ورود نمی‌تواند در گذشته باشد."
+        ? ui.arrivalCannotBePast
         : validation === "ORDER"
-          ? "تاریخ خروج باید پس از تاریخ ورود باشد."
-          : "ابتدا تاریخ ورود و خروج را انتخاب کنید.";
+          ? ui.departureAfterArrival
+          : ui.selectBothDates;
       if (validation === "MISSING") openCalendar(range.checkIn ? "checkOut" : "checkIn");
       return;
     }

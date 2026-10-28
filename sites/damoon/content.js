@@ -1,3 +1,5 @@
+import translations from "./translations.js";
+
 export const site = {
   name: "هتل دامون",
   eyebrow: "مهمان‌نوازی در شهرکرد",
@@ -134,30 +136,59 @@ export const pages = {
 
 export function normalizePath(pathname) {
   let path = decodeURIComponent(pathname || "/").replace(/\/+$/, "") || "/";
-  if (path === "/fa") return "/";
-  if (path.startsWith("/fa/")) path = path.slice(3) || "/";
+  const prefix = path.match(/^\/(fa|en|ar)(?=\/|$)/)?.[1];
+  if (prefix) path = path.slice(prefix.length + 1) || "/";
   return path;
 }
 
-export function pageForPath(path) {
-  if (pages[path]) return { ...pages[path], path };
+export function localeForPath(pathname) {
+  return decodeURIComponent(pathname || "/").match(/^\/(fa|en|ar)(?=\/|$)/)?.[1] || "fa";
+}
+
+export function siteForLocale(locale = "fa") {
+  return locale === "fa" ? site : translations[locale]?.site || site;
+}
+
+export function galleryForLocale(locale = "fa") {
+  return locale === "fa" ? gallery : translations[locale]?.gallery || gallery;
+}
+
+export function roomForLocale(slug, locale = "fa") {
+  const original = rooms.find((item) => item.slug === slug);
+  if (!original || locale === "fa") return original;
+  return translations[locale]?.rooms?.[slug] ? { ...original, ...translations[locale].rooms[slug] } : original;
+}
+
+export function pageForPath(path, locale = "fa") {
+  const source = locale === "fa" ? pages : translations[locale]?.pages;
+  if (source?.[path]) {
+    const base = pages[path] || {};
+    const localized = { ...base, ...source[path], path };
+    if (base.sections && localized.sections) {
+      localized.sections = localized.sections.map((section, index) => ({ ...base.sections[index], ...section }));
+    }
+    return localized;
+  }
   const roomMatch = path.match(/^\/rooms\/([a-z0-9-]+)$/i);
   if (roomMatch) {
-    const room = rooms.find((item) => item.slug === roomMatch[1]);
+    const room = roomForLocale(roomMatch[1], locale);
     if (room) return {
       path,
       title: room.title,
       intro: room.title,
-      text: `${room.description} ظرفیت دقیق، امکانات اختصاصی، نرخ و موجودی را برای تاریخ سفر از پذیرش بپرسید.`,
+      text: locale === "fa"
+        ? `${room.description} ظرفیت دقیق، امکانات اختصاصی، نرخ و موجودی را برای تاریخ سفر از پذیرش بپرسید.`
+        : `${room.description} ${translations[locale].roomDetails.textSuffix}`,
       image: room.image,
-      imageNote: "تصویر مفهومی؛ عکس واقعی اتاق نیست.",
-      actions: [["/contact", "تماس برای هماهنگی"]],
-      sections: [
+      imageNote: locale === "fa" ? "تصویر مفهومی؛ عکس واقعی اتاق نیست." : translations[locale].roomDetails.imageNote,
+      actions: [locale === "fa" ? ["/contact", "تماس برای هماهنگی"] : translations[locale].roomDetails.action],
+      sections: locale === "fa" ? [
         { heading: "پیش از انتخاب", text: "عنوان این گروه به‌تنهایی جزئیات چیدمان، تخت‌ها یا امکانات داخل واحد را مشخص نمی‌کند. هنگام تماس، تعداد مهمانان و نیازهای خود را بگویید تا پذیرش گزینهٔ مناسب را بررسی کند.", link: "/contact", label: "گفت‌وگو با پذیرش" },
         { heading: "زمان‌بندی اقامت", text: "ساعت ورود ۱۴ و ساعت خروج ۱۲ است. برای ظرفیت، نرخ و موجودی در تاریخ دلخواه، مستقیماً با هتل هماهنگ کنید.", link: "/policies", label: "اطلاعات زمان ورود و خروج" },
         { heading: "امکانات هتل", text: "امکانات عمومی ثبت‌شده شامل پذیرش ۲۴ ساعته، اینترنت، آسانسور، تاکسی، پارکینگ و صبحانهٔ سلف‌سرویس رایگان است. دربارهٔ وجود هر امکان در همین واحد از پذیرش سؤال کنید.", link: "/facilities", label: "مشاهدهٔ امکانات" },
-      ],
+      ] : translations[locale].roomDetails.shared,
     };
   }
   return null;
 }
+

@@ -22,6 +22,10 @@ test("serves only the Damoon host and its explicit read-only public routes", () 
   const paths = [
     "/",
     "/fa",
+    "/en",
+    "/ar",
+    "/en/rooms",
+    "/ar/contact",
     "/rooms",
     "/fa/rooms/",
     "/rooms/single",
@@ -81,7 +85,9 @@ test("leaves spoofed, unrelated, API, unknown, and mutating requests to existing
     "/rooms/unknown",
     "/rooms/single/extra",
     "/fa/api/health",
-    "/en/rooms",
+    "/de/rooms",
+    "/ar/api/health",
+    "/en/rooms/unknown",
     "/%2frooms",
   ]) {
     assert.equal(resolveDamoonPublicRoute({ hostHeader: "damoon-hotel.ir", pathname, method: "GET" }), null, pathname);

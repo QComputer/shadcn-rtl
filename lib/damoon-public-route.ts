@@ -46,8 +46,8 @@ function isDamoonHost(rawHost: string | null | undefined): boolean {
 function normalizedPath(pathname: string): string | null {
   if (!pathname.startsWith("/") || /[%\\?#]/.test(pathname)) return null;
   const trimmed = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
-  if (trimmed === "/fa") return "/";
-  return trimmed.startsWith("/fa/") ? trimmed.slice(3) : trimmed;
+  if (/^\/(fa|en|ar)$/.test(trimmed)) return "/";
+  return trimmed.replace(/^\/(fa|en|ar)(?=\/)/, "");
 }
 
 /** Matches only public, read-only routes on an actual Damoon Host header. */

@@ -53,7 +53,7 @@ function header(path) {
 
 function footer() {
   const footerLinks = [["/rooms", "اتاق‌ها"], ["/restaurant", "رستوران"], ["/cafe", "کافی‌شاپ"], ["/facilities", "امکانات"], ["/gallery", "گالری"], ["/about", "دربارهٔ دامون"], ["/contact", "تماس"], ["/policies", "قوانین و حریم خصوصی"], ["/virtual-tour", "تور مجازی"]];
-  return `<footer class="site-footer"><div class="site-footer__main"><div class="site-footer__brand"><span class="brand__mark" aria-hidden="true">د</span><div><strong>${safeText(site.name)}</strong><p>${safeText(site.city)}</p></div></div><p class="site-footer__note">اطلاعات تماس و جزئیات خدمات پس از تأیید رسمی در سایت درج می‌شوند.</p><nav class="footer-links" aria-label="پیوندهای پایانی">${footerLinks.map(([href, label]) => link(href, label)).join("")}</nav></div><div class="site-footer__bottom"><span>© ${new Date().getFullYear()} ${safeText(site.name)}</span><span>محتوای سایت در حال تکمیل است</span></div></footer>`;
+  return `<footer class="site-footer"><div class="site-footer__main"><div class="site-footer__brand"><span class="brand__mark" aria-hidden="true">د</span><div><strong>${safeText(site.name)}</strong><p>${safeText(site.city)}</p></div></div><p class="site-footer__note">${safeText(site.address)} · پذیرش شبانه‌روزی</p><nav class="footer-links" aria-label="پیوندهای پایانی">${footerLinks.map(([href, label]) => link(href, label)).join("")}</nav></div><div class="site-footer__bottom"><span>© ${new Date().getFullYear()} ${safeText(site.name)}</span><a href="tel:${site.phone}">پذیرش: <bdi>${safeText(site.phoneDisplay)}</bdi></a></div></footer>`;
 }
 
 function breadcrumb(path, title) {

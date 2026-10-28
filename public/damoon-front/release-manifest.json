@@ -1,10 +1,10 @@
 {
   "site": "damoon",
   "contentMode": "DEVELOPMENT_WITH_CONCEPT_IMAGES",
-  "builtAt": "2026-10-28T05:27:27.199Z",
+  "builtAt": "2026-10-28T08:40:03.662Z",
   "files": {
     "about/index.html": "8d5ff447cccfa222900a076b41ce4add36ca5994712d5218485b145cc47e912d",
-    "app.js": "757f39e605cc80577bb5044e7a1293df3de910c93cdede47e4d3e460f9d7ee5a",
+    "app.js": "48feb0fc2658f0b7ee37298e3e8cf5a48e079d6e2fafd8638b197c6baf2bd921",
     "assets/architecture-concept.webp": "674d7ae34beb92bc42b6a59473e8807fe02165d5cbbc9032b36081a3f6a17844",
     "assets/gallery-concept-1.webp": "82732ebdb4f80220025774236308bf33819b3d1e2681491483a7688a34579239",
     "assets/gallery-concept-2.webp": "91ec1fda3c074d6ce2204723ed81be7213f7d258827f4f4a05f49dabb58cd301",
@@ -20,7 +20,7 @@
     "cafe/index.html": "8d5ff447cccfa222900a076b41ce4add36ca5994712d5218485b145cc47e912d",
     "calendar.js": "946026d8514a364c02a9c0d0bcbf5bd86f4646ddf04758feb7483a8255de46d6",
     "contact/index.html": "8d5ff447cccfa222900a076b41ce4add36ca5994712d5218485b145cc47e912d",
-    "content.js": "7e6fc6056189af22c64cd84100e03d65beb7f4d4ea94146d17be09a39903603f",
+    "content.js": "fbc50f25bebd8b3205b256a473bf6229d82b4d5904292a7b1f5e1e6355a94a70",
     "fa/about/index.html": "8d5ff447cccfa222900a076b41ce4add36ca5994712d5218485b145cc47e912d",
     "fa/cafe/index.html": "8d5ff447cccfa222900a076b41ce4add36ca5994712d5218485b145cc47e912d",
     "fa/contact/index.html": "8d5ff447cccfa222900a076b41ce4add36ca5994712d5218485b145cc47e912d",

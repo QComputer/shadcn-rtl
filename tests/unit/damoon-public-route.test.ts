@@ -4,7 +4,19 @@ import { test } from "node:test";
 
 register(new URL("./loader.mjs", import.meta.url));
 
-const { resolveDamoonPublicRoute } = await import("@/lib/damoon-public-route");
+const { damoonPublicHomeUrl, resolveDamoonPublicRoute } = await import("@/lib/damoon-public-route");
+
+test("legacy redirects use public HTTPS without the internal port and retain the query", () => {
+  for (const host of ["www.damoon-hotel.ir", "www.damoon-hotel.ir:3000", "damoon-hotel.ir:80"]) {
+    const target = damoonPublicHomeUrl(host, "?from=legacy");
+    assert.equal(target.protocol, "https:");
+    assert.equal(target.port, "");
+    assert.equal(target.pathname, "/");
+    assert.equal(target.search, "?from=legacy");
+    assert.equal(target.hostname, host.split(":")[0]);
+  }
+  assert.throws(() => damoonPublicHomeUrl("attacker.test"));
+});
 
 test("serves only the Damoon host and its explicit read-only public routes", () => {
   const paths = [

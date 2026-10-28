@@ -24,6 +24,16 @@ export type DamoonPublicRoute =
   | { kind: "not-found" }
   | { kind: "no-content" };
 
+/** Public redirects must never inherit Next's internal listening port. */
+export function damoonPublicHomeUrl(hostHeader: string, search = ""): URL {
+  if (!isDamoonHost(hostHeader)) throw new Error("Invalid Damoon public host");
+  const target = new URL(`https://${hostHeader}`);
+  target.port = "";
+  target.pathname = "/";
+  target.search = search;
+  return target;
+}
+
 function isDamoonHost(rawHost: string | null | undefined): boolean {
   if (!rawHost || /[\s/@?#\\]/.test(rawHost)) return false;
   const match = rawHost.match(DAMOON_HOST);

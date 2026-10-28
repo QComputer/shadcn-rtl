@@ -10,7 +10,7 @@ const assetPrefix = process.argv.includes('--shared-runtime') ? '/damoon-front' 
 await mkdir(output, { recursive: true });
 const files = ['index.html','styles.css','booking.css','app.js','content.js','themes.js','booking.js','calendar.js','robots.txt'];
 for (const f of files) {
-  let text = await readFile(join(root,f),'utf8');
+  let text = (await readFile(join(root,f),'utf8')).replaceAll('\r\n','\n');
   if (assetPrefix) text = text.replaceAll('/assets/',`${assetPrefix}/assets/`).replace('href="/styles.css"',`href="${assetPrefix}/styles.css"`).replace('href="/booking.css"',`href="${assetPrefix}/booking.css"`).replace('href="/theme-tokens.css"',`href="${assetPrefix}/theme-tokens.css"`).replace('src="/app.js"',`src="${assetPrefix}/app.js"`);
   await writeFile(join(output,f),text);
 }

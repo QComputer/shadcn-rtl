@@ -29,7 +29,7 @@ import {
   resolveOperationalAppRoute,
   type ResolvedCustomDomain,
 } from "@/lib/custom-domain-routing";
-import { resolveDamoonPublicRoute, type DamoonPublicRoute } from "@/lib/damoon-public-route";
+import { damoonPublicHomeUrl, resolveDamoonPublicRoute, type DamoonPublicRoute } from "@/lib/damoon-public-route";
 import { getPublicFooterContextForPathname, type PublicFooterContext } from "@/lib/public-footer-context";
 import { appCookiePath, appPath, resolveAppBasePath } from "@/lib/app-base-path";
 import { getActivePrimaryOrganizationDomain } from "@/lib/domains/primary-domain.server";
@@ -108,9 +108,7 @@ function withDamoonPublicHeaders(response: NextResponse): NextResponse {
 
 function damoonPublicResponse(request: NextRequest, route: DamoonPublicRoute): NextResponse {
   if (route.kind === "redirect") {
-    const target = request.nextUrl.clone();
-    target.host = request.headers.get("host") || target.host;
-    target.pathname = route.pathname;
+    const target = damoonPublicHomeUrl(request.headers.get("host") || request.nextUrl.host, request.nextUrl.search);
     return withDamoonPublicHeaders(NextResponse.redirect(target, 308));
   }
   if (route.kind === "robots") {

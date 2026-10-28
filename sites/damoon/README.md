@@ -1,6 +1,6 @@
 # Damoon coded frontend
 
-Dependency-free Persian RTL frontend. Source is independent of the Bazarbaaz site builder. Three extensible palettes in `themes.js` each have light/dark tokens; run `node build.mjs` after adding a palette to regenerate `theme-tokens.css`.
+Dependency-free multilingual frontend: Persian/Arabic RTL and English LTR. Source is independent of the Bazarbaaz site builder. Three extensible palettes in `themes.js` each have light/dark tokens; run `node build.mjs` after adding a palette to regenerate `theme-tokens.css`.
 
 Local: `node build.mjs`, then `node server.mjs` (port 8080, or `PORT`). Shared RunFlare runtime: `node build.mjs --shared-runtime`, then copy `dist/` into `public/damoon-front/` of the reviewed application checkout. Do not copy node_modules, environment files or database/provider credentials.
 

@@ -45,11 +45,19 @@ function setTheme(theme) {
 
 function languageSwitcher(path) {
   const choices = [["fa", "فارسی"], ["en", "English"], ["ar", "العربية"]];
-  return `<nav class="language-switcher" aria-label="${safeText(locale === "en" ? "Language" : locale === "ar" ? "اللغة" : "زبان سایت")}">${choices.map(([code, label]) => `<a href="${safeText(languageHref(code))}" lang="${code}" hreflang="${code}"${locale === code ? ' aria-current="page"' : ""}>${label}</a>`).join("")}</nav>`;
+  const current = choices.find(([code]) => code === locale) || choices[0];
+  return `<details class="language-switcher"><summary aria-label="${safeText(locale === "en" ? "Language" : locale === "ar" ? "اللغة" : "زبان سایت")}"><span>${current[0].toUpperCase()}</span><span aria-hidden="true">⌄</span></summary><div class="language-switcher__options">${choices.map(([code, label]) => `<a href="${safeText(languageHref(code))}" lang="${code}" hreflang="${code}"${locale === code ? ' aria-current="page"' : ""}>${label}</a>`).join("")}</div></details>`;
 }
 
 function header(path) {
-  const nav = site.nav.map(([href, label]) => {
+  const homeNavigation = [
+    ["/", locale === "fa" ? "صفحه اصلی" : locale === "ar" ? "الرئيسية" : "Home"],
+    ["/rooms", locale === "fa" ? "اقامت" : locale === "ar" ? "الإقامة" : "Stay"],
+    ["/restaurant", locale === "fa" ? "رستوران و کافه" : locale === "ar" ? "المطعم والمقهى" : "Restaurant & Cafe"],
+    ["/gallery", ui.gallery], ["/facilities", ui.facilities], ["/about", ui.aboutDamoon], ["/contact", ui.contact],
+  ];
+  const navItems = normalizePath(window.location.pathname) === "/" ? homeNavigation : site.nav;
+  const nav = navItems.map(([href, label]) => {
     const active = href === path || (href === "/rooms" && path.startsWith("/rooms/"));
     return `<a class="site-nav__link${active ? " is-active" : ""}" href="${routeHref(href)}"${active ? ' aria-current="page"' : ""}>${safeText(label)}</a>`;
   }).join("");
@@ -90,12 +98,15 @@ function breadcrumb(path, title) {
 }
 
 function hero(page, path) {
-  const src = page.image || (path.startsWith("/rooms/") ? "/damoon-front/assets/room-concept-1.webp" : "/damoon-front/assets/gallery-concept-1.webp");
-  const note = page.imageNote || (path === "/" ? site.imageNote : ui.imageNotActual);
   const isHome = path === "/";
+  const src = isHome ? "/damoon-front/assets/hero-reference-v2.png" : page.image || (path.startsWith("/rooms/") ? "/damoon-front/assets/room-concept-1.webp" : "/damoon-front/assets/gallery-concept-1.webp");
+  const note = page.imageNote || (path === "/" ? site.imageNote : ui.imageNotActual);
   const actions = (page.actions || []).map(([href, label], index) => link(href, label, `button ${index ? "button--outline" : "button--primary"}`)).join("");
+  const homeEyebrow = locale === "fa" ? "اقامتی آرام<br class=\"home-eyebrow-break\">در قلب شهرکرد" : safeText(ui.homeEyebrow);
+  const homeSubtitle = locale === "fa" ? "تالار و رستوران" : safeText(ui.homeSubtitle);
+  const homeLead = locale === "fa" ? "ترکیبی از آرامش، مهمان‌نوازی<br>و دسترسی عالی در شهرکرد" : safeText(ui.homeLead);
   return `<section class="page-hero${isHome ? " page-hero--home" : ""}" aria-labelledby="page-title">
-    <div class="page-hero__copy">${breadcrumb(path, page.title)}<p class="eyebrow">${safeText(isHome ? ui.homeEyebrow : site.eyebrow)}</p>${page.badge ? `<p class="status-badge">${safeText(page.badge)}</p>` : ""}<h1 id="page-title">${safeText(isHome ? site.name : page.intro || page.title)}</h1>${isHome ? `<p class="home-subtitle">${safeText(ui.homeSubtitle)}</p>` : ""}<p class="page-hero__lead">${safeText(isHome ? ui.homeLead : page.text || "")}</p><div class="page-hero__actions">${actions || link("/contact", ui.coordinateWithHotel, "button button--primary")}</div></div>
+    <div class="page-hero__copy">${breadcrumb(path, page.title)}<p class="eyebrow">${isHome ? homeEyebrow : safeText(site.eyebrow)}</p>${page.badge ? `<p class="status-badge">${safeText(page.badge)}</p>` : ""}<h1 id="page-title">${safeText(isHome ? site.name : page.intro || page.title)}</h1>${isHome ? `<p class="home-subtitle">${homeSubtitle}</p>` : ""}<p class="page-hero__lead">${isHome ? homeLead : safeText(page.text || "")}</p><div class="page-hero__actions">${isHome ? link("/rooms", locale === "fa" ? "رزرو اقامت" : locale === "ar" ? "احجز إقامتك" : "Book your stay", "button button--primary") : actions || link("/contact", ui.coordinateWithHotel, "button button--primary")}</div></div>
     <figure class="page-hero__visual"><img src="${safeText(src)}" alt="${safeText(note)}" fetchpriority="high"><figcaption>${safeText(note)}</figcaption></figure>
   </section>`;
 }
@@ -106,18 +117,14 @@ function cards(sections = []) {
 }
 
 function homeContent() {
-  const shortcuts = [["/rooms", ui.rooms, ui.roomSpaces], ["/restaurant", ui.restaurant, ui.restaurantShort], ["/virtual-tour", ui.virtualTour, ui.tourShort]];
   const roomTiles = [
     { title: locale === "fa" ? "اقامت یک‌نفره" : locale === "ar" ? "إقامة لضيف واحد" : "Stay for one guest", image: "/damoon-front/assets/room-concept-1.webp", href: "/rooms/single" },
     { title: locale === "fa" ? "اقامت دونفره" : locale === "ar" ? "إقامة لضيفين" : "Stay for two guests", image: "/damoon-front/assets/room-concept-2.webp", href: "/rooms/double" },
     { title: locale === "fa" ? "سوئیت‌های اقامتی" : locale === "ar" ? "أجنحة الإقامة" : "Accommodation suites", image: "/damoon-front/assets/room-concept-3.webp", href: "/rooms" },
   ];
-  const services = [[ui.rooms, "/rooms", "/damoon-front/assets/room-concept-1.webp"], [ui.restaurant, "/restaurant", "/damoon-front/assets/gallery-concept-2.webp"], [ui.cafe, "/cafe", "/damoon-front/assets/gallery-concept-3.webp"], [ui.virtualTour, "/virtual-tour", "/damoon-front/assets/lobby-concept.webp"]];
-  return `<nav class="home-shortcuts" aria-label="${safeText(ui.homeShortcuts)}">${shortcuts.map(([href, title, note]) => `<a class="home-shortcut" href="${routeHref(href)}"><span><small>${safeText(note)}</small><strong>${safeText(title)}</strong></span><span class="home-shortcut__arrow" aria-hidden="true">←</span></a>`).join("")}</nav>
-    <section class="home-intro" aria-labelledby="home-intro-title"><figure class="home-intro__visual"><img src="/damoon-front/assets/lobby-concept.webp" alt="${safeText(ui.imageNotActual)}" loading="lazy"><figcaption>${safeText(ui.imageNotActual)}</figcaption></figure><div class="home-intro__copy"><p class="eyebrow">${safeText(site.name)} · ${safeText(site.city)}</p><h2 id="home-intro-title">${safeText(ui.calmStay)}</h2><p>${safeText(ui.homeIntro)}</p><a class="text-link" href="${routeHref("/about")}">${safeText(ui.aboutMore)}</a></div></section>
-    <section class="home-rooms" aria-labelledby="home-rooms-title"><div class="section-heading"><p class="eyebrow">${safeText(ui.accommodationSpaces)}</p><h2 id="home-rooms-title">${safeText(ui.aPlaceToRest)}</h2><p>${safeText(ui.browseRooms)}</p></div><div class="home-room-grid">${roomTiles.map((room) => `<a class="home-room-tile" href="${routeHref(room.href)}"><img src="${room.image}" alt="${safeText(ui.imageNotActual)}" loading="lazy"><span class="home-room-tile__caption">${safeText(ui.conceptCaption)}</span><strong>${safeText(room.title)}</strong><span class="home-room-tile__link">${safeText(ui.viewSpaces)} ←</span></a>`).join("")}</div></section>
-    <section class="home-services" aria-labelledby="home-services-title"><div class="section-heading"><p class="eyebrow">${safeText(ui.forYourStay)}</p><h2 id="home-services-title">${safeText(ui.hotelSpaces)}</h2></div><div class="home-service-grid">${services.map(([title, href, image]) => `<a class="home-service" href="${routeHref(href)}"><img src="${image}" alt="" loading="lazy"><span>${safeText(title)}</span><span class="home-service__arrow" aria-hidden="true">←</span></a>`).join("")}</div></section>
-    <section class="contact-strip"><div><p class="eyebrow">${safeText(ui.planYourStay)}</p><h2>${safeText(ui.contactCoordination)}</h2></div>${link("/contact", ui.contactHotel, "button button--primary")}</section>`;
+  const slides = gallery.slice(0, 4);
+  return `<section class="home-intro" aria-label="${safeText(ui.homeIntro)}"><div class="home-intro__copy"><p class="eyebrow">${safeText(locale === "fa" ? "درباره هتل دامون" : ui.aboutMore)}</p><h2 id="home-intro-title">${safeText(locale === "fa" ? "جایی متعادل برای سفر و آرامش" : ui.calmStay)}</h2><p>${safeText(ui.homeIntro)}</p><a class="text-link" href="${routeHref("/about")}">${safeText(ui.aboutMore)} ←</a></div><div class="home-lobby" aria-label="${safeText(ui.gallery)}"><img data-home-slide src="/damoon-front/assets/lobby-concept.webp" alt="${safeText(ui.imageNotActual)}" loading="lazy"><button type="button" data-home-prev aria-label="${safeText(ui.previousImage)}">‹</button><button type="button" data-home-next aria-label="${safeText(ui.nextImage)}">›</button><div class="home-lobby__dots">${slides.map((_, i) => `<button type="button" data-home-dot="${i}" aria-label="${safeText(ui.gallery)} ${i + 1}"${i === 0 ? ' aria-current="true"' : ""}></button>`).join("")}</div></div><div class="home-side"><div class="home-room-list"><h2>${safeText(locale === "fa" ? "اتاق‌ها و سوئیت‌ها" : ui.rooms)}</h2><div class="home-room-list__grid">${roomTiles.map((room, index) => `<a href="${routeHref(room.href)}" data-room-sprite="${index}"><img src="${room.image}" alt="${safeText(ui.imageNotActual)}" loading="lazy"><strong>${safeText(room.title)}<small>${safeText(ui.viewSpaces)}</small></strong></a>`).join("")}</div></div><div class="home-gallery-list"><h2>${safeText(locale === "fa" ? "تصاویر هتل" : ui.gallery)}</h2><div>${slides.map((image, i) => `<a href="${routeHref("/gallery")}" data-gallery-sprite="${i}"><img src="${safeText(image.src)}" alt="${safeText(image.alt)}" loading="lazy"></a>`).join("")}</div></div></div></section>
+    <div class="home-features"><span><svg viewBox="0 0 32 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16 38C11 30 2 20 2 14a14 14 0 1 1 28 0c0 6-9 16-14 24Z"/><circle cx="16" cy="14" r="5"/></svg><strong>${safeText(ui.facilities)}</strong><small>${safeText(site.city)}</small></span><span><svg viewBox="0 0 40 36" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 29h34M6 25a14 14 0 0 1 28 0H6Zm14-17V4m-5 0h10M2 33h36"/></svg><strong>${safeText(ui.cafe)} و ${safeText(ui.restaurant)}</strong><small>${safeText(ui.hotelSpaces)}</small></span><span><svg viewBox="0 0 32 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 38V2h22v36M1 38h30M12 38V28h8v10M10 8h3m6 0h3M10 14h3m6 0h3M10 20h3m6 0h3"/></svg><strong>${safeText(ui.rooms)}</strong><small>${safeText(ui.viewSpaces)}</small></span></div>`;
 }
 
 function galleryGrid() {
@@ -144,11 +151,21 @@ function render() {
   if (!robots) { robots = document.createElement("meta"); robots.name = "robots"; document.head.append(robots); }
   robots.content = "noindex, nofollow";
   const hasBookingSlot = path === "/" || path === "/rooms" || path.startsWith("/rooms/");
-  root.innerHTML = `${header(page?.path || path)}<main id="main" class="site-main">${page ? `${hero(page, path)}${hasBookingSlot ? '<div data-booking-slot></div>' : ""}${path === "/" ? homeContent() : path === "/gallery" ? galleryGrid() : cards(page.sections)}` : `<section class="not-found"><p class="eyebrow">404</p><h1>${safeText(ui.pageNotFound)}</h1><p>${safeText(ui.pageNotFoundText)}</p>${link("/", ui.backHome, "button button--primary")}</section>`}</main>${footer()}<div id="gallery-dialog-root"></div>`;
+  root.innerHTML = `${header(page?.path || path)}<main id="main" class="site-main${path === "/" ? " home-main" : ""}">${page ? `${path === "/" ? `<div class="home-top">${hero(page, path)}<div data-booking-slot></div></div>` : `${hero(page, path)}${hasBookingSlot ? '<div data-booking-slot></div>' : ""}`}${path === "/" ? homeContent() : path === "/gallery" ? galleryGrid() : cards(page.sections)}` : `<section class="not-found"><p class="eyebrow">404</p><h1>${safeText(ui.pageNotFound)}</h1><p>${safeText(ui.pageNotFoundText)}</p>${link("/", ui.backHome, "button button--primary")}</section>`}</main>${footer()}<div id="gallery-dialog-root"></div>`;
   wireInteractions();
 }
 
 function wireInteractions() {
+  const languageControl = document.querySelector('.language-switcher');
+  document.addEventListener('click', (event) => {
+    if (languageControl?.open && !languageControl.contains(event.target)) languageControl.open = false;
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && languageControl?.open) {
+      languageControl.open = false;
+      languageControl.querySelector('summary')?.focus();
+    }
+  });
   setTheme(readTheme());
   let paletteStorage;
   try { paletteStorage = window.localStorage; } catch { /* Private browsing can disable persistence. */ }
@@ -156,6 +173,21 @@ function wireInteractions() {
   document.querySelectorAll("button[data-palette]").forEach(button => button.addEventListener("click", () => applyPalette(button.dataset.palette, document, paletteStorage)));
   const bookingSlot = document.querySelector("[data-booking-slot]");
   if (bookingSlot) mountBooking(bookingSlot, { routeHref, locale });
+  const homeSlides = gallery.slice(1, 5);
+  const homeImage = document.querySelector("[data-home-slide]");
+  if (homeImage && homeSlides.length) {
+    let slide = 0;
+    const showSlide = () => {
+      const item = homeSlides[slide];
+      document.querySelector(".home-lobby")?.classList.toggle("is-live", slide !== 0);
+      homeImage.src = item.src;
+      homeImage.alt = item.alt;
+      document.querySelectorAll("[data-home-dot]").forEach((dot, index) => dot.toggleAttribute("aria-current", index === slide));
+    };
+    document.querySelector("[data-home-prev]")?.addEventListener("click", () => { slide = (slide - 1 + homeSlides.length) % homeSlides.length; showSlide(); });
+    document.querySelector("[data-home-next]")?.addEventListener("click", () => { slide = (slide + 1) % homeSlides.length; showSlide(); });
+    document.querySelectorAll("[data-home-dot]").forEach(dot => dot.addEventListener("click", () => { slide = Number(dot.dataset.homeDot); showSlide(); }));
+  }
   if (normalizePath(window.location.pathname) === "/contact") {
     const contact = document.createElement("section");
     contact.className = "contact-actions content-section";

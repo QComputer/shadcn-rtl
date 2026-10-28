@@ -13,6 +13,9 @@ import translations from "./translations.js";
 const STORAGE_KEY = "damoon-stay-selection-v1";
 const FA_WEEKDAYS = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
 const GUEST_OPTIONS = Array.from({ length: 8 }, (_, index) => index + 1);
+const dateIcon = '<svg class="booking-field__symbol" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="6" width="24" height="23" rx="2"/><path d="M4 12h24M10 2v8M22 2v8M9 17h3m3 0h3m3 0h3M9 22h3m3 0h3m3 0h3"/></svg>';
+const guestIcon = '<svg class="booking-field__symbol" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="14" cy="9" r="6"/><path d="M3 29v-5c0-5 4-8 11-8s11 3 11 8v5H3Zm21-25c6 2 6 10 0 12m3 3c3 2 4 5 3 10"/></svg>';
+const submitArrow = '<svg class="booking-submit__arrow" viewBox="0 0 32 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 12h27M21 4l8 8-8 8"/></svg>';
 
 function validArrival(value, minISO) {
   if (typeof value !== "string" || !value) return false;
@@ -137,10 +140,10 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     <div class="booking-strip__heading"><p class="booking-kicker">${escapeHtml(ui.stayPlanning)}</p><h2 id="booking-title">${escapeHtml(ui.selectStayDates)}</h2><p>${escapeHtml(ui.datePlanningOnly)}</p></div>
     <form class="booking-form" novalidate>
       <div class="booking-form__fields">
-        <button class="booking-field" type="button" data-date-field="checkIn" aria-haspopup="dialog" aria-controls="booking-calendar" aria-expanded="false" aria-label="${escapeHtml(ui.selectArrivalDate)}"><span>${escapeHtml(ui.checkIn)}</span><strong data-date-value="checkIn">${escapeHtml(ui.selectDate)}</strong><span class="booking-field__icon" aria-hidden="true">⌄</span></button>
-        <button class="booking-field" type="button" data-date-field="checkOut" aria-haspopup="dialog" aria-controls="booking-calendar" aria-expanded="false" aria-label="${escapeHtml(ui.selectDepartureDate)}"><span>${escapeHtml(ui.checkOut)}</span><strong data-date-value="checkOut">${escapeHtml(ui.selectDate)}</strong><span class="booking-field__icon" aria-hidden="true">⌄</span></button>
-        <label class="booking-field booking-field--guests"><span>${escapeHtml(ui.guests)}</span><select aria-label="${escapeHtml(ui.selectGuestCount)}">${GUEST_OPTIONS.map((count) => `<option value="${count}">${escapeHtml(guestCountLabel(count, locale, ui))}</option>`).join("")}</select><span class="booking-field__icon" aria-hidden="true">⌄</span></label>
-        <button class="booking-submit" type="submit">${escapeHtml(ui.bookingSubmit)}</button>
+        <button class="booking-field" type="button" data-date-field="checkIn" aria-haspopup="dialog" aria-controls="booking-calendar" aria-expanded="false" aria-label="${escapeHtml(ui.selectArrivalDate)}">${dateIcon}<span>${escapeHtml(ui.checkIn)}</span><strong data-date-value="checkIn">${escapeHtml(ui.selectDate)}</strong><span class="booking-field__icon" aria-hidden="true">⌄</span></button>
+        <button class="booking-field" type="button" data-date-field="checkOut" aria-haspopup="dialog" aria-controls="booking-calendar" aria-expanded="false" aria-label="${escapeHtml(ui.selectDepartureDate)}">${dateIcon}<span>${escapeHtml(ui.checkOut)}</span><strong data-date-value="checkOut">${escapeHtml(ui.selectDate)}</strong><span class="booking-field__icon" aria-hidden="true">⌄</span></button>
+        <label class="booking-field booking-field--guests">${guestIcon}<span>${escapeHtml(ui.guests)}</span><select aria-label="${escapeHtml(ui.selectGuestCount)}">${GUEST_OPTIONS.map((count) => `<option value="${count}">${escapeHtml(guestCountLabel(count, locale, ui))}</option>`).join("")}</select><span class="booking-field__icon" aria-hidden="true">⌄</span></label>
+        <button class="booking-submit" type="submit">${escapeHtml(ui.bookingSubmit)}${submitArrow}</button>
       </div>
       <p class="booking-message" role="status" aria-live="polite"></p>
     </form>

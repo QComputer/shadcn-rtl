@@ -15,3 +15,7 @@ Latest roadmap and limitations: `docs/hotel/damoon/README.md`.
 ## Languages
 
 Persian is the default. `/fa`, `/en` and `/ar` preserve the same public route structure. `translations.js` contains English/Arabic content and UI labels. The language switch preserves the current route, query and fragment; it does not create a booking. Calendar navigation remains Jalali, with localized date labels. Locale choice is represented in the URL.
+
+## Approved-reference composition
+
+The homepage uses isolated photographic/brand regions of the supplied desktop/mobile concept references through CSS backgrounds. All controls and copy remain native HTML. `hero-reference-v2.png` is an image-generated conceptual underlay based on the reference, not a real hotel photo. `leaf-border.svg` is a code-native ornament. Lalezar is bundled for the Persian display heading with its OFL license. Keep reference dimensions stable when adjusting sprite coordinates. See `docs/hotel/damoon/DESIGN-REFERENCE-REBUILD-2026-10-28.md`.

@@ -1,5 +1,6 @@
 @font-face { font-family: Vazirmatn; src: url('/damoon-front/assets/Vazirmatn-Regular.ttf') format('truetype'); font-style: normal; font-weight: 400; font-display: swap; }
 @font-face { font-family: Vazirmatn; src: url('/damoon-front/assets/Vazirmatn-Bold.ttf') format('truetype'); font-style: normal; font-weight: 600 900; font-display: swap; }
+@font-face { font-family: Vazirmatn; src: url('/damoon-front/assets/Vazirmatn-Black.ttf') format('truetype'); font-style: normal; font-weight: 900; font-display: swap; }
 :root {
   color-scheme: light;
   --paper: #f7f4ee;
@@ -187,6 +188,21 @@ button { color: inherit; }
   .site-footer__main { grid-template-columns: 1fr 1fr; gap: 24px; }
   .site-footer__note { grid-column: 1 / -1; grid-row: 2; }
   .footer-links { grid-column: 1 / -1; }
+}
+.site-header:has(+ .home-main) .brand { position: relative; width: 205px; height: 94px; flex: 0 0 205px; overflow: hidden; }
+.site-header:has(+ .home-main) .brand__mark, .site-header:has(+ .home-main) .brand__text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.site-header:has(+ .home-main) .brand::after { position: absolute; inset: 0; content: ""; background: url("/damoon-front/assets/desktop-reference.png") no-repeat; background-size: 100vw auto; background-position: -6.2vw 0; }
+.language-switcher { display: block; position: relative; }
+.language-switcher > summary { display: flex; align-items: center; gap: 12px; min-height: 34px; padding: 3px 8px; list-style: none; color: var(--ink); font-size: 11px; cursor: pointer; }
+.language-switcher > summary::-webkit-details-marker { display: none; }
+.language-switcher__options { position: absolute; z-index: 40; top: calc(100% + 4px); inset-inline-end: 0; display: grid; min-width: 112px; padding: 5px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.language-switcher__options a { display: flex; align-items: center; min-height: 32px; padding: 4px 8px; color: var(--ink); text-decoration: none; font-size: 11px; }
+.language-switcher__options a:hover, .language-switcher__options a[aria-current="page"] { color: var(--accent); background: var(--surface-soft); }
+.language-switcher:not([open]) .language-switcher__options { display: none; }
+@media (max-width: 760px) {
+  .site-header:has(+ .home-main) .brand { width: 175px; height: 50px; flex-basis: 175px; top: 41px; }
+  .site-header:has(+ .home-main) .brand::after { background-image: url("/damoon-front/assets/mobile-reference.png"); background-size: 140vw auto; background-position: -46vw -11vw; }
+  .site-header:has(+ .home-main) .language-switcher { left: -32px; }
 }
 @media (max-width: 480px) {
   .brand { gap: 9px; }
@@ -406,8 +422,241 @@ html[dir="ltr"] .home-shortcut__arrow, html[dir="ltr"] .home-service__arrow { tr
   .language-switcher a { min-height: 28px; min-width: 40px; }
   html[lang="en"] .brand__text small { max-width: 130px; font-size: 8px; }
 }
+
+/* Approved Damoon landing composition */
+:root { --paper: #f6f0e6; }
+.site-header:has(+ .home-main) { position: absolute; z-index: 30; inset: 0 0 auto; background: transparent; border: 0; }
+.site-header:has(+ .home-main) .site-header__inner { width: min(1540px, calc(100% - 64px)); min-height: 98px; }
+.home-main { background: var(--paper); }
+.home-top { position: relative; height: 552px; }
+.home-top .page-hero--home { height: 100%; min-height: 0; }
+.home-top .page-hero__visual { position: absolute; inset: 0; height: 100%; background: var(--paper); }
+.home-top .page-hero__visual { z-index: 0; }
+.home-top .page-hero__visual img { object-fit: cover; object-position: center; opacity: 0; }
+.home-top .page-hero--home .page-hero__visual::before { display: block; position: absolute; z-index: 1; top: 3.946vw; right: 0; width: 76.325%; height: 23.675vw; content: ""; background: url("/damoon-front/assets/desktop-reference.png") no-repeat; background-size: 100vw auto; background-position: -23.675vw -3.946vw; }
+.home-top .page-hero__visual figcaption { display: none; }
+.home-top .page-hero__copy { top: 128px; bottom: auto; left: max(6.65vw, calc((100vw - 1540px) / 2)); width: 315px; padding: 0; background: transparent; backdrop-filter: none; text-align: left; }
+.home-top .page-hero__copy { z-index: 2; }
+.home-top .page-hero__copy .eyebrow { margin: 0 0 12px; color: #a64c1e; font-size: 21px; line-height: 1.4; }
+.home-top .page-hero__copy .eyebrow::before { content: ""; display: block; width: 44px; height: 1px; margin-bottom: 14px; background: var(--ink); }
+.home-top .page-hero--home h1 { font-size: clamp(58px, 4.3vw, 76px); line-height: 1.22; }
+.home-top .page-hero--home h1 { font-weight: 900; white-space: nowrap; }
+.home-top .home-subtitle { margin-top: 3px; font-size: 20px; }
+.home-top .page-hero__lead { margin-top: 14px; font-size: 17px; line-height: 1.75; }
+.home-top .page-hero__actions { margin-top: 19px; direction: ltr; }
+.home-top .page-hero__actions .button { min-width: 270px; min-height: 56px; }
+.home-shortcuts { display: none; }
+.home-intro { width: min(1540px, calc(100% - 13.3vw)); margin: 44px auto 28px; display: grid; grid-template-columns: 20% 46.5% 33.5%; gap: 0; align-items: stretch; direction: ltr; }
+.home-intro__copy { direction: rtl; text-align: right; padding: 6px 32px 0 20px; }
+.home-intro__copy .eyebrow { font-size: 11px; }
+.home-intro__copy h2 { font-size: 26px; line-height: 1.55; }
+.home-intro__copy > p:not(.eyebrow) { margin-top: 10px; font-size: 12px; line-height: 1.8; }
+.home-intro__copy .text-link { font-size: 12px; }
+.home-lobby { position: relative; height: min(260px, 14.65vw); overflow: hidden; background: #4a3021; }
+.home-lobby { background: url("/damoon-front/assets/desktop-reference.png") no-repeat; background-size: 100vw auto; background-position: -24vw -33.65vw; }
+.home-lobby > img { position: absolute; width: 100%; height: 100%; object-fit: cover; opacity: 0; }
+.home-lobby.is-live > img { opacity: 1; }
+.home-lobby > button { position: absolute; top: 50%; width: 36px; height: 36px; transform: translateY(-50%); border: 0; border-radius: 50%; background: #fff; color: var(--accent); font-size: 25px; cursor: pointer; }
+.home-lobby > [data-home-prev] { left: 18px; }
+.home-lobby > [data-home-next] { right: 18px; }
+.home-lobby__dots { position: absolute; inset: auto 0 12px; display: flex; justify-content: center; gap: 8px; }
+.home-lobby__dots button { width: 10px; height: 10px; padding: 0; border: 1px solid white; border-radius: 50%; background: #fff; cursor: pointer; }
+.home-lobby__dots button[aria-current] { background: var(--accent); border-color: var(--accent); }
+.home-side { direction: rtl; padding-inline-start: 30px; }
+.home-side h2 { margin: 0 0 10px; font-size: 17px; }
+.home-room-list__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.home-room-list__grid a { position: relative; height: 105px; overflow: hidden; color: white; }
+.home-room-list__grid a::before { position: absolute; inset: 0; content: ""; background: url("/damoon-front/assets/desktop-reference.png") no-repeat; background-size: 100vw auto; }
+.home-room-list__grid [data-room-sprite="0"]::before { background-position: -84.55vw -35.1vw; }
+.home-room-list__grid [data-room-sprite="1"]::before { background-position: -75.2vw -35.1vw; }
+.home-room-list__grid [data-room-sprite="2"]::before { background-position: -65.95vw -35.1vw; }
+.home-room-list__grid img { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.home-room-list__grid strong { position: absolute; inset: auto 0 0; padding: 5px; background: linear-gradient(transparent, #1d1712d9); font-size: 12px; }
+.home-gallery-list { margin-top: 12px; }
+.home-gallery-list > div { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+.home-gallery-list a { position: relative; display: block; height: 83px; overflow: hidden; }
+.home-gallery-list a::before { position: absolute; inset: 0; content: ""; background: url("/damoon-front/assets/desktop-reference.png") no-repeat; background-size: 100vw auto; }
+.home-gallery-list [data-gallery-sprite="0"]::before { background-position: -65.95vw -43.86vw; }
+.home-gallery-list [data-gallery-sprite="1"]::before { background-position: -72.6vw -43.86vw; }
+.home-gallery-list [data-gallery-sprite="2"]::before { background-position: -79.2vw -43.86vw; }
+.home-gallery-list [data-gallery-sprite="3"]::before { background-position: -85.4vw -43.86vw; }
+.home-gallery-list img { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.home-features { display: none; }
+@media (min-width: 761px) {
+  .site-header:has(+ .home-main) .site-header__inner { width: min(1540px, calc(100% - 13.3vw)); }
+  .home-top [data-booking-slot] { position: absolute; z-index: 5; left: 22.5%; right: 6.3%; bottom: -8px; }
+  .home-top .booking-strip { width: 100%; margin: 0; padding: 3px 8px; }
+}
+@media (max-width: 760px) {
+  .site-header:has(+ .home-main) { position: relative; background: var(--paper); }
+  .site-header:has(+ .home-main) .site-header__inner { min-height: 95px; }
+  .home-top { height: auto; }
+  .home-top .page-hero--home { display: flex; flex-direction: column-reverse; overflow: visible; }
+  .home-top .page-hero__visual { position: relative; inset: auto; height: auto; aspect-ratio: 674 / 410; overflow: hidden; background: var(--paper); }
+  .home-top .page-hero--home .page-hero__visual::before { display: block; inset: 0; width: 100%; height: 100%; background-image: url("/damoon-front/assets/mobile-reference.png"); background-size: 140vw auto; background-position: -20vw -24.4vw; }
+  .home-top .page-hero__visual img { object-fit: cover; object-position: center 57%; }
+  .home-top .page-hero__copy { position: relative; inset: auto; width: 100%; display: flex; align-items: center; padding: 12px 24px 18px; text-align: center; }
+  .home-top .page-hero__copy { padding: 0 20px 8px; }
+  .home-top .page-hero__copy .eyebrow { font-size: 13px; line-height: 1.3; }
+  .home-top .page-hero__copy .home-eyebrow-break { display: none; }
+  .home-top .page-hero__copy .eyebrow { margin: 0 0 5px; font-size: 16px; }
+  .home-top .page-hero__copy .eyebrow::before { display: none; }
+  .home-top .page-hero--home h1 { font-size: clamp(42px, 11vw, 48px); line-height: 1.05; }
+  .home-top .home-subtitle { margin-top: 0; font-size: 14px; line-height: 1.3; }
+  .home-top .page-hero__lead { margin-top: 4px; font-size: 11px; line-height: 1.3; }
+  .home-top .page-hero__actions { width: min(100%, 430px); margin-top: 6px; }
+  .home-top .page-hero__actions .button { width: 100%; min-height: 40px; padding-block: 5px; }
+  .home-intro { width: 100%; margin: 0; display: flex; flex-direction: column; gap: 0; }
+  .home-intro__copy { display: none; }
+  .home-lobby { order: 0; height: 127px; background-image: url("/damoon-front/assets/desktop-reference.png"); background-size: 249vw auto; background-position: -60vw -84vw; }
+  .home-side { display: contents; }
+  .home-room-list { order: 1; padding: 20px 18px 8px; }
+  .home-room-list h2, .home-gallery-list h2 { font-size: 18px; }
+  .home-room-list__grid { gap: 9px; }
+  .home-room-list__grid a { height: auto; overflow: visible; color: var(--ink); background: var(--surface); box-shadow: var(--shadow); }
+  .home-room-list__grid img { height: 1px; }
+  .home-room-list__grid [data-room-sprite="0"]::before { background-image: url("/damoon-front/assets/mobile-reference.png"); background-size: 140vw auto; background-position: -88vw -204vw; }
+  .home-room-list__grid [data-room-sprite="1"]::before { background-image: url("/damoon-front/assets/mobile-reference.png"); background-size: 140vw auto; background-position: -55.5vw -204vw; }
+  .home-room-list__grid [data-room-sprite="2"]::before { background-image: url("/damoon-front/assets/mobile-reference.png"); background-size: 140vw auto; background-position: -22.8vw -204vw; }
+  .home-room-list__grid strong { position: static; display: block; padding: 7px 6px; background: transparent; font-size: 10px; }
+  .home-gallery-list { display: none; }
+  .home-features { display: grid; grid-template-columns: repeat(3, 1fr); padding: 10px 8px 18px; }
+  .home-features > span { display: grid; justify-items: center; gap: 3px; padding: 6px; text-align: center; color: var(--accent); font-size: 25px; }
+  .home-features > span + span { border-inline-start: 1px solid var(--line); }
+  .home-features strong { color: var(--ink); font-size: 12px; font-weight: 600; }
+  .home-features small { color: var(--muted); font-size: 10px; }
+}
+@media (max-width: 760px) {
+  .language-switcher { position: absolute; top: 50%; bottom: auto; left: -44px; transform: translateY(-50%); z-index: 4; }
+  .language-switcher > summary { display: flex; gap: 8px; align-items: center; min-height: 34px; padding: 2px 6px; list-style: none; cursor: pointer; }
+  .language-switcher > summary::-webkit-details-marker { display: none; }
+  .language-switcher__options { position: absolute; top: 100%; left: 0; display: grid; min-width: 100px; padding: 6px; background: var(--surface); box-shadow: var(--shadow); }
+  .language-switcher__options a { min-height: 34px; }
+  .theme-controls { left: auto; right: 56px; }
+  .site-header:has(+ .home-main) .site-header__actions { inset-block-end: 0; }
+  .palette-switcher { display: none; }
+  .site-header:has(+ .home-main) .brand { position: absolute; left: 50%; right: auto; inset-inline-start: auto; transform: translateX(-50%); }
+}
 @media (min-width: 761px) and (max-width: 1000px) {
   .site-nav { display: none; }
   .menu-toggle { display: grid; }
   .mobile-menu:not([hidden]) { position: absolute; inset-inline: 0; inset-block-start: 100%; display: grid; gap: 0; padding: 8px 20px 18px; background: var(--surface); border-bottom: 1px solid var(--line); box-shadow: var(--shadow); }
 }
+/* Final reference alignment: live controls over isolated photographic crops. */
+@font-face { font-family: DamoonTitle; src: url('/damoon-front/assets/Lalezar-Regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+html[lang="fa"] .home-top h1 { font-family: DamoonTitle, Vazirmatn, serif; font-weight: 700; font-size: clamp(64px, 4.9vw, 87px); }
+.site-header:has(+ .home-main) .brand::after { mix-blend-mode: multiply; }
+.site-header:has(+ .home-main) .site-header__actions > .button { display: none; }
+.site-header:has(+ .home-main) .menu-toggle { display: grid; border: 0; width: 36px; }
+.site-header:has(+ .home-main) .site-nav { gap: 30px; }
+.site-header:has(+ .home-main) .site-nav__link { font-size: 14px; }
+.home-top .page-hero__visual { background: url('/damoon-front/assets/hero-reference-v2.png') center / cover no-repeat; }
+.home-top .page-hero--home .page-hero__visual::before { mask-image: linear-gradient(to right, transparent, black 7%); }
+.home-top .page-hero__copy .eyebrow::before { margin-inline-start: 0; }
+.home-top .page-hero__actions .button { font-size: 16px; font-weight: 600; position: relative; padding-inline: 50px; }
+.home-top .page-hero__actions .button::after { content: '⟶'; position: absolute; right: 28px; font-size: 26px; font-weight: 400; }
+.home-lobby > button { top: auto; bottom: 22px; transform: none; }
+.home-lobby__dots { left: 0; right: 0; direction: ltr; gap: 8px; }
+.home-room-list__grid strong { background: #31271b; min-height: 24px; padding-block: 3px; font-weight: 400; font-size: 12px; }
+.home-intro__copy h2 { font-weight: 600; }
+.home-side { padding-inline-start: 30px; }
+.home-side h2 { font-size: 18px; font-weight: 600; }
+.home-lobby, .home-room-list__grid a, .home-gallery-list a { border-radius: 5px; }
+.home-top .booking-submit { font-size: 16px; font-weight: 600; }
+.home-top .booking-field > span:first-of-type { font-size: 13px; font-weight: 400; }
+.home-top .booking-field strong, .home-top .booking-field select { font-size: 15px; font-weight: 400; }
+@media (min-width: 761px) {
+ .home-top { height: clamp(440px, 31.116vw, 620px); }
+ .home-top .page-hero__copy { top: clamp(110px, 7.5vw, 150px); }
+ .home-top .page-hero__actions { margin-top: 18px; }
+}
+@media (max-width: 1200px) and (min-width: 761px) {
+ .site-header:has(+ .home-main) .site-nav { display: none; }
+ .home-top .page-hero__copy { width: 26%; }
+ .home-top .page-hero__copy .eyebrow { font-size: 17px; }
+ .home-top .page-hero__lead { font-size: 14px; }
+ html[lang="fa"] .home-top h1 { font-size: 64px; }
+ .home-top .page-hero__actions .button { min-width: 0; width: 100%; }
+}
+@media (max-width: 760px) {
+ .site-header:has(+ .home-main) .site-header__inner { min-height: 92px; padding: 0; width: calc(100% - 32px); }
+ .site-header:has(+ .home-main) .brand { top: 14px; width: 145px; height: 68px; }
+ .site-header:has(+ .home-main) .brand::after { background-size: 1243px auto; background-position: -77px 0; }
+ .site-header:has(+ .home-main) .site-header__actions { inset: 0; margin: 0; }
+ .site-header:has(+ .home-main) .language-switcher { left: 0; right: auto; pointer-events: auto; }
+ .site-header:has(+ .home-main) .menu-toggle { right: 0; width: 32px; }
+ .site-header:has(+ .home-main) .theme-controls { right: 38px; }
+ .site-header:has(+ .home-main) .theme-toggle { width: 31px; height: 31px; font-size: 19px; }
+ .home-top .page-hero--home .page-hero__visual::before { mask-image: none; }
+ .home-top .page-hero__copy { padding: 6px 22px 8px; }
+ html[lang="fa"] .home-top h1 { font-size: 56px; line-height: 1.25; }
+ .home-top .page-hero__copy .eyebrow { font-size: 14px; }
+ .home-top .home-subtitle { font-size: 17px; }
+ .home-top .page-hero__lead { font-size: 13px; line-height: 1.65; margin-top: 9px; }
+ .home-top .page-hero__actions { margin-top: 10px; }
+ .home-top .page-hero__actions .button { min-height: 46px; font-size: 17px; }
+ .home-top .page-hero__actions .button::after { right: 24px; }
+ .home-top .booking-field > span:first-of-type { font-size: 10px; }
+ .home-top .booking-field strong, .home-top .booking-field select { font-size: 11px; }
+ .home-top .booking-submit { font-size: 15px; }
+ .home-lobby { height: 127px; background-size: 249vw auto; background-position: -60vw -84vw; }
+ .home-lobby > button { width: 26px; height: 26px; bottom: 5px; font-size: 20px; }
+ .home-lobby > [data-home-prev] { left: 10px; }
+ .home-lobby > [data-home-next] { right: 10px; }
+ .home-lobby__dots { bottom: 6px; }
+ .home-room-list { padding-top: 22px; }
+ .home-room-list__grid strong { font-size: 11px; background: var(--surface); color: var(--ink); }
+ .home-features { position: static; }
+ .home-features > span { color: var(--ink); }
+}
+/* Pixel-scale refinements after side-by-side review. */
+html[lang="fa"] .home-top h1 { font-size: clamp(58px, 4.28vw, 76px); line-height: 1.08; }
+.home-top .page-hero__visual { background-image: linear-gradient(to bottom, var(--paper) 0 13%, transparent 20%), url('/damoon-front/assets/hero-reference-v2.png'); }
+.home-top .page-hero__copy .eyebrow { font-weight: 400; }
+.home-lobby__dots { gap: 10px; transform: translateX(-10px); }
+.site-header:has(+ .home-main) .brand::after { background-image: url('/damoon-front/assets/desktop-reference.png'); }
+@media (min-width: 761px) {
+ .home-top .page-hero__actions { margin-top: 16px; }
+}
+@media (max-width: 760px) {
+ .site-header:has(+ .home-main) .site-header__inner { min-height: 80px; }
+ .site-header:has(+ .home-main) .brand { top: 6px; }
+ html[lang="fa"] .home-top h1 { font-size: 54px; line-height: 1.05; }
+ .home-top .page-hero__copy { padding: 4px 22px 8px; }
+ .home-top .page-hero__lead { font-size: 12px; line-height: 1.45; margin-top: 6px; }
+ .home-top .page-hero__actions { margin-top: 8px; }
+ .home-top .home-subtitle { font-size: 16px; }
+ .home-lobby { background-size: 289vw auto; background-position: -69.4vw -97.3vw; }
+ .home-lobby__dots { gap: 5px; transform: none; }
+ .home-lobby__dots button { width: 6px; height: 6px; }
+}
+.home-side { padding: 0 0 0 30px; }
+.home-intro__copy { padding: 6px 88px 0 0; }
+.home-intro__copy h2 { max-width: 220px; margin: 12px 0; font-size: 24px; }
+.home-room-list__grid strong small { display: none; }
+.home-features svg { width: 28px; height: 32px; }
+@media (max-width: 760px) {
+ .home-side { padding: 0; }
+ .home-room-list__grid a { position: relative; padding-top: 100px; }
+ .home-room-list__grid a::before { height: 100px; bottom: auto; }
+ .home-room-list__grid strong { display: grid; gap: 4px; min-height: 52px; padding: 6px 5px 8px; text-align: center; }
+ .home-room-list__grid strong small { display: block; font-size: 9px; color: var(--muted); font-weight: 400; }
+ .home-features { margin-top: 0; padding-top: 12px; padding-bottom: 22px; }
+}
+.home-top::before { content: ''; position: absolute; top: 28px; left: -14px; z-index: 3; width: 90px; height: 430px; background: url('/damoon-front/assets/leaf-border.svg') center / contain no-repeat; opacity: .4; pointer-events: none; }
+.home-intro::before, .home-intro::after { content: ''; position: absolute; top: 4px; width: 80px; height: 300px; background: url('/damoon-front/assets/leaf-border.svg') center / contain no-repeat; opacity: .35; pointer-events: none; }
+.home-intro { position: relative; }
+.home-intro::before { left: -118px; }
+.home-intro::after { right: -118px; transform: rotate(180deg); }
+@media (max-width: 760px) {
+ .home-top::before { top: 240px; left: -15px; width: 65px; height: 200px; opacity: .35; }
+ .home-intro::before, .home-intro::after { display: none; }
+}
+:root[data-theme="dark"] .site-header:has(+ .home-main) .brand::after { mix-blend-mode: screen; filter: invert(1) hue-rotate(180deg); }
+.home-top::before { left: 0; background-position: -14px center; }
+@media (max-width: 760px) { .home-top::before { left: 0; background-position: -15px center; } }
+.home-intro::before { left: calc(-6.65vw + 1px); }
+.home-intro::after { right: calc(-6.65vw + 1px); }
+
+html[lang="fa"] .home-top h1 { font-weight: 400; font-size: clamp(58px, 4.51vw, 80px); }
+@media (max-width: 760px) { html[lang="fa"] .home-top h1 { font-size: 56px; } }

@@ -1,0 +1,4418 @@
+{
+  "basis": {
+    "localHead": "ddd414184caadf479e357c5a7e19238592c08b40",
+    "originMain": "4f0eb5d2a7ff65f977d2645682993cd0c7abc0a5",
+    "statusEntries": 702
+  },
+  "entries": [
+    {
+      "status": " M",
+      "path": ".gitignore",
+      "classification": "same_path_content_differs",
+      "originBlob": "80b50a5014e7504eb88276a3e0041a9d024beade",
+      "localBlob": "71c69030dc4b4d68d184f9d14b88716b5dcae594"
+    },
+    {
+      "status": " M",
+      "path": "app/[locale]/[slug]/page.tsx",
+      "classification": "same_path_content_differs",
+      "originBlob": "65f8ae47590a3e41072f664ca5645b6881affe84",
+      "localBlob": "74a76f8f646f380771c6adc6c459b68e1853524c"
+    },
+    {
+      "status": " M",
+      "path": "app/[locale]/[slug]/shop/layout.tsx",
+      "classification": "same_path_content_differs",
+      "originBlob": "228100ded387b8d3c91965f6e8c5b07eff83ff30",
+      "localBlob": "7c7270fd564853189bcf5775b75753ec574a82ea"
+    },
+    {
+      "status": " M",
+      "path": "app/[locale]/[slug]/shop/page.tsx",
+      "classification": "same_path_content_differs",
+      "originBlob": "0fe164565f5ff1d33ec5827acc32887e086e9869",
+      "localBlob": "1c16c0a67c5ef0c4d6d720a3f41eed2a3b2f4532"
+    },
+    {
+      "status": " M",
+      "path": "app/[locale]/dashboard/products/[id]/page.tsx",
+      "classification": "same_path_content_differs",
+      "originBlob": "ddc179d96078960abce4ff37497e5d042fc68834",
+      "localBlob": "19d95ef6738e248c869b085ec66a5615321167b4"
+    },
+    {
+      "status": " M",
+      "path": "app/[locale]/dashboard/products/new/page.tsx",
+      "classification": "same_path_content_differs",
+      "originBlob": "62498b723f58eae2e22eb9398d6614dd71bd6d98",
+      "localBlob": "0aec06196475677bb1761605464d35344823d8bb"
+    },
+    {
+      "status": " M",
+      "path": "app/api/public/organizations/[slug]/shop/route.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "7140968805c4831e81f4a472a4503e3f99a49228",
+      "localBlob": "5566c5a8ae74bcceca1c266347641bccb620affe"
+    },
+    {
+      "status": " M",
+      "path": "app/api/public/products/[id]/route.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "3861049cddd32ce82acb584b79645b8be7803f7f",
+      "localBlob": "3a4b06a78646222a35535d801597b4ff8c99729f"
+    },
+    {
+      "status": " M",
+      "path": "app/manifest.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "26179eb00b3f829972e37ee74a1267b2aab1c43b",
+      "localBlob": "e144f8460ba9a2e6087a5ed16ee93c6983083907"
+    },
+    {
+      "status": " M",
+      "path": "lib/api-guards.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "43706b4e24d5d23814624cef3694a97f1e1e9c55",
+      "localBlob": "8ddc4c697492e88b73712bc7b7b279a464decf46"
+    },
+    {
+      "status": " M",
+      "path": "lib/demo-universe/demo-showcase.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "6aed53571ac186b1ba65b04b416e63bb675d1a03",
+      "localBlob": "e1edf2fcc9acc802cb757be98ffa8172c7ed25cb"
+    },
+    {
+      "status": " M",
+      "path": "lib/env/load-next-env.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "f95d680b896901a3fca11535594a27569583bd91",
+      "localBlob": "f844543ac371e9f026a07502cec198b4cb55f67c"
+    },
+    {
+      "status": " M",
+      "path": "lib/operational-app-manifest.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "108362f39f6af89d0b22da85a1004fbbd42bfad6",
+      "localBlob": "e0f8e2fc11847dc162f1ec3f1d2c870beae8847b"
+    },
+    {
+      "status": " M",
+      "path": "lib/organization-branding.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "f38cff9de2c110f65e71d2e4ab3801e6e8672e87",
+      "localBlob": "8f77397a2aa9fa2b84163b7587b9b468e970d546"
+    },
+    {
+      "status": " M",
+      "path": "lib/organization-slugs.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "544578f3babf59a63daf860e9e467eae468efb05",
+      "localBlob": "dca2ee7fd2c5148ac5554f4d4abda08166e2d734"
+    },
+    {
+      "status": " M",
+      "path": "lib/seo.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "c7aac4a267652f077f59b34706b780581d0b732b",
+      "localBlob": "a3aa5f7d90df249307c927f2e1863dd7757f8025"
+    },
+    {
+      "status": " M",
+      "path": "lib/services/cart.service.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "3ae18b7ad7353e405d69fbb2279195ca98a8f29f",
+      "localBlob": "423707280c0278479fe9cdfd1d2ad5618eab941a"
+    },
+    {
+      "status": " M",
+      "path": "lib/services/category.service.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "8ed0e6689de47014c3c5447c8e8bd8e2b5aa746a",
+      "localBlob": "823a04e23168d2618a07df9ff2c1954fc9726c97"
+    },
+    {
+      "status": " M",
+      "path": "lib/services/organization.service.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "0b8b995eb196ace3d7cbbad8df8525d01584761c",
+      "localBlob": "bba696a5e70d89c93ced4024dc25c3ec253ae035"
+    },
+    {
+      "status": " M",
+      "path": "lib/services/product.service.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "476cc1051bbef520df2d518cf3b5f87214274d1b",
+      "localBlob": "6330b5b8059c0c24b8df8c927d79c073d01bd6da"
+    },
+    {
+      "status": " M",
+      "path": "lib/shop-menu-filter.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "5d813465c25ac8a55147edb104c6ed5b125f3813",
+      "localBlob": "f22d792c208051e609b1750d2c311c1e7814f125"
+    },
+    {
+      "status": " M",
+      "path": "lib/validators/index.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "076eb84adfa22371b8c74e2899a195ad3de8fb3e",
+      "localBlob": "752d836475c55df5908c6df6cb1b7425557be031"
+    },
+    {
+      "status": " M",
+      "path": "lib/validators/tenant-platform.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "d5b38edbfc12d73c9a77fa8dc3d59671896530fd",
+      "localBlob": "fa3ac172dcae01f656c56c309f12f6b8c8687fbf"
+    },
+    {
+      "status": " M",
+      "path": "package.json",
+      "classification": "same_path_content_differs",
+      "originBlob": "44efe1ad3f06e34faaaee1217eb02a49cb91dac0",
+      "localBlob": "951056db8970c9a7865ba3f634c6147a828e3ba1"
+    },
+    {
+      "status": " M",
+      "path": "prisma/schema.prisma",
+      "classification": "same_path_content_differs",
+      "originBlob": "d8f43a5fbc2baa0cc90f035cc68f890cb1400c1a",
+      "localBlob": "9aca467bae003772ecdc9e57b30aba22a56836e5"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/lockups/bazarbaaz-lockup-bilingual-dark.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "936210272523084dd590217169077dda572b5645",
+      "localBlob": "be046cbd2d7ab281bc8c4972596d07717d1ca839"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/lockups/bazarbaaz-lockup-bilingual-light.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "dff9337b96e8ab631529223e69113bde1fa6fa4c",
+      "localBlob": "cdc0b962c2621ec86a12d8d4d2d9701e7ccd0416"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/lockups/bazarbaaz-lockup-en-dark.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "0403041bb012f714f47b2fc185c4517ce4485e54",
+      "localBlob": "9047c3cd1b53a4800218fdfe8d328603b3f6982c"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/lockups/bazarbaaz-lockup-en-light.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "724b77575f862689ff5849dabe6989917a2b753a",
+      "localBlob": "007e5a423927e65f093e76142fa151cd646dae6f"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/lockups/bazarbaaz-lockup-fa-dark.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "a99d7d19cb8f2aa7d3f675dd824f8601d6a679cd",
+      "localBlob": "6de36ef99c3b5645f813489133812e5439571c57"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/lockups/bazarbaaz-lockup-fa-light.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "b571b080e4913fa3b5a82dc869d0ceb09dfc6d7f",
+      "localBlob": "53cccee106026b2eb70ab6176a373a4c298e8063"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/lockups/png/bazarbaaz-lockup-bilingual-dark.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "0d47474795f3d494e81c69eac202642c6fa5bb6c",
+      "localBlob": "07923327346eb93ea6b9d12d829b7d36e3f52365"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/lockups/png/bazarbaaz-lockup-bilingual-light.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "13ba96001f1f63fa0ffd05fcfa870699de6dc867",
+      "localBlob": "4444d051496d4604d2d17239b4ea4a584bf4b61e"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/lockups/png/bazarbaaz-lockup-en-dark.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "715467acfc74ea6ebc94e314eadc406bcb65cfae",
+      "localBlob": "57ace3e93b69533d9df5d5fd5b13c2d253f6afaf"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/lockups/png/bazarbaaz-lockup-en-light.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "0aef642f3136d0bd8345d8d5ab0f5850034f54f9",
+      "localBlob": "e639e3ac09ce30a74c2e3fe25cd61706d420e58f"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/lockups/png/bazarbaaz-lockup-fa-dark.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "7ee688762b5af69d993f972a1a3381341b498444",
+      "localBlob": "b3c25eafc37d86883f4c64cf3cf4b59e59b6cddd"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/lockups/png/bazarbaaz-lockup-fa-light.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "5f7f5b1d0c5337c0d7d31ceca920c999177d9175",
+      "localBlob": "990e841890b733aedd362eb2cee69df5f19ad872"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-1024.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "5ce5ec6f6e9a6c4d8d88ea1eae5502bef4373bb7",
+      "localBlob": "97658810c84dba666adbe112cd5ebcfa5815fb27"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-128.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "0bfdc7b11ba1ffc1bd92df5e60eec078ba298dc0",
+      "localBlob": "bef97971d3ab3e154e40b3c46f6490b5e626a200"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-256.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "6be729a1bcf3307339fb7ec1e198569d0078da43",
+      "localBlob": "674ec582250e67405aba543bcbf47a9ec4651bf4"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-512.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "9319f7edee68484cda778c721e8199a0a7ab29c9",
+      "localBlob": "4bbdb75844a6058e93d71811e3ff7a6d36997beb"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-adaptive.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "37dd304c3808b18f81d993ec0ba50882842f1234",
+      "localBlob": "2714e37e2f34ad4a4aeca846df049c5de39fa553"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-blue-tile.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "03a45101236cf2efbc8af0bbeeb20c92516b22a2",
+      "localBlob": "d0f34620bc60fec4bc117e933791f23d24e60806"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-dark-1024.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "d1cec013f9d44f673674c8a44b87744aa10996f2",
+      "localBlob": "344d338754f2afe3547912d19137ebf679c43dd0"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-dark-128.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "903d847597e85540f6d003d53e03c632b526946e",
+      "localBlob": "45fe6612f51bf6d09539bb0509ec9443e815ce2b"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-dark-256.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "c2a852eb8da8604ce8e11a0ed1820e87f9f8554c",
+      "localBlob": "100b52ea55c89b70ba00bdac63f88607b35eb9aa"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-dark-512.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "a722fa81eb35c1d563388ca73655ad51c31cef7b",
+      "localBlob": "dae50cb413c34f08ac854f9c18285796045848b4"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-dark-tile.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "0ed9e06d5a8a11da4733c682ba1be2f75cacd857",
+      "localBlob": "0f16868426f3d94045825416221e17bcb06e290b"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-dark.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "6b71e8738ec314d284449dd259b499018996c0e9",
+      "localBlob": "404b5948042aaf432a8699784c410ab57b3d2848"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-light-tile.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "bfe922e28e2d6ccd518087d9726b30d6f69c3d54",
+      "localBlob": "c0c511443ce5bce37806b83b814f24c48b70beab"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-mono-ink.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "78073a51e9efde9daf6a5f47acd6608e4bb7cf23",
+      "localBlob": "00c05988c211077af7c501155ffffabfed024a2c"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-mono-white.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "e5de84727e997369ed0f4747dd47e606d745f4fd",
+      "localBlob": "713cab05c0d657d9158230a8a846afd56d90b2f4"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-variant-1-dark.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "6b71e8738ec314d284449dd259b499018996c0e9",
+      "localBlob": "404b5948042aaf432a8699784c410ab57b3d2848"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-variant-1-light.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "ac3654928b401b55cd840f46cb0149fb84ab9e99",
+      "localBlob": "c5690b6fd62c9446df86f89c68186de01331a850"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-variant-2-dark.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "6b71e8738ec314d284449dd259b499018996c0e9",
+      "localBlob": "713cab05c0d657d9158230a8a846afd56d90b2f4"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-variant-2-light.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "ac3654928b401b55cd840f46cb0149fb84ab9e99",
+      "localBlob": "00c05988c211077af7c501155ffffabfed024a2c"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-variant-3-dark.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "6b71e8738ec314d284449dd259b499018996c0e9",
+      "localBlob": "404b5948042aaf432a8699784c410ab57b3d2848"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-variant-3-light.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "ac3654928b401b55cd840f46cb0149fb84ab9e99",
+      "localBlob": "c5690b6fd62c9446df86f89c68186de01331a850"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-variant-4-dark.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "6b71e8738ec314d284449dd259b499018996c0e9",
+      "localBlob": "713cab05c0d657d9158230a8a846afd56d90b2f4"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark-variant-4-light.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "ac3654928b401b55cd840f46cb0149fb84ab9e99",
+      "localBlob": "00c05988c211077af7c501155ffffabfed024a2c"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/bazarbaaz-mark.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "ac3654928b401b55cd840f46cb0149fb84ab9e99",
+      "localBlob": "c5690b6fd62c9446df86f89c68186de01331a850"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/marks/safari-pinned-tab.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "25ea004e554be299a76b7128f434aca241f272e4",
+      "localBlob": "9213ff32de09a9313305c18ef2b38e3f6cdf29c4"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/social/og-default-dark.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "25d0b331baffb1fed1abc6d2a589121917e141a8",
+      "localBlob": "baa900b41ee449e072024987e1e811ea65361043"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/social/og-default-light.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "a8c6e812dc9460b13f610932f366171077b57cb5",
+      "localBlob": "d87f4793bc5ecf4d49129795d2831bca3e6055d1"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/social/social-square-dark.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "894a48d7136a84a8c752f79fcf48262d1c780567",
+      "localBlob": "1cd042bbd683a76fc957f3cf187512f1db051a9b"
+    },
+    {
+      "status": " M",
+      "path": "public/brand/social/social-square-light.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "8c24dbafb14835c68a42c79a7268f6bda50e7ba0",
+      "localBlob": "587faee13c7fea28de647bcaaf9c3127c01d0494"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/aka-shoes/home/collections/aka-collection-color.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "e1fd1b4c2ee8aab596604074e2a362cbd2ad1840"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/aka-shoes/home/collections/aka-collection-dark.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "38ebe34f631b7b257d7870fb99bf2184b3491719"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/aka-shoes/home/collections/aka-collection-light.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "dda6dc3692445ed6ef15d83c432c04473489e144"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/aka-shoes/home/collections/aka-collection-minimal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "3f09c7de1aecdff5216c7fd2834238806c90ba37"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/aka-shoes/home/hero/aka-home-hero-desktop.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "8a2ddf160ddadc613c888bcdb7658773ee9cc7c7"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/aka-shoes/home/hero/aka-home-hero-mobile.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "488d44abbc04c8fe5e4573b8115b9dacacd5548a"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/aka-shoes/home/lookbook/aka-lookbook-dark.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "9c65198fcb0e7aa76791d247421e04815571558b"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/aka-shoes/home/lookbook/aka-lookbook-green-yellow.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "932f328e5600e11a53d445332ff8c39588bbd2ed"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/aka-shoes/home/lookbook/aka-lookbook-pastel.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "fb2588459a2ab65bb26f2827e73b3d56b48c4e10"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/aka-shoes/home/lookbook/aka-lookbook-red-black.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "aeea1a8bf98c387379520b85fbf192b617808a48"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/aka-shoes/home/products/aka-product-aqua-lavender.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "e84f1f4bff5732a24cf12c5365eee81677feb2b9"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/aka-shoes/home/products/aka-product-black-white.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "aa749ce7ea252e08c599cb71ce284a2de8c36038"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/aka-shoes/home/products/aka-product-charcoal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "74df6be577a286532e73b9891c331ff3de35fe5a"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/aka-shoes/home/products/aka-product-green-yellow.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "076d24ddda2b515a796c780bb5b7f3c1447b2423"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/aka-shoes/home/products/aka-product-pastel-pink.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "dcedc1e69d4113f75a29329ef62c642ed32ab9df"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/aka-shoes/home/products/aka-product-red-black.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "825097f2003777a93e1fcfd449645efc82c5c55a"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/app-icon-512.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "6958cdd7e1c710c7dc759b84c2eebbf29b662b94"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/app-icon-light-512.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "9b5396e96c65a7d6a612a9a066207f76a5738d4a"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/apple-touch-icon.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "e462e165315f740b3b33ff4f0af3d808d104dcc9"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/brand-background.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "39bd2568ab7a20f558fc775a1e9fe0b9ca9609e3"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/brand-guidelines-board.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "a5c22a4db45f5c49dbd3189e14ad49169e940152"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/brand-guidelines-board.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "e30d6baf4997a6994b0db41425146b55401d00ef"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/favicon-16.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "83ac4e1ac1396f78aa63359646541ae73a006ac6"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/favicon-32.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "ff7374dc24e076ef43635093869181559095ba4d"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/favicon.ico",
+      "classification": "local_delete_remote_present",
+      "originBlob": "fbe8cf7584a6932161698a9af0e73aeb57794b76"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/icon-192-dark.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "b6cfe7863f208b43689c78dcc7ded126d2a6f309"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/icon-192.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "b733025b432b84e8f66c82196bafb9ba09748cc4"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/icon-256.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "325cbae189891bffbbc38acf181898958d3cbc09"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/icon-32.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "548d0ca4f6fc72cb0b06390888739beeb333ca69"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/icon-48.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "44b990eeb5ea54c6d8b4738b575e0fb25ffd0548"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/icon-512-dark.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "e02917cf65fcb17a53a3e1069d8ca6f1ba095955"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/icon-512.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "a228f14ea6ef9fc89ca623aaaea352bb1d55e4f9"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/icon-64.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "bc9a98a2a8e37db33b10ab6176298c24646a66f7"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/icon-96.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "5e0d352d9431410ac1b513d375d32f0a5bce7023"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/icon-maskable-192.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "c743b123382fd4e9e044d96b85face0ef0a4e104"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/icon-maskable-512.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "e02917cf65fcb17a53a3e1069d8ca6f1ba095955"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/logo-lockup-charcoal.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "19577679c743d3ecf69a7116704228698c020031"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/logo-lockup-en.svg",
+      "classification": "local_delete_remote_present",
+      "originBlob": "7b35dae57ffa0942d043c8b2da548c364cd7b837"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/logo-lockup-fa.svg",
+      "classification": "local_delete_remote_present",
+      "originBlob": "d02d0f535836a30b358e0d387217b8fe66ac77a8"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/logo-lockup-gold.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "5af40e217fda972252b721c678dcc19752de02eb"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/logo-lockup-ivory.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "25420155e85e137e924fe5605c2d09adc7263747"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/logo-mark-charcoal.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "74b92eaf69f91047728b8e31c70298cd06fe39bc"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/logo-mark-gold.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "d3c93906ac7c3ec1f87ad2c1f9d31b0febad0552"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/logo-mark-light.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "e02917cf65fcb17a53a3e1069d8ca6f1ba095955"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/logo-mark-light.svg",
+      "classification": "local_delete_remote_present",
+      "originBlob": "32883a8ed1722944b334b986378f897db10bdf3c"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/logo-mark.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "a228f14ea6ef9fc89ca623aaaea352bb1d55e4f9"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/logo-mark.svg",
+      "classification": "local_delete_remote_present",
+      "originBlob": "99b40992203ee307b4c12741d3d73bc0bab1b286"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/og-image.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "a99f1ea909fbb3df5da7e29d635bb26d2f6d470c"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/pattern.svg",
+      "classification": "local_delete_remote_present",
+      "originBlob": "c22c15eeca17a8a99611d2d717dd3386b31d23bd"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/social-avatar-dark.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "24fb47aab404454c04f21a2fdc94b5dd4ca74d0a"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/social-avatar-dark.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "6eba4a8073334f09cca2b940e0f95fd79cbf7bf9"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/social-avatar-light.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "99182207a4d7542a8a127afeebb305cfce21766f"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/social-avatar-light.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "75231456cc1f5bd0e9aeff1e43fe9b2682ffb256"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/social-avatar.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "c27dc81889706b3c7ca2a4f289432763ad5b10ac"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/storefront-sign-day.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "e93d24d67ddfa059b4d737fcf2de82336fa528b9"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/storefront-sign-day.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "9b7389e5415a3e326c8065001830de6bf1362dc2"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/storefront-sign-night.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "2fb2dfdee57dbf04e704f3d007cf8aecd0bf6850"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/production-ready/storefront-sign-night.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "3443f69e40dc7b307c4954cc60ebf1e8d5a07519"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/source-reference/official-facade-day.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "96015005605715ef1c74ab5717f89ac52a22aff8"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/source-reference/official-logo-closeup.jpg",
+      "classification": "local_delete_remote_present",
+      "originBlob": "01f85752777df950ae85e44247bb63db8d9d1ece"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/source-reference/official-logo-square.jpg",
+      "classification": "local_delete_remote_present",
+      "originBlob": "601b5db35ddd8d9082c5ff59e9f433dab9638c0e"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/source-reference/official-sign-night.png",
+      "classification": "local_delete_remote_present",
+      "originBlob": "0d994bcd54cffcdd2c863447f8f1b316be1a77a9"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/brand/source-reference/official-sign-vertical.jpg",
+      "classification": "local_delete_remote_present",
+      "originBlob": "1bf291e63d75d85021171540b6a0d949de0926b1"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/home/collections/featured-burger.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "e99e86979b9935551bc5ac42a53e721a37ea8a65"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/home/collections/featured-pasta.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "18c03bc0b0d1299ec8b3954b00d2288783311e95"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/home/collections/featured-pizza.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "2a97173161cebcd8fc90072eb1e183e569c6dddb"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/home/collections/featured-special-dish.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "ba253f6902f7c18bf3a0785d0a239feafa3145a6"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/home/hero/hero-main-mobile.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "69b7aae794a8e8580f735da048a6ef2829d701f4"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/home/hero/hero-main.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "6b5a4ad3b037e87bcd257ff15fd9ba8937340a10"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/home/lookbook/featured-appetizer.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "7cf9a441fa5886b7a56bdc53c9aac09b46a812c1"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/home/products/burger-signature.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "01ba8819fc9ab963827e50dd5eba81887635a680"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/home/products/chicken-parmesan.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "aef751f427af81051390314a76b2d6d08893b5a1"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/home/products/crispy-platter.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "95a93d1f84f7e64cbda0f261cbb855eacbefaf2c"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/home/products/pasta-alfredo.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "8d6a8603756af15326eff22304727e3b8b38f9ae"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/home/products/pizza-signature.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "05bd5a533c363ef0254545cb77d1b82cc9ce60e0"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/iam/burger-highlight.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "0d0c1ea7ca16f8aeb6257568f98ded498d04a494"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/iam/cta-banner.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "76cf93a6b99fca2872b1c67cc7b3ba825b3b53e5"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/iam/food-showcase.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "c0590031f596b88acb21e54c45b1b4fbe115bce7"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/iam/hero-rtl.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "0662881031b75a2d20b0e10747a8b025a51c0275"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/iam/manifest.json",
+      "classification": "local_delete_remote_present",
+      "originBlob": "00f22b8189a6a99e9aefe9c036d2e802a1601835"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/iam/pasta-highlight.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "1893ba6a4c661a51fb47caa9d1dcebfdebee06a6"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/iam/pizza-highlight.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "453f2830d978dc19309a0e7e596af80a2a4bc719"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-05924dee4aa587db/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "2249ea4d60b1cd440e3cb45ef7932beb2334ad9d"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-05924dee4aa587db/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "a1080c0a6fb3b25657146d82fef403a3809467d6"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-080e5c495088d4da/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "c44ec2a633c492c406800d07f7ce12853782462a"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-080e5c495088d4da/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "de99ec756fad5d7c245f67ba62eb18c70ad61580"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-0ac404a53f7f2d62/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "4dcb4f80be1a1a8e4294e7cf0c8aad7336c92c86"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-0ac404a53f7f2d62/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "4dcb4f80be1a1a8e4294e7cf0c8aad7336c92c86"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-0b5914c28b4fc51b/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "9e5320cfd4a18d209908b2280ecaa92dd790bfe5"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-0b5914c28b4fc51b/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "035ed1fba62b2e62ab284cd187a68c1eca1c4ef8"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-0ca0d250a8fdb7f0/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "d2fa3b5c8633d3ec2f4ad7b35694a31c697d2e20"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-0ca0d250a8fdb7f0/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "26d23f03195a57e217c1bf11c24c0f4ba9015a8e"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-0cb1e53f09b51d50/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "3007d1ad7fe226fdfb8fc20bebd374e9414b2ddc"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-0cb1e53f09b51d50/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "3007d1ad7fe226fdfb8fc20bebd374e9414b2ddc"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-0f1491c21e789de7/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "e046fe92b57e110016c72a210e041b43458486ce"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-0f1491c21e789de7/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "3b15d7b1def62fcda694f8ed2ded11df47227056"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-10bf06ed52a69ea0/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "bdaefe74761d97ec0bf6e63319eef99c24ec8c2d"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-10bf06ed52a69ea0/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "8da5a1ccf14ba37d2487e7acf18653df88d1b603"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-11dab2ef374123ae/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "89c4837b0f29a0f34689bf279f2116af6b9bfffe"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-11dab2ef374123ae/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "fa2770a0e5f65a10ddef17e10fe590fabc7641a4"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-18a322e9e87135c4/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "f32f9adf295e66f8a6f5436d59a371da7d8d5f08"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-18a322e9e87135c4/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "6c5537d0f67af8f975d928eabe898cded76e1fd7"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-195e8a29a1118622/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "42d2b4428837f822a47fa67016392af041aa9f3e"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-195e8a29a1118622/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "c24bb37f7f9a72f36f8ef8163c06ac38fa9a46ea"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-1dea19cb77d6271e/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "7ca3edd7c6f402bd91bf33d689721e0c304470f2"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-1dea19cb77d6271e/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "7ca3edd7c6f402bd91bf33d689721e0c304470f2"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-2754cdc49ebc680d/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "6ec22fb1114b9a0105ce3077aeff2e8ee3041daa"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-2754cdc49ebc680d/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "3992c762bf41308c4b84f2bf7732f5dbafa3c2b4"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-28822084aa2cd14c/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "fd9063b47a2cd808a042bcda2805ad5f14cd57bc"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-28822084aa2cd14c/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "51b22fb103fbd9f1cb2026535041d51c8713f659"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-2f530f11db31d20c/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "804b5b49c5da803cb167280906d4ca5abd24a3ec"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-2f530f11db31d20c/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "9baa1f3b96a120369861fd69ac1359461fcd6710"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-36ab8a08573f4cad/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "a2fe81353f0a596cd52a2361a891bc1e24987c40"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-36ab8a08573f4cad/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "0030bacb02929af879de8747fd611a42391fcd26"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-3c791b0a685e2b28/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "2708c9b3afb5ae6d649e79ecf4a4c1acd5c4c91f"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-3c791b0a685e2b28/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "2708c9b3afb5ae6d649e79ecf4a4c1acd5c4c91f"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-503d45f095d81bf3/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "68e70be7dcdf5a9575876417f45b6cf06be41d36"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-503d45f095d81bf3/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "68e70be7dcdf5a9575876417f45b6cf06be41d36"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-52bf076f32c38f2a/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "2d096bd10ffa58a14b5750344e0a51968b2418eb"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-52bf076f32c38f2a/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "23c6df0d57cb9bf334e4595174b1bfcc07e69947"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-5bcfdbc33e850e43/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "e046fe92b57e110016c72a210e041b43458486ce"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-5bcfdbc33e850e43/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "3b15d7b1def62fcda694f8ed2ded11df47227056"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-5cbb3357d68a3643/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "d9e4adc6445427f0b9c4338944c832b92992fa42"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-5cbb3357d68a3643/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "07c3ea688ca9078a9775d50d26bb7bc9661151a6"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-5cdc20bed6fa4b1a/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "a7b02c8f424ebf7500b502af415cc0b6803ee73b"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-5cdc20bed6fa4b1a/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "93811bfedd26a75f38e553ab46fd4777bc372074"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-63c556cb8dd01dfc/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "27038e270fd7da8f7e82a46adb77a31f7dc6bd03"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-63c556cb8dd01dfc/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "fa8beee09682775c0e41bcd09b5e2393c81d48c0"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-64a404468cf8bc0a/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "723894a0edf18372692b57535fca700a4c1876ac"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-64a404468cf8bc0a/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "85343c484b145366678a02cfd827fe6301ddc2aa"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-66696a31b1febd9b/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "12a36cb61020555db69b50e2f1f1599619458120"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-66696a31b1febd9b/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "8d1a2baa53806666c8b1a840c2b83039a19cd0e6"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-6ddcd80ae3b372fd/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "ab5aa37c6425c522420468276ca8d15611358bef"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-6ddcd80ae3b372fd/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "f4cd0e93525698e4df8977503ce5813eb7ae21c1"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-73b41feffc6d01b4/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "5048b661b642bbefd183461d62f256b90abbdb3b"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-73b41feffc6d01b4/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "5048b661b642bbefd183461d62f256b90abbdb3b"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-7a31e66ca5bf9714/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "c67042a4a9a09cc5da6a9aa1ed0b3145d1319fae"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-7a31e66ca5bf9714/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "afe7a1b50b66290ffc8c4dc9ebbe23854763b936"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-7a5412eb5ea2ba80/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "30e3a99da6949c1f27e7ca48912f7e4879fc3aee"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-7a5412eb5ea2ba80/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "2c1dffdc33a6036b74f49690a0591f137f223001"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-7de5759c528ef1f0/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "80ebf22dae1facc60ed2cadf3d66a8a91a61bec4"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-7de5759c528ef1f0/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "729292ff79793ffef9b101ec84b95c549f530d39"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-7eabf686bc283b8e/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "16db3a058afd1701d8b20a095dcc39bfb594119c"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-7eabf686bc283b8e/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "8615c87411f3f73b1a2c1686547d5aa65de397b9"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-7f65c6cca9c2191c/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "076ffac2e35f4c0fce5bb3bc41524013eb85fc98"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-7f65c6cca9c2191c/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "346fc026c4a576bdc10a3baf2255c7df3d170485"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-83d751ecf0b9d7b1/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "fa892c11da4b0280346aec59ae9643d411e38a16"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-83d751ecf0b9d7b1/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "c0191ceeefde31cbf5ff692743093f75566ddf6c"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-8997d83e33fdcc40/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "08aa4e6ad4c3363cc34664f63f2fd0f7725ac0bc"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-8997d83e33fdcc40/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "2e51d7ea75deba26762d9a26af497cdb1daddec5"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-8b8a5ad44f048ee6/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "bddcc431c77807d6c1111017ec9211099667c007"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-8b8a5ad44f048ee6/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "bddcc431c77807d6c1111017ec9211099667c007"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-8d49d0d16382622c/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "7bfa87e634d8119a2833e1fee91699ddc16f8e81"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-8d49d0d16382622c/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "7bfa87e634d8119a2833e1fee91699ddc16f8e81"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-96de57c48e9304d2/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "fccf1abf61e8375c1af77999d02088678f8cc6e7"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-96de57c48e9304d2/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "9350b96e8ba9c718fee89fd12ff497470cb320f5"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-9d21d68ef3281aa7/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "cafbf51ca75f2535d7b9b0c3e026128463af24de"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-9d21d68ef3281aa7/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "df9cfe7d44233692fb25bcfa90cbc77013e4fcaf"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-ad1fa8ef9f3fb8bc/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "709d06c44a3e348ce175a7dd17a25960c762f109"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-ad1fa8ef9f3fb8bc/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "07cca48871d1baee2d5503cd870c4cdf2905450c"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-bb0a3ee0f14066c0/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "9e56bfbe310ab62e70e2190deb208bd42aafeb25"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-bb0a3ee0f14066c0/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "9e56bfbe310ab62e70e2190deb208bd42aafeb25"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-bb512163c5104240/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "2e9755ff3d383e9b3783c97e2e5001af1fff89a5"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-bb512163c5104240/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "ae04b05e5b366ae16abdb893fea9c52ea8c65a86"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-bd571fd744d76de4/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "53292ca257c004d82ef767e160689312462ff306"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-bd571fd744d76de4/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "4363c2bb9dc6ec8cf62ce1bbef69cd14eebb9206"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-c238a9e218d58731/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "b90ae44bfdcf9f406d2ecc2d9719190c7d9c395b"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-c238a9e218d58731/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "c6a2570c3d1e8e8434249934201451516a77b502"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-c280271a04f6b698/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "efe22a0d7ef4b149a9035d17056e9c7a202c3fcf"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-c280271a04f6b698/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "4681a7900ca6ce794c0532dbf10623599cd9880d"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-c3f538b4baf44910/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "58ebab9b960b4492ca39fa5e667bc5ae58479ff1"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-c3f538b4baf44910/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "9b537517987b2edc0d2a5807c636fd88b110bf84"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-cb07a768212006f3/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "1dd37c2ba7196cfed20d168f69151fd3286b3303"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-cb07a768212006f3/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "c2157cc96fbc7c837d89b03c60f3da9096da4491"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-cc9c7a868e655aab/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "4a1462385943a628237507343f80c935cf6b08ba"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-cc9c7a868e655aab/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "c525abe83c49f655179ee7b5cbc21acf958b0fb0"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-ce4ee20b6494cbb9/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "279c7750d05e8fdd22924462ef392ebcd32b02d5"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-ce4ee20b6494cbb9/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "80e927e29f482147680dbb8dcf0bd8a2930527d0"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-dae9394d2a8c1b5e/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "9a30be803f06d92160f36f662d319789b91fcbc1"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-dae9394d2a8c1b5e/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "bdd5abdcd2b66d6197782ec71240ac040b9bba49"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-dbe4e93a37166b75/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "8dd48bb9ca13443752b96b78a4c94e5945dbade5"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-dbe4e93a37166b75/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "3a9dbc5ef8370008c7e820e34da88684aeb11e4d"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-dc9a40e048fb2c1f/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "47acdf06a89d8b007d9aadbad29c23dc0c590c8b"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-dc9a40e048fb2c1f/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "d869e0ea18062babefe0e0343089955f052c1205"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-df9de0eeb7db81c3/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "b916bf3b81060a6f404d54da2a5a5057a810b1d2"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-df9de0eeb7db81c3/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "262d697bf88395222f8e090f332da5cd50bd60a6"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-e25ae37ff7123d3d/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "a5aa487eec9e184cd1a24c405b5ed8d7c663bd4e"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-e25ae37ff7123d3d/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "8893a12c56d1a76c9afc4f173881933fd4ba1166"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-e9c694b45fde21be/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "b48d283652b357f7411179c2de69428d92567f79"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-e9c694b45fde21be/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "7595bd104f9c5e79c384c8b4c163c9cd4a9d1351"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-ef2c517cea25cb8e/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "fbf7c7fa97ef1c750676d7b1af94ae8586f94ba9"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-ef2c517cea25cb8e/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "3f6c9e2162c5ce2b9a447510cffa44adf9a52957"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-fbbc13df36ce8c3a/normal.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "3d052f9353f566fe93dbc9c0d76e0127043cb8cd"
+    },
+    {
+      "status": " D",
+      "path": "public/brand/tenants/restaurant-13/menu/products/italiano-fbbc13df36ce8c3a/studio.webp",
+      "classification": "local_delete_remote_present",
+      "originBlob": "a955ff441928af6a099da08fd096f90d54290a06"
+    },
+    {
+      "status": " M",
+      "path": "public/icons/android-chrome-192x192.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "ba803b4839bf29041c0a5f15343c0c6703d111c3",
+      "localBlob": "4e611292990f5ad58209173f4de6df87102b12d3"
+    },
+    {
+      "status": " M",
+      "path": "public/icons/android-chrome-512x512.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "bedd14302346c3e80ae691e04f0d9d21b5665597",
+      "localBlob": "15cd8bb9bbf6cccd47567a6eb62df1111805f3d6"
+    },
+    {
+      "status": " M",
+      "path": "public/icons/apple-touch-icon.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "598a7a4adbf00d97ca0d54a7a46ebea41b83c048",
+      "localBlob": "91e544869c72d84732dc4664af405c9958e029a7"
+    },
+    {
+      "status": " M",
+      "path": "public/icons/favicon-16x16.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "dbcacf1d2ee5fe49c9caadeac4684525f9f6c68e",
+      "localBlob": "f101fbeeecaaa2a56e7ccffc12bd508d08f7491a"
+    },
+    {
+      "status": " M",
+      "path": "public/icons/favicon-32x32.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "273aa165d9b484044537ac9dea6aefacd98b84f5",
+      "localBlob": "d1ec216344e227d3a54274345d2040075b0e228a"
+    },
+    {
+      "status": " M",
+      "path": "public/icons/favicon-48x48.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "9352de0bfc13a0a8b17eae1a3145471a6088775b",
+      "localBlob": "03f27ee7948a6dcbe13480e1f0135b0d365b5223"
+    },
+    {
+      "status": " M",
+      "path": "public/icons/favicon.ico",
+      "classification": "same_path_content_differs",
+      "originBlob": "4cfbfd710e41d19d2ca1e8d9a30a678c975e16bc",
+      "localBlob": "36fc236fa71e5eb26f0958f7f38157e72c5af426"
+    },
+    {
+      "status": " M",
+      "path": "public/icons/favicon.svg",
+      "classification": "same_path_content_differs",
+      "originBlob": "8d2e3bfcf9cb9246ed4af1581c4ebda88e6dfd65",
+      "localBlob": "2ae59e19b8827f15c638f8ec52d937ea69f12a0c"
+    },
+    {
+      "status": " M",
+      "path": "public/icons/icon-192x192.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "ba803b4839bf29041c0a5f15343c0c6703d111c3",
+      "localBlob": "4e611292990f5ad58209173f4de6df87102b12d3"
+    },
+    {
+      "status": " M",
+      "path": "public/icons/icon-512x512.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "bedd14302346c3e80ae691e04f0d9d21b5665597",
+      "localBlob": "15cd8bb9bbf6cccd47567a6eb62df1111805f3d6"
+    },
+    {
+      "status": " M",
+      "path": "public/icons/icon-dark-192x192.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "a9f66dd8bb6fefc586e306970881bd775c5cd585",
+      "localBlob": "76fff2153d4101afbe2850d4ad019c2ba5cd373d"
+    },
+    {
+      "status": " M",
+      "path": "public/icons/icon-dark-512x512.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "0895cb09ad5b0ecba617060c2369a0d0739bcbc2",
+      "localBlob": "c889c9fc8b05e0f04cc139cd1c406e6aecf39bff"
+    },
+    {
+      "status": " M",
+      "path": "public/icons/icon-dark-maskable-512x512.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "6c0bf61a8fcabd53fbe93570603af853869dd4a9",
+      "localBlob": "4761f0f5288ea2b866349436096a219e0379a2ba"
+    },
+    {
+      "status": " M",
+      "path": "public/icons/icon-maskable-192x192.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "ef9eca61dfe8fa17d6d24b80c3a80a1c66ac62e9",
+      "localBlob": "d61a20c46b4b95668165e19ad902cb9ee439b9e6"
+    },
+    {
+      "status": " M",
+      "path": "public/icons/icon-maskable-512x512.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "51476cce417d7c1f212555b1c476e2715f678125",
+      "localBlob": "309af0530ddc240b5331f2d5064e59e0db529e95"
+    },
+    {
+      "status": " M",
+      "path": "public/icons/mstile-150x150.png",
+      "classification": "same_path_content_differs",
+      "originBlob": "bc28e7f36d75d2f9a08108b1788febc92aa3f5ab",
+      "localBlob": "4204bc7d3be91b753090e89c602ee99e4cd3b54a"
+    },
+    {
+      "status": " M",
+      "path": "tests/unit/bb3a-public-namespace.test.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "f242102c8f2a7b6fb7f7ea223ae01d4cffd634b8",
+      "localBlob": "119db885d902ddda544ecc3236c1bf6d0b6c7b1c"
+    },
+    {
+      "status": " M",
+      "path": "tests/unit/shop-menu-filter.test.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "e0147890414e86384c68bc1bf2042e49f9f00b81",
+      "localBlob": "e6c0c9597f1ec7e593bd243b71ed128e7f1a58b9"
+    },
+    {
+      "status": "??",
+      "path": "app/[locale]/[slug]/iam/page.tsx",
+      "classification": "new_local_path",
+      "localBlob": "8e81811e1ca699f48dc1ebd8481cbd394162118d"
+    },
+    {
+      "status": "??",
+      "path": "app/api/hotel/v1/availability/search/route.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "e7279516fbc56ec76b02955363e8eab317e0af66",
+      "localBlob": "e7279516fbc56ec76b02955363e8eab317e0af66"
+    },
+    {
+      "status": "??",
+      "path": "app/api/hotel/v1/holds/route.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "63bf39b0cfce4d6b565a12aab00a32b480623cfe",
+      "localBlob": "63bf39b0cfce4d6b565a12aab00a32b480623cfe"
+    },
+    {
+      "status": "??",
+      "path": "app/api/hotel/v1/quotes/route.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "ed6add6f1d663642a5dafa440b84eb2d523ead97",
+      "localBlob": "ed6add6f1d663642a5dafa440b84eb2d523ead97"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/[propertyId]/amenities/[amenityId]/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "18b119f53fb329545eb7ef022c4b1c70fb035f9e",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/[propertyId]/amenities/[amenityId]/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/[propertyId]/amenities/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "c06557a0ac5c373864a95c562c135aece95eee91",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/[propertyId]/amenities/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/[propertyId]/archive/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "4470b2e2fd819d203edb0f4a2cca037b455a47d7",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/[propertyId]/archive/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/[propertyId]/cancellation-policies/[policyId]/activation/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "590b8a9ba3a0c7fb3e4ecce1b750db1c103b88dd",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/[propertyId]/cancellation-policies/[policyId]/activation/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/[propertyId]/cancellation-policies/[policyId]/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "a6ab985c770e6baf4fc063f37913604e434439c5",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/[propertyId]/cancellation-policies/[policyId]/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/[propertyId]/cancellation-policies/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "2985f851242db3ac811f840fa54d0e561043b4e3",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/[propertyId]/cancellation-policies/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/[propertyId]/inventory/adjustments/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "df805a6d12322b3367d854a56ec89f6f74fcf645",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/[propertyId]/inventory/adjustments/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/[propertyId]/rate-plans/[ratePlanId]/nightly-rates/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "3c6ed82be372ebeacd601f3c111b6e43db0b4797",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/[propertyId]/rate-plans/[ratePlanId]/nightly-rates/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/[propertyId]/rate-plans/[ratePlanId]/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "4b6acb8cbdc3a54c86c4ec4a58814402fc30b798",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/[propertyId]/rate-plans/[ratePlanId]/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/[propertyId]/rate-plans/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "a7d3d8f29fba991ee8bdbea51af47d82fbdfe233",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/[propertyId]/rate-plans/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/[propertyId]/room-types/[roomTypeId]/amenities/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "966067c31b1f47f152b79d6e57dbc70ad95d9b11",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/[propertyId]/room-types/[roomTypeId]/amenities/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/[propertyId]/room-types/[roomTypeId]/archive/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "714c207a175450c848f19f09bc9c176e9e87b770",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/[propertyId]/room-types/[roomTypeId]/archive/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/[propertyId]/room-types/[roomTypeId]/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "684d18abbd6cd89a953b99d2ac2f6a1dbb03d891",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/[propertyId]/room-types/[roomTypeId]/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/[propertyId]/room-types/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "beab22d3a9fc433488f92eec02f063f64e20fb62",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/[propertyId]/room-types/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/[propertyId]/rooms/[roomId]/archive/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "76175491888166cfdc968701f66220e2db885d44",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/[propertyId]/rooms/[roomId]/archive/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/[propertyId]/rooms/[roomId]/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "bb7df0e22be6e17629cc2e1e94245905b8ff3961",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/[propertyId]/rooms/[roomId]/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/[propertyId]/rooms/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "5b45df7cd0add9c5491d920a7ff804fb05d7ce7c",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/[propertyId]/rooms/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/[propertyId]/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "c3b4d34451729167ba873880c5292fe357589d34",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/[propertyId]/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "app/api/organizations/[organizationId]/hotels/route.ts",
+      "classification": "superseded_by_remote_route_rename",
+      "localBlob": "3f28faa0e60412e1e658b861e2d2e6f7402ba0d7",
+      "remoteEquivalentPath": "app/api/organizations/[id]/hotels/route.ts"
+    },
+    {
+      "status": "??",
+      "path": "artifacts/italiano-13-db-audit.json",
+      "classification": "operational_artifact"
+    },
+    {
+      "status": "??",
+      "path": "artifacts/restaurant13-catalog-mapping-final.csv",
+      "classification": "operational_artifact"
+    },
+    {
+      "status": "??",
+      "path": "artifacts/restaurant13-catalog-mapping-report.json",
+      "classification": "operational_artifact"
+    },
+    {
+      "status": "??",
+      "path": "artifacts/restaurant13-catalog-mapping-report.md",
+      "classification": "operational_artifact"
+    },
+    {
+      "status": "??",
+      "path": "artifacts/restaurant13-production-media-url-verification.json",
+      "classification": "operational_artifact"
+    },
+    {
+      "status": "??",
+      "path": "components/iam/iam-cta.tsx",
+      "classification": "new_local_path",
+      "localBlob": "4d79e9dfc384d871334c5d46b69cbd6653a16b29"
+    },
+    {
+      "status": "??",
+      "path": "components/iam/iam-gallery.tsx",
+      "classification": "new_local_path",
+      "localBlob": "8a7d7e54df70f856d36eb8d4111cdd6e75658371"
+    },
+    {
+      "status": "??",
+      "path": "components/iam/iam-hero.tsx",
+      "classification": "new_local_path",
+      "localBlob": "74cd19a118da0a558d7ba9f0f4148e3267cce2ce"
+    },
+    {
+      "status": "??",
+      "path": "components/iam/iam-page.tsx",
+      "classification": "new_local_path",
+      "localBlob": "8b49c546c4f445206edd42921db27465c41ace8e"
+    },
+    {
+      "status": "??",
+      "path": "components/iam/iam-product-showcase.tsx",
+      "classification": "new_local_path",
+      "localBlob": "438ee8c0c60ddc3d1e6506171293b5a2cb53dacc"
+    },
+    {
+      "status": "??",
+      "path": "components/iam/iam-section.tsx",
+      "classification": "new_local_path",
+      "localBlob": "0f53c0d783f19b26375cf340223c32e2704c7187"
+    },
+    {
+      "status": "??",
+      "path": "discovery-error.txt",
+      "classification": "operational_artifact"
+    },
+    {
+      "status": "??",
+      "path": "discovery-output.txt",
+      "classification": "operational_artifact"
+    },
+    {
+      "status": "??",
+      "path": "docs/BUSINESS-VERTICAL-ARCHITECTURE.md",
+      "classification": "new_local_path",
+      "localBlob": "18d8e4407ad13d0096633f9913bb5e1151dc4879"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-ARCHITECTURE.md",
+      "classification": "new_local_path",
+      "localBlob": "73995fd87b307209189829d745c03bba83cdea1b"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-BOOKING-CONCURRENCY.md",
+      "classification": "new_local_path",
+      "localBlob": "e88231b49248aa4475266589f527f41fa8542b99"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-DAMOON-IMPLEMENTATION-PLAN.md",
+      "classification": "new_local_path",
+      "localBlob": "de829ba8e8e7b1b8010f6e31cef98b0528f82a86"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-DESIGN-HANDOFF.md",
+      "classification": "new_local_path",
+      "localBlob": "fe91680cc20b1b4973afda1cf66a7a7a9eadaeb5"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-H2-CLOSURE.md",
+      "classification": "new_local_path",
+      "localBlob": "ae2010f2c4a074de2f0589633e147568c211b2ab"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-H3-EXECUTION-PLAN.md",
+      "classification": "new_local_path",
+      "localBlob": "e9577e97975701da889fd06adc691e14f9c12988"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-H3A-CLOSURE.md",
+      "classification": "new_local_path",
+      "localBlob": "d7621032f4e0659190223695b203aa98bfd06236"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-H3A1-CLOSURE.md",
+      "classification": "new_local_path",
+      "localBlob": "ae63ba8037ab8b0aa40247af0a96ba419e35016e"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-H3B0-CLOSURE.md",
+      "classification": "new_local_path",
+      "localBlob": "d74fdfded8756d3e4822ad6dcb14172b3c51125a"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-H3B1-CLOSURE.md",
+      "classification": "new_local_path",
+      "localBlob": "7466d848dfebbd6d9fa5ea8c80b63c04ffa3cd89"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-H3C-HANDOFF.md",
+      "classification": "new_local_path",
+      "localBlob": "2170320ab6c94cbd1ad0a4af5e9287ae098bc936"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-H3C1-CLOSURE.md",
+      "classification": "new_local_path",
+      "localBlob": "20ceb789887684facfbce8d040a75493768fb5fd"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-H3C2-CLOSURE.md",
+      "classification": "new_local_path",
+      "localBlob": "83fe35664c060a7667bf4846e9f3865c8061187e"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-H3D-API-CONTRACT.md",
+      "classification": "new_local_path",
+      "localBlob": "68c6a10f7994f4e296d7a34928621e5155eeedbb"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-H3D-API-MAP.md",
+      "classification": "new_local_path",
+      "localBlob": "ba18d8fbb146f339e3609938af0f4a02f11af226"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-H3D-IMPLEMENTATION-PLAN.md",
+      "classification": "new_local_path",
+      "localBlob": "6826a76ed550c880c47567b7ea718c9acaf30c3a"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-H3D-OPENAPI.yaml",
+      "classification": "new_local_path",
+      "localBlob": "ea9f8b191d3a016ea569c62947ae5214fa0d2f53"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-PAYMENT-INTEGRATION.md",
+      "classification": "new_local_path",
+      "localBlob": "dd356da5e08c799d9b38da7b1378ab778d4bed13"
+    },
+    {
+      "status": "??",
+      "path": "docs/HOTEL-PERSISTENCE-DESIGN.md",
+      "classification": "new_local_path",
+      "localBlob": "d7d28d4605cb527f557e3fec6e8a76bcc7dacfc4"
+    },
+    {
+      "status": "??",
+      "path": "docs/LANDING-ENGINE-ARCHITECTURE.md",
+      "classification": "new_local_path",
+      "localBlob": "1a150032b764a9f5ca67201545c4fb75c213ac9d"
+    },
+    {
+      "status": "??",
+      "path": "docs/PRODUCT-LIFECYCLE-NEXT-MILESTONE.md",
+      "classification": "new_local_path",
+      "localBlob": "ebe68d7a85eb3fb9d4d7c77baea39ce7afbc829d"
+    },
+    {
+      "status": "??",
+      "path": "docs/SCHEMA-MIGRATION-DRIFT-REVIEW.md",
+      "classification": "new_local_path",
+      "localBlob": "6554cb7bf4a5aca7676fd538be6b24a05789200b"
+    },
+    {
+      "status": "??",
+      "path": "docs/handoffs/RESPONSIBILITY-TRANSFER-2026-10-29.md",
+      "classification": "new_local_path",
+      "localBlob": "d188683dce765c0a3f9812a811c55191bfbb8ae7"
+    },
+    {
+      "status": "??",
+      "path": "docs/hotel/damoon/DELIVERY-2026-10-28.md",
+      "classification": "identical_to_origin",
+      "originBlob": "93090c9715961e553eb30ccda945e5470f2ab94a",
+      "localBlob": "93090c9715961e553eb30ccda945e5470f2ab94a"
+    },
+    {
+      "status": "??",
+      "path": "docs/hotel/damoon/DELIVERY-2026-10-29.md",
+      "classification": "new_local_path",
+      "localBlob": "f8d34f8275c2aa1df91d33a79edad30411c7dc9e"
+    },
+    {
+      "status": "??",
+      "path": "docs/hotel/damoon/DESIGN-REFERENCE-REBUILD-2026-10-28.md",
+      "classification": "identical_to_origin",
+      "originBlob": "b7f6d78537c122c3c162fb25082cea45072e138c",
+      "localBlob": "b7f6d78537c122c3c162fb25082cea45072e138c"
+    },
+    {
+      "status": "??",
+      "path": "docs/hotel/damoon/README.md",
+      "classification": "same_path_content_differs",
+      "originBlob": "179ccf01f9e2cc3d2edf9f601e9d137cb925927f",
+      "localBlob": "d9f5647f61812249dd4623b5f159d510109cc369"
+    },
+    {
+      "status": "??",
+      "path": "docs/hotel/damoon/ROADMAP.md",
+      "classification": "same_path_content_differs",
+      "originBlob": "eba00ebc0ab1e5bfaa4a865df7f782e40ba199cc",
+      "localBlob": "5a129b2daaae5222adc6d98dbf8bfe5dd4691d07"
+    },
+    {
+      "status": "??",
+      "path": "docs/hotel/damoon/STATUS-AND-DECISIONS.md",
+      "classification": "same_path_content_differs",
+      "originBlob": "916243397afa03bc935e40e0287a6a8e6786ac26",
+      "localBlob": "fc343e69a13bd90819e7a9bde6092d426aedc037"
+    },
+    {
+      "status": "??",
+      "path": "docs/hotel/damoon/references/desktop-approved-reference.png",
+      "classification": "identical_to_origin",
+      "originBlob": "c49c85d689065f3889a2f97836f5f872aa6962fd",
+      "localBlob": "c49c85d689065f3889a2f97836f5f872aa6962fd"
+    },
+    {
+      "status": "??",
+      "path": "docs/hotel/damoon/references/mobile-approved-reference.png",
+      "classification": "identical_to_origin",
+      "originBlob": "3bac3e953632a0b252f407eab832176e17bd4f17",
+      "localBlob": "3bac3e953632a0b252f407eab832176e17bd4f17"
+    },
+    {
+      "status": "??",
+      "path": "docs/payments/BAZARBAAZ_R5_USSD_OWNER_ROUTING_HANDOFF.md",
+      "classification": "identical_to_origin",
+      "originBlob": "6317a9eefd5fbc00234624bc7613e49ca878cb51",
+      "localBlob": "6317a9eefd5fbc00234624bc7613e49ca878cb51"
+    },
+    {
+      "status": "??",
+      "path": "drc.mjs",
+      "classification": "new_local_path",
+      "localBlob": "cfb36204c88935e77301420de1d96a28e5f6294d"
+    },
+    {
+      "status": "??",
+      "path": "install.bat",
+      "classification": "new_local_path",
+      "localBlob": "7d53adad173e3b0f45326f9f1d3e06253c9744a0"
+    },
+    {
+      "status": "??",
+      "path": "lib/business-entity/adapters/inoti-identity.adapter.ts",
+      "classification": "new_local_path",
+      "localBlob": "62945a5cf0051a52170aafb5e8787fab99fabbfd"
+    },
+    {
+      "status": "??",
+      "path": "lib/business-entity/providers.ts",
+      "classification": "new_local_path",
+      "localBlob": "cbd217a671d2c057949570ad4264af9f7e60b2e8"
+    },
+    {
+      "status": "??",
+      "path": "lib/business-entity/resolver.ts",
+      "classification": "new_local_path",
+      "localBlob": "2f902d6269706727cdd1553cec4addc9e52bbae3"
+    },
+    {
+      "status": "??",
+      "path": "lib/business-entity/types.ts",
+      "classification": "new_local_path",
+      "localBlob": "69ac3c4073bfb392aee8f2f36ce8013736f42567"
+    },
+    {
+      "status": "??",
+      "path": "lib/business-verticals.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "c18b24794efbc89e378932beb7de2f20ae517288",
+      "localBlob": "9dc59716e6377b3c227d4c226a3f96f2bb5a9b17"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/dev/damoon-development-example.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "1ae0185a46d023c8568d6c2df1fbc78926ccb969",
+      "localBlob": "1ae0185a46d023c8568d6c2df1fbc78926ccb969"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/dev/damoon-pilot-contract.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "86c954dd20cf8117ef11da97ad38246d9dbabba3",
+      "localBlob": "86c954dd20cf8117ef11da97ad38246d9dbabba3"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/domain/availability.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "c88899d20182f058ed44d4d1231d5d809da0231e",
+      "localBlob": "c88899d20182f058ed44d4d1231d5d809da0231e"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/domain/booking-state.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "9a094ba23177c461bf02dc69fce6c529f8a00eec",
+      "localBlob": "9a094ba23177c461bf02dc69fce6c529f8a00eec"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/domain/policy.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "5ad0294f3d35511d7e082fdbc053d99ce46291c5",
+      "localBlob": "5ad0294f3d35511d7e082fdbc053d99ce46291c5"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/domain/rate.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "0cb7183debde0574e510afc646df165e256f34c8",
+      "localBlob": "0cb7183debde0574e510afc646df165e256f34c8"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/domain/recommendation.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "7ccf701fa5fca65d71aa4605f7aa891a39f61da3",
+      "localBlob": "7ccf701fa5fca65d71aa4605f7aa891a39f61da3"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/domain/stay-dates.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "c962ddb74213a10c235673fd22b1e72ad82fb429",
+      "localBlob": "c962ddb74213a10c235673fd22b1e72ad82fb429"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/domain/types.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "106c837a70d6cbab19268883cb4e270a0d39a204",
+      "localBlob": "106c837a70d6cbab19268883cb4e270a0d39a204"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/management/api-adapter.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "9d4471772821fc2e054af3170c37d399861a2b94",
+      "localBlob": "9d4471772821fc2e054af3170c37d399861a2b94"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/management/hotel-management.service.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "862c111a77eb78c841b651876a9e5560a279a193",
+      "localBlob": "862c111a77eb78c841b651876a9e5560a279a193"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/management/route-support.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "01e1352780114843cd2f487e67867a77f7c63d3d",
+      "localBlob": "01e1352780114843cd2f487e67867a77f7c63d3d"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/persistence/hotel-repositories.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "eba698d74776020c79896c957f656b8aca9b55f3",
+      "localBlob": "eba698d74776020c79896c957f656b8aca9b55f3"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/persistence/in-memory-hotel-repositories.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "4a9148e79bf3ef71a3955bbdb47dad8be7152007",
+      "localBlob": "4a9148e79bf3ef71a3955bbdb47dad8be7152007"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/persistence/prisma-hotel-repositories.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "3251d6878768d512c71f65540b70364c26d2dcec",
+      "localBlob": "3251d6878768d512c71f65540b70364c26d2dcec"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/services/cancellation-policy.service.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "859a0f033e716fa15edb6106faee9e102ee4853c",
+      "localBlob": "859a0f033e716fa15edb6106faee9e102ee4853c"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/services/hotel-booking.service.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "8c92ff582fa7177581064ed6cd220138d5c07319",
+      "localBlob": "8c92ff582fa7177581064ed6cd220138d5c07319"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/services/hotel-publication.service.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "129c3703706c12331d23f006c5520de872643a13",
+      "localBlob": "02dc04313988f58ea6f19c2bd8c2b0ca255b1430"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/services/public-availability.service.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "9d1fe9775847ca9f5b0ed69761c68138d0184cb2",
+      "localBlob": "9d1fe9775847ca9f5b0ed69761c68138d0184cb2"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/services/public-publication-gate.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "2c206b358da2913ad40b282114faae90002d48fe",
+      "localBlob": "2c206b358da2913ad40b282114faae90002d48fe"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/ui/hotel-page-contract.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "79b016c6fbc36b7ac04418de4b154370b26458bf",
+      "localBlob": "79b016c6fbc36b7ac04418de4b154370b26458bf"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/validation/hotel-contracts.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "52b5e06f2e7f0239398abb7e3c9f8e0e5e95cffd",
+      "localBlob": "52b5e06f2e7f0239398abb7e3c9f8e0e5e95cffd"
+    },
+    {
+      "status": "??",
+      "path": "lib/hotel/validation/management-contracts.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "aa00a59085cf5a837192449c9b9f02ee3f00a0a0",
+      "localBlob": "aa00a59085cf5a837192449c9b9f02ee3f00a0a0"
+    },
+    {
+      "status": "??",
+      "path": "lib/iam-content.ts",
+      "classification": "new_local_path",
+      "localBlob": "15f1f359558c917094aa1fba0710d93b06c082ca"
+    },
+    {
+      "status": "??",
+      "path": "lib/integrations/inoti-imenu/client.ts",
+      "classification": "new_local_path",
+      "localBlob": "af7d5ab22a44c22a02c0be3dcd07ac59b800dca4"
+    },
+    {
+      "status": "??",
+      "path": "lib/integrations/inoti-imenu/network-observer.ts",
+      "classification": "new_local_path",
+      "localBlob": "42f5a67b54bd73ad32e7e740cad500cf102dbc54"
+    },
+    {
+      "status": "??",
+      "path": "lib/seo-entity-policy.ts",
+      "classification": "new_local_path",
+      "localBlob": "fa379c4b8172658143914e743d887ea8a44cccfe"
+    },
+    {
+      "status": "??",
+      "path": "p1-mobile-verified.png",
+      "classification": "operational_artifact"
+    },
+    {
+      "status": "??",
+      "path": "prisma/migrations/20260926160000_repair_organization_branding_columns/migration.sql",
+      "classification": "new_local_path",
+      "localBlob": "61cb8417ffe1494c43d82c65840bd009657522f8"
+    },
+    {
+      "status": "??",
+      "path": "prisma/migrations/20261003060000_add_organization_vertical_and_hotel_booking_capability/migration.sql",
+      "classification": "identical_to_origin",
+      "originBlob": "d4159173adae22851417cdd526f1bdea1aa0b68d",
+      "localBlob": "d4159173adae22851417cdd526f1bdea1aa0b68d"
+    },
+    {
+      "status": "??",
+      "path": "prisma/migrations/20261003070000_add_hotel_persistence/migration.sql",
+      "classification": "identical_to_origin",
+      "originBlob": "d79191645cdc5a350239e90c12592c14438da8c2",
+      "localBlob": "d79191645cdc5a350239e90c12592c14438da8c2"
+    },
+    {
+      "status": "??",
+      "path": "prisma/migrations/20261004080000_add_hotel_management_fields/migration.sql",
+      "classification": "identical_to_origin",
+      "originBlob": "1c1b5b19379c732385475a35cba4af5d3494c118",
+      "localBlob": "1c1b5b19379c732385475a35cba4af5d3494c118"
+    },
+    {
+      "status": "??",
+      "path": "prisma/migrations/20261004090000_add_hotel_rate_plan_cancellation_policy/migration.sql",
+      "classification": "identical_to_origin",
+      "originBlob": "c7ff7c0cec22fca73fbdab0ea50aaf80177bdd02",
+      "localBlob": "c7ff7c0cec22fca73fbdab0ea50aaf80177bdd02"
+    },
+    {
+      "status": "??",
+      "path": "prisma/migrations/20261004100000_add_hotel_inventory_idempotency/migration.sql",
+      "classification": "identical_to_origin",
+      "originBlob": "8c4a3bd71d01a1c6080f6c4d90e7b3b98cf9423b",
+      "localBlob": "8c4a3bd71d01a1c6080f6c4d90e7b3b98cf9423b"
+    },
+    {
+      "status": "??",
+      "path": "prisma/migrations/20261004110000_add_hotel_publication_approvals/migration.sql",
+      "classification": "identical_to_origin",
+      "originBlob": "00d1a7dcbfe0b287452e837fe716dfcac27a8619",
+      "localBlob": "00d1a7dcbfe0b287452e837fe716dfcac27a8619"
+    },
+    {
+      "status": "??",
+      "path": "prisma/migrations/20261004120000_add_hotel_anonymous_hold_idempotency/migration.sql",
+      "classification": "identical_to_origin",
+      "originBlob": "fec93f89f3bfbcf57e1d3c3823519fb3995937fb",
+      "localBlob": "fec93f89f3bfbcf57e1d3c3823519fb3995937fb"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/README-FA.txt",
+      "classification": "new_local_path",
+      "localBlob": "3263cb3e2d0d810aa473a63a7dcbdc1718e2cd66"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/brand/fastfood13-logo-ivory-on-black.png",
+      "classification": "new_local_path",
+      "localBlob": "692072631010c80ce75c19d9ef927b43dfa30c7b"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/brand/fastfood13-logo-square-brand-hd.png",
+      "classification": "new_local_path",
+      "localBlob": "595bb0dbcce9c024aed4c2a9305a48f8cd0c5b1e"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/brand/fastfood13-logo-square-brand.png",
+      "classification": "new_local_path",
+      "localBlob": "68e6d75025eaba6be384fcb18793d541eeb9bb2f"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/brand/fastfood13-logo-square-dark.png",
+      "classification": "new_local_path",
+      "localBlob": "38b4ba24eedcde03c10343880262ea5d46926f7f"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/brand/fastfood13-logo-square-light.png",
+      "classification": "new_local_path",
+      "localBlob": "de7e6b27bbac284837627bd697e75a10b436a4f9"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/brand/fastfood13-logo-square-wood-alt.png",
+      "classification": "new_local_path",
+      "localBlob": "62b6f1725b4a4dfb84389c5247bb0d8de602620a"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/brand/fastfood13-logo-transparent-charcoal.png",
+      "classification": "new_local_path",
+      "localBlob": "5d07198d6cb30a89d3c6432d5c2d7e098ce7aa4a"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/brand/fastfood13-logo-transparent-gold.png",
+      "classification": "new_local_path",
+      "localBlob": "ea7261ab8c6e60afafd67b58d36726946f934085"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/brand/fastfood13-logo-transparent-ivory.png",
+      "classification": "new_local_path",
+      "localBlob": "a06a3d717077b8a5ab19fd0e1829a8c806ed1e02"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/brand/source-reference/official-facade-day.png",
+      "classification": "new_local_path",
+      "localBlob": "96015005605715ef1c74ab5717f89ac52a22aff8"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/brand/source-reference/official-logo-closeup.jpg",
+      "classification": "new_local_path",
+      "localBlob": "01f85752777df950ae85e44247bb63db8d9d1ece"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/brand/source-reference/official-logo-square.jpg",
+      "classification": "new_local_path",
+      "localBlob": "601b5db35ddd8d9082c5ff59e9f433dab9638c0e"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/brand/source-reference/official-sign-night.png",
+      "classification": "new_local_path",
+      "localBlob": "0d994bcd54cffcdd2c863447f8f1b316be1a77a9"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/brand/source-reference/official-sign-vertical.jpg",
+      "classification": "new_local_path",
+      "localBlob": "1bf291e63d75d85021171540b6a0d949de0926b1"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/browser/favicon-16x16.png",
+      "classification": "new_local_path",
+      "localBlob": "1d3dbb9c7578370d5d6906df35d695876b1425c9"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/browser/favicon-180x180.png",
+      "classification": "new_local_path",
+      "localBlob": "0eb71df1a84808a52798a124997bbf437a9465ab"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/browser/favicon-256x256.png",
+      "classification": "new_local_path",
+      "localBlob": "a51974303240b573f190a812f19672fced08227d"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/browser/favicon-32x32.png",
+      "classification": "new_local_path",
+      "localBlob": "fd9e6ddae6b9ef06a3cd93788001b598ace1c52c"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/browser/favicon-48x48.png",
+      "classification": "new_local_path",
+      "localBlob": "76acaefda6b0ce49f2553eb39cbfb1c12a9d4e3c"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/browser/favicon-64x64.png",
+      "classification": "new_local_path",
+      "localBlob": "0f655528f17fe0e7e3fe32f5ee7e5adaba2b872e"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/browser/favicon-96x96.png",
+      "classification": "new_local_path",
+      "localBlob": "56a98fe3ea8daf55e120219f1ae1143b5d07f148"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/browser/favicon-chef-master.png",
+      "classification": "new_local_path",
+      "localBlob": "466729c9a46a282d5755f6bf54402d712703e6d0"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/browser/favicon.ico",
+      "classification": "new_local_path",
+      "localBlob": "52448c338e11345e39618bb0ccdcde6f7d3b8d47"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/browser/mstile-150x150.png",
+      "classification": "new_local_path",
+      "localBlob": "67a3dff96f4c49cd26f84b91e2599397a967b586"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/form-values.json",
+      "classification": "new_local_path",
+      "localBlob": "4c2ac60c60ffd9d5ce4aec3ee302eaf504dda003"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/home/collections/featured-pasta.webp",
+      "classification": "new_local_path",
+      "localBlob": "18c03bc0b0d1299ec8b3954b00d2288783311e95"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/home/collections/featured-pizza.webp",
+      "classification": "new_local_path",
+      "localBlob": "2a97173161cebcd8fc90072eb1e183e569c6dddb"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/home/collections/featured-special-dish.webp",
+      "classification": "new_local_path",
+      "localBlob": "ba253f6902f7c18bf3a0785d0a239feafa3145a6"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/home/hero/hero-main-mobile.webp",
+      "classification": "new_local_path",
+      "localBlob": "19e04104883bba00bc18842cafab80495de8b3fa"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/home/hero/hero-main.webp",
+      "classification": "new_local_path",
+      "localBlob": "22e40fd2cb00bf072223a3aa23fe76f247fb9fab"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/home/lookbook/featured-appetizer.webp",
+      "classification": "new_local_path",
+      "localBlob": "7cf9a441fa5886b7a56bdc53c9aac09b46a812c1"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/home/products/chicken-parmesan.webp",
+      "classification": "new_local_path",
+      "localBlob": "aef751f427af81051390314a76b2d6d08893b5a1"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/home/products/crispy-platter.webp",
+      "classification": "new_local_path",
+      "localBlob": "95a93d1f84f7e64cbda0f261cbb855eacbefaf2c"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/home/products/pasta-alfredo.webp",
+      "classification": "new_local_path",
+      "localBlob": "8d6a8603756af15326eff22304727e3b8b38f9ae"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/home/products/pizza-signature.webp",
+      "classification": "new_local_path",
+      "localBlob": "05bd5a533c363ef0254545cb77d1b82cc9ce60e0"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/iam/burger-highlight.webp",
+      "classification": "new_local_path",
+      "localBlob": "0d0c1ea7ca16f8aeb6257568f98ded498d04a494"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/iam/cta-banner.webp",
+      "classification": "new_local_path",
+      "localBlob": "76cf93a6b99fca2872b1c67cc7b3ba825b3b53e5"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/iam/food-showcase.webp",
+      "classification": "new_local_path",
+      "localBlob": "c0590031f596b88acb21e54c45b1b4fbe115bce7"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/iam/hero-rtl.webp",
+      "classification": "new_local_path",
+      "localBlob": "0662881031b75a2d20b0e10747a8b025a51c0275"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/iam/manifest.json",
+      "classification": "new_local_path",
+      "localBlob": "bf5ec3a9a58e0db72e1a092172905bc1cc744bc7"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/iam/pasta-highlight.webp",
+      "classification": "new_local_path",
+      "localBlob": "1893ba6a4c661a51fb47caa9d1dcebfdebee06a6"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/iam/pizza-highlight.webp",
+      "classification": "new_local_path",
+      "localBlob": "453f2830d978dc19309a0e7e596af80a2a4bc719"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/ChatGPT Image Oct 7, 2026, 07_27_22 PM-5.jpg",
+      "classification": "new_local_path",
+      "localBlob": "f474cd4849e21c07f89c4ca8e6eb6797bc01616a"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-05924dee4aa587db/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "2249ea4d60b1cd440e3cb45ef7932beb2334ad9d"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-05924dee4aa587db/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "a1080c0a6fb3b25657146d82fef403a3809467d6"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-080e5c495088d4da/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "c44ec2a633c492c406800d07f7ce12853782462a"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-080e5c495088d4da/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "de99ec756fad5d7c245f67ba62eb18c70ad61580"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-0ac404a53f7f2d62/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "4dcb4f80be1a1a8e4294e7cf0c8aad7336c92c86"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-0ac404a53f7f2d62/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "4dcb4f80be1a1a8e4294e7cf0c8aad7336c92c86"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-0b5914c28b4fc51b/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "9e5320cfd4a18d209908b2280ecaa92dd790bfe5"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-0b5914c28b4fc51b/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "035ed1fba62b2e62ab284cd187a68c1eca1c4ef8"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-0ca0d250a8fdb7f0/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "d2fa3b5c8633d3ec2f4ad7b35694a31c697d2e20"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-0ca0d250a8fdb7f0/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "26d23f03195a57e217c1bf11c24c0f4ba9015a8e"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-0cb1e53f09b51d50/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "3007d1ad7fe226fdfb8fc20bebd374e9414b2ddc"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-0cb1e53f09b51d50/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "3007d1ad7fe226fdfb8fc20bebd374e9414b2ddc"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-0f1491c21e789de7/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "e046fe92b57e110016c72a210e041b43458486ce"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-0f1491c21e789de7/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "3b15d7b1def62fcda694f8ed2ded11df47227056"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-10bf06ed52a69ea0/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "bdaefe74761d97ec0bf6e63319eef99c24ec8c2d"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-10bf06ed52a69ea0/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "8da5a1ccf14ba37d2487e7acf18653df88d1b603"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-11dab2ef374123ae/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "89c4837b0f29a0f34689bf279f2116af6b9bfffe"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-11dab2ef374123ae/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "fa2770a0e5f65a10ddef17e10fe590fabc7641a4"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-18a322e9e87135c4/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "f32f9adf295e66f8a6f5436d59a371da7d8d5f08"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-18a322e9e87135c4/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "6c5537d0f67af8f975d928eabe898cded76e1fd7"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-195e8a29a1118622/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "42d2b4428837f822a47fa67016392af041aa9f3e"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-195e8a29a1118622/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "c24bb37f7f9a72f36f8ef8163c06ac38fa9a46ea"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-1dea19cb77d6271e/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "7ca3edd7c6f402bd91bf33d689721e0c304470f2"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-1dea19cb77d6271e/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "7ca3edd7c6f402bd91bf33d689721e0c304470f2"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-2754cdc49ebc680d/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "6ec22fb1114b9a0105ce3077aeff2e8ee3041daa"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-2754cdc49ebc680d/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "3992c762bf41308c4b84f2bf7732f5dbafa3c2b4"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-28822084aa2cd14c/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "fd9063b47a2cd808a042bcda2805ad5f14cd57bc"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-28822084aa2cd14c/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "51b22fb103fbd9f1cb2026535041d51c8713f659"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-2f530f11db31d20c/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "804b5b49c5da803cb167280906d4ca5abd24a3ec"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-2f530f11db31d20c/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "9baa1f3b96a120369861fd69ac1359461fcd6710"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-36ab8a08573f4cad/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "a2fe81353f0a596cd52a2361a891bc1e24987c40"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-36ab8a08573f4cad/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "0030bacb02929af879de8747fd611a42391fcd26"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-3c791b0a685e2b28/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "2708c9b3afb5ae6d649e79ecf4a4c1acd5c4c91f"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-3c791b0a685e2b28/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "2708c9b3afb5ae6d649e79ecf4a4c1acd5c4c91f"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-503d45f095d81bf3/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "68e70be7dcdf5a9575876417f45b6cf06be41d36"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-503d45f095d81bf3/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "68e70be7dcdf5a9575876417f45b6cf06be41d36"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-52bf076f32c38f2a/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "2d096bd10ffa58a14b5750344e0a51968b2418eb"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-52bf076f32c38f2a/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "23c6df0d57cb9bf334e4595174b1bfcc07e69947"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-5bcfdbc33e850e43/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "e046fe92b57e110016c72a210e041b43458486ce"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-5bcfdbc33e850e43/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "3b15d7b1def62fcda694f8ed2ded11df47227056"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-5cbb3357d68a3643/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "d9e4adc6445427f0b9c4338944c832b92992fa42"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-5cbb3357d68a3643/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "07c3ea688ca9078a9775d50d26bb7bc9661151a6"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-5cdc20bed6fa4b1a/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "a7b02c8f424ebf7500b502af415cc0b6803ee73b"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-5cdc20bed6fa4b1a/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "93811bfedd26a75f38e553ab46fd4777bc372074"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-63c556cb8dd01dfc/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "27038e270fd7da8f7e82a46adb77a31f7dc6bd03"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-63c556cb8dd01dfc/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "fa8beee09682775c0e41bcd09b5e2393c81d48c0"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-64a404468cf8bc0a/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "723894a0edf18372692b57535fca700a4c1876ac"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-64a404468cf8bc0a/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "85343c484b145366678a02cfd827fe6301ddc2aa"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-66696a31b1febd9b/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "12a36cb61020555db69b50e2f1f1599619458120"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-66696a31b1febd9b/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "8d1a2baa53806666c8b1a840c2b83039a19cd0e6"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-6ddcd80ae3b372fd/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "ab5aa37c6425c522420468276ca8d15611358bef"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-6ddcd80ae3b372fd/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "f4cd0e93525698e4df8977503ce5813eb7ae21c1"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-73b41feffc6d01b4/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "5048b661b642bbefd183461d62f256b90abbdb3b"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-73b41feffc6d01b4/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "5048b661b642bbefd183461d62f256b90abbdb3b"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-7a31e66ca5bf9714/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "c67042a4a9a09cc5da6a9aa1ed0b3145d1319fae"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-7a31e66ca5bf9714/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "afe7a1b50b66290ffc8c4dc9ebbe23854763b936"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-7a5412eb5ea2ba80/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "30e3a99da6949c1f27e7ca48912f7e4879fc3aee"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-7a5412eb5ea2ba80/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "2c1dffdc33a6036b74f49690a0591f137f223001"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-7de5759c528ef1f0/normal.png",
+      "classification": "new_local_path",
+      "localBlob": "f019ec07f70e68298e6c44fde261ea299ac5c123"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-7de5759c528ef1f0/restaurant13_stuffed_bread_cinematic_02.webp",
+      "classification": "new_local_path",
+      "localBlob": "7fb1d6e25aacab9f7e03ca33da48374a679f5a78"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-7de5759c528ef1f0/restaurant13_stuffed_bread_light_01.webp",
+      "classification": "new_local_path",
+      "localBlob": "df847d6ffa41d9bc2f5262b30fdb9966273d9893"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-7de5759c528ef1f0/restaurant13_stuffed_bread_light_02.webp",
+      "classification": "new_local_path",
+      "localBlob": "1bfb8884e655b837017e2e013f4903cfc2f7f6a0"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-7de5759c528ef1f0/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "d23593e53c6cb5917870e2ba297ba9717d9d9880"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-7eabf686bc283b8e/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "16db3a058afd1701d8b20a095dcc39bfb594119c"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-7eabf686bc283b8e/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "8615c87411f3f73b1a2c1686547d5aa65de397b9"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-7f65c6cca9c2191c/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "076ffac2e35f4c0fce5bb3bc41524013eb85fc98"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-7f65c6cca9c2191c/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "346fc026c4a576bdc10a3baf2255c7df3d170485"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-83d751ecf0b9d7b1/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "fa892c11da4b0280346aec59ae9643d411e38a16"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-83d751ecf0b9d7b1/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "c0191ceeefde31cbf5ff692743093f75566ddf6c"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-8997d83e33fdcc40/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "08aa4e6ad4c3363cc34664f63f2fd0f7725ac0bc"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-8997d83e33fdcc40/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "2e51d7ea75deba26762d9a26af497cdb1daddec5"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-8b8a5ad44f048ee6/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "bddcc431c77807d6c1111017ec9211099667c007"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-8b8a5ad44f048ee6/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "bddcc431c77807d6c1111017ec9211099667c007"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-8d49d0d16382622c/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "7bfa87e634d8119a2833e1fee91699ddc16f8e81"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-8d49d0d16382622c/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "7bfa87e634d8119a2833e1fee91699ddc16f8e81"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-96de57c48e9304d2/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "fccf1abf61e8375c1af77999d02088678f8cc6e7"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-96de57c48e9304d2/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "9350b96e8ba9c718fee89fd12ff497470cb320f5"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-9d21d68ef3281aa7/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "cafbf51ca75f2535d7b9b0c3e026128463af24de"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-9d21d68ef3281aa7/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "df9cfe7d44233692fb25bcfa90cbc77013e4fcaf"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-ad1fa8ef9f3fb8bc/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "709d06c44a3e348ce175a7dd17a25960c762f109"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-ad1fa8ef9f3fb8bc/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "07cca48871d1baee2d5503cd870c4cdf2905450c"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-bb0a3ee0f14066c0/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "9e56bfbe310ab62e70e2190deb208bd42aafeb25"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-bb0a3ee0f14066c0/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "9e56bfbe310ab62e70e2190deb208bd42aafeb25"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-bb512163c5104240/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "2e9755ff3d383e9b3783c97e2e5001af1fff89a5"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-bb512163c5104240/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "ae04b05e5b366ae16abdb893fea9c52ea8c65a86"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-bd571fd744d76de4/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "53292ca257c004d82ef767e160689312462ff306"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-bd571fd744d76de4/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "4363c2bb9dc6ec8cf62ce1bbef69cd14eebb9206"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-c238a9e218d58731/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "b90ae44bfdcf9f406d2ecc2d9719190c7d9c395b"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-c238a9e218d58731/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "c6a2570c3d1e8e8434249934201451516a77b502"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-c280271a04f6b698/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "efe22a0d7ef4b149a9035d17056e9c7a202c3fcf"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-c280271a04f6b698/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "4681a7900ca6ce794c0532dbf10623599cd9880d"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-c3f538b4baf44910/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "58ebab9b960b4492ca39fa5e667bc5ae58479ff1"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-c3f538b4baf44910/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "9b537517987b2edc0d2a5807c636fd88b110bf84"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-cb07a768212006f3/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "1dd37c2ba7196cfed20d168f69151fd3286b3303"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-cb07a768212006f3/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "c2157cc96fbc7c837d89b03c60f3da9096da4491"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-cc9c7a868e655aab/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "4a1462385943a628237507343f80c935cf6b08ba"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-cc9c7a868e655aab/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "c525abe83c49f655179ee7b5cbc21acf958b0fb0"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-ce4ee20b6494cbb9/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "279c7750d05e8fdd22924462ef392ebcd32b02d5"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-ce4ee20b6494cbb9/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "80e927e29f482147680dbb8dcf0bd8a2930527d0"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-dae9394d2a8c1b5e/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "9a30be803f06d92160f36f662d319789b91fcbc1"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-dae9394d2a8c1b5e/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "bdd5abdcd2b66d6197782ec71240ac040b9bba49"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-dbe4e93a37166b75/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "8249e6d0f11566e580a480936f051ccd09729b47"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-dbe4e93a37166b75/restaurant13_chips_cheese_cinematic_02.webp",
+      "classification": "new_local_path",
+      "localBlob": "9c702ef6869e2b907922cae34241ca8b19cfe4d8"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-dbe4e93a37166b75/restaurant13_chips_cheese_studio_02.webp",
+      "classification": "new_local_path",
+      "localBlob": "3c9ba8b22244dc474da9e7313a176791b09db112"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-dbe4e93a37166b75/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "5f53fcc06605076fdf6ee3448b6fa6b88b126752"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-dc9a40e048fb2c1f/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "47acdf06a89d8b007d9aadbad29c23dc0c590c8b"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-dc9a40e048fb2c1f/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "d869e0ea18062babefe0e0343089955f052c1205"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-df9de0eeb7db81c3/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "b916bf3b81060a6f404d54da2a5a5057a810b1d2"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-df9de0eeb7db81c3/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "262d697bf88395222f8e090f332da5cd50bd60a6"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-e25ae37ff7123d3d/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "a5aa487eec9e184cd1a24c405b5ed8d7c663bd4e"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-e25ae37ff7123d3d/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "8893a12c56d1a76c9afc4f173881933fd4ba1166"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-e9c694b45fde21be/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "b48d283652b357f7411179c2de69428d92567f79"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-e9c694b45fde21be/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "7595bd104f9c5e79c384c8b4c163c9cd4a9d1351"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-ef2c517cea25cb8e/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "fbf7c7fa97ef1c750676d7b1af94ae8586f94ba9"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-ef2c517cea25cb8e/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "3f6c9e2162c5ce2b9a447510cffa44adf9a52957"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-fbbc13df36ce8c3a/normal.webp",
+      "classification": "new_local_path",
+      "localBlob": "3d052f9353f566fe93dbc9c0d76e0127043cb8cd"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/italiano-fbbc13df36ce8c3a/studio.webp",
+      "classification": "new_local_path",
+      "localBlob": "a955ff441928af6a099da08fd096f90d54290a06"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/menu/products/products.zip",
+      "classification": "new_local_path",
+      "localBlob": "080776e5597faab29f172a5c6b7e5449eeed6bf0"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/palette.json",
+      "classification": "new_local_path",
+      "localBlob": "e976b7a3c5bee9de9c6b04cefd5a2baec989a214"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/previews/fastfood13-contact-sheet.jpg",
+      "classification": "new_local_path",
+      "localBlob": "eda86c73bb45d7e8cf991c9d64dfdc465d27e1e4"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/pwa/apple-touch-icon-180.png",
+      "classification": "new_local_path",
+      "localBlob": "e6cb627ec61f734cd39dc0a4be398c9bc2022206"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/pwa/icon-192x192.png",
+      "classification": "new_local_path",
+      "localBlob": "b98391757372141523cbe361e4baafd713bfdcbf"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/pwa/icon-512x512.png",
+      "classification": "new_local_path",
+      "localBlob": "b177bf41470727b38a9a031621390eff127747ac"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/pwa/icon-dark-512x512.png",
+      "classification": "new_local_path",
+      "localBlob": "b177bf41470727b38a9a031621390eff127747ac"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/pwa/icon-light-192x192.png",
+      "classification": "new_local_path",
+      "localBlob": "f4cadbfc0a82d3ee1f7713cbd0abd2b2d27a753f"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/pwa/icon-light-512x512.png",
+      "classification": "new_local_path",
+      "localBlob": "abae062a6c03dfb318939551a3d97d57c6787dd0"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/pwa/maskable-192x192.png",
+      "classification": "new_local_path",
+      "localBlob": "7a10d00b98c26845aa24f3bfbaa7f76035731f62"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/pwa/maskable-512x512.png",
+      "classification": "new_local_path",
+      "localBlob": "a0a5a39aabf75a37f4a44108f89b6bff0413410f"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/social/fastfood13-share-1200x630.jpg",
+      "classification": "new_local_path",
+      "localBlob": "200ffbf50f945c7ff923c85038d4402e9e1371ec"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/social/og-image-1200x630.png",
+      "classification": "new_local_path",
+      "localBlob": "81051e6807cd77177f854116e47b6b222cfe319d"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/social/social-avatar-1080.png",
+      "classification": "new_local_path",
+      "localBlob": "3dd3e728c7bf710fe5e2cb25e02ddb332a7f0947"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/social/social-square-1200x1200.png",
+      "classification": "new_local_path",
+      "localBlob": "49976832b652138e7084981302f458926b7e5fb5"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/social/twitter-card-1200x628.png",
+      "classification": "new_local_path",
+      "localBlob": "206489c4fc96e241b580307b8513c200d40c8dd9"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/app-icon-512.png",
+      "classification": "new_local_path",
+      "localBlob": "6958cdd7e1c710c7dc759b84c2eebbf29b662b94"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/app-icon-light-512.png",
+      "classification": "new_local_path",
+      "localBlob": "9b5396e96c65a7d6a612a9a066207f76a5738d4a"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/brand-guidelines-board.png",
+      "classification": "new_local_path",
+      "localBlob": "a5c22a4db45f5c49dbd3189e14ad49169e940152"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/brand-guidelines-board.webp",
+      "classification": "new_local_path",
+      "localBlob": "e30d6baf4997a6994b0db41425146b55401d00ef"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/favicon-16.png",
+      "classification": "new_local_path",
+      "localBlob": "83ac4e1ac1396f78aa63359646541ae73a006ac6"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/favicon-32.png",
+      "classification": "new_local_path",
+      "localBlob": "ff7374dc24e076ef43635093869181559095ba4d"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/icon-maskable-192.png",
+      "classification": "new_local_path",
+      "localBlob": "c743b123382fd4e9e044d96b85face0ef0a4e104"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/logo-lockup-charcoal.png",
+      "classification": "new_local_path",
+      "localBlob": "19577679c743d3ecf69a7116704228698c020031"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/logo-lockup-gold.png",
+      "classification": "new_local_path",
+      "localBlob": "5af40e217fda972252b721c678dcc19752de02eb"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/logo-lockup-ivory.png",
+      "classification": "new_local_path",
+      "localBlob": "25420155e85e137e924fe5605c2d09adc7263747"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/logo-mark-charcoal.png",
+      "classification": "new_local_path",
+      "localBlob": "74b92eaf69f91047728b8e31c70298cd06fe39bc"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/logo-mark-gold.png",
+      "classification": "new_local_path",
+      "localBlob": "d3c93906ac7c3ec1f87ad2c1f9d31b0febad0552"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/pattern.svg",
+      "classification": "new_local_path",
+      "localBlob": "c22c15eeca17a8a99611d2d717dd3386b31d23bd"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/social-avatar-dark.png",
+      "classification": "new_local_path",
+      "localBlob": "24fb47aab404454c04f21a2fdc94b5dd4ca74d0a"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/social-avatar-dark.webp",
+      "classification": "new_local_path",
+      "localBlob": "6eba4a8073334f09cca2b940e0f95fd79cbf7bf9"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/social-avatar-light.png",
+      "classification": "new_local_path",
+      "localBlob": "99182207a4d7542a8a127afeebb305cfce21766f"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/social-avatar-light.webp",
+      "classification": "new_local_path",
+      "localBlob": "75231456cc1f5bd0e9aeff1e43fe9b2682ffb256"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/storefront-sign-day.png",
+      "classification": "new_local_path",
+      "localBlob": "e93d24d67ddfa059b4d737fcf2de82336fa528b9"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/storefront-sign-day.webp",
+      "classification": "new_local_path",
+      "localBlob": "9b7389e5415a3e326c8065001830de6bf1362dc2"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/storefront-sign-night.png",
+      "classification": "new_local_path",
+      "localBlob": "2fb2dfdee57dbf04e704f3d007cf8aecd0bf6850"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/legacy-generated-do-not-use-runtime/storefront-sign-night.webp",
+      "classification": "new_local_path",
+      "localBlob": "3443f69e40dc7b307c4954cc60ebf1e8d5a07519"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/official-reference/official-facade-day.png",
+      "classification": "new_local_path",
+      "localBlob": "96015005605715ef1c74ab5717f89ac52a22aff8"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/official-reference/official-logo-closeup.jpg",
+      "classification": "new_local_path",
+      "localBlob": "01f85752777df950ae85e44247bb63db8d9d1ece"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/official-reference/official-logo-square.jpg",
+      "classification": "new_local_path",
+      "localBlob": "601b5db35ddd8d9082c5ff59e9f433dab9638c0e"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/official-reference/official-sign-night.png",
+      "classification": "new_local_path",
+      "localBlob": "0d994bcd54cffcdd2c863447f8f1b316be1a77a9"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/source/official-reference/official-sign-vertical.jpg",
+      "classification": "new_local_path",
+      "localBlob": "1bf291e63d75d85021171540b6a0d949de0926b1"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/variations/01-primary-wood-gold-knife-fork.png",
+      "classification": "new_local_path",
+      "localBlob": "35cb3937bea8933862313a054b55ba3b073f97d0"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/variations/02-wood-gold-alternative-knife-fork.png",
+      "classification": "new_local_path",
+      "localBlob": "9313d65e432fec063e57d8b6b9248ac341d46e86"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/variations/03-metallic-gold-dark.png",
+      "classification": "new_local_path",
+      "localBlob": "e751ecd222b859cf474522387a743e52f65a1423"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/variations/04-ivory-dark.png",
+      "classification": "new_local_path",
+      "localBlob": "c6708199f2c1909ce16de7b0613581e903136773"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/variations/05-monochrome-brown-dark.png",
+      "classification": "new_local_path",
+      "localBlob": "434449dbe0748ad2e2d096780b63615de5b066fd"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/variations/06-compact-gold-dark.png",
+      "classification": "new_local_path",
+      "localBlob": "d5e88c2c71f43d5e805f2ee2311d3efe3f9ddaa9"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/variations/07-gold-light-cream.png",
+      "classification": "new_local_path",
+      "localBlob": "d1b99ac8110650fe413ad6f1fd3cd98ed38a4869"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/variations/08-primary-wood-gold-secondary-render.png",
+      "classification": "new_local_path",
+      "localBlob": "e0dc0f1483fa171b17783e5d5bc70d18de7f489c"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/variations/09-wood-chef-icon.png",
+      "classification": "new_local_path",
+      "localBlob": "5abb50dc38f423e5718a0fbc8da6d205682a6782"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/variations/10-cream-chef-icon.png",
+      "classification": "new_local_path",
+      "localBlob": "cf7c96f3b2361102aa5af78e0aa0cce3db69eca6"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/variations/11-cream-chef-app-icon.png",
+      "classification": "new_local_path",
+      "localBlob": "6a27404751399fd45f2d133572b9c37c86c2d053"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/variations/12-wood-chef-maskable-concept.png",
+      "classification": "new_local_path",
+      "localBlob": "7118f42c9a4b9d5c69548a0ecbba0f711ab617a1"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/variations/13-cream-chef-app-icon-alt.png",
+      "classification": "new_local_path",
+      "localBlob": "49d142e552ba4cd945fcffa0b1c59a313cad414a"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/variations/14-wood-chef-maskable-concept-alt.png",
+      "classification": "new_local_path",
+      "localBlob": "6f183fe0a81b74e5b749072b7e195215a7cc7d0e"
+    },
+    {
+      "status": "??",
+      "path": "public/brand/tenants/fastfood13/variations/15-wood-gold-social-wide-original.png",
+      "classification": "new_local_path",
+      "localBlob": "664e88e347f9a281c7a094bc721ffe9b4f4c7d2e"
+    },
+    {
+      "status": "??",
+      "path": "public/icons/icon-dark-maskable-192x192.png",
+      "classification": "identical_to_origin",
+      "originBlob": "6c9d247627d86305c35015c681adc47962700364",
+      "localBlob": "6c9d247627d86305c35015c681adc47962700364"
+    },
+    {
+      "status": "??",
+      "path": "restaurant13_snappfood_catalog_extracted_v1/restaurant13_snappfood_catalog_extracted_v1/PROMPT-FOR-KILOCODE.md",
+      "classification": "operational_artifact"
+    },
+    {
+      "status": "??",
+      "path": "restaurant13_snappfood_catalog_extracted_v1/restaurant13_snappfood_catalog_extracted_v1/README.md",
+      "classification": "operational_artifact"
+    },
+    {
+      "status": "??",
+      "path": "restaurant13_snappfood_catalog_extracted_v1/restaurant13_snappfood_catalog_extracted_v1/restaurant13-bazarbaaz-mapping-template.csv",
+      "classification": "operational_artifact"
+    },
+    {
+      "status": "??",
+      "path": "restaurant13_snappfood_catalog_extracted_v1/restaurant13_snappfood_catalog_extracted_v1/restaurant13-snappfood-catalog.csv",
+      "classification": "operational_artifact"
+    },
+    {
+      "status": "??",
+      "path": "restaurant13_snappfood_catalog_extracted_v1/restaurant13_snappfood_catalog_extracted_v1/restaurant13-snappfood-catalog.json",
+      "classification": "operational_artifact"
+    },
+    {
+      "status": "??",
+      "path": "restaurant13_snappfood_catalog_extracted_v1/restaurant13_snappfood_catalog_extracted_v1/snappfood-menu-raw.json",
+      "classification": "operational_artifact"
+    },
+    {
+      "status": "??",
+      "path": "scripts/check-aka-domains.sql",
+      "classification": "new_local_path",
+      "localBlob": "3be2063b938095f2742053a52aa11625acc52f7f"
+    },
+    {
+      "status": "??",
+      "path": "scripts/check-aka-org.sql",
+      "classification": "new_local_path",
+      "localBlob": "d15fd9eb1797687396d5a56bab0fc99414206983"
+    },
+    {
+      "status": "??",
+      "path": "scripts/check-aka.ts",
+      "classification": "new_local_path",
+      "localBlob": "66e86dcb3a1da481e96115b34f308a0e24345f90"
+    },
+    {
+      "status": "??",
+      "path": "scripts/check-all-domains.ts",
+      "classification": "new_local_path",
+      "localBlob": "2f480fe359463796869a32055340a74e9ab23120"
+    },
+    {
+      "status": "??",
+      "path": "scripts/inoti-discover-italiano13.mts",
+      "classification": "new_local_path",
+      "localBlob": "71a78dd47d741526683bb44e0325a51d3a64831e"
+    },
+    {
+      "status": "??",
+      "path": "scripts/inspect-columns.ts",
+      "classification": "new_local_path",
+      "localBlob": "aafc9ad96407f87caa542c370535729b14c0f520"
+    },
+    {
+      "status": "??",
+      "path": "scripts/test-resolver-direct.ts",
+      "classification": "new_local_path",
+      "localBlob": "0721eabce258887c4bcd9e51d8c8435d04b0ea07"
+    },
+    {
+      "status": "??",
+      "path": "scripts/test-resolver.ts",
+      "classification": "new_local_path",
+      "localBlob": "53ae78863a678109890cab511d76c1bce6048980"
+    },
+    {
+      "status": "??",
+      "path": "scripts/tmp-check-integrations.ts",
+      "classification": "new_local_path",
+      "localBlob": "d435cbd8298e12584a5a6609148e412543a71c4f"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/.gitignore",
+      "classification": "identical_to_origin",
+      "originBlob": "849ddff3b7ec917b5f4563e9a6d3ea63ea512a70",
+      "localBlob": "849ddff3b7ec917b5f4563e9a6d3ea63ea512a70"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/README.md",
+      "classification": "identical_to_origin",
+      "originBlob": "487f47ae2047f4751472357d60c9993f74d88ae8",
+      "localBlob": "487f47ae2047f4751472357d60c9993f74d88ae8"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/accommodation.css",
+      "classification": "new_local_path",
+      "localBlob": "6b7254cb27d9adc4d8d7def5fddc472d22321eee"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/accommodation.js",
+      "classification": "new_local_path",
+      "localBlob": "52ae65768fba09c60fbfa26f6a49dd2cb74d9979"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/app.js",
+      "classification": "same_path_content_differs",
+      "originBlob": "e549339114718cea1a0e65ba9675f9de05f4edf8",
+      "localBlob": "3f5e3dbe59cf397495bf982294448102a04d7b69"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/assets/Lalezar-OFL.txt",
+      "classification": "identical_to_origin",
+      "originBlob": "7f8e10fe7cd444340186b92554c77b8b9e9083dd",
+      "localBlob": "7f8e10fe7cd444340186b92554c77b8b9e9083dd"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/assets/Lalezar-Regular.ttf",
+      "classification": "identical_to_origin",
+      "originBlob": "b4dfd64d62313abebd2e6a0fef81412ab231f045",
+      "localBlob": "b4dfd64d62313abebd2e6a0fef81412ab231f045"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/assets/Vazirmatn-Bold.ttf",
+      "classification": "identical_to_origin",
+      "originBlob": "7ed5b720d1d247f4adf93a93ffc9872b92905a05",
+      "localBlob": "7ed5b720d1d247f4adf93a93ffc9872b92905a05"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/assets/Vazirmatn-Regular.ttf",
+      "classification": "identical_to_origin",
+      "originBlob": "917c2058fffeda26002beff52bbfbd7bf78787c4",
+      "localBlob": "917c2058fffeda26002beff52bbfbd7bf78787c4"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/assets/architecture-concept.webp",
+      "classification": "identical_to_origin",
+      "originBlob": "648d9c8b756b0757564e337183d7d5cc76ee4e40",
+      "localBlob": "648d9c8b756b0757564e337183d7d5cc76ee4e40"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/assets/desktop-reference.png",
+      "classification": "identical_to_origin",
+      "originBlob": "c49c85d689065f3889a2f97836f5f872aa6962fd",
+      "localBlob": "c49c85d689065f3889a2f97836f5f872aa6962fd"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/assets/gallery-concept-1.webp",
+      "classification": "identical_to_origin",
+      "originBlob": "7d1c99904823439ec961f068a2593a8693d577ed",
+      "localBlob": "7d1c99904823439ec961f068a2593a8693d577ed"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/assets/gallery-concept-2.webp",
+      "classification": "identical_to_origin",
+      "originBlob": "229108405db808a3ad20c737b773f80a4036eb5d",
+      "localBlob": "229108405db808a3ad20c737b773f80a4036eb5d"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/assets/gallery-concept-3.webp",
+      "classification": "identical_to_origin",
+      "originBlob": "5ef7fc98fb13142eb7cfa4670a380afa596deb52",
+      "localBlob": "5ef7fc98fb13142eb7cfa4670a380afa596deb52"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/assets/hero-reference-v2.png",
+      "classification": "identical_to_origin",
+      "originBlob": "0c4319d619a6b05bddc8964a688de216c343d6ab",
+      "localBlob": "0c4319d619a6b05bddc8964a688de216c343d6ab"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/assets/leaf-border.svg",
+      "classification": "identical_to_origin",
+      "originBlob": "9c90e1d8db3ff22604647a40ec6d744cf3a2c99a",
+      "localBlob": "9c90e1d8db3ff22604647a40ec6d744cf3a2c99a"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/assets/lobby-concept.webp",
+      "classification": "identical_to_origin",
+      "originBlob": "95ec7ea22de6bb41db66641b1eecea50dfbcff64",
+      "localBlob": "95ec7ea22de6bb41db66641b1eecea50dfbcff64"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/assets/mobile-reference.png",
+      "classification": "identical_to_origin",
+      "originBlob": "3bac3e953632a0b252f407eab832176e17bd4f17",
+      "localBlob": "3bac3e953632a0b252f407eab832176e17bd4f17"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/assets/room-concept-1.webp",
+      "classification": "identical_to_origin",
+      "originBlob": "d76be51cd17643c0513722d2742a2c2f9229c3ad",
+      "localBlob": "d76be51cd17643c0513722d2742a2c2f9229c3ad"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/assets/room-concept-2.webp",
+      "classification": "identical_to_origin",
+      "originBlob": "b3f3627aa828c7ca1129c1499bdf3c7f0dba5926",
+      "localBlob": "b3f3627aa828c7ca1129c1499bdf3c7f0dba5926"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/assets/room-concept-3.webp",
+      "classification": "identical_to_origin",
+      "originBlob": "029c812d88b494894516d1e3f3617425324287c6",
+      "localBlob": "029c812d88b494894516d1e3f3617425324287c6"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/booking.css",
+      "classification": "identical_to_origin",
+      "originBlob": "49730336cc9230bd01652a2eb6dbe904cf0cfdff",
+      "localBlob": "49730336cc9230bd01652a2eb6dbe904cf0cfdff"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/booking.js",
+      "classification": "same_path_content_differs",
+      "originBlob": "78a571aff3fc51068f388780af8cded71f1ebee1",
+      "localBlob": "af74bab205fe7b13eba9067448b1957392b3b497"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/build.mjs",
+      "classification": "same_path_content_differs",
+      "originBlob": "b1fb68b9ab328162578f27ac3da3934c23c1b32f",
+      "localBlob": "33c49fc9bb9c11acda53f287aa2d369ec256ff0b"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/calendar.js",
+      "classification": "identical_to_origin",
+      "originBlob": "dd700abe3696193db8d7994d858aa8b021c4abb7",
+      "localBlob": "dd700abe3696193db8d7994d858aa8b021c4abb7"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/content.js",
+      "classification": "identical_to_origin",
+      "originBlob": "0f6c87e3b943b2ff05de95c52b90738ccd895044",
+      "localBlob": "0f6c87e3b943b2ff05de95c52b90738ccd895044"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/hospitality.css",
+      "classification": "new_local_path",
+      "localBlob": "48690cffa3e2ce2d014fcf23432749be4848c05a"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/hospitality.js",
+      "classification": "new_local_path",
+      "localBlob": "1e9902485007c0565a5d06264b4b4eed73c34cc2"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/index.html",
+      "classification": "same_path_content_differs",
+      "originBlob": "dc36da4d6af65fb85628d0d3026010317ae99c65",
+      "localBlob": "4c3435498d86898ad11e381d7fb38a54725788ab"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/package.json",
+      "classification": "identical_to_origin",
+      "originBlob": "59707c2818d63095e8a2af32df72373d186086b1",
+      "localBlob": "59707c2818d63095e8a2af32df72373d186086b1"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/robots.txt",
+      "classification": "identical_to_origin",
+      "originBlob": "1f53798bb4fe33c86020be7f10c44f29486fd190",
+      "localBlob": "1f53798bb4fe33c86020be7f10c44f29486fd190"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/server.mjs",
+      "classification": "same_path_content_differs",
+      "originBlob": "1dd3bbf03d5bdb54caab1a2f1b26686eec457da6",
+      "localBlob": "31c2b5388273a87ce9aea06c527eb6021f88c605"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/styles.css",
+      "classification": "same_path_content_differs",
+      "originBlob": "119a77cc95c69b755a43a912611731a7b6462793",
+      "localBlob": "cd8239653a2772dd983d98e9023a664690acb08a"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/theme-tokens.css",
+      "classification": "identical_to_origin",
+      "originBlob": "2eddb81604696a2ae931f2eb77009b1292e8871a",
+      "localBlob": "2eddb81604696a2ae931f2eb77009b1292e8871a"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/themes.js",
+      "classification": "identical_to_origin",
+      "originBlob": "1855329883571889e33981e5a431d7134bea6a71",
+      "localBlob": "1855329883571889e33981e5a431d7134bea6a71"
+    },
+    {
+      "status": "??",
+      "path": "sites/damoon/translations.js",
+      "classification": "identical_to_origin",
+      "originBlob": "ac8d716ba1e959b818286943954496bfe315a350",
+      "localBlob": "ac8d716ba1e959b818286943954496bfe315a350"
+    },
+    {
+      "status": "??",
+      "path": "tests/integration/business-vertical-persistence.local.test.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "648eb8d61d34f6969a7e2be71e073038d7cb5f29",
+      "localBlob": "c5c84aa344892bca7851bc94d53309edd0bb3364"
+    },
+    {
+      "status": "??",
+      "path": "tests/integration/hotel-anonymous-hold-http-response-loss.local.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "c7f3877fb77b34047375313bc851512963339fa9",
+      "localBlob": "c7f3877fb77b34047375313bc851512963339fa9"
+    },
+    {
+      "status": "??",
+      "path": "tests/integration/hotel-anonymous-hold-tx-h3d3p1.local.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "ab1208fc1d9a2cf7cdfdc01a69e9e036a621962b",
+      "localBlob": "ab1208fc1d9a2cf7cdfdc01a69e9e036a621962b"
+    },
+    {
+      "status": "??",
+      "path": "tests/integration/hotel-hold-r2b.local.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "4dc87387ed61501315c06b9a1e889d5966df57ad",
+      "localBlob": "4dc87387ed61501315c06b9a1e889d5966df57ad"
+    },
+    {
+      "status": "??",
+      "path": "tests/integration/hotel-inventory-idempotency-h3d2c.local.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "1581662ac40ccd2924110ae81292555ecfe03c4d",
+      "localBlob": "1581662ac40ccd2924110ae81292555ecfe03c4d"
+    },
+    {
+      "status": "??",
+      "path": "tests/integration/hotel-management-h3c2.local.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "c1e3687ca239fd579be66924a9c4b75ec9c32a40",
+      "localBlob": "c1e3687ca239fd579be66924a9c4b75ec9c32a40"
+    },
+    {
+      "status": "??",
+      "path": "tests/integration/hotel-persistence-integrity.local.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "7ab8a9c8b32ef44ba710cf62c117a8672b19a131",
+      "localBlob": "7ab8a9c8b32ef44ba710cf62c117a8672b19a131"
+    },
+    {
+      "status": "??",
+      "path": "tests/integration/hotel-postgres-booking-engine.local.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "66463da3481085aacad9042563decd214bffaad3",
+      "localBlob": "66463da3481085aacad9042563decd214bffaad3"
+    },
+    {
+      "status": "??",
+      "path": "tests/integration/hotel-publication-h3d3p.local.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "9f5abea8c1e097e584d8383cc755fac0d3caa1a7",
+      "localBlob": "9f5abea8c1e097e584d8383cc755fac0d3caa1a7"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/business-entity.test.ts",
+      "classification": "new_local_path",
+      "localBlob": "f82a5dea39b89a6851f196048463683253ccb6ec"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/business-verticals.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "bda3d687aae83061d0043c520828c4bc05f714a2",
+      "localBlob": "bda3d687aae83061d0043c520828c4bc05f714a2"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel-anonymous-hold-enabled-route.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "84da7187c9b3625ad97aaad2bcebb9d414b2fcd1",
+      "localBlob": "84da7187c9b3625ad97aaad2bcebb9d414b2fcd1"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel-anonymous-hold-route.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "120674a175c31fc558c40bcb4683f8e05aaa164a",
+      "localBlob": "120674a175c31fc558c40bcb4683f8e05aaa164a"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel-inventory-idempotency-contract.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "d22f4d8940235ecf8ac3544c6c055db0ca3268e8",
+      "localBlob": "d22f4d8940235ecf8ac3544c6c055db0ca3268e8"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel-inventory-idempotency-handler.test.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "e2f83f52b13f0798bd26603257c54e0efe7c47bb",
+      "localBlob": "0f58faab3ab867420d59c93e0a9b9a69fe601d38"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel-management-api-adapter.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "0a8c4af7d6b2be9233ecfa91cac0fa175be417a5",
+      "localBlob": "0a8c4af7d6b2be9233ecfa91cac0fa175be417a5"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel-management-api-b-contracts.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "e26ff169b428be4b4c17b7e17b37a8b271d759b2",
+      "localBlob": "e26ff169b428be4b4c17b7e17b37a8b271d759b2"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel-management-api-b-handlers.test.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "399ffa62ca09de226715c34bea8096f302fb58bf",
+      "localBlob": "f8ecc6d61358e85c2d8d1597850512311a0261cf"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel-management-api-contracts.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "9c14c47f3dbfb7690e239a346785393e38419598",
+      "localBlob": "9c14c47f3dbfb7690e239a346785393e38419598"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel-management-api-handlers.test.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "5e1ff5716d6d40bdf57781eb2c6bf87d6757804f",
+      "localBlob": "c23c9322bb851e198f48e6472bfa4c0878cb36b5"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel-management-api-security.test.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "f81be1f246545bb9e51127ebc3ddaab61d538ee0",
+      "localBlob": "bc2d62dfcd1c50bd9219d9c4f9c5bd03e1b6c4e0"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel-public-api-gate.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "897f87329292c3633bcc10a692bd719e2c90b968",
+      "localBlob": "897f87329292c3633bcc10a692bd719e2c90b968"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel-public-availability.service.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "f2972a36db96defd4314cde198be3a3d744726e9",
+      "localBlob": "f2972a36db96defd4314cde198be3a3d744726e9"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel-public-routes-success.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "fe48e0ce600a13dbeb5c77c621117820113e6324",
+      "localBlob": "fe48e0ce600a13dbeb5c77c621117820113e6324"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel-publication.service.test.ts",
+      "classification": "same_path_content_differs",
+      "originBlob": "fc7fc6a44cc1d2646aaafc33dc26eca1a3ed432b",
+      "localBlob": "578d79aca7236f6d8a70abca5dc0a218aa73a348"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel/anonymous-hold-replay.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "254d7460d7e2624c41beb0520cc4d63cdc27d739",
+      "localBlob": "254d7460d7e2624c41beb0520cc4d63cdc27d739"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel/availability.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "dd75313e78166b87af46c0934ef20eba9253deeb",
+      "localBlob": "dd75313e78166b87af46c0934ef20eba9253deeb"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel/booking-service.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "01e35c4d73e81f340d7df4080f07690f22553427",
+      "localBlob": "01e35c4d73e81f340d7df4080f07690f22553427"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel/booking-state.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "deaac194fc3e2b425582ba1bc97d686bb1057ba3",
+      "localBlob": "deaac194fc3e2b425582ba1bc97d686bb1057ba3"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel/cancellation.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "3af3be25e813685754ccdb04cada73d77f0a5b9c",
+      "localBlob": "3af3be25e813685754ccdb04cada73d77f0a5b9c"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel/contracts.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "41da09e7a0f4408212bf5023799f87308cd779f6",
+      "localBlob": "41da09e7a0f4408212bf5023799f87308cd779f6"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel/rate.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "fddbad4247d29762e58faf64918e3e647a79bc92",
+      "localBlob": "fddbad4247d29762e58faf64918e3e647a79bc92"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel/recommendation.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "27325a46405f990e59db42d25a6fb18746fbcc63",
+      "localBlob": "27325a46405f990e59db42d25a6fb18746fbcc63"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/hotel/stay-dates.test.ts",
+      "classification": "identical_to_origin",
+      "originBlob": "607d08f730a6365f90a1dd9b0ded736760338b86",
+      "localBlob": "607d08f730a6365f90a1dd9b0ded736760338b86"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/iam-content.test.ts",
+      "classification": "new_local_path",
+      "localBlob": "30ecde4f38b1877ecf90a132a87691ebae7e5a3a"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/inoti-identity-adapter.test.ts",
+      "classification": "new_local_path",
+      "localBlob": "f00609a86de342217c62d0b21bb1721a4f958729"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/integrations/inoti-imenu/inoti-imenu-readonly.test.ts",
+      "classification": "new_local_path",
+      "localBlob": "511a2de37ef7ac7aa88e682b592ddc88247b4bf0"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/italiano-13-iam-content.test.ts",
+      "classification": "new_local_path",
+      "localBlob": "f56fe70a0ded4be58b9a32636f62d676192ac07f"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/product-lifecycle.test.ts",
+      "classification": "new_local_path",
+      "localBlob": "ae6be60a0f0ffbc1ce523db3ede22b23f5184677"
+    },
+    {
+      "status": "??",
+      "path": "tests/unit/seo-entity-policy.test.ts",
+      "classification": "new_local_path",
+      "localBlob": "9b19da22e1dc2d69aafc434deb16bda3414e8b36"
+    },
+    {
+      "status": "??",
+      "path": "verify-media-retry.mjs",
+      "classification": "new_local_path",
+      "localBlob": "d8098bc478ff8834536e83ab99c23928209015b6"
+    },
+    {
+      "status": "??",
+      "path": "verify-media.mjs",
+      "classification": "new_local_path",
+      "localBlob": "e71ef812a59cb74479c0dcffe49f90f7998634ae"
+    }
+  ]
+}

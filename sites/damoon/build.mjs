@@ -8,10 +8,14 @@ const root = dirname(fileURLToPath(import.meta.url));
 const output = join(root, 'dist');
 const assetPrefix = process.argv.includes('--shared-runtime') ? '/damoon-front' : '';
 await mkdir(output, { recursive: true });
-const files = ['index.html','styles.css','booking.css','app.js','content.js','translations.js','themes.js','booking.js','calendar.js','robots.txt'];
+const files = ['index.html','styles.css','booking.css','accommodation.css','hospitality.css','accommodation.js','hospitality.js','app.js','content.js','translations.js','themes.js','booking.js','calendar.js','robots.txt'];
 for (const f of files) {
   let text = (await readFile(join(root,f),'utf8')).replaceAll('\r\n','\n');
-  if (assetPrefix) text = text.replaceAll('/assets/',`${assetPrefix}/assets/`).replace('href="/styles.css"',`href="${assetPrefix}/styles.css"`).replace('href="/booking.css"',`href="${assetPrefix}/booking.css"`).replace('href="/theme-tokens.css"',`href="${assetPrefix}/theme-tokens.css"`).replace('src="/app.js"',`src="${assetPrefix}/app.js"`);
+  if (assetPrefix) {
+    text = text.replaceAll('/assets/', `${assetPrefix}/assets/`);
+    for (const sheet of ['styles.css','booking.css','theme-tokens.css','accommodation.css','hospitality.css']) text = text.replaceAll(`href="/${sheet}"`, `href="${assetPrefix}/${sheet}"`);
+    text = text.replace('src="/app.js"', `src="${assetPrefix}/app.js"`);
+  }
   await writeFile(join(output,f),text);
 }
 await writeFile(join(root,'theme-tokens.css'),paletteStyles());

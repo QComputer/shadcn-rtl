@@ -660,3 +660,23 @@ html[lang="fa"] .home-top h1 { font-size: clamp(58px, 4.28vw, 76px); line-height
 
 html[lang="fa"] .home-top h1 { font-weight: 400; font-size: clamp(58px, 4.51vw, 80px); }
 @media (max-width: 760px) { html[lang="fa"] .home-top h1 { font-size: 56px; } }
+/* Shared brand treatment on the new interior pages. */
+.site-header:not(:has(+ .home-main)) .brand { position: relative; width: 205px; height: 94px; flex: 0 0 205px; overflow: hidden; }
+.site-header:not(:has(+ .home-main)) .brand__mark, .site-header:not(:has(+ .home-main)) .brand__text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.site-header:not(:has(+ .home-main)) .brand::after { content: ''; position: absolute; inset: 0; background: url('/assets/desktop-reference.png') -110px 0 / 1774px auto no-repeat; mix-blend-mode: multiply; }
+:root[data-theme="dark"] .site-header:not(:has(+ .home-main)) .brand::after { mix-blend-mode: screen; filter: invert(1) hue-rotate(180deg); }
+@media (min-width: 761px) and (max-width: 1200px) {
+ .site-header:not(:has(+ .home-main)) .site-nav { display: none; }
+ .site-header:not(:has(+ .home-main)) .menu-toggle { display: grid; }
+ .mobile-menu:not([hidden]) { position: absolute; inset-inline: 0; inset-block-start: 100%; display: grid; gap: 0; padding: 8px 20px 18px; background: var(--surface); border-bottom: 1px solid var(--line); box-shadow: var(--shadow); }
+}
+@media (max-width: 760px) {
+ .site-header:not(:has(+ .home-main)) .site-header__inner { min-height: 80px; padding: 0; width: calc(100% - 32px); }
+ .site-header:not(:has(+ .home-main)) .brand { position: absolute; left: 50%; top: 6px; width: 145px; height: 68px; transform: translateX(-50%); }
+ .site-header:not(:has(+ .home-main)) .brand::after { background-size: 1243px auto; background-position: -77px 0; }
+ .site-header:not(:has(+ .home-main)) .site-header__actions { inset: 0; margin: 0; }
+ .site-header:not(:has(+ .home-main)) .language-switcher { left: 0; right: auto; pointer-events: auto; }
+ .site-header:not(:has(+ .home-main)) .menu-toggle { right: 0; width: 32px; }
+ .site-header:not(:has(+ .home-main)) .theme-controls { right: 38px; }
+ .site-header:not(:has(+ .home-main)) .theme-toggle { width: 31px; height: 31px; font-size: 19px; }
+}

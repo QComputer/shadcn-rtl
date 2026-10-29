@@ -119,6 +119,7 @@ export default function NewProductPage({
   const [image, setImage] = useState<ImageRecord|null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isActive, setIsActive] = useState(true)
+  const [trackInventory, setTrackInventory] = useState(true)
   const [aiFeatureEnabled, setAiFeatureEnabled] = useState(false)
   const [aiStatus, setAiStatus] = useState<AiMediaStatusResponse | null>(null)
   const [aiUsage, setAiUsage] = useState<AiMediaUsageSummary>(null)
@@ -285,6 +286,7 @@ export default function NewProductPage({
             image: imageUrl || undefined,
             sku,
             categoryId,
+            trackInventory,
             lowStockThreshold: Number(lowStockThreshold),
             sortOrder: Number(sortOrder),
           }),
@@ -598,6 +600,23 @@ export default function NewProductPage({
                   id="active"
                   checked={isActive}
                   onCheckedChange={setIsActive}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="trackInventory">
+                    {trackInventory
+                      ? (t("common.trackInventory") || "Track inventory")
+                      : (t("common.inactive") || "Inventory tracking disabled")}
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    {t("product.trackInventory_description") || "Prevent purchases when tracked stock is unavailable."}
+                  </p>
+                </div>
+                <Switch
+                  id="trackInventory"
+                  checked={trackInventory}
+                  onCheckedChange={setTrackInventory}
                 />
               </div>
             </div>

@@ -1,0 +1,71 @@
+{
+  "sourceCommit": "148330c487a4e52d774746d176b06c6066380939",
+  "staticPackageCommit": "9019bb06c9336b59c36fc7ca08754dd1778f19c9",
+  "frozenInstallExitCode": 0,
+  "prismaGenerationExitCode": 0,
+  "routeTypegenExitCode": 0,
+  "typecheckExitCode": 0,
+  "focusedTests": {
+    "command": "pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/unit/retail-product-workspace.test.ts tests/unit/retail-shop-experience.test.ts tests/unit/shop-menu-filter.test.ts tests/unit/retail-variant-selection.test.ts tests/unit/retail-attribute-validation.test.ts tests/unit/retail-product-galleries.test.ts tests/unit/retail-order-presentation.test.ts tests/unit/retail-fulfillment.test.ts tests/unit/hotel/organization-site-presentation.test.ts tests/unit/organization-public-home.test.ts",
+    "files": [
+      "tests/unit/retail-product-workspace.test.ts",
+      "tests/unit/retail-shop-experience.test.ts",
+      "tests/unit/shop-menu-filter.test.ts",
+      "tests/unit/retail-variant-selection.test.ts",
+      "tests/unit/retail-attribute-validation.test.ts",
+      "tests/unit/retail-product-galleries.test.ts",
+      "tests/unit/retail-order-presentation.test.ts",
+      "tests/unit/retail-fulfillment.test.ts",
+      "tests/unit/hotel/organization-site-presentation.test.ts",
+      "tests/unit/organization-public-home.test.ts"
+    ],
+    "fileCount": 10,
+    "testCount": 101,
+    "passCount": 101,
+    "failCount": 0,
+    "skipCount": 0,
+    "cancelledCount": 0,
+    "exitCode": 0,
+    "logPath": "C:\\Users\\disso\\.codex\\private-preservation\\bazarbaaz-single-main-20261029\\focused-tests.log",
+    "head": "148330c487a4e52d774746d176b06c6066380939",
+    "originMain": "4f0eb5d2a7ff65f977d2645682993cd0c7abc0a5",
+    "completedAt": "2026-10-29T15:49:23.7376796+03:30"
+  },
+  "eslint": {
+    "warnings": 51,
+    "exitCode": 0,
+    "errors": 0
+  },
+  "build": {
+    "mode": "webpack",
+    "database": "LOOPBACK_PLACEHOLDER_ONLY",
+    "pages": 337,
+    "exitCode": 0
+  },
+  "hotelStandalone": {
+    "checks": 210,
+    "routes": 42,
+    "cleanup": "PASSED",
+    "status": "PASSED"
+  },
+  "hotelSharedNext": {
+    "routes": 42,
+    "publicTLSVerified": false,
+    "cleanup": "PASSED",
+    "checks": 210,
+    "status": "PASSED",
+    "topology": "LOCAL_TLS_PROXY_DAMOON_HOST_TO_LOOPBACK"
+  },
+  "worktrees": {
+    "retiredExisting": 47,
+    "verifiedSnapshots": 48,
+    "registered": 1,
+    "stalePruned": 8
+  },
+  "notPerformed": [
+    "Database-backed merchant persistence acceptance",
+    "Physical-device PWA installation",
+    "Provider or Production mutation",
+    "Push or deployment"
+  ]
+}

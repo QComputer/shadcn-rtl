@@ -4,6 +4,36 @@ Owner decision: 2026-10-29. Use one active checkout at
 `C:/Users/disso/Project/shadcn-rtl`, on `main`, to continue Hotel, Retail and
 shared Bazarbaaz work. Do not create additional worktrees by default.
 
+## Completed local workspace state
+
+`git worktree list --porcelain` now contains exactly one entry, this checkout
+on `main`. All 47 other existing registered worktrees were closed: 42 workspace
+directories were removed by Git, and five filesystem residuals were moved into
+the private recovery root after Git removed their registration/metadata. Eight
+stale registrations were pruned after their metadata and HEADs were preserved.
+An additional old provisioning directory without Git metadata was also moved
+into the private archive with its contents retained.
+
+The original 48 existing checkouts have 48 verified ZIP snapshots containing
+66,422 preserved files (1,297,080,381 compressed bytes), plus the history bundle,
+binary deltas, index files and worktree metadata. Source branches remain
+recoverable; closing a worktree did not delete its branch.
+
+Measured C: free space was 5,609,074,688 bytes immediately before worktree
+retirement and 16,963,477,504 bytes after it. These are host observations rather
+than summed logical file sizes. Main's dependency target was checked and kept.
+
+Optional cosmetic cleanup of empty wrapper directories and old ignored Kilo
+state was rejected by automatic tool review (`blocked by policy`). That action
+was not retried through another mechanism. These retained directories are not
+registered worktrees and do not change the single-main result.
+
+The source integration is `148330c487a4e52d774746d176b06c6066380939` and the
+generated shared Damoon package is
+`9019bb06c9336b59c36fc7ca08754dd1778f19c9`. Documentation-only commits may follow;
+use `git rev-parse main` for the latest local HEAD. No push or hosted deployment
+was performed; `origin/main` remains `4f0eb5d` at the last full fetch.
+
 ## Consolidated source
 
 The integration starts from GitHub main
@@ -51,6 +81,9 @@ its payloads to Git.
   `local-delta-classification.json` record source disposition. The latter covers
   every one of 702 expanded local status paths, rather than treating directory
   entries as individual files.
+- Committed copies of the source-disposition reviews, the local path manifest,
+  worktree recovery map and validation summary are under
+  `docs/handoffs/consolidation-2026-10-29/`; private payloads are not committed.
 - The audit also covered 188 local/cached remote branch refs and 37 commits
   reachable only through branches outside the inventoried worktree histories.
 
@@ -83,6 +116,23 @@ The transferred Damoon pages passed a fresh local Chrome run: 210/210 checks,
 42 language/routes, exitCode 0, cleanup PASSED; the local server was stopped.
 Evidence is in `hotel-qa/durableresult.json` under the private recovery root.
 This is separate from the saved v46 public evidence (201/201).
+
+The shared Next.js runtime also passed 210/210 Chrome checks over 42 routes with
+the actual Damoon Host mapped to loopback. A local TLS proxy and a test-only
+certificate exception supplied the browser's secure-origin requirement. This
+is local routing/package evidence, not public TLS or live RunFlare acceptance.
+The preliminary plain-HTTP run had only the expected secure-origin COOP console
+failure and is retained as failed evidence; application/network assertions
+passed. Both local servers were stopped after the successful run.
+
+At source commit `148330c`: frozen installation, Prisma generation, route type
+generation and full TypeScript succeeded; ten selected existing test files
+passed 101/101; scoped ESLint had zero errors and 51 warnings; the full webpack
+production build succeeded and generated 337 pages. The later static-package
+commit synchronizes `public/damoon-front` with the same source and was verified
+through the shared runtime; it changes no compiled TypeScript implementation.
+No database-backed merchant save/reload, shared database mutation, physical PWA
+installation or real payment/booking acceptance was performed for consolidation.
 
 Dependency restoration uses `pnpm install --frozen-lockfile --ignore-scripts`
 and the repository's Node 24 / pnpm 10.15.0 contract. Local Prisma generation,

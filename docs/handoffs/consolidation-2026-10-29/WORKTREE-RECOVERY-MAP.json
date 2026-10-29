@@ -1,0 +1,506 @@
+[
+  {
+    "originalPath": "C:/Users/disso/Project/shadcn-rtl",
+    "head": "ddd414184caadf479e357c5a7e19238592c08b40",
+    "branch": "refs/heads/main",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-00",
+    "snapshot": "archives/wt-00.zip",
+    "currentDisposition": "ACTIVE_MAIN"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/aka-shoes-branded-pwa/shadcn-rtl",
+    "head": "9824f2e2678bccdda99b99902e8ba4410f6653b8",
+    "branch": "refs/heads/feat/aka-shoes-branded-pwa",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-01",
+    "snapshot": "archives/wt-01.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/aka-shoes-product-storefront/shadcn-rtl",
+    "head": "6a1f8ad6bbe1f411171bebc257023e6b28dee02c",
+    "branch": "refs/heads/codex/damoon-reference-redesign",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-02",
+    "snapshot": "archives/wt-02.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/bazarbaaz-mainline-consolidation-20261019/shadcn-rtl",
+    "head": "b2ce5a9af41698826b5aaa332814f87064462769",
+    "branch": "refs/heads/codex/bazarbaaz-runflare-security-fix",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-03",
+    "snapshot": "archives/wt-03.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/bazarbaaz-p1-platform-hotel-20261018/shadcn-rtl",
+    "head": "5e247378f60d338c59795aa8759e5097ec6af25e",
+    "branch": "refs/heads/codex/bazarbaaz-p1-platform-hotel-20261018",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-04",
+    "snapshot": "archives/wt-04.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/bazarbaaz-p2-tenant-website-studio/shadcn-rtl",
+    "head": "fb9f50348edd43f98a4cf481e40e42fc9cf1093e",
+    "branch": "refs/heads/codex/bazarbaaz-p2-tenant-website-studio",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-05",
+    "snapshot": "archives/wt-05.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/bazarbaaz-p3-shared-website-studio/shadcn-rtl",
+    "head": "387f4c75b360815ec220727bbd8f3c8aeccb663c",
+    "branch": "refs/heads/codex/bazarbaaz-p3-shared-website-studio",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-06",
+    "snapshot": "archives/wt-06.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/bazarbaaz-production-release-integration/shadcn-rtl",
+    "head": "543e818f63e5e947c4f237ea918934c69d9c364d",
+    "branch": "refs/heads/codex/bazarbaaz-production-release-integration",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-07",
+    "snapshot": "archives/wt-07.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/bazarbaaz-production-source-recovery-20261014/shadcn-rtl",
+    "head": "0a48cd189ea5ba3a3c5dbb67831a5ba8e8430c15",
+    "branch": "refs/heads/codex/bazarbaaz-production-source-recovery-20261014",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-08",
+    "snapshot": "archives/wt-08.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/bb-prod-db-attestation-20261016/shadcn-rtl",
+    "head": "9fc8c8a489dd497948ca44f11bc85a0d3fa55e95",
+    "branch": "refs/heads/codex/temp-prod-db-attestation-20261016",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-09",
+    "snapshot": "archives/wt-09.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/bb-prod-payment-bridge-validate-20261016/shadcn-rtl",
+    "head": "5a7c4bee2a8973a9f3a396e654ca69961ae02f15",
+    "branch": "refs/heads/codex/platform-prod-payment-bridge-20261016",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-10",
+    "snapshot": "archives/wt-10.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/hotel-cms-v2-integration-20261013/shadcn-rtl",
+    "head": "47b210dcc8417d9dc8161d308510caa5c31032c2",
+    "branch": "refs/heads/codex/hotel-cms-v2-integration-20261013",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-11",
+    "snapshot": "archives/wt-11.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/hotel-content-c1a-20261012/shadcn-rtl",
+    "head": "a055ec02170a156de90e0679af81c66212837c58",
+    "branch": "refs/heads/codex/hotel-content-c1a-20261012",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-12",
+    "snapshot": "archives/wt-12.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/hotel-content-c1b1-20261012/shadcn-rtl",
+    "head": "00f3a3830810bd6add295b3c5bb2426f118c9b9b",
+    "branch": "refs/heads/codex/hotel-content-c1b1-20261012",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-13",
+    "snapshot": "archives/wt-13.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/hotel-content-c1b2-20261013/shadcn-rtl",
+    "head": "e5518a3c1295d93168b126f8261ea46aeb377a54",
+    "branch": "refs/heads/codex/hotel-content-c1b2-20261013",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-14",
+    "snapshot": "archives/wt-14.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/hotel-content-c1b2-20261013-5316/shadcn-rtl",
+    "head": "9bf2ad1386445944485f0e20ed0b10e55a4a96e5",
+    "branch": "refs/heads/codex/hotel-content-c1b2-fast-track",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-15",
+    "snapshot": "archives/wt-15.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/hotel-damoon-f2-public-integration/shadcn-rtl",
+    "head": "5cb10499efac86693d1177c7e19c79629720d893",
+    "branch": "refs/heads/codex/hotel-damoon-f2-public-integration",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-16",
+    "snapshot": "archives/wt-16.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/hotel-damoon-f2d-20261013/shadcn-rtl",
+    "head": "2dda61701812f8fd9bd723cebb562cd9b7b3d1d8",
+    "branch": "refs/heads/codex/hotel-damoon-f2d-20261013",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-17",
+    "snapshot": "archives/wt-17.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/hotel-damoon-f2d-runtime-20261013/shadcn-rtl",
+    "head": "c49ba4edab77708653aab46b99b091b12fdb40e1",
+    "branch": "refs/heads/codex/hotel-damoon-f2d-runtime-20261013",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-18",
+    "snapshot": "archives/wt-18.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/hotel-damoon-f2e-20261013/shadcn-rtl",
+    "head": "6f2cd37ce06a51e5c178f7324a8872c4163f3c60",
+    "branch": "refs/heads/codex/hotel-damoon-f2e-visual-polish-20261013",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-19",
+    "snapshot": "archives/wt-19.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/hotel-damoon-f5-staging/shadcn-rtl",
+    "head": "f24d5d04b18ef58a4b4434d2fbd6b1fca3109edf",
+    "branch": "refs/heads/codex/hotel-damoon-f5-staging-20261013",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-20",
+    "snapshot": "archives/wt-20.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/hotel-f3-unified-20261013/shadcn-rtl",
+    "head": "201010e8f9b30e99ebe1fa823d133e40946a805f",
+    "branch": "refs/heads/codex/hotel-f3-unified-20261013",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-21",
+    "snapshot": "archives/wt-21.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/hotel-f4-pilot-20261013/shadcn-rtl",
+    "head": "44f7554ea882dca26d08ca78570c8a38bbd194f1",
+    "branch": "refs/heads/codex/hotel-damoon-f4-pilot-20261013",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-22",
+    "snapshot": "archives/wt-22.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/hotel-public-read-r1-20261012/shadcn-rtl",
+    "head": "9a5c7ff84ca5c96123781c04b418855b25fe0180",
+    "branch": "refs/heads/codex/hotel-public-read-r1-20261012",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-23",
+    "snapshot": "archives/wt-23.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/legacy-product-link-compat/shadcn-rtl",
+    "head": "2f27778a2d249d07e2af47919ed46125f11ba62f",
+    "branch": null,
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-24",
+    "snapshot": "archives/wt-24.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/organization-settings-hotfix-isolated-20261017/shadcn-rtl",
+    "head": "47d8bee6d26973b1c848eecb23e74df343c4b23e",
+    "branch": "refs/heads/codex/organization-settings-hotfix-isolated-20261017",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-25",
+    "snapshot": "archives/wt-25.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/platform-combined-integration-20261015/shadcn-rtl",
+    "head": "8662455150a8562485ab17179acbf0d20f396d09",
+    "branch": "refs/heads/codex/platform-combined-integration-20261015",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-26",
+    "snapshot": "archives/wt-26.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/restaurant13-canonical-identity",
+    "head": "19df088098cd4ab0c476f71b03dbe2704c39321c",
+    "branch": "refs/heads/codex/restaurant13-canonical-identity",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-27",
+    "snapshot": "archives/wt-27.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/retail-contract-integration/shadcn-rtl",
+    "head": "08491cc2996ea45a75b6b2c77cac3cc2470a78c4",
+    "branch": "refs/heads/codex/retail-contract-integration",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-28",
+    "snapshot": "archives/wt-28.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/retail-h2-aka-shoes-20261014/shadcn-rtl",
+    "head": "24e655eb375934edb960ccba8b84f9223795a238",
+    "branch": "refs/heads/codex/retail-h2-aka-shoes-20261014",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-29",
+    "snapshot": "archives/wt-29.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/retail-r0-r1-20261013/shadcn-rtl",
+    "head": "fd0574be1beec6429a78b2c7f52b3664398ef4a6",
+    "branch": "refs/heads/codex/retail-r0-r1-foundation-20261013",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-30",
+    "snapshot": "archives/wt-30.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/retail-r2-20261013/shadcn-rtl",
+    "head": "5a5bc6e2fa452c97534c7fa671c8cf936389b9a2",
+    "branch": "refs/heads/codex/retail-r2-catalog-20261013",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-31",
+    "snapshot": "archives/wt-31.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/retail-r3-20261013/shadcn-rtl",
+    "head": "c283e461af2cbb7e05f9e1b9efcd839762a0eaec",
+    "branch": "refs/heads/codex/retail-r3-merchant-flow-20261013",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-32",
+    "snapshot": "archives/wt-32.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/retail-r4a-promotions-payments-20261014/shadcn-rtl",
+    "head": "30282527a743039bd0bd13d26045f1b82efa6c74",
+    "branch": "refs/heads/codex/retail-r4a-promotions-payments-20261014",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-33",
+    "snapshot": "archives/wt-33.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/runflare-npm-lockfile/shadcn-rtl",
+    "head": "0e4f06f78e5aaff05b724ea72d3cf32df2b6e855",
+    "branch": "refs/heads/codex/platform-https",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-34",
+    "snapshot": "archives/wt-34.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/.codex/worktrees/tenant-pwa-branding-fix-20261013/shadcn-rtl",
+    "head": "b979b82a71a77b9e12188414ed5be61be7389b17",
+    "branch": "refs/heads/codex/tenant-pwa-branding-fix-20261013",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-35",
+    "snapshot": "archives/wt-35.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/AppData/Local/Temp/bazarbaaz-integration-wt",
+    "head": "2ba5dad408cbe1dfa5f53fe6d7e24365bceac0c5",
+    "branch": "refs/heads/integrate/platform-domain-sicily",
+    "existedAtInventory": false,
+    "preservedRef": "refs/archive/single-main-20261029/wt-36",
+    "snapshot": null,
+    "currentDisposition": "STALE_REGISTRATION_PRUNED"
+  },
+  {
+    "originalPath": "C:/Users/disso/AppData/Local/Temp/bazarbaaz-sicily-clean-wt",
+    "head": "9fde2c27423ffa9bd9c11e4f8ab383b415570438",
+    "branch": "refs/heads/task/sicily-menu-seed",
+    "existedAtInventory": false,
+    "preservedRef": "refs/archive/single-main-20261029/wt-37",
+    "snapshot": null,
+    "currentDisposition": "STALE_REGISTRATION_PRUNED"
+  },
+  {
+    "originalPath": "C:/Users/disso/AppData/Local/Temp/bb-p3r-verify-20260831",
+    "head": "985680a71afcd364ab7b69b5bcffe54a86fafb81",
+    "branch": null,
+    "existedAtInventory": false,
+    "preservedRef": "refs/archive/single-main-20261029/wt-38",
+    "snapshot": null,
+    "currentDisposition": "STALE_REGISTRATION_PRUNED"
+  },
+  {
+    "originalPath": "C:/Users/disso/AppData/Local/Temp/bb-production-cutover-234b5a0",
+    "head": "5a52140b4af76eded36dd8305e6689f31c1f96d5",
+    "branch": null,
+    "existedAtInventory": false,
+    "preservedRef": "refs/archive/single-main-20261029/wt-39",
+    "snapshot": null,
+    "currentDisposition": "STALE_REGISTRATION_PRUNED"
+  },
+  {
+    "originalPath": "C:/Users/disso/AppData/Local/Temp/bb-release-aka-verify",
+    "head": "985680a71afcd364ab7b69b5bcffe54a86fafb81",
+    "branch": null,
+    "existedAtInventory": false,
+    "preservedRef": "refs/archive/single-main-20261029/wt-40",
+    "snapshot": null,
+    "currentDisposition": "STALE_REGISTRATION_PRUNED"
+  },
+  {
+    "originalPath": "C:/Users/disso/AppData/Local/Temp/old-client-wt",
+    "head": "afdf7bf2005859ffa32142301be22b02ed264329",
+    "branch": null,
+    "existedAtInventory": false,
+    "preservedRef": "refs/archive/single-main-20261029/wt-41",
+    "snapshot": null,
+    "currentDisposition": "STALE_REGISTRATION_PRUNED"
+  },
+  {
+    "originalPath": "C:/Users/disso/AppData/Local/Temp/sicily-seed-wt",
+    "head": "82fed27be775a9e643f18dad27b99b71f19de72f",
+    "branch": null,
+    "existedAtInventory": false,
+    "preservedRef": "refs/archive/single-main-20261029/wt-42",
+    "snapshot": null,
+    "currentDisposition": "STALE_REGISTRATION_PRUNED"
+  },
+  {
+    "originalPath": "C:/Users/disso/Project/aka-shoes-inventory-baseline",
+    "head": "a4bb751c68a10ff125652e74dfb60441c846c80d",
+    "branch": null,
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-43",
+    "snapshot": "archives/wt-43.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/Project/aka-shoes-inventory-sync",
+    "head": "bd82cf82e029d1179a093c8875dc106d05291434",
+    "branch": "refs/heads/codex/aka-shoes-inventory-sync",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-44",
+    "snapshot": "archives/wt-44.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/Project/aka-shoes-visibility-hotfix",
+    "head": "ddd414184caadf479e357c5a7e19238592c08b40",
+    "branch": "refs/heads/codex/aka-shoes-visibility-hotfix",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-45",
+    "snapshot": "archives/wt-45.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/Project/aka-shoes-visibility-hotfix-prod",
+    "head": "a4bb751c68a10ff125652e74dfb60441c846c80d",
+    "branch": "refs/heads/codex/aka-shoes-visibility-hotfix-prod",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-46",
+    "snapshot": "archives/wt-46.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/Project/bazarbaaz-org-shell",
+    "head": "91d557f78c6ffabdbe1dfc22ae3aec374d55b31d",
+    "branch": "refs/heads/feat/real-pilot-launch",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-47",
+    "snapshot": "archives/wt-47.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/Project/shadcn-rtl/..bazarbaaz-cafeleo-cl3a",
+    "head": "1584f8fbfd3c79c15cad3d6dcbc00f0e7b2dc31c",
+    "branch": "refs/heads/kilo/cafeleo-cl3a-foundation",
+    "existedAtInventory": false,
+    "preservedRef": "refs/archive/single-main-20261029/wt-48",
+    "snapshot": null,
+    "currentDisposition": "STALE_REGISTRATION_PRUNED"
+  },
+  {
+    "originalPath": "C:/Users/disso/Project/shadcn-rtl/.kilo/worktrees/bazar-baz",
+    "head": "31968783def294055d2d2e77719bbb4891ca6c4d",
+    "branch": "refs/heads/bazar-baz",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-49",
+    "snapshot": "archives/wt-49.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/Project/shadcn-rtl/.kilo/worktrees/lava-boysenberry",
+    "head": "085acd3b6db7216036b86f423bb26686d9bc6852",
+    "branch": "refs/heads/lava-boysenberry",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-50",
+    "snapshot": "archives/wt-50.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/Project/shadcn-rtl/.kilo/worktrees/veiled-mulberry",
+    "head": "085acd3b6db7216036b86f423bb26686d9bc6852",
+    "branch": "refs/heads/veiled-mulberry",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-51",
+    "snapshot": "archives/wt-51.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/Project/shadcn-rtl-cl3-release-fix",
+    "head": "93372d1cfb6307e3c503b3304c9e1e0c558cae6e",
+    "branch": "refs/heads/codex/cafeleo-cl3-release-fix",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-52",
+    "snapshot": "archives/wt-52.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/Project/shadcn-rtl-cl3a-integration",
+    "head": "a2a874b8df2095352b9075cebcf9aac212999603",
+    "branch": "refs/heads/codex/cafeleo-cl3-release",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-53",
+    "snapshot": "archives/wt-53.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/Project/shadcn-rtl-release",
+    "head": "68892ce602883987ae5c6491d222ab6ff3ae6158",
+    "branch": null,
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-54",
+    "snapshot": "archives/wt-54.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  },
+  {
+    "originalPath": "C:/Users/disso/Project/shadcn-rtl-restaurant13-integration",
+    "head": "89ff16140c880453d6f62ab3f4ab78d2c1131c46",
+    "branch": "refs/heads/codex/restaurant-13-integration",
+    "existedAtInventory": true,
+    "preservedRef": "refs/archive/single-main-20261029/wt-55",
+    "snapshot": "archives/wt-55.zip",
+    "currentDisposition": "CLOSED_AND_PRESERVED"
+  }
+]

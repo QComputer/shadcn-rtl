@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { ArrowLeft, Eye, Plus, Save, Store, Trash2 } from "lucide-react";
 
 import { AssignedGallery, RetailMediaPicker } from "./retail-media-picker";
@@ -410,7 +410,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
 
 function AttributeControl({ definition, locale, value, onChange }: { definition: Definition; locale: Locale; value: string; onChange: (value: string) => void }) {
   const t = strings[locale];
-  const id = `retail-attribute-${definition.id}`;
+  const id = useId();
   const options = allowedValues(definition);
   return <label htmlFor={id} className="space-y-1.5 text-sm font-medium"><span>{definition.label}{definition.displayUnit ? ` (${definition.displayUnit})` : ""}</span>{definition.valueType === "ENUM" ? <select id={id} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border bg-background px-3 py-2.5"><option value="">{t.choose}</option>{options.map((option) => <option key={option} value={option}>{option}</option>)}</select> : definition.valueType === "BOOLEAN" ? <select id={id} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border bg-background px-3 py-2.5"><option value="">{t.choose}</option><option value="true">{t.trueLabel}</option><option value="false">{t.falseLabel}</option></select> : <input id={id} type={definition.valueType === "NUMBER" ? "number" : "text"} step={definition.valueType === "NUMBER" ? "any" : undefined} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border bg-background px-3 py-2.5" />}</label>;
 }

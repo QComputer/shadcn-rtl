@@ -146,8 +146,12 @@ explicit isolated test database. Generation/build is not permission to migrate
 or seed a shared database. Use the recorded final validation result for the
 exact local commit; historical reports do not establish present runtime health.
 
-Next Retail slice: authenticated merchant product edit/save/reopen/reload and
-public catalog verification for `aka-shoes`, with tenant/restaurant regressions.
+The subsequent local synthetic merchant edit/save/reopen/reload and anonymous
+catalog slice passed, including a repeated-attribute label fix, tenant denial,
+93 focused contract tests and full data cleanup. See
+`RETAIL-HOTEL-ACCEPTANCE-2026-10-29.md` for its exact environment and limits.
+Next Retail slice: reviewed hosted release and real `aka-shoes` owner/domain
+verification, with separate order/payment and live Restaurant/Cafe acceptance.
 Next Hotel slice: complete the dedicated `damoon-hotel` frontend on the accepted
 design, and separately resolve real photographs, VTour playback and approved
 rates/inventory/policies before operational booking integration.

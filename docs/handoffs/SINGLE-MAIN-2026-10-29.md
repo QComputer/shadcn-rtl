@@ -23,10 +23,15 @@ Measured C: free space was 5,609,074,688 bytes immediately before worktree
 retirement and 16,963,477,504 bytes after it. These are host observations rather
 than summed logical file sizes. Main's dependency target was checked and kept.
 
-Optional cosmetic cleanup of empty wrapper directories and old ignored Kilo
-state was rejected by automatic tool review (`blocked by policy`). That action
-was not retried through another mechanism. These retained directories are not
-registered worktrees and do not change the single-main result.
+The initial combined cosmetic-cleanup command was rejected by automatic tool
+review (`blocked by policy`). On the owner's explicit follow-up, narrower native
+PowerShell operations succeeded: old ignored `.kilo` state was moved intact to
+`main-original-files/.kilo` in the private recovery root, and 23 verified empty
+wrapper directories were removed without recursion. Twelve nonempty wrappers
+were retained: ten have Codex name markers, one has an `uploads` directory, and
+one has a dependency junction. Their contents were not deleted or traversed.
+These retained directories are not registered worktrees. The active checkout
+remains the single main workspace.
 
 The source integration is `148330c487a4e52d774746d176b06c6066380939` and the
 generated shared Damoon package is

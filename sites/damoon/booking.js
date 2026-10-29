@@ -65,8 +65,18 @@ function initialSelection(minISO) {
   return { range, guests: guestCount };
 }
 
+let activeSelection;
+export function readStaySelection() {
+  const selection = activeSelection || initialSelection(todayLocalISO());
+  return { range: { ...selection.range }, guests: selection.guests };
+}
+
 function routeRoomDetail() {
   return /^\/rooms\/(single|double|suite-3-bed|suite-4-5-bed)$/.test(normalizePath(window.location.pathname));
+}
+
+function shortStayDate(iso, locale) {
+  return new Intl.DateTimeFormat(`${locale}-u-ca-persian`, { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' }).format(new Date(`${iso}T12:00:00Z`));
 }
 
 function rangeSummary(range, locale) {
@@ -115,6 +125,8 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   let focusISO = "";
 
   const persist = () => {
+    activeSelection = { range: { ...range }, guests };
+    document.dispatchEvent(new CustomEvent('damoon:stay-change'));
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...range, guests }));
     } catch {
@@ -168,7 +180,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   function updateFields() {
     for (const segment of ["checkIn", "checkOut"]) {
       const iso = range[segment];
-      dateValues[segment].textContent = iso ? jalaliAccessibleDay(iso, locale) : ui.selectDate;
+      dateValues[segment].textContent = iso ? shortStayDate(iso, locale) : ui.selectDate;
       const button = slot.querySelector(`[data-date-field="${segment}"]`);
       button.setAttribute("aria-label", iso
         ? `${segment === "checkIn" ? ui.checkIn : ui.checkOut}: ${jalaliAccessibleDay(iso, locale)}`

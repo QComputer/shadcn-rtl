@@ -360,6 +360,7 @@ export default function EditProductPage({
       setImage(productData.image || "")
       setAiPrimaryMediaAssetId(productData.aiPrimaryMediaAssetId || productData.aiPrimaryMediaAsset?.id || null)
       setIsActive(productData.isActive)
+      setTrackInventory(productData.trackInventory)
       
       setCategories(categoriesData)
       setVariants(productData.variants)
@@ -482,6 +483,7 @@ export default function EditProductPage({
           categoryId,
           image: image || undefined,
           isActive,
+          trackInventory,
           sortOrder,
           discountType: discountType || "none",
           discountValue: discountType === "none" ? 0 : discountValue,

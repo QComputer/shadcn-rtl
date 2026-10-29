@@ -16,7 +16,7 @@ http.createServer(async (req, res) => {
   const extension = /\.[a-z0-9]+$/i.exec(path)?.[0]?.toLowerCase();
   const asset = Boolean(extension);
   const file = resolve(root, '.' + (asset ? path : '/index.html'));
-  if (!file.startsWith(root + sep) || (asset && !['/styles.css','/booking.css','/theme-tokens.css','/app.js','/content.js','/translations.js','/themes.js','/booking.js','/calendar.js','/robots.txt'].includes(path) && !path.startsWith('/assets/'))) { res.writeHead(404, security); res.end(); return; }
+  if (!file.startsWith(root + sep) || (asset && !['/styles.css','/booking.css','/accommodation.css','/hospitality.css','/accommodation.js','/hospitality.js','/theme-tokens.css','/app.js','/content.js','/translations.js','/themes.js','/booking.js','/calendar.js','/robots.txt'].includes(path) && !path.startsWith('/assets/'))) { res.writeHead(404, security); res.end(); return; }
   try {
     const body = await readFile(file);
     const status = asset || pageForPath(normalizePath(path)) ? 200 : 404;

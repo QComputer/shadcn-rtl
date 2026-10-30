@@ -1,12 +1,46 @@
-import { findVariantOption, retailAttributeText, type RetailProduct, type RetailVariant } from "./variant-selection";
+import { canonicalDimensions, findVariantOption, retailAttributeText, type RetailProduct, type RetailVariant } from "./variant-selection";
 
 export type ProductSelection = Record<string, string>;
 export const variantSelection = (variant?: RetailVariant): ProductSelection => Object.fromEntries((variant?.options ?? []).map(option => [option.key, retailAttributeText(option)]));
 
-/** Never substitute another color/size when the requested combination is absent. */
+/** Resolve the single variant matching the selection across canonical dimensions.
+ * Never substitute another color/size when the requested combination is absent. */
 export function exactProductVariant(product: RetailProduct, selection: ProductSelection) {
-  const matches = product.variants.filter(variant => variant.options.every(option => selection[option.key] === retailAttributeText(option))
-    && Object.keys(selection).every(key => findVariantOption(variant, key) && selection[key] === retailAttributeText(findVariantOption(variant, key)!)));
+  const dims = canonicalDimensions(product);
+
+  // Map each selection key to its canonical dimension id (if any)
+  const selByDim: Record<string, string> = {};
+  for (const [key, value] of Object.entries(selection)) {
+    const dim = dims.find((d) => d.keys.includes(key));
+    selByDim[dim ? dim.id : key] = value;
+  }
+
+  const matches = product.variants.filter((variant) => {
+    // Every canonical dimension with a selected value must be present in the variant
+    for (const [dimId, dimValue] of Object.entries(selByDim)) {
+      const dim = dims.find((d) => d.id === dimId);
+      if (dim) {
+        const hasMatch = dim.keys.some((key) => {
+          const option = findVariantOption(variant, key);
+          return option && retailAttributeText(option) === dimValue;
+        });
+        if (!hasMatch) return false;
+      } else {
+        const option = findVariantOption(variant, dimId);
+        if (!option || retailAttributeText(option) !== selByDim[dimId]) return false;
+      }
+    }
+
+    // Variant's options belonging to a selected canonical dimension must match the selected value
+    for (const option of variant.options) {
+      const dim = dims.find((d) => d.keys.includes(option.key));
+      const selKey = dim ? dim.id : option.key;
+      if (selByDim[selKey] !== undefined && retailAttributeText(option) !== selByDim[selKey]) return false;
+    }
+
+    return true;
+  });
+
   return matches.length === 1 ? matches[0] : undefined;
 }
 

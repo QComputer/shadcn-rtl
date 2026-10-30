@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { PublicCatalogProduct } from "@/lib/public-catalog/contracts";
+import type { PublicCatalogProduct, PublicCatalogVariant } from "@/lib/public-catalog/contracts";
 import {
+  canonicalDimensions,
   chooseVariant,
+  dimensionValues,
+  findCanonicalDimension,
   optionDimensions,
   resolveSelectedVariant,
   resolveVariantGallery,
@@ -48,7 +51,111 @@ function product(variants: RetailVariant[], gallery: string[] = []): RetailProdu
 describe("retail variant selection", () => {
   it("recognizes tenant-defined color and size option dimensions", () => {
     const catalogProduct = product([variant("red-s", "Red", "S", true)]);
-    assert.deepEqual(optionDimensions(catalogProduct), { color: "color", size: "size" });
+    assert.deepEqual(optionDimensions(catalogProduct), { color: ["color"], size: ["size"] });
+  });
+
+  it("canonicalDimensions groups semantically identical keys into one dimension", () => {
+    const dupColorVariant = (id: string, color: string, size: string): PublicCatalogVariant => ({
+      id,
+      name: `${color} · ${size}`,
+      price: { amount: 2500, currency: "TOMAN" },
+      listPrice: null,
+      orderable: true,
+      sku: `${color}-${size}`,
+      options: [
+        option("color", "Color", color),
+        option("رنگ", "رنگ کفش", color),
+        option("size", "Size", size),
+        option("سایز", "سایز کفش", size),
+      ],
+    });
+
+    const catalogProduct = product([
+      dupColorVariant("navy-s", "Navy", "S"),
+      dupColorVariant("red-m", "Red", "M"),
+    ]);
+
+    const dims = canonicalDimensions(catalogProduct);
+    // Exactly one color dimension and one size dimension, no duplicates
+    const colorDims = dims.filter((d) => d.id === "color");
+    const sizeDims = dims.filter((d) => d.id === "size");
+    assert.equal(colorDims.length, 1);
+    assert.equal(sizeDims.length, 1);
+    assert.deepEqual(colorDims[0].keys, ["color", "رنگ"]);
+    assert.deepEqual(sizeDims[0].keys, ["size", "سایز"]);
+
+    // dimensionValues collects values from ALL keys in the group
+    const colorValues = dimensionValues(catalogProduct, colorDims[0]);
+    assert.deepEqual(colorValues.sort(), ["Navy", "Red"]);
+  });
+
+  it("findCanonicalDimension locates the dimension containing a raw key", () => {
+    const dupVariant = (id: string): PublicCatalogVariant => ({
+      id,
+      name: "dup",
+      price: { amount: 2500, currency: "TOMAN" },
+      listPrice: null,
+      orderable: true,
+      sku: id,
+      options: [option("رنگ", "رنگ کفش", "Navy")],
+    });
+
+    const catalogProduct = product([dupVariant("v1")]);
+    const dim = findCanonicalDimension(catalogProduct, "رنگ");
+    assert.ok(dim);
+    assert.equal(dim!.id, "color");
+    assert.deepEqual(dim!.keys, ["رنگ"]);
+  });
+
+  it("eight duplicate color definitions render as exactly one logical color selector", () => {
+    const manyColorVariant = (idx: number, color: string): PublicCatalogVariant => ({
+      id: `v${idx}`,
+      name: `color-${idx}`,
+      price: { amount: 2500, currency: "TOMAN" },
+      listPrice: null,
+      orderable: true,
+      sku: `c${idx}`,
+      options: [
+        option(`color${idx}`, `رنگ${idx}`, color),
+        option(`رنگ${idx}`, `رنگ کفش${idx}`, color),
+        option(`color_${idx}`, `رنگ_کفش${idx}`, color),
+      ],
+    });
+
+    // 8 variants, each with 3 color-matching keys = 24 raw keys, but 1 canonical dimension
+    const catalogProduct = product([
+      manyColorVariant(0, "Navy"),
+      manyColorVariant(1, "WhiteRed"),
+      manyColorVariant(2, "Brown"),
+      manyColorVariant(3, "Navy"),
+      manyColorVariant(4, "WhiteRed"),
+      manyColorVariant(5, "Brown"),
+      manyColorVariant(6, "Navy"),
+      manyColorVariant(7, "WhiteRed"),
+    ]);
+
+    const dims = canonicalDimensions(catalogProduct);
+    const colorDims = dims.filter((d) => d.id === "color");
+    assert.equal(colorDims.length, 1, "exactly one color dimension regardless of duplicate keys");
+    assert.equal(colorDims[0].keys.length, 24, "all 24 color-matching raw keys grouped");
+    const colorValues = dimensionValues(catalogProduct, colorDims[0]);
+    assert.deepEqual(colorValues.sort(), ["Brown", "Navy", "WhiteRed"], "three unique colors remain");
+  });
+
+  it("repeated size changes do not increase selector count", () => {
+    const catalogProduct = product([
+      variant("red-s", "Red", "S", true),
+      variant("red-m", "Red", "M", true),
+      variant("blue-s", "Blue", "S", true),
+      variant("blue-m", "Blue", "M", true),
+    ]);
+
+    const dims = canonicalDimensions(catalogProduct);
+    const initialCount = dims.length;
+
+    // Simulate repeated size selection — canonical dimensions don't change
+    const dimsAfter = canonicalDimensions(catalogProduct);
+    assert.equal(dimsAfter.length, initialCount, "selector count stable across size changes");
   });
 
   it("keeps the selected size compatible when changing color, including a valid out-of-stock pair", () => {

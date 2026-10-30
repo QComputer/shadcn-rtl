@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PremiumProductDetail } from "@/components/retail/premium-product-detail";
 import { appPath } from "@/lib/app-base-path";
-import { chooseVariant, findVariantOption, optionDimensions, resolveSelectedVariant, retailAttributeText, type RetailProduct, type RetailVariant } from "@/lib/retail/variant-selection";
+import { canonicalDimensions, chooseVariant, findVariantOption, resolveSelectedVariant, retailAttributeText, type RetailProduct, type RetailVariant } from "@/lib/retail/variant-selection";
 
 type RetailView = {
   identifier: string;
@@ -20,15 +20,6 @@ type RetailView = {
   categories: Array<{ id: string; slug: string | null; name: string }>;
   products: RetailProduct[];
 };
-
-function optionValues(product: RetailProduct, dimension: string) {
-  const values = new Map<string, string>();
-  for (const variant of product.variants) {
-    const option = findVariantOption(variant, dimension);
-    if (option) values.set(attributeText(option), option.label);
-  }
-  return [...values].map(([value, label]) => ({ value, label }));
-}
 
 function colorToken(value: string) {
   if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value)) return value;
@@ -43,17 +34,28 @@ function colorToken(value: string) {
 }
 
 function VariantDimension({ product, dimension, selected, onChange }: {
-  product: RetailProduct; dimension: string; selected: RetailVariant | undefined; onChange: (variant: RetailVariant) => void;
+  product: RetailProduct; dimension: { id: string; keys: string[]; label: string }; selected: RetailVariant | undefined; onChange: (variant: RetailVariant) => void;
 }) {
-  const first = product.variants.flatMap((variant) => variant.options).find((option) => option.key === dimension);
+  const firstKey = dimension.keys[0];
+  const first = product.variants.flatMap((variant) => variant.options).find((option) => dimension.keys.includes(option.key));
   if (!first) return null;
-  const values = optionValues(product, dimension);
-  const selectedValue = findVariantOption(selected ?? resolveSelectedVariant(product), dimension);
-  const isColor = /colou?r|رنگ/.test(`${first.key}${first.label}`.normalize("NFKD").toLocaleLowerCase("fa").replace(/[\s_-]+/g, ""));
+  const values = new Map<string, string>();
+  for (const variant of product.variants) {
+    for (const key of dimension.keys) {
+      const option = findVariantOption(variant, key);
+      if (option) values.set(retailAttributeText(option), option.label);
+    }
+  }
+  const valueList = [...values];
+  const selectedValue = dimension.keys.flatMap(k => {
+    const option = findVariantOption(selected ?? resolveSelectedVariant(product), k);
+    return option ? [retailAttributeText(option)] : [];
+  })[0];
+  const isColor = dimension.id === "color";
   return <fieldset className="mt-3"><legend className="text-xs font-medium">{first.label}</legend><div className="mt-2 flex flex-wrap gap-2">
-    {values.map(({ value }) => {
-      const target = chooseVariant(product, selected, dimension, value);
-      const active = selectedValue ? attributeText(selectedValue) === value : false;
+    {valueList.map(([value]) => {
+      const target = chooseVariant(product, selected, firstKey, value);
+      const active = selectedValue ? selectedValue === value : false;
       return <button key={value} type="button" disabled={!target} aria-pressed={active} onClick={() => target && onChange(target)}
         className={`min-h-10 rounded-full border px-3 py-2 text-xs transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b7653] disabled:opacity-35 ${active ? "border-[#292a24] bg-[#292a24] text-white" : "border-[#ddd9d0] bg-white text-[#4c4a43]"}`}>
         {isColor && <span aria-hidden className="ml-1 inline-block h-2.5 w-2.5 rounded-full border border-black/15" style={{ backgroundColor: colorToken(value) }} />}{value}
@@ -250,7 +252,9 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
     const selectedVariant = selectedVariantFor(product);
     const selectedId = selectedVariant?.id ?? "";
     const image = selectedVariant?.media?.gallery[0] ?? product.media.card;
-    const dimensions = optionDimensions(product);
+    const canonDims = canonicalDimensions(product);
+    const colorDim = canonDims.find((d) => d.id === "color");
+    const sizeDim = canonDims.find((d) => d.id === "size");
     const selectVariant = (variant: RetailVariant) => setVariantChoice((current) => ({ ...current, [product.id]: variant.id }));
     const href = `${base}/product/${encodeURIComponent(product.slug ?? product.id)}`;
     return <Card key={product.id} className="bg-card text-card-foreground group overflow-hidden rounded-2xl border-0 shadow-sm">
@@ -260,9 +264,9 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
       <div className="p-4 md:p-5"><span className="text-muted-foreground text-xs">{product.brand ? `${product.brand} · ` : ""}{product.category.name}</span>
         <h2 className="mt-1 text-base font-medium leading-6 md:text-lg"><a href={href} className="hover:underline">{product.name}</a></h2>
         {product.attributes.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{product.attributes.slice(0, 3).map((attribute) => <span key={attribute.key} className="rounded-full bg-[#f5f3ef] px-2 py-1 text-[10px] text-[#666158]">{attribute.label}: {attributeText(attribute)}</span>)}</div>}
-        {dimensions.color.length > 0 && <VariantDimension product={product} dimension={dimensions.color[0]} selected={selectedVariant} onChange={selectVariant} />}
-        {dimensions.size.length > 0 && <VariantDimension product={product} dimension={dimensions.size[0]} selected={selectedVariant} onChange={selectVariant} />}
-        {dimensions.color.length === 0 && dimensions.size.length === 0 && product.variants.length > 1 && <label className="mt-4 block text-xs">گزینه قابل انتخاب<select aria-label={`گزینه قابل انتخاب برای ${product.name}`} value={selectedId} onChange={(event) => setVariantChoice((current) => ({ ...current, [product.id]: event.target.value }))} className="mt-2 min-h-11 w-full rounded-lg border border-border bg-card px-2 py-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{product.variants.map((variant) => <option key={variant.id} value={variant.id}>{variant.name ?? variant.options.map((option) => `${option.label}: ${attributeText(option)}`).join(" · ")}</option>)}</select></label>}
+        {colorDim && <VariantDimension product={product} dimension={colorDim} selected={selectedVariant} onChange={selectVariant} />}
+        {sizeDim && <VariantDimension product={product} dimension={sizeDim} selected={selectedVariant} onChange={selectVariant} />}
+        {!colorDim && !sizeDim && product.variants.length > 1 && <label className="mt-4 block text-xs">گزینه قابل انتخاب<select aria-label={`گزینه قابل انتخاب برای ${product.name}`} value={selectedId} onChange={(event) => setVariantChoice((current) => ({ ...current, [product.id]: event.target.value }))} className="mt-2 min-h-11 w-full rounded-lg border border-border bg-card px-2 py-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{product.variants.map((variant) => <option key={variant.id} value={variant.id}>{variant.name ?? variant.options.map((option) => `${option.label}: ${attributeText(option)}`).join(" · ")}</option>)}</select></label>}
         <div className="mt-4 flex items-center justify-between gap-2"><div className="min-w-0">{(() => {
   const selectedList = selectedVariant?.listPrice?.amount;
   const selectedPrice = selectedVariant?.price.amount ?? product.price.amount;

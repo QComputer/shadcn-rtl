@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { ArrowLeft, Check, ChevronDown, LoaderCircle, ShoppingBag } from "lucide-react";
 import { appPath } from "@/lib/app-base-path";
 import { useOptionalCart } from "@/lib/contexts/cart-context";
-import { findVariantOption, optionDimensions, preferredVariant, retailAttributeText, type RetailProduct } from "@/lib/retail/variant-selection";
+import { canonicalDimensions, dimensionValues, findVariantOption, preferredVariant, retailAttributeText, type CanonicalDimension, type RetailProduct } from "@/lib/retail/variant-selection";
 import { compareRetailSizes, exactProductVariant, productDetailGallery, reliableColorSwatch, variantSelection } from "@/lib/retail/product-detail";
 import { PremiumProductGallery } from "./premium-product-gallery";
 import { FavoriteButton } from "./favorite-button";
@@ -22,11 +22,13 @@ export function PremiumProductDetail({ product, organization, storeName, logo, s
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState<{ kind: "success" | "error"; text: string } | null>(null);
   const inFlight = useRef(false);
-  const dimensions = optionDimensions(product);
+  const dims = canonicalDimensions(product);
+  const colorDim = dims.find((d) => d.id === "color");
+  const sizeDim = dims.find((d) => d.id === "size");
   const optionless = product.variants.length > 0 && product.variants.every(variant => variant.options.length === 0);
   const selected = optionless ? product.variants.find(variant => variant.id === explicitVariant) : exactProductVariant(product, selection);
   const options = [...new Map(product.variants.flatMap(v => v.options).map(o => [o.key, o])).values()];
-  const colorKey = dimensions.color[0];
+  const colorKey = colorDim?.keys[0];
   const colorVariants = colorKey ? product.variants.filter(v => { const option = findVariantOption(v, colorKey); return option && retailAttributeText(option) === selection[colorKey]; }) : product.variants;
   const imageVariant = selected ?? colorVariants[0];
   const gallery = productDetailGallery(product, imageVariant);
@@ -35,7 +37,7 @@ export function PremiumProductDetail({ product, organization, storeName, logo, s
   const footwear = /کفش|کتانی|صندل|پاپوش|بوت|shoe|footwear|sneaker|boot/i.test(`${product.name} ${product.category.name}`);
   const availability = !product.variants.length ? "اطلاعات گزینه‌های خرید هنوز تکمیل نشده است" : !selected ? "این ترکیب ارائه نشده؛ گزینه دیگری انتخاب کنید" : selected.orderable ? "موجود و قابل سفارش" : "این رنگ و اندازه فعلاً ناموجود است";
 
-  function choose(key: string, value: string) { setSelection(current => { const next = { ...current, [key]: value }; if (dimensions.color.includes(key)) { dimensions.size.forEach(k => { delete next[k]; }); } else if (dimensions.size.includes(key)) { dimensions.color.forEach(k => { delete next[k]; }); } return next; }); setNotice(null); }
+  function choose(key: string, value: string) { setSelection(current => { const next = { ...current }; const dim = dims.find((d) => d.keys.includes(key)); const targetKeys = dim ? dim.keys : [key]; for (const k of targetKeys) next[k] = value; return next; }); setNotice(null); }
   async function add() {
     if (!selected || !purchasable || inFlight.current) return;
     const variantId = selected.id;
@@ -52,23 +54,26 @@ export function PremiumProductDetail({ product, organization, storeName, logo, s
     finally { inFlight.current = false; setPending(false); }
   }
 
-  function dimension(key: string) {
-    const definition = options.find(o => o.key === key); if (!definition) return null;
-    const values = [...new Set(product.variants.flatMap(v => v.options.filter(o => o.key === key).map(retailAttributeText)))];
-    if (dimensions.size.includes(key)) values.sort(compareRetailSizes);
-    const isColor = dimensions.color.includes(key);
-    return <fieldset key={key} className="min-w-0 space-y-3" disabled={pending}>
-      <legend className="mb-3 flex w-full items-center gap-2 text-sm font-semibold">{definition.label}<span className="text-muted-foreground font-normal">{selection[key]}</span></legend>
+  function dimension(dim: CanonicalDimension) {
+    const values = dimensionValues(product, dim);
+    if (dim.id === "size") values.sort(compareRetailSizes);
+    const isColor = dim.id === "color";
+    const selKey = dim.keys[0];
+    const definition = options.find(o => dim.keys.includes(o.key));
+    return <fieldset key={dim.id} className="min-w-0 space-y-3" disabled={pending}>
+      <legend className="mb-3 flex w-full items-center gap-2 text-sm font-semibold">{definition?.label ?? dim.label}<span className="text-muted-foreground font-normal">{dim.keys.map(k => selection[k]).find(Boolean) ?? ""}</span></legend>
       <div className={`flex flex-wrap gap-2.5 ${isColor ? "" : "max-w-md"}`}>
         {values.map(value => {
-          const matches = product.variants.filter(v => v.options.some(o => o.key === key && retailAttributeText(o) === value));
-          const exact = exactProductVariant(product, { ...selection, [key]: value });
+          const matches = product.variants.filter(v => dim.keys.some(k => { const option = findVariantOption(v, k); return option && retailAttributeText(option) === value; }));
+          const testSelection = { ...selection };
+          for (const k of dim.keys) testSelection[k] = value;
+          const exact = exactProductVariant(product, testSelection);
           const offered = isColor || Boolean(exact);
           const available = isColor ? matches.some(v => v.orderable) : Boolean(exact?.orderable);
-          const active = selection[key] === value;
+          const active = dim.keys.some(k => selection[k] === value);
           const thumbnail = isColor ? (matches.find(v => v.id === exact?.id) ?? matches.find(v => v.orderable) ?? matches[0])?.media?.gallery[0] : null;
           const swatch = reliableColorSwatch(value);
-          return <button key={value} type="button" aria-pressed={active} aria-label={`${definition.label}: ${value}${available ? "" : "، ناموجود"}`} disabled={!offered} onClick={() => choose(key, value)} className={`${focus} relative inline-flex min-h-12 min-w-14 items-center justify-center gap-2.5 overflow-hidden rounded-xl border px-4 py-3 text-sm transition-colors motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-35 ${active ? "border-primary bg-primary text-primary-foreground ring-1 ring-primary" : "border-border bg-card text-card-foreground hover:border-ring"} ${!available && !isColor ? "decoration-muted-foreground line-through" : ""}`}>
+          return <button key={`${dim.id}:${value}`} type="button" aria-pressed={active} aria-label={`${definition?.label ?? dim.label}: ${value}${available ? "" : "، ناموجود"}`} disabled={!offered} onClick={() => choose(selKey, value)} className={`${focus} relative inline-flex min-h-12 min-w-14 items-center justify-center gap-2.5 overflow-hidden rounded-xl border px-4 py-3 text-sm transition-colors motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-35 ${active ? "border-primary bg-primary text-primary-foreground ring-1 ring-primary" : "border-border bg-card text-card-foreground hover:border-ring"} ${!available && !isColor ? "decoration-muted-foreground line-through" : ""}`}>
             {thumbnail ? <Image src={thumbnail} alt="" width={48} height={48} unoptimized className="-my-2 -ms-2 size-12 rounded-lg bg-muted object-contain" /> : isColor && swatch ? <span aria-hidden="true" className="size-5 rounded-full border border-border" style={{ background: swatch }} /> : null}
             <span>{value}</span>{active && <Check aria-hidden="true" className="size-3.5 shrink-0" />}{!available && isColor && <span className="text-[10px] opacity-70">ناموجود</span>}
           </button>;
@@ -88,8 +93,8 @@ export function PremiumProductDetail({ product, organization, storeName, logo, s
         <div className="min-w-0"><PremiumProductGallery images={gallery} alt={product.media.alt || product.name} resetKey={selected?.id ?? JSON.stringify(selection)} /></div>
         <div className="min-w-0 space-y-7 lg:sticky lg:top-8 lg:py-5">
           <div className="space-y-4">{product.brand && <p className="text-xs font-semibold tracking-wider text-stone-500">{product.brand}</p>}<div className="flex items-start justify-between gap-4"><h1 className="text-2xl font-semibold leading-[1.6] tracking-tight sm:text-3xl lg:text-[2rem]">{product.name}</h1><FavoriteButton organization={organization} productId={product.id} favoritesAvailable={!previewOnly} /></div><div aria-live="polite" aria-atomic="true" className="flex flex-wrap items-baseline gap-3"><strong className="text-2xl font-semibold tabular-nums">{!selected && product.variants.length > 0 ? "از " : ""}{price(selected?.price.amount ?? minimum)} <span className="text-sm font-normal text-stone-500">تومان</span></strong>{selected?.listPrice && <del className="text-sm text-stone-400">{price(selected.listPrice.amount)} تومان</del>}</div></div>
-          {(options.length > 0 || (optionless && product.variants.length > 1)) && <div className="space-y-6 border-y border-border/80 py-6">{optionless && product.variants.length > 1 && <fieldset disabled={pending}><legend className="mb-3 text-sm font-semibold">گزینه خرید</legend><div className="flex flex-wrap gap-2">{product.variants.map(variant => <button type="button" key={variant.id} aria-pressed={selected?.id === variant.id} onClick={() => { setExplicitVariant(variant.id); setNotice(null); }} className={`${focus} min-h-12 rounded-xl border px-4 py-3 text-sm ${selected?.id === variant.id ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-card-foreground"}`}>{variant.name || variant.sku}{!variant.orderable && " · ناموجود"}</button>)}</div></fieldset>}{dimensions.color.map(k => dimension(k))}{dimensions.size.map(k => dimension(k))}{options.filter(o => !dimensions.color.includes(o.key) && !dimensions.size.includes(o.key)).map(o => dimension(o.key))}
-            {dimensions.size.length > 0 && <details className="group rounded-xl bg-stone-100/80 p-3"><summary className={`${focus} flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-xs font-medium`}>{footwear ? "راهنمای اندازه‌گیری پا و انتخاب سایز" : "راهنمای انتخاب اندازه"}<ChevronDown className="size-4 transition-transform group-open:rotate-180" /></summary><div className="mt-3 space-y-2 text-xs leading-7 text-stone-600"><p>{footwear ? "روی کاغذ بایستید، پاشنه و بلندترین انگشت را علامت بزنید و فاصله را اندازه بگیرید. هر دو پا را اندازه‌گیری کنید و اندازه بزرگ‌تر را مبنا قرار دهید." : "ابعاد موردنیاز را اندازه بگیرید و با مشخصات واقعی همین محصول مقایسه کنید."}</p><p>جدول اندازه تأییدشده‌ای از برند برای این محصول ثبت نشده است. این راهنما جایگزین جدول سازنده نیست؛ پیش از خرید، تناسب اندازه را از فروشنده بررسی کنید.</p></div></details>}
+          {(options.length > 0 || (optionless && product.variants.length > 1)) && <div className="space-y-6 border-y border-border/80 py-6">{optionless && product.variants.length > 1 && <fieldset disabled={pending}><legend className="mb-3 text-sm font-semibold">گزینه خرید</legend><div className="flex flex-wrap gap-2">{product.variants.map(variant => <button type="button" key={variant.id} aria-pressed={selected?.id === variant.id} onClick={() => { setExplicitVariant(variant.id); setNotice(null); }} className={`${focus} min-h-12 rounded-xl border px-4 py-3 text-sm ${selected?.id === variant.id ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-card-foreground"}`}>{variant.name || variant.sku}{!variant.orderable && " · ناموجود"}</button>)}</div></fieldset>}{colorDim && dimension(colorDim)}{sizeDim && dimension(sizeDim)}{options.filter(o => !colorDim?.keys.includes(o.key) && !sizeDim?.keys.includes(o.key)).map(o => dimension({ id: o.key, keys: [o.key], label: o.label }))}
+            {sizeDim && <details className="group rounded-xl bg-stone-100/80 p-3"><summary className={`${focus} flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-xs font-medium`}>{footwear ? "راهنمای اندازه‌گیری پا و انتخاب سایز" : "راهنمای انتخاب اندازه"}<ChevronDown className="size-4 transition-transform group-open:rotate-180" /></summary><div className="mt-3 space-y-2 text-xs leading-7 text-stone-600"><p>{footwear ? "روی کاغذ بایستید، پاشنه و بلندترین انگشت را علامت بزنید و فاصله را اندازه بگیرید. هر دو پا را اندازه‌گیری کنید و اندازه بزرگ‌تر را مبنا قرار دهید." : "ابعاد موردنیاز را اندازه بگیرید و با مشخصات واقعی همین محصول مقایسه کنید."}</p><p>جدول اندازه تأییدشده‌ای از برند برای این محصول ثبت نشده است. این راهنما جایگزین جدول سازنده نیست؛ پیش از خرید، تناسب اندازه را از فروشنده بررسی کنید.</p></div></details>}
           </div>}
           <div className="space-y-4"><p role="status" aria-live="polite" className={`flex items-start gap-2 text-sm leading-7 ${purchasable ? "text-emerald-800" : "text-stone-600"}`}><span aria-hidden className={`mt-2.5 size-1.5 shrink-0 rounded-full ${purchasable ? "bg-emerald-600" : "bg-stone-400"}`} />{availability}</p>{selected?.sku && <p className="text-xs text-stone-500">شناسه گزینه <span dir="ltr" className="ms-2 font-mono">{selected.sku}</span></p>}{purchaseButton()}
             {notice && <div role={notice.kind === "error" ? "alert" : "status"} className={`rounded-xl border p-4 text-sm leading-7 ${notice.kind === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-200 bg-rose-50 text-rose-900"}`}>{notice.text}{notice.kind === "success" && <a href={checkoutPath} className={`${focus} mt-2 flex w-fit items-center gap-2 font-semibold underline underline-offset-4`}>مشاهده سبد و ادامه خرید<ArrowLeft className="size-4" /></a>}</div>}

@@ -69,7 +69,7 @@ export function serializePublicCatalogProduct(input: {
   basePrice: MoneyLike; discountType?: string | null; discountValue?: MoneyLike | null; trackInventory: boolean;
   category: { id: string; slug?: string | null; name: string };
   attributes?: Array<Parameters<typeof attributeValue>[0]>;
-  variants: Array<{ id: string; sku?: string | null; name?: string | null; price?: MoneyLike | null; inventory: number; reservedQuantity?: number; allowBackOrder: boolean; options?: Array<Parameters<typeof attributeValue>[0]>; media?: PublicCatalogVariantMedia }>;
+  variants: Array<{ id: string; sku?: string | null; name?: string | null; price?: MoneyLike | null; inventory: number; reservedQuantity?: number; allowBackOrder: boolean; manuallyUnavailable?: boolean; options?: Array<Parameters<typeof attributeValue>[0]>; media?: PublicCatalogVariantMedia }>;
   purchase?: PublicCatalogPurchase | null;
 }): PublicCatalogProduct {
   const productBase = amount(input.basePrice);
@@ -77,12 +77,13 @@ export function serializePublicCatalogProduct(input: {
   const variants: PublicCatalogVariant[] = input.variants.map((variant) => {
     const variantBase = variant.price === null || variant.price === undefined ? productBase : amount(variant.price);
     const variantPrice = discountedAmount(variantBase, input.discountType, input.discountValue);
+    const stockAvailable = !input.trackInventory || variant.allowBackOrder || variant.inventory - (variant.reservedQuantity ?? 0) > 0;
     return {
       id: variant.id,
       name: variant.name ?? null,
       price: money(variantPrice),
       listPrice: variantPrice === variantBase ? null : money(variantBase),
-      orderable: !input.trackInventory || variant.allowBackOrder || variant.inventory - (variant.reservedQuantity ?? 0) > 0,
+      orderable: stockAvailable && !variant.manuallyUnavailable,
       sku: variant.sku ?? null,
       options: (variant.options ?? []).map(attributeValue).filter((value): value is PublicCatalogAttribute => value !== null),
       ...(variant.media ? { media: variant.media } : {}),

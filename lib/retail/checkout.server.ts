@@ -106,8 +106,9 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
     for (const line of cart.items) {
       const variant = line.variant;
       const product = variant.product;
-      if (line.quantity < 1 || !product.isActive || product.deletedAt || variant.deletedAt ||
-          product.organizationId !== organization.id || product.organizationSlug !== organization.slug) {
+       if (line.quantity < 1 || !product.isActive || product.deletedAt || variant.deletedAt ||
+          product.organizationId !== organization.id || product.organizationSlug !== organization.slug ||
+          variant.manuallyUnavailable) {
         throw new ApiError(409, "Cart contains an unavailable product.");
       }
       const category = await tx.productCategory.findFirst({

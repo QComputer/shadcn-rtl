@@ -23,12 +23,13 @@ test("Retail P0 merchant catalog, public projection, cart, and checkout persist 
 }, async () => {
   assertExactDatabaseTarget();
   mock.module("next/cache", { namedExports: { revalidatePath: () => undefined, revalidateTag: () => undefined } });
-  const [{ PrismaClient }, merchant, catalog, cartModule, checkoutModule, tenantContext, applicationDb] = await Promise.all([
+  const [{ PrismaClient }, merchant, catalog, cartModule, checkoutModule, checkoutQuoteModule, tenantContext, applicationDb] = await Promise.all([
     import("@prisma/client"),
     import("@/lib/retail/merchant-catalog.server"),
     import("@/lib/public-catalog/service.server"),
     import("@/lib/services/cart.service"),
     import("@/lib/retail/checkout.server"),
+    import("@/lib/retail/checkout-quote.server"),
     import("@/lib/tenant-context"),
     import("@/lib/db"),
   ]);
@@ -148,7 +149,7 @@ test("Retail P0 merchant catalog, public projection, cart, and checkout persist 
     ];
     const created = await merchant.createMerchantRetailProduct(context, manager.id, {
       name: `Retail P0 Shirt ${suffix}`, slug: `retail-p0-shirt-${suffix}`, brand: "Generic Atelier",
-      description: "Synthetic integration fixture", categoryId: categoryA.id, categoryIds: [categoryA2.id],
+      description: "Synthetic integration fixture", basePrice: 1200, categoryId: categoryA.id, categoryIds: [categoryA2.id],
       tagNames: ["New season", "Everyday"], imageIds: [productImage.id], attributes: [], variants,
     });
     productIds.push(created.id);
@@ -167,30 +168,30 @@ test("Retail P0 merchant catalog, public projection, cart, and checkout persist 
     assert.deepEqual(persistedCreate.tagAssignments.map((entry) => entry.tag.name).sort(), ["Everyday", "New season"]);
     assert.equal(persistedCreate.variants.length, 4);
     await assert.rejects(() => merchant.createMerchantRetailProduct(context, manager.id, {
-      name: `Inactive category ${suffix}`, description: null, categoryId: inactiveCategory.id, imageIds: [productImage.id], attributes: [], variants: [variants[0]],
+      name: `Inactive category ${suffix}`, description: null, basePrice: 1200, categoryId: inactiveCategory.id, imageIds: [productImage.id], attributes: [], variants: [variants[0]],
     }), /active category belonging to this store/i);
     await assert.rejects(() => catalog.getPublicCatalogProduct(orgASlug, created.slug), /Product not found/);
 
     const duplicateOptions = {
-      name: `Duplicate options ${suffix}`, description: null, categoryId: categoryA.id, imageIds: [productImage.id], attributes: [],
+      name: `Duplicate options ${suffix}`, description: null, basePrice: 1200, categoryId: categoryA.id, imageIds: [productImage.id], attributes: [],
       variants: [{ ...variants[0], sku: `${skuPrefix}-DUP-1` }, { ...variants[0], sku: `${skuPrefix}-DUP-2` }],
     };
     await assert.rejects(() => merchant.createMerchantRetailProduct(context, manager.id, duplicateOptions), /distinct option combination/i);
     const invalidVariant = (sku: string, overrides: Partial<(typeof variants)[number]> = {}) => ({ ...variants[0], ...overrides, sku });
-    const foreignImageInput = { name: `Foreign image ${suffix}`, description: null, categoryId: categoryA.id, imageIds: [foreignImage.id], attributes: [], variants: [invalidVariant(`${skuPrefix}-FOREIGN-PRODUCT`)] };
+    const foreignImageInput = { name: `Foreign image ${suffix}`, description: null, basePrice: 1200, categoryId: categoryA.id, imageIds: [foreignImage.id], attributes: [], variants: [invalidVariant(`${skuPrefix}-FOREIGN-PRODUCT`)] };
     await assert.rejects(() => merchant.createMerchantRetailProduct(context, manager.id, foreignImageInput), /public images uploaded to this store/i);
-    const foreignVariantImageInput = { name: `Foreign variant image ${suffix}`, description: null, categoryId: categoryA.id, imageIds: [productImage.id], attributes: [], variants: [invalidVariant(`${skuPrefix}-FOREIGN-VARIANT`, { imageIds: [foreignImage.id] })] };
+    const foreignVariantImageInput = { name: `Foreign variant image ${suffix}`, description: null, basePrice: 1200, categoryId: categoryA.id, imageIds: [productImage.id], attributes: [], variants: [invalidVariant(`${skuPrefix}-FOREIGN-VARIANT`, { imageIds: [foreignImage.id] })] };
     await assert.rejects(() => merchant.createMerchantRetailProduct(context, manager.id, foreignVariantImageInput), /public images uploaded to this store/i);
-    const privateImageInput = { name: `Private image ${suffix}`, description: null, categoryId: categoryA.id, imageIds: [privateImage.id], attributes: [], variants: [invalidVariant(`${skuPrefix}-PRIVATE-PRODUCT`)] };
+    const privateImageInput = { name: `Private image ${suffix}`, description: null, basePrice: 1200, categoryId: categoryA.id, imageIds: [privateImage.id], attributes: [], variants: [invalidVariant(`${skuPrefix}-PRIVATE-PRODUCT`)] };
     await assert.rejects(() => merchant.createMerchantRetailProduct(context, manager.id, privateImageInput), /public images uploaded to this store/i);
-    const privateVariantImageInput = { name: `Private variant image ${suffix}`, description: null, categoryId: categoryA.id, imageIds: [productImage.id], attributes: [], variants: [invalidVariant(`${skuPrefix}-PRIVATE-VARIANT`, { imageIds: [privateImage.id] })] };
+    const privateVariantImageInput = { name: `Private variant image ${suffix}`, description: null, basePrice: 1200, categoryId: categoryA.id, imageIds: [productImage.id], attributes: [], variants: [invalidVariant(`${skuPrefix}-PRIVATE-VARIANT`, { imageIds: [privateImage.id] })] };
     await assert.rejects(() => merchant.createMerchantRetailProduct(context, manager.id, privateVariantImageInput), /public images uploaded to this store/i);
-    const foreignDefinitionInput = { name: `Foreign definition ${suffix}`, description: null, categoryId: categoryA.id, imageIds: [productImage.id], attributes: [], variants: [invalidVariant(`${skuPrefix}-FOREIGN-DEFINITION`, { options: [{ definitionId: foreignColor.id, value: "Red" }] })] };
+    const foreignDefinitionInput = { name: `Foreign definition ${suffix}`, description: null, basePrice: 1200, categoryId: categoryA.id, imageIds: [productImage.id], attributes: [], variants: [invalidVariant(`${skuPrefix}-FOREIGN-DEFINITION`, { options: [{ definitionId: foreignColor.id, value: "Red" }] })] };
     await assert.rejects(() => merchant.createMerchantRetailProduct(context, manager.id, foreignDefinitionInput), /attribute is missing|belongs to another store/i);
     await assert.rejects(() => merchant.createMerchantRetailProduct(context, manager.id, {
-      name: `Foreign category ${suffix}`, description: null, categoryId: categoryB.id, imageIds: [productImage.id], attributes: [], variants: [variants[0]],
+      name: `Foreign category ${suffix}`, description: null, basePrice: 1200, categoryId: categoryB.id, imageIds: [productImage.id], attributes: [], variants: [variants[0]],
     }), /active category belonging to this store/i);
-    const duplicateSkuInput = { name: `Duplicate SKU ${suffix}`, description: null, categoryId: categoryA.id, imageIds: [productImage.id], attributes: [], variants: [{ ...variants[0], sku: variants[0].sku }] };
+    const duplicateSkuInput = { name: `Duplicate SKU ${suffix}`, description: null, basePrice: 1200, categoryId: categoryA.id, imageIds: [productImage.id], attributes: [], variants: [{ ...variants[0], sku: variants[0].sku }] };
     await assert.rejects(() => merchant.createMerchantRetailProduct(context, manager.id, duplicateSkuInput), /SKU or product identifier is already in use/i);
     assert.equal(await db.product.count({ where: { organizationId: organizationA.id, name: { contains: suffix }, id: { notIn: legacyCases.map((product) => product.id) } } }), 1, "all rejected creates roll back");
 
@@ -461,6 +462,108 @@ test("Retail P0 merchant catalog, public projection, cart, and checkout persist 
     assert.equal((await db.productVariant.findUniqueOrThrow({ where: { id: firstVariant.id } })).inventory, 0);
     assert.equal(await db.inventoryMovement.count({ where: { orderId: raceOrders[0]!.id, reason: "ORDER_CREATED", quantityDelta: -1 } }), 1);
     assert.deepEqual(await db.orderItem.findFirstOrThrow({ where: { id: historicalOrderItem.id } }), historicalOrderItem, "policy and inventory edits leave historical snapshots unchanged");
+
+    // --- Pricing inheritance tests ---
+    const priceInheritVariant = created.variants.find((variant: { name?: string | null }) => variant.name === "Red S")!;
+    assert.ok(priceInheritVariant, "Red S variant should exist for price inheritance test");
+    const originalBasePrice = Number((await db.product.findUniqueOrThrow({ where: { id: created.id } })).basePrice);
+    await merchant.updateMerchantRetailProduct(context, manager.id, created.id, {
+      basePrice: 1500,
+      variantUpdates: [{ id: priceInheritVariant.id, price: null }],
+    });
+    const inheritedProduct = await merchant.getMerchantRetailProduct(context, created.id);
+    const inheritedVariant = inheritedProduct.variants.find((variant: { id: string }) => variant.id === priceInheritVariant.id)!;
+    assert.equal(inheritedVariant.price, null, "variant price is null for inheritance");
+    assert.equal(inheritedProduct.basePrice, 1500, "product basePrice is the inherited value");
+    const publicInherited = await catalog.getPublicCatalogProduct(orgASlug, productSlug);
+    const publicInheritedVariant = publicInherited.variants.find((variant: { id: string }) => variant.id === priceInheritVariant.id)!;
+    assert.ok(publicInheritedVariant?.price === null || Number(publicInheritedVariant.price) === 0, "public catalog variant inherits (price may be null or resolved at quote time)");
+    const quoted = await checkoutQuoteModule.createRetailCheckoutQuote(customer.id, { organization: orgASlug, type: "PICK_UP" });
+    assert.ok(quoted.quote, "checkout quote works with inherited variant pricing");
+    await merchant.updateMerchantRetailProduct(context, manager.id, created.id, { basePrice: originalBasePrice });
+
+    // --- Numeric half-size variant generation test ---
+    const numericSizeDef = await merchant.createMerchantRetailDefinition(context, {
+      key: `numeric_size_${suffix}`, label: "Numeric Size", scope: "VARIANT_OPTION",
+      valueType: "NUMBER", displayUnit: null, allowedValues: null, isFilterable: true, localizedLabels: {}, localizedUnits: {},
+    });
+    definitionIds.push(numericSizeDef.id);
+    const genProduct = await merchant.createMerchantRetailProduct(context, manager.id, {
+      name: `Half-size test ${suffix}`, slug: `half-size-test-${suffix}`, brand: null,
+      description: null, basePrice: 5000, categoryId: categoryA.id, imageIds: [productImage.id],
+      attributes: [],
+      variants: [{ name: "Seed", sku: `${skuPrefix}-SEED`, price: null, inventory: 0, allowBackOrder: false, manuallyUnavailable: false, options: [{ definitionId: color.id, value: "Red" }], imageIds: [] }],
+    });
+    productIds.push(genProduct.id);
+    const preview = await merchant.previewRetailVariantGeneration(context, genProduct.id, {
+      colorDefinitionId: color.id, sizeDefinitionId: numericSizeDef.id, sizeMode: "RANGE",
+      sizeStart: 38, sizeEnd: 42, sizeStep: 0.5, colorValues: ["Red"],
+      inventory: 10, allowBackOrder: false,
+    });
+    assert.equal(preview.errors.length, 0, "half-size preview has no errors");
+    const generatedSizes = preview.canCreate.filter(v => v.options.some(o => o.definitionId === numericSizeDef.id));
+    const previewSizeValues = generatedSizes.map(v => v.options.find(o => o.definitionId === numericSizeDef.id)!.value);
+    assert.ok(previewSizeValues.includes(38), "preview includes size 38");
+    assert.ok(previewSizeValues.includes(38.5), "preview includes half-size 38.5");
+    assert.ok(previewSizeValues.includes(42), "preview includes size 42");
+    assert.equal(generatedSizes.length, 9, "half-size range 38-42 step .5 yields 9 variants (38, 38.5, 39, 39.5, 40, 40.5, 41, 41.5, 42)");
+    const genResult = await merchant.generateRetailVariants(context, manager.id, genProduct.id, {
+      colorDefinitionId: color.id, sizeDefinitionId: numericSizeDef.id, sizeMode: "RANGE",
+      sizeStart: 38, sizeEnd: 42, sizeStep: 0.5, colorValues: ["Red"],
+      inventory: 10, allowBackOrder: false,
+    });
+    assert.equal(genResult.added, 9, "9 variants generated");
+    const genProductAfter = await merchant.getMerchantRetailProduct(context, genProduct.id);
+    assert.equal(genProductAfter.variants.length, 9, "generated product has 9 variants after generation");
+    assert.ok(genProductAfter.variants.some(v => v.options.some(o => o.definitionId === numericSizeDef.id && o.value === 38.5)), "half-size 38.5 variant exists after generation");
+
+    // --- Existing variant preservation test ---
+    const redSExisting = created.variants.find((variant: { name?: string | null }) => variant.name === "Red S")!;
+    if (redSExisting) {
+      const variantIdBefore = redSExisting.id;
+      const skuBefore = redSExisting.sku;
+      const preview2 = await merchant.previewRetailVariantGeneration(context, created.id, {
+        colorDefinitionId: color.id, sizeDefinitionId: size.id, sizeMode: "STANDARD",
+        standardSizes: ["S", "M", "L"], colorValues: ["Red", "Blue"],
+      });
+      assert.ok(preview2.existing >= 4, "preview detects at least 4 pre-existing variants");
+      assert.equal(preview2.errors.length, 0, "no errors on idempotent preview");
+      const after = await merchant.generateRetailVariants(context, manager.id, created.id, {
+        colorDefinitionId: color.id, sizeDefinitionId: size.id, sizeMode: "STANDARD",
+        standardSizes: ["S", "M", "L"], colorValues: ["Red", "Blue"],
+      });
+      assert.ok(after.added === 0, "second generation adds no new variants (idempotent)");
+      const preserved = (await merchant.getMerchantRetailProduct(context, created.id)).variants.find((v: { id: string }) => v.id === variantIdBefore);
+      assert.ok(preserved, "existing variant id preserved after generation");
+      assert.equal(preserved!.sku, skuBefore, "existing variant sku preserved after generation");
+    }
+
+    // --- Manual unavailability with inventory tracking disabled ---
+    await merchant.updateMerchantRetailProduct(context, manager.id, created.id, { trackInventory: false });
+    await merchant.updateMerchantRetailProduct(context, manager.id, created.id, {
+      variantUpdates: [{ id: firstVariant.id, manuallyUnavailable: true }],
+    });
+    const manuallyUnavailableVariant = await db.productVariant.findUniqueOrThrow({ where: { id: firstVariant.id } });
+    assert.equal(manuallyUnavailableVariant.manuallyUnavailable, true, "variant manuallyUnavailable flag set");
+    await assert.rejects(() => carts.addItem(orgASlug, customer.id, null, { variantId: firstVariant.id, quantity: 1 }), /unavailable/i, "manually unavailable variant is rejected from cart even with inventory tracking disabled");
+
+    // --- Checkout rejection of manually unavailable variants ---
+    await merchant.updateMerchantRetailProduct(context, manager.id, created.id, {
+      variantUpdates: [{ id: firstVariant.id, manuallyUnavailable: true, inventory: 100 }],
+    });
+    await carts.addItem(orgASlug, customer.id, null, { variantId: firstVariant.id, quantity: 1 });
+    const rejectCheckoutKey = randomUUID();
+    await assert.rejects(() => checkoutModule.createRetailCheckout(customer.id, {
+      organization: orgASlug, idempotencyKey: rejectCheckoutKey, type: "PICK_UP", paymentMethod: "CASH", cashMode: "COUNTER",
+    }), /unavailable/i, "checkout rejects manually unavailable variants");
+    assert.equal(await db.order.count({ where: { retailCheckoutKey: rejectCheckoutKey } }), 0, "no order created for unavailable variant checkout");
+    await db.shopCartItem.deleteMany({ where: { cartId: { in: [await db.shopCart.findFirstOrThrow({ where: { organizationSlug: orgASlug, customerId: customer.id } }).then(r => r.id)] } } });
+
+    // Restore for final cleanup
+    await merchant.updateMerchantRetailProduct(context, manager.id, created.id, {
+      variantUpdates: [{ id: firstVariant.id, manuallyUnavailable: false, inventory: 1 }],
+      trackInventory: true,
+    });
 
     await merchant.updateMerchantRetailProduct(context, manager.id, created.id, { isActive: false });
     await assert.rejects(() => catalog.getPublicCatalogProduct(orgASlug, productSlug), /Product not found/);

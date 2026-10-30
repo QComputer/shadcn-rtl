@@ -8,13 +8,13 @@ import { resolveOrganizationEndpointForTenant } from "@/lib/organization-endpoin
 import { buildProductPurchaseHandoff } from "@/lib/purchase-intent";
 import { PUBLIC_CATALOG_PRICE_UNIT, publicCatalogProductsPageSchema, publicCatalogSnapshotSchema, type PublicCatalogPagination, type PublicCatalogProductsPage, type PublicCatalogProduct, type PublicCatalogSnapshot } from "@/lib/public-catalog/contracts";
 import { serializePublicCatalogCategory, serializePublicCatalogProduct } from "@/lib/public-catalog/serializers";
-import { Prisma, type Prisma as PrismaTypes } from "@prisma/client";
+import { Prisma, RetailAttributeScope, type Prisma as PrismaTypes } from "@prisma/client";
 import { tagIdentityKey } from "@/lib/retail/product-taxonomy-utils";
 import { isSyntheticRetailLabel, normalizeRetailSearch } from "@/lib/retail/discovery";
 
 const publicVariantSelect = {
-  id: true, sku: true, name: true, price: true, inventory: true, reservedQuantity: true, allowBackOrder: true,
-  optionValues: { where: { definition: { isActive: true, scope: "VARIANT_OPTION" } }, select: { valueText: true, valueNumber: true, valueBoolean: true, definition: { select: { organizationId: true, key: true, label: true, localizedLabels: true, valueType: true, displayUnit: true, isFilterable: true } } } },
+  id: true, sku: true, name: true, price: true, inventory: true, reservedQuantity: true, allowBackOrder: true, manuallyUnavailable: true,
+  optionValues: { where: { definition: { isActive: true, scope: RetailAttributeScope.VARIANT_OPTION } }, select: { valueText: true, valueNumber: true, valueBoolean: true, definition: { select: { organizationId: true, key: true, label: true, localizedLabels: true, valueType: true, displayUnit: true, isFilterable: true } } } },
   galleryImages: { orderBy: { sortOrder: "asc" }, select: { image: { select: { url: true, organizationId: true, access: true } } } },
 } satisfies Prisma.ProductVariantSelect;
 const publicCategorySelect = { id: true, slug: true, name: true } satisfies Prisma.ProductCategorySelect;
@@ -22,7 +22,7 @@ const publicProductSelect = {
   id: true, slug: true, name: true, brand: true, description: true, basePrice: true, image: true, gallerySettings: true, images: { select: { id: true, url: true, organizationId: true, access: true } },
   discountType: true, discountValue: true, trackInventory: true,
   category: { select: publicCategorySelect },
-  attributeValues: { where: { definition: { isActive: true, scope: "PRODUCT" } }, select: { valueText: true, valueNumber: true, valueBoolean: true, definition: { select: { organizationId: true, key: true, label: true, localizedLabels: true, valueType: true, displayUnit: true, isFilterable: true } } } },
+  attributeValues: { where: { definition: { isActive: true, scope: RetailAttributeScope.PRODUCT } }, select: { valueText: true, valueNumber: true, valueBoolean: true, definition: { select: { organizationId: true, key: true, label: true, localizedLabels: true, valueType: true, displayUnit: true, isFilterable: true } } } },
   variants: { where: { deletedAt: null }, orderBy: [{ name: "asc" }, { id: "asc" }], select: publicVariantSelect },
 } satisfies Prisma.ProductSelect;
 
@@ -144,7 +144,7 @@ function rawSkuSearchForScore(query: string) {
 
 function orderableVariantSql(variantAlias: string) {
   const variant = Prisma.raw(variantAlias);
-  return Prisma.sql`(NOT p."trackInventory" OR ${variant}."allowBackOrder" OR ${variant}."inventory" - ${variant}."reservedQuantity" > 0)`;
+  return Prisma.sql`(${variant}."manuallyUnavailable" = false AND (NOT p."trackInventory" OR ${variant}."allowBackOrder" OR ${variant}."inventory" - ${variant}."reservedQuantity" > 0))`;
 }
 
 function publicProductPriceWithSelectedOptions(product: PublicCatalogProduct, filters: DiscoveryFilter[], available?: boolean): PublicCatalogProduct {

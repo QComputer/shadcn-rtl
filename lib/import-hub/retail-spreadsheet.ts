@@ -7,7 +7,7 @@ export const retailImportInput = z.object({format:z.enum(["CSV","XLSX"]),content
 export type RetailImportInput = z.infer<typeof retailImportInput>;
 import { MAX_RETAIL_ROWS } from "./retail-batches";
 export { MAX_RETAIL_ROWS } from "./retail-batches";
-export const retailColumns=["product_key","product_id","variant_id","product_name","slug","brand","description","category_id","category_ids","tags","published","track_inventory","variant_name","sku","price_toman","stock","allow_backorder","image_ids","gallery_mode","variant_image_ids","color_attribute","color_value","color_image_ids"];
+export const retailColumns=["product_key","product_id","variant_id","product_name","slug","brand","description","category_id","category_ids","tags","published","track_inventory","base_price_toman","variant_name","sku","price_toman","stock","allow_backorder","image_ids","gallery_mode","variant_image_ids","color_attribute","color_value","color_image_ids"];
 export const normalizeDigits=(s:string)=>s.replace(/[۰-۹٠-٩]/g,c=>String(c.charCodeAt(0)-(c>="۰"&&c<="۹"?1776:1632)));
 export const splitIds=(s:string)=>s==="[[CLEAR]]"?[]:s.split("|").map(x=>x.trim()).filter(Boolean);
 export function decimalCell(s:string) {

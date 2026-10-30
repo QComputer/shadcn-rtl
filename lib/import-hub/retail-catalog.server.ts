@@ -98,6 +98,7 @@ async function plan(tx:Tx,context:TenantContext,input:RetailImportInput) {
       if(merged.category_ids)productData.categoryIds=splitIds(merged.category_ids);
       if(merged.tags)productData.tagNames=splitIds(merged.tags);
       if(merged.track_inventory)productData.trackInventory=boolCell(merged.track_inventory);
+      if(merged.base_price_toman)productData.basePrice=decimalCell(merged.base_price_toman);
       if(merged.image_ids)productData.imageIds=splitIds(merged.image_ids);
       if(merged.published)productData.isActive=boolCell(merged.published);
       const attributes=current?.attributes.map(a=>({definitionId:a.definitionId,value:a.value as string|number|boolean}))||[];
@@ -236,7 +237,7 @@ export async function downloadRetailCatalog(context:TenantContext,kind:"template
     // Only reference definitions/ENUM values that actually exist in this tenant.
     // If absent, keep a generic six-variant sample; never create definitions.
     const combinations=colors.length&&sizes.length?colors.flatMap(c=>sizes.map(s=>({c,s}))):Array.from({length:6},(_,i)=>({c:"",s:String(i+1)}));
-    return writeRetailSpreadsheet(combinations.map(({c,s},index)=>({product_key:"synthetic-example-001",product_name:"کالای نمونه آزمایشی — فقط الگو",category_id:category?.id||"شناسه دسته‌بندی را وارد کنید",variant_name:c?`${c} / ${s}`:`گزینه نمونه ${s}`,sku:`000EXAMPLE-${String(index+1).padStart(3,"0")}`,price_toman:"2500000",stock:"0",track_inventory:"true",allow_backorder:"false",published:"false",...(c&&color&&size?{["attribute:"+color.key]:c,["attribute:"+size.key]:s}:{})})),format);
+    return writeRetailSpreadsheet(combinations.map(({c,s},index)=>({product_key:"synthetic-example-001",product_name:"کالای نمونه آزمایشی — فقط الگو",category_id:category?.id||"شناسه دسته‌بندی را وارد کنید",base_price_toman:"2500000",variant_name:c?`${c} / ${s}`:`گزینه نمونه ${s}`,sku:`000EXAMPLE-${String(index+1).padStart(3,"0")}`,price_toman:"2500000",stock:"0",track_inventory:"true",allow_backorder:"false",published:"false",...(c&&color&&size?{["attribute:"+color.key]:c,["attribute:"+size.key]:s}:{})})),format);
   }
   const products=await prisma.product.findMany({where:{organizationId:context.organizationId,deletedAt:null},select:merchantProductSelect,orderBy:{id:"asc"},take:501});
   if(expectedExportVersion&&expectedExportVersion!==hash(products.map(p=>[p.id,p.variants.map(v=>v.id).sort()])))throw new ApiError(409,"ترکیب کاتالوگ تغییر کرده است؛ فهرست را تازه‌سازی کنید و همه دسته‌های خروجی را دوباره دانلود کنید.");
@@ -244,7 +245,7 @@ export async function downloadRetailCatalog(context:TenantContext,kind:"template
   const rows:Record<string,string>[]=[];
   for(const raw of products){
     const p=serializeMerchantProduct(raw);
-    const common:Record<string,string>={product_key:p.id,product_id:p.id,product_name:p.name,slug:p.slug||"",brand:p.brand??"",description:p.description??"",category_id:p.category.id,category_ids:p.categoryIds.join("|"),tags:p.tags.map(t=>t.name).join("|"),published:String(p.isActive),track_inventory:String(p.trackInventory),image_ids:p.imageIds.join("|")};
+    const common:Record<string,string>={product_key:p.id,product_id:p.id,product_name:p.name,slug:p.slug||"",brand:p.brand??"",description:p.description??"",category_id:p.category.id,category_ids:p.categoryIds.join("|"),tags:p.tags.map(t=>t.name).join("|"),published:String(p.isActive),track_inventory:String(p.trackInventory),base_price_toman:String(p.basePrice),image_ids:p.imageIds.join("|")};
     for(const attribute of p.attributes)common["product_attribute:"+attribute.key]=String(attribute.value);
     if(!p.variants.length)rows.push(common);
     for(const v of p.variants){

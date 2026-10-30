@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useState } from "react";
-import { ArrowLeft, Eye, Plus, Save, Store, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Eye, Plus, Save, Store, Trash2 } from "lucide-react";
 
 import { AssignedGallery, RetailMediaPicker } from "./retail-media-picker";
 import { colorGroupKey, inferColorGallery, type GallerySettings, type GallerySettingsInput } from "@/lib/retail/product-galleries";
@@ -14,24 +14,27 @@ type Definition = { id: string; key: string; label: string; scope: "PRODUCT" | "
 type Category = { id: string; name: string; isActive: boolean };
 type ImageItem = { id: string; url: string; filename?: string | null };
 type Attribute = { definitionId: string; value: string | number | boolean };
-type ProductRecord = { id: string; name: string; brand: string | null; slug: string | null; description: string | null; isActive: boolean; trackInventory: boolean; gallerySettings: GallerySettings | null; galleryMedia?: ImageItem[]; category: { id: string; name: string; isActive: boolean }; categoryIds: string[]; tags: Array<{ id: string; name: string }>; imageIds: string[]; images: ImageItem[]; attributes: Attribute[]; variants: VariantRecord[] };
-type VariantRecord = { galleryMode?: "INHERIT" | "OVERRIDE" | null; id: string; name: string | null; sku: string | null; price: number | null; inventory: number; reservedQuantity: number; allowBackOrder: boolean; options: Attribute[]; imageIds: string[]; images: ImageItem[] };
-type VariantDraft = { galleryMode: "INHERIT" | "OVERRIDE"; id?: string; name: string; sku: string; price: string; inventory: string; reservedQuantity: number; allowBackOrder: boolean; options: Record<string, string>; imageIds: string[] };
+type ProductRecord = { id: string; name: string; brand: string | null; slug: string | null; description: string | null; isActive: boolean; trackInventory: boolean; basePrice: number; gallerySettings: GallerySettings | null; galleryMedia?: ImageItem[]; category: { id: string; name: string; isActive: boolean }; categoryIds: string[]; tags: Array<{ id: string; name: string }>; imageIds: string[]; images: ImageItem[]; attributes: Attribute[]; variants: VariantRecord[] };
+type VariantRecord = { galleryMode?: "INHERIT" | "OVERRIDE" | null; id: string; name: string | null; sku: string | null; price: number | null; inventory: number; reservedQuantity: number; allowBackOrder: boolean; manuallyUnavailable: boolean; options: Attribute[]; imageIds: string[]; images: ImageItem[] };
+type VariantDraft = { galleryMode: "INHERIT" | "OVERRIDE"; id?: string; name: string; sku: string; price: string; inventory: string; reservedQuantity: number; allowBackOrder: boolean; manuallyUnavailable: boolean; options: Record<string, string>; imageIds: string[] };
 
 const strings = {
   fa: {
-    titleNew: "افزودن محصول فروشگاه", titleEdit: "مدیریت محصول فروشگاه", intro: "مشخصات محصول، دسته‌ها، تگ‌ها و گونه‌های قابل خرید را وارد کنید.", back: "بازگشت به کاتالوگ", name: "نام محصول", brand: "برند", slug: "نشانی کوتاه (اختیاری)", description: "توضیحات محصول", category: "دسته‌بندی اصلی", categories: "دسته‌بندی‌های دیگر", tags: "تگ‌ها", tagsHelp: "هر تگ را با ویرگول جدا کنید", choose: "انتخاب کنید", productAttributes: "ویژگی‌های محصول", variantOptions: "گزینه‌های گونه خرید", noDefinitions: "برای تعریف ویژگی‌ها به کاتالوگ فروشگاه بروید.", addVariant: "افزودن گونه خرید", variant: "گونه خرید", variantName: "عنوان گونه", sku: "شناسه کالا (SKU)", price: "قیمت (تومان)", inventory: "موجودی", reserved: "رزرو شده", backorder: "پذیرش سفارش در نبود موجودی", images: "تصاویر محصول", variantImages: "تصاویر این گونه", upload: "افزودن تصویر", remove: "حذف تصویر", save: "ذخیره پیش‌نویس", saveChanges: "ذخیره تغییرات", preview: "پیش‌نمایش", publish: "انتشار در فروشگاه", unpublish: "برداشتن از فروشگاه", storeLink: "نمایش در فروشگاه", draft: "پیش‌نویس خصوصی", previewBanner: "پیش‌نمایش مدیر فروشگاه · این کالا هنوز برای مشتریان منتشر نشده است", closePreview: "بستن پیش‌نمایش", noImage: "تصویری انتخاب نشده است", variantsRequired: "برای انتشار، هر گونه به شناسه کالا و قیمت معتبر نیاز دارد و محصول باید تصویر عمومی داشته باشد.", uploadError: "بارگذاری تصویر انجام نشد. نوع یا اندازه فایل را بررسی کنید.", genericError: "ذخیره انجام نشد. اطلاعات را بررسی و دوباره تلاش کنید.", saved: "تغییرات ذخیره شد.", publishNotice: "محصول منتشر شد.", unpublishNotice: "محصول از فروشگاه برداشته شد.", loading: "در حال بارگذاری اطلاعات…", inactiveCategory: "این دسته‌بندی غیرفعال است؛ برای انتشار آن را فعال کنید.", trueLabel: "بله", falseLabel: "خیر", add: "افزودن", deleting: "در حال بارگذاری…", stockConflict: "موجودی نمی‌تواند کمتر از مقدار رزروشده باشد.", public: "عمومی", matrix: "ساخت گونه‌ها از دو گزینه", matrixHelp: "دو ویژگی گونه را انتخاب کنید تا ترکیب‌های ممکن ساخته شوند.", firstOption: "ویژگی اول", secondOption: "ویژگی دوم", generate: "ساخت ترکیب‌ها", removeVariant: "حذف گونه", sameOption: "همین ویژگی و مقدار", optionValue: "مقدار ویژگی", applyGallery: "اعمال گالری محصول روی گونه‌های هم‌ویژگی",
+    titleNew: "افزودن محصول فروشگاه", titleEdit: "مدیریت محصول فروشگاه", intro: "مشخصات محصول، دسته‌ها، تگ‌ها و گونه‌های قابل خرید را وارد کنید.", back: "بازگشت به کاتالوگ", name: "نام محصول", brand: "برند", slug: "نشانی کوتاه (اختیاری)", description: "توضیحات محصول", category: "دسته‌بندی اصلی", categories: "دسته‌بندی‌های دیگر", tags: "تگ‌ها", tagsHelp: "هر تگ را با ویرگول جدا کنید", choose: "انتخاب کنید", productAttributes: "ویژگی‌های محصول", variantOptions: "گزینه‌های گونه خرید", noDefinitions: "برای تعریف ویژگی‌ها به کاتالوگ فروشگاه بروید.", addVariant: "افزودن گونه خرید", variant: "گونه خرید", variantName: "عنوان گونه", sku: "شناسه کالا (SKU)", price: "قیمت (تومان)", priceOverride: "قیمت اختصاصی (تومان)", priceInherit: "از قیمت پایه ارث‌بری می‌شود", priceOverridePlaceholder: "خالی بگذارید تا از قیمت پایه استفاده شود", inventory: "موجودی", reserved: "رزرو شده", backorder: "پذیرش سفارش در نبود موجودی", unavailable: "خرید غیرفعال", unavailableHelp: "وقتی فعال است، این گونه حتی در صورت موجود بودن قابل خرید نیست.", images: "تصاویر محصول", variantImages: "تصاویر این گونه", upload: "افزودن تصویر", remove: "حذف تصویر", save: "ذخیره پیش‌نویس", saveChanges: "ذخیره تغییرات", preview: "پیش‌نمایش", publish: "انتشار در فروشگاه", unpublish: "برداشتن از فروشگاه", storeLink: "نمایش در فروشگاه", draft: "پیش‌نویس خصوصی", previewBanner: "پیش‌نمایش مدیر فروشگاه · این کالا هنوز برای مشتریان منتشر نشده است", closePreview: "بستن پیش‌نمایش", noImage: "تصویری انتخاب نشده است", variantsRequired: "برای انتشار، هر گونه به شناسه کالا و قیمت معتبر نیاز دارد و محصول باید تصویر عمومی داشته باشد.", uploadError: "بارگذاری تصویر انجام نشد. نوع یا اندازه فایل را بررسی کنید.", genericError: "ذخیره انجام نشد. اطلاعات را بررسی و دوباره تلاش کنید.", saved: "تغییرات ذخیره شد.", publishNotice: "محصول منتشر شد.", unpublishNotice: "محصول از فروشگاه برداشته شد.", loading: "در حال بارگذاری اطلاعات…", inactiveCategory: "این دسته‌بندی غیرفعال است؛ برای انتشار آن را فعال کنید.", trueLabel: "بله", falseLabel: "خیر", add: "افزودن", deleting: "در حال بارگذاری…", stockConflict: "موجودی نمی‌تواند کمتر از مقدار رزروشده باشد.", public: "عمومی", matrix: "ساخت گونه‌ها از دو گزینه", matrixHelp: "دو ویژگی گونه را انتخاب کنید تا ترکیب‌های ممکن ساخته شوند.", firstOption: "ویژگی اول", secondOption: "ویژگی دوم", generate: "ایجاد ترکیب‌ها", removeVariant: "حذف این گونه", sameOption: "اعمال بر حسب ویژگی", optionValue: "مقدار ویژگی", applyGallery: "اعمال گالری محصول به گزینه‌ها", basePriceLabel: "قیمت پایه محصول (تومان)", basePriceHelp: "قیمت پیش‌فرض همه گونه‌ها. گونه‌های بدون قیمت اختصاصی از این مقدار استفاده می‌کنند.", sizeRange: "ساخت گونه‌ها از رنگ و سایز", sizeRangeHelp: "رنگ و سایز را انتخاب کنید، سپس بازه عددی سایز و گام را تنظیم کنید.", sizeDefinition: "ویژگی سایز", colorDefinition: "ویژگی رنگ", sizeStart: "شروع سایز", sizeEnd: "پایان سایز", sizeStep: "گام سایز", previewGeneration: "پیش‌نمایش ترکیب‌ها", generateVariants: "ایجاد ترکیب‌ها", variantsToCreate: "ترکیب جدید", existingVariants: "ترکیب موجود", previewErrors: "خطاها در پیش‌نمایش", applyAll: "اعمال به همه", clearPrice: "استفاده از قیمت پایه", groupBy: "گروه‌بندی بر اساس", expandAll: "گشایش همه", collapseAll: "جمع‌ شدن همه", bulkSetAvailable: "فعال کردن برای خرید", bulkSetUnavailable: "غیرفعال کردن برای خرید", bulkActions: "عملیات دسته‌ای", variantCount: "گونه", effectivePrice: "قیمت نهایی", halfSize: "نصفه", fullSize: "کامل", sizeUnit: "عدد", halfStep: "0.5", singleStep: "1", doubleStep: "2", tripleStep: "3", generating: "در حال ساخت...", variantLimit: "حداکثر ۱۰۰ گونه مجاز است.", noVariants: "هیچ گونه‌ای تعریف نشده است.", collapse: "جمع‌شدن",     expand: "گشایش", selectAll: "انتخاب همه", clearSelection: "لغو انتخاب", noColorDef: "برای ساخت خودکار، ویژگی رنگ و سایز باید تعریف شده باشد.", variants: "گونه خرید",
+    halfStepLabel: "0.5 (نصفه)", singleStepLabel: "1 (یکه)", doubleStepLabel: "2 (دوه)", tripleStepLabel: "3 (سه‌ه)",
   },
   en: {
-    titleNew: "Add retail product", titleEdit: "Manage retail product", intro: "Enter product details, categories, tags, and purchasable variants.", back: "Back to catalog", name: "Product name", brand: "Brand", slug: "URL slug (optional)", description: "Product description", category: "Primary category", categories: "Additional categories", tags: "Tags", tagsHelp: "Separate tags with commas", choose: "Choose…", productAttributes: "Product attributes", variantOptions: "Variant options", noDefinitions: "Add attribute definitions in Retail catalog first.", addVariant: "Add variant", variant: "Variant", variantName: "Variant name", sku: "SKU", price: "Price (Toman)", inventory: "Inventory", reserved: "Reserved", backorder: "Allow back-ordering", images: "Product gallery", variantImages: "Images for this variant", upload: "Add image", remove: "Remove image", save: "Save draft", saveChanges: "Save changes", preview: "Preview", publish: "Publish to storefront", unpublish: "Unpublish", storeLink: "View storefront", draft: "Private draft", previewBanner: "Merchant preview · This product is not visible to customers yet", closePreview: "Close preview", noImage: "No image selected", variantsRequired: "Each variant needs a SKU and valid price to publish. Add at least one public product image.", uploadError: "Image upload failed. Check the file type and size.", genericError: "Could not save. Check the fields and try again.", saved: "Changes saved.", publishNotice: "Product published.", unpublishNotice: "Product removed from the storefront.", loading: "Loading product data…", inactiveCategory: "This category is inactive. Activate it before publishing.", trueLabel: "Yes", falseLabel: "No", add: "Add", deleting: "Uploading…", stockConflict: "Inventory cannot be lower than the quantity already reserved.", public: "Public", matrix: "Build variants from two options", matrixHelp: "Choose two variant attributes to create their possible combinations.", firstOption: "First option", secondOption: "Second option", generate: "Create combinations", removeVariant: "Remove variant", sameOption: "Apply by option", optionValue: "Option value", applyGallery: "Apply product gallery to matching variants",
+    titleNew: "Add retail product", titleEdit: "Manage retail product", intro: "Enter product details, categories, tags, and purchasable variants.", back: "Back to catalog", name: "Product name", brand: "Brand", slug: "URL slug (optional)", description: "Product description", category: "Primary category", categories: "Additional categories", tags: "Tags", tagsHelp: "Separate tags with commas", choose: "Choose…", productAttributes: "Product attributes", variantOptions: "Variant options", noDefinitions: "Add attribute definitions in Retail catalog first.", addVariant: "Add variant", variant: "Variant", variantName: "Variant name", sku: "SKU", price: "Price (Toman)", priceOverride: "Variant price (Toman)", priceInherit: "Inherits from base price", priceOverridePlaceholder: "Leave blank to inherit from product base price", inventory: "Inventory", reserved: "Reserved", backorder: "Allow back-ordering", unavailable: "Not for sale", unavailableHelp: "When enabled, this variant cannot be purchased even if stocked.", images: "Product gallery", variantImages: "Images for this variant", upload: "Add image", remove: "Remove image", save: "Save draft", saveChanges: "Save changes", preview: "Preview", publish: "Publish to storefront", unpublish: "Unpublish", storeLink: "View storefront", draft: "Private draft", previewBanner: "Merchant preview · This product is not visible to customers yet", closePreview: "Close preview", noImage: "No image selected", variantsRequired: "Each variant needs a SKU and valid price to publish. Add at least one public product image.", uploadError: "Image upload failed. Check the file type and size.", genericError: "Could not save. Check the fields and try again.", saved: "Changes saved.", publishNotice: "Product published.", unpublishNotice: "Product removed from the storefront.", loading: "Loading product data…", inactiveCategory: "This category is inactive. Activate it before publishing.", trueLabel: "Yes", falseLabel: "No", add: "Add", deleting: "Uploading…", stockConflict: "Inventory cannot be lower than the quantity already reserved.", public: "Public", matrix: "Build variants from two options", matrixHelp: "Choose two variant attributes to create their possible combinations.", firstOption: "First option", secondOption: "Second option", generate: "Generate combinations", removeVariant: "Remove variant", sameOption: "Apply by attribute", optionValue: "Option value", applyGallery: "Apply gallery to options", basePriceLabel: "Product base price (Toman)", basePriceHelp: "Default price for all variants. Variants with no override price use this value.", sizeRange: "Generate variants from color & size", sizeRangeHelp: "Select color and size attributes, then set the numeric size range and step.", sizeDefinition: "Size attribute", colorDefinition: "Color attribute", sizeStart: "Size start", sizeEnd: "Size end", sizeStep: "Size step", previewGeneration: "Preview combinations", generateVariants: "Generate variants", variantsToCreate: "New combinations", existingVariants: "Existing combinations", previewErrors: "Preview errors", applyAll: "Apply to all", clearPrice: "Use base price", groupBy: "Group by", expandAll: "Expand all", collapseAll: "Collapse all", bulkSetAvailable: "Make available", bulkSetUnavailable: "Mark unavailable", bulkActions: "Bulk actions", variantCount: "variants", effectivePrice: "Effective price", halfSize: "half", fullSize: "full", sizeUnit: "size", halfStep: "0.5", singleStep: "1", doubleStep: "2", tripleStep: "3", generating: "Generating...", variantLimit: "Maximum 100 variants allowed.", noVariants: "No variants defined.", collapse: "Collapse",     expand: "Expand", selectAll: "Select all", clearSelection: "Clear selection", noColorDef: "To auto-generate, both color and size attributes must be defined.", variants: "variants",
+    halfStepLabel: "0.5 (half)", singleStepLabel: "1 (single)", doubleStepLabel: "2 (double)", tripleStepLabel: "3 (triple)",
   },
   ar: {
-    titleNew: "إضافة منتج للبيع بالتجزئة", titleEdit: "إدارة المنتج", intro: "أدخل تفاصيل المنتج والفئات والوسوم وخيارات الشراء.", back: "العودة إلى الكتالوج", name: "اسم المنتج", brand: "العلامة التجارية", slug: "الرابط المختصر (اختياري)", description: "وصف المنتج", category: "الفئة الرئيسية", categories: "فئات إضافية", tags: "الوسوم", tagsHelp: "افصل الوسوم بفواصل", choose: "اختر…", productAttributes: "سمات المنتج", variantOptions: "خيارات المنتج", noDefinitions: "أضف تعريفات السمات في كتالوج المتجر أولاً.", addVariant: "إضافة خيار", variant: "الخيار", variantName: "اسم الخيار", sku: "رمز المنتج", price: "السعر (تومان)", inventory: "المخزون", reserved: "محجوز", backorder: "السماح بالطلب عند نفاد المخزون", images: "صور المنتج", variantImages: "صور هذا الخيار", upload: "إضافة صورة", remove: "إزالة الصورة", save: "حفظ كمسودة", saveChanges: "حفظ التغييرات", preview: "معاينة", publish: "النشر في المتجر", unpublish: "إلغاء النشر", storeLink: "عرض المتجر", draft: "مسودة خاصة", previewBanner: "معاينة التاجر · المنتج غير ظاهر للعملاء بعد", closePreview: "إغلاق المعاينة", noImage: "لم يتم اختيار صورة", variantsRequired: "يحتاج كل خيار إلى رمز وسعر صالحين للنشر. أضف صورة عامة واحدة على الأقل للمنتج.", uploadError: "فشل تحميل الصورة. تحقق من النوع والحجم.", genericError: "تعذر الحفظ. تحقق من الحقول وحاول مرة أخرى.", saved: "تم حفظ التغييرات.", publishNotice: "تم نشر المنتج.", unpublishNotice: "تمت إزالة المنتج من المتجر.", loading: "جارٍ تحميل بيانات المنتج…", inactiveCategory: "هذه الفئة غير نشطة. فعّلها قبل النشر.", trueLabel: "نعم", falseLabel: "لا", add: "إضافة", deleting: "جارٍ التحميل…", stockConflict: "لا يمكن أن يقل المخزون عن الكمية المحجوزة.", public: "عام", matrix: "إنشاء الخيارات من سمتين", matrixHelp: "اختر سمتين لإنشاء التركيبات الممكنة.", firstOption: "السمة الأولى", secondOption: "السمة الثانية", generate: "إنشاء التركيبات", removeVariant: "إزالة الخيار", sameOption: "التطبيق حسب السمة", optionValue: "قيمة السمة", applyGallery: "تطبيق معرض المنتج على الخيارات المطابقة",
+    titleNew: "إضافة منتج للبيع بالتجزئة", titleEdit: "إدارة المنتج", intro: "أدخل تفاصيل المنتج والفئات والوسوم وخيارات الشراء.", back: "العودة إلى الكتالوج", name: "اسم المنتج", brand: "العلامة التجارية", slug: "الرابط المختصر (اختياري)", description: "وصف المنتج", category: "الفئة الرئيسية", categories: "فئات إضافية", tags: "الوسوم", tagsHelp: "افصل الوسوم بفواصل", choose: "اختر…", productAttributes: "سمات المنتج", variantOptions: "خيارات المنتج", noDefinitions: "أضف تعريفات السمات في كتالوج المتجر أولاً.", addVariant: "إضافة خيار", variant: "الخيار", variantName: "اسم الخيار", sku: "رمز المنتج", price: "السعر (تومان)", priceOverride: "سعر الخيار (تومان)", priceInherit: "يورث من السعر الأساسي", priceOverridePlaceholder: "اتركه فارغًا للوراثة من السعر الأساسي للمنتج", inventory: "المخزون", reserved: "محجوز", backorder: "السماح بالطلب عند نفاد المخزون", unavailable: "غير قابل للبيع", unavailableHelp: "عند التفعيل، لا يمكن شراء هذا الخيار حتى لو كان متوفرًا.", images: "صور المنتج", variantImages: "صور هذا الخيار", upload: "إضافة صورة", remove: "إزالة الصورة", save: "حفظ كمسودة", saveChanges: "حفظ التغييرات", preview: "معاينة", publish: "النشر في المتجر", unpublish: "إلغاء النشر", storeLink: "عرض المتجر", draft: "مسودة خاصة", previewBanner: "معاينة التاجر · المنتج غير ظاهر للعملاء بعد", closePreview: "إغلاق المعاينة", noImage: "لم يتم اختيار صورة", variantsRequired: "يحتاج كل خيار إلى رمز وسعر صالحين للنشر. أضف صورة عامة واحدة على الأقل للمنتج.", uploadError: "فشل تحميل الصورة. تحقق من النوع والحجم.", genericError: "تعذر الحفظ. تحقق من الحقول وحاول مرة أخرى.", saved: "تم حفظ التغييرات.", publishNotice: "تم نشر المنتج.", unpublishNotice: "تمت إزالة المنتج من المتجر.", loading: "جارٍ تحميل بيانات المنتج…", inactiveCategory: "هذه الفئة غير نشطة. فعّلها قبل النشر.", trueLabel: "نعم", falseLabel: "لا", add: "إضافة", deleting: "جارٍ التحميل…", stockConflict: "لا يمكن أن يقل المخزون عن الكمية المحجوزة.", public: "عام", matrix: "إنشاء الخيارات من سمتين", matrixHelp: "اختر سمتين لإنشاء التراكيب الممكنة.", firstOption: "السمة الأولى", secondOption: "السمة الثانية", generate: "إنشاء التراكيب", removeVariant: "إزالة الخيار", sameOption: "تطبيق حسب السمة", optionValue: "قيمة السمة", applyGallery: "تطبيق معرض المنتج على الخيارات", basePriceLabel: "السعر الأساسي للمنتج (تومان)", basePriceHelp: "السعر الافتراضي لجميع الخيارات. الخيارات بدون سعر مخصص تستخدم هذه القيمة.", sizeRange: "إنشاء خيارات من اللون والمقاس", sizeRangeHelp: "حدد سمة اللون والمقاس، ثم اضبط نطاق المقاس العددي والخطوة.", sizeDefinition: "سمة المقاس", colorDefinition: "سمة اللون", sizeStart: "بداية المقاس", sizeEnd: "نهاية المقاس", sizeStep: "خطوة المقاس", previewGeneration: "معاينة التراكيب", generateVariants: "إنشاء التراكيب", variantsToCreate: "تراكيب جديدة", existingVariants: "تراكيب موجودة", previewErrors: "أخطاء المعاينة", applyAll: "تطبيق على الجميع", clearPrice: "استخدام السعر الأساسي", groupBy: "تجميع حسب", expandAll: "توسيع الجميع", collapseAll: "طي الجميع", bulkSetAvailable: "جعلها متاحة", bulkSetUnavailable: "تعطيل للبيع", bulkActions: "إجراءات دستهية", variantCount: "خيارات", effectivePrice: "السعر الفعال", halfSize: "نصف", fullSize: "كامل", sizeUnit: "الحجم", halfStep: "0.5", singleStep: "1", doubleStep: "2", tripleStep: "3", generating: "جارٍ الإنشاء...", variantLimit: "أقصى 100 خيار مسموح.", noVariants: "لم يتم تعريف أي خيارات.", collapse: "طي",     expand: "توسيع", selectAll: "تحديد الكل", clearSelection: "إلغاء التحديد", noColorDef: "لإنشاء تلقائي، يجب تعريف سمة اللون والمقاس.", variants: "خيارات",
+    halfStepLabel: "0.5 (نصف)", singleStepLabel: "1 (كامل)", doubleStepLabel: "2 (مزدوج)", tripleStepLabel: "3 (ثلاثي)",
   },
 } as const;
 
 function newVariant(definitions: Definition[]): VariantDraft {
-  return { galleryMode: "INHERIT", name: "", sku: "", price: "", inventory: "0", reservedQuantity: 0, allowBackOrder: false, options: Object.fromEntries(definitions.filter((definition) => definition.scope === "VARIANT_OPTION").map((definition) => [definition.id, ""])), imageIds: [] };
+  return { galleryMode: "INHERIT", name: "", sku: "", price: "", inventory: "0", reservedQuantity: 0, allowBackOrder: false, manuallyUnavailable: false, options: Object.fromEntries(definitions.filter((definition) => definition.scope === "VARIANT_OPTION").map((definition) => [definition.id, ""])), imageIds: [] };
 }
 
 function restoreVariants(variants: VariantRecord[]): VariantDraft[] {
@@ -40,7 +43,7 @@ function restoreVariants(variants: VariantRecord[]): VariantDraft[] {
     id: variant.id, name: variant.name ?? "", sku: variant.sku ?? "",
     price: variant.price === null ? "" : String(variant.price),
     inventory: String(variant.inventory), reservedQuantity: variant.reservedQuantity,
-    allowBackOrder: variant.allowBackOrder,
+    allowBackOrder: variant.allowBackOrder, manuallyUnavailable: variant.manuallyUnavailable,
     options: Object.fromEntries(variant.options.map((option) => [option.definitionId, String(option.value)])),
     imageIds: variant.imageIds ?? [],
   }));
@@ -62,7 +65,7 @@ function galleryEditor(product: ProductRecord, definitions: Definition[]) {
 }
 function recordSnapshot(product: ProductRecord, definitions: Definition[]) {
   const gallery = galleryEditor(product, definitions);
-  return JSON.stringify({ colorGalleries: gallery.colors, trackInventory: product.trackInventory, name: product.name, brand: product.brand ?? "", slug: product.slug ?? "", description: product.description ?? "", categoryId: product.category.id, categoryIds: product.categoryIds ?? [product.category.id], tagText: (product.tags ?? []).map((tag) => tag.name).join(", "), attributes: Object.fromEntries(product.attributes.map((attribute) => [attribute.definitionId, String(attribute.value)])), variants: gallery.variants, selectedImageIds: product.imageIds });
+  return JSON.stringify({ basePrice: product.basePrice, colorGalleries: gallery.colors, trackInventory: product.trackInventory, name: product.name, brand: product.brand ?? "", slug: product.slug ?? "", description: product.description ?? "", categoryId: product.category.id, categoryIds: product.categoryIds ?? [product.category.id], tagText: (product.tags ?? []).map((tag) => tag.name).join(", "), attributes: Object.fromEntries(product.attributes.map((attribute) => [attribute.definitionId, String(attribute.value)])), variants: gallery.variants, selectedImageIds: product.imageIds });
 }
 
 function valueFromInput(definition: Definition, value: string): string | number | boolean {
@@ -75,6 +78,11 @@ function allowedValues(definition: Definition): string[] {
   return Array.isArray(definition.allowedValues) ? definition.allowedValues.filter((value): value is string => typeof value === "string") : [];
 }
 
+function effectiveVariantPrice(variant: VariantDraft, basePrice: number): string {
+  if (variant.price === "") return String(basePrice);
+  return variant.price;
+}
+
 function ErrorMessage({ text }: { text: string }) { return text ? <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{text}</p> : null; }
 
 function friendlyError(message: string, locale: Locale, fallback: string, stockMessage: string, publishMessage: string) {
@@ -84,7 +92,7 @@ function friendlyError(message: string, locale: Locale, fallback: string, stockM
   }
   if ((normalized.includes("stock") || normalized.includes("inventory")) && (normalized.includes("reserved") || normalized.includes("below"))) return stockMessage;
   if (normalized.includes("image") && (normalized.includes("public") || normalized.includes("store") || normalized.includes("belong") || normalized.includes("owned"))) {
-    return locale === "fa" ? "تصویر انتخابی عمومی یا متعلق به همین فروشگاه نیست. از گالری فروشگاه تصویر دیگری انتخاب کنید." : locale === "ar" ? "الصورة المختارة غير عامة أو لا تخص هذا المتجر. اختر صورة أخرى من المعرض." : "The selected image is private or belongs to another store. Choose an image from this store’s gallery.";
+    return locale === "fa" ? "تصویر انتخابی عمومی یا متعلق به همین فروشگاه نیست. از گالری فروشگاه تصویر دیگری انتخاب کنید." : locale === "ar" ? "الصورة المختارة غير عامة أو لا تنتمي إلى هذا المتجر. اختر صورة أخرى من المعرض." : "The selected image is private or belongs to another store. Choose an image from this store's gallery.";
   }
   if (normalized.includes("option") && (normalized.includes("duplicate") || normalized.includes("only once"))) {
     return locale === "fa" ? "برای هر ویژگی گونه فقط یک مقدار وارد کنید." : locale === "ar" ? "أدخل قيمة واحدة فقط لكل سمة خيار." : "Each variant option can be set only once.";
@@ -107,6 +115,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
   const [brand, setBrand] = useState("");
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
+  const [basePrice, setBasePrice] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [tagText, setTagText] = useState("");
@@ -122,9 +131,27 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
   const [notice, setNotice] = useState("");
   const [preview, setPreview] = useState(false);
   const [fileBusy, setFileBusy] = useState(false);
-  const [matrixDefinitions, setMatrixDefinitions] = useState<[string, string]>(["", ""]);
   const [savedState, setSavedState] = useState<string | null>(null);
-  const editorState = JSON.stringify({ colorGalleries, trackInventory, name, brand, slug, description, categoryId, categoryIds, tagText, attributes, variants, selectedImageIds });
+
+  const [groupDefinitionId, setGroupDefinitionId] = useState<string>("");
+  const [selectedVariantIds, setSelectedVariantIds] = useState<Set<string>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  const [genColorDef, setGenColorDef] = useState<string>("");
+  const [genSizeDef, setGenSizeDef] = useState<string>("");
+  const [genSizeStart, setGenSizeStart] = useState("");
+  const [genSizeEnd, setGenSizeEnd] = useState("");
+  const [genSizeStep, setGenSizeStep] = useState<0.5 | 1 | 2 | 3>(1);
+  const [genStandardSizes, setGenStandardSizes] = useState<string>("");
+  const [genSizeMode, setGenSizeMode] = useState<"RANGE" | "STANDARD">("RANGE");
+  const [genColors, setGenColors] = useState<string>("");
+  const [genInventory, setGenInventory] = useState("0");
+  const [genBackOrder, setGenBackOrder] = useState(false);
+  const [genPrice, setGenPrice] = useState("");
+  const [genPreview, setGenPreview] = useState<null | { canCreate: number; existing: number; errors: string[]; items: Array<{ name: string | null; sku: string | null; price: number | null }> }>(null);
+  const [genBusy, setGenBusy] = useState(false);
+
+  const editorState = JSON.stringify({ basePrice, colorGalleries, trackInventory, name, brand, slug, description, categoryId, categoryIds, tagText, attributes, variants, selectedImageIds });
   const unsaved = savedState !== null && savedState !== editorState;
   const leaveWarning = locale === "fa" ? "تغییرات ذخیره نشده‌اند. بدون ذخیره خارج می‌شوید؟" : locale === "ar" ? "لم يتم حفظ التغييرات. هل تريد المغادرة؟" : "You have unsaved changes. Leave without saving?";
 
@@ -136,8 +163,6 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
       if (!(link instanceof HTMLAnchorElement) || link.target === "_blank" || link.href === window.location.href || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
       if (!window.confirm(leaveWarning)) { event.preventDefault(); event.stopPropagation(); }
     };
-    // Chromium's Navigation API also covers client-side Back/Forward, which
-    // does not emit beforeunload when the router reuses the current document.
     const navigation = (window as Window & { navigation?: EventTarget }).navigation;
     const beforeHistoryNavigate = (event: Event & { navigationType?: string }) => {
       if (event.navigationType === "traverse" && event.cancelable && !window.confirm(leaveWarning)) event.preventDefault();
@@ -150,6 +175,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
 
   const productAttributeDefinitions = useMemo(() => definitions.filter((definition) => definition.scope === "PRODUCT"), [definitions]);
   const optionDefinitions = useMemo(() => definitions.filter((definition) => definition.scope === "VARIANT_OPTION"), [definitions]);
+  const numberBasePrice = basePrice === "" ? null : Number(basePrice);
 
   useEffect(() => {
     let cancelled = false;
@@ -158,7 +184,6 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
       setSavedState(null);
       setNotice("");
       setPreview(false);
-      setMatrixDefinitions(["", ""]);
       setError("");
       try {
         const requests = ["/api/dashboard/retail/attributes", "/api/dashboard/retail/categories", "/api/dashboard/retail/context"].map((url) => fetch(url, { credentials: "same-origin" }));
@@ -181,6 +206,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
           setBrand(product.brand ?? "");
           setSlug(product.slug ?? "");
           setDescription(product.description ?? "");
+          setBasePrice(product.basePrice > 0 ? String(product.basePrice) : "");
           setCategoryId(product.category.id);
           setCategoryIds(product.categoryIds ?? [product.category.id]);
           setTagText((product.tags ?? []).map((tag) => tag.name).join(", "));
@@ -196,11 +222,10 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
           setSelectedImageIds(product.imageIds);
           setVariants(galleryEditor(product, defs).variants);
         } else {
-          setName(""); setBrand(""); setSlug(""); setDescription("");
+          setName(""); setBrand(""); setSlug(""); setDescription(""); setBasePrice("");
           setCategoryId(""); setCategoryIds([]); setTagText(""); setAttributes({}); setPublished(false); setTrackInventory(true); setLoadedInventory({});
           setVariants([newVariant(defs)]); setColorGalleries([]);
           setSelectedImageIds([]);
-          setSavedState(JSON.stringify({ colorGalleries: [], trackInventory: true, name: "", brand: "", slug: "", description: "", categoryId: "", categoryIds: [], tagText: "", attributes: {}, variants: [newVariant(defs)], selectedImageIds: [] }));
         }
       } catch {
         if (!cancelled) setError(t.genericError);
@@ -212,34 +237,188 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
     return () => { cancelled = true; };
   }, [productId, t.genericError]);
 
+  const colorOptionDef = useMemo(() => optionDefinitions.find(def => /colou?r|رنگ/i.test(`${def.key} ${def.label}`)), [optionDefinitions]);
+
+  const groupedVariants = useMemo(() => {
+    if (!groupDefinitionId || !colorOptionDef) return [{ key: "ungrouped", label: "", variants: variants }];
+    const def = optionDefinitions.find((d) => d.id === groupDefinitionId);
+    if (!def) return [{ key: "ungrouped", label: "", variants: variants }];
+    const groups = new Map<string, VariantDraft[]>();
+    const ungrouped: VariantDraft[] = [];
+    for (const variant of variants) {
+      const colorValue = variant.options[def.id];
+      if (colorValue) {
+        const gk = colorGroupKey(def.id, colorValue);
+        if (!groups.has(gk)) groups.set(gk, []);
+        groups.get(gk)!.push(variant);
+      } else ungrouped.push(variant);
+    }
+    const result = Array.from(groups.entries()).map(([key, items]) => ({ key, label: key.split(":").pop() ?? "", variants: items }));
+    if (ungrouped.length) result.unshift({ key: "ungrouped", label: "", variants: ungrouped });
+    return result;
+  }, [variants, groupDefinitionId, optionDefinitions, colorOptionDef]);
+
   function updateVariant(index: number, patch: Partial<VariantDraft>) {
     setVariants((current) => current.map((variant, currentIndex) => currentIndex === index ? { ...variant, ...patch } : variant));
   }
 
-  function generateVariantMatrix() {
-    const [firstId, secondId] = matrixDefinitions;
-    const first = optionDefinitions.find((definition) => definition.id === firstId);
-    const second = optionDefinitions.find((definition) => definition.id === secondId);
-    if (!first || !second || first.id === second.id) return;
-    const firstValues = allowedValues(first);
-    const secondValues = allowedValues(second);
-    if (!firstValues.length || !secondValues.length) return;
-    const combinations = firstValues.flatMap((firstValue) => secondValues.map((secondValue) => ({ firstValue, secondValue })));
-    setVariants((current) => {
-      // Replace the untouched initial row, while keeping every merchant-entered
-      // or persisted variant when generating a color × size matrix.
-      const next = current.filter((variant) => variant.id || variant.name.trim() || variant.sku.trim() || variant.price || variant.inventory !== "0" || variant.allowBackOrder || variant.imageIds.length || Object.values(variant.options).some(Boolean));
-      for (const { firstValue, secondValue } of combinations) {
-        const options = { [first.id]: firstValue, [second.id]: secondValue };
-        const existingIndex = next.findIndex((variant) => variant.options[first.id] === firstValue && variant.options[second.id] === secondValue);
-        if (existingIndex >= 0) next[existingIndex] = { ...next[existingIndex]!, options: { ...next[existingIndex]!.options, ...options } };
-        else {
-          const blank = newVariant(definitions);
-          next.push({ ...blank, name: `${firstValue} · ${secondValue}`, options: { ...blank.options, ...options } });
-        }
+  function deleteVariant(index: number) {
+    if (!window.confirm(locale === "fa" ? "این گونه حذف می‌شود. ادامه می‌دهید؟" : locale === "ar" ? "سيتم حذف هذا الخيار. متابعة؟" : "Delete this variant?")) return;
+    const deletedId = variants[index]?.id;
+    setVariants((current) => current.filter((_, currentIndex) => currentIndex !== index));
+    if (deletedId) setSelectedVariantIds((prev) => { const next = new Set(prev); next.delete(deletedId); return next; });
+  }
+
+  function bulkSetUnavailable(unavailable: boolean) {
+    setVariants((current) => current.map((variant) => {
+      if (variant.id && selectedVariantIds.has(variant.id)) return { ...variant, manuallyUnavailable: unavailable };
+      return variant;
+    }));
+    setSelectedVariantIds(new Set());
+  }
+
+  function toggleExpanded(key: string) {
+    setExpandedGroups((prev) => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; });
+  }
+
+  function expandAll() { setExpandedGroups(new Set(groupedVariants.map((g) => g.key))); }
+  function collapseAll() { setExpandedGroups(new Set()); }
+
+  function clearPriceOverride(index: number) {
+    updateVariant(index, { price: "" });
+  }
+
+  async function previewVariantGeneration() {
+    if (genBusy) return;
+    const payload: Record<string, unknown> = {
+      colorDefinitionId: genColorDef || undefined,
+      sizeDefinitionId: genSizeDef || undefined,
+      sizeMode: genSizeMode,
+    };
+    if (genSizeMode === "RANGE") {
+      payload.sizeStart = Number(genSizeStart);
+      payload.sizeEnd = Number(genSizeEnd);
+      payload.sizeStep = genSizeStep;
+    } else {
+      payload.standardSizes = genStandardSizes.split(",").map((s) => s.trim()).filter(Boolean);
+    }
+    if (genColors.trim()) payload.colorValues = genColors.split(",").map((s) => s.trim()).filter(Boolean);
+    if (genPrice.trim()) payload.price = Number(genPrice);
+    payload.inventory = Number(genInventory);
+    payload.allowBackOrder = genBackOrder;
+    setGenBusy(true);
+    setGenPreview(null);
+    try {
+      const response = await fetch(`/api/dashboard/retail/catalog/${encodeURIComponent(productId ?? "")}/variants`, {
+        method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...payload, action: "preview" }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? t.genericError);
+      setGenPreview({ canCreate: data.preview?.toAdd ?? 0, existing: data.preview?.existing ?? 0, errors: data.preview?.errors ?? [], items: data.preview?.canCreate ?? [] });
+    } catch {
+      setGenPreview({ canCreate: 0, existing: 0, errors: [t.genericError], items: [] });
+    } finally {
+      setGenBusy(false);
+    }
+  }
+
+  async function generateVariants() {
+    if (genBusy) return;
+    if (!genPreview?.canCreate) return;
+    setGenBusy(true);
+    try {
+      const payload: Record<string, unknown> = {
+        colorDefinitionId: genColorDef || undefined,
+        sizeDefinitionId: genSizeDef || undefined,
+        sizeMode: genSizeMode,
+      };
+      if (genSizeMode === "RANGE") {
+        payload.sizeStart = Number(genSizeStart);
+        payload.sizeEnd = Number(genSizeEnd);
+        payload.sizeStep = genSizeStep;
+      } else {
+        payload.standardSizes = genStandardSizes.split(",").map((s) => s.trim()).filter(Boolean);
       }
-      return next;
-    });
+      if (genColors.trim()) payload.colorValues = genColors.split(",").map((s) => s.trim()).filter(Boolean);
+      if (genPrice.trim()) payload.price = Number(genPrice);
+      payload.inventory = Number(genInventory);
+      payload.allowBackOrder = genBackOrder;
+      const response = await fetch(`/api/dashboard/retail/catalog/${encodeURIComponent(productId ?? "")}/variants`, {
+        method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...payload, action: "generate" }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? t.genericError);
+      setNotice(`${data.result?.added ?? 0} ${t.variants} ${locale === "fa" ? "اضافه شد." : locale === "ar" ? "تمت إضافتها." : "added."}`);
+      setGenPreview(null);
+    } catch {
+      setError(t.genericError);
+    } finally {
+      setGenBusy(false);
+    }
+  }
+
+  function buildAssignments(scope: "PRODUCT" | "VARIANT_OPTION", values: Record<string, string>) {
+    return definitions.filter((definition) => definition.scope === scope && values[definition.id] !== undefined && values[definition.id] !== "").map((definition) => ({ definitionId: definition.id, value: valueFromInput(definition, values[definition.id]!) }));
+  }
+
+  async function saveProduct(action: "save" | "publish" | "unpublish") {
+    if (saving || fileBusy) return;
+    setSaving(true); setError(""); setNotice("");
+    try {
+      if (!categoryId) throw new Error("missing-category");
+      if (!numberBasePrice || numberBasePrice <= 0 || !Number.isFinite(numberBasePrice)) throw new Error(locale === "fa" ? "قیمت پایه محصول الزامی است." : locale === "ar" ? "سعر المنتج الأساسي مطلوب." : "Product base price is required.");
+      if (variants.some(v => !v.inventory.trim() || !Number.isInteger(Number(v.inventory)) || Number(v.inventory) < v.reservedQuantity || Number(v.inventory) > 1_000_000_000)) throw new Error(locale === "fa" ? "موجودی باید عدد صحیح بین صفر و یک میلیارد و حداقل برابر مقدار رزروشده باشد." : locale === "ar" ? "أدخل كمية صحيحة بين صفر ومليار لا تقل عن المحجوز." : "Inventory must be an integer from zero to one billion, and at least the reserved quantity.");
+      if ((!variants.length && (!productId || action === "publish")) || variants.some((variant) => !variant.name.trim() || !variant.sku.trim() || (!variant.price && !numberBasePrice) || !Number.isInteger(Number(variant.inventory)) || Number(variant.inventory) < variant.reservedQuantity) || (action === "publish" && variants.some((variant) => !variant.sku.trim()))) throw new Error(t.variantsRequired);
+      if (action === "publish" && selectedImageIds.length === 0) throw new Error(t.variantsRequired);
+      const variantInput = variants.map((variant) => ({
+        name: variant.name.trim(), sku: variant.sku.trim() || null, price: variant.price === "" ? null : Number(variant.price), inventory: Number(variant.inventory), galleryMode: variant.galleryMode, allowBackOrder: variant.allowBackOrder, manuallyUnavailable: variant.manuallyUnavailable,
+        options: buildAssignments("VARIANT_OPTION", variant.options), imageIds: variant.imageIds,
+      }));
+      const productAttributes = buildAssignments("PRODUCT", attributes);
+      const categoriesToSave = [...new Set([categoryId, ...categoryIds].filter(Boolean))];
+      const tagNames = [...new Set(tagText.split(/[,،\n]/u).map((tag) => tag.trim()).filter(Boolean))];
+      const payload = productId ? {
+        trackInventory, gallerySettings: { version: 1 as const, productImageIds: selectedImageIds, colors: visibleColors }, basePrice: numberBasePrice, name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
+        variantUpdates: variants.filter((variant) => variant.id).map((variant) => ({ id: variant.id!, name: variant.name.trim(), sku: variant.sku.trim() || null, price: variant.price === "" ? null : Number(variant.price), ...(variant.inventory === loadedInventory[variant.id!] ? {} : { inventory: Number(variant.inventory) }), allowBackOrder: variant.allowBackOrder, manuallyUnavailable: variant.manuallyUnavailable, galleryMode: variant.galleryMode, options: variantInput[variants.indexOf(variant)]!.options, imageIds: variant.imageIds })),
+        newVariants: variantInput.filter((_, index) => !variants[index]?.id),
+        ...(action === "publish" ? { isActive: true } : action === "unpublish" ? { isActive: false } : {}),
+      } : {
+        trackInventory, gallerySettings: { version: 1 as const, productImageIds: selectedImageIds, colors: visibleColors }, basePrice: numberBasePrice, name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
+        variants: variantInput,
+      };
+      const response = await fetch(productId ? `/api/dashboard/retail/catalog/${productId}` : "/api/dashboard/retail/catalog", { method: productId ? "PATCH" : "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(friendlyError(data.error ?? "", locale, t.genericError, t.stockConflict, t.variantsRequired));
+      if (!productId) {
+        const createdId = data.product.id as string;
+        router.replace(`/${locale}/dashboard/retail-catalog/${createdId}`);
+        return;
+      }
+      const updated = data.product as ProductRecord;
+      setName(updated.name); setBrand(updated.brand ?? ""); setDescription(updated.description ?? "");
+      setBasePrice(updated.basePrice > 0 ? String(updated.basePrice) : "");
+      setCategoryId(updated.category.id);
+      setCategoryIds(updated.categoryIds ?? [updated.category.id]);
+      setTagText((updated.tags ?? []).map((tag) => tag.name).join(", "));
+      setAttributes(Object.fromEntries(updated.attributes.map((attribute) => [attribute.definitionId, String(attribute.value)])));
+      setSelectedImageIds(updated.imageIds);
+      setVariants(galleryEditor(updated, definitions).variants);
+      setColorGalleries(galleryEditor(updated, definitions).colors);
+      setSlug(updated.slug ?? "");
+      setSavedState(recordSnapshot(updated, definitions));
+      setPublished(updated.isActive);
+      setTrackInventory(updated.trackInventory);
+      setLoadedInventory(Object.fromEntries(updated.variants.map(v => [v.id, String(v.inventory)])));
+      setNotice(action === "publish" ? t.publishNotice : action === "unpublish" ? t.unpublishNotice : t.saved);
+      if (action === "publish") setPreview(false);
+      if (action === "unpublish") setPreview(true);
+      router.refresh();
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : t.genericError;
+      setError(message === "missing-category" ? t.category : message || t.genericError);
+    } finally { setSaving(false); }
   }
 
   const imageById = useMemo(() => new Map(images.map(image => [image.id, image])), [images]);
@@ -275,66 +454,6 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
   }
   const selectedImages = assignedImages(selectedImageIds);
 
-  function buildAssignments(scope: "PRODUCT" | "VARIANT_OPTION", values: Record<string, string>) {
-    return definitions.filter((definition) => definition.scope === scope && values[definition.id] !== undefined && values[definition.id] !== "").map((definition) => ({ definitionId: definition.id, value: valueFromInput(definition, values[definition.id]!) }));
-  }
-
-  async function saveProduct(action: "save" | "publish" | "unpublish") {
-    if (saving || fileBusy) return;
-    setSaving(true); setError(""); setNotice("");
-    try {
-      if (!categoryId) throw new Error("missing-category");
-      if (variants.some(v => !v.inventory.trim() || !Number.isInteger(Number(v.inventory)) || Number(v.inventory) < v.reservedQuantity || Number(v.inventory) > 1_000_000_000)) throw new Error(locale === "fa" ? "موجودی باید عدد صحیح بین صفر و یک میلیارد و حداقل برابر مقدار رزروشده باشد." : locale === "ar" ? "أدخل كمية صحيحة بين صفر ومليار لا تقل عن المحجوز." : "Inventory must be an integer from zero to one billion, and at least the reserved quantity.");
-      if ((!variants.length && (!productId || action === "publish")) || variants.some((variant) => !variant.name.trim() || !variant.price || !Number.isFinite(Number(variant.price)) || Number(variant.price) <= 0 || !Number.isInteger(Number(variant.inventory)) || Number(variant.inventory) < variant.reservedQuantity) || (action === "publish" && variants.some((variant) => !variant.sku.trim()))) throw new Error(t.variantsRequired);
-      if (action === "publish" && selectedImageIds.length === 0) throw new Error(t.variantsRequired);
-      const variantInput = variants.map((variant) => ({
-        name: variant.name.trim(), sku: variant.sku.trim() || null, price: Number(variant.price), inventory: Number(variant.inventory), galleryMode: variant.galleryMode, allowBackOrder: variant.allowBackOrder,
-        options: buildAssignments("VARIANT_OPTION", variant.options), imageIds: variant.imageIds,
-      }));
-      const productAttributes = buildAssignments("PRODUCT", attributes);
-      const categoriesToSave = [...new Set([categoryId, ...categoryIds].filter(Boolean))];
-      const tagNames = [...new Set(tagText.split(/[,،\n]/u).map((tag) => tag.trim()).filter(Boolean))];
-      const payload = productId ? {
-        trackInventory, gallerySettings: { version: 1 as const, productImageIds: selectedImageIds, colors: visibleColors }, name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
-        variantUpdates: variants.filter((variant) => variant.id).map((variant) => ({ id: variant.id!, name: variant.name.trim(), sku: variant.sku.trim() || null, price: Number(variant.price), ...(variant.inventory === loadedInventory[variant.id!] ? {} : { inventory: Number(variant.inventory) }), allowBackOrder: variant.allowBackOrder, galleryMode: variant.galleryMode, options: variantInput[variants.indexOf(variant)]!.options, imageIds: variant.imageIds })),
-        newVariants: variantInput.filter((_, index) => !variants[index]?.id),
-        ...(action === "publish" ? { isActive: true } : action === "unpublish" ? { isActive: false } : {}),
-      } : {
-        trackInventory, gallerySettings: { version: 1 as const, productImageIds: selectedImageIds, colors: visibleColors }, name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
-        variants: variantInput,
-      };
-      const response = await fetch(productId ? `/api/dashboard/retail/catalog/${productId}` : "/api/dashboard/retail/catalog", { method: productId ? "PATCH" : "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(friendlyError(data.error ?? "", locale, t.genericError, t.stockConflict, t.variantsRequired));
-      if (!productId) {
-        const createdId = data.product.id as string;
-        router.replace(`/${locale}/dashboard/retail-catalog/${createdId}`);
-        return;
-      }
-      const updated = data.product as ProductRecord;
-      setName(updated.name); setBrand(updated.brand ?? ""); setDescription(updated.description ?? "");
-      setCategoryId(updated.category.id); setCategoryIds(updated.categoryIds ?? [updated.category.id]);
-      setTagText((updated.tags ?? []).map((tag) => tag.name).join(", "));
-      setAttributes(Object.fromEntries(updated.attributes.map((attribute) => [attribute.definitionId, String(attribute.value)])));
-      setSelectedImageIds(updated.imageIds);
-      setVariants(galleryEditor(updated, definitions).variants);
-      setColorGalleries(galleryEditor(updated, definitions).colors);
-      setSlug(updated.slug ?? "");
-      setSavedState(recordSnapshot(updated, definitions));
-      setPublished(updated.isActive);
-      setTrackInventory(updated.trackInventory);
-      setLoadedInventory(Object.fromEntries(updated.variants.map(v => [v.id, String(v.inventory)])));
-      setNotice(action === "publish" ? t.publishNotice : action === "unpublish" ? t.unpublishNotice : t.saved);
-      if (action === "publish") setPreview(false);
-      if (action === "unpublish") setPreview(true);
-      router.refresh();
-    } catch (caught) {
-      const message = caught instanceof Error ? caught.message : t.genericError;
-      setError(message === "missing-category" ? t.category : message || t.genericError);
-    } finally { setSaving(false); }
-  }
-
-  const currency = locale === "en" ? "Toman" : "تومان";
   if (busy) return <main className="p-6" dir={rtl ? "rtl" : "ltr"}><p>{t.loading}</p></main>;
 
   return (
@@ -355,7 +474,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
             <h2 id="inventory-policy-title" className="font-semibold">{locale === "fa" ? "سیاست موجودی" : locale === "ar" ? "سياسة المخزون" : "Inventory policy"}</h2>
             <label className="flex min-h-11 items-center gap-3 text-sm font-medium"><input type="checkbox" checked={trackInventory} onChange={event => setTrackInventory(event.target.checked)} />{locale === "fa" ? "کنترل موجودی محصول" : locale === "ar" ? "تتبع مخزون المنتج" : "Track product inventory"}</label>
             <p role="status" className={`rounded-lg p-3 text-sm ${trackInventory ? "bg-emerald-50 text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-100" : "bg-amber-50 text-amber-950 dark:bg-amber-950/30 dark:text-amber-100"}`}>
-              {locale === "fa" ? (trackInventory ? "کنترل موجودی فعال است: خرید بر اساس موجودی هر گونه و مقدار رزروشده بررسی می‌شود. برای جلوگیری از فروش بیش از موجودی، پذیرش سفارش در نبود موجودی را برای گونه‌ها خاموش نگه دارید." : "کنترل موجودی خاموش است: فروش به تعداد ثبت‌شده محدود نمی‌شود و خرید موجودی را کم نمی‌کند. تعداد هر گونه همچنان قابل ویرایش است؛ عدد صفر به‌تنهایی فروش را متوقف نمی‌کند.") : locale === "ar" ? (trackInventory ? "يُفحص مخزون كل خيار والكمية المحجوزة. عطّل الطلب عند نفاد المخزون لمنع البيع الزائد." : "البيع غير محدود بالكميات المسجلة ولا ينقص المخزون. الصفر لا يوقف البيع.") : (trackInventory ? "Purchases check each variant’s stock and reservations. Keep back-ordering off to prevent overselling." : "Sales are not limited by recorded quantities and do not decrement stock. Zero does not stop sales.")}
+              {locale === "fa" ? (trackInventory ? "کنترل موجودی فعال است: خرید بر اساس موجودی هر گونه و مقدار رزروشده بررسی می‌شود. برای جلوگیری از فروش بیش از موجودی، پذیرش سفارش در نبود موجودی را برای گونه‌ها خاموش نگه دارید." : "کنترل موجودی خاموش است: فروش به تعداد ثبت‌شده محدود نمی‌شود و خرید موجودی را کم نمی‌کند. تعداد هر گونه همچنان قابل ویرایش است؛ عدد صفر به‌تنهایی فروش را متوقف نمی‌کند.") : locale === "ar" ? (trackInventory ? "يُفحص مخزون كل خيار والكمية المحجوزة. عطّل الطلب عند نفاد المخزون لمنع البيع الزائد." : "البيع غير محدود بالكميات المسجلة ولا ينقص المخزون. الصفر لا يوقف البيع.") : (trackInventory ? "Purchases check each variant's stock and reservations. Keep back-ordering off to prevent overselling." : "Sales are not limited by recorded quantities and do not decrement stock. Zero does not stop sales.")}
             </p>
             <p className="text-xs text-muted-foreground">{locale === "fa" ? "تغییر این گزینه تعداد موجودی را تغییر نمی‌دهد. فقط تعداد واقعی و تأییدشده هر گونه را وارد کنید؛ تغییرات پس از ذخیره اعمال می‌شوند." : locale === "ar" ? "تغيير السياسة لا يغير الكميات. أدخل الأعداد الفعلية؛ تُطبق التغييرات بعد الحفظ." : "Changing this policy does not change quantities. Enter confirmed counts; changes apply after saving."}</p>
           </section>
@@ -363,6 +482,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
             <label className="space-y-1.5 text-sm font-medium"><span>{t.name}</span><input required minLength={2} maxLength={200} value={name} onChange={(event) => setName(event.target.value)} className="w-full rounded-lg border bg-background px-3 py-2.5" /></label>
             <label className="space-y-1.5 text-sm font-medium"><span>{t.brand}</span><input maxLength={160} value={brand} onChange={(event) => setBrand(event.target.value)} className="w-full rounded-lg border bg-background px-3 py-2.5" /></label>
             <label className="space-y-1.5 text-sm font-medium"><span>{t.slug}</span><input maxLength={100} value={slug} onChange={(event) => setSlug(event.target.value)} className="w-full rounded-lg border bg-background px-3 py-2.5" /></label>
+            <label className="space-y-1.5 text-sm font-medium sm:col-span-2"><span>{t.basePriceLabel}</span><input required type="number" min="0.01" step="0.01" max="9999999999.99" value={basePrice} onChange={(event) => setBasePrice(event.target.value)} className="w-full rounded-lg border bg-background px-3 py-2.5" /><p className="text-xs text-muted-foreground">{t.basePriceHelp}</p></label>
             <label className="space-y-1.5 text-sm font-medium sm:col-span-2"><span>{t.description}</span><textarea maxLength={5000} rows={4} value={description} onChange={(event) => setDescription(event.target.value)} className="w-full rounded-lg border bg-background px-3 py-2.5" /></label>
             <label className="space-y-1.5 text-sm font-medium sm:col-span-2"><span>{t.category}</span><select required value={categoryId} onChange={(event) => { setCategoryId(event.target.value); setCategoryIds((current) => [...new Set([event.target.value, ...current].filter(Boolean))]); }} className="w-full rounded-lg border bg-background px-3 py-2.5"><option value="">{t.choose}</option>{categories.map((category) => <option key={category.id} value={category.id} disabled={!category.isActive}>{category.name}</option>)}</select></label>
             <fieldset className="space-y-2 sm:col-span-2"><legend className="text-sm font-medium">{t.categories}</legend><div className="grid gap-2 sm:grid-cols-2">{categories.filter((category) => category.isActive && category.id !== categoryId).map((category) => <label key={category.id} className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"><input type="checkbox" checked={categoryIds.includes(category.id)} onChange={() => setCategoryIds((current) => current.includes(category.id) ? current.filter((id) => id !== category.id) : [...current, category.id])} />{category.name}</label>)}</div></fieldset>
@@ -371,37 +491,228 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
           </section>
 
           <section className="space-y-5 rounded-xl border bg-card p-4">
-            <AssignedGallery locale={locale} title={locale === "fa" ? "گالری محصول" : "Product gallery"} description={locale === "fa" ? "فقط تصاویر همین محصول نمایش داده می‌شوند. تصویر نخست، تصویر اصلی است؛ انتخاب از کتابخانه فقط با تأیید شما انجام می‌شود." : "Assigned product images only. The first image is primary."} images={selectedImages} disabled={saving || fileBusy} onChange={setSelectedImageIds} onOpenLibrary={() => setPicker({ kind: "product" })} onUpload={files => uploadToGallery({ kind: "product" }, files)} />
-            {visibleColors.map(color => { const key = colorGroupKey(color.definitionId, color.value); return <div key={key} className="border-t pt-4"><AssignedGallery locale={locale} title={`${locale === "fa" ? "گالری رنگ" : "Color gallery"}: ${color.value}`} description={locale === "fa" ? "برای همه سایزهای این رنگ استفاده می‌شود؛ گالری‌های اختصاصی گونه‌ها حفظ می‌شوند. تغییرات پس از ذخیره اعمال می‌شوند." : "Shared across sizes of this color; variant overrides are preserved."} images={assignedImages(color.imageIds)} disabled={saving || fileBusy} onChange={ids => changeGallery({ kind: "color", key }, ids)} onOpenLibrary={() => setPicker({ kind: "color", key })} onUpload={files => uploadToGallery({ kind: "color", key }, files)} /></div>; })}
+            <AssignedGallery locale={locale} title={locale === "fa" ? "گالری محصول" : locale === "ar" ? "معرض المنتج" : "Product gallery"} description={locale === "fa" ? "فقط تصاویر همین محصول نمایش داده می‌شوند. تصویر نخست، تصویر اصلی است؛ انتخاب از کتابخانه فقط با تأیید شما انجام می‌شود." : locale === "ar" ? "تظهر صور هذا المنتج فقط. الصورة الأولى هي الرئيسية." : "Assigned product images only. The first image is primary."} images={selectedImages} disabled={saving || fileBusy} onChange={setSelectedImageIds} onOpenLibrary={() => setPicker({ kind: "product" })} onUpload={files => uploadToGallery({ kind: "product" }, files)} />
+            {visibleColors.map(color => { const key = colorGroupKey(color.definitionId, color.value); return <div key={key} className="border-t pt-4"><AssignedGallery locale={locale} title={`${locale === "fa" ? "گالری رنگ" : locale === "ar" ? "معرض اللون" : "Color gallery"}: ${color.value}`} description={locale === "fa" ? "برای همه سایزهای این رنگ استفاده می‌شود؛ گالری‌های اختصاصی گونه‌ها حفظ می‌شوند. تغییرات پس از ذخیره اعمال می‌شوند." : locale === "ar" ? "يُستخدم عبر جميع الأحجام. يتم الحفاظ على معارض الخيارات المخصصة." : "Shared across sizes of this color; variant overrides are preserved."} images={assignedImages(color.imageIds)} disabled={saving || fileBusy} onChange={ids => changeGallery({ kind: "color", key }, ids)} onOpenLibrary={() => setPicker({ kind: "color", key })} onUpload={files => uploadToGallery({ kind: "color", key }, files)} /></div>; })}
           </section>
+
           <section className="space-y-4 rounded-xl border bg-card p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold">{t.variant}</h2><p className="mt-1 text-xs text-muted-foreground">{t.variantsRequired}</p></div><button type="button" onClick={() => setVariants((current) => [...current, newVariant(definitions)])} className="rounded-lg border px-3 py-2 text-sm hover:bg-muted"><Plus className="me-1 inline size-4" />{t.addVariant}</button></div>
-            {optionDefinitions.length >= 2 && <div className="grid gap-3 rounded-lg bg-muted/30 p-3 sm:grid-cols-[1fr_1fr_auto]"><div className="sm:col-span-3"><h3 className="text-sm font-semibold">{t.matrix}</h3><p className="text-xs text-muted-foreground">{t.matrixHelp}</p></div><label className="space-y-1 text-xs font-medium"><span>{t.firstOption}</span><select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={matrixDefinitions[0]} onChange={(event) => setMatrixDefinitions([event.target.value, matrixDefinitions[1]])}><option value="">{t.choose}</option>{optionDefinitions.map((definition) => <option key={definition.id} value={definition.id}>{definition.label}</option>)}</select></label><label className="space-y-1 text-xs font-medium"><span>{t.secondOption}</span><select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={matrixDefinitions[1]} onChange={(event) => setMatrixDefinitions([matrixDefinitions[0], event.target.value])}><option value="">{t.choose}</option>{optionDefinitions.filter((definition) => definition.id !== matrixDefinitions[0]).map((definition) => <option key={definition.id} value={definition.id}>{definition.label}</option>)}</select></label><button type="button" disabled={!matrixDefinitions[0] || !matrixDefinitions[1]} onClick={generateVariantMatrix} className="self-end rounded-md border px-3 py-2 text-sm disabled:opacity-50">{t.generate}</button></div>}
-            <div className="space-y-4">{variants.map((variant, index) => <div key={variant.id ?? `new-${index}`} className="grid gap-3 rounded-lg border bg-muted/10 p-3 sm:grid-cols-2 xl:grid-cols-3">
-              <label className="space-y-1 text-xs font-medium"><span>{t.variantName}</span><input required maxLength={200} value={variant.name} onChange={(event) => updateVariant(index, { name: event.target.value })} className="w-full rounded-md border bg-background px-3 py-2 text-sm" /></label>
-              <label className="space-y-1 text-xs font-medium"><span>{t.sku}</span><input maxLength={100} value={variant.sku} onChange={(event) => updateVariant(index, { sku: event.target.value })} className="w-full rounded-md border bg-background px-3 py-2 text-sm" /></label>
-              <label className="space-y-1 text-xs font-medium"><span>{t.price}</span><input required type="number" min="0.01" step="0.01" value={variant.price} onChange={(event) => updateVariant(index, { price: event.target.value })} className="w-full rounded-md border bg-background px-3 py-2 text-sm" /></label>
-              <label className="space-y-1 text-xs font-medium"><span>{t.inventory}</span><input required type="number" min={variant.reservedQuantity} max={1_000_000_000} step="1" value={variant.inventory} onChange={(event) => updateVariant(index, { inventory: event.target.value })} className="w-full rounded-md border bg-background px-3 py-2 text-sm" /><small className="block text-muted-foreground">{t.reserved}: {variant.reservedQuantity}</small></label>
-              {optionDefinitions.map((definition) => <AttributeControl key={definition.id} definition={definition} locale={locale} value={variant.options[definition.id] ?? ""} onChange={(value) => updateVariant(index, { options: { ...variant.options, [definition.id]: value } })} />)}
-              <div className="space-y-2 sm:col-span-2 xl:col-span-3">
-                <label className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={variant.galleryMode === "OVERRIDE"} onChange={event => updateVariant(index, { galleryMode: event.target.checked ? "OVERRIDE" : "INHERIT", ...(event.target.checked ? { imageIds: [...(visibleColors.find(group => variant.options[group.definitionId] === group.value)?.imageIds.length ? visibleColors.find(group => variant.options[group.definitionId] === group.value)!.imageIds : selectedImageIds)] } : {}) })} />{locale === "fa" ? "گالری اختصاصی این گونه" : "Override gallery for this variant"}</label>
-                {variant.galleryMode === "OVERRIDE" ? <AssignedGallery locale={locale} title={`${t.variantImages}: ${variant.name || index + 1}`} images={assignedImages(variant.imageIds)} disabled={saving || fileBusy} onChange={ids => changeGallery({ kind: "variant", index }, ids)} onOpenLibrary={() => setPicker({ kind: "variant", index })} onUpload={files => uploadToGallery({ kind: "variant", index }, files)} /> : <p className="text-xs text-muted-foreground">{locale === "fa" ? "از گالری رنگ پیروی می‌کند؛ اگر رنگ گالری نداشته باشد، تصاویر محصول نمایش داده می‌شوند." : "Uses the color gallery, falling back to the product gallery."}</p>}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div><h2 className="font-semibold">{t.variant} ({variants.length})</h2><p className="mt-1 text-xs text-muted-foreground">{t.variantsRequired}</p></div>
+              <div className="flex flex-wrap items-center gap-2">
+                {variants.length > 1 && (
+                  <>
+                    <label className="text-xs font-medium">{t.groupBy}:</label>
+                    <select className="rounded-md border bg-background px-2 py-1 text-xs" value={groupDefinitionId} onChange={(event) => { setGroupDefinitionId(event.target.value); if (event.target.value) setExpandedGroups(new Set(groupedVariants.map((g) => g.key))); }}>
+                      <option value="">{t.choose}</option>
+                      {optionDefinitions.filter((d) => /colou?r|رنگ/i.test(`${d.key} ${d.label}`)).map((def) => <option key={def.id} value={def.id}>{def.label}</option>)}
+                    </select>
+                    <button type="button" onClick={expandAll} className="rounded-md border px-2 py-1 text-xs hover:bg-muted">{t.expandAll}</button>
+                    <button type="button" onClick={collapseAll} className="rounded-md border px-2 py-1 text-xs hover:bg-muted">{t.collapseAll}</button>
+                  </>
+                )}
+                <button type="button" onClick={() => setVariants((current) => [...current, newVariant(definitions)])} className="rounded-lg border px-3 py-2 text-sm hover:bg-muted"><Plus className="me-1 inline size-4" />{t.addVariant}</button>
               </div>
-              <label className="flex items-center gap-2 text-xs font-medium sm:col-span-2 xl:col-span-3"><input type="checkbox" checked={variant.allowBackOrder} disabled={!trackInventory} onChange={(event) => updateVariant(index, { allowBackOrder: event.target.checked })} />{t.backorder}</label>
-              {!variant.id && variants.length > 1 && <button className="justify-self-start rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/5" type="button" onClick={() => setVariants((current) => current.filter((_, currentIndex) => currentIndex !== index))}><Trash2 className="me-1 inline size-3.5" />{t.removeVariant}</button>}
-            </div>)}</div>
-            <p className="text-xs text-muted-foreground">{currency}</p>
+            </div>
+
+            {selectedVariantIds.size > 0 && (
+              <div className="flex items-center gap-2 rounded-lg bg-muted/30 px-3 py-2 text-sm">
+                <span>{selectedVariantIds.size} {t.variants} {locale === "fa" ? "انتخاب شد" : locale === "ar" ? "تم الاختيار" : "selected"}</span>
+                <button type="button" onClick={() => bulkSetUnavailable(false)} className="rounded-md border px-2 py-1 text-xs hover:bg-muted">{t.bulkSetAvailable}</button>
+                <button type="button" onClick={() => bulkSetUnavailable(true)} className="rounded-md border px-2 py-1 text-xs hover:bg-muted">{t.bulkSetUnavailable}</button>
+                <button type="button" onClick={() => setSelectedVariantIds(new Set())} className="rounded-md border px-2 py-1 text-xs hover:bg-muted">{t.clearSelection}</button>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {groupedVariants.map((group) => {
+                const isExpanded = expandedGroups.has(group.key) || group.key === "ungrouped";
+                return (
+                  <div key={group.key} className="rounded-lg border bg-muted/10">
+                    <div className="flex items-center justify-between p-3" onClick={() => group.key !== "ungrouped" && toggleExpanded(group.key)}>
+                      <div className="flex items-center gap-2">
+                        {group.key !== "ungrouped" && (
+                          <button type="button" onClick={() => toggleExpanded(group.key)} className="rounded p-1 hover:bg-muted">
+                            {isExpanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                          </button>
+                        )}
+                        <h3 className="text-sm font-medium">{group.label || (group.key === "ungrouped" ? "" : group.label)}</h3>
+                      </div>
+                      {group.key !== "ungrouped" && (
+                        <span className="text-xs text-muted-foreground">{group.variants.filter(v => v.id).length} {t.variantCount}</span>
+                      )}
+                    </div>
+                    {(isExpanded || group.key === "ungrouped") && (
+                      <div className="p-3">
+                        {group.variants.map((variant) => {
+                          const realIndex = variants.indexOf(variant);
+                          const effectivePrice = effectiveVariantPrice(variant, numberBasePrice ?? 0);
+                          return (
+                            <div key={variant.id ?? `new-${realIndex}`} className="grid gap-3 rounded-lg border bg-card p-3 sm:grid-cols-2 xl:grid-cols-4 lg:gap-3 mb-3 last:mb-0">
+                              <label className="space-y-1 text-xs font-medium">
+                                <span>{t.variantName}</span>
+                                <input required maxLength={200} value={variant.name} onChange={(event) => updateVariant(realIndex, { name: event.target.value })} className="w-full rounded-md border bg-background px-3 py-2 text-sm" />
+                              </label>
+                              <label className="space-y-1 text-xs font-medium">
+                                <span>{t.sku}</span>
+                                <input maxLength={100} value={variant.sku} onChange={(event) => updateVariant(realIndex, { sku: event.target.value })} className="w-full rounded-md border bg-background px-3 py-2 text-sm" />
+                              </label>
+                              <label className="space-y-1 text-xs font-medium xl:col-span-2">
+                                <span>{t.priceOverride}</span>
+                                <div className="flex items-center gap-2">
+                                  <input required type="number" min="0.01" step="0.01" max="9999999999.99" value={variant.price} onChange={(event) => updateVariant(realIndex, { price: event.target.value })} className="w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder={t.priceOverridePlaceholder} />
+                                  {variant.price === "" && numberBasePrice && (
+                                    <span className="text-xs text-muted-foreground">{t.priceInherit}: {Number(numberBasePrice).toLocaleString(locale)} {locale === "fa" ? "تومان" : "Toman"}</span>
+                                  )}
+                                  {variant.price !== "" && (
+                                    <button type="button" onClick={() => clearPriceOverride(realIndex)} className="rounded-md border px-2 py-1 text-xs hover:bg-muted">{t.clearPrice}</button>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">{t.effectivePrice}: <span className="font-semibold">{Number(effectivePrice).toLocaleString(locale)} {locale === "fa" ? "تومان" : "Toman"}</span></p>
+                              </label>
+                              <label className="space-y-1 text-xs font-medium">
+                                <span>{t.inventory}</span>
+                                <input required type="number" min={variant.reservedQuantity} max={1_000_000_000} step="1" value={variant.inventory} onChange={(event) => updateVariant(realIndex, { inventory: event.target.value })} className="w-full rounded-md border bg-background px-3 py-2 text-sm" /><small className="block text-muted-foreground">{t.reserved}: {variant.reservedQuantity}</small>
+                              </label>
+                              {optionDefinitions.map((definition) => <AttributeControl key={definition.id} definition={definition} locale={locale} value={variant.options[definition.id] ?? ""} onChange={(value) => updateVariant(realIndex, { options: { ...variant.options, [definition.id]: value } })} />)}
+                              <div className="space-y-2 sm:col-span-2 xl:col-span-2">
+                                <label className="flex min-h-10 items-center gap-2 text-sm">
+                                  <input type="checkbox" checked={variant.galleryMode === "OVERRIDE"} onChange={event => updateVariant(realIndex, { galleryMode: event.target.checked ? "OVERRIDE" : "INHERIT", ...(event.target.checked ? { imageIds: [...(visibleColors.find(group => variant.options[group.definitionId] === group.value)?.imageIds.length ? visibleColors.find(group => variant.options[group.definitionId] === group.value)!.imageIds : selectedImageIds)] } : {}) })} />
+                                  {locale === "fa" ? "گالری اختصاصی این گونه" : locale === "ar" ? "معرض مخصص هذا الخيار" : "Override gallery for this variant"}
+                                </label>
+                                {variant.galleryMode === "OVERRIDE" ? <AssignedGallery locale={locale} title={`${t.variantImages}: ${variant.name || realIndex + 1}`} images={assignedImages(variant.imageIds)} disabled={saving || fileBusy} onChange={ids => changeGallery({ kind: "variant", index: realIndex }, ids)} onOpenLibrary={() => setPicker({ kind: "variant", index: realIndex })} onUpload={files => uploadToGallery({ kind: "variant", index: realIndex }, files)} /> : <p className="text-xs text-muted-foreground">{locale === "fa" ? "از گالری رنگ پیروی می‌کند؛ اگر رنگ گالری نداشته باشد، تصاویر محصول نمایش داده می‌شوند." : locale === "ar" ? "يتبع معرض الألوان، ويتوفق على صور المنتج." : "Uses the color gallery, falling back to the product gallery."}</p>}
+                              </div>
+                              <div className="flex items-center justify-between rounded-md border bg-background/30 px-3 py-2 sm:col-span-2 xl:col-span-2">
+                                <label className="flex items-center gap-2 text-sm font-medium">
+                                  <input type="checkbox" checked={variant.allowBackOrder} disabled={!trackInventory} onChange={(event) => updateVariant(realIndex, { allowBackOrder: event.target.checked })} />{t.backorder}
+                                </label>
+                                <label className="flex items-center gap-2 text-sm font-medium">
+                                  <input type="checkbox" checked={variant.manuallyUnavailable} onChange={(event) => updateVariant(realIndex, { manuallyUnavailable: event.target.checked })} />{t.unavailable}
+                                </label>
+                              </div>
+                              {!variant.id && variants.length > 1 && (
+                                <button className="justify-self-start rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/5" type="button" onClick={() => deleteVariant(realIndex)}><Trash2 className="me-1 inline size-3.5" />{t.removeVariant}</button>
+                              )}
+                              {variant.id && (
+                                <label className="flex items-center gap-1 text-xs font-medium sm:col-span-2 xl:col-span-2">
+                                  <input type="checkbox" checked={selectedVariantIds.has(variant.id)} onChange={(event) => {
+                                    if (event.target.checked) setSelectedVariantIds(new Set([...selectedVariantIds, variant.id!]));
+                                    else setSelectedVariantIds(new Set([...selectedVariantIds].filter((id) => id !== variant.id!)));
+                                  }} />
+                                  <span>{variant.id.slice(-6)}</span>
+                                </label>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="text-xs text-muted-foreground">{numberBasePrice ? `${variants.reduce((sum, v) => sum + Number(effectiveVariantPrice(v, numberBasePrice)), 0).toLocaleString(locale)} ${locale === "fa" ? "تومان" : "Toman"}` : ""}</p>
+          </section>
+
+          <section className="rounded-xl border bg-card p-4">
+            <h2 className="font-semibold mb-2">{t.sizeRange}</h2>
+            <p className="text-xs text-muted-foreground mb-3">{t.sizeRangeHelp}</p>
+            {!optionDefinitions.filter(d => /size|سایز|مقاس/i.test(`${d.key} ${d.label}`)).length && <p className="text-sm text-muted-foreground">{t.noColorDef}</p>}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="space-y-1 text-xs font-medium">
+                <span>{t.colorDefinition}</span>
+                <select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={genColorDef} onChange={(event) => setGenColorDef(event.target.value)}>
+                  <option value="">{t.choose}</option>
+                  {optionDefinitions.filter(d => /colou?r|رنگ/i.test(`${d.key} ${d.label}`)).map(def => <option key={def.id} value={def.id}>{def.label}</option>)}
+                </select>
+              </label>
+              <label className="space-y-1 text-xs font-medium">
+                <span>{t.sizeDefinition}</span>
+                <select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={genSizeDef} onChange={(event) => setGenSizeDef(event.target.value)}>
+                  <option value="">{t.choose}</option>
+                  {optionDefinitions.filter(d => /size|سایز|مقاس/i.test(`${d.key} ${d.label}`)).map(def => <option key={def.id} value={def.id}>{def.label}</option>)}
+                </select>
+              </label>
+              <label className="space-y-1 text-xs font-medium">
+                <span>{locale === "fa" ? "حالت سایز" : locale === "ar" ? "نمط المقاس" : "Size mode"}</span>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setGenSizeMode("RANGE")} className={`rounded-md border px-3 py-1.5 text-xs ${genSizeMode === "RANGE" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>{t.halfSize} / {t.fullSize}</button>
+                  <button type="button" onClick={() => setGenSizeMode("STANDARD")} className={`rounded-md border px-3 py-1.5 text-xs ${genSizeMode === "STANDARD" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>{locale === "fa" ? "استاندارد" : locale === "ar" ? "معياري" : "Standard"}</button>
+                </div>
+              </label>
+              {genSizeMode === "RANGE" && (
+                <>
+                  <label className="space-y-1 text-xs font-medium">
+                    <span>{t.sizeStart}</span>
+                    <input type="number" min="1" max="999" step={genSizeStep} value={genSizeStart} onChange={(event) => setGenSizeStart(event.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm" />
+                  </label>
+                  <label className="space-y-1 text-xs font-medium">
+                    <span>{t.sizeEnd}</span>
+                    <input type="number" min="1" max="999" step={genSizeStep} value={genSizeEnd} onChange={(event) => setGenSizeEnd(event.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm" />
+                  </label>
+                  <label className="space-y-1 text-xs font-medium">
+                    <span>{t.sizeStep}</span>
+                    <select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={genSizeStep} onChange={(event) => setGenSizeStep(Number(event.target.value) as 0.5 | 1 | 2 | 3)}>
+                      <option value="0.5">{t.halfStepLabel}</option>
+                      <option value="1">{t.singleStepLabel}</option>
+                      <option value="2">{t.doubleStepLabel}</option>
+                      <option value="3">{t.tripleStepLabel}</option>
+                    </select>
+                  </label>
+                </>
+              )}
+              {genSizeMode === "STANDARD" && (
+                <label className="space-y-1 text-xs font-medium sm:col-span-2">
+                  <span>{locale === "fa" ? "اندازه‌های استاندارد (با کاما جدا کنید)" : locale === "ar" ? "أحجام قياسية (مفصولة بفاصلة)" : "Standard sizes (comma-separated)"}</span>
+                  <input className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={genStandardSizes} onChange={(event) => setGenStandardSizes(event.target.value)} placeholder={locale === "fa" ? "مثال: 38, 39, 40, 41" : "e.g. 38, 39, 40, 41"} />
+                </label>
+              )}
+              <label className="space-y-1 text-xs font-medium">
+                <span>{t.priceOverride}</span>
+                <input type="number" min="0" value={genPrice} onChange={(event) => setGenPrice(event.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder={t.priceOverridePlaceholder} />
+              </label>
+              <label className="space-y-1 text-xs font-medium">
+                <span>{t.variantOptions}</span>
+                <input className="w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder={t.choose} value={genColors} onChange={(event) => setGenColors(event.target.value)} />
+              </label>
+              <label className="space-y-1 text-xs font-medium">
+                <span>{t.inventory}</span>
+                <input type="number" min="0" max="1000000000" value={genInventory} onChange={(event) => setGenInventory(event.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm" />
+              </label>
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" checked={genBackOrder} onChange={(event) => setGenBackOrder(event.target.checked)} />{t.backorder}
+              </label>
+              {genSizeMode === "STANDARD" && (
+                <label className="space-y-1 text-xs font-medium sm:col-span-2">
+                  <span>{locale === "fa" ? "اندازه‌های استاندارد (با کاما جدا کنید)" : locale === "ar" ? "أحجام قياسية (مفصولة بفاصلة)" : "Standard sizes (comma-separated)"}</span>
+                  <input className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={genStandardSizes} onChange={(event) => setGenStandardSizes(event.target.value)} placeholder={locale === "fa" ? "مثال: 38, 39, 40, 41" : "e.g. 38, 39, 40, 41"} />
+                </label>
+              )}
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button type="button" onClick={previewVariantGeneration} disabled={genBusy || !genColorDef || !genSizeDef} className="rounded-md border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50">{t.previewGeneration}</button>
+              {genPreview && genPreview.canCreate > 0 && (
+                <button type="button" onClick={generateVariants} disabled={genBusy} className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-50">{genBusy ? t.generating : t.generateVariants}</button>
+              )}
+            </div>
+            {genPreview && (
+              <div className="mt-3 rounded-lg border bg-muted/30 p-3 text-xs">
+                <div className="flex justify-between"><span>{t.existingVariants}</span><span>{genPreview.existing}</span></div>
+                <div className="flex justify-between"><span>{t.variantsToCreate}</span><span className="font-semibold">{genPreview.canCreate}</span></div>
+                {genPreview.errors.length > 0 && <div className="mt-2 text-destructive">{genPreview.errors.map((err, i) => <p key={i}>{err}</p>)}</div>}
+              </div>
+            )}
           </section>
 
           <div className="flex flex-wrap gap-2">
-            <button disabled={saving || fileBusy || !name.trim()} type="button" onClick={() => void saveProduct("save")} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Save className="me-2 inline size-4" />{saving ? t.deleting : productId ? t.saveChanges : t.save}</button>
+            <button disabled={saving || fileBusy || !name.trim() || !numberBasePrice} type="button" onClick={() => void saveProduct("save")} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Save className="me-2 inline size-4" />{saving ? t.deleting : productId ? t.saveChanges : t.save}</button>
             <button type="button" onClick={() => setPreview((current) => !current)} className="rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-muted"><Eye className="me-2 inline size-4" />{preview ? t.closePreview : t.preview}</button>
             {productId && !published && <button disabled={saving || fileBusy} type="button" onClick={() => void saveProduct("publish")} className="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">{t.publish}</button>}
             {productId && published && <button disabled={saving || fileBusy} type="button" onClick={() => void saveProduct("unpublish")} className="rounded-lg border border-amber-500/50 px-4 py-2.5 text-sm font-semibold text-amber-800 hover:bg-amber-50 dark:text-amber-200">{t.unpublish}</button>}
           </div>
         </fieldset>
 
-        {preview && <aside className="sticky top-4 overflow-hidden rounded-xl border bg-card shadow-sm"><div className="border-b bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">{t.previewBanner}</div>{selectedImages[0] ? <Image src={selectedImages[0].url} alt="" width={640} height={480} unoptimized className="aspect-[4/3] w-full object-cover" /> : <div className="grid aspect-[4/3] place-items-center bg-muted text-sm text-muted-foreground">{t.noImage}</div>}<div className="space-y-3 p-4"><h2 className="text-lg font-semibold">{name || t.titleNew}</h2><p className="whitespace-pre-wrap text-sm text-muted-foreground">{description}</p>{attributes && <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">{productAttributeDefinitions.filter((definition) => attributes[definition.id]).map((definition) => <div key={definition.id}><dt className="text-xs text-muted-foreground">{definition.label}</dt><dd>{attributes[definition.id]}{definition.displayUnit ? ` ${definition.displayUnit}` : ""}</dd></div>)}</dl>}<div className="divide-y rounded-lg border">{variants.map((variant, index) => <div key={variant.id ?? index} className="flex items-center justify-between gap-2 p-3 text-sm"><span>{variant.name || `${t.variant} ${index + 1}`}{Object.entries(variant.options).filter(([, value]) => value).map(([id, value]) => <small key={id} className="ms-2 text-muted-foreground">{optionDefinitions.find((definition) => definition.id === id)?.label}: {value}</small>)}</span><span className="font-semibold">{Number(variant.price || 0).toLocaleString(locale)} {currency}</span></div>)}</div><button disabled className="w-full rounded-lg bg-muted px-4 py-2 text-sm text-muted-foreground" type="button">{t.previewBanner}</button></div></aside>}
+        {preview && <aside className="sticky top-4 overflow-hidden rounded-xl border bg-card shadow-sm"><div className="border-b bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">{t.previewBanner}</div>{selectedImages[0] ? <Image src={selectedImages[0].url} alt="" width={640} height={480} unoptimized className="aspect-[4/3] w-full object-cover" /> : <div className="grid aspect-[4/3] place-items-center bg-muted text-sm text-muted-foreground">{t.noImage}</div>}<div className="space-y-3 p-4"><h2 className="text-lg font-semibold">{name || t.titleNew}</h2><p className="whitespace-pre-wrap text-sm text-muted-foreground">{description}</p>{attributes && <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">{productAttributeDefinitions.filter((definition) => attributes[definition.id]).map((definition) => <div key={definition.id}><dt className="text-xs text-muted-foreground">{definition.label}</dt><dd>{attributes[definition.id]}{definition.displayUnit ? ` ${definition.displayUnit}` : ""}</dd></div>)}</dl>}<div className="divide-y rounded-lg border">{variants.map((variant, index) => <div key={variant.id ?? index} className="flex items-center justify-between gap-2 p-3 text-sm"><span>{variant.name || `${t.variant} ${index + 1}`}{Object.entries(variant.options).filter(([, value]) => value).map(([id, value]) => <small key={id} className="ms-2 text-muted-foreground">{optionDefinitions.find((definition) => definition.id === id)?.label}: {value}</small>)}</span><span className="font-semibold">{Number(effectiveVariantPrice(variant, numberBasePrice ?? 0)).toLocaleString(locale)} {locale === "fa" ? "تومان" : "Toman"}</span></div>)}</div><button disabled className="w-full rounded-lg bg-muted px-4 py-2 text-sm text-muted-foreground" type="button">{t.previewBanner}</button></div></aside>}
       </div>
       {picker && <RetailMediaPicker locale={locale} open onOpenChange={open => { if (!open) setPicker(null); }} selectedIds={galleryIds(picker)} disabled={saving || fileBusy} onConfirm={(ids, media) => { setImages(current => [...new Map([...current, ...media].map(image => [image.id, image])).values()]); changeGallery(picker, ids); }} />}
     </main>

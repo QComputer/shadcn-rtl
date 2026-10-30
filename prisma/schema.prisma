@@ -2414,6 +2414,10 @@ model ProductVariant {
   reservedQuantity Int     @default(0)
   allowBackOrder   Boolean @default(false)
 
+  // Sales availability: independently tracks whether a variant can be purchased.
+  // When true, the variant is not purchasable regardless of inventory tracking mode.
+  manuallyUnavailable Boolean @default(false)
+
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 

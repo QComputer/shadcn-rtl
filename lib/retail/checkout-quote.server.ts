@@ -45,7 +45,7 @@ export async function quoteInTransaction(tx: Tx, organization: { id: string; slu
   for (const line of cart.items) {
     const variant = line.variant; const product = variant.product;
     let reason: string | null = null;
-    if (line.quantity < 1 || !product.isActive || product.deletedAt || variant.deletedAt || product.organizationId !== organization.id || product.organizationSlug !== organization.slug) reason = "unavailable";
+    if (line.quantity < 1 || !product.isActive || product.deletedAt || variant.deletedAt || product.organizationId !== organization.id || product.organizationSlug !== organization.slug || variant.manuallyUnavailable) reason = "unavailable";
     const category = reason ? null : await tx.productCategory.findFirst({ where: { id: product.categoryId, organizationId: organization.id, isActive: true, deletedAt: null }, select: { id: true } });
     if (!reason && !category) reason = "unavailable";
     const price = unitPrice(product, variant.price);
@@ -55,7 +55,7 @@ export async function quoteInTransaction(tx: Tx, organization: { id: string; slu
     if (!orderable) hasUnorderable = true;
     subtotal = subtotal.add(price.mul(line.quantity));
     items.push({ id: line.id, variantId: variant.id, quantity: line.quantity, unitPrice: price.toNumber(), lineTotal: price.mul(line.quantity).toNumber(), orderable, reason });
-    facts.push([line.id, variant.id, line.quantity, price.toString(), product.trackInventory, variant.inventory, variant.reservedQuantity, variant.allowBackOrder, reason]);
+    facts.push([line.id, variant.id, line.quantity, price.toString(), product.trackInventory, variant.inventory, variant.reservedQuantity, variant.allowBackOrder, variant.manuallyUnavailable, reason]);
   }
   const settings = await tx.organizationSettings.findUnique({ where: { organizationSlug: organization.slug }, select: { deliveryFee: true, enablePickup: true, enableDelivery: true, settings: true, organization: {select: {address: true, phone: true}} } });
   const fulfillmentInfo = {...readFulfillmentDetails(settings?.settings), contact: settings?.organization.phone ?? null};

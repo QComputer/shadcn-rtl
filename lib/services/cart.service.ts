@@ -35,8 +35,8 @@ const cartInclude = {
               discountType: true,
               discountValue: true,
             },
-          },
-          optionValues: { select: { valueText: true, valueNumber: true, valueBoolean: true, definition: { select: { organizationId: true, key: true, label: true, valueType: true, displayUnit: true, isActive: true, scope: true } } } },
+           },
+           optionValues: { select: { valueText: true, valueNumber: true, valueBoolean: true, definition: { select: { organizationId: true, key: true, label: true, valueType: true, displayUnit: true, isActive: true, scope: true } } } },
           galleryImages: { orderBy: { sortOrder: "asc" }, select: { image: { select: { url: true, organizationId: true, access: true } } } },
         },
       },
@@ -116,9 +116,10 @@ function normalizeCart(cart: NormalizedCartSource | null) {
     const orderable = item.variant.product.organizationSlug === cart.organizationSlug &&
       item.variant.product.category.organizationId === item.variant.product.organizationId && item.variant.product.category.isActive && !item.variant.product.category.deletedAt &&
       item.variant.product.isActive && !item.variant.product.deletedAt && !item.variant.deletedAt &&
+      !item.variant.manuallyUnavailable &&
       (!item.variant.product.trackInventory || item.variant.allowBackOrder || item.variant.inventory - item.variant.reservedQuantity >= item.quantity);
     const reason = !item.variant.product.isActive || item.variant.product.deletedAt || item.variant.deletedAt || item.variant.product.organizationSlug !== cart.organizationSlug ||
-      !item.variant.product.category.isActive || item.variant.product.category.deletedAt || item.variant.product.category.organizationId !== item.variant.product.organizationId ? "unavailable" : orderable ? null : "insufficient_stock";
+      !item.variant.product.category.isActive || item.variant.product.category.deletedAt || item.variant.product.category.organizationId !== item.variant.product.organizationId ? "unavailable" : item.variant.manuallyUnavailable ? "unavailable" : orderable ? null : "insufficient_stock";
     const maxQuantity = !item.variant.product.trackInventory || item.variant.allowBackOrder ? null : Math.max(0, item.variant.inventory - item.variant.reservedQuantity);
     return { ...item, unitPrice: price.toNumber(), availability: { orderable, maxQuantity, reason }, variant: { ...variant, media: { image: variantGallery[0] ?? primary, gallery: variantGallery.length ? variantGallery : productGallery }, product, options } };
   });
@@ -245,6 +246,7 @@ export class CartService {
       where: {
         id: data.variantId,
         deletedAt: null,
+        manuallyUnavailable: false,
         product: {
           deletedAt: null,
           isActive: true,
@@ -353,6 +355,10 @@ export class CartService {
 
     ensureCartOwner(cartItem.cart, customerId, sessionId);
     if (organizationSlug && cartItem.cart.organizationSlug !== organizationSlug) throw new ApiError(404, "Cart item not found.");
+
+    if (cartItem.variant.manuallyUnavailable) {
+      throw new ApiError(409, "This variant is no longer available for purchase.");
+    }
 
     if (
       cartItem.variant.product.trackInventory &&
@@ -526,6 +532,7 @@ export class CartService {
           where: {
             id: item.variantId,
             deletedAt: null,
+            manuallyUnavailable: false,
             product: {
               deletedAt: null,
               isActive: true,

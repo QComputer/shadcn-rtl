@@ -13,11 +13,13 @@ export function optionDimensions(product: RetailProduct) {
   const options = product.variants.flatMap((variant) => variant.options);
   const unique = new Map(options.map((option) => [option.key, option]));
   const values = [...unique.values()];
-  const find = (kind: "color" | "size") => values.find((option) => {
-    const key = normalizedKey(`${option.key}${option.label}`);
-    return kind === "color" ? /colou?r|رنگ/.test(key) : /size|shoe|footwear|اندازه|سایز|شماره/.test(key);
-  })?.key;
-  return { color: find("color"), size: find("size") };
+  const findAll = (kind: "color" | "size") => values
+    .filter((option) => {
+      const key = normalizedKey(`${option.key}${option.label}`);
+      return kind === "color" ? /colou?r|رنگ/.test(key) : /size|shoe|footwear|اندازه|سایز|شماره/.test(key);
+    })
+    .map((option) => option.key);
+  return { color: findAll("color"), size: findAll("size") };
 }
 
 export function preferredVariant(product: RetailProduct): RetailVariant | undefined {

@@ -16,9 +16,24 @@ export interface CanonicalDimension {
   label: string;
 }
 
-const dimensionCategory = (normalized: string): "color" | "size" | null => {
-  if (/colou?r|رنگ/.test(normalized)) return "color";
-  if (/size|shoe|footwear|اندازه|سایز|شماره/.test(normalized)) return "size";
+const dimensionCategory = (normalized: string, originalKey: string): "color" | "size" | null => {
+  const keyLower = originalKey.toLocaleLowerCase("fa");
+
+  // Exact whole-word keyword match on the raw option key prevents false positives
+  // like "shoe_material" being classified as a size dimension.
+  if (/\b(size|shoe|footwear|اندازه|سایز)\b/.test(keyLower)) return "size";
+  if (/شماره/.test(keyLower)) return "size";
+
+  // Whole-word color keyword match on the raw key prevents compound attributes
+  // like "body_color" and "lace_color" from being classified as color.
+  if (/\bcolou?r/.test(keyLower)) return "color";
+  if (/رنگ/.test(keyLower)) return "color";
+
+  // Fall back to normalized key+label detection for compound size cases.
+  // "shoe" and "footwear" are intentionally excluded here — they are handled
+  // by the whole-word check above to avoid matching "shoe_material" etc.
+  if (/size|اندازه|سایز|شماره/.test(normalized)) return "size";
+
   return null;
 };
 
@@ -31,7 +46,7 @@ export function canonicalDimensions(product: RetailProduct): CanonicalDimension[
   const groups = new Map<string, { keys: string[]; label: string }>();
 
   for (const option of values) {
-    const category = dimensionCategory(normalizedKey(`${option.key}${option.label}`));
+    const category = dimensionCategory(normalizedKey(`${option.key}${option.label}`), option.key);
     if (!category) continue;
 
     if (!groups.has(category)) {

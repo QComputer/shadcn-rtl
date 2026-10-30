@@ -12,6 +12,7 @@ import {
   type RetailProduct,
   type RetailVariant,
 } from "@/lib/retail/variant-selection";
+import { exactProductVariant } from "@/lib/retail/product-detail";
 
 function option(key: string, label: string, value: string) {
   return { key, label, valueType: "TEXT" as const, value, displayUnit: null, filterable: false };
@@ -156,6 +157,98 @@ describe("retail variant selection", () => {
     // Simulate repeated size selection — canonical dimensions don't change
     const dimsAfter = canonicalDimensions(catalogProduct);
     assert.equal(dimsAfter.length, initialCount, "selector count stable across size changes");
+  });
+
+  it("does not classify unrelated attributes like shoe_material as size", () => {
+    const materialVariant = (id: string, material: string, size: string): PublicCatalogVariant => ({
+      id,
+      name: `${material} · ${size}`,
+      price: { amount: 2500, currency: "TOMAN" },
+      listPrice: null,
+      orderable: true,
+      sku: `${material}-${size}`,
+      options: [
+        option("material", "Material", material),
+        option("shoe_material", "Shoe Material", material),
+        option("size", "Size", size),
+      ],
+    });
+
+    const catalogProduct = product([
+      materialVariant("leather-s", "Leather", "S"),
+      materialVariant("canvas-m", "Canvas", "M"),
+    ]);
+
+    const dims = canonicalDimensions(catalogProduct);
+    const sizeDims = dims.filter((d) => d.id === "size");
+    assert.equal(sizeDims.length, 1, "exactly one size dimension");
+    assert.equal(sizeDims[0].keys.length, 1, "only the true size key is included");
+    assert.deepEqual(sizeDims[0].keys, ["size"], "shoe_material is excluded from size dimension");
+
+    const colorDims = dims.filter((d) => d.id === "color");
+    assert.equal(colorDims.length, 0, "material is not classified as color either");
+  });
+
+  it("does not merge independent color attributes like body_color and lace_color", () => {
+    const twoColorVariant = (id: string, bodyColor: string, laceColor: string): PublicCatalogVariant => ({
+      id,
+      name: `${bodyColor} · ${laceColor}`,
+      price: { amount: 2500, currency: "TOMAN" },
+      listPrice: null,
+      orderable: true,
+      sku: `${bodyColor}-${laceColor}`,
+      options: [
+        option("body_color", "Body Color", bodyColor),
+        option("lace_color", "Lace Color", laceColor),
+      ],
+    });
+
+    const catalogProduct = product([
+      twoColorVariant("red-black", "Red", "Black"),
+      twoColorVariant("blue-black", "Blue", "Black"),
+    ]);
+
+    const dims = canonicalDimensions(catalogProduct);
+    const colorDims = dims.filter((d) => d.id === "color");
+    assert.equal(colorDims.length, 0, "body_color and lace_color are not grouped as one color dimension");
+  });
+
+  it("exactProductVariant does not resolve with incomplete dimension selection", () => {
+    const catalogProduct = product([
+      variant("red-s", "Red", "S", true),
+      variant("red-m", "Red", "M", true),
+      variant("blue-s", "Blue", "S", true),
+      variant("blue-m", "Blue", "M", true),
+    ]);
+
+    // Only color selected, no size — multiple variants match, should return undefined
+    assert.equal(exactProductVariant(catalogProduct, { color: "Red" }), undefined);
+    assert.equal(exactProductVariant(catalogProduct, { color: "Blue" }), undefined);
+
+    // Only size selected, no color — multiple variants match, should return undefined
+    assert.equal(exactProductVariant(catalogProduct, { size: "S" }), undefined);
+    assert.equal(exactProductVariant(catalogProduct, { size: "M" }), undefined);
+
+    // Empty selection — should not resolve to any specific variant
+    assert.equal(exactProductVariant(catalogProduct, {}), undefined);
+  });
+
+  it("exactProductVariant resolves only when all selected dimensions match exactly", () => {
+    const catalogProduct = product([
+      variant("red-s", "Red", "S", true),
+      variant("red-m", "Red", "M", true),
+      variant("blue-s", "Blue", "S", false),
+      variant("blue-m", "Blue", "M", true),
+    ]);
+
+    // Full valid selection resolves to the exact variant
+    assert.equal(exactProductVariant(catalogProduct, { color: "Red", size: "S" })?.id, "red-s");
+    assert.equal(exactProductVariant(catalogProduct, { color: "Red", size: "M" })?.id, "red-m");
+    assert.equal(exactProductVariant(catalogProduct, { color: "Blue", size: "M" })?.id, "blue-m");
+
+    // Nonexistent combination returns undefined, never substitutes
+    assert.equal(exactProductVariant(catalogProduct, { color: "Red", size: "L" }), undefined);
+    assert.equal(exactProductVariant(catalogProduct, { color: "Green", size: "S" }), undefined);
   });
 
   it("keeps the selected size compatible when changing color, including a valid out-of-stock pair", () => {

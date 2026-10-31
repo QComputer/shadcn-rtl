@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { getPlatformHost } from "@/lib/deployment-context";
 import { isReservedOrganizationSlug } from "@/lib/organization-slugs";
 
 export const customDomainLocales = ["fa", "en", "ar"] as const;
@@ -90,7 +91,8 @@ export function getPlatformHosts() {
     process.env.NEXT_PUBLIC_APP_URL,
     process.env.NEXT_PUBLIC_DEPLOYED_APP_URL,
     process.env.NEXTAUTH_URL,
-    process.env.VERCEL_URL,
+    process.env.NEXT_PUBLIC_DEPLOYED_APP_URL,
+    getPlatformHost(),
     process.env.CUSTOM_DOMAIN_PLATFORM_HOSTS,
     process.env.BAZAR_BAZ_PLATFORM_HOSTS,
   ]) {

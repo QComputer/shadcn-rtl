@@ -6,18 +6,18 @@ import { prisma } from "@/lib/db";
 import { requireSuperAdmin, vercelShopDomainActionSchema } from "@/lib/shop-domain-admin";
 import { hasOrganizationCapability } from "@/lib/organization-capabilities";
 import {
-  addProjectDomainToVercel,
-  removeProjectDomainFromVercel,
-  verifyProjectDomainOnVercel,
-  type VercelDomainAutomationResult,
-} from "@/lib/vercel-domain-automation";
+  addProjectDomain,
+  removeProjectDomain,
+  verifyProjectDomain,
+  domainUpdateFromResult,
+} from "@/lib/domain-automation.server";
 
 function parseError(error: unknown) {
   if (error instanceof z.ZodError) {
     return NextResponse.json({ error: "Validation error", details: error.issues }, { status: 400 });
   }
 
-  return jsonError(error, "Failed to sync shop domain with Vercel");
+  return jsonError(error, "Failed to sync shop domain with provider");
 }
 
 function getClientMeta(request: NextRequest) {
@@ -27,28 +27,10 @@ function getClientMeta(request: NextRequest) {
   };
 }
 
-function domainUpdateFromVercelResult(result: VercelDomainAutomationResult) {
-  if (result.dryRun) {
-    return {
-      lastCheckedAt: new Date(),
-      failureReason: result.message,
-    };
-  }
-
-  return {
-    vercelProjectDomainId: result.action === "remove" ? null : result.projectId || null,
-    verificationToken: result.action === "remove" ? null : result.verificationToken || null,
-    status: result.status,
-    verifiedAt: result.verified ? new Date() : null,
-    lastCheckedAt: new Date(),
-    failureReason: result.ok ? null : result.message,
-  };
-}
-
-async function runVercelAction(action: "add" | "check" | "remove", domain: string) {
-  if (action === "add") return addProjectDomainToVercel(domain);
-  if (action === "check") return verifyProjectDomainOnVercel(domain);
-  return removeProjectDomainFromVercel(domain);
+async function runDomainAction(action: "add" | "check" | "remove", domain: string) {
+  if (action === "add") return addProjectDomain(domain);
+  if (action === "check") return verifyProjectDomain(domain);
+  return removeProjectDomain(domain);
 }
 
 export async function POST(
@@ -87,10 +69,10 @@ export async function POST(
       throw new ApiError(400, "Only shop domains can be synced with Vercel from this tool");
     }
 
-    const vercel = await runVercelAction(body.action, existing.normalizedDomain);
+    const domainAutomation = await runDomainAction(body.action, existing.normalizedDomain);
     const domain = await prisma.organizationDomain.update({
       where: { id: existing.id },
-      data: domainUpdateFromVercelResult(vercel),
+      data: domainUpdateFromResult(domainAutomation),
       include: {
         organization: {
           select: {
@@ -108,14 +90,14 @@ export async function POST(
       action: body.action === "remove" ? "DELETE" : "UPDATE",
       entityType: "OrganizationDomain",
       entityId: domain.id,
-      description: `Vercel domain ${body.action} requested for ${domain.normalizedDomain}.`,
-      newValue: { action: body.action, vercel },
+      description: `Domain ${body.action} requested for ${domain.normalizedDomain}.`,
+      newValue: { action: body.action, domainAutomation },
       userId: session.user.id,
       organizationId: domain.organizationId,
       ...getClientMeta(request),
     });
 
-    return NextResponse.json({ domain, vercel });
+    return NextResponse.json({ domain, domainAutomation });
   } catch (error) {
     return parseError(error);
   }

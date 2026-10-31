@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/lib/audit-log";
-import { addProjectDomainToVercel, getVercelDomainAutomationState, type VercelDomainAutomationResult } from "@/lib/vercel-domain-automation";
+import { addProjectDomain, getDomainAutomationState, domainUpdateFromResult, type DomainAutomationResult } from "@/lib/domain-automation.server";
 import { ApiError, jsonError, requireAuthSession } from "@/lib/api-guards";
 import {
   createShopDomainSchema,
@@ -62,24 +62,6 @@ async function assertDomainAvailable(normalizedDomain: string, currentDomainId?:
   }
 }
 
-function domainUpdateFromVercelResult(result: VercelDomainAutomationResult) {
-  if (result.dryRun) {
-    return {
-      lastCheckedAt: new Date(),
-      failureReason: result.message,
-    };
-  }
-
-  return {
-    vercelProjectDomainId: result.projectId || null,
-    verificationToken: result.verificationToken || null,
-    status: result.status,
-    verifiedAt: result.verified ? new Date() : null,
-    lastCheckedAt: new Date(),
-    failureReason: result.ok ? null : result.message,
-  };
-}
-
 export async function GET() {
   try {
     const session = await requireAuthSession();
@@ -125,7 +107,7 @@ export async function GET() {
       }),
     ]);
 
-    return NextResponse.json({ shops, domains, vercelAutomation: getVercelDomainAutomationState() });
+    return NextResponse.json({ shops, domains, domainAutomation: getDomainAutomationState() });
   } catch (error) {
     return jsonError(error, "Failed to load shop domains");
   }
@@ -178,13 +160,13 @@ export async function POST(request: NextRequest) {
     });
 
     let nextDomain = domain;
-    let vercel: VercelDomainAutomationResult | null = null;
+    let domainAutomation: DomainAutomationResult | null = null;
 
     if (body.provisionOnVercel) {
-      vercel = await addProjectDomainToVercel(normalizedDomain);
+      domainAutomation = await addProjectDomain(normalizedDomain);
       nextDomain = await prisma.organizationDomain.update({
         where: { id: domain.id },
-        data: domainUpdateFromVercelResult(vercel),
+        data: domainUpdateFromResult(domainAutomation),
         include: {
           organization: {
             select: {
@@ -204,15 +186,15 @@ export async function POST(request: NextRequest) {
       entityType: "OrganizationDomain",
       entityId: nextDomain.id,
       description: body.provisionOnVercel
-        ? `Connected shop domain ${normalizedDomain} and requested Vercel provisioning.`
+        ? `Connected shop domain ${normalizedDomain} and requested domain provisioning.`
         : `Connected shop domain ${normalizedDomain}.`,
-      newValue: { domain: normalizedDomain, organizationId: body.organizationId, provisionOnVercel: body.provisionOnVercel, vercel },
+      newValue: { domain: normalizedDomain, organizationId: body.organizationId, provisionOnVercel: body.provisionOnVercel, domainAutomation },
       userId: session.user.id,
       organizationId: body.organizationId,
       ...getClientMeta(request),
     });
 
-    return NextResponse.json({ domain: nextDomain, vercel }, { status: 201 });
+    return NextResponse.json({ domain: nextDomain, domainAutomation }, { status: 201 });
   } catch (error) {
     return parseError(error);
   }

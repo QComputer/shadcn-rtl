@@ -68,7 +68,7 @@ type ShopDomain = {
 type ShopDomainPayload = {
   shops: ShopSummary[];
   domains: ShopDomain[];
-  vercelAutomation: {
+  domainAutomation: {
     configured: boolean;
     dryRun: boolean;
     projectConfigured: boolean;
@@ -76,14 +76,14 @@ type ShopDomainPayload = {
   };
 };
 
-type VercelDnsRecord = {
+type DomainDnsRecord = {
   type: string;
   name: string;
   value: string;
   purpose: string;
 };
 
-type VercelAutomationResult = {
+type DomainAutomationResult = {
   ok: boolean;
   dryRun: boolean;
   action: "add" | "check" | "remove";
@@ -91,7 +91,7 @@ type VercelAutomationResult = {
   verified: boolean;
   status: DomainStatus;
   message: string;
-  dnsRecords: VercelDnsRecord[];
+  dnsRecords: DomainDnsRecord[];
 };
 
 type Copy = {
@@ -183,15 +183,15 @@ const copyByLocale = {
     remove: "حذف",
     save: "ذخیره",
     dnsHint: "دامنه‌های فعال فقط وقتی مسیر سفارشی را سرو می‌کنند که وضعیت آن‌ها ACTIVE باشد.",
-    automationHint: "اتوماسیون Vercel می‌تواند دامنه را به پروژه اضافه کند، وضعیت را بررسی کند و رکوردهای DNS پیشنهادی را نمایش دهد.",
-    automationDisabled: "اتوماسیون Vercel هنوز پیکربندی نشده است. VERCEL_ACCESS_TOKEN و VERCEL_PROJECT_ID را تنظیم کنید.",
-    automationDryRun: "حالت Dry-run فعال است؛ عملیات روی Vercel واقعی انجام نمی‌شود.",
-    automationConfigured: "اتوماسیون Vercel آماده است.",
+    automationHint: "اتوماسیون پلتفرم می‌تواند دامنه را اضافه کند، وضعیت تایید را بررسی کند و رکوردهای DNS پیشنهادی را نمایش دهد.",
+    automationDisabled: "اتوماسیون پلتفرم هنوز پیکربندی نشده است. RUNFLARE_INGRESS_HOST یا RUNFLARE_INGRESS_IP را تنظیم کنید.",
+    automationDryRun: "حالت Dry-run فعال است؛ عملیات روی پلتفرم واقعی انجام نمی‌شود.",
+    automationConfigured: "اتوماسیون پلتفرم آماده است.",
     automationMissing: "پیکربندی ناقص",
-    provisionOnVercel: "هم‌زمان در Vercel هم اضافه شود",
-    addToVercel: "افزودن به Vercel",
-    checkVercel: "بررسی Vercel",
-    removeFromVercel: "حذف از Vercel",
+    provisionOnVercel: "هم‌زمان در پلتفرم هم اضافه شود",
+    addToVercel: "افزودن به پلتفرم",
+    checkVercel: "بررسی پلتفرم",
+    removeFromVercel: "حذف از پلتفرم",
     dnsRecords: "رکوردهای DNS",
     copied: "کپی شد.",
     copy: "کپی",
@@ -205,13 +205,13 @@ const copyByLocale = {
     openStore: "باز کردن فروشگاه",
     robots: "robots.txt",
     sitemap: "sitemap.xml",
-    dnsRecommendation: "پیشنهاد: برای دامنه‌های اصلی، هم نسخه بدون www و هم نسخه www را به همین فروشگاه وصل کنید؛ یکی را Primary بگذارید و دیگری را هم در Vercel فعال نگه دارید.",
+    dnsRecommendation: "پیشنهاد: برای دامنه‌های اصلی، هم نسخه بدون www و هم نسخه www را به همین فروشگاه وصل کنید؛ یکی را Primary بگذارید و دیگری را هم در پلتفرم فعال نگه دارید.",
     apexWwwWarning: "نسخه مکمل apex/www برای این فروشگاه پیدا نشد.",
     counterpartMissing: "دامنه مکمل وصل نشده است",
     smokeTitle: "تست سریع دامنه انتخابی",
     smokeDescription: "بعد از فعال‌سازی دامنه، این دستورها را از PowerShell اجرا کنید تا مسیرهای حیاتی بررسی شوند.",
     smokeCommand: "کپی دستور تست",
-    confirmRemoveVercel: "این دامنه از پروژه Vercel حذف شود؟ نگاشت داخلی بازارباز حذف نمی‌شود.",
+    confirmRemoveVercel: "این دامنه از پلتفرم حذف شود؟ نگاشت داخلی بازارباز حذف نمی‌شود.",
     confirmDelete: "این نگاشت دامنه از بازارباز حذف شود؟",
     failedToLoad: "بارگذاری دامنه‌ها ناموفق بود.",
     failedToSave: "ذخیره تغییرات ناموفق بود.",
@@ -251,20 +251,20 @@ const copyByLocale = {
     remove: "Remove",
     save: "Save",
     dnsHint: "Custom domains are only served publicly after their status becomes ACTIVE.",
-    automationHint: "Vercel automation can add the domain to the project, check verification status, and return suggested DNS records.",
-    automationDisabled: "Vercel automation is not configured yet. Set VERCEL_ACCESS_TOKEN and VERCEL_PROJECT_ID.",
-    automationDryRun: "Dry-run mode is active; no real Vercel mutation will be sent.",
-    automationConfigured: "Vercel automation is ready.",
+    automationHint: "Platform automation can add the domain, check verification status, and return suggested DNS records.",
+    automationDisabled: "Platform automation is not configured yet. Set RUNFLARE_INGRESS_HOST or RUNFLARE_INGRESS_IP.",
+    automationDryRun: "Dry-run mode is active; no real platform mutation will be sent.",
+    automationConfigured: "Platform automation is ready.",
     automationMissing: "Configuration incomplete",
-    provisionOnVercel: "Also provision on Vercel",
-    addToVercel: "Add to Vercel",
-    checkVercel: "Check Vercel",
-    removeFromVercel: "Remove from Vercel",
+    provisionOnVercel: "Also provision on platform",
+    addToVercel: "Add to platform",
+    checkVercel: "Check platform",
+    removeFromVercel: "Remove from platform",
     dnsRecords: "DNS records",
     copied: "Copied.",
     copy: "Copy",
     copyRecord: "Copy record",
-    copiedDns: "DNS records were returned by the Vercel operation.",
+    copiedDns: "DNS records were returned by the platform operation.",
     lastChecked: "Last checked",
     neverChecked: "Not checked yet",
     failureReason: "Failure",
@@ -273,13 +273,13 @@ const copyByLocale = {
     openStore: "Open store",
     robots: "robots.txt",
     sitemap: "sitemap.xml",
-    dnsRecommendation: "Recommendation: for apex domains, connect both apex and www to the same shop. Set one as Primary and keep the other active in Vercel too.",
+    dnsRecommendation: "Recommendation: for apex domains, connect both apex and www to the same shop. Set one as Primary and keep the other active on the platform too.",
     apexWwwWarning: "The matching apex/www domain was not found for this shop.",
     counterpartMissing: "Matching domain is missing",
     smokeTitle: "Selected domain smoke test",
     smokeDescription: "After the domain becomes active, run these PowerShell commands to verify the critical paths.",
     smokeCommand: "Copy smoke command",
-    confirmRemoveVercel: "Remove this domain from the Vercel project? The local Bazarbaaz mapping will remain.",
+    confirmRemoveVercel: "Remove this domain from the platform? The local Bazarbaaz mapping will remain.",
     confirmDelete: "Delete this domain mapping from Bazarbaaz?",
     failedToLoad: "Failed to load domains.",
     failedToSave: "Failed to save changes.",
@@ -319,20 +319,20 @@ const copyByLocale = {
     remove: "حذف",
     save: "حفظ",
     dnsHint: "النطاقات المخصصة لا تعمل علناً إلا بعد أن تصبح حالتها ACTIVE.",
-    automationHint: "يمكن لأتمتة Vercel إضافة النطاق للمشروع، فحص التحقق، وإرجاع سجلات DNS المقترحة.",
-    automationDisabled: "أتمتة Vercel غير مهيأة بعد. اضبط VERCEL_ACCESS_TOKEN و VERCEL_PROJECT_ID.",
-    automationDryRun: "وضع Dry-run مفعّل؛ لن يتم إرسال تغيير حقيقي إلى Vercel.",
-    automationConfigured: "أتمتة Vercel جاهزة.",
+    automationHint: "يمكن لأتمتة المنصة إضافة النطاق، فحص التحقق، وإرجاع سجلات DNS المقترحة.",
+    automationDisabled: "أتمتة المنصة غير مهيأة بعد. اضبط RUNFLARE_INGRESS_HOST أو RUNFLARE_INGRESS_IP.",
+    automationDryRun: "وضع Dry-run مفعّل؛ لن يتم إرسال تغيير حقيقي إلى المنصة.",
+    automationConfigured: "أتمتة المنصة جاهزة.",
     automationMissing: "الإعداد غير مكتمل",
-    provisionOnVercel: "أضفه أيضاً في Vercel",
-    addToVercel: "إضافة إلى Vercel",
-    checkVercel: "فحص Vercel",
-    removeFromVercel: "حذف من Vercel",
+    provisionOnVercel: "أضفه أيضاً في المنصة",
+    addToVercel: "إضافة إلى المنصة",
+    checkVercel: "فحص المنصة",
+    removeFromVercel: "حذف من المنصة",
     dnsRecords: "سجلات DNS",
     copied: "تم النسخ.",
     copy: "نسخ",
     copyRecord: "نسخ السجل",
-    copiedDns: "تم إرجاع سجلات DNS من عملية Vercel.",
+    copiedDns: "تم إرجاع سجلات DNS من عملية المنصة.",
     lastChecked: "آخر فحص",
     neverChecked: "لم يتم الفحص بعد",
     failureReason: "الخطأ",
@@ -341,13 +341,13 @@ const copyByLocale = {
     openStore: "فتح المتجر",
     robots: "robots.txt",
     sitemap: "sitemap.xml",
-    dnsRecommendation: "التوصية: للنطاقات الرئيسية، اربط النسختين بدون www ومع www بنفس المتجر. اجعل واحدة Primary وأبق الأخرى نشطة في Vercel أيضاً.",
+    dnsRecommendation: "التوصية: للنطاقات الرئيسية، اربط النسختين بدون www ومع www بنفس المتجر. اجعل واحدة Primary وأبق الأخرى نشطة في المنصة أيضاً.",
     apexWwwWarning: "لم يتم العثور على نطاق apex/www المكمل لهذا المتجر.",
     counterpartMissing: "النطاق المكمل غير مربوط",
     smokeTitle: "اختبار سريع للنطاق المحدد",
     smokeDescription: "بعد تفعيل النطاق، نفّذ أوامر PowerShell هذه للتحقق من المسارات المهمة.",
     smokeCommand: "نسخ أمر الاختبار",
-    confirmRemoveVercel: "هل تريد حذف هذا النطاق من مشروع Vercel؟ سيبقى الربط المحلي في بازارباز.",
+    confirmRemoveVercel: "هل تريد حذف هذا النطاق من المنصة؟ سيبقى الربط المحلي في بازارباز.",
     confirmDelete: "هل تريد حذف ربط هذا النطاق من بازارباز؟",
     failedToLoad: "فشل تحميل النطاقات.",
     failedToSave: "فشل حفظ التغييرات.",
@@ -400,7 +400,7 @@ function formatDate(value: string | null, locale: SupportedLocale, fallback: str
   return new Date(value).toLocaleString(locale === "fa" ? "fa-IR" : locale);
 }
 
-function buildRecordText(record: VercelDnsRecord) {
+function buildRecordText(record: DomainDnsRecord) {
   return `${record.type}\t${record.name}\t${record.value}`;
 }
 
@@ -422,7 +422,7 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
   const isRtl = locale === "fa" || locale === "ar";
   const [shops, setShops] = useState<ShopSummary[]>([]);
   const [domains, setDomains] = useState<ShopDomain[]>([]);
-  const [vercelAutomation, setVercelAutomation] = useState<ShopDomainPayload["vercelAutomation"] | null>(null);
+  const [domainAutomationState, setDomainAutomationState] = useState<ShopDomainPayload["domainAutomation"] | null>(null);
   const [selectedShopId, setSelectedShopId] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<DomainStatus | "ALL">("ALL");
   const [query, setQuery] = useState("");
@@ -434,7 +434,7 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [actionBusyId, setActionBusyId] = useState<string | null>(null);
-  const [dnsRecords, setDnsRecords] = useState<VercelDnsRecord[]>([]);
+  const [dnsRecords, setDnsRecords] = useState<DomainDnsRecord[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -459,7 +459,7 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
       const data = payload as ShopDomainPayload;
       setShops(data.shops);
       setDomains(data.domains);
-      setVercelAutomation(data.vercelAutomation);
+      setDomainAutomationState(data.domainAutomation);
       if (!newShopId && data.shops[0]) setNewShopId(data.shops[0].id);
     } catch (err) {
       setError(err instanceof Error ? err.message : copy.failedToLoad);
@@ -469,6 +469,9 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
   };
 
   useEffect(() => {
+    // Initial data fetch on mount is intentional: a single setState batch populates
+    // shops and domains from the API. It does not cause cascading renders.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadDomains();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -519,13 +522,13 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
           provisionOnVercel: newProvisionOnVercel,
         }),
       });
-      const payload = await readJson<{ domain?: ShopDomain; vercel?: VercelAutomationResult | null; error?: string }>(response);
+      const payload = await readJson<{ domain?: ShopDomain; domainAutomation?: DomainAutomationResult | null; error?: string }>(response);
       if (!response.ok || !payload.domain) throw new Error(getJsonError(payload, copy.failedToSave));
       setDomains((current) => [payload.domain as ShopDomain, ...current.filter((domain) => domain.id !== payload.domain?.id)]);
       setNewDomain("");
       setNewPrimary(false);
-      if (payload.vercel?.dnsRecords?.length) setDnsRecords(payload.vercel.dnsRecords);
-      setMessage(payload.vercel ? `${copy.saved} ${payload.vercel.message}` : copy.saved);
+      if (payload.domainAutomation?.dnsRecords?.length) setDnsRecords(payload.domainAutomation.dnsRecords);
+      setMessage(payload.domainAutomation ? `${copy.saved} ${payload.domainAutomation.message}` : copy.saved);
       await loadDomains();
     } catch (err) {
       setError(err instanceof Error ? err.message : copy.failedToSave);
@@ -555,7 +558,7 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
     }
   };
 
-  const runVercelAction = async (domainId: string, action: "add" | "check" | "remove") => {
+  const runDomainAction = async (domainId: string, action: "add" | "check" | "remove") => {
     if (action === "remove" && !window.confirm(copy.confirmRemoveVercel)) return;
 
     setActionBusyId(`${domainId}:${action}`);
@@ -568,10 +571,10 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       });
-      const payload = await readJson<{ domain?: ShopDomain; vercel?: VercelAutomationResult; error?: string }>(response);
-      if (!response.ok || !payload.domain || !payload.vercel) throw new Error(getJsonError(payload, copy.failedToSave));
-      if (payload.vercel.dnsRecords?.length) setDnsRecords(payload.vercel.dnsRecords);
-      setMessage(`${copy.saved} ${payload.vercel.message}`);
+      const payload = await readJson<{ domain?: ShopDomain; domainAutomation?: DomainAutomationResult; error?: string }>(response);
+      if (!response.ok || !payload.domain || !payload.domainAutomation) throw new Error(getJsonError(payload, copy.failedToSave));
+      if (payload.domainAutomation.dnsRecords?.length) setDnsRecords(payload.domainAutomation.dnsRecords);
+      setMessage(`${copy.saved} ${payload.domainAutomation.message}`);
       await loadDomains();
     } catch (err) {
       setError(err instanceof Error ? err.message : copy.failedToSave);
@@ -604,7 +607,7 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
     }
   };
 
-  const automationTone = vercelAutomation?.configured ? "border-primary/20 bg-primary/10 text-primary" : "border-destructive/20 bg-destructive/10 text-destructive";
+  const automationTone = domainAutomationState?.configured ? "border-primary/20 bg-primary/10 text-primary" : "border-destructive/20 bg-destructive/10 text-destructive";
 
   return (
     <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
@@ -631,15 +634,15 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
           <p className="mt-2">{copy.dnsHint}</p>
           <p className="mt-2">{copy.automationHint}</p>
           <p className="mt-2">{copy.dnsRecommendation}</p>
-          {vercelAutomation?.dryRun && <p className="mt-2 font-medium text-amber-600">{copy.automationDryRun}</p>}
+          {domainAutomationState?.dryRun && <p className="mt-2 font-medium text-amber-600">{copy.automationDryRun}</p>}
         </div>
         <div className={cn("rounded-xl border p-4 text-sm", automationTone)}>
           <div className="flex items-center gap-2 font-medium">
-            {vercelAutomation?.configured ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : <XCircle className="h-4 w-4" aria-hidden="true" />}
-            {vercelAutomation?.configured ? copy.automationConfigured : copy.automationMissing}
+            {domainAutomationState?.configured ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : <XCircle className="h-4 w-4" aria-hidden="true" />}
+            {domainAutomationState?.configured ? copy.automationConfigured : copy.automationMissing}
           </div>
           <p className="mt-2 text-xs opacity-90">
-            {vercelAutomation?.configured ? copy.automationHint : copy.automationDisabled}
+            {domainAutomationState?.configured ? copy.automationHint : copy.automationDisabled}
           </p>
         </div>
       </div>
@@ -739,7 +742,7 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
                     type="checkbox"
                     checked={newProvisionOnVercel}
                     onChange={(event) => setNewProvisionOnVercel(event.target.checked)}
-                    disabled={vercelAutomation ? !vercelAutomation.configured : false}
+                    disabled={domainAutomationState ? !domainAutomationState.configured : false}
                     className="h-4 w-4 rounded border-input accent-current"
                   />
                   {copy.provisionOnVercel}
@@ -864,7 +867,7 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
                           <Badge variant={domain.isPrimary ? "default" : "outline"}>{domain.isPrimary ? copy.primary : "Secondary"}</Badge>
                           {shop && !shop.isActive && <Badge variant="destructive">{copy.inactive}</Badge>}
-                          {domain.vercelProjectDomainId && <Badge variant="secondary">Vercel</Badge>}
+                          {domain.vercelProjectDomainId && <Badge variant="secondary">Platform</Badge>}
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground" dir="ltr">/{domain.organization.slug}</p>
                         {counterpartMissing && (
@@ -933,8 +936,8 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => void runVercelAction(domain.id, "add")}
-                          disabled={saving || Boolean(actionBusyId) || Boolean(vercelAutomation && !vercelAutomation.configured)}
+                          onClick={() => void runDomainAction(domain.id, "add")}
+                          disabled={saving || Boolean(actionBusyId) || Boolean(domainAutomationState && !domainAutomationState.configured)}
                         >
                           {actionBusyId === `${domain.id}:add` ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Link2 className="h-4 w-4" aria-hidden="true" />}
                           {copy.addToVercel}
@@ -943,8 +946,8 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => void runVercelAction(domain.id, "check")}
-                          disabled={saving || Boolean(actionBusyId) || Boolean(vercelAutomation && !vercelAutomation.configured)}
+                          onClick={() => void runDomainAction(domain.id, "check")}
+                          disabled={saving || Boolean(actionBusyId) || Boolean(domainAutomationState && !domainAutomationState.configured)}
                         >
                           {actionBusyId === `${domain.id}:check` ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="h-4 w-4" aria-hidden="true" />}
                           {copy.checkVercel}
@@ -953,8 +956,8 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => void runVercelAction(domain.id, "remove")}
-                          disabled={saving || Boolean(actionBusyId) || Boolean(vercelAutomation && !vercelAutomation.configured)}
+                          onClick={() => void runDomainAction(domain.id, "remove")}
+                          disabled={saving || Boolean(actionBusyId) || Boolean(domainAutomationState && !domainAutomationState.configured)}
                         >
                           {actionBusyId === `${domain.id}:remove` ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
                           {copy.removeFromVercel}

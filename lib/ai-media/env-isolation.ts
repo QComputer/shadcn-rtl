@@ -40,9 +40,9 @@ const SECRET_PATTERNS = [
 ];
 
 function classifyEnvironment(env: EnvLike): AiMediaEnvIsolationEnvironment {
-  const vercelEnv = (env.VERCEL_ENV || "").toLowerCase();
-  if (vercelEnv === "production") return "production";
-  if (vercelEnv === "preview") return "preview";
+  const platformEnv = (env.VERCEL_ENV || env.RUNFLARE_ENV || "").toLowerCase();
+  if (platformEnv === "production") return "production";
+  if (platformEnv === "preview") return "preview";
   const nodeEnv = (env.NODE_ENV || "").toLowerCase();
   if (nodeEnv === "production") return "production";
   if (nodeEnv === "test") return "test";

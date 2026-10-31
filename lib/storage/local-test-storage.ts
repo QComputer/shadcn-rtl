@@ -3,10 +3,11 @@ import "server-only";
 import fs from "node:fs";
 import fsPromises from "node:fs/promises";
 import path from "node:path";
+import { isProductionRuntime } from "@/lib/deployment-context";
 import type { ApplicationStorageAdapter, StoredApplicationAsset, StoreApplicationAssetInput } from "@/lib/storage/types";
 
 function assertLocalTestStorageAllowed() {
-  if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production") {
+  if (isProductionRuntime()) {
     throw new Error("Local test storage cannot run in production");
   }
 }

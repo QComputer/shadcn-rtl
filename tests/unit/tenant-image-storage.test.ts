@@ -60,3 +60,43 @@ test("platform images use the isolated platform namespace and disk mode never ca
   assert.deepEqual(data?.buffer, png);
   assert.equal(blobCalls, 0);
 });
+
+test("production media operations succeed without any Vercel token configured", async () => {
+  const { storeTenantDiskImage, readTenantDiskImage, removeTenantDiskImage, usesPersistentMedia } = await import("../../lib/storage/tenant-image-storage.server");
+  // Ensure no Vercel token is configured for this production simulation
+  delete process.env.BLOB_READ_WRITE_TOKEN;
+  assert.equal(usesPersistentMedia(), true, "persistent-disk adapter selected without token");
+
+  // Upload
+  const stored = await storeTenantDiskImage({ organizationId: "org_prod", filename: "production.png", buffer: png, mimeType: "image/png", access: "public" });
+  assert.equal(stored.organizationId, "org_prod");
+  assert.equal(stored.access, "public");
+  assert.equal(stored.key, "tenants/org_prod/uploads/production.png");
+  assert.equal(stored.url, "/api/media/org_prod/tenants/org_prod/uploads/production.png");
+
+  // Read back
+  const read = await readTenantDiskImage("org_prod", "production.png");
+  assert.ok(read, "stored asset is readable");
+  assert.deepEqual(read.buffer, png);
+  assert.equal(read.metadata.access, "public");
+
+  // Private upload and read
+  await storeTenantDiskImage({ organizationId: "org_prod", filename: "private.png", buffer: png, mimeType: "image/png", access: "private" });
+  const privateRead = await readTenantDiskImage("org_prod", "private.png");
+  assert.equal(privateRead?.metadata.access, "private");
+
+  // Cross-tenant read of private file returns null
+  const crossRead = await readTenantDiskImage("org_other", "private.png");
+  assert.equal(crossRead, null);
+
+  // Delete
+  await removeTenantDiskImage("org_prod", "production.png");
+  assert.equal(await readTenantDiskImage("org_prod", "production.png"), null);
+
+  // Idempotent delete
+  await removeTenantDiskImage("org_prod", "production.png");
+  assert.equal(await readTenantDiskImage("org_prod", "production.png"), null);
+
+  // Blob calls must be zero throughout
+  assert.equal(blobCalls, 0, "no Blob calls made during production media operations");
+});

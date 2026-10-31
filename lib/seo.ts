@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { localeConfig, supportedLocales, type SupportedLocale } from "@/lib/i18n";
+import { isProductionRuntime } from "@/lib/deployment-context";
 
 const DEFAULT_BASE_URL = "https://bazarbaaz.ir";
 const LEGACY_PRODUCTION_HOSTS = new Set([
-  "shadcn-rtl.vercel.app",
   "bazar-baz.ir",
   "www.bazar-baz.ir",
 ]);
@@ -62,7 +62,7 @@ export function getPublicBaseUrl() {
       : `https://${rawUrl}`;
 
   const url = new URL(normalizedUrl);
-  if (process.env.VERCEL_ENV === "production" && LEGACY_PRODUCTION_HOSTS.has(url.hostname)) {
+  if (isProductionRuntime() && LEGACY_PRODUCTION_HOSTS.has(url.hostname)) {
     return new URL(DEFAULT_BASE_URL);
   }
 

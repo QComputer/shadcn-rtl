@@ -3,9 +3,9 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { ApiError } from "@/lib/api-guards";
+import { isProductionRuntime } from "@/lib/deployment-context";
 import { extensionForApplicationImage, validateApplicationImageBuffer } from "@/lib/storage/image-validation";
 import type { ApplicationStorageAdapter, StoredApplicationAsset, StoreApplicationAssetInput } from "@/lib/storage/types";
-import { getVercelBlobObject } from "@/lib/storage/vercel-blob-storage";
 
 const PRIVATE_IPV4_PATTERNS = [/^10\./, /^127\./, /^0\./, /^192\.168\./, /^169\.254\./, /^172\.(1[6-9]|2\d|3[0-1])\./];
 
@@ -33,13 +33,13 @@ function createApplicationStorageKey(input: StoreApplicationAssetInput) {
 }
 
 function selectedAdapterName() {
-  return process.env.AI_MEDIA_APPLICATION_STORAGE_ADAPTER || process.env.APPLICATION_STORAGE_ADAPTER || "vercel-blob";
+  return process.env.AI_MEDIA_APPLICATION_STORAGE_ADAPTER || process.env.APPLICATION_STORAGE_ADAPTER || "persistent-disk";
 }
 
 let injectedTestAdapter: ApplicationStorageAdapter | null = null;
 
 export function setApplicationStorageAdapterForTesting(adapter: ApplicationStorageAdapter | null) {
-  if (process.env.NODE_ENV !== "test" || process.env.VERCEL_ENV === "production") {
+  if (process.env.NODE_ENV !== "test" || isProductionRuntime()) {
     throw new Error("Application storage test adapter injection is only available in non-production test runtime");
   }
   injectedTestAdapter = adapter;
@@ -94,6 +94,7 @@ export async function streamApplicationAssetContent(input: { organizationId: str
     return adapter.streamContent(input);
   }
   if (adapter.provider === "vercel-blob") {
+    const { getVercelBlobObject } = await import("@/lib/storage/vercel-blob-storage");
     const blob = await getVercelBlobObject(input.key);
     if (!blob) return null;
     return blob.stream;

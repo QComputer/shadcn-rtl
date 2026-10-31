@@ -24,7 +24,7 @@ before(async () => {
 });
 
 const greenGuard = {
-  vercelEnv: "preview",
+  deploymentEnv: "preview",
   nodeEnv: "development",
   featureFlagEnabled: true,
   previewIsolationVerified: true,
@@ -36,14 +36,14 @@ const greenGuard = {
 
 describe("AI media Preview MOCK write foundation", () => {
   it("blocks Production even with otherwise green evidence", () => {
-    const decision = evaluateAiMediaPreviewWriteGuard({ ...greenGuard, vercelEnv: "production" });
+    const decision = evaluateAiMediaPreviewWriteGuard({ ...greenGuard, deploymentEnv: "production" });
     assert.equal(decision.allowed, false);
     assert.match(decision.blockers.join("\n"), /Production/i);
   });
 
   it("blocks missing evidence and missing feature flag", () => {
     const decision = evaluateAiMediaPreviewWriteGuard({
-      vercelEnv: "preview",
+      deploymentEnv: "preview",
       nodeEnv: "development",
       provider: "MOCK",
       userRole: "SUPER_ADMIN",

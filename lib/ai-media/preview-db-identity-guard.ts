@@ -1,5 +1,5 @@
 export type AiMediaPreviewDbIdentityEvidence = {
-  vercelEnv?: string | null;
+  deploymentEnv?: string | null;
   nodeEnv?: string | null;
   featureFlagEnabled?: boolean;
   databaseUrlPresent?: boolean;
@@ -73,7 +73,7 @@ export function buildAiMediaPreviewDbIdentityEvidenceFromEnv(
   const directUrl = env.DIRECT_URL ?? null;
 
   return {
-    vercelEnv: env.VERCEL_ENV ?? null,
+    deploymentEnv: env.VERCEL_ENV ?? env.RUNFLARE_ENV ?? null,
     nodeEnv: env.NODE_ENV ?? null,
     featureFlagEnabled: isEnabled(env.AI_MEDIA_PREVIEW_MOCK_WRITES_ENABLED),
     databaseUrlPresent: hasValue(databaseUrl),
@@ -91,10 +91,10 @@ export function buildAiMediaPreviewDbIdentityEvidenceFromEnv(
 export function evaluateAiMediaPreviewDbIdentityGuard(
   evidence: AiMediaPreviewDbIdentityEvidence,
 ): AiMediaPreviewDbIdentityDecision {
-  const vercelEnv = normalize(evidence.vercelEnv);
+  const deploymentEnv = normalize(evidence.deploymentEnv);
   const nodeEnv = normalize(evidence.nodeEnv);
-  const productionBlocked = vercelEnv === "production" || nodeEnv === "production";
-  const previewLikeEnvironment = vercelEnv === "preview" || nodeEnv === "test" || nodeEnv === "development";
+  const productionBlocked = deploymentEnv === "production" || nodeEnv === "production";
+  const previewLikeEnvironment = deploymentEnv === "preview" || nodeEnv === "test" || nodeEnv === "development";
   const featureFlagEnabled = evidence.featureFlagEnabled === true;
   const databaseUrlPresent = evidence.databaseUrlPresent === true;
   const directUrlPresent = evidence.directUrlPresent === true;

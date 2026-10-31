@@ -1,4 +1,5 @@
 import { writeAuditLog } from "@/lib/audit-log";
+import { getDeploymentCommit } from "@/lib/deployment-context";
 import { diagnosticCall, safeParameterNames } from "@/lib/integrations/inoti-ussd/request-diagnostics";
 
 type AuditWriter = (input: Parameters<typeof writeAuditLog>[0]) => Promise<void>;
@@ -32,7 +33,7 @@ export function buildInotiUssdIngressAudit(request: Request, publicIntegrationId
       sessionidValueCount: searchParams.getAll("sessionid").length,
       rrnPresent: searchParams.has("RRN") || searchParams.has("rrn"),
       rrnValueCount: searchParams.getAll("RRN").length + searchParams.getAll("rrn").length,
-      deploymentCommit: safeAscii(process.env.VERCEL_GIT_COMMIT_SHA ?? null, 64),
+      deploymentCommit: safeAscii(getDeploymentCommit(), 64),
     },
   };
 }

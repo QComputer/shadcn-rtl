@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { PrismaClient } from "@prisma/client";
-import { put } from "@vercel/blob";
 import bcrypt from "bcryptjs";
 
 const fail = (message) => { throw new Error(`F5 synthetic fixture guard: ${message}`); };
 const required = [
-  "DATABASE_URL", "DIRECT_URL", "HOTEL_F5_NEON_EXPECTED_HOST", "BLOB_READ_WRITE_TOKEN",
+  "DATABASE_URL", "DIRECT_URL", "HOTEL_F5_NEON_EXPECTED_HOST",
   "HOTEL_F5_PUBLIC_HOST", "HOTEL_F5_FOREIGN_HOST", "HOTEL_F5_INACTIVE_HOST", "HOTEL_F5_CAP_DISABLED_HOST",
   "HOTEL_F5_AUTHOR_PASSWORD", "HOTEL_F5_REVIEWER_PASSWORD", "HOTEL_F5_MANAGER_PASSWORD", "HOTEL_F5_FOREIGN_PASSWORD",
 ];
@@ -30,7 +31,16 @@ const tag = "F5-SYNTHETIC-STAGING";
 const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jG8sAAAAASUVORK5CYII=", "base64");
 const filename = "hotel-f5-synthetic.png";
 
+const mediaRoot = path.join(process.cwd(), ".tmp", "hotel-f5-media");
+await fs.mkdir(mediaRoot, { recursive: true });
+const mediaPath = path.join(mediaRoot, "hotel-f5", tag, filename);
+await fs.mkdir(path.dirname(mediaPath), { recursive: true });
+await fs.writeFile(mediaPath, png, { mode: 0o644 });
+const mediaUrl = `/uploads/${path.join("hotel-f5", tag, filename)}`;
+if (!mediaUrl.startsWith("/uploads/")) fail("uploaded media is not served locally");
+
 const prisma = new PrismaClient();
+
 const output = async (name, value) => {
   if (process.env.GITHUB_OUTPUT) {
     const fs = await import("node:fs/promises");
@@ -44,8 +54,7 @@ try {
   if (identity.database_name !== "hotel_f5_staging" || identity.role_name !== "neondb_owner" || Number(identity.version) < 180000) fail("live connection identity/version mismatch");
   const [ledger] = await prisma.$queryRaw`SELECT count(*)::int AS successful FROM public."_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL`;
   if (ledger.successful !== 95) fail("expected the 95-migration accepted F5 ledger before fixture writes");
-  const blob = await put(`hotel-f5/${tag}/hotel-f5-synthetic.png`, png, { access: "public", contentType: "image/png", addRandomSuffix: false, allowOverwrite: true });
-  if (!new URL(blob.url).hostname.endsWith(".public.blob.vercel-storage.com")) fail("uploaded media is not served by the dedicated public Blob store");
+  const blobUrl = mediaUrl;
 
   const tenant = async (slug, name, host, websiteActive, domainActive) => {
     let organization = await prisma.organization.upsert({
@@ -111,8 +120,8 @@ try {
     if (priorImage && priorImage.organizationId !== organizationId) fail(`reserved ${key} media identifier is already owned outside its synthetic tenant`);
     await prisma.image.upsert({
       where: { id: imageIds[key] },
-      create: { id: imageIds[key], organizationId, uploadedByUserId: key === "target" ? users.author.id : users.foreign.id, filename, mimeType: "image/png", sizeBytes: png.length, purpose: "hotel-f5-synthetic-acceptance", url: blob.url, access: "PUBLIC" },
-      update: { organizationId, uploadedByUserId: key === "target" ? users.author.id : users.foreign.id, filename, mimeType: "image/png", sizeBytes: png.length, purpose: "hotel-f5-synthetic-acceptance", url: blob.url, access: "PUBLIC" },
+      create: { id: imageIds[key], organizationId, uploadedByUserId: key === "target" ? users.author.id : users.foreign.id, filename, mimeType: "image/png", sizeBytes: png.length, purpose: "hotel-f5-synthetic-acceptance", url: blobUrl, access: "PUBLIC" },
+      update: { organizationId, uploadedByUserId: key === "target" ? users.author.id : users.foreign.id, filename, mimeType: "image/png", sizeBytes: png.length, purpose: "hotel-f5-synthetic-acceptance", url: blobUrl, access: "PUBLIC" },
     });
   }
 

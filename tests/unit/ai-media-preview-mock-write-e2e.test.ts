@@ -14,7 +14,7 @@ before(async () => {
 });
 
 const greenDbEvidence = {
-  vercelEnv: "preview",
+  deploymentEnv: "preview",
   nodeEnv: "development",
   featureFlagEnabled: true,
   databaseUrlPresent: true,
@@ -30,14 +30,14 @@ const greenDbEvidence = {
 
 describe("AI media Preview MOCK write E2E guard", () => {
   it("blocks Production DB writes even with otherwise green evidence", () => {
-    const decision = evaluateAiMediaPreviewDbIdentityGuard({ ...greenDbEvidence, vercelEnv: "production" });
+    const decision = evaluateAiMediaPreviewDbIdentityGuard({ ...greenDbEvidence, deploymentEnv: "production" });
     assert.equal(decision.allowed, false);
     assert.match(decision.blockers.join("\n"), /Production/i);
   });
 
   it("blocks missing DB evidence", () => {
     const decision = evaluateAiMediaPreviewDbIdentityGuard({
-      vercelEnv: "preview",
+      deploymentEnv: "preview",
       nodeEnv: "development",
       featureFlagEnabled: true,
     });
@@ -113,7 +113,7 @@ describe("AI media Preview MOCK write E2E guard", () => {
   it("blocks missing pinned Render verification through the write guard", async () => {
     const { evaluateAiMediaPreviewWriteGuard } = await import("@/lib/ai-media/preview-write-guard");
     const decision = evaluateAiMediaPreviewWriteGuard({
-      vercelEnv: "preview",
+      deploymentEnv: "preview",
       nodeEnv: "development",
       featureFlagEnabled: true,
       previewIsolationVerified: true,

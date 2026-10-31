@@ -5,7 +5,7 @@ import { createPersistentDiskApplicationStorage, readPersistentDiskAsset } from 
 export const PLATFORM_MEDIA_NAMESPACE = "__platform__";
 
 export function usesPersistentMedia() {
-  const adapter = process.env.APPLICATION_STORAGE_ADAPTER || "vercel-blob";
+  const adapter = process.env.APPLICATION_STORAGE_ADAPTER || "persistent-disk";
   if (!["persistent-disk", "vercel-blob"].includes(adapter)) throw new Error("Unsupported image storage adapter");
   return adapter === "persistent-disk";
 }

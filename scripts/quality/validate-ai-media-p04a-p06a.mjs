@@ -53,7 +53,7 @@ add("image validation enforces MIME signatures size and checksum", /APPLICATION_
 add("production adapter is server-only and owns Blob SDK import", /import "server-only"/.test(vercelAdapter) && /@vercel\/blob/.test(vercelAdapter) && /BLOB_READ_WRITE_TOKEN/.test(vercelAdapter));
 add("only canonical production adapter imports @vercel/blob", blobImports.length === 1 && blobImports[0] === "lib/storage/vercel-blob-storage.ts", blobImports.join(", "));
 add("local test adapter is server-only", /import "server-only"/.test(localAdapter));
-add("local test adapter cannot activate in production", /NODE_ENV === "production"/.test(localAdapter) && /VERCEL_ENV === "production"/.test(localAdapter));
+add("local test adapter cannot activate in production", /isProductionRuntime/.test(localAdapter) && /import.*deployment-context/.test(localAdapter));
 add("local test adapter stays inside workspace and prevents traversal", /path\.isAbsolute/.test(localAdapter) && /includes\("\.\."\)/.test(localAdapter) && /startsWith\(root \+ path\.sep\)/.test(localAdapter));
 add("AI-media selection uses application storage gateway", /storeCreativeStudioAssetFromRemote/.test(aiService) && /compensateFailedAssetImport/.test(aiService));
 add("AI-media creation uses PostgreSQL advisory lock idempotency", /pg_advisory_xact_lock/.test(aiService) && /payloadHash/.test(aiService) && /providerIdempotencyKey/.test(aiService));

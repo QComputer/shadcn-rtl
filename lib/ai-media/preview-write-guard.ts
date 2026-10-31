@@ -1,7 +1,7 @@
 import type { UserRole } from "@/lib/types";
 
 export type AiMediaPreviewWriteGuardEvidence = {
-  vercelEnv?: string | null;
+   deploymentEnv?: string | null;
   nodeEnv?: string | null;
   featureFlagEnabled?: boolean;
   previewIsolationVerified?: boolean;
@@ -42,7 +42,7 @@ export function buildAiMediaPreviewWriteGuardEvidenceFromEnv(
   userRole?: UserRole | string | null,
 ): AiMediaPreviewWriteGuardEvidence {
   return {
-    vercelEnv: env.VERCEL_ENV ?? null,
+     deploymentEnv: env.VERCEL_ENV ?? env.RUNFLARE_ENV ?? null,
     nodeEnv: env.NODE_ENV ?? null,
     featureFlagEnabled: isEnabled(env.AI_MEDIA_PREVIEW_MOCK_WRITES_ENABLED),
     previewIsolationVerified: isEnabled(env.AI_MEDIA_PREVIEW_ISOLATION_VERIFIED),
@@ -56,11 +56,11 @@ export function buildAiMediaPreviewWriteGuardEvidenceFromEnv(
 export function evaluateAiMediaPreviewWriteGuard(
   evidence: AiMediaPreviewWriteGuardEvidence,
 ): AiMediaPreviewWriteGuardDecision {
-  const vercelEnv = normalize(evidence.vercelEnv);
+  const deploymentEnv = normalize(evidence.deploymentEnv);
   const nodeEnv = normalize(evidence.nodeEnv);
   const provider = normalize(evidence.provider);
-  const productionBlocked = vercelEnv === "production" || nodeEnv === "production";
-  const previewLikeEnvironment = vercelEnv === "preview" || nodeEnv === "test" || nodeEnv === "development";
+  const productionBlocked = deploymentEnv === "production" || nodeEnv === "production";
+  const previewLikeEnvironment = deploymentEnv === "preview" || nodeEnv === "test" || nodeEnv === "development";
   const featureFlagEnabled = evidence.featureFlagEnabled === true;
   const previewIsolationVerified = evidence.previewIsolationVerified === true;
   const pinnedRenderContractVerified = evidence.pinnedRenderContractVerified === true;

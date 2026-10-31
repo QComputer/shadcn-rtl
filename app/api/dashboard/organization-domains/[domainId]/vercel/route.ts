@@ -5,12 +5,12 @@ import { writeAuditLog } from "@/lib/audit-log";
 import { jsonError, requireAuthSession } from "@/lib/api-guards";
 import { assertDomainOwnership } from "@/lib/domains/domain-authorization.server";
 import {
-  addProjectDomainToVercel,
-  inspectProjectDomainOnVercel,
-  removeProjectDomainFromVercel,
-  verifyProjectDomainOnVercel,
-  type VercelDomainAutomationResult,
-} from "@/lib/vercel-domain-automation";
+  addProjectDomain,
+  inspectProjectDomain,
+  removeProjectDomain,
+  verifyProjectDomain,
+  domainUpdateFromResult,
+} from "@/lib/domain-automation.server";
 import { customDomainLocales } from "@/lib/custom-domain-routing";
 import { revalidatePath } from "next/cache";
 import { organizationPublicRouteCapabilities, type CapabilityRecord } from "@/lib/organization-capabilities";
@@ -35,24 +35,6 @@ function parseError(error: unknown) {
   return jsonError(error, "Failed to manage organization domain");
 }
 
-function domainUpdateFromVercelResult(result: VercelDomainAutomationResult) {
-  if (result.dryRun) {
-    return {
-      lastCheckedAt: new Date(),
-      failureReason: result.message,
-    };
-  }
-
-  return {
-    vercelProjectDomainId: result.action === "remove" ? null : result.projectId || null,
-    verificationToken: result.action === "remove" ? null : result.verificationToken || null,
-    status: result.status,
-    verifiedAt: result.verified ? new Date() : null,
-    lastCheckedAt: new Date(),
-    failureReason: result.ok ? null : result.message,
-  };
-}
-
 function revalidateOrganizationPublicPaths(organization: { slug: string; type: "SHOP" | "APPOINTMENT"; capabilitiesInitializedAt: Date | null; capabilities: CapabilityRecord[] }) {
   const capabilities = organizationPublicRouteCapabilities({ legacyType: organization.type, capabilitiesInitializedAt: organization.capabilitiesInitializedAt, capabilities: organization.capabilities });
   revalidatePath(`/organization/${organization.slug}`);
@@ -64,11 +46,11 @@ function revalidateOrganizationPublicPaths(organization: { slug: string; type: "
   }
 }
 
-async function runVercelAction(action: "add" | "check" | "verify" | "remove", domain: string) {
-  if (action === "add") return addProjectDomainToVercel(domain);
-  if (action === "check") return inspectProjectDomainOnVercel(domain);
-  if (action === "verify") return verifyProjectDomainOnVercel(domain);
-  return removeProjectDomainFromVercel(domain);
+async function runDomainAction(action: "add" | "check" | "verify" | "remove", domain: string) {
+  if (action === "add") return addProjectDomain(domain);
+  if (action === "check") return inspectProjectDomain(domain);
+  if (action === "verify") return verifyProjectDomain(domain);
+  return removeProjectDomain(domain);
 }
 
 export async function POST(
@@ -82,10 +64,10 @@ export async function POST(
 
     const domain = await assertDomainOwnership(prisma, session.user.id, domainId);
 
-    const vercel = await runVercelAction(body.action, domain.domain);
+    const domainAutomation = await runDomainAction(body.action, domain.domain);
     const updated = await prisma.organizationDomain.update({
       where: { id: domainId },
-      data: domainUpdateFromVercelResult(vercel),
+      data: domainUpdateFromResult(domainAutomation),
       include: {
         organization: {
           select: { id: true, name: true, slug: true, type: true, capabilitiesInitializedAt: true, capabilities: { select: { key: true, status: true } }, isActive: true },
@@ -97,8 +79,8 @@ export async function POST(
       action: body.action === "remove" ? "DELETE" : "UPDATE",
       entityType: "OrganizationDomain",
       entityId: updated.id,
-      description: `Vercel domain ${body.action} requested for ${updated.normalizedDomain}.`,
-      newValue: { action: body.action, vercel },
+      description: `Domain ${body.action} requested for ${updated.normalizedDomain}.`,
+      newValue: { action: body.action, domainAutomation },
       userId: session.user.id,
       organizationId: updated.organizationId,
       ...getClientMeta(request),
@@ -107,19 +89,16 @@ export async function POST(
     try {
       revalidateOrganizationPublicPaths(updated.organization);
     } catch {
-      // Cache revalidation must not break Vercel mutations.
+      // Cache revalidation must not break domain mutations.
     }
 
     return NextResponse.json({
       domain: {
         ...updated,
-        // Keep the submitted hostname's presentation after Check. The stored
-        // kind may represent the tenant's canonical apex, while `www` remains
-        // a subdomain alias in the organization-domain manager.
         displayKind: getDomainPresentationKind(updated.domain),
         apexInfo: getApexDomainInfo(updated.domain),
       },
-      vercel,
+      domainAutomation,
     });
   } catch (error) {
     return parseError(error);

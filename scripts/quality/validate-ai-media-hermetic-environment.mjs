@@ -23,7 +23,7 @@ add("live Render write URL is not selected", !providerUrl || providerUrl.startsW
 add("real generation is disabled", process.env.AI_MEDIA_PAID_PROVIDER_ENABLED !== "true" && process.env.AI_MEDIA_REAL_GENERATION_ENABLED !== "true");
 add("external effects disabled", process.env.SMS_DRY_RUN !== "false" && process.env.EMAIL_DRY_RUN !== "false" && process.env.WEB_PUSH_REAL_SEND_ENABLED !== "true" && process.env.DOMAIN_PROVIDER_MUTATION_ENABLED !== "true");
 add("tenant provisioning execution disabled", process.env.TENANT_PROVISIONING_EXECUTION_ENABLED !== "true");
-add("not running as Vercel production", process.env.VERCEL_ENV !== "production");
+add("not running in production runtime", process.env.VERCEL_ENV !== "production" && process.env.NODE_ENV !== "production");
 
 for (const check of checks) console.log(`${check.pass ? "PASS" : "FAIL"} ${check.name}${check.detail ? ` (${check.detail})` : ""}`);
 const failed = checks.filter((check) => !check.pass);

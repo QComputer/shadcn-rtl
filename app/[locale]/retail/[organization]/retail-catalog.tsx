@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Home, LayoutGrid, Search, Share2, ShoppingBag, UserRound } from "lucide-react";
+import { Home, LayoutGrid, Share2, ShoppingBag, UserRound } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PremiumProductDetail } from "@/components/retail/premium-product-detail";
@@ -58,7 +58,7 @@ function VariantDimension({ product, dimension, selected, onChange }: {
       const target = chooseVariant(product, selected, firstKey, value);
       const active = selectedValue ? selectedValue === value : false;
       return <button key={value} type="button" disabled={!target} aria-pressed={active} onClick={() => target && onChange(target)}
-        className={`min-h-10 rounded-full border px-3 py-2 text-xs transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b7653] disabled:opacity-35 ${active ? "border-[#292a24] bg-[#292a24] text-white" : "border-[#ddd9d0] bg-white text-[#4c4a43]"}`}>
+        className={`${isColor ? "min-h-9 rounded-full px-2.5 py-1.5" : "min-h-8 min-w-9 rounded-lg px-2 py-1 tabular-nums"} border text-[11px] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-35 ${active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground"}`}>
         {isColor && <span aria-hidden className="ml-1 inline-block h-2.5 w-2.5 rounded-full border border-black/15" style={{ backgroundColor: colorToken(value) }} />}{value}
       </button>;
     })}
@@ -73,12 +73,7 @@ const cartErrorText = (value: unknown) => value instanceof Error && /currently a
 
 export default function RetailLiveCatalog({ view, productSlug, storefrontPath, checkoutPath, embedded = false }: { view: RetailView; productSlug?: string; storefrontPath?: string; checkoutPath?: string; embedded?: boolean }) {
   const [products, setProducts] = useState(view.products);
-  const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
-  const [filter, setFilter] = useState("");
-  const [minimumPrice, setMinimumPrice] = useState("");
-  const [maximumPrice, setMaximumPrice] = useState("");
-  const [sort, setSort] = useState("featured");
   const [error, setError] = useState(false);
   const [variantChoice, setVariantChoice] = useState<Record<string, string>>({});
 
@@ -138,9 +133,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
     const timer = window.setTimeout(async () => {
       setBusy(true);
       const params = new URLSearchParams({ page: String(page), limit: "50" });
-      if (query.trim()) params.set("q", query.trim());
       if (category) params.set("category", category);
-      if (filter) params.set("filter", filter);
       try {
         const response = await fetch(appPath(`/api/public/v1/organizations/${encodeURIComponent(view.identifier)}/products?${params}`), { signal: controller.signal, headers: { Accept: "application/json" } });
         if (!response.ok) throw new Error("catalog request failed");
@@ -156,7 +149,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
       }
     }, 180);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [view.identifier, query, category, filter, page, productSlug, retryKey]);
+  }, [view.identifier, category, page, productSlug, retryKey]);
 
   useEffect(() => {
     if (productSlug) return;
@@ -178,37 +171,21 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
   }, [view.identifier, productSlug]);
 
 
-  const availableFilters = useMemo(() => {
-    const options = new Map<string, Set<string>>();
-    for (const product of products) {
-      for (const attribute of [...product.attributes, ...product.variants.flatMap((variant) => variant.options)]) {
-        if (!attribute.filterable) continue;
-        const key = `${attribute.key}:${attributeText(attribute)}`;
-        const label = `${attribute.label}: ${attributeText(attribute)}`;
-        if (!options.has(key)) options.set(key, new Set());
-        options.get(key)!.add(label);
-      }
-    }
-    return [...options].map(([value, labels]) => ({ value, label: [...labels][0] }));
-  }, [products]);
-
-  const sortedProducts = useMemo(() => {
-    const result = [...products];
-    if (sort === "name") result.sort((a, b) => a.name.localeCompare(b.name, "fa"));
-    if (sort === "price-asc") result.sort((a, b) => a.price.amount - b.price.amount);
-    if (sort === "price-desc") result.sort((a, b) => b.price.amount - a.price.amount);
-    const minimum = minimumPrice === "" ? null : Number(minimumPrice);
-    const maximum = maximumPrice === "" ? null : Number(maximumPrice);
-    return result.filter((product) => (minimum === null || product.price.amount >= minimum) && (maximum === null || product.price.amount <= maximum));
-  }, [products, sort, minimumPrice, maximumPrice]);
-
   const detail = productSlug ? products.find((product) => product.slug === productSlug || product.id === productSlug) : undefined;
-  const heroProduct = view.products.find((product) => product.media.detail || product.media.card) ?? view.products[0];
-  const heroImage = view.branding.cover || heroProduct?.media.detail || heroProduct?.media.card || null;
   const categoryProducts = view.categories.map((item) => ({
     ...item,
     product: view.products.find((product) => product.category.id === item.id && product.media.card),
   }));
+  const selectedCategory = categoryProducts.find((item) => item.id === category || item.slug === category);
+  const heroProduct = view.products.find((product) => product.media.detail || product.media.card) ?? view.products[0];
+  const heroImage = view.branding.cover || heroProduct?.media.detail || heroProduct?.media.card || null;
+  const changeCategory = (value: string) => {
+    if (value === category && page === 1) return;
+    setBusy(true);
+    setError(false);
+    setCategory(value);
+    setPage(1);
+  };
   const addToCart = async (variantId?: string) => {
     if (!variantId || view.previewOnly) return;
     setCartNotice("");
@@ -258,17 +235,20 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
     const sizeDim = canonDims.find((d) => d.id === "size");
     const selectVariant = (variant: RetailVariant) => setVariantChoice((current) => ({ ...current, [product.id]: variant.id }));
     const href = `${base}/product/${encodeURIComponent(product.slug ?? product.id)}`;
-    return <Card key={product.id} className="bg-card text-card-foreground group overflow-hidden rounded-2xl border-0 shadow-sm">
-      <a href={href} className="bg-muted relative block aspect-[.82] overflow-hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+    return <Card key={product.id} className="bg-card text-card-foreground group flex h-full flex-col overflow-hidden rounded-2xl border-0 shadow-sm">
+      <a href={href} className="bg-muted relative block aspect-[4/5] w-full overflow-hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
         {image ? <Image unoptimized fill sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw" src={image} alt={product.media.alt || product.name} className="object-cover transition-transform duration-500 group-hover:scale-[1.03]" /> : <div className="grid h-full place-items-center text-sm text-[#77736a]">تصویری برای این کالا ثبت نشده است</div>}
 </a>
-      <div className="p-4 md:p-5"><span className="text-muted-foreground text-xs">{product.brand ? `${product.brand} · ` : ""}{product.category.name}</span>
-        <h2 className="mt-1 text-base font-medium leading-6 md:text-lg"><a href={href} className="hover:underline">{product.name}</a></h2>
-        {product.attributes.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{product.attributes.slice(0, 3).map((attribute) => <span key={attribute.key} className="rounded-full bg-[#f5f3ef] px-2 py-1 text-[10px] text-[#666158]">{attribute.label}: {attributeText(attribute)}</span>)}</div>}
+      <div className="flex flex-1 flex-col p-3 sm:p-4 md:p-5"><span className="text-muted-foreground text-xs">{product.brand ? `${product.brand} · ` : ""}{product.category.name}</span>
+        <h2 className="mt-1 text-sm font-medium leading-6 sm:text-base md:text-lg"><a href={href} className="hover:underline">{product.name}</a></h2>
+        <div className="mt-2 min-h-[3.5rem] rounded-lg bg-muted/50 px-2 py-1.5">
+          <p className="line-clamp-3 text-[11px] leading-5 text-muted-foreground sm:text-xs">{product.description?.trim() || (product.variants.length > 0 ? `${new Intl.NumberFormat("fa-IR").format(product.variants.length)} گزینهٔ خرید · جزئیات در صفحهٔ محصول` : "جزئیات بیشتر در صفحهٔ محصول")}</p>
+        </div>
+        {product.attributes.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{product.attributes.slice(0, 3).map((attribute) => <span key={attribute.key} className="rounded-full bg-muted px-2 py-1 text-[10px] text-muted-foreground">{attribute.label}: {attributeText(attribute)}</span>)}</div>}
         {colorDim && <VariantDimension product={product} dimension={colorDim} selected={selectedVariant} onChange={selectVariant} />}
         {sizeDim && <VariantDimension product={product} dimension={sizeDim} selected={selectedVariant} onChange={selectVariant} />}
-        {!colorDim && !sizeDim && product.variants.length > 1 && <label className="mt-4 block text-xs">گزینه قابل انتخاب<select aria-label={`گزینه قابل انتخاب برای ${product.name}`} value={selectedId} onChange={(event) => setVariantChoice((current) => ({ ...current, [product.id]: event.target.value }))} className="mt-2 min-h-11 w-full rounded-lg border border-border bg-card px-2 py-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{product.variants.map((variant) => <option key={variant.id} value={variant.id}>{variant.name ?? variant.options.map((option) => `${option.label}: ${attributeText(option)}`).join(" · ")}</option>)}</select></label>}
-        <div className="mt-4 flex items-center justify-between gap-2"><div className="min-w-0">{(() => {
+        {!colorDim && !sizeDim && product.variants.length > 1 && <label className="mt-4 block text-xs">گزینه قابل انتخاب<select aria-label={`گزینه قابل انتخاب برای ${product.name}`} value={selectedId} onChange={(event) => setVariantChoice((current) => ({ ...current, [product.id]: event.target.value }))} className="mt-2 min-h-10 w-full rounded-lg border border-border bg-card px-2 py-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{product.variants.map((variant) => <option key={variant.id} value={variant.id}>{variant.name ?? variant.options.map((option) => `${option.label}: ${attributeText(option)}`).join(" · ")}</option>)}</select></label>}
+        <div className="mt-auto flex items-center justify-between gap-1.5 pt-3"><div className="min-w-0">{(() => {
   const selectedList = selectedVariant?.listPrice?.amount;
   const selectedPrice = selectedVariant?.price.amount ?? product.price.amount;
   const variantSale = selectedVariant && selectedList !== undefined && selectedList > selectedPrice;
@@ -282,8 +262,8 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
   if (showList) return <span className="mt-1 block text-[11px] line-through text-muted-foreground">{toman(selectedList)}</span>;
   if (fallback) return <span className="mt-1 block text-[11px] line-through text-muted-foreground">{toman(product.listPrice!.amount)}</span>;
   return null;
-})()}<span className={`mt-1 block text-[11px] ${selectedVariant?.orderable ? "text-emerald-700" : "text-destructive"}`}>{selectedVariant ? (selectedVariant.orderable ? "موجود" : "ناموجود") : "وضعیت فروش ثبت نشده"}</span></div>
-          <Button type="button" aria-label={`افزودن ${product.name} به سبد خرید`} disabled={view.previewOnly || !selectedVariant?.orderable} onClick={() => void addToCart(selectedVariant?.id)} size="sm" className="min-h-11 shrink-0 rounded-full px-3 py-2 text-xs">{view.previewOnly ? "پیش‌نمایش" : selectedVariant?.orderable ? "افزودن به سبد" : "ناموجود"}</Button>
+})()}<span className={`mt-1 block text-[11px] ${selectedVariant?.orderable ? "text-emerald-700 dark:text-emerald-300" : "text-destructive"}`}>{selectedVariant ? (selectedVariant.orderable ? "موجود" : "ناموجود") : "وضعیت فروش ثبت نشده"}</span></div>
+          <Button type="button" aria-label={`افزودن ${product.name} به سبد خرید`} disabled={view.previewOnly || !selectedVariant?.orderable} onClick={() => void addToCart(selectedVariant?.id)} size="sm" className="h-9 shrink-0 rounded-full px-2.5 py-1.5 text-xs sm:h-10 sm:px-3 sm:py-2">{view.previewOnly ? "پیش‌نمایش" : selectedVariant?.orderable ? "افزودن به سبد" : "ناموجود"}</Button>
         </div>
       </div>
     </Card>;
@@ -312,7 +292,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
       {shareMessage && <p role="status" aria-live="polite" className="text-xs text-[#6e6a60] md:basis-full">{shareMessage}</p>}
     </section></>}
     {!productSlug && <>
-    <section className="mx-auto grid max-w-7xl gap-4 px-4 pb-8 md:grid-cols-[.88fr_1.12fr] md:px-10">
+    {!category && <section className="mx-auto grid max-w-7xl gap-4 px-4 pb-8 md:grid-cols-[.88fr_1.12fr] md:px-10">
       <div className="bg-card text-card-foreground flex min-h-[360px] flex-col justify-center rounded-[2rem] p-7 ring-1 ring-border sm:p-10 md:min-h-[500px] md:p-14">
         <div className="mb-8 flex items-center gap-3">
           {view.branding.logo && <Image src={view.branding.logo} width={48} height={48} unoptimized alt="" className="size-12 rounded-xl bg-white object-contain p-1" />}
@@ -320,7 +300,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
         </div>
         <h1 className="max-w-xl text-4xl font-semibold leading-[1.4] md:text-6xl">{isFashion ? <>استایل خودت را<br />از اینجا پیدا کن.</> : <>انتخابی دقیق،<br />برای هر روز.</>}</h1>
         <p className="mt-5 max-w-md leading-8 text-[#67655e]">{view.description ?? "محصولات منتشرشده فروشگاه را ببینید و گزینه مناسب خود را انتخاب کنید."}</p>
-        <div className="mt-8 flex flex-wrap gap-3"><a href={`${base}#products`} className="min-h-12 rounded-full bg-[#292a24] px-7 py-3.5 text-sm font-semibold text-white">مشاهده محصولات <span className="mr-2" aria-hidden>←</span></a>{view.categories[0] && <button type="button" onClick={() => { setCategory(view.categories[0]!.slug ?? view.categories[0]!.id); setPage(1); document.getElementById("products")?.scrollIntoView({ behavior: "smooth" }); }} className="min-h-12 rounded-full border border-[#cfc9bd] px-6 py-3 text-sm">دسته‌بندی‌ها</button>}</div>
+        <div className="mt-8 flex flex-wrap gap-3"><a href={`${base}#products`} className="min-h-12 rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground">مشاهده محصولات <span className="mr-2" aria-hidden>←</span></a>{view.categories.length > 0 && <a href="#categories" className="inline-flex min-h-12 items-center rounded-full border border-border px-6 py-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">دسته‌بندی‌ها</a>}</div>
       </div>
       <div className="relative min-h-[360px] overflow-hidden rounded-[2rem] bg-[#d8d2c7] md:min-h-[500px]">
         {heroImage ? <Image src={heroImage} alt={heroProduct?.media.alt || view.name} fill unoptimized priority sizes="(max-width: 768px) 100vw, 55vw" className="object-cover" /> : <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-[#eeeae3] to-[#c9c1b4] p-8 text-center text-[#655d51]"><span className="text-lg font-medium">{view.name}</span></div>}
@@ -329,26 +309,28 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
           {heroProduct ? <><h2 className="mt-2 text-2xl font-semibold md:text-3xl">{heroProduct.name}</h2><div className="mt-4 flex flex-wrap items-center gap-4"><span className="text-sm">{toman(heroProduct.price.amount)}</span><a href={`${base}/product/${encodeURIComponent(heroProduct.slug ?? heroProduct.id)}`} className="min-h-11 rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#292a24]">جزئیات محصول</a></div></> : <h2 className="mt-2 text-2xl font-semibold">{view.name}</h2>}
         </div>
       </div>
-    </section>
+    </section>}
     <section id="categories" className="mx-auto max-w-7xl px-4 py-8 md:px-10">
-      <div className="flex items-end justify-between gap-4 border-b border-[#e1ded7] pb-4"><div><span className="text-xs text-[#8a6849]">{isFashion ? "انتخاب بر اساس دسته" : "دسته‌بندی محصولات"}</span><h2 className="mt-2 text-2xl font-semibold">دسته‌بندی‌ها</h2></div><a href={`${base}#products`} className="text-sm text-[#726c61]">همه محصولات ←</a></div>
-      {categoryProducts.length ? <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{categoryProducts.map((item) => <button key={item.id} type="button" onClick={() => { const value = item.slug ?? item.id; setCategory(category === value ? "" : value); setPage(1); document.getElementById("products")?.scrollIntoView({ behavior: "smooth" }); }} aria-pressed={category === (item.slug ?? item.id)} className={`group relative min-h-36 overflow-hidden rounded-2xl text-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b7653] ${category === (item.slug ?? item.id) ? "ring-2 ring-[#292a24]" : ""}`}>
-        {item.product?.media.card ? <Image src={item.product.media.card} alt="" fill unoptimized sizes="(max-width: 768px) 50vw, 25vw" className="object-cover transition-transform duration-300 group-hover:scale-105" /> : <span className="absolute inset-0 bg-gradient-to-br from-[#e9e5dc] to-[#d3cdc2]" />}
-        <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" /><span className="absolute inset-x-0 bottom-0 p-4 text-sm font-semibold text-white">{item.name}<span className="mt-1 block text-[11px] font-normal text-white/80">مشاهده محصولات این دسته</span></span>
-      </button>)}</div> : <p className="bg-card text-card-foreground mt-5 rounded-xl p-5 text-sm">دسته‌بندی فعالی برای نمایش ثبت نشده است.</p>}
+      <div className="flex items-end justify-between gap-4 border-b border-border pb-4"><div><span className="text-xs text-muted-foreground">{isFashion ? "انتخاب بر اساس دسته" : "دسته‌بندی محصولات"}</span><h2 className="mt-2 text-2xl font-semibold">دسته‌بندی‌ها</h2></div><button type="button" onClick={() => changeCategory("")} aria-pressed={!category} className="rounded-md px-2 py-1 text-sm text-muted-foreground transition hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">همه دسته‌بندی‌ها</button></div>
+      {categoryProducts.length ? <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{categoryProducts.map((item) => {
+        const value = item.slug ?? item.id;
+        const active = category === value;
+        return <button key={item.id} type="button" onClick={() => { changeCategory(active ? "" : value); document.getElementById("products")?.scrollIntoView({ behavior: "smooth" }); }} aria-pressed={active} className={`group relative min-h-32 overflow-hidden rounded-2xl text-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${active ? "ring-2 ring-primary" : ""}`}>
+          {item.product?.media.card ? <Image src={item.product.media.card} alt="" fill unoptimized sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 20vw" className="object-cover transition-transform duration-300 group-hover:scale-105" /> : <span className="absolute inset-0 bg-gradient-to-br from-[#e9e5dc] to-[#d3cdc2]" />}
+          <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" /><span className="absolute inset-x-0 bottom-0 p-3 text-xs font-semibold text-white">{item.name}</span>
+        </button>;
+      })}</div> : <p className="bg-card text-card-foreground mt-5 rounded-xl p-5 text-sm">دسته‌بندی فعالی برای نمایش ثبت نشده است.</p>}
     </section>
-    {newArrivalsAvailable && newArrivals.length > 0 && <section id="new-arrivals" className="mx-auto max-w-7xl px-5 pb-8 pt-2 md:px-10"><div className="flex items-end justify-between gap-4 border-b border-border pb-4"><div><span className="text-primary text-xs">جدیدترین محصولات</span><h2 className="mt-2 text-2xl font-semibold">تازه‌واردها</h2></div><a href={`${base}#products`} className="text-muted-foreground text-sm hover:text-foreground">همه محصولات ←</a></div><div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 xl:grid-cols-4">{newArrivals.map(renderProduct)}</div></section>}
-    {view.products.some((product) => product.listPrice && product.listPrice.amount > product.price.amount) && <section id="sale" className="mx-auto max-w-7xl px-5 pb-8 pt-2 md:px-10"><div className="flex items-end justify-between gap-4 border-b border-border pb-4"><div><span className="text-destructive text-xs">پیشنهادهای ویژه</span><h2 className="mt-2 text-2xl font-semibold">حراج</h2></div><a href={`${base}#products`} className="text-muted-foreground text-sm hover:text-foreground">همه محصولات ←</a></div><div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 xl:grid-cols-4">{view.products.filter((product) => product.listPrice && product.listPrice.amount > product.price.amount).map(renderProduct)}</div></section>}
+    {!category && newArrivalsAvailable && newArrivals.length > 0 && <section id="new-arrivals" className="mx-auto max-w-7xl px-5 pb-8 pt-2 md:px-10"><div className="flex items-end justify-between gap-4 border-b border-border pb-4"><div><span className="text-primary text-xs">جدیدترین محصولات</span><h2 className="mt-2 text-2xl font-semibold">تازه‌واردها</h2></div><a href={`${base}#products`} className="text-muted-foreground text-sm hover:text-foreground">همه محصولات ←</a></div><div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 xl:grid-cols-4 auto-rows-fr">{newArrivals.map(renderProduct)}</div></section>}
+    {!category && view.products.some((product) => product.listPrice && product.listPrice.amount > product.price.amount) && <section id="sale" className="mx-auto max-w-7xl px-5 pb-8 pt-2 md:px-10"><div className="flex items-end justify-between gap-4 border-b border-border pb-4"><div><span className="text-destructive text-xs">پیشنهادهای ویژه</span><h2 className="mt-2 text-2xl font-semibold">حراج</h2></div><a href={`${base}#products`} className="text-muted-foreground text-sm hover:text-foreground">همه محصولات ←</a></div><div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 xl:grid-cols-4 auto-rows-fr">{view.products.filter((product) => product.listPrice && product.listPrice.amount > product.price.amount).map(renderProduct)}</div></section>}
     <section id="products" className="mx-auto max-w-7xl px-5 pb-20 pt-7 md:px-10">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><span className="text-xs text-[#92704e]">فهرست منتشرشده فروشگاه</span><h2 className="mt-2 text-3xl font-semibold">{view.theme === "ELECTRONICS" ? "دستگاه‌ها و مشخصات" : "محصولات فروشگاه"}</h2></div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6"><label className="sr-only" htmlFor="retail-search">جستجوی محصول</label><input id="retail-search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="جستجوی محصول..." className="min-h-11 rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30" /><Link href={`${base}/discover`} className="min-h-11 shrink-0 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex items-center gap-2"><Search className="h-4 w-4" /><span>جست‌وجوی پیشرفته</span></Link>
-          <label className="sr-only" htmlFor="retail-filter">فیلتر ویژگی</label><select id="retail-filter" value={filter} onChange={(event) => { setFilter(event.target.value); setPage(1); }} className="min-h-11 rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground"><option value="">همه ویژگی‌ها</option>{availableFilters.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
-          <label className="sr-only" htmlFor="retail-price-min">کمترین قیمت به تومان</label><input id="retail-price-min" type="number" min="0" value={minimumPrice} onChange={(event) => setMinimumPrice(event.target.value)} placeholder="حداقل قیمت" className="min-h-11 min-w-0 rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30" />
-          <label className="sr-only" htmlFor="retail-price-max">بیشترین قیمت به تومان</label><input id="retail-price-max" type="number" min="0" value={maximumPrice} onChange={(event) => setMaximumPrice(event.target.value)} placeholder="حداکثر قیمت" className="min-h-11 min-w-0 rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30" />
-          <label className="sr-only" htmlFor="retail-sort">مرتب‌سازی</label><select id="retail-sort" value={sort} onChange={(event) => setSort(event.target.value)} className="min-h-11 rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground"><option value="featured">پیشنهادی</option><option value="name">نام محصول</option><option value="price-asc">قیمت: کم به زیاد</option><option value="price-desc">قیمت: زیاد به کم</option></select>
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><span className="text-xs text-[#92704e]">{selectedCategory ? "دسته‌بندی انتخاب‌شده" : "فهرست منتشرشده فروشگاه"}</span><h2 className="mt-2 text-3xl font-semibold">{selectedCategory ? selectedCategory.name : view.theme === "ELECTRONICS" ? "دستگاه‌ها و مشخصات" : "محصولات فروشگاه"}</h2></div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href={`${base}/discover`} className="min-h-11 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">جست‌وجوی پیشرفته</Link>
+          {category && <button type="button" onClick={() => changeCategory("")} className="min-h-11 rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">حذف فیلتر دسته‌بندی</button>}
         </div>
       </div>
-      {error ? <div role="alert" className="mt-8 rounded-2xl bg-white p-8 text-center text-[#8c3329]"><p>{online === false ? "اتصال اینترنت برقرار نیست. پس از اتصال دوباره تلاش کنید." : "دریافت محصولات ممکن نشد. اتصال را بررسی کنید و دوباره تلاش کنید."}</p><button type="button" onClick={() => { setError(false); setRetryKey((current) => current + 1); }} className="mt-4 min-h-11 rounded-full border border-[#d9d5cd] px-5 text-sm text-[#24241f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b7653]">تلاش دوباره</button></div> : busy ? <p role="status" className="mt-8 rounded-2xl bg-white p-10 text-center">در حال دریافت محصولات…</p> : sortedProducts.length ? <><div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 xl:grid-cols-4">{sortedProducts.map(renderProduct)}</div><nav aria-label="صفحه‌های محصولات" className="mt-8 flex items-center justify-center gap-4"><button disabled={pagination.page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} className="min-h-11 rounded-full border border-[#d9d5cd] px-5 disabled:opacity-40">قبلی</button><span className="text-sm" aria-live="polite">صفحه {new Intl.NumberFormat("fa-IR").format(pagination.page)} از {new Intl.NumberFormat("fa-IR").format(pagination.totalPages)}</span><button disabled={pagination.page >= pagination.totalPages} onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))} className="min-h-11 rounded-full border border-[#d9d5cd] px-5 disabled:opacity-40">بعدی</button></nav></> : <div className="mt-8 rounded-2xl bg-white p-10 text-center text-[#6e6a60]">محصولی با این مشخصات پیدا نشد. فیلترها را تغییر دهید.</div>}
+      {error ? <div role="alert" className="mt-8 rounded-2xl bg-card p-8 text-center text-destructive"><p>{online === false ? "اتصال اینترنت برقرار نیست. پس از اتصال دوباره تلاش کنید." : "دریافت محصولات ممکن نشد. اتصال را بررسی کنید و دوباره تلاش کنید."}</p><button type="button" onClick={() => { setError(false); setRetryKey((current) => current + 1); }} className="mt-4 min-h-11 rounded-full border border-border px-5 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">تلاش دوباره</button></div> : busy ? <p role="status" className="mt-8 rounded-2xl bg-card p-10 text-center text-foreground">در حال دریافت محصولات…</p> : products.length ? <><div className="mt-7 grid auto-rows-fr grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 xl:grid-cols-4">{products.map(renderProduct)}</div><nav aria-label="صفحه‌های محصولات" className="mt-8 flex items-center justify-center gap-4"><button disabled={pagination.page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} className="min-h-11 rounded-full border border-border px-5 text-foreground disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">قبلی</button><span className="text-sm text-muted-foreground" aria-live="polite">صفحه {new Intl.NumberFormat("fa-IR").format(pagination.page)} از {new Intl.NumberFormat("fa-IR").format(pagination.totalPages)}</span><button disabled={pagination.page >= pagination.totalPages} onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))} className="min-h-11 rounded-full border border-border px-5 text-foreground disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">بعدی</button></nav></> : <div className="mt-8 rounded-2xl border border-dashed border-border bg-card p-10 text-center text-muted-foreground">محصولی با این مشخصات پیدا نشد. فیلترها را تغییر دهید.</div>}
       {cartNotice && <p role="status" aria-live="polite" className="mt-5 text-center text-sm text-[#6e6a60]">{cartNotice}</p>}
       <p className="mt-6 text-center text-xs text-[#77736a]">قیمت و وضعیت موجودی از فهرست منتشرشده فروشگاه دریافت شده‌اند.</p>
     </section>

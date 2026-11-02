@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api-guards";
 import { getPublicCatalogSnapshot } from "@/lib/public-catalog/service.server";
 import RetailPreview from "@/app/[locale]/retail-preview/[store]/retail-preview";
 import { tenantPwaManifestHref } from "@/lib/tenant-retail-pwa";
+import { getPublishedRetailHero } from "@/lib/website-studio/retail-hero.server";
 
 export const dynamic = "force-dynamic";
 type Params = { locale: string; organization: string };
@@ -27,6 +28,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 export default async function PublicRetailStorefront({ params }: { params: Promise<Params> }) {
   const catalog = await load(params);
   return <RetailPreview liveView={{
+    managedHero: await getPublishedRetailHero(catalog.organization.identifier),
     identifier: catalog.organization.identifier,
     name: catalog.organization.name,
     description: catalog.organization.description,

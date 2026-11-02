@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { ApiError, jsonError, requireAuthSession, requireSameOriginMutation } from "@/lib/api-guards";
 import { RetailWebsiteService } from "@/lib/website-studio/retail.service";
+import { studioProductChoices } from "@/lib/website-studio/retail-hero.server";
 
 const service = new RetailWebsiteService();
 const headers = { "Cache-Control": "private, no-store, max-age=0" };
@@ -37,7 +38,18 @@ function failure(error: unknown) {
 export async function GET(_request: Request, { params }: Context) {
   try {
     const session = await requireAuthSession();
-    return NextResponse.json(await service.load({ userId: session.user.id, role: session.user.role, organizationId: session.user.organizationId }, (await params).id), { headers });
+    const data = await service.load({ userId: session.user.id, role: session.user.role, organizationId: session.user.organizationId }, (await params).id);
+    return NextResponse.json({ ...data, products: await studioProductChoices(data.organization.slug, data.content.hero?.productIds) }, { headers });
+  } catch (error) { return failure(error); }
+}
+export async function PATCH(request: Request, { params }: Context) {
+  try {
+    requireSameOriginMutation(request);
+    const session = await requireAuthSession();
+    let body: unknown;
+    try { body = JSON.parse(await boundedBody(request)); } catch (error) { if (error instanceof ApiError) throw error; throw new ApiError(400, "درخواست JSON معتبر لازم است."); }
+    const publication = await service.changePublication({ userId: session.user.id, role: session.user.role, organizationId: session.user.organizationId }, (await params).id, body);
+    return NextResponse.json({ publication }, { headers });
   } catch (error) { return failure(error); }
 }
 export async function POST(request: Request, { params }: Context) {

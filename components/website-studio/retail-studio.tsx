@@ -7,8 +7,11 @@ import { isEligibleRetailWebsiteMedia, referencedWebsiteImages, retailContentSch
 import { moveWebsiteSection } from "@/lib/website-studio/core";
 import { StudioField } from "./studio-field";
 import styles from "./retail-studio.module.css";
+import { RetailHeroEditor } from "./retail-hero-editor";
+import { retailHeroSchema, type RetailHeroPublication } from "@/lib/website-studio/retail-hero-contract";
+import type { PublicCatalogProduct } from "@/lib/public-catalog/contracts";
 
-type ApiPayload = { organization: { id?: string; name: string }; revision: WebsiteRevision | null; content: RetailContent; media: WebsiteMedia[] };
+type ApiPayload = { organization: { id?: string; name: string }; revision: WebsiteRevision | null; content: RetailContent; media: WebsiteMedia[]; products: PublicCatalogProduct[]; publication: RetailHeroPublication | null };
 type Props = { organizationId: string; locale: string };
 const labels: Record<RetailSection["kind"], string> = { HERO: "معرفی اصلی", ABOUT: "درباره فروشگاه", GALLERY: "گالری تصاویر", FEATURES: "ویژگی‌ها", CONTACT: "راه‌های ارتباطی" };
 function responseError(data: { error?: unknown; message?: unknown }, fallback: string) {
@@ -22,6 +25,7 @@ function retailValidationMessage(content: RetailContent) {
   const result = retailContentSchema.safeParse(content);
   if (result.success) return null;
   const issue = result.error.issues[0];
+  if (issue.path[0] === "hero") return issue.message;
   if (issue.path[0] === "sections" && issue.path.length === 1 && issue.message.includes("شناسه")) return issue.message;
   if (issue.path.includes("imageIds")) return "برای ذخیره، هر ردیف گالری را با یک تصویر تأییدشده تکمیل کنید.";
   if (issue.path.at(-1) === "ctaHref") return "نشانی دکمه معتبر نیست؛ از مسیر داخلی، نشانی https، تلفن یا ایمیل استفاده کنید.";
@@ -51,6 +55,7 @@ export function RetailStudio({ organizationId, locale }: Props) {
   const [dirty, setDirty] = useState(false);
   const [view, setView] = useState<"edit" | "preview">("edit");
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
+  const [confirmPublication, setConfirmPublication] = useState<"publish" | "rollback" | null>(null);
   const usableMedia = useMemo(() => (payload?.media ?? []).filter(isEligibleRetailWebsiteMedia), [payload?.media]);
   const missingMedia = content ? referencedWebsiteImages(content).filter((id) => !usableMedia.some((image) => image.id === id)) : [];
   const ordered = useMemo(() => [...(content?.sections ?? [])].sort((a, b) => a.order - b.order || a.key.localeCompare(b.key)), [content]);
@@ -112,6 +117,27 @@ export function RetailStudio({ organizationId, locale }: Props) {
     setError(""); setView("preview");
   }
 
+  function prepareHero() {
+    const desktop = usableMedia.find(image => /hero.*desktop/.test(image.url));
+    const mobile = usableMedia.find(image => /hero.*mobile/.test(image.url));
+    const hero = retailHeroSchema.parse({ enabled: false, mode: "CAMPAIGN", heading: "استایل تو، قدم‌های تو", description: "مدل‌های تازه را ببین و انتخاب مناسب خودت را پیدا کن.", ctaLabel: "مشاهدهٔ مجموعه", desktopImageId: desktop?.id ?? "", mobileImageId: mobile?.id ?? "", imageAlt: desktop?.alt ?? "", focalX: 75, focalY: 50 });
+    update(current => ({ ...current, hero: { ...hero, enabled: Boolean(desktop) } }));
+  }
+
+  async function changePublication(action: "publish" | "rollback") {
+    if (busy || !payload?.revision || dirty) return;
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const response = await fetch(endpoint, { method: "PATCH", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, revisionId: action === "publish" ? payload.revision.id : payload.publication?.revisionId, basePublishedRevisionId: payload.publication?.revisionId ?? null }) });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(responseError(result, "انتشار هیرو انجام نشد."));
+      setPayload(current => current ? { ...current, publication: result.publication } : current);
+      setConfirmPublication(null);
+      setNotice(action === "publish" ? "هیرو منتشر شد؛ نسخهٔ ذخیره‌شده اکنون در فروشگاه نمایش داده می‌شود." : "هیرو به نسخهٔ قبلی بازگشت.");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "انتشار انجام نشد."); }
+    finally { setBusy(false); }
+  }
+
   return <main className={styles.shell} dir="rtl" lang={locale}>
     <header className={styles.header}><div><p className={styles.eyebrow}>استودیوی وب‌سایت فروشگاه</p><h1>{payload?.organization.name ?? "مدیریت وب‌سایت"}</h1><p>محتوای صفحه فروشگاه را ویرایش و پیش‌نمایش خصوصی آن را بررسی کنید.</p></div><div className={styles.headerButtons}><span className={styles.privateBadge}>پیش‌نویس خصوصی</span><button type="button" disabled={busy || loading} onClick={() => void refresh()}><RefreshCw size={16} /> بازخوانی</button></div></header>
     {error && <div role="alert" className={styles.alert}>{error}<button type="button" disabled={busy} onClick={() => void refresh()}>تلاش دوباره</button></div>}
@@ -123,6 +149,17 @@ export function RetailStudio({ organizationId, locale }: Props) {
         <section className={styles.editor} aria-label="ویرایش محتوای فروشگاه"><fieldset disabled={busy} className={styles.fieldset}>
           <div className={styles.intro}><strong>نسخه خصوصی وب‌سایت</strong><span>ذخیره، نسخه تازه‌ای می‌سازد و هیچ محتوایی را منتشر نمی‌کند.</span></div>
           <div className={styles.publicNote} role="note">فروشگاه عمومی بدون تغییر می‌ماند؛ ذخیره این پیش‌نویس فقط یک نسخه خصوصی ایجاد می‌کند.</div>
+          <article className={styles.card}>
+            {content.hero ? <RetailHeroEditor value={content.hero} onChange={hero => update(current => ({ ...current, hero }))} media={usableMedia} products={payload?.products ?? []} disabled={busy} /> : <div className={styles.intro}><strong>هیروی صفحهٔ فروشگاه</strong><p>تصویر، متن و محصولات منتخب ویترین را از اینجا مدیریت کنید.</p><button type="button" onClick={prepareHero}>آماده‌سازی هیرو</button></div>}
+          </article>
+          {content.hero && <article className={styles.card} aria-label="انتشار هیرو">
+            <h2 className={styles.sectionTitle}>انتشار هیرو</h2>
+            <p className={styles.publicNote}>فقط تنظیمات هیرو منتشر می‌شود. بخش‌های پایین، پیش‌نویس مستقل وب‌سایت هستند.</p>
+            <p>{payload?.publication?.revisionId ? payload.publication.revisionId === payload.revision?.id ? "همین نسخه در فروشگاه فعال است." : "نسخهٔ ذخیره‌شده با هیروی فعال متفاوت است." : "هنوز هیرویی از استودیو منتشر نشده است."}</p>
+            <div className={styles.headerButtons}><button type="button" disabled={busy || dirty || !payload?.revision || payload.publication?.revisionId === payload.revision.id} onClick={() => setConfirmPublication("publish")}>انتشار نسخهٔ ذخیره‌شده</button><button type="button" disabled={busy || dirty || !payload?.publication?.revisionId} onClick={() => setConfirmPublication("rollback")}>بازگشت به هیروی قبلی</button></div>
+            {confirmPublication && <div className={styles.intro} role="group" aria-label="تأیید انتشار هیرو"><strong>{confirmPublication === "publish" ? "نسخهٔ ذخیره‌شده برای بازدیدکنندگان فعال شود؟" : "هیروی قبلی برای بازدیدکنندگان فعال شود؟"}</strong><div className={styles.headerButtons}><button type="button" disabled={busy || dirty} onClick={() => void changePublication(confirmPublication)}>تأیید {confirmPublication === "publish" ? "انتشار" : "بازگشت"}</button><button type="button" onClick={() => setConfirmPublication(null)}>انصراف</button></div></div>}
+          </article>}
+          <details className={styles.card}><summary>سایر بخش‌های پیش‌نویس وب‌سایت</summary><p className={styles.publicNote}>این بخش‌ها در انتشار هیروی فروشگاه فعال نمی‌شوند و فقط در پیش‌نویس نگه‌داری می‌شوند.</p>
           <StudioField className={styles.field} label="عنوان وب‌سایت" value={content.title} onChange={(value) => update((current) => ({ ...current, title: value }))} />
           <h2 className={styles.sectionTitle}>بخش‌های صفحه</h2>
           {ordered.map((section, index) => <article className={styles.card} key={section.key}>
@@ -133,6 +170,7 @@ export function RetailStudio({ organizationId, locale }: Props) {
             {section.kind === "FEATURES" && <div className={styles.nested}><StudioField className={styles.field} label="عنوان بخش" value={section.heading} onChange={(v) => updateSection(section.key, (item) => item.kind === "FEATURES" ? { ...item, heading: v } : item)} /><div className={styles.rowTitle}><strong>موارد ویژگی‌ها</strong><button type="button" disabled={busy || section.items.length >= 30} onClick={() => updateSection(section.key, (item) => item.kind === "FEATURES" ? { ...item, items: [...item.items, { heading: "", body: "", icon: "✦" }] } : item)}><Plus size={15} /> افزودن مورد</button></div>{section.items.map((feature, itemIndex) => <div className={styles.nestedCard} key={itemIndex}><div className={styles.rowTitle}><strong>مورد {itemIndex + 1}</strong><button type="button" className={styles.iconDanger} aria-label="حذف مورد" disabled={busy} onClick={() => updateSection(section.key, (item) => item.kind === "FEATURES" ? { ...item, items: item.items.filter((_, i) => i !== itemIndex) } : item)}><Trash2 size={16} /></button></div><div className={styles.fields}><StudioField className={styles.field} label="عنوان" value={feature.heading} onChange={(v) => updateSection(section.key, (item) => item.kind === "FEATURES" ? { ...item, items: item.items.map((f, i) => i === itemIndex ? { ...f, heading: v } : f) } : item)} /><StudioField className={styles.field} label="نماد کوتاه" value={feature.icon} onChange={(v) => updateSection(section.key, (item) => item.kind === "FEATURES" ? { ...item, items: item.items.map((f, i) => i === itemIndex ? { ...f, icon: v } : f) } : item)} /><div className={styles.full}><StudioField className={styles.field} label="توضیح" value={feature.body} multiline onChange={(v) => updateSection(section.key, (item) => item.kind === "FEATURES" ? { ...item, items: item.items.map((f, i) => i === itemIndex ? { ...f, body: v } : f) } : item)} /></div></div></div>)}</div>}
             {section.kind === "CONTACT" && <div className={styles.fields}><StudioField className={styles.field} label="عنوان بخش" value={section.heading} onChange={(v) => updateSection(section.key, (item) => item.kind === "CONTACT" ? { ...item, heading: v } : item)} /><StudioField className={styles.field} label="نشانی" value={section.address} multiline onChange={(v) => updateSection(section.key, (item) => item.kind === "CONTACT" ? { ...item, address: v } : item)} /><StudioField className={styles.field} label="تلفن" value={section.phone} dir="ltr" onChange={(v) => updateSection(section.key, (item) => item.kind === "CONTACT" ? { ...item, phone: v } : item)} /><StudioField className={styles.field} label="ایمیل" value={section.email} dir="ltr" type="email" onChange={(v) => updateSection(section.key, (item) => item.kind === "CONTACT" ? { ...item, email: v } : item)} /><div className={styles.full}><div className={styles.rowTitle}><strong>پیوندهای ارتباطی</strong><button type="button" disabled={busy || section.links.length >= 12} onClick={() => updateSection(section.key, (item) => item.kind === "CONTACT" ? { ...item, links: [...item.links, { label: "", href: "" }] } : item)}><Plus size={15} /> افزودن پیوند</button></div>{section.links.map((link, linkIndex) => <div className={styles.fields} key={linkIndex}><StudioField className={styles.field} label="عنوان پیوند" value={link.label} onChange={(v) => updateSection(section.key, (item) => item.kind === "CONTACT" ? { ...item, links: item.links.map((l, i) => i === linkIndex ? { ...l, label: v } : l) } : item)} /><div className={styles.inlineField}><StudioField className={styles.field} label="نشانی پیوند" value={link.href} dir="ltr" onChange={(v) => updateSection(section.key, (item) => item.kind === "CONTACT" ? { ...item, links: item.links.map((l, i) => i === linkIndex ? { ...l, href: v } : l) } : item)} /><button type="button" className={styles.iconDanger} aria-label="حذف پیوند" disabled={busy} onClick={() => updateSection(section.key, (item) => item.kind === "CONTACT" ? { ...item, links: item.links.filter((_, i) => i !== linkIndex) } : item)}><Trash2 size={16} /></button></div></div>)}</div></div>}
           </article>)}
+          </details>
           <div className={styles.saveBar}><span>{dirty ? "تغییرات ذخیره نشده‌اند" : payload?.revision ? `آخرین نسخه: ${new Date(payload.revision.createdAt).toLocaleString("fa-IR")}` : "هنوز نسخه‌ای ذخیره نشده است"}</span><button type="button" className={styles.primary} disabled={busy || !dirty} onClick={() => void save()}>{busy ? <LoaderCircle className={styles.spinner} size={16} /> : <Save size={16} />} ذخیره پیش‌نویس</button></div>
         </fieldset></section><aside className={styles.help}><h2>راهنمای ویرایش</h2><p>تصویرها فقط از رسانه‌های عمومی و تأییدشده همین فروشگاه انتخاب می‌شوند.</p><p>بخش‌های پنهان در پیش‌نمایش نمایش داده نمی‌شوند. از فلش‌ها برای مرتب‌سازی استفاده کنید.</p><div className={styles.revision}>{payload?.revision ? <><span>نسخه ذخیره‌شده</span><strong>{payload.revision.id.slice(0, 8)}</strong></> : <><span>وضعیت</span><strong>پیش‌نویس تازه</strong></>}</div></aside>
       </div> : content && view === "preview" ? <div className={styles.previewPane}><div className={styles.previewToolbar}><div><h2>پیش‌نمایش خصوصی</h2><p>نسخه ذخیره‌شده · در دسترس بازدیدکنندگان نیست</p></div><div className={styles.previewActions}><button type="button" aria-pressed={device === "desktop"} onClick={() => setDevice("desktop")}><Monitor size={16} /> رومیزی</button><button type="button" aria-pressed={device === "mobile"} onClick={() => setDevice("mobile")}><Smartphone size={16} /> موبایل</button></div></div><div className={`${styles.viewport} ${device === "mobile" ? styles.mobile : styles.desktop}`}><iframe title="پیش‌نمایش خصوصی وب‌سایت فروشگاه" src={`/${encodeURIComponent(locale)}/dashboard/website-studio/${encodeURIComponent(organizationId)}/preview/${encodeURIComponent(payload?.revision?.id ?? "")}`} /></div></div> : null}

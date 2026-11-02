@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isEligibleWebsiteImage } from "./core";
+import { retailHeroSchema } from "./retail-hero-contract";
 
 const text = z.string().trim().max(5000);
 export const websiteDestination = z.string().trim().max(1000).refine((value) => {
@@ -10,6 +11,7 @@ export const websiteDestination = z.string().trim().max(1000).refine((value) => 
 const imageId = z.string().max(128);
 const common = { key: z.string().min(1).max(80), order: z.number().int().min(0).max(40), visible: z.boolean(), heading: text };
 export const retailContentSchema = z.object({
+  hero: retailHeroSchema.optional(),
   title: z.string().trim().min(1).max(200),
   sections: z.array(z.discriminatedUnion("kind", [
     z.object({ ...common, kind: z.literal("HERO"), subtitle: text, body: text, ctaLabel: text, ctaHref: websiteDestination, imageId }),
@@ -39,7 +41,7 @@ export function isEligibleRetailWebsiteMedia(image: WebsiteMedia): boolean {
 }
 
 export function referencedWebsiteImages(content: RetailContent) {
-  return [...new Set(content.sections.flatMap((s) => s.kind === "GALLERY" ? s.imageIds : "imageId" in s && s.imageId ? [s.imageId] : []))];
+  return [...new Set([...content.sections.flatMap((s) => s.kind === "GALLERY" ? s.imageIds : "imageId" in s && s.imageId ? [s.imageId] : []), ...[content.hero?.desktopImageId, content.hero?.mobileImageId].filter(Boolean)])];
 }
 export function initialRetailContent(org: { name: string; description: string | null; phone: string | null; address: string | null; email: string | null }): RetailContent {
   return { title: org.name, sections: [

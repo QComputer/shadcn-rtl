@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { ApiError, jsonError, requireAuthSession, requireRole, requireSameOriginMutation } from "@/lib/api-guards";
 import prisma from "@/lib/db";
@@ -8,7 +7,6 @@ import { organizationCapabilityKeys, replaceOrganizationCapabilitiesSchema } fro
 import {
   activePublicBusinessCapabilities,
   getConfiguredDefaultPublicCapability,
-  writeDefaultPublicCapabilitySetting,
 } from "@/lib/organization-public-home";
 import { buildOrganizationPublicPath, buildOrganizationRootPath } from "@/lib/custom-domain-routing";
 
@@ -98,12 +96,15 @@ export async function PUT(
       });
       const configuredDefault = getConfiguredDefaultPublicCapability(settings?.settings);
       if (settings && configuredDefault && !activePublicCapabilities.includes(configuredDefault)) {
-        await tx.organizationSettings.update({
-          where: { id: settings.id },
-          data: {
-            settings: writeDefaultPublicCapabilitySetting(settings.settings, null) as Prisma.InputJsonValue,
-          },
-        });
+        await tx.$executeRaw`UPDATE "OrganizationSettings"
+          SET settings = NULLIF(
+            CASE WHEN jsonb_typeof(COALESCE(settings, '{}'::jsonb)) = 'object'
+              THEN COALESCE(settings, '{}'::jsonb) - 'defaultPublicCapability'
+              ELSE '{}'::jsonb END,
+            '{}'::jsonb
+          ), "updatedAt" = NOW()
+          WHERE id = ${settings.id}
+            AND COALESCE(settings, '{}'::jsonb)->>'defaultPublicCapability' = ${configuredDefault}`;
       }
       await tx.auditLog.create({
         data: {

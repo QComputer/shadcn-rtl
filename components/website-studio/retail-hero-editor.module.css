@@ -1,0 +1,83 @@
+.editor {
+  --ink: #26342e;
+  --muted: #6d7975;
+  --line: #e1e7e4;
+  --soft: #f7f9f8;
+  --accent: #485d56;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  font-family: inherit;
+}
+
+.editor * { box-sizing: border-box; }
+.fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+.headingRow { display: flex; align-items: center; gap: .75rem; padding-bottom: .85rem; border-bottom: 1px solid var(--line); }
+.headingIcon { width: 2.6rem; height: 2.6rem; display: grid; place-items: center; border-radius: .8rem; color: #526a60; background: #edf2ef; }
+.headingRow h2 { margin: .12rem 0 0; color: #293a34; font-size: 1.12rem; }
+.eyebrow { margin: 0; color: var(--accent); font-size: .76rem; font-weight: 750; }
+.switch { margin-inline-start: auto; display: inline-flex; align-items: center; gap: .45rem; color: #53655d; font-size: .84rem; font-weight: 650; cursor: pointer; }
+.switch input,.autoplay input { width: 1.05rem; height: 1.05rem; accent-color: #526a60; }
+.modePicker { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .65rem; }
+.modePicker button,.productActions button,.ctaHint button {
+  font: inherit; color: #45594f; background: #fff; border: 1px solid #d7e0db; border-radius: .75rem; cursor: pointer;
+}
+.modePicker button { padding: .75rem .9rem; text-align: right; display: flex; flex-direction: column; gap: .22rem; }
+.modePicker button[aria-pressed=true] { background: #eff4f1; border-color: #93a79b; box-shadow: inset 0 0 0 1px #93a79b; }
+.modePicker button strong { font-size: .88rem; }
+.modePicker button span { color: var(--muted); font-size: .76rem; }
+.fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .8rem; }
+.full { grid-column: 1/-1; }
+.field { display: flex; flex-direction: column; gap: .38rem; min-width: 0; color: #4f6159; font-size: .83rem; font-weight: 650; }
+.field input,.field select,.field textarea {
+  width: 100%; min-width: 0; background: #fff; border: 1px solid #d8e0dc; border-radius: .65rem;
+  color: #26342e; padding: .62rem .72rem; font: inherit; font-size: .89rem; line-height: 1.7;
+}
+.field textarea { resize: vertical; min-height: 5rem; }
+.field small,.hint { color: var(--muted); font-size: .74rem; font-weight: 450; line-height: 1.65; }
+.imagePreview { display: flex; align-items: center; gap: .65rem; min-width: 0; padding: .4rem; border: 1px solid var(--line); border-radius: .7rem; background: var(--soft); color: var(--muted); font-size: .76rem; font-weight: 500; }
+.imagePreview img { width: 6.3rem; height: 3.8rem; object-fit: cover; border-radius: .42rem; background: #eef1ef; }
+.imagePreview span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.focalPanel,.productPanel,.ctaPanel { border: 1px solid var(--line); border-radius: .85rem; padding: .85rem; background: #fbfcfb; }
+.focalPanel h3,.productPanel h3,.ctaPanel h3 { margin: 0; color: #3d5148; font-size: .91rem; }
+.focalPanel p,.subheading p { margin: .2rem 0 .75rem; color: var(--muted); font-size: .77rem; line-height: 1.7; }
+.rangeField { display: block; color: #53645c; font-size: .8rem; margin-top: .6rem; }
+.rangeField span { display: flex; justify-content: space-between; }
+.rangeField b { color: #435b4e; font-variant-numeric: tabular-nums; }
+.rangeField input { display: block; width: 100%; margin: .35rem 0 0; accent-color: #5e7668; }
+.subheading { display: flex; justify-content: space-between; align-items: flex-start; gap: .8rem; }
+.subheading>span { background: #eff3f0; border-radius: 99px; padding: .25rem .55rem; color: #52665b; font-size: .74rem; white-space: nowrap; }
+.productList { list-style: none; margin: .25rem 0 .8rem; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+.productList li { display: flex; align-items: center; gap: .6rem; min-width: 0; border: 1px solid #e8edeb; background: #fff; padding: .45rem; border-radius: .7rem; }
+.productImage { width: 3.3rem; height: 3.3rem; flex: none; display: grid; place-items: center; border-radius: .5rem; overflow: hidden; color: #819087; background: #f0f3f1; }
+.productImage img { width: 100%; height: 100%; object-fit: cover; }
+.productInfo { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: .15rem; font-size: .79rem; }
+.productInfo strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.productInfo span { color: var(--muted); font-size: .74rem; }
+.unavailableProduct { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: .2rem; color: #85534b; font-size: .78rem; }
+.unavailableProduct span { overflow: hidden; color: var(--muted); font-size: .72rem; text-overflow: ellipsis; }
+.productActions { display: flex; gap: .25rem; }
+.productActions button { width: 1.95rem; height: 1.95rem; display: grid; place-items: center; padding: .25rem; }
+.productActions button:last-child { color: #955c54; border-color: #eadbd8; }
+.productActions button:disabled { opacity: .42; cursor: not-allowed; }
+.emptyProducts { margin: .15rem 0 .8rem; color: var(--muted); font-size: .8rem; }
+.ctaPanel h3 { margin-bottom: .7rem; }
+.ctaHint { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .6rem; margin-top: .65rem; color: var(--muted); font-size: .76rem; }
+.ctaHint button { padding: .42rem .65rem; font-size: .75rem; }
+.autoplay { display: flex; align-items: flex-start; gap: .55rem; padding: .75rem .85rem; border-radius: .75rem; background: #f7f9f8; color: #45594f; cursor: pointer; }
+.autoplay input { margin: .15rem 0 0; flex: none; }
+.autoplay span { display: flex; flex-direction: column; gap: .2rem; font-size: .81rem; }
+.autoplay small { color: var(--muted); font-size: .75rem; line-height: 1.65; }
+.editor button:focus-visible,.editor input:focus-visible,.editor select:focus-visible,.editor textarea:focus-visible { outline: 3px solid #a5b7ae; outline-offset: 2px; }
+.editor button:disabled,.editor select:disabled { opacity: .5; cursor: not-allowed; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+@media (max-width: 620px) {
+  .fields,.modePicker { grid-template-columns: 1fr; }
+  .full { grid-column: auto; }
+  .headingRow { align-items: flex-start; }
+  .switch { margin-top: .55rem; }
+  .productList li { flex-wrap: wrap; }
+  .productActions { margin-inline-start: auto; }
+}

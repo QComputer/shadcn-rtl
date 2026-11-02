@@ -9,12 +9,20 @@ import {
   assertDefaultPublicCapabilityAllowed,
   assertPublicHomeModeAllowed,
   isPublicBusinessCapability,
-  writeDefaultPublicCapabilitySetting,
   type PublicHomeMode,
   type PublicBusinessCapabilityRecord,
 } from "@/lib/organization-public-home";
 import type { BusinessCapability } from "@/lib/business-capability-registry";
 import { buildOrganizationPublicPath, buildOrganizationRootPath } from "@/lib/custom-domain-routing";
+
+const RETAIL_HERO_PUBLICATION_KEY = "retailHeroPublication";
+
+function omitRetailHeroPublication(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const rest = { ...value as Record<string, unknown> };
+  delete rest[RETAIL_HERO_PUBLICATION_KEY];
+  return rest;
+}
 
 async function getOrganizationSlug(organizationId: string) {
   const org = await prisma.organization.findUnique({
@@ -97,10 +105,34 @@ export async function PUT(
     const body = await request.json();
     const data = updateOrganizationSettingsSchema.parse(body) as any;
 
-    const settings = await prisma.organizationSettings.upsert({
-      where: { organizationSlug },
-      update: data,
-      create: { organizationSlug, ...data },
+    const requestedSettings = Object.prototype.hasOwnProperty.call(data, "settings")
+      ? omitRetailHeroPublication(data.settings)
+      : undefined;
+    const scalarData = { ...data };
+    delete scalarData.settings;
+    const settings = await prisma.$transaction(async (tx) => {
+      await tx.organizationSettings.upsert({
+        where: { organizationSlug },
+        update: scalarData,
+        create: { organizationSlug, ...scalarData },
+      });
+
+      if (requestedSettings !== undefined) {
+        const incoming = requestedSettings && typeof requestedSettings === "object" && !Array.isArray(requestedSettings)
+          ? requestedSettings
+          : {};
+        await tx.$executeRaw`UPDATE "OrganizationSettings"
+          SET settings =
+            (${JSON.stringify(incoming)}::jsonb - ${RETAIL_HERO_PUBLICATION_KEY})
+            || (CASE WHEN jsonb_typeof(COALESCE(settings, '{}'::jsonb)) = 'object'
+                      AND COALESCE(settings, '{}'::jsonb) ? ${RETAIL_HERO_PUBLICATION_KEY}
+              THEN jsonb_build_object(${RETAIL_HERO_PUBLICATION_KEY}, COALESCE(settings, '{}'::jsonb)->${RETAIL_HERO_PUBLICATION_KEY})
+              ELSE '{}'::jsonb END),
+            "updatedAt" = NOW()
+          WHERE "organizationSlug" = ${organizationSlug}`;
+      }
+
+      return tx.organizationSettings.findUniqueOrThrow({ where: { organizationSlug } });
     });
 
     await writeAuditLog({
@@ -111,7 +143,7 @@ export async function PUT(
       userId: session.user.id,
       organizationId,
       organizationSlug,
-      newValue: data,
+      newValue: { ...data, ...(requestedSettings !== undefined ? { settings: requestedSettings } : {}) },
     });
 
     return NextResponse.json(settings);
@@ -180,7 +212,6 @@ export async function PATCH(
         where: { id: organizationId },
         select: {
           capabilities: { select: { key: true, status: true } },
-          settings: { select: { settings: true } },
         },
       });
       if (!organization) throw new ApiError(404, "Organization not found");
@@ -193,21 +224,39 @@ export async function PATCH(
         activePublicCapabilities: activeCapabilities,
       });
 
-      data.settings = writeDefaultPublicCapabilitySetting(
-        organization.settings?.settings,
-        selected,
-      );
       defaultPublicCapabilityForAudit = selected;
     }
 
-    if (Object.keys(data).length === 0) {
+    if (Object.keys(data).length === 0 && !hasDefaultPublicCapability) {
       throw new ApiError(400, "No settings changes were provided");
     }
 
-    const settings = await prisma.organizationSettings.upsert({
-      where: { organizationSlug },
-      update: data,
-      create: { organizationSlug, ...data },
+    const scalarData = { ...data };
+    delete scalarData.settings;
+    const settings = await prisma.$transaction(async (tx) => {
+      await tx.organizationSettings.upsert({
+        where: { organizationSlug },
+        update: scalarData,
+        create: { organizationSlug, ...scalarData },
+      });
+      if (hasDefaultPublicCapability) {
+        if (defaultPublicCapabilityForAudit) {
+          await tx.$executeRaw`UPDATE "OrganizationSettings"
+            SET settings = (CASE WHEN jsonb_typeof(COALESCE(settings, '{}'::jsonb)) = 'object' THEN COALESCE(settings, '{}'::jsonb) ELSE '{}'::jsonb END)
+              || jsonb_build_object('defaultPublicCapability', ${defaultPublicCapabilityForAudit}::text), "updatedAt" = NOW()
+            WHERE "organizationSlug" = ${organizationSlug}`;
+        } else {
+          await tx.$executeRaw`UPDATE "OrganizationSettings"
+            SET settings = NULLIF(
+              CASE WHEN jsonb_typeof(COALESCE(settings, '{}'::jsonb)) = 'object'
+                THEN COALESCE(settings, '{}'::jsonb) - 'defaultPublicCapability'
+                ELSE '{}'::jsonb END,
+              '{}'::jsonb
+            ), "updatedAt" = NOW()
+            WHERE "organizationSlug" = ${organizationSlug}`;
+        }
+      }
+      return tx.organizationSettings.findUniqueOrThrow({ where: { organizationSlug } });
     });
     await writeAuditLog({
       action: "UPDATE",

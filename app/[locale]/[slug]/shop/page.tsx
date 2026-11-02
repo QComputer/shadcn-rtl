@@ -7,6 +7,7 @@ import { hasModernRetailProductExperience, shouldLoadRetailShopCatalog } from "@
 import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
 import { buildShopProductsPath } from "@/lib/shop-public-paths";
 import { activePublicBusinessCapabilities } from "@/lib/organization-public-home";
+import { getPublishedRetailHero } from "@/lib/website-studio/retail-hero.server";
 
 export const dynamic = "force-dynamic";
 type Params = { locale: string; slug: string };
@@ -55,6 +56,7 @@ export default async function ShopPage({
   const storefrontPath = buildShopProductsPath({ locale, shopSlug: slug, isCustomDomain: seo.isCustomDomain });
   const checkoutPath = `${storefrontPath}/checkout`;
   return <RetailLiveCatalog view={{
+      managedHero: await getPublishedRetailHero(slug),
       identifier: catalog.organization.identifier,
       name: catalog.organization.name,
       description: catalog.organization.description,

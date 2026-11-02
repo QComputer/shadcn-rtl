@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db-runtime";
 import { ApiError } from "@/lib/api-guards";
 import { retailWebsiteMedia } from "./brand-media";
 import { initialRetailContent, referencedWebsiteImages, retailContentSchema, saveRetailDraftSchema, type WebsiteRevision } from "./retail-contract";
+import { changeRetailHeroPublicationSchema, readRetailHeroPublication } from "./retail-hero-contract";
 
 export type StudioPrincipal = { userId: string; role: UserRole; organizationId?: string | null };
 type Tx = Prisma.TransactionClient;
@@ -55,7 +56,8 @@ export class RetailWebsiteService {
       const revision: WebsiteRevision | null = row ? { id: row.id, createdAt: row.createdAt.toISOString(), content: retailContentSchema.parse(row.content) } : null;
       const content = revision?.content ?? initialRetailContent(organization);
       // Revoked/private/deleted/foreign images never reach a private preview either.
-      return { organization, revision, content, media: media.filter((image) => !revisionId || referencedWebsiteImages(content).includes(image.id)) };
+      const settings = await tx.organizationSettings.findUnique({ where: { organizationSlug: organization.slug }, select: { settings: true } });
+      return { organization, revision, content, publication: readRetailHeroPublication(settings?.settings), media: media.filter((image) => !revisionId || referencedWebsiteImages(content).includes(image.id)) };
     });
   }
 
@@ -78,6 +80,40 @@ export class RetailWebsiteService {
       const [row] = await tx.$queryRaw<RevisionRow[]>`INSERT INTO "TenantWebsiteRevision" (id,"organizationId",content,"createdBy","requestId","createdAt") VALUES (${id},${organizationId},${JSON.stringify(parsed.content)}::jsonb,${principal.userId},${parsed.requestId},GREATEST(clock_timestamp(),COALESCE((SELECT MAX("createdAt") + INTERVAL '1 millisecond' FROM "TenantWebsiteRevision" WHERE "organizationId"=${organizationId}),clock_timestamp()))) RETURNING *`;
       await tx.auditLog.create({ data: { action: "CREATE", entityType: "TenantWebsiteRevision", entityId: id, organizationId, organizationSlug: org.slug, userId: principal.userId, description: "Private Retail website draft saved" } });
       return { id, createdAt: row.createdAt.toISOString(), content: parsed.content };
+    });
+  }
+
+  async changePublication(principal: StudioPrincipal, organizationId: string, input: unknown) {
+    const parsed = changeRetailHeroPublicationSchema.parse(input);
+    return this.db.$transaction(async tx => {
+      const org = await this.authorize(tx, principal, organizationId);
+      await tx.$queryRaw`SELECT id FROM "Organization" WHERE id=${organizationId} FOR UPDATE`;
+      const settings = await tx.organizationSettings.findUnique({ where: { organizationSlug: org.slug }, select: { settings: true } });
+      const current = readRetailHeroPublication(settings?.settings);
+      if ((current?.revisionId ?? null) !== parsed.basePublishedRevisionId) throw new ApiError(409, "نسخهٔ منتشرشده تغییر کرده است. بازخوانی کنید.");
+      if (parsed.action === "publish" && current?.revisionId === parsed.revisionId) return current;
+      let target: string | null = parsed.revisionId;
+      if (parsed.action === "rollback") {
+        if (!current || current.revisionId !== parsed.revisionId) throw new ApiError(409, "نسخهٔ بازگشت معتبر نیست.");
+        target = current.previousRevisionId;
+      }
+      if (target) {
+        const row = await tx.tenantWebsiteRevision.findFirst({ where: { id: target, organizationId }, select: { content: true } });
+        if (!row) throw new ApiError(404, "نسخهٔ این فروشگاه پیدا نشد.");
+        const content = retailContentSchema.parse(row.content);
+        if (!content.hero) throw new ApiError(422, "ابتدا تنظیمات هیرو را ذخیره کنید.");
+        const media = await this.media(tx, organizationId, org.slug);
+        if ([content.hero.desktopImageId, content.hero.mobileImageId].filter(Boolean).some(id => !media.some(image => image.id === id))) throw new ApiError(422, "تصویر هیرو در دسترس نیست یا متعلق به این فروشگاه نیست.");
+        if (content.hero.enabled && content.hero.mode === "PRODUCTS") {
+          const products = await tx.product.findMany({ where: { id: { in: content.hero.productIds }, organizationId, isActive: true, deletedAt: null, category: { organizationId, isActive: true, deletedAt: null } }, select: { id: true } });
+          if (products.length !== content.hero.productIds.length) throw new ApiError(422, "محصولات منتخب باید منتشرشده و متعلق به همین فروشگاه باشند.");
+        }
+      }
+      const publication = { revisionId: target, previousRevisionId: current?.revisionId ?? null, publishedAt: new Date().toISOString() };
+      // Preserve unrelated commerce/settings keys atomically; no schema migration needed.
+      await tx.$executeRaw`INSERT INTO "OrganizationSettings" (id,"organizationSlug",settings,"updatedAt") VALUES (${randomUUID()},${org.slug},jsonb_build_object('retailHeroPublication',${JSON.stringify(publication)}::jsonb),NOW()) ON CONFLICT ("organizationSlug") DO UPDATE SET settings=COALESCE("OrganizationSettings".settings,'{}'::jsonb) || jsonb_build_object('retailHeroPublication',${JSON.stringify(publication)}::jsonb),"updatedAt"=NOW()`;
+      await tx.auditLog.create({ data: { action: "UPDATE", entityType: "RetailHeroPublication", entityId: target ?? organizationId, organizationId, organizationSlug: org.slug, userId: principal.userId, description: parsed.action === "publish" ? "Published Retail hero revision" : "Restored previous Retail hero", newValue: publication } });
+      return publication;
     });
   }
 }

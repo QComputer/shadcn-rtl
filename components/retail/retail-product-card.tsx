@@ -1,13 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { Pause, Play, ShoppingBag } from "lucide-react";
+import { Pause, Play, ChevronLeft } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { appPath } from "@/lib/app-base-path";
 import { colorSlides, constrainedDimensions, filterCardVariants } from "@/lib/retail/card-presentation";
 import { compareRetailSizes, reliableColorSwatch } from "@/lib/retail/product-detail";
 import { canonicalDimensions, chooseVariant, dimensionValues, resolveSelectedVariant, retailAttributeText, type RetailProduct, type RetailVariant } from "@/lib/retail/variant-selection";
-import { Button } from "@/components/ui/button";
+import type { RetailCardView } from "./retail-card-view-toggle";
 import { formatRetailPriceNumber } from "@/lib/retail/format-price";
 
 const noFilters: readonly string[] = [];
@@ -61,67 +60,57 @@ function CardMedia({ product, selected, pinned, href, favorite }: { product: Ret
   </div>;
 }
 
-type Props = { product: RetailProduct; organization: string; storefrontPath: string; filters?: readonly string[]; previewOnly?: boolean; favorite?: ReactNode };
+type Props = { product: RetailProduct; organization: string; storefrontPath: string; filters?: readonly string[]; previewOnly?: boolean; favorite?: ReactNode; view?: RetailCardView };
 
-export function RetailProductCard({ product, organization, storefrontPath, filters = noFilters, previewOnly = false, favorite }: Props) {
+export function RetailProductCard({ product, storefrontPath, filters = noFilters, favorite, view = "detailed" }: Props) {
   const eligible = useMemo(() => filterCardVariants(product, filters), [product, filters]);
   const dimensions = canonicalDimensions(eligible);
   const constrained = constrainedDimensions(product, filters);
   const [choice, setChoice] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-  const [notice, setNotice] = useState("");
-  const inFlight = useRef(false);
   const selected = resolveSelectedVariant(eligible, choice);
   const unmatched = product.variants.length > 0 && eligible.variants.length === 0;
   const selectedExplicitly = eligible.variants.some(variant => variant.id === choice);
   const pinned = selectedExplicitly || constrained.some(dimension => dimension.id === "color");
-  const needsColorChoice = colorSlides(eligible).length > 1 && !pinned;
+  const compact = view === "compact";
   const href = `${storefrontPath.replace(/\/$/, "")}/product/${encodeURIComponent(product.slug || product.id)}`;
-  const amount = selected?.price.amount ?? product.price.amount;
-  const list = selected?.listPrice?.amount ?? (!selected ? product.listPrice?.amount : undefined);
+  const amount = compact ? product.price.amount : selected?.price.amount ?? product.price.amount;
+  const fromPrice = compact && eligible.variants.some(variant => variant.price.amount !== amount);
+  const list = compact ? product.listPrice?.amount : selected?.listPrice?.amount ?? (!selected ? product.listPrice?.amount : undefined);
+  const available = compact ? eligible.variants.some(variant => variant.orderable) : selected?.orderable;
 
-  function choose(variant: RetailVariant) { setChoice(variant.id); setNotice(""); }
-  async function add() {
-    if (!selected?.orderable || previewOnly || needsColorChoice || inFlight.current) return;
-    const variantId = selected.id;
-    inFlight.current = true; setPending(true); setNotice("");
-    try {
-      const response = await fetch(appPath("/api/retail/v1/cart"), { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ organization, variantId, quantity: 1 }) });
-      if (response.status === 401) { window.location.assign(appPath(`/fa/login?callbackUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`)); return; }
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(response.status === 409 ? "موجودی این گزینه تغییر کرده است؛ دوباره انتخاب کنید." : "افزودن به سبد انجام نشد؛ دوباره تلاش کنید.");
-      if (body.item?.variantId !== variantId) throw new Error("پاسخ سبد با گزینهٔ انتخاب‌شده مطابقت ندارد؛ سبد را بررسی کنید.");
-      setNotice("همین گزینه به سبد خرید اضافه شد.");
-    } catch (cause) { setNotice(cause instanceof Error ? cause.message : "ارتباط برقرار نشد؛ دوباره تلاش کنید."); }
-    finally { inFlight.current = false; setPending(false); }
-  }
+  function choose(variant: RetailVariant) { setChoice(variant.id); }
 
-  return <article data-retail-product-card className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card text-card-foreground shadow-sm">
-    <CardMedia product={eligible} selected={selected} pinned={pinned} href={href} favorite={favorite} />
+  return <article data-retail-product-card data-card-view={view} className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card text-card-foreground shadow-sm">
+    <CardMedia product={eligible} selected={compact ? undefined : selected} pinned={!compact && pinned} href={href} favorite={favorite} />
     <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-4">
       <p className="truncate text-xs text-muted-foreground">{product.category.name}{product.brand ? ` · ${product.brand}` : ""}</p>
       <h2 className="mt-1 h-12 text-base font-semibold leading-6"><a href={href} className={`line-clamp-2 hover:underline ${focus}`}>{product.name}</a></h2>
-      <p className="mt-1 line-clamp-2 h-12 text-[13px] leading-6 text-muted-foreground">{product.description?.trim() || "جزئیات و مشخصات در صفحهٔ محصول"}</p>
-      <div className="my-3 min-w-0 space-y-2.5">
+      {!compact && <p className="mt-1 line-clamp-2 h-12 text-[13px] leading-6 text-muted-foreground">{product.description?.trim() || "جزئیات و مشخصات در صفحهٔ محصول"}</p>}
+      {compact ? <div className="my-2 min-w-0 space-y-1.5">{dimensions.map(dimension => {
+        const values = dimensionValues(eligible, dimension);
+        if (dimension.id === "size") values.sort(compareRetailSizes);
+        const label = dimension.id === "color" ? "رنگ" : dimension.id === "size" ? "سایز" : dimension.label;
+        const summary = values.length === 1 ? `${label}: ${values[0]}` : `${new Intl.NumberFormat("fa-IR").format(values.length)} ${label}`;
+        return <div key={dimension.id} title={`${dimension.label}: ${values.join("، ")}`} className="flex min-w-0 items-center gap-1.5 text-xs leading-5 text-muted-foreground"><span className="truncate">{summary}</span>{dimension.id === "color" && values.length > 1 && <span className="flex shrink-0 gap-1" aria-hidden>{values.slice(0, 3).map(value => { const color = reliableColorSwatch(value); return color ? <span key={value} className="size-3 rounded-full border border-foreground/20" style={{ backgroundColor: color }} /> : null; })}</span>}</div>;
+      })}</div> : <div className="my-3 min-w-0 space-y-2.5">
         {dimensions.map(dimension => {
           const values = dimensionValues(eligible, dimension);
           if (dimension.id === "size") values.sort(compareRetailSizes);
           const locked = constrained.some(item => item.id === dimension.id) && values.length === 1;
           const option = selected?.options.find(item => dimension.keys.includes(item.key));
           const current = option ? retailAttributeText(option) : "";
-          return <fieldset key={dimension.id} disabled={pending} className="min-w-0"><legend className="mb-1 text-[13px] font-medium">{dimension.label}{locked ? `: ${current}` : ""}{locked && <span className="ms-1 text-[10px] font-normal text-muted-foreground">طبق فیلتر</span>}</legend>{!locked && <div className="flex gap-1 overflow-x-auto overscroll-x-contain px-0.5 pb-1 [scrollbar-width:thin] dark:[color-scheme:dark]">
+          return <fieldset key={dimension.id} className="min-w-0"><legend className="mb-1 text-[13px] font-medium">{dimension.label}{locked ? `: ${current}` : ""}{locked && <span className="ms-1 text-[10px] font-normal text-muted-foreground">طبق فیلتر</span>}</legend>{!locked && <div className="flex gap-1 overflow-x-auto overscroll-x-contain px-0.5 pb-1 [scrollbar-width:thin] dark:[color-scheme:dark]">
             {values.map(value => { const variant = chooseVariant(eligible, selected, dimension.keys[0], value); const swatch = dimension.id === "color" ? reliableColorSwatch(value) : undefined; return <button key={value} type="button" aria-pressed={current === value} title={value} onClick={() => variant && choose(variant)} className={`flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2 text-[13px] tabular-nums transition-colors ${focus} ${current === value ? "border-primary bg-primary/10 text-foreground" : "border-border bg-background text-foreground hover:bg-muted"}`}>
               {swatch && <span aria-hidden className="size-3 shrink-0 rounded-full border border-foreground/20" style={{ backgroundColor: swatch }} />}{value}
             </button>; })}
           </div>}</fieldset>;
         })}
-        {!dimensions.length && eligible.variants.length > 1 && <label className="block text-[13px]">گزینهٔ خرید<select aria-label={`گزینهٔ خرید ${product.name}`} value={selected?.id || ""} disabled={pending} onChange={event => { const variant = eligible.variants.find(item => item.id === event.target.value); if (variant) choose(variant); }} className={`mt-1 h-9 w-full rounded-lg border border-input bg-background px-2 ${focus}`}>{eligible.variants.map(variant => <option key={variant.id} value={variant.id}>{variant.name || variant.options.map(retailAttributeText).join(" · ")}</option>)}</select></label>}
-      </div>
+        {!dimensions.length && eligible.variants.length > 1 && <label className="block text-[13px]">گزینهٔ خرید<select aria-label={`گزینهٔ خرید ${product.name}`} value={selected?.id || ""} onChange={event => { const variant = eligible.variants.find(item => item.id === event.target.value); if (variant) choose(variant); }} className={`mt-1 h-9 w-full rounded-lg border border-input bg-background px-2 ${focus}`}>{eligible.variants.map(variant => <option key={variant.id} value={variant.id}>{variant.name || variant.options.map(retailAttributeText).join(" · ")}</option>)}</select></label>}
+      </div>}
       <div className="mt-auto border-t border-border/60 pt-3">
-        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"><strong data-retail-price className="inline-flex flex-wrap items-baseline gap-x-1 text-xl font-bold tabular-nums leading-7 sm:text-[22px]"><bdi dir="ltr" className="whitespace-nowrap">{formatRetailPriceNumber(amount)}</bdi><span className="text-xs font-medium">تومان</span></strong>{list !== undefined && list > amount && <del className="text-xs text-muted-foreground"><bdi dir="ltr">{formatRetailPriceNumber(list)}</bdi> تومان</del>}</div>
-        <p className={`mb-3 mt-1 text-xs ${selected?.orderable ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground"}`}>{selected ? selected.orderable ? "موجود" : "این گزینه ناموجود است" : unmatched ? "ترکیبی مطابق فیلترها ارائه نشده است" : "اطلاعات گزینه‌های خرید تکمیل نشده است"}</p>
-        {needsColorChoice && !previewOnly ? <a href={href} className={`flex min-h-10 items-center justify-center rounded-xl border border-border px-2 text-sm font-semibold hover:bg-muted ${focus}`}>انتخاب رنگ و سایز</a> : <Button type="button" disabled={previewOnly || !selected?.orderable || pending} onClick={() => void add()} aria-label={`افزودن ${product.name} به سبد خرید`} className="h-10 w-full gap-1.5 rounded-xl px-2 text-sm"><ShoppingBag aria-hidden className="size-3.5" />{pending ? "در حال افزودن…" : previewOnly ? "پیش‌نمایش" : selected?.orderable ? "افزودن به سبد" : "ناموجود"}</Button>}
-        {notice && <p role="status" className="mt-2 text-xs leading-5 text-muted-foreground">{notice}</p>}
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"><strong data-retail-price className="inline-flex flex-wrap items-baseline gap-x-1 text-xl font-bold tabular-nums leading-7 sm:text-[22px]">{fromPrice && <span className="text-xs font-medium">از</span>}<bdi dir="ltr" className="whitespace-nowrap">{formatRetailPriceNumber(amount)}</bdi><span className="text-xs font-medium">تومان</span></strong>{list !== undefined && list > amount && <del className="text-xs text-muted-foreground"><bdi dir="ltr">{formatRetailPriceNumber(list)}</bdi> تومان</del>}</div>
+        <p className={`mt-1 min-h-10 text-xs leading-5 ${available ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground"}`}>{available ? "موجود" : unmatched ? "ترکیبی مطابق فیلترها ارائه نشده است" : eligible.variants.length ? compact ? "ناموجود" : "این گزینه ناموجود است" : compact ? "جزئیات در صفحهٔ محصول" : "اطلاعات گزینه‌های خرید تکمیل نشده است"}</p>
+        {!compact && <a href={href} className={`mt-3 flex min-h-10 items-center justify-center gap-1 rounded-xl border border-border px-2 text-sm font-medium hover:bg-muted ${focus}`}>مشاهدهٔ محصول<ChevronLeft aria-hidden className="size-4" /></a>}
       </div>
     </div>
   </article>;

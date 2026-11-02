@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Home, LayoutGrid, Share2, ShoppingBag, UserRound } from "lucide-react";
 import { RetailProductCard } from "@/components/retail/retail-product-card";
+import { RetailCardViewToggle, useRetailCardView } from "@/components/retail/retail-card-view-toggle";
 import { RetailStorefrontHero } from "@/components/retail/retail-storefront-hero";
 import { RetailManagedHero } from "@/components/retail/retail-managed-hero";
 import type { PublishedRetailHero } from "@/lib/website-studio/retail-hero-contract";
@@ -27,6 +28,7 @@ type RetailView = {
 };
 
 export default function RetailLiveCatalog({ view, productSlug, storefrontPath, checkoutPath, embedded = false }: { view: RetailView; productSlug?: string; storefrontPath?: string; checkoutPath?: string; embedded?: boolean }) {
+  const [cardView, setCardView] = useRetailCardView(view.identifier);
   const [products, setProducts] = useState(view.products);
   const [category, setCategory] = useState("");
   const [error, setError] = useState(false);
@@ -136,7 +138,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
       setShareMessage("اشتراک‌گذاری انجام نشد. نشانی را از نوار آدرس مرورگر کپی کنید.");
     }
   };
-  const renderProduct = (product: RetailProduct) => <RetailProductCard key={product.id} product={product} organization={view.identifier} storefrontPath={base} previewOnly={view.previewOnly} />;
+  const renderProduct = (product: RetailProduct) => <RetailProductCard key={product.id} product={product} organization={view.identifier} storefrontPath={base} previewOnly={view.previewOnly} view={cardView} />;
 
   if (productSlug && detail) return <PremiumProductDetail key={detail.id} product={detail} organization={view.identifier} storeName={view.name} logo={view.branding.logo} storefrontPath={base} checkoutPath={checkoutHref} accountPath={accountHref} embedded={embedded} previewOnly={view.previewOnly} />;
 
@@ -176,6 +178,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
     <section id="products" className="mx-auto max-w-7xl px-5 pb-20 pt-7 md:px-10">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><span className="text-xs text-[#92704e]">{selectedCategory ? "دسته‌بندی انتخاب‌شده" : "فهرست منتشرشده فروشگاه"}</span><h2 className="mt-2 text-3xl font-semibold">{selectedCategory ? selectedCategory.name : view.theme === "ELECTRONICS" ? "دستگاه‌ها و مشخصات" : "محصولات فروشگاه"}</h2></div>
         <div className="flex flex-wrap items-center gap-2">
+          <RetailCardViewToggle value={cardView} onChange={setCardView} />
           <Link href={`${base}/discover`} className="min-h-11 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">جست‌وجوی پیشرفته</Link>
           {category && <button type="button" onClick={() => changeCategory("")} className="min-h-11 rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">حذف فیلتر دسته‌بندی</button>}
         </div>

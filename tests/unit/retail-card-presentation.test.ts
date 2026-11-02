@@ -82,6 +82,16 @@ test("color slides use distinct merchant variant images and omit missing images"
   assert.deepEqual(colorSlides(product([variant("plain", [option("size", "Size", "38")])])), []);
 });
 
+test("storefront shoe_color options support the real tenant filter and color image contract", () => {
+  const source = product([
+    variant("red", [option("shoe_color", "رنگ کفش", "قرمز"), option("shoe_size", "سایز کفش", "40")], ["/red.jpg"]),
+    variant("blue", [option("shoe_color", "رنگ کفش", "آبی"), option("shoe_size", "سایز کفش", "40")], ["/blue.jpg"]),
+  ]);
+  assert.deepEqual(colorSlides(source).map(slide => slide.value), ["قرمز", "آبی"]);
+  assert.deepEqual(constrainedDimensions(source, ["shoe_color:آبی"]).map(dimension => dimension.id), ["color"]);
+  assert.deepEqual(filterCardVariants(source, ["shoe_color:آبی"]).variants.map(variant => variant.id), ["blue"]);
+});
+
 test("incomplete color and size records do not borrow the product fallback image", () => {
   const source = product([
     variant("red-no-size-or-image", [option("color", "Color", "red")]),

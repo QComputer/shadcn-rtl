@@ -26,6 +26,7 @@ const dimensionCategory = (normalized: string, originalKey: string): "color" | "
 
   // Whole-word color keyword match on the raw key prevents compound attributes
   // like "body_color" and "lace_color" from being classified as color.
+  if (/^(shoe|footwear)[_-]colou?r$/.test(keyLower)) return "color";
   if (/\bcolou?r/.test(keyLower)) return "color";
   if (/رنگ/.test(keyLower)) return "color";
 

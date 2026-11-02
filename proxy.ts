@@ -705,6 +705,7 @@ export async function proxy(request: NextRequest) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.protocol = "https:";
       redirectUrl.host = primaryDomain;
+      redirectUrl.port = "";
       redirectUrl.pathname = buildOrganizationPublicPath({
         locale: platformShopPath.locale,
         organizationSlug: platformShopPath.slug,

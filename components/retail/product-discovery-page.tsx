@@ -51,7 +51,7 @@ const loadDiscoveryData = cache(async (locale: string, organizationSlug: string,
       sort: parsed.data.sort,
     });
     return {
-      organization: { identifier, name, logo: organization.branding?.logoUrl ?? organization.logo },
+      organization: { identifier, name, logo: organization.branding?.logoUrl ?? organization.logo, previewOnly: organization.branding?.retailPreviewOnly ?? false },
       categories,
       facets,
       initial,
@@ -84,6 +84,6 @@ export async function discoveryMetadata(props: PageProps): Promise<Metadata> {
 export async function ProductDiscoveryPage(props: PageProps) {
   const { organization, facets, initial, storefront, query } = await getData(props);
   return <ProductDiscovery organization={organization.identifier} storeName={organization.name}
-    logo={organization.logo} storefrontPath={storefront.path} initialProducts={initial.products}
+    logo={organization.logo} storefrontPath={storefront.path} previewOnly={organization.previewOnly} initialProducts={initial.products}
     initialPagination={initial.pagination} facets={facets} initialQuery={getValue(query, "q") ?? ""} />;
 }

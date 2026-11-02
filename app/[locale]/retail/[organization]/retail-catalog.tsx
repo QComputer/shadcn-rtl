@@ -5,11 +5,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Home, LayoutGrid, Share2, ShoppingBag, UserRound } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { RetailProductCard } from "@/components/retail/retail-product-card";
+import { RetailStorefrontHero } from "@/components/retail/retail-storefront-hero";
 import { PremiumProductDetail } from "@/components/retail/premium-product-detail";
 import { appPath } from "@/lib/app-base-path";
-import { canonicalDimensions, chooseVariant, findVariantOption, resolveSelectedVariant, retailAttributeText, type RetailProduct, type RetailVariant } from "@/lib/retail/variant-selection";
+import type { RetailProduct } from "@/lib/retail/variant-selection";
+
 
 type RetailView = {
   identifier: string;
@@ -22,60 +23,11 @@ type RetailView = {
   products: RetailProduct[];
 };
 
-function colorToken(value: string) {
-  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value)) return value;
-  const color = value.normalize("NFKD").toLocaleLowerCase("fa").replace(/[\s_-]+/g, "");
-  const colors: Record<string, string> = {
-    black: "#242424", مشکی: "#242424", سفید: "#ffffff", white: "#ffffff", قرمز: "#cf3e36", red: "#cf3e36",
-    آبی: "#3478c5", آبیروشن: "#66a4d9", blue: "#3478c5", سبز: "#4b8f55", green: "#4b8f55",
-    زرد: "#e4bd38", yellow: "#e4bd38", صورتی: "#d987a5", pink: "#d987a5", قهوهای: "#82583d", brown: "#82583d",
-    خاکستری: "#8b8b88", gray: "#8b8b88", grey: "#8b8b88", بنفش: "#8462a9", purple: "#8462a9",
-  };
-  return colors[color] ?? "#b7b3ab";
-}
-
-function VariantDimension({ product, dimension, selected, onChange }: {
-  product: RetailProduct; dimension: { id: string; keys: string[]; label: string }; selected: RetailVariant | undefined; onChange: (variant: RetailVariant) => void;
-}) {
-  const firstKey = dimension.keys[0];
-  const first = product.variants.flatMap((variant) => variant.options).find((option) => dimension.keys.includes(option.key));
-  if (!first) return null;
-  const values = new Map<string, string>();
-  for (const variant of product.variants) {
-    for (const key of dimension.keys) {
-      const option = findVariantOption(variant, key);
-      if (option) values.set(retailAttributeText(option), option.label);
-    }
-  }
-  const valueList = [...values];
-  const selectedValue = dimension.keys.flatMap(k => {
-    const option = findVariantOption(selected ?? resolveSelectedVariant(product), k);
-    return option ? [retailAttributeText(option)] : [];
-  })[0];
-  const isColor = dimension.id === "color";
-  return <fieldset className="mt-3 min-w-0"><legend className="text-xs font-medium">{first.label}</legend><div tabIndex={0} aria-label={`${first.label}؛ برای دیدن همه گزینه‌ها پیمایش کنید`} className="mt-1.5 flex max-h-20 flex-wrap gap-1 overflow-y-auto overscroll-contain rounded-lg p-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
-    {valueList.map(([value]) => {
-      const target = chooseVariant(product, selected, firstKey, value);
-      const active = selectedValue ? selectedValue === value : false;
-      return <button key={value} type="button" disabled={!target} aria-pressed={active} onClick={() => target && onChange(target)}
-        className={`${isColor ? "min-h-9 rounded-full px-2.5 py-1.5" : "min-h-8 min-w-9 rounded-lg px-2 py-1 tabular-nums"} border text-[11px] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-35 ${active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground"}`}>
-        {isColor && <span aria-hidden className="ml-1 inline-block h-2.5 w-2.5 rounded-full border border-black/15" style={{ backgroundColor: colorToken(value) }} />}{value}
-      </button>;
-    })}
-  </div></fieldset>;
-}
-
-const toman = (amount: number) => `${new Intl.NumberFormat("fa-IR").format(amount)} تومان`;
-const attributeText = retailAttributeText;
-const cartErrorText = (value: unknown) => value instanceof Error && /currently available stock|insufficient inventory/i.test(value.message)
-  ? "موجودی این گزینه برای این تعداد کافی نیست. تعداد را کم کنید یا گزینه دیگری را انتخاب کنید."
-  : value instanceof Error ? value.message : "افزودن کالا به سبد خرید ممکن نشد.";
-
 export default function RetailLiveCatalog({ view, productSlug, storefrontPath, checkoutPath, embedded = false }: { view: RetailView; productSlug?: string; storefrontPath?: string; checkoutPath?: string; embedded?: boolean }) {
   const [products, setProducts] = useState(view.products);
   const [category, setCategory] = useState("");
   const [error, setError] = useState(false);
-  const [variantChoice, setVariantChoice] = useState<Record<string, string>>({});
+
 
   const [busy, setBusy] = useState(false);
   const [page, setPage] = useState(1);
@@ -93,13 +45,10 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
   const accountHref = appPath(storefrontPath
     ? `${storefrontPath}/profile`
     : `/${encodeURIComponent(locale)}/retail/${encodeURIComponent(view.identifier)}/account`);
-  const [cartNotice, setCartNotice] = useState("");
+
   const [newArrivals, setNewArrivals] = useState<RetailProduct[]>([]);
   const [newArrivalsAvailable, setNewArrivalsAvailable] = useState(false);
   const isFashion = view.theme === "FASHION";
-  const selectedVariantFor = (product: RetailProduct) =>
-    resolveSelectedVariant(product, variantChoice[product.id]);
-
   useEffect(() => {
     setOnline(navigator.onLine);
     const onOffline = () => {
@@ -177,34 +126,12 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
     product: view.products.find((product) => product.category.id === item.id && product.media.card),
   }));
   const selectedCategory = categoryProducts.find((item) => item.id === category || item.slug === category);
-  const heroProduct = view.products.find((product) => product.media.detail || product.media.card) ?? view.products[0];
-  const heroImage = view.branding.cover || heroProduct?.media.detail || heroProduct?.media.card || null;
   const changeCategory = (value: string) => {
     if (value === category && page === 1) return;
     setBusy(true);
     setError(false);
     setCategory(value);
     setPage(1);
-  };
-  const addToCart = async (variantId?: string) => {
-    if (!variantId || view.previewOnly) return;
-    setCartNotice("");
-    try {
-      const response = await fetch(appPath("/api/retail/v1/cart"), {
-        method: "POST", credentials: "same-origin", headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify({ organization: view.identifier, variantId, quantity: 1 }),
-      });
-      if (response.status === 401) {
-        const callbackUrl = checkoutHref;
-        window.location.assign(appPath(`/${encodeURIComponent(locale)}/login?callbackUrl=${encodeURIComponent(callbackUrl)}`));
-        return;
-      }
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "افزودن کالا به سبد خرید ممکن نشد.");
-      setCartNotice("کالا به سبد خرید اضافه شد.");
-    } catch (error) {
-      setCartNotice(cartErrorText(error));
-    }
   };
   const shareStore = async () => {
     setShareMessage("");
@@ -226,48 +153,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
       setShareMessage("اشتراک‌گذاری انجام نشد. نشانی را از نوار آدرس مرورگر کپی کنید.");
     }
   };
-  const renderProduct = (product: RetailProduct) => {
-    const selectedVariant = selectedVariantFor(product);
-    const selectedId = selectedVariant?.id ?? "";
-    const image = selectedVariant?.media?.gallery[0] ?? product.media.card;
-    const canonDims = canonicalDimensions(product);
-    const colorDim = canonDims.find((d) => d.id === "color");
-    const sizeDim = canonDims.find((d) => d.id === "size");
-    const selectVariant = (variant: RetailVariant) => setVariantChoice((current) => ({ ...current, [product.id]: variant.id }));
-    const href = `${base}/product/${encodeURIComponent(product.slug ?? product.id)}`;
-    return <Card key={product.id} className="bg-card text-card-foreground group flex h-full min-w-0 flex-col gap-0 overflow-hidden rounded-2xl border-0 py-0 shadow-sm">
-      <a href={href} className="bg-muted relative block aspect-square w-full shrink-0 overflow-hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-        {image ? <Image unoptimized fill sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw" src={image} alt={product.media.alt || product.name} className="object-cover transition-transform duration-500 group-hover:scale-[1.03]" /> : <div className="grid h-full place-items-center px-3 text-center text-xs text-muted-foreground">تصویری برای این کالا ثبت نشده است</div>}
-</a>
-      <div className="flex flex-1 flex-col p-3 sm:p-4 md:p-5"><span className="text-muted-foreground text-xs">{product.brand ? `${product.brand} · ` : ""}{product.category.name}</span>
-        <h2 className="mt-1 h-12 text-sm font-medium leading-6 sm:text-base md:text-lg"><a href={href} className="line-clamp-2 hover:underline">{product.name}</a></h2>
-        <div className="mt-2 h-10">
-          <p className="line-clamp-2 text-[11px] leading-5 text-muted-foreground sm:text-xs">{product.description?.trim() || (product.variants.length > 0 ? `${new Intl.NumberFormat("fa-IR").format(product.variants.length)} گزینهٔ خرید · جزئیات در صفحهٔ محصول` : "جزئیات بیشتر در صفحهٔ محصول")}</p>
-        </div>
-        {product.attributes.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{product.attributes.slice(0, 3).map((attribute) => <span key={attribute.key} className="rounded-full bg-muted px-2 py-1 text-[10px] text-muted-foreground">{attribute.label}: {attributeText(attribute)}</span>)}</div>}
-        {colorDim && <VariantDimension product={product} dimension={colorDim} selected={selectedVariant} onChange={selectVariant} />}
-        {sizeDim && <VariantDimension product={product} dimension={sizeDim} selected={selectedVariant} onChange={selectVariant} />}
-        {!colorDim && !sizeDim && product.variants.length > 1 && <label className="mt-4 block text-xs">گزینه قابل انتخاب<select aria-label={`گزینه قابل انتخاب برای ${product.name}`} value={selectedId} onChange={(event) => setVariantChoice((current) => ({ ...current, [product.id]: event.target.value }))} className="mt-2 min-h-10 w-full rounded-lg border border-border bg-card px-2 py-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{product.variants.map((variant) => <option key={variant.id} value={variant.id}>{variant.name ?? variant.options.map((option) => `${option.label}: ${attributeText(option)}`).join(" · ")}</option>)}</select></label>}
-        <div className="mt-auto flex flex-col gap-3 border-t border-border/60 pt-3"><div className="min-w-0">{(() => {
-  const selectedList = selectedVariant?.listPrice?.amount;
-  const selectedPrice = selectedVariant?.price.amount ?? product.price.amount;
-  const variantSale = selectedVariant && selectedList !== undefined && selectedList > selectedPrice;
-  const productSale = !selectedVariant && product.listPrice && product.listPrice.amount > product.price.amount;
-  const showBadge = variantSale || productSale;
-  return showBadge ? <span className="mb-1 inline-block rounded-full bg-destructive px-2 py-0.5 text-[10px] text-destructive-foreground">تخفیف</span> : null;
-})()}<strong className="block truncate text-sm">{toman(selectedVariant?.price.amount ?? product.price.amount)}</strong>{(() => {
-  const selectedList = selectedVariant?.listPrice?.amount;
-  const showList = selectedList && selectedList > (selectedVariant?.price.amount ?? 0);
-  const fallback = !selectedVariant && product.listPrice && product.listPrice.amount > product.price.amount;
-  if (showList) return <span className="mt-1 block text-[11px] line-through text-muted-foreground">{toman(selectedList)}</span>;
-  if (fallback) return <span className="mt-1 block text-[11px] line-through text-muted-foreground">{toman(product.listPrice!.amount)}</span>;
-  return null;
-})()}<span className={`mt-1 block text-[11px] ${selectedVariant?.orderable ? "text-emerald-700 dark:text-emerald-300" : "text-destructive"}`}>{selectedVariant ? (selectedVariant.orderable ? "موجود" : "ناموجود") : "وضعیت فروش ثبت نشده"}</span></div>
-          <Button type="button" aria-label={`افزودن ${product.name} به سبد خرید`} disabled={view.previewOnly || !selectedVariant?.orderable} onClick={() => void addToCart(selectedVariant?.id)} size="sm" className="h-10 w-full shrink-0 rounded-xl px-2.5 py-2 text-xs">{view.previewOnly ? "پیش‌نمایش" : selectedVariant?.orderable ? "افزودن به سبد" : "ناموجود"}</Button>
-        </div>
-      </div>
-    </Card>;
-  };
+  const renderProduct = (product: RetailProduct) => <RetailProductCard key={product.id} product={product} organization={view.identifier} storefrontPath={base} previewOnly={view.previewOnly} />;
 
   if (productSlug && detail) return <PremiumProductDetail key={detail.id} product={detail} organization={view.identifier} storeName={view.name} logo={view.branding.logo} storefrontPath={base} checkoutPath={checkoutHref} accountPath={accountHref} embedded={embedded} previewOnly={view.previewOnly} />;
 
@@ -292,24 +178,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
       {shareMessage && <p role="status" aria-live="polite" className="text-xs text-[#6e6a60] md:basis-full">{shareMessage}</p>}
     </section></>}
     {!productSlug && <>
-    {!category && <section className="mx-auto grid max-w-7xl gap-4 px-4 pb-8 md:grid-cols-[.88fr_1.12fr] md:px-10">
-      <div className="bg-card text-card-foreground flex min-h-[360px] flex-col justify-center rounded-[2rem] p-7 ring-1 ring-border sm:p-10 md:min-h-[500px] md:p-14">
-        <div className="mb-8 flex items-center gap-3">
-          {view.branding.logo && <Image src={view.branding.logo} width={48} height={48} unoptimized alt="" className="size-12 rounded-xl bg-white object-contain p-1" />}
-          <div><p className="text-xs font-semibold tracking-[.12em] text-[#8a6849]">{isFashion ? "ویترین پوشاک و کفش" : view.theme === "ELECTRONICS" ? "فروشگاه لوازم الکترونیکی" : "فروشگاه خرده‌فروشی"}</p><p className="mt-1 text-sm font-medium">{view.name}</p></div>
-        </div>
-        <h1 className="max-w-xl text-4xl font-semibold leading-[1.4] md:text-6xl">{isFashion ? <>استایل خودت را<br />از اینجا پیدا کن.</> : <>انتخابی دقیق،<br />برای هر روز.</>}</h1>
-        <p className="mt-5 max-w-md leading-8 text-[#67655e]">{view.description ?? "محصولات منتشرشده فروشگاه را ببینید و گزینه مناسب خود را انتخاب کنید."}</p>
-        <div className="mt-8 flex flex-wrap gap-3"><a href={`${base}#products`} className="min-h-12 rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground">مشاهده محصولات <span className="mr-2" aria-hidden>←</span></a>{view.categories.length > 0 && <a href="#categories" className="inline-flex min-h-12 items-center rounded-full border border-border px-6 py-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">دسته‌بندی‌ها</a>}</div>
-      </div>
-      <div className="relative min-h-[360px] overflow-hidden rounded-[2rem] bg-[#d8d2c7] md:min-h-[500px]">
-        {heroImage ? <Image src={heroImage} alt={heroProduct?.media.alt || view.name} fill unoptimized priority sizes="(max-width: 768px) 100vw, 55vw" className="object-cover" /> : <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-[#eeeae3] to-[#c9c1b4] p-8 text-center text-[#655d51]"><span className="text-lg font-medium">{view.name}</span></div>}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent p-6 pt-24 text-white md:p-9 md:pt-32">
-          <p className="text-xs text-white/80">{heroProduct ? heroProduct.category.name : "محصولات فروشگاه"}</p>
-          {heroProduct ? <><h2 className="mt-2 text-2xl font-semibold md:text-3xl">{heroProduct.name}</h2><div className="mt-4 flex flex-wrap items-center gap-4"><span className="text-sm">{toman(heroProduct.price.amount)}</span><a href={`${base}/product/${encodeURIComponent(heroProduct.slug ?? heroProduct.id)}`} className="min-h-11 rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#292a24]">جزئیات محصول</a></div></> : <h2 className="mt-2 text-2xl font-semibold">{view.name}</h2>}
-        </div>
-      </div>
-    </section>}
+    {!category && <RetailStorefrontHero name={view.name} description={view.description} logo={view.branding.logo} cover={view.branding.cover} theme={view.theme} products={view.products} storefrontPath={base} />}
     <section id="categories" className="mx-auto max-w-7xl px-4 py-8 md:px-10">
       <div className="flex items-end justify-between gap-4 border-b border-border pb-4"><div><span className="text-xs text-muted-foreground">{isFashion ? "انتخاب بر اساس دسته" : "دسته‌بندی محصولات"}</span><h2 className="mt-2 text-2xl font-semibold">دسته‌بندی‌ها</h2></div><button type="button" onClick={() => changeCategory("")} aria-pressed={!category} className="rounded-md px-2 py-1 text-sm text-muted-foreground transition hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">همه دسته‌بندی‌ها</button></div>
       {categoryProducts.length ? <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{categoryProducts.map((item) => {
@@ -331,7 +200,6 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
         </div>
       </div>
       {error ? <div role="alert" className="mt-8 rounded-2xl bg-card p-8 text-center text-destructive"><p>{online === false ? "اتصال اینترنت برقرار نیست. پس از اتصال دوباره تلاش کنید." : "دریافت محصولات ممکن نشد. اتصال را بررسی کنید و دوباره تلاش کنید."}</p><button type="button" onClick={() => { setError(false); setRetryKey((current) => current + 1); }} className="mt-4 min-h-11 rounded-full border border-border px-5 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">تلاش دوباره</button></div> : busy ? <p role="status" className="mt-8 rounded-2xl bg-card p-10 text-center text-foreground">در حال دریافت محصولات…</p> : products.length ? <><div className="mt-7 grid auto-rows-fr grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 xl:grid-cols-4">{products.map(renderProduct)}</div><nav aria-label="صفحه‌های محصولات" className="mt-8 flex items-center justify-center gap-4"><button disabled={pagination.page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} className="min-h-11 rounded-full border border-border px-5 text-foreground disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">قبلی</button><span className="text-sm text-muted-foreground" aria-live="polite">صفحه {new Intl.NumberFormat("fa-IR").format(pagination.page)} از {new Intl.NumberFormat("fa-IR").format(pagination.totalPages)}</span><button disabled={pagination.page >= pagination.totalPages} onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))} className="min-h-11 rounded-full border border-border px-5 text-foreground disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">بعدی</button></nav></> : <div className="mt-8 rounded-2xl border border-dashed border-border bg-card p-10 text-center text-muted-foreground">محصولی با این مشخصات پیدا نشد. فیلترها را تغییر دهید.</div>}
-      {cartNotice && <p role="status" aria-live="polite" className="mt-5 text-center text-sm text-[#6e6a60]">{cartNotice}</p>}
       <p className="mt-6 text-center text-xs text-[#77736a]">قیمت و وضعیت موجودی از فهرست منتشرشده فروشگاه دریافت شده‌اند.</p>
     </section>
     </>}

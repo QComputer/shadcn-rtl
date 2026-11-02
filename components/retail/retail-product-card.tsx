@@ -1,0 +1,128 @@
+"use client";
+
+import Image from "next/image";
+import { Pause, Play, ShoppingBag } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { appPath } from "@/lib/app-base-path";
+import { colorSlides, constrainedDimensions, filterCardVariants } from "@/lib/retail/card-presentation";
+import { compareRetailSizes, reliableColorSwatch } from "@/lib/retail/product-detail";
+import { canonicalDimensions, chooseVariant, dimensionValues, resolveSelectedVariant, retailAttributeText, type RetailProduct, type RetailVariant } from "@/lib/retail/variant-selection";
+import { Button } from "@/components/ui/button";
+
+const noFilters: readonly string[] = [];
+const money = (amount: number) => `${new Intl.NumberFormat("fa-IR").format(amount)} تومان`;
+const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
+
+function CardMedia({ product, selected, pinned, href, favorite }: { product: RetailProduct; selected?: RetailVariant; pinned: boolean; href: string; favorite?: ReactNode }) {
+  const slides = useMemo(() => colorSlides(product), [product]);
+  const [index, setIndex] = useState(0);
+  const [previous, setPrevious] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState("");
+  const [paused, setPaused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [motionAllowed, setMotionAllowed] = useState(false);
+  const region = useRef<HTMLDivElement>(null);
+  const slide = slides[index % Math.max(1, slides.length)];
+  const baseImage = selected?.media?.gallery[0] || product.media.card || product.media.gallery[0];
+  const src = (!pinned && slide ? slide.src : baseImage) || null;
+  const animated = !pinned && slides.length > 1;
+
+  useEffect(() => {
+    const node = region.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.2 });
+    observer.observe(node);
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updateMotion = () => setMotionAllowed(!motion.matches && document.visibilityState === "visible");
+    updateMotion();
+    motion.addEventListener("change", updateMotion);
+    document.addEventListener("visibilitychange", updateMotion);
+    return () => { observer.disconnect(); motion.removeEventListener("change", updateMotion); document.removeEventListener("visibilitychange", updateMotion); };
+  }, []);
+
+  useEffect(() => {
+    if (!animated || !visible || !motionAllowed || paused || hovered || focused) return;
+    const timer = window.setInterval(() => { setPrevious(src); setIndex(current => (current + 1) % slides.length); }, 4500);
+    return () => window.clearInterval(timer);
+  }, [animated, visible, motionAllowed, paused, hovered, focused, src, slides.length]);
+
+  return <div ref={region} className="relative aspect-square shrink-0 overflow-hidden bg-muted" onPointerEnter={() => setHovered(true)} onPointerLeave={() => setHovered(false)} onFocusCapture={() => setFocused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false); }}>
+    <a href={href} aria-label={`مشاهده ${product.name}`} className={`absolute inset-0 ${focus}`}>
+      {src ? <>
+        <Image src={previous || baseImage || src} alt="" aria-hidden fill unoptimized sizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 300px" className="object-cover" />
+        <Image key={src} src={src} alt={`${product.media.alt || product.name}${animated && slide ? `، ${slide.value}` : ""}`} fill unoptimized sizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 300px" onLoad={() => setLoaded(src)} className={`object-cover transition-opacity duration-700 motion-reduce:transition-none ${loaded === src ? "opacity-100" : "opacity-0"}`} />
+      </> : <span className="grid h-full place-items-center px-3 text-center text-xs text-muted-foreground">تصویری برای این کالا ثبت نشده است</span>}
+    </a>
+    {favorite && <div className="absolute end-2 top-2 z-10">{favorite}</div>}
+    {animated && motionAllowed && <button type="button" aria-label={paused ? `پخش تصاویر رنگ‌های ${product.name}` : `توقف تصاویر رنگ‌های ${product.name}`} aria-pressed={paused} onClick={() => setPaused(value => !value)} className={`absolute start-2 top-2 z-10 grid size-8 place-items-center rounded-full border border-border/60 bg-card/90 text-card-foreground backdrop-blur ${focus}`}>{paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}</button>}
+    {animated && slide && <span className="pointer-events-none absolute bottom-2 start-2 max-w-[calc(100%-1rem)] truncate rounded-full border border-border/60 bg-card/90 px-2 py-1 text-[10px] text-card-foreground backdrop-blur">پیش‌نمایش رنگ: {slide.value}</span>}
+  </div>;
+}
+
+type Props = { product: RetailProduct; organization: string; storefrontPath: string; filters?: readonly string[]; previewOnly?: boolean; favorite?: ReactNode };
+
+export function RetailProductCard({ product, organization, storefrontPath, filters = noFilters, previewOnly = false, favorite }: Props) {
+  const eligible = useMemo(() => filterCardVariants(product, filters), [product, filters]);
+  const dimensions = canonicalDimensions(eligible);
+  const constrained = constrainedDimensions(product, filters);
+  const [choice, setChoice] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const [notice, setNotice] = useState("");
+  const inFlight = useRef(false);
+  const selected = resolveSelectedVariant(eligible, choice);
+  const unmatched = product.variants.length > 0 && eligible.variants.length === 0;
+  const selectedExplicitly = eligible.variants.some(variant => variant.id === choice);
+  const pinned = selectedExplicitly || constrained.some(dimension => dimension.id === "color");
+  const needsColorChoice = colorSlides(eligible).length > 1 && !pinned;
+  const href = `${storefrontPath.replace(/\/$/, "")}/product/${encodeURIComponent(product.slug || product.id)}`;
+  const amount = selected?.price.amount ?? product.price.amount;
+  const list = selected?.listPrice?.amount ?? (!selected ? product.listPrice?.amount : undefined);
+
+  function choose(variant: RetailVariant) { setChoice(variant.id); setNotice(""); }
+  async function add() {
+    if (!selected?.orderable || previewOnly || needsColorChoice || inFlight.current) return;
+    const variantId = selected.id;
+    inFlight.current = true; setPending(true); setNotice("");
+    try {
+      const response = await fetch(appPath("/api/retail/v1/cart"), { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ organization, variantId, quantity: 1 }) });
+      if (response.status === 401) { window.location.assign(appPath(`/fa/login?callbackUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`)); return; }
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(response.status === 409 ? "موجودی این گزینه تغییر کرده است؛ دوباره انتخاب کنید." : "افزودن به سبد انجام نشد؛ دوباره تلاش کنید.");
+      if (body.item?.variantId !== variantId) throw new Error("پاسخ سبد با گزینهٔ انتخاب‌شده مطابقت ندارد؛ سبد را بررسی کنید.");
+      setNotice("همین گزینه به سبد خرید اضافه شد.");
+    } catch (cause) { setNotice(cause instanceof Error ? cause.message : "ارتباط برقرار نشد؛ دوباره تلاش کنید."); }
+    finally { inFlight.current = false; setPending(false); }
+  }
+
+  return <article data-retail-product-card className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card text-card-foreground shadow-sm">
+    <CardMedia product={eligible} selected={selected} pinned={pinned} href={href} favorite={favorite} />
+    <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-4">
+      <p className="truncate text-[10px] text-muted-foreground sm:text-xs">{product.category.name}{product.brand ? ` · ${product.brand}` : ""}</p>
+      <h2 className="mt-1 h-12 text-sm font-semibold leading-6 sm:text-base"><a href={href} className={`line-clamp-2 hover:underline ${focus}`}>{product.name}</a></h2>
+      <p className="mt-1 line-clamp-2 h-10 text-[11px] leading-5 text-muted-foreground sm:text-xs">{product.description?.trim() || "جزئیات و مشخصات در صفحهٔ محصول"}</p>
+      <div className="my-3 min-w-0 space-y-2.5">
+        {dimensions.map(dimension => {
+          const values = dimensionValues(eligible, dimension);
+          if (dimension.id === "size") values.sort(compareRetailSizes);
+          const locked = constrained.some(item => item.id === dimension.id) && values.length === 1;
+          const option = selected?.options.find(item => dimension.keys.includes(item.key));
+          const current = option ? retailAttributeText(option) : "";
+          return <fieldset key={dimension.id} disabled={pending} className="min-w-0"><legend className="mb-1 text-[11px] font-medium">{dimension.label}{locked ? `: ${current}` : ""}{locked && <span className="ms-1 text-[10px] font-normal text-muted-foreground">طبق فیلتر</span>}</legend>{!locked && <div className="flex gap-1 overflow-x-auto overscroll-x-contain px-0.5 pb-1 [scrollbar-width:thin] dark:[color-scheme:dark]">
+            {values.map(value => { const variant = chooseVariant(eligible, selected, dimension.keys[0], value); const swatch = dimension.id === "color" ? reliableColorSwatch(value) : undefined; return <button key={value} type="button" aria-pressed={current === value} title={value} onClick={() => variant && choose(variant)} className={`flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2 text-[11px] tabular-nums transition-colors ${focus} ${current === value ? "border-primary bg-primary/10 text-foreground" : "border-border bg-background text-foreground hover:bg-muted"}`}>
+              {swatch && <span aria-hidden className="size-3 shrink-0 rounded-full border border-foreground/20" style={{ backgroundColor: swatch }} />}{value}
+            </button>; })}
+          </div>}</fieldset>;
+        })}
+        {!dimensions.length && eligible.variants.length > 1 && <label className="block text-[11px]">گزینهٔ خرید<select aria-label={`گزینهٔ خرید ${product.name}`} value={selected?.id || ""} disabled={pending} onChange={event => { const variant = eligible.variants.find(item => item.id === event.target.value); if (variant) choose(variant); }} className={`mt-1 h-9 w-full rounded-lg border border-input bg-background px-2 ${focus}`}>{eligible.variants.map(variant => <option key={variant.id} value={variant.id}>{variant.name || variant.options.map(retailAttributeText).join(" · ")}</option>)}</select></label>}
+      </div>
+      <div className="mt-auto border-t border-border/60 pt-3">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2"><strong className="text-xs tabular-nums sm:text-sm">{money(amount)}</strong>{list !== undefined && list > amount && <del className="text-[10px] text-muted-foreground">{money(list)}</del>}</div>
+        <p className={`mb-3 mt-1 text-[10px] ${selected?.orderable ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground"}`}>{selected ? selected.orderable ? "موجود" : "این گزینه ناموجود است" : unmatched ? "ترکیبی مطابق فیلترها ارائه نشده است" : "اطلاعات گزینه‌های خرید تکمیل نشده است"}</p>
+        {needsColorChoice && !previewOnly ? <a href={href} className={`flex min-h-10 items-center justify-center rounded-xl border border-border px-2 text-xs font-semibold hover:bg-muted ${focus}`}>انتخاب رنگ و سایز</a> : <Button type="button" disabled={previewOnly || !selected?.orderable || pending} onClick={() => void add()} aria-label={`افزودن ${product.name} به سبد خرید`} className="h-10 w-full gap-1.5 rounded-xl px-2 text-xs"><ShoppingBag aria-hidden className="size-3.5" />{pending ? "در حال افزودن…" : previewOnly ? "پیش‌نمایش" : selected?.orderable ? "افزودن به سبد" : "ناموجود"}</Button>}
+        {notice && <p role="status" className="mt-2 text-xs leading-5 text-muted-foreground">{notice}</p>}
+      </div>
+    </div>
+  </article>;
+}

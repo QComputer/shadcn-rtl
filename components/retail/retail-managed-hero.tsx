@@ -7,6 +7,7 @@ import type { MouseEvent } from "react";
 import type { PublicCatalogProduct } from "@/lib/public-catalog/contracts";
 import type { PublishedRetailHero } from "@/lib/website-studio/retail-hero-contract";
 import { appPath } from "@/lib/app-base-path";
+import { formatRetailMoney } from "@/lib/retail/format-price";
 
 export type RetailManagedHeroProps = {
   hero: PublishedRetailHero;
@@ -17,7 +18,7 @@ export type RetailManagedHeroProps = {
 };
 
 const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring";
-const toman = (amount: number) => `${new Intl.NumberFormat("fa-IR").format(amount)} تومان`;
+const toman = formatRetailMoney;
 
 export function RetailManagedHero({ hero, products, name, storefrontPath, preview = false }: RetailManagedHeroProps) {
   const selected = useMemo(() => {

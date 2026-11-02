@@ -27,7 +27,7 @@ export type CheckoutOrder = {
   items: Array<{ id: string; productName: string; variantName: string | null; sku: string | null; options: CheckoutOption[]; quantity: number; unitPrice: number; lineTotal: number; image?: string | null }>;
 };
 
-export const checkoutMoney = (value: number) => `${new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 2 }).format(value)} تومان`;
+export { formatRetailMoney as checkoutMoney } from "./format-price";
 export const checkoutDigits = (value: string) => value.replace(/[۰-۹]/g, d => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d))).replace(/[٠-٩]/g, d => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
 export const checkoutOptionLabel = (option: CheckoutOption) => `${option.label ? `${option.label}: ` : ""}${option.value ?? ""}${option.displayUnit ? ` ${option.displayUnit}` : ""}`;
 export const checkoutItemImage = (item: CheckoutCartItem) => item.variant.media?.gallery[0] ?? item.variant.media?.image ?? item.variant.product.image ?? null;

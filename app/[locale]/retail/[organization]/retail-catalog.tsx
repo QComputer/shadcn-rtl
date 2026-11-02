@@ -49,8 +49,6 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
     ? `${storefrontPath}/profile`
     : `/${encodeURIComponent(locale)}/retail/${encodeURIComponent(view.identifier)}/account`);
 
-  const [newArrivals, setNewArrivals] = useState<RetailProduct[]>([]);
-  const [newArrivalsAvailable, setNewArrivalsAvailable] = useState(false);
   const isFashion = view.theme === "FASHION";
   useEffect(() => {
     setOnline(navigator.onLine);
@@ -103,24 +101,6 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
     return () => { window.clearTimeout(timer); controller.abort(); };
   }, [view.identifier, category, page, productSlug, retryKey]);
 
-  useEffect(() => {
-    if (productSlug) return;
-    const controller = new AbortController();
-    (async () => {
-      try {
-        const params = new URLSearchParams({ page: "1", limit: "8", sort: "newest" });
-        const response = await fetch(appPath(`/api/public/v1/organizations/${encodeURIComponent(view.identifier)}/products?${params}`), { signal: controller.signal, headers: { Accept: "application/json" } });
-        if (!response.ok) throw new Error("newest request failed");
-        const body = await response.json() as { version: string; data: { products: RetailProduct[] } };
-        if (body.version !== "v1" || !Array.isArray(body.data.products)) throw new Error("newest response invalid");
-        setNewArrivals(body.data.products);
-        setNewArrivalsAvailable(body.data.products.length > 0);
-      } catch {
-        if (!controller.signal.aborted) setNewArrivalsAvailable(false);
-      }
-    })();
-    return () => controller.abort();
-  }, [view.identifier, productSlug]);
 
 
   const detail = productSlug ? products.find((product) => product.slug === productSlug || product.id === productSlug) : undefined;
@@ -169,7 +149,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
         {view.branding.logo && <Image src={view.branding.logo} width={42} height={42} unoptimized alt={view.name} className="h-10 w-10 shrink-0 rounded-xl object-contain" />}
         <span className="truncate">{view.name}</span>
       </a>
-      {!productSlug && <nav aria-label="ناوبری فروشگاه" className="hidden gap-8 text-sm md:flex"><a href={`${base}#categories`}>دسته‌بندی‌ها</a><a href={`${base}#new-arrivals`}>تازه‌واردها</a><a href={`${base}#sale`}>تخفیف‌دارها</a><a href={`${base}#products`}>محصولات</a></nav>}
+      {!productSlug && <nav aria-label="ناوبری فروشگاه" className="hidden gap-8 text-sm md:flex"><a href={`${base}#categories`}>دسته‌بندی‌ها</a><a href={`${base}#products`}>محصولات</a><a href={`${base}/discover`}>جست‌وجوی پیشرفته</a></nav>}
       <div className="flex shrink-0 items-center gap-2">{!view.previewOnly && <><a href={accountHref} className="hidden min-h-11 items-center rounded-full border border-[#d9d5cd] px-4 py-3 text-sm sm:flex">حساب من</a><a href={checkoutHref} className="min-h-11 rounded-full border border-[#d9d5cd] px-3 py-2.5 text-sm sm:px-4 sm:py-3">سبد خرید</a></>}<a href={`${base}#products`} className="hidden min-h-11 items-center rounded-full border border-[#d9d5cd] px-4 py-3 text-sm sm:flex">مشاهده کالاها <span aria-hidden>⌕</span></a></div>
     </header>
     <section aria-label="دسترسی و نصب فروشگاه" className="mx-auto flex max-w-7xl flex-col gap-3 px-4 pb-4 md:flex-row md:items-center md:justify-between md:px-10">
@@ -193,8 +173,6 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
         </button>;
       })}</div> : <p className="bg-card text-card-foreground mt-5 rounded-xl p-5 text-sm">دسته‌بندی فعالی برای نمایش ثبت نشده است.</p>}
     </section>
-    {!category && newArrivalsAvailable && newArrivals.length > 0 && <section id="new-arrivals" className="mx-auto max-w-7xl px-5 pb-8 pt-2 md:px-10"><div className="flex items-end justify-between gap-4 border-b border-border pb-4"><div><span className="text-primary text-xs">جدیدترین محصولات</span><h2 className="mt-2 text-2xl font-semibold">تازه‌واردها</h2></div><a href={`${base}#products`} className="text-muted-foreground text-sm hover:text-foreground">همه محصولات ←</a></div><div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 xl:grid-cols-4 auto-rows-fr">{newArrivals.map(renderProduct)}</div></section>}
-    {!category && view.products.some((product) => product.listPrice && product.listPrice.amount > product.price.amount) && <section id="sale" className="mx-auto max-w-7xl px-5 pb-8 pt-2 md:px-10"><div className="flex items-end justify-between gap-4 border-b border-border pb-4"><div><span className="text-destructive text-xs">پیشنهادهای ویژه</span><h2 className="mt-2 text-2xl font-semibold">حراج</h2></div><a href={`${base}#products`} className="text-muted-foreground text-sm hover:text-foreground">همه محصولات ←</a></div><div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 xl:grid-cols-4 auto-rows-fr">{view.products.filter((product) => product.listPrice && product.listPrice.amount > product.price.amount).map(renderProduct)}</div></section>}
     <section id="products" className="mx-auto max-w-7xl px-5 pb-20 pt-7 md:px-10">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><span className="text-xs text-[#92704e]">{selectedCategory ? "دسته‌بندی انتخاب‌شده" : "فهرست منتشرشده فروشگاه"}</span><h2 className="mt-2 text-3xl font-semibold">{selectedCategory ? selectedCategory.name : view.theme === "ELECTRONICS" ? "دستگاه‌ها و مشخصات" : "محصولات فروشگاه"}</h2></div>
         <div className="flex flex-wrap items-center gap-2">

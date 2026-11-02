@@ -4,11 +4,12 @@ import Image from "next/image";
 import { ArrowUpLeft, ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { buildRetailHeroSlides } from "@/lib/retail/hero-presentation";
+import { formatRetailMoney } from "@/lib/retail/format-price";
 import type { RetailProduct } from "@/lib/retail/variant-selection";
 
 type Props = { name: string; description: string | null; logo: string | null; cover: string | null; theme: "FASHION" | "ELECTRONICS" | "GENERAL"; products: RetailProduct[]; storefrontPath: string };
 const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring";
-const money = (amount: number) => `${new Intl.NumberFormat("fa-IR").format(amount)} تومان`;
+const money = formatRetailMoney;
 
 export function RetailStorefrontHero({ name, description, logo, cover, theme, products, storefrontPath }: Props) {
   const slides = useMemo(() => buildRetailHeroSlides(products), [products]);

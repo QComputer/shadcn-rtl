@@ -1,4 +1,6 @@
 "use client";
+import { formatRetailPriceNumber } from "@/lib/retail/format-price";
+
 
 import Image from "next/image";
 import { useRef, useState } from "react";
@@ -12,7 +14,7 @@ import { FavoriteButton } from "./favorite-button";
 import { Button } from "@/components/ui/button";
 
 type Props = { product: RetailProduct; organization: string; storeName: string; logo: string | null; storefrontPath: string; checkoutPath: string; accountPath: string; embedded?: boolean; previewOnly: boolean };
-const price = (amount: number) => new Intl.NumberFormat("fa-IR").format(amount);
+const price = formatRetailPriceNumber;
 const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring";
 
 export function PremiumProductDetail({ product, organization, storeName, logo, storefrontPath, checkoutPath, embedded = false, previewOnly }: Props) {

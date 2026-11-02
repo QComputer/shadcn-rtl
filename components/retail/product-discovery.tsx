@@ -9,6 +9,7 @@ import type { PublicCatalogProduct } from "@/lib/public-catalog/contracts";
 import { FavoriteButton } from "./favorite-button";
 import { RetailProductCard } from "./retail-product-card";
 import { DiscoveryFacet } from "./discovery-facet";
+import { formatRetailSize } from "@/lib/retail/format-size";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 type Pagination = { page: number; limit: number; total: number; totalPages: number };
@@ -137,7 +138,12 @@ export function ProductDiscovery({ organization, storeName, logo, storefrontPath
 
   const chips = [state.category && { key: "category", label: facets.categories.find(item => item.slug === state.category || item.id === state.category)?.name ?? state.category },
     state.brand && { key: "brand", label: state.brand }, state.minPrice && { key: "minPrice", label: `از ${state.minPrice}` }, state.maxPrice && { key: "maxPrice", label: `تا ${state.maxPrice}` },
-    state.available && { key: "available", label: "فقط کالاهای موجود" }, state.saved && { key: "saved", label: "علاقه‌مندی‌ها" }, ...state.filters.map(token => ({ key: token, label: token.split(":").slice(1).join(":") }))].filter(Boolean) as Array<{key: string; label: string}>;
+    state.available && { key: "available", label: "فقط کالاهای موجود" }, state.saved && { key: "saved", label: "علاقه‌مندی‌ها" }, ...state.filters.map(token => {
+      const [key, ...parts] = token.split(":");
+      const value = parts.join(":");
+      const attribute = facets.attributes.find(item => item.key === key);
+      return { key: token, label: /size|سایز|اندازه|شماره/i.test(`${key} ${attribute?.label ?? ""}`) ? formatRetailSize(value) : value };
+    })].filter(Boolean) as Array<{key: string; label: string}>;
 
   function controls() { return <div className="space-y-5"><p className="text-xs leading-5 text-muted-foreground">تعداد کنار هر گزینه بر اساس همه محصولات فروشگاه است.</p>
     <label className="grid gap-2 text-sm font-semibold text-foreground">دسته‌بندی<select className={field} value={state.category ?? ""} onChange={event => setFilter("category", event.target.value)}><option value="">همه دسته‌ها</option>{facets.categories.map(item => <option key={item.id} value={item.slug ?? item.id}>{item.name} ({new Intl.NumberFormat("fa-IR").format(item.count)})</option>)}</select></label>

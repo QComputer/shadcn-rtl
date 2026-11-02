@@ -53,7 +53,7 @@ function VariantDimension({ product, dimension, selected, onChange }: {
     return option ? [retailAttributeText(option)] : [];
   })[0];
   const isColor = dimension.id === "color";
-  return <fieldset className="mt-3"><legend className="text-xs font-medium">{first.label}</legend><div className="mt-2 flex flex-wrap gap-2">
+  return <fieldset className="mt-3 min-w-0"><legend className="text-xs font-medium">{first.label}</legend><div tabIndex={0} aria-label={`${first.label}؛ برای دیدن همه گزینه‌ها پیمایش کنید`} className="mt-1.5 flex max-h-20 flex-wrap gap-1 overflow-y-auto overscroll-contain rounded-lg p-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
     {valueList.map(([value]) => {
       const target = chooseVariant(product, selected, firstKey, value);
       const active = selectedValue ? selectedValue === value : false;
@@ -235,20 +235,20 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
     const sizeDim = canonDims.find((d) => d.id === "size");
     const selectVariant = (variant: RetailVariant) => setVariantChoice((current) => ({ ...current, [product.id]: variant.id }));
     const href = `${base}/product/${encodeURIComponent(product.slug ?? product.id)}`;
-    return <Card key={product.id} className="bg-card text-card-foreground group flex h-full flex-col overflow-hidden rounded-2xl border-0 shadow-sm">
-      <a href={href} className="bg-muted relative block aspect-[4/5] w-full overflow-hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-        {image ? <Image unoptimized fill sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw" src={image} alt={product.media.alt || product.name} className="object-cover transition-transform duration-500 group-hover:scale-[1.03]" /> : <div className="grid h-full place-items-center text-sm text-[#77736a]">تصویری برای این کالا ثبت نشده است</div>}
+    return <Card key={product.id} className="bg-card text-card-foreground group flex h-full min-w-0 flex-col gap-0 overflow-hidden rounded-2xl border-0 py-0 shadow-sm">
+      <a href={href} className="bg-muted relative block aspect-square w-full shrink-0 overflow-hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+        {image ? <Image unoptimized fill sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw" src={image} alt={product.media.alt || product.name} className="object-cover transition-transform duration-500 group-hover:scale-[1.03]" /> : <div className="grid h-full place-items-center px-3 text-center text-xs text-muted-foreground">تصویری برای این کالا ثبت نشده است</div>}
 </a>
       <div className="flex flex-1 flex-col p-3 sm:p-4 md:p-5"><span className="text-muted-foreground text-xs">{product.brand ? `${product.brand} · ` : ""}{product.category.name}</span>
-        <h2 className="mt-1 text-sm font-medium leading-6 sm:text-base md:text-lg"><a href={href} className="hover:underline">{product.name}</a></h2>
-        <div className="mt-2 min-h-[3.5rem] rounded-lg bg-muted/50 px-2 py-1.5">
-          <p className="line-clamp-3 text-[11px] leading-5 text-muted-foreground sm:text-xs">{product.description?.trim() || (product.variants.length > 0 ? `${new Intl.NumberFormat("fa-IR").format(product.variants.length)} گزینهٔ خرید · جزئیات در صفحهٔ محصول` : "جزئیات بیشتر در صفحهٔ محصول")}</p>
+        <h2 className="mt-1 h-12 text-sm font-medium leading-6 sm:text-base md:text-lg"><a href={href} className="line-clamp-2 hover:underline">{product.name}</a></h2>
+        <div className="mt-2 h-10">
+          <p className="line-clamp-2 text-[11px] leading-5 text-muted-foreground sm:text-xs">{product.description?.trim() || (product.variants.length > 0 ? `${new Intl.NumberFormat("fa-IR").format(product.variants.length)} گزینهٔ خرید · جزئیات در صفحهٔ محصول` : "جزئیات بیشتر در صفحهٔ محصول")}</p>
         </div>
         {product.attributes.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{product.attributes.slice(0, 3).map((attribute) => <span key={attribute.key} className="rounded-full bg-muted px-2 py-1 text-[10px] text-muted-foreground">{attribute.label}: {attributeText(attribute)}</span>)}</div>}
         {colorDim && <VariantDimension product={product} dimension={colorDim} selected={selectedVariant} onChange={selectVariant} />}
         {sizeDim && <VariantDimension product={product} dimension={sizeDim} selected={selectedVariant} onChange={selectVariant} />}
         {!colorDim && !sizeDim && product.variants.length > 1 && <label className="mt-4 block text-xs">گزینه قابل انتخاب<select aria-label={`گزینه قابل انتخاب برای ${product.name}`} value={selectedId} onChange={(event) => setVariantChoice((current) => ({ ...current, [product.id]: event.target.value }))} className="mt-2 min-h-10 w-full rounded-lg border border-border bg-card px-2 py-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{product.variants.map((variant) => <option key={variant.id} value={variant.id}>{variant.name ?? variant.options.map((option) => `${option.label}: ${attributeText(option)}`).join(" · ")}</option>)}</select></label>}
-        <div className="mt-auto flex items-center justify-between gap-1.5 pt-3"><div className="min-w-0">{(() => {
+        <div className="mt-auto flex flex-col gap-3 border-t border-border/60 pt-3"><div className="min-w-0">{(() => {
   const selectedList = selectedVariant?.listPrice?.amount;
   const selectedPrice = selectedVariant?.price.amount ?? product.price.amount;
   const variantSale = selectedVariant && selectedList !== undefined && selectedList > selectedPrice;
@@ -263,7 +263,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
   if (fallback) return <span className="mt-1 block text-[11px] line-through text-muted-foreground">{toman(product.listPrice!.amount)}</span>;
   return null;
 })()}<span className={`mt-1 block text-[11px] ${selectedVariant?.orderable ? "text-emerald-700 dark:text-emerald-300" : "text-destructive"}`}>{selectedVariant ? (selectedVariant.orderable ? "موجود" : "ناموجود") : "وضعیت فروش ثبت نشده"}</span></div>
-          <Button type="button" aria-label={`افزودن ${product.name} به سبد خرید`} disabled={view.previewOnly || !selectedVariant?.orderable} onClick={() => void addToCart(selectedVariant?.id)} size="sm" className="h-9 shrink-0 rounded-full px-2.5 py-1.5 text-xs sm:h-10 sm:px-3 sm:py-2">{view.previewOnly ? "پیش‌نمایش" : selectedVariant?.orderable ? "افزودن به سبد" : "ناموجود"}</Button>
+          <Button type="button" aria-label={`افزودن ${product.name} به سبد خرید`} disabled={view.previewOnly || !selectedVariant?.orderable} onClick={() => void addToCart(selectedVariant?.id)} size="sm" className="h-10 w-full shrink-0 rounded-xl px-2.5 py-2 text-xs">{view.previewOnly ? "پیش‌نمایش" : selectedVariant?.orderable ? "افزودن به سبد" : "ناموجود"}</Button>
         </div>
       </div>
     </Card>;

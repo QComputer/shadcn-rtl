@@ -1,4 +1,6 @@
 "use client";
+
+import { formatRetailSize } from "@/lib/retail/format-size";
 import { formatRetailPriceNumber } from "@/lib/retail/format-price";
 
 
@@ -59,12 +61,13 @@ export function PremiumProductDetail({ product, organization, storeName, logo, s
   function dimension(dim: CanonicalDimension) {
     const values = dimensionValues(product, dim);
     if (dim.id === "size") values.sort(compareRetailSizes);
+    const isSize = dim.id === "size";
     const isColor = dim.id === "color";
     const selKey = dim.keys[0];
     const definition = options.find(o => dim.keys.includes(o.key));
     return <fieldset key={dim.id} className="min-w-0 space-y-3" disabled={pending}>
-      <legend className="mb-3 flex w-full items-center gap-2 text-sm font-semibold">{definition?.label ?? dim.label}<span className="text-muted-foreground font-normal">{dim.keys.map(k => selection[k]).find(Boolean) ?? ""}</span></legend>
-      <div className={`flex flex-wrap gap-2.5 ${isColor ? "" : "max-w-md"}`}>
+      <legend className="mb-3 flex w-full items-center gap-2 text-sm font-semibold">{definition?.label ?? dim.label}<span className="text-muted-foreground font-normal">{isSize ? formatRetailSize(dim.keys.map(k => selection[k]).find(Boolean) ?? "") : dim.keys.map(k => selection[k]).find(Boolean) ?? ""}</span></legend>
+      <div className={`flex flex-wrap ${isSize ? "gap-1.5" : "gap-2.5"} ${isColor ? "" : "max-w-md"}`}>
         {values.map(value => {
           const matches = product.variants.filter(v => dim.keys.some(k => { const option = findVariantOption(v, k); return option && retailAttributeText(option) === value; }));
           const testSelection = { ...selection };
@@ -75,9 +78,9 @@ export function PremiumProductDetail({ product, organization, storeName, logo, s
           const active = dim.keys.some(k => selection[k] === value);
           const thumbnail = isColor ? (matches.find(v => v.id === exact?.id) ?? matches.find(v => v.orderable) ?? matches[0])?.media?.gallery[0] : null;
           const swatch = reliableColorSwatch(value);
-          return <button key={`${dim.id}:${value}`} type="button" aria-pressed={active} aria-label={`${definition?.label ?? dim.label}: ${value}${available ? "" : "، ناموجود"}`} disabled={!offered} onClick={() => choose(selKey, value)} className={`${focus} relative inline-flex min-h-12 min-w-14 items-center justify-center gap-2.5 overflow-hidden rounded-xl border px-4 py-3 text-sm transition-colors motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-35 ${active ? "border-primary bg-primary text-primary-foreground ring-1 ring-primary" : "border-border bg-card text-card-foreground hover:border-ring"} ${!available && !isColor ? "decoration-muted-foreground line-through" : ""}`}>
+          return <button key={`${dim.id}:${value}`} type="button" aria-pressed={active} aria-label={`${definition?.label ?? dim.label}: ${isSize ? formatRetailSize(value) : value}${available ? "" : "، ناموجود"}`} disabled={!offered} onClick={() => choose(selKey, value)} className={`${focus} relative inline-flex items-center justify-center overflow-hidden border ${isSize ? "min-h-10 min-w-10 gap-1 rounded-lg px-2.5 py-1.5 text-xs tabular-nums" : "min-h-12 min-w-14 gap-2.5 rounded-xl px-4 py-3 text-sm"} transition-colors motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-35 ${active ? "border-primary bg-primary text-primary-foreground ring-1 ring-primary" : "border-border bg-card text-card-foreground hover:border-ring"} ${!available && !isColor ? "decoration-muted-foreground line-through" : ""}`}>
             {thumbnail ? <Image src={thumbnail} alt="" width={48} height={48} unoptimized className="-my-2 -ms-2 size-12 rounded-lg bg-muted object-contain" /> : isColor && swatch ? <span aria-hidden="true" className="size-5 rounded-full border border-border" style={{ background: swatch }} /> : null}
-            <span>{value}</span>{active && <Check aria-hidden="true" className="size-3.5 shrink-0" />}{!available && isColor && <span className="text-[10px] opacity-70">ناموجود</span>}
+            <span>{isSize ? formatRetailSize(value) : value}</span>{active && <Check aria-hidden="true" className="size-3.5 shrink-0" />}{!available && isColor && <span className="text-[10px] opacity-70">ناموجود</span>}
           </button>;
         })}
       </div>

@@ -1,5 +1,7 @@
 "use client";
 
+import { formatRetailSize } from "@/lib/retail/format-size";
+
 import Image from "next/image";
 import { Pause, Play, ChevronLeft } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -90,8 +92,8 @@ export function RetailProductCard({ product, storefrontPath, filters = noFilters
         const values = dimensionValues(eligible, dimension);
         if (dimension.id === "size") values.sort(compareRetailSizes);
         const label = dimension.id === "color" ? "رنگ" : dimension.id === "size" ? "سایز" : dimension.label;
-        const summary = values.length === 1 ? `${label}: ${values[0]}` : `${new Intl.NumberFormat("fa-IR").format(values.length)} ${label}`;
-        return <div key={dimension.id} title={`${dimension.label}: ${values.join("، ")}`} className="flex min-w-0 items-center gap-1.5 text-xs leading-5 text-muted-foreground"><span className="truncate">{summary}</span>{dimension.id === "color" && values.length > 1 && <span className="flex shrink-0 gap-1" aria-hidden>{values.slice(0, 3).map(value => { const color = reliableColorSwatch(value); return color ? <span key={value} className="size-3 rounded-full border border-foreground/20" style={{ backgroundColor: color }} /> : null; })}</span>}</div>;
+        const summary = values.length === 1 ? `${label}: ${dimension.id === "size" ? formatRetailSize(values[0]) : values[0]}` : `${new Intl.NumberFormat("fa-IR").format(values.length)} ${label}`;
+        return <div key={dimension.id} title={`${dimension.label}: ${values.map(value => dimension.id === "size" ? formatRetailSize(value) : value).join("، ")}`} className="flex min-w-0 items-center gap-1.5 text-xs leading-5 text-muted-foreground"><span className="truncate">{summary}</span>{dimension.id === "color" && values.length > 1 && <span className="flex shrink-0 gap-1" aria-hidden>{values.slice(0, 3).map(value => { const color = reliableColorSwatch(value); return color ? <span key={value} className="size-3 rounded-full border border-foreground/20" style={{ backgroundColor: color }} /> : null; })}</span>}</div>;
       })}</div> : <div className="my-3 min-w-0 space-y-2.5">
         {dimensions.map(dimension => {
           const values = dimensionValues(eligible, dimension);
@@ -99,9 +101,9 @@ export function RetailProductCard({ product, storefrontPath, filters = noFilters
           const locked = constrained.some(item => item.id === dimension.id) && values.length === 1;
           const option = selected?.options.find(item => dimension.keys.includes(item.key));
           const current = option ? retailAttributeText(option) : "";
-          return <fieldset key={dimension.id} className="min-w-0"><legend className="mb-1 text-[13px] font-medium">{dimension.label}{locked ? `: ${current}` : ""}{locked && <span className="ms-1 text-[10px] font-normal text-muted-foreground">طبق فیلتر</span>}</legend>{!locked && <div className="flex gap-1 overflow-x-auto overscroll-x-contain px-0.5 pb-1 [scrollbar-width:thin] dark:[color-scheme:dark]">
-            {values.map(value => { const variant = chooseVariant(eligible, selected, dimension.keys[0], value); const swatch = dimension.id === "color" ? reliableColorSwatch(value) : undefined; return <button key={value} type="button" aria-pressed={current === value} title={value} onClick={() => variant && choose(variant)} className={`flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2 text-[13px] tabular-nums transition-colors ${focus} ${current === value ? "border-primary bg-primary/10 text-foreground" : "border-border bg-background text-foreground hover:bg-muted"}`}>
-              {swatch && <span aria-hidden className="size-3 shrink-0 rounded-full border border-foreground/20" style={{ backgroundColor: swatch }} />}{value}
+          return <fieldset key={dimension.id} className="min-w-0"><legend className="mb-1 text-[13px] font-medium">{dimension.label}{locked ? `: ${dimension.id === "size" ? formatRetailSize(current) : current}` : ""}{locked && <span className="ms-1 text-[10px] font-normal text-muted-foreground">طبق فیلتر</span>}</legend>{!locked && <div className="flex gap-1 overflow-x-auto overscroll-x-contain px-0.5 pb-1 [scrollbar-width:thin] dark:[color-scheme:dark]">
+            {values.map(value => { const variant = chooseVariant(eligible, selected, dimension.keys[0], value); const swatch = dimension.id === "color" ? reliableColorSwatch(value) : undefined; return <button key={value} type="button" aria-pressed={current === value} title={dimension.id === "size" ? formatRetailSize(value) : value} onClick={() => variant && choose(variant)} className={`flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2 text-[13px] tabular-nums transition-colors ${focus} ${current === value ? "border-primary bg-primary/10 text-foreground" : "border-border bg-background text-foreground hover:bg-muted"}`}>
+              {swatch && <span aria-hidden className="size-3 shrink-0 rounded-full border border-foreground/20" style={{ backgroundColor: swatch }} />}{dimension.id === "size" ? formatRetailSize(value) : value}
             </button>; })}
           </div>}</fieldset>;
         })}

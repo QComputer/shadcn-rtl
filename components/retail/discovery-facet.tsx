@@ -1,5 +1,7 @@
 "use client";
 
+import { formatRetailSize } from "@/lib/retail/format-size";
+
 import { ChevronDown } from "lucide-react";
 import { compareRetailSizes, reliableColorSwatch } from "@/lib/retail/product-detail";
 
@@ -19,12 +21,13 @@ export function DiscoveryFacet({ attribute, filters, onChange }: Props) {
     <fieldset className="mt-2 min-w-0"><legend className="sr-only">{attribute.label}</legend>
       <div role="group" aria-label={`گزینه‌های ${attribute.label}`} tabIndex={0} className={`grid max-h-44 content-start gap-1.5 overflow-y-auto overscroll-contain rounded-xl border border-border/60 bg-muted/20 p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring [scrollbar-width:thin] dark:[color-scheme:dark] ${isSize ? "grid-cols-4" : "grid-cols-2"}`}>
         {values.map(item => {
+          const displayValue = isSize ? formatRetailSize(item.value) : item.value;
           const checked = filters.includes(`${attribute.key}:${item.value}`);
           const swatch = isColor ? reliableColorSwatch(item.value) : undefined;
-          return <label key={item.value} title={`${item.value} · ${new Intl.NumberFormat("fa-IR").format(item.count)} محصول در فروشگاه`} className="relative min-w-0 cursor-pointer">
-            <input type="checkbox" checked={checked} onChange={event => onChange(attribute.key, item.value, event.target.checked)} className="peer sr-only" aria-label={`${attribute.label}: ${item.value}`} />
+          return <label key={item.value} title={`${displayValue} · ${new Intl.NumberFormat("fa-IR").format(item.count)} محصول در فروشگاه`} className="relative min-w-0 cursor-pointer">
+            <input type="checkbox" checked={checked} onChange={event => onChange(attribute.key, item.value, event.target.checked)} className="peer sr-only" aria-label={`${attribute.label}: ${displayValue}`} />
             <span className={`flex min-h-10 min-w-0 items-center gap-1.5 rounded-lg border border-border/60 bg-background px-1.5 text-[13px] text-foreground transition-colors hover:bg-muted peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:font-semibold peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-ring ${isSize ? "justify-center tabular-nums" : ""}`}>
-              {swatch && <span aria-hidden className="size-3 shrink-0 rounded-full border border-foreground/20" style={{ backgroundColor: swatch }} />}<span className={isSize ? "" : "min-w-0 flex-1 truncate"}>{item.value}</span>
+              {swatch && <span aria-hidden className="size-3 shrink-0 rounded-full border border-foreground/20" style={{ backgroundColor: swatch }} />}<span className={isSize ? "" : "min-w-0 flex-1 truncate"}>{displayValue}</span>
               {!isSize && <span aria-hidden className="ms-auto text-[9px] tabular-nums text-muted-foreground">{new Intl.NumberFormat("fa-IR").format(item.count)}</span>}
             </span>
           </label>;

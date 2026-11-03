@@ -6,6 +6,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useState } from "react";
 import { ArrowLeft, ChevronDown, ChevronRight, Eye, Plus, Save, Store, Trash2 } from "lucide-react";
 
+import { buildNewRetailVariantDrafts, generateRetailSizeRange } from "@/lib/retail/draft-variant-generation";
+import { retailEditorSnapshot } from "@/lib/retail/editor-snapshot";
+import RetailVariantMatrix from "./retail-variant-matrix";
+import { compareRetailSizes } from "@/lib/retail/product-detail";
+import { formatRetailSize } from "@/lib/retail/format-size";
+import { parseRetailOptionList, retailNumericInput } from "@/lib/retail/merchant-size-input";
+
 import { AssignedGallery, RetailMediaPicker } from "./retail-media-picker";
 import { colorGroupKey, inferColorGallery, type GallerySettings, type GallerySettingsInput } from "@/lib/retail/product-galleries";
 
@@ -65,7 +72,7 @@ function galleryEditor(product: ProductRecord, definitions: Definition[]) {
 }
 function recordSnapshot(product: ProductRecord, definitions: Definition[]) {
   const gallery = galleryEditor(product, definitions);
-  return JSON.stringify({ basePrice: product.basePrice, colorGalleries: gallery.colors, trackInventory: product.trackInventory, name: product.name, brand: product.brand ?? "", slug: product.slug ?? "", description: product.description ?? "", categoryId: product.category.id, categoryIds: product.categoryIds ?? [product.category.id], tagText: (product.tags ?? []).map((tag) => tag.name).join(", "), attributes: Object.fromEntries(product.attributes.map((attribute) => [attribute.definitionId, String(attribute.value)])), variants: gallery.variants, selectedImageIds: product.imageIds });
+  return retailEditorSnapshot({ basePrice: product.basePrice > 0 ? String(product.basePrice) : "", colorGalleries: gallery.colors, trackInventory: product.trackInventory, name: product.name, brand: product.brand ?? "", slug: product.slug ?? "", description: product.description ?? "", categoryId: product.category.id, categoryIds: product.categoryIds ?? [product.category.id], tagText: (product.tags ?? []).map((tag) => tag.name).join(", "), attributes: Object.fromEntries(product.attributes.map((attribute) => [attribute.definitionId, String(attribute.value)])), variants: gallery.variants, selectedImageIds: product.imageIds });
 }
 
 function valueFromInput(definition: Definition, value: string): string | number | boolean {
@@ -133,6 +140,9 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
   const [fileBusy, setFileBusy] = useState(false);
   const [savedState, setSavedState] = useState<string | null>(null);
 
+  const [detailIndex, setDetailIndex] = useState<number | null>(null);
+  const [showDetails, setShowDetails] = useState(!productId);
+  const [reloadVersion, setReloadVersion] = useState(0);
   const [groupDefinitionId, setGroupDefinitionId] = useState<string>("");
   const [selectedVariantIds, setSelectedVariantIds] = useState<Set<string>>(new Set());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -148,10 +158,10 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
   const [genInventory, setGenInventory] = useState("0");
   const [genBackOrder, setGenBackOrder] = useState(false);
   const [genPrice, setGenPrice] = useState("");
-  const [genPreview, setGenPreview] = useState<null | { canCreate: number; existing: number; errors: string[]; items: Array<{ name: string | null; sku: string | null; price: number | null }> }>(null);
+  const [genPreview, setGenPreview] = useState<null | { signature: string; canCreate: number; existing: number; errors: string[]; items: Array<{ name: string | null; sku: string | null; price: number | null }>; drafts?: VariantDraft[] }>(null);
   const [genBusy, setGenBusy] = useState(false);
 
-  const editorState = JSON.stringify({ basePrice, colorGalleries, trackInventory, name, brand, slug, description, categoryId, categoryIds, tagText, attributes, variants, selectedImageIds });
+  const editorState = retailEditorSnapshot({ basePrice, colorGalleries, trackInventory, name, brand, slug, description, categoryId, categoryIds, tagText, attributes, variants, selectedImageIds });
   const unsaved = savedState !== null && savedState !== editorState;
   const leaveWarning = locale === "fa" ? "تغییرات ذخیره نشده‌اند. بدون ذخیره خارج می‌شوید؟" : locale === "ar" ? "لم يتم حفظ التغييرات. هل تريد المغادرة؟" : "You have unsaved changes. Leave without saving?";
 
@@ -181,7 +191,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
     let cancelled = false;
     async function load() {
       setBusy(true);
-      setSavedState(null);
+      setSavedState(null); setGenPreview(null);
       setNotice("");
       setPreview(false);
       setError("");
@@ -195,6 +205,8 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
         const [definitionData, categoryData, contextData, productData] = payloads;
         const defs: Definition[] = definitionData.definitions ?? [];
         setDefinitions(defs);
+        setGenColorDef(defs.find(d => d.scope === "VARIANT_OPTION" && /colou?r|رنگ/i.test(`${d.key} ${d.label}`))?.id ?? "");
+        setGenSizeDef(defs.find(d => d.scope === "VARIANT_OPTION" && /size|سایز|مقاس/i.test(`${d.key} ${d.label}`))?.id ?? "");
         setCategories(categoryData.categories ?? []);
         setImages([]); setPicker(null);
         setOrganizationSlug(contextData.organizationSlug ?? "");
@@ -224,7 +236,9 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
         } else {
           setName(""); setBrand(""); setSlug(""); setDescription(""); setBasePrice("");
           setCategoryId(""); setCategoryIds([]); setTagText(""); setAttributes({}); setPublished(false); setTrackInventory(true); setLoadedInventory({});
-          setVariants([newVariant(defs)]); setColorGalleries([]);
+          const initialVariants = [newVariant(defs)];
+          setVariants(initialVariants); setColorGalleries([]);
+          setSavedState(retailEditorSnapshot({ basePrice: "", colorGalleries: [], trackInventory: true, name: "", brand: "", slug: "", description: "", categoryId: "", categoryIds: [], tagText: "", attributes: {}, variants: initialVariants, selectedImageIds: [] }));
           setSelectedImageIds([]);
         }
       } catch {
@@ -235,7 +249,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
     }
     void load();
     return () => { cancelled = true; };
-  }, [productId, t.genericError]);
+  }, [productId, t.genericError, reloadVersion]);
 
   const colorOptionDef = useMemo(() => optionDefinitions.find(def => /colou?r|رنگ/i.test(`${def.key} ${def.label}`)), [optionDefinitions]);
 
@@ -288,75 +302,72 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
     updateVariant(index, { price: "" });
   }
 
-  async function previewVariantGeneration() {
-    if (genBusy) return;
-    const payload: Record<string, unknown> = {
+  function generationPayload() {
+    return {
       colorDefinitionId: genColorDef || undefined,
       sizeDefinitionId: genSizeDef || undefined,
       sizeMode: genSizeMode,
+      ...(genSizeMode === "RANGE" ? { sizeStart: Number(genSizeStart), sizeEnd: Number(genSizeEnd), sizeStep: genSizeStep } : { standardSizes: parseRetailOptionList(genStandardSizes, true) }),
+      ...(genColors.trim() ? { colorValues: parseRetailOptionList(genColors) } : {}),
+      ...(genPrice.trim() ? { price: Number(genPrice) } : {}),
+      inventory: Number(genInventory), allowBackOrder: genBackOrder,
     };
-    if (genSizeMode === "RANGE") {
-      payload.sizeStart = Number(genSizeStart);
-      payload.sizeEnd = Number(genSizeEnd);
-      payload.sizeStep = genSizeStep;
-    } else {
-      payload.standardSizes = genStandardSizes.split(",").map((s) => s.trim()).filter(Boolean);
-    }
-    if (genColors.trim()) payload.colorValues = genColors.split(",").map((s) => s.trim()).filter(Boolean);
-    if (genPrice.trim()) payload.price = Number(genPrice);
-    payload.inventory = Number(genInventory);
-    payload.allowBackOrder = genBackOrder;
-    setGenBusy(true);
-    setGenPreview(null);
+  }
+  const generationColorChoices = allowedValues(optionDefinitions.find(d => d.id === genColorDef) ?? { allowedValues: [] } as Definition);
+  const generationSizeChoices = allowedValues(optionDefinitions.find(d => d.id === genSizeDef) ?? { allowedValues: [] } as Definition).sort(compareRetailSizes);
+  const generationSignature = JSON.stringify({ input: generationPayload(), editorState });
+  const currentGenerationPreview = genPreview?.signature === generationSignature ? genPreview : null;
+  const generationBlocked = Boolean(productId && unsaved) || genBusy || saving || fileBusy;
+  const generationHelp = !productId
+    ? (locale === "fa" ? "ترکیب‌ها ابتدا به پیش‌نویس اضافه می‌شوند؛ برای ثبت نهایی، محصول را ذخیره کنید." : locale === "ar" ? "احفظ المنتج أولاً ثم أنشئ الخيارات." : "New combinations are added to your draft; save the product to persist them.")
+    : unsaved ? (locale === "fa" ? "پیش از ساخت ترکیب‌ها، تغییرات محصول را ذخیره کنید." : locale === "ar" ? "احفظ التغييرات قبل إنشاء الخيارات." : "Save your changes before generating variants.") : "";
+
+  async function previewVariantGeneration() {
+    if (generationBlocked) return;
+    const signature = generationSignature;
+    setGenBusy(true); setGenPreview(null); setError("");
     try {
-      const response = await fetch(`/api/dashboard/retail/catalog/${encodeURIComponent(productId ?? "")}/variants`, {
+      if (!productId) {
+        const color = optionDefinitions.find(d => d.id === genColorDef);
+        const size = optionDefinitions.find(d => d.id === genSizeDef);
+        if (!color || !size) throw new Error(t.noColorDef);
+        const existing = variants.filter(v => v.id || v.name || v.sku || v.price || v.inventory !== "0" || v.allowBackOrder || v.manuallyUnavailable || v.imageIds.length || Object.values(v.options).some(Boolean));
+        const sizes = genSizeMode === "RANGE" ? generateRetailSizeRange({ start: Number(genSizeStart), end: Number(genSizeEnd), step: genSizeStep }) : parseRetailOptionList(genStandardSizes, true);
+        const drafts = buildNewRetailVariantDrafts({ colorDefinition: color, sizeDefinition: size, colors: parseRetailOptionList(genColors), sizes, existing, skuPrefix: `draft-${Date.now().toString(36)}`, price: genPrice, inventory: genInventory, allowBackOrder: genBackOrder });
+        setGenPreview({ signature, canCreate: drafts.length, existing: existing.length, errors: [], items: [], drafts });
+        return;
+      }
+      const response = await fetch(`/api/dashboard/retail/catalog/${encodeURIComponent(productId!)}/variants`, {
         method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...payload, action: "preview" }),
+        body: JSON.stringify({ ...generationPayload(), action: "preview" }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? t.genericError);
-      setGenPreview({ canCreate: data.preview?.toAdd ?? 0, existing: data.preview?.existing ?? 0, errors: data.preview?.errors ?? [], items: data.preview?.canCreate ?? [] });
-    } catch {
-      setGenPreview({ canCreate: 0, existing: 0, errors: [t.genericError], items: [] });
-    } finally {
-      setGenBusy(false);
-    }
+      setGenPreview({ signature, canCreate: data.preview?.toAdd ?? 0, existing: data.preview?.existing ?? 0, errors: data.preview?.errors ?? [], items: data.preview?.canCreate ?? [] });
+    } catch (cause) { setError(cause instanceof Error ? cause.message : t.genericError); }
+    finally { setGenBusy(false); }
   }
 
   async function generateVariants() {
-    if (genBusy) return;
-    if (!genPreview?.canCreate) return;
-    setGenBusy(true);
+    if (generationBlocked || !currentGenerationPreview?.canCreate || currentGenerationPreview.errors.length) return;
+    if (!productId && currentGenerationPreview.drafts) {
+      const existing = variants.filter(v => v.id || v.name || v.sku || v.price || v.inventory !== "0" || v.allowBackOrder || v.manuallyUnavailable || v.imageIds.length || Object.values(v.options).some(Boolean));
+      setVariants([...existing, ...currentGenerationPreview.drafts]); setGenPreview(null); setShowDetails(false);
+      setNotice(locale === "fa" ? "ترکیب‌ها به پیش‌نویس اضافه شدند؛ برای ثبت نهایی ذخیره کنید." : locale === "ar" ? "أُضيفت الخيارات إلى المسودة؛ احفظ المنتج." : "Variants added to the draft. Save the product to persist them.");
+      return;
+    }
+    setGenBusy(true); setError("");
     try {
-      const payload: Record<string, unknown> = {
-        colorDefinitionId: genColorDef || undefined,
-        sizeDefinitionId: genSizeDef || undefined,
-        sizeMode: genSizeMode,
-      };
-      if (genSizeMode === "RANGE") {
-        payload.sizeStart = Number(genSizeStart);
-        payload.sizeEnd = Number(genSizeEnd);
-        payload.sizeStep = genSizeStep;
-      } else {
-        payload.standardSizes = genStandardSizes.split(",").map((s) => s.trim()).filter(Boolean);
-      }
-      if (genColors.trim()) payload.colorValues = genColors.split(",").map((s) => s.trim()).filter(Boolean);
-      if (genPrice.trim()) payload.price = Number(genPrice);
-      payload.inventory = Number(genInventory);
-      payload.allowBackOrder = genBackOrder;
-      const response = await fetch(`/api/dashboard/retail/catalog/${encodeURIComponent(productId ?? "")}/variants`, {
+      const response = await fetch(`/api/dashboard/retail/catalog/${encodeURIComponent(productId!)}/variants`, {
         method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...payload, action: "generate" }),
+        body: JSON.stringify({ ...generationPayload(), action: "generate" }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? t.genericError);
-      setNotice(`${data.result?.added ?? 0} ${t.variants} ${locale === "fa" ? "اضافه شد." : locale === "ar" ? "تمت إضافتها." : "added."}`);
-      setGenPreview(null);
-    } catch {
-      setError(t.genericError);
-    } finally {
-      setGenBusy(false);
-    }
+      setGenPreview(null); setSelectedVariantIds(new Set()); setDetailIndex(null); setShowDetails(false);
+      setReloadVersion(current => current + 1);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : t.genericError); }
+    finally { setGenBusy(false); }
   }
 
   function buildAssignments(scope: "PRODUCT" | "VARIANT_OPTION", values: Record<string, string>) {
@@ -407,7 +418,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
       setVariants(galleryEditor(updated, definitions).variants);
       setColorGalleries(galleryEditor(updated, definitions).colors);
       setSlug(updated.slug ?? "");
-      setSavedState(recordSnapshot(updated, definitions));
+      setSavedState(recordSnapshot(updated, definitions)); setGenPreview(null);
       setPublished(updated.isActive);
       setTrackInventory(updated.trackInventory);
       setLoadedInventory(Object.fromEntries(updated.variants.map(v => [v.id, String(v.inventory)])));
@@ -457,7 +468,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
   if (busy) return <main className="p-6" dir={rtl ? "rtl" : "ltr"}><p>{t.loading}</p></main>;
 
   return (
-    <main className="space-y-5 p-4 lg:p-6" dir={rtl ? "rtl" : "ltr"} lang={locale}>
+    <main className="min-w-0 space-y-5 p-4 lg:p-6" dir={rtl ? "rtl" : "ltr"} lang={locale}>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div><Link href={`/${locale}/dashboard/retail-catalog`} className="mb-2 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" />{t.back}</Link><h1 className="text-2xl font-bold">{productId ? t.titleEdit : t.titleNew}</h1><p className="mt-1 text-sm text-muted-foreground">{t.intro}</p></div>
         {productId && <Link href={`/${locale}/dashboard/products/${encodeURIComponent(productId)}?legacy=1`} className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted">{locale === "fa" ? "ابزارهای تکمیلی محصول" : locale === "ar" ? "أدوات إضافية للمنتج" : "Additional product tools"}</Link>}
@@ -468,8 +479,8 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
       {!published && <div className="rounded-lg border border-amber-400/50 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/20 dark:text-amber-100">{t.draft}</div>}
       {productId && variants.length === 0 && <p role="status" className="rounded-lg border border-amber-400/50 bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950/20 dark:text-amber-100">{locale === "fa" ? "اطلاعات خرید این محصول قدیمی هنوز تکمیل نشده است. تصویر و مشخصات را می‌توانید ذخیره کنید؛ برای فعال شدن خرید، گونه‌های واقعی رنگ و سایز را با شناسه کالا، قیمت و موجودی دقیق وارد کنید." : locale === "ar" ? "بيانات شراء هذا المنتج القديم غير مكتملة. يمكنك حفظ الصور والتفاصيل؛ أضف خيارات حقيقية مع الرمز والسعر والمخزون لتمكين الشراء." : "This legacy product has no purchase options yet. You can save images and details; add real variants with accurate SKU, price and stock before enabling purchases."}</p>}
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <fieldset disabled={saving || fileBusy} className="min-w-0 space-y-5 border-0 p-0">
+      <div className={`grid min-w-0 items-start gap-5 ${preview ? "xl:grid-cols-[minmax(0,1fr)_360px]" : ""}`}>
+        <fieldset disabled={saving || fileBusy || genBusy} className="min-w-0 space-y-5 border-0 p-0">
           <section className="space-y-3 rounded-xl border bg-card p-4" aria-labelledby="inventory-policy-title">
             <h2 id="inventory-policy-title" className="font-semibold">{locale === "fa" ? "سیاست موجودی" : locale === "ar" ? "سياسة المخزون" : "Inventory policy"}</h2>
             <label className="flex min-h-11 items-center gap-3 text-sm font-medium"><input type="checkbox" checked={trackInventory} onChange={event => setTrackInventory(event.target.checked)} />{locale === "fa" ? "کنترل موجودی محصول" : locale === "ar" ? "تتبع مخزون المنتج" : "Track product inventory"}</label>
@@ -495,11 +506,96 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
             {visibleColors.map(color => { const key = colorGroupKey(color.definitionId, color.value); return <div key={key} className="border-t pt-4"><AssignedGallery locale={locale} title={`${locale === "fa" ? "گالری رنگ" : locale === "ar" ? "معرض اللون" : "Color gallery"}: ${color.value}`} description={locale === "fa" ? "برای همه سایزهای این رنگ استفاده می‌شود؛ گالری‌های اختصاصی گونه‌ها حفظ می‌شوند. تغییرات پس از ذخیره اعمال می‌شوند." : locale === "ar" ? "يُستخدم عبر جميع الأحجام. يتم الحفاظ على معارض الخيارات المخصصة." : "Shared across sizes of this color; variant overrides are preserved."} images={assignedImages(color.imageIds)} disabled={saving || fileBusy} onChange={ids => changeGallery({ kind: "color", key }, ids)} onOpenLibrary={() => setPicker({ kind: "color", key })} onUpload={files => uploadToGallery({ kind: "color", key }, files)} /></div>; })}
           </section>
 
+          <details className="rounded-xl border bg-card p-4">
+            <summary className="cursor-pointer py-2 font-semibold">{t.sizeRange}</summary>
+            <p className="text-xs text-muted-foreground mb-3">{t.sizeRangeHelp}</p>{generationHelp && <p role="status" className="mb-3 rounded-lg bg-muted p-3 text-sm">{generationHelp}</p>}
+            {!optionDefinitions.filter(d => /size|سایز|مقاس/i.test(`${d.key} ${d.label}`)).length && <p className="text-sm text-muted-foreground">{t.noColorDef}</p>}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="space-y-1 text-xs font-medium">
+                <span>{t.colorDefinition}</span>
+                <select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={genColorDef} onChange={(event) => setGenColorDef(event.target.value)}>
+                  <option value="">{t.choose}</option>
+                  {optionDefinitions.filter(d => /colou?r|رنگ/i.test(`${d.key} ${d.label}`)).map(def => <option key={def.id} value={def.id}>{def.label}</option>)}
+                </select>
+              </label>
+              <label className="space-y-1 text-xs font-medium">
+                <span>{t.sizeDefinition}</span>
+                <select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={genSizeDef} onChange={(event) => setGenSizeDef(event.target.value)}>
+                  <option value="">{t.choose}</option>
+                  {optionDefinitions.filter(d => /size|سایز|مقاس/i.test(`${d.key} ${d.label}`)).map(def => <option key={def.id} value={def.id}>{def.label}</option>)}
+                </select>
+              </label>
+              <label className="space-y-1 text-xs font-medium">
+                <span>{locale === "fa" ? "حالت سایز" : locale === "ar" ? "نمط المقاس" : "Size mode"}</span>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setGenSizeMode("RANGE")} className={`rounded-md border px-3 py-1.5 text-xs ${genSizeMode === "RANGE" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>{t.halfSize} / {t.fullSize}</button>
+                  <button type="button" onClick={() => setGenSizeMode("STANDARD")} className={`rounded-md border px-3 py-1.5 text-xs ${genSizeMode === "STANDARD" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>{locale === "fa" ? "استاندارد" : locale === "ar" ? "معياري" : "Standard"}</button>
+                </div>
+              </label>
+              {genSizeMode === "RANGE" && (
+                <>
+                  <label className="space-y-1 text-xs font-medium">
+                    <span>{t.sizeStart}</span>
+                    <input type="text" inputMode="decimal" value={formatRetailSize(genSizeStart, locale)} onChange={(event) => setGenSizeStart(retailNumericInput(event.target.value))} className="w-full rounded-md border bg-background px-3 py-2 text-sm" />
+                  </label>
+                  <label className="space-y-1 text-xs font-medium">
+                    <span>{t.sizeEnd}</span>
+                    <input type="text" inputMode="decimal" value={formatRetailSize(genSizeEnd, locale)} onChange={(event) => setGenSizeEnd(retailNumericInput(event.target.value))} className="w-full rounded-md border bg-background px-3 py-2 text-sm" />
+                  </label>
+                  <label className="space-y-1 text-xs font-medium">
+                    <span>{t.sizeStep}</span>
+                    <select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={genSizeStep} onChange={(event) => setGenSizeStep(Number(event.target.value) as 0.5 | 1 | 2 | 3)}>
+                      <option value="0.5">{t.halfStepLabel}</option>
+                      <option value="1">{t.singleStepLabel}</option>
+                      <option value="2">{t.doubleStepLabel}</option>
+                      <option value="3">{t.tripleStepLabel}</option>
+                    </select>
+                  </label>
+                </>
+              )}
+              {genSizeMode === "STANDARD" && (
+                <div className="space-y-2 sm:col-span-2"><div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto rounded-lg border p-2" role="group" aria-label={locale === "fa" ? "انتخاب سریع سایزها" : "Quick size selection"}>{generationSizeChoices.map(size => <button key={size} type="button" aria-pressed={parseRetailOptionList(genStandardSizes, true).includes(size)} className="min-h-9 min-w-10 rounded-md border px-2 text-xs aria-pressed:border-primary aria-pressed:bg-primary/10" onClick={() => setGenStandardSizes(current => { const values = parseRetailOptionList(current, true); return (values.includes(size) ? values.filter(value => value !== size) : [...values, size]).join(", "); })}>{formatRetailSize(size, locale)}</button>)}</div><label className="space-y-1 text-xs font-medium sm:col-span-2">
+                  <span>{locale === "fa" ? "اندازه‌های استاندارد (با کاما جدا کنید)" : locale === "ar" ? "أحجام قياسية (مفصولة بفاصلة)" : "Standard sizes (comma-separated)"}</span>
+                  <input className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={genStandardSizes} onChange={(event) => setGenStandardSizes(event.target.value)} placeholder={locale === "fa" ? "مثال: ۳۸، ۳۹، ۴۰، ۴۱" : "e.g. 38, 39, 40, 41"} />
+                </label></div>
+              )}
+              <label className="space-y-1 text-xs font-medium">
+                <span>{t.priceOverride}</span>
+                <input type="text" inputMode="decimal" value={formatRetailSize(genPrice, locale)} onChange={(event) => setGenPrice(retailNumericInput(event.target.value))} className="w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder={t.priceOverridePlaceholder} />
+              </label>
+              <label className="space-y-1 text-xs font-medium">
+                <span>{locale === "fa" ? "رنگ‌ها (با کاما جدا کنید)" : locale === "ar" ? "الألوان (مفصولة بفاصلة)" : "Colors (comma-separated)"}</span>
+                <input className="w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder={t.choose} value={genColors} onChange={(event) => setGenColors(event.target.value)} /><span className="flex flex-wrap gap-1.5 pt-1">{generationColorChoices.map(color => <button key={color} type="button" aria-pressed={parseRetailOptionList(genColors).includes(color)} className="min-h-9 rounded-md border px-2 text-xs aria-pressed:border-primary aria-pressed:bg-primary/10" onClick={() => setGenColors(current => { const values = parseRetailOptionList(current); return (values.includes(color) ? values.filter(value => value !== color) : [...values, color]).join(", "); })}>{color}</button>)}</span>
+              </label>
+              <label className="space-y-1 text-xs font-medium">
+                <span>{t.inventory}</span>
+                <input type="text" inputMode="numeric" value={formatRetailSize(genInventory, locale)} onChange={(event) => setGenInventory(retailNumericInput(event.target.value))} className="w-full rounded-md border bg-background px-3 py-2 text-sm" />
+              </label>
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" checked={genBackOrder} onChange={(event) => setGenBackOrder(event.target.checked)} />{t.backorder}
+              </label>
+
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button type="button" onClick={previewVariantGeneration} disabled={generationBlocked || !genColorDef || !genSizeDef} className="rounded-md border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50">{t.previewGeneration}</button>
+              {currentGenerationPreview && currentGenerationPreview.canCreate > 0 && (
+                <button type="button" onClick={generateVariants} disabled={generationBlocked || Boolean(currentGenerationPreview?.errors.length)} className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-50">{genBusy ? t.generating : t.generateVariants}</button>
+              )}
+            </div>
+            {currentGenerationPreview && (
+              <div className="mt-3 rounded-lg border bg-muted/30 p-3 text-xs">
+                <div className="flex justify-between"><span>{t.existingVariants}</span><span>{currentGenerationPreview.existing}</span></div>
+                <div className="flex justify-between"><span>{t.variantsToCreate}</span><span className="font-semibold">{currentGenerationPreview.canCreate}</span></div>
+                {currentGenerationPreview.errors.length > 0 && <div className="mt-2 text-destructive">{currentGenerationPreview.errors.map((err, i) => <p key={i}>{err}</p>)}</div>}
+              </div>
+            )}
+          </details>
+
           <section className="space-y-4 rounded-xl border bg-card p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div><h2 className="font-semibold">{t.variant} ({variants.length})</h2><p className="mt-1 text-xs text-muted-foreground">{t.variantsRequired}</p></div>
               <div className="flex flex-wrap items-center gap-2">
-                {variants.length > 1 && (
+                {showDetails && variants.length > 1 && (
                   <>
                     <label className="text-xs font-medium">{t.groupBy}:</label>
                     <select className="rounded-md border bg-background px-2 py-1 text-xs" value={groupDefinitionId} onChange={(event) => { setGroupDefinitionId(event.target.value); if (event.target.value) setExpandedGroups(new Set(groupedVariants.map((g) => g.key))); }}>
@@ -510,7 +606,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
                     <button type="button" onClick={collapseAll} className="rounded-md border px-2 py-1 text-xs hover:bg-muted">{t.collapseAll}</button>
                   </>
                 )}
-                <button type="button" onClick={() => setVariants((current) => [...current, newVariant(definitions)])} className="rounded-lg border px-3 py-2 text-sm hover:bg-muted"><Plus className="me-1 inline size-4" />{t.addVariant}</button>
+                <button type="button" onClick={() => { setDetailIndex(variants.length); setShowDetails(true); setVariants((current) => [...current, newVariant(definitions)]); }} className="rounded-lg border px-3 py-2 text-sm hover:bg-muted"><Plus className="me-1 inline size-4" />{t.addVariant}</button>
               </div>
             </div>
 
@@ -523,12 +619,18 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
               </div>
             )}
 
-            <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label={locale === "fa" ? "نمای مدیریت تنوع‌ها" : "Variant editor view"}>
+              <button type="button" aria-pressed={!showDetails} onClick={() => setShowDetails(false)} className="min-h-10 rounded-lg border px-3 text-sm">{locale === "fa" ? "جدول رنگ و سایز" : locale === "ar" ? "جدول الألوان والمقاسات" : "Color and size table"}</button>
+              <button type="button" aria-pressed={showDetails} onClick={() => { setDetailIndex(null); setShowDetails(true); }} className="min-h-10 rounded-lg border px-3 text-sm">{locale === "fa" ? "ویرایش کامل تنوع‌ها" : locale === "ar" ? "تحرير الخيارات" : "Full variant editor"}</button>
+            </div>
+            {!showDetails && <RetailVariantMatrix variants={variants} definitions={optionDefinitions} locale={locale} basePrice={numberBasePrice ?? 0} onUpdate={updateVariant} onOpenDetails={index => { setDetailIndex(index); setShowDetails(true); }} disabled={saving || fileBusy || genBusy} />}
+            {showDetails && <div className="space-y-3">
               {groupedVariants.map((group) => {
-                const isExpanded = expandedGroups.has(group.key) || group.key === "ungrouped";
+                if (detailIndex !== null && !group.variants.includes(variants[detailIndex])) return null;
+                const isExpanded = detailIndex !== null || expandedGroups.has(group.key) || group.key === "ungrouped";
                 return (
                   <div key={group.key} className="rounded-lg border bg-muted/10">
-                    <div className="flex items-center justify-between p-3" onClick={() => group.key !== "ungrouped" && toggleExpanded(group.key)}>
+                    <div className="flex items-center justify-between p-3">
                       <div className="flex items-center gap-2">
                         {group.key !== "ungrouped" && (
                           <button type="button" onClick={() => toggleExpanded(group.key)} className="rounded p-1 hover:bg-muted">
@@ -545,6 +647,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
                       <div className="p-3">
                         {group.variants.map((variant) => {
                           const realIndex = variants.indexOf(variant);
+                          if (detailIndex !== null && realIndex !== detailIndex) return null;
                           const effectivePrice = effectiveVariantPrice(variant, numberBasePrice ?? 0);
                           return (
                             <div key={variant.id ?? `new-${realIndex}`} className="grid gap-3 rounded-lg border bg-card p-3 sm:grid-cols-2 xl:grid-cols-4 lg:gap-3 mb-3 last:mb-0">
@@ -609,100 +712,12 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
                   </div>
                 );
               })}
-            </div>
+            </div>}
 
             <p className="text-xs text-muted-foreground">{numberBasePrice ? `${variants.reduce((sum, v) => sum + Number(effectiveVariantPrice(v, numberBasePrice)), 0).toLocaleString(locale)} ${locale === "fa" ? "تومان" : "Toman"}` : ""}</p>
           </section>
 
-          <section className="rounded-xl border bg-card p-4">
-            <h2 className="font-semibold mb-2">{t.sizeRange}</h2>
-            <p className="text-xs text-muted-foreground mb-3">{t.sizeRangeHelp}</p>
-            {!optionDefinitions.filter(d => /size|سایز|مقاس/i.test(`${d.key} ${d.label}`)).length && <p className="text-sm text-muted-foreground">{t.noColorDef}</p>}
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-1 text-xs font-medium">
-                <span>{t.colorDefinition}</span>
-                <select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={genColorDef} onChange={(event) => setGenColorDef(event.target.value)}>
-                  <option value="">{t.choose}</option>
-                  {optionDefinitions.filter(d => /colou?r|رنگ/i.test(`${d.key} ${d.label}`)).map(def => <option key={def.id} value={def.id}>{def.label}</option>)}
-                </select>
-              </label>
-              <label className="space-y-1 text-xs font-medium">
-                <span>{t.sizeDefinition}</span>
-                <select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={genSizeDef} onChange={(event) => setGenSizeDef(event.target.value)}>
-                  <option value="">{t.choose}</option>
-                  {optionDefinitions.filter(d => /size|سایز|مقاس/i.test(`${d.key} ${d.label}`)).map(def => <option key={def.id} value={def.id}>{def.label}</option>)}
-                </select>
-              </label>
-              <label className="space-y-1 text-xs font-medium">
-                <span>{locale === "fa" ? "حالت سایز" : locale === "ar" ? "نمط المقاس" : "Size mode"}</span>
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => setGenSizeMode("RANGE")} className={`rounded-md border px-3 py-1.5 text-xs ${genSizeMode === "RANGE" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>{t.halfSize} / {t.fullSize}</button>
-                  <button type="button" onClick={() => setGenSizeMode("STANDARD")} className={`rounded-md border px-3 py-1.5 text-xs ${genSizeMode === "STANDARD" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>{locale === "fa" ? "استاندارد" : locale === "ar" ? "معياري" : "Standard"}</button>
-                </div>
-              </label>
-              {genSizeMode === "RANGE" && (
-                <>
-                  <label className="space-y-1 text-xs font-medium">
-                    <span>{t.sizeStart}</span>
-                    <input type="number" min="1" max="999" step={genSizeStep} value={genSizeStart} onChange={(event) => setGenSizeStart(event.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm" />
-                  </label>
-                  <label className="space-y-1 text-xs font-medium">
-                    <span>{t.sizeEnd}</span>
-                    <input type="number" min="1" max="999" step={genSizeStep} value={genSizeEnd} onChange={(event) => setGenSizeEnd(event.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm" />
-                  </label>
-                  <label className="space-y-1 text-xs font-medium">
-                    <span>{t.sizeStep}</span>
-                    <select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={genSizeStep} onChange={(event) => setGenSizeStep(Number(event.target.value) as 0.5 | 1 | 2 | 3)}>
-                      <option value="0.5">{t.halfStepLabel}</option>
-                      <option value="1">{t.singleStepLabel}</option>
-                      <option value="2">{t.doubleStepLabel}</option>
-                      <option value="3">{t.tripleStepLabel}</option>
-                    </select>
-                  </label>
-                </>
-              )}
-              {genSizeMode === "STANDARD" && (
-                <label className="space-y-1 text-xs font-medium sm:col-span-2">
-                  <span>{locale === "fa" ? "اندازه‌های استاندارد (با کاما جدا کنید)" : locale === "ar" ? "أحجام قياسية (مفصولة بفاصلة)" : "Standard sizes (comma-separated)"}</span>
-                  <input className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={genStandardSizes} onChange={(event) => setGenStandardSizes(event.target.value)} placeholder={locale === "fa" ? "مثال: 38, 39, 40, 41" : "e.g. 38, 39, 40, 41"} />
-                </label>
-              )}
-              <label className="space-y-1 text-xs font-medium">
-                <span>{t.priceOverride}</span>
-                <input type="number" min="0" value={genPrice} onChange={(event) => setGenPrice(event.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder={t.priceOverridePlaceholder} />
-              </label>
-              <label className="space-y-1 text-xs font-medium">
-                <span>{t.variantOptions}</span>
-                <input className="w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder={t.choose} value={genColors} onChange={(event) => setGenColors(event.target.value)} />
-              </label>
-              <label className="space-y-1 text-xs font-medium">
-                <span>{t.inventory}</span>
-                <input type="number" min="0" max="1000000000" value={genInventory} onChange={(event) => setGenInventory(event.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm" />
-              </label>
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <input type="checkbox" checked={genBackOrder} onChange={(event) => setGenBackOrder(event.target.checked)} />{t.backorder}
-              </label>
-              {genSizeMode === "STANDARD" && (
-                <label className="space-y-1 text-xs font-medium sm:col-span-2">
-                  <span>{locale === "fa" ? "اندازه‌های استاندارد (با کاما جدا کنید)" : locale === "ar" ? "أحجام قياسية (مفصولة بفاصلة)" : "Standard sizes (comma-separated)"}</span>
-                  <input className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={genStandardSizes} onChange={(event) => setGenStandardSizes(event.target.value)} placeholder={locale === "fa" ? "مثال: 38, 39, 40, 41" : "e.g. 38, 39, 40, 41"} />
-                </label>
-              )}
-            </div>
-            <div className="mt-3 flex gap-2">
-              <button type="button" onClick={previewVariantGeneration} disabled={genBusy || !genColorDef || !genSizeDef} className="rounded-md border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50">{t.previewGeneration}</button>
-              {genPreview && genPreview.canCreate > 0 && (
-                <button type="button" onClick={generateVariants} disabled={genBusy} className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-50">{genBusy ? t.generating : t.generateVariants}</button>
-              )}
-            </div>
-            {genPreview && (
-              <div className="mt-3 rounded-lg border bg-muted/30 p-3 text-xs">
-                <div className="flex justify-between"><span>{t.existingVariants}</span><span>{genPreview.existing}</span></div>
-                <div className="flex justify-between"><span>{t.variantsToCreate}</span><span className="font-semibold">{genPreview.canCreate}</span></div>
-                {genPreview.errors.length > 0 && <div className="mt-2 text-destructive">{genPreview.errors.map((err, i) => <p key={i}>{err}</p>)}</div>}
-              </div>
-            )}
-          </section>
+
 
           <div className="flex flex-wrap gap-2">
             <button disabled={saving || fileBusy || !name.trim() || !numberBasePrice} type="button" onClick={() => void saveProduct("save")} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Save className="me-2 inline size-4" />{saving ? t.deleting : productId ? t.saveChanges : t.save}</button>
@@ -723,5 +738,5 @@ function AttributeControl({ definition, locale, value, onChange }: { definition:
   const t = strings[locale];
   const id = useId();
   const options = allowedValues(definition);
-  return <label htmlFor={id} className="space-y-1.5 text-sm font-medium"><span>{definition.label}{definition.displayUnit ? ` (${definition.displayUnit})` : ""}</span>{definition.valueType === "ENUM" ? <select id={id} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border bg-background px-3 py-2.5"><option value="">{t.choose}</option>{options.map((option) => <option key={option} value={option}>{option}</option>)}</select> : definition.valueType === "BOOLEAN" ? <select id={id} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border bg-background px-3 py-2.5"><option value="">{t.choose}</option><option value="true">{t.trueLabel}</option><option value="false">{t.falseLabel}</option></select> : <input id={id} type={definition.valueType === "NUMBER" ? "number" : "text"} step={definition.valueType === "NUMBER" ? "any" : undefined} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border bg-background px-3 py-2.5" />}</label>;
+  return <label htmlFor={id} className="space-y-1.5 text-sm font-medium"><span>{definition.label}{definition.displayUnit ? ` (${definition.displayUnit})` : ""}</span>{definition.valueType === "ENUM" ? <select id={id} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border bg-background px-3 py-2.5"><option value="">{t.choose}</option>{options.map((option) => <option key={option} value={option}>{/size|سایز|مقاس/i.test(`${definition.key} ${definition.label}`) ? formatRetailSize(option, locale) : option}</option>)}</select> : definition.valueType === "BOOLEAN" ? <select id={id} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border bg-background px-3 py-2.5"><option value="">{t.choose}</option><option value="true">{t.trueLabel}</option><option value="false">{t.falseLabel}</option></select> : <input id={id} type={definition.valueType === "NUMBER" ? "number" : "text"} step={definition.valueType === "NUMBER" ? "any" : undefined} value={value} onChange={(event) => onChange(/size|سایز|مقاس/i.test(`${definition.key} ${definition.label}`) ? retailNumericInput(event.target.value) : event.target.value)} className="w-full rounded-lg border bg-background px-3 py-2.5" />}</label>;
 }

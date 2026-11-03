@@ -54,6 +54,7 @@ export function RetailStudio({ organizationId, locale }: Props) {
   const [notice, setNotice] = useState("");
   const [dirty, setDirty] = useState(false);
   const [view, setView] = useState<"edit" | "preview">("edit");
+  const [previewTarget, setPreviewTarget] = useState<"saved" | "published">("saved");
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const [confirmPublication, setConfirmPublication] = useState<"publish" | "rollback" | null>(null);
   const usableMedia = useMemo(() => (payload?.media ?? []).filter(isEligibleRetailWebsiteMedia), [payload?.media]);
@@ -83,6 +84,18 @@ export function RetailStudio({ organizationId, locale }: Props) {
   }, [dirty]);
 
   const update = (transform: (current: RetailContent) => RetailContent) => { setContent((current) => current ? transform(current) : current); setDirty(true); setNotice(""); };
+  useEffect(() => {
+    if (!dirty) return;
+    const warnReload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    const warnLink = (event: MouseEvent) => {
+      const anchor = (event.target as Element | null)?.closest("a[href]");
+      if (!anchor || anchor.getAttribute("target") === "_blank" || anchor.getAttribute("href")?.startsWith("#")) return;
+      if (!window.confirm("تغییرات هیرو ذخیره نشده‌اند. بدون ذخیره خارج می‌شوید؟")) { event.preventDefault(); event.stopPropagation(); }
+    };
+    window.addEventListener("beforeunload", warnReload); document.addEventListener("click", warnLink, true);
+    return () => { window.removeEventListener("beforeunload", warnReload); document.removeEventListener("click", warnLink, true); };
+  }, [dirty]);
+
   const updateSection = (key: string, transform: (section: RetailSection) => RetailSection) => update((current) => ({ ...current, sections: current.sections.map((section) => section.key === key ? transform(section) : section) }));
   async function refresh() {
     if (dirty && !window.confirm("با بازخوانی، تغییرات ذخیره‌نشده کنار گذاشته می‌شوند. ادامه می‌دهید؟")) return;
@@ -111,10 +124,10 @@ export function RetailStudio({ organizationId, locale }: Props) {
     } catch (cause) { setError(cause instanceof Error ? cause.message : "ذخیره انجام نشد."); }
     finally { setBusy(false); }
   }
-  function openPreview() {
-    if (dirty && !window.confirm("پیش‌نمایش نسخه ذخیره‌شده باز می‌شود و تغییرات ذخیره‌نشده در آن دیده نمی‌شوند. ادامه می‌دهید؟")) return;
-    if (!payload?.revision?.id) { setError("برای نمایش پیش‌نمایش، ابتدا پیش‌نویس را ذخیره کنید."); return; }
-    setError(""); setView("preview");
+  function openPreview(target: "saved" | "published" = "saved") {
+    if (target === "saved" && dirty && !window.confirm("پیش‌نمایش نسخه ذخیره‌شده باز می‌شود و تغییرات ذخیره‌نشده در آن دیده نمی‌شوند. ادامه می‌دهید؟")) return;
+    if (!(target === "published" ? payload?.publication?.revisionId : payload?.revision?.id)) { setError("برای نمایش پیش‌نمایش، ابتدا پیش‌نویس را ذخیره کنید."); return; }
+    setPreviewTarget(target); setError(""); setView("preview");
   }
 
   function prepareHero() {
@@ -144,7 +157,7 @@ export function RetailStudio({ organizationId, locale }: Props) {
     {missingMedia.length > 0 && <div role="status" className={styles.alert}>بعضی تصاویر نسخه ذخیره‌شده در این محیط در دسترس نیستند. برای ذخیره نسخه بعدی، تصویر جایگزین را از رسانه‌های تأییدشده انتخاب کنید.</div>}
     {notice && <div role="status" className={styles.success}><Check size={17} />{notice}</div>}
     <div className={styles.workspace}>
-      <nav className={styles.tabs} aria-label="نمای استودیو"><button type="button" aria-pressed={view === "edit"} onClick={() => setView("edit")}>ویرایش محتوا</button><button type="button" disabled={!payload?.revision} onClick={openPreview} aria-pressed={view === "preview"}><Eye size={16} /> پیش‌نمایش ذخیره‌شده</button></nav>
+      <nav className={styles.tabs} aria-label="نمای استودیو"><button type="button" aria-pressed={view === "edit"} onClick={() => setView("edit")}>ویرایش محتوا</button><button type="button" disabled={!payload?.revision} onClick={() => openPreview()} aria-pressed={view === "preview"}><Eye size={16} /> پیش‌نمایش ذخیره‌شده</button></nav>
       {loading ? <div className={styles.loading}><LoaderCircle className={styles.spinner} /> در حال بارگذاری اطلاعات فروشگاه…</div> : content && view === "edit" ? <div className={styles.editorLayout}>
         <section className={styles.editor} aria-label="ویرایش محتوای فروشگاه"><fieldset disabled={busy} className={styles.fieldset}>
           <div className={styles.intro}><strong>نسخه خصوصی وب‌سایت</strong><span>ذخیره، نسخه تازه‌ای می‌سازد و هیچ محتوایی را منتشر نمی‌کند.</span></div>
@@ -156,7 +169,7 @@ export function RetailStudio({ organizationId, locale }: Props) {
             <h2 className={styles.sectionTitle}>انتشار هیرو</h2>
             <p className={styles.publicNote}>فقط تنظیمات هیرو منتشر می‌شود. بخش‌های پایین، پیش‌نویس مستقل وب‌سایت هستند.</p>
             <p>{payload?.publication?.revisionId ? payload.publication.revisionId === payload.revision?.id ? "همین نسخه در فروشگاه فعال است." : "نسخهٔ ذخیره‌شده با هیروی فعال متفاوت است." : "هنوز هیرویی از استودیو منتشر نشده است."}</p>
-            <div className={styles.headerButtons}><button type="button" disabled={busy || dirty || !payload?.revision || payload.publication?.revisionId === payload.revision.id} onClick={() => setConfirmPublication("publish")}>انتشار نسخهٔ ذخیره‌شده</button><button type="button" disabled={busy || dirty || !payload?.publication?.revisionId} onClick={() => setConfirmPublication("rollback")}>بازگشت به هیروی قبلی</button></div>
+            <div className={styles.headerButtons}><button type="button" disabled={busy || dirty || !payload?.revision || payload.publication?.revisionId === payload.revision.id} onClick={() => setConfirmPublication("publish")}>انتشار نسخهٔ ذخیره‌شده</button><button type="button" disabled={busy || !payload?.publication?.revisionId} onClick={() => openPreview("published")}>پیش‌نمایش هیروی فعال</button><button type="button" disabled={busy || dirty || !payload?.publication?.revisionId} onClick={() => setConfirmPublication("rollback")}>بازگشت به هیروی قبلی</button></div>
             {confirmPublication && <div className={styles.intro} role="group" aria-label="تأیید انتشار هیرو"><strong>{confirmPublication === "publish" ? "نسخهٔ ذخیره‌شده برای بازدیدکنندگان فعال شود؟" : "هیروی قبلی برای بازدیدکنندگان فعال شود؟"}</strong><div className={styles.headerButtons}><button type="button" disabled={busy || dirty} onClick={() => void changePublication(confirmPublication)}>تأیید {confirmPublication === "publish" ? "انتشار" : "بازگشت"}</button><button type="button" onClick={() => setConfirmPublication(null)}>انصراف</button></div></div>}
           </article>}
           <details className={styles.card}><summary>سایر بخش‌های پیش‌نویس وب‌سایت</summary><p className={styles.publicNote}>این بخش‌ها در انتشار هیروی فروشگاه فعال نمی‌شوند و فقط در پیش‌نویس نگه‌داری می‌شوند.</p>
@@ -173,7 +186,7 @@ export function RetailStudio({ organizationId, locale }: Props) {
           </details>
           <div className={styles.saveBar}><span>{dirty ? "تغییرات ذخیره نشده‌اند" : payload?.revision ? `آخرین نسخه: ${new Date(payload.revision.createdAt).toLocaleString("fa-IR")}` : "هنوز نسخه‌ای ذخیره نشده است"}</span><button type="button" className={styles.primary} disabled={busy || !dirty} onClick={() => void save()}>{busy ? <LoaderCircle className={styles.spinner} size={16} /> : <Save size={16} />} ذخیره پیش‌نویس</button></div>
         </fieldset></section><aside className={styles.help}><h2>راهنمای ویرایش</h2><p>تصویرها فقط از رسانه‌های عمومی و تأییدشده همین فروشگاه انتخاب می‌شوند.</p><p>بخش‌های پنهان در پیش‌نمایش نمایش داده نمی‌شوند. از فلش‌ها برای مرتب‌سازی استفاده کنید.</p><div className={styles.revision}>{payload?.revision ? <><span>نسخه ذخیره‌شده</span><strong>{payload.revision.id.slice(0, 8)}</strong></> : <><span>وضعیت</span><strong>پیش‌نویس تازه</strong></>}</div></aside>
-      </div> : content && view === "preview" ? <div className={styles.previewPane}><div className={styles.previewToolbar}><div><h2>پیش‌نمایش خصوصی</h2><p>نسخه ذخیره‌شده · در دسترس بازدیدکنندگان نیست</p></div><div className={styles.previewActions}><button type="button" aria-pressed={device === "desktop"} onClick={() => setDevice("desktop")}><Monitor size={16} /> رومیزی</button><button type="button" aria-pressed={device === "mobile"} onClick={() => setDevice("mobile")}><Smartphone size={16} /> موبایل</button></div></div><div className={`${styles.viewport} ${device === "mobile" ? styles.mobile : styles.desktop}`}><iframe title="پیش‌نمایش خصوصی وب‌سایت فروشگاه" src={`/${encodeURIComponent(locale)}/dashboard/website-studio/${encodeURIComponent(organizationId)}/preview/${encodeURIComponent(payload?.revision?.id ?? "")}`} /></div></div> : null}
+      </div> : content && view === "preview" ? <div className={styles.previewPane}><div className={styles.previewToolbar}><div><h2>پیش‌نمایش خصوصی</h2><p>{previewTarget === "published" ? "هیروی فعال فروشگاه · نمایش تنظیمات منتشرشده" : "نسخه ذخیره‌شده · این پیش‌نمایش خصوصی است"}</p></div><div className={styles.previewActions}><button type="button" aria-pressed={device === "desktop"} onClick={() => setDevice("desktop")}><Monitor size={16} /> رومیزی</button><button type="button" aria-pressed={device === "mobile"} onClick={() => setDevice("mobile")}><Smartphone size={16} /> موبایل</button></div></div><div className={`${styles.viewport} ${device === "mobile" ? styles.mobile : styles.desktop}`}><iframe title="پیش‌نمایش خصوصی وب‌سایت فروشگاه" src={`/${encodeURIComponent(locale)}/dashboard/website-studio/${encodeURIComponent(organizationId)}/preview/${encodeURIComponent((previewTarget === "published" ? payload?.publication?.revisionId : payload?.revision?.id) ?? "")}`} /></div></div> : null}
     </div>
   </main>;
 }

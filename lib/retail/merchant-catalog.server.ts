@@ -590,8 +590,8 @@ export const variantGenerationSchema = z.object({
   colorDefinitionId: z.string().min(1).max(64).optional(),
   sizeDefinitionId: z.string().min(1).max(64).optional(),
   sizeMode: z.enum(["RANGE", "STANDARD"]).optional(),
-  sizeStart: z.number().int().min(1).max(999).optional(),
-  sizeEnd: z.number().int().min(1).max(999).optional(),
+  sizeStart: z.number().multipleOf(0.5).min(1).max(999).optional(),
+  sizeEnd: z.number().multipleOf(0.5).min(1).max(999).optional(),
   sizeStep: z.number().refine(
     (v) => [0.5, 1, 2, 3].includes(v),
     { message: "sizeStep must be one of 0.5, 1, 2, or 3." },
@@ -751,6 +751,9 @@ export async function previewRetailVariantGeneration(
     errors.push("Either a size or color definition must be provided.");
   }
 
+  if (existingVariants.length + canCreate.length > 100) {
+    errors.push("A product can have at most 100 variants. Narrow the selected colors or sizes.");
+  }
   return {
     canCreate,
     existing: existingVariants.length,

@@ -16,7 +16,8 @@ export function TenantInformation({ kind, locale, name, description, address, ph
   const normalizedPhone = phone?.trim().replace(/[۰-۹٠-٩]/g, digit => String(digit.charCodeAt(0) - (digit >= "۰" ? 0x06f0 : 0x0660))).replace(/[^\d+]/g, "");
   const phoneHref = normalizedPhone && /^\+?\d{3,20}$/.test(normalizedPhone) ? `tel:${normalizedPhone}` : null;
   const normalizedEmail = email?.trim();
-  const emailHref = normalizedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) ? `mailto:${normalizedEmail}` : null;
+  const emailHref = normalizedEmail && normalizedEmail.length <= 254 && /^[^\s@?#;,:%&=]+@[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}$/.test(normalizedEmail)
+    ? `mailto:${encodeURIComponent(normalizedEmail).replace(/%40/gi, "@")}` : null;
   return <Dialog>
     <DialogTrigger asChild>{children}</DialogTrigger>
     <DialogContent dir={locale === "en" ? "ltr" : "rtl"} className="max-h-[85svh] w-[calc(100%-2rem)] overflow-y-auto rounded-2xl border-border bg-background text-foreground sm:rounded-3xl [&>button:last-child]:right-auto [&>button:last-child]:end-4">

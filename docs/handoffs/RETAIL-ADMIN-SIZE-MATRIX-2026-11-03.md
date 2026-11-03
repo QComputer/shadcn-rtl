@@ -1,6 +1,6 @@
 # Retail admin matrix and hero review
 
-Local interactive browser acceptance passed after the Browser connection recovered. Production publication is pending.
+Published and verified on RunFlare v13, source SHA 812727bc4ea6a08416d204a1835d1db68c7826fa. Source pin verified; service ready 1/1. CI: https://github.com/QComputer/shadcn-rtl/actions/runs/41652523194
 
 ## Changes
 
@@ -14,18 +14,16 @@ Local interactive browser acceptance passed after the Browser connection recover
 ## Verified
 
 - TypeScript, scoped ESLint and diff checks passed.
-- Focused unit run: 30 passed, zero failed. Includes the actual generation route with mocked merchant context, matrix rendering, input parsing, snapshots, generation and hero contracts.
+- Final focused unit run: 40 passed, zero failed. Includes the actual generation route with mocked merchant context, matrix rendering, input parsing, snapshots, generation and hero contracts.
 - Hero PostgreSQL integration: passed against disposable PostgreSQL 17 on 127.0.0.1:55439, database retail_hero_test. Covers save/reopen, publication, rollback, media revocation and tenant boundaries.
 - Local loopback HTTP acceptance using real catalog services and PostgreSQL passed: four new draft combinations saved/reopened, inventory and price override persisted, four half-size combinations generated, repeat preview adds zero. This harness uses a fixed synthetic tenant; it does not replace authenticated browser acceptance.
 
-## Remaining acceptance and release
+## Browser and Production acceptance
 
-The Browser connection recovered. Real Chrome with the actual editor and real local PostgreSQL-backed fixture APIs verified Persian inventory/price save and reload, stale-preview invalidation, half-size generation and automatic table reload, individual details, and first-save creation of six new-product variants. A 390px iframe preview visually confirmed that horizontal table scrolling stays inside the table. Fixture navigation/image adapters remain separate from full authenticated Next.js acceptance. No physical Android test or production release is claimed here.
+Browser connection recovered and interactive acceptance passed in real Chrome using the actual editor with local PostgreSQL-backed APIs. Verified Persian inventory and price save/reload, invalidation of outdated generation previews, half-size creation and automatic table reload, individual details, and first-save creation/reopen of six new-product variants. A 390px iframe preview showed the table's horizontal scrolling stays within its own container. Next navigation/image adapters were fixture-only; no physical Android test is claimed.
 
-1. Restore Browser connection and inspect the actual editor at http://127.0.0.1:4324/edit and /new. The external local harness serves the current components with real database-backed catalog APIs; Next navigation and image adapters are fixture-only.
-2. Check table overflow, Persian input, details, dirty guard, save/reopen, stale-preview invalidation and post-generation reload. Check Hero Studio saved versus published preview at desktop/mobile sizes.
-3. After browser acceptance, publish the exact reviewed SHA to RunFlare project 37622, service 87432, updating RUNFLARE_SOURCE_COMMIT_SHA first. Auto-pull is off. Recheck active version and all four public health endpoints.
+Production read-only acceptance on v13 verified all 33 variants in three actual color rows and eleven Persian size columns. Legacy/test definitions are ignored in favor of dimensions represented in this product. The generator defaults to the correct shoe color and size definitions. At the observed viewport, page height fell from 19,697px to 3,812px with no horizontal page overflow. Saved and active hero previews resolve to distinct immutable revisions; mobile preview is 390px wide. All four public health endpoints returned 200. Production product, inventory, price and hero content were not changed during acceptance.
 
-External artifacts are under C:/Users/disso/.codex/visualizations/2026/11/01/01a19977-71e0-73f2-b983-744db19a5bb0/hero-release. Local fixture server listens on 127.0.0.1:4324; disposable container is bazarbaaz-admin-20261103. Stop both after acceptance. No production product, hero, database or provider setting was changed in this slice.
+External artifacts are under C:/Users/disso/.codex/visualizations/2026/11/01/01a19977-71e0-73f2-b983-744db19a5bb0/hero-release. The local fixture server and disposable container bazarbaaz-admin-20261103 were stopped after acceptance. The RunFlare source pin was updated and v13 deployed; no Production data or hero publication pointer was changed. External admin-release-v13-evidence.json records the final evidence and screenshot.
 
 Preserve inherited migration SQL changes and untracked migration/audit artifacts. They are unrelated to this slice.

@@ -12,4 +12,3 @@ export function RetailBrandScope({ color, children }: { color?: string | null; c
   const style = retailBrandStyle(color, resolvedTheme);
   return <RetailBrandContext.Provider value={style}><div data-retail-brand-scope style={style}>{children}</div></RetailBrandContext.Provider>;
 }
-

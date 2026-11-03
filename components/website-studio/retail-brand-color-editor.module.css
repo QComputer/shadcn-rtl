@@ -78,7 +78,7 @@
 .previewSizes { display: flex; gap: .35rem; margin-top: .75rem; }
 .previewSizes button { min-width: 2.2rem; min-height: 2rem; padding: .25rem .45rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--background); color: var(--foreground); font: inherit; font-size: .7rem; }
 .previewSizes .previewSizeSelected { border-color: var(--retail-primary, var(--primary)); background: var(--accent); color: var(--accent-foreground); }
-.productCard { overflow: hidden; border-radius: .8rem; }
+.productCard { max-width: 17rem; margin-inline: auto; overflow: hidden; border-radius: .8rem; }
 .previewNote { margin: .65rem .1rem 0; color: var(--editor-muted); font-size: .69rem; line-height: 1.7; }
 
 @media (max-width: 720px) {

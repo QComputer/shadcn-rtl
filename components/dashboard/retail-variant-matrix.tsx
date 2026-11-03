@@ -2,6 +2,7 @@
 
 import { formatRetailSize } from "@/lib/retail/format-size";
 import { compareRetailSizes, normalizeRetailDigits } from "@/lib/retail/product-detail";
+import { findRetailOptionDefinition } from "@/lib/retail/merchant-size-input";
 
 export type RetailVariantMatrixDraft = {
   id?: string;
@@ -33,8 +34,6 @@ const copy = {
   ar: { color: "اللون", size: "المقاس", inventory: "المخزون", price: "سعر مخصص", inherit: "السعر الأساسي", unavailable: "غير متاح للبيع", available: "متاح للبيع", details: "التفاصيل", variant: "الخيار", sku: "رمز المنتج", none: "—", empty: "لم يتم تعريف خيارات", base: "السعر الأساسي" },
 } as const;
 
-function isColor(def: RetailVariantMatrixDefinition) { return /colou?r|رنگ|لون/i.test(`${def.key} ${def.label}`); }
-function isSize(def: RetailVariantMatrixDefinition) { return /size|سایز|اندازه|مقاس|حجم/i.test(`${def.key} ${def.label}`); }
 function optionValue(variant: RetailVariantMatrixDraft, definition: RetailVariantMatrixDefinition) {
   return variant.options[definition.id] ?? variant.options[definition.key] ?? "";
 }
@@ -42,8 +41,8 @@ function inputNumber(value: string) { return normalizeRetailDigits(value); }
 
 export default function RetailVariantMatrix({ variants, definitions, locale, basePrice, onUpdate, onOpenDetails, disabled = false }: Props) {
   const t = copy[locale];
-  const colorDefinition = definitions.find(isColor);
-  const sizeDefinition = definitions.find(isSize);
+  const colorDefinition = findRetailOptionDefinition(definitions, variants, "color");
+  const sizeDefinition = findRetailOptionDefinition(definitions, variants, "size");
   const rtl = locale !== "en";
   const money = new Intl.NumberFormat(locale === "fa" ? "fa-IR" : locale === "ar" ? "ar" : "en", { maximumFractionDigits: 0 }).format(basePrice);
 

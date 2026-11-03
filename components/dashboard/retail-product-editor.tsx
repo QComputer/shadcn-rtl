@@ -11,7 +11,7 @@ import { retailEditorSnapshot } from "@/lib/retail/editor-snapshot";
 import RetailVariantMatrix from "./retail-variant-matrix";
 import { compareRetailSizes } from "@/lib/retail/product-detail";
 import { formatRetailSize } from "@/lib/retail/format-size";
-import { parseRetailOptionList, retailNumericInput } from "@/lib/retail/merchant-size-input";
+import { findRetailOptionDefinition, parseRetailOptionList, retailNumericInput } from "@/lib/retail/merchant-size-input";
 
 import { AssignedGallery, RetailMediaPicker } from "./retail-media-picker";
 import { colorGroupKey, inferColorGallery, type GallerySettings, type GallerySettingsInput } from "@/lib/retail/product-galleries";
@@ -59,7 +59,7 @@ function restoreVariants(variants: VariantRecord[]): VariantDraft[] {
 type ColorGallery = GallerySettingsInput["colors"][number];
 function galleryEditor(product: ProductRecord, definitions: Definition[]) {
   const variants = restoreVariants(product.variants);
-  const color = definitions.find(def => def.scope === "VARIANT_OPTION" && /colou?r|رنگ/i.test(`${def.key} ${def.label}`));
+  const color = findRetailOptionDefinition(definitions.filter(def => def.scope === "VARIANT_OPTION"), variants, "color");
   if (product.gallerySettings) return { colors: product.gallerySettings.colors, variants };
   const colors: ColorGallery[] = [];
   if (color) for (const value of [...new Set(variants.map(variant => variant.options[color.id]).filter(Boolean))]) {
@@ -205,8 +205,10 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
         const [definitionData, categoryData, contextData, productData] = payloads;
         const defs: Definition[] = definitionData.definitions ?? [];
         setDefinitions(defs);
-        setGenColorDef(defs.find(d => d.scope === "VARIANT_OPTION" && /colou?r|رنگ/i.test(`${d.key} ${d.label}`))?.id ?? "");
-        setGenSizeDef(defs.find(d => d.scope === "VARIANT_OPTION" && /size|سایز|مقاس/i.test(`${d.key} ${d.label}`))?.id ?? "");
+        const loadedVariants = productData?.product ? restoreVariants((productData.product as ProductRecord).variants) : [];
+        const optionDefs = defs.filter(def => def.scope === "VARIANT_OPTION");
+        setGenColorDef(findRetailOptionDefinition(optionDefs, loadedVariants, "color")?.id ?? "");
+        setGenSizeDef(findRetailOptionDefinition(optionDefs, loadedVariants, "size")?.id ?? "");
         setCategories(categoryData.categories ?? []);
         setImages([]); setPicker(null);
         setOrganizationSlug(contextData.organizationSlug ?? "");
@@ -251,7 +253,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
     return () => { cancelled = true; };
   }, [productId, t.genericError, reloadVersion]);
 
-  const colorOptionDef = useMemo(() => optionDefinitions.find(def => /colou?r|رنگ/i.test(`${def.key} ${def.label}`)), [optionDefinitions]);
+  const colorOptionDef = useMemo(() => findRetailOptionDefinition(optionDefinitions, variants, "color"), [optionDefinitions, variants]);
 
   const groupedVariants = useMemo(() => {
     if (!groupDefinitionId || !colorOptionDef) return [{ key: "ungrouped", label: "", variants: variants }];
@@ -434,7 +436,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
 
   const imageById = useMemo(() => new Map(images.map(image => [image.id, image])), [images]);
   const assignedImages = (ids: string[]) => ids.flatMap(id => imageById.has(id) ? [imageById.get(id)!] : []);
-  const colorDefinition = optionDefinitions.find(def => colorGalleries.some(group => group.definitionId === def.id)) ?? optionDefinitions.find(def => /colou?r|رنگ/i.test(`${def.key} ${def.label}`));
+  const colorDefinition = optionDefinitions.find(def => colorGalleries.some(group => group.definitionId === def.id)) ?? findRetailOptionDefinition(optionDefinitions, variants, "color");
   const colorValues = colorDefinition ? [...new Set(variants.map(variant => variant.options[colorDefinition.id]).filter(Boolean))] : [];
   const visibleColors = colorDefinition ? colorValues.map(value => colorGalleries.find(group => group.definitionId === colorDefinition.id && group.value === value) ?? { definitionId: colorDefinition.id, value, imageIds: [] }) : [];
   function changeGallery(target: NonNullable<typeof picker>, ids: string[]) {

@@ -1275,6 +1275,7 @@ model OrganizationBranding {
   pwaMaskable192Url         String?
   pwaMaskable512Url         String?
   themeColor                String?
+  storefrontPrimaryColor   String?
   backgroundColor           String?
   ogImageUrl                String?
   source                    OrganizationBrandingSource @default(BAZARBAAZ_MANAGED)

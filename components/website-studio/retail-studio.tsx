@@ -10,6 +10,7 @@ import styles from "./retail-studio.module.css";
 import { RetailHeroEditor } from "./retail-hero-editor";
 import { retailHeroSchema, type RetailHeroPublication } from "@/lib/website-studio/retail-hero-contract";
 import type { PublicCatalogProduct } from "@/lib/public-catalog/contracts";
+import { RetailBrandColorEditor } from "./retail-brand-color-editor";
 
 type ApiPayload = { organization: { id?: string; name: string }; revision: WebsiteRevision | null; content: RetailContent; media: WebsiteMedia[]; products: PublicCatalogProduct[]; publication: RetailHeroPublication | null };
 type Props = { organizationId: string; locale: string };
@@ -153,6 +154,7 @@ export function RetailStudio({ organizationId, locale }: Props) {
 
   return <main className={styles.shell} dir="rtl" lang={locale}>
     <header className={styles.header}><div><p className={styles.eyebrow}>استودیوی وب‌سایت فروشگاه</p><h1>{payload?.organization.name ?? "مدیریت وب‌سایت"}</h1><p>محتوای صفحه فروشگاه را ویرایش و پیش‌نمایش خصوصی آن را بررسی کنید.</p></div><div className={styles.headerButtons}><span className={styles.privateBadge}>پیش‌نویس خصوصی</span><button type="button" disabled={busy || loading} onClick={() => void refresh()}><RefreshCw size={16} /> بازخوانی</button></div></header>
+    <RetailBrandColorEditor key={organizationId} organizationId={organizationId} product={payload?.products[0]} storeName={payload?.organization.name} />
     {error && <div role="alert" className={styles.alert}>{error}<button type="button" disabled={busy} onClick={() => void refresh()}>تلاش دوباره</button></div>}
     {missingMedia.length > 0 && <div role="status" className={styles.alert}>بعضی تصاویر نسخه ذخیره‌شده در این محیط در دسترس نیستند. برای ذخیره نسخه بعدی، تصویر جایگزین را از رسانه‌های تأییدشده انتخاب کنید.</div>}
     {notice && <div role="status" className={styles.success}><Check size={17} />{notice}</div>}

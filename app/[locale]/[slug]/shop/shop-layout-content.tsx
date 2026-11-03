@@ -24,6 +24,7 @@ import { OrganizationRootNavigationProvider } from "@/lib/contexts/organization-
 import { buildOrganizationRootPath } from "@/lib/custom-domain-routing";
 import { appResourceUrl } from "@/lib/app-base-path";
 import { tenantPwaManifestHref } from "@/lib/tenant-retail-pwa";
+import { RetailBrandScope } from "@/components/retail/retail-brand-scope";
 
 export interface ShopLayoutContentProps {
   children: React.ReactNode;
@@ -119,7 +120,7 @@ type ShopLayoutOrganization = {
   capabilitiesInitializedAt: Date | null;
   capabilities: Array<{ key: "SHOP" | "APPOINTMENT"; status: "ACTIVE" | "INACTIVE" }>;
   settings: { settings: unknown } | null;
-  branding: { retailPresentationTheme: string | null; retailPreviewOnly: boolean } | null;
+  branding: { retailPresentationTheme: string | null; retailPreviewOnly: boolean; storefrontPrimaryColor: string | null } | null;
 };
 
 export async function ShopLayoutContent({ children, params, organizationRootPath }: ShopLayoutContentProps) {
@@ -135,7 +136,7 @@ const organization = await prisma.organization.findFirst({
     capabilitiesInitializedAt: true,
     capabilities: { select: { key: true, status: true } },
     settings: { select: { settings: true } },
-    branding: { select: { retailPresentationTheme: true, retailPreviewOnly: true } },
+    branding: { select: { retailPresentationTheme: true, retailPreviewOnly: true, storefrontPrimaryColor: true } },
   },
 }) as ShopLayoutOrganization | null;
 
@@ -189,6 +190,7 @@ const organization = await prisma.organization.findFirst({
   ];
 
   return (
+    <RetailBrandScope color={organization.type === "SHOP" ? organization.branding?.storefrontPrimaryColor : null}>
     <CartProvider locale={locale} slug={slug} >
       <OrganizationRootNavigationProvider value={{ href: rootHref, mode: seoContext.organizationRootNavigation }}>
       <ShopRouteProvider value={routePaths}>
@@ -298,5 +300,6 @@ const organization = await prisma.organization.findFirst({
       </ShopRouteProvider>
       </OrganizationRootNavigationProvider>
     </CartProvider>
+    </RetailBrandScope>
   );
 }

@@ -25,5 +25,6 @@ export const organizationBrandingPatchSchema = z.object({
   pwaMaskable512Url: optionalAssetUrl,
   ogImageUrl: optionalAssetUrl,
   themeColor: optionalColor,
+  storefrontPrimaryColor: optionalColor,
   backgroundColor: optionalColor,
 }).strict();

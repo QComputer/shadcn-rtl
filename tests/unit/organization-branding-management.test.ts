@@ -14,6 +14,7 @@ describe("organization branding management contract", () => {
       pwaMaskable192Url: "/brand/example/maskable-192.png",
       pwaMaskable512Url: "/brand/example/maskable-512.png",
       themeColor: "#123456",
+      storefrontPrimaryColor: "#5A9B42",
       backgroundColor: "#ffffff",
     });
     assert.equal(result.pwaMaskable192Url, "/brand/example/maskable-192.png");
@@ -30,6 +31,10 @@ describe("organization branding management contract", () => {
     const patch = { pwaIcon192Url: "/brand/example/icon-192.png" };
     assert.deepEqual(organizationBrandingPatchSchema.parse(patch), patch);
     assert.equal(organizationBrandingPatchSchema.safeParse({ themeColor: "red" }).success, false);
+    assert.deepEqual(organizationBrandingPatchSchema.parse({ storefrontPrimaryColor: null }), { storefrontPrimaryColor: null });
+    for (const storefrontPrimaryColor of ["red", "#12345", "#12345678", "123456", " #123456 "]) {
+      assert.equal(organizationBrandingPatchSchema.safeParse({ storefrontPrimaryColor }).success, false);
+    }
   });
 
   it("accepts the current settings form fields and rejects retired or presentation-only fields", () => {
@@ -45,6 +50,7 @@ describe("organization branding management contract", () => {
       pwaMaskable512Url: "/brand/example/maskable-512.png",
       ogImageUrl: "/brand/example/og.png",
       themeColor: "#123456",
+      storefrontPrimaryColor: "#123456",
       backgroundColor: "#ffffff",
     };
     assert.deepEqual(organizationBrandingPatchSchema.parse(formPatch), formPatch);

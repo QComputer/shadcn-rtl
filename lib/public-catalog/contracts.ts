@@ -90,7 +90,7 @@ export const publicCatalogCategorySchema = z.object({ id: z.string(), slug: z.st
 export const publicCatalogPaginationSchema = z.object({ page: z.number().int().positive(), limit: z.number().int().positive().max(PUBLIC_CATALOG_MAX_PAGE_SIZE), total: z.number().int().nonnegative(), totalPages: z.number().int().nonnegative() }).strict();
 export const publicCatalogProductsPageSchema = z.object({ products: z.array(publicCatalogProductSchema), pagination: publicCatalogPaginationSchema }).strict();
 export const publicCatalogSnapshotSchema = z.object({
-  organization: z.object({ identifier: z.string(), name: z.string(), description: z.string().nullable(), theme: z.enum(["FASHION", "ELECTRONICS", "GENERAL"]), previewOnly: z.boolean(), branding: z.object({ logo: z.string().nullable(), cover: z.string().nullable() }).strict() }).strict(),
+  organization: z.object({ identifier: z.string(), name: z.string(), description: z.string().nullable(), theme: z.enum(["FASHION", "ELECTRONICS", "GENERAL"]), previewOnly: z.boolean(), branding: z.object({ logo: z.string().nullable(), cover: z.string().nullable(), primaryColor: z.string().regex(/^#[\da-fA-F]{6}$/).nullable().optional() }).strict() }).strict(),
   priceUnit: z.literal(PUBLIC_CATALOG_PRICE_UNIT), categories: z.array(publicCatalogCategorySchema), products: z.array(publicCatalogProductSchema), pagination: publicCatalogPaginationSchema,
 }).strict();
 
@@ -102,7 +102,7 @@ export type PublicCatalogPagination = {
 };
 export type PublicCatalogProductsPage = { products: PublicCatalogProduct[]; pagination: PublicCatalogPagination };
 export type PublicCatalogSnapshot = {
-  organization: { identifier: string; name: string; description: string | null; theme: "FASHION" | "ELECTRONICS" | "GENERAL"; previewOnly: boolean; branding: { logo: string | null; cover: string | null } };
+  organization: { identifier: string; name: string; description: string | null; theme: "FASHION" | "ELECTRONICS" | "GENERAL"; previewOnly: boolean; branding: { logo: string | null; cover: string | null; primaryColor?: string | null } };
   priceUnit: typeof PUBLIC_CATALOG_PRICE_UNIT;
   categories: PublicCatalogCategory[];
   products: PublicCatalogProduct[];

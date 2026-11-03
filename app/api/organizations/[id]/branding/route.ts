@@ -8,7 +8,7 @@ async function authorize(organizationId: string) {
   await requireOrgAccess(session, organizationId, ["ADMIN"]);
   const organization = await prisma.organization.findFirst({
     where: { id: organizationId, isActive: true, deletedAt: null },
-    select: { id: true, slug: true },
+    select: { id: true, slug: true, type: true },
   });
   if (!organization) throw new ApiError(404, "Organization not found");
   return { session, organization };
@@ -33,6 +33,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { id } = await params;
     const { session, organization } = await authorize(id);
     const data = organizationBrandingPatchSchema.parse(await request.json());
+    if (Object.hasOwn(data, "storefrontPrimaryColor") && organization.type !== "SHOP") {
+      throw new ApiError(403, "Storefront branding is only available for shop organizations");
+    }
     const branding = await prisma.$transaction(async (tx) => {
       const previous = await tx.organizationBranding.findUnique({
         where: { organizationId: id },
@@ -48,6 +51,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           pwaMaskable192Url: true,
           pwaMaskable512Url: true,
           themeColor: true,
+          storefrontPrimaryColor: true,
           backgroundColor: true,
         },
       });
@@ -61,7 +65,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           action: "UPDATE",
           entityType: "OrganizationBranding",
           entityId: updated.id,
-          description: "Updated organization PWA and browser branding",
+          description: "Updated organization branding settings",
           previousValue: previous ? JSON.parse(JSON.stringify(previous)) : undefined,
           newValue: JSON.parse(JSON.stringify(data)),
           userId: session.user.id,

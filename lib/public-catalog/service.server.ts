@@ -58,7 +58,7 @@ async function requirePublicShop(identifier: string) {
     where: { slug: identifier, isActive: true, deletedAt: null, isPlatformOwner: false },
     select: {
       id: true, slug: true, name: true, description: true, logo: true, coverImage: true,
-      branding: { select: { displayName: true, logoUrl: true, retailPresentationTheme: true, retailPreviewOnly: true } },
+      branding: { select: { displayName: true, logoUrl: true, retailPresentationTheme: true, retailPreviewOnly: true, storefrontPrimaryColor: true } },
       capabilities: { select: { key: true, status: true } },
     },
   });
@@ -498,7 +498,7 @@ export async function getPublicCatalogSnapshot(organizationIdentifier: string): 
       identifier: organization.slug, name: organization.branding?.displayName ?? organization.name, description: organization.description,
       theme: retailPresentationTheme(organization.branding?.retailPresentationTheme),
       previewOnly: organization.branding?.retailPreviewOnly ?? false,
-      branding: { logo: organization.branding?.logoUrl ?? organization.logo, cover: organization.coverImage },
+      branding: { logo: organization.branding?.logoUrl ?? organization.logo, cover: organization.coverImage, primaryColor: organization.branding?.storefrontPrimaryColor ?? null },
     },
     priceUnit: "TOMAN" as const,
     categories,

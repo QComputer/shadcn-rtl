@@ -6,6 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { ArrowRight, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useRetailBrandStyle } from "@/lib/contexts/retail-brand-context"
 
 const Sheet = DialogPrimitive.Root
 
@@ -58,11 +59,14 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   SheetContentProps
->(({ side = "right", showClose = true, className, children, ...props }, ref) => (
+>(({ side = "right", showClose = true, className, children, style, ...props }, ref) => {
+  const brandStyle = useRetailBrandStyle()
+  return (
   <SheetPortal>
     <SheetOverlay />
     <DialogPrimitive.Content
       ref={ref}
+      style={{ ...brandStyle, ...style }}
       className={cn(sheetVariants({ side }), className)}
       {...props}
     >
@@ -75,7 +79,8 @@ const SheetContent = React.forwardRef<
       {children}
     </DialogPrimitive.Content>
   </SheetPortal>
-))
+  )
+})
 SheetContent.displayName = DialogPrimitive.Content.displayName
 
 const SheetHeader = ({

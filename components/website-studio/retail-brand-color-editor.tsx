@@ -235,7 +235,7 @@ function BrandColorEditor({ organizationId, product, storeName }: Props) {
                 <button type="button" aria-pressed={previewMode === "dark"} onClick={() => setPreviewMode("dark")}>تیره</button>
               </div>
             </div>
-            <div className={`${styles.preview} ${previewMode === "dark" ? "dark" : ""}`} data-preview-mode={previewMode} style={previewStyle}>
+            <div className={`${styles.preview} ${previewMode}`} data-theme={previewMode} style={previewStyle}>
               <div className={styles.previewTopline}><span>{storeName || "فروشگاه نمونه"}</span><span className={styles.previewDot} /></div>
               <div className={styles.previewHero}>
                 <span className={styles.previewTag}>مجموعهٔ تازه</span>

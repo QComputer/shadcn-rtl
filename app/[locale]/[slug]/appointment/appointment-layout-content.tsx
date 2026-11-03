@@ -6,6 +6,8 @@ import prisma from "@/lib/db";
 import { getDictionary, getDictValue } from "@/lib/dictionary";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildOrganizationJsonLd, buildPublicMetadata } from "@/lib/seo";
+import { TenantBrand } from "@/components/public/tenant-brand";
+import { TenantSearch } from "@/components/public/tenant-search";
 import { TenantFooter } from "@/components/public/tenant-footer";
 import { buildOrganizationPublicPath, buildOrganizationRootPath } from "@/lib/custom-domain-routing";
 import { getTenantSeoContext } from "@/lib/custom-domain-seo";
@@ -44,6 +46,7 @@ type OrganizationLayoutData = {
     organizationId: string;
     displayName: string | null;
     shortName: string | null;
+    logoUrl: string | null;
     faviconUrl: string | null;
     appleTouchIconUrl: string | null;
     pwaIcon192Url: string | null;
@@ -80,6 +83,7 @@ async function getPublicOrganization(slug: string): Promise<OrganizationLayoutDa
           organizationId: true,
           displayName: true,
           shortName: true,
+          logoUrl: true,
           faviconUrl: true,
           appleTouchIconUrl: true,
           pwaIcon192Url: true,
@@ -175,6 +179,8 @@ export async function AppointmentLayoutContent({ children, params, organizationR
     organizationSlug: organization.slug,
     isCustomDomain: seoContext.isCustomDomain,
   });
+  const brandName = organization.branding?.displayName?.trim() || organization.name;
+  const brandLogo = organization.branding?.logoUrl?.trim() || organization.logo;
   const navItems = [
     { href: tenantHref("/"), label: t("navigation.profile") },
     { href: tenantHref("/fanpage"), label: t("organization.fanpage") },
@@ -211,20 +217,17 @@ export async function AppointmentLayoutContent({ children, params, organizationR
       />
       <header className="border-b sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-4">
-              <a href={tenantHref("/")} className="font-bold text-xl">
-                {organization.name}
-              </a>
-            </div>
-            <nav className="hidden items-center gap-2 text-sm md:flex" aria-label={t("navigation.menu")}>
+          <div className="flex h-16 items-center justify-between gap-2">
+            <TenantBrand name={brandName} logo={brandLogo} href={tenantHref("/")} />
+            <nav className="hidden items-center gap-2 text-sm lg:flex" aria-label={t("navigation.menu")}>
               {navItems.map((item) => (
                 <a key={item.href} href={item.href} className="rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                   {item.label}
                 </a>
               ))}
             </nav>
-            <div className="flex items-center gap-4">
+            <div className="flex shrink-0 items-center gap-1">
+              <TenantSearch key={organization.id} locale={locale} name={brandName} storefrontHref={tenantHref("/")} description={organization.description} address={organization.address} phone={organization.phone} email={organization.email} pages={navItems} />
               <LocaleSwitcher />
               <ThemeSwitcher />
             </div>
@@ -240,10 +243,10 @@ export async function AppointmentLayoutContent({ children, params, organizationR
         footer={{
           kind: "service",
           locale,
-          name: organization.name,
+          name: brandName,
           slug: organization.slug,
           description: organization.description,
-          logo: organization.logo,
+          logo: brandLogo,
           address: organization.address,
           phone: organization.phone,
           email: organization.email,

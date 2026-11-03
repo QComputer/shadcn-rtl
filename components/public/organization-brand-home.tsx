@@ -1,5 +1,7 @@
 import type { CSSProperties } from "react";
 import Image from "next/image";
+import { TenantBrand } from "@/components/public/tenant-brand";
+import { TenantSearch } from "@/components/public/tenant-search";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
@@ -29,16 +31,17 @@ function EditorialHome({ locale, slug, isCustomDomain, content, branding, organi
     <div className="min-h-screen overflow-x-clip bg-[var(--organization-home-background)] text-stone-950" style={themeStyle}>
       <header className="sticky top-0 z-40 border-b border-black/5 bg-[#f7f5f0]/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-4 px-4 sm:h-20 sm:px-6 lg:px-10">
-          <Link href={rootHref} className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--organization-home-accent)]">
-            <Image src={branding.logo} alt={branding.displayName} width={190} height={64} priority className="h-9 w-auto object-contain sm:h-11" />
-          </Link>
+          <TenantBrand name={branding.displayName} logo={branding.logo} href={rootHref} />
           <nav aria-label="پیمایش صفحه" className="hidden items-center gap-7 text-sm font-medium md:flex">
             {shopHref ? <Link href={shopHref} className="transition-colors hover:text-[var(--organization-home-accent)]">{content.header.shopLabel}</Link> : null}
             <a href="#collections" className="transition-colors hover:text-[var(--organization-home-accent)]">{content.header.collectionLabel}</a>
             <a href="#lookbook" className="transition-colors hover:text-[var(--organization-home-accent)]">{content.header.lookbookLabel}</a>
             <a href="#contact" className="transition-colors hover:text-[var(--organization-home-accent)]">{content.header.contactLabel}</a>
           </nav>
+          <div className="flex shrink-0 items-center gap-1">
+            <TenantSearch key={slug} locale={locale} name={branding.displayName} organization={hasShop ? slug : undefined} storefrontHref={shopHref || rootHref} searchHref={shopHref && locale === "fa" ? `${shopHref}/discover` : undefined} description={organization.description} address={address} phone={phone} email={organization.email} pages={[{ label: content.header.collectionLabel, description: content.collections.map(item => item.title).join(" "), href: `${rootHref}#collections` }, { label: content.header.lookbookLabel, description: [content.lookbook.description, ...content.lookbook.items.map(item => item.title)].join(" "), href: `${rootHref}#lookbook` }]} />
           {shopHref ? <Link href={shopHref} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-stone-950 px-4 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--organization-home-accent)] focus-visible:ring-offset-2"><ShoppingBag className="h-4 w-4" aria-hidden="true" /><span className="hidden min-[390px]:inline">{content.header.shopLabel}</span></Link> : null}
+          </div>
         </div>
       </header>
 
@@ -112,12 +115,13 @@ export async function OrganizationBrandHome({ params }: OrganizationBrandHomePro
     branding: { select: { organizationId: true, displayName: true, shortName: true, logoUrl: true, faviconUrl: true, appleTouchIconUrl: true, pwaIcon192Url: true, pwaIcon512Url: true, ogImageUrl: true, source: true } },
   } });
   if (!organization) notFound();
-  const branding = resolveOrganizationBranding({ organizationId: organization.id, name: organization.name, logo: organization.logo, coverImage: organization.coverImage, branding: organization.branding });
+  const resolvedBranding = resolveOrganizationBranding({ organizationId: organization.id, name: organization.name, logo: organization.logo, coverImage: organization.coverImage, branding: organization.branding });
+  const branding = { ...resolvedBranding, logo: organization.branding?.logoUrl?.trim() || organization.logo || "" };
   const content = resolveOrganizationHomeContent({ organizationSlug: slug, locale });
   const hasShop = organization.capabilities.some((capability) => capability.key === "SHOP");
   if (content) return <EditorialHome locale={locale} slug={slug} isCustomDomain={isCustomDomain} content={content} branding={branding} organization={organization} hasShop={hasShop} />;
 
   const hasAppointment = organization.capabilities.some((capability) => capability.key === "APPOINTMENT");
   const primaryDomain = organization.domains[0]?.domain;
-  return <main className="min-h-screen bg-background">{organization.coverImage ? <div className="relative h-48 bg-muted md:h-64"><Image src={organization.coverImage} alt={organization.name} fill sizes="100vw" className="object-cover" /><div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent" /></div> : null}<section className={`${organization.coverImage ? "-mt-20" : "pt-8"} relative`}><div className="container mx-auto px-4 py-8"><div className="mb-6 flex items-center gap-4"><Image src={branding.logo} alt={organization.name} width={64} height={64} className="h-16 w-16 rounded-full object-cover" /><div><h1 className="text-3xl font-bold">{organization.name}</h1>{primaryDomain ? <p className="text-muted-foreground">{primaryDomain}</p> : null}</div></div>{organization.description ? <p className="mb-8 max-w-2xl text-lg text-muted-foreground">{organization.description}</p> : null}<div className="flex flex-wrap gap-4">{hasShop ? <Link href={buildOrganizationPublicPath({ locale, organizationSlug: slug, surface: "shop", isCustomDomain })} className="inline-flex min-h-12 items-center justify-center rounded-md bg-primary px-6 text-primary-foreground hover:bg-primary/90">فروشگاه</Link> : null}{hasAppointment ? <Link href={buildOrganizationPublicPath({ locale, organizationSlug: slug, surface: "appointment", subPath: "/services", isCustomDomain })} className="inline-flex min-h-12 items-center justify-center rounded-md border px-6 hover:bg-accent">رزرو خدمات</Link> : null}</div></div></section></main>;
+  return <main className="min-h-screen bg-background">{organization.coverImage ? <div className="relative h-48 bg-muted md:h-64"><Image src={organization.coverImage} alt={organization.name} fill sizes="100vw" className="object-cover" /><div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent" /></div> : null}<section className={`${organization.coverImage ? "-mt-20" : "pt-8"} relative`}><div className="container mx-auto px-4 py-8"><div className="mb-6 flex items-center gap-4">{branding.logo ? <Image src={branding.logo} alt={organization.name} width={64} height={64} className="h-16 w-16 rounded-full object-contain" /> : null}<div><h1 className="text-3xl font-bold">{organization.name}</h1>{primaryDomain ? <p className="text-muted-foreground">{primaryDomain}</p> : null}</div></div>{organization.description ? <p className="mb-8 max-w-2xl text-lg text-muted-foreground">{organization.description}</p> : null}<div className="flex flex-wrap gap-4">{hasShop ? <Link href={buildOrganizationPublicPath({ locale, organizationSlug: slug, surface: "shop", isCustomDomain })} className="inline-flex min-h-12 items-center justify-center rounded-md bg-primary px-6 text-primary-foreground hover:bg-primary/90">فروشگاه</Link> : null}{hasAppointment ? <Link href={buildOrganizationPublicPath({ locale, organizationSlug: slug, surface: "appointment", subPath: "/services", isCustomDomain })} className="inline-flex min-h-12 items-center justify-center rounded-md border px-6 hover:bg-accent">رزرو خدمات</Link> : null}</div></div></section></main>;
 }

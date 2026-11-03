@@ -11,7 +11,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FollowButton } from "@/components/follow/follow-button";
 import { getDictionary, getDictValue } from "@/lib/dictionary";
-import { ShopLocationDialog } from "@/components/shop/shop-location-dialog";
+import { TenantBrand } from "@/components/public/tenant-brand";
+import { TenantSearch } from "@/components/public/tenant-search";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildOrganizationJsonLd, buildPublicMetadata } from "@/lib/seo";
 import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
@@ -120,7 +121,7 @@ type ShopLayoutOrganization = {
   capabilitiesInitializedAt: Date | null;
   capabilities: Array<{ key: "SHOP" | "APPOINTMENT"; status: "ACTIVE" | "INACTIVE" }>;
   settings: { settings: unknown } | null;
-  branding: { retailPresentationTheme: string | null; retailPreviewOnly: boolean; storefrontPrimaryColor: string | null } | null;
+  branding: { logoUrl: string | null; displayName: string | null; retailPresentationTheme: string | null; retailPreviewOnly: boolean; storefrontPrimaryColor: string | null } | null;
 };
 
 export async function ShopLayoutContent({ children, params, organizationRootPath }: ShopLayoutContentProps) {
@@ -136,7 +137,7 @@ const organization = await prisma.organization.findFirst({
     capabilitiesInitializedAt: true,
     capabilities: { select: { key: true, status: true } },
     settings: { select: { settings: true } },
-    branding: { select: { retailPresentationTheme: true, retailPreviewOnly: true, storefrontPrimaryColor: true } },
+    branding: { select: { logoUrl: true, displayName: true, retailPresentationTheme: true, retailPreviewOnly: true, storefrontPrimaryColor: true } },
   },
 }) as ShopLayoutOrganization | null;
 
@@ -182,6 +183,10 @@ const organization = await prisma.organization.findFirst({
     isCustomDomain: seoContext.isCustomDomain,
   });
 
+  const catalogSearchEnabled = organization.capabilities.some(capability => capability.key === "SHOP" && capability.status === "ACTIVE");
+  const brandName = organization.branding?.displayName?.trim() || organization.name || organization.slug;
+  const brandLogo = organization.branding?.logoUrl?.trim() || organization.logo;
+
   const navItems = [
     { href: productsHref, label: t("navigation.products") },
     { href: tenantHref("/profile"), label: t("navigation.profile") },
@@ -205,14 +210,10 @@ const organization = await prisma.organization.findFirst({
         <div className="min-h-screen flex flex-col">
         {/* Shop Header */}
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="container flex h-16 pr-5 pl-2 justify-between ">
-            <span className="flex min-w-0 items-center text-lg md:text-xl">
-              <Link href={productsHref} className="truncate">
-              {organization?.name}
-              </Link>
-              </span>
+          <div className="container mx-auto flex h-16 items-center justify-between gap-2 px-3 sm:px-5">
+            <TenantBrand name={brandName} logo={brandLogo} href={productsHref} />
 
-            <nav className="hidden items-center gap-2 text-sm md:flex" aria-label={t("navigation.menu")}>
+            <nav className="hidden items-center gap-1 text-sm lg:flex" aria-label={t("navigation.menu")}>
               {navItems.map((item) => (
                 <Link key={item.href} href={item.href} className="rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                   {item.label}
@@ -220,10 +221,8 @@ const organization = await prisma.organization.findFirst({
               ))}
             </nav>
             <div className="flex shrink-0 items-center gap-2 max-[360px]:gap-0">
-              {organization.lat != null && organization.lng != null && (
-                <ShopLocationDialog lat={organization.lat} lng={organization.lng} name={organization.name} locale={locale} />
-              )}
-              <FollowButton organizationId={organization.id} locale={locale} />
+              <TenantSearch key={organization.id} locale={locale} name={brandName} organization={catalogSearchEnabled ? organization.slug : undefined} storefrontHref={productsHref} searchHref={catalogSearchEnabled && locale === "fa" ? tenantHref("/discover") : undefined} description={organization.description} address={organization.address} phone={organization.phone} email={organization.email} />
+              <FollowButton organizationId={organization.id} locale={locale} className="max-sm:h-11 max-sm:w-11 max-sm:shrink-0 max-sm:p-0 max-sm:text-[0px] max-sm:[&_svg]:m-0 max-sm:[&_svg]:h-5 max-sm:[&_svg]:w-5" />
               <CartDrawer retail={hasModernRetailProductExperience(organization.settings?.settings, organization.branding ?? {})} organizationSlug={slug} locale={locale}>
                 <Button variant="ghost" size="icon" className="relative">
                   <CartBadge />
@@ -236,12 +235,12 @@ const organization = await prisma.organization.findFirst({
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 pb-16 md:pb-0">
+        <main className="flex-1 pb-16 lg:pb-0">
           {children}
         </main>
 
         {/* Mobile Navigation - Bottom Bar */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t supports-[backdrop-filter]:bg-background/60">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t supports-[backdrop-filter]:bg-background/60">
           <div className="grid grid-cols-5 h-16">
             <Link
               href={productsHref}
@@ -283,10 +282,10 @@ const organization = await prisma.organization.findFirst({
           footer={{
             kind: "shop",
             locale,
-            name: organization.name || organization.slug,
+            name: brandName,
             slug: organization.slug,
             description: organization.description,
-            logo: organization.logo,
+            logo: brandLogo,
             address: organization.address,
             phone: organization.phone,
             email: organization.email,

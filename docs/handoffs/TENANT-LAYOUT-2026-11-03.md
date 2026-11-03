@@ -44,5 +44,25 @@ About and Contact in the footer.
 
 ## Release
 
-Pending exact-source CI and RunFlare publication. No schema migration is needed.
+Final application source: `c794670161127cd962b5f7ca23107ac255913a24`.
+Exact-source CI passed:
+https://github.com/QComputer/shadcn-rtl/actions/runs/41709519946
+
+RunFlare source pin was saved and reread as that SHA. AutoPull remains off.
+The manual exact-commit GithubApp release was requested on 2026-11-03 at 23:39
+Asia/Tehran. By 2026-11-04 after 00:05 the provider still reported
+`Request Initialized`, its log viewer was empty, and service 87432 remained
+active v16, ready 1/1, zero restarts. More than forty public GET observations
+returned HTTP 200 with the old footer. This is a pending provider deployment,
+not a verified publication. No duplicate release request was submitted.
+
+Continue by checking this existing request and active version before attempting
+another release. Once a new version is ready, verify the live tenant logo,
+product query/results/destinations, About/Contact dialogs and minimal footer;
+then record live evidence. The pin alone is not runtime-source proof: saving
+variables restarts the existing image, and v16 can carry the newer pin value.
+Expected source hashes and local screenshots are in the external
+`hero-release/tenant-layout` artifact directory.
+
+No schema migration is needed. No production business data was changed.
 Inherited migration/provider artifacts in the shared checkout are excluded.

@@ -26,7 +26,7 @@ const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outli
 export function PremiumCartItems({ items, storefrontPath, busy, busyItemId, onQuantity, onRemove, compact = false }: Props) {
   if (!items.length) return <Card className="border-border bg-card text-muted-foreground px-5 py-8 text-center">سبد خرید خالی است.</Card>;
 
-  return <ul dir="rtl" lang="fa" className="divide-y divide-stone-200/80" aria-label="اقلام سبد خرید">
+  return <ul dir="rtl" lang="fa" className="divide-y divide-border/80" aria-label="اقلام سبد خرید">
     {items.map(item => {
       const image = checkoutItemImage(item);
       const isBusy = busy || busyItemId === item.id;
@@ -48,9 +48,9 @@ export function PremiumCartItems({ items, storefrontPath, busy, busyItemId, onQu
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-1.5">
-              {item.variant.product.brand && <p className="truncate text-[11px] font-medium text-stone-500">{item.variant.product.brand}</p>}
+              {item.variant.product.brand && <p className="truncate text-[11px] font-medium text-muted-foreground">{item.variant.product.brand}</p>}
               <h3 className="text-foreground text-sm font-semibold leading-6">{productHref ? <a href={productHref} className={`${focus} rounded-sm underline-offset-4 hover:underline`}>{item.variant.product.name}</a> : item.variant.product.name}</h3>
-              {item.variant.name && <p className="text-xs text-stone-600">{item.variant.name}</p>}
+              {item.variant.name && <p className="text-xs text-muted-foreground">{item.variant.name}</p>}
             </div>
               {!compact && <details className="relative shrink-0 text-xs text-muted-foreground">
               <summary className={`${focus} flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-lg px-2 hover:bg-muted`}><Trash2 aria-hidden="true" className="size-4" /><span>حذف</span></summary>
@@ -60,15 +60,15 @@ export function PremiumCartItems({ items, storefrontPath, busy, busyItemId, onQu
               </Card>
             </details>}
           </div>
-          {item.variant.options?.length ? <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-stone-500" aria-label="گزینه‌های انتخاب‌شده">{item.variant.options.map((option, index) => <li key={`${option.key ?? option.label ?? "option"}-${index}`}>{checkoutOptionLabel(option)}</li>)}</ul> : null}
-          {item.variant.sku && <p className="mt-1.5 text-[11px] text-stone-500">شناسه کالا: <bdi dir="ltr" className="font-mono">{item.variant.sku}</bdi></p>}
+          {item.variant.options?.length ? <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground" aria-label="گزینه‌های انتخاب‌شده">{item.variant.options.map((option, index) => <li key={`${option.key ?? option.label ?? "option"}-${index}`}>{checkoutOptionLabel(option)}</li>)}</ul> : null}
+          {item.variant.sku && <p className="mt-1.5 text-[11px] text-muted-foreground">شناسه کالا: <bdi dir="ltr" className="font-mono">{item.variant.sku}</bdi></p>}
           <p className={`text-muted-foreground mt-2 text-[11px] ${!orderable ? "font-medium text-amber-700 dark:text-amber-400" : ""}`} role="status">{availability}</p>
           <div className="mt-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
             <div className="text-muted-foreground space-y-1 text-xs"><p>قیمت واحد: <span className="text-foreground font-medium">{checkoutMoney(item.unitPrice)}</span></p><p>جمع این کالا: <span className="text-foreground font-semibold">{checkoutMoney(checkoutItemTotal(item))}</span></p></div>
             {!compact && <div className="flex items-center gap-2" aria-label={`تعداد ${item.variant.product.name}`}>
-              <button type="button" aria-label={`افزایش تعداد ${item.variant.product.name}`} disabled={isBusy || !orderable || !checkoutQuantityValid(item.quantity + 1, item.availability?.maxQuantity ?? null)} onClick={() => onQuantity(item, item.quantity + 1)} className={`${focus} flex size-11 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-800 transition-colors hover:border-stone-400 disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none`}><Plus aria-hidden="true" className="size-4" /></button>
+              <button type="button" aria-label={`افزایش تعداد ${item.variant.product.name}`} disabled={isBusy || !orderable || !checkoutQuantityValid(item.quantity + 1, item.availability?.maxQuantity ?? null)} onClick={() => onQuantity(item, item.quantity + 1)} className={`${focus} flex size-11 items-center justify-center rounded-xl border border-border bg-card text-foreground transition-colors hover:border-ring disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none`}><Plus aria-hidden="true" className="size-4" /></button>
               <span aria-live="polite" aria-atomic="true" className="min-w-8 text-center text-sm font-semibold tabular-nums">{new Intl.NumberFormat("fa-IR").format(item.quantity)}</span>
-              <button type="button" aria-label={`کاهش تعداد ${item.variant.product.name}`} disabled={isBusy || item.quantity <= 1} onClick={() => onQuantity(item, item.quantity - 1)} className={`${focus} flex size-11 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-800 transition-colors hover:border-stone-400 disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none`}><Minus aria-hidden="true" className="size-4" /></button>
+              <button type="button" aria-label={`کاهش تعداد ${item.variant.product.name}`} disabled={isBusy || item.quantity <= 1} onClick={() => onQuantity(item, item.quantity - 1)} className={`${focus} flex size-11 items-center justify-center rounded-xl border border-border bg-card text-foreground transition-colors hover:border-ring disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none`}><Minus aria-hidden="true" className="size-4" /></button>
             </div>}
           </div>
         </div>

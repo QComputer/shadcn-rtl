@@ -75,7 +75,7 @@ export function FavoriteButton({ organization, productId, initialSaved, favorite
   return <span className="relative inline-flex"><button type="button" onClick={() => void toggle()} disabled={!favoritesAvailable || !configured || pending}
     aria-label={saved ? "حذف از علاقه‌مندی‌ها" : "افزودن به علاقه‌مندی‌ها"} aria-pressed={saved}
     title={favoritesAvailable ? undefined : "علاقه‌مندی‌ها در دسترس نیست"}
-    className="grid size-10 shrink-0 place-items-center rounded-full border border-stone-200/80 bg-white/90 text-stone-700 shadow-sm backdrop-blur transition hover:border-rose-200 hover:text-rose-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-700 disabled:cursor-not-allowed disabled:opacity-50">
-    {pending ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> : <Heart aria-hidden="true" className={`size-[18px] ${saved ? "fill-rose-600 text-rose-600" : ""}`} />}
-  </button>{error && <span role="alert" className="absolute end-0 top-full z-20 mt-2 w-56 rounded-lg border bg-white p-2 text-xs text-red-700 shadow">{error}</span>}</span>;
+    className="grid size-10 shrink-0 place-items-center rounded-full border border-border/80 bg-card/90 text-foreground shadow-sm backdrop-blur transition hover:border-rose-300 hover:text-rose-700 dark:hover:border-rose-500 dark:hover:text-rose-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50">
+    {pending ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> : <Heart aria-hidden="true" className={`size-[18px] ${saved ? "fill-rose-600 text-rose-600 dark:fill-rose-400 dark:text-rose-400" : ""}`} />}
+  </button>{error && <span role="alert" className="absolute end-0 top-full z-20 mt-2 w-56 rounded-lg border border-border bg-popover p-2 text-xs text-destructive shadow">{error}</span>}</span>;
 }

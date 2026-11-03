@@ -51,4 +51,23 @@ The helper passed a disposable-database test with a prior baseline migration,
 then a second run with no pending migrations. Expected new migration checksum:
 `67dc08b7a3dc91b54f747acd9d77f35a8fe8600a1a974ebd7da80cb901044bbb`.
 
-Production publication evidence will be recorded after release verification.
+The migration was deployed to verified RunFlare maindb service 87429 using the
+existing app service 87432 runtime configuration. Database identity, writable
+primary status, completed Prisma ledger row, exact checksum and nullable text
+column were independently reread. Initial feature source 7a84614 was published
+as v14. Final publication evidence will be recorded after release verification.
+
+## Dark surface corrections
+
+Owner feedback expanded the same visual work to RelatedProducts, the Retail
+cart drawer, quantity controls, product gallery, zoom dialog, thumbnail strip,
+favorite controls and product detail secondary text. These now use existing
+semantic theme tokens, including primary-colored selected gallery thumbnails
+and theme-aware scrollbar/focus treatment. Original image pixels are preserved.
+Cart/checkout logic, favorite persistence and product selection are unchanged.
+
+Scoped ESLint and 17 existing product-detail/checkout tests passed. Real Chrome
+with the actual components and a synthetic GET-only cart verified dark and
+light surface colors, charcoal theme colors, scoped primary inside the drawer
+and zoom dialog, and gallery navigation. The final default preview also uses
+the actual global light/dark theme tokens, rather than approximated local colors.

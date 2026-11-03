@@ -64,7 +64,7 @@ function Gallery({ images, alt }: PremiumProductGalleryProps) {
 
   if (!activeImage) {
     return (
-      <div className="flex aspect-[4/5] w-full items-center justify-center rounded-3xl border border-stone-200/80 bg-stone-50 px-6 text-center text-sm text-stone-500">
+      <div className="flex aspect-[4/5] w-full items-center justify-center rounded-3xl border border-border/80 bg-muted px-6 text-center text-sm text-muted-foreground">
         تصویری برای این محصول ثبت نشده است
       </div>
     )
@@ -79,9 +79,9 @@ function Gallery({ images, alt }: PremiumProductGalleryProps) {
             aria-label="بزرگ‌نمایی تصویر محصول"
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
-            className="group relative block aspect-[4/5] w-full overflow-hidden rounded-3xl border border-stone-200/80 bg-[#f7f6f3] text-right shadow-[0_18px_50px_-38px_rgba(28,25,23,0.35)] outline-none transition-[border-color,box-shadow] hover:border-stone-300 focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 motion-reduce:transition-none"
+            className="group relative block aspect-[4/5] w-full overflow-hidden rounded-3xl border border-border/80 bg-card text-right shadow-[0_18px_50px_-38px_rgba(28,25,23,0.35)] outline-none transition-[border-color,box-shadow] hover:border-border focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
           >
-            {!loaded && <div className="absolute inset-0 animate-pulse bg-stone-200/60 motion-reduce:animate-none" aria-hidden="true" />}
+            {!loaded && <div className="absolute inset-0 animate-pulse bg-muted/60 motion-reduce:animate-none" aria-hidden="true" />}
             <Image
               key={activeImage}
               src={activeImage}
@@ -97,12 +97,12 @@ function Gallery({ images, alt }: PremiumProductGalleryProps) {
                 loaded ? "opacity-100" : "opacity-0",
               )}
             />
-            <span className="absolute bottom-4 left-4 inline-flex h-11 items-center gap-2 rounded-full border border-white/80 bg-white/90 px-3.5 text-xs font-medium text-stone-700 shadow-sm backdrop-blur transition-colors group-hover:bg-white motion-reduce:transition-none">
+            <span className="absolute bottom-4 left-4 inline-flex h-11 items-center gap-2 rounded-full border border-border/80 bg-card/90 px-3.5 text-xs font-medium text-foreground shadow-sm backdrop-blur transition-colors group-hover:bg-card motion-reduce:transition-none">
               <Maximize2 className="size-4" aria-hidden="true" />
               بزرگ‌نمایی
             </span>
             {multiple && (
-              <span className="absolute right-4 top-4 rounded-full bg-white/85 px-3 py-1.5 text-xs tabular-nums text-stone-600 shadow-sm backdrop-blur">
+              <span className="absolute right-4 top-4 rounded-full bg-card/85 px-3 py-1.5 text-xs tabular-nums text-muted-foreground shadow-sm backdrop-blur">
                 {activeIndex + 1} / {safeImages.length}
               </span>
             )}
@@ -111,7 +111,7 @@ function Gallery({ images, alt }: PremiumProductGalleryProps) {
 
         {multiple && (
           <div className="flex items-center gap-3" aria-label="نماهای محصول">
-            <div className="flex min-w-0 flex-1 gap-2.5 overflow-x-auto py-1">
+            <div className="flex min-w-0 flex-1 gap-2.5 overflow-x-auto py-1 [scrollbar-color:var(--border)_transparent] [scrollbar-width:thin] dark:[color-scheme:dark]">
               {safeImages.map((src, index) => (
                 <button
                   key={`${src}-${index}`}
@@ -120,8 +120,8 @@ function Gallery({ images, alt }: PremiumProductGalleryProps) {
                   aria-pressed={activeIndex === index}
                   onClick={() => select(index)}
                   className={cn(
-                    "relative size-[68px] shrink-0 overflow-hidden rounded-2xl border bg-[#f7f6f3] p-1 transition-[border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 motion-reduce:transition-none sm:size-[76px]",
-                    activeIndex === index ? "border-stone-800 ring-1 ring-stone-800" : "border-stone-200 hover:border-stone-400",
+                    "relative size-[68px] shrink-0 overflow-hidden rounded-2xl border bg-card p-1 transition-[border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none sm:size-[76px]",
+                    activeIndex === index ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary",
                   )}
                 >
                   <Image src={src} alt="" fill unoptimized sizes="76px" className="object-contain p-1.5" />
@@ -129,10 +129,10 @@ function Gallery({ images, alt }: PremiumProductGalleryProps) {
               ))}
             </div>
             <div className="flex shrink-0 gap-2">
-              <button type="button" aria-label="نمای قبلی" onClick={previous} className="grid size-11 place-items-center rounded-full border border-stone-200 bg-white text-stone-700 transition-colors hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 motion-reduce:transition-none">
+              <button type="button" aria-label="نمای قبلی" onClick={previous} className="grid size-11 place-items-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none">
                 <ChevronRight className="size-5" aria-hidden="true" />
               </button>
-              <button type="button" aria-label="نمای بعدی" onClick={next} className="grid size-11 place-items-center rounded-full border border-stone-200 bg-white text-stone-700 transition-colors hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 motion-reduce:transition-none">
+              <button type="button" aria-label="نمای بعدی" onClick={next} className="grid size-11 place-items-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none">
                 <ChevronLeft className="size-5" aria-hidden="true" />
               </button>
             </div>
@@ -143,17 +143,17 @@ function Gallery({ images, alt }: PremiumProductGalleryProps) {
       <DialogContent
         dir="rtl"
         aria-describedby={undefined}
-        className="flex h-[min(92dvh,900px)] w-[min(96vw,1100px)] max-w-none flex-col gap-0 border-0 bg-[#f7f6f3] p-3 shadow-2xl sm:rounded-3xl sm:p-5 [&>button]:hidden"
+        className="flex h-[min(92dvh,900px)] w-[min(96vw,1100px)] max-w-none flex-col gap-0 border-0 bg-card p-3 shadow-2xl sm:rounded-3xl sm:p-5 [&>button]:hidden"
         onKeyDown={onGalleryKeyDown}
       >
         <DialogTitle className="sr-only">نمایش تصویر محصول</DialogTitle>
-        <div className="absolute left-4 top-4 z-20"><DialogClose asChild><button type="button" aria-label="بستن تصویر" className="grid size-11 place-items-center rounded-full bg-white text-stone-800 shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-stone-700"><X className="size-5" aria-hidden="true" /></button></DialogClose></div>
+        <div className="absolute left-4 top-4 z-20"><DialogClose asChild><button type="button" aria-label="بستن تصویر" className="grid size-11 place-items-center rounded-full bg-card text-foreground shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"><X className="size-5" aria-hidden="true" /></button></DialogClose></div>
         <div
           className="relative min-h-0 flex-1 overflow-hidden rounded-2xl"
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
         >
-          {!loaded && <div className="absolute inset-0 animate-pulse bg-stone-200/60 motion-reduce:animate-none" aria-hidden="true" />}
+          {!loaded && <div className="absolute inset-0 animate-pulse bg-muted/60 motion-reduce:animate-none" aria-hidden="true" />}
           <Image
             key={activeImage}
             src={activeImage}
@@ -168,11 +168,11 @@ function Gallery({ images, alt }: PremiumProductGalleryProps) {
         </div>
         {multiple && (
           <div className="flex items-center justify-center gap-3 pt-3">
-            <button type="button" aria-label="نمای قبلی" onClick={previous} className="grid size-11 place-items-center rounded-full border border-stone-200 bg-white text-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500">
+            <button type="button" aria-label="نمای قبلی" onClick={previous} className="grid size-11 place-items-center rounded-full border border-border bg-card text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <ChevronRight className="size-5" aria-hidden="true" />
             </button>
-            <span className="min-w-16 text-center text-sm tabular-nums text-stone-600">{activeIndex + 1} / {safeImages.length}</span>
-            <button type="button" aria-label="نمای بعدی" onClick={next} className="grid size-11 place-items-center rounded-full border border-stone-200 bg-white text-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500">
+            <span className="min-w-16 text-center text-sm tabular-nums text-muted-foreground">{activeIndex + 1} / {safeImages.length}</span>
+            <button type="button" aria-label="نمای بعدی" onClick={next} className="grid size-11 place-items-center rounded-full border border-border bg-card text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <ChevronLeft className="size-5" aria-hidden="true" />
             </button>
           </div>

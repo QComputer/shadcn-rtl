@@ -55,7 +55,9 @@ The migration was deployed to verified RunFlare maindb service 87429 using the
 existing app service 87432 runtime configuration. Database identity, writable
 primary status, completed Prisma ledger row, exact checksum and nullable text
 column were independently reread. Initial feature source 7a84614 was published
-as v14. Final publication evidence will be recorded after release verification.
+as v14. Final application source `48f01ea3307379b252df8e2ccba95264b35dd52e`
+was published as v16 on 2026-11-03. RunFlare reported active, ready 1/1,
+zero restarts. The source pin was saved and reread; CI run 41703050805 passed.
 
 ## Dark surface corrections
 
@@ -71,3 +73,19 @@ with the actual components and a synthetic GET-only cart verified dark and
 light surface colors, charcoal theme colors, scoped primary inside the drawer
 and zoom dialog, and gallery navigation. The final default preview also uses
 the actual global light/dark theme tokens, rather than approximated local colors.
+
+## Final live verification
+
+Real Chrome on v16 confirmed the gallery frame, thumbnail and favorite control
+follow the existing charcoal theme. Zoom opened successfully, using the same
+dark card surface and scoped primary `#40997a`. The populated cart drawer
+retained its four existing items and used a dark background with the same scoped
+primary. No cart quantities, favorites, merchant color or hero data were changed.
+The related-products section and cards were independently checked in the dark
+theme and had dark computed backgrounds. All four public domain root HEAD
+requests returned HTTP 200 after release. This is public desktop Chrome evidence;
+physical Android acceptance remains unverified.
+
+Evidence and screenshots are in the external `hero-release/brand-color`
+artifact directory. Header logo/search and a minimal localized tenant footer
+are the next proposed layout work; they are not part of this release.

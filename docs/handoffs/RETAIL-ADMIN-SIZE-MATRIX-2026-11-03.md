@@ -1,6 +1,6 @@
 # Retail admin matrix and hero review
 
-Implementation is ready for interactive browser acceptance. It is not published.
+Local interactive browser acceptance passed after the Browser connection recovered. Production publication is pending.
 
 ## Changes
 
@@ -20,7 +20,7 @@ Implementation is ready for interactive browser acceptance. It is not published.
 
 ## Remaining acceptance and release
 
-The Browser tool repeatedly timed out while claiming the user-provided Chrome tab and while opening the local editor. No interactive browser PASS or production release is claimed.
+The Browser connection recovered. Real Chrome with the actual editor and real local PostgreSQL-backed fixture APIs verified Persian inventory/price save and reload, stale-preview invalidation, half-size generation and automatic table reload, individual details, and first-save creation of six new-product variants. A 390px iframe preview visually confirmed that horizontal table scrolling stays inside the table. Fixture navigation/image adapters remain separate from full authenticated Next.js acceptance. No physical Android test or production release is claimed here.
 
 1. Restore Browser connection and inspect the actual editor at http://127.0.0.1:4324/edit and /new. The external local harness serves the current components with real database-backed catalog APIs; Next navigation and image adapters are fixture-only.
 2. Check table overflow, Persian input, details, dirty guard, save/reopen, stale-preview invalidation and post-generation reload. Check Hero Studio saved versus published preview at desktop/mobile sizes.

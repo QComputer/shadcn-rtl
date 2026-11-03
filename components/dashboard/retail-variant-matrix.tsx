@@ -50,9 +50,9 @@ export default function RetailVariantMatrix({ variants, definitions, locale, bas
   const editor = (index: number, variant: RetailVariantMatrixDraft, color: string, size: string) => {
     const label = `${color}, ${t.size} ${formatRetailSize(size, locale)}`;
     return <div className="flex min-w-[9.5rem] flex-col gap-1.5 rounded-md border border-border bg-card p-2 text-card-foreground" key={`${variant.id ?? index}:${index}`}>
-      <label className="sr-only" htmlFor={`retail-inventory-${index}`}>{`${t.inventory} · ${label}`}</label>
+      <label className="text-[11px] text-muted-foreground" htmlFor={`retail-inventory-${index}`}>{t.inventory}</label>
       <input id={`retail-inventory-${index}`} aria-label={`${t.inventory} · ${label}`} className="h-8 w-full rounded border border-input bg-background px-2 text-sm tabular-nums" type="text" inputMode="numeric" value={formatRetailSize(variant.inventory, locale)} disabled={disabled} onChange={event => onUpdate(index, { inventory: inputNumber(event.target.value) })} />
-      <label className="sr-only" htmlFor={`retail-price-${index}`}>{`${t.price} · ${label} (${t.inherit}: ${money})`}</label>
+      <label className="text-[11px] text-muted-foreground" htmlFor={`retail-price-${index}`}>{t.price}</label>
       <input id={`retail-price-${index}`} aria-label={`${t.price} · ${label} (${t.inherit}: ${money})`} placeholder={t.base} title={`${t.inherit}: ${money}`} className="h-8 w-full rounded border border-input bg-background px-2 text-sm tabular-nums placeholder:text-muted-foreground" type="text" inputMode="numeric" value={formatRetailSize(variant.price, locale)} disabled={disabled} onChange={event => onUpdate(index, { price: inputNumber(event.target.value) })} />
       <div className="flex items-center justify-between gap-1">
         <span className={`text-[11px] ${variant.manuallyUnavailable ? "text-destructive" : "text-muted-foreground"}`}>{variant.manuallyUnavailable ? t.unavailable : t.available}</span>

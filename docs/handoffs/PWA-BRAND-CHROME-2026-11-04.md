@@ -38,8 +38,12 @@ color are unchanged. No migration or production data mutation is needed.
 
 ## Publication continuation
 
-Source/CI identifiers will be recorded after commit. Publication is not yet
-performed: Browser inventory sees Chrome 3 and RunFlare tab 561100727, but
+Application source: `0cf22992660c80b645e2b444d7dc549fd9582e08`.
+Exact-source CI passed:
+https://github.com/QComputer/shadcn-rtl/actions/runs/41746502083
+
+Publication is not yet performed: Browser inventory sees the RunFlare tab
+561100727, but
 tab read/control/screenshot/CDP calls fail in the browser SDK with an internal
 undefined timeoutMs error. The documented browser troubleshooting path and
 alternate documented APIs were checked; no raw browser transport was used.
@@ -47,6 +51,12 @@ The installed RunFlare CLI's explicit-selection read-only event command was
 tried after rejecting cached-project reuse. Login was expired; its email prompt
 was aborted. No credentials were entered, no cached deployment was run, and no
 provider variables/release request were changed for this PWA patch.
+After the owner supplied Browser/Computer and exact tab mentions, the documented
+direct tab APIs and a fresh same-profile Browser binding were checked. The core
+inventory changed from browser 3 to 4, but tab actions still failed. The CUA
+native window inventory was unavailable (`cua.listWindows` is not a function).
+No separate native automation runtime or raw transport was used to bypass the
+mandated CUA path. Deployment therefore remains blocked by UI tool access.
 
 Once browser control works: verify the active release, pin the exact green-CI
 source SHA, reread the pin, and deploy that commit using the existing Git UI.

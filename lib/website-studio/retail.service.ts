@@ -103,7 +103,7 @@ export class RetailWebsiteService {
         const content = retailContentSchema.parse(row.content);
         if (!content.hero) throw new ApiError(422, "ابتدا تنظیمات هیرو را ذخیره کنید.");
         const media = await this.media(tx, organizationId, org.slug);
-        if ([content.hero.desktopImageId, content.hero.mobileImageId].filter(Boolean).some(id => !media.some(image => image.id === id))) throw new ApiError(422, "تصویر هیرو در دسترس نیست یا متعلق به این فروشگاه نیست.");
+        if ([content.hero.desktopImageId, content.hero.mobileImageId, content.hero.darkDesktopImageId, content.hero.darkMobileImageId].filter(Boolean).some(id => !media.some(image => image.id === id))) throw new ApiError(422, "تصویر هیرو در دسترس نیست یا متعلق به این فروشگاه نیست.");
         if (content.hero.enabled && content.hero.mode === "PRODUCTS") {
           const products = await tx.product.findMany({ where: { id: { in: content.hero.productIds }, organizationId, isActive: true, deletedAt: null, category: { organizationId, isActive: true, deletedAt: null } }, select: { id: true } });
           if (products.length !== content.hero.productIds.length) throw new ApiError(422, "محصولات منتخب باید منتشرشده و متعلق به همین فروشگاه باشند.");

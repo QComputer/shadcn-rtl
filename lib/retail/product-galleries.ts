@@ -15,11 +15,24 @@ const galleryColorInputSchema = z
   })
   .strict();
 
+const appearanceImagePairSchema = z.object({
+  lightImageId: galleryIdSchema.nullable().optional(),
+  darkImageId: galleryIdSchema.nullable().optional(),
+}).strict();
+const appearanceGroupSchema = appearanceImagePairSchema.extend({
+  definitionId: galleryIdSchema,
+  value: z.string().min(1).max(1000),
+}).strict();
+const variantAppearanceSchema = appearanceImagePairSchema.extend({ variantId: galleryIdSchema }).strict();
+
 export const gallerySettingsInputSchema = z
   .object({
     version: z.literal(1),
     productImageIds: uniqueImageIdsSchema,
     colors: z.array(galleryColorInputSchema).max(100),
+    appearance: appearanceImagePairSchema.optional(),
+    appearanceGroups: z.array(appearanceGroupSchema).max(100).optional(),
+    variantAppearances: z.array(variantAppearanceSchema).max(100).optional(),
   })
   .strict()
   .superRefine((settings, context) => {
@@ -35,6 +48,17 @@ export const gallerySettingsInputSchema = z
       }
       seenGroups.add(key);
     });
+    const groupKeys = new Set<string>();
+    settings.appearanceGroups?.forEach((group, index) => {
+      const key = colorGroupKey(group.definitionId, group.value);
+      if (groupKeys.has(key)) context.addIssue({ code: "custom", path: ["appearanceGroups", index], message: "Each appearance option group can be configured only once." });
+      groupKeys.add(key);
+    });
+    const variantIds = new Set<string>();
+    settings.variantAppearances?.forEach((appearance, index) => {
+      if (variantIds.has(appearance.variantId)) context.addIssue({ code: "custom", path: ["variantAppearances", index], message: "Each variant appearance can be configured only once." });
+      variantIds.add(appearance.variantId);
+    });
   });
 
 const storedGallerySettingsSchema = gallerySettingsInputSchema
@@ -47,6 +71,8 @@ const storedGallerySettingsSchema = gallerySettingsInputSchema
   });
 
 export type GallerySettingsInput = z.infer<typeof gallerySettingsInputSchema>;
+
+export type AppearanceImagePair = z.infer<typeof appearanceImagePairSchema>;
 
 export type GallerySettings = GallerySettingsInput & {
   overrides: string[];
@@ -90,6 +116,12 @@ export function orderedImages<T extends { id: string }>(images: T[], ids: string
 /** Encode a color option pair without ambiguous delimiter collisions. */
 export function colorGroupKey(definitionId: string, value: string): string {
   return JSON.stringify([definitionId, value]);
+}
+
+/** Detect size semantics from tenant-defined option keys and labels. */
+export function isRetailSizeDefinition(key: string, label: string): boolean {
+  const normalized = `${key} ${label}`.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase().replace(/[_-]+/g, " ");
+  return /(?:^|\s)size(?:$|\s)|سایز|اندازه|مقاس/.test(normalized);
 }
 
 /** Infer a shared product gallery and preserve every differing variant as an override. */

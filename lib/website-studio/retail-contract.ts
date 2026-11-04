@@ -41,7 +41,7 @@ export function isEligibleRetailWebsiteMedia(image: WebsiteMedia): boolean {
 }
 
 export function referencedWebsiteImages(content: RetailContent) {
-  return [...new Set([...content.sections.flatMap((s) => s.kind === "GALLERY" ? s.imageIds : "imageId" in s && s.imageId ? [s.imageId] : []), ...[content.hero?.desktopImageId, content.hero?.mobileImageId].filter(Boolean)])];
+  return [...new Set([...content.sections.flatMap((s) => s.kind === "GALLERY" ? s.imageIds : "imageId" in s && s.imageId ? [s.imageId] : []), ...[content.hero?.desktopImageId, content.hero?.mobileImageId, content.hero?.darkDesktopImageId, content.hero?.darkMobileImageId].filter(Boolean)])];
 }
 export function initialRetailContent(org: { name: string; description: string | null; phone: string | null; address: string | null; email: string | null }): RetailContent {
   return { title: org.name, sections: [

@@ -1,3 +1,4 @@
+import { resolveProductCategoryImage } from "@/lib/product-category-image.server";
 import { NextRequest, NextResponse } from "next/server";
 import { productCategoryService } from "@/lib/services/category.service";
 import { createProductCategorySchema } from "@/lib/validators";
@@ -53,7 +54,8 @@ export async function POST(request: NextRequest) {
       body.organizationId ?? session.user.organizationId,
     );
     await requireActiveOrganizationCapability({ organizationId, capability: "SHOP" });
-    const categoryData = createProductCategorySchema.parse(body);
+    const [image, darkImage] = await Promise.all([resolveProductCategoryImage(organizationId, body.imageId), resolveProductCategoryImage(organizationId, body.darkImageId)]);
+    const categoryData = createProductCategorySchema.parse({ ...body, ...(image !== undefined ? { image } : {}), ...(darkImage !== undefined ? { darkImage } : {}) });
     const category = await productCategoryService.create(organizationId, categoryData);
     return NextResponse.json(category, { status: 201 });
   } catch (error) {

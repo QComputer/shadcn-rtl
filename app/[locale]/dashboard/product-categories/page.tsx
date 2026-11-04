@@ -1,4 +1,6 @@
 "use client"
+import Image from "next/image";
+import { CategoryImageField } from "@/components/dashboard/category-image-field";
 import { appFetch } from "@/lib/app-base-path";
 
 import { useState, useEffect, use } from "react"
@@ -59,6 +61,8 @@ interface Category {
   slug: string | null
   organizationSlug: string
   description: string | null
+  image: string | null
+  darkImage: string | null
   isActive: boolean
   sortOrder: number
   _count?: {
@@ -91,6 +95,12 @@ export default function ProductCategoriesPage({
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [saving, setSaving] = useState(false)
+  const [imageId, setImageId] = useState<string | null | undefined>(undefined)
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [imageUploading, setImageUploading] = useState(false)
+  const [darkImageId, setDarkImageId] = useState<string | null | undefined>(undefined)
+  const [darkImageUrl, setDarkImageUrl] = useState<string | null>(null)
+  const [darkImageUploading, setDarkImageUploading] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
@@ -161,7 +171,12 @@ export default function ProductCategoriesPage({
 
   // Open create dialog
   const openCreateDialog = () => {
+    setError(null)
     setEditingCategory(null)
+    setDarkImageId(undefined)
+    setImageId(undefined)
+    setImageUrl(null)
+    setDarkImageUrl(null)
     setFormData({
       name: "",
       slug: "",
@@ -173,7 +188,12 @@ export default function ProductCategoriesPage({
 
   // Open edit dialog
   const openEditDialog = (category: Category) => {
+    setError(null)
     setEditingCategory(category)
+    setDarkImageId(undefined)
+    setImageId(undefined)
+    setImageUrl(category.image)
+    setDarkImageUrl(category.darkImage)
     setFormData({
       name: category.name,
       slug: category.slug || "",
@@ -186,6 +206,7 @@ export default function ProductCategoriesPage({
   // Handle form submit
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (saving || imageUploading || darkImageUploading) return
     
     if (!formData.name.trim()) {
       setError(t("errors.required_fields") || "Name is required")
@@ -206,6 +227,8 @@ export default function ProductCategoriesPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
+          imageId,
+          darkImageId,
           slug: formData.slug.trim() || undefined,
         }),
       })
@@ -215,7 +238,8 @@ export default function ProductCategoriesPage({
         throw new Error(data.error || "Failed to save category")
       }
       
-      const savedCategory = await response.json()
+      const payload = await response.json()
+      const savedCategory: Category = payload.category ?? payload
       
       if (editingCategory) {
         setCategories(prev => 
@@ -360,6 +384,7 @@ export default function ProductCategoriesPage({
                     <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
                   </div>
                   
+                  {category.image && <Image src={category.image} alt="" width={56} height={56} unoptimized className="size-14 shrink-0 rounded-lg border object-cover" />}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium truncate">{category.name}</h3>
@@ -416,8 +441,8 @@ export default function ProductCategoriesPage({
       )}
 
       {/* Create/Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!saving && !imageUploading && !darkImageUploading) setDialogOpen(open) }}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingCategory 
@@ -432,6 +457,9 @@ export default function ProductCategoriesPage({
           </DialogHeader>
           
           <form onSubmit={handleFormSubmit} className="space-y-4">
+            <CategoryImageField title={locale === "fa" ? "تصویر تم روشن" : locale === "ar" ? "صورة الوضع الفاتح" : "Light theme image"} locale={locale === "en" || locale === "ar" ? locale : "fa"} imageUrl={imageUrl} imageId={imageId} disabled={saving || imageUploading || darkImageUploading} onChange={(id, url) => { setImageId(id); setImageUrl(url) }} onUploadingChange={setImageUploading} />
+            <CategoryImageField title={locale === "fa" ? "تصویر تم تاریک" : locale === "ar" ? "صورة الوضع الداكن" : "Dark theme image"} locale={locale === "en" || locale === "ar" ? locale : "fa"} imageUrl={darkImageUrl} imageId={darkImageId} disabled={saving || imageUploading || darkImageUploading} onChange={(id, url) => { setDarkImageId(id); setDarkImageUrl(url) }} onUploadingChange={setDarkImageUploading} />
+            {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
             <div className="space-y-2">
               <Label htmlFor="name">{t("product.name") || "Name"} *</Label>
               <Input
@@ -474,11 +502,11 @@ export default function ProductCategoriesPage({
                 type="button" 
                 variant="outline" 
                 onClick={() => setDialogOpen(false)}
-                disabled={saving}
+                disabled={saving || imageUploading || darkImageUploading}
               >
                 {t("common.cancel") || "Cancel"}
               </Button>
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving || imageUploading || darkImageUploading}>
                 {saving ? t("common.saving") || "Saving..." : t("common.save") || "Save"}
               </Button>
             </DialogFooter>

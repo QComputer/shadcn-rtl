@@ -1,6 +1,6 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
-import { gallerySettingsInputSchema, readGallerySettings, orderedImages, type GallerySettingsInput } from "@/lib/retail/product-galleries";
+import { gallerySettingsInputSchema, isRetailSizeDefinition, readGallerySettings, orderedImages, type GallerySettingsInput } from "@/lib/retail/product-galleries";
 
 import { Prisma, RetailAttributeScope, RetailAttributeValueType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -105,8 +105,9 @@ export const retailProductUpdateSchema = z.object({
   if (input.variantUpdates && new Set(input.variantUpdates.map((variant) => variant.id)).size !== input.variantUpdates.length) context.addIssue({ code: "custom", path: ["variantUpdates"], message: "A variant can be updated only once per request." });
 });
 
-export const retailCategoryCreateSchema = createProductCategorySchema.omit({ image: true }).strict();
-export const retailCategoryUpdateSchema = updateProductCategorySchema.omit({ image: true }).strict();
+const retailCategoryImageInput = z.string().trim().min(1).max(64).nullable().optional();
+export const retailCategoryCreateSchema = createProductCategorySchema.omit({ image: true, darkImage: true }).extend({ imageId: retailCategoryImageInput, darkImageId: retailCategoryImageInput }).strict();
+export const retailCategoryUpdateSchema = updateProductCategorySchema.omit({ image: true, darkImage: true }).extend({ imageId: retailCategoryImageInput, darkImageId: retailCategoryImageInput }).strict();
 export const retailDefinitionSchema = retailAttributeDefinitionInputSchema;
 
 export const merchantProductSelect = {
@@ -181,6 +182,27 @@ export function serializeMerchantProduct(product: MerchantProduct) {
   };
 }
 
+function referencedAppearanceImageIds(value: unknown) {
+  const settings = readGallerySettings(value);
+  return [...new Set([settings?.appearance?.lightImageId, settings?.appearance?.darkImageId,
+    ...(settings?.appearanceGroups ?? []).flatMap(group => [group.lightImageId, group.darkImageId]),
+    ...(settings?.variantAppearances ?? []).flatMap(pair => [pair.lightImageId, pair.darkImageId])].filter((id): id is string => Boolean(id)))];
+}
+
+async function serializeMerchantProductsWithAppearanceMedia(products: MerchantProduct[]) {
+  const imageIds = [...new Set(products.flatMap(product => referencedAppearanceImageIds(product.gallerySettings)))];
+  const images = imageIds.length ? await prisma.image.findMany({ where: { id: { in: imageIds }, organizationId: products[0]?.organizationId ?? "", access: "PUBLIC" }, select: { id: true, url: true } }) : [];
+  const appearanceMedia = new Map(images.map(image => [image.id, { id: image.id, url: image.url }]));
+  return products.map(product => ({
+    ...serializeMerchantProduct(product),
+    appearanceMedia: referencedAppearanceImageIds(product.gallerySettings).flatMap(id => appearanceMedia.has(id) ? [appearanceMedia.get(id)!] : []),
+  }));
+}
+
+async function serializeMerchantProductWithAppearanceMedia(product: MerchantProduct) {
+  return (await serializeMerchantProductsWithAppearanceMedia([product]))[0]!;
+}
+
 async function requireOwnedCategory(tx: Prisma.TransactionClient, organizationId: string, categoryId: string) {
   const category = await tx.productCategory.findFirst({
     where: { id: categoryId, organizationId, deletedAt: null, isActive: true },
@@ -210,7 +232,7 @@ async function saveGallerySettings(tx: Prisma.TransactionClient, organizationId:
   settings: GallerySettingsInput, modes: Map<string, "INHERIT" | "OVERRIDE">) {
   const product = await tx.product.findFirstOrThrow({ where: { id: productId, organizationId },
     select: { gallerySettings: true, images: { select: { id: true } }, variants: { where: { deletedAt: null }, select: {
-      id: true, optionValues: { select: { definitionId: true, valueText: true, valueNumber: true, valueBoolean: true } },
+      id: true, optionValues: { select: { definitionId: true, valueText: true, valueNumber: true, valueBoolean: true, definition: { select: { organizationId: true, scope: true, key: true, label: true } } } },
       galleryImages: { orderBy: { sortOrder: "asc" }, select: { imageId: true } },
     } } } });
   if (product.images.length !== settings.productImageIds.length || product.images.some(image => !settings.productImageIds.includes(image.id))) {
@@ -229,6 +251,22 @@ async function saveGallerySettings(tx: Prisma.TransactionClient, organizationId:
     }
     await requireOwnedImages(tx, organizationId, color.imageIds);
   }
+  const appearanceImageIds = [settings.appearance?.lightImageId, settings.appearance?.darkImageId,
+    ...(settings.appearanceGroups ?? []).flatMap(group => [group.lightImageId, group.darkImageId]),
+    ...(settings.variantAppearances ?? []).flatMap(appearance => [appearance.lightImageId, appearance.darkImageId])]
+    .filter((id): id is string => Boolean(id));
+  await requireOwnedImages(tx, organizationId, [...new Set(appearanceImageIds)]);
+  for (const group of settings.appearanceGroups ?? []) {
+    const definition = await tx.retailAttributeDefinition.findFirst({ where: { id: group.definitionId, organizationId, scope: "VARIANT_OPTION", isActive: true }, select: { id: true, key: true, label: true, valueType: true, allowedValues: true } });
+    if (!definition || isRetailSizeDefinition(definition.key, definition.label)) throw new ApiError(400, "Appearance groups must use a non-size variant option belonging to this store.");
+    try {
+      const allowedValues = Array.isArray(definition.allowedValues) ? definition.allowedValues.filter((value): value is string => typeof value === "string") : null;
+      validateRetailAttributeValue({ valueType: definition.valueType, allowedValues }, definition.valueType === "NUMBER" ? Number(group.value) : definition.valueType === "BOOLEAN" ? group.value === "true" : group.value);
+    } catch { throw new ApiError(400, "Appearance value is not valid for this store attribute."); }
+    if (!product.variants.some(variant => variant.optionValues.some(option => option.definitionId === group.definitionId && String(assignmentValue(option)) === group.value))) throw new ApiError(400, "Appearance group must match a current product option.");
+  }
+  const appearanceVariantIds = (settings.variantAppearances ?? []).map(appearance => appearance.variantId);
+  if (appearanceVariantIds.some(id => !product.variants.some(variant => variant.id === id))) throw new ApiError(400, "Appearance variant must belong to this product.");
   const previous = readGallerySettings(product.gallerySettings);
   const overrides = new Set(previous?.overrides ?? []);
   // A settings-only update on a legacy API must preserve all existing variant
@@ -376,14 +414,14 @@ export async function listMerchantRetailProducts(input: {
     prisma.product.findMany({ where, orderBy: [{ updatedAt: "desc" }, { id: "asc" }], skip: (input.page - 1) * input.pageSize, take: input.pageSize, select: merchantProductSelect }),
     prisma.product.count({ where }),
   ]);
-  return { products: products.map(serializeMerchantProduct), pagination: { page: input.page, pageSize: input.pageSize, total, totalPages: Math.ceil(total / input.pageSize) } };
+  return { products: await serializeMerchantProductsWithAppearanceMedia(products), pagination: { page: input.page, pageSize: input.pageSize, total, totalPages: Math.ceil(total / input.pageSize) } };
 }
 
 export async function listMerchantRetailCategories(context: TenantContext) {
   return prisma.productCategory.findMany({
     where: { organizationId: context.organizationId, deletedAt: null },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }, { id: "asc" }],
-    select: { id: true, name: true, slug: true, description: true, isActive: true, sortOrder: true },
+    select: { id: true, name: true, slug: true, description: true, image: true, darkImage: true, isActive: true, sortOrder: true },
   });
 }
 
@@ -392,7 +430,11 @@ export async function createMerchantRetailCategory(context: TenantContext, data:
     const duplicate = await tx.productCategory.findFirst({ where: { organizationId: context.organizationId, deletedAt: null, name: { equals: data.name, mode: "insensitive" } }, select: { id: true } });
     if (duplicate) throw new ApiError(409, "A category with this name already exists in this store.");
     const slug = await buildUniqueDetailSlug(data.slug || data.name, async (candidate) => Boolean(await tx.productCategory.findFirst({ where: { organizationId: context.organizationId, deletedAt: null, slug: candidate }, select: { id: true } })));
-    return tx.productCategory.create({ data: { ...data, slug, organizationId: context.organizationId, organizationSlug: context.organizationSlug, isActive: true }, select: { id: true, name: true, slug: true, description: true, isActive: true, sortOrder: true } });
+    const { imageId, darkImageId, ...categoryData } = data;
+    const selected = await requireOwnedImages(tx, context.organizationId, [...new Set([imageId, darkImageId].filter((id): id is string => Boolean(id)))]);
+    const image = imageId ? selected.find(item => item.id === imageId) : undefined;
+    const darkImage = darkImageId ? selected.find(item => item.id === darkImageId) : undefined;
+    return tx.productCategory.create({ data: { ...categoryData, image: image?.url ?? null, darkImage: darkImage?.url ?? null, slug, organizationId: context.organizationId, organizationSlug: context.organizationSlug, isActive: true }, select: { id: true, name: true, slug: true, description: true, image: true, darkImage: true, isActive: true, sortOrder: true } });
   });
   revalidateRetailStorefront(context.organizationSlug);
   return category;
@@ -403,7 +445,11 @@ export async function updateMerchantRetailCategory(context: TenantContext, categ
     const existing = await tx.productCategory.findFirst({ where: { id: categoryId, organizationId: context.organizationId, deletedAt: null }, select: { id: true, name: true } });
     if (!existing) throw new ApiError(404, "Category not found.");
     const slug = data.slug || data.name ? await buildUniqueDetailSlug(data.slug || data.name || existing.name, async (candidate) => Boolean(await tx.productCategory.findFirst({ where: { organizationId: context.organizationId, deletedAt: null, id: { not: categoryId }, slug: candidate }, select: { id: true } }))) : undefined;
-    return tx.productCategory.update({ where: { id: categoryId }, data: { ...data, ...(slug ? { slug } : {}) }, select: { id: true, name: true, slug: true, description: true, isActive: true, sortOrder: true } });
+    const { imageId, darkImageId, ...categoryData } = data;
+    const selected = await requireOwnedImages(tx, context.organizationId, [...new Set([imageId, darkImageId].filter((id): id is string => Boolean(id)))]);
+    const image = imageId ? selected.find(item => item.id === imageId) : undefined;
+    const darkImage = darkImageId ? selected.find(item => item.id === darkImageId) : undefined;
+    return tx.productCategory.update({ where: { id: categoryId }, data: { ...categoryData, ...(imageId === undefined ? {} : { image: imageId === null ? null : image!.url }), ...(darkImageId === undefined ? {} : { darkImage: darkImageId === null ? null : darkImage!.url }), ...(slug ? { slug } : {}) }, select: { id: true, name: true, slug: true, description: true, image: true, darkImage: true, isActive: true, sortOrder: true } });
   });
   revalidateRetailStorefront(context.organizationSlug);
   return category;
@@ -475,7 +521,7 @@ export async function createMerchantRetailProduct(context: TenantContext, actorU
   };
   const product = transaction ? await write(transaction) : await prisma.$transaction(write, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   if (!transaction) revalidateRetailStorefront(context.organizationSlug, product.id);
-  return serializeMerchantProduct(product);
+  return serializeMerchantProductWithAppearanceMedia(product);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new ApiError(409, "A SKU or product identifier is already in use.");
     throw error;
@@ -579,7 +625,7 @@ export async function updateMerchantRetailProduct(context: TenantContext, actorU
   };
   const product = transaction ? await write(transaction) : await prisma.$transaction(write, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   if (!transaction) revalidateRetailStorefront(context.organizationSlug, product.id);
-  return serializeMerchantProduct(product);
+  return serializeMerchantProductWithAppearanceMedia(product);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new ApiError(409, "A SKU or product identifier is already in use.");
     throw error;

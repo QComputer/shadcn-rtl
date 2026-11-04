@@ -3,7 +3,50 @@ import { canonicalDimensions, retailAttributeText, type CanonicalDimension } fro
 import { normalizeRetailSearch } from "@/lib/retail/discovery";
 
 export type RetailProduct = PublicCatalogProduct;
-export type CardColorSlide = { value: string; src: string };
+export type CardColorSlide = { value: string; src: string; srcSet?: string };
+
+type ThemeAppearance = PublicCatalogProduct["cardAppearance"];
+export function themedCardImage(appearance: ThemeAppearance, theme: "light" | "dark", fallback?: string | null): { src: string | null; srcSet?: string } {
+  const mode = appearance?.[theme] ? theme : theme === "dark" ? "light" : "dark";
+  const src = appearance?.[mode] || fallback || null;
+  const srcSet = appearance?.[mode] ? (mode === "dark" ? appearance.darkSrcSet : appearance.lightSrcSet) : undefined;
+  return { src, ...(srcSet ? { srcSet } : {}) };
+}
+
+/** Explicit visual appearances rotate independently of size; legacy color galleries remain compatible. */
+export function appearanceSlides(product: RetailProduct, theme: "light" | "dark"): CardColorSlide[] {
+  const sizeKeys = new Set(canonicalDimensions(product).find(dimension => dimension.id === "size")?.keys ?? []);
+  const slides: CardColorSlide[] = [];
+  const seen = new Set<string>();
+  const eligibleIds = new Set(product.variants.map(variant => variant.id));
+  for (const entry of product.visualAppearances ?? []) {
+    if (!entry.variantIds.some(id => eligibleIds.has(id))) continue;
+    const image = themedCardImage(entry.appearance, theme);
+    if (!image.src || seen.has(image.src)) continue;
+    seen.add(image.src);
+    slides.push({ value: entry.value, src: image.src, ...(image.srcSet ? { srcSet: image.srcSet } : {}) });
+  }
+  if (slides.length) return slides;
+  for (const variant of product.variants) {
+    const appearance = variant.cardAppearance ?? variant.media?.cardAppearance;
+    const options = variant.options.filter(option => !sizeKeys.has(option.key));
+    if (!appearance?.configured || !options.length) continue;
+    const image = themedCardImage(appearance, theme);
+    if (!image.src || seen.has(image.src)) continue;
+    seen.add(image.src);
+    slides.push({ value: options.map(retailAttributeText).join(" / "), src: image.src, ...(image.srcSet ? { srcSet: image.srcSet } : {}) });
+  }
+  if (slides.length) return slides;
+  const legacy = colorSlides(product);
+  for (const slide of legacy) {
+    const variant = product.variants.find(item => item.media?.gallery[0] === slide.src);
+    const image = themedCardImage(variant?.cardAppearance ?? variant?.media?.cardAppearance, theme, slide.src);
+    if (!image.src || seen.has(image.src)) continue;
+    seen.add(image.src);
+    slides.push({ value: slide.value, src: image.src, ...(image.srcSet ? { srcSet: image.srcSet } : {}) });
+  }
+  return slides;
+}
 
 type ParsedFilter = { key: string; value: string };
 
@@ -76,4 +119,9 @@ export function constrainedDimensions(product: RetailProduct, filters: readonly 
   return canonicalDimensions(product).filter((dimension) =>
     (dimension.id === "color" || dimension.id === "size") && dimension.keys.some((key) => activeKeys.has(key)),
   );
+}
+
+/** A constrained visual selection must not cycle through other variants. */
+export function hasVariantCardFilters(product: RetailProduct, filters: readonly string[]): boolean {
+  return variantFilterGroups(product, filters).size > 0;
 }

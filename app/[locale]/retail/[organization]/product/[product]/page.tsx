@@ -41,6 +41,6 @@ export default async function PublicRetailProductPage({ params }: { params: Prom
   return <><JsonLd data={verifiedRetailProductJsonLd(detail, getCanonicalUrl(seo.path, seo.baseUrl))} /><RetailPreview liveView={{ identifier: catalog.organization.identifier, name: catalog.organization.name,
     description: catalog.organization.description, branding: catalog.organization.branding, theme: catalog.organization.theme,
     previewOnly: catalog.organization.previewOnly,
-    categories: catalog.categories.map((category) => ({ id: category.id, slug: category.slug, name: category.name })), products }} productId={detail.slug ?? detail.id} />
+    categories: catalog.categories.map((category) => ({ id: category.id, slug: category.slug, name: category.name, image: category.image, darkImage: category.darkImage })), products }} productId={detail.slug ?? detail.id} />
     <RelatedProducts products={relatedProducts} storefrontPath={storefrontPath} /></>;
 }

@@ -6,13 +6,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { buildRetailHeroSlides } from "@/lib/retail/hero-presentation";
 import { formatRetailMoney } from "@/lib/retail/format-price";
 import type { RetailProduct } from "@/lib/retail/variant-selection";
+import { useCatalogTheme } from "./use-catalog-theme";
 
 type Props = { name: string; description: string | null; logo: string | null; cover: string | null; theme: "FASHION" | "ELECTRONICS" | "GENERAL"; products: RetailProduct[]; storefrontPath: string };
 const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring";
 const money = formatRetailMoney;
 
 export function RetailStorefrontHero({ name, description, logo, cover, theme, products, storefrontPath }: Props) {
-  const slides = useMemo(() => buildRetailHeroSlides(products), [products]);
+  const catalogTheme = useCatalogTheme();
+  const slides = useMemo(() => catalogTheme ? buildRetailHeroSlides(products, catalogTheme) : [], [products, catalogTheme]);
   const [index, setIndex] = useState(0);
   const [previous, setPrevious] = useState<number | null>(null);
   const [ready, setReady] = useState("");

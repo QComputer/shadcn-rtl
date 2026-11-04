@@ -1,4 +1,5 @@
-import { readGallerySettings, orderedImages } from "@/lib/retail/product-galleries";
+import { readGallerySettings, orderedImages, isRetailSizeDefinition } from "@/lib/retail/product-galleries";
+import { getCardImage, type ImageDerivatives } from "@/lib/retail/image-derivatives";
 import "server-only";
 
 import { ApiError } from "@/lib/api-guards";
@@ -14,12 +15,12 @@ import { isSyntheticRetailLabel, normalizeRetailSearch } from "@/lib/retail/disc
 
 const publicVariantSelect = {
   id: true, sku: true, name: true, price: true, inventory: true, reservedQuantity: true, allowBackOrder: true, manuallyUnavailable: true,
-  optionValues: { where: { definition: { isActive: true, scope: RetailAttributeScope.VARIANT_OPTION } }, select: { valueText: true, valueNumber: true, valueBoolean: true, definition: { select: { organizationId: true, key: true, label: true, localizedLabels: true, valueType: true, displayUnit: true, isFilterable: true } } } },
-  galleryImages: { orderBy: { sortOrder: "asc" }, select: { image: { select: { url: true, organizationId: true, access: true } } } },
+  optionValues: { where: { definition: { isActive: true, scope: RetailAttributeScope.VARIANT_OPTION } }, select: { definitionId: true, valueText: true, valueNumber: true, valueBoolean: true, definition: { select: { organizationId: true, scope: true, key: true, label: true, localizedLabels: true, valueType: true, displayUnit: true, isFilterable: true } } } },
+  galleryImages: { orderBy: { sortOrder: "asc" }, select: { image: { select: { id: true, url: true, derivatives: true, organizationId: true, access: true } } } },
 } satisfies Prisma.ProductVariantSelect;
 const publicCategorySelect = { id: true, slug: true, name: true } satisfies Prisma.ProductCategorySelect;
 const publicProductSelect = {
-  id: true, slug: true, name: true, brand: true, description: true, basePrice: true, image: true, gallerySettings: true, images: { select: { id: true, url: true, organizationId: true, access: true } },
+  id: true, slug: true, name: true, brand: true, description: true, basePrice: true, image: true, gallerySettings: true, images: { select: { id: true, url: true, derivatives: true, organizationId: true, access: true } },
   discountType: true, discountValue: true, trackInventory: true,
   category: { select: publicCategorySelect },
   attributeValues: { where: { definition: { isActive: true, scope: RetailAttributeScope.PRODUCT } }, select: { valueText: true, valueNumber: true, valueBoolean: true, definition: { select: { organizationId: true, key: true, label: true, localizedLabels: true, valueType: true, displayUnit: true, isFilterable: true } } } },
@@ -40,16 +41,133 @@ function isSafePublicMediaUrl(value: string) {
   try { return new URL(value).protocol === "https:"; } catch { return false; }
 }
 
-function retailProduct(product: Prisma.ProductGetPayload<{ select: typeof publicProductSelect }>, organizationId: string) {
+function publicDerivatives(value: Prisma.JsonValue | null): ImageDerivatives | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  if (record.version !== 1 || !Array.isArray(record.card)) return null;
+  const variant = (candidate: unknown) => {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return null;
+    const item = candidate as Record<string, unknown>;
+    if (typeof item.url !== "string" || !isSafePublicMediaUrl(item.url)
+      || !Number.isSafeInteger(item.width) || Number(item.width) <= 0
+      || !Number.isSafeInteger(item.height) || Number(item.height) <= 0
+      || !Number.isSafeInteger(item.bytes) || Number(item.bytes) <= 0) return null;
+    return { url: item.url, width: item.width as number, height: item.height as number, bytes: item.bytes as number };
+  };
+  const card = record.card.map(variant).filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+  if (!card.length) return null;
+  const detail = variant(record.detail);
+  return { version: 1, card, ...(detail ? { detail } : {}) };
+}
+
+type PublicRetailProduct = Prisma.ProductGetPayload<{ select: typeof publicProductSelect }>;
+type PublicAppearanceImage = { id: string; url: string; derivatives: Prisma.JsonValue | null };
+
+function productAppearanceImageIds(product: PublicRetailProduct) {
+  const settings = readGallerySettings(product.gallerySettings);
+  return [settings?.appearance?.lightImageId, settings?.appearance?.darkImageId,
+    ...(settings?.appearanceGroups ?? []).flatMap(group => [group.lightImageId, group.darkImageId]),
+    ...(settings?.variantAppearances ?? []).flatMap(pair => [pair.lightImageId, pair.darkImageId])].filter((id): id is string => Boolean(id));
+}
+
+async function loadAppearanceImages(products: PublicRetailProduct[], organizationId: string) {
+  const ids = [...new Set(products.flatMap(productAppearanceImageIds))];
+  const batches: string[][] = [];
+  for (let index = 0; index < ids.length; index += 500) batches.push(ids.slice(index, index + 500));
+  const images = await Promise.all(batches.map(batch => prisma.image.findMany({
+    where: { id: { in: batch }, organizationId, access: "PUBLIC" },
+    select: { id: true, url: true, derivatives: true },
+  })));
+  return new Map(images.flat().filter(image => isSafePublicMediaUrl(image.url)).map(image => [image.id, image]));
+}
+
+async function retailProduct(product: PublicRetailProduct, organizationId: string, preloadedAppearanceImages?: Map<string, PublicAppearanceImage>) {
   const gallerySettings = readGallerySettings(product.gallerySettings);
-  const eligibleImages = orderedImages(product.images, gallerySettings?.productImageIds ?? []).filter((image) => image.access === "PUBLIC" && (!image.organizationId || image.organizationId === organizationId) && isSafePublicMediaUrl(image.url)).map((image) => image.url);
-  const primary = gallerySettings ? eligibleImages[0] ?? null : product.image && eligibleImages.includes(product.image) ? product.image : eligibleImages[0] ?? null;
+  const eligibleImageRecords = orderedImages(product.images, gallerySettings?.productImageIds ?? []).filter((image) => image.access === "PUBLIC" && (!image.organizationId || image.organizationId === organizationId) && isSafePublicMediaUrl(image.url));
+  const primaryRecord = gallerySettings ? eligibleImageRecords[0] : eligibleImageRecords.find(image => image.url === product.image) ?? eligibleImageRecords[0];
+  const primary = primaryRecord?.url ?? null;
+  const appearancesById = preloadedAppearanceImages ?? await loadAppearanceImages([product], organizationId);
+  const cardImage = primaryRecord ? getCardImage(publicDerivatives(primaryRecord.derivatives), primaryRecord.url) : { src: null };
+  const basePair = gallerySettings?.appearance;
+  const baseLight = basePair?.lightImageId ? appearancesById.get(basePair.lightImageId) : undefined;
+  const baseDark = basePair?.darkImageId ? appearancesById.get(basePair.darkImageId) : undefined;
+  const productHasAppearance = Boolean(baseLight || baseDark);
+  const pairCardAppearance = (light: typeof baseLight, dark: typeof baseDark, configured: boolean, fallback = cardImage) => {
+    const lightCard = light ? getCardImage(publicDerivatives(light.derivatives), light.url) : dark ? getCardImage(publicDerivatives(dark.derivatives), dark.url) : fallback;
+    const darkCard = dark ? getCardImage(publicDerivatives(dark.derivatives), dark.url) : light ? getCardImage(publicDerivatives(light.derivatives), light.url) : fallback;
+    return { light: lightCard.src, dark: darkCard.src, ...(lightCard.srcSet ? { lightSrcSet: lightCard.srcSet } : {}), ...(darkCard.srcSet ? { darkSrcSet: darkCard.srcSet } : {}), configured };
+  };
+  const productAppearance = pairCardAppearance(baseLight, baseDark, productHasAppearance);
+  const visualAppearances: NonNullable<PublicCatalogProduct["visualAppearances"]> = [];
+  for (const group of gallerySettings?.appearanceGroups ?? []) {
+    const matchedVariants = product.variants.filter(variant => variant.optionValues.some(option =>
+      option.definition.organizationId === organizationId && option.definition.scope === RetailAttributeScope.VARIANT_OPTION
+      && !isRetailSizeDefinition(option.definition.key, option.definition.label)
+      && option.definitionId === group.definitionId
+      && String(option.valueText ?? option.valueNumber?.toString() ?? option.valueBoolean) === group.value));
+    const light = group.lightImageId ? appearancesById.get(group.lightImageId) : undefined;
+    const dark = group.darkImageId ? appearancesById.get(group.darkImageId) : undefined;
+    if (!matchedVariants.length || (!light && !dark)) continue;
+    const definition = matchedVariants[0]!.optionValues.find(option => option.definitionId === group.definitionId)!.definition;
+    const localized = definition.localizedLabels;
+    const labels = localized && typeof localized === "object" && !Array.isArray(localized) ? localized as Record<string, unknown> : {};
+    const label = typeof labels.fa === "string" ? labels.fa : definition.label;
+    visualAppearances.push({ value: `${label}: ${group.value}`, variantIds: matchedVariants.map(variant => variant.id), appearance: pairCardAppearance(light, dark, true) });
+  }
+  const explicitAppearanceSignatures = new Set<string>();
+  for (const pair of gallerySettings?.variantAppearances ?? []) {
+    const variant = product.variants.find(item => item.id === pair.variantId);
+    const light = pair.lightImageId ? appearancesById.get(pair.lightImageId) : undefined;
+    const dark = pair.darkImageId ? appearancesById.get(pair.darkImageId) : undefined;
+    if (!variant || (!light && !dark)) continue;
+    const visualOptions = variant.optionValues.filter(option => option.definition.organizationId === organizationId
+      && option.definition.scope === RetailAttributeScope.VARIANT_OPTION
+      && !isRetailSizeDefinition(option.definition.key, option.definition.label));
+    if (!visualOptions.length) continue;
+    const signature = JSON.stringify(visualOptions.map(option => [option.definitionId, option.valueText, option.valueNumber?.toString() ?? null, option.valueBoolean]));
+    if (explicitAppearanceSignatures.has(signature)) continue;
+    explicitAppearanceSignatures.add(signature);
+    const value = visualOptions
+      .map(option => {
+        const localized = option.definition.localizedLabels;
+        const labels = localized && typeof localized === "object" && !Array.isArray(localized) ? localized as Record<string, unknown> : {};
+        const label = typeof labels.fa === "string" ? labels.fa : option.definition.label;
+        const optionValue = option.valueText ?? option.valueNumber?.toString() ?? option.valueBoolean;
+        return `${label}: ${optionValue}`;
+      }).join(" / ") || "Variant appearance";
+    visualAppearances.push({ value, variantIds: [variant.id], appearance: pairCardAppearance(light, dark, true) });
+  }
   return {
     ...product,
     image: primary,
-    images: eligibleImages.filter((url) => url !== primary),
+    cardImage: cardImage.src,
+    cardAppearance: productAppearance,
+    visualAppearances,
+    images: eligibleImageRecords.map(image => image.url).filter((url) => url !== primary),
     attributes: product.attributeValues.map((value) => publicAttribute(value, organizationId)).filter((value) => value !== null),
-    variants: product.variants.map((variant) => ({ ...variant, media: { gallery: variant.galleryImages.filter((entry) => entry.image.access === "PUBLIC" && entry.image.organizationId === organizationId && isSafePublicMediaUrl(entry.image.url)).map((entry) => entry.image.url) }, options: variant.optionValues.map((value) => publicAttribute(value, organizationId)).filter((value) => value !== null) })),
+    variants: product.variants.map((variant) => {
+      const variantPair = gallerySettings?.variantAppearances?.find(pair => pair.variantId === variant.id);
+      const variantLight = variantPair?.lightImageId ? appearancesById.get(variantPair.lightImageId) : undefined;
+      const variantDark = variantPair?.darkImageId ? appearancesById.get(variantPair.darkImageId) : undefined;
+      const matchingGroup = gallerySettings?.appearanceGroups?.find(group => {
+        const hasPublicAppearance = Boolean((group.lightImageId && appearancesById.has(group.lightImageId)) || (group.darkImageId && appearancesById.has(group.darkImageId)));
+        return hasPublicAppearance && variant.optionValues.some(option => option.definition.organizationId === organizationId && option.definition.scope === RetailAttributeScope.VARIANT_OPTION && !isRetailSizeDefinition(option.definition.key, option.definition.label) && option.definitionId === group.definitionId && String(option.valueText ?? option.valueNumber?.toString() ?? option.valueBoolean) === group.value);
+      });
+      const groupLight = matchingGroup?.lightImageId ? appearancesById.get(matchingGroup.lightImageId) : undefined;
+      const groupDark = matchingGroup?.darkImageId ? appearancesById.get(matchingGroup.darkImageId) : undefined;
+      const useVariantPair = Boolean(variantLight || variantDark);
+      const useGroupPair = !useVariantPair && Boolean(groupLight || groupDark);
+      const originals = variant.galleryImages.filter(entry => entry.image.access === "PUBLIC" && entry.image.organizationId === organizationId && isSafePublicMediaUrl(entry.image.url));
+      const variantPrimary = originals[0]?.image;
+      const variantCard = variantPrimary ? getCardImage(publicDerivatives(variantPrimary.derivatives), variantPrimary.url) : null;
+      const variantFallback = variantCard ?? cardImage;
+      const appearance = useVariantPair ? pairCardAppearance(variantLight, variantDark, true, variantFallback)
+        : useGroupPair ? pairCardAppearance(groupLight, groupDark, true, variantFallback)
+          : productHasAppearance ? pairCardAppearance(baseLight, baseDark, false, variantFallback)
+            : pairCardAppearance(undefined, undefined, false, variantFallback);
+      const variantCardAppearance = appearance;
+      return { ...variant, cardAppearance: variantCardAppearance, media: { gallery: originals.map(entry => entry.image.url), cardAppearance: variantCardAppearance }, options: variant.optionValues.map((value) => publicAttribute(value, organizationId)).filter((value) => value !== null) };
+    }),
   };
 }
 
@@ -163,14 +281,25 @@ function publicProductPriceWithSelectedOptions(product: PublicCatalogProduct, fi
   const choices = eligible.length ? eligible : matching;
   const display = [...choices].sort((left, right) => left.price.amount - right.price.amount || left.id.localeCompare(right.id))[0];
   if (!display) return product;
-  const card = display.media?.gallery[0] ?? product.media.card;
+  const card = display.cardAppearance?.light ?? display.media?.gallery[0] ?? product.media.card;
   return {
     ...product,
     orderable: choices.some((variant) => variant.orderable),
     price: display.price,
     listPrice: display.listPrice,
-    media: card === product.media.card ? product.media : { ...product.media, card, detail: card, gallery: display.media?.gallery.length ? display.media.gallery : product.media.gallery },
+    ...(display.cardAppearance ? { cardAppearance: display.cardAppearance } : {}),
+    media: card === product.media.card ? product.media : { ...product.media, card, detail: display.media?.gallery[0] ?? product.media.detail, gallery: display.media?.gallery.length ? display.media.gallery : product.media.gallery },
   };
+}
+
+async function publicCategoryImageUrls(organizationId: string, urls: Array<string | null>) {
+  const candidates = [...new Set(urls.filter((url): url is string => typeof url === "string" && isSafePublicMediaUrl(url)))];
+  if (!candidates.length) return new Map<string, ImageDerivatives | null>();
+  const images = await prisma.image.findMany({
+    where: { organizationId, access: "PUBLIC", url: { in: candidates } },
+    select: { url: true, derivatives: true },
+  });
+  return new Map(images.map((image) => [image.url, publicDerivatives(image.derivatives)]));
 }
 
 export async function listPublicCatalogCategories(organizationIdentifier: string) {
@@ -179,14 +308,15 @@ export async function listPublicCatalogCategories(organizationIdentifier: string
     where: { organizationId: organization.id, ...visibleCategoryWhere },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }, { id: "asc" }],
     select: {
-      id: true, slug: true, name: true, description: true, sortOrder: true, image: true,
+      id: true, slug: true, name: true, description: true, sortOrder: true, image: true, darkImage: true,
       _count: { select: { categoryAssignments: { where: {
         organizationId: organization.id,
         product: visibleProductWhereForTenant(organization.id),
       } } } },
     },
   });
-    return { organization, categories: categories.map((category) => serializePublicCatalogCategory({ ...category, image: null, productCount: category._count.categoryAssignments })) };
+  const approvedImages = await publicCategoryImageUrls(organization.id, categories.flatMap((category) => [category.image, category.darkImage]));
+  return { organization, categories: categories.map((category) => serializePublicCatalogCategory({ ...category, image: category.image && approvedImages.has(category.image) ? getCardImage(approvedImages.get(category.image), category.image).src : null, darkImage: category.darkImage && approvedImages.has(category.darkImage) ? getCardImage(approvedImages.get(category.darkImage), category.darkImage).src : null, productCount: category._count.categoryAssignments })) };
 }
 
 export async function getPublicCatalogCategory(organizationIdentifier: string, categoryIdentifier: string) {
@@ -194,7 +324,7 @@ export async function getPublicCatalogCategory(organizationIdentifier: string, c
   const category = await prisma.productCategory.findFirst({
     where: { organizationId: organization.id, ...visibleCategoryWhere, OR: [{ id: categoryIdentifier }, { slug: categoryIdentifier }] },
     select: {
-      id: true, slug: true, name: true, description: true, sortOrder: true, image: true,
+      id: true, slug: true, name: true, description: true, sortOrder: true, image: true, darkImage: true,
       _count: { select: { categoryAssignments: { where: {
         organizationId: organization.id,
         product: visibleProductWhereForTenant(organization.id),
@@ -202,7 +332,8 @@ export async function getPublicCatalogCategory(organizationIdentifier: string, c
     },
   });
   if (!category) throw new ApiError(404, "Category not found");
-  return serializePublicCatalogCategory({ ...category, image: null, productCount: category._count.categoryAssignments });
+  const approvedImages = await publicCategoryImageUrls(organization.id, [category.image, category.darkImage]);
+  return serializePublicCatalogCategory({ ...category, image: category.image && approvedImages.has(category.image) ? getCardImage(approvedImages.get(category.image), category.image).src : null, darkImage: category.darkImage && approvedImages.has(category.darkImage) ? getCardImage(approvedImages.get(category.darkImage), category.darkImage).src : null, productCount: category._count.categoryAssignments });
 }
 
 export async function listPublicCatalogProducts(input: {
@@ -376,12 +507,14 @@ export async function listPublicCatalogProducts(input: {
   const buildPurchase = await purchaseBuilder(organization);
   const pagination: PublicCatalogPagination = { page: input.page, limit: input.limit, total, totalPages: Math.ceil(total / input.limit) };
   const priceById = new Map(pageRecords.map(({ id, displayPrice }) => [id, Number(displayPrice.toString())]));
-  return publicCatalogProductsPageSchema.parse({ products: rows.map((product) => {
-    const serialized = serializePublicCatalogProduct({ ...retailProduct(product, organization.id), purchase: buildPurchase(product.id) });
+  const appearanceImages = await loadAppearanceImages(rows, organization.id);
+  const products = await Promise.all(rows.map(async (product) => {
+    const serialized = serializePublicCatalogProduct({ ...(await retailProduct(product, organization.id, appearanceImages)), purchase: buildPurchase(product.id) });
     const aligned = publicProductPriceWithSelectedOptions(serialized, variantFilters, input.available);
     const selectedPrice = priceById.get(product.id);
     return selectedPrice === undefined ? aligned : { ...aligned, price: { amount: selectedPrice, currency: PUBLIC_CATALOG_PRICE_UNIT } };
-  }), pagination }) as unknown as PublicCatalogProductsPage;
+  }));
+  return publicCatalogProductsPageSchema.parse({ products, pagination }) as unknown as PublicCatalogProductsPage;
 }
 
 export async function getPublicCatalogFacets(organizationIdentifier: string) {
@@ -468,10 +601,11 @@ export async function getRelatedPublicProducts(organizationIdentifier: string, p
     .sort((left, right) => Number(right.brand === current.brand) - Number(left.brand === current.brand))
     .slice(0, 8);
   const buildPurchase = await purchaseBuilder(organization);
-  return related.map((product) => serializePublicCatalogProduct({
-    ...retailProduct(product, organization.id),
+  const appearanceImages = await loadAppearanceImages(related, organization.id);
+  return Promise.all(related.map(async (product) => serializePublicCatalogProduct({
+    ...(await retailProduct(product, organization.id, appearanceImages)),
     purchase: buildPurchase(product.id),
-  }));
+  })));
 }
 
 export async function getPublicCatalogProduct(organizationIdentifier: string, productIdentifier: string) {
@@ -485,7 +619,7 @@ export async function getPublicCatalogProduct(organizationIdentifier: string, pr
   });
   if (!product) throw new ApiError(404, "Product not found");
   const buildPurchase = await purchaseBuilder(organization);
-  return serializePublicCatalogProduct({ ...retailProduct(product, organization.id), purchase: buildPurchase(product.id) });
+  return serializePublicCatalogProduct({ ...await retailProduct(product, organization.id), purchase: buildPurchase(product.id) });
 }
 
 export async function getPublicCatalogSnapshot(organizationIdentifier: string): Promise<PublicCatalogSnapshot> {

@@ -41,7 +41,7 @@ export function RetailHeroEditor({ value, onChange, media, products, disabled }:
     update({ productIds: next });
   };
 
-  const renderImagePicker = (label: string, selectedId: string, field: "desktopImageId" | "mobileImageId") => {
+  const renderImagePicker = (label: string, selectedId: string, field: "desktopImageId" | "mobileImageId" | "darkDesktopImageId" | "darkMobileImageId") => {
     const selected = availableMedia.find((item) => item.id === selectedId);
     return <label className={styles.field}>
       <span>{label}</span>
@@ -94,6 +94,8 @@ export function RetailHeroEditor({ value, onChange, media, products, disabled }:
         </label>
         {renderImagePicker("تصویر نمایشگر رومیزی", value.desktopImageId, "desktopImageId")}
         {renderImagePicker("تصویر نمایشگر موبایل (اختیاری)", value.mobileImageId, "mobileImageId")}
+        {renderImagePicker("تصویر رومیزی برای تم تیره (اختیاری)", value.darkDesktopImageId, "darkDesktopImageId")}
+        {renderImagePicker("تصویر موبایل برای تم تیره (اختیاری)", value.darkMobileImageId, "darkMobileImageId")}
         <label className={styles.field}>
           <span>متن جایگزین تصویر</span>
           <input value={value.imageAlt} maxLength={180} onChange={(event) => update({ imageAlt: event.target.value })} />

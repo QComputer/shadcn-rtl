@@ -1,0 +1,916 @@
+{
+  "connection": {
+    "success": true,
+    "database": "databasewhy_db",
+    "version": "PostgreSQL 17.4 (Debian 17.4-1.pgdg120+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit",
+    "host": "remote-fanhab.runflare.com",
+    "ssl": false
+  },
+  "errors": [],
+  "tables": {
+    "public": 164,
+    "neon_auth": 9,
+    "publicList": [
+      "AiMediaAsset",
+      "AiMediaImport",
+      "AiMediaJob",
+      "AiMediaJobEvent",
+      "AiMediaJobMirror",
+      "AiMediaRequest",
+      "AiMediaSpendHold",
+      "AiMediaUsageEvent",
+      "AiMediaUsageQuote",
+      "Appointment",
+      "AuditLog",
+      "BookingSession",
+      "BookingSettings",
+      "BusinessEntity",
+      "BusinessEntityMetadata",
+      "BusinessEntityRelation",
+      "BusinessEvent",
+      "BusinessGrowthProfile",
+      "BusinessHour",
+      "Campaign",
+      "CampaignAudience",
+      "CampaignDelivery",
+      "CampaignMessage",
+      "CatalogSyncRun",
+      "ContentAsset",
+      "ContentDistribution",
+      "Conversation",
+      "ConversationParticipant",
+      "Coupon",
+      "CouponRedemption",
+      "CreativeStudioAsset",
+      "CreativeStudioJob",
+      "CreativeStudioUsageEvent",
+      "CustomerClubMembership",
+      "CustomerIdentity",
+      "CustomerInteraction",
+      "CustomerSegment",
+      "CustomerSegmentRule",
+      "CustomerSegmentSnapshot",
+      "DemoProgress",
+      "DemoScenario",
+      "DemoScenarioStep",
+      "DemoSessionToken",
+      "Deny",
+      "EmailVerification",
+      "ExportJob",
+      "ExternalCatalogConnection",
+      "ExternalCatalogItem",
+      "ExternalCatalogSyncJob",
+      "ExternalEntityMapping",
+      "ExternalImportJob",
+      "ExternalImportRun",
+      "ExternalImportSource",
+      "FanpagePost",
+      "Follow",
+      "GrowthRecommendation",
+      "GuestCustomer",
+      "HotelAmenity",
+      "HotelBookingHold",
+      "HotelBookingHoldIdempotency",
+      "HotelCancellationPolicy",
+      "HotelInventory",
+      "HotelInventoryAdjustment",
+      "HotelInventoryIdempotency",
+      "HotelNightlyRate",
+      "HotelPaymentAllocation",
+      "HotelProperty",
+      "HotelPublicationApproval",
+      "HotelRatePlan",
+      "HotelReservation",
+      "HotelReservationGuest",
+      "HotelReservationRoom",
+      "HotelRoom",
+      "HotelRoomType",
+      "HotelRoomTypeAmenity",
+      "HotelWebsiteContentReview",
+      "HotelWebsiteContentRevision",
+      "HotelWebsiteMediaAssociation",
+      "HotelWebsiteOperation",
+      "HotelWebsitePage",
+      "HotelWebsitePublication",
+      "Image",
+      "ImportedContentDraft",
+      "ImportedProductDraft",
+      "InventoryMovement",
+      "KeywordCluster",
+      "Location",
+      "LoyaltyLedger",
+      "LoyaltyRule",
+      "Message",
+      "Notification",
+      "NotificationDeliveryAttempt",
+      "NotificationPermissionEvent",
+      "NotificationPreference",
+      "Order",
+      "OrderItem",
+      "OrderMessage",
+      "OrderReadyTimeHistory",
+      "OrderStatusHistory",
+      "Organization",
+      "OrganizationAcquisition",
+      "OrganizationActivationPlan",
+      "OrganizationActivationTask",
+      "OrganizationBranding",
+      "OrganizationCapability",
+      "OrganizationClaimRequest",
+      "OrganizationCollaboration",
+      "OrganizationCollaborationScope",
+      "OrganizationDomain",
+      "OrganizationInotiPaymentRouting",
+      "OrganizationIntegration",
+      "OrganizationIntegrationCapability",
+      "OrganizationInvitation",
+      "OrganizationMember",
+      "OrganizationSettings",
+      "PasswordReset",
+      "Payment",
+      "PaymentEvent",
+      "PaymentProviderAttempt",
+      "PaymentRequest",
+      "PaymentSettings",
+      "PilotWorkspace",
+      "Product",
+      "ProductAttributeValue",
+      "ProductCategory",
+      "ProductCategoryAssignment",
+      "ProductFavorite",
+      "ProductTag",
+      "ProductTagAssignment",
+      "ProductVariant",
+      "ProductVariantAttributeValue",
+      "ProductVariantImage",
+      "Progress",
+      "Promotion",
+      "PushSubscription",
+      "RequestDemoLead",
+      "RetailAttributeDefinition",
+      "RetailPaymentReport",
+      "Review",
+      "ReviewRequest",
+      "SeoContentBrief",
+      "SeoContentRequest",
+      "SeoOpportunity",
+      "Service",
+      "ServiceCategory",
+      "ShopCart",
+      "ShopCartItem",
+      "SmsDelivery",
+      "SocialConnection",
+      "SocialPost",
+      "StaffAvailability",
+      "TenantProvisioningPlan",
+      "TenantWebsiteRevision",
+      "TimeInterval",
+      "User",
+      "UssdCallbackEvent",
+      "UssdEvent",
+      "UssdPaymentIntent",
+      "UssdPaymentVerificationJob",
+      "UssdSession",
+      "WebPushDelivery",
+      "WorkerContributionMirror",
+      "_ImageToProduct",
+      "_prisma_migrations"
+    ],
+    "neonAuthList": [
+      "account",
+      "invitation",
+      "jwks",
+      "member",
+      "organization",
+      "project_config",
+      "session",
+      "user",
+      "verification"
+    ]
+  },
+  "businessRecords": {
+    "Organization": 15,
+    "User": 43,
+    "Product": 285,
+    "ProductVariant": 504,
+    "Order": 23,
+    "OrderItem": 30,
+    "Organization_rows": 15,
+    "User_rows": 43,
+    "Product_rows": 285,
+    "ProductVariant_rows": 504,
+    "Order_rows": 23
+  },
+  "prisma": {
+    "migrations": [
+      {
+        "name": "20260419151324",
+        "finished_at": "2026-04-20T18:38:46.008Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260419151614",
+        "finished_at": "2026-04-20T18:38:46.164Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260419151716",
+        "finished_at": "2026-04-20T18:38:46.315Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260421141131",
+        "finished_at": "2026-04-21T14:11:31.894Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260423070615",
+        "finished_at": "2026-04-23T07:06:15.769Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260424161030_order_message",
+        "finished_at": "2026-04-24T16:10:30.428Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260425095640",
+        "finished_at": "2026-04-25T09:56:40.875Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260426151019",
+        "finished_at": "2026-04-26T15:10:19.528Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260427144858",
+        "finished_at": "2026-04-27T14:48:58.852Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260428000522",
+        "finished_at": "2026-04-28T00:05:22.973Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260520220000_phase3_membership_roles",
+        "finished_at": "2026-05-23T16:17:26.613Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260520230000_phase5_order_payment_hardening",
+        "finished_at": "2026-05-23T16:17:27.083Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260521000000_phase7_media_hardening",
+        "finished_at": "2026-05-23T19:26:10.943Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260521010000_phase8_audit_softdelete_notifications",
+        "finished_at": "2026-05-23T19:26:11.121Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260521020000_phase14_inventory_movements",
+        "finished_at": "2026-05-23T21:34:04.869Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260521030000_phase15_public_order_tracking",
+        "finished_at": "2026-05-23T22:42:19.912Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260607161713_add_product_discount_fields",
+        "finished_at": "2026-06-07T16:17:14.078Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260607224237_add_delivery_coordinates",
+        "finished_at": "2026-06-07T22:42:37.393Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260609000000_add_organization_coordinates",
+        "finished_at": "2026-06-08T23:41:42.961Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260609002000_add_order_organization_slug",
+        "finished_at": "2026-06-11T01:50:44.467Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260609003000_add_order_deleted_at",
+        "finished_at": "2026-06-11T01:50:46.311Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260609004000_add_fanpage_posts",
+        "finished_at": "2026-06-11T01:50:48.201Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260611015106_add_fanpage_video",
+        "finished_at": "2026-06-11T01:51:08.925Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260625000100_customer_club_foundation",
+        "finished_at": "2026-06-27T17:07:01.417Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260625000200_in_app_notification_inbox",
+        "finished_at": "2026-06-27T17:07:02.997Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260625000300_customer_segments_mvp",
+        "finished_at": "2026-06-27T17:07:05.472Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260625000400_campaign_builder_mvp",
+        "finished_at": "2026-06-27T17:07:10.742Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260625000500_loyalty_coupons",
+        "finished_at": "2026-06-27T17:07:14.065Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260625000600_web_push_foundation",
+        "finished_at": "2026-06-27T17:07:15.594Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260627000100_category_slugs",
+        "finished_at": "2026-06-27T17:07:17.874Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260627000200_product_service_slugs",
+        "finished_at": "2026-06-27T17:07:30.179Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260627000300_shop_custom_domains",
+        "finished_at": "2026-06-27T20:18:04.051Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260628000100_import_hub_foundation",
+        "finished_at": null,
+        "rolled_back_at": "2026-06-28T16:35:20.660Z"
+      },
+      {
+        "name": "20260628000100_import_hub_foundation",
+        "finished_at": "2026-06-28T16:35:21.150Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260628000200_csv_excel_product_importer",
+        "finished_at": "2026-06-28T16:36:02.145Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260628000300_export_hub_foundation",
+        "finished_at": "2026-06-28T16:36:12.528Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260628000400_add_ai_media_job",
+        "finished_at": "2026-06-28T16:36:22.581Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260629008700_add_ai_media_usage_events",
+        "finished_at": "2026-06-29T01:57:29.395Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260629008900_imported_product_ai_media_bridge",
+        "finished_at": "2026-06-29T01:57:30.830Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260629000400_notification_preferences",
+        "finished_at": "2026-06-29T13:19:04.359Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260629000500_web_push_delivery",
+        "finished_at": "2026-06-29T18:51:14.187Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260629000600_sms_provider_delivery",
+        "finished_at": "2026-06-29T18:51:15.540Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260630000100_creative_studio_foundation",
+        "finished_at": "2026-07-01T01:47:24.388Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260703000100_add_creative_studio_asset_rolled_back",
+        "finished_at": null,
+        "rolled_back_at": "2026-07-15T04:07:33.248Z"
+      },
+      {
+        "name": "20260707000100_request_demo_lead_storage",
+        "finished_at": "2026-07-07T17:12:34.444Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260707000200_export_hub_extend_data_types",
+        "finished_at": "2026-07-07T17:12:34.444Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260703000100_add_creative_studio_asset_rolled_back",
+        "finished_at": "2026-07-15T06:00:37.762Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260703000200_notification_delivery_attempt",
+        "finished_at": "2026-07-15T06:00:40.154Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260703000300_sms_delivery_guest_customer",
+        "finished_at": "2026-07-15T06:00:41.738Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260708000100_custom_domain_onboarding",
+        "finished_at": "2026-07-15T06:00:43.422Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260715000100_tenant_provisioning_readiness",
+        "finished_at": "2026-07-15T06:00:45.199Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260715000200_custom_domain_status_backfill",
+        "finished_at": "2026-07-15T06:00:47.002Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260716000100_ai_media_preview_mock_write_foundation",
+        "finished_at": "2026-07-16T19:36:38.932Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260717200000_add_ai_media_asset_storage_key",
+        "finished_at": "2026-08-15T11:42:43.474Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260719000000_normalize_schema_drift",
+        "finished_at": "2026-08-15T11:42:47.571Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260719010000_add_ai_media_entity_attachments",
+        "finished_at": "2026-08-15T11:42:49.029Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815000100_multi_capability_collaboration_ready_time_push_roles",
+        "finished_at": "2026-08-15T11:42:52.593Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815000200_push_subscription_origin",
+        "finished_at": "2026-08-15T11:42:54.197Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815000300_inoti_ussd_integration_foundation",
+        "finished_at": "2026-08-15T11:42:57.265Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815000400_inoti_ussd_callback_origin",
+        "finished_at": "2026-08-16T22:22:01.236Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815000500_organization_integration_foundation",
+        "finished_at": "2026-08-23T18:36:08.648Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815000600_relax_integration_capability_links",
+        "finished_at": "2026-08-23T18:36:10.798Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815000700_integration_runtime_foundation",
+        "finished_at": "2026-08-23T18:36:12.857Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815000800_customer_identity_foundation",
+        "finished_at": "2026-08-23T18:36:14.709Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815000900_demo_universe_backend_foundation",
+        "finished_at": "2026-08-23T18:36:16.708Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815001000_demo_public_api_events",
+        "finished_at": "2026-08-23T18:36:18.580Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815001100_demo_conceptual_roles",
+        "finished_at": "2026-08-23T18:36:20.446Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815001200_external_catalog_foundation",
+        "finished_at": "2026-08-23T18:36:22.373Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815001300_demo_scenario_foundation",
+        "finished_at": "2026-08-23T18:36:24.212Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815001400_external_catalog_approval_workflow",
+        "finished_at": "2026-08-23T18:36:26.261Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815001500_business_entity_graph_seo_foundation",
+        "finished_at": "2026-08-23T18:36:28.374Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815001600_seo_content_iam_foundation",
+        "finished_at": "2026-08-23T18:36:34.184Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815001700_business_acquisition_onboarding_foundation",
+        "finished_at": "2026-08-23T18:36:36.602Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815001800_business_activation_plan_foundation",
+        "finished_at": "2026-08-23T18:36:38.653Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815001900_owner_activation_task_flow",
+        "finished_at": "2026-08-23T18:36:40.698Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815002000_customer_trust_reputation_foundation",
+        "finished_at": "2026-08-23T18:36:43.508Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815002100_pilot_workspace_foundation",
+        "finished_at": "2026-08-23T18:36:45.613Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260815002200_growth_intelligence_foundation",
+        "finished_at": "2026-08-23T18:36:47.662Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260823000100_real_inoti_runtime_foundation",
+        "finished_at": "2026-08-23T18:36:49.918Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260823000200_platform_inoti_integration_owner",
+        "finished_at": "2026-08-23T18:36:51.859Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260824000100_ussd_event_observability",
+        "finished_at": null,
+        "rolled_back_at": "2026-08-24T10:23:36.544Z"
+      },
+      {
+        "name": "20260824000100_ussd_event_observability",
+        "finished_at": null,
+        "rolled_back_at": "2026-08-24T10:31:21.331Z"
+      },
+      {
+        "name": "20260824000100_ussd_event_observability",
+        "finished_at": "2026-08-24T10:43:22.422Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260827_organization_branding",
+        "finished_at": "2026-08-31T11:12:25.458Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260827_public_home_mode",
+        "finished_at": "2026-08-31T11:12:26.997Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260830000100_reconcile_payment_money_semantics",
+        "finished_at": "2026-08-31T11:12:28.556Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260830000200_inoti_payment_e2e",
+        "finished_at": "2026-08-31T11:12:30.115Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260831000100_inoti_durable_payment_reconciliation",
+        "finished_at": "2026-08-31T11:12:31.705Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260830000300_tenant_branding_extensions",
+        "finished_at": "2026-09-26T12:33:34.188Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20260926160000_repair_organization_branding_columns",
+        "finished_at": "2026-09-26T12:33:35.414Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261003060000_add_organization_vertical_and_hotel_booking_capability",
+        "finished_at": "2026-10-16T22:09:40.598Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261003070000_add_hotel_persistence",
+        "finished_at": "2026-10-16T22:09:43.347Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261004080000_add_hotel_management_fields",
+        "finished_at": "2026-10-16T22:09:44.758Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261004090000_add_hotel_rate_plan_cancellation_policy",
+        "finished_at": "2026-10-16T22:09:46.196Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261004100000_add_hotel_inventory_idempotency",
+        "finished_at": "2026-10-16T22:09:47.641Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261004110000_add_hotel_publication_approvals",
+        "finished_at": "2026-10-16T22:09:49.148Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261004120000_add_hotel_anonymous_hold_idempotency",
+        "finished_at": "2026-10-16T22:09:50.600Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261012130000_add_hotel_website_capability",
+        "finished_at": "2026-10-16T22:09:52.293Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261012140000_hotel_website_content_foundation",
+        "finished_at": "2026-10-16T22:09:54.550Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261013100000_hotel_website_operations_idempotency",
+        "finished_at": "2026-10-16T22:09:56.797Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261013110000_retail_product_attributes",
+        "finished_at": "2026-10-16T22:09:58.401Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261013120000_retail_branding_theme",
+        "finished_at": "2026-10-16T22:10:00.530Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261013130000_retail_checkout_idempotency",
+        "finished_at": "2026-10-16T22:10:01.947Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261013140000_retail_payment_reports",
+        "finished_at": "2026-10-16T22:10:03.334Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261014100000_retail_r5_inoti_merchant_routing",
+        "finished_at": "2026-10-16T22:10:04.789Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261014110000_retail_payment_expiration",
+        "finished_at": "2026-10-16T22:10:06.247Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261014160000_retail_h2_product_taxonomy",
+        "finished_at": "2026-10-16T22:10:07.815Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261015160000_bound_organization_invitations",
+        "finished_at": "2026-10-16T22:10:10.266Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261015190000_universal_provisioning_execution",
+        "finished_at": "2026-10-16T22:10:13.567Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261018150000_tenant_website_revisions",
+        "finished_at": "2026-10-18T17:46:27.943Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261019120000_retail_brand_variant_gallery",
+        "finished_at": "2026-10-20T07:25:58.301Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261019130000_retail_order_item_catalog_snapshots",
+        "finished_at": "2026-10-20T07:25:59.609Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261019140000_retail_order_item_product_name_snapshot",
+        "finished_at": "2026-10-20T07:26:00.942Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261021120000_retail_product_gallery_settings",
+        "finished_at": "2026-10-21T01:11:40.278Z",
+        "rolled_back_at": null
+      },
+      {
+        "name": "20261023130000_retail_product_favorites",
+        "finished_at": "2026-10-23T18:04:24.440Z",
+        "rolled_back_at": null
+      }
+    ],
+    "total": 115,
+    "successful": 111,
+    "rolledBack": 4
+  },
+  "pendingMigrations": [
+    "20261030215000_add_manually_unavailable_to_variant"
+  ],
+  "manuallyUnavailable": {
+    "exists": false,
+    "details": []
+  },
+  "extensions": [
+    {
+      "name": "btree_gist",
+      "version": "1.7"
+    },
+    {
+      "name": "plpgsql",
+      "version": "1.0"
+    }
+  ],
+  "repositoryMigrations": [
+    "20260419151324",
+    "20260419151614",
+    "20260419151716",
+    "20260421141131",
+    "20260423070615",
+    "20260424161030_order_message",
+    "20260425095640",
+    "20260426151019",
+    "20260427144858",
+    "20260428000522",
+    "20260520220000_phase3_membership_roles",
+    "20260520230000_phase5_order_payment_hardening",
+    "20260521000000_phase7_media_hardening",
+    "20260521010000_phase8_audit_softdelete_notifications",
+    "20260521020000_phase14_inventory_movements",
+    "20260521030000_phase15_public_order_tracking",
+    "20260607161713_add_product_discount_fields",
+    "20260607224237_add_delivery_coordinates",
+    "20260609000000_add_organization_coordinates",
+    "20260609002000_add_order_organization_slug",
+    "20260609003000_add_order_deleted_at",
+    "20260609004000_add_fanpage_posts",
+    "20260611015106_add_fanpage_video",
+    "20260625000100_customer_club_foundation",
+    "20260625000200_in_app_notification_inbox",
+    "20260625000300_customer_segments_mvp",
+    "20260625000400_campaign_builder_mvp",
+    "20260625000500_loyalty_coupons",
+    "20260625000600_web_push_foundation",
+    "20260627000100_category_slugs",
+    "20260627000200_product_service_slugs",
+    "20260627000300_shop_custom_domains",
+    "20260628000100_import_hub_foundation",
+    "20260628000200_csv_excel_product_importer",
+    "20260628000300_export_hub_foundation",
+    "20260628000400_add_ai_media_job",
+    "20260629000400_notification_preferences",
+    "20260629000500_web_push_delivery",
+    "20260629000600_sms_provider_delivery",
+    "20260629008700_add_ai_media_usage_events",
+    "20260629008900_imported_product_ai_media_bridge",
+    "20260630000100_creative_studio_foundation",
+    "20260703000100_add_creative_studio_asset_rolled_back",
+    "20260703000200_notification_delivery_attempt",
+    "20260703000300_sms_delivery_guest_customer",
+    "20260707000100_request_demo_lead_storage",
+    "20260707000200_export_hub_extend_data_types",
+    "20260708000100_custom_domain_onboarding",
+    "20260715000100_tenant_provisioning_readiness",
+    "20260715000200_custom_domain_status_backfill",
+    "20260716000100_ai_media_preview_mock_write_foundation",
+    "20260717200000_add_ai_media_asset_storage_key",
+    "20260719000000_normalize_schema_drift",
+    "20260719010000_add_ai_media_entity_attachments",
+    "20260815000100_multi_capability_collaboration_ready_time_push_roles",
+    "20260815000200_push_subscription_origin",
+    "20260815000300_inoti_ussd_integration_foundation",
+    "20260815000400_inoti_ussd_callback_origin",
+    "20260815000500_organization_integration_foundation",
+    "20260815000600_relax_integration_capability_links",
+    "20260815000700_integration_runtime_foundation",
+    "20260815000800_customer_identity_foundation",
+    "20260815000900_demo_universe_backend_foundation",
+    "20260815001000_demo_public_api_events",
+    "20260815001100_demo_conceptual_roles",
+    "20260815001200_external_catalog_foundation",
+    "20260815001300_demo_scenario_foundation",
+    "20260815001400_external_catalog_approval_workflow",
+    "20260815001500_business_entity_graph_seo_foundation",
+    "20260815001600_seo_content_iam_foundation",
+    "20260815001700_business_acquisition_onboarding_foundation",
+    "20260815001800_business_activation_plan_foundation",
+    "20260815001900_owner_activation_task_flow",
+    "20260815002000_customer_trust_reputation_foundation",
+    "20260815002100_pilot_workspace_foundation",
+    "20260815002200_growth_intelligence_foundation",
+    "20260823000100_real_inoti_runtime_foundation",
+    "20260823000200_platform_inoti_integration_owner",
+    "20260824000100_ussd_event_observability",
+    "20260827_organization_branding",
+    "20260827_public_home_mode",
+    "20260830000100_reconcile_payment_money_semantics",
+    "20260830000200_inoti_payment_e2e",
+    "20260830000300_tenant_branding_extensions",
+    "20260831000100_inoti_durable_payment_reconciliation",
+    "20261003060000_add_organization_vertical_and_hotel_booking_capability",
+    "20261003070000_add_hotel_persistence",
+    "20261004080000_add_hotel_management_fields",
+    "20261004090000_add_hotel_rate_plan_cancellation_policy",
+    "20261004100000_add_hotel_inventory_idempotency",
+    "20261004110000_add_hotel_publication_approvals",
+    "20261004120000_add_hotel_anonymous_hold_idempotency",
+    "20261012130000_add_hotel_website_capability",
+    "20261012140000_hotel_website_content_foundation",
+    "20261013100000_hotel_website_operations_idempotency",
+    "20261013110000_retail_product_attributes",
+    "20261013120000_retail_branding_theme",
+    "20261013130000_retail_checkout_idempotency",
+    "20261013140000_retail_payment_reports",
+    "20261014100000_retail_r5_inoti_merchant_routing",
+    "20261014110000_retail_payment_expiration",
+    "20261014160000_retail_h2_product_taxonomy",
+    "20261015160000_bound_organization_invitations",
+    "20261015190000_universal_provisioning_execution",
+    "20261018150000_tenant_website_revisions",
+    "20261019120000_retail_brand_variant_gallery",
+    "20261019130000_retail_order_item_catalog_snapshots",
+    "20261019140000_retail_order_item_product_name_snapshot",
+    "20261021120000_retail_product_gallery_settings",
+    "20261023130000_retail_product_favorites",
+    "20261030215000_add_manually_unavailable_to_variant"
+  ]
+}

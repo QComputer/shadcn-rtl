@@ -24,6 +24,8 @@ export const publicCatalogListQuerySchema = z.object({
 }).transform(({ filter, ...query }) => filter === undefined ? query : ({ ...query, filter: typeof filter === "string" ? [filter] : filter }));
 
 export type PublicCatalogMoney = { amount: number; currency: typeof PUBLIC_CATALOG_PRICE_UNIT };
+export type PublicCatalogCardAppearance = { light: string | null; dark: string | null; lightSrcSet?: string; darkSrcSet?: string; configured?: boolean };
+export type PublicCatalogVisualAppearance = { value: string; variantIds: string[]; appearance: PublicCatalogCardAppearance };
 export type PublicCatalogMedia = { card: string | null; detail: string | null; alt: string; gallery: string[] };
 export type PublicCatalogPurchase = { href: string; productId: string };
 export type PublicCatalogVariant = {
@@ -35,8 +37,9 @@ export type PublicCatalogVariant = {
   sku: string | null;
   options: PublicCatalogAttribute[];
   media?: PublicCatalogVariantMedia;
+  cardAppearance?: PublicCatalogCardAppearance;
 };
-export type PublicCatalogVariantMedia = { gallery: string[] };
+export type PublicCatalogVariantMedia = { gallery: string[]; cardAppearance?: PublicCatalogCardAppearance };
 export type PublicCatalogAttribute = {
   key: string;
   label: string;
@@ -52,6 +55,7 @@ export type PublicCatalogCategory = {
   description: string | null;
   sortOrder: number;
   image: string | null;
+  darkImage?: string | null;
   productCount: number;
 };
 export type PublicCatalogProduct = {
@@ -64,6 +68,8 @@ export type PublicCatalogProduct = {
   price: PublicCatalogMoney;
   listPrice: PublicCatalogMoney | null;
   media: PublicCatalogMedia;
+  cardAppearance?: PublicCatalogCardAppearance;
+  visualAppearances?: PublicCatalogVisualAppearance[];
   orderable: boolean;
   variants: PublicCatalogVariant[];
   attributes: PublicCatalogAttribute[];
@@ -80,13 +86,16 @@ export const publicCatalogProductSchema = z.object({
   category: z.object({ id: z.string().min(1), slug: z.string().nullable(), name: z.string().min(1) }).strict(),
   price: publicCatalogMoneySchema, listPrice: publicCatalogMoneySchema.nullable(),
   media: z.object({ card: z.string().nullable(), detail: z.string().nullable(), alt: z.string(), gallery: z.array(z.string()) }).strict(),
+  cardAppearance: z.object({ light: z.string().nullable(), dark: z.string().nullable(), lightSrcSet: z.string().optional(), darkSrcSet: z.string().optional(), configured: z.boolean().optional() }).strict().optional(),
+  visualAppearances: z.array(z.object({ value: z.string().min(1), variantIds: z.array(z.string().min(1)), appearance: z.object({ light: z.string().nullable(), dark: z.string().nullable(), lightSrcSet: z.string().optional(), darkSrcSet: z.string().optional(), configured: z.boolean().optional() }).strict() }).strict()).optional(),
   orderable: z.boolean(), attributes: z.array(publicCatalogAttributeSchema),
   variants: z.array(z.object({ id: z.string().min(1), name: z.string().nullable(), price: publicCatalogMoneySchema,
     listPrice: publicCatalogMoneySchema.nullable(), orderable: z.boolean(), sku: z.string().nullable(), options: z.array(publicCatalogAttributeSchema),
-    media: z.object({ gallery: z.array(z.string()) }).strict().optional() }).strict()),
+    media: z.object({ gallery: z.array(z.string()), cardAppearance: z.object({ light: z.string().nullable(), dark: z.string().nullable(), lightSrcSet: z.string().optional(), darkSrcSet: z.string().optional(), configured: z.boolean().optional() }).strict().optional() }).strict().optional(),
+    cardAppearance: z.object({ light: z.string().nullable(), dark: z.string().nullable(), lightSrcSet: z.string().optional(), darkSrcSet: z.string().optional(), configured: z.boolean().optional() }).strict().optional() }).strict()),
   purchase: z.object({ href: z.string(), productId: z.string() }).strict().nullable(),
 }).strict();
-export const publicCatalogCategorySchema = z.object({ id: z.string(), slug: z.string().nullable(), name: z.string(), description: z.string().nullable(), sortOrder: z.number().int(), image: z.string().nullable(), productCount: z.number().int().nonnegative() }).strict();
+export const publicCatalogCategorySchema = z.object({ id: z.string(), slug: z.string().nullable(), name: z.string(), description: z.string().nullable(), sortOrder: z.number().int(), image: z.string().nullable(), darkImage: z.string().nullable().optional(), productCount: z.number().int().nonnegative() }).strict();
 export const publicCatalogPaginationSchema = z.object({ page: z.number().int().positive(), limit: z.number().int().positive().max(PUBLIC_CATALOG_MAX_PAGE_SIZE), total: z.number().int().nonnegative(), totalPages: z.number().int().nonnegative() }).strict();
 export const publicCatalogProductsPageSchema = z.object({ products: z.array(publicCatalogProductSchema), pagination: publicCatalogPaginationSchema }).strict();
 export const publicCatalogSnapshotSchema = z.object({

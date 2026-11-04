@@ -37,7 +37,7 @@ export default async function ShopProductPage({ params }: { params: Promise<Para
   return <><RetailLiveCatalog view={{ identifier: catalog.organization.identifier, name: catalog.organization.name,
     description: catalog.organization.description, branding: catalog.organization.branding, theme: catalog.organization.theme,
     previewOnly: catalog.organization.previewOnly,
-    categories: catalog.categories.map(({ id, slug: categorySlug, name }) => ({ id, slug: categorySlug, name })), products }}
+    categories: catalog.categories.map(({ id, slug: categorySlug, name, image, darkImage }) => ({ id, slug: categorySlug, name, image, darkImage })), products }}
     productSlug={detail.slug ?? detail.id} storefrontPath={storefrontPath} checkoutPath={`${storefrontPath}/checkout`} embedded />
     <RelatedProducts products={relatedProducts} storefrontPath={storefrontPath} /></>;
 }

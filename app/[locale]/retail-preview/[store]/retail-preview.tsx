@@ -8,7 +8,7 @@ import RetailLiveCatalog from "@/app/[locale]/retail/[organization]/retail-catal
 import type { PublishedRetailHero } from "@/lib/website-studio/retail-hero-contract";
 const rial = (n: number) => new Intl.NumberFormat("fa-IR").format(n) + " تومان";
 
-type LiveView = { managedHero?: { hero: PublishedRetailHero; products: PublicCatalogProduct[] } | null; identifier: string; name: string; description: string | null; branding: { logo: string | null; cover: string | null }; theme: "FASHION" | "ELECTRONICS" | "GENERAL"; previewOnly: boolean; categories: Array<{ id: string; name: string; slug: string | null }>; products: PublicCatalogProduct[] };
+type LiveView = { managedHero?: { hero: PublishedRetailHero; products: PublicCatalogProduct[] } | null; identifier: string; name: string; description: string | null; branding: { logo: string | null; cover: string | null }; theme: "FASHION" | "ELECTRONICS" | "GENERAL"; previewOnly: boolean; categories: Array<{ id: string; name: string; slug: string | null; image?: string | null; darkImage?: string | null }>; products: PublicCatalogProduct[] };
 
 export default function RetailPreview({ store, productId, liveView, storefrontPath, checkoutPath }: { store?: Store; productId?: string; liveView?: LiveView; storefrontPath?: string; checkoutPath?: string }) {
   if (liveView) return <RetailLiveCatalog view={liveView} productSlug={productId} storefrontPath={storefrontPath} checkoutPath={checkoutPath} />;

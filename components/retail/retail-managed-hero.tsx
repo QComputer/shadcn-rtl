@@ -5,9 +5,11 @@ import { ArrowUpLeft, ChevronLeft, ChevronRight, Pause, Play } from "lucide-reac
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import type { PublicCatalogProduct } from "@/lib/public-catalog/contracts";
-import type { PublishedRetailHero } from "@/lib/website-studio/retail-hero-contract";
+import { resolveRetailHeroThemeImages, type PublishedRetailHero } from "@/lib/website-studio/retail-hero-contract";
 import { appPath } from "@/lib/app-base-path";
 import { formatRetailMoney } from "@/lib/retail/format-price";
+import { themedCardImage } from "@/lib/retail/card-presentation";
+import { useCatalogTheme } from "./use-catalog-theme";
 
 export type RetailManagedHeroProps = {
   hero: PublishedRetailHero;
@@ -21,15 +23,18 @@ const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outli
 const toman = formatRetailMoney;
 
 export function RetailManagedHero({ hero, products, name, storefrontPath, preview = false }: RetailManagedHeroProps) {
+  const theme = useCatalogTheme();
   const selected = useMemo(() => {
+    if (!theme) return [];
     const byId = new Map(products.map(product => [product.id, product]));
     return hero.productIds.flatMap(id => {
       const product = byId.get(id);
       if (!product) return [];
-      const image = product.media.detail?.trim() || product.media.card?.trim() || product.media.gallery.find(src => src.trim())?.trim() || "";
+      const fallback = product.media.detail?.trim() || product.media.card?.trim() || product.media.gallery.find(src => src.trim())?.trim() || "";
+      const image = themedCardImage(product.cardAppearance, theme, fallback).src || "";
       return [{ product, image }];
     }).slice(0, 3);
-  }, [hero.productIds, products]);
+  }, [hero.productIds, products, theme]);
   const slides = useMemo(() => selected.filter(item => Boolean(item.image)), [selected]);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -41,6 +46,7 @@ export function RetailManagedHero({ hero, products, name, storefrontPath, previe
   const currentIndex = index % Math.max(1, slides.length);
   const slide = slides[currentIndex];
   const campaign = hero.mode === "CAMPAIGN";
+  const themeImages = theme ? resolveRetailHeroThemeImages(hero, theme) : null;
   const defaultHref = campaign ? `${storefrontPath.replace(/\/$/, "")}#products` : slide ? `${storefrontPath.replace(/\/$/, "")}/product/${encodeURIComponent(slide.product.slug || slide.product.id)}` : `${storefrontPath.replace(/\/$/, "")}#products`;
   const href = hero.ctaHref || defaultHref;
   const ctaHref = appPath(href);
@@ -56,7 +62,7 @@ export function RetailManagedHero({ hero, products, name, storefrontPath, previe
     media.addEventListener("change", update);
     document.addEventListener("visibilitychange", update);
     return () => { observer.disconnect(); media.removeEventListener("change", update); document.removeEventListener("visibilitychange", update); };
-  }, []);
+  }, [theme]);
 
   useEffect(() => {
     if (hero.mode !== "PRODUCTS" || !hero.autoplay || slides.length < 2 || !visible || !motionAllowed || paused || hovered || focused) return;
@@ -64,7 +70,7 @@ export function RetailManagedHero({ hero, products, name, storefrontPath, previe
     return () => window.clearInterval(timer);
   }, [hero.mode, hero.autoplay, slides.length, visible, motionAllowed, paused, hovered, focused]);
 
-  if (!hero.enabled || (campaign ? !hero.desktopImage : !slides.length)) return null;
+  if (!themeImages || !hero.enabled || (campaign ? !themeImages.desktop : !slides.length)) return null;
   const targetProps = preview ? { onClick: (event: MouseEvent<HTMLAnchorElement>) => event.preventDefault() } : {};
   const go = (next: number) => { setIndex((next + slides.length) % slides.length); setPaused(true); };
 
@@ -82,10 +88,10 @@ export function RetailManagedHero({ hero, products, name, storefrontPath, previe
       </div>
 
       <div className={`relative min-w-0 bg-muted/30 lg:order-2 ${campaign ? "" : "border-t border-border/60 p-2.5 sm:p-4 lg:border-e lg:border-t-0"}`}>
-        {campaign ? <div className={`relative overflow-hidden bg-muted/40 ${hero.mobileImage ? "aspect-[3/4]" : "aspect-[4/3]"} sm:aspect-auto sm:h-[clamp(22rem,42vw,30rem)] lg:h-full lg:min-h-[420px]`}>
+        {campaign ? <div className={`relative overflow-hidden bg-muted/40 ${themeImages.hasMobileImage ? "aspect-[3/4]" : "aspect-[4/3]"} sm:aspect-auto sm:h-[clamp(22rem,42vw,30rem)] lg:h-full lg:min-h-[420px]`}>
           <picture className="absolute inset-0">
-            {hero.mobileImage && <source media="(max-width: 639px)" srcSet={hero.mobileImage} />}
-            <img src={hero.desktopImage!} alt={hero.imageAlt || hero.heading} width={1600} height={1000} className={`size-full ${hero.imageFit === "contain" ? "object-contain" : "object-cover"}`} style={{ objectPosition: `${hero.focalX}% ${hero.focalY}%` }} />
+            {themeImages.hasMobileImage && themeImages.mobile && <source media="(max-width: 639px)" srcSet={themeImages.mobile} />}
+            <img src={themeImages.desktop!} alt={hero.imageAlt || hero.heading} width={1600} height={1000} className={`size-full ${hero.imageFit === "contain" ? "object-contain" : "object-cover"}`} style={{ objectPosition: `${hero.focalX}% ${hero.focalY}%` }} />
           </picture>
         </div> : <div className="relative h-[clamp(14rem,58vw,24rem)] overflow-hidden rounded-[1.1rem] bg-muted/40 sm:h-[clamp(18rem,42vw,30rem)] lg:h-[390px]">
           {slides.map((item, position) => <a key={item.product.id} href={appPath(`${storefrontPath.replace(/\/$/, "")}/product/${encodeURIComponent(item.product.slug || item.product.id)}`)} {...targetProps} tabIndex={position === currentIndex ? undefined : -1} aria-hidden={position === currentIndex ? undefined : true} aria-label={`مشاهده ${item.product.name}`} className={`absolute inset-0 transition-opacity duration-700 motion-reduce:transition-none ${position === currentIndex ? "opacity-100" : "pointer-events-none opacity-0"} ${focus}`}>

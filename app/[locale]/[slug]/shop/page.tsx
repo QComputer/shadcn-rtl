@@ -63,7 +63,7 @@ export default async function ShopPage({
       branding: catalog.organization.branding,
       theme: catalog.organization.theme,
       previewOnly: catalog.organization.previewOnly,
-      categories: catalog.categories.map(({ id, slug: categorySlug, name }) => ({ id, slug: categorySlug, name })),
+      categories: catalog.categories.map(({ id, slug: categorySlug, name, image, darkImage }) => ({ id, slug: categorySlug, name, image, darkImage })),
       products: catalog.products,
     }} storefrontPath={storefrontPath} checkoutPath={checkoutPath} embedded />;
 }

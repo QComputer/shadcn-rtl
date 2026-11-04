@@ -15,13 +15,15 @@ import { findRetailOptionDefinition, parseRetailOptionList, retailNumericInput }
 
 import { AssignedGallery, RetailMediaPicker } from "./retail-media-picker";
 import { colorGroupKey, inferColorGallery, type GallerySettings, type GallerySettingsInput } from "@/lib/retail/product-galleries";
+import { ProductAppearanceEditor, type ProductAppearanceSettings } from "./product-appearance-editor";
 
 type Locale = "fa" | "en" | "ar";
 type Definition = { id: string; key: string; label: string; scope: "PRODUCT" | "VARIANT_OPTION"; valueType: "TEXT" | "NUMBER" | "BOOLEAN" | "ENUM"; displayUnit: string | null; allowedValues: unknown };
 type Category = { id: string; name: string; isActive: boolean };
 type ImageItem = { id: string; url: string; filename?: string | null };
 type Attribute = { definitionId: string; value: string | number | boolean };
-type ProductRecord = { id: string; name: string; brand: string | null; slug: string | null; description: string | null; isActive: boolean; trackInventory: boolean; basePrice: number; gallerySettings: GallerySettings | null; galleryMedia?: ImageItem[]; category: { id: string; name: string; isActive: boolean }; categoryIds: string[]; tags: Array<{ id: string; name: string }>; imageIds: string[]; images: ImageItem[]; attributes: Attribute[]; variants: VariantRecord[] };
+type ProductGallerySettings = GallerySettings & ProductAppearanceSettings;
+type ProductRecord = { id: string; name: string; brand: string | null; slug: string | null; description: string | null; isActive: boolean; trackInventory: boolean; basePrice: number; gallerySettings: ProductGallerySettings | null; galleryMedia?: ImageItem[]; appearanceMedia?: ImageItem[]; category: { id: string; name: string; isActive: boolean }; categoryIds: string[]; tags: Array<{ id: string; name: string }>; imageIds: string[]; images: ImageItem[]; attributes: Attribute[]; variants: VariantRecord[] };
 type VariantRecord = { galleryMode?: "INHERIT" | "OVERRIDE" | null; id: string; name: string | null; sku: string | null; price: number | null; inventory: number; reservedQuantity: number; allowBackOrder: boolean; manuallyUnavailable: boolean; options: Attribute[]; imageIds: string[]; images: ImageItem[] };
 type VariantDraft = { galleryMode: "INHERIT" | "OVERRIDE"; id?: string; name: string; sku: string; price: string; inventory: string; reservedQuantity: number; allowBackOrder: boolean; manuallyUnavailable: boolean; options: Record<string, string>; imageIds: string[] };
 
@@ -72,7 +74,7 @@ function galleryEditor(product: ProductRecord, definitions: Definition[]) {
 }
 function recordSnapshot(product: ProductRecord, definitions: Definition[]) {
   const gallery = galleryEditor(product, definitions);
-  return retailEditorSnapshot({ basePrice: product.basePrice > 0 ? String(product.basePrice) : "", colorGalleries: gallery.colors, trackInventory: product.trackInventory, name: product.name, brand: product.brand ?? "", slug: product.slug ?? "", description: product.description ?? "", categoryId: product.category.id, categoryIds: product.categoryIds ?? [product.category.id], tagText: (product.tags ?? []).map((tag) => tag.name).join(", "), attributes: Object.fromEntries(product.attributes.map((attribute) => [attribute.definitionId, String(attribute.value)])), variants: gallery.variants, selectedImageIds: product.imageIds });
+  return retailEditorSnapshot({ basePrice: product.basePrice > 0 ? String(product.basePrice) : "", colorGalleries: gallery.colors, appearance: product.gallerySettings?.appearance ?? {}, appearanceGroups: product.gallerySettings?.appearanceGroups ?? [], variantAppearances: product.gallerySettings?.variantAppearances ?? [], trackInventory: product.trackInventory, name: product.name, brand: product.brand ?? "", slug: product.slug ?? "", description: product.description ?? "", categoryId: product.category.id, categoryIds: product.categoryIds ?? [product.category.id], tagText: (product.tags ?? []).map((tag) => tag.name).join(", "), attributes: Object.fromEntries(product.attributes.map((attribute) => [attribute.definitionId, String(attribute.value)])), variants: gallery.variants, selectedImageIds: product.imageIds });
 }
 
 function valueFromInput(definition: Definition, value: string): string | number | boolean {
@@ -115,6 +117,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
   const [definitions, setDefinitions] = useState<Definition[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [colorGalleries, setColorGalleries] = useState<ColorGallery[]>([]);
+  const [appearanceSettings, setAppearanceSettings] = useState<ProductAppearanceSettings>({});
   const [picker, setPicker] = useState<{ kind: "product" } | { kind: "color"; key: string } | { kind: "variant"; index: number } | null>(null);
   const [images, setImages] = useState<ImageItem[]>([]);
   const [selectedImageIds, setSelectedImageIds] = useState<string[]>([]);
@@ -161,7 +164,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
   const [genPreview, setGenPreview] = useState<null | { signature: string; canCreate: number; existing: number; errors: string[]; items: Array<{ name: string | null; sku: string | null; price: number | null }>; drafts?: VariantDraft[] }>(null);
   const [genBusy, setGenBusy] = useState(false);
 
-  const editorState = retailEditorSnapshot({ basePrice, colorGalleries, trackInventory, name, brand, slug, description, categoryId, categoryIds, tagText, attributes, variants, selectedImageIds });
+  const editorState = retailEditorSnapshot({ basePrice, colorGalleries, appearance: appearanceSettings.appearance ?? {}, appearanceGroups: appearanceSettings.appearanceGroups ?? [], variantAppearances: appearanceSettings.variantAppearances ?? [], trackInventory, name, brand, slug, description, categoryId, categoryIds, tagText, attributes, variants, selectedImageIds });
   const unsaved = savedState !== null && savedState !== editorState;
   const leaveWarning = locale === "fa" ? "تغییرات ذخیره نشده‌اند. بدون ذخیره خارج می‌شوید؟" : locale === "ar" ? "لم يتم حفظ التغييرات. هل تريد المغادرة؟" : "You have unsaved changes. Leave without saving?";
 
@@ -216,6 +219,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
           const product = productData.product as ProductRecord;
           setSavedState(recordSnapshot(product, defs));
           setColorGalleries(galleryEditor(product, defs).colors);
+          setAppearanceSettings({ appearance: product.gallerySettings?.appearance ?? undefined, appearanceGroups: product.gallerySettings?.appearanceGroups ?? undefined, variantAppearances: product.gallerySettings?.variantAppearances ?? undefined });
           setName(product.name);
           setBrand(product.brand ?? "");
           setSlug(product.slug ?? "");
@@ -230,7 +234,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
           setAttributes(Object.fromEntries(product.attributes.map((attribute) => [attribute.definitionId, String(attribute.value)])));
           setImages((current) => {
             const merged = new Map(current.map((image) => [image.id, image]));
-            for (const image of [...product.images, ...product.variants.flatMap(variant => variant.images), ...(product.galleryMedia ?? [])]) merged.set(image.id, image);
+            for (const image of [...product.images, ...product.variants.flatMap(variant => variant.images), ...(product.galleryMedia ?? []), ...(product.appearanceMedia ?? [])]) merged.set(image.id, image);
             return [...merged.values()];
           });
           setSelectedImageIds(product.imageIds);
@@ -239,8 +243,8 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
           setName(""); setBrand(""); setSlug(""); setDescription(""); setBasePrice("");
           setCategoryId(""); setCategoryIds([]); setTagText(""); setAttributes({}); setPublished(false); setTrackInventory(true); setLoadedInventory({});
           const initialVariants = [newVariant(defs)];
-          setVariants(initialVariants); setColorGalleries([]);
-          setSavedState(retailEditorSnapshot({ basePrice: "", colorGalleries: [], trackInventory: true, name: "", brand: "", slug: "", description: "", categoryId: "", categoryIds: [], tagText: "", attributes: {}, variants: initialVariants, selectedImageIds: [] }));
+          setVariants(initialVariants); setColorGalleries([]); setAppearanceSettings({});
+          setSavedState(retailEditorSnapshot({ basePrice: "", colorGalleries: [], appearance: {}, appearanceGroups: [], variantAppearances: [], trackInventory: true, name: "", brand: "", slug: "", description: "", categoryId: "", categoryIds: [], tagText: "", attributes: {}, variants: initialVariants, selectedImageIds: [] }));
           setSelectedImageIds([]);
         }
       } catch {
@@ -392,13 +396,14 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
       const productAttributes = buildAssignments("PRODUCT", attributes);
       const categoriesToSave = [...new Set([categoryId, ...categoryIds].filter(Boolean))];
       const tagNames = [...new Set(tagText.split(/[,،\n]/u).map((tag) => tag.trim()).filter(Boolean))];
+      const gallerySettings = { version: 1 as const, productImageIds: selectedImageIds, colors: visibleColors, ...appearanceSettings };
       const payload = productId ? {
-        trackInventory, gallerySettings: { version: 1 as const, productImageIds: selectedImageIds, colors: visibleColors }, basePrice: numberBasePrice, name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
+        trackInventory, gallerySettings, basePrice: numberBasePrice, name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
         variantUpdates: variants.filter((variant) => variant.id).map((variant) => ({ id: variant.id!, name: variant.name.trim(), sku: variant.sku.trim() || null, price: variant.price === "" ? null : Number(variant.price), ...(variant.inventory === loadedInventory[variant.id!] ? {} : { inventory: Number(variant.inventory) }), allowBackOrder: variant.allowBackOrder, manuallyUnavailable: variant.manuallyUnavailable, galleryMode: variant.galleryMode, options: variantInput[variants.indexOf(variant)]!.options, imageIds: variant.imageIds })),
         newVariants: variantInput.filter((_, index) => !variants[index]?.id),
         ...(action === "publish" ? { isActive: true } : action === "unpublish" ? { isActive: false } : {}),
       } : {
-        trackInventory, gallerySettings: { version: 1 as const, productImageIds: selectedImageIds, colors: visibleColors }, basePrice: numberBasePrice, name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
+        trackInventory, gallerySettings, basePrice: numberBasePrice, name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
         variants: variantInput,
       };
       const response = await fetch(productId ? `/api/dashboard/retail/catalog/${productId}` : "/api/dashboard/retail/catalog", { method: productId ? "PATCH" : "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
@@ -419,6 +424,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
       setSelectedImageIds(updated.imageIds);
       setVariants(galleryEditor(updated, definitions).variants);
       setColorGalleries(galleryEditor(updated, definitions).colors);
+      setAppearanceSettings({ appearance: updated.gallerySettings?.appearance ?? undefined, appearanceGroups: updated.gallerySettings?.appearanceGroups ?? undefined, variantAppearances: updated.gallerySettings?.variantAppearances ?? undefined });
       setSlug(updated.slug ?? "");
       setSavedState(recordSnapshot(updated, definitions)); setGenPreview(null);
       setPublished(updated.isActive);
@@ -507,6 +513,8 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
             <AssignedGallery locale={locale} title={locale === "fa" ? "گالری محصول" : locale === "ar" ? "معرض المنتج" : "Product gallery"} description={locale === "fa" ? "فقط تصاویر همین محصول نمایش داده می‌شوند. تصویر نخست، تصویر اصلی است؛ انتخاب از کتابخانه فقط با تأیید شما انجام می‌شود." : locale === "ar" ? "تظهر صور هذا المنتج فقط. الصورة الأولى هي الرئيسية." : "Assigned product images only. The first image is primary."} images={selectedImages} disabled={saving || fileBusy} onChange={setSelectedImageIds} onOpenLibrary={() => setPicker({ kind: "product" })} onUpload={files => uploadToGallery({ kind: "product" }, files)} />
             {visibleColors.map(color => { const key = colorGroupKey(color.definitionId, color.value); return <div key={key} className="border-t pt-4"><AssignedGallery locale={locale} title={`${locale === "fa" ? "گالری رنگ" : locale === "ar" ? "معرض اللون" : "Color gallery"}: ${color.value}`} description={locale === "fa" ? "برای همه سایزهای این رنگ استفاده می‌شود؛ گالری‌های اختصاصی گونه‌ها حفظ می‌شوند. تغییرات پس از ذخیره اعمال می‌شوند." : locale === "ar" ? "يُستخدم عبر جميع الأحجام. يتم الحفاظ على معارض الخيارات المخصصة." : "Shared across sizes of this color; variant overrides are preserved."} images={assignedImages(color.imageIds)} disabled={saving || fileBusy} onChange={ids => changeGallery({ kind: "color", key }, ids)} onOpenLibrary={() => setPicker({ kind: "color", key })} onUpload={files => uploadToGallery({ kind: "color", key }, files)} /></div>; })}
           </section>
+
+          <ProductAppearanceEditor locale={locale} definitions={optionDefinitions} variants={variants} images={images} value={appearanceSettings} onChange={setAppearanceSettings} onUploadingChange={setFileBusy} disabled={saving || fileBusy} />
 
           <details className="rounded-xl border bg-card p-4">
             <summary className="cursor-pointer py-2 font-semibold">{t.sizeRange}</summary>

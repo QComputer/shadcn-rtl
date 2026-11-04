@@ -1,3 +1,4 @@
+import { resolveProductCategoryImage } from "@/lib/product-category-image.server";
 import { NextRequest, NextResponse } from "next/server";
 import { productCategoryService } from "@/lib/services/category.service";
 import { updateProductCategorySchema } from "@/lib/validators";
@@ -32,10 +33,11 @@ export async function PATCH(
   try {
     const session = await requireAuthSession();
     const { id } = await params;
-    await requireProductCategoryAccess(session, id, ["ADMIN", "MANAGER"]);
+    const ownedCategory = await requireProductCategoryAccess(session, id, ["ADMIN", "MANAGER"]);
 
     const body = await request.json();
-    const sanitizedBody = { ...body };
+    const [image, darkImage] = await Promise.all([resolveProductCategoryImage(ownedCategory.organizationId, body.imageId), resolveProductCategoryImage(ownedCategory.organizationId, body.darkImageId)]);
+    const sanitizedBody = { ...body, ...(image !== undefined ? { image } : {}), ...(darkImage !== undefined ? { darkImage } : {}) };
     if (sanitizedBody.image === "") sanitizedBody.image = null;
     if (sanitizedBody.description === null || sanitizedBody.description === "") sanitizedBody.description = undefined;
 

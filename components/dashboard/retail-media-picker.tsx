@@ -129,9 +129,10 @@ type RetailMediaPickerProps = {
   onConfirm(ids: string[], images: RetailImage[]): void;
   locale: Locale;
   disabled?: boolean;
+  maxSelection?: 1 | 20;
 };
 
-export function RetailMediaPicker({ open, onOpenChange, selectedIds, onConfirm, locale, disabled = false }: RetailMediaPickerProps) {
+export function RetailMediaPicker({ open, onOpenChange, selectedIds, onConfirm, locale, disabled = false, maxSelection = 20 }: RetailMediaPickerProps) {
   const t = copy[locale];
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -187,9 +188,9 @@ export function RetailMediaPicker({ open, onOpenChange, selectedIds, onConfirm, 
   }, [open, debouncedQuery, retryKey]);
 
   useEffect(() => {
-    if (open && !wasOpen.current) setStagedIds(selectedIdsRef.current.slice(0, 20));
+    if (open && !wasOpen.current) setStagedIds(selectedIdsRef.current.slice(0, maxSelection));
     wasOpen.current = open;
-  }, [open]);
+  }, [open, maxSelection]);
 
   const selectedSet = useMemo(() => new Set(stagedIds), [stagedIds]);
 
@@ -222,7 +223,8 @@ export function RetailMediaPicker({ open, onOpenChange, selectedIds, onConfirm, 
   function toggle(id: string) {
     setStagedIds((current) => {
       if (current.includes(id)) return current.filter((item) => item !== id);
-      if (current.length >= 20) return current;
+      if (maxSelection === 1) return [id];
+      if (current.length >= maxSelection) return current;
       return [...current, id];
     });
   }
@@ -233,7 +235,7 @@ export function RetailMediaPicker({ open, onOpenChange, selectedIds, onConfirm, 
       <DialogContent dir={direction} className="flex max-h-[90dvh] w-[calc(100%-1.25rem)] max-w-3xl flex-col gap-0 overflow-hidden p-0 sm:w-full">
         <DialogHeader className="border-b p-5 pe-12 text-start sm:p-6 sm:pe-12">
           <DialogTitle>{t.title}</DialogTitle>
-          <DialogDescription>{t.description}</DialogDescription>
+          <DialogDescription>{maxSelection === 1 ? (locale === "fa" ? "یک تصویر برای دسته‌بندی انتخاب کنید." : locale === "ar" ? "اختر صورة واحدة للفئة." : "Choose one image for the category.") : t.description}</DialogDescription>
         </DialogHeader>
         <div className="flex items-center gap-3 border-b px-5 py-3 sm:px-6">
           <label className="flex min-w-0 flex-1 items-center gap-2 rounded-md border px-3 focus-within:ring-2 focus-within:ring-ring">
@@ -243,13 +245,13 @@ export function RetailMediaPicker({ open, onOpenChange, selectedIds, onConfirm, 
           </label>
           <span aria-live="polite" className="shrink-0 text-xs text-muted-foreground">{stagedIds.length} {t.selected}</span>
         </div>
-        {stagedIds.length >= 20 ? <p role="status" className="px-5 pt-3 text-sm text-amber-700 dark:text-amber-400 sm:px-6">{t.limit}</p> : null}
+        {maxSelection > 1 && stagedIds.length >= maxSelection ? <p role="status" className="px-5 pt-3 text-sm text-amber-700 dark:text-amber-400 sm:px-6">{t.limit}</p> : null}
         <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
           {loading ? <div role="status" className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />{t.loading}</div> : error ? <div className="py-12 text-center"><p role="alert" className="mb-3 text-sm text-destructive">{t.loadError}</p><button type="button" onClick={() => setRetryKey((n) => n + 1)} className="rounded-md border px-3 py-2 text-sm hover:bg-muted">{t.retry}</button></div> : images.length === 0 ? <p className="py-12 text-center text-sm text-muted-foreground">{t.none}</p> : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
               {images.map((image) => {
                 const selected = selectedSet.has(image.id);
-                const atLimit = stagedIds.length >= 20 && !selected;
+                const atLimit = maxSelection > 1 && stagedIds.length >= maxSelection && !selected;
                 return <button key={image.id} type="button" aria-pressed={selected} disabled={disabled || atLimit} onClick={() => toggle(image.id)} className={`group relative overflow-hidden rounded-lg border text-start transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-55 ${selected ? "border-primary ring-2 ring-primary" : "hover:border-primary/60"}`}>
                   <Image src={image.url} alt={image.filename || t.title} width={320} height={320} unoptimized className="aspect-square w-full object-cover" />
                   <span className="block truncate px-2 py-2 text-xs" title={image.filename ?? undefined}>{image.filename || image.id}</span><span className="block truncate px-2 pb-2 text-xs text-muted-foreground">{image.productNames?.join("، ")}</span>

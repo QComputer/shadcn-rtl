@@ -1,15 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ApiError } from "@/lib/api-guards";
-import { initialRetailContent, type RetailContent } from "@/lib/website-studio/retail-contract";
+import { initialRetailContent, referencedWebsiteImages, type RetailContent } from "@/lib/website-studio/retail-contract";
 import { RetailWebsiteService, type StudioPrincipal } from "@/lib/website-studio/retail.service";
-import { retailHeroSchema, readRetailHeroPublication, type RetailHeroPublication } from "@/lib/website-studio/retail-hero-contract";
+import { resolveRetailHeroThemeImages, retailHeroSchema, readRetailHeroPublication, type RetailHeroPublication } from "@/lib/website-studio/retail-hero-contract";
 import { resolveRetailHero } from "@/lib/website-studio/retail-hero.server";
 
 const org = { id: "org-1", name: "نمونه", slug: "sample", description: null, phone: null, email: null, address: null };
 const principal: StudioPrincipal = { userId: "user-1", role: "ADMIN", organizationId: "org-1" };
 const image = { id: "hero-image", url: "https://store.public.blob.vercel-storage.com/hero.jpg", filename: "hero.jpg", mimeType: "image/jpeg" };
 const secondImage = { id: "hero-image-mobile", url: "https://store.public.blob.vercel-storage.com/mobile.jpg", filename: "mobile.jpg", mimeType: "image/jpeg" };
+const darkImage = { id: "hero-image-dark", url: "https://store.public.blob.vercel-storage.com/dark.jpg", filename: "dark.jpg", mimeType: "image/jpeg" };
 
 function content(heroOverrides: Record<string, unknown> = {}): RetailContent {
   const base = initialRetailContent(org);
@@ -24,6 +25,8 @@ function content(heroOverrides: Record<string, unknown> = {}): RetailContent {
       ctaHref: "/fa/retail/sample",
       desktopImageId: image.id,
       mobileImageId: secondImage.id,
+      darkDesktopImageId: "",
+      darkMobileImageId: "",
       imageAlt: "مجموعه تابستانی",
       imageFit: "cover",
       focalX: 50,
@@ -108,6 +111,39 @@ test("Retail hero contract rejects unsafe destinations, invalid media ids, dupli
   assert.equal(retailHeroSchema.safeParse({ ...valid, unexpected: true }).success, false);
 });
 
+test("hero contract defaults dark images for saved legacy revisions and resolves theme-specific images only from eligible tenant media", () => {
+  const legacy = { ...content().hero! } as Record<string, unknown>;
+  delete legacy.darkDesktopImageId;
+  delete legacy.darkMobileImageId;
+  const parsedLegacy = retailHeroSchema.parse(legacy);
+  assert.equal(parsedLegacy.darkDesktopImageId, "");
+  assert.equal(parsedLegacy.darkMobileImageId, "");
+
+  const themed = content({ darkDesktopImageId: darkImage.id });
+  const resolved = resolveRetailHero(themed, [image, secondImage, darkImage]);
+  assert.equal(resolved?.darkDesktopImage, darkImage.url);
+  assert.equal(resolved?.darkMobileImage, null);
+  assert.equal("darkDesktopImageId" in (resolved ?? {}), false);
+  assert.equal(resolveRetailHero(themed, [image, secondImage])?.darkDesktopImage, null);
+  assert.deepEqual(referencedWebsiteImages(themed), [image.id, secondImage.id, darkImage.id]);
+});
+
+test("hero theme image selection prefers the active theme across desktop and mobile breakpoints", () => {
+  const images = { desktopImage: "light-desktop", mobileImage: "light-mobile", darkDesktopImage: "dark-desktop", darkMobileImage: null };
+  assert.deepEqual(resolveRetailHeroThemeImages(images, "dark"), {
+    desktop: "dark-desktop", mobile: "dark-desktop", hasMobileImage: true,
+  });
+  assert.deepEqual(resolveRetailHeroThemeImages({ ...images, darkDesktopImage: null, darkMobileImage: "dark-mobile" }, "dark"), {
+    desktop: "dark-mobile", mobile: "dark-mobile", hasMobileImage: true,
+  });
+  assert.deepEqual(resolveRetailHeroThemeImages({ ...images, desktopImage: null }, "light"), {
+    desktop: "light-mobile", mobile: "light-mobile", hasMobileImage: true,
+  });
+  assert.deepEqual(resolveRetailHeroThemeImages({ ...images, mobileImage: null, darkMobileImage: null }, "light"), {
+    desktop: "light-desktop", mobile: "light-desktop", hasMobileImage: false,
+  });
+});
+
 test("hero resolution includes eligible images and hides a campaign when its image is revoked", () => {
   const resolved = resolveRetailHero(content(), [image, secondImage]);
   assert.equal(resolved?.desktopImage, image.url);
@@ -142,6 +178,15 @@ test("publication requires an immutable revision owned by the tenant and current
   await assert.rejects(mediaRevoked.service.changePublication(principal, "org-1", publish("r1")), (error: unknown) => error instanceof ApiError && error.status === 422);
   assert.equal(mediaRevoked.audit.length, 0);
   assert.equal(mediaRevoked.sql.length, 0);
+
+  const foreignDarkAsset = content({ darkDesktopImageId: "image-from-another-tenant" });
+  const darkMediaRevoked = publicationService({ revisions: { r1: foreignDarkAsset } });
+  await assert.rejects(darkMediaRevoked.service.changePublication(principal, "org-1", publish("r1")), (error: unknown) => error instanceof ApiError && error.status === 422);
+  assert.equal(darkMediaRevoked.audit.length, 0);
+  assert.equal(darkMediaRevoked.sql.length, 0);
+
+  const themed = publicationService({ revisions: { r1: content({ darkDesktopImageId: darkImage.id, darkMobileImageId: darkImage.id }) }, images: [image, secondImage, darkImage] });
+  assert.equal((await themed.service.changePublication(principal, "org-1", publish("r1"))).revisionId, "r1");
 
   const valid = publicationService({ revisions: { r1: content() } });
   const result = await valid.service.changePublication(principal, "org-1", publish("r1"));

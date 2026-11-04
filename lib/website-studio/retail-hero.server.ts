@@ -9,12 +9,14 @@ import { readRetailHeroPublication, type PublishedRetailHero } from "./retail-he
 export function resolveRetailHero(content: RetailContent, media: WebsiteMedia[]): PublishedRetailHero | null {
   const hero = content.hero;
   if (!hero) return null;
-  const { desktopImageId, mobileImageId, ...config } = hero;
+  const { desktopImageId, mobileImageId, darkDesktopImageId, darkMobileImageId, ...config } = hero;
   const desktopImage = media.find(image => image.id === desktopImageId)?.url ?? null;
   const mobileImage = media.find(image => image.id === mobileImageId)?.url ?? null;
+  const darkDesktopImage = media.find(image => image.id === darkDesktopImageId)?.url ?? null;
+  const darkMobileImage = media.find(image => image.id === darkMobileImageId)?.url ?? null;
   // A revoked campaign image must not continue rendering from a cached URL.
   if (hero.enabled && hero.mode === "CAMPAIGN" && !desktopImage) return null;
-  return { ...config, desktopImage, mobileImage };
+  return { ...config, desktopImage, mobileImage, darkDesktopImage, darkMobileImage };
 }
 
 export async function retailHeroProducts(slug: string, ids: string[]) {

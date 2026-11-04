@@ -2,10 +2,10 @@
 
 import { formatRetailSize } from "@/lib/retail/format-size";
 
-import Image from "next/image";
+import { useCatalogTheme } from "./use-catalog-theme";
 import { Pause, Play, ChevronLeft } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { colorSlides, constrainedDimensions, filterCardVariants } from "@/lib/retail/card-presentation";
+import { appearanceSlides, themedCardImage, hasVariantCardFilters, constrainedDimensions, filterCardVariants } from "@/lib/retail/card-presentation";
 import { compareRetailSizes, reliableColorSwatch } from "@/lib/retail/product-detail";
 import { canonicalDimensions, chooseVariant, dimensionValues, resolveSelectedVariant, retailAttributeText, type RetailProduct, type RetailVariant } from "@/lib/retail/variant-selection";
 import type { RetailCardView } from "./retail-card-view-toggle";
@@ -15,9 +15,10 @@ const noFilters: readonly string[] = [];
 const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 function CardMedia({ product, selected, pinned, href, favorite }: { product: RetailProduct; selected?: RetailVariant; pinned: boolean; href: string; favorite?: ReactNode }) {
-  const slides = useMemo(() => colorSlides(product), [product]);
+  const theme = useCatalogTheme();
+  const slides = useMemo(() => theme ? appearanceSlides(product, theme) : [], [product, theme]);
   const [index, setIndex] = useState(0);
-  const [previous, setPrevious] = useState<string | null>(null);
+  const [previous, setPrevious] = useState<{ src: string; srcSet?: string; theme: string } | null>(null);
   const [loaded, setLoaded] = useState("");
   const [paused, setPaused] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -26,8 +27,11 @@ function CardMedia({ product, selected, pinned, href, favorite }: { product: Ret
   const [motionAllowed, setMotionAllowed] = useState(false);
   const region = useRef<HTMLDivElement>(null);
   const slide = slides[index % Math.max(1, slides.length)];
-  const baseImage = selected?.media?.gallery[0] || product.media.card || product.media.gallery[0];
-  const src = (!pinned && slide ? slide.src : baseImage) || null;
+  const base = themedCardImage(selected?.cardAppearance ?? selected?.media?.cardAppearance ?? product.cardAppearance, theme ?? "light", selected?.media?.gallery[0] || product.media.card || product.media.gallery[0]);
+  const chosen = !pinned && slide ? slide : base;
+  const src = theme ? chosen.src : null;
+  const srcSet = chosen.srcSet;
+  const previousImage = previous?.theme === theme ? previous : null;
   const animated = !pinned && slides.length > 1;
 
   useEffect(() => {
@@ -45,20 +49,20 @@ function CardMedia({ product, selected, pinned, href, favorite }: { product: Ret
 
   useEffect(() => {
     if (!animated || !visible || !motionAllowed || paused || hovered || focused) return;
-    const timer = window.setInterval(() => { setPrevious(src); setIndex(current => (current + 1) % slides.length); }, 4500);
+    const timer = window.setInterval(() => { if (src && theme) setPrevious({ src, srcSet, theme }); setIndex(current => (current + 1) % slides.length); }, 2000);
     return () => window.clearInterval(timer);
-  }, [animated, visible, motionAllowed, paused, hovered, focused, src, slides.length]);
+  }, [animated, visible, motionAllowed, paused, hovered, focused, src, srcSet, theme, slides.length]);
 
   return <div ref={region} className="relative aspect-square shrink-0 overflow-hidden bg-muted" onPointerEnter={() => setHovered(true)} onPointerLeave={() => setHovered(false)} onFocusCapture={() => setFocused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false); }}>
     <a href={href} aria-label={`مشاهده ${product.name}`} className={`absolute inset-0 ${focus}`}>
       {src ? <>
-        <Image src={previous || baseImage || src} alt="" aria-hidden fill unoptimized sizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 300px" className="object-cover" />
-        <Image key={src} src={src} alt={`${product.media.alt || product.name}${animated && slide ? `، ${slide.value}` : ""}`} fill unoptimized sizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 300px" onLoad={() => setLoaded(src)} className={`object-cover transition-opacity duration-700 motion-reduce:transition-none ${loaded === src ? "opacity-100" : "opacity-0"}`} />
-      </> : <span className="grid h-full place-items-center px-3 text-center text-xs text-muted-foreground">تصویری برای این کالا ثبت نشده است</span>}
+        <img loading="lazy" decoding="async" src={previousImage?.src || src} srcSet={previousImage ? previousImage.srcSet : srcSet} alt="" aria-hidden sizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 300px" className="absolute inset-0 size-full object-cover" />
+        <img loading="lazy" decoding="async" key={src} src={src} srcSet={srcSet} alt={`${product.media.alt || product.name}${animated && slide ? `، ${slide.value}` : ""}`} sizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 300px" onLoad={() => setLoaded(src)} className={`absolute inset-0 size-full object-cover transition-opacity duration-700 motion-reduce:transition-none ${loaded === src ? "opacity-100" : "opacity-0"}`} />
+      </> : !theme ? <span aria-hidden className="block size-full animate-pulse bg-muted" /> : <span className="grid h-full place-items-center px-3 text-center text-xs text-muted-foreground">تصویری برای این کالا ثبت نشده است</span>}
     </a>
     {favorite && <div className="absolute end-2 top-2 z-10">{favorite}</div>}
-    {animated && motionAllowed && <button type="button" aria-label={paused ? `پخش تصاویر رنگ‌های ${product.name}` : `توقف تصاویر رنگ‌های ${product.name}`} aria-pressed={paused} onClick={() => setPaused(value => !value)} className={`absolute start-2 top-2 z-10 grid size-8 place-items-center rounded-full border border-border/60 bg-card/90 text-card-foreground backdrop-blur ${focus}`}>{paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}</button>}
-    {animated && slide && <span className="pointer-events-none absolute bottom-2 start-2 max-w-[calc(100%-1rem)] truncate rounded-full border border-border/60 bg-card/90 px-2 py-1 text-[10px] text-card-foreground backdrop-blur">پیش‌نمایش رنگ: {slide.value}</span>}
+    {animated && motionAllowed && <button type="button" aria-label={paused ? `پخش تصاویر تنوع‌های ${product.name}` : `توقف تصاویر تنوع‌های ${product.name}`} aria-pressed={paused} onClick={() => setPaused(value => !value)} className={`absolute start-2 top-2 z-10 grid size-8 place-items-center rounded-full border border-border/60 bg-card/90 text-card-foreground backdrop-blur ${focus}`}>{paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}</button>}
+    {animated && slide && <span className="pointer-events-none absolute bottom-2 start-2 max-w-[calc(100%-1rem)] truncate rounded-full border border-border/60 bg-card/90 px-2 py-1 text-[10px] text-card-foreground backdrop-blur">پیش‌نمایش: {slide.value}</span>}
   </div>;
 }
 
@@ -72,7 +76,7 @@ export function RetailProductCard({ product, storefrontPath, filters = noFilters
   const selected = resolveSelectedVariant(eligible, choice);
   const unmatched = product.variants.length > 0 && eligible.variants.length === 0;
   const selectedExplicitly = eligible.variants.some(variant => variant.id === choice);
-  const pinned = selectedExplicitly || constrained.some(dimension => dimension.id === "color");
+  const pinned = selectedExplicitly || hasVariantCardFilters(product, filters);
   const compact = view === "compact";
   const href = `${storefrontPath.replace(/\/$/, "")}/product/${encodeURIComponent(product.slug || product.id)}`;
   const amount = compact ? product.price.amount : selected?.price.amount ?? product.price.amount;
@@ -83,7 +87,7 @@ export function RetailProductCard({ product, storefrontPath, filters = noFilters
   function choose(variant: RetailVariant) { setChoice(variant.id); }
 
   return <article data-retail-product-card data-card-view={view} className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card text-card-foreground shadow-sm">
-    <CardMedia product={eligible} selected={compact ? undefined : selected} pinned={!compact && pinned} href={href} favorite={favorite} />
+    <CardMedia product={eligible} selected={selected} pinned={pinned} href={href} favorite={favorite} />
     <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-4">
       <p className="truncate text-xs text-muted-foreground">{product.category.name}{product.brand ? ` · ${product.brand}` : ""}</p>
       <h2 className="mt-1 h-12 text-base font-semibold leading-6"><a href={href} className={`line-clamp-2 hover:underline ${focus}`}>{product.name}</a></h2>
@@ -117,3 +121,5 @@ export function RetailProductCard({ product, storefrontPath, filters = noFilters
     </div>
   </article>;
 }
+
+export { CardMedia as RetailCardMedia };

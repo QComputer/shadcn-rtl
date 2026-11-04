@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { RetailCardMedia } from "./retail-product-card";
 import type { PublicCatalogProduct } from "@/lib/public-catalog/contracts";
 import { appPath } from "@/lib/app-base-path";
 
@@ -18,11 +18,10 @@ export function RelatedProducts({ products, storefrontPath }: Props) {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 xl:grid-cols-6">
         {items.map((product) => {
           const target = appPath(`${storefrontPath.replace(/\/$/, "")}/product/${encodeURIComponent(product.slug || product.id)}`);
-          const image = product.media.card || product.media.gallery[0];
           return <article key={product.id} className="group min-w-0 overflow-hidden rounded-2xl border border-border bg-card transition hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(41,37,36,0.08)] sm:rounded-3xl">
-            <a href={target} aria-label={`مشاهده ${product.name}`} className="relative block aspect-[4/5] overflow-hidden bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-              {image ? <Image src={image} alt={product.media.alt || product.name} fill unoptimized sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 220px" className="object-cover transition duration-500 motion-reduce:transition-none group-hover:scale-[1.025]" /> : <span className="grid h-full place-items-center px-3 text-center text-xs text-muted-foreground">تصویری ثبت نشده است</span>}
-            </a>
+            <div className="relative aspect-[4/5] overflow-hidden bg-muted [&>div]:h-full [&>div]:aspect-auto">
+              <RetailCardMedia product={product} href={target} pinned={false} />
+            </div>
             <div className="min-w-0 p-3 sm:p-4"><p className="truncate text-[10px] text-muted-foreground sm:text-xs">{product.category.name}{product.brand ? ` · ${product.brand}` : ""}</p><a href={target} className="mt-1.5 line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-12 sm:text-base sm:leading-6">{product.name}</a><p className="mt-3 text-xs font-bold tabular-nums sm:text-sm">{toman(product.price.amount)}</p></div>
           </article>;
         })}

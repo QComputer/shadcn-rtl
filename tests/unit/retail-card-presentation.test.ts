@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { PublicCatalogProduct, PublicCatalogVariant } from "../../lib/public-catalog/contracts";
-import { colorSlides, constrainedDimensions, filterCardVariants } from "../../lib/retail/card-presentation";
+import { appearanceSlides, themedCardImage, hasVariantCardFilters, colorSlides, constrainedDimensions, filterCardVariants } from "../../lib/retail/card-presentation";
 
 function option(key: string, label: string, value: string | number | boolean, valueType: "TEXT" | "NUMBER" | "BOOLEAN" = "TEXT") {
   return { key, label, value, valueType, displayUnit: null, filterable: true } as const;
@@ -99,4 +99,38 @@ test("incomplete color and size records do not borrow the product fallback image
     variant("size-only", [option("size", "Size", "38")], ["/size.jpg"]),
   ]);
   assert.deepEqual(colorSlides(source), [{ value: "blue", src: "/blue.jpg" }]);
+});
+
+
+test("theme-aware visual slides support non-color variants and deduplicate shoe sizes", () => {
+  const leather = { ...variant("leather38", [option("material", "Material", "leather"), option("size", "Size", "38")]), cardAppearance: { light: "/leather-light.webp", dark: "/leather-dark.webp", darkSrcSet: "/leather-dark-320.webp 320w, /leather-dark.webp 640w", configured: true } };
+  const fabric = { ...variant("fabric38", [option("material", "Material", "fabric"), option("size", "Size", "38")]), cardAppearance: { light: "/fabric.webp", dark: null, configured: true } };
+  const source = product([leather, { ...leather, id: "leather39", options: [option("material", "Material", "leather"), option("size", "Size", "39")] }, fabric]);
+  const slides = appearanceSlides(source, "dark");
+  assert.deepEqual(slides.map(({ value, src }) => ({ value, src })), [{ value: "leather", src: "/leather-dark.webp" }, { value: "fabric", src: "/fabric.webp" }]);
+  assert.equal(slides[0].srcSet, leather.cardAppearance.darkSrcSet);
+  assert.equal(hasVariantCardFilters(source, ["material:fabric"]), true);
+  assert.equal(hasVariantCardFilters(source, ["size:38"]), true);
+});
+
+test("size-only images do not produce visual rotation slides", () => {
+  const source = product(["38", "39"].map(size => ({ ...variant(size, [option("size", "Size", size)]), cardAppearance: { light: `/${size}.webp`, dark: null, configured: true } })));
+  assert.deepEqual(appearanceSlides(source, "light"), []);
+});
+
+test("image theme fallback prefers the available opposite image and its own responsive set", () => {
+  assert.deepEqual(themedCardImage({ light: "/light.webp", dark: null, lightSrcSet: "/light.webp 640w" }, "dark", "/original.jpg"), { src: "/light.webp", srcSet: "/light.webp 640w" });
+  assert.deepEqual(themedCardImage(undefined, "light", "/legacy.jpg"), { src: "/legacy.jpg" });
+});
+
+
+test("all configured color and material groups rotate and respect filtered eligible variants", () => {
+  const source = { ...product([red38, blue38]), visualAppearances: [
+    { value: "Color: red", variantIds: [red38.id], appearance: { light: "/red-small.webp", dark: "/red-dark.webp" } },
+    { value: "Material: leather", variantIds: [red38.id, blue38.id], appearance: { light: "/leather-small.webp", dark: "/leather-dark.webp" } },
+    { value: "Color: blue", variantIds: [blue38.id], appearance: { light: "/blue-small.webp", dark: "/blue-dark.webp" } },
+  ] };
+  assert.deepEqual(appearanceSlides(source, "dark").map(slide => slide.src), ["/red-dark.webp", "/leather-dark.webp", "/blue-dark.webp"]);
+  const filtered = filterCardVariants(source, ["color:red"]);
+  assert.deepEqual(appearanceSlides(filtered, "light").map(slide => slide.src), ["/red-small.webp", "/leather-small.webp"]);
 });

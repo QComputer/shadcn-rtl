@@ -43,15 +43,15 @@ function discountedAmount(base: number, discountType?: string | null, discountVa
   return base;
 }
 
-export function serializePublicCatalogMedia(input: { image?: string | null; images?: string[]; name: string }): PublicCatalogMedia {
+export function serializePublicCatalogMedia(input: { image?: string | null; cardImage?: string | null; images?: string[]; name: string }): PublicCatalogMedia {
   const primary = input.image ?? null;
   const gallery = (input.images ?? []).filter((url) => url !== primary);
-  return { card: primary, detail: primary, alt: input.name, gallery };
+  return { card: input.cardImage === undefined ? primary : input.cardImage, detail: primary, alt: input.name, gallery };
 }
 
 export function serializePublicCatalogCategory(input: {
   id: string; slug?: string | null; name: string; description?: string | null;
-  sortOrder: number; image?: string | null; productCount: number;
+  sortOrder: number; image?: string | null; darkImage?: string | null; productCount: number;
 }): PublicCatalogCategory {
   return publicCatalogCategorySchema.parse({
     id: input.id,
@@ -60,6 +60,7 @@ export function serializePublicCatalogCategory(input: {
     description: input.description ?? null,
     sortOrder: input.sortOrder,
     image: input.image ?? null,
+    ...(input.darkImage === undefined ? {} : { darkImage: input.darkImage }),
     productCount: input.productCount,
   }) as unknown as PublicCatalogCategory;
 }
@@ -69,7 +70,10 @@ export function serializePublicCatalogProduct(input: {
   basePrice: MoneyLike; discountType?: string | null; discountValue?: MoneyLike | null; trackInventory: boolean;
   category: { id: string; slug?: string | null; name: string };
   attributes?: Array<Parameters<typeof attributeValue>[0]>;
-  variants: Array<{ id: string; sku?: string | null; name?: string | null; price?: MoneyLike | null; inventory: number; reservedQuantity?: number; allowBackOrder: boolean; manuallyUnavailable?: boolean; options?: Array<Parameters<typeof attributeValue>[0]>; media?: PublicCatalogVariantMedia }>;
+  variants: Array<{ id: string; sku?: string | null; name?: string | null; price?: MoneyLike | null; inventory: number; reservedQuantity?: number; allowBackOrder: boolean; manuallyUnavailable?: boolean; options?: Array<Parameters<typeof attributeValue>[0]>; media?: PublicCatalogVariantMedia; cardAppearance?: PublicCatalogProduct["cardAppearance"] }>;
+  cardAppearance?: PublicCatalogProduct["cardAppearance"];
+  visualAppearances?: PublicCatalogProduct["visualAppearances"];
+  cardImage?: string | null;
   purchase?: PublicCatalogPurchase | null;
 }): PublicCatalogProduct {
   const productBase = amount(input.basePrice);
@@ -87,6 +91,7 @@ export function serializePublicCatalogProduct(input: {
       sku: variant.sku ?? null,
       options: (variant.options ?? []).map(attributeValue).filter((value): value is PublicCatalogAttribute => value !== null),
       ...(variant.media ? { media: variant.media } : {}),
+      ...(variant.cardAppearance ? { cardAppearance: variant.cardAppearance } : {}),
     };
   });
   const attributes = (input.attributes ?? []).map(attributeValue).filter((value): value is PublicCatalogAttribute => value !== null);
@@ -103,7 +108,9 @@ export function serializePublicCatalogProduct(input: {
     category: { id: input.category.id, slug: input.category.slug ?? null, name: input.category.name },
     price: money(displayPrice),
     listPrice: displayListPrice === null || displayListPrice === displayPrice ? null : money(displayListPrice),
-    media: serializePublicCatalogMedia(input),
+    media: serializePublicCatalogMedia({ ...input, cardImage: input.cardImage }),
+    ...(input.cardAppearance ? { cardAppearance: input.cardAppearance } : {}),
+    ...(input.visualAppearances ? { visualAppearances: input.visualAppearances } : {}),
     orderable: variants.some((variant) => variant.orderable),
     variants,
     attributes,

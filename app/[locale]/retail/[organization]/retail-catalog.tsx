@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { ThemeAwareCategoryImage } from "@/components/retail/theme-aware-category-image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Home, LayoutGrid, Share2, ShoppingBag, UserRound } from "lucide-react";
@@ -23,7 +24,7 @@ type RetailView = {
   branding: { logo: string | null; cover: string | null };
   theme: "FASHION" | "ELECTRONICS" | "GENERAL";
   previewOnly: boolean;
-  categories: Array<{ id: string; slug: string | null; name: string }>;
+  categories: Array<{ id: string; slug: string | null; name: string; image?: string | null; darkImage?: string | null }>;
   products: RetailProduct[];
 };
 
@@ -106,10 +107,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
 
 
   const detail = productSlug ? products.find((product) => product.slug === productSlug || product.id === productSlug) : undefined;
-  const categoryProducts = view.categories.map((item) => ({
-    ...item,
-    product: view.products.find((product) => product.category.id === item.id && product.media.card),
-  }));
+  const categoryProducts = view.categories;
   const selectedCategory = categoryProducts.find((item) => item.id === category || item.slug === category);
   const changeCategory = (value: string) => {
     if (value === category && page === 1) return;
@@ -170,7 +168,7 @@ export default function RetailLiveCatalog({ view, productSlug, storefrontPath, c
         const value = item.slug ?? item.id;
         const active = category === value;
         return <button key={item.id} type="button" onClick={() => { changeCategory(active ? "" : value); document.getElementById("products")?.scrollIntoView({ behavior: "smooth" }); }} aria-pressed={active} className={`group relative min-h-32 overflow-hidden rounded-2xl text-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${active ? "ring-2 ring-primary" : ""}`}>
-          {item.product?.media.card ? <Image src={item.product.media.card} alt="" fill unoptimized sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 20vw" className="object-cover transition-transform duration-300 group-hover:scale-105" /> : <span className="absolute inset-0 bg-gradient-to-br from-[#e9e5dc] to-[#d3cdc2]" />}
+          {(item.image || item.darkImage || view.products.some((product) => product.category.id === item.id && product.media.card)) ? <ThemeAwareCategoryImage light={item.image} dark={item.darkImage} fallback={view.products.find((product) => product.category.id === item.id && product.media.card)?.media.card} /> : <span className="absolute inset-0 bg-gradient-to-br from-[#e9e5dc] to-[#d3cdc2]" />}
           <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" /><span className="absolute inset-x-0 bottom-0 p-3 text-xs font-semibold text-white">{item.name}</span>
         </button>;
       })}</div> : <p className="bg-card text-card-foreground mt-5 rounded-xl p-5 text-sm">دسته‌بندی فعالی برای نمایش ثبت نشده است.</p>}

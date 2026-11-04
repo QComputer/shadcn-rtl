@@ -2239,6 +2239,7 @@ model ProductCategory {
   slug             String?
   description      String? //@db.Text
   image            String?
+  darkImage        String?
   sortOrder        Int     @default(0)
   isActive         Boolean @default(true)
   organizationId   String
@@ -2265,6 +2266,7 @@ model Image {
   filename  String?
   mimeType  String?
   sizeBytes Int?
+  derivatives Json?
   purpose   String      @default("upload")
   access    ImageAccess @default(PUBLIC)
 

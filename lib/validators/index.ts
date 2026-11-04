@@ -157,6 +157,7 @@ export const createProductCategorySchema = z.object({
   slug: z.string().min(2).max(100).optional(),
   description: z.string().max(5000).optional(),
   image: z.string().max(500).nullable().optional(),
+  darkImage: z.string().max(500).nullable().optional(),
   sortOrder: z.number().int().default(0),
 });
 

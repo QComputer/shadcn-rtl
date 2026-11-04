@@ -1,6 +1,6 @@
 import type { PublicCatalogProduct } from "@/lib/public-catalog/contracts";
 import { canonicalDimensions, retailAttributeText } from "@/lib/retail/variant-selection";
-import { colorSlides } from "@/lib/retail/card-presentation";
+import { appearanceSlides, themedCardImage } from "@/lib/retail/card-presentation";
 
 export type RetailProduct = PublicCatalogProduct;
 export type RetailHeroSlide = {
@@ -28,18 +28,19 @@ function pricesFor(variants: RetailProduct["variants"], fallback: number) {
 }
 
 /** Build a bounded, media-backed hero sequence without mutating catalog products. */
-export function buildRetailHeroSlides(products: readonly RetailProduct[]): RetailHeroSlide[] {
+export function buildRetailHeroSlides(products: readonly RetailProduct[], theme: "light" | "dark" = "light"): RetailHeroSlide[] {
   const result: RetailHeroSlide[] = [];
   const seenProducts = new Set<string>();
   let selectedProducts = 0;
   for (const product of products) {
     if (selectedProducts >= 5) break;
     if (seenProducts.has(product.id)) continue;
-    const slides = colorSlides(product);
-    const productImage = product.media.detail?.trim()
+    const slides = appearanceSlides(product, theme);
+    const fallbackImage = product.media.detail?.trim()
       || product.media.card?.trim()
       || product.media.gallery.find((image) => image.trim())?.trim()
-      || slides[0]?.src;
+      || "";
+    const productImage = themedCardImage(product.cardAppearance, theme, fallbackImage).src || slides[0]?.src;
     if (!productImage) continue;
     seenProducts.add(product.id);
     selectedProducts += 1;

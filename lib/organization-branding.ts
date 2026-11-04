@@ -128,6 +128,7 @@ export function resolveTenantPwaBranding(input: {
     pwaIcon512Url?: string | null;
     pwaMaskable192Url?: string | null;
     pwaMaskable512Url?: string | null;
+    storefrontPrimaryColor?: string | null;
     themeColor?: string | null;
     backgroundColor?: string | null;
     retailPresentationTheme?: string | null;
@@ -143,7 +144,10 @@ export function resolveTenantPwaBranding(input: {
     logo: firstDefined(branding?.logoUrl, input.logo),
     favicon: branding?.faviconUrl ?? null,
     appleTouchIcon: branding?.appleTouchIconUrl ?? null,
-    themeColor: branding?.themeColor ?? null,
+    // The storefront's selected brand color also owns the installed app chrome.
+    // Keep the legacy PWA value as a fallback without rewriting either setting.
+    themeColor: [branding?.storefrontPrimaryColor, branding?.themeColor]
+      .find((color): color is string => typeof color === "string" && /^#[\da-f]{6}$/i.test(color)) ?? null,
     backgroundColor: branding?.backgroundColor ?? null,
     retailPresentationTheme: branding?.retailPresentationTheme ?? null,
     pwaIcons: {

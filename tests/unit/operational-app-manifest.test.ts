@@ -4,6 +4,30 @@ import { buildOperationalAppManifest } from "@/lib/operational-app-manifest";
 import { resolveTenantPwaBranding } from "@/lib/organization-branding";
 
 describe("operational app manifest", () => {
+  it("uses the selected storefront color for installed app chrome without rewriting legacy PWA settings", () => {
+    const saved = { organizationId: "green-store", storefrontPrimaryColor: "#16825D", themeColor: "#2F5BFF" };
+    const branding = resolveTenantPwaBranding({ organizationId: saved.organizationId, name: "Green store", logo: null, branding: saved });
+    const manifest = buildOperationalAppManifest({ basePath: "", tenantBranding: branding });
+    assert.equal(branding.themeColor, "#16825D");
+    assert.equal(manifest.theme_color, "#16825D");
+    assert.equal(saved.themeColor, "#2F5BFF");
+    const reset = resolveTenantPwaBranding({ organizationId: saved.organizationId, name: "Green store", logo: null, branding: { ...saved, storefrontPrimaryColor: null } });
+    assert.equal(buildOperationalAppManifest({ basePath: "", tenantBranding: reset }).theme_color, "#2F5BFF");
+  });
+
+  it("rejects unsafe brand colors and preserves each tenant's effective PWA color", () => {
+    const resolve = (organizationId: string, storefrontPrimaryColor: string | null, themeColor: string | null = "#882244") => resolveTenantPwaBranding({ organizationId, name: organizationId, logo: null, branding: { organizationId, storefrontPrimaryColor, themeColor } });
+    assert.equal(buildOperationalAppManifest({ basePath: "", tenantBranding: resolve("a", "#16825D") }).theme_color, "#16825D");
+    assert.equal(buildOperationalAppManifest({ basePath: "", tenantBranding: resolve("b", "#cc3311") }).theme_color, "#cc3311");
+    for (const invalid of ["red", "#123", "#12345678", "#123456; color: red", "url(javascript:alert(1))"]) {
+      assert.equal(resolve("a", invalid).themeColor, "#882244");
+      assert.equal(buildOperationalAppManifest({ basePath: "", tenantBranding: resolve("a", invalid, invalid) }).theme_color, "#2F5BFF");
+    }
+    const foreign = resolveTenantPwaBranding({ organizationId: "a", name: "Store A", logo: null, branding: { organizationId: "b", storefrontPrimaryColor: "#cc3311", themeColor: "#882244" } });
+    assert.equal(foreign.themeColor, null);
+    assert.equal(buildOperationalAppManifest({ basePath: "", tenantBranding: foreign }).theme_color, "#2F5BFF");
+  });
+
   it("keeps the platform fallback inside each build topology", () => {
     const root = buildOperationalAppManifest({ basePath: "" });
     const path = buildOperationalAppManifest({ basePath: "/app" });

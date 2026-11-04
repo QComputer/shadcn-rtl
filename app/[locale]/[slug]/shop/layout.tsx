@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { ShopLayoutContent, generateMetadata } from "./shop-layout-content";
+import { ShopLayoutContent, generateMetadata, generateViewport } from "./shop-layout-content";
 
-export { generateMetadata };
+export { generateMetadata, generateViewport };
 
 type ShopLayoutRouteProps = {
   children: ReactNode;

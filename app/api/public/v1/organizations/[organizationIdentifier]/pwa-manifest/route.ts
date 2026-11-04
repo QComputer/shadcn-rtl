@@ -55,6 +55,7 @@ export async function GET(request: Request, { params }: { params: Promise<Params
           pwaMaskable192Url: true,
           pwaMaskable512Url: true,
           themeColor: true,
+          storefrontPrimaryColor: true,
           backgroundColor: true,
           retailPresentationTheme: true,
         },

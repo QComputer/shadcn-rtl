@@ -41,6 +41,7 @@ async function loadTenant(organizationId: string, preferredLocale?: string | nul
           pwaMaskable192Url: true,
           pwaMaskable512Url: true,
           themeColor: true,
+          storefrontPrimaryColor: true,
           backgroundColor: true,
           retailPresentationTheme: true,
         },

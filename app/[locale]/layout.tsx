@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "@/app/globals.css"
 import { localeConfig, supportedLocales, type SupportedLocale } from "@/lib/i18n";
 import { ThemeProvider } from "@/hooks/use-theme";
@@ -34,7 +34,6 @@ export async function generateMetadata(): Promise<Metadata> {
         apple: appResourceUrl(branding.appleTouchIcon, basePath),
       },
       manifest: appResourceUrl("/manifest.webmanifest", basePath),
-      themeColor: "#2F5BFF",
     };
   }
   if (context.kind === "tenant") {
@@ -53,6 +52,13 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: { icon: [], apple: [] },
     manifest: appResourceUrl("/manifest.webmanifest", basePath),
   };
+}
+
+export async function generateViewport(): Promise<Viewport> {
+  const context = await resolveTenantPwaRequestContext(await headers()).catch(() => ({ kind: "unknown" as const }));
+  if (context.kind === "tenant") return { themeColor: context.branding.themeColor || "#2F5BFF" };
+  if (context.kind === "platform") return { themeColor: "#2F5BFF" };
+  return {};
 }
 
 function normalizeLocale(locale: string | undefined): SupportedLocale {

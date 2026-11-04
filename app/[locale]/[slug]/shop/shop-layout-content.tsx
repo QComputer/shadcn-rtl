@@ -3,7 +3,8 @@ import { CartProvider } from "@/lib/contexts/cart-context";
 import { CartDrawer } from "@/components/shop/cart-drawer";
 import { CartBadge } from "@/components/shop/cart-badge";
 import { Button } from "@/components/ui/button";
-import { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { cache } from "react";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 import { Home, ShoppingCart, ShoppingBasket, User } from "lucide-react";
 import prisma from "@/lib/db";
@@ -19,7 +20,7 @@ import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
 import { buildShopCheckoutPath, buildShopOrderPath, buildShopProductsPath, buildShopPublicPath } from "@/lib/shop-public-paths";
 import { TenantFooter } from "@/components/public/tenant-footer";
 import { hasOrganizationCapability } from "@/lib/organization-capabilities";
-import { resolveOrganizationBranding, resolveTenantPageIcons } from "@/lib/organization-branding";
+import { resolveOrganizationBranding, resolveTenantPageIcons, resolveTenantPwaBranding } from "@/lib/organization-branding";
 import { ShopRouteProvider } from "@/lib/contexts/shop-route-context";
 import { OrganizationRootNavigationProvider } from "@/lib/contexts/organization-root-navigation-context";
 import { buildOrganizationRootPath } from "@/lib/custom-domain-routing";
@@ -36,10 +37,7 @@ export interface ShopLayoutContentProps {
   }>;
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
-  const { locale, slug } = await params;
-  try {
-    const organization = await prisma.organization.findFirst({
+const getShopMetadataOrganization = cache((slug: string) => prisma.organization.findFirst({
       where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
       select: {
         id: true,
@@ -54,7 +52,12 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
         settings: { select: { settings: true } },
         branding: true,
       },
-    });
+    }));
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
+  const { locale, slug } = await params;
+  try {
+    const organization = await getShopMetadataOrganization(slug);
     if (!organization || !hasOrganizationCapability({
       legacyType: organization.type,
       capabilitiesInitializedAt: organization.capabilitiesInitializedAt,
@@ -103,6 +106,14 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
       title: "بازارباز",
     };
   }
+}
+
+export async function generateViewport({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Viewport> {
+  const { slug } = await params;
+  const organization = await getShopMetadataOrganization(slug);
+  if (!organization || !hasOrganizationCapability({ legacyType: organization.type, capabilitiesInitializedAt: organization.capabilitiesInitializedAt, capabilities: organization.capabilities }, "SHOP")) return {};
+  const branding = resolveTenantPwaBranding({ organizationId: organization.id, name: organization.name, logo: organization.logo, branding: organization.branding });
+  return { themeColor: branding.themeColor || "#2F5BFF" };
 }
 
 type ShopLayoutOrganization = {

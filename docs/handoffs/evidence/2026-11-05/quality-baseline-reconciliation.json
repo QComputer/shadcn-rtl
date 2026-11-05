@@ -1,0 +1,1 @@
+{"outcome":"RELEASE_CANDIDATE_READY_WITH_EXCEPTIONS","nextStep":"Production read-only schema comparison + Runflare verification","testsVerified":46,"qualityLocalExitCode":1,"lintErrors":0,"lintWarnings":1120,"buildExitCode":0,"migrations":117,"productionMigrationVerified":false,"deploymentVerified":false}

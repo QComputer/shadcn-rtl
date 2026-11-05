@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-05",
+  "timezone": "Asia/Tehran",
+  "sourceHead": "71a7b43c65829dce30114401516458fabed2249b",
+  "sourceState": "shared main checkout plus uncommitted customer authentication, SSO and handoff changes; HEAD alone does not identify this candidate",
+  "status": "PASSED",
+  "scope": "focused local source, unit, guarded PostgreSQL and real NextAuth HTTP acceptance",
+  "checks": {
+    "typescript": { "command": "tsc --noEmit --pretty false --incremental false", "exitCode": 0 },
+    "scopedEslint": { "scope": "auth, customer-auth core and routes, phone/SSO components, SSO unit/PostgreSQL/HTTP tests", "exitCode": 0, "errors": 0, "warnings": 0 },
+    "combinedFocused": { "tests": 34, "passed": 34, "failed": 0, "exitCode": 0, "contains": { "phoneUssdAndSecurityUnit": 21, "ssoUnit": 6, "ssoPostgresql": 7 }, "cleanup": "PASSED" },
+    "ssoHttp": { "tests": 1, "passed": 1, "failed": 0, "exitCode": 0, "cleanup": "PASSED", "serverStopped": true, "port": 3029 }
+  },
+  "fixture": { "host": "127.0.0.1", "port": 55439, "database": "retail_hero_test", "syntheticOnly": true, "rootEnvironmentLoaded": false },
+  "migrationEvidence": "Only additive new SQL applied to identity-verified disposable fixture with psql single transaction; no reset, baseline or ledger override. Complete historical migration chain not verified.",
+  "notVerified": ["production build and full CI", "production or public runtime", "full fresh/upgrade migration chain", "production HTTPS browser-cookie enforcement", "physical Android/PWA", "real SMS or USSD provider acceptance", "central silent login or global logout"],
+  "externalProviderCalls": false,
+  "productionWrites": false,
+  "committed": false,
+  "deployed": false
+}

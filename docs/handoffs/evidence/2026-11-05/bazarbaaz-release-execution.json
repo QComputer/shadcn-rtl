@@ -1,0 +1,1 @@
+{"outcome":"RELEASE_CANDIDATE_PREPARED","candidateHead":"71a7b43c65829dce30114401516458fabed2249b","testsVerified":46,"productionDbMigrationsApplied":118,"pendingMigrations":3,"runflareCliVerified":false,"commitPerformed":false,"pushPerformed":false,"deploymentPerformed":false}

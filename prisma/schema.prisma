@@ -1117,6 +1117,11 @@ model TimeInterval {
 }
 
 model Organization {
+  customerSsoSourceTickets CustomerSsoTicket[] @relation("CustomerSsoSource")
+  customerSsoTargetTickets CustomerSsoTicket[] @relation("CustomerSsoTarget")
+  customerAccessLinks CustomerAccessLink[]
+  customerPhoneSessions CustomerPhoneSession[]
+  customerUssdEnrollmentRoutes CustomerUssdEnrollmentRoute[]
   id                        String           @id @default(cuid())
   type                      OrganizationType
   locale                    String           @default("fa")
@@ -1866,6 +1871,9 @@ model Notification {
 }
 
 model User {
+  customerSsoTickets CustomerSsoTicket[]
+  customerPhoneIdentity CustomerPhoneIdentity?
+  customerPhoneSessions CustomerPhoneSession[]
   id           String   @id @default(cuid())
   password     String
   name         String   @unique
@@ -2027,6 +2035,108 @@ model BusinessHour {
 
   @@unique([organizationId, day, userId])
   @@index([organizationId])
+}
+
+// Customer phone authentication is separate from legacy profile phones and password resets.
+model CustomerPhoneIdentity {
+  id String @id @default(cuid())
+  phone String @unique
+  userId String @unique
+  verifiedAt DateTime
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CustomerAccessLink {
+  id String @id @default(cuid())
+  tokenDigest String @unique
+  phone String
+  organizationId String
+  origin String
+  source String
+  issuanceKey String? @unique
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  smsOutbox CustomerAuthSmsOutbox?
+  @@index([expiresAt])
+}
+
+model CustomerPhoneSession {
+  customerSsoTickets CustomerSsoTicket[]
+  id String @id @default(cuid())
+  userId String
+  organizationId String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+}
+
+// Short-lived, one-use cross-domain authorization. Raw tickets and browser verifiers are never persisted.
+model CustomerSsoTicket {
+  id String @id @default(cuid())
+  ticketDigest String @unique
+  userId String
+  sourceSessionId String
+  sourceOrganizationId String
+  targetOrganizationId String
+  targetOrigin String
+  challenge String
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceSession CustomerPhoneSession @relation(fields: [sourceSessionId], references: [id], onDelete: Cascade)
+  sourceOrganization Organization @relation("CustomerSsoSource", fields: [sourceOrganizationId], references: [id], onDelete: Cascade)
+  targetOrganization Organization @relation("CustomerSsoTarget", fields: [targetOrganizationId], references: [id], onDelete: Cascade)
+  @@index([expiresAt])
+  @@index([sourceSessionId])
+  @@index([userId])
+  @@index([sourceOrganizationId])
+  @@index([targetOrganizationId])
+}
+
+model CustomerAuthSmsOutbox {
+  id String @id @default(cuid())
+  linkId String @unique
+  encryptedPayload String
+  status String @default("PENDING")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  lockedUntil DateTime?
+  leaseId String?
+  lastErrorCode String?
+  sentAt DateTime?
+  providerMessageId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  link CustomerAccessLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  @@index([status, nextAttemptAt])
+}
+
+model CustomerPhoneAuthQuota {
+  key String
+  windowStart DateTime
+  count Int @default(0)
+  @@id([key, windowStart])
+}
+
+model CustomerUssdEnrollmentRoute {
+  id String @id @default(cuid())
+  organizationId String
+  publicId String @unique
+  dialPath String @unique
+  enabled Boolean @default(false)
+  smsTemplate String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  @@index([organizationId, enabled])
 }
 
 // --- AUTHENTICATION MODELS ---

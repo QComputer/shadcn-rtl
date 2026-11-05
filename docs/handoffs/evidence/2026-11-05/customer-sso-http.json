@@ -1,0 +1,24 @@
+{
+  "test": "tests/integration/customer-sso-http.local.test.ts",
+  "scope": "isolated loopback HTTP against guarded retail_hero_test PostgreSQL fixture",
+  "status": "PASSED",
+  "exitCode": 0,
+  "cleanup": "PASSED",
+  "counts": {
+    "tests": 1,
+    "passed": 1,
+    "failed": 0
+  },
+  "verified": [
+    "source tenant phone session established through real NextAuth HTTP callback",
+    "target-host start issues HttpOnly host-only verifier and source challenge",
+    "source-issued ticket establishes a distinct target-organization customer session",
+    "source session remains valid after target login and target logout",
+    "wrong verifier and wrong origin fail without consuming the ticket",
+    "ticket replay does not establish another session",
+    "target logout revokes only the target customer session",
+    "synthetic organizations, domains, memberships, identity, tickets, sessions, links, quotas, and user removed"
+  ],
+  "providers": "No external SMS, identity, payment, or other provider calls",
+  "server": "Isolated Next.js dev server on loopback port 3029 stopped after test"
+}

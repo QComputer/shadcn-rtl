@@ -310,6 +310,8 @@ export function domainUpdateFromResult(result: DomainAutomationResult) {
     verifiedAt: result.verified ? new Date() : null,
     lastCheckedAt: new Date(),
     failureReason: result.ok ? null : result.message,
+    providerVerified: isRemoval ? false : Boolean(result.verified),
+    dnsConfigured: isRemoval ? false : Boolean(result.verified),
   };
 }
 

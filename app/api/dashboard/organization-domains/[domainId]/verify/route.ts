@@ -21,17 +21,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (role !== "SUPER_ADMIN") throw new ApiError(403, "Super admin required");
     const { domainId } = await params;
     const body = schema.parse(await request.json());
-
+    const revoke = Boolean(body.revoke);
     const existing = await prisma.organizationDomain.findUnique({
       where: { id: domainId },
       select: { id: true, organizationId: true, normalizedDomain: true, status: true, deletedAt: true, removedAt: true, disabledAt: true, providerVerified: true, dnsConfigured: true, sslReady: true },
     });
     if (!existing) throw new ApiError(404, "Domain not found");
-    if (existing.deletedAt || existing.removedAt || existing.disabledAt) throw new ApiError(400, "Domain is not active");
+    if (existing.deletedAt || existing.removedAt) throw new ApiError(400, "Domain is removed");
+    if (!revoke && existing.status !== "ACTIVE") throw new ApiError(400, "Only ACTIVE domains can be verified");
+    if (!revoke && existing.disabledAt) throw new ApiError(400, "Disabled domains cannot be verified");
     const org = await prisma.organization.findUnique({ where: { id: existing.organizationId }, select: { id: true, isActive: true, deletedAt: true } });
     if (!org || !org.isActive || org.deletedAt) throw new ApiError(400, "Organization is not active");
 
-    const revoke = Boolean(body.revoke);
     const newProvider = revoke ? false : body.providerVerified;
     const newDns = revoke ? false : body.dnsConfigured;
     const newSsl = revoke ? false : body.sslReady;

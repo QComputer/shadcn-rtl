@@ -3,7 +3,7 @@ import { before, mock, test } from "node:test";
 import { NextRequest } from "next/server";
 
 type SettingsRow = { id: string; organizationSlug: string; settings: Record<string, unknown> | null; [key: string]: unknown };
-let session: { user: { id: string } } | null = { user: { id: "manager-1" } };
+const session: { user: { id: string } } | null = { user: { id: "manager-1" } };
 let row: SettingsRow = {
   id: "settings-1",
   organizationSlug: "sample",

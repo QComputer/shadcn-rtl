@@ -1,0 +1,1 @@
+{"phase1":{"outcome":"LOCAL_VALIDATION_FAILED"},"phase2":{"outcome":"LOCAL_ACCEPTANCE_PARTIAL"},"phase3":{"outcome":"LOCAL_ACCEPTANCE_PARTIAL","lint":{"exitCode":0,"errors":0,"warnings":1120},"qualityLocal":{"exitCode":1},"build":{"exitCode":0},"gitDiffCheck":"pass"},"tests":{"phoneAuth":23,"sso":13,"ssoHttp":1,"inoti":9,"total":46}}

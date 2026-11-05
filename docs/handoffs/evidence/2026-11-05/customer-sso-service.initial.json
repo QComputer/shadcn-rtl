@@ -1,0 +1,32 @@
+{
+  "status": "PASSED",
+  "exitCode": 0,
+  "cleanup": "PASSED",
+  "completedAt": "2026-11-04T21:51:21.0478711Z",
+  "environment": "explicit synthetic loopback PostgreSQL retail_hero_test, port 55439",
+  "scope": "customer SSO service unit and actual PostgreSQL integration",
+  "prismaGeneration": "PASSED using .tmp/customer-auth-prisma.config.ts, environment loading skipped",
+  "migration": "ONLY 20261105100000_customer_sso SQL, psql single-transaction, current database and role verified; no ledger override",
+  "unit": {
+    "passed": 6,
+    "failed": 0,
+    "exitCode": 0
+  },
+  "integration": {
+    "cleanupMarker": "CUSTOMER_SSO_LOCAL_CLEANUP_PASSED",
+    "passed": 7,
+    "failed": 0,
+    "exitCode": 0
+  },
+  "eslint": {
+    "exitCode": 0,
+    "errors": 0,
+    "warnings": 4
+  },
+  "exclusions": [
+    "public runtime",
+    "real SMS",
+    "production migration",
+    "browser route acceptance"
+  ]
+}

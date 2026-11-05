@@ -1,0 +1,27 @@
+{
+  "date": "2026-11-05",
+  "timezone": "Asia/Tehran",
+  "status": "PASSED",
+  "scope": "local authentication-link iNoti transport with injected fetch and guarded PostgreSQL",
+  "sourceHead": "71a7b43c65829dce30114401516458fabed2249b",
+  "workingTreeChangesUncommitted": true,
+  "checks": {
+    "tokenTransportUnit": { "passed": 4, "failed": 0 },
+    "runtimeUnit": { "passed": 2, "failed": 0 },
+    "tokenSmsPostgresql": { "passed": 3, "failed": 0, "exitCode": 0, "cleanup": "PASSED" },
+    "expandedFocusedSuite": { "passed": 52, "failed": 0, "exitCode": 0, "cleanup": "PASSED", "phoneUssdSecurityUnit": 21, "ssoUnit": 6, "smsUnit": 6, "phonePostgresql": 9, "ssoPostgresql": 7, "smsPostgresql": 3 },
+    "typescript": { "exitCode": 0 },
+    "scopedEslint": { "exitCode": 0, "warnings": 0 },
+    "workerCheck": { "exitCode": 0, "mode": "CHECK_ONLY", "available": false, "providerContacted": false },
+    "kiloReview": { "model": "kilo/kilo-auto/free", "result": "No findings.", "reportedCost": 0, "supplementaryOnly": true }
+  },
+  "providerAcceptanceStatus": "ACCEPTED, not handset delivery",
+  "providerCalls": false,
+  "realSmsSent": false,
+  "liveFlagsOrEnvironmentModified": false,
+  "customerUserCreated": false,
+  "productionWrites": false,
+  "deployment": false,
+  "migration": "Only new providerMessageId SQL applied to independently identified loopback disposable fixture; no reset/baseline/ledger override",
+  "notVerified": ["real provider behavior/account eligibility", "handset delivery", "proxy/APM URL redaction", "worker scheduling/operations", "full fresh/upgrade migration chain", "production build/CI", "browser HTTPS/PWA"]
+}

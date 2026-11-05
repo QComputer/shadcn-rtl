@@ -1,0 +1,21 @@
+{
+  "test": "tests/integration/customer-inoti-sms.local.test.ts",
+  "status": "PASSED",
+  "exitCode": 0,
+  "cleanup": "PASSED",
+  "tests": { "total": 3, "passed": 3, "failed": 0 },
+  "evidence": {
+    "database": "isolated loopback PostgreSQL fixture",
+    "providerTransport": "injected fetcher with synthetic token and response only",
+    "realProviderCalled": false,
+    "realGlobalFetchEnabled": false,
+    "externalWrites": false,
+    "customerUserCreated": false
+  },
+  "coverage": [
+    "provider acceptance response persisted as ACCEPTED with provider message ID; one fetch under two competing workers",
+    "definitive provider rejection persisted as FAILED without retry",
+    "network exception persisted as UNCERTAIN with sanitized error; encrypted payload cleared",
+    "consumed, expired, invalid-domain, phone-mismatched and origin-mismatched links cancelled before fetch"
+  ]
+}

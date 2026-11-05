@@ -55,7 +55,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           entityType: "OrganizationDomain",
           entityId: domain.id,
           description: revoke ? `Domain verification revoked for ${domain.normalizedDomain}.` : `Domain verification attested for ${domain.normalizedDomain}.`,
-          oldValue: { providerVerified: existing.providerVerified, dnsConfigured: existing.dnsConfigured, sslReady: existing.sslReady },
+          previousValue: { providerVerified: existing.providerVerified, dnsConfigured: existing.dnsConfigured, sslReady: existing.sslReady },
           newValue: { providerVerified: newProvider, dnsConfigured: newDns, sslReady: newSsl, providerEvidenceReference: body.providerEvidenceReference, dnsEvidenceReference: body.dnsEvidenceReference, tlsEvidenceReference: body.tlsEvidenceReference, revoked: revoke },
           userId: session.user.id,
           organizationId: domain.organizationId,

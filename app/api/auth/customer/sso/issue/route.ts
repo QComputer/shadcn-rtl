@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     const [source, target, session] = await Promise.all([
       resolveCustomerAuthContext(request), destination(new URL(request.url).searchParams.get("target") ?? ""), auth(),
     ]);
-    const ready = Boolean(customerSsoAvailable() && source && target && source.organizationId !== target.organizationId && session?.user?.role === "CUSTOMER" && session.user.organizationId === source.organizationId && session.user.phoneSessionId);
+    const ready = Boolean(customerSsoAvailable() && source && target && source.organizationId !== target.organizationId && session?.user?.role === "CUSTOMER" && (session.user as { organizationId?: string | null }).organizationId === source.organizationId && (session.user as { phoneSessionId?: string }).phoneSessionId);
     return Response.json({ available: ready, target: target ? { name: target.name, slug: target.slug } : null }, { headers });
   } catch { return unavailable(); }
 }
@@ -28,12 +28,12 @@ export async function POST(request: Request) {
   try {
     if (!customerSsoAvailable()) return unavailable();
     const [source, session] = await Promise.all([resolveCustomerAuthContext(request), auth()]);
-    if (!source || request.headers.get("origin") !== source.origin || !session?.user?.id || session.user.role !== "CUSTOMER" || session.user.isTeamMember || session.user.organizationId !== source.organizationId || !session.user.phoneSessionId) return unavailable();
+    if (!source || request.headers.get("origin") !== source.origin || !session?.user?.id || session.user.role !== "CUSTOMER" || session.user.isTeamMember || (session.user as { organizationId?: string | null }).organizationId !== source.organizationId || !(session.user as { phoneSessionId?: string }).phoneSessionId) return unavailable();
     const body: unknown = await request.json();
     if (!body || typeof body !== "object" || !("target" in body) || typeof body.target !== "string" || !("challenge" in body) || typeof body.challenge !== "string") return unavailable();
     const target = await destination(body.target);
     if (!target) return unavailable();
-    const { ticket } = await customerSsoService.issue({ userId: session.user.id, sourceSessionId: session.user.phoneSessionId, sourceOrganizationId: source.organizationId, targetOrganizationId: target.organizationId, targetOrigin: target.origin, challenge: body.challenge });
+    const { ticket } = await customerSsoService.issue({ userId: session.user.id, sourceSessionId: (session.user as { phoneSessionId?: string }).phoneSessionId as string, sourceOrganizationId: source.organizationId, targetOrganizationId: target.organizationId, targetOrigin: target.origin, challenge: body.challenge });
     const next = new URL(appPath("/fa/login/sso"), target.origin);
     next.searchParams.set("organization", target.slug);
     next.hash = new URLSearchParams({ ticket }).toString();

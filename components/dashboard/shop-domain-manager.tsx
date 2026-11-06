@@ -1,5 +1,6 @@
 "use client";
 import { appFetch } from "@/lib/app-base-path";
+import { DomainVerificationDialog } from "@/components/dashboard/domains/DomainVerificationDialog";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -53,6 +54,12 @@ type ShopDomain = {
   verificationToken: string | null;
   failureReason: string | null;
   verifiedAt: string | null;
+  providerVerified?: boolean;
+  dnsConfigured?: boolean;
+  sslReady?: boolean;
+  disabledAt?: string | null;
+  deletedAt?: string | null;
+  removedAt?: string | null;
   lastCheckedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -967,6 +974,18 @@ export function ShopDomainManager({ locale }: { locale: SupportedLocale }) {
                           {copy.remove}
                         </Button>
                       </div>
+                      <DomainVerificationDialog
+                        domainId={domain.id}
+                        domain={domain.normalizedDomain}
+                        organizationId={domain.organizationId}
+                        organizationName={shop?.name ?? domain.organizationId}
+                        providerVerified={Boolean(domain.providerVerified)}
+                        dnsConfigured={Boolean(domain.dnsConfigured)}
+                        sslReady={Boolean(domain.sslReady)}
+                        verifiedAt={domain.verifiedAt ? String(domain.verifiedAt) : null}
+                        isActive={domain.status === "ACTIVE" && !domain.disabledAt && !domain.deletedAt && !domain.removedAt}
+                        onSuccess={() => void loadDomains()}
+                      />
                     </div>
                   );
                 })}

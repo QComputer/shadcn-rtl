@@ -21,6 +21,16 @@ function LoginForm({ locale }: { locale: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get("callbackUrl") || appPath(`/${locale}/dashboard`)
+  const organizationHint = searchParams.get("organization")
+  const phoneLoginParams = new URLSearchParams()
+  if (organizationHint) phoneLoginParams.set("organization", organizationHint)
+  if (callbackUrl.startsWith("/") && !callbackUrl.startsWith("//") && !callbackUrl.includes("\\")) {
+    try {
+      const parsedCallback = new URL(callbackUrl, "https://same-origin.invalid")
+      if (!parsedCallback.searchParams.has("token") && !parsedCallback.hash.toLowerCase().includes("token=")) phoneLoginParams.set("callbackUrl", callbackUrl)
+    } catch { /* ignore malformed callback context */ }
+  }
+  const phoneLoginHref = `/${locale}/login/phone${phoneLoginParams.size ? `?${phoneLoginParams.toString()}` : ""}`
   const passwordChanged = searchParams.get("security") === "password-changed"
 
   const [username, setUsername] = useState("")
@@ -255,6 +265,11 @@ function LoginForm({ locale }: { locale: string }) {
 
         {/* Footer */}
         <div className="mt-6 text-center">
+          <p className="mb-3 text-sm">
+            <Link href={phoneLoginHref} className="font-medium text-primary hover:underline">
+              ورود یا ثبت‌نام مشتری با شماره تلفن
+            </Link>
+          </p>
           <p className="text-sm text-muted-foreground">
             {t("auth.noAccount") || "حساب کاربری ندارید؟"}
             <Link href={`/${locale}/register`} className="text-primary hover:underline font-medium p-1">

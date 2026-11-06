@@ -84,7 +84,6 @@ export class InotiTokenSmsTransport implements CustomerAuthSmsTransport {
       throw new Error("INOTI_SEND_UNCERTAIN");
     }
     if (DEFINITIVE_DELIVERY_FAILURES.has(delivery.Status as number)) return "REJECTED";
-    // ACCEPTED means the provider accepted the batch; it does not mean handset delivery.
     return { status: "ACCEPTED", providerMessageId: String(payload.BatchID) };
   }
 }
@@ -105,6 +104,7 @@ function validAuthUrl(value: string): boolean {
     const url = new URL(value);
     const localHttp = process.env.NODE_ENV !== "production" && url.protocol === "http:" &&
       (url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname.endsWith(".localhost"));
+    if (value.startsWith("OTP:")) return /^\d{4}$/.test(value.slice(4));
     const path = url.pathname.replace(/\/$/, "");
     const expectedPath = /^(?:\/app)?\/(?:fa|en|ar)\/login\/phone$/;
     const organization = url.searchParams.getAll("organization");
@@ -123,6 +123,9 @@ function validBatchId(value: unknown): boolean {
 
 function makeMessage(organizationName: string | undefined, url: string): string {
   const name = (organizationName ?? "").replace(/[\u0000-\u001f\u007f-\u009f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+  if (url.startsWith("OTP:")) {
+    return `${name ? `${name} | ` : ""}کد تأیید شما: ${url.slice(4)}\nاین کد تا ۲ دقیقه معتبر است.`;
+  }
   return `${name ? `${name} | ` : ""}برای ورود امن به حساب خود، این پیوند را باز کنید: ${url}`;
 }
 

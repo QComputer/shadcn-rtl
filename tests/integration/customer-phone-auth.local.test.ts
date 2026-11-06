@@ -48,19 +48,13 @@ async function issue(phone: string, organization = organizations[0]) {
   const link = await db.customerAccessLink.findUnique({ where: { issuanceKey: customerAuthDigest(`WEB:${organization.id}:${phone}:${issuanceKey}`, secret) }, include: { smsOutbox: true } });
   assert.ok(link?.smsOutbox, "request must persist link and encrypted outbox on actual PostgreSQL");
   const payload = decryptCustomerAuthPayload(link.smsOutbox.encryptedPayload, secret, link.id);
-  const url = new URL(payload.url);
-  assert.equal(url.pathname, "/fa/login/phone");
-  assert.equal(url.searchParams.get("organization"), organization.slug);
-  assert.equal(url.searchParams.has("token"), false);
-  const token = new URLSearchParams(url.hash.slice(1)).get("token");
-  assert.ok(token);
-  assert.equal(link.tokenDigest, customerAuthDigest(token, secret));
-  assert.ok(!JSON.stringify(link).includes(token));
-  return { link, token, payload };
+  assert.ok(payload.url.startsWith("OTP:"), "outbox must carry an OTP payload");
+  assert.match(payload.url.slice(4), /^\d{4}$/, "exactly one four-digit OTP code");
+  return { link, otp: payload.url.slice(4), payload };
 }
 
-async function consume(token: string, organization = organizations[0]) {
-  const result = await service.consume({ token, organizationId: organization.id, origin: origin(organization) });
+async function consumeOtp(phone: string, otp: string, organization = organizations[0]) {
+  const result = await service.consume({ otp, phone, organizationId: organization.id, origin: origin(organization) });
   ownedUserIds.add(result.id);
   return result;
 }
@@ -134,9 +128,9 @@ describe("customer phone authentication on explicitly guarded local PostgreSQL",
     const phone = await freshPhone();
     const first = await issue(phone);
     assert.equal(await db.customerPhoneIdentity.count({ where: { phone } }), 0, "request cannot create identity");
-    const firstUser = await consume(first.token);
+    const firstUser = await consumeOtp(first.link.phone, first.otp);
     const second = await issue(phone, organizations[1]);
-    const secondUser = await consume(second.token, organizations[1]);
+    const secondUser = await consumeOtp(second.link.phone, second.otp, organizations[1]);
     assert.equal(firstUser.id, secondUser.id);
     assert.equal(await db.customerPhoneIdentity.count({ where: { phone } }), 1);
     assert.equal(await db.customerClubMembership.count({ where: { customerId: firstUser.id, status: "ACTIVE", organizationId: { in: ownedOrgIds } } }), 2);
@@ -152,31 +146,31 @@ describe("customer phone authentication on explicitly guarded local PostgreSQL",
 
   it("concurrent consumption atomically permits exactly one successful session", async () => {
     const phone = await freshPhone();
-    const { token, link } = await issue(phone);
-    const results = await Promise.allSettled([consume(token), consume(token)]);
+    const { otp, link } = await issue(phone);
+    const results = await Promise.allSettled([consumeOtp(link.phone, otp), consumeOtp(link.phone, otp)]);
     assert.equal(results.filter(result => result.status === "fulfilled").length, 1);
     assert.equal(results.filter(result => result.status === "rejected").length, 1);
     const identity = await db.customerPhoneIdentity.findUniqueOrThrow({ where: { phone } });
     ownedUserIds.add(identity.userId);
     assert.equal(await db.customerPhoneSession.count({ where: { userId: identity.userId } }), 1);
     assert.ok((await db.customerAccessLink.findUniqueOrThrow({ where: { id: link.id } })).consumedAt);
-    await assert.rejects(consume(token), CustomerPhoneAuthError);
+    await assert.rejects(consumeOtp(link.phone, otp), CustomerPhoneAuthError);
   });
 
   it("rejects cross-organization, cross-origin, expired and consumed replay", async () => {
-    const { token, link } = await issue(await freshPhone());
-    await assert.rejects(service.consume({ token, organizationId: organizations[1].id, origin: origin(organizations[1]) }), CustomerPhoneAuthError);
-    await assert.rejects(service.consume({ token, organizationId: organizations[0].id, origin: `https://alt-${organizations[0].slug}.example.test` }), CustomerPhoneAuthError);
+    const { otp, link } = await issue(await freshPhone());
+    await assert.rejects(service.consume({ otp, phone: link.phone, organizationId: organizations[1].id, origin: origin(organizations[1]) }), CustomerPhoneAuthError);
+    await assert.rejects(service.consume({ otp, phone: link.phone, organizationId: organizations[0].id, origin: `https://alt-${organizations[0].slug}.example.test` }), CustomerPhoneAuthError);
     assert.equal((await db.customerAccessLink.findUniqueOrThrow({ where: { id: link.id } })).consumedAt, null);
     const domainWhere = { normalizedDomain: `${organizations[0].slug}.example.test` };
     await db.organizationDomain.update({ where: domainWhere, data: { sslReady: false } });
-    try { await assert.rejects(consume(token), CustomerPhoneAuthError); }
+    try { await assert.rejects(consumeOtp(link.phone, otp), CustomerPhoneAuthError); }
     finally { await db.organizationDomain.update({ where: domainWhere, data: { sslReady: true } }); }
     await db.organization.update({ where: { id: organizations[0].id }, data: { isActive: false } });
-    try { await assert.rejects(consume(token), CustomerPhoneAuthError); }
+    try { await assert.rejects(consumeOtp(link.phone, otp), CustomerPhoneAuthError); }
     finally { await db.organization.update({ where: { id: organizations[0].id }, data: { isActive: true } }); }
     await db.customerAccessLink.update({ where: { id: link.id }, data: { expiresAt: new Date(Date.now() - 1000) } });
-    await assert.rejects(consume(token), CustomerPhoneAuthError);
+    await assert.rejects(consumeOtp(link.phone, otp), CustomerPhoneAuthError);
     assert.equal(await db.customerPhoneIdentity.count({ where: { phone: link.phone } }), 0);
   });
 
@@ -185,8 +179,8 @@ describe("customer phone authentication on explicitly guarded local PostgreSQL",
       const phone = await freshPhone();
       const legacy = await db.user.create({ data: { name: collision === "username" ? phone : `${prefix}-legacy`, phone: collision === "phone" ? phone : null, password: "synthetic-legacy-credential", role: "CUSTOMER" } });
       ownedUserIds.add(legacy.id);
-      const { token } = await issue(phone);
-      await assert.rejects(consume(token), CustomerPhoneAuthError);
+      const { otp, link } = await issue(phone);
+      await assert.rejects(consumeOtp(link.phone, otp), CustomerPhoneAuthError);
       assert.equal(await db.customerPhoneIdentity.count({ where: { phone } }), 0);
       assert.equal(await db.customerPhoneSession.count({ where: { userId: legacy.id } }), 0);
     }
@@ -194,12 +188,13 @@ describe("customer phone authentication on explicitly guarded local PostgreSQL",
 
   it("preserves blocked/left/paused club states and denies both consumption and existing session access", async () => {
     const phone = await freshPhone();
-    const initial = await consume((await issue(phone)).token);
+    const { link: initialLink, otp: initialOtp } = await issue(phone);
+    const initial = await consumeOtp(initialLink.phone, initialOtp);
     const membershipWhere = { organizationId_customerId: { organizationId: organizations[0].id, customerId: initial.id } };
-    const { token } = await issue(phone);
+    const { link: secondLink, otp: secondOtp } = await issue(phone);
     for (const status of ["BLOCKED", "LEFT", "PAUSED"] as const) {
       await db.customerClubMembership.update({ where: membershipWhere, data: { status } });
-      await assert.rejects(consume(token), CustomerPhoneAuthError);
+      await assert.rejects(consumeOtp(secondLink.phone, secondOtp), CustomerPhoneAuthError);
       assert.equal((await db.customerClubMembership.findUniqueOrThrow({ where: membershipWhere })).status, status);
       assert.equal(await validateCustomerPhoneSession({ sessionId: initial.phoneSessionId, userId: initial.id, organizationId: organizations[0].id }, db), false);
     }
@@ -208,25 +203,28 @@ describe("customer phone authentication on explicitly guarded local PostgreSQL",
 
   it("global user promotion trigger revokes sessions permanently after demotion", async () => {
     const phone = await freshPhone();
-    const user = await consume((await issue(phone)).token);
+    const { link: firstLink, otp: firstOtp } = await issue(phone);
+    const user = await consumeOtp(firstLink.phone, firstOtp);
     await db.user.update({ where: { id: user.id }, data: { role: "ADMIN" } });
     assert.ok((await db.customerPhoneSession.findUniqueOrThrow({ where: { id: user.phoneSessionId } })).revokedAt);
     await db.user.update({ where: { id: user.id }, data: { role: "CUSTOMER" } });
     assert.equal(await validateCustomerPhoneSession({ sessionId: user.phoneSessionId, userId: user.id, organizationId: organizations[0].id }, db), false);
-    const fresh = await consume((await issue(phone)).token);
+    const { link: freshLink, otp: freshOtp } = await issue(phone);
+    const fresh = await consumeOtp(freshLink.phone, freshOtp);
     assert.notEqual(fresh.phoneSessionId, user.phoneSessionId);
   });
 
   it("active staff membership trigger revokes sessions and prevents phone login until removed", async () => {
     const phone = await freshPhone();
-    const user = await consume((await issue(phone)).token);
+    const { link: firstLink, otp: firstOtp } = await issue(phone);
+    const user = await consumeOtp(firstLink.phone, firstOtp);
     const staff = await db.organizationMember.create({ data: { organizationId: organizations[1].id, organizationSlug: organizations[1].slug, userId: user.id, role: "STAFF", isActive: true } });
     assert.ok((await db.customerPhoneSession.findUniqueOrThrow({ where: { id: user.phoneSessionId } })).revokedAt);
-    const { token } = await issue(phone);
-    await assert.rejects(consume(token), CustomerPhoneAuthError);
+    const { link: secondLink, otp: secondOtp } = await issue(phone);
+    await assert.rejects(consumeOtp(secondLink.phone, secondOtp), CustomerPhoneAuthError);
     await db.organizationMember.delete({ where: { id: staff.id } });
     assert.equal(await validateCustomerPhoneSession({ sessionId: user.phoneSessionId, userId: user.id, organizationId: organizations[0].id }, db), false);
-    assert.ok((await consume(token)).phoneSessionId);
+    assert.ok((await consumeOtp(secondLink.phone, secondOtp)).phoneSessionId);
   });
 
   it("concurrent real-DB workers deliver one injected SMS and purge encrypted payload", async () => {
@@ -242,5 +240,20 @@ describe("customer phone authentication on explicitly guarded local PostgreSQL",
     assert.equal(outbox.status, "SENT");
     assert.equal(outbox.attempts, 1);
     assert.equal(outbox.encryptedPayload, "");
+  });
+
+  it("commits failed OTP attempts on PostgreSQL, exhausts after three, and prevents reuse of a consumed OTP", async () => {
+    const phone = await freshPhone();
+    const { otp, link } = await issue(phone);
+    const wrong = "0000";
+    for (let i = 0; i < 3; i++) await assert.rejects(consumeOtp(phone, wrong), CustomerPhoneAuthError);
+    assert.equal((await db.customerAccessLink.findUniqueOrThrow({ where: { id: link.id } })).otpAttempts, 3);
+    await assert.rejects(consumeOtp(phone, wrong), CustomerPhoneAuthError);
+
+    const { otp: good, link: goodLink } = await issue(phone);
+    const user = await consumeOtp(phone, good);
+    ownedUserIds.add(user.id);
+    await assert.rejects(consumeOtp(phone, good), CustomerPhoneAuthError);
+    assert.ok((await db.customerAccessLink.findUniqueOrThrow({ where: { id: goodLink.id } })).consumedAt);
   });
 });

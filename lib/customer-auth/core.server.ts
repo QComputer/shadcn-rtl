@@ -1,7 +1,7 @@
 import "server-only";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 import { normalizeIranianMobile } from "@/lib/integrations/inoti-ussd/parser";
 import { normalizeDomainHost } from "@/lib/custom-domain-routing";
 import { createCustomerAccessToken, customerAuthDigest, encryptCustomerAuthPayload } from "./crypto";
@@ -30,6 +30,15 @@ const safeCustomer = {
 };
 async function database(db?: PrismaClient) { return db ?? (await import("@/lib/db")).prisma; }
 
+function generateOtp(): string {
+  const num = randomInt(0, 10000);
+  return num.toString().padStart(4, "0");
+}
+
+function hashOtp(otp: string, secret: string): string {
+  return customerAuthDigest(`otp:${otp}`, secret);
+}
+
 export class CustomerPhoneAuthService {
   constructor(private readonly db?: PrismaClient, private readonly options: CustomerPhoneAuthOptions = {}) {}
   private now() { return this.options.now?.() ?? new Date(); }
@@ -47,7 +56,8 @@ export class CustomerPhoneAuthService {
     if (!domain) throw new CustomerPhoneAuthError();
     return organization;
   }
-  async request(input: { phone: string; organizationId: string; origin: string; ip: string; source: "WEB" | "USSD"; idempotencyKey?: string }): Promise<{ accepted: true }> {
+
+  async request(input: { phone: string; organizationId: string; origin: string; ip: string; source: "WEB" | "USSD"; idempotencyKey?: string }): Promise<{ accepted: true; requiresOtp?: boolean }> {
     const accepted = { accepted: true as const };
     const phone = normalizeIranianMobile(input.phone);
     if (!phone || !this.enabled() || !(this.options.senderAvailable ?? customerPhoneAuthSenderAvailable)()) return accepted;
@@ -64,7 +74,6 @@ export class CustomerPhoneAuthService {
           { key: `ip:${customerAuthDigest(input.ip, secret)}`, limit: 15 },
           { key: `org:${input.organizationId}`, limit: 100 },
         ].sort((a, b) => a.key.localeCompare(b.key));
-        // Sorted transaction advisory locks serialize quotas across workers and restarts.
         for (const item of keys) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${item.key}, 0))::text`;
         if (issuanceKey && await tx.customerAccessLink.findUnique({ where: { issuanceKey }, select: { id: true } })) return;
         const windowStart = new Date(Math.floor(now.getTime() / 900_000) * 900_000);
@@ -73,42 +82,53 @@ export class CustomerPhoneAuthService {
           if ((counter?.count ?? 0) >= item.limit) return;
         }
         for (const item of keys) await tx.customerPhoneAuthQuota.upsert({ where: { key_windowStart: { key: item.key, windowStart } }, create: { key: item.key, windowStart, count: 1 }, update: { count: { increment: 1 } } });
+        const otp = generateOtp();
         const token = createCustomerAccessToken();
         const id = randomUUID();
         const locale = ["fa", "en", "ar"].includes(destination.locale) ? destination.locale : "fa";
         const url = new URL(`/${locale}/login/phone`, input.origin);
         url.searchParams.set("organization", destination.slug);
-        // Fragment keeps the secret out of HTTP request/access logs and referrers.
         url.hash = new URLSearchParams({ token }).toString();
-        await tx.customerAccessLink.create({ data: { id, phone, organizationId: input.organizationId, origin: input.origin, source: input.source, tokenDigest: customerAuthDigest(token, secret), issuanceKey, expiresAt: new Date(now.getTime() + 300_000), createdAt: now, smsOutbox: { create: { encryptedPayload: encryptCustomerAuthPayload({ phone, url: url.toString() }, secret, id), nextAttemptAt: now } } } });
+        await tx.customerAccessLink.create({ data: { id, phone, organizationId: input.organizationId, origin: input.origin, source: input.source, tokenDigest: customerAuthDigest(token, secret), issuanceKey, expiresAt: new Date(now.getTime() + 300_000), createdAt: now, otpCodeHash: hashOtp(otp, secret), otpExpiresAt: new Date(now.getTime() + 120_000), otpAttempts: 0, smsOutbox: { create: { encryptedPayload: encryptCustomerAuthPayload({ phone, url: `OTP:${otp}` }, secret, id), nextAttemptAt: now } } } });
       }, { maxWait: 5000, timeout: 10_000 });
     } catch (error) {
-      // Fixed diagnostics preserve operational visibility without logging phone, token, URL or DB payloads.
       if (!(error instanceof CustomerPhoneAuthError)) console.warn("CUSTOMER_PHONE_AUTH_REQUEST_FAILED");
     }
     return accepted;
   }
-  async consume(input: { token: string; organizationId: string; origin: string }) {
-    if (!this.enabled() || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || this.secret().length < 32) throw new CustomerPhoneAuthError();
+  async consume(input: { token?: string; otp?: string; phone?: string; organizationId: string; origin: string }) {
+    if (!this.enabled() || this.secret().length < 32) throw new CustomerPhoneAuthError();
     try {
       const db = await database(this.db);
       return await db.$transaction(async tx => {
         await this.destination(tx, input.organizationId, input.origin);
         const now = this.now();
-        const link = await tx.customerAccessLink.findUnique({ where: { tokenDigest: customerAuthDigest(input.token, this.secret()) } });
+        let link;
+        if (input.otp && input.phone) {
+          const phone = normalizeIranianMobile(input.phone);
+          link = await tx.customerAccessLink.findFirst({ where: { phone, organizationId: input.organizationId, origin: input.origin, consumedAt: null, expiresAt: { gt: now }, otpConsumedAt: null, otpExpiresAt: { gt: now } }, orderBy: { createdAt: "desc" } });
+          if (!link || (link.otpAttempts ?? 0) >= 3) throw new CustomerPhoneAuthError();
+          const hash = hashOtp(input.otp.replace(/\s/g, ""), this.secret());
+          if (!timingSafeEqual(Buffer.from(link.otpCodeHash || ""), Buffer.from(hash))) {
+            await db.customerAccessLink.update({ where: { id: link.id }, data: { otpAttempts: { increment: 1 } } });
+            throw new CustomerPhoneAuthError();
+          }
+        } else if (input.token && /^[A-Za-z0-9_-]{43}$/.test(input.token)) {
+          link = await tx.customerAccessLink.findUnique({ where: { tokenDigest: customerAuthDigest(input.token, this.secret()) } });
+        } else {
+          throw new CustomerPhoneAuthError();
+        }
         if (!link || link.organizationId !== input.organizationId || link.origin !== input.origin || link.consumedAt || link.expiresAt <= now) throw new CustomerPhoneAuthError();
         await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`identity:${link.phone}`}, 0))::text`;
-        const claimed = await tx.customerAccessLink.updateMany({ where: { id: link.id, consumedAt: null, expiresAt: { gt: now } }, data: { consumedAt: now } });
+        const claimed = await tx.customerAccessLink.updateMany({ where: { id: link.id, consumedAt: null, expiresAt: { gt: now } }, data: { consumedAt: now, otpConsumedAt: now } });
         if (claimed.count !== 1) throw new CustomerPhoneAuthError();
         const identity = await tx.customerPhoneIdentity.findUnique({ where: { phone: link.phone } });
         let user;
         if (identity) {
-          // Lock user against concurrent promotion before reading customer eligibility.
           await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${identity.userId} FOR UPDATE`;
           user = await tx.user.findFirst({ where: { id: identity.userId, ...safeCustomer } });
           if (!user) throw new CustomerPhoneAuthError();
         } else {
-          // Existing legacy phone/name ownership is never silently converted to a verified identity.
           if (await tx.user.findFirst({ where: { OR: [{ name: link.phone }, { phone: { in: [link.phone, link.phone.slice(1), `98${link.phone.slice(1)}`, `+98${link.phone.slice(1)}`, `0098${link.phone.slice(1)}`] } }] }, select: { id: true } })) throw new CustomerPhoneAuthError();
           user = await tx.user.create({ data: { name: link.phone, phone: link.phone, password: await bcrypt.hash(createCustomerAccessToken(), 12), role: "CUSTOMER", isTeamMember: false } });
           await tx.customerPhoneIdentity.create({ data: { phone: link.phone, userId: user.id, verifiedAt: now } });

@@ -149,15 +149,15 @@ describe("customer phone auth through isolated local HTTP", { concurrency: false
     const link = await db.customerAccessLink.findFirstOrThrow({ where: { organizationId: organization.id, phone }, include: { smsOutbox: true } });
     assert.ok(link.smsOutbox);
     const payload = decryptCustomerAuthPayload(link.smsOutbox.encryptedPayload, secret, link.id);
-    const rawToken = new URLSearchParams(new URL(payload.url).hash.slice(1)).get("token");
-    assert.ok(rawToken && /^[A-Za-z0-9_-]{43}$/.test(rawToken));
-    assert.equal(link.tokenDigest, customerAuthDigest(rawToken, secret));
+    assert.ok(payload.url.startsWith("OTP:"), "outbox must carry an OTP payload");
+    const otp = payload.url.slice(4);
+    assert.match(otp, /^\d{4}$/, "exactly one four-digit OTP code");
 
     const csrf = await request("/api/auth/csrf");
     assert.equal(csrf.status, 200);
     const csrfCookies = cookiesFrom(csrf);
     const csrfToken = (await csrf.json() as { csrfToken: string }).csrfToken;
-    const signIn = await request("/api/auth/callback/customer-phone", { method: "POST", redirect: "manual", headers: { origin: tenantUrl, cookie: cookieHeader(csrfCookies), "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ csrfToken, callbackUrl: tenantUrl, token: rawToken, organization: prefix }) });
+    const signIn = await request("/api/auth/callback/customer-phone", { method: "POST", redirect: "manual", headers: { origin: tenantUrl, cookie: cookieHeader(csrfCookies), "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ csrfToken, callbackUrl: tenantUrl, otp, phone, organization: prefix }) });
     assert.ok([200, 302].includes(signIn.status), `credentials callback should complete; status=${signIn.status}`);
     const authCookies = [...csrfCookies, ...cookiesFrom(signIn)];
     const cookie = cookieHeader(authCookies);
@@ -188,7 +188,7 @@ describe("customer phone auth through isolated local HTTP", { concurrency: false
     assert.equal((await noSession.json() as { user?: unknown } | null)?.user, undefined);
     const revoked = await db.customerPhoneSession.findUniqueOrThrow({ where: { id: persistedSession.id } });
     assert.ok(revoked.revokedAt);
-    const replay = await request("/api/auth/callback/customer-phone", { method: "POST", redirect: "manual", headers: { origin: tenantUrl, cookie: cookieHeader(csrfCookies), "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ csrfToken, callbackUrl: tenantUrl, token: rawToken, organization: prefix }) });
+    const replay = await request("/api/auth/callback/customer-phone", { method: "POST", redirect: "manual", headers: { origin: tenantUrl, cookie: cookieHeader(csrfCookies), "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ csrfToken, callbackUrl: tenantUrl, otp, phone, organization: prefix }) });
     assert.ok([200, 302, 401].includes(replay.status));
     const replaySession = await request("/api/auth/session", { headers: { cookie: cookieHeader([...csrfCookies, ...cookiesFrom(replay)]) } });
     assert.equal((await replaySession.json() as { user?: unknown } | null)?.user, undefined);

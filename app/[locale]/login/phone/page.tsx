@@ -1,4 +1,5 @@
 import { CustomerPhoneLogin } from "@/components/auth/customer-phone-login";
+import { prisma } from "@/lib/db";
 
 type PageProps = {
   params: Promise<{ locale: string }>;
@@ -18,5 +19,14 @@ export default async function CustomerPhoneLoginPage({ params, searchParams }: P
   if (!organizationHint && callbackUrl) {
     try { organizationHint = new URL(callbackUrl, "https://same-origin.invalid").searchParams.get("organization") ?? undefined; } catch { /* ignore malformed callback context */ }
   }
-  return <CustomerPhoneLogin locale={locale} organizationHint={organizationHint} callbackUrl={callbackUrl} />;
+
+  let organization = null;
+  if (organizationHint) {
+    organization = await prisma.organization.findFirst({
+      where: { slug: organizationHint, isActive: true, deletedAt: null },
+      select: { id: true, slug: true, name: true, logo: true },
+    });
+  }
+
+  return <CustomerPhoneLogin locale={locale} organization={organization} />;
 }

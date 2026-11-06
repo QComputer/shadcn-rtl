@@ -44,8 +44,7 @@ export async function processCustomerAuthSmsOutbox(options: CustomerAuthSmsWorke
       return { processed: true };
     }
     const payload = decryptCustomerAuthPayload(candidate.encryptedPayload, options.secret, candidate.linkId);
-    // Binding must survive decryption as well as the database link metadata.
-    if (payload.phone !== candidate.link.phone || new URL(payload.url).origin !== candidate.link.origin) {
+    if (payload.phone !== candidate.link.phone || (!payload.url.startsWith("OTP:") && new URL(payload.url).origin !== candidate.link.origin)) {
       await finish({ status: "CANCELLED", encryptedPayload: "", lastErrorCode: "PAYLOAD_MISMATCH" });
       return { processed: true };
     }
@@ -57,7 +56,6 @@ export async function processCustomerAuthSmsOutbox(options: CustomerAuthSmsWorke
     else if (result === "RETRYABLE" && candidate.attempts < 2) await finish({ status: "PENDING", lastErrorCode: "RETRYABLE_REJECTION", nextAttemptAt: new Date(now.getTime() + (candidate.attempts + 1) * 30_000) });
     else await finish({ status: "FAILED", encryptedPayload: "", lastErrorCode: "SEND_REJECTED" });
   } catch {
-    // Timeout, network exception or crash after dispatch may have delivered: quarantine.
     await finish({ status: "UNCERTAIN", encryptedPayload: "", lastErrorCode: "SEND_UNCERTAIN" });
   } finally { if (timer) clearTimeout(timer); }
   return { processed: true };

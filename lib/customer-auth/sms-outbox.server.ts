@@ -2,6 +2,7 @@ import "server-only";
 import type { PrismaClient } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { decryptCustomerAuthPayload } from "./crypto";
+import { normalizeIranianMobile } from "@/lib/integrations/inoti-ussd/parser";
 import { normalizeDomainHost } from "@/lib/custom-domain-routing";
 
 /** Dedicated transport: auth secrets must never pass through generic SmsDelivery/logging. */
@@ -29,7 +30,10 @@ export async function processCustomerAuthSmsOutbox(options: CustomerAuthSmsWorke
   // An expired send lease is ambiguous: never resend automatically after worker death.
   await db.customerAuthSmsOutbox.updateMany({ where: { status: "SENDING", lockedUntil: { lte: now } }, data: { status: "UNCERTAIN", encryptedPayload: "", lastErrorCode: "LEASE_EXPIRED", leaseId: null, lockedUntil: null } });
   const where: Record<string, unknown> = { status: "PENDING", attempts: { lt: 3 }, nextAttemptAt: { lte: now } };
-  if (options.allowedRecipient) where.link = { phone: options.allowedRecipient };
+  if (options.allowedRecipient) {
+    const normalized = normalizeIranianMobile(options.allowedRecipient);
+    if (normalized) where.link = { phone: normalized };
+  }
   const candidate = await db.customerAuthSmsOutbox.findFirst({ where, orderBy: { createdAt: "asc" }, include: { link: true } });
   if (!candidate) return { processed: false };
   const leaseId = randomUUID();
@@ -57,7 +61,7 @@ export async function processCustomerAuthSmsOutbox(options: CustomerAuthSmsWorke
     const result = await Promise.race([transport.send({ ...payload, organizationName: organization.branding?.displayName || organization.name, idempotencyKey: candidate.linkId, signal: controller.signal }), timeout]);
     if (typeof result === "object" && result.status === "ACCEPTED") await finish({ status: "ACCEPTED", providerMessageId: result.providerMessageId, encryptedPayload: "", lastErrorCode: null, sentAt: options.now?.() ?? new Date() });
     else if (result === "SENT") await finish({ status: "SENT", encryptedPayload: "", lastErrorCode: null, sentAt: options.now?.() ?? new Date() });
-    else if (result === "RETRYABLE" && candidate.attempts < 2) await finish({ status: "PENDING", lastErrorCode: "RETRYABLE_REJECTION", nextAttemptAt: new Date(now.getTime() + (candidate.attempts + 1) * 30_000) });
+    else if (result === "RETRYABLE" && !options.allowedRecipient && candidate.attempts < 2) await finish({ status: "PENDING", lastErrorCode: "RETRYABLE_REJECTION", nextAttemptAt: new Date(now.getTime() + (candidate.attempts + 1) * 30_000) });
     else await finish({ status: "FAILED", encryptedPayload: "", lastErrorCode: "SEND_REJECTED" });
   } catch {
     await finish({ status: "UNCERTAIN", encryptedPayload: "", lastErrorCode: "SEND_UNCERTAIN" });

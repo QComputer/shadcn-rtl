@@ -18,6 +18,8 @@ export interface CustomerAuthSmsWorkerOptions {
   transport?: CustomerAuthSmsTransport;
   now?: () => Date;
   platformOrigins?: string[];
+  /** Canary safety: when set, only this recipient's outbox records are eligible for dispatch. */
+  allowedRecipient?: string;
 }
 
 export async function processCustomerAuthSmsOutbox(options: CustomerAuthSmsWorkerOptions) {
@@ -26,7 +28,9 @@ export async function processCustomerAuthSmsOutbox(options: CustomerAuthSmsWorke
   const now = options.now?.() ?? new Date();
   // An expired send lease is ambiguous: never resend automatically after worker death.
   await db.customerAuthSmsOutbox.updateMany({ where: { status: "SENDING", lockedUntil: { lte: now } }, data: { status: "UNCERTAIN", encryptedPayload: "", lastErrorCode: "LEASE_EXPIRED", leaseId: null, lockedUntil: null } });
-  const candidate = await db.customerAuthSmsOutbox.findFirst({ where: { status: "PENDING", attempts: { lt: 3 }, nextAttemptAt: { lte: now } }, orderBy: { createdAt: "asc" }, include: { link: true } });
+  const where: Record<string, unknown> = { status: "PENDING", attempts: { lt: 3 }, nextAttemptAt: { lte: now } };
+  if (options.allowedRecipient) where.link = { phone: options.allowedRecipient };
+  const candidate = await db.customerAuthSmsOutbox.findFirst({ where, orderBy: { createdAt: "asc" }, include: { link: true } });
   if (!candidate) return { processed: false };
   const leaseId = randomUUID();
   const claim = await db.customerAuthSmsOutbox.updateMany({ where: { id: candidate.id, status: "PENDING", attempts: { lt: 3 }, nextAttemptAt: { lte: now } }, data: { status: "SENDING", attempts: { increment: 1 }, leaseId, lockedUntil: new Date(now.getTime() + 30_000) } });

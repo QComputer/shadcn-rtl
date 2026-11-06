@@ -2,6 +2,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { resolve as resolvePath } from 'node:path';
 
 export const RUNFLARE_TYPECHECK_NAME = 'RunFlare TypeScript';
 export const RUNFLARE_GITHUB_REPOSITORY = 'QComputer/shadcn-rtl';
@@ -53,10 +54,6 @@ export function githubRepositoryFromRemote(remoteUrl) {
   return repository;
 }
 
-function isSha(value) {
-  return /^[a-f0-9]{40}$/i.test(String(value || ''));
-}
-
 async function fetchJson(url, fetchImpl, remainingMs) {
   let response;
   try {
@@ -70,26 +67,6 @@ async function fetchJson(url, fetchImpl, remainingMs) {
   if (!response?.ok) throw new Error(`RunFlare typecheck gate GitHub query failed with HTTP ${response?.status || 'unknown'}.`);
   try { return await response.json(); }
   catch { throw new Error('RunFlare typecheck gate received an invalid GitHub response.'); }
-}
-
-async function assertPinnedSourceSha({ pinnedSha, fetchImpl }) {
-  const payload = await fetchJson(
-    `https://api.github.com/repos/${RUNFLARE_GITHUB_REPOSITORY}/commits/${RUNFLARE_SOURCE_BRANCH}`,
-    fetchImpl,
-    REQUEST_TIMEOUT_MS,
-  );
-  if (!isSha(payload?.sha) || payload.sha.toLowerCase() !== pinnedSha.toLowerCase()) {
-    throw new Error('RunFlare pinned source SHA does not match the current main branch tip.');
-  }
-}
-
-async function resolvePinnedSourceSha({ env, fetchImpl }) {
-  const pinnedSha = String(env.RUNFLARE_SOURCE_COMMIT_SHA || '').trim();
-  if (!isSha(pinnedSha)) {
-    throw new Error('RunFlare typecheck gate requires RUNFLARE_SOURCE_COMMIT_SHA when Git metadata is unavailable.');
-  }
-  await assertPinnedSourceSha({ pinnedSha, fetchImpl });
-  return pinnedSha;
 }
 
 export async function waitForExactTypecheck({ repository, sha, fetchImpl = fetch, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)), attempts = DEFAULT_ATTEMPTS, intervalMs = DEFAULT_INTERVAL_MS, requestTimeoutMs = REQUEST_TIMEOUT_MS, maxWaitMs = MAX_WAIT_MS }) {
@@ -146,24 +123,48 @@ function gitOutput(args) {
   catch { throw new Error('RunFlare typecheck gate could not inspect the current Git checkout.'); }
 }
 
-export async function runRunflareTypecheckGate({ env = process.env, git = gitOutput, fetchImpl = fetch, sleep } = {}) {
+function runLocalTypecheck({ execFile = execFileSync } = {}) {
+  const tscBin = resolvePath('node_modules/.bin/tsc');
+  try {
+    execFile(tscBin, ['--noEmit', '--incremental', 'false'], { stdio: 'inherit' });
+  } catch {
+    throw new Error('RunFlare typecheck gate: local TypeScript validation failed.');
+  }
+}
+
+export async function runRunflareTypecheckGate({ env = process.env, git = gitOutput, fetchImpl = fetch, sleep, execFile = execFileSync } = {}) {
   if (!shouldRequireRunflareTypecheck({ env })) return { required: false };
+
   let sha;
   let repository;
-  let usedPinnedSource = false;
+  let gitAvailable = false;
+
   try {
     sha = git(['rev-parse', 'HEAD']);
     repository = githubRepositoryFromRemote(git(['remote', 'get-url', 'origin']));
+    gitAvailable = true;
   } catch {
-    sha = await resolvePinnedSourceSha({ env, fetchImpl });
-    repository = RUNFLARE_GITHUB_REPOSITORY;
-    usedPinnedSource = true;
+    // Git metadata unavailable in RunFlare build environment.
   }
-  const run = await waitForExactTypecheck({ repository, sha, fetchImpl, ...(sleep ? { sleep } : {}) });
-  if (usedPinnedSource) {
-    await assertPinnedSourceSha({ pinnedSha: sha, fetchImpl });
+
+  if (gitAvailable) {
+    // Prefer the immutable source revision from Git. Verify its exact check run,
+    // never substitute the latest main branch tip as proof of the source being built.
+    try {
+      const run = await waitForExactTypecheck({ repository, sha, fetchImpl, ...(sleep ? { sleep } : {}) });
+      return { required: true, sha: run.head_sha };
+    } catch {
+      // GitHub API unreachable: fall back to validating the source being built directly.
+      runLocalTypecheck({ execFile });
+      return { required: true, sha };
+    }
   }
-  return { required: true, sha: run.head_sha };
+
+  // No Git metadata: validate the source currently being built directly.
+  // RUNFLARE_SOURCE_COMMIT_SHA is deprecated and ignored; a manually
+  // maintained SHA is not proof of the exact source being built.
+  runLocalTypecheck({ execFile });
+  return { required: true, sha: 'local' };
 }
 
 async function main() {

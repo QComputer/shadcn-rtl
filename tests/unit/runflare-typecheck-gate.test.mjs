@@ -74,49 +74,85 @@ test('opted-in gate reads HEAD and remote and does not print or need a token', a
   assert.deepEqual(result, { required: true, sha });
 });
 
-test('source archive fallback requires a pinned SHA matching public main and its exact successful check', async () => {
-  const urls = [];
-  let mainQueries = 0;
+test('verified historical rollback is permitted when its exact check succeeded', async () => {
+  const historicalSha = 'c'.repeat(40);
+  const gitCalls = [];
   const result = await runRunflareTypecheckGate({
-    env: { RUNFLARE_SKIP_DUPLICATE_TYPECHECK: '1', RUNFLARE_SOURCE_COMMIT_SHA: sha },
-    git: () => { throw new Error('Git metadata is unavailable'); },
+    env: { RUNFLARE_SKIP_DUPLICATE_TYPECHECK: '1' },
+    git: args => { gitCalls.push(args); return args[0] === 'rev-parse' ? historicalSha : 'git@github.com:QComputer/shadcn-rtl.git'; },
     fetchImpl: async url => {
-      urls.push(url);
-      if (url.endsWith('/commits/main')) {
-        mainQueries += 1;
-        return { ok: true, json: async () => ({ sha }) };
-      }
-      assert.ok(url.endsWith(`/commits/${sha}/check-runs?per_page=100`));
-      return { ok: true, json: async () => ({ check_runs: [run(sha)] }) };
+      assert.ok(url.includes(`/commits/${historicalSha}/check-runs`));
+      return { ok: true, json: async () => ({ check_runs: [run(historicalSha)] }) };
     },
   });
-  assert.deepEqual(result, { required: true, sha });
-  assert.equal(urls.length, 3);
-  assert.equal(mainQueries, 2);
+  assert.deepEqual(gitCalls, [['rev-parse', 'HEAD'], ['remote', 'get-url', 'origin']]);
+  assert.deepEqual(result, { required: true, sha: historicalSha });
 });
 
-test('source archive fallback fails closed when pin is absent or stale', async () => {
+test('source archive fallback without pinned SHA runs local TypeScript validation', async () => {
+  const noGit = () => { throw new Error('Git metadata is unavailable'); };
+  let tscCalls = 0;
+  const result = await runRunflareTypecheckGate({
+    env: { RUNFLARE_SKIP_DUPLICATE_TYPECHECK: '1' }, git: noGit,
+    fetchImpl: async () => { throw new Error('GitHub must not be queried without a valid pin'); },
+    execFile: async () => { tscCalls += 1; },
+  });
+  assert.deepEqual(result, { required: true, sha: 'local' });
+  assert.equal(tscCalls, 1);
+});
+
+test('deprecated legacy SHA is ignored when Git metadata unavailable', async () => {
+  const noGit = () => { throw new Error('Git metadata is unavailable'); };
+  let tscCalls = 0;
+  const result = await runRunflareTypecheckGate({
+    env: { RUNFLARE_SKIP_DUPLICATE_TYPECHECK: '1', RUNFLARE_SOURCE_COMMIT_SHA: sha }, git: noGit,
+    fetchImpl: async () => { throw new Error('GitHub must not be queried for a deprecated legacy SHA'); },
+    execFile: async () => { tscCalls += 1; },
+  });
+  assert.deepEqual(result, { required: true, sha: 'local' });
+  assert.equal(tscCalls, 1);
+});
+
+test('malformed deprecated legacy SHA is ignored, not rejected', async () => {
+  const noGit = () => { throw new Error('Git metadata is unavailable'); };
+  let tscCalls = 0;
+  const result = await runRunflareTypecheckGate({
+    env: { RUNFLARE_SKIP_DUPLICATE_TYPECHECK: '1', RUNFLARE_SOURCE_COMMIT_SHA: 'not-a-sha' }, git: noGit,
+    fetchImpl: async () => { throw new Error('GitHub must not be queried'); },
+    execFile: async () => { tscCalls += 1; },
+  });
+  assert.deepEqual(result, { required: true, sha: 'local' });
+  assert.equal(tscCalls, 1);
+});
+
+test('gate falls back to local TypeScript when GitHub API is unavailable', async () => {
+  const gitCalls = [];
+  let tscCalls = 0;
+  const result = await runRunflareTypecheckGate({
+    env: { RUNFLARE_SKIP_DUPLICATE_TYPECHECK: '1' },
+    git: args => { gitCalls.push(args); return args[0] === 'rev-parse' ? sha : 'git@github.com:QComputer/shadcn-rtl.git'; },
+    fetchImpl: async () => { throw new Error('GitHub API unavailable'); },
+    execFile: async () => { tscCalls += 1; },
+  });
+  assert.deepEqual(gitCalls, [['rev-parse', 'HEAD'], ['remote', 'get-url', 'origin']]);
+  assert.deepEqual(result, { required: true, sha });
+  assert.equal(tscCalls, 1);
+});
+
+test('gate fails when local TypeScript validation fails and no Git metadata', async () => {
   const noGit = () => { throw new Error('Git metadata is unavailable'); };
   await assert.rejects(runRunflareTypecheckGate({
     env: { RUNFLARE_SKIP_DUPLICATE_TYPECHECK: '1' }, git: noGit,
-    fetchImpl: async () => { throw new Error('GitHub must not be queried without a valid pin'); },
-  }), /requires RUNFLARE_SOURCE_COMMIT_SHA/);
+    fetchImpl: async () => { throw new Error('GitHub must not be queried'); },
+    execFile: () => { throw new Error('tsc failed'); },
+  }), /local TypeScript validation failed/);
+});
+
+test('gate fails when local TypeScript validation fails and GitHub API unavailable', async () => {
   await assert.rejects(runRunflareTypecheckGate({
-    env: { RUNFLARE_SKIP_DUPLICATE_TYPECHECK: '1', RUNFLARE_SOURCE_COMMIT_SHA: sha }, git: noGit,
-    fetchImpl: async url => {
-      assert.ok(url.endsWith('/commits/main'));
-      return { ok: true, json: async () => ({ sha: otherSha }) };
-    },
-  }), /does not match the current main branch tip/);
-  let mainQueries = 0;
-  await assert.rejects(runRunflareTypecheckGate({
-    env: { RUNFLARE_SKIP_DUPLICATE_TYPECHECK: '1', RUNFLARE_SOURCE_COMMIT_SHA: sha }, git: noGit,
-    fetchImpl: async url => {
-      if (url.endsWith('/commits/main')) {
-        mainQueries += 1;
-        return { ok: true, json: async () => ({ sha: mainQueries === 1 ? sha : otherSha }) };
-      }
-      return { ok: true, json: async () => ({ check_runs: [run(sha)] }) };
-    },
-  }), /does not match the current main branch tip/);
+    env: { RUNFLARE_SKIP_DUPLICATE_TYPECHECK: '1' },
+    git: args => (args[0] === 'rev-parse' ? sha : 'git@github.com:QComputer/shadcn-rtl.git'),
+    fetchImpl: async () => { throw new Error('GitHub API unavailable'); },
+    execFile: () => { throw new Error('tsc failed'); },
+  }), /local TypeScript validation failed/);
 });

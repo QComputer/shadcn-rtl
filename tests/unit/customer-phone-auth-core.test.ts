@@ -17,7 +17,7 @@ test("disabled/unreviewed sender acknowledges without touching persistence", asy
   assert.deepEqual(await new CustomerPhoneAuthService(db, { enabled: true, secret }).request(request), { accepted: true });
 });
 
-test("request persists a digest plus encrypted fragment URL; creates no user", async () => {
+test("request persists an OTP challenge plus encrypted outbox; creates no user", async () => {
   let saved: Record<string, any> | undefined;
   const tx = {
     organization: { findFirst: async () => ({ id: "org-a", slug: "shop-a", locale: "fa" }) },
@@ -31,14 +31,15 @@ test("request persists a digest plus encrypted fragment URL; creates no user", a
   assert(saved);
   assert.equal(saved.phone, "09123456789");
   assert.equal(saved.expiresAt.getTime() - now.getTime(), 300_000);
+  assert.equal(saved.otpAttempts, 0);
+  assert.ok(typeof saved.otpCodeHash === "string" && saved.otpCodeHash.length > 0);
+  assert.equal(saved.otpExpiresAt.getTime() - now.getTime(), 120_000);
+  assert.equal(typeof saved.token, "undefined");
+  assert.ok(typeof saved.tokenDigest === "string" && saved.tokenDigest.length > 0);
   const payload = decryptCustomerAuthPayload(saved.smsOutbox.create.encryptedPayload, secret, saved.id);
-  const url = new URL(payload.url);
-  assert.equal(url.pathname, "/fa/login/phone");
-  assert.equal(url.searchParams.get("organization"), "shop-a");
-  assert.equal(url.searchParams.has("token"), false);
-  const token = new URLSearchParams(url.hash.slice(1)).get("token")!;
-  assert.equal(saved.tokenDigest, customerAuthDigest(token, secret));
-  assert(!JSON.stringify(saved).includes(token));
+  assert.ok(payload.url.startsWith("OTP:"), "outbox must carry the OTP code prefixed payload");
+  assert.match(payload.url.slice(4), /^\d{4}$/, "exactly one four-digit OTP code");
+  assert.equal(payload.phone, "09123456789");
 });
 
 test("quota exhaustion and invalid tenant origins produce no issuance", async () => {

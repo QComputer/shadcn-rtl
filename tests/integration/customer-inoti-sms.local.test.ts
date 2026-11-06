@@ -122,8 +122,9 @@ describe("token-based iNoti transport on isolated local PostgreSQL", { concurren
     assert.equal(request.url.searchParams.get("Token"), syntheticToken);
     assert.equal(request.url.searchParams.get("LineNo"), "0");
     assert.equal(request.url.searchParams.get("MobileNumbers"), payload.phone);
-    assert.equal(request.url.searchParams.get("Message"), `${organization.name} | برای ورود امن به حساب خود، این پیوند را باز کنید: ${payload.url}`);
-    assert.equal(request.url.searchParams.get("Message")?.includes(payload.url), true);
+    assert.equal(request.url.searchParams.get("Message"), `${organization.name} | کد تأیید شما: ${payload.url.slice(4)}\nاین کد تا ۲ دقیقه معتبر است.`);
+    assert.ok(/^\d{4}$/.test(payload.url.slice(4)), "exactly one four-digit OTP code");
+    assert.ok(!request.url.searchParams.get("Message")?.includes("http"), "no external URL in SMS");
     assert.equal(request.url.searchParams.has("Token"), true, "URLSearchParams performs query encoding");
     const outbox = await db.customerAuthSmsOutbox.findUniqueOrThrow({ where: { linkId: link.id } });
     assert.equal(outbox.status, "ACCEPTED");

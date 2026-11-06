@@ -2058,6 +2058,10 @@ model CustomerAccessLink {
   expiresAt DateTime
   consumedAt DateTime?
   createdAt DateTime @default(now())
+  otpCodeHash String?
+  otpExpiresAt DateTime?
+  otpAttempts Int @default(0)
+  otpConsumedAt DateTime?
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   smsOutbox CustomerAuthSmsOutbox?
   @@index([expiresAt])

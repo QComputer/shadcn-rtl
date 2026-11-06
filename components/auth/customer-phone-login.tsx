@@ -1,153 +1,193 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { signIn, signOut } from "next-auth/react";
-import Image from "next/image";
-import { appFetch, appPath, appResourceUrl } from "@/lib/app-base-path";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import Link from "next/link";
+import { signIn } from "next-auth/react";
+import { appPath } from "@/lib/app-base-path";
 
-type Config = {
-  available: boolean;
-  ssoAvailable?: boolean;
-  organization: { id: string; slug: string; name: string; logo: string | null } | null;
-  homePath: string | null;
+type Props = {
+  organization: { slug: string; name: string; logo: string | null } | null;
+  locale: string;
 };
 
-export function CustomerPhoneLogin({ locale, organizationHint, callbackUrl }: { locale: string; organizationHint?: string; callbackUrl?: string }) {
-  const [config, setConfig] = useState<Config | null>(null);
+export function CustomerPhoneLogin({ organization, locale }: Props) {
+  const router = useRouter();
   const [phone, setPhone] = useState("");
-  const [source, setSource] = useState("");
-  const [activationReady, setActivationReady] = useState(false);
-  const [requested, setRequested] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const tokenRef = useRef("");
-  const configUrl = `/api/auth/customer/config${organizationHint ? `?organization=${encodeURIComponent(organizationHint)}` : ""}`;
+  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [step, setStep] = useState<"phone" | "otp">("phone");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [resendCountdown, setResendCountdown] = useState(0);
+  const [expiryCountdown, setExpiryCountdown] = useState(0);
+  const inputs = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
-    let active = true;
-    void appFetch(configUrl, { cache: "no-store", headers: { Accept: "application/json" } })
-      .then(async (response) => response.ok ? await response.json() as Config : { available: false, organization: null, homePath: null })
-      .then((value) => { if (active) setConfig(value); })
-      .catch(() => { if (active) setConfig({ available: false, organization: null, homePath: null }); });
-    const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    const activationToken = fragment.get("token");
-    if (activationToken) {
-      tokenRef.current = activationToken;
-      // Consume the secret from the address bar immediately. It stays in React
-      // memory until the user explicitly activates the link.
-      window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
-    }
-    // A development Strict Mode replay must retain the already-cleared fragment.
-    if (tokenRef.current) queueMicrotask(() => { if (active) setActivationReady(true); });
-    return () => { active = false; };
-  }, [configUrl]);
+    if (resendCountdown <= 0) return;
+    const timer = setTimeout(() => setResendCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCountdown]);
 
-  async function requestLink(event: React.FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
+  useEffect(() => {
+    if (expiryCountdown <= 0) return;
+    const timer = setTimeout(() => setExpiryCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [expiryCountdown]);
+
+  const orgName = organization?.name ?? "";
+  const orgSlug = organization?.slug ?? "";
+
+  const requestOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loading) return;
+    setLoading(true);
+    setError(null);
     try {
-      const response = await appFetch("/api/auth/customer/request", {
+      const res = await fetch("/api/auth/customer/request", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ phone, ...(config?.organization?.slug ? { organization: config.organization.slug } : {}) }),
+        headers: { "content-type": "application/json", origin: window.location.origin },
+        body: JSON.stringify({ phone, organization: orgSlug }),
       });
-      if (!response.ok) throw new Error("REQUEST_FAILED");
-      setRequested(true);
+      if (!res.ok) throw new Error("error");
+      setStep("otp");
+      setResendCountdown(60);
+      setExpiryCountdown(120);
+      setOtp(["", "", "", ""]);
+      inputs.current[0]?.focus();
     } catch {
       setError("درخواست انجام نشد. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.");
-    } finally { setBusy(false); }
-  }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  async function activate() {
-    if (!tokenRef.current || !config?.organization?.slug || !config.homePath) return;
-    setBusy(true);
-    setError("");
-    try {
-      const result = await signIn("customer-phone", { token: tokenRef.current, organization: config.organization.slug, redirect: false });
-      if (result?.ok && !result.error) {
-        tokenRef.current = "";
-        setActivationReady(false);
-        window.location.assign(appPath(config.homePath));
-        return;
-      }
-      tokenRef.current = "";
-      setActivationReady(false);
-      setError("این لینک دیگر معتبر نیست. شماره تلفن را وارد کنید تا راهنمای تازه‌ای درخواست شود.");
-    } catch {
-      tokenRef.current = "";
-      setActivationReady(false);
-      setError("ورود انجام نشد. لینک ممکن است منقضی شده باشد؛ می‌توانید درخواست تازه‌ای بفرستید.");
-    } finally { setBusy(false); }
-  }
+  const verifyOtp = async (code: string) => {
+    if (loading) return;
+    if (expiryCountdown <= 0) {
+      setError("کد تأیید منقضی شده است.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    const result = await signIn("customer-phone", { otp: code, phone, organization: orgSlug, redirect: false });
+    if (result?.error) {
+      setError("کد تأیید نامعتبر است. دوباره تلاش کنید.");
+      setOtp(["", "", "", ""]);
+      inputs.current[0]?.focus();
+    } else {
+      router.push(appPath(`/${locale}`));
+      router.refresh();
+    }
+    setLoading(false);
+  };
 
-  async function startSso(event: React.FormEvent) {
-    event.preventDefault(); setBusy(true); setError("");
-    try {
-      const response = await appFetch("/api/auth/customer/sso/start", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ source: source.trim() }) });
-      const value = await response.json();
-      if (!response.ok || !value.next) throw new Error("UNAVAILABLE");
-      window.location.assign(value.next);
-    } catch { setError("ورود از این مجموعه در دسترس نیست. نشانی سایت و عضویت خود را بررسی کنید."); }
-    finally { setBusy(false); }
-  }
+  const handleOtpChange = (index: number, value: string) => {
+    const digit = value.replace(/\D/g, "").slice(-1);
+    const next = [...otp];
+    next[index] = digit;
+    setOtp(next);
+    if (digit && index < 3) {
+      inputs.current[index + 1]?.focus();
+    }
+    const code = next.join("");
+    if (code.length === 4 && next.every((d) => d) && expiryCountdown > 0) {
+      void verifyOtp(code);
+    }
+  };
 
-  const pageParams = new URLSearchParams();
-  if (organizationHint) pageParams.set("organization", organizationHint);
-  if (callbackUrl) pageParams.set("callbackUrl", callbackUrl);
-  const pageQuery = pageParams.size ? `?${pageParams.toString()}` : "";
-  const switchAccount = () => void signOut({ callbackUrl: appPath(`/${locale}/login/phone${pageQuery}`) });
-  const passwordHref = `/${locale}/login${pageQuery}`;
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    if (expiryCountdown <= 0) {
+      setError("کد تأیید منقضی شده است.");
+      return;
+    }
+    const paste = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
+    const next = paste.split("");
+    while (next.length < 4) next.push("");
+    setOtp(next);
+    if (next.every((d) => d)) {
+      void verifyOtp(next.join(""));
+    } else {
+      const focusIndex = next.findIndex((d) => !d);
+      if (focusIndex >= 0) inputs.current[focusIndex]?.focus();
+    }
+  };
 
   return (
-    <main dir="rtl" className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 px-4 py-10 text-foreground">
-      <Card className="w-full max-w-md border-border/70 bg-card/95 shadow-xl shadow-primary/5">
-        <CardHeader className="space-y-3 text-center">
-          {config?.organization?.logo ? <Image src={appResourceUrl(config.organization.logo)} alt={config.organization.name} width={56} height={56} unoptimized referrerPolicy="no-referrer" className="mx-auto size-14 rounded-2xl border bg-background object-contain p-1" /> : <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-xl font-bold text-primary" aria-hidden="true">ب</div>}
-          <CardTitle className="text-2xl">ورود یا ثبت‌نام با شماره تلفن</CardTitle>
-          <CardDescription className="text-sm leading-7">
-            {config?.organization?.name ? `برای ${config.organization.name} ادامه دهید.` : "برای حساب مشتری، شماره تلفن همراه خود را وارد کنید."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {config === null ? <div className="h-12 animate-pulse rounded-lg bg-muted" aria-label="در حال بارگذاری" /> : activationReady && config.organization && config.homePath ? (
-            <div className="space-y-4">
-              <p className="rounded-xl border bg-muted/40 p-4 text-sm leading-7">برای ادامه، فعال‌سازی لینک را انتخاب کنید. لینک پس از استفاده دیگر قابل استفاده نیست.</p>
-              <Button className="min-h-12 w-full" onClick={() => void activate()} disabled={busy}>{busy ? "در حال بررسی لینک…" : "فعال‌سازی و ورود"}</Button>
-            </div>
-          ) : !config.available ? (
-            <div className="rounded-xl border bg-muted/40 p-4 text-center text-sm leading-7 text-muted-foreground" role="status">ورود با شماره تلفن در حال حاضر در دسترس نیست.</div>
-          ) : (
-            <form className="space-y-4" onSubmit={(event) => void requestLink(event)}>
-              <div className="space-y-2">
-                <Label htmlFor="customer-phone">شماره تلفن همراه</Label>
-                <Input autoFocus type="tel" inputMode="tel" autoComplete="tel" dir="ltr" maxLength={64} value={phone} onChange={(event) => setPhone(event.target.value)} id="customer-phone" name="phone" placeholder="۰۹۱۲۱۲۳۴۵۶۷" required className="h-12 text-left text-lg tracking-wide" />
-              </div>
-              <Button className="min-h-12 w-full" type="submit" disabled={busy || phone.trim().length < 8}>{busy ? "در حال ارسال درخواست…" : requested ? "درخواست راهنمای تازه" : "ادامه با شماره تلفن"}</Button>
-              {requested && <p className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm leading-7 text-muted-foreground" role="status">اگر این شماره واجد شرایط باشد، راهنمای ورود برایتان ارسال می‌شود. در صورت نیاز می‌توانید درخواست دیگری بفرستید.</p>}
-            </form>
-          )}
-          {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm leading-7 text-destructive">{error}</p>}
-          {config?.ssoAvailable && <details className="rounded-xl border p-4 text-sm">
-            <summary className="cursor-pointer font-medium">ورود با حساب مجموعهٔ دیگر</summary>
-            <form onSubmit={startSso} className="mt-4 space-y-3">
-              <p className="leading-6 text-muted-foreground">اگر در هر دو مجموعه عضو هستید، نشانی سایت مجموعه‌ای را وارد کنید که اکنون در آن وارد حساب شده‌اید.</p>
-              <Label htmlFor="customer-sso-source">نشانی سایت مجموعهٔ مبدأ</Label>
-              <Input id="customer-sso-source" dir="ltr" placeholder="example.ir" maxLength={128} value={source} onChange={event => setSource(event.target.value)} autoComplete="off" required />
-              <Button variant="outline" className="w-full" disabled={busy || !source.trim()}>ادامهٔ ورود یکپارچه</Button>
-            </form>
-          </details>}
-          <div className="flex flex-col gap-3 border-t pt-4 text-center text-sm">
-            <Link href={passwordHref} className="font-medium text-primary underline-offset-4 hover:underline">ورود با رمز عبور</Link>
-            {error && <Button type="button" variant="outline" className="min-h-11" onClick={switchAccount}>خروج از حساب فعلی و تلاش دوباره</Button>}
+    <div className="mx-auto w-full max-w-sm space-y-6 p-4" dir="rtl">
+      <div className="space-y-2 text-center">
+        <h1 className="text-2xl font-semibold">ورود یا ثبت‌نام با شماره تلفن</h1>
+        {orgName && <p className="text-muted-foreground text-sm">{orgName}</p>}
+      </div>
+      {step === "phone" ? (
+        <form onSubmit={requestOtp} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium" htmlFor="phone">
+              شماره تلفن همراه
+            </label>
+            <input
+              id="phone"
+              type="tel"
+              inputMode="tel"
+              placeholder="09123456789"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+              className="w-full rounded-md border px-3 py-2 text-center"
+            />
           </div>
-        </CardContent>
-      </Card>
-    </main>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <button
+            type="submit"
+            disabled={loading || !phone}
+            className="w-full rounded-md bg-primary px-4 py-2 text-primary-foreground disabled:opacity-50"
+          >
+            {loading ? "..." : "ارسال کد تأیید"}
+          </button>
+        </form>
+      ) : (
+        <div className="space-y-4">
+          <p className="text-center text-sm text-muted-foreground">کد تأیید ۴ رقمی به شماره {phone} ارسال شد.</p>
+          <div className="flex justify-center gap-2" dir="ltr" onPaste={handlePaste}>
+            {otp.map((d, i) => (
+              <input
+                key={i}
+                ref={(el) => {
+                  inputs.current[i] = el;
+                }}
+                type="text"
+                inputMode="numeric"
+                maxLength={1}
+                value={d}
+                onChange={(e) => handleOtpChange(i, e.target.value)}
+                className="h-12 w-12 rounded-md border text-center text-lg"
+                disabled={loading || expiryCountdown <= 0}
+              />
+            ))}
+          </div>
+          {error && <p className="text-center text-sm text-destructive">{error}</p>}
+          <div className="space-y-1 text-center text-sm">
+            <div>
+              {expiryCountdown > 0 ? (
+                <span>زمان انقضای کد: {expiryCountdown} ثانیه</span>
+              ) : (
+                <span className="text-destructive">کد تأیید منقضی شده است</span>
+              )}
+            </div>
+            <div>
+              {resendCountdown > 0 ? (
+                <span>امکان ارسال مجدد پس از {resendCountdown} ثانیه</span>
+              ) : (
+                <button onClick={requestOtp} disabled={loading} className="text-primary underline">
+                  ارسال مجدد کد تأیید
+                </button>
+              )}
+            </div>
+          </div>
+          <button onClick={() => setStep("phone")} className="w-full text-sm text-muted-foreground">
+            تغییر شماره موبایل
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

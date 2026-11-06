@@ -18,6 +18,9 @@ import type { UserRole } from "./types";
 import { appCookiePath, appPath } from "./app-base-path";
 import { credentialBinding } from "./security/credential-binding";
 import { validateSessionCredential } from "./security/session-credential.server";
+import { resolveCustomerAuthContext } from "./customer-auth/context.server";
+import { customerPhoneAuthService, validateCustomerPhoneSession, revokeCustomerPhoneSession } from "./customer-auth/core.server";
+import { customerSsoService } from "./customer-auth/sso.server";
 
 /**
  * NextAuth Type Extensions
@@ -26,6 +29,7 @@ import { validateSessionCredential } from "./security/session-credential.server"
  */
 declare module "next-auth" {
   interface User {
+    phoneSessionId?: string;
     credentialBinding?: string;
     role?: UserRole;
     locale?: string;
@@ -197,6 +201,46 @@ const buildProviders = (): Provider[] => {
     }),
   );
 
+  providers.push(CredentialsProvider({
+    id: "customer-phone",
+    name: "ورود مشتری با شماره موبایل",
+    credentials: { token: { type: "password" }, otp: { type: "password" }, phone: { type: "text" }, organization: { type: "text" } },
+    async authorize(credentials, request) {
+      if (typeof credentials?.organization !== "string") return null;
+      const context = await resolveCustomerAuthContext(request, credentials.organization);
+      if (!context || request.headers.get("origin") !== context.origin) return null;
+      try {
+        const customer = await customerPhoneAuthService.consume({ token: typeof credentials?.token === "string" ? credentials.token : undefined, otp: typeof credentials?.otp === "string" ? credentials.otp : undefined, phone: typeof credentials?.phone === "string" ? credentials.phone : undefined, organizationId: context.organizationId, origin: context.origin });
+        return { id: customer.id, name: customer.name, role: "CUSTOMER", isTeamMember: false,
+          locale: customer.locale, theme: customer.theme, organizationId: context.organizationId,
+          phoneSessionId: customer.phoneSessionId,
+          credentialBinding: credentialBinding(customer.id, customer.password, nextAuthSecret!) };
+      } catch { return null; }
+    },
+  }));
+
+  providers.push(CredentialsProvider({
+    id: "customer-sso",
+    name: "ورود یکپارچه مشتری",
+    credentials: { ticket: { type: "password" }, organization: { type: "text" } },
+    async authorize(credentials, request) {
+      if (typeof credentials?.ticket !== "string" || typeof credentials?.organization !== "string") return null;
+      const context = await resolveCustomerAuthContext(request, credentials.organization);
+      if (!context || request.headers.get("origin") !== context.origin) return null;
+      const cookieName = context.origin.startsWith("https:") ? "__Host-bazar-customer-sso" : "bazar-customer-sso";
+      const verifier = request.headers.get("cookie")?.split(";").map(value => value.trim())
+        .find(value => value.startsWith(`${cookieName}=`))?.slice(cookieName.length + 1);
+      if (!verifier || !/^[A-Za-z0-9_-]{43}$/.test(verifier)) return null;
+      try {
+        const customer = await customerSsoService.redeem({ ticket: credentials.ticket, organizationId: context.organizationId, origin: context.origin, verifier });
+        return { id: customer.id, name: customer.name, role: "CUSTOMER", isTeamMember: false,
+          locale: customer.locale, theme: customer.theme, organizationId: context.organizationId,
+          phoneSessionId: customer.phoneSessionId,
+          credentialBinding: credentialBinding(customer.id, customer.password, nextAuthSecret!) };
+      } catch { return null; }
+    },
+  }));
+
   return providers;
 };
 
@@ -264,12 +308,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Bind to the credential actually verified by the provider, not a
         // later password fetched after a concurrent reset.
         token.credentialBinding = user.credentialBinding;
+        token.phoneSessionId = user.phoneSessionId;
         if (!user.credentialBinding) return null;
       }
       const current = await validateSessionCredential(token, nextAuthSecret!);
       if (!current) return null;
       token.credentialBinding = current.binding;
       token.role = current.user.role;
+      if (token.phoneSessionId !== undefined) {
+        if (typeof token.phoneSessionId !== "string" || typeof token.organizationId !== "string" || current.user.role !== "CUSTOMER" ||
+          !await validateCustomerPhoneSession({ sessionId: token.phoneSessionId, userId: token.id as string, organizationId: token.organizationId })) return null;
+        token.role = "CUSTOMER";
+        token.isTeamMember = false;
+      }
       return token;
     },
 
@@ -285,6 +336,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.locale = token.locale as string;
         session.user.theme = token.theme as string;
         session.user.organizationId = token.organizationId as string | null;
+        session.user.phoneSessionId = typeof token.phoneSessionId === "string" ? token.phoneSessionId : undefined;
       }
       //console.log("[Auth] session.user.name:", session.user.name);
 
@@ -296,6 +348,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * Can be used to prevent sign-ins based on user status
      */
     async signIn({ user, account }) {
+      if (account?.provider === "customer-phone" || account?.provider === "customer-sso") {
+        return user.role === "CUSTOMER" && user.isTeamMember === false &&
+          typeof user.phoneSessionId === "string" && typeof user.organizationId === "string" &&
+          await validateCustomerPhoneSession({ sessionId: user.phoneSessionId, userId: user.id as string, organizationId: user.organizationId });
+      }
       if (account?.provider === "google") {
         if (!user.email) return false;
 
@@ -347,6 +404,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   // Event handlers for lifecycle events
   events: {
+    async signOut(message) {
+      if ("token" in message && typeof message.token?.phoneSessionId === "string" && typeof message.token?.id === "string") {
+        await revokeCustomerPhoneSession({ sessionId: message.token.phoneSessionId, userId: message.token.id });
+      }
+    },
     /**
      * Called when a new user is created (e.g., via OAuth signup)
      */

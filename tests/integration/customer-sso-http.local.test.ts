@@ -151,13 +151,14 @@ describe("cross-domain customer SSO through isolated local HTTP", { concurrency:
     await issuer.request({ phone, organizationId: sourceOrg.id, origin: sourceOrigin, ip: "2001:db8::29", source: "WEB" });
     const link = await db.customerAccessLink.findFirstOrThrow({ where: { organizationId: sourceOrg.id, phone }, include: { smsOutbox: true } });
     const payload = decryptCustomerAuthPayload(link.smsOutbox!.encryptedPayload, secret, link.id);
-    const phoneToken = new URLSearchParams(new URL(payload.url).hash.slice(1)).get("token");
-    assert.ok(phoneToken);
+    assert.ok(payload.url.startsWith("OTP:"), "outbox must carry an OTP payload");
+    const phoneOtp = payload.url.slice(4);
+    assert.match(phoneOtp, /^\d{4}$/, "exactly one four-digit OTP code");
 
     const sourceCsrfResponse = await request("/api/auth/csrf", sourceHost);
     const sourceCsrfCookies = cookiesFrom(sourceCsrfResponse);
     const sourceCsrfToken = (await sourceCsrfResponse.json() as { csrfToken: string }).csrfToken;
-    const phoneCallback = await request("/api/auth/callback/customer-phone", sourceHost, sourceOrigin, { method: "POST", redirect: "manual", headers: { cookie: cookieHeader(sourceCsrfCookies), "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ csrfToken: sourceCsrfToken, callbackUrl: sourceOrigin, token: phoneToken!, organization: sourceOrg.slug }) });
+    const phoneCallback = await request("/api/auth/callback/customer-phone", sourceHost, sourceOrigin, { method: "POST", redirect: "manual", headers: { cookie: cookieHeader(sourceCsrfCookies), "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ csrfToken: sourceCsrfToken, callbackUrl: sourceOrigin, otp: phoneOtp, phone, organization: sourceOrg.slug }) });
     const sourceCookies = mergeCookies(sourceCsrfCookies, phoneCallback);
     const sourceSessionResponse = await request("/api/auth/session", sourceHost, undefined, { headers: { cookie: cookieHeader(sourceCookies) } });
     const sourceSession = await sourceSessionResponse.json() as { user?: { id?: string; role?: string; organizationId?: string } } | null;

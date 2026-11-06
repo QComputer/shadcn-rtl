@@ -167,7 +167,7 @@ export function PublishedHotelWebsitePage({ propertySlug, locale, presentation, 
       <main className={styles.shell} dir={direction(locale)} data-provenance={visibleState.source} style={{
         ...(branding?.themeColor && /^#[0-9a-fA-F]{6}$/.test(branding.themeColor) ? { "--terra": branding.themeColor } : {}),
         ...(branding?.backgroundColor && /^#[0-9a-fA-F]{6}$/.test(branding.backgroundColor) ? { "--ivory": branding.backgroundColor } : {}),
-      }}>
+      } as React.CSSProperties}>
       {visibleState.source !== "PUBLISHED" && <aside className={styles.previewNotice} role="status" data-testid="hotel-owner-preview-label">{reviewLabel}</aside>}
       <header className={styles.header}>
         <a href="#home" className={styles.brand} aria-label={branding?.displayName || website.content.title || text.home}>

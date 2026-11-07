@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { writeFileSync, unlinkSync } from 'node:fs';
 import {
   classifyExactTypecheckRun,
   githubRepositoryFromRemote,
@@ -155,4 +157,34 @@ test('gate fails when local TypeScript validation fails and GitHub API unavailab
     fetchImpl: async () => { throw new Error('GitHub API unavailable'); },
     execFile: () => { throw new Error('tsc failed'); },
   }), /local TypeScript validation failed/);
+});
+
+test('root-level seed.ts artifact from Docker COPY does not enter TypeScript program', async () => {
+  const fsPath = 'seed.ts';
+  // Simulate RunFlare Docker COPY prisma /app/ which places prisma/seed.ts at /app/seed.ts
+  // with broken relative imports (../lib/... resolves to /lib/ instead of /prisma/../lib/)
+  writeFileSync(fsPath, 'import { nonexistent } from "../lib/does-not-exist";\nconst broken: string = 123;\n');
+  try {
+    let threw = false;
+    try {
+      execFileSync('node', ['node_modules/typescript/bin/tsc', '--noEmit', '--incremental', 'false'], { stdio: 'pipe', encoding: 'utf8' });
+    } catch { threw = true; }
+    assert.equal(threw, false, 'excluded root-level seed.ts must not fail typecheck');
+  } finally {
+    unlinkSync(fsPath);
+  }
+});
+
+test('real TypeScript errors in non-excluded application source still fail typecheck', async () => {
+  const fsPath = 'test-regression-error.ts';
+  writeFileSync(fsPath, 'const x: string = 123;\n');
+  try {
+    let threw = false;
+    try {
+      execFileSync('node', ['node_modules/typescript/bin/tsc', '--noEmit', '--incremental', 'false'], { stdio: 'pipe', encoding: 'utf8' });
+    } catch { threw = true; }
+    assert.equal(threw, true, 'expected tsc to fail on a real type error');
+  } finally {
+    unlinkSync(fsPath);
+  }
 });

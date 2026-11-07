@@ -36,6 +36,7 @@
     "dist",
     "demo",
     "prisma/seed.ts",
+    "seed.ts",
     "scripts/e2e/local-callback-webservice-smoke.mts",
     "tests/integration/tenant-context.local.test.ts"
   ]

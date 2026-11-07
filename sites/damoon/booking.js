@@ -156,6 +156,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
         <button class="booking-field" type="button" data-date-field="checkIn" aria-haspopup="dialog" aria-controls="booking-calendar" aria-expanded="false" aria-label="${escapeHtml(ui.selectArrivalDate)}">${dateIcon}<span>${escapeHtml(ui.checkIn)}</span><strong data-date-value="checkIn">${escapeHtml(ui.selectDate)}</strong><span class="booking-field__icon" aria-hidden="true">⌄</span></button>
         <button class="booking-field" type="button" data-date-field="checkOut" aria-haspopup="dialog" aria-controls="booking-calendar" aria-expanded="false" aria-label="${escapeHtml(ui.selectDepartureDate)}">${dateIcon}<span>${escapeHtml(ui.checkOut)}</span><strong data-date-value="checkOut">${escapeHtml(ui.selectDate)}</strong><span class="booking-field__icon" aria-hidden="true">⌄</span></button>
         <label class="booking-field booking-field--guests">${guestIcon}<span>${escapeHtml(ui.guests)}</span><select aria-label="${escapeHtml(ui.selectGuestCount)}">${GUEST_OPTIONS.map((count) => `<option value="${count}">${escapeHtml(guestCountLabel(count, locale, ui))}</option>`).join("")}</select><span class="booking-field__icon" aria-hidden="true">⌄</span></label>
+        <label class="booking-field booking-field--children"><span>${escapeHtml(locale === "fa" ? "کودکان" : locale === "ar" ? "الأطفال" : "Children")}</span><select data-child-count aria-label="${escapeHtml(locale === "fa" ? "تعداد کودکان" : "Children count")}">${[0,1,2,3,4].map((c)=>`<option value="${c}">${c}</option>`).join("")}</select><span class="booking-field__icon" aria-hidden="true">⌄</span></label>
         <button class="booking-submit" type="submit">${escapeHtml(ui.bookingSubmit)}${submitArrow}</button>
       </div>
       <p class="booking-message" role="status" aria-live="polite"></p>
@@ -291,6 +292,14 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     const submitButton = form.querySelector(".booking-submit");
     if (submitButton) submitButton.disabled = true;
     message.textContent = locale === "fa" ? "در حال بررسی موجودی..." : locale === "ar" ? "جارٍ التحقق من التوفر..." : "Checking availability...";
+    const childSelect = slot.querySelector("[data-child-count]");
+    const children = Number(childSelect?.value || 0);
+    let childAges = [];
+    if (children > 0) {
+      const input = window.prompt(locale === "fa" ? "سن کودکان را با کاما جدا کنید:" : "Enter child ages separated by commas:");
+      childAges = (input || "").split(",").map((v) => Number(v.trim())).filter((n) => Number.isInteger(n) && n >= 0 && n <= 17);
+      if (childAges.length !== children) childAges = Array.from({ length: children }, () => 5);
+    }
     try {
       const response = await fetch("/api/hotel/v1/availability/search", {
         method: "POST",
@@ -299,7 +308,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
           property: DAMOON_PROPERTY_SLUG,
           checkIn: range.checkIn,
           checkOut: range.checkOut,
-          occupancy: { adults: guests, children: 0 },
+          occupancy: { adults: guests, children, childAges },
         }),
       });
       if (!response.ok) {
@@ -308,7 +317,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
         return;
       }
       const data = await response.json();
-      const items = Array.isArray(data?.items) ? data.items : Array.isArray(data?.results) ? data.results : [];
+      const items = Array.isArray(data?.options) ? data.options : [];
       if (!items.length) {
         message.textContent = locale === "fa" ? "برای این تاریخ اتاقی موجود نیست." : locale === "ar" ? "لا توجد غرف متاحة." : "No rooms available for these dates.";
         return;

@@ -11,6 +11,7 @@ import { localeForPath, normalizePath } from "./content.js";
 import translations from "./translations.js";
 
 const STORAGE_KEY = "damoon-stay-selection-v1";
+const DAMOON_PROPERTY_SLUG = "damoon-hotel";
 const FA_WEEKDAYS = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
 const GUEST_OPTIONS = Array.from({ length: 8 }, (_, index) => index + 1);
 const dateIcon = '<svg class="booking-field__symbol" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="6" width="24" height="23" rx="2"/><path d="M4 12h24M10 2v8M22 2v8M9 17h3m3 0h3m3 0h3M9 22h3m3 0h3m3 0h3"/></svg>';
@@ -274,7 +275,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     message.textContent = "";
   });
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const validation = validateStayRange(range, today);
     if (validation !== "OK") {
@@ -286,9 +287,38 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       if (validation === "MISSING") openCalendar(range.checkIn ? "checkOut" : "checkIn");
       return;
     }
-    const params = new URLSearchParams({ checkIn: range.checkIn, checkOut: range.checkOut, guests: String(guests) });
     persist();
-    window.location.assign(routeHref(`/rooms?${params.toString()}`));
+    const submitButton = form.querySelector(".booking-submit");
+    if (submitButton) submitButton.disabled = true;
+    message.textContent = locale === "fa" ? "در حال بررسی موجودی..." : locale === "ar" ? "جارٍ التحقق من التوفر..." : "Checking availability...";
+    try {
+      const response = await fetch("/api/hotel/v1/availability/search", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          property: DAMOON_PROPERTY_SLUG,
+          checkIn: range.checkIn,
+          checkOut: range.checkOut,
+          occupancy: { adults: guests, children: 0 },
+        }),
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        message.textContent = `${response.status}: ${text || (locale === "fa" ? "خطا در دریافت موجودی" : "Availability request failed")}`;
+        return;
+      }
+      const data = await response.json();
+      const items = Array.isArray(data?.items) ? data.items : Array.isArray(data?.results) ? data.results : [];
+      if (!items.length) {
+        message.textContent = locale === "fa" ? "برای این تاریخ اتاقی موجود نیست." : locale === "ar" ? "لا توجد غرف متاحة." : "No rooms available for these dates.";
+        return;
+      }
+      message.textContent = (locale === "fa" ? "تعداد گزینه‌های موجود: " : locale === "ar" ? "الخيارات المتاحة: " : "Available options: ") + items.length;
+    } catch (error) {
+      message.textContent = locale === "fa" ? "خطای شبکه در دریافت موجودی." : locale === "ar" ? "خطأ في الشبكة." : "Network error while checking availability.";
+    } finally {
+      if (submitButton) submitButton.disabled = false;
+    }
   });
 
   updateFields();

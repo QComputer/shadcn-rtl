@@ -25,6 +25,7 @@ test("returns a TOMAN informational quote without reserving inventory", async ()
   assert.equal(result.options[0]?.totalRate, 250000);
   const serialized = serializePublicAvailability(result);
   assert.equal(serialized.options[0]?.totalRate, "250000");
+  assert.equal(serialized.options[0]?.ratePlan.cancellationPolicy, null);
 });
 
 test("uses commitments and out-of-service inventory when determining availability", async () => {

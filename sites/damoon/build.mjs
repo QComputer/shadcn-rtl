@@ -8,7 +8,7 @@ const root = dirname(fileURLToPath(import.meta.url));
 const output = join(root, 'dist');
 const assetPrefix = process.argv.includes('--shared-runtime') ? '/damoon-front' : '';
 await mkdir(output, { recursive: true });
-const files = ['index.html','styles.css','booking.css','accommodation.css','hospitality.css','accommodation.js','hospitality.js','app.js','content.js','translations.js','themes.js','booking.js','calendar.js','robots.txt'];
+const files = ['index.html','styles.css','booking.css','accommodation.css','hospitality.css','accommodation.js','hospitality.js','app.js','content.js','translations.js','themes.js','booking.js','booking-flow.js','calendar.js','robots.txt'];
 for (const f of files) {
   let text = (await readFile(join(root,f),'utf8')).replaceAll('\r\n','\n');
   if (assetPrefix) {

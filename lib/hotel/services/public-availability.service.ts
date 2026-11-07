@@ -53,7 +53,7 @@ export async function searchPublicHotelAvailability(input: PublicHotelSearchInpu
 export function serializePublicAvailability(result: PublicHotelSearchResult) {
   return { ...result, options: result.options.map((option) => ({
     roomType: { id: option.roomType.id, slug: option.roomType.slug, name: option.roomType.name, capacity: option.roomType.capacity, amenities: option.roomType.amenities },
-    ratePlan: { id: option.ratePlan.id, code: option.ratePlan.code, name: option.ratePlan.name, currency: option.ratePlan.currency, mealPlan: option.ratePlan.mealPlan },
+    ratePlan: { id: option.ratePlan.id, code: option.ratePlan.code, name: option.ratePlan.name, currency: option.ratePlan.currency, mealPlan: option.ratePlan.mealPlan, cancellationPolicy: option.ratePlan.cancellationPolicy ?? null },
     nights: option.nights, nightlyRates: option.nightlyRates.map(String), totalRate: String(option.totalRate), averageNightlyRate: String(option.averageNightlyRate), availableRoomCount: option.availableRoomCount, isAvailable: option.isAvailable, unavailableNights: option.unavailableNights,
   })) };
 }

@@ -30,6 +30,8 @@ export async function POST(request: Request) {
     });
     const option = availability?.options.find((candidate) => candidate.roomType.slug === input.roomType && candidate.ratePlan.code === input.ratePlan && candidate.isAvailable);
     if (!availability || !option) throw new ApiError(409, "The requested hotel inventory is not available");
+    const optionPolicyKey = option.ratePlan.cancellationPolicy?.key || "";
+    if (!optionPolicyKey || input.acceptedCancellationPolicyKey !== optionPolicyKey) throw new ApiError(409, "Cancellation policy acceptance does not match the selected rate");
 
     const now = new Date();
     const hold = await repositories.createAnonymousHoldAtomically({

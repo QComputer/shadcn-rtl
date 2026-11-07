@@ -47,7 +47,7 @@ export async function processCustomerAuthSmsOutbox(options: CustomerAuthSmsWorke
     const localHttp = origin.protocol === "http:" && process.env.NODE_ENV !== "production" && (["localhost", "127.0.0.1"].includes(origin.hostname) || origin.hostname.endsWith(".localhost"));
     const originAllowed = origin.origin === candidate.link.origin && !origin.username && !origin.password && (origin.protocol === "https:" || localHttp);
     const domain = options.platformOrigins?.includes(origin.origin) || await db.organizationDomain.findFirst({ where: { organizationId: candidate.link.organizationId, normalizedDomain: normalizeDomainHost(origin.hostname), status: "ACTIVE", providerVerified: true, dnsConfigured: true, sslReady: true, deletedAt: null, disabledAt: null, removedAt: null }, select: { id: true } });
-    if (!organization || !domain || !originAllowed || candidate.link.consumedAt || candidate.link.expiresAt <= now) {
+    if (!organization || !domain || !originAllowed || candidate.link.consumedAt || candidate.link.expiresAt <= now || candidate.link.otpExpiresAt <= now) {
       await finish({ status: "CANCELLED", encryptedPayload: "", lastErrorCode: "LINK_UNAVAILABLE" });
       return { processed: true };
     }

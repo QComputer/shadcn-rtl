@@ -1,5 +1,15 @@
 /** Does not load dotenv or contact any provider unless explicitly invoked in live mode. */
-import { customerAuthSmsRuntimeAvailable, runCustomerAuthSmsOutboxBatch } from "../../lib/customer-auth/sms-runtime.server";
+// Mock server-only for standalone tsx execution outside Next.js server context.
+// Must patch before any dynamic import of server-side modules.
+const Module = await import("node:module");
+const nodeModule = Module as unknown as { Module: { _load: (...args: unknown[]) => unknown } };
+const originalLoad = nodeModule.Module._load;
+nodeModule.Module._load = function patchedLoad(request: string, parent: unknown, isMain: boolean) {
+  if (request === "server-only") return {};
+  return (originalLoad as (...args: unknown[]) => unknown)(request, parent, isMain);
+};
+
+const { customerAuthSmsRuntimeAvailable, runCustomerAuthSmsOutboxBatch } = await import("../../lib/customer-auth/sms-runtime.server");
 
 const args = new Set(process.argv.slice(2));
 const live = args.has("--once") && args.has("--allow-live-sms");

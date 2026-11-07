@@ -76,6 +76,20 @@ export class CustomerPhoneAuthService {
         ].sort((a, b) => a.key.localeCompare(b.key));
         for (const item of keys) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${item.key}, 0))::text`;
         if (issuanceKey && await tx.customerAccessLink.findUnique({ where: { issuanceKey }, select: { id: true } })) return;
+        // 60-second resend cooldown: do not issue a new OTP if an unconsumed
+        // link for the same phone+org+origin was created within the last 60s.
+        const cooldownWindow = new Date(now.getTime() - 60_000);
+        const recentLink = await tx.customerAccessLink.findFirst?.({
+          where: {
+            phone,
+            organizationId: input.organizationId,
+            origin: input.origin,
+            consumedAt: null,
+            createdAt: { gt: cooldownWindow },
+          },
+          select: { id: true },
+        });
+        if (recentLink) return;
         const windowStart = new Date(Math.floor(now.getTime() / 900_000) * 900_000);
         for (const item of keys) {
           const counter = await tx.customerPhoneAuthQuota.findUnique({ where: { key_windowStart: { key: item.key, windowStart } } });

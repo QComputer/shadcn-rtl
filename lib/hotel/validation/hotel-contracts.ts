@@ -144,6 +144,7 @@ export const bookingRequestSchema = z
     idempotencyKey: z.string().min(8).max(128),
     specialRequests: z.string().max(2000).optional(),
     acceptedCancellationPolicyKey: z.string().min(1).max(64),
+    acceptedCancellationPolicyVersion: z.number().int().positive().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.checkOut <= value.checkIn) {

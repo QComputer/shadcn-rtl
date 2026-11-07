@@ -154,6 +154,8 @@ export type CancellationPolicySet = {
   readonly fullCancellationRetention: number
   readonly description: string
   readonly cancellationTiers?: readonly CancellationTier[]
+  /** Current policy revision exposed for client/server consistency checks. */
+  readonly version?: number
 }
 
 export type CancellationTier = {

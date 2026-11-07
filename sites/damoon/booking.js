@@ -14,6 +14,7 @@ import {
   buildHoldPayload,
   createIdempotencyKey,
   formatMoney,
+  holdAttemptFingerprint,
   parseChildAges,
   policySummary,
   validateContact,
@@ -106,7 +107,6 @@ function nightsLabel(count, locale, ui) {
   return (ui[key] || ui.nightsCountOther || "{count} nights").replace("{count}", formattedCount(count, locale));
 }
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]); }
-function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
 export function mountBooking(slot, { routeHref = (path) => path, locale = localeForPath(window.location.pathname) } = {}) {
   if (!(slot instanceof Element)) return () => {};
@@ -122,7 +122,9 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   let monthCursor = range.checkIn || today;
   let dialogOpener = null;
   let focusISO = "";
-  let flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: "", error: false };
+  let flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: "", error: false, draftContact: { fullName: "", phone: "", email: "" }, policyAccepted: false };
+  let holdAttempt = { key: "", fingerprint: "", payload: null };
+  function clearHoldAttempt() { holdAttempt = { key: "", fingerprint: "", payload: null }; }
 
   const persist = () => {
     activeSelection = { range: { ...range }, adults, children, childAges: [...childAges] };
@@ -151,6 +153,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
         <label class="booking-field booking-field--children"><span>${escapeHtml(ui.children)}</span><select data-child-count aria-label="${escapeHtml(ui.children)}">${CHILD_OPTIONS.map((c) => `<option value="${c}">${escapeHtml(formattedCount(c, locale))}</option>`).join("")}</select><span class="booking-field__icon" aria-hidden="true">⌄</span></label>
         <button class="booking-submit" type="submit">${escapeHtml(ui.bookingSubmit)}${submitArrow}</button>
       </div>
+      <div class="booking-child-ages-search" data-child-ages-root aria-live="polite"></div>
       <div class="booking-flow" data-booking-flow aria-live="polite"></div>
       <p class="booking-message" role="status" aria-live="polite"></p>
     </form>
@@ -199,7 +202,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     if (focusISO) { slot.querySelector('[data-focus-target="true"]')?.focus(); focusISO = ""; }
     slot.querySelectorAll("[data-calendar-day]").forEach((button) => button.addEventListener("click", () => {
       const selected = button.dataset.calendarDay; const result = selectStayDate(range, selected, activeSegment);
-      range = result.range; activeSegment = result.nextSegment; monthCursor = selected; flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: "", error: false }; persist(); updateFields();
+      range = result.range; activeSegment = result.nextSegment; monthCursor = selected; clearHoldAttempt(); flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: "", error: false }; persist(); updateFields(); renderSearchChildAges();
       if (result.complete && bookingIsValid()) { drawCalendar(); dialog.close(); } else { focusISO = selected; drawCalendar(); }
     }));
   }
@@ -215,6 +218,13 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       return `<label class="booking-field booking-field--child-age"><span>${escapeHtml(label)}</span><input data-child-age="${i}" type="number" min="0" max="17" inputmode="numeric" required value="${escapeHtml(value)}" /></label>`;
     }).join("")}</div>`;
   }
+  function renderSearchChildAges() {
+    const root = slot.querySelector("[data-child-ages-root]");
+    if (!root) return;
+    if (!children) { root.innerHTML = ""; return; }
+    const ages = Array.isArray(childAges) && childAges.length === children ? childAges : Array.from({ length: children }, () => "");
+    root.innerHTML = `<p class="booking-step__label">${escapeHtml(ui.childAgeRequired || "")}</p>${childAgeInputsHtml(ages)}`;
+  }
   function optionCard(option, index) {
     const nights = Array.isArray(option.nights) ? option.nights.length : 0;
     const policy = option.ratePlan?.cancellationPolicy;
@@ -226,15 +236,16 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     const policy = option.ratePlan?.cancellationPolicy; const summary = policySummary(policy, locale);
     const policyKey = policy?.key || "";
     const ages = childAges.length === children ? childAges : Array.from({ length: children }, () => "");
+    const draft = flow.draftContact || { fullName: "", phone: "", email: "" };
     return `<section class="booking-step"><div class="booking-step__head"><h4>${escapeHtml(option.roomType?.name || "")} · ${escapeHtml(option.ratePlan?.name || "")}</h4><button type="button" class="booking-link" data-flow-back>${escapeHtml(ui.backToOptions || "Back")}</button></div>
       <p class="booking-step__price">${escapeHtml(formatMoney(option.totalRate, option.ratePlan?.currency, locale))} · ${escapeHtml(nightsLabel((option.nights || []).length, locale, ui))}</p>
       ${children ? `<div class="booking-child-age-block"><p class="booking-step__label">${escapeHtml(ui.childAgeRequired || "")}</p>${childAgeInputsHtml(ages)}</div>` : ""}
       <div class="booking-guest-form"><p class="booking-step__label">${escapeHtml(ui.guestDetails || "Guest details")}</p>
-        <label class="booking-field booking-field--text"><span>${escapeHtml(ui.fullName || "Full name")}</span><input data-guest-name type="text" autocomplete="name" required minlength="2" maxlength="120" /></label>
-        <label class="booking-field booking-field--text"><span>${escapeHtml(ui.phone || "Phone")}</span><input data-guest-phone type="tel" autocomplete="tel" required minlength="8" maxlength="24" dir="ltr" /></label>
-        <label class="booking-field booking-field--text"><span>${escapeHtml(ui.email || "Email")}</span><input data-guest-email type="email" autocomplete="email" maxlength="200" dir="ltr" /></label>
+        <label class="booking-field booking-field--text"><span>${escapeHtml(ui.fullName || "Full name")}</span><input data-guest-name type="text" autocomplete="name" required minlength="2" maxlength="120" value="${escapeHtml(draft.fullName || "")}" /></label>
+        <label class="booking-field booking-field--text"><span>${escapeHtml(ui.phone || "Phone")}</span><input data-guest-phone type="tel" autocomplete="tel" required minlength="8" maxlength="24" dir="ltr" value="${escapeHtml(draft.phone || "")}" /></label>
+        <label class="booking-field booking-field--text"><span>${escapeHtml(ui.email || "Email")}</span><input data-guest-email type="email" autocomplete="email" maxlength="200" dir="ltr" value="${escapeHtml(draft.email || "")}" /></label>
       </div>
-      <div class="booking-policy"><p class="booking-step__label">${escapeHtml(ui.policies || "Policy")}</p><p>${escapeHtml(summary || policy?.name || policyKey || "—")}</p><label class="booking-policy__accept"><input type="checkbox" data-policy-accept ${policyKey ? "" : "disabled"} /> <span>${escapeHtml(ui.policyAcceptance || "I accept the cancellation policy.")}</span></label></div>
+      <div class="booking-policy"><p class="booking-step__label">${escapeHtml(ui.policies || "Policy")}</p><div class="booking-policy__text">${escapeHtml(summary || policy?.name || policyKey || "—")}</div><label class="booking-policy__accept"><input type="checkbox" data-policy-accept ${policyKey ? "" : "disabled"} ${flow.policyAccepted ? "checked" : ""} /> <span>${escapeHtml(ui.policyAcceptance || "I accept the cancellation policy.")}</span></label></div>
       <div class="booking-step__actions"><button type="button" class="booking-submit" data-create-hold ${flow.busy || !policyKey ? "disabled" : ""}>${escapeHtml(ui.holdRoom || "Reserve")}</button></div>
     </section>`;
   }
@@ -272,31 +283,65 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     slot.querySelectorAll("[data-select-option]").forEach((btn) => btn.addEventListener("click", () => {
       const option = availableOptions({ options: flow.options })[Number(btn.dataset.selectOption)];
       if (!option) return;
-      flow = { ...flow, step: "details", selected: option, hold: null, message: "", error: false };
+      flow = { ...flow, step: "details", selected: option, hold: null, message: "", error: false, policyAccepted: false };
       if (!Array.isArray(childAges) || childAges.length !== children) childAges = [];
+      clearHoldAttempt();
       renderFlow();
     }));
-    slot.querySelector("[data-flow-back]")?.addEventListener("click", () => { flow = { ...flow, step: "options", selected: null, hold: null, message: "", error: false }; renderFlow(); });
-    slot.querySelector("[data-flow-reset]")?.addEventListener("click", () => { flow = { step: "options", options: flow.options, selected: null, hold: null, busy: false, message: "", error: false }; renderFlow(); });
+    slot.querySelector("[data-flow-back]")?.addEventListener("click", () => { clearHoldAttempt(); flow = { ...flow, step: "options", selected: null, hold: null, message: "", error: false }; renderFlow(); });
+    slot.querySelector("[data-flow-reset]")?.addEventListener("click", () => { clearHoldAttempt(); flow = { step: "options", options: flow.options, selected: null, hold: null, busy: false, message: "", error: false, draftContact: { fullName: "", phone: "", email: "" }, policyAccepted: false }; renderFlow(); });
     slot.querySelector("[data-create-hold]")?.addEventListener("click", async () => {
       if (flow.busy || !flow.selected) return;
       const agesResult = collectChildAgesFromInputs();
       if (!agesResult.ok) { setMessage(ui.childAgeRequired || "Enter valid ages for each child.", true); slot.querySelector("[data-child-age]")?.focus(); return; }
       childAges = agesResult.ages;
-      const contact = validateContact({ fullName: slot.querySelector("[data-guest-name]")?.value, phone: slot.querySelector("[data-guest-phone]")?.value, email: slot.querySelector("[data-guest-email]")?.value });
-      if (!contact.ok) { setMessage(ui.invalidContact || "Invalid contact details.", true); slot.querySelector("[data-guest-name]")?.focus(); return; }
+      const draft = { fullName: slot.querySelector("[data-guest-name]")?.value || "", phone: slot.querySelector("[data-guest-phone]")?.value || "", email: slot.querySelector("[data-guest-email]")?.value || "" };
+      const contact = validateContact(draft);
+      if (!contact.ok) { flow.draftContact = draft; setMessage(ui.invalidContact || "Invalid contact details.", true); renderFlow(); slot.querySelector("[data-guest-name]")?.focus(); return; }
       const accepted = slot.querySelector("[data-policy-accept]")?.checked;
       const policyKey = flow.selected.ratePlan?.cancellationPolicy?.key || "";
-      if (!policyKey || !accepted) { setMessage(ui.policyRequired || "Accept the cancellation policy.", true); return; }
+      if (!policyKey || !accepted) { flow.draftContact = contact.value; flow.policyAccepted = Boolean(accepted); setMessage(ui.policyRequired || "Accept the cancellation policy.", true); renderFlow(); return; }
+      flow.draftContact = contact.value;
+      flow.policyAccepted = true;
       flow.busy = true; persist(); renderFlow();
       setMessage(locale === "fa" ? "در حال ثبت رزرو موقت..." : locale === "ar" ? "جارٍ إنشاء الحجز المؤقت..." : "Creating hold...");
       const payload = buildHoldPayload({ property: DAMOON_PROPERTY_SLUG, range, adults, children, childAges, option: flow.selected, contact: contact.value });
-      const result = await postJson("/api/hotel/v1/holds", payload, { "Idempotency-Key": createIdempotencyKey() });
-      flow.busy = false;
-      if (result.ok && result.data?.holdId) { flow = { ...flow, step: "confirmed", hold: result.data, message: "", error: false }; renderFlow(); return; }
-      if (result.status === 503) { setMessage(ui.holdUnavailable || "Hold service unavailable.", true); renderFlow(); return; }
+      const fingerprint = holdAttemptFingerprint({ property: DAMOON_PROPERTY_SLUG, range, adults, children, childAges, option: flow.selected, contact: contact.value });
+      if (!holdAttempt.key || holdAttempt.fingerprint !== fingerprint) holdAttempt = { key: createIdempotencyKey(), fingerprint, payload };
+      const submitPayload = holdAttempt.payload || payload;
+      let result;
+      try {
+        result = await postJson("/api/hotel/v1/holds", submitPayload, { "Idempotency-Key": holdAttempt.key });
+      } catch {
+        setMessage(locale === "fa" ? "خطای شبکه هنگام ثبت رزرو موقت. وضعیت نامشخص است؛ با همان درخواست دوباره تلاش کنید." : locale === "ar" ? "خطأ في الشبكة أثناء الحجز المؤقت. الحالة غير واضحة؛ أعد المحاولة بنفس الطلب." : "Network error while creating the hold. Outcome is ambiguous; retry the same request.", true);
+        renderFlow();
+        return;
+      } finally {
+        flow.busy = false;
+      }
+      if (result.ok && result.data?.holdId) { clearHoldAttempt(); flow = { ...flow, step: "confirmed", hold: result.data, message: "", error: false, policyAccepted: false }; renderFlow(); return; }
       const err = typeof result.data?.error === "string" ? result.data.error : result.data?.error?.message || "";
-      setMessage(err ? `${result.status}: ${err}` : (locale === "fa" ? "ثبت رزرو موقت ناموفق بود." : "Hold request failed."), true);
+      const lower = String(err).toLower();
+      const policyChanged = result.status === 409 && /policy|terms|acceptance does not match|changed/i.test(lower);
+      const inventoryChanged = result.status === 409 && /inventory|not available|no longer active/i.test(lower);
+      if (policyChanged) {
+        clearHoldAttempt();
+        flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: "", error: false, draftContact: flow.draftContact, policyAccepted: false };
+        renderFlow();
+        setMessage(locale === "fa" ? "قوانین لغو یا شرایط/قیمت تغییر کرده است. موجودی و قوانین را دوباره بررسی و تأیید کنید." : locale === "ar" ? "تغيرت سياسة الإلغاء أو الشروط/السعر. راجع التوفر والسياسة وأكدها مرة أخرى." : (err || "Policy or terms changed. Review availability and policy again."), true);
+        return;
+      }
+      if (inventoryChanged) {
+        clearHoldAttempt();
+        flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: "", error: false, draftContact: flow.draftContact, policyAccepted: false };
+        renderFlow();
+        setMessage(locale === "fa" ? "این گزینه دیگر در دسترس نیست. موجودی را دوباره بررسی کنید." : locale === "ar" ? "لم يعد هذا الخيار متاحاً. تحقق من التوفر مرة أخرى." : (err || "This option is no longer available. Check availability again."), true);
+        return;
+      }
+      if (result.status === 503) { setMessage(ui.holdUnavailable || "Hold service unavailable.", true); renderFlow(); return; }
+      if (result.status === 409) { setMessage(locale === "fa" ? "تعارض در درخواست رزرو موقت. با همان درخواست دوباره تلاش کنید." : locale === "ar" ? "تعارض في طلب الحجز المؤقت. أعد المحاولة بنفس الطلب." : (err || "Hold request conflict. Retry the same request."), true); renderFlow(); return; }
+      if (!err) { setMessage(locale === "fa" ? "پاسخ نامشخص دریافت شد. با همان درخواست دوباره تلاش کنید." : locale === "ar" ? "تم استلام استجابة غير واضحة. أعد المحاولة بنفس الطلب." : "Ambiguous response. Retry the same request.", true); renderFlow(); return; }
+      setMessage(`${result.status}: ${err}`, true);
       renderFlow();
     });
   }
@@ -306,11 +351,12 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   dialog.addEventListener("close", () => { dialogOpener?.setAttribute("aria-expanded", "false"); dialogOpener?.focus(); });
   slot.querySelector("[data-month-prev]").addEventListener("click", () => { monthCursor = moveJalaliMonth(monthCursor, -1); drawCalendar(); slot.querySelector("[data-month-prev]").focus(); });
   slot.querySelector("[data-month-next]").addEventListener("click", () => { monthCursor = moveJalaliMonth(monthCursor, 1); drawCalendar(); slot.querySelector("[data-month-next]").focus(); });
-  adultSelect.addEventListener("change", () => { adults = validCount(adultSelect.value, 1, 8) || 2; flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: "", error: false }; persist(); renderFlow(); });
+  adultSelect.addEventListener("change", () => { adults = validCount(adultSelect.value, 1, 8) || 2; clearHoldAttempt(); flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: "", error: false }; persist(); renderSearchChildAges(); renderFlow(); });
   childSelect.addEventListener("change", () => {
     children = validCount(childSelect.value, 0, 4) ?? 0;
     if (children === 0) childAges = []; else if (childAges.length !== children) childAges = Array.from({ length: children }, (_, i) => (Number.isInteger(childAges[i]) ? childAges[i] : ""));
-    flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: "", error: false }; persist(); renderFlow();
+    clearHoldAttempt();
+    flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: "", error: false }; persist(); renderSearchChildAges(); renderFlow();
   });
 
   form.addEventListener("submit", async (event) => {
@@ -322,23 +368,36 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       if (validation === "MISSING") openCalendar(range.checkIn ? "checkOut" : "checkIn");
       return;
     }
-    const agesResult = children ? parseChildAges(childAges.length === children ? childAges : [], children) : { ok: true, ages: [] };
-    if (children && !agesResult.ok && childAges.length !== children) { /* ages collected in details step */ }
+    let validatedAges = [];
+    if (children) {
+      const ageInputs = slot.querySelectorAll("[data-child-age]");
+      const raw = ageInputs.length === children ? [...ageInputs].map((i) => i.value) : (childAges.length === children ? childAges : []);
+      const agesResult = parseChildAges(raw, children);
+      if (!agesResult.ok) {
+        flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: ui.childAgeRequired || "Enter a valid age (0-17) for each child.", error: true };
+        renderSearchChildAges(); renderFlow();
+        slot.querySelector("[data-child-age]")?.focus();
+        return;
+      }
+      validatedAges = agesResult.ages;
+      childAges = validatedAges;
+    }
     persist();
+    clearHoldAttempt();
     flow = { step: "search", options: [], selected: null, hold: null, busy: true, message: ui.searching || "Checking availability...", error: false }; renderFlow();
     const submitButton = form.querySelector(".booking-submit[type=submit]"); if (submitButton) submitButton.disabled = true;
     try {
-      const safeAges = children ? (parseChildAges(childAges, children).ok ? childAges : Array.from({length: children}, (_, i) => (Number.isInteger(childAges[i]) ? childAges[i] : 0))) : [];
-      const { ok, status, data } = await postJson("/api/hotel/v1/availability/search", { property: DAMOON_PROPERTY_SLUG, checkIn: range.checkIn, checkOut: range.checkOut, occupancy: { adults, children, childAges: safeAges } });
+      const { ok, status, data } = await postJson("/api/hotel/v1/availability/search", { property: DAMOON_PROPERTY_SLUG, checkIn: range.checkIn, checkOut: range.checkOut, occupancy: { adults, children, childAges: validatedAges } });
       const items = availableOptions(data);
+      if (!ok && status === 503) { flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: ui.holdUnavailable || "Service unavailable right now.", error: true }; renderFlow(); return; }
       if (!items.length) { flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: locale === "fa" ? "برای این تاریخ اتاقی موجود نیست." : locale === "ar" ? "لا توجد غرف متاحة." : "No rooms available for these dates.", error: true }; renderFlow(); return; }
-      flow = { step: "options", options: data?.options || items, selected: null, hold: null, busy: false, message: (locale === "fa" ? "گزینه‌های موجود: " : locale === "ar" ? "الخيارات المتاحة: " : "Available options: ") + items.length, error: false }; renderFlow();
+      flow = { step: "options", options: data?.options || items, selected: null, hold: null, busy: false, message: (locale === "fa" ? "گزینه‌های موجود: " : locale === "ar" ? "الخيارات المتاحة: " : "Available options: ") + items.length, error: false, draftContact: flow.draftContact, policyAccepted: false }; renderFlow();
       slot.querySelector("[data-booking-flow]")?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
     } catch {
       flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: locale === "fa" ? "خطای شبکه در دریافت موجودی." : "Network error while checking availability.", error: true }; renderFlow();
     } finally { if (submitButton) submitButton.disabled = false; }
   });
 
-  updateFields(); renderFlow(); if (bookingIsValid()) persist();
+  updateFields(); renderSearchChildAges(); renderFlow(); if (bookingIsValid()) persist();
   return () => { if (dialog.open) dialog.close(); slot.replaceChildren(); };
 }

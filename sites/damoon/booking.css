@@ -202,8 +202,10 @@ button.booking-field { cursor: pointer; }
 .booking-child-ages, .booking-guest-form { display: grid; gap: 8px; }
 .booking-field--child-age, .booking-field--text { grid-template-columns: 1fr; min-height: 0; }
 .booking-field--text input, .booking-field--child-age input { width: 100%; padding: 10px 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); font: inherit; font-size: 13px; }
+.booking-child-ages-search { display: grid; gap: 8px; margin-top: 8px; }
+.booking-child-ages-search:empty { display: none; }
 .booking-policy { display: grid; gap: 8px; padding: 12px; background: var(--surface-soft, #f7f4ee); border: 1px solid var(--line); }
-.booking-policy p { margin: 0; font-size: 12px; }
+.booking-policy p, .booking-policy__text { margin: 0; font-size: 12px; line-height: 1.7; white-space: pre-wrap; }
 .booking-policy__accept { display: flex; align-items: start; gap: 8px; font-size: 12px; cursor: pointer; }
 .booking-step__actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .booking-step--confirmed h4 { margin: 0; }

@@ -169,6 +169,7 @@ export interface HotelBookingRepository {
     holdId: string
     reference: string
     now: Date
+    acceptedCancellationPolicyVersion?: number | null
   }): Promise<{ isHeld: true; holdId: string; reference: string; expiresAt: Date; totalAmount: number; currency: string; nightlyRates: readonly number[]; policySnapshot: ReservationCancellationPolicySnapshot | null; replay?: boolean } | { isHeld: false; reason: string; replay?: boolean }>
   /**
    * Atomically claims one unit of `roomTypeId` for EVERY supplied night, or

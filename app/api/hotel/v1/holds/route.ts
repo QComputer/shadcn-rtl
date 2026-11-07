@@ -30,8 +30,14 @@ export async function POST(request: Request) {
     });
     const option = availability?.options.find((candidate) => candidate.roomType.slug === input.roomType && candidate.ratePlan.code === input.ratePlan && candidate.isAvailable);
     if (!availability || !option) throw new ApiError(409, "The requested hotel inventory is not available");
-    const optionPolicyKey = option.ratePlan.cancellationPolicy?.key || "";
+    const optionPolicy = option.ratePlan.cancellationPolicy;
+    const optionPolicyKey = optionPolicy?.key || "";
     if (!optionPolicyKey || input.acceptedCancellationPolicyKey !== optionPolicyKey) throw new ApiError(409, "Cancellation policy acceptance does not match the selected rate");
+    const optionPolicyVersion = Number.isInteger(optionPolicy?.version) ? Number(optionPolicy.version) : null;
+    const acceptedPolicyVersion = typeof (input as { acceptedCancellationPolicyVersion?: unknown }).acceptedCancellationPolicyVersion === "number" ? (input as { acceptedCancellationPolicyVersion?: number }).acceptedCancellationPolicyVersion : null;
+    if (optionPolicyVersion !== null && acceptedPolicyVersion !== null && optionPolicyVersion !== acceptedPolicyVersion) {
+      throw new ApiError(409, "Cancellation policy terms changed. Review the updated policy and try again.");
+    }
 
     const now = new Date();
     const hold = await repositories.createAnonymousHoldAtomically({
@@ -45,8 +51,9 @@ export async function POST(request: Request) {
       query: { propertyId: availability.property.id, window: { checkIn: input.checkIn, checkOut: input.checkOut }, occupancy: input.occupancy },
       reference: `H-${randomUUID().replaceAll("-", "").slice(0, 20).toUpperCase()}`,
       holdId: randomUUID(),
+      acceptedCancellationPolicyVersion: optionPolicyVersion,
     });
-    if (hold.isHeld !== true) throw new ApiError(409, hold.reason === "IDEMPOTENCY_CONFLICT" ? "Idempotency-Key was used with a different request" : hold.reason === "IDEMPOTENCY_REPLAY_INACTIVE" ? "The original hold is no longer active" : "The requested hotel inventory is not available");
+    if (hold.isHeld !== true) throw new ApiError(409, hold.reason === "IDEMPOTENCY_CONFLICT" ? "Idempotency-Key was used with a different request" : hold.reason === "IDEMPOTENCY_REPLAY_INACTIVE" ? "The original hold is no longer active" : hold.reason === "POLICY_TERMS_CHANGED" ? "Cancellation policy terms changed. Review the updated policy and try again." : "The requested hotel inventory is not available");
     return Response.json({ holdId: hold.holdId, reference: hold.reference, status: "ACTIVE", expiresAt: hold.expiresAt.toISOString(), currency: hold.currency, totalRate: String(hold.totalAmount), nightlyRates: hold.nightlyRates.map(String), cancellationPolicy: hold.policySnapshot, inventoryReserved: true }, { status: hold.replay ? 200 : 201 });
   } catch (error) {
     return jsonError(error);

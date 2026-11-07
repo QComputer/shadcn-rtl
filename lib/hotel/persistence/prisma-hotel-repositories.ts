@@ -123,6 +123,7 @@ function cancellationPolicy(row: any): CancellationPolicySet {
     freeCancellationCutoffHours: row.freeCancellationCutoffHours,
     fullCancellationRetention: row.fullCancellationRetention / 10000,
     ...(Array.isArray(row.cancellationTiers) ? { cancellationTiers: row.cancellationTiers } : {}),
+    ...(Number.isInteger(row.version) ? { version: row.version } : {}),
   };
 }
 
@@ -246,6 +247,7 @@ export class PrismaHotelRepositories
         ...(planRow.cancellationPolicy && policyRevision ? [{ resourceType: "CANCELLATION_POLICY", resourceId: planRow.cancellationPolicy.id, resourceRevision: policyRevision, scope: "policies" }] : []),
       ];
       if (!expected.every((item) => approved.some((row) => row.resourceType === item.resourceType && row.resourceId === item.resourceId && row.resourceRevision === item.resourceRevision && (row.scope as Record<string, unknown>)?.[item.scope] === true))) return { isHeld: false as const, reason: "PUBLICATION_NOT_APPROVED" };
+      if (planRow.cancellationPolicy && Number.isInteger((input as { acceptedCancellationPolicyVersion?: number | null }).acceptedCancellationPolicyVersion) && planRow.cancellationPolicy.version !== (input as { acceptedCancellationPolicyVersion?: number | null }).acceptedCancellationPolicyVersion) return { isHeld: false as const, reason: "POLICY_TERMS_CHANGED" };
       const nights = enumerateStayNights(input.query.window.checkIn, input.query.window.checkOut);
       const seasonalRows = await tx.hotelNightlyRate.findMany({ where: { organizationId: input.scope.organizationId, propertyId: input.propertyId, ratePlanId: input.ratePlanId } });
       const resolution = resolveNightlyRatesForWindow({ property: property(propertyRow), ratePlan: ratePlan({ ...planRow, cancellationPolicy: planRow.cancellationPolicy }), seasonalRates: seasonalRows.map((row) => ({ id: row.id, ratePlanId: row.ratePlanId, from: dateOnly(row.from), to: dateOnly(row.to), nightlyRate: Number(row.nightlyRate), ...(row.minNights == null ? {} : { minNights: row.minNights }), ...(row.maxNights == null ? {} : { maxNights: row.maxNights }) })), checkIn: input.query.window.checkIn, checkOut: input.query.window.checkOut });

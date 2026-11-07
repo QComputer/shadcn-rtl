@@ -37,38 +37,82 @@ export function formatMoney(amount, currency, locale) {
   return `${formatted} ${currency}`;
 }
 
+function retentionText(basisPoints, penaltyBasis, locale) {
+  const pct = Math.round((Number(basisPoints) / 10000) * 100);
+  const firstNight = penaltyBasis === "FIRST_NIGHT";
+  if (locale === "fa") return `${pct}% ${firstNight ? "شب اول" : "کل اقامت"}`;
+  if (locale === "ar") return `${pct}% ${firstNight ? "الليلة الأولى" : "إجمالي الإقامة"}`;
+  return `${pct}% of ${firstNight ? "first night" : "total stay"}`;
+}
+
 export function policySummary(policy, locale) {
   if (!policy || typeof policy !== "object") return null;
+  const parts = [];
+  const name = typeof policy.name === "string" ? policy.name.trim() : "";
+  if (name) parts.push(name);
+  const tiers = Array.isArray(policy.cancellationTiers) ? [...policy.cancellationTiers].filter((t) => t && Number.isFinite(Number(t.cutoffHours))) : [];
+  tiers.sort((a, b) => Number(a.cutoffHours) - Number(b.cutoffHours));
+  for (const tier of tiers) {
+    const hours = Number(tier.cutoffHours);
+    const bp = Number(tier.retentionBasisPoints);
+    const basis = tier.penaltyBasis === "FIRST_NIGHT" ? "FIRST_NIGHT" : "RESERVATION_TOTAL";
+    if (locale === "fa") parts.push(`تا ${hours} ساعت قبل از ورود: جریمه ${retentionText(bp, basis, locale)}`);
+    else if (locale === "ar") parts.push(`حتى ${hours} ساعة قبل الوصول: غرامة ${retentionText(bp, basis, locale)}`);
+    else parts.push(`Up to ${hours}h before check-in: penalty ${retentionText(bp, basis, locale)}`);
+  }
   const freeHours = Number(policy.freeCancellationCutoffHours);
   const retention = Number(policy.fullCancellationRetention);
-  if (Number.isFinite(freeHours) && freeHours > 0 && retention < 1) {
-    if (locale === "fa") return `لغو رایگان تا ${freeHours} ساعت قبل از ورود.`;
-    if (locale === "ar") return `إلغاء مجاني حتى ${freeHours} ساعة قبل تسجيل الوصول.`;
-    return `Free cancellation until ${freeHours} hours before check-in.`;
+  if (tiers.length === 0 && Number.isFinite(freeHours) && freeHours >= 0 && Number.isFinite(retention)) {
+    if (freeHours > 0 && retention < 1) {
+      if (locale === "fa") parts.push(`لغو رایگان تا ${freeHours} ساعت قبل از ورود`);
+      else if (locale === "ar") parts.push(`إلغاء مجاني حتى ${freeHours} ساعة قبل الوصول`);
+      else parts.push(`Free cancellation until ${freeHours} hours before check-in`);
+      if (retention > 0) {
+        if (locale === "fa") parts.push(`پس از آن: ${Math.round(retention * 100)}% کل اقامت`);
+        else if (locale === "ar") parts.push(`بعد ذلك: ${Math.round(retention * 100)}% من إجمالي الإقامة`);
+        else parts.push(`After that: ${Math.round(retention * 100)}% of total stay`);
+      }
+    } else if (retention >= 1 || (freeHours === 0 && retention >= 1)) {
+      if (locale === "fa") parts.push("غیرقابل استرداد");
+      else if (locale === "ar") parts.push("غير قابل للاسترداد");
+      else parts.push("Non-refundable");
+    }
   }
-  if (retention >= 1) {
-    if (locale === "fa") return "این نرخ غیرقابل استرداد است.";
-    if (locale === "ar") return "هذا السعر غير قابل للاسترداد.";
-    return "This rate is non-refundable.";
-  }
-  return policy.name || policy.key || null;
+  return parts.length ? parts.join(locale === "ar" ? " — " : " — ") : (policy.key || null);
+}
+
+export function holdAttemptFingerprint({ property, range, adults, children, childAges, option, contact }) {
+  const policy = option?.ratePlan?.cancellationPolicy || {};
+  return JSON.stringify({
+    property,
+    roomType: option?.roomType?.slug || "",
+    ratePlan: option?.ratePlan?.code || "",
+    checkIn: range?.checkIn || "",
+    checkOut: range?.checkOut || "",
+    adults,
+    children,
+    childAges: Array.isArray(childAges) ? childAges : [],
+    contact: { fullName: contact?.fullName || "", phone: contact?.phone || "", email: contact?.email || "" },
+    acceptedCancellationPolicyKey: policy.key || "",
+    acceptedCancellationPolicyVersion: Number.isInteger(policy.version) ? policy.version : null,
+  });
 }
 
 export function buildHoldPayload({ property, range, adults, children, childAges, option, contact }) {
-  const policyKey = option?.ratePlan?.cancellationPolicy?.key || "";
-  const guests = [{ fullName: contact.fullName, isPrimary: true, isChild: false }];
-  for (let i = 0; i < children; i += 1) guests.push({ fullName: contact.fullName, isPrimary: false, isChild: true, age: childAges[i] });
-  return {
+  const policy = option?.ratePlan?.cancellationPolicy || {};
+  const payload = {
     property,
     roomType: option.roomType.slug,
     ratePlan: option.ratePlan.code,
     checkIn: range.checkIn,
     checkOut: range.checkOut,
     occupancy: { adults, children, childAges },
-    guests,
+    guests: [{ fullName: contact.fullName, isPrimary: true }],
     contact,
-    acceptedCancellationPolicyKey: policyKey,
+    acceptedCancellationPolicyKey: policy.key || "",
   };
+  if (Number.isInteger(policy.version)) payload.acceptedCancellationPolicyVersion = policy.version;
+  return payload;
 }
 
 export function createIdempotencyKey() {

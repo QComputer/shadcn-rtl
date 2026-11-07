@@ -34,7 +34,7 @@ export async function processCustomerAuthSmsOutbox(options: CustomerAuthSmsWorke
     const normalized = normalizeIranianMobile(options.allowedRecipient);
     if (normalized) where.link = { phone: normalized };
   }
-  const candidate = await db.customerAuthSmsOutbox.findFirst({ where, orderBy: { createdAt: "asc" }, include: { link: true } });
+  const candidate = await db.customerAuthSmsOutbox.findFirst({ where, orderBy: options.allowedRecipient ? { createdAt: "desc" } : { createdAt: "asc" }, include: { link: true } });
   if (!candidate) return { processed: false };
   const leaseId = randomUUID();
   const claim = await db.customerAuthSmsOutbox.updateMany({ where: { id: candidate.id, status: "PENDING", attempts: { lt: 3 }, nextAttemptAt: { lte: now } }, data: { status: "SENDING", attempts: { increment: 1 }, leaseId, lockedUntil: new Date(now.getTime() + 30_000) } });

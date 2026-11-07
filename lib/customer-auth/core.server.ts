@@ -60,8 +60,6 @@ export class CustomerPhoneAuthService {
   async request(input: { phone: string; organizationId: string; origin: string; ip: string; source: "WEB" | "USSD"; idempotencyKey?: string }): Promise<{ accepted: true; requiresOtp?: boolean }> {
     const accepted = { accepted: true as const };
     const phone = normalizeIranianMobile(input.phone);
-    const canaryPhone = process.env.CUSTOMER_OTP_CANARY_PHONE ? normalizeIranianMobile(process.env.CUSTOMER_OTP_CANARY_PHONE) : null;
-    if (canaryPhone && phone !== canaryPhone) return accepted;
     if (!phone || !this.enabled() || !(this.options.senderAvailable ?? customerPhoneAuthSenderAvailable)()) return accepted;
     const secret = this.secret();
     if (secret.length < 32 || !input.ip || input.ip.length > 256 || (input.idempotencyKey?.length ?? 0) > 256) return accepted;

@@ -10,6 +10,7 @@ import { requireActiveOrganizationCapability } from "@/lib/organization-capabili
 import { createMerchantRetailProduct,updateMerchantRetailProduct,retailProductCreateSchema,retailProductUpdateSchema,merchantProductSelect,serializeMerchantProduct } from "@/lib/retail/merchant-catalog.server";
 import { validateRetailAttributeValue } from "@/lib/retail/attribute-validation";
 import { readGallerySettings } from "@/lib/retail/product-galleries";
+import { allowsRetailFreeformColor } from "@/lib/retail/product-galleries";
 import { normalizeDetailSlug } from "@/lib/detail-slugs";
 import { readRetailSpreadsheet,retailImportInput,splitIds,decimalCell,stockCell,boolCell,writeRetailSpreadsheet,type RetailImportInput } from "./retail-spreadsheet";
 import { MAX_RETAIL_PRODUCTS, retailExportBatches } from "./retail-batches";
@@ -108,7 +109,7 @@ async function plan(tx:Tx,context:TenantContext,input:RetailImportInput) {
         if(!def)throw new Error("ویژگی محصول متعلق به فروشگاه نیست.");
         const index=attributes.findIndex(a=>a.definitionId===def.id);if(index>=0)attributes.splice(index,1);
         if(value!=="[[CLEAR]]"){const typed=def.valueType==="NUMBER"?Number(normalizeAttributeNumber(value)):def.valueType==="BOOLEAN"?boolCell(value):value;
-          validateRetailAttributeValue({valueType:def.valueType,allowedValues:Array.isArray(def.allowedValues)?def.allowedValues.filter((x):x is string=>typeof x==="string"):null,key:def.key,label:def.label,scope:def.scope},typed);attributes.push({definitionId:def.id,value:typed});}
+          validateRetailAttributeValue({valueType:def.valueType,allowedValues:Array.isArray(def.allowedValues)?def.allowedValues.filter((x):x is string=>typeof x==="string"):null,key:def.key,label:def.label,scope:def.scope,allowFreeformColor:allowsRetailFreeformColor(def)},typed);attributes.push({definitionId:def.id,value:typed});}
         hasAttributes=true;
       }
       if(hasAttributes)productData.attributes=attributes;
@@ -144,7 +145,7 @@ async function plan(tx:Tx,context:TenantContext,input:RetailImportInput) {
           const index=options.findIndex(x=>x.definitionId===def.id);if(index>=0)options.splice(index,1);
           if(value!=="[[CLEAR]]"){
             const typed=def.valueType==="NUMBER"?Number(normalizeAttributeNumber(value)):def.valueType==="BOOLEAN"?boolCell(value):value;
-            validateRetailAttributeValue({valueType:def.valueType,allowedValues:Array.isArray(def.allowedValues)?def.allowedValues.filter((x):x is string=>typeof x==="string"):null,key:def.key,label:def.label,scope:def.scope},typed);
+            validateRetailAttributeValue({valueType:def.valueType,allowedValues:Array.isArray(def.allowedValues)?def.allowedValues.filter((x):x is string=>typeof x==="string"):null,key:def.key,label:def.label,scope:def.scope,allowFreeformColor:allowsRetailFreeformColor(def)},typed);
             options.push({definitionId:def.id,value:typed});
           }changedOptions=true;
         }

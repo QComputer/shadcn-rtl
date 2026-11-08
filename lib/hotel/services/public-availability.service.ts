@@ -72,7 +72,14 @@ export async function searchPublishedHotelAvailability(host: string | null | und
   for (const option of result.options) {
     const roomApproved = await isCurrentHotelPublicationApproved({ organizationId: tenant.organizationId, propertyId: property.id, resourceType: "ROOM_TYPE", resourceId: option.roomType.id, scope: "availability" }, client);
     const rateApproved = await isCurrentHotelPublicationApproved({ organizationId: tenant.organizationId, propertyId: property.id, resourceType: "RATE_PLAN", resourceId: option.ratePlan.id, scope: "availability" }, client);
-    if (roomApproved && rateApproved) approvedOptions.push(option);
+    const policyId = option.ratePlan.cancellationPolicy && typeof (option.ratePlan.cancellationPolicy as { key?: unknown }).key === "string" ? (option.ratePlan.cancellationPolicy as { id?: string }).id : undefined;
+    // A cancellation policy attached to a bookable rate must be currently approved for public display.
+    // If no policy resource is attached, the option remains subject to hold-time policy acceptance rules.
+    let policyApproved = true;
+    if (policyId) {
+      policyApproved = await isCurrentHotelPublicationApproved({ organizationId: tenant.organizationId, propertyId: property.id, resourceType: "CANCELLATION_POLICY", resourceId: policyId, scope: "policies" }, client);
+    }
+    if (roomApproved && rateApproved && policyApproved) approvedOptions.push(option);
   }
   return { ...result, options: approvedOptions };
 }

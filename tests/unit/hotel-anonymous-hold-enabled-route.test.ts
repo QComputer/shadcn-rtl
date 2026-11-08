@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import { before, mock, test } from "node:test";
 import { NextRequest } from "next/server";
 
@@ -11,7 +11,7 @@ mock.module("@/lib/api-guards", { namedExports: {
 } });
 mock.module("@/lib/hotel/management/api-adapter", { namedExports: { parseJsonObject: (value: unknown) => value } });
 mock.module("@/lib/hotel/services/hotel-publication.service", { namedExports: { resolveHotelTenantForHost: async (host: string | null) => host === "hotel.example" ? { organizationId: "org-1" } : null } });
-mock.module("@/lib/hotel/services/public-availability.service", { namedExports: { searchPublishedHotelAvailability: async () => ({ property: { id: "property-1" }, options: [{ roomType: { id: "room-1", slug: "standard" }, ratePlan: { id: "rate-1", code: "flex", cancellationPolicy: { key: "flex", version: 3 } }, isAvailable: true }] }) } });
+mock.module("@/lib/hotel/services/public-availability.service", { namedExports: { searchPublishedHotelAvailability: async () => ({ property: { id: "property-1" }, options: [{ roomType: { id: "room-1", slug: "standard" }, ratePlan: { id: "rate-1", code: "flex", currency: "TOMAN", cancellationPolicy: { key: "flex", version: 3 } }, totalRate: 250000, isAvailable: true }] }) } });
 mock.module("@/lib/hotel/persistence/prisma-hotel-repositories", { namedExports: { createPrismaHotelRepositories: () => ({
   findAnonymousHoldReplay: async () => replayMode === "conflict" ? { isConflict: true } : replayMode === "replay" ? { isReplay: true, result: { holdId: "hold-1", reference: "H-1", status: "ACTIVE", expiresAt: new Date("2027-10-01T01:00:00Z"), currency: "TOMAN", totalAmount: 250000, nightlyRates: [125000, 125000], policySnapshot: { key: "flex", version: 3 }, inventoryReserved: true } } : null,
   createAnonymousHoldAtomically: async () => { createCalls += 1; if (replayMode === "failure") throw new Error("secret database detail"); return replayMode === "none" ? { isHeld: true, holdId: "hold-1", reference: "H-1", expiresAt: new Date("2027-10-01T01:00:00Z"), currency: "TOMAN", totalAmount: 250000, nightlyRates: [125000, 125000], policySnapshot: { key: "flex", version: 3 } } : { isHeld: false, reason: replayMode === "inactive" ? "IDEMPOTENCY_REPLAY_INACTIVE" : "PUBLICATION_NOT_APPROVED" }; },
@@ -20,7 +20,8 @@ mock.module("@/lib/hotel/persistence/prisma-hotel-repositories", { namedExports:
 process.env.HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED = "1";
 let POST: (request: Request) => Promise<Response>;
 before(async () => { ({ POST } = await import("../../app/api/hotel/v1/holds/route")); });
-const payload = { property: "hotel", roomType: "standard", ratePlan: "flex", checkIn: "2027-09-30", checkOut: "2027-10-02", occupancy: { adults: 2, children: 0 }, guests: [{ fullName: "Guest", isPrimary: true }], contact: { fullName: "Guest", phone: "09120000000" }, acceptedCancellationPolicyKey: "flex", idempotencyKey: "body-must-not-win" };
+const payload = { property: "hotel", roomType: "standard", ratePlan: "flex", checkIn: "2027-09-30", checkOut: "2027-10-02", occupancy: { adults: 2, children: 0 }, guests: [{ fullName: "Guest", isPrimary: true }], contact: { fullName: "Guest", phone: "09120000000" }, acceptedCancellationPolicyKey: "flex", acceptedCancellationPolicyVersion: 3, acceptedTotalRate: "250000", idempotencyKey: "body-must-not-win" };
+
 const request = (key = "header-key-01") => new NextRequest("https://hotel.example/api/hotel/v1/holds", { method: "POST", headers: { host: "hotel.example", "content-type": "application/json", "idempotency-key": key }, body: JSON.stringify(payload) });
 
 test("enabled handler returns 201 for creation and 200 for stored replay without availability dependency", async () => {
@@ -63,4 +64,14 @@ test("inactive replay, unapproved resources, invalid input, and repository failu
   const failure = await POST(request("failure-key-01"));
   assert.equal(failure.status, 500);
   assert.doesNotMatch(await failure.text(), /secret database detail|Prisma|SELECT/i);
+});
+
+
+test("mismatched accepted currency is rejected with 409", async () => {
+  replayMode = "none"; createCalls = 0;
+  const currencyPayload = { ...payload, acceptedCurrency: "USD" };
+  const req = new NextRequest("https://hotel.example/api/hotel/v1/holds", { method: "POST", headers: { host: "hotel.example", "content-type": "application/json", "idempotency-key": "currency-mismatch-01" }, body: JSON.stringify(currencyPayload) });
+  const res = await POST(req);
+  assert.equal(res.status, 409);
+  assert.equal(createCalls, 0);
 });

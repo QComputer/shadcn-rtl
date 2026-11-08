@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { findRetailOptionDefinition, parseRetailOptionList, retailNumericInput } from "../../lib/retail/merchant-size-input";
 
-test("merchant size lists normalize pasted Persian and Arabic digits and common separators", () => {
+test("merchant option lists normalize pasted digits, trim values, and support Persian/English comma separators", () => {
   assert.deepEqual(parseRetailOptionList("۳۸، ٣٨٫٥;39\n۳۸\nXL", true), ["38", "38.5", "39", "XL"]);
-  assert.deepEqual(parseRetailOptionList("مشکی، سفید\nمشکی"), ["مشکی", "سفید"]);
+  assert.deepEqual(parseRetailOptionList("مشکی، سفید\nمشکی", false), ["مشکی", "سفید"]);
+  assert.deepEqual(parseRetailOptionList("Black, Olive, Bone cream, Navy blue", false), ["Black", "Olive", "Bone cream", "Navy blue"]);
   assert.equal(retailNumericInput("٣٩٫٥"), "39.5");
   assert.equal(retailNumericInput(""), "");
 });

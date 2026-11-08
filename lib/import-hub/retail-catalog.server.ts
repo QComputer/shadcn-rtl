@@ -34,7 +34,7 @@ export async function retailImportMetadata(context:TenantContext) {
   await authorize(context);
   const [categories,definitions,media,jobs,exportProducts]=await Promise.all([
     prisma.productCategory.findMany({where:{organizationId:context.organizationId,isActive:true,deletedAt:null},select:{id:true,name:true},take:200,orderBy:{id:"asc"}}),
-    prisma.retailAttributeDefinition.findMany({where:{organizationId:context.organizationId,isActive:true},select:{id:true,key:true,label:true,scope:true},take:80,orderBy:{id:"asc"}}),
+    prisma.retailAttributeDefinition.findMany({where:{organizationId:context.organizationId,isActive:true},select:{id:true,key:true,label:true,scope:true,valueType:true,allowedValues:true},take:200,orderBy:{id:"asc"}}),
     prisma.image.findMany({where:{organizationId:context.organizationId,access:"PUBLIC"},select:{id:true,url:true},take:200,orderBy:{id:"asc"}}),
     prisma.externalImportJob.findMany({where:{organizationId:context.organizationId,summary:{path:["contract"],equals:contract}},select:{id:true,status:true,createdAt:true,summary:true},take:10,orderBy:{createdAt:"desc"}}),
     prisma.product.findMany({where:{organizationId:context.organizationId,deletedAt:null},select:{id:true,variants:{where:{deletedAt:null},select:{id:true}}},take:501,orderBy:{id:"asc"}}),
@@ -108,7 +108,7 @@ async function plan(tx:Tx,context:TenantContext,input:RetailImportInput) {
         if(!def)throw new Error("ویژگی محصول متعلق به فروشگاه نیست.");
         const index=attributes.findIndex(a=>a.definitionId===def.id);if(index>=0)attributes.splice(index,1);
         if(value!=="[[CLEAR]]"){const typed=def.valueType==="NUMBER"?Number(normalizeAttributeNumber(value)):def.valueType==="BOOLEAN"?boolCell(value):value;
-          validateRetailAttributeValue({valueType:def.valueType,allowedValues:Array.isArray(def.allowedValues)?def.allowedValues.filter((x):x is string=>typeof x==="string"):null},typed);attributes.push({definitionId:def.id,value:typed});}
+          validateRetailAttributeValue({valueType:def.valueType,allowedValues:Array.isArray(def.allowedValues)?def.allowedValues.filter((x):x is string=>typeof x==="string"):null,key:def.key,label:def.label,scope:def.scope},typed);attributes.push({definitionId:def.id,value:typed});}
         hasAttributes=true;
       }
       if(hasAttributes)productData.attributes=attributes;
@@ -144,7 +144,7 @@ async function plan(tx:Tx,context:TenantContext,input:RetailImportInput) {
           const index=options.findIndex(x=>x.definitionId===def.id);if(index>=0)options.splice(index,1);
           if(value!=="[[CLEAR]]"){
             const typed=def.valueType==="NUMBER"?Number(normalizeAttributeNumber(value)):def.valueType==="BOOLEAN"?boolCell(value):value;
-            validateRetailAttributeValue({valueType:def.valueType,allowedValues:Array.isArray(def.allowedValues)?def.allowedValues.filter((x):x is string=>typeof x==="string"):null},typed);
+            validateRetailAttributeValue({valueType:def.valueType,allowedValues:Array.isArray(def.allowedValues)?def.allowedValues.filter((x):x is string=>typeof x==="string"):null,key:def.key,label:def.label,scope:def.scope},typed);
             options.push({definitionId:def.id,value:typed});
           }changedOptions=true;
         }

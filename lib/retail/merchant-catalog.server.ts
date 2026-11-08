@@ -1,6 +1,6 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
-import { gallerySettingsInputSchema, isRetailSizeDefinition, readGallerySettings, orderedImages, type GallerySettingsInput } from "@/lib/retail/product-galleries";
+import { allowsRetailFreeformColor, gallerySettingsInputSchema, isRetailSizeDefinition, MAX_RETAIL_COLOR_NAME_LENGTH, readGallerySettings, orderedImages, type GallerySettingsInput } from "@/lib/retail/product-galleries";
 
 import { Prisma, RetailAttributeScope, RetailAttributeValueType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -244,7 +244,7 @@ async function saveGallerySettings(tx: Prisma.TransactionClient, organizationId:
     if (!definition) throw new ApiError(400, "Color attribute must belong to this store.");
     try {
       const allowedValues = Array.isArray(definition.allowedValues) ? definition.allowedValues.filter((value): value is string => typeof value === "string") : null;
-      validateRetailAttributeValue({ valueType: definition.valueType, allowedValues }, definition.valueType === "NUMBER" ? Number(color.value) : definition.valueType === "BOOLEAN" ? color.value === "true" : color.value);
+      validateRetailAttributeValue({ valueType: definition.valueType, allowedValues, key: definition.key, label: definition.label, scope: definition.scope, allowFreeformColor: allowsRetailFreeformColor(definition) }, definition.valueType === "NUMBER" ? Number(color.value) : definition.valueType === "BOOLEAN" ? color.value === "true" : color.value);
     } catch { throw new ApiError(400, "Color value is not valid for this store attribute."); }
     if (!product.variants.some(variant => variant.optionValues.some(option => option.definitionId === color.definitionId && String(assignmentValue(option)) === color.value))) {
       throw new ApiError(400, "Color gallery must match a current product option.");
@@ -257,11 +257,11 @@ async function saveGallerySettings(tx: Prisma.TransactionClient, organizationId:
     .filter((id): id is string => Boolean(id));
   await requireOwnedImages(tx, organizationId, [...new Set(appearanceImageIds)]);
   for (const group of settings.appearanceGroups ?? []) {
-    const definition = await tx.retailAttributeDefinition.findFirst({ where: { id: group.definitionId, organizationId, scope: "VARIANT_OPTION", isActive: true }, select: { id: true, key: true, label: true, valueType: true, allowedValues: true } });
+    const definition = await tx.retailAttributeDefinition.findFirst({ where: { id: group.definitionId, organizationId, scope: "VARIANT_OPTION", isActive: true }, select: { id: true, key: true, label: true, scope: true, valueType: true, allowedValues: true } });
     if (!definition || isRetailSizeDefinition(definition.key, definition.label)) throw new ApiError(400, "Appearance groups must use a non-size variant option belonging to this store.");
     try {
       const allowedValues = Array.isArray(definition.allowedValues) ? definition.allowedValues.filter((value): value is string => typeof value === "string") : null;
-      validateRetailAttributeValue({ valueType: definition.valueType, allowedValues }, definition.valueType === "NUMBER" ? Number(group.value) : definition.valueType === "BOOLEAN" ? group.value === "true" : group.value);
+      validateRetailAttributeValue({ valueType: definition.valueType, allowedValues, key: definition.key, label: definition.label, scope: definition.scope }, definition.valueType === "NUMBER" ? Number(group.value) : definition.valueType === "BOOLEAN" ? group.value === "true" : group.value);
     } catch { throw new ApiError(400, "Appearance value is not valid for this store attribute."); }
     if (!product.variants.some(variant => variant.optionValues.some(option => option.definitionId === group.definitionId && String(assignmentValue(option)) === group.value))) throw new ApiError(400, "Appearance group must match a current product option.");
   }
@@ -332,10 +332,10 @@ async function requireDefinitions(
   assignments: Array<z.infer<typeof assignmentSchema>>,
   scope: RetailAttributeScope,
 ) {
-  if (!assignments.length) return new Map<string, { id: string; valueType: RetailAttributeValueType; allowedValues: Prisma.JsonValue | null }>();
+  if (!assignments.length) return new Map<string, { id: string; key: string; label: string; scope: RetailAttributeScope; valueType: RetailAttributeValueType; allowedValues: Prisma.JsonValue | null }>();
   const definitions = await tx.retailAttributeDefinition.findMany({
     where: { id: { in: assignments.map((value) => value.definitionId) }, organizationId, scope, isActive: true },
-    select: { id: true, valueType: true, allowedValues: true },
+    select: { id: true, key: true, label: true, scope: true, valueType: true, allowedValues: true },
   });
   if (definitions.length !== assignments.length) throw new ApiError(400, "An attribute is missing, inactive, or belongs to another store.");
   return new Map(definitions.map((definition) => [definition.id, definition]));
@@ -350,7 +350,7 @@ async function writeAssignments(
     const definition = definitions.get(assignment.definitionId);
     if (!definition) throw new ApiError(400, "An attribute is missing or belongs to another store.");
     const allowedValues = Array.isArray(definition.allowedValues) ? definition.allowedValues.filter((value): value is string => typeof value === "string") : null;
-    const typed = validateRetailAttributeValue({ valueType: definition.valueType, allowedValues }, assignment.value);
+    const typed = validateRetailAttributeValue({ valueType: definition.valueType, allowedValues, key: definition.key, label: definition.label, scope: definition.scope }, assignment.value);
     if (input.productId) {
       await tx.productAttributeValue.create({ data: { productId: input.productId, definitionId: definition.id, ...typed } });
     } else if (input.variantId) {
@@ -377,7 +377,7 @@ async function createVariants(tx: Prisma.TransactionClient, input: {
   for (const { id, variant } of variants) for (const assignment of variant.options) {
     const definition = definitions.get(assignment.definitionId)!;
     const allowedValues = Array.isArray(definition.allowedValues) ? definition.allowedValues.filter((value): value is string => typeof value === "string") : null;
-    const typed = validateRetailAttributeValue({ valueType: definition.valueType, allowedValues }, assignment.value);
+    const typed = validateRetailAttributeValue({ valueType: definition.valueType, allowedValues, key: definition.key, label: definition.label, scope: definition.scope }, assignment.value);
     options.push({ variantId: id, definitionId: definition.id, ...typed });
   }
   await tx.productVariant.createMany({ data: variants.map(({ id, variant }) => ({ id, productId: input.productId, name: variant.name, sku: variant.sku || null, price: variant.price === null ? null : new Prisma.Decimal(variant.price), inventory: variant.inventory, allowBackOrder: variant.allowBackOrder, manuallyUnavailable: variant.manuallyUnavailable ?? false })) });
@@ -685,7 +685,9 @@ function formatOptionValue(definitionId: string, valueType: string, value: strin
   } else if (valueType === "BOOLEAN") {
     typed = typeof value === "boolean" ? value : value === "true";
   } else {
-    typed = String(value);
+    typed = String(value).trim();
+    if (!typed) throw new Error(`Value for definition ${definitionId} must not be empty.`);
+    if (typed.length > MAX_RETAIL_COLOR_NAME_LENGTH) throw new Error(`Value for definition ${definitionId} is too long.`);
   }
   return { definitionId, value: typed };
 }
@@ -711,7 +713,7 @@ export async function previewRetailVariantGeneration(
   const colorDef = input.colorDefinitionId
     ? await prisma.retailAttributeDefinition.findFirst({
         where: { id: input.colorDefinitionId, organizationId: context.organizationId, isActive: true, scope: RetailAttributeScope.VARIANT_OPTION },
-        select: { id: true, key: true, label: true, valueType: true, allowedValues: true },
+        select: { id: true, key: true, label: true, scope: true, valueType: true, allowedValues: true },
       })
     : null;
   if (!colorDef && input.colorDefinitionId) errors.push("Color attribute not found or belongs to another store.");
@@ -719,7 +721,7 @@ export async function previewRetailVariantGeneration(
   const sizeDef = input.sizeDefinitionId
     ? await prisma.retailAttributeDefinition.findFirst({
         where: { id: input.sizeDefinitionId, organizationId: context.organizationId, isActive: true, scope: RetailAttributeScope.VARIANT_OPTION },
-        select: { id: true, key: true, label: true, valueType: true, allowedValues: true },
+        select: { id: true, key: true, label: true, scope: true, valueType: true, allowedValues: true },
       })
     : null;
   if (!sizeDef && input.sizeDefinitionId) errors.push("Size attribute not found or belongs to another store.");
@@ -738,7 +740,18 @@ export async function previewRetailVariantGeneration(
 
   let colors: (string | number | boolean)[] = [];
   if (input.colorValues?.length && colorDef) {
-    colors = input.colorValues;
+    const freeform = allowsRetailFreeformColor(colorDef);
+    colors = [...new Set(input.colorValues.map(value => String(value).trim()).filter(Boolean))];
+    if (!colors.length) errors.push("At least one valid color is required.");
+    if (colors.some(value => String(value).length > MAX_RETAIL_COLOR_NAME_LENGTH)) errors.push("Color names must be 120 characters or fewer.");
+    if (!freeform && colorDef.valueType === "ENUM") {
+      const allowed = new Set((Array.isArray(colorDef.allowedValues) ? colorDef.allowedValues : []).filter((v): v is string => typeof v === "string"));
+      const invalid = colors.find(value => !allowed.has(String(value)));
+      if (invalid !== undefined) {
+        errors.push("Colors contains a value outside the allowed choices.");
+        colors = [];
+      }
+    }
   }
 
   const existingVariants = await prisma.productVariant.findMany({

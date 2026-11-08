@@ -124,6 +124,27 @@ export function isRetailSizeDefinition(key: string, label: string): boolean {
   return /(?:^|\s)size(?:$|\s)|سایز|اندازه|مقاس/.test(normalized);
 }
 
+export type RetailColorDefinitionLike = {
+  key?: string | null;
+  label?: string | null;
+  scope?: string | null;
+  valueType?: string | null;
+};
+
+const RETAIL_COLOR_PATTERN = /colou?r|رنگ|لون/i;
+
+/** Recognized VARIANT_OPTION color definitions accept merchant-entered freeform values. */
+export function isRetailColorDefinition(definition: RetailColorDefinitionLike): boolean {
+  if (definition.scope && definition.scope !== "VARIANT_OPTION") return false;
+  return RETAIL_COLOR_PATTERN.test(`${definition.key ?? ""} ${definition.label ?? ""}`);
+}
+
+export function allowsRetailFreeformColor(definition: RetailColorDefinitionLike): boolean {
+  return definition.valueType === "ENUM" && isRetailColorDefinition(definition);
+}
+
+export const MAX_RETAIL_COLOR_NAME_LENGTH = 120;
+
 /** Infer a shared product gallery and preserve every differing variant as an override. */
 export function inferColorGallery(
   variants: { id?: string; imageIds: string[] }[],

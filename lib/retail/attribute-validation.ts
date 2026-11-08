@@ -18,7 +18,22 @@ export const retailAttributeDefinitionInputSchema = z.object({
 export type RetailAttributeDefinitionInput = z.output<typeof retailAttributeDefinitionInputSchema>;
 export type ValidatedRetailAttributeValue = { valueText: string | null; valueNumber: number | null; valueBoolean: boolean | null };
 
-export function validateRetailAttributeValue(definition: Pick<RetailAttributeDefinitionInput, "valueType" | "allowedValues">, value: unknown): ValidatedRetailAttributeValue {
+export type RetailAttributeValidationDefinition = Pick<RetailAttributeDefinitionInput, "valueType" | "allowedValues"> & {
+  key?: string | null;
+  label?: string | null;
+  scope?: string | null;
+  /** Recognized VARIANT_OPTION color ENUMs accept merchant-entered values. */
+  allowFreeformColor?: boolean;
+};
+
+function allowsFreeformColor(definition: RetailAttributeValidationDefinition): boolean {
+  if (definition.allowFreeformColor !== undefined) return definition.allowFreeformColor;
+  if (definition.valueType !== "ENUM" || definition.scope !== "VARIANT_OPTION") return false;
+  const text = `${definition.key ?? ""} ${definition.label ?? ""}`;
+  return /colou?r|رنگ|لون/i.test(text);
+}
+
+export function validateRetailAttributeValue(definition: RetailAttributeValidationDefinition, value: unknown): ValidatedRetailAttributeValue {
   if (definition.valueType === "NUMBER") {
     if (typeof value !== "number" || !Number.isFinite(value)) throw new Error("Numeric attribute values must be finite numbers.");
     return { valueText: null, valueNumber: value, valueBoolean: null };
@@ -29,6 +44,9 @@ export function validateRetailAttributeValue(definition: Pick<RetailAttributeDef
   }
   if (typeof value !== "string" || !value.trim()) throw new Error("Text attribute values must be non-empty strings.");
   const normalized = value.trim();
-  if (definition.valueType === "ENUM" && !definition.allowedValues?.includes(normalized)) throw new Error("Enum value is not in the tenant's configured allowed values.");
+  if (normalized.length > 120) throw new Error("Text attribute values must be 120 characters or fewer.");
+  if (definition.valueType === "ENUM" && !allowsFreeformColor(definition) && !definition.allowedValues?.includes(normalized)) {
+    throw new Error("Enum value is not in the tenant's configured allowed values.");
+  }
   return { valueText: normalized, valueNumber: null, valueBoolean: null };
 }

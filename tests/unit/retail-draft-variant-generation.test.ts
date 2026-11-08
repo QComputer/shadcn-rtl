@@ -6,8 +6,8 @@ import {
   type DraftVariantGenerationInput,
 } from "../../lib/retail/draft-variant-generation";
 
-const colorDefinition = { id: "color", valueType: "ENUM", allowedValues: ["navy", "sand"] };
-const sizeDefinition = { id: "size", valueType: "ENUM", allowedValues: ["37", "37.5", "38", "38.5"] };
+const colorDefinition = { id: "color", key: "color", label: "رنگ", scope: "VARIANT_OPTION", valueType: "ENUM", allowedValues: ["navy", "sand"] };
+const sizeDefinition = { id: "size", key: "size", label: "سایز", scope: "VARIANT_OPTION", valueType: "ENUM", allowedValues: ["37", "37.5", "38", "38.5"] };
 function input(overrides: Partial<DraftVariantGenerationInput> = {}): DraftVariantGenerationInput {
   return {
     colorDefinition, sizeDefinition, colors: ["navy", "sand"], sizes: ["37", "37.5"], existing: [],
@@ -27,6 +27,17 @@ describe("new retail variant drafts", () => {
     assert.equal(new Set(drafts.map(draft => draft.sku.toLowerCase())).size, drafts.length);
   });
 
+  it("accepts custom Persian color names for recognized color definitions", () => {
+    const drafts = buildNewRetailVariantDrafts(input({ colors: ["مشکی", "زیتونی", "کرم استخوانی", "آبی نفتی"], sizes: ["37"] }));
+    assert.deepEqual(drafts.map(d => d.options.color), ["مشکی", "زیتونی", "کرم استخوانی", "آبی نفتی"]);
+    assert.deepEqual(drafts.map(d => d.options.size), ["37", "37", "37", "37"]);
+  });
+
+  it("supports mixing preset and custom colors", () => {
+    const drafts = buildNewRetailVariantDrafts(input({ colors: ["navy", "آبی نفتی"], sizes: ["37"] }));
+    assert.deepEqual(drafts.map(d => d.options.color), ["navy", "آبی نفتی"]);
+  });
+
   it("omits existing raw combinations without overwriting them", () => {
     const existing = [{ options: { color: "navy", size: "37.5" } }];
     const drafts = buildNewRetailVariantDrafts(input({ existing }));
@@ -36,12 +47,12 @@ describe("new retail variant drafts", () => {
   });
 
   it("deduplicates requested values and disambiguates colliding SKU suffixes", () => {
-    const drafts = buildNewRetailVariantDrafts(input({ colors: ["navy", "navy"], sizes: ["37", "37.5"] }));
+    const drafts = buildNewRetailVariantDrafts(input({ colors: ["navy", " navy ", "navy"], sizes: ["37", "37.5"] }));
     assert.equal(drafts.length, 2);
     assert.equal(new Set(drafts.map(draft => draft.sku)).size, 2);
   });
 
-  it("rejects empty dimensions, unknown enum choices, invalid inventory and invalid prices", () => {
+  it("rejects empty dimensions, unknown non-color enum choices, invalid inventory and invalid prices", () => {
     assert.throws(() => buildNewRetailVariantDrafts(input({ colors: [] })), /Colors/);
     assert.throws(() => buildNewRetailVariantDrafts(input({ sizes: ["39"] })), /allowed choices/);
     for (const inventory of ["-1", "1.5", "x", "1000000001"]) {

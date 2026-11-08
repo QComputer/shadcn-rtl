@@ -1,4 +1,6 @@
-export type DraftVariantDefinition = { id: string; allowedValues?: unknown; valueType?: string };
+import { allowsRetailFreeformColor, MAX_RETAIL_COLOR_NAME_LENGTH, type RetailColorDefinitionLike } from "./product-galleries";
+
+export type DraftVariantDefinition = RetailColorDefinitionLike & { id: string; allowedValues?: unknown };
 
 export type NewRetailVariantDraft = {
   galleryMode: "INHERIT";
@@ -29,15 +31,18 @@ const MAX_VARIANTS = 100;
 const MAX_INVENTORY = 1_000_000_000;
 
 function requiredValues(values: string[], label: string) {
-  const unique = [...new Set(values)];
-  if (!unique.length || unique.some(value => typeof value !== "string" || !value.trim())) {
-    throw new TypeError(`${label} must contain non-empty values`);
-  }
+  const unique = [...new Set(values.map(value => value.trim()).filter(Boolean))];
+  if (!unique.length) throw new TypeError(`${label} must contain non-empty values`);
   return unique;
 }
 
 function validateAllowed(values: string[], definition: DraftVariantDefinition, label: string) {
   if (definition.valueType !== "ENUM" && definition.allowedValues === undefined) return;
+  if (allowsRetailFreeformColor(definition)) {
+    const invalid = values.find(value => value.length > MAX_RETAIL_COLOR_NAME_LENGTH);
+    if (invalid !== undefined) throw new RangeError(`${label} contains a color name that is too long`);
+    return;
+  }
   if (!Array.isArray(definition.allowedValues) || definition.allowedValues.length === 0) return;
   const allowed = new Set(definition.allowedValues.filter((value): value is string => typeof value === "string"));
   const invalid = values.find(value => !allowed.has(value));

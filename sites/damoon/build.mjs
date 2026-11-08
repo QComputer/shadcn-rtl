@@ -1,4 +1,4 @@
-import { cp, mkdir, writeFile, readFile, readdir } from 'node:fs/promises';
+﻿import { cp, mkdir, writeFile, readFile, readdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
@@ -41,3 +41,11 @@ async function hashTree(folder, prefix = '') {
 await hashTree(output);
 await writeFile(join(output,'release-manifest.json'),JSON.stringify({ site:'damoon',contentMode:'DEVELOPMENT_WITH_CONCEPT_IMAGES',builtAt:new Date().toISOString(),files:manifest },null,2));
 console.log(`Built ${routes.length} routes with /fa, /en and /ar aliases; no package installation required.`);
+
+if (process.argv.includes("--sync-public")) {
+  const publicDir = join(root, "..", "..", "public", "damoon-front");
+  await mkdir(publicDir, { recursive: true });
+  await cp(output, publicDir, { recursive: true, force: true });
+  console.log(`Synced ${output} -> ${publicDir}`);
+}
+

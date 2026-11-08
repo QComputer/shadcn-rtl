@@ -4,6 +4,7 @@ import {
   colorGroupKey,
   gallerySettingsInputSchema,
   inferColorGallery,
+  isRetailColorDefinition,
   orderedImages,
   readGallerySettings,
 } from "../../lib/retail/product-galleries";
@@ -98,5 +99,17 @@ describe("retail product galleries", () => {
   it("creates collision-safe keys for color definition and value pairs", () => {
     assert.notEqual(colorGroupKey("a:b", "c"), colorGroupKey("a", "b:c"));
     assert.notEqual(colorGroupKey("a", "bc"), colorGroupKey("ab", "c"));
+  });
+
+  it("recognizes stable VARIANT_OPTION color definitions and rejects false-positive substrings", () => {
+    assert.equal(isRetailColorDefinition({ key: "color", label: "رنگ", scope: "VARIANT_OPTION" }), true);
+    assert.equal(isRetailColorDefinition({ key: "shoe_color", label: "رنگ کفش", scope: "VARIANT_OPTION" }), true);
+    assert.equal(isRetailColorDefinition({ key: "finish_color", label: "Finish", scope: "VARIANT_OPTION" }), true);
+    assert.equal(isRetailColorDefinition({ key: "fabric", label: "جنس", scope: "VARIANT_OPTION" }), false);
+    assert.equal(isRetailColorDefinition({ key: "material", label: "Material", scope: "VARIANT_OPTION" }), false);
+    assert.equal(isRetailColorDefinition({ key: "tricolor_flag", label: "", scope: "VARIANT_OPTION" }), false);
+    assert.equal(isRetailColorDefinition({ key: "discoloration", label: "", scope: "VARIANT_OPTION" }), false);
+    assert.equal(isRetailColorDefinition({ key: "watercolor", label: "", scope: "VARIANT_OPTION" }), false);
+    assert.equal(isRetailColorDefinition({ key: "color", label: "Color", scope: "PRODUCT" }), false);
   });
 });

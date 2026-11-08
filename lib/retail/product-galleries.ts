@@ -131,7 +131,7 @@ export type RetailColorDefinitionLike = {
   valueType?: string | null;
 };
 
-const RETAIL_COLOR_PATTERN = /colou?r|رنگ|لون/i;
+const RETAIL_COLOR_PATTERN = /(?:^|[\s_-])colou?rs?(?:$|[\s_-])|رنگ|لون/i;
 
 /** Recognized VARIANT_OPTION color definitions accept merchant-entered freeform values. */
 export function isRetailColorDefinition(definition: RetailColorDefinitionLike): boolean {

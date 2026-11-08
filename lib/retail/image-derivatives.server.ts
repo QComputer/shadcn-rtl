@@ -14,6 +14,8 @@ type SharpInstance = {
   metadata(): Promise<{ format?: string; width?: number; height?: number; orientation?: number; pages?: number; exif?: Buffer; icc?: Buffer; iptc?: Buffer; xmp?: Buffer }>;
   toBuffer(options: { resolveWithObject: true }): Promise<{ data: Buffer; info: { width: number; height: number } }>;
 };
+type SharpModule = { default?: unknown } & Record<string, unknown>;
+type SharpFactory = (input: Buffer, options: { limitInputPixels: number; animated: false }) => SharpInstance;
 async function defaultImportSharpModule(): Promise<SharpModule> {
   const specifier = "sharp";
   try {

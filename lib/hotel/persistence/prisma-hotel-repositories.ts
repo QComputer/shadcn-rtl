@@ -117,6 +117,7 @@ function ratePlan(row: any): RatePlan {
 
 function cancellationPolicy(row: any): CancellationPolicySet {
   return {
+    ...(typeof row.id === "string" ? { id: row.id } : {}),
     key: row.key,
     name: row.name,
     description: row.description ?? "",
@@ -252,6 +253,8 @@ export class PrismaHotelRepositories
       const seasonalRows = await tx.hotelNightlyRate.findMany({ where: { organizationId: input.scope.organizationId, propertyId: input.propertyId, ratePlanId: input.ratePlanId } });
       const resolution = resolveNightlyRatesForWindow({ property: property(propertyRow), ratePlan: ratePlan({ ...planRow, cancellationPolicy: planRow.cancellationPolicy }), seasonalRates: seasonalRows.map((row) => ({ id: row.id, ratePlanId: row.ratePlanId, from: dateOnly(row.from), to: dateOnly(row.to), nightlyRate: Number(row.nightlyRate), ...(row.minNights == null ? {} : { minNights: row.minNights }), ...(row.maxNights == null ? {} : { maxNights: row.maxNights }) })), checkIn: input.query.window.checkIn, checkOut: input.query.window.checkOut });
       if (!resolution.isResolved) return { isHeld: false as const, reason: resolution.reason };
+      const acceptedTotalRate = (input as { acceptedTotalRate?: string | null }).acceptedTotalRate;
+      if (typeof acceptedTotalRate === "string" && acceptedTotalRate !== String(resolution.total)) return { isHeld: false as const, reason: "PRICE_CHANGED" };
       const inventoryRows = await tx.$queryRaw<any[]>(Prisma.sql`SELECT "id","allotment","booked","held","outOfService","closedToArrival","closedToDeparture" FROM "HotelInventory" WHERE "organizationId"=${input.scope.organizationId} AND "propertyId"=${input.propertyId} AND "roomTypeId"=${input.roomTypeId} AND "date" IN (${Prisma.join(nights.map(dateValue))}) ORDER BY "date" FOR UPDATE`);
       if (inventoryRows.length !== nights.length || inventoryRows.some((row) => row.closedToArrival || row.closedToDeparture || row.allotment - row.booked - row.held - row.outOfService < 1)) return { isHeld: false as const, reason: "NO_INVENTORY" };
       for (const row of inventoryRows) await tx.hotelInventory.update({ where: { id: row.id }, data: { held: { increment: 1 } } });

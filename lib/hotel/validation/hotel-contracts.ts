@@ -145,6 +145,9 @@ export const bookingRequestSchema = z
     specialRequests: z.string().max(2000).optional(),
     acceptedCancellationPolicyKey: z.string().min(1).max(64),
     acceptedCancellationPolicyVersion: z.number().int().positive().optional(),
+    // Server-verifiable reviewed quote from availability; never trusted as pricing authority.
+    acceptedTotalRate: z.string().regex(/^\d+$/).max(24).optional(),
+    acceptedCurrency: z.string().max(16).optional(),
   })
   .superRefine((value, ctx) => {
     if (value.checkOut <= value.checkIn) {

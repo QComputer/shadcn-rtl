@@ -272,7 +272,18 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
     const text = await res.text();
     let data = null; try { data = text ? JSON.parse(text) : null; } catch { data = { error: text }; }
-    return { ok: res.ok, status: res.status, data };
+    return { ok: res.ok, status: res.status, data, rawText: text };
+  }
+  function apiErrorMessage(status, data, fallback) {
+    const err = typeof data?.error === "string" ? data.error : data?.error?.message || "";
+    if (err && status < 500) return `${status}: ${err}`;
+    if (status === 400) return locale === "fa" ? "درخواست نامعتبر است. تاریخ‌ها و اطلاعات را بررسی کنید." : locale === "ar" ? "طلب غير صالح. تحقق من التواريخ والمعلومات." : "Invalid request. Check dates and details.";
+    if (status === 404) return locale === "fa" ? "این اقامتگاه یا انتشار آن در دسترس نیست." : locale === "ar" ? "هذا العقار أو نشره غير متاح." : "This property or its publication is unavailable.";
+    if (status === 409) return locale === "fa" ? "وضعیت موجودی یا شرایط تغییر کرده است. دوباره بررسی کنید." : locale === "ar" ? "تغيرت حالة التوفر أو الشروط. تحقق مرة أخرى." : "Availability or terms changed. Review again.";
+    if (status === 429) return locale === "fa" ? "درخواست‌های زیادی ارسال شد. کمی بعد دوباره تلاش کنید." : locale === "ar" ? "تم إرسال طلبات كثيرة. حاول مرة أخرى بعد قليل." : "Too many requests. Try again shortly.";
+    if (status === 503) return ui.holdUnavailable || (locale === "fa" ? "سرویس موقتاً در دسترس نیست." : locale === "ar" ? "الخدمة غير متاحة مؤقتاً." : "Service temporarily unavailable.");
+    if (status >= 500) return locale === "fa" ? "خطای موقت سرور. کمی بعد دوباره تلاش کنید." : locale === "ar" ? "خطأ مؤقت في الخادم. حاول مرة أخرى لاحقاً." : "Temporary server error. Try again later.";
+    return fallback || (locale === "fa" ? "خطایی رخ داد." : locale === "ar" ? "حدث خطأ." : "An error occurred.");
   }
   function collectChildAgesFromInputs() {
     if (!children) return { ok: true, ages: [] };
@@ -339,7 +350,17 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
         return;
       }
       if (result.status === 503) { setMessage(ui.holdUnavailable || "Hold service unavailable.", true); renderFlow(); return; }
-      if (result.status === 409) { setMessage(locale === "fa" ? "تعارض در درخواست رزرو موقت. با همان درخواست دوباره تلاش کنید." : locale === "ar" ? "تعارض في طلب الحجز المؤقت. أعد المحاولة بنفس الطلب." : (err || "Hold request conflict. Retry the same request."), true); renderFlow(); return; }
+      if (result.status === 409) {
+        const permanentConflict = /idempotency-key was used with a different request/i.test(lower);
+        if (permanentConflict) {
+          clearHoldAttempt();
+          setMessage(locale === "fa" ? "این درخواست با کلید قبلی ناسازگار است. لطفاً جزئیات را بررسی و دوباره ثبت کنید." : locale === "ar" ? "هذا الطلب غير متوافق مع المفتاح السابق. راجع التفاصيل وأعد الإرسال." : (err || "Request conflicts with a previous idempotency key. Review details and submit a new request."), true);
+        } else {
+          setMessage(locale === "fa" ? "تعارض در درخواست رزرو موقت. با همان درخواست دوباره تلاش کنید." : locale === "ar" ? "تعارض في طلب الحجز المؤقت. أعد المحاولة بنفس الطلب." : (err || "Hold request conflict. Retry the same request."), true);
+        }
+        renderFlow();
+        return;
+      }
       if (!err) { setMessage(locale === "fa" ? "پاسخ نامشخص دریافت شد. با همان درخواست دوباره تلاش کنید." : locale === "ar" ? "تم استلام استجابة غير واضحة. أعد المحاولة بنفس الطلب." : "Ambiguous response. Retry the same request.", true); renderFlow(); return; }
       setMessage(`${result.status}: ${err}`, true);
       renderFlow();
@@ -388,13 +409,18 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     const submitButton = form.querySelector(".booking-submit[type=submit]"); if (submitButton) submitButton.disabled = true;
     try {
       const { ok, status, data } = await postJson("/api/hotel/v1/availability/search", { property: DAMOON_PROPERTY_SLUG, checkIn: range.checkIn, checkOut: range.checkOut, occupancy: { adults, children, childAges: validatedAges } });
-      const items = availableOptions(data);
-      if (!ok && status === 503) { flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: ui.holdUnavailable || "Service unavailable right now.", error: true }; renderFlow(); return; }
+      const items = ok ? availableOptions(data) : [];
+      if (!ok) {
+        flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: apiErrorMessage(status, data, locale === "fa" ? "دریافت موجودی ناموفق بود." : locale === "ar" ? "فشل التحقق من التوفر." : "Availability check failed."), error: true };
+        renderFlow();
+        return;
+      }
+      // Successful response with no bookable options is genuine sold-out/unavailable inventory.
       if (!items.length) { flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: locale === "fa" ? "برای این تاریخ اتاقی موجود نیست." : locale === "ar" ? "لا توجد غرف متاحة." : "No rooms available for these dates.", error: true }; renderFlow(); return; }
       flow = { step: "options", options: data?.options || items, selected: null, hold: null, busy: false, message: (locale === "fa" ? "گزینه‌های موجود: " : locale === "ar" ? "الخيارات المتاحة: " : "Available options: ") + items.length, error: false, draftContact: flow.draftContact, policyAccepted: false }; renderFlow();
       slot.querySelector("[data-booking-flow]")?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
     } catch {
-      flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: locale === "fa" ? "خطای شبکه در دریافت موجودی." : "Network error while checking availability.", error: true }; renderFlow();
+      flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: locale === "fa" ? "خطای شبکه در دریافت موجودی. وضعیت نامشخص است؛ دوباره تلاش کنید." : locale === "ar" ? "خطأ في الشبكة أثناء التحقق من التوفر. أعد المحاولة." : "Network error while checking availability. Try again.", error: true }; renderFlow();
     } finally { if (submitButton) submitButton.disabled = false; }
   });
 

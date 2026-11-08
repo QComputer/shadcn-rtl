@@ -146,6 +146,8 @@ export type HotelProperty = {
 }
 
 export type CancellationPolicySet = {
+  /** Internal resource id (not required in public payloads). */
+  readonly id?: string
   readonly key: string
   readonly name: string
   /** Hours before check-in at which free cancellation stops being possible. */

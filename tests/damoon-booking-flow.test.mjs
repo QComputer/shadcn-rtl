@@ -34,14 +34,14 @@ test("availableOptions filters unavailable/malformed options", () => {
   assert.equal(options[0].roomType.slug, "std");
 });
 
-test("buildHoldPayload uses real option, preserves child ages in occupancy, does not invent child names, and includes policy version when present", () => {
+test("buildHoldPayload uses real option, preserves child ages in occupancy, does not invent child names, and includes reviewed quote/policy fields", () => {
   const payload = buildHoldPayload({
     property: "damoon-hotel",
     range: { checkIn: "2027-09-30", checkOut: "2027-10-02" },
     adults: 2,
     children: 1,
     childAges: [7],
-    option: { roomType: { slug: "standard" }, ratePlan: { code: "flex", cancellationPolicy: { key: "flex-24", version: 3 } } },
+    option: { roomType: { slug: "standard" }, ratePlan: { code: "flex", currency: "TOMAN", cancellationPolicy: { key: "flex-24", version: 3 } }, totalRate: 250000 },
     contact: { fullName: "Guest Name", phone: "09120000000" },
   });
   assert.equal(payload.property, "damoon-hotel");
@@ -49,6 +49,8 @@ test("buildHoldPayload uses real option, preserves child ages in occupancy, does
   assert.equal(payload.ratePlan, "flex");
   assert.equal(payload.acceptedCancellationPolicyKey, "flex-24");
   assert.equal(payload.acceptedCancellationPolicyVersion, 3);
+  assert.equal(payload.acceptedTotalRate, "250000");
+  assert.equal(payload.acceptedCurrency, "TOMAN");
   assert.deepEqual(payload.occupancy, { adults: 2, children: 1, childAges: [7] });
   // only primary guest is sent; child ages remain in occupancy (no fabricated dependent names)
   assert.equal(payload.guests.length, 1);
@@ -62,13 +64,14 @@ test("holdAttemptFingerprint is stable for the same attempt and changes for a ge
     property: "damoon-hotel",
     range: { checkIn: "2027-09-30", checkOut: "2027-10-02" },
     adults: 2, children: 1, childAges: [7],
-    option: { roomType: { slug: "standard" }, ratePlan: { code: "flex", cancellationPolicy: { key: "flex-24", version: 3 } } },
+    option: { roomType: { slug: "standard" }, ratePlan: { code: "flex", currency: "TOMAN", cancellationPolicy: { key: "flex-24", version: 3 } }, totalRate: 250000 },
     contact: { fullName: "Guest Name", phone: "09120000000" },
   };
   assert.equal(holdAttemptFingerprint(base), holdAttemptFingerprint({ ...base }));
   assert.notEqual(holdAttemptFingerprint(base), holdAttemptFingerprint({ ...base, childAges: [8] }));
   assert.notEqual(holdAttemptFingerprint(base), holdAttemptFingerprint({ ...base, option: { ...base.option, ratePlan: { ...base.option.ratePlan, code: "nonref" } } }));
-  assert.notEqual(holdAttemptFingerprint(base), holdAttemptFingerprint({ ...base, option: { roomType: { slug: "standard" }, ratePlan: { code: "flex", cancellationPolicy: { key: "flex-24", version: 4 } } } }));
+  assert.notEqual(holdAttemptFingerprint(base), holdAttemptFingerprint({ ...base, option: { ...base.option, ratePlan: { code: "flex", currency: "TOMAN", cancellationPolicy: { key: "flex-24", version: 4 } } } }));
+  assert.notEqual(holdAttemptFingerprint(base), holdAttemptFingerprint({ ...base, option: { ...base.option, totalRate: 260000 } }));
 });
 
 test("policySummary exposes full cancellation terms including tiers, cutoff/retention and penalty basis", () => {

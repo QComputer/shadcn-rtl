@@ -95,6 +95,8 @@ export function holdAttemptFingerprint({ property, range, adults, children, chil
     contact: { fullName: contact?.fullName || "", phone: contact?.phone || "", email: contact?.email || "" },
     acceptedCancellationPolicyKey: policy.key || "",
     acceptedCancellationPolicyVersion: Number.isInteger(policy.version) ? policy.version : null,
+    acceptedTotalRate: option?.totalRate == null ? null : String(option.totalRate),
+    acceptedCurrency: option?.ratePlan?.currency || "",
   });
 }
 
@@ -112,6 +114,8 @@ export function buildHoldPayload({ property, range, adults, children, childAges,
     acceptedCancellationPolicyKey: policy.key || "",
   };
   if (Number.isInteger(policy.version)) payload.acceptedCancellationPolicyVersion = policy.version;
+  if (option?.totalRate != null) payload.acceptedTotalRate = String(option.totalRate);
+  if (option?.ratePlan?.currency) payload.acceptedCurrency = option.ratePlan.currency;
   return payload;
 }
 

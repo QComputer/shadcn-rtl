@@ -13,7 +13,7 @@ const organizations: Record<"a" | "b", { id: string; propertyIds: Record<string,
 let inactiveDomainId = "";
 
 function body(property: string, roomType = "standard", ratePlan = "flex") {
-  return { property, roomType, ratePlan, ...dates, occupancy: { adults: 2, children: 0 }, guests: [{ fullName: "Synthetic Guest", isPrimary: true }], contact: { fullName: "Synthetic Guest", phone: "09120000000" }, acceptedCancellationPolicyKey: "flex" };
+  return { property, roomType, ratePlan, ...dates, occupancy: { adults: 2, children: 0 }, guests: [{ fullName: "Synthetic Guest", isPrimary: true }], contact: { fullName: "Synthetic Guest", phone: "09120000000" }, acceptedCancellationPolicyKey: "flex", acceptedCancellationPolicyVersion: 1, acceptedTotalRate: "250000" };
 }
 
 function request(host: string, key: string, input: ReturnType<typeof body>) {

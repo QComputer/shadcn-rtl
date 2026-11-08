@@ -14,14 +14,29 @@ type SharpInstance = {
   metadata(): Promise<{ format?: string; width?: number; height?: number; orientation?: number; pages?: number; exif?: Buffer; icc?: Buffer; iptc?: Buffer; xmp?: Buffer }>;
   toBuffer(options: { resolveWithObject: true }): Promise<{ data: Buffer; info: { width: number; height: number } }>;
 };
-type SharpModule = { default?: unknown } & Record<string, unknown>;
-type SharpFactory = (input: Buffer, options: { limitInputPixels: number; animated: false }) => SharpInstance;
+async function defaultImportSharpModule(): Promise<SharpModule> {
+  const specifier = "sharp";
+  try {
+    return (await import(/* webpackIgnore: true */ specifier)) as SharpModule;
+  } catch (error) {
+    // Fallback for pnpm/hoisted layouts where sharp is available via Next's runtime deps.
+    try {
+      const { createRequire } = await import(/* webpackIgnore: true */ "node:module");
+      const require = createRequire((await import(/* webpackIgnore: true */ "node:path")).join(process.cwd(), "package.json"));
+      try {
+        return require(require.resolve("sharp")) as SharpModule;
+      } catch {
+        const nextPkg = require.resolve("next/package.json");
+        return createRequire(nextPkg)("sharp") as SharpModule;
+      }
+    } catch {
+      throw error;
+    }
+  }
+}
 
 let sharpPromise: Promise<SharpFactory> | null = null;
-let importSharpModule = (): Promise<SharpModule> => {
-  const specifier = "sharp";
-  return import(/* webpackIgnore: true */ specifier) as Promise<SharpModule>;
-};
+let importSharpModule = (): Promise<SharpModule> => defaultImportSharpModule();
 
 async function loadSharp(): Promise<SharpFactory> {
   if (!sharpPromise) {
@@ -45,10 +60,7 @@ async function loadSharp(): Promise<SharpFactory> {
 
 export function resetRetailSharpLoaderForTests() {
   sharpPromise = null;
-  importSharpModule = (): Promise<SharpModule> => {
-    const specifier = "sharp";
-    return import(/* webpackIgnore: true */ specifier) as Promise<SharpModule>;
-  };
+  importSharpModule = () => defaultImportSharpModule();
 }
 
 export function setRetailSharpImporterForTests(importer: () => Promise<unknown>) {

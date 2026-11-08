@@ -3,13 +3,22 @@ import { prisma } from "@/lib/db-runtime";
 import { createPrismaHotelRepositories } from "@/lib/hotel/persistence/prisma-hotel-repositories";
 import { expireOverdueHolds } from "@/lib/hotel/services/hotel-booking.service";
 
-export async function POST(request: Request) {
-  const secret = request.headers.get("x-cron-secret");
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+function authenticate(request: Request): boolean {
+  // Runflare Cron: GET with Authorization: Bearer <CRON_SECRET>
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    return process.env.CRON_SECRET && token === process.env.CRON_SECRET;
   }
+  // Legacy external scheduler: POST with x-cron-secret header
+  const headerSecret = request.headers.get("x-cron-secret");
+  if (headerSecret) {
+    return process.env.CRON_SECRET && headerSecret === process.env.CRON_SECRET;
+  }
+  return false;
+}
 
-  const now = new Date();
+async function executeExpiration(now: Date) {
   const results: Array<{
     organizationId: string;
     expired: number;
@@ -36,6 +45,38 @@ export async function POST(request: Request) {
       results.push({ organizationId: org.id, expired: 0, skipped: 0, error: message });
     }
   }
+
+  return results;
+}
+
+export async function GET(request: Request) {
+  if (!authenticate(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const now = new Date();
+  const results = await executeExpiration(now);
+
+  const totalExpired = results.reduce((sum, r) => sum + r.expired, 0);
+  const totalSkipped = results.reduce((sum, r) => sum + r.skipped, 0);
+  const hasErrors = results.some((r) => r.error);
+
+  return NextResponse.json({
+    ok: !hasErrors,
+    partial: hasErrors,
+    now: now.toISOString(),
+    totalExpired,
+    totalSkipped,
+    organizations: results.length,
+    results,
+  });
+}
+
+export async function POST(request: Request) {
+  if (!authenticate(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const now = new Date();
+  const results = await executeExpiration(now);
 
   const totalExpired = results.reduce((sum, r) => sum + r.expired, 0);
   const totalSkipped = results.reduce((sum, r) => sum + r.skipped, 0);

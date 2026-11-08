@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { allowsRetailFreeformColor } from "./product-galleries";
 
 export const retailAttributeDefinitionInputSchema = z.object({
   key: z.string().trim().min(1).max(80).regex(/^[a-zA-Z0-9._-]+$/),
@@ -28,9 +29,7 @@ export type RetailAttributeValidationDefinition = Pick<RetailAttributeDefinition
 
 function allowsFreeformColor(definition: RetailAttributeValidationDefinition): boolean {
   if (definition.allowFreeformColor !== undefined) return definition.allowFreeformColor;
-  if (definition.valueType !== "ENUM" || definition.scope !== "VARIANT_OPTION") return false;
-  const text = `${definition.key ?? ""} ${definition.label ?? ""}`;
-  return /colou?r|رنگ|لون/i.test(text);
+  return allowsRetailFreeformColor(definition);
 }
 
 export function validateRetailAttributeValue(definition: RetailAttributeValidationDefinition, value: unknown): ValidatedRetailAttributeValue {

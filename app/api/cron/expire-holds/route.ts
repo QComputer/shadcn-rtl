@@ -10,7 +10,12 @@ export async function POST(request: Request) {
   }
 
   const now = new Date();
-  const results: Array<{ organizationId: string; expired: number; skipped: number }> = [];
+  const results: Array<{
+    organizationId: string;
+    expired: number;
+    skipped: number;
+    error?: string;
+  }> = [];
 
   const organizations = await prisma.organization.findMany({
     where: { vertical: "HOTEL" },
@@ -19,14 +24,31 @@ export async function POST(request: Request) {
 
   for (const org of organizations) {
     const repos = createPrismaHotelRepositories();
-    const result = await expireOverdueHolds(
-      { booking: repos, payments: repos, now: () => now },
-      { scope: { organizationId: org.id }, now, limit: 100 },
-    );
-    results.push({ organizationId: org.id, ...result });
+    try {
+      const result = await expireOverdueHolds(
+        { booking: repos, payments: repos, now: () => now },
+        { scope: { organizationId: org.id }, now, limit: 100 },
+      );
+      results.push({ organizationId: org.id, ...result });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      console.error(`[cron:expire-holds] org=${org.id} error:`, message);
+      results.push({ organizationId: org.id, expired: 0, skipped: 0, error: message });
+    }
   }
 
-  await prisma.$disconnect();
-  return NextResponse.json({ ok: true, now: now.toISOString(), results });
+  const totalExpired = results.reduce((sum, r) => sum + r.expired, 0);
+  const totalSkipped = results.reduce((sum, r) => sum + r.skipped, 0);
+  const hasErrors = results.some((r) => r.error);
+
+  return NextResponse.json({
+    ok: !hasErrors,
+    partial: hasErrors,
+    now: now.toISOString(),
+    totalExpired,
+    totalSkipped,
+    organizations: results.length,
+    results,
+  });
 }
 

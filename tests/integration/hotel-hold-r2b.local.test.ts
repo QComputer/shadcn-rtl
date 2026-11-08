@@ -37,7 +37,7 @@ async function approveResources(org: typeof organizations.a, propertyId: string,
 before(async () => {
   process.env.AI_MEDIA_APPLICATION_STORAGE_ADAPTER = "local-test";
   process.env.HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED = "1";
-  const identity = await prisma.$queryRaw<Array<{ db: string }>>`SELECT current_database() AS db`;
+  const identity = await prisma.$queryRaw<Array<{ db: string }>>`SELECT current_database()::text AS db`;
   assert.equal(identity[0]?.db, EXPECTED_DB);
   for (const key of ["a", "b"] as const) {
     const org = await prisma.organization.create({ data: { name: `R2-B ${key}`, slug: `r2b-${key}-${Date.now()}`, type: "SHOP", vertical: "HOTEL" } });

@@ -1,7 +1,5 @@
 import "server-only";
 
-import { createRequire } from "node:module";
-import path from "node:path";
 import { Prisma } from "@prisma/client";
 import { readTenantDiskImage, usesPersistentMedia } from "@/lib/storage/tenant-image-storage.server";
 
@@ -16,13 +14,46 @@ type SharpInstance = {
   metadata(): Promise<{ format?: string; width?: number; height?: number; orientation?: number; pages?: number; exif?: Buffer; icc?: Buffer; iptc?: Buffer; xmp?: Buffer }>;
   toBuffer(options: { resolveWithObject: true }): Promise<{ data: Buffer; info: { width: number; height: number } }>;
 };
+type SharpModule = { default?: unknown } & Record<string, unknown>;
 type SharpFactory = (input: Buffer, options: { limitInputPixels: number; animated: false }) => SharpInstance;
 
-function loadSharp(): SharpFactory {
-  const localRequire = createRequire(path.join(process.cwd(), "package.json"));
-  const nextPackage = localRequire.resolve("next/package.json");
-  const nextRequire = createRequire(nextPackage);
-  return nextRequire("sharp") as SharpFactory;
+let sharpPromise: Promise<SharpFactory> | null = null;
+let importSharpModule = (): Promise<SharpModule> => {
+  const specifier = "sharp";
+  return import(/* webpackIgnore: true */ specifier) as Promise<SharpModule>;
+};
+
+async function loadSharp(): Promise<SharpFactory> {
+  if (!sharpPromise) {
+    sharpPromise = (async () => {
+      try {
+        const mod = await importSharpModule();
+        const sharp = (mod.default ?? mod) as unknown;
+        if (typeof sharp !== "function") {
+          throw new Error("Retail image processing dependency 'sharp' did not export a factory.");
+        }
+        return sharp as SharpFactory;
+      } catch (error) {
+        sharpPromise = null;
+        const cause = error instanceof Error ? ` ${error.message}` : "";
+        throw new Error(`Retail image processing requires the optional 'sharp' dependency.${cause}`);
+      }
+    })();
+  }
+  return sharpPromise;
+}
+
+export function resetRetailSharpLoaderForTests() {
+  sharpPromise = null;
+  importSharpModule = (): Promise<SharpModule> => {
+    const specifier = "sharp";
+    return import(/* webpackIgnore: true */ specifier) as Promise<SharpModule>;
+  };
+}
+
+export function setRetailSharpImporterForTests(importer: () => Promise<unknown>) {
+  sharpPromise = null;
+  importSharpModule = importer as () => Promise<SharpModule>;
 }
 
 export type StoredImageVariant = { url: string; width: number; height: number; bytes: number };
@@ -30,7 +61,7 @@ export type ImageDerivatives = { version: 1; card: StoredImageVariant[]; detail?
 export type RenderedImageVariant = StoredImageVariant & { buffer: Buffer };
 
 export async function renderRetailImageDerivatives(input: Buffer): Promise<{ card: RenderedImageVariant[]; detail?: RenderedImageVariant }> {
-  const sharp = loadSharp();
+  const sharp = await loadSharp();
   const sourceMetadata = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS, animated: false }).metadata();
   const reusableNativeWebp = sourceMetadata.format === "webp" && sourceMetadata.orientation === undefined
     && (!sourceMetadata.pages || sourceMetadata.pages === 1)

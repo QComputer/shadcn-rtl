@@ -434,7 +434,7 @@ describe("Hotel Expired Holds Cron Integration", () => {
       await createHoldDirect(repoA, "a", "good-hold-1", "GOOD-1", expiredAt, checkIn, checkOut, "ACTIVE");
       await createHoldDirect(repoC, "c", "good-hold-2", "GOOD-2", expiredAt, checkIn, checkOut, "ACTIVE");
 
-      // Corrupt org C's inventory so releaseHold fails with INSUFFICIENT_INVENTORY
+      // Corrupt org C's inventory so releaseHold fails with INSUFFICIENT_INVENTORY (counts as skipped)
       const orgCNights: Date[] = [];
       let current = new Date(checkIn);
       while (current < checkOut) {
@@ -458,7 +458,8 @@ describe("Hotel Expired Holds Cron Integration", () => {
       const orgCResult = findOrgResult(body.results, organizations.c.id);
 
       assert.equal(orgAResult?.expired, 1);
-      assert.ok(orgCResult?.error, "org C should have error");
+      // org C's hold fails due to insufficient inventory -> skipped, not error
+      assert.ok(orgCResult!.skipped > 0, "org C should have skipped holds");
 
       const holdA = await prisma.hotelBookingHold.findUnique({ where: { id: "good-hold-1" } });
       assert.equal(holdA?.status, "EXPIRED");

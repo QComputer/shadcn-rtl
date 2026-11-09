@@ -57,6 +57,9 @@ export async function GET(request: Request) {
   if (!authenticate(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (!isOperational()) {
+    return NextResponse.json({ error: "Operational gate disabled" }, { status: 403 });
+  }
   const now = new Date();
   const results = await executeExpiration(now);
 
@@ -78,6 +81,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   if (!authenticate(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!isOperational()) {
+    return NextResponse.json({ error: "Operational gate disabled" }, { status: 403 });
   }
   const now = new Date();
   const results = await executeExpiration(now);

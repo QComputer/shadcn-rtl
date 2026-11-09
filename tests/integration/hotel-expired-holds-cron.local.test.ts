@@ -371,10 +371,10 @@ describe("Hotel Expired Holds Cron Integration", () => {
       const req = makeCronRequest("GET", `Bearer ${CRON_SECRET}`);
       const res = await GET(req);
       assert.equal(res.status, 200);
-      const body = await res.json();
+      const body = await res.json() as { results: Array<{ organizationId: string; expired: number; error?: string }> };
 
-      const orgAResult = body.results.find((r: any) => r.organizationId === organizations.a.id);
-      const orgBResult = body.results.find((r: any) => r.organizationId === organizations.b.id);
+      const orgAResult = body.results.find((r) => r.organizationId === organizations.a.id);
+      const orgBResult = body.results.find((r) => r.organizationId === organizations.b.id);
 
       assert.equal(orgAResult?.expired, 1);
       assert.ok(orgBResult?.error);

@@ -373,7 +373,15 @@ export class PrismaHotelRepositories
       if (row.status === "CONSUMED") return { isReleased: false as const, reason: "ALREADY_CONSUMED" as const };
       if (row.status !== "ACTIVE") return { isReleased: false as const, reason: "NOT_FOUND" as const };
       const nights = enumerateStayNights(dateOnly(row.checkIn), dateOnly(row.checkOut));
-      for (const date of nights) await tx.hotelInventory.updateMany({ where: { organizationId: scope.organizationId, propertyId: row.propertyId, roomTypeId: row.roomTypeId, date: dateValue(date), held: { gte: row.quantity } }, data: { held: { decrement: row.quantity } } });
+      for (const date of nights) {
+        const updated = await tx.hotelInventory.updateMany({
+          where: { organizationId: scope.organizationId, propertyId: row.propertyId, roomTypeId: row.roomTypeId, date: dateValue(date), held: { gte: row.quantity } },
+          data: { held: { decrement: row.quantity } }
+        });
+        if (updated.count !== 1) {
+          throw new Error(`INSUFFICIENT_INVENTORY: night ${date} affected ${updated.count} rows`);
+        }
+      }
       const updated = await tx.hotelBookingHold.updateMany({ where: { id: row.id, organizationId: scope.organizationId, status: "ACTIVE" }, data: { status: row.expiresAt <= now ? "EXPIRED" : "RELEASED" } });
       return updated.count === 1 ? { isReleased: true as const } : { isReleased: false as const, reason: "NOT_FOUND" as const };
     });

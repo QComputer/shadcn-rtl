@@ -243,7 +243,7 @@ export interface HotelBookingRepository {
 
 export type HoldReleaseResult =
   | { readonly isReleased: true; readonly reason?: undefined }
-  | { readonly isReleased: false; readonly reason: "NOT_FOUND" | "TENANT_MISMATCH" | "ALREADY_CONSUMED" };
+  | { readonly isReleased: false; readonly reason: "NOT_FOUND" | "TENANT_MISMATCH" | "ALREADY_CONSUMED" | "INSUFFICIENT_INVENTORY" };
 
 export type ReservationUpdateResult =
   | {

@@ -410,7 +410,7 @@ describe("Hotel Expired Holds Cron Integration", () => {
       const res = await GET(req);
       assert.equal(res.status, 200);
       const body = await res.json();
-      assert.equal(body.results.length, 2);
+      assert.equal(body.results.length, 3);
 
       const orgAResult = findOrgResult(body.results, organizations.a.id);
       const orgBResult = findOrgResult(body.results, organizations.b.id);
@@ -434,30 +434,34 @@ describe("Hotel Expired Holds Cron Integration", () => {
       await createHoldDirect(repoA, "a", "good-hold-1", "GOOD-1", expiredAt, checkIn, checkOut, "ACTIVE");
       await createHoldDirect(repoC, "c", "good-hold-2", "GOOD-2", expiredAt, checkIn, checkOut, "ACTIVE");
 
-      // Simulate a throwing error for org C by using a custom repository that throws
-      // We'll create a test-specific wrapper that throws during releaseHold
-      const originalReleaseHoldC = repoC.releaseHold.bind(repoC);
-      (repoC as any).releaseHold = async (_scope: unknown, _holdId: string, _now: Date) => {
-        throw new Error("SIMULATED_ORG_C_FAILURE");
-      };
-
-      try {
-        const req = makeCronRequest("GET", `Bearer ${CRON_SECRET}`);
-        const res = await GET(req);
-        assert.equal(res.status, 200);
-        const body = await res.json() as { results: Array<{ organizationId: string; expired: number; skipped: number; error?: string }> };
-
-        const orgAResult = findOrgResult(body.results, organizations.a.id);
-        const orgCResult = findOrgResult(body.results, organizations.c.id);
-
-        assert.equal(orgAResult?.expired, 1);
-        assert.ok(orgCResult?.error, "org C should have error");
-
-        const holdA = await prisma.hotelBookingHold.findUnique({ where: { id: "good-hold-1" } });
-        assert.equal(holdA?.status, "EXPIRED");
-      } finally {
-        (repoC as { releaseHold: typeof repoC.releaseHold }).releaseHold = originalReleaseHoldC;
+      // Corrupt org C's inventory so releaseHold fails with INSUFFICIENT_INVENTORY
+      const orgCNights: Date[] = [];
+      let current = new Date(checkIn);
+      while (current < checkOut) {
+        orgCNights.push(new Date(current));
+        current = addDays(current, 1);
       }
+      const orgCNightStrs = orgCNights.map(dateStr);
+      for (const date of orgCNightStrs) {
+        await prisma.hotelInventory.updateMany({
+          where: { organizationId: organizations.c.id, propertyId: organizations.c.propertyId, roomTypeId: organizations.c.roomTypeId, date: dateValue(date) },
+          data: { held: 0 },
+        });
+      }
+
+      const req = makeCronRequest("GET", `Bearer ${CRON_SECRET}`);
+      const res = await GET(req);
+      assert.equal(res.status, 200);
+      const body = await res.json() as { results: Array<{ organizationId: string; expired: number; skipped: number; error?: string }> };
+
+      const orgAResult = findOrgResult(body.results, organizations.a.id);
+      const orgCResult = findOrgResult(body.results, organizations.c.id);
+
+      assert.equal(orgAResult?.expired, 1);
+      assert.ok(orgCResult?.error, "org C should have error");
+
+      const holdA = await prisma.hotelBookingHold.findUnique({ where: { id: "good-hold-1" } });
+      assert.equal(holdA?.status, "EXPIRED");
     });
   });
 
@@ -494,6 +498,8 @@ describe("Hotel Expired Holds Cron Integration", () => {
   describe("Backlog Handling", () => {
     it("processes more than 100 expired holds with bounded continuation", async () => {
       await clearOrgData("a");
+      // Ensure sufficient allotment for 150 holds x 2 nights
+      await ensureInventory("a", [checkIn, addDays(checkIn, 1)], 200);
 
       const holdCount = 150;
       for (let i = 0; i < holdCount; i++) {
@@ -520,6 +526,8 @@ describe("Hotel Expired Holds Cron Integration", () => {
 
     it("multiple invocations drain backlog completely", async () => {
       await clearOrgData("a");
+      // Ensure sufficient allotment for 150 holds x 2 nights
+      await ensureInventory("a", [checkIn, addDays(checkIn, 1)], 200);
 
       const holdCount = 150;
       for (let i = 0; i < holdCount; i++) {
@@ -621,7 +629,11 @@ describe("Hotel Expired Holds Cron Integration", () => {
       assert.equal(second.isReleased, false);
       assert.equal(second.reason, "NOT_FOUND");
 
-      const inventory = await prisma.hotelInventory.findMany({ where: { organizationId: organizations.a.id }, orderBy: { date: "asc" } });
+      const nightStrs = [dateStr(checkIn), dateStr(addDays(checkIn, 1))];
+      const inventory = await prisma.hotelInventory.findMany({
+        where: { organizationId: organizations.a.id, propertyId: organizations.a.propertyId, roomTypeId: organizations.a.roomTypeId, date: { in: nightStrs.map(dateValue) } },
+        orderBy: { date: "asc" }
+      });
       const held = inventory.map((r) => r.held);
       assert.deepEqual(held, [0, 0]);
     });

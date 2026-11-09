@@ -25,49 +25,6 @@ function dateStr(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-async function createHoldDirect(
-  repo: PrismaHotelRepositories,
-  orgKey: "a" | "b",
-  holdId: string,
-  reference: string,
-  expiresAt: Date,
-  checkIn: Date,
-  checkOut: Date,
-  status: "ACTIVE" | "CONSUMED" | "EXPIRED" | "RELEASED" = "ACTIVE"
-) {
-  const org = organizations[orgKey];
-  const nights: Date[] = [];
-  let current = new Date(checkIn);
-  while (current < checkOut) {
-    nights.push(new Date(current));
-    current = addDays(current, 1);
-  }
-  const nightStrs = nights.map(dateStr);
-  const now = new Date("2028-01-01T00:00:00Z");
-  const hold = {
-    id: holdId,
-    organizationId: org.id,
-    propertyId: org.propertyId,
-    roomTypeId: org.roomTypeId,
-    reference,
-    quantity: 1,
-    checkIn: dateStr(checkIn),
-    checkOut: dateStr(checkOut),
-    nights: nightStrs,
-    expiresAt,
-    status,
-    createdAt: now,
-  };
-  await repo.createHold(hold);
-  for (const date of nightStrs) {
-    await prisma.hotelInventory.updateMany({
-      where: { organizationId: org.id, propertyId: org.propertyId, roomTypeId: org.roomTypeId, date: dateValue(date) },
-      data: { held: { increment: 1 } },
-    });
-  }
-  return hold;
-}
-
 function makeCronRequest(method: "GET" | "POST", authHeader?: string, xCronSecret?: string) {
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (authHeader) headers["authorization"] = authHeader;
@@ -88,18 +45,61 @@ const organizations: Record<"a" | "b", {
   b: { id: "", propertyId: "", roomTypeId: "", ratePlanId: "", policyId: "", adminId: "", domain: "expired-b.local" },
 };
 
+async function createHoldDirect(
+  repo: PrismaHotelRepositories,
+  orgKey: "a" | "b",
+  holdId: string,
+  reference: string,
+  expiresAt: Date,
+  checkIn: Date,
+  checkOut: Date,
+  status: "ACTIVE" | "CONSUMED" | "EXPIRED" | "RELEASED" = "ACTIVE"
+) {
+  const org = organizations[orgKey];
+  const nights: Date[] = [];
+  let current = new Date(checkIn);
+  while (current < checkOut) {
+    nights.push(new Date(current));
+    current = addDays(current, 1);
+  }
+  const nightStrs = nights.map(dateStr);
+  const createdAt = new Date("2028-01-01T00:00:00Z");
+  const hold = {
+    id: holdId,
+    organizationId: org.id,
+    propertyId: org.propertyId,
+    roomTypeId: org.roomTypeId,
+    reference,
+    quantity: 1,
+    checkIn: dateStr(checkIn),
+    checkOut: dateStr(checkOut),
+    nights: nightStrs,
+    expiresAt,
+    status,
+    createdAt,
+  };
+  await repo.createHold(hold);
+  for (const date of nightStrs) {
+    await prisma.hotelInventory.updateMany({
+      where: { organizationId: org.id, propertyId: org.propertyId, roomTypeId: org.roomTypeId, date: dateValue(date) },
+      data: { held: { increment: 1 } },
+    });
+  }
+  return hold;
+}
+
 describe("Hotel Expired Holds Cron Integration", () => {
   let repoA: PrismaHotelRepositories;
   let repoB: PrismaHotelRepositories;
-  const testNow = new Date("2028-01-01T12:00:00Z");
-  const checkIn = new Date("2028-01-10T00:00:00Z");
-  const checkOut = new Date("2028-01-12T00:00:00Z");
-  const expiredAt = new Date("2027-12-31T23:00:00Z");
-  const futureAt = addDays(testNow, 10);
+
+  const testBase = new Date();
+  const checkIn = addDays(testBase, 5);
+  const checkOut = addDays(testBase, 7);
+  const expiredAt = addDays(testBase, -2);
+  const futureAt = addDays(testBase, 10);
 
   before(async () => {
     process.env.CRON_SECRET = CRON_SECRET;
-    process.env.HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED = "1";
     process.env.HOTEL_CRON_SCHEDULER_ENABLED = "1";
 
     const identity = await prisma.$queryRaw<Array<{ db: string }>>`SELECT current_database()::text AS db`;
@@ -165,7 +165,6 @@ describe("Hotel Expired Holds Cron Integration", () => {
       await prisma.organization.delete({ where: { id } });
     }
     delete process.env.CRON_SECRET;
-    delete process.env.HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED;
     delete process.env.HOTEL_CRON_SCHEDULER_ENABLED;
     await prisma.$disconnect();
   });
@@ -415,8 +414,8 @@ describe("Hotel Expired Holds Cron Integration", () => {
       await prisma.hotelBookingHold.deleteMany({ where: { organizationId: organizations.a.id } });
       await prisma.hotelInventory.updateMany({ where: { organizationId: organizations.a.id }, data: { held: 0 } });
 
-      const longCheckIn = new Date("2028-01-10T00:00:00Z");
-      const longCheckOut = new Date("2028-01-15T00:00:00Z");
+      const longCheckIn = addDays(testBase, 5);
+      const longCheckOut = addDays(testBase, 10);
       const longNights: Date[] = [];
       let current = new Date(longCheckIn);
       while (current < longCheckOut) {
@@ -462,12 +461,42 @@ describe("Hotel Expired Holds Cron Integration", () => {
       assert.ok(body.results[0].expired >= 100);
       assert.ok(body.results[0].expired <= holdCount);
 
-      const remainingActive = await prisma.hotelBookingHold.count({ where: { organizationId: organizations.a.id, status: "ACTIVE", expiresAt: { lte: testNow } } });
+      const remainingActive = await prisma.hotelBookingHold.count({ where: { organizationId: organizations.a.id, status: "ACTIVE", expiresAt: { lte: new Date() } } });
       assert.equal(remainingActive, holdCount - body.results[0].expired);
 
       const inventory = await prisma.hotelInventory.findMany({ where: { organizationId: organizations.a.id }, orderBy: { date: "asc" } });
       const totalHeld = inventory.reduce((sum, r) => sum + r.held, 0);
       assert.equal(totalHeld, remainingActive * 2);
+    });
+
+    it("multiple invocations drain backlog completely", async () => {
+      await prisma.hotelBookingHold.deleteMany({ where: { organizationId: organizations.a.id } });
+      await prisma.hotelInventory.updateMany({ where: { organizationId: organizations.a.id }, data: { held: 0 } });
+
+      const holdCount = 150;
+      for (let i = 0; i < holdCount; i++) {
+        const holdId = `drain-hold-${i}`;
+        await createHoldDirect(repoA, "a", holdId, `DRAIN-${i}`, expiredAt, checkIn, checkOut, "ACTIVE");
+      }
+
+      let totalExpired = 0;
+      for (let i = 0; i < 3; i++) {
+        const req = makeCronRequest("GET", `Bearer ${CRON_SECRET}`);
+        const res = await GET(req);
+        assert.equal(res.status, 200);
+        const body = await res.json();
+        totalExpired += body.results[0].expired;
+        if (body.results[0].expired === 0) break;
+      }
+
+      assert.equal(totalExpired, holdCount);
+
+      const remainingActive = await prisma.hotelBookingHold.count({ where: { organizationId: organizations.a.id, status: "ACTIVE", expiresAt: { lte: new Date() } } });
+      assert.equal(remainingActive, 0);
+
+      const inventory = await prisma.hotelInventory.findMany({ where: { organizationId: organizations.a.id }, orderBy: { date: "asc" } });
+      const totalHeld = inventory.reduce((sum, r) => sum + r.held, 0);
+      assert.equal(totalHeld, 0);
     });
   });
 
@@ -481,12 +510,53 @@ describe("Hotel Expired Holds Cron Integration", () => {
 
       await prisma.hotelInventory.updateMany({ where: { organizationId: organizations.a.id }, data: { held: 0 } });
 
-      const released = await repoA.releaseHold({ organizationId: organizations.a.id }, holdId, testNow);
+      const released = await repoA.releaseHold({ organizationId: organizations.a.id }, holdId, new Date());
       assert.equal(released.isReleased, false);
       assert.equal(released.reason, "INSUFFICIENT_INVENTORY");
 
       const hold = await prisma.hotelBookingHold.findUnique({ where: { id: holdId } });
       assert.equal(hold?.status, "ACTIVE");
+    });
+
+    it("rolls back first night decrement when second night fails", async () => {
+      await prisma.hotelBookingHold.deleteMany({ where: { organizationId: organizations.a.id } });
+      await prisma.hotelInventory.updateMany({ where: { organizationId: organizations.a.id }, data: { held: 0 } });
+
+      const longCheckIn = addDays(testBase, 5);
+      const longCheckOut = addDays(testBase, 8);
+      const longNights: Date[] = [];
+      let current = new Date(longCheckIn);
+      while (current < longCheckOut) {
+        longNights.push(new Date(current));
+        current = addDays(current, 1);
+      }
+      const longNightStrs = longNights.map(dateStr);
+
+      await prisma.hotelInventory.createMany({
+        data: longNightStrs.map((date) => ({ organizationId: organizations.a.id, propertyId: organizations.a.propertyId, roomTypeId: organizations.a.roomTypeId, date: dateValue(date), allotment: 5 })),
+      });
+
+      const holdId = "rollback-test-hold";
+      await createHoldDirect(repoA, "a", holdId, "ROLLBACK-1", expiredAt, longCheckIn, longCheckOut, "ACTIVE");
+
+      await prisma.hotelInventory.updateMany({
+        where: { organizationId: organizations.a.id, propertyId: organizations.a.propertyId, roomTypeId: organizations.a.roomTypeId, date: dateValue(longNightStrs[1]) },
+        data: { held: 0 },
+      });
+
+      const released = await repoA.releaseHold({ organizationId: organizations.a.id }, holdId, new Date());
+      assert.equal(released.isReleased, false);
+      assert.equal(released.reason, "INSUFFICIENT_INVENTORY");
+
+      const hold = await prisma.hotelBookingHold.findUnique({ where: { id: holdId } });
+      assert.equal(hold?.status, "ACTIVE");
+
+      const inventory = await prisma.hotelInventory.findMany({
+        where: { organizationId: organizations.a.id, propertyId: organizations.a.propertyId, roomTypeId: organizations.a.roomTypeId, date: { in: longNightStrs.map(dateValue) } },
+        orderBy: { date: "asc" }
+      });
+      const held = inventory.map((r) => r.held);
+      assert.deepEqual(held, [1, 1, 1]);
     });
 
     it("releasing already-released hold returns NOT_FOUND and does not decrement", async () => {
@@ -496,10 +566,10 @@ describe("Hotel Expired Holds Cron Integration", () => {
       const holdId = "double-release-hold";
       await createHoldDirect(repoA, "a", holdId, "DBL-REL-1", expiredAt, checkIn, checkOut, "ACTIVE");
 
-      const first = await repoA.releaseHold({ organizationId: organizations.a.id }, holdId, testNow);
+      const first = await repoA.releaseHold({ organizationId: organizations.a.id }, holdId, new Date());
       assert.equal(first.isReleased, true);
 
-      const second = await repoA.releaseHold({ organizationId: organizations.a.id }, holdId, testNow);
+      const second = await repoA.releaseHold({ organizationId: organizations.a.id }, holdId, new Date());
       assert.equal(second.isReleased, false);
       assert.equal(second.reason, "NOT_FOUND");
 
@@ -512,7 +582,6 @@ describe("Hotel Expired Holds Cron Integration", () => {
   describe("Scheduler Gate", () => {
     it("returns 403 when HOTEL_CRON_SCHEDULER_ENABLED is not set", async () => {
       delete process.env.HOTEL_CRON_SCHEDULER_ENABLED;
-      process.env.HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED = "1";
 
       const req = makeCronRequest("GET", `Bearer ${CRON_SECRET}`);
       const res = await GET(req);
@@ -521,20 +590,9 @@ describe("Hotel Expired Holds Cron Integration", () => {
       assert.equal(body.error, "Scheduler disabled");
     });
 
-    it("returns 403 when HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED is not set but scheduler is", async () => {
+    it("allows execution when HOTEL_CRON_SCHEDULER_ENABLED=1 alone", async () => {
       process.env.HOTEL_CRON_SCHEDULER_ENABLED = "1";
       delete process.env.HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED;
-
-      const req = makeCronRequest("GET", `Bearer ${CRON_SECRET}`);
-      const res = await GET(req);
-      assert.equal(res.status, 403);
-      const body = await res.json();
-      assert.equal(body.error, "Scheduler disabled");
-    });
-
-    it("allows execution when both gates are enabled", async () => {
-      process.env.HOTEL_CRON_SCHEDULER_ENABLED = "1";
-      process.env.HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED = "1";
 
       await prisma.hotelBookingHold.deleteMany({ where: { organizationId: organizations.a.id } });
       await prisma.hotelInventory.updateMany({ where: { organizationId: organizations.a.id }, data: { held: 0 } });

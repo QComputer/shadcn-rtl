@@ -18,10 +18,6 @@ function authenticate(request: Request): boolean {
   return false;
 }
 
-function isOperational(): boolean {
-  return process.env.HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED === "1";
-}
-
 function isSchedulerEnabled(): boolean {
   return process.env.HOTEL_CRON_SCHEDULER_ENABLED === "1";
 }
@@ -61,7 +57,7 @@ export async function GET(request: Request) {
   if (!authenticate(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!isOperational() || !isSchedulerEnabled()) {
+  if (!isSchedulerEnabled()) {
     return NextResponse.json({ error: "Scheduler disabled" }, { status: 403 });
   }
   const now = new Date();
@@ -86,7 +82,7 @@ export async function POST(request: Request) {
   if (!authenticate(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!isOperational() || !isSchedulerEnabled()) {
+  if (!isSchedulerEnabled()) {
     return NextResponse.json({ error: "Scheduler disabled" }, { status: 403 });
   }
   const now = new Date();

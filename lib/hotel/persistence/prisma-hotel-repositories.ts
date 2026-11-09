@@ -366,25 +366,32 @@ export class PrismaHotelRepositories
   async listExpiredActiveHolds(scope: TenantScope, input: { propertyId?: string; now: Date; limit: number }): Promise<readonly HoldRecord[]> { const rows = await this.client.hotelBookingHold.findMany({ where: { organizationId: scope.organizationId, ...(input.propertyId ? { propertyId: input.propertyId } : {}), status: "ACTIVE", expiresAt: { lte: input.now } }, orderBy: { expiresAt: "asc" }, take: Math.max(1, Math.min(input.limit, 500)) }); return rows.map(hold); }
 
   async releaseHold(scope: TenantScope, holdId: string, now: Date): Promise<HoldReleaseResult> {
-    return this.client.$transaction(async (tx) => {
-      await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelBookingHold" WHERE "id" = ${holdId} AND "organizationId" = ${scope.organizationId} FOR UPDATE`);
-      const row = await tx.hotelBookingHold.findFirst({ where: { id: holdId, organizationId: scope.organizationId }, });
-      if (!row) return { isReleased: false as const, reason: "NOT_FOUND" as const };
-      if (row.status === "CONSUMED") return { isReleased: false as const, reason: "ALREADY_CONSUMED" as const };
-      if (row.status !== "ACTIVE") return { isReleased: false as const, reason: "NOT_FOUND" as const };
-      const nights = enumerateStayNights(dateOnly(row.checkIn), dateOnly(row.checkOut));
-      for (const date of nights) {
-        const updated = await tx.hotelInventory.updateMany({
-          where: { organizationId: scope.organizationId, propertyId: row.propertyId, roomTypeId: row.roomTypeId, date: dateValue(date), held: { gte: row.quantity } },
-          data: { held: { decrement: row.quantity } }
-        });
-        if (updated.count !== 1) {
-          throw new Error(`INSUFFICIENT_INVENTORY: night ${date} affected ${updated.count} rows`);
+    try {
+      return await this.client.$transaction(async (tx) => {
+        await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelBookingHold" WHERE "id" = ${holdId} AND "organizationId" = ${scope.organizationId} FOR UPDATE`);
+        const row = await tx.hotelBookingHold.findFirst({ where: { id: holdId, organizationId: scope.organizationId }, });
+        if (!row) return { isReleased: false as const, reason: "NOT_FOUND" as const };
+        if (row.status === "CONSUMED") return { isReleased: false as const, reason: "ALREADY_CONSUMED" as const };
+        if (row.status !== "ACTIVE") return { isReleased: false as const, reason: "NOT_FOUND" as const };
+        const nights = enumerateStayNights(dateOnly(row.checkIn), dateOnly(row.checkOut));
+        for (const date of nights) {
+          const updated = await tx.hotelInventory.updateMany({
+            where: { organizationId: scope.organizationId, propertyId: row.propertyId, roomTypeId: row.roomTypeId, date: dateValue(date), held: { gte: row.quantity } },
+            data: { held: { decrement: row.quantity } }
+          });
+          if (updated.count !== 1) {
+            throw new Error(`INSUFFICIENT_INVENTORY: night ${date} affected ${updated.count} rows`);
+          }
         }
+        const updated = await tx.hotelBookingHold.updateMany({ where: { id: row.id, organizationId: scope.organizationId, status: "ACTIVE" }, data: { status: row.expiresAt <= now ? "EXPIRED" : "RELEASED" } });
+        return updated.count === 1 ? { isReleased: true as const } : { isReleased: false as const, reason: "NOT_FOUND" as const };
+      });
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith("INSUFFICIENT_INVENTORY")) {
+        return { isReleased: false as const, reason: "INSUFFICIENT_INVENTORY" as const };
       }
-      const updated = await tx.hotelBookingHold.updateMany({ where: { id: row.id, organizationId: scope.organizationId, status: "ACTIVE" }, data: { status: row.expiresAt <= now ? "EXPIRED" : "RELEASED" } });
-      return updated.count === 1 ? { isReleased: true as const } : { isReleased: false as const, reason: "NOT_FOUND" as const };
-    });
+      throw err;
+    }
   }
 
   async createReservation(record: ReservationRecord): Promise<ReservationRecord> {

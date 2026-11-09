@@ -18,6 +18,10 @@ function authenticate(request: Request): boolean {
   return false;
 }
 
+function isOperational(): boolean {
+  return process.env.HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED === "1";
+}
+
 async function executeExpiration(now: Date) {
   const results: Array<{
     organizationId: string;

@@ -1,0 +1,62 @@
+name: Hotel Expired Holds Cron — PostgreSQL Acceptance
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hotel-expired-holds-cron-pg-acceptance
+  cancel-in-progress: false
+
+jobs:
+  expired-holds-cron-pg-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: bazarbaaz_hotel_expired_holds_verify
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test_user -d bazarbaaz_hotel_expired_holds_verify"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://test_user:test_password@127.0.0.1:5432/bazarbaaz_hotel_expired_holds_verify?schema=public
+      DIRECT_URL: postgresql://test_user:test_password@127.0.0.1:5432/bazarbaaz_hotel_expired_holds_verify?schema=public
+      HOTEL_EXPIRED_HOLDS_TEST_DATABASE: bazarbaaz_hotel_expired_holds_verify
+      DATABASE_RUNTIME_ADAPTER: postgresql
+      CRON_SECRET: test-cron-secret-verify-123
+      HOTEL_CRON_SCHEDULER_ENABLED: "1"
+      HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED: "0"
+      AI_MEDIA_APPLICATION_STORAGE_ADAPTER: local-test
+      LOCAL_PRISMA_EXPECTED_PORT: "5432"
+      LOCAL_BASELINE_BOOTSTRAP_DISPOSABLE: "true"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma validate
+      - run: pnpm exec prisma generate
+      - name: Run Prisma migrations
+        run: pnpm exec prisma migrate deploy
+      - name: Run expired-holds cron integration tests
+        run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-expired-holds-cron.local.test.ts

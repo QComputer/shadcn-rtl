@@ -108,6 +108,22 @@ async function resetInventory(orgKey: "a" | "b" | "c") {
   await prisma.hotelInventory.updateMany({ where: { organizationId: org.id }, data: { held: 0 } });
 }
 
+async function clearOrgData(orgKey: "a" | "b" | "c") {
+  const org = organizations[orgKey];
+  await prisma.hotelBookingHold.deleteMany({ where: { organizationId: org.id } });
+  await resetInventory(orgKey);
+}
+
+async function clearAllOrgData() {
+  await clearOrgData("a");
+  await clearOrgData("b");
+  await clearOrgData("c");
+}
+
+function findOrgResult(results: Array<{ organizationId: string; expired: number; skipped: number; error?: string }>, orgId: string) {
+  return results.find((r) => r.organizationId === orgId);
+}
+
 describe("Hotel Expired Holds Cron Integration", () => {
   let repoA: PrismaHotelRepositories;
   let repoB: PrismaHotelRepositories;
@@ -246,8 +262,7 @@ describe("Hotel Expired Holds Cron Integration", () => {
 
   describe("Expired Hold Release", () => {
     it("releases expired ACTIVE holds and restores inventory", async () => {
-      await prisma.hotelBookingHold.deleteMany({ where: { organizationId: organizations.a.id } });
-      await resetInventory("a");
+      await clearOrgData("a");
 
       await createHoldDirect(repoA, "a", "expired-hold-1", "EXP-1", expiredAt, checkIn, checkOut, "ACTIVE");
 
@@ -258,8 +273,9 @@ describe("Hotel Expired Holds Cron Integration", () => {
       const res = await GET(req);
       assert.equal(res.status, 200);
       const body = await res.json();
-      assert.equal(body.results[0].expired, 1);
-      assert.equal(body.results[0].skipped, 0);
+      const orgAResult = findOrgResult(body.results, organizations.a.id);
+      assert.equal(orgAResult?.expired, 1);
+      assert.equal(orgAResult?.skipped, 0);
 
       const hold = await prisma.hotelBookingHold.findUnique({ where: { id: "expired-hold-1" } });
       assert.equal(hold?.status, "EXPIRED");
@@ -270,8 +286,7 @@ describe("Hotel Expired Holds Cron Integration", () => {
     });
 
     it("skips nonexpired ACTIVE holds (not in expired list)", async () => {
-      await prisma.hotelBookingHold.deleteMany({ where: { organizationId: organizations.a.id } });
-      await resetInventory("a");
+      await clearOrgData("a");
 
       await createHoldDirect(repoA, "a", "nonexpired-hold-1", "NONEXP-1", futureAt, checkIn, checkOut, "ACTIVE");
 
@@ -279,16 +294,16 @@ describe("Hotel Expired Holds Cron Integration", () => {
       const res = await GET(req);
       assert.equal(res.status, 200);
       const body = await res.json();
-      assert.equal(body.results[0].expired, 0);
-      assert.equal(body.results[0].skipped, 0);
+      const orgAResult = findOrgResult(body.results, organizations.a.id);
+      assert.equal(orgAResult?.expired, 0);
+      assert.equal(orgAResult?.skipped, 0);
 
       const hold = await prisma.hotelBookingHold.findUnique({ where: { id: "nonexpired-hold-1" } });
       assert.equal(hold?.status, "ACTIVE");
     });
 
     it("skips CONSUMED holds (not in expired list)", async () => {
-      await prisma.hotelBookingHold.deleteMany({ where: { organizationId: organizations.a.id } });
-      await resetInventory("a");
+      await clearOrgData("a");
 
       await createHoldDirect(repoA, "a", "consumed-hold-1", "CONS-1", expiredAt, checkIn, checkOut, "CONSUMED");
 
@@ -296,16 +311,16 @@ describe("Hotel Expired Holds Cron Integration", () => {
       const res = await GET(req);
       assert.equal(res.status, 200);
       const body = await res.json();
-      assert.equal(body.results[0].expired, 0);
-      assert.equal(body.results[0].skipped, 0);
+      const orgAResult = findOrgResult(body.results, organizations.a.id);
+      assert.equal(orgAResult?.expired, 0);
+      assert.equal(orgAResult?.skipped, 0);
 
       const hold = await prisma.hotelBookingHold.findUnique({ where: { id: "consumed-hold-1" } });
       assert.equal(hold?.status, "CONSUMED");
     });
 
     it("skips previously RELEASED holds (not in expired list)", async () => {
-      await prisma.hotelBookingHold.deleteMany({ where: { organizationId: organizations.a.id } });
-      await resetInventory("a");
+      await clearOrgData("a");
 
       await createHoldDirect(repoA, "a", "released-hold-1", "REL-1", expiredAt, checkIn, checkOut, "RELEASED");
 
@@ -313,16 +328,16 @@ describe("Hotel Expired Holds Cron Integration", () => {
       const res = await GET(req);
       assert.equal(res.status, 200);
       const body = await res.json();
-      assert.equal(body.results[0].expired, 0);
-      assert.equal(body.results[0].skipped, 0);
+      const orgAResult = findOrgResult(body.results, organizations.a.id);
+      assert.equal(orgAResult?.expired, 0);
+      assert.equal(orgAResult?.skipped, 0);
 
       const hold = await prisma.hotelBookingHold.findUnique({ where: { id: "released-hold-1" } });
       assert.equal(hold?.status, "RELEASED");
     });
 
     it("skips already EXPIRED holds (not in expired list)", async () => {
-      await prisma.hotelBookingHold.deleteMany({ where: { organizationId: organizations.a.id } });
-      await resetInventory("a");
+      await clearOrgData("a");
 
       await createHoldDirect(repoA, "a", "already-expired-1", "ALREXP-1", expiredAt, checkIn, checkOut, "EXPIRED");
 
@@ -330,8 +345,9 @@ describe("Hotel Expired Holds Cron Integration", () => {
       const res = await GET(req);
       assert.equal(res.status, 200);
       const body = await res.json();
-      assert.equal(body.results[0].expired, 0);
-      assert.equal(body.results[0].skipped, 0);
+      const orgAResult = findOrgResult(body.results, organizations.a.id);
+      assert.equal(orgAResult?.expired, 0);
+      assert.equal(orgAResult?.skipped, 0);
 
       const hold = await prisma.hotelBookingHold.findUnique({ where: { id: "already-expired-1" } });
       assert.equal(hold?.status, "EXPIRED");
@@ -340,8 +356,7 @@ describe("Hotel Expired Holds Cron Integration", () => {
 
   describe("Idempotency and Concurrency", () => {
     it("repeated invocation does not double-decrement inventory", async () => {
-      await prisma.hotelBookingHold.deleteMany({ where: { organizationId: organizations.a.id } });
-      await resetInventory("a");
+      await clearOrgData("a");
 
       await createHoldDirect(repoA, "a", "idempotent-hold-1", "IDEMP-1", expiredAt, checkIn, checkOut, "ACTIVE");
 
@@ -358,8 +373,7 @@ describe("Hotel Expired Holds Cron Integration", () => {
     });
 
     it("concurrent invocations do not double-decrement inventory", async () => {
-      await prisma.hotelBookingHold.deleteMany({ where: { organizationId: organizations.a.id } });
-      await resetInventory("a");
+      await clearOrgData("a");
 
       await createHoldDirect(repoA, "a", "concurrent-hold-1", "CONC-1", expiredAt, checkIn, checkOut, "ACTIVE");
       await createHoldDirect(repoA, "a", "concurrent-hold-2", "CONC-2", expiredAt, checkIn, checkOut, "ACTIVE");
@@ -379,8 +393,7 @@ describe("Hotel Expired Holds Cron Integration", () => {
 
   describe("Multi-Tenant Isolation", () => {
     it("two organizations remain strictly isolated", async () => {
-      await prisma.hotelBookingHold.deleteMany({});
-      await prisma.hotelInventory.updateMany({ data: { held: 0 } });
+      await clearAllOrgData();
 
       await createHoldDirect(repoA, "a", "org-a-hold-1", "ORGA-1", expiredAt, checkIn, checkOut, "ACTIVE");
       await createHoldDirect(repoB, "b", "org-b-hold-1", "ORGB-1", expiredAt, checkIn, checkOut, "ACTIVE");
@@ -390,8 +403,11 @@ describe("Hotel Expired Holds Cron Integration", () => {
       assert.equal(res.status, 200);
       const body = await res.json();
       assert.equal(body.results.length, 2);
-      assert.equal(body.results[0].expired, 1);
-      assert.equal(body.results[1].expired, 1);
+
+      const orgAResult = findOrgResult(body.results, organizations.a.id);
+      const orgBResult = findOrgResult(body.results, organizations.b.id);
+      assert.equal(orgAResult?.expired, 1);
+      assert.equal(orgBResult?.expired, 1);
 
       const holdA = await prisma.hotelBookingHold.findUnique({ where: { id: "org-a-hold-1" } });
       const holdB = await prisma.hotelBookingHold.findUnique({ where: { id: "org-b-hold-1" } });
@@ -405,39 +421,41 @@ describe("Hotel Expired Holds Cron Integration", () => {
     });
 
     it("failed organization does not prevent processing others", async () => {
-      await prisma.hotelBookingHold.deleteMany({});
-      await prisma.hotelInventory.updateMany({ data: { held: 0 } });
+      await clearAllOrgData();
 
       await createHoldDirect(repoA, "a", "good-hold-1", "GOOD-1", expiredAt, checkIn, checkOut, "ACTIVE");
       await createHoldDirect(repoC, "c", "good-hold-2", "GOOD-2", expiredAt, checkIn, checkOut, "ACTIVE");
 
-      // Simulate a failure by setting a property on org C that will cause an error
-      // We'll use a custom error by making the rate plan invalid
-      await prisma.hotelRatePlan.updateMany({
-        where: { organizationId: organizations.c.id },
-        data: { cancellationPolicyId: null },
-      });
+      // Simulate a throwing error for org C by using a custom repository that throws
+      // We'll create a test-specific wrapper that throws during releaseHold
+      const originalReleaseHoldC = repoC.releaseHold.bind(repoC);
+      (repoC as any).releaseHold = async (_scope: unknown, _holdId: string, _now: Date) => {
+        throw new Error("SIMULATED_ORG_C_FAILURE");
+      };
 
-      const req = makeCronRequest("GET", `Bearer ${CRON_SECRET}`);
-      const res = await GET(req);
-      assert.equal(res.status, 200);
-      const body = await res.json() as { results: Array<{ organizationId: string; expired: number; error?: string }> };
+      try {
+        const req = makeCronRequest("GET", `Bearer ${CRON_SECRET}`);
+        const res = await GET(req);
+        assert.equal(res.status, 200);
+        const body = await res.json() as { results: Array<{ organizationId: string; expired: number; skipped: number; error?: string }> };
 
-      const orgAResult = body.results.find((r) => r.organizationId === organizations.a.id);
-      const orgCResult = body.results.find((r) => r.organizationId === organizations.c.id);
+        const orgAResult = findOrgResult(body.results, organizations.a.id);
+        const orgCResult = findOrgResult(body.results, organizations.c.id);
 
-      assert.equal(orgAResult?.expired, 1);
-      assert.ok(orgCResult?.error);
+        assert.equal(orgAResult?.expired, 1);
+        assert.ok(orgCResult?.error, "org C should have error");
 
-      const holdA = await prisma.hotelBookingHold.findUnique({ where: { id: "good-hold-1" } });
-      assert.equal(holdA?.status, "EXPIRED");
+        const holdA = await prisma.hotelBookingHold.findUnique({ where: { id: "good-hold-1" } });
+        assert.equal(holdA?.status, "EXPIRED");
+      } finally {
+        (repoC as { releaseHold: typeof repoC.releaseHold }).releaseHold = originalReleaseHoldC;
+      }
     });
   });
 
   describe("Multiple-Night Consistency", () => {
     it("releases inventory for all nights of a multi-night stay", async () => {
-      await prisma.hotelBookingHold.deleteMany({ where: { organizationId: organizations.a.id } });
-      await resetInventory("a");
+      await clearOrgData("a");
 
       const longCheckIn = addDays(testBase, 5);
       const longCheckOut = addDays(testBase, 10);
@@ -456,7 +474,8 @@ describe("Hotel Expired Holds Cron Integration", () => {
       const res = await GET(req);
       assert.equal(res.status, 200);
       const body = await res.json();
-      assert.equal(body.results[0].expired, 1);
+      const orgAResult = findOrgResult(body.results, organizations.a.id);
+      assert.equal(orgAResult?.expired, 1);
 
       const inventory = await prisma.hotelInventory.findMany({ where: { organizationId: organizations.a.id, propertyId: organizations.a.propertyId, roomTypeId: organizations.a.roomTypeId }, orderBy: { date: "asc" } });
       const held = inventory.map((r) => r.held);
@@ -466,8 +485,7 @@ describe("Hotel Expired Holds Cron Integration", () => {
 
   describe("Backlog Handling", () => {
     it("processes more than 100 expired holds with bounded continuation", async () => {
-      await prisma.hotelBookingHold.deleteMany({ where: { organizationId: organizations.a.id } });
-      await resetInventory("a");
+      await clearOrgData("a");
 
       const holdCount = 150;
       for (let i = 0; i < holdCount; i++) {
@@ -479,12 +497,13 @@ describe("Hotel Expired Holds Cron Integration", () => {
       const res = await GET(req);
       assert.equal(res.status, 200);
       const body = await res.json();
+      const orgAResult = findOrgResult(body.results, organizations.a.id);
 
-      assert.ok(body.results[0].expired >= 100);
-      assert.ok(body.results[0].expired <= holdCount);
+      assert.ok(orgAResult!.expired >= 100);
+      assert.ok(orgAResult!.expired <= holdCount);
 
       const remainingActive = await prisma.hotelBookingHold.count({ where: { organizationId: organizations.a.id, status: "ACTIVE", expiresAt: { lte: new Date() } } });
-      assert.equal(remainingActive, holdCount - body.results[0].expired);
+      assert.equal(remainingActive, holdCount - orgAResult!.expired);
 
       const inventory = await prisma.hotelInventory.findMany({ where: { organizationId: organizations.a.id }, orderBy: { date: "asc" } });
       const totalHeld = inventory.reduce((sum, r) => sum + r.held, 0);
@@ -492,8 +511,7 @@ describe("Hotel Expired Holds Cron Integration", () => {
     });
 
     it("multiple invocations drain backlog completely", async () => {
-      await prisma.hotelBookingHold.deleteMany({ where: { organizationId: organizations.a.id } });
-      await resetInventory("a");
+      await clearOrgData("a");
 
       const holdCount = 150;
       for (let i = 0; i < holdCount; i++) {
@@ -507,8 +525,9 @@ describe("Hotel Expired Holds Cron Integration", () => {
         const res = await GET(req);
         assert.equal(res.status, 200);
         const body = await res.json();
-        totalExpired += body.results[0].expired;
-        if (body.results[0].expired === 0) break;
+        const orgAResult = findOrgResult(body.results, organizations.a.id);
+        totalExpired += orgAResult!.expired;
+        if (orgAResult!.expired === 0) break;
       }
 
       assert.equal(totalExpired, holdCount);
@@ -524,8 +543,7 @@ describe("Hotel Expired Holds Cron Integration", () => {
 
   describe("releaseHold Consistency", () => {
     it("fails when inventory held is insufficient (zero affected rows)", async () => {
-      await prisma.hotelBookingHold.deleteMany({ where: { organizationId: organizations.a.id } });
-      await resetInventory("a");
+      await clearOrgData("a");
 
       const holdId = "consistency-check-hold";
       await createHoldDirect(repoA, "a", holdId, "CONSIST-1", expiredAt, checkIn, checkOut, "ACTIVE");
@@ -541,8 +559,7 @@ describe("Hotel Expired Holds Cron Integration", () => {
     });
 
     it("rolls back first night decrement when second night fails", async () => {
-      await prisma.hotelBookingHold.deleteMany({ where: { organizationId: organizations.a.id } });
-      await resetInventory("a");
+      await clearOrgData("a");
 
       const longCheckIn = addDays(testBase, 5);
       const longCheckOut = addDays(testBase, 8);
@@ -584,8 +601,7 @@ describe("Hotel Expired Holds Cron Integration", () => {
     });
 
     it("releasing already-released hold returns NOT_FOUND and does not decrement", async () => {
-      await prisma.hotelBookingHold.deleteMany({ where: { organizationId: organizations.a.id } });
-      await resetInventory("a");
+      await clearOrgData("a");
 
       const holdId = "double-release-hold";
       await createHoldDirect(repoA, "a", holdId, "DBL-REL-1", expiredAt, checkIn, checkOut, "ACTIVE");
@@ -618,8 +634,7 @@ describe("Hotel Expired Holds Cron Integration", () => {
       process.env.HOTEL_CRON_SCHEDULER_ENABLED = "1";
       delete process.env.HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED;
 
-      await prisma.hotelBookingHold.deleteMany({ where: { organizationId: organizations.a.id } });
-      await resetInventory("a");
+      await clearOrgData("a");
 
       await createHoldDirect(repoA, "a", "gate-check-hold", "GATE-1", expiredAt, checkIn, checkOut, "ACTIVE");
 
@@ -627,7 +642,8 @@ describe("Hotel Expired Holds Cron Integration", () => {
       const res = await GET(req);
       assert.equal(res.status, 200);
       const body = await res.json();
-      assert.equal(body.results[0].expired, 1);
+      const orgAResult = findOrgResult(body.results, organizations.a.id);
+      assert.equal(orgAResult?.expired, 1);
     });
   });
 });

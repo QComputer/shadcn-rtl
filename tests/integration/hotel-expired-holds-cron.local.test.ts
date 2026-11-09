@@ -11,8 +11,16 @@ const EXPECTED_DB = process.env.HOTEL_EXPIRED_HOLDS_TEST_DATABASE ?? "bazarbaaz_
 const CRON_SECRET = "test-cron-secret-verify-123";
 
 function dateValue(date: Date | string) {
-  if (typeof date === "string") return date;
-  return date.toISOString().slice(0, 10);
+  if (typeof date === "string") {
+    // If it's already a full ISO datetime, return as-is
+    if (date.includes("T")) return date;
+    // Otherwise assume it's YYYY-MM-DD and convert to ISO datetime at midnight UTC
+    return `${date}T00:00:00.000Z`;
+  }
+  // For Date objects, return full ISO datetime at midnight UTC
+  const d = new Date(date);
+  d.setUTCHours(0, 0, 0, 0);
+  return d.toISOString();
 }
 
 function addDays(base: Date, days: number): Date {

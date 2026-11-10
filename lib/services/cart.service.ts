@@ -270,16 +270,16 @@ export class CartService {
     });
 
     if (!variant) {
-      throw new Error("Product variant not found");
+      throw new ApiError(404, "Product variant not found");
     }
 
     if (!activePublicBusinessCapabilities(variant.product.organization.capabilities).includes("SHOP")) {
-      throw new Error("Product variant not found");
+      throw new ApiError(404, "Product variant not found");
     }
 
     const canonicalOrganizationSlug = variant.product.organization.slug;
     if (organizationSlug !== canonicalOrganizationSlug) {
-      throw new Error("Product does not belong to this organization");
+      throw new ApiError(404, "Product variant not found");
     }
 
     const cart = await this._getOrCreateCart(

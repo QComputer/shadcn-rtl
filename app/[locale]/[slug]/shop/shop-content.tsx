@@ -1,0 +1,68 @@
+import { ApiError } from "@/lib/api-guards";
+import { prisma } from "@/lib/db";
+import { getPublicCatalogSnapshot } from "@/lib/public-catalog/service.server";
+import RetailLiveCatalog from "@/app/[locale]/retail/[organization]/retail-catalog";
+import LegacyShopClient from "./legacy-shop-client";
+import { hasModernRetailProductExperience, shouldLoadRetailShopCatalog } from "@/lib/retail/shop-experience";
+import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
+import { buildShopProductsPath } from "@/lib/shop-public-paths";
+import { activePublicBusinessCapabilities } from "@/lib/organization-public-home";
+import { getPublishedRetailHero } from "@/lib/website-studio/retail-hero.server";
+
+type Params = { locale: string; slug: string };
+
+async function loadPublishedRetail(slug: string, locale: string, forcePublishedCatalog = false) {
+  if (locale !== "fa") return { catalog: null, modernProductExperience: false };
+  const organization = await prisma.organization.findFirst({
+    where: { slug, isActive: true, deletedAt: null, isPlatformOwner: false },
+    select: {
+      type: true,
+      vertical: true,
+      capabilities: { select: { key: true, status: true } },
+      settings: { select: { settings: true } },
+      branding: { select: { retailPresentationTheme: true, retailPreviewOnly: true } },
+    },
+  });
+  const modernProductExperience = Boolean(organization && hasModernRetailProductExperience(organization.settings?.settings, organization.branding ?? {}));
+  const retailCatalogTenant = Boolean(organization && shouldLoadRetailShopCatalog({
+    locale,
+    forcePublishedCatalog,
+    hasPresentationTheme: Boolean(organization?.branding?.retailPresentationTheme),
+    previewOnly: organization?.branding?.retailPreviewOnly === true,
+    organizationType: organization.type,
+    organizationVertical: organization.vertical,
+    organizationCapabilities: activePublicBusinessCapabilities(organization.capabilities),
+    modernProductExperience,
+  }));
+  if (!retailCatalogTenant) {
+    return { catalog: null, modernProductExperience };
+  }
+  try { return { catalog: await getPublicCatalogSnapshot(slug), modernProductExperience }; }
+  catch (error) { if (error instanceof ApiError && error.status === 404) return { catalog: null, modernProductExperience }; throw error; }
+}
+
+export default async function ShopContent({
+  params,
+  forcePublishedRetailCatalog = false,
+}: {
+  params: Promise<Params>;
+  forcePublishedRetailCatalog?: boolean;
+}) {
+  const { locale, slug } = await params;
+  const { catalog, modernProductExperience } = await loadPublishedRetail(slug, locale, forcePublishedRetailCatalog);
+  if (!catalog) return <LegacyShopClient params={Promise.resolve({ locale, slug })} modernProductExperience={modernProductExperience} />;
+  const seo = await getShopTenantSeoContext({ locale, slug });
+  const storefrontPath = buildShopProductsPath({ locale, shopSlug: slug, isCustomDomain: seo.isCustomDomain });
+  const checkoutPath = `${storefrontPath}/checkout`;
+  return <RetailLiveCatalog view={{
+      managedHero: await getPublishedRetailHero(slug),
+      identifier: catalog.organization.identifier,
+      name: catalog.organization.name,
+      description: catalog.organization.description,
+      branding: catalog.organization.branding,
+      theme: catalog.organization.theme,
+      previewOnly: catalog.organization.previewOnly,
+      categories: catalog.categories.map(({ id, slug: categorySlug, name, image, darkImage }) => ({ id, slug: categorySlug, name, image, darkImage })),
+      products: catalog.products,
+    }} storefrontPath={storefrontPath} checkoutPath={checkoutPath} embedded />;
+}

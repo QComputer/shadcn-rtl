@@ -12,7 +12,7 @@ import { getOrganizationRootSeoContext } from "@/lib/custom-domain-seo";
 import { buildPublicMetadata } from "@/lib/seo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import ShopPage from "./shop/page";
+import ShopContent from "./shop/shop-content";
 import { ShopLayoutContent } from "./shop/shop-layout-content";
 import AppointmentServicesPage from "./appointment/services/page";
 import { AppointmentLayoutContent } from "./appointment/appointment-layout-content";
@@ -176,7 +176,7 @@ export default async function OrganizationHomePage({ params }: Props) {
     });
     return (
       <ShopLayoutContent params={params} organizationRootPath={organizationRootPath}>
-        <ShopPage params={params} forcePublishedRetailCatalog={retailGoodsShop} />
+        <ShopContent params={params} forcePublishedRetailCatalog={retailGoodsShop} />
       </ShopLayoutContent>
     );
   }
@@ -266,7 +266,7 @@ export default async function OrganizationHomePage({ params }: Props) {
                 <article key={review.id} className="rounded-md border p-3">
                   <p className="text-sm font-medium">{"★".repeat(review.rating)}</p>
                   {review.title && <p className="mt-2 font-medium">{review.title}</p>}
-                  {review.text && <p className="mt-1 text-sm text-muted-foreground">"{review.text}"</p>}
+                  {review.text && <p className="mt-1 text-sm text-muted-foreground">&quot;{review.text}&quot;</p>}
                   <p className="mt-2 text-xs text-muted-foreground">{review.customerLabel}</p>
                 </article>
               ))}

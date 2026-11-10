@@ -84,7 +84,7 @@ async function plan(tx:Tx,context:TenantContext,input:RetailImportInput) {
   for(const [key,group] of groups) {
     const fail=(message:string)=>group.forEach(row=>row.errors.push(message));
     const merged:Record<string,string>={};
-    const productFields=["product_id","product_name","slug","brand","description","category_id","category_ids","tags","published","track_inventory","image_ids"];
+    const productFields=["product_id","product_name","slug","brand","description","category_id","category_ids","tags","published","track_inventory","base_price_toman","image_ids"];
     productFields.push(...new Set(group.flatMap(row=>Object.keys(row.data).filter(key=>key.startsWith("product_attribute:")))));
     for(const field of productFields){const values=[...new Set(group.map(r=>r.data[field]).filter(Boolean))];if(values.length>1)fail("مقدار "+field+" در ردیف‌های یک محصول یکسان نیست.");if(values[0])merged[field]=values[0];}
     const current=products.find(p=>p.id===merged.product_id);

@@ -1,0 +1,168 @@
+{
+  "date": "2026-11-10",
+  "baseline": "bb25c09499de37e63d158a14921c82e9971eaf7e",
+  "scope": "Local source and disposable runtime acceptance; no Production/provider/physical-device acceptance",
+  "build": {
+    "command": "pnpm build --webpack",
+    "node": "24.22.1",
+    "exitCode": 0,
+    "staticPages": 344,
+    "log": ".tmp/master-20261110/build-accepted.log"
+  },
+  "focused": {
+    "command": "node --import tsx --require ./scripts/e2e/register-server-only.cjs --test tests/unit/retail-shop-experience.test.ts tests/unit/retail-editor-snapshot.test.ts tests/unit/retail-draft-variant-generation.test.ts tests/unit/retail-variant-generation.test.ts tests/unit/retail-variant-selection.test.ts tests/unit/retail-product-detail.test.ts tests/unit/retail-card-presentation.test.ts tests/unit/retail-attribute-validation.test.ts tests/unit/retail-checkout-quote-contract.test.ts tests/unit/hotel-expired-holds-environment.test.ts",
+    "passed": 80,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0,
+    "log": ".tmp/master-20261110/focused-final.log"
+  },
+  "spreadsheetAndNumeric": {
+    "passed": 17,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0,
+    "log": ".tmp/master-20261110/import-numeric-final.log",
+    "command": "node --import tsx --require ./scripts/e2e/register-server-only.cjs --test tests/unit/retail-spreadsheet.test.ts tests/unit/retail-format-price.test.ts tests/unit/retail-format-size.test.ts tests/unit/retail-merchant-size-input.test.ts"
+  },
+  "hotelBookingUnit": {
+    "command": "node --import tsx --require ./scripts/e2e/register-server-only.cjs --test tests/unit/hotel/booking-service.test.ts",
+    "passed": 32,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0
+  },
+  "retailSafety": {
+    "command": "node --test tests/e2e/retail-recovery/safety.test.mjs",
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0
+  },
+  "hotelPostgresql": {
+    "database": "bazarbaaz_hotel_expired_holds_verify_20261110",
+    "status": "PASSED",
+    "exitCode": 0,
+    "cleanup": "PASSED",
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0,
+    "log": ".tmp/master-20261110/hotel-postgresql.log",
+    "command": "node --import tsx --require ./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-expired-holds-cron.local.test.ts"
+  },
+  "retail": {
+    "database": "retail_ui_e2e_1794275488069995a6512",
+    "sourceSha": "6f7a6471602c27cc268f42b85e55e20d30339c14",
+    "sourceDirty": true,
+    "status": "PASSED",
+    "exitCode": 0,
+    "cleanup": "PASSED",
+    "commands": [
+      {
+        "label": "migrations",
+        "args": [
+          "node_modules/prisma/build/index.js",
+          "migrate",
+          "deploy"
+        ],
+        "exitCode": 0
+      },
+      {
+        "label": "seed",
+        "args": [
+          "--import",
+          "tsx",
+          "--require",
+          "./scripts/e2e/register-server-only.cjs",
+          "tests/e2e/retail-recovery/seed.mts"
+        ],
+        "exitCode": 0
+      },
+      {
+        "label": "cafe-regression",
+        "args": [
+          "--import",
+          "tsx",
+          "--require",
+          "./scripts/e2e/register-server-only.cjs",
+          "--test",
+          "tests/integration/cafe-leo-import.local.test.ts"
+        ],
+        "exitCode": 0
+      },
+      {
+        "label": "browser",
+        "args": [
+          "tests/e2e/retail-recovery/retail-ui-e2e-runner.mjs"
+        ],
+        "exitCode": 0
+      }
+    ],
+    "serverMode": "built-local",
+    "browser": {
+      "status": "PASSED",
+      "exitCode": 0,
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "results": [
+        {
+          "name": "A: create product custom colors matrix save reload",
+          "status": "passed",
+          "durationMs": 4751
+        },
+        {
+          "name": "A2: existing product edit preserves SKU price inventory",
+          "status": "passed",
+          "durationMs": 3477
+        },
+        {
+          "name": "B: storefront custom color size add-to-cart persistence",
+          "status": "passed",
+          "durationMs": 3758
+        },
+        {
+          "name": "B2: cross-tenant cart rejection",
+          "status": "passed",
+          "durationMs": 1736
+        },
+        {
+          "name": "D: Import Hub XLSX upload preview execute",
+          "status": "passed",
+          "durationMs": 2514
+        },
+        {
+          "name": "C/E: RTL mobile storefront custom color",
+          "status": "passed",
+          "durationMs": 31909
+        }
+      ]
+    },
+    "cafeRegression": {
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "artifactDirectory": ".tmp/retail-recovery/1794275488069995a6512",
+    "command": "node scripts/e2e/retail-recovery-local.mjs --disposable-local --built"
+  },
+  "lint": {
+    "exitCode": 0,
+    "warnings": 0,
+    "scope": "Changed app/server/guard/fixture/runner files"
+  },
+  "docs": {
+    "command": "node scripts/quality/validate-ai-handoff-docs.mts",
+    "passed": 25,
+    "failed": 0,
+    "exitCode": 0
+  },
+  "workspace": {
+    "registeredWorktrees": 1,
+    "retailUniqueCommits": 0,
+    "privateRecoveryZipSha256": "8ABA7A714E8533A95C5CDB5BE6898A7A9ADC006BDFF056D35040754AE88DDD1C",
+    "recoveryFilesVerified": 26,
+    "inheritedTrackedFilesRemaining": 9,
+    "inheritedUntrackedFilesRemaining": 2
+  }
+}

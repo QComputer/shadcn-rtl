@@ -50,7 +50,6 @@ import {
 import type { SupportedLocale } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
-import type { BusinessCapability } from "@/lib/business-capability-registry"
 import {
   DASHBOARD_NAVIGATION_GROUPS,
   DASHBOARD_NAVIGATION_ITEMS,
@@ -119,6 +118,7 @@ const NAVIGATION_ICONS = {
   businessAcquisition: Store,
   websiteStudio: Globe2,
   hotelWebsite: Building2,
+  hotelOperations: Building2,
   pilots: BriefcaseBusiness,
 } satisfies Record<DashboardNavigationKey, DashboardIcon>
 
@@ -183,6 +183,7 @@ const roleAwareNavigationCopy = {
       businessAcquisition: "جذب کسب‌وکار",
       websiteStudio: "استودیو وب‌سایت",
       hotelWebsite: "استودیو وب‌سایت هتل",
+      hotelOperations: "عملیات هتل",
       pilots: "عملیات پایلوت",
     },
     roles: {
@@ -245,6 +246,7 @@ const roleAwareNavigationCopy = {
       businessAcquisition: "Business acquisition",
       websiteStudio: "Website studio",
       hotelWebsite: "Hotel website studio",
+      hotelOperations: "Hotel operations",
       pilots: "Pilot operations",
     },
     roles: {
@@ -307,6 +309,7 @@ const roleAwareNavigationCopy = {
       businessAcquisition: "اكتساب الأعمال",
       websiteStudio: "استوديو الموقع",
       hotelWebsite: "استوديو موقع الفندق",
+      hotelOperations: "عمليات الفندق",
       pilots: "عمليات التجربة",
     },
     roles: {
@@ -336,11 +339,11 @@ function getNavigationCopy(locale: SupportedLocale) {
   return roleAwareNavigationCopy[locale] ?? roleAwareNavigationCopy.fa
 }
 
-function isVisibleForRole(item: NavigationItem, role: DashboardRole, capabilities: readonly BusinessCapability[]) {
+function isVisibleForRole(item: NavigationItem, role: DashboardRole, capabilities: readonly string[]) {
   return isDashboardNavigationItemVisible(item.key, role, capabilities)
 }
 
-function getVisibleNavGroups(role: DashboardRole, capabilities: readonly BusinessCapability[]) {
+function getVisibleNavGroups(role: DashboardRole, capabilities: readonly string[]) {
   return NAVIGATION_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter((item) => isVisibleForRole(item, role, capabilities)),
@@ -364,7 +367,7 @@ function SidebarContent({
 }: {
   locale: SupportedLocale
   role: DashboardRole
-  capabilities: readonly BusinessCapability[]
+  capabilities: readonly string[]
   onNavigate?: () => void
 }) {
   const pathname = usePathname()

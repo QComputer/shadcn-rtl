@@ -28,9 +28,9 @@ mock.module("@/lib/hotel/management/hotel-management.service", { namedExports: {
     async createAmenity() { calls.push("createAmenity"); return { id: "amenity-1" }; }
     async updateAmenity() { calls.push("updateAmenity"); return { count: 1 }; }
     async setRoomTypeAmenities() { calls.push("setRoomTypeAmenities"); return [{ id: "amenity-1" }]; }
-    async createRatePlan() { calls.push("createRatePlan"); return { id: "plan-1" }; }
-    async updateRatePlan() { calls.push("updateRatePlan"); return { id: "plan-1" }; }
-    async upsertNightlyRate() { calls.push("upsertNightlyRate"); return { id: "nightly-1" }; }
+    async createRatePlan() { calls.push("createRatePlan"); return { id: "plan-1", baseNightlyRate: BigInt("9007199254740993") }; }
+    async updateRatePlan() { calls.push("updateRatePlan"); return { id: "plan-1", baseNightlyRate: BigInt("9007199254740993") }; }
+    async upsertNightlyRate() { calls.push("upsertNightlyRate"); return { id: "nightly-1", nightlyRate: BigInt("9007199254740993") }; }
     async createCancellationPolicy() { calls.push("createCancellationPolicy"); return { id: "policy-1" }; }
     async updateCancellationPolicy() { calls.push("updateCancellationPolicy"); return { id: "policy-1" }; }
     async setCancellationPolicyActive() { calls.push("setCancellationPolicyActive"); return { count: 1 }; }
@@ -84,4 +84,13 @@ test("resource-specific prechecks reject sibling-property resources before servi
   assert.equal((await routes[3].PATCH(request({ code: "102" }), { params: Promise.resolve({ ...context, propertyId: "sibling" }) })).status, 404);
   assert.equal((await routes[13].POST(request({ isActive: false }), { params: Promise.resolve({ ...context, propertyId: "sibling" }) })).status, 404);
   assert.deepEqual(calls, []); scopedResource = true;
+});
+
+test("rate mutation responses preserve bigint money as exact decimal strings", async () => {
+  const created = await routes[8].POST(request({ roomTypeId: "room-type-1", code: "flex", name: "Flexible", baseNightlyRate: "100000" }), { params: Promise.resolve(context) });
+  assert.equal(created.status, 201);
+  assert.equal((await created.json()).ratePlan.baseNightlyRate, "9007199254740993");
+  const nightly = await routes[10].PUT(request({ from: "2027-01-01", to: "2027-01-02", nightlyRate: "100000" }), { params: Promise.resolve(context) });
+  assert.equal(nightly.status, 200);
+  assert.equal((await nightly.json()).nightlyRate.nightlyRate, "9007199254740993");
 });

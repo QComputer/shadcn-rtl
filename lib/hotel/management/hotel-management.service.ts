@@ -10,6 +10,10 @@ export type HotelManagementPrincipal = {
 
 export type HotelManagementScope = { readonly organizationId: string };
 type Db = PrismaClient;
+export type HotelInventoryInitializationResult = {
+  from: string; to: string; requestedNights: number; createdNights: string[];
+  createdCount: number; skippedExistingCount: number; allotment: number;
+};
 
 export class HotelManagementAuthorizationError extends Error {}
 export class HotelManagementValidationError extends Error {}
@@ -77,6 +81,66 @@ export class HotelManagementService {
     if (!capability) throw new HotelManagementAuthorizationError("HOTEL_BOOKING capability is not enabled");
   }
 
+  private async authorizeOperations(principal: HotelManagementPrincipal, scope: HotelManagementScope) {
+    await this.authorize(principal, scope);
+    const [user, organization] = await Promise.all([
+      this.db.user.findFirst({ where: { id: principal.userId, role: principal.role, isActive: true, deletedAt: null }, select: { id: true } }),
+      this.db.organization.findFirst({ where: { id: scope.organizationId, isActive: true, deletedAt: null, capabilities: { some: { key: "HOTEL_BOOKING", status: "ACTIVE", enabledAt: { not: null } } } }, select: { id: true } }),
+    ]);
+    if (!user || !organization || !["SUPER_ADMIN", "ADMIN", "MANAGER"].includes(principal.role)) throw new HotelManagementAuthorizationError("Active hotel management authority required");
+  }
+
+  async getOperations(principal: HotelManagementPrincipal, scope: HotelManagementScope, propertyId: string, range: { from: Date; to: Date }) {
+    await this.authorizeOperations(principal, scope);
+    const fromTime = range.from.getTime();
+    const toTime = range.to.getTime();
+    const dayMs = 86_400_000;
+    const isUtcDate = (date: Date) => Number.isFinite(date.getTime()) && date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0 && date.getUTCMilliseconds() === 0;
+    const nightCount = (toTime - fromTime) / dayMs;
+    if (!isUtcDate(range.from) || !isUtcDate(range.to) || !Number.isInteger(nightCount) || nightCount < 1 || nightCount > 31) throw new HotelManagementValidationError("Operations range must be 1 to 31 whole property nights");
+    const property = await this.db.hotelProperty.findFirst({ where: { id: propertyId, organizationId: scope.organizationId, isActive: true, deletedAt: null }, select: { id: true, slug: true, name: true, timezone: true, currency: true, checkInTime: true, checkOutTime: true, minStayNights: true, maxStayNights: true } });
+    if (!property) throw new HotelManagementAuthorizationError("Property is outside the active organization scope");
+    const [roomTypes, ratePlans, inventory] = await Promise.all([
+      this.db.hotelRoomType.findMany({ where: { organizationId: scope.organizationId, propertyId, isActive: true, deletedAt: null }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }], select: { id: true, slug: true, name: true, description: true, maxAdults: true, maxChildren: true, maxOccupancy: true, beds: true, totalAllotment: true, rooms: { where: { organizationId: scope.organizationId, propertyId, isActive: true, deletedAt: null }, orderBy: { code: "asc" }, select: { id: true, code: true, floor: true, isOutOfService: true, isActive: true } } } }),
+      this.db.hotelRatePlan.findMany({ where: { organizationId: scope.organizationId, propertyId, isActive: true }, orderBy: [{ roomTypeId: "asc" }, { code: "asc" }], select: { id: true, roomTypeId: true, code: true, name: true, currency: true, baseNightlyRate: true, minNights: true, maxNights: true, isRefundable: true, validFrom: true, validTo: true, cancellationPolicyId: true, nightlyRates: { where: { from: { lt: range.to }, to: { gt: range.from } }, orderBy: [{ from: "asc" }, { to: "asc" }], select: { id: true, from: true, to: true, nightlyRate: true, minNights: true, maxNights: true } } } }),
+      this.db.hotelInventory.findMany({ where: { organizationId: scope.organizationId, propertyId, roomType: { isActive: true, deletedAt: null }, date: { gte: range.from, lt: range.to } }, orderBy: [{ date: "asc" }, { roomTypeId: "asc" }], select: { id: true, roomTypeId: true, date: true, allotment: true, booked: true, held: true, outOfService: true, closedToArrival: true, closedToDeparture: true } }),
+    ]);
+    return {
+      property,
+      range: { from: range.from.toISOString().slice(0, 10), to: range.to.toISOString().slice(0, 10), nights: nightCount },
+      roomTypes,
+      ratePlans: ratePlans.map((plan) => ({ ...plan, baseNightlyRate: plan.baseNightlyRate.toString(), validFrom: plan.validFrom?.toISOString().slice(0, 10) ?? null, validTo: plan.validTo?.toISOString().slice(0, 10) ?? null, nightlyRates: plan.nightlyRates.map((rate) => ({ ...rate, from: rate.from.toISOString().slice(0, 10), to: rate.to.toISOString().slice(0, 10), nightlyRate: rate.nightlyRate?.toString() ?? null })) })),
+      inventory: inventory.map((night) => ({ ...night, date: night.date.toISOString().slice(0, 10), available: Math.max(0, night.allotment - night.booked - night.held - night.outOfService) })),
+    };
+  }
+
+  async initializeInventoryIdempotent(principal: HotelManagementPrincipal, scope: HotelManagementScope, input: { propertyId: string; roomTypeId: string; from: Date; to: Date; allotment: number; reason: string; idempotencyKey: string; requestFingerprint: string }): Promise<HotelInventoryInitializationResult> {
+    await this.authorizeOperations(principal, scope);
+    if (!input.idempotencyKey || input.idempotencyKey.length < 8 || input.idempotencyKey.length > 200) throw new HotelManagementValidationError("Invalid Idempotency-Key");
+    assertInteger(input.allotment, "allotment"); assertText(input.reason, "reason", 500);
+    if (input.allotment > 2_147_483_647) throw new HotelManagementValidationError("Allotment exceeds supported capacity");
+    const fromTime = input.from.getTime(); const toTime = input.to.getTime(); const dayMs = 86_400_000;
+    const isUtcDate = (date: Date) => Number.isFinite(date.getTime()) && date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0 && date.getUTCMilliseconds() === 0;
+    const nightCount = (toTime - fromTime) / dayMs;
+    if (!isUtcDate(input.from) || !isUtcDate(input.to) || !Number.isInteger(nightCount) || nightCount < 1 || nightCount > 31) throw new HotelManagementValidationError("Inventory range must be 1 to 31 whole property nights");
+    return this.db.$transaction(async (tx) => {
+      const property = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelProperty" WHERE "id"=${input.propertyId} AND "organizationId"=${scope.organizationId} AND "isActive"=true AND "deletedAt" IS NULL FOR SHARE`);
+      const roomType = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "HotelRoomType" WHERE "id"=${input.roomTypeId} AND "propertyId"=${input.propertyId} AND "organizationId"=${scope.organizationId} AND "isActive"=true AND "deletedAt" IS NULL FOR SHARE`);
+      if (!property.length || !roomType.length) throw new HotelManagementAuthorizationError("Room type is outside the active property scope");
+      const inserted = await tx.$queryRaw<Array<{ id: string; status: string; requestFingerprint: string; resultJson: unknown }>>(Prisma.sql`INSERT INTO "HotelInventoryIdempotency" ("id","organizationId","operationScope","idempotencyKey","requestFingerprint") VALUES (${randomUUID()},${scope.organizationId},${"HOTEL_INVENTORY_INITIALIZE"},${input.idempotencyKey},${input.requestFingerprint}) ON CONFLICT ("organizationId","operationScope","idempotencyKey") DO NOTHING RETURNING "id","status","requestFingerprint","resultJson"`);
+      const record = inserted[0] ?? (await tx.$queryRaw<Array<{ id: string; status: string; requestFingerprint: string; resultJson: unknown }>>(Prisma.sql`SELECT "id","status","requestFingerprint","resultJson" FROM "HotelInventoryIdempotency" WHERE "organizationId"=${scope.organizationId} AND "operationScope"=${"HOTEL_INVENTORY_INITIALIZE"} AND "idempotencyKey"=${input.idempotencyKey} FOR UPDATE`))[0];
+      if (!record) throw new HotelManagementConflictError("Idempotency record could not be established");
+      if (record.requestFingerprint !== input.requestFingerprint) throw new HotelManagementConflictError("Idempotency-Key was already used for a different request");
+      if (record.status === "COMPLETED" && record.resultJson) return record.resultJson as HotelInventoryInitializationResult;
+      if (!inserted[0]) throw new HotelManagementConflictError("Idempotency request is already processing");
+      const dates = Array.from({ length: nightCount }, (_, index) => new Date(fromTime + index * dayMs));
+      const created = await tx.$queryRaw<Array<{ id: string; date: Date }>>(Prisma.sql`INSERT INTO "HotelInventory" ("id","organizationId","propertyId","roomTypeId","date","allotment","booked","held","outOfService","closedToArrival","closedToDeparture","createdAt","updatedAt") VALUES ${Prisma.join(dates.map((date) => Prisma.sql`(${randomUUID()},${scope.organizationId},${input.propertyId},${input.roomTypeId},${date},${input.allotment},0,0,0,false,false,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`))} ON CONFLICT ("roomTypeId","date") DO NOTHING RETURNING "id","date"`);
+      if (created.length) await tx.hotelInventoryAdjustment.createMany({ data: created.map((night) => ({ organizationId: scope.organizationId, propertyId: input.propertyId, roomTypeId: input.roomTypeId, date: night.date, allotmentDelta: input.allotment, outOfServiceDelta: 0, reason: input.reason.trim(), createdByUserId: principal.userId })) });
+      const result = { from: input.from.toISOString().slice(0, 10), to: input.to.toISOString().slice(0, 10), requestedNights: nightCount, createdNights: created.map((night) => night.date.toISOString().slice(0, 10)), createdCount: created.length, skippedExistingCount: nightCount - created.length, allotment: input.allotment };
+      await tx.$executeRaw(Prisma.sql`UPDATE "HotelInventoryIdempotency" SET "status"='COMPLETED',"resultJson"=${JSON.stringify(result)}::jsonb,"completedAt"=CURRENT_TIMESTAMP WHERE "id"=${record.id}`);
+      return result;
+    });
+  }
   async createProperty(principal: HotelManagementPrincipal, input: { organizationId: string; slug: string; name: string; timezone?: string; organizationSlug: string }) {
     const scope = { organizationId: input.organizationId };
     await this.authorize(principal, scope);

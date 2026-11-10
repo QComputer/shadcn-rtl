@@ -12,6 +12,12 @@ on:
       - 'lib/services/product.service.ts'
       - 'sites/damoon/**'
       - 'public/damoon-front/**'
+      - 'app/**/hotel-operations/**'
+      - 'app/api/organizations/**/hotels/**'
+      - 'components/hotel-operations/**'
+      - 'lib/hotel/management/**'
+      - 'lib/dashboard/navigation-policy.ts'
+      - 'lib/access-control.ts'
       - 'tests/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
@@ -58,3 +64,15 @@ jobs:
           tests/unit/retail-variant-generation.test.ts
       - name: Damoon booking helpers and standalone HTTP module graph
         run: pnpm exec node --test tests/damoon-booking-flow.test.mjs tests/damoon-static-server.test.mjs
+      - name: Hotel operations authorization, money and management contracts
+        run: >-
+          pnpm exec node --import tsx --require ./scripts/e2e/register-server-only.cjs
+          --experimental-test-module-mocks --test
+          tests/unit/hotel-management-api-security.test.ts
+          tests/unit/hotel-management-api-handlers.test.ts
+          tests/unit/hotel-management-api-contracts.test.ts
+          tests/unit/hotel-management-api-b-handlers.test.ts
+          tests/unit/hotel-management-api-b-contracts.test.ts
+          tests/unit/hotel-management-api-adapter.test.ts
+          tests/unit/hotel-operations-navigation.test.ts
+          tests/unit/hotel-cms/hotel-cms-dashboard-navigation.test.ts

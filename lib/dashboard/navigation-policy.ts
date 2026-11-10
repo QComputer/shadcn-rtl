@@ -51,6 +51,7 @@ export type DashboardNavigationKey =
   | "businessAcquisition"
   | "websiteStudio"
   | "hotelWebsite"
+  | "hotelOperations"
   | "pilots"
 
 export type DashboardNavigationGroupKey = "operations" | "catalog" | "teamAndSettings" | "platformAdmin"
@@ -91,6 +92,7 @@ export const DASHBOARD_NAVIGATION_ITEMS = {
   businessAcquisition: "/business-acquisition",
   websiteStudio: "/website-studio",
   hotelWebsite: "/hotel-website",
+  hotelOperations: "/hotel-operations",
   pilots: "/pilots",
 } as const satisfies Record<DashboardNavigationKey, string>
 
@@ -105,7 +107,7 @@ export const DASHBOARD_NAVIGATION_GROUPS = [
   },
   {
     key: "teamAndSettings",
-    items: ["businessActivation", "reputation", "websiteStudio", "hotelWebsite", "retailPaymentSettings", "retailPaymentReports", "members", "customerClub", "imports", "exports", "creativeStudio", "settings", "organizationSettings", "qrcode"],
+    items: ["businessActivation", "reputation", "websiteStudio", "hotelWebsite", "hotelOperations", "retailPaymentSettings", "retailPaymentReports", "members", "customerClub", "imports", "exports", "creativeStudio", "settings", "organizationSettings", "qrcode"],
   },
   {
     key: "platformAdmin",
@@ -153,6 +155,7 @@ export const ROLE_NAVIGATION_POLICY = {
   businessAcquisition: ["SUPER_ADMIN"],
   websiteStudio: MANAGEMENT_ROLES,
   hotelWebsite: MANAGEMENT_ROLES,
+  hotelOperations: MANAGEMENT_ROLES,
   pilots: ["SUPER_ADMIN"],
 } as const satisfies Record<DashboardNavigationKey, readonly DashboardRole[]>
 
@@ -221,6 +224,8 @@ export const DASHBOARD_ROUTE_POLICY = {
   "/hotel-website": ROLE_NAVIGATION_POLICY.hotelWebsite,
   "/hotel-website/[organizationId]/[propertyId]": ROLE_NAVIGATION_POLICY.hotelWebsite,
   "/hotel-website/[organizationId]/[propertyId]/preview/[revisionId]": ROLE_NAVIGATION_POLICY.hotelWebsite,
+  "/hotel-operations": ROLE_NAVIGATION_POLICY.hotelOperations,
+  "/hotel-operations/[organizationId]/[propertyId]": ROLE_NAVIGATION_POLICY.hotelOperations,
   "/pilots": ROLE_NAVIGATION_POLICY.pilots,
   "/pilots/[organizationId]": ROLE_NAVIGATION_POLICY.pilots,
 } as const satisfies Record<string, readonly DashboardRole[]>
@@ -253,6 +258,7 @@ export function isDashboardNavigationItemVisible(
   if (role === "SUPER_ADMIN") return true
 
   if (key === "hotelWebsite") return capabilities.includes("HOTEL_WEBSITE")
+  if (key === "hotelOperations") return capabilities.includes("HOTEL_BOOKING")
 
   const requiredCapability = requiredCapabilityForNavigation(key)
   return !requiredCapability || capabilities.includes(requiredCapability)
@@ -336,7 +342,7 @@ export function getDashboardRouteAccessDecision({
   locale: string
   pathname: string | null | undefined
   role: DashboardRole
-  capabilities?: readonly BusinessCapability[]
+  capabilities?: readonly string[]
 }): DashboardRouteAccessDecision {
   const routePath = getDashboardRoutePathFromPathname(locale, pathname)
 
@@ -355,7 +361,10 @@ export function getDashboardRouteAccessDecision({
   const routeKey = getDashboardRouteKey(routePath)
   const requiredCapability = requiredCapabilityForDashboardRoute(routePath)
   const roleAllowed = routeKey !== null ? isDashboardRouteAllowed(routeKey, role) : false
-  const capabilityAllowed = role === "SUPER_ADMIN" || !requiredCapability || capabilities.includes(requiredCapability)
+  const isHotelOperationsRoute = routePath === "/hotel-operations" || routePath.startsWith("/hotel-operations/")
+  const capabilityAllowed = role === "SUPER_ADMIN" || (isHotelOperationsRoute
+    ? capabilities.includes("HOTEL_BOOKING")
+    : !requiredCapability || capabilities.includes(requiredCapability))
 
   return {
     isDashboardPath: true,

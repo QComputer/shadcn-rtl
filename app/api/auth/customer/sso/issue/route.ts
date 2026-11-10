@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     const [source, target, session] = await Promise.all([
       resolveCustomerAuthContext(request), destination(new URL(request.url).searchParams.get("target") ?? ""), auth(),
     ]);
-    const ready = Boolean(customerSsoAvailable() && source && target && source.organizationId !== target.organizationId && session?.user?.role === "CUSTOMER" && (session.user as { organizationId?: string | null }).organizationId === source.organizationId && (session.user as { phoneSessionId?: string }).phoneSessionId);
+    const ready = Boolean(customerSsoAvailable() && source && target && source.organizationId !== target.organizationId && session?.user?.role === "CUSTOMER" && session.user.customerOrigin === source.origin && (session.user as { organizationId?: string | null }).organizationId === source.organizationId && (session.user as { phoneSessionId?: string }).phoneSessionId);
     return Response.json({ available: ready, target: target ? { name: target.name, slug: target.slug } : null }, { headers });
   } catch { return unavailable(); }
 }
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   try {
     if (!customerSsoAvailable()) return unavailable();
     const [source, session] = await Promise.all([resolveCustomerAuthContext(request), auth()]);
-    if (!source || request.headers.get("origin") !== source.origin || !session?.user?.id || session.user.role !== "CUSTOMER" || session.user.isTeamMember || (session.user as { organizationId?: string | null }).organizationId !== source.organizationId || !(session.user as { phoneSessionId?: string }).phoneSessionId) return unavailable();
+    if (!source || session?.user?.customerOrigin !== source.origin || request.headers.get("origin") !== source.origin || !session?.user?.id || session.user.role !== "CUSTOMER" || session.user.isTeamMember || (session.user as { organizationId?: string | null }).organizationId !== source.organizationId || !(session.user as { phoneSessionId?: string }).phoneSessionId) return unavailable();
     const body: unknown = await request.json();
     if (!body || typeof body !== "object" || !("target" in body) || typeof body.target !== "string" || !("challenge" in body) || typeof body.challenge !== "string") return unavailable();
     const target = await destination(body.target);

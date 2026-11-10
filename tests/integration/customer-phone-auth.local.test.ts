@@ -108,7 +108,7 @@ after(async () => {
 describe("customer phone authentication on explicitly guarded local PostgreSQL", { concurrency: false }, () => {
   it("serializes concurrent request deduplication and phone quotas in PostgreSQL", async () => {
     const phone = await freshPhone();
-    const fixedNow = new Date();
+    let fixedNow = new Date(Math.floor(Date.now() / 900_000) * 900_000 + 5000);
     const fixedClockService = new CustomerPhoneAuthService(db, { enabled: true, secret, senderAvailable: () => true, now: () => fixedNow });
     const organization = organizations[0];
     const ip = `2001:db8:${prefix.slice(-4)}::ff`;
@@ -116,7 +116,13 @@ describe("customer phone authentication on explicitly guarded local PostgreSQL",
     const sameIngress = { phone, organizationId: organization.id, origin: origin(organization), ip, source: "WEB" as const, idempotencyKey: randomUUID() };
     await Promise.all([fixedClockService.request(sameIngress), fixedClockService.request(sameIngress), fixedClockService.request(sameIngress)]);
     assert.equal(await db.customerAccessLink.count({ where: { phone, organizationId: organization.id } }), 1);
+    // New requests inside the 60-second resend cooldown must not consume quota.
     await Promise.all(Array.from({ length: 4 }, () => fixedClockService.request({ ...sameIngress, idempotencyKey: randomUUID() })));
+    assert.equal(await db.customerAccessLink.count({ where: { phone, organizationId: organization.id } }), 1);
+    for (let round = 0; round < 3; round++) {
+      fixedNow = new Date(fixedNow.getTime() + 61_000);
+      await Promise.all(Array.from({ length: 4 }, () => fixedClockService.request({ ...sameIngress, idempotencyKey: randomUUID() })));
+    }
     assert.equal(await db.customerAccessLink.count({ where: { phone, organizationId: organization.id } }), 3);
     const windowStart = new Date(Math.floor(fixedNow.getTime() / 900_000) * 900_000);
     const quota = await db.customerPhoneAuthQuota.findUniqueOrThrow({ where: { key_windowStart: { key: `phone:${customerAuthDigest(phone, secret)}`, windowStart } } });
@@ -245,11 +251,13 @@ describe("customer phone authentication on explicitly guarded local PostgreSQL",
   it("commits failed OTP attempts on PostgreSQL, exhausts after three, and prevents reuse of a consumed OTP", async () => {
     const phone = await freshPhone();
     const { otp, link } = await issue(phone);
-    const wrong = "0000";
+    const wrong = otp === "0000" ? "0001" : "0000";
     for (let i = 0; i < 3; i++) await assert.rejects(consumeOtp(phone, wrong), CustomerPhoneAuthError);
     assert.equal((await db.customerAccessLink.findUniqueOrThrow({ where: { id: link.id } })).otpAttempts, 3);
     await assert.rejects(consumeOtp(phone, wrong), CustomerPhoneAuthError);
 
+    // Age only the owned fixture past resend cooldown; no real-time sleep or provider call.
+    await db.customerAccessLink.update({ where: { id: link.id }, data: { createdAt: new Date(Date.now() - 61_000) } });
     const { otp: good, link: goodLink } = await issue(phone);
     const user = await consumeOtp(phone, good);
     ownedUserIds.add(user.id);

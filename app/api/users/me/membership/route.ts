@@ -11,15 +11,18 @@ import { hasModernRetailProductExperience } from "@/lib/retail/shop-experience";
  * - `membership` resolves the session tenant, with deterministic staff selection only when no tenant is selected.
  * - `memberships` returns all active memberships for the Phase 3 multi-org path.
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const session = await requireAuthSession();
+    const session = await requireAuthSession(request);
 
     const memberships = await prisma.organizationMember.findMany({
       where: {
         userId: session.user.id,
         isActive: true,
         organization: { isActive: true, deletedAt: null },
+        ...(session.user.role === "CUSTOMER"
+          ? { organizationId: session.customerContext!.organizationId }
+          : {}),
       },
       orderBy: [{ joinedAt: "asc" }, { id: "asc" }],
       include: {

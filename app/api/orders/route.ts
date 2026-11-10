@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { ApiError, requireAuthSession, requireOrgAccess } from "@/lib/api-guards";
 import { orderService } from "@/lib/services/order.service";
 import { createOrderSchema, orderFilterSchema } from "@/lib/validators";
 import { prisma } from "@/lib/db";
@@ -16,6 +17,7 @@ function getSessionId(request: NextRequest): string {
 }
 
 function statusForError(error: unknown) {
+  if (error instanceof ApiError) return error.status;
   if (error instanceof ZodError) return 400;
   if (!(error instanceof Error)) return 500;
   if (error.message === "Unauthorized") return 401;
@@ -42,7 +44,7 @@ function setGuestSessionCookie(request: NextRequest, sessionId: string, response
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession(request);
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -68,15 +70,22 @@ export async function GET(request: NextRequest) {
 
     let orders;
     if (session.user?.role === "CUSTOMER") {
+      const context = session.customerContext!;
+      if (params.organizationId && params.organizationId !== context.organizationId ||
+        request.nextUrl.searchParams.get("organizationSlug") && request.nextUrl.searchParams.get("organizationSlug") !== context.slug) throw new ApiError(403, "Customer tenant context mismatch");
       orders = await orderService.listAll({
         ...params,
         customerId: session.user.id,
+        guestCustomerId: undefined,
+        organizationSlug: context.slug,
       });
     } else if (session.user.role === "DRIVER") {
       orders = await orderService.listForDriver(params, session.user.id);
     } else if (session.user.role === "SUPER_ADMIN") {
       orders = await orderService.listAll(params);
     } else if (session.user.organizationId) {
+      await requireOrgAccess(session, session.user.organizationId, ["ADMIN", "MANAGER", "STAFF"]);
+      if (params.organizationId && params.organizationId !== session.user.organizationId) throw new ApiError(403, "Forbidden");
       orders = await orderService.list(params, session.user.organizationId);
     }
 
@@ -93,8 +102,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const session = await auth();
+    const authenticated = await auth();
+    const session = authenticated?.user?.id ? await requireAuthSession(request) : null;
     const data = createOrderSchema.parse(body);
+    if (session?.user.role === "CUSTOMER" && data.organizationSlug !== session.customerContext!.slug) throw new ApiError(403, "Customer tenant context mismatch");
 
     if (data.type === "DELIVERY" && !data.deliveryAddress) {
       return NextResponse.json(

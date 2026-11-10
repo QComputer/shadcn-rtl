@@ -12,7 +12,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await requireAuthSession();
+    const session = await requireAuthSession(request);
     const { id } = await params;
     await requireAppointmentAccess(session, id, ["ADMIN", "MANAGER", "STAFF", "CUSTOMER"]);
 
@@ -29,7 +29,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await requireAuthSession();
+    const session = await requireAuthSession(request);
     const { id } = await params;
     await requireAppointmentAccess(session, id, ["ADMIN", "MANAGER", "STAFF"]);
 
@@ -49,7 +49,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await requireAuthSession();
+    const session = await requireAuthSession(request);
     const { id } = await params;
     const resource = await requireAppointmentAccess(session, id, ["ADMIN", "MANAGER", "STAFF", "CUSTOMER"]);
 

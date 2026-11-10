@@ -19,7 +19,7 @@ const createInAppNotificationSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await requireAuthSession();
+    const session = await requireAuthSession(request);
     const scope = request.nextUrl.searchParams.get("scope");
     const includeRead = scope === "all";
     const limitParam = Number(request.nextUrl.searchParams.get("limit") || "20");
@@ -28,6 +28,9 @@ export async function GET(request: NextRequest) {
     const notifications = await prisma.notification.findMany({
       where: {
         targetUserId: session.user.id,
+        ...(session.user.role === "CUSTOMER"
+          ? { organizationId: session.customerContext!.organizationId }
+          : {}),
         ...(includeRead ? {} : { seen: false }),
       },
       orderBy: { createdAt: "desc" },
@@ -121,7 +124,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await requireAuthSession();
+    const session = await requireAuthSession(request);
     const body = (await request.json().catch(() => ({}))) as { ids?: string[]; seen?: boolean };
     const ids = Array.isArray(body.ids)
       ? body.ids.filter((id): id is string => typeof id === "string" && id.length > 0)
@@ -136,6 +139,9 @@ export async function PATCH(request: NextRequest) {
       where: {
         id: { in: ids },
         targetUserId: session.user.id,
+        ...(session.user.role === "CUSTOMER"
+          ? { organizationId: session.customerContext!.organizationId }
+          : {}),
       },
       data: {
         seen,

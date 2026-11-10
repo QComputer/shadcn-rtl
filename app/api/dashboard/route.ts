@@ -73,8 +73,14 @@ async function getActiveMembershipForSession(userId: string, organizationId?: st
 
 export async function GET(_request: NextRequest) {
   try {
-    const session = await requireAuthSession();
+    const session = await requireAuthSession(_request);
     const userRole = session.user.role;
+    if (userRole === "CUSTOMER") {
+      const context = session.customerContext!;
+      const dashboardData = await getCustomerDashboard(session.user.id, context.organizationId, context.slug);
+      return NextResponse.json({ ...dashboardData, userContext: { role: "CUSTOMER", platformRole: null,
+        organizationType: null, organizationCapabilities: [], organizationId: context.organizationId, isTeamMember: false } });
+    }
     const membership = await getActiveMembershipForSession(
       session.user.id,
       session.user.organizationId,
@@ -107,7 +113,7 @@ export async function GET(_request: NextRequest) {
     } else if (effectiveRole === "DRIVER") {
       dashboardData = await getDriverDashboard(session.user.id);
     } else {
-      dashboardData = await getCustomerDashboard(session.user.id);
+      throw new Error("Forbidden");
     }
 
     return NextResponse.json({
@@ -396,10 +402,10 @@ async function getDriverDashboard(userId: string) {
   return { title: "پنل راننده", organizationType: "DELIVERY", stats: { assignedOrders: orders.length }, recentOrders: orders };
 }
 
-async function getCustomerDashboard(userId: string) {
+async function getCustomerDashboard(userId: string, organizationId: string, organizationSlug: string) {
   const [orders, appointments] = await Promise.all([
-    prisma.order.findMany({ where: { deletedAt: null, customerId: userId }, take: 5, orderBy: { createdAt: "desc" } }),
-    prisma.appointment.findMany({ where: { deletedAt: null, customerId: userId }, take: 5, orderBy: { date: "desc" }, include: { service: { select: { name: true } } } }),
+    prisma.order.findMany({ where: { deletedAt: null, customerId: userId, organizationSlug }, take: 5, orderBy: { createdAt: "desc" } }),
+    prisma.appointment.findMany({ where: { deletedAt: null, customerId: userId, service: { organizationId } }, take: 5, orderBy: { date: "desc" }, include: { service: { select: { name: true } } } }),
   ]);
   return { title: "پنل کاربر", stats: { totalOrders: orders.length, totalAppointments: appointments.length }, recentOrders: orders, recentAppointments: appointments };
 }

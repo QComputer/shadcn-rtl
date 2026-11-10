@@ -4,6 +4,8 @@ import {
   ApiError,
   jsonError,
   requireAuthSession,
+  requireCustomerRequestContext,
+  requireSameOriginMutation,
   requireOrgAccess,
 } from "@/lib/api-guards"
 import { customerClubService } from "@/lib/services/customer-club.service"
@@ -42,6 +44,22 @@ async function requireManageAccessForOtherCustomer(
   await requireOrgAccess(session, organizationId, ["ADMIN", "MANAGER"])
 }
 
+async function requireCustomerOrganization(
+  request: NextRequest,
+  session: Awaited<ReturnType<typeof requireAuthSession>>,
+  organizationId: string,
+) {
+  if (session.user.role !== "CUSTOMER") {
+    await requireOrgAccess(session, organizationId, ["ADMIN", "MANAGER", "STAFF"])
+    return
+  }
+  const context = await requireCustomerRequestContext(request, session)
+  if (organizationId !== context.organizationId) {
+    throw new ApiError(403, "Customer organization context mismatch")
+  }
+  return context
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAuthSession()
@@ -50,6 +68,7 @@ export async function GET(request: NextRequest) {
 
     const customerId = getQueryValue(request, "customerId") || session.user.id
     await requireManageAccessForOtherCustomer(session, organizationId, customerId)
+    if (customerId === session.user.id) await requireCustomerOrganization(request, session, organizationId)
 
     const membership = await customerClubService.getMembership(organizationId, customerId)
     return NextResponse.json({ membership })
@@ -60,11 +79,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    requireSameOriginMutation(request)
     const session = await requireAuthSession()
     const body = membershipBodySchema.parse(await request.json())
     const customerId = body.customerId || session.user.id
 
     await requireManageAccessForOtherCustomer(session, body.organizationId, customerId)
+    if (customerId === session.user.id) await requireCustomerOrganization(request, session, body.organizationId)
 
     if (customerId === session.user.id && (body.status || body.tier || body.source === "ADMIN_IMPORT")) {
       throw new ApiError(403, "Only organization managers can set membership details")
@@ -87,9 +108,11 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    requireSameOriginMutation(request)
     const session = await requireAuthSession()
     const body = membershipPatchSchema.parse(await request.json())
     const customerId = body.customerId || session.user.id
+    if (customerId === session.user.id) await requireCustomerOrganization(request, session, body.organizationId)
 
     if (customerId === session.user.id) {
       if (body.membershipId) {
@@ -119,12 +142,14 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    requireSameOriginMutation(request)
     const session = await requireAuthSession()
     const organizationId = getQueryValue(request, "organizationId")
     if (!organizationId) throw new ApiError(400, "Organization ID is required")
 
     const customerId = getQueryValue(request, "customerId") || session.user.id
     await requireManageAccessForOtherCustomer(session, organizationId, customerId)
+    if (customerId === session.user.id) await requireCustomerOrganization(request, session, organizationId)
 
     const membership = await customerClubService.leave({
       organizationId,

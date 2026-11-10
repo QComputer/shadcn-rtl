@@ -167,6 +167,27 @@ export async function validateCustomerPhoneSession(input: { sessionId: string; u
     return !!await client.customerPhoneSession.findFirst({ where: { id: input.sessionId, userId: input.userId, organizationId: input.organizationId, revokedAt: null, expiresAt: { gt: new Date() }, organization: { isActive: true, deletedAt: null }, user: { ...safeCustomer, customerClubMemberships: { some: { organizationId: input.organizationId, status: "ACTIVE" } } } }, select: { id: true } });
   } catch { console.warn("CUSTOMER_PHONE_AUTH_SESSION_CHECK_FAILED"); return false; }
 }
+
+/** Create a tenant-bound session for an existing customer password login. */
+export async function createCustomerPasswordSession(userId: string, organizationId: string, db?: PrismaClient) {
+  try {
+    const client = await database(db);
+    return await client.$transaction(async tx => {
+      const user = await tx.user.findFirst({ where: { id: userId, ...safeCustomer }, select: { id: true } });
+      const organization = await tx.organization.findFirst({ where: { id: organizationId, isActive: true, deletedAt: null }, select: { id: true } });
+      const membership = user && organization
+        ? await tx.customerClubMembership.findUnique({ where: { organizationId_customerId: { organizationId, customerId: user.id } }, select: { status: true } })
+        : null;
+      if (!user || !organization || membership?.status !== "ACTIVE") throw new CustomerPhoneAuthError();
+      const session = await tx.customerPhoneSession.create({ data: { userId: user.id, organizationId, expiresAt: new Date(Date.now() + 30 * 86_400_000) }, select: { id: true } });
+      return session.id;
+    }, { maxWait: 5000, timeout: 10_000 });
+  } catch (error) {
+    if (!(error instanceof CustomerPhoneAuthError)) console.warn("CUSTOMER_PASSWORD_SESSION_CREATE_FAILED");
+    throw new CustomerPhoneAuthError();
+  }
+}
+
 export async function revokeCustomerPhoneSession(input: { sessionId: string; userId: string }, db?: PrismaClient) {
   return (await database(db)).customerPhoneSession.updateMany({ where: { id: input.sessionId, userId: input.userId, revokedAt: null }, data: { revokedAt: new Date() } });
 }

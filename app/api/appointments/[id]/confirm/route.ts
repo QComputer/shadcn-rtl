@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireAuthSession, requireAppointmentAccess, requireSameOriginMutation, jsonError } from "@/lib/api-guards";
 import { prisma } from "@/lib/db";
 import { hasPermission } from "@/lib/types";
 import { revalidatePath } from "next/cache";
@@ -9,7 +9,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await requireAuthSession(request);
+    requireSameOriginMutation(request);
     const { id } = await params;
 
     if (!session?.user?.id || !session.user.role) {
@@ -20,6 +21,8 @@ export async function POST(
     if (!hasPermission(session.user.role, "appointment:update")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    await requireAppointmentAccess(session, id, ["ADMIN", "MANAGER", "STAFF"]);
 
     // Get the appointment
     const appointment = await prisma.appointment.findUnique({
@@ -105,9 +108,6 @@ export async function POST(
     return NextResponse.json(updated);
   } catch (error) {
     console.error("Error confirming appointment:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return jsonError(error, "Error confirming appointment");
   }
 }

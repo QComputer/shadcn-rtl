@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-11-10T11:36:54.231Z",
+  "acceptedDevelopmentBaseline": "219ecc54cfe5b80501424a45e6a5c0f2c000d458",
+  "applicationCommit": "3aa98a24e2070e9b5dbbd3c295397b73112ad82e",
+  "testCommit": "58b5a7312a0d3f4cf25d129995d6bab449816430",
+  "sourceNote": "Application was built/tested in the dirty shared checkout, then committed unchanged. Inherited edits were excluded. No Production acceptance is implied.",
+  "build": {
+    "status": "PASSED",
+    "exitCode": 0,
+    "staticPages": 344,
+    "typecheck": "PASSED",
+    "log": ".tmp/variant-deletion-20261110/build-final.log",
+    "logSha256": "3a58c36466924816d46e1f7d774f15c90135f0d0bf4e770958873025214bc769",
+    "database": "loopback placeholder",
+    "cache": "off"
+  },
+  "units": {
+    "passed": 39,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0,
+    "log": ".tmp/variant-deletion-20261110/unit-final.log"
+  },
+  "lint": {
+    "exitCode": 0,
+    "warnings": 0,
+    "logs": [
+      ".tmp/variant-deletion-20261110/lint-final.log",
+      ".tmp/variant-deletion-20261110/harness-lint-final.log"
+    ]
+  },
+  "postgres": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0,
+    "log": "undefined/variant-deletion.log",
+    "cafeRegression": "PASSED",
+    "checkoutRegression": "PASSED"
+  },
+  "deletionAcceptance": {
+    "receipt": ".tmp/retail-recovery/1794310477928e68d11a2/result.json",
+    "status": "PASSED",
+    "exitCode": 0,
+    "cleanup": "PASSED",
+    "browserSuite": "variant-deletion",
+    "browser": [
+      {
+        "name": "new draft: create 3 colors x 5 sizes, cancel and undo pending deletions without a PATCH",
+        "status": "passed",
+        "durationMs": 9329
+      },
+      {
+        "name": "saved product: delete a whole color, size, and one cell from matrix and verify database-backed reload",
+        "status": "passed",
+        "durationMs": 9556
+      },
+      {
+        "name": "full editor: remove a color group and persist the full-editor path",
+        "status": "passed",
+        "durationMs": 5105
+      },
+      {
+        "name": "published last variant: require explicit unpublish in one save",
+        "status": "passed",
+        "durationMs": 4451
+      },
+      {
+        "name": "published cart: deleted quantity is blocked, then customer removes the stale line",
+        "status": "passed",
+        "durationMs": 7958
+      },
+      {
+        "name": "mobile Persian, English, and Arabic deletion controls in dark theme",
+        "status": "passed",
+        "durationMs": 9711
+      }
+    ]
+  },
+  "existingBrowserRegression": {
+    "receipt": ".tmp/retail-recovery/1794310131866367665e2/result.json",
+    "status": "PASSED",
+    "exitCode": 0,
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "results": [
+      {
+        "name": "A: create product custom colors matrix save reload",
+        "status": "passed",
+        "durationMs": 5160
+      },
+      {
+        "name": "A2: existing product edit preserves SKU price inventory",
+        "status": "passed",
+        "durationMs": 4079
+      },
+      {
+        "name": "B: storefront custom color size add-to-cart persistence",
+        "status": "passed",
+        "durationMs": 3901
+      },
+      {
+        "name": "B2: cross-tenant cart rejection",
+        "status": "passed",
+        "durationMs": 1985
+      },
+      {
+        "name": "F: stale cart mutations refresh persisted cart",
+        "status": "passed",
+        "durationMs": 4464
+      },
+      {
+        "name": "D: Import Hub XLSX upload preview execute",
+        "status": "passed",
+        "durationMs": 2499
+      },
+      {
+        "name": "C/E: RTL mobile storefront custom color",
+        "status": "passed",
+        "durationMs": 32091
+      }
+    ],
+    "note": "Only the browser section of this earlier invocation passed; its overall FAILED status is retained for the then-failing deletion selector. Application build unchanged in the final deletion-only invocation."
+  },
+  "preservation": {
+    "activeWorktrees": 1,
+    "inheritedTrackedEdits": 9,
+    "inheritedUntrackedFiles": [
+      "test-runner.sh",
+      "typecheck.log"
+    ],
+    "retailArchiveSha256": "8ABA7A714E8533A95C5CDB5BE6898A7A9ADC006BDFF056D35040754AE88DDD1C"
+  },
+  "sourceSha256": {
+    "lib/retail/merchant-catalog.server.ts": "3eef10e1ec1aa960a53c1312a41194be62b119b476d33222f3533beda5266873",
+    "lib/retail/checkout.server.ts": "036920b9af4ab3a924633c0eb23247f2fe7b763a5720583d84262ec507b36349",
+    "lib/services/cart.service.ts": "7628b2151f93d02e60e79f82d01d4652c92c9e2324d7a673e182a0c230c5a33d",
+    "lib/services/product.service.ts": "3008bb75b61b9698f25c3c695b4c237e9ee0e7887c3b73e1a82a5cc2431924dc",
+    "components/dashboard/retail-product-editor.tsx": "6ea630b4664eca2537b9b5b579403de15ca880471ecc5bb12c91c85905a03b56",
+    "components/dashboard/retail-variant-matrix.tsx": "da2237df283163595b4f7e0acc6e553f672f23da096e82cd03d6232723fd12ef",
+    "lib/retail/variant-deletion-draft.ts": "a743fc90f00b6b9ba54cc2c276584ed5f3a366161f992c3b6412ee3c00880ab1",
+    "tests/integration/retail-variant-deletion.local.test.ts": "9ff1653a3265207d0219ebd8102478c3abb78a872cfc22a7153bbc7f561dfe96",
+    "tests/e2e/retail-recovery/variant-deletion-browser.mjs": "8e0c0d8c33da4134d00ee1b24fb5b82629329f078a6346d695e3d32da8e20ab4",
+    "scripts/e2e/retail-recovery-local.mjs": "44884913484bbec557020b3a6ff27d8ae6cc2aa260e8e1ab1ec68b37f5c4b710"
+  },
+  "production": {
+    "published": false,
+    "main": "382d90a7689a00ea142dfffb83e8a817d9a7a0b4",
+    "hotelHoldsEnabled": false,
+    "hotelCronEnabled": false,
+    "livePaymentsOrSms": false
+  }
+}

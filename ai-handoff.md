@@ -1,6 +1,9 @@
 # BazarBaaz continuation
 
-Current development: `docs/handoffs/DEVELOPMENT-PHASE2-2026-11-10.md`.
+Current development: `docs/handoffs/RETAIL-VARIANT-DELETION-2026-11-10.md`.
+This extends the six-commit phase-2 package documented in
+`docs/handoffs/DEVELOPMENT-PHASE2-2026-11-10.md`; PR 47 remains pending the
+owner's approval of the consolidated release. Do not merge/push to main.
 The owner accepted the `382d90a` Runflare deployment; its recovery/release phase
 is closed. Continue from the phase-2 source-verified priorities and validation.
 

@@ -1,5 +1,22 @@
 # BazarBaaz master takeover — 2026-11-10
 
+## Owner-accepted release closure
+
+The owner confirmed successful Runflare deployment and a positive final status
+for `382d90a7689a00ea142dfffb83e8a817d9a7a0b4` on 2026-11-10. Recovery,
+worktree consolidation and this release are closed. Do not repeat dashboard,
+build-log or health inspection without new failure evidence. This is owner
+runtime acceptance, distinct from the source CI evidence below.
+
+Main was fast-forwarded from `bb25c09499de37e63d158a14921c82e9971eaf7e`
+through exactly five approved commits. Push-triggered GitHub Actions passed:
+[TypeScript](https://github.com/QComputer/shadcn-rtl/actions/runs/42741937538)
+and [Hotel PostgreSQL](https://github.com/QComputer/shadcn-rtl/actions/runs/42741937478).
+The earlier approval-pending instructions below are historical for this package.
+Continue development on short-lived development branches in the same checkout;
+the next main/Production package requires its own single owner approval.
+Operational Hotel holds, Cron, real payments and SMS remain disabled.
+
 ## Verified baseline
 
 Inspected shared main at `bb25c09499de37e63d158a14921c82e9971eaf7e`.

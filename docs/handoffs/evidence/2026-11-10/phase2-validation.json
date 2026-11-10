@@ -1,0 +1,211 @@
+{
+  "acceptedProductionBaseline": "382d90a7689a00ea142dfffb83e8a817d9a7a0b4",
+  "productionAcceptance": "OWNER_CONFIRMED_CLOSED",
+  "developmentBranch": "codex/retail-pilot-phase2-20261110",
+  "applicationCommit": "a54502bf1a54f5e9a70a6a43eef2811b495c1eb5",
+  "retail": {
+    "artifact": ".tmp/retail-recovery/179430055218727d5c6e9/result.json",
+    "recordedSourceBase": "20adb84caf6aaa40e817aa2d06a3345c77ec5341",
+    "recordedSourceDirty": true,
+    "environment": "development-local",
+    "status": "PASSED",
+    "exitCode": 0,
+    "cleanup": "PASSED",
+    "commands": [
+      {
+        "label": "migrations",
+        "exitCode": 0
+      },
+      {
+        "label": "seed",
+        "exitCode": 0
+      },
+      {
+        "label": "cafe-regression",
+        "exitCode": 0
+      },
+      {
+        "label": "checkout-regression",
+        "exitCode": 0
+      },
+      {
+        "label": "browser",
+        "exitCode": 0
+      }
+    ],
+    "browser": {
+      "status": "PASSED",
+      "exitCode": 0,
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "results": [
+        {
+          "name": "A: create product custom colors matrix save reload",
+          "status": "passed",
+          "durationMs": 71848
+        },
+        {
+          "name": "A2: existing product edit preserves SKU price inventory",
+          "status": "passed",
+          "durationMs": 11945
+        },
+        {
+          "name": "B: storefront custom color size add-to-cart persistence",
+          "status": "passed",
+          "durationMs": 48206
+        },
+        {
+          "name": "B2: cross-tenant cart rejection",
+          "status": "passed",
+          "durationMs": 11653
+        },
+        {
+          "name": "F: stale cart mutations refresh persisted cart",
+          "status": "passed",
+          "durationMs": 27595
+        },
+        {
+          "name": "D: Import Hub XLSX upload preview execute",
+          "status": "passed",
+          "durationMs": 46180
+        },
+        {
+          "name": "C/E: RTL mobile storefront custom color",
+          "status": "passed",
+          "durationMs": 50003
+        }
+      ]
+    }
+  },
+  "retailUnits": {
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0
+  },
+  "typecheck": {
+    "exitCode": 0,
+    "artifact": ".tmp/phase2-20261110/typecheck-final.log"
+  },
+  "retailLint": {
+    "exitCode": 0,
+    "warnings": 0,
+    "artifact": ".tmp/phase2-20261110/retail-lint.log"
+  },
+  "damoon": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0,
+    "artifact": ".tmp/phase2-20261110/damoon.log",
+    "browserCoverage": "standalone source and shared public bundle; fa/en/ar; fresh session; one child and zero-child stale-age removal",
+    "lintErrors": 0,
+    "inheritedLintWarnings": 2
+  },
+  "preserved": {
+    "inheritedTrackedDirty": 9,
+    "inheritedUntracked": 2,
+    "registeredWorktrees": 1,
+    "retailArchiveSha256": "8ABA7A714E8533A95C5CDB5BE6898A7A9ADC006BDFF056D35040754AE88DDD1C"
+  },
+  "productionActions": {
+    "newRelease": false,
+    "operationalSettingsChanged": false,
+    "realProviderCalls": false
+  },
+  "limitations": [
+    "Retail runtime evidence is optimized built-local and separate development-local; no new deployed merchant acceptance.",
+    "Damoon generated files already differ from source in unrelated virtual-tour code; only owned contact changes mirrored.",
+    "Account recovery channel remains unconfigured and fail-closed."
+  ],
+  "optimizedRetail": {
+    "artifact": ".tmp/retail-recovery/17943014210624e1fe06c/result.json",
+    "recordedSourceBase": "33699d11d3aff0f7399cce47d6247f113d32a1b4",
+    "recordedSourceDirty": true,
+    "environment": "built-local",
+    "status": "PASSED",
+    "exitCode": 0,
+    "cleanup": "PASSED",
+    "commands": [
+      {
+        "label": "migrations",
+        "exitCode": 0
+      },
+      {
+        "label": "seed",
+        "exitCode": 0
+      },
+      {
+        "label": "cafe-regression",
+        "exitCode": 0
+      },
+      {
+        "label": "checkout-regression",
+        "exitCode": 0
+      },
+      {
+        "label": "browser",
+        "exitCode": 0
+      }
+    ],
+    "browser": {
+      "status": "PASSED",
+      "exitCode": 0,
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "results": [
+        {
+          "name": "A: create product custom colors matrix save reload",
+          "status": "passed",
+          "durationMs": 6006
+        },
+        {
+          "name": "A2: existing product edit preserves SKU price inventory",
+          "status": "passed",
+          "durationMs": 5459
+        },
+        {
+          "name": "B: storefront custom color size add-to-cart persistence",
+          "status": "passed",
+          "durationMs": 4913
+        },
+        {
+          "name": "B2: cross-tenant cart rejection",
+          "status": "passed",
+          "durationMs": 2853
+        },
+        {
+          "name": "F: stale cart mutations refresh persisted cart",
+          "status": "passed",
+          "durationMs": 5349
+        },
+        {
+          "name": "D: Import Hub XLSX upload preview execute",
+          "status": "passed",
+          "durationMs": 3768
+        },
+        {
+          "name": "C/E: RTL mobile storefront custom color",
+          "status": "passed",
+          "durationMs": 32446
+        }
+      ]
+    }
+  },
+  "build": {
+    "exitCode": 0,
+    "environment": "isolated-local-placeholder",
+    "sourceSha": "a54502bf1a54f5e9a70a6a43eef2811b495c1eb5",
+    "cache": "off",
+    "skipTypecheck": false,
+    "artifact": ".tmp/phase2-20261110/build.log",
+    "staticPages": 344
+  },
+  "handoffValidation": {
+    "passed": 25,
+    "failed": 0,
+    "exitCode": 0
+  }
+}

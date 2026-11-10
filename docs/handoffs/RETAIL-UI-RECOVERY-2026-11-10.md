@@ -49,11 +49,18 @@ dependencies, Docker `pg-cron` published on 5436, and installed Windows Chrome:
 & 'C:/Users/disso/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe' scripts/e2e/retail-recovery-local.mjs --disposable-local --built
 ```
 
-This runs migrations, guarded fixtures, the Cafe catalog/order regression and
-all six browser scenarios. `--built` starts the locally built app with optimized
+This runs migrations, guarded fixtures, the Cafe catalog/order regression,
+checkout stale-review/idempotency regression and all seven browser scenarios.
+The seventh scenario verifies stale cart PATCH/DELETE recovery after a real
+second request removes the line. `--built` starts the locally built app with optimized
 runtime behavior, bound to 127.0.0.1:3107 and its new disposable database. It does
 not deploy anywhere. Omitting `--built` selects development mode; the former dev
 runs exposed hydration/refresh timing and are not the authoritative acceptance.
+
+Use `--services-only` instead of `--built` for focused database/service work:
+it runs migrations, fixtures, Cafe and checkout regressions, and cleanup without
+starting an app server or claiming browser acceptance. A development-mode result
+is also recorded explicitly as `development-local`, separate from built-local.
 
 The guard itself can be checked without starting the app or connecting to PostgreSQL:
 
@@ -63,7 +70,10 @@ pnpm exec node --test tests/e2e/retail-recovery/safety.test.mjs
 
 Each run writes `.tmp/retail-recovery/<stamp>/result.json` containing source SHA,
 dirty-state marker, command exit codes, browser results and cleanup. Accept only
-`status=PASSED`, `exitCode=0`, `cleanup=PASSED`, and six passed browser scenarios.
+`status=PASSED`, `exitCode=0`, `cleanup=PASSED`, and seven passed browser scenarios
+for the current full runner. Historical six-scenario evidence belongs to its
+recorded source version. Services-only results require all command exit codes 0
+and cleanup passed, and do not establish browser acceptance.
 `browser-results.json` contains per-scenario evidence; screenshots and a token-free
 import preview are retained beside it. The source snapshot remains dirty because
 inherited owner changes are preserved. Public HTTPS, real merchant/payment,

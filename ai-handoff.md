@@ -1,5 +1,9 @@
 # BazarBaaz continuation
 
+Current development: `docs/handoffs/DEVELOPMENT-PHASE2-2026-11-10.md`.
+The owner accepted the `382d90a` Runflare deployment; its recovery/release phase
+is closed. Continue from the phase-2 source-verified priorities and validation.
+
 Start with `AGENTS.md`, then `docs/handoffs/MASTER-TAKEOVER-2026-11-10.md`.
 The November 10 takeover records the inspected Git baseline and supersedes
 the November 5 documents' checkout/SHA/dirty-state descriptions. Historical

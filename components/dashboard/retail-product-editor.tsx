@@ -5,9 +5,11 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useState } from "react";
 import { ArrowLeft, ChevronDown, ChevronRight, Eye, Plus, Save, Store, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 import { buildNewRetailVariantDrafts, generateRetailSizeRange } from "@/lib/retail/draft-variant-generation";
 import { retailEditorSnapshot } from "@/lib/retail/editor-snapshot";
+import { hasPurchasableVariant, originalVariantPosition, restoreVariantDeletions, type PendingVariantDeletion } from "@/lib/retail/variant-deletion-draft";
 import RetailVariantMatrix from "./retail-variant-matrix";
 import { compareRetailSizes } from "@/lib/retail/product-detail";
 import { formatRetailSize } from "@/lib/retail/format-size";
@@ -24,7 +26,7 @@ type Category = { id: string; name: string; isActive: boolean };
 type ImageItem = { id: string; url: string; filename?: string | null };
 type Attribute = { definitionId: string; value: string | number | boolean };
 type ProductGallerySettings = GallerySettings & ProductAppearanceSettings;
-type ProductRecord = { id: string; name: string; brand: string | null; slug: string | null; description: string | null; isActive: boolean; trackInventory: boolean; basePrice: number; gallerySettings: ProductGallerySettings | null; galleryMedia?: ImageItem[]; appearanceMedia?: ImageItem[]; category: { id: string; name: string; isActive: boolean }; categoryIds: string[]; tags: Array<{ id: string; name: string }>; imageIds: string[]; images: ImageItem[]; attributes: Attribute[]; variants: VariantRecord[] };
+type ProductRecord = { id: string; variantRevision: string; name: string; brand: string | null; slug: string | null; description: string | null; isActive: boolean; trackInventory: boolean; basePrice: number; gallerySettings: ProductGallerySettings | null; galleryMedia?: ImageItem[]; appearanceMedia?: ImageItem[]; category: { id: string; name: string; isActive: boolean }; categoryIds: string[]; tags: Array<{ id: string; name: string }>; imageIds: string[]; images: ImageItem[]; attributes: Attribute[]; variants: VariantRecord[] };
 type VariantRecord = { galleryMode?: "INHERIT" | "OVERRIDE" | null; id: string; name: string | null; sku: string | null; price: number | null; inventory: number; reservedQuantity: number; allowBackOrder: boolean; manuallyUnavailable: boolean; options: Attribute[]; imageIds: string[]; images: ImageItem[] };
 type VariantDraft = { galleryMode: "INHERIT" | "OVERRIDE"; id?: string; name: string; sku: string; price: string; inventory: string; reservedQuantity: number; allowBackOrder: boolean; manuallyUnavailable: boolean; options: Record<string, string>; imageIds: string[] };
 
@@ -98,7 +100,19 @@ function ErrorMessage({ text }: { text: string }) { return text ? <p role="alert
 function friendlyError(message: string, locale: Locale, fallback: string, stockMessage: string, publishMessage: string) {
   const normalized = message.toLocaleLowerCase();
   if (normalized.includes("sku") && (normalized.includes("unique") || normalized.includes("duplicate") || normalized.includes("already"))) {
-    return locale === "fa" ? "این شناسه کالا قبلاً برای گونه دیگری استفاده شده است. برای هر گونه یک شناسه یکتا وارد کنید." : locale === "ar" ? "رمز المنتج مستخدم بالفعل. أدخل رمزًا فريدًا لكل خيار." : "That SKU is already used. Enter a unique SKU for each variant.";
+    return locale === "fa" ? "این شناسه کالا قبلاً استفاده شده و ممکن است به تاریخچه گونه حذف‌شده تعلق داشته باشد. برای گونه جدید شناسه دیگری انتخاب کنید." : locale === "ar" ? "رمز المنتج مستخدم بالفعل وقد يكون محفوظًا في سجل خيار محذوف. اختر رمزًا آخر للخيار الجديد." : "That SKU is already in use and may be retained by a deleted variant's history. Choose a different SKU for the new variant.";
+  }
+  if (normalized.includes("reserved stock") || normalized.includes("reservedquantity")) {
+    return locale === "fa" ? "این گونه موجودی رزروشده دارد و حذف نمی‌شود. ابتدا رزرو را تعیین تکلیف کنید یا گونه را غیرفعال کنید." : locale === "ar" ? "هذا الخيار لديه مخزون محجوز ولا يمكن حذفه. عالج الحجز أولاً أو عطّل الخيار للبيع." : "This variant has reserved stock and cannot be deleted. Resolve its reservations first or mark it unavailable for purchase.";
+  }
+  if ((normalized.includes("order") || normalized.includes("payment")) && (normalized.includes("progress") || normalized.includes("pending"))) {
+    return locale === "fa" ? "برای این گونه سفارش یا پرداخت در جریان است. ابتدا آن را تعیین تکلیف کنید یا گونه را برای خرید غیرفعال کنید." : locale === "ar" ? "هناك طلب أو دفعة قيد المعالجة لهذا الخيار. عالجها أولاً أو عطّل الخيار للبيع." : "An order or payment is still in progress for this variant. Resolve it first or mark the variant unavailable for purchase.";
+  }
+  if (normalized.includes("product variants changed") || normalized.includes("concurrently") || normalized.includes("reload the product before deleting")) {
+    return locale === "fa" ? "گونه‌های محصول هم‌زمان تغییر کرده‌اند. محصول را دوباره بارگذاری و فهرست حذف را بازبینی کنید." : locale === "ar" ? "تغيرت خيارات المنتج بالتزامن. أعد تحميل المنتج وراجع عمليات الحذف." : "The product variants changed while you were editing. Reload the product and review the deletions again.";
+  }
+  if (normalized.includes("last purchasable variant") || normalized.includes("requires unpublishing")) {
+    return locale === "fa" ? "برای حذف آخرین گونه قابل خرید، گزینه خارج‌کردن محصول از انتشار را در پنجره تأیید انتخاب کنید." : locale === "ar" ? "لحذف آخر خيار قابل للشراء، اختر إلغاء نشر المنتج في نافذة التأكيد." : "Deleting the last purchasable variant requires selecting the unpublish option in the confirmation dialog.";
   }
   if ((normalized.includes("stock") || normalized.includes("inventory")) && (normalized.includes("reserved") || normalized.includes("below"))) return stockMessage;
   if (normalized.includes("image") && (normalized.includes("public") || normalized.includes("store") || normalized.includes("belong") || normalized.includes("owned"))) {
@@ -132,6 +146,11 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
   const [tagText, setTagText] = useState("");
   const [attributes, setAttributes] = useState<Record<string, string>>({});
   const [variants, setVariants] = useState<VariantDraft[]>([]);
+  const [variantRevision, setVariantRevision] = useState<string | null>(null);
+  const [pendingDeletes, setPendingDeletes] = useState<Array<PendingVariantDeletion<VariantDraft>>>([]);
+  const [deleteRequest, setDeleteRequest] = useState<{ indices: number[]; label: string } | null>(null);
+  const [lastVariantUnpublish, setLastVariantUnpublish] = useState(false);
+  const [unpublishWithDeletion, setUnpublishWithDeletion] = useState(false);
   const [published, setPublished] = useState(false);
   const [trackInventory, setTrackInventory] = useState(true);
   const [loadedInventory, setLoadedInventory] = useState<Record<string, string>>({});
@@ -218,6 +237,8 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
         setOrganizationSlug(contextData.organizationSlug ?? "");
         if (productData?.product) {
           const product = productData.product as ProductRecord;
+          setVariantRevision(product.variantRevision);
+          setPendingDeletes([]); setDeleteRequest(null); setLastVariantUnpublish(false); setUnpublishWithDeletion(false);
           setSavedState(recordSnapshot(product, defs));
           setColorGalleries(galleryEditor(product, defs).colors);
           setAppearanceSettings({ appearance: product.gallerySettings?.appearance ?? undefined, appearanceGroups: product.gallerySettings?.appearanceGroups ?? undefined, variantAppearances: product.gallerySettings?.variantAppearances ?? undefined });
@@ -241,6 +262,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
           setSelectedImageIds(product.imageIds);
           setVariants(galleryEditor(product, defs).variants);
         } else {
+          setVariantRevision(null); setPendingDeletes([]); setDeleteRequest(null); setLastVariantUnpublish(false); setUnpublishWithDeletion(false);
           setName(""); setBrand(""); setSlug(""); setDescription(""); setBasePrice("");
           setCategoryId(""); setCategoryIds([]); setTagText(""); setAttributes({}); setPublished(false); setTrackInventory(true); setLoadedInventory({});
           const initialVariants = [newVariant(defs)];
@@ -258,10 +280,8 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
     return () => { cancelled = true; };
   }, [productId, t.genericError, reloadVersion]);
 
-  const colorOptionDef = useMemo(() => findRetailOptionDefinition(optionDefinitions, variants, "color"), [optionDefinitions, variants]);
-
   const groupedVariants = useMemo(() => {
-    if (!groupDefinitionId || !colorOptionDef) return [{ key: "ungrouped", label: "", variants: variants }];
+    if (!groupDefinitionId) return [{ key: "ungrouped", label: "", variants: variants }];
     const def = optionDefinitions.find((d) => d.id === groupDefinitionId);
     if (!def) return [{ key: "ungrouped", label: "", variants: variants }];
     const groups = new Map<string, VariantDraft[]>();
@@ -274,20 +294,47 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
         groups.get(gk)!.push(variant);
       } else ungrouped.push(variant);
     }
-    const result = Array.from(groups.entries()).map(([key, items]) => ({ key, label: key.split(":").pop() ?? "", variants: items }));
+    const result = Array.from(groups.entries()).map(([key, items]) => ({ key, label: items[0]?.options[def.id] ?? "", variants: items }));
     if (ungrouped.length) result.unshift({ key: "ungrouped", label: "", variants: ungrouped });
     return result;
-  }, [variants, groupDefinitionId, optionDefinitions, colorOptionDef]);
+  }, [variants, groupDefinitionId, optionDefinitions]);
 
   function updateVariant(index: number, patch: Partial<VariantDraft>) {
     setVariants((current) => current.map((variant, currentIndex) => currentIndex === index ? { ...variant, ...patch } : variant));
+    if (patch.manuallyUnavailable === false) setUnpublishWithDeletion(false);
   }
 
-  function deleteVariant(index: number) {
-    if (!window.confirm(locale === "fa" ? "این گونه حذف می‌شود. ادامه می‌دهید؟" : locale === "ar" ? "سيتم حذف هذا الخيار. متابعة؟" : "Delete this variant?")) return;
-    const deletedId = variants[index]?.id;
-    setVariants((current) => current.filter((_, currentIndex) => currentIndex !== index));
-    if (deletedId) setSelectedVariantIds((prev) => { const next = new Set(prev); next.delete(deletedId); return next; });
+  function requestVariantDeletion(indices: number[], label: string) {
+    const unique = [...new Set(indices)].filter(index => Number.isInteger(index) && index >= 0 && index < variants.length);
+    if (!unique.length || saving) return;
+    setDeleteRequest({ indices: unique, label });
+    setLastVariantUnpublish(false);
+  }
+
+  function confirmVariantDeletion() {
+    if (!deleteRequest || saving) return;
+    const requested = new Set(deleteRequest.indices);
+    const removed = variants.flatMap((variant, index) => requested.has(index) ? [{ variant, position: originalVariantPosition(index, pendingDeletes.map(entry => entry.position)) }] : []);
+    if (!removed.length) { setDeleteRequest(null); return; }
+    const ids = new Set(removed.flatMap(({ variant }) => variant.id ? [variant.id] : []));
+    const draftIds = new Set(pendingDeletes.map(({ variant }) => variant.id).filter((id): id is string => !!id));
+    if ([...ids].some(id => draftIds.has(id))) return;
+    const leavesNoPurchasableVariant = published && !hasPurchasableVariant(variants.filter((_, index) => !requested.has(index)), trackInventory);
+    if (leavesNoPurchasableVariant && !lastVariantUnpublish) return;
+    if (leavesNoPurchasableVariant) setUnpublishWithDeletion(true);
+    setPendingDeletes(current => [...current, ...removed]);
+    setVariants(current => current.filter((_, index) => !requested.has(index)));
+    setSelectedVariantIds(current => new Set([...current].filter(id => !ids.has(id))));
+    setNotice(locale === "fa" ? "برای ثبت حذف، تغییرات را ذخیره کنید." : locale === "ar" ? "احفظ التغييرات لتطبيق عمليات الحذف." : "Save changes to apply deletions.");
+    setDeleteRequest(null);
+  }
+
+  function undoPendingDeletions() {
+    if (saving || !pendingDeletes.length) return;
+    setVariants(current => restoreVariantDeletions(current, pendingDeletes));
+    setPendingDeletes([]);
+    setUnpublishWithDeletion(false);
+    setNotice("");
   }
 
   function bulkSetUnavailable(unavailable: boolean) {
@@ -359,7 +406,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
     if (generationBlocked || !currentGenerationPreview?.canCreate || currentGenerationPreview.errors.length) return;
     if (!productId && currentGenerationPreview.drafts) {
       const existing = variants.filter(v => v.id || v.name || v.sku || v.price || v.inventory !== "0" || v.allowBackOrder || v.manuallyUnavailable || v.imageIds.length || Object.values(v.options).some(Boolean));
-      setVariants([...existing, ...currentGenerationPreview.drafts]); setGenPreview(null); setShowDetails(false);
+      setVariants([...existing, ...currentGenerationPreview.drafts]); setUnpublishWithDeletion(false); setGenPreview(null); setShowDetails(false);
       setNotice(locale === "fa" ? "ترکیب‌ها به پیش‌نویس اضافه شدند؛ برای ثبت نهایی ذخیره کنید." : locale === "ar" ? "أُضيفت الخيارات إلى المسودة؛ احفظ المنتج." : "Variants added to the draft. Save the product to persist them.");
       return;
     }
@@ -383,6 +430,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
 
   async function saveProduct(action: "save" | "publish" | "unpublish") {
     if (saving || fileBusy) return;
+    const effectiveAction = pendingWillUnpublish ? "unpublish" : action;
     setSaving(true); setError(""); setNotice("");
     try {
       if (!categoryId) throw new Error("missing-category");
@@ -397,14 +445,21 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
       const productAttributes = buildAssignments("PRODUCT", attributes);
       const categoriesToSave = [...new Set([categoryId, ...categoryIds].filter(Boolean))];
       const tagNames = [...new Set(tagText.split(/[,،\n]/u).map((tag) => tag.trim()).filter(Boolean))];
-      const gallerySettings = { version: 1 as const, productImageIds: selectedImageIds, colors: visibleColors, ...appearanceSettings };
+      const persistedDeletionIds = [...new Set(pendingDeletes.flatMap(({ variant }) => variant.id ? [variant.id] : []))];
+      if (persistedDeletionIds.length && !variantRevision) throw new Error(locale === "fa" ? "نسخه گونه‌های محصول در دسترس نیست. صفحه را دوباره بارگذاری کنید." : locale === "ar" ? "إصدار خيارات المنتج غير متاح. أعد تحميل الصفحة." : "The variant revision is unavailable. Reload the product before saving deletions.");
+      const activeVariantIds = new Set(variants.flatMap(variant => variant.id ? [variant.id] : []));
+      const activeAppearanceGroups = (appearanceSettings.appearanceGroups ?? []).filter(group => definitions.some(definition => definition.id === group.definitionId && variants.some(variant => variant.options[definition.id] === group.value)));
+      const activeVariantAppearances = (appearanceSettings.variantAppearances ?? []).filter(appearance => activeVariantIds.has(appearance.variantId));
+      const prunedAppearanceSettings = { ...appearanceSettings, appearanceGroups: activeAppearanceGroups, variantAppearances: activeVariantAppearances };
+      const gallerySettingsToSave = { version: 1 as const, productImageIds: selectedImageIds, colors: visibleColors, ...prunedAppearanceSettings };
       const payload = productId ? {
-        trackInventory, gallerySettings, basePrice: numberBasePrice, name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
+        trackInventory, gallerySettings: gallerySettingsToSave, basePrice: numberBasePrice, name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
         variantUpdates: variants.filter((variant) => variant.id).map((variant) => ({ id: variant.id!, name: variant.name.trim(), sku: variant.sku.trim() || null, price: variant.price === "" ? null : Number(variant.price), ...(variant.inventory === loadedInventory[variant.id!] ? {} : { inventory: Number(variant.inventory) }), allowBackOrder: variant.allowBackOrder, manuallyUnavailable: variant.manuallyUnavailable, galleryMode: variant.galleryMode, options: variantInput[variants.indexOf(variant)]!.options, imageIds: variant.imageIds })),
         newVariants: variantInput.filter((_, index) => !variants[index]?.id),
-        ...(action === "publish" ? { isActive: true } : action === "unpublish" ? { isActive: false } : {}),
+        ...(persistedDeletionIds.length ? { deletedVariantIds: persistedDeletionIds, expectedVariantRevision: variantRevision } : {}),
+        ...(action === "publish" ? { isActive: true } : effectiveAction === "unpublish" ? { isActive: false } : {}),
       } : {
-        trackInventory, gallerySettings, basePrice: numberBasePrice, name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
+        trackInventory, gallerySettings: gallerySettingsToSave, basePrice: numberBasePrice, name, brand: brand || null, slug: slug || undefined, description: description || null, categoryId, categoryIds: categoriesToSave, tagNames, imageIds: selectedImageIds, attributes: productAttributes,
         variants: variantInput,
       };
       const response = await fetch(productId ? `/api/dashboard/retail/catalog/${productId}` : "/api/dashboard/retail/catalog", { method: productId ? "PATCH" : "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
@@ -429,11 +484,12 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
       setSlug(updated.slug ?? "");
       setSavedState(recordSnapshot(updated, definitions)); setGenPreview(null);
       setPublished(updated.isActive);
+      setVariantRevision(updated.variantRevision); setPendingDeletes([]); setUnpublishWithDeletion(false);
       setTrackInventory(updated.trackInventory);
       setLoadedInventory(Object.fromEntries(updated.variants.map(v => [v.id, String(v.inventory)])));
-      setNotice(action === "publish" ? t.publishNotice : action === "unpublish" ? t.unpublishNotice : t.saved);
+      setNotice(action === "publish" ? t.publishNotice : effectiveAction === "unpublish" ? t.unpublishNotice : pendingDeletes.length ? (locale === "fa" ? "حذف گونه‌ها ثبت شد." : locale === "ar" ? "تم حفظ حذف الخيارات." : "Variant deletions saved.") : t.saved);
       if (action === "publish") setPreview(false);
-      if (action === "unpublish") setPreview(true);
+      if (effectiveAction === "unpublish") setPreview(true);
       router.refresh();
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : t.genericError;
@@ -442,6 +498,8 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
   }
 
   const imageById = useMemo(() => new Map(images.map(image => [image.id, image])), [images]);
+  const deleteWouldLeaveNoPurchasable = !!deleteRequest && published && !hasPurchasableVariant(variants.filter((_, index) => !deleteRequest.indices.includes(index)), trackInventory);
+  const pendingWillUnpublish = unpublishWithDeletion && pendingDeletes.length > 0 && !hasPurchasableVariant(variants, trackInventory);
   const assignedImages = (ids: string[]) => ids.flatMap(id => imageById.has(id) ? [imageById.get(id)!] : []);
   const colorDefinition = optionDefinitions.find(def => colorGalleries.some(group => group.definitionId === def.id)) ?? findRetailOptionDefinition(optionDefinitions, variants, "color");
   const colorValues = colorDefinition ? [...new Set(variants.map(variant => variant.options[colorDefinition.id]).filter(Boolean))] : [];
@@ -617,7 +675,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
                     <button type="button" onClick={collapseAll} className="rounded-md border px-2 py-1 text-xs hover:bg-muted">{t.collapseAll}</button>
                   </>
                 )}
-                <button type="button" onClick={() => { setDetailIndex(variants.length); setShowDetails(true); setVariants((current) => [...current, newVariant(definitions)]); }} className="rounded-lg border px-3 py-2 text-sm hover:bg-muted"><Plus className="me-1 inline size-4" />{t.addVariant}</button>
+                <button type="button" onClick={() => { setDetailIndex(variants.length); setShowDetails(true); setVariants((current) => [...current, newVariant(definitions)]); setUnpublishWithDeletion(false); }} className="rounded-lg border px-3 py-2 text-sm hover:bg-muted"><Plus className="me-1 inline size-4" />{t.addVariant}</button>
               </div>
             </div>
 
@@ -634,11 +692,17 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
               <button type="button" aria-pressed={!showDetails} onClick={() => setShowDetails(false)} className="min-h-10 rounded-lg border px-3 text-sm">{locale === "fa" ? "جدول رنگ و سایز" : locale === "ar" ? "جدول الألوان والمقاسات" : "Color and size table"}</button>
               <button type="button" aria-pressed={showDetails} onClick={() => { setDetailIndex(null); setShowDetails(true); }} className="min-h-10 rounded-lg border px-3 text-sm">{locale === "fa" ? "ویرایش کامل تنوع‌ها" : locale === "ar" ? "تحرير الخيارات" : "Full variant editor"}</button>
             </div>
-            {!showDetails && <RetailVariantMatrix variants={variants} definitions={optionDefinitions} locale={locale} basePrice={numberBasePrice ?? 0} onUpdate={updateVariant} onOpenDetails={index => { setDetailIndex(index); setShowDetails(true); }} disabled={saving || fileBusy || genBusy} />}
+            {!showDetails && <RetailVariantMatrix variants={variants} definitions={optionDefinitions} locale={locale} basePrice={numberBasePrice ?? 0} onUpdate={updateVariant} onOpenDetails={index => { setDetailIndex(index); setShowDetails(true); }} onRequestDelete={(indices, label) => requestVariantDeletion(indices, label)} disabled={saving || fileBusy || genBusy} />}
             {showDetails && <div className="space-y-3">
               {groupedVariants.map((group) => {
                 if (detailIndex !== null && !group.variants.includes(variants[detailIndex])) return null;
                 const isExpanded = detailIndex !== null || expandedGroups.has(group.key) || group.key === "ungrouped";
+                const groupingDefinition = optionDefinitions.find(definition => definition.id === groupDefinitionId);
+                const groupingIsColor = !!groupingDefinition && findRetailOptionDefinition(optionDefinitions, variants, "color")?.id === groupingDefinition.id;
+                const groupDeleteAction = groupingIsColor
+                  ? (locale === "fa" ? "حذف گروه رنگ" : locale === "ar" ? "حذف مجموعة اللون" : "Delete color group")
+                  : (locale === "fa" ? `حذف گروه ${groupingDefinition?.label ?? "ویژگی"}` : locale === "ar" ? `حذف مجموعة ${groupingDefinition?.label ?? "السمة"}` : `Delete ${groupingDefinition?.label ?? "option"} group`);
+                const groupDeleteDescription = `${groupingDefinition?.label ?? t.groupBy}: ${group.label}`;
                 return (
                   <div key={group.key} className="rounded-lg border bg-muted/10">
                     <div className="flex items-center justify-between p-3">
@@ -651,7 +715,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
                         <h3 className="text-sm font-medium">{group.label || (group.key === "ungrouped" ? "" : group.label)}</h3>
                       </div>
                       {group.key !== "ungrouped" && (
-                        <span className="text-xs text-muted-foreground">{group.variants.filter(v => v.id).length} {t.variantCount}</span>
+                        <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">{group.variants.filter(v => v.id).length} {t.variantCount}</span><button type="button" disabled={saving || fileBusy || genBusy} aria-label={`${groupDeleteAction}: ${group.label}`} onClick={() => requestVariantDeletion(group.variants.map(variant => variants.indexOf(variant)), groupDeleteDescription)} className="inline-flex min-h-9 items-center gap-1 rounded-md border border-destructive/30 px-2 text-xs text-destructive hover:bg-destructive/5 disabled:opacity-50"><Trash2 aria-hidden="true" className="size-3.5" />{t.removeVariant}</button></div>
                       )}
                     </div>
                     {(isExpanded || group.key === "ungrouped") && (
@@ -703,9 +767,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
                                   <input type="checkbox" checked={variant.manuallyUnavailable} onChange={(event) => updateVariant(realIndex, { manuallyUnavailable: event.target.checked })} />{t.unavailable}
                                 </label>
                               </div>
-                              {!variant.id && variants.length > 1 && (
-                                <button className="justify-self-start rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/5" type="button" onClick={() => deleteVariant(realIndex)}><Trash2 className="me-1 inline size-3.5" />{t.removeVariant}</button>
-                              )}
+                              <button className="justify-self-start rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/5 disabled:opacity-50" disabled={saving || fileBusy || genBusy} aria-label={`${locale === "fa" ? "حذف گونه" : locale === "ar" ? "حذف الخيار" : "Delete variant"}: ${variant.name || variant.sku || realIndex + 1} · ${variant.sku || variant.id || realIndex + 1}`} type="button" onClick={() => requestVariantDeletion([realIndex], `${variant.name || variant.sku || `${t.variant} ${realIndex + 1}`} · ${variant.sku || variant.id || realIndex + 1}`)}><Trash2 aria-hidden="true" className="me-1 inline size-3.5" />{t.removeVariant}</button>
                               {variant.id && (
                                 <label className="flex items-center gap-1 text-xs font-medium sm:col-span-2 xl:col-span-2">
                                   <input type="checkbox" checked={selectedVariantIds.has(variant.id)} onChange={(event) => {
@@ -731,6 +793,7 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
 
 
           <div className="flex flex-wrap gap-2">
+            {pendingDeletes.length > 0 && <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-50/60 p-3 text-sm dark:bg-amber-950/20"><span role="status">{locale === "fa" ? `برای ثبت حذف ${pendingDeletes.length} گونه، تغییرات را ذخیره کنید.` : locale === "ar" ? `احفظ التغييرات لتطبيق حذف ${pendingDeletes.length} خيار.` : `Save changes to apply ${pendingDeletes.length} pending deletion${pendingDeletes.length === 1 ? "" : "s"}.`}</span><button type="button" disabled={saving} onClick={undoPendingDeletions} className="min-h-9 rounded-md border px-3 text-sm font-medium disabled:opacity-50">{locale === "fa" ? "بازگردانی حذف‌های در انتظار" : locale === "ar" ? "التراجع عن عمليات الحذف المعلقة" : "Undo pending deletions"}</button>{pendingWillUnpublish && <span className="text-xs font-medium text-amber-900 dark:text-amber-100">{locale === "fa" ? "با ذخیره، محصول نیز از انتشار خارج می‌شود." : locale === "ar" ? "سيتم إلغاء نشر المنتج عند الحفظ." : "Saving will also unpublish this product."}</span>}</div>}
             <button disabled={saving || fileBusy || !name.trim() || !numberBasePrice} type="button" onClick={() => void saveProduct("save")} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Save className="me-2 inline size-4" />{saving ? t.deleting : productId ? t.saveChanges : t.save}</button>
             <button type="button" onClick={() => setPreview((current) => !current)} className="rounded-lg border px-4 py-2.5 text-sm font-semibold hover:bg-muted"><Eye className="me-2 inline size-4" />{preview ? t.closePreview : t.preview}</button>
             {productId && !published && <button disabled={saving || fileBusy} type="button" onClick={() => void saveProduct("publish")} className="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">{t.publish}</button>}
@@ -740,6 +803,13 @@ export function RetailProductEditor({ locale, productId }: { locale: Locale; pro
 
         {preview && <aside className="sticky top-4 overflow-hidden rounded-xl border bg-card shadow-sm"><div className="border-b bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">{t.previewBanner}</div>{selectedImages[0] ? <Image src={selectedImages[0].url} alt="" width={640} height={480} unoptimized className="aspect-[4/3] w-full object-cover" /> : <div className="grid aspect-[4/3] place-items-center bg-muted text-sm text-muted-foreground">{t.noImage}</div>}<div className="space-y-3 p-4"><h2 className="text-lg font-semibold">{name || t.titleNew}</h2><p className="whitespace-pre-wrap text-sm text-muted-foreground">{description}</p>{attributes && <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">{productAttributeDefinitions.filter((definition) => attributes[definition.id]).map((definition) => <div key={definition.id}><dt className="text-xs text-muted-foreground">{definition.label}</dt><dd>{attributes[definition.id]}{definition.displayUnit ? ` ${definition.displayUnit}` : ""}</dd></div>)}</dl>}<div className="divide-y rounded-lg border">{variants.map((variant, index) => <div key={variant.id ?? index} className="flex items-center justify-between gap-2 p-3 text-sm"><span>{variant.name || `${t.variant} ${index + 1}`}{Object.entries(variant.options).filter(([, value]) => value).map(([id, value]) => <small key={id} className="ms-2 text-muted-foreground">{optionDefinitions.find((definition) => definition.id === id)?.label}: {value}</small>)}</span><span className="font-semibold">{Number(effectiveVariantPrice(variant, numberBasePrice ?? 0)).toLocaleString(locale)} {locale === "fa" ? "تومان" : "Toman"}</span></div>)}</div><button disabled className="w-full rounded-lg bg-muted px-4 py-2 text-sm text-muted-foreground" type="button">{t.previewBanner}</button></div></aside>}
       </div>
+      <Dialog open={!!deleteRequest} onOpenChange={(open) => { if (!open && !saving) { setDeleteRequest(null); setLastVariantUnpublish(false); } }}>
+        <DialogContent dir={locale === "en" ? "ltr" : "rtl"} lang={locale} className="w-[calc(100%-1.25rem)] max-w-lg">
+          <DialogHeader><DialogTitle>{locale === "fa" ? "تأیید حذف گونه‌ها" : locale === "ar" ? "تأكيد حذف الخيارات" : "Confirm variant deletion"}</DialogTitle><DialogDescription>{deleteRequest && (locale === "fa" ? `آیا می‌خواهید «${deleteRequest.label}» و ${deleteRequest.indices.length} ترکیب مربوط به آن را از این محصول حذف کنید؟ این تغییر پس از ذخیره ثبت می‌شود.` : locale === "ar" ? `هل تريد حذف «${deleteRequest.label}» و${deleteRequest.indices.length} من الخيارات المرتبطة بهذا المنتج؟ سيتم تطبيق التغيير عند الحفظ.` : `Delete “${deleteRequest.label}” and its ${deleteRequest.indices.length} affected variant combination${deleteRequest.indices.length === 1 ? "" : "s"}? The change is saved with the product.`)}</DialogDescription></DialogHeader>
+          {deleteWouldLeaveNoPurchasable && <label className="flex items-start gap-2 rounded-md border border-amber-500/40 p-3 text-sm"><input type="checkbox" checked={lastVariantUnpublish} onChange={event => setLastVariantUnpublish(event.target.checked)} className="mt-1" /><span>{locale === "fa" ? "هم‌زمان محصول منتشرشده را از فروشگاه خارج کن" : locale === "ar" ? "إلغاء نشر المنتج من المتجر في الوقت نفسه" : "Unpublish this product too"}</span></label>}
+          <DialogFooter><button type="button" disabled={saving} onClick={() => { setDeleteRequest(null); setLastVariantUnpublish(false); }} className="min-h-10 rounded-lg border px-4 py-2 text-sm">{locale === "fa" ? "لغو" : locale === "ar" ? "إلغاء" : "Cancel"}</button><button type="button" disabled={saving || (deleteWouldLeaveNoPurchasable && !lastVariantUnpublish)} onClick={confirmVariantDeletion} className="min-h-10 rounded-lg bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground disabled:opacity-50">{locale === "fa" ? "تأیید حذف" : locale === "ar" ? "تأكيد الحذف" : "Confirm deletion"}</button></DialogFooter>
+        </DialogContent>
+      </Dialog>
       {picker && <RetailMediaPicker locale={locale} open onOpenChange={open => { if (!open) setPicker(null); }} selectedIds={galleryIds(picker)} disabled={saving || fileBusy} onConfirm={(ids, media) => { setImages(current => [...new Map([...current, ...media].map(image => [image.id, image])).values()]); changeGallery(picker, ids); }} />}
     </main>
   );

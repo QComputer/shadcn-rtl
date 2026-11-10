@@ -5,6 +5,7 @@ import { validateStayRange, todayLocalISO, jalaliAccessibleDay } from "./calenda
 import translations from "./translations.js";
 import { palettes, readPalette, applyPalette } from "./themes.js";
 import { mountBooking, readStaySelection } from "./booking.js";
+import { parseChildAges } from "./booking-flow.js";
 
 const root = document.querySelector("#app");
 if (!root) throw new Error("Damoon app mount #app was not found");
@@ -25,11 +26,14 @@ function prefixFor(localeCode = locale) {
 const routeHref = (href) => `${prefixFor()}${href === "/" ? "/" : href}`;
 function stayHref(href) {
   const target = new URL(routeHref(href), window.location.origin);
-  const { range, guests } = readStaySelection();
-  for (const key of ['checkIn', 'checkOut', 'guests']) target.searchParams.delete(key);
+  const { range, guests, children, childAges } = readStaySelection();
+  for (const key of ['checkIn', 'checkOut', 'guests', 'children', 'childAges']) target.searchParams.delete(key);
   if (range.checkIn) target.searchParams.set('checkIn', range.checkIn);
   if (range.checkOut) target.searchParams.set('checkOut', range.checkOut);
   target.searchParams.set('guests', String(guests));
+  target.searchParams.set('children', String(children));
+  const parsedAges = parseChildAges(childAges, children);
+  if (children > 0 && parsedAges.ok) target.searchParams.set('childAges', parsedAges.ages.join(','));
   return target.pathname + target.search + target.hash;
 }
 const link = (href, label, className = "") => `<a class="${className}" href="${routeHref(href)}">${safeText(label)}</a>`;
@@ -222,7 +226,7 @@ function wireInteractions() {
     document.querySelector("main").append(contact);
   }
   if (normalizePath(window.location.pathname) === '/contact') {
-    const { range, guests } = readStaySelection();
+    const { range, guests, children, childAges } = readStaySelection();
     const selectedRoom = roomForLocale(new URLSearchParams(location.search).get('room'), locale);
     if (selectedRoom || validateStayRange(range, todayLocalISO()) === 'OK') {
       const summary = document.createElement('section');
@@ -230,7 +234,14 @@ function wireInteractions() {
       const heading = locale === 'fa' ? 'برنامهٔ اقامت شما' : locale === 'ar' ? 'خطة إقامتك' : 'Your stay plans';
       const hint = locale === 'fa' ? 'این اطلاعات را هنگام تماس با پذیرش مطرح کنید؛ انتخاب شما رزرو قطعی نیست.' : locale === 'ar' ? 'اذكر هذه التفاصيل عند الاتصال بالاستقبال؛ اختيارك ليس حجزاً مؤكداً.' : 'Share these details when calling reception; this selection is not a confirmed reservation.';
       const dates = validateStayRange(range, todayLocalISO()) === 'OK' ? `${jalaliAccessibleDay(range.checkIn, locale)} — ${jalaliAccessibleDay(range.checkOut, locale)}` : '';
-      summary.innerHTML = `<h2>${safeText(heading)}</h2>${selectedRoom ? `<p>${safeText(selectedRoom.title)}</p>` : ''}<p>${safeText(dates)} · ${safeText(new Intl.NumberFormat(locale).format(guests))} ${safeText(ui.guests)}</p><p>${safeText(hint)}</p>`;
+      const number = (value) => new Intl.NumberFormat(locale, { useGrouping: false }).format(value);
+      const adultCount = locale === 'fa' ? `${number(guests)} بزرگسال` : locale === 'ar' ? `${number(guests)} ${guests === 1 ? 'بالغ' : 'بالغين'}` : `${number(guests)} ${guests === 1 ? 'adult' : 'adults'}`;
+      const childCount = children > 0 ? locale === 'fa' ? `${number(children)} کودک` : locale === 'ar' ? `${number(children)} ${children === 1 ? 'طفل' : 'أطفال'}` : `${number(children)} ${children === 1 ? 'child' : 'children'}` : '';
+      const parsedAges = parseChildAges(childAges, children);
+      const ageLabel = locale === 'fa' ? 'سن کودکان' : locale === 'ar' ? 'أعمار الأطفال' : 'Child ages';
+      const ages = children > 0 && parsedAges.ok ? ` · ${ageLabel}: ${parsedAges.ages.map(number).join(', ')}` : '';
+      const party = `${adultCount}${childCount ? ` · ${childCount}${ages}` : ''}`;
+      summary.innerHTML = `<h2>${safeText(heading)}</h2>${selectedRoom ? `<p>${safeText(selectedRoom.title)}</p>` : ''}<p>${safeText(dates)} · ${safeText(party)}</p><p>${safeText(hint)}</p>`;
       root.querySelector('.hospitality-contact-details')?.after(summary);
     }
   }

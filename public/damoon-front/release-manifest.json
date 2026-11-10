@@ -1,12 +1,12 @@
 {
   "site": "damoon",
   "contentMode": "DEVELOPMENT_WITH_CONCEPT_IMAGES",
-  "builtAt": "2026-10-29T12:28:34.305Z",
+  "builtAt": "2026-11-10T08:50:47.072Z",
   "files": {
     "about/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "accommodation.css": "2cb0da4f2d0e7342c16e318898a41c05427be11b3599fe67b7c5282ea56de586",
     "accommodation.js": "1bfd0cff1245794bac698abada9bcd9ea4bf8b680d18dfe0ade0f43a2a90f46e",
-    "app.js": "3eac62feec805131ac6b6a0634851e244c93e2a9a4779b83d7957e357afa3efd",
+    "app.js": "ef58fde799e06aedeb802190a8353da6271074b5549bd9c2aec2b85a087c8497",
     "ar/about/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "ar/cafe/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "ar/contact/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",

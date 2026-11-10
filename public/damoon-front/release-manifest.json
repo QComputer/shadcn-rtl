@@ -1,12 +1,12 @@
 {
   "site": "damoon",
   "contentMode": "DEVELOPMENT_WITH_CONCEPT_IMAGES",
-  "builtAt": "2026-11-10T08:50:47.072Z",
+  "builtAt": "2026-11-10T15:05:41.243Z",
   "files": {
     "about/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "accommodation.css": "2cb0da4f2d0e7342c16e318898a41c05427be11b3599fe67b7c5282ea56de586",
     "accommodation.js": "1bfd0cff1245794bac698abada9bcd9ea4bf8b680d18dfe0ade0f43a2a90f46e",
-    "app.js": "ef58fde799e06aedeb802190a8353da6271074b5549bd9c2aec2b85a087c8497",
+    "app.js": "1dcbd0f86b86d393310e301982ff90a65db15cc8fff5bf2cb4caa0b302d7e84b",
     "ar/about/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "ar/cafe/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "ar/contact/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
@@ -37,12 +37,13 @@
     "assets/room-concept-3.webp": "746b3f62fc94c1c6fe519e4ec67d3af9b75803bb07c0e178a86b72a3b32b103c",
     "assets/Vazirmatn-Bold.ttf": "489c29f4ba685a8f4aeb3f15e66f51197362cc60ae96bc7cdaa8ea1a52d58235",
     "assets/Vazirmatn-Regular.ttf": "7f3c44f0a0b45cd748519b2ad5729f8af5f7bf58dd48767c956d79f46611a3fb",
-    "booking.css": "9f9b45ac9eae063142a8d4d4e53d10b044608baf2ae44078c038420d8800ff1c",
-    "booking.js": "d8c243ff95a7229602d854ef227b25959ffd8c39d57df383e075f3dce604db48",
+    "booking-flow.js": "3f57deb9efc51752b91d4eed8106e0c44ec5faaf5ba55e31b3d5e7115044ee16",
+    "booking.css": "2106f31cd50f2bbb3b76a449b48dd9c5e7a32e5cf2da4ad97b78a81c4a7a7462",
+    "booking.js": "dc4841923a5eb62ba0c99e164561ff5bd7dc0080fd500b7900d10c69858e204a",
     "cafe/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "calendar.js": "946026d8514a364c02a9c0d0bcbf5bd86f4646ddf04758feb7483a8255de46d6",
     "contact/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
-    "content.js": "4f4d7308d8a31a00fb461dc25140f36ec8f6f9f408e42a0cde02f0332ee31390",
+    "content.js": "b35b5670c4691b4247d6b549a1165a79b90622e82d5a5242a54a86ce6b9f545f",
     "en/about/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "en/cafe/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "en/contact/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
@@ -87,7 +88,7 @@
     "styles.css": "5b6506004b32e60be951a54c2de0863c65f64fb9079855f28e3d5e05b65f8426",
     "theme-tokens.css": "e45530f56d3674ed13e018a9fa5e92e438f28ef89970751c221e0d588e1fb336",
     "themes.js": "5324a1d7d3676762c109041dd1c8210e8818bd72a01523251ed1bf612fd88f52",
-    "translations.js": "7e44653d7d2903a20d2d33caaae2d24c5dce6e75315e75b9b207383de25a3bb9",
+    "translations.js": "07ae0c4edc04a7f22e0103ec6b6e5da490d7e29dc8d3ff3e49a1769fbc60deff",
     "virtual-tour/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a"
   }
 }

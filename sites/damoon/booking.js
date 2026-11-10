@@ -18,6 +18,7 @@ import {
   parseChildAges,
   policySummary,
   validateContact,
+  withStaySelection,
 } from "./booking-flow.js";
 
 const STORAGE_KEY = "damoon-stay-selection-v2";
@@ -35,14 +36,14 @@ function validArrival(value, minISO) {
   try { return jalaliMonthGrid(value, minISO).some((day) => day.iso === value && !day.disabled); } catch { return false; }
 }
 function validCount(value, min, max) {
+  if (value === null || value === undefined || String(value).trim() === "") return null;
   const number = typeof value === "number" ? value : Number(value);
   return Number.isInteger(number) && number >= min && number <= max ? number : null;
 }
 function normalizeChildAges(ages, children) {
   if (children === 0) return [];
-  if (!Array.isArray(ages) || ages.length !== children) return null;
-  const parsed = parseChildAges(ages, children);
-  return parsed.ok ? parsed.ages : null;
+  if (!Array.isArray(ages) || ages.length !== children) return Array.from({ length: children }, () => "");
+  return ages.map(value => { const parsed = parseChildAges([value], 1); return parsed.ok ? parsed.ages[0] : ""; });
 }
 function readStored(minISO) {
   for (const key of [STORAGE_KEY, LEGACY_STORAGE_KEY]) {
@@ -68,11 +69,12 @@ function initialSelection(minISO) {
   const queryIsValidRange = validateStayRange({ checkIn: queryCheckIn, checkOut: queryCheckOut }, minISO) === "OK";
   const queryHasValidArrival = validArrival(queryCheckIn, minISO);
   const stored = readStored(minISO);
-  const range = queryIsValidRange ? { checkIn: queryCheckIn, checkOut: queryCheckOut } : queryHasValidArrival ? { checkIn: queryCheckIn, checkOut: "" } : stored.range;
-  const adults = validCount(params.get("adults") ?? params.get("guests"), 1, 8) || stored.adults || 2;
-  const children = validCount(params.get("children"), 0, 4) ?? stored.children ?? 0;
+  const hasQueryDates = params.has("checkIn") || params.has("checkOut");
+  const range = queryIsValidRange ? { checkIn: queryCheckIn, checkOut: queryCheckOut } : queryHasValidArrival ? { checkIn: queryCheckIn, checkOut: "" } : hasQueryDates ? { checkIn: "", checkOut: "" } : stored.range;
+  const adults = params.has("adults") || params.has("guests") ? validCount(params.get("adults") ?? params.get("guests"), 1, 8) ?? 2 : stored.adults;
+  const children = params.has("children") ? validCount(params.get("children"), 0, 4) ?? 0 : stored.children;
   const queryAges = params.get("childAges");
-  const childAges = normalizeChildAges(queryAges ? queryAges.split(",") : stored.childAges, children);
+  const childAges = normalizeChildAges(params.has("childAges") ? queryAges.split(",") : params.has("children") ? [] : stored.childAges, children);
   return { range, adults, children, childAges };
 }
 
@@ -108,9 +110,13 @@ function nightsLabel(count, locale, ui) {
 }
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]); }
 
-export function mountBooking(slot, { routeHref = (path) => path, locale = localeForPath(window.location.pathname) } = {}) {
+export function mountBooking(slot, { routeHref = (path) => path, locale = localeForPath(window.location.pathname), coordinationOnly = true } = {}) {
   if (!(slot instanceof Element)) return () => {};
   const ui = { ...faUi, ...(translations[locale]?.ui || {}) };
+  if (coordinationOnly) {
+    ui.datePlanningOnly = locale === "fa" ? "تاریخ و مهمانان را برای هماهنگی با پذیرش انتخاب کنید؛ این انتخاب تأیید اتاق، نرخ یا موجودی نیست." : locale === "ar" ? "اختر التواريخ والضيوف للتنسيق مع الاستقبال؛ هذا الاختيار لا يؤكد الغرفة أو السعر أو التوفر." : "Choose dates and guests to coordinate with reception; this does not confirm a room, rate or availability.";
+    ui.bookingSubmit = locale === "fa" ? "ادامه برای هماهنگی اقامت" : locale === "ar" ? "المتابعة لتنسيق الإقامة" : "Continue to stay coordination";
+  }
   const weekdays = weekdayLabels(locale);
   const today = todayLocalISO();
   let selection = initialSelection(today);
@@ -133,7 +139,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
   };
   const bookingIsValid = () => validateStayRange(range, today) === "OK";
 
-  if (routeRoomDetail() && bookingIsValid()) {
+  if (!coordinationOnly && routeRoomDetail() && bookingIsValid()) {
     const contactUrl = new URL(routeHref("/contact"), window.location.href);
     contactUrl.searchParams.set("checkIn", range.checkIn); contactUrl.searchParams.set("checkOut", range.checkOut);
     contactUrl.searchParams.set("adults", String(adults)); contactUrl.searchParams.set("children", String(children));
@@ -215,7 +221,7 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     return `<div class="booking-child-ages">${Array.from({ length: children }, (_, i) => {
       const label = (ui.childAge || "Child {index} age").replace("{index}", formattedCount(i + 1, locale));
       const value = Number.isInteger(values?.[i]) ? values[i] : "";
-      return `<label class="booking-field booking-field--child-age"><span>${escapeHtml(label)}</span><input data-child-age="${i}" type="number" min="0" max="17" inputmode="numeric" required value="${escapeHtml(value)}" /></label>`;
+      return `<label class="booking-field booking-field--child-age"><span>${escapeHtml(label)}</span><input data-child-age="${i}" type="text" inputmode="numeric" pattern="[0-9۰-۹٠-٩]{1,2}" maxlength="2" required value="${escapeHtml(value)}" /></label>`;
     }).join("")}</div>`;
   }
   function renderSearchChildAges() {
@@ -224,6 +230,10 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
     if (!children) { root.innerHTML = ""; return; }
     const ages = Array.isArray(childAges) && childAges.length === children ? childAges : Array.from({ length: children }, () => "");
     root.innerHTML = `<p class="booking-step__label">${escapeHtml(ui.childAgeRequired || "")}</p>${childAgeInputsHtml(ages)}`;
+    root.querySelectorAll("[data-child-age]").forEach(input => input.addEventListener("input", () => {
+      childAges = normalizeChildAges([...root.querySelectorAll("[data-child-age]")].map(node => node.value), children);
+      persist();
+    }));
   }
   function optionCard(option, index) {
     const nights = Array.isArray(option.nights) ? option.nights.length : 0;
@@ -395,6 +405,8 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       const raw = ageInputs.length === children ? [...ageInputs].map((i) => i.value) : (childAges.length === children ? childAges : []);
       const agesResult = parseChildAges(raw, children);
       if (!agesResult.ok) {
+        childAges = normalizeChildAges(raw, children);
+        persist();
         flow = { step: "search", options: [], selected: null, hold: null, busy: false, message: ui.childAgeRequired || "Enter a valid age (0-17) for each child.", error: true };
         renderSearchChildAges(); renderFlow();
         slot.querySelector("[data-child-age]")?.focus();
@@ -404,6 +416,13 @@ export function mountBooking(slot, { routeHref = (path) => path, locale = locale
       childAges = validatedAges;
     }
     persist();
+    if (coordinationOnly) {
+      const target = withStaySelection(new URL(routeHref("/contact"), window.location.href), { range, adults, children, childAges: validatedAges });
+      const room = normalizePath(window.location.pathname).match(/^\/rooms\/(single|double|suite-3-bed|suite-4-5-bed)$/)?.[1];
+      if (room) target.searchParams.set("room", room);
+      window.location.assign(target.href);
+      return;
+    }
     clearHoldAttempt();
     flow = { step: "search", options: [], selected: null, hold: null, busy: true, message: ui.searching || "Checking availability...", error: false }; renderFlow();
     const submitButton = form.querySelector(".booking-submit[type=submit]"); if (submitButton) submitButton.disabled = true;

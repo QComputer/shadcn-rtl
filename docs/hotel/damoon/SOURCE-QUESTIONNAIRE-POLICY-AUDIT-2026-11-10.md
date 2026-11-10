@@ -51,3 +51,113 @@ The document gives thresholds but does not define the interval between 4 days an
 - The source transcript's cover identity/date fields are themselves marked uncertain. No accessible source here establishes that the handwritten answers or the cancellation PDF were signed off by the hotel owner. The explicit current owner direction takes precedence for the restaurant/café statuses above; other operational terms still need direct confirmation.
 
 This audit used the local downloads and current task direction only. It does not claim access to prior ChatGPT conversations or private messages.
+
+
+## Q1–Q90 question-by-question index (sanitized)
+
+The private reconciliation ledger is stored outside Git at `C:/Users/disso/.codex/recovery/damoon-knowledge-20261110/questionnaire-q01-q90-private.json` (ledger SHA-256: `0435a743d022af3414a9dc892b6f4b695ee353c4946c9bd53c9acc4e4eb97617`; source-manifest SHA-256: `9c8f06052707365e041d3c137fb2b48bab81245ea32ecfba1ba2f89038d907bb`). The private ledger compares every Q row against Master v1.1 section 3; all 90 Master rows are present, with differences or qualifications recorded. It retains each row’s source text. Its records contain the verbatim typed transcript block, extraction/source provenance, per-question corrections, certainty, approval state, and site-use determination. Do not copy that file into this public repository. The Q IDs below correspond to the transcript's numbered questions; this table contains neutral topic labels and omits raw question text and answers. “Not established” means no verified question-specific management approval was found; it does not mean the respondent gave no answer.
+
+Coverage is exactly Q01–Q90. The categories below describe transcription quality only, not whether 90 approved/complete answers exist. One response is blank; uncertain or partial transcript readings remain unapproved. The source text is the 2026-10-10 typed consolidated version (MD SHA-256 `c8eac14c2b3bc5c33fe43883664a37f563ddefec5e50818597077eb16d862d3d`). Its PDF companion SHA-256 is `024466d7a5fa9b15e95c5202c4e89754170fb614a9d20e54c04c4e95f334f964`; the earlier typed transcript, completed composite scan, management questionnaire, Master Data and cancellation PDF are assessed in the source inventory above. The original composite has extractable text on pages 1–13 only; pages 14–23 are scanned images. Two 2026-10-27 rewrite photos were visually inspected in this task. Pages in the Telegram handwritten ZIP were not re-read here; their prior repository audit review is inherited evidence only. The ledger preserves typed content, and does not claim complete visual handwriting reconciliation or that typed content fully matches it. The prior zero-byte render limitation on the composite final page remains unresolved.
+
+| Question / neutral topic | Transcript classification | Management approval | Site use |
+| --- | --- | --- | --- |
+| Q01 — Official Persian name | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q02 — Common name | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q03 — English name | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q04 — Establishment type | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q05 — Official rating | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q06 — Establishment year | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q07 — Renovation year | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q08 — Building floors | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q09 — Room and suite count | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q10 — Official address | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q11 — Reception and messaging contacts | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q12 — Social media | Blank / absent in transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q13 — One-sentence introduction | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q14 — Desired brand associations | Partial / uncertain transcript | Not established | Editorial brand intent only; paraphrase; no guarantees or quotations. |
+| Q15 — Brand personality | Readable transcription, unapproved | Not established | Editorial brand intent only; paraphrase; no guarantees or quotations. |
+| Q16 — Three brand descriptors | Partial / uncertain transcript | Not established | Editorial brand intent only; paraphrase; no guarantees or quotations. |
+| Q17 — Undesired associations | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q18 — Origin story | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q19 — Name meaning | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q20 — Building history and area | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q21 — Previous hotel name | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q22 — Current guest groups | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q23 — Ideal guest profile | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q24 — Desired future guest groups | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q25 — Guest mix | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q26 — Reason for choosing hotel | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q27 — Strengths and room features | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q28 — Weaknesses | Blank / absent in transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q29 — Guest praise | Readable transcription, unapproved | Not established | Editorial brand intent only; paraphrase; no guarantees or quotations. |
+| Q30 — Guest complaints | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q31 — Competitive difference | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q32 — Competitors | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q33 — Relative positioning | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q34 — Desired market position | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q35 — Room categories and inventory | Partial / uncertain transcript | Not established | Hold public operational claim pending current scope and approval. |
+| Q36 — Room facilities | Partial / uncertain transcript | Not established | Hold public operational claim pending current scope and approval. |
+| Q37 — Public facilities | Readable transcription, unapproved | Not established | Current owner status governs; historic checkbox is not operating status. |
+| Q38 — Breakfast | Readable transcription, unapproved | Not established | Hold public operational claim pending current scope and approval. |
+| Q39 — Parking | Partial / uncertain transcript | Not established | Hold public operational claim pending current scope and approval. |
+| Q40 — Check-in and check-out | Readable transcription, unapproved | Not established | Hold public operational claim pending current scope and approval. |
+| Q41 — Arrival feeling | Readable transcription, unapproved | Not established | Editorial brand intent only; paraphrase; no guarantees or quotations. |
+| Q42 — Departure impression | Readable transcription, unapproved | Not established | Editorial brand intent only; paraphrase; no guarantees or quotations. |
+| Q43 — Desired guest feeling | Readable transcription, unapproved | Not established | Editorial brand intent only; paraphrase; no guarantees or quotations. |
+| Q44 — Staff role in brand | Readable transcription, unapproved | Not established | Editorial brand intent only; paraphrase; no guarantees or quotations. |
+| Q45 — Website style | Readable transcription, unapproved | Not established | Editorial brand intent only; paraphrase; no guarantees or quotations. |
+| Q46 — Website experience | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q47 — Brand colors | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q48 — Colors to avoid | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q49 — Existing logo | Readable transcription, unapproved | Not established | Editorial brand intent only; paraphrase; no guarantees or quotations. |
+| Q50 — Reference websites | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q51 — Brand tone | Partial / uncertain transcript | Not established | Editorial brand intent only; paraphrase; no guarantees or quotations. |
+| Q52 — Guest address form | Readable transcription, unapproved | Not established | Editorial brand intent only; paraphrase; no guarantees or quotations. |
+| Q53 — Possible slogan | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q54 — Advertising exclusions | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q55 — Website priorities | Readable transcription, unapproved | Not established | Historical preference only; no booking, payment, policy, loyalty, discount or media activation. |
+| Q56 — Website success | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q57 — Direct booking share goal | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q58 — Search phrases | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q59 — Priority search phrase | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q60 — Target markets | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q61 — Foreign guest languages | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q62 — Location advantage | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q63 — Nearby places | Partial / uncertain transcript | Not established | Hold public operational claim pending current scope and approval. |
+| Q64 — Location-based guest reasons | Partial / uncertain transcript | Not established | Hold public operational claim pending current scope and approval. |
+| Q65 — Direct website booking | Readable transcription, unapproved | Not established | Historical preference only; no booking, payment, policy, loyalty, discount or media activation. |
+| Q66 — Online payment | Readable transcription, unapproved | Not established | Historical preference only; no booking, payment, policy, loyalty, discount or media activation. |
+| Q67 — Direct booking benefits | Readable transcription, unapproved | Not established | Historical preference only; no booking, payment, policy, loyalty, discount or media activation. |
+| Q68 — 360 tour areas | Readable transcription, unapproved | Not established | Historical preference only; no booking, payment, policy, loyalty, discount or media activation. |
+| Q69 — Pre-booking room view | Readable transcription, unapproved | Not established | Historical preference only; no booking, payment, policy, loyalty, discount or media activation. |
+| Q70 — Spaces excluded from tour | Readable transcription, unapproved | Not established | Historical preference only; no booking, payment, policy, loyalty, discount or media activation. |
+| Q71 — New photography | Readable transcription, unapproved | Not established | Historical preference only; no booking, payment, policy, loyalty, discount or media activation. |
+| Q72 — Outdated photos | Readable transcription, unapproved | Not established | Historical preference only; no booking, payment, policy, loyalty, discount or media activation. |
+| Q73 — Introductory video | Readable transcription, unapproved | Not established | Historical preference only; no booking, payment, policy, loyalty, discount or media activation. |
+| Q74 — Management content | Readable transcription, unapproved | Not established | Historical preference only; no booking, payment, policy, loyalty, discount or media activation. |
+| Q75 — Customer reviews | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q76 — Requesting reviews | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q77 — Official review replies | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q78 — Loyalty program | Readable transcription, unapproved | Not established | Historical preference only; no booking, payment, policy, loyalty, discount or media activation. |
+| Q79 — Loyalty benefits | Readable transcription, unapproved | Not established | Historical preference only; no booking, payment, policy, loyalty, discount or media activation. |
+| Q80 — Organization contracts | Readable transcription, unapproved | Not established | Hold public operational claim pending current scope and approval. |
+| Q81 — Corporate guest priority | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q82 — Corporate target groups | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q83 — Excluded site content | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q84 — Claims not to exaggerate | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q85 — Management review topics | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q86 — Development plans | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q87 — Future market position | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q88 — Desired additions | Readable transcription, unapproved | Not established | Current owner status governs; historic checkbox is not operating status. |
+| Q89 — Management choice reason | Readable transcription, unapproved | Not established | Internal evidence only; no site claim without explicit current approval. |
+| Q90 — Reason not to choose | Partial / uncertain transcript | Not established | Internal evidence only; no site claim without explicit current approval. |
+
+### Cross-source corrections and authority
+
+- Q09/Q35 conflict on suite count; Q27's “12” and Q20's area figure remain uncertain. Do not infer inventory, capacity, or architectural facts.
+- Q37/Q88 checkbox content does not establish current café operation. Current owner direction is restaurant ready and luxury café in progress.
+- Q55/Q65–Q80 reflect historical preferences or intentions; they do not authorize online booking, payments, cancellation rules, discounts, loyalty, contract claims, or media publication. Current phase is contact-based stay coordination only.
+- Q71's old answer does not override the current owner statement that approved original photos are not ready.
+- Q29/Q41/Q43 support restrained warm/calm/second-home brand intent; Q29's full wording remains unresolved. The site copy is an editorial paraphrase, not an approved quotation or guaranteed experience.
+- The cancellation PDF is a candidate source; Master Data v2 still flags current policy confirmation open. No policy was activated.
+- Cancellation policy reference: no service or booking activation was performed during this audit.

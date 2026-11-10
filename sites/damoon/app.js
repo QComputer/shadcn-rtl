@@ -98,7 +98,7 @@ function header(path) {
 
 function footer() {
   const footerLinks = [["/rooms", ui.rooms], ["/restaurant", ui.restaurant], ["/cafe", ui.cafe], ["/facilities", ui.facilities], ["/gallery", ui.gallery], ["/about", ui.aboutDamoon], ["/contact", ui.contact], ["/policies", ui.policies], ["/virtual-tour", ui.virtualTour]];
-  const alwaysOpen = locale === "fa" ? "پذیرش شبانه‌روزی" : locale === "ar" ? "الاستقبال على مدار الساعة" : "24-hour reception";
+  const alwaysOpen = locale === "fa" ? "هماهنگی با پذیرش" : locale === "ar" ? "التنسيق مع الاستقبال" : "Coordinate with reception";
   return `<footer class="site-footer"><div class="site-footer__main"><div class="site-footer__brand"><span class="brand__mark" aria-hidden="true">${locale === "fa" ? "د" : "D"}</span><div><strong>${safeText(site.name)}</strong><p>${safeText(site.city)}</p></div></div><p class="site-footer__note">${safeText(site.address)} · ${alwaysOpen}</p><nav class="footer-links" aria-label="${safeText(ui.footerLinks)}">${footerLinks.map(([href, label]) => link(href, label)).join("")}</nav></div><div class="site-footer__bottom"><span>© ${new Date().getFullYear()} ${safeText(site.name)}</span><a href="tel:${site.phone}">${safeText(ui.reception)}: <bdi>${safeText(site.phoneDisplay)}</bdi></a></div></footer>`;
 }
 
@@ -134,7 +134,7 @@ function homeContent() {
   ];
   const slides = gallery.slice(0, 4);
   return `<section class="home-intro" aria-label="${safeText(ui.homeIntro)}"><div class="home-intro__copy"><p class="eyebrow">${safeText(locale === "fa" ? "درباره هتل دامون" : ui.aboutMore)}</p><h2 id="home-intro-title">${safeText(locale === "fa" ? "جایی متعادل برای سفر و آرامش" : ui.calmStay)}</h2><p>${safeText(ui.homeIntro)}</p><a class="text-link" href="${routeHref("/about")}">${safeText(ui.aboutMore)} ←</a></div><div class="home-lobby" aria-label="${safeText(ui.gallery)}"><img data-home-slide src="/assets/lobby-concept.webp" alt="${safeText(ui.imageNotActual)}" loading="lazy"><button type="button" data-home-prev aria-label="${safeText(ui.previousImage)}">‹</button><button type="button" data-home-next aria-label="${safeText(ui.nextImage)}">›</button><div class="home-lobby__dots">${slides.map((_, i) => `<button type="button" data-home-dot="${i}" aria-label="${safeText(ui.gallery)} ${i + 1}"${i === 0 ? ' aria-current="true"' : ""}></button>`).join("")}</div></div><div class="home-side"><div class="home-room-list"><h2>${safeText(locale === "fa" ? "اتاق‌ها و سوئیت‌ها" : ui.rooms)}</h2><div class="home-room-list__grid">${roomTiles.map((room, index) => `<a href="${routeHref(room.href)}" data-room-sprite="${index}"><img src="${room.image}" alt="${safeText(ui.imageNotActual)}" loading="lazy"><strong>${safeText(room.title)}<small>${safeText(ui.viewSpaces)}</small></strong></a>`).join("")}</div></div><div class="home-gallery-list"><h2>${safeText(locale === "fa" ? "تصاویر هتل" : ui.gallery)}</h2><div>${slides.map((image, i) => `<a href="${routeHref("/gallery")}" data-gallery-sprite="${i}"><img src="${safeText(image.src)}" alt="${safeText(image.alt)}" loading="lazy"></a>`).join("")}</div></div></div></section>
-    <div class="home-features"><span><svg viewBox="0 0 32 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16 38C11 30 2 20 2 14a14 14 0 1 1 28 0c0 6-9 16-14 24Z"/><circle cx="16" cy="14" r="5"/></svg><strong>${safeText(ui.facilities)}</strong><small>${safeText(site.city)}</small></span><span><svg viewBox="0 0 40 36" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 29h34M6 25a14 14 0 0 1 28 0H6Zm14-17V4m-5 0h10M2 33h36"/></svg><strong>${safeText(ui.cafe)} و ${safeText(ui.restaurant)}</strong><small>${safeText(ui.hotelSpaces)}</small></span><span><svg viewBox="0 0 32 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 38V2h22v36M1 38h30M12 38V28h8v10M10 8h3m6 0h3M10 14h3m6 0h3M10 20h3m6 0h3"/></svg><strong>${safeText(ui.rooms)}</strong><small>${safeText(ui.viewSpaces)}</small></span></div>`;
+    <div class="home-features"><span><svg viewBox="0 0 32 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16 38C11 30 2 20 2 14a14 14 0 1 1 28 0c0 6-9 16-14 24Z"/><circle cx="16" cy="14" r="5"/></svg><strong>${safeText(ui.facilities)}</strong><small>${safeText(site.city)}</small></span><span><svg viewBox="0 0 40 36" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 29h34M6 25a14 14 0 0 1 28 0H6Zm14-17V4m-5 0h10M2 33h36"/></svg><strong>${safeText(ui.cafe)} ${locale === "en" ? "and" : "و"} ${safeText(ui.restaurant)}</strong><small>${safeText(ui.hotelSpaces)}</small></span><span><svg viewBox="0 0 32 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 38V2h22v36M1 38h30M12 38V28h8v10M10 8h3m6 0h3M10 14h3m6 0h3M10 20h3m6 0h3"/></svg><strong>${safeText(ui.rooms)}</strong><small>${safeText(ui.viewSpaces)}</small></span></div>`;
 }
 
 function galleryGrid() {
@@ -239,6 +239,15 @@ function wireInteractions() {
     document.querySelector("main").append(contact);
   }
   if (normalizePath(window.location.pathname) === '/contact') {
+    const contactNotice = document.createElement('p');
+    contactNotice.className = 'hospitality-note';
+    contactNotice.dataset.contactApproval = 'pending';
+    contactNotice.textContent = locale === 'fa'
+      ? 'شماره و نشانی از منابع عمومی گردآوری شده‌اند و تأیید نهایی مدیریت هتل در انتظار است. هنگام تماس، صحت مقصد را بررسی کنید.'
+      : locale === 'ar'
+        ? 'جُمعت بيانات الهاتف والعنوان من مصادر عامة، ولا يزال تأكيد إدارة الفندق قيد الانتظار. تحقّق من الجهة عند الاتصال.'
+        : 'The phone and address come from public sources and await hotel management confirmation. Verify the destination when calling.';
+    root.querySelector('.hospitality-contact-details')?.append(contactNotice);
     const { range, guests, children, childAges } = readStaySelection();
     const selectedRoom = roomForLocale(new URLSearchParams(location.search).get('room'), locale);
     if (selectedRoom || validateStayRange(range, todayLocalISO()) === 'OK') {

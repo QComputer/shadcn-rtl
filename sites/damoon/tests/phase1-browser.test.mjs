@@ -134,10 +134,34 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
         assert.equal(await page.locator("html").getAttribute("dir"), locale.dir, `${url} direction`);
         const mainText = (await page.locator("main#main").innerText()).trim();
         assert.ok(mainText.length > 20, `${url} has visible localized main content`);
+        if (path === "/contact") {
+          const approvalNotice = page.locator('[data-contact-approval="pending"]');
+          await approvalNotice.waitFor({ state: "visible" });
+          assert.ok((await approvalNotice.innerText()).trim().length > 10, `${url} explains pending management confirmation`);
+        }
+        const normalizedDigits = mainText.replace(/[۰-۹٠-٩]/g, digit => "۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩".indexOf(digit) % 10);
+        assert.doesNotMatch(normalizedDigits, /\b24[- ]?hour(?:s)?\b|\bfree(?:\s+buffet)?\s+breakfast\b|(?:\b(?:12|14):00\b|٢٤\s*ساعة|۲۴\s*ساعت|إفطار\s*(?:مجاني|مجانًا)|صبحانه\s+رایگان)/i, `${url} avoids unconfirmed service guarantees and fixed times`);
         const overflow = await page.evaluate(() => ({ width: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
         assert.ok(overflow.scroll <= overflow.width + 1, `${url} mobile horizontal overflow: ${JSON.stringify(overflow)}`);
       }
     }
+    // Check representative contracted pages at a desktop viewport in every
+    // locale as well. The complete interactive journey below remains covered
+    // on mobile, where the responsive navigation path is exercised.
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    for (const locale of locales) {
+      for (const path of ["/", "/rooms", "/contact", "/rooms/single", "/gallery"]) {
+        const url = localizedPath(locale.code, path);
+        await page.goto(`${runtime.base}${url}`, { waitUntil: "networkidle" });
+        await page.locator("main#main").waitFor({ state: "visible" });
+        assert.equal(await page.locator("html").getAttribute("lang"), locale.code, `${url} desktop language`);
+        assert.equal(await page.locator("html").getAttribute("dir"), locale.dir, `${url} desktop direction`);
+        assert.ok((await page.locator("main#main").innerText()).trim().length > 20, `${url} desktop content`);
+        const overflow = await page.evaluate(() => ({ width: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
+        assert.ok(overflow.scroll <= overflow.width + 1, `${url} desktop horizontal overflow: ${JSON.stringify(overflow)}`);
+      }
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
     assert.deepEqual(pageErrors, [], "localized routes do not throw browser-side exceptions");
     assert.deepEqual(failedLocalAssets, [], "localized routes load all requested local assets");
 
@@ -301,33 +325,76 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
       await freshContext.close();
     }
 
-    // Run the same real room-form submission in Persian and Arabic to catch
-    // locale-specific routing, query serialization, and contact-summary gaps.
-    for (const locale of ["fa", "ar"]) {
-      const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    // Run the complete localized room-selection journey from the rooms list
+    // through visible date and occupancy controls to contact-summary copy.
+    for (const locale of ["fa", "en", "ar"]) for (const viewport of [
+      { width: 390, height: 844 }, { width: 1440, height: 1000 },
+    ]) {
+      const context = await browser.newContext({ permissions: ["clipboard-read", "clipboard-write"], viewport });
       try {
         const localizedPage = await context.newPage();
         const localizedApiRequests = [];
         localizedPage.on("request", request => { if (/\/api\/hotel\//.test(request.url())) localizedApiRequests.push(request.url()); });
-        const localePath = localizedPath(locale, "/rooms/single");
-        const query = new URLSearchParams({ checkIn: tomorrow, checkOut: departure, adults: "3", guests: "3", children: "2", childAges: "7,12" });
-        await localizedPage.goto(`${runtime.base}${localePath}?${query}`, { waitUntil: "networkidle" });
+        await localizedPage.goto(`${runtime.base}${localizedPath(locale, "/rooms")}`, { waitUntil: "networkidle" });
+        const localizedRoomLink = localizedPage.locator('.accommodation-page a[href*="/rooms/"]').first();
+        await localizedRoomLink.waitFor({ state: "visible" });
+        const localizedRoomUrl = new URL(await localizedRoomLink.getAttribute("href"), runtime.base);
+        await localizedPage.goto(localizedRoomUrl.href, { waitUntil: "networkidle" });
+        const localizedCheckIn = await localizedPage.evaluate(() => {
+          const date = new Date(); date.setDate(date.getDate() + 7);
+          const pad = value => String(value).padStart(2, "0");
+          return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+        });
+        const localizedCheckOut = await localizedPage.evaluate(() => {
+          const date = new Date(); date.setDate(date.getDate() + 9);
+          const pad = value => String(value).padStart(2, "0");
+          return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+        });
+        for (const [field, date] of [["checkIn", localizedCheckIn], ["checkOut", localizedCheckOut]]) {
+          const dateValue = localizedPage.locator(`[data-date-value="${field}"]`);
+          const previousDateValue = await dateValue.innerText();
+          await localizedPage.locator(`[data-date-field="${field}"]`).click();
+          let moves = 0;
+          while (!(await localizedPage.locator(`[data-calendar-day="${date}"]`).count()) && moves++ < 3) {
+            await localizedPage.locator("[data-month-next]").click();
+          }
+          await localizedPage.locator(`[data-calendar-day="${date}"]`).click();
+          await localizedPage.waitForFunction(({ selectedField, previous }) => {
+            const element = document.querySelector(`[data-date-value="${selectedField}"]`);
+            return element && element.textContent.trim() !== previous.trim();
+          }, { selectedField: field, previous: previousDateValue });
+          const calendarClose = localizedPage.locator("[data-calendar-close]");
+          if (await calendarClose.isVisible()) await calendarClose.click();
+        }
+        await localizedPage.locator("[data-adult-count]").selectOption("3");
+        await localizedPage.locator("[data-child-count]").selectOption("2");
+        await localizedPage.locator('[data-child-age="0"]').fill("7");
+        await localizedPage.locator('[data-child-age="1"]').fill("12");
         await localizedPage.locator(".booking-form .booking-submit[type=submit]").click();
         const expectedContactPath = localizedPath(locale, "/contact");
         await localizedPage.waitForURL(url => url.pathname === expectedContactPath && url.searchParams.has("room"));
         const localizedContact = new URL(localizedPage.url());
-        assert.equal(localizedContact.searchParams.get("checkIn"), tomorrow);
-        assert.equal(localizedContact.searchParams.get("checkOut"), departure);
+        assert.equal(localizedContact.searchParams.get("checkIn"), localizedCheckIn);
+        assert.equal(localizedContact.searchParams.get("checkOut"), localizedCheckOut);
         assert.equal(localizedContact.searchParams.get("adults"), "3");
         assert.equal(localizedContact.searchParams.get("children"), "2");
         assert.equal(localizedContact.searchParams.get("childAges"), "7,12");
-        assert.equal(localizedContact.searchParams.get("room"), "single");
+        assert.equal(localizedContact.searchParams.get("room"), localizedRoomUrl.pathname.split("/").at(-1));
         assert.equal(await localizedPage.locator("html").getAttribute("lang"), locale);
-        assert.equal(await localizedPage.locator("html").getAttribute("dir"), "rtl");
+        assert.equal(await localizedPage.locator("html").getAttribute("dir"), locales.find(item => item.code === locale).dir);
         await localizedPage.locator(".hospitality-stay-context").waitFor({ state: "visible" });
         const localizedSummary = await localizedPage.locator(".hospitality-stay-context").innerText();
         assert.ok(localizedSummary.length > 20, `${locale} contact summary is visible and localized`);
-        assert.match(localizedSummary, locale === "fa" ? /رزرو قطعی نیست/ : /ليس حجزاً مؤكداً/, `${locale} does not claim a confirmed booking`);
+        const noConfirmation = locale === "fa" ? "رزرو قطعی نیست" : locale === "ar" ? "ليس حجزاً مؤكداً" : "not a confirmed reservation";
+        assert.ok(localizedSummary.includes(noConfirmation), `${locale} does not claim a confirmed booking`);
+        await localizedPage.locator("[data-copy-stay]").click();
+        await localizedPage.waitForFunction(() => document.querySelector("[data-copy-status]")?.textContent);
+        const localizedCopied = await localizedPage.evaluate(() => navigator.clipboard.readText());
+        assert.ok(localizedCopied.length > 40, `${locale} ${viewport.width}px journey can copy its contact summary`);
+        const ageSeven = locale === "fa" ? ["۷"] : locale === "ar" ? ["٧", "7"] : ["7"];
+        const ageTwelve = locale === "fa" ? ["۱۲"] : locale === "ar" ? ["١٢", "12"] : ["12"];
+        assert.ok(ageSeven.some(age => localizedCopied.includes(age)) && ageTwelve.some(age => localizedCopied.includes(age)), `${locale} copied summary retains both localized child ages`);
+        assert.ok(localizedCopied.includes(noConfirmation), `${locale} copied summary retains the no-confirmation notice`);
         assert.deepEqual(localizedApiRequests, [], `${locale} coordination does not call booking APIs`);
       } finally {
         await context.close();
@@ -339,7 +406,11 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
   } finally {
     await browser?.close();
     await sharedServer?.close();
-    child.kill();
+    if (child.exitCode === null) {
+      const exited = new Promise(resolveExit => child.once("exit", resolveExit));
+      child.kill();
+      await exited;
+    }
   }
 });
 
@@ -358,8 +429,10 @@ test("Damoon stay summary copy supports three languages and clipboard fallback i
     browser = await chromium.launch({ headless: true, executablePath });
     const checkIn = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
     const checkOut = new Date(Date.now() + 9 * 86400000).toISOString().slice(0, 10);
-    for (const origin of [base, shared.base]) for (const { code, dir } of locales) {
-      const context = await browser.newContext({ permissions: ["clipboard-read", "clipboard-write"], viewport: { width: 390, height: 844 } });
+    for (const origin of [base, shared.base]) for (const { code, dir } of locales) for (const viewport of [
+      { width: 390, height: 844 }, { width: 1440, height: 1000 },
+    ]) {
+      const context = await browser.newContext({ permissions: ["clipboard-read", "clipboard-write"], viewport });
       const page = await context.newPage();
       const requests = [], errors = [];
       page.on("request", request => { if (new URL(request.url()).pathname.startsWith("/api/")) requests.push(request.url()); });

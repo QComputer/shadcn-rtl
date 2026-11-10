@@ -5,8 +5,8 @@
   "files": {
     "about/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "accommodation.css": "2cb0da4f2d0e7342c16e318898a41c05427be11b3599fe67b7c5282ea56de586",
-    "accommodation.js": "1bfd0cff1245794bac698abada9bcd9ea4bf8b680d18dfe0ade0f43a2a90f46e",
-    "app.js": "565a62630e6d67f9a8e5dbf24fe7ad357f862e0757a3bd86c0f6068e140b31fc",
+    "accommodation.js": "d121470bd4c234a5daeb8490b782b9f0754cdb7bb955355670d411233a2e6a02",
+    "app.js": "21142203cbddba46c9942ca163e89c7ba2a59487f6d1939ba4a915424a909343",
     "ar/about/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "ar/cafe/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "ar/contact/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
@@ -43,7 +43,7 @@
     "cafe/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "calendar.js": "946026d8514a364c02a9c0d0bcbf5bd86f4646ddf04758feb7483a8255de46d6",
     "contact/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
-    "content.js": "b35b5670c4691b4247d6b549a1165a79b90622e82d5a5242a54a86ce6b9f545f",
+    "content.js": "14fd0904a29ccb09d9ab0ad16b0b980f4d3d380cc7f6faeea4731e4a5daba201",
     "en/about/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "en/cafe/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "en/contact/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
@@ -88,7 +88,7 @@
     "styles.css": "5b6506004b32e60be951a54c2de0863c65f64fb9079855f28e3d5e05b65f8426",
     "theme-tokens.css": "e45530f56d3674ed13e018a9fa5e92e438f28ef89970751c221e0d588e1fb336",
     "themes.js": "5324a1d7d3676762c109041dd1c8210e8818bd72a01523251ed1bf612fd88f52",
-    "translations.js": "5ffaa7c59eaddd408388aac704b19aaee42bb51389d0cd4a5dcf4178835c3cb7",
+    "translations.js": "4ad69190155f8128cb7231dd1b28262a06e4dafb46b8f0f501b3d7ec842d03a1",
     "virtual-tour/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a"
   }
 }

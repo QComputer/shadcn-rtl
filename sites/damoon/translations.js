@@ -1,4 +1,4 @@
-// Prepared translation registry for later app integration. This module is not wired into rendering yet.
+// Active English/Arabic registry; Persian source copy lives in content.js and app.js.
 export const translations = {
   en: {
     direction: "ltr",
@@ -56,7 +56,7 @@ export const translations = {
         title: "Damoon Hotel restaurant", intro: "The hotel restaurant is ready", text: "The Damoon Hotel restaurant is ready. Contact reception for the menu, opening hours, and visit coordination; these details are not published on the site.", actions: [["/contact", "Contact details"]],
         sections: [
           { heading: "Plan your visit", text: "Before visiting, ask the hotel about opening hours and current arrangements.", link: "/contact", label: "Contact reception" },
-          { heading: "Hotel breakfast", text: "Free buffet breakfast is a listed hotel service. Contact reception to ask when it is served.", link: "/facilities", label: "View facilities" },
+          { heading: "Hotel breakfast", text: "Ask reception whether breakfast is currently served and, if so, at what time.", link: "/facilities", label: "View facilities" },
         ],
       },
       "/cafe": {
@@ -64,11 +64,11 @@ export const translations = {
         sections: [{ heading: "Café status", text: "The luxury café is in progress. Contact the hotel for a status update; opening and service details will be updated after an official announcement.", link: "/contact", label: "Contact details" }],
       },
       "/facilities": {
-        title: "Hotel facilities", intro: "Facilities and services", text: "Listed Damoon Hotel facilities include 24-hour reception, internet, an elevator, taxi service, parking, and free buffet breakfast. Contact reception with questions about services or facilities in a particular room.", actions: [["/contact", "Contact details"]],
+        title: "Hotel facilities", intro: "Facilities and services", text: "Contact reception to ask which services are available, their hours, and which facilities are available in a particular room.", actions: [["/contact", "Contact details"]],
         sections: [
-          { heading: "Reception and services", text: "Reception is available 24 hours a day. Internet, an elevator, and taxi service are also listed; ask reception how to use these services." },
-          { heading: "Breakfast and restaurant", text: "Free buffet breakfast is a listed service, and the hotel restaurant is ready. Call ahead to ask about breakfast service, the menu, and restaurant hours.", link: "/restaurant", label: "Restaurant information" },
-          { heading: "Parking", text: "Parking is available at the hotel. Capacity has not been stated; contact reception in advance to check arrangements for your visit.", link: "/contact", label: "Contact reception" },
+          { heading: "Reception and services", text: "Ask reception which services are currently available and their hours." },
+          { heading: "Breakfast and restaurant", text: "The hotel restaurant is ready. Ask reception about its menu and hours, and whether breakfast is currently served and when.", link: "/restaurant", label: "Restaurant information" },
+          { heading: "Parking", text: "Contact reception in advance to ask whether parking is available and about arrangements for your visit.", link: "/contact", label: "Contact reception" },
         ],
       },
       "/gallery": { title: "Damoon Hotel gallery", intro: "Image gallery", text: "The images below are design concepts and do not show the actual hotel or its current condition. They will be replaced with approved photos when available.", gallery: true },
@@ -77,7 +77,7 @@ export const translations = {
         sections: [
           { heading: "A warm welcome", text: "Damoon aims to offer warm, friendly, and calm hospitality, so guests can feel at ease and at home throughout their stay." },
           { heading: "Staying at Damoon", text: "The site lists single and double rooms and three-, four-, and five-bed suites. Ask reception to confirm capacity, in-room amenities, and current rates.", link: "/rooms", label: "Browse accommodation" },
-          { heading: "Services and timing", text: "Hotel reception is available around the clock. Check-in is at 14:00 and check-out is at 12:00; contact the hotel about your plans before travelling.", link: "/facilities", label: "Explore facilities" },
+          { heading: "Services and timing", text: "Contact the hotel before travelling to confirm current service hours and arrival and departure times.", link: "/facilities", label: "Explore facilities" },
         ],
       },
       "/contact": {
@@ -88,9 +88,9 @@ export const translations = {
         ],
       },
       "/policies": {
-        title: "Stay information and privacy", intro: "Stay information and privacy", text: "Check-in is at 14:00 and check-out is at 12:00. Contact reception before making plans if you have questions about other stay or booking arrangements.",
+        title: "Stay information and privacy", intro: "Stay information and privacy", text: "Contact reception before making plans to confirm arrival and departure times and other stay arrangements.",
         sections: [
-          { heading: "Check-in and check-out", text: "Check-in is at 14:00 and check-out is at 12:00. If your plans require different times, ask reception whether coordination is possible; a change is not guaranteed." },
+          { heading: "Check-in and check-out", text: "Ask reception to confirm arrival and departure times before travelling. You can also ask whether other times can be arranged." },
           { heading: "Dates and guests", text: "Date and guest selections on this site are for planning only; they do not reserve or hold a room, and online payment is not available. Contact reception to finalize a stay." },
           { heading: "Booking coordination", text: "Contact reception to ask about rates, availability, changes or cancellations, and required documents. Confirm the information for your travel dates.", link: "/contact", label: "Contact reception" },
           { heading: "Privacy", text: "Your display theme and color choice are saved in your browser. Selected dates, guest counts, and children’s ages are carried in the page address and current browser session. Anyone you share the link with can see these selections. In this phase, the site does not submit personal contact details or payments." },
@@ -104,11 +104,11 @@ export const translations = {
     roomDetails: {
       shared: [
         { heading: "Before choosing", text: "The category name alone does not specify the layout, beds, or in-room amenities. When you call, share your guest count and needs so reception can check suitable options.", link: "/contact", label: "Ask reception" },
-        { heading: "Stay timing", text: "Check-in is at 14:00 and check-out is at 12:00. Contact the hotel directly to confirm capacity, rates, and availability for your dates.", link: "/policies", label: "Check-in and check-out information" },
-        { heading: "Hotel facilities", text: "Listed general facilities include 24-hour reception, internet, an elevator, taxi service, parking, and free buffet breakfast. Ask reception whether a specific facility is available in this room.", link: "/facilities", label: "View facilities" },
+        { heading: "Stay timing", text: "Contact the hotel directly to confirm arrival and departure times, capacity, rates, and availability for your dates.", link: "/policies", label: "Check-in and check-out information" },
+        { heading: "Hotel facilities", text: "Ask reception which facilities and services are currently available in this room and their hours.", link: "/facilities", label: "View facilities" },
       ],
       textSuffix: "Ask reception to confirm exact capacity, in-room amenities, rates, and availability for your dates.",
-      action: ["/contact", "Contact to coordinate"],
+      action: ["/contact", "Contact us to coordinate"],
       imageNote: "Concept image; not an actual room photo.",
     },
     ui: {
@@ -172,7 +172,7 @@ export const translations = {
         title: "مطعم فندق دامون", intro: "مطعم الفندق جاهز", text: "مطعم فندق دامون جاهز. تواصلوا مع الاستقبال للاستفسار عن قائمة الطعام وساعات العمل وتنسيق الزيارة؛ فهذه التفاصيل غير منشورة على الموقع.", actions: [["/contact", "معلومات التواصل"]],
         sections: [
           { heading: "تنسيق الزيارة", text: "قبل الزيارة، استفسروا من الفندق عن ساعات العمل والترتيبات الحالية.", link: "/contact", label: "التواصل مع الاستقبال" },
-          { heading: "إفطار الفندق", text: "الإفطار بنظام البوفيه مجاني ومن الخدمات المدرجة للفندق. تواصلوا مع الاستقبال لمعرفة موعد تقديمه.", link: "/facilities", label: "عرض المرافق" },
+          { heading: "إفطار الفندق", text: "اسألوا الاستقبال عمّا إذا كان الإفطار يُقدّم حالياً، وعن موعد تقديمه إن كان متاحاً.", link: "/facilities", label: "عرض المرافق" },
         ],
       },
       "/cafe": {
@@ -180,11 +180,11 @@ export const translations = {
         sections: [{ heading: "حالة المقهى", text: "يجري استكمال المقهى الفاخر. تواصلوا مع الفندق للاستفسار عن الحالة؛ وستُحدّث تفاصيل الافتتاح والخدمات بعد الإعلان الرسمي.", link: "/contact", label: "معلومات التواصل" }],
       },
       "/facilities": {
-        title: "مرافق الفندق", intro: "المرافق والخدمات", text: "تشمل مرافق فندق دامون المدرجة استقبالاً على مدار 24 ساعة، وإنترنت، ومصعداً، وخدمة سيارات الأجرة، ومواقف للسيارات، وإفطاراً مجانياً بنظام البوفيه. تواصلوا مع الاستقبال للاستفسار عن الخدمات أو مرافق غرفة معينة.", actions: [["/contact", "معلومات التواصل"]],
+        title: "مرافق الفندق", intro: "المرافق والخدمات", text: "تواصلوا مع الاستقبال للاستفسار عن الخدمات المتاحة حالياً وساعاتها والمرافق المتوفرة في غرفة معينة.", actions: [["/contact", "معلومات التواصل"]],
         sections: [
-          { heading: "الاستقبال والخدمات", text: "الاستقبال متاح على مدار الساعة. كما أُدرج الإنترنت والمصعد وخدمة سيارات الأجرة؛ اسألوا الاستقبال عن طريقة استخدام هذه الخدمات." },
-          { heading: "الإفطار والمطعم", text: "الإفطار المجاني بنظام البوفيه من الخدمات المدرجة، ومطعم الفندق جاهز. اتصلوا مسبقاً للاستفسار عن موعد الإفطار وقائمة الطعام وساعات المطعم.", link: "/restaurant", label: "معلومات المطعم" },
-          { heading: "مواقف السيارات", text: "تتوفر مواقف للسيارات في الفندق. لم تُعلن السعة؛ تواصلوا مع الاستقبال مسبقاً للتحقق من ترتيبات زيارتكم.", link: "/contact", label: "التواصل مع الاستقبال" },
+          { heading: "الاستقبال والخدمات", text: "اسألوا الاستقبال عن الخدمات المتاحة حالياً وساعات عملها." },
+          { heading: "الإفطار والمطعم", text: "مطعم الفندق جاهز. اسألوا الاستقبال عن قائمة الطعام وساعات المطعم، وعن تقديم الإفطار حالياً وموعده.", link: "/restaurant", label: "معلومات المطعم" },
+          { heading: "مواقف السيارات", text: "تواصلوا مع الاستقبال مسبقاً للاستفسار عن إمكانية توفر مواقف للسيارات وترتيباتها في موعد زيارتكم.", link: "/contact", label: "التواصل مع الاستقبال" },
         ],
       },
       "/gallery": { title: "معرض صور فندق دامون", intro: "معرض الصور", text: "الصور أدناه تصاميم توضيحية ولا تعرض الفندق الحقيقي أو حالته الحالية. ستُستبدل بصور معتمدة عند توفرها.", gallery: true },
@@ -193,7 +193,7 @@ export const translations = {
         sections: [
           { heading: "ضيافة دافئة", text: "تسعى دامون إلى تقديم ضيافة دافئة وودودة وهادئة، ليشعر الضيف بالراحة وكأنه في بيته الثاني طوال مدة إقامته." },
           { heading: "الإقامة في دامون", text: "يعرض الموقع غرفاً بسرير واحد أو سريرين وأجنحة بثلاثة أو أربعة أو خمسة أسرّة. اسألوا الاستقبال لتأكيد السعة وتجهيزات الغرفة والأسعار الحالية.", link: "/rooms", label: "استعراض أماكن الإقامة" },
-          { heading: "الخدمات والمواعيد", text: "الاستقبال متاح على مدار الساعة. تسجيل الدخول الساعة 14:00 وتسجيل المغادرة الساعة 12:00؛ تواصلوا مع الفندق بشأن خططكم قبل السفر.", link: "/facilities", label: "التعرّف على المرافق" },
+          { heading: "الخدمات والمواعيد", text: "تواصلوا مع الفندق قبل السفر لتأكيد الخدمات المتاحة وساعاتها ومواعيد الوصول والمغادرة.", link: "/facilities", label: "التعرّف على المرافق" },
         ],
       },
       "/contact": {
@@ -204,9 +204,9 @@ export const translations = {
         ],
       },
       "/policies": {
-        title: "معلومات الإقامة والخصوصية", intro: "معلومات الإقامة والخصوصية", text: "تسجيل الدخول الساعة 14:00 وتسجيل المغادرة الساعة 12:00. تواصلوا مع الاستقبال قبل التخطيط إذا كانت لديكم أسئلة عن ترتيبات الإقامة أو الحجز الأخرى.",
+        title: "معلومات الإقامة والخصوصية", intro: "معلومات الإقامة والخصوصية", text: "تواصلوا مع الاستقبال قبل التخطيط لتأكيد مواعيد الوصول والمغادرة وسائر ترتيبات الإقامة.",
         sections: [
-          { heading: "تسجيل الدخول والمغادرة", text: "تسجيل الدخول الساعة 14:00 وتسجيل المغادرة الساعة 12:00. إذا تطلبت خططكم مواعيد مختلفة، اسألوا الاستقبال عن إمكانية التنسيق؛ ولا يُضمن تغيير الموعد." },
+          { heading: "تسجيل الدخول والمغادرة", text: "اسألوا الاستقبال قبل السفر لتأكيد مواعيد الوصول والمغادرة، ويمكنكم الاستفسار عن إمكانية تنسيق مواعيد أخرى." },
           { heading: "التواريخ والضيوف", text: "اختيار التاريخ وعدد الضيوف على الموقع للتخطيط فقط؛ فهو لا يحجز غرفة ولا يحتفظ بها، كما أن الدفع عبر الإنترنت غير متاح. تواصلوا مع الاستقبال لإتمام الإقامة." },
           { heading: "تنسيق الحجز", text: "تواصلوا مع الاستقبال للاستفسار عن الأسعار والتوفر والتغيير أو الإلغاء والوثائق المطلوبة. أكّدوا المعلومات الخاصة بتواريخ سفركم.", link: "/contact", label: "التواصل مع الاستقبال" },
           { heading: "الخصوصية", text: "يُحفظ مظهر العرض واختيار الألوان في متصفحكم. وتُنقل التواريخ وأعداد الضيوف وأعمار الأطفال المختارة عبر عنوان الصفحة وجلسة المتصفح الحالية. يمكن لمن تشاركون معه الرابط رؤية هذه الاختيارات. في هذه المرحلة، لا يرسل الموقع بيانات الاتصال الشخصية أو المدفوعات." },
@@ -220,8 +220,8 @@ export const translations = {
     roomDetails: {
       shared: [
         { heading: "قبل الاختيار", text: "لا يحدد اسم الفئة وحده التصميم أو الأسرّة أو تجهيزات الغرفة. عند الاتصال، اذكروا عدد الضيوف واحتياجاتكم ليتمكن الاستقبال من التحقق من الخيارات المناسبة.", link: "/contact", label: "استفسروا من الاستقبال" },
-        { heading: "مواعيد الإقامة", text: "تسجيل الدخول الساعة 14:00 وتسجيل المغادرة الساعة 12:00. تواصلوا مباشرة مع الفندق لتأكيد السعة والأسعار والتوفر في تواريخكم.", link: "/policies", label: "معلومات الدخول والمغادرة" },
-        { heading: "مرافق الفندق", text: "تشمل المرافق العامة المدرجة استقبالاً على مدار الساعة وإنترنت ومصعداً وخدمة سيارات الأجرة ومواقف وإفطاراً مجانياً بنظام البوفيه. اسألوا الاستقبال عما إذا كانت مرفق معين متاحاً في هذه الغرفة.", link: "/facilities", label: "عرض المرافق" },
+        { heading: "مواعيد الإقامة", text: "تواصلوا مباشرة مع الفندق لتأكيد مواعيد الوصول والمغادرة والسعة والأسعار والتوفر في تواريخكم.", link: "/policies", label: "معلومات الدخول والمغادرة" },
+        { heading: "مرافق الفندق", text: "اسألوا الاستقبال عن المرافق والخدمات المتاحة حالياً في هذه الغرفة وعن ساعات عملها.", link: "/facilities", label: "عرض المرافق" },
       ],
       textSuffix: "اسألوا الاستقبال لتأكيد السعة وتجهيزات الغرفة والأسعار والتوفر في تواريخكم.",
       action: ["/contact", "التواصل للتنسيق"],

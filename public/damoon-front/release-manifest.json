@@ -1,7 +1,7 @@
 {
   "site": "damoon",
   "contentMode": "DEVELOPMENT_WITH_CONCEPT_IMAGES",
-  "builtAt": "2026-11-10T15:05:41.243Z",
+  "builtAt": "2026-11-10T15:13:23.966Z",
   "files": {
     "about/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "accommodation.css": "2cb0da4f2d0e7342c16e318898a41c05427be11b3599fe67b7c5282ea56de586",
@@ -27,9 +27,9 @@
     "assets/gallery-concept-2.webp": "91ec1fda3c074d6ce2204723ed81be7213f7d258827f4f4a05f49dabb58cd301",
     "assets/gallery-concept-3.webp": "2ec7f80b1ba38951101a64394d8e9ba9c0c93978fa1d4169d829c74543bd172a",
     "assets/hero-reference-v2.png": "78d7c4cd94e0b644b15ccb617454efe059264e72a4d7335b4ac5093d8bc08d62",
-    "assets/Lalezar-OFL.txt": "e4fcdc3ad1fe54fc0af29abb191d11a01733914bc33f0e62cfca12a8f3989ba7",
+    "assets/Lalezar-OFL.txt": "327bac41d89cf9f32e0efe353228018e1661cff458a5d4905714958514df7bd5",
     "assets/Lalezar-Regular.ttf": "7b80807bc831f141de0f7dcf6816412bf0c548968d548c5156ca388733390ea9",
-    "assets/leaf-border.svg": "d2048fe13eef51226b183845ab3d4e12149b23ef29ee0a9a998e1ec2fca13023",
+    "assets/leaf-border.svg": "7a4686e117928fcfd83638c0a184f0c6ca990fde17da5006bbeb879701d0decd",
     "assets/lobby-concept.webp": "c9dc145202be69ccc9f28e90e8027e1c342106352dc12f61adb9dc465d34da8d",
     "assets/mobile-reference.png": "66052885f64ec1f07e65c44687a271ba133fa75b7c71f46079ca1f4f6262766b",
     "assets/room-concept-1.webp": "a9041434d2ef1920a0fbc657b2ebb766b9c272bf9b7e4e0761119669da762327",
@@ -38,7 +38,7 @@
     "assets/Vazirmatn-Bold.ttf": "489c29f4ba685a8f4aeb3f15e66f51197362cc60ae96bc7cdaa8ea1a52d58235",
     "assets/Vazirmatn-Regular.ttf": "7f3c44f0a0b45cd748519b2ad5729f8af5f7bf58dd48767c956d79f46611a3fb",
     "booking-flow.js": "3f57deb9efc51752b91d4eed8106e0c44ec5faaf5ba55e31b3d5e7115044ee16",
-    "booking.css": "2106f31cd50f2bbb3b76a449b48dd9c5e7a32e5cf2da4ad97b78a81c4a7a7462",
+    "booking.css": "9f9b45ac9eae063142a8d4d4e53d10b044608baf2ae44078c038420d8800ff1c",
     "booking.js": "dc4841923a5eb62ba0c99e164561ff5bd7dc0080fd500b7900d10c69858e204a",
     "cafe/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a",
     "calendar.js": "946026d8514a364c02a9c0d0bcbf5bd86f4646ddf04758feb7483a8255de46d6",
@@ -88,7 +88,7 @@
     "styles.css": "5b6506004b32e60be951a54c2de0863c65f64fb9079855f28e3d5e05b65f8426",
     "theme-tokens.css": "e45530f56d3674ed13e018a9fa5e92e438f28ef89970751c221e0d588e1fb336",
     "themes.js": "5324a1d7d3676762c109041dd1c8210e8818bd72a01523251ed1bf612fd88f52",
-    "translations.js": "07ae0c4edc04a7f22e0103ec6b6e5da490d7e29dc8d3ff3e49a1769fbc60deff",
+    "translations.js": "5ffaa7c59eaddd408388aac704b19aaee42bb51389d0cd4a5dcf4178835c3cb7",
     "virtual-tour/index.html": "e1f5ca1df3098ba9b801d1d29fc043a45c7fe3cd7d20e2f2310b4b1b9591ad4a"
   }
 }

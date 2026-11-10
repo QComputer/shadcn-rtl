@@ -35,7 +35,16 @@ async function hashTree(folder, prefix = '') {
     if (entry.name === 'release-manifest.json') continue;
     const name = prefix + entry.name;
     if (entry.isDirectory()) await hashTree(join(folder,entry.name),name+'/');
-    else manifest[name] = createHash('sha256').update(await readFile(join(folder,entry.name))).digest('hex');
+    else {
+      const file = join(folder, entry.name);
+      let bytes = await readFile(file);
+      if (/\.(?:html|js|css|json|svg|txt)$/.test(entry.name)) {
+        const normalized = Buffer.from(bytes.toString('utf8').replaceAll('\r\n', '\n'));
+        if (!bytes.equals(normalized)) await writeFile(file, normalized);
+        bytes = normalized;
+      }
+      manifest[name] = createHash('sha256').update(bytes).digest('hex');
+    }
   }
 }
 await hashTree(output);

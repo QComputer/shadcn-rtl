@@ -164,9 +164,30 @@ async function run(name, fn) {
   // B2: cross-tenant cart rejection
   await run("B2: cross-tenant cart rejection", async (page, context) => {
     await login(page, CUSTOMER, `${BASE}/fa/${SLUG}/shop/product/${PUB_PRODUCT}`);
+    const cartUrl = `${BASE}/api/retail/v1/cart?organization=${encodeURIComponent(SLUG)}`;
+    const beforeResponse = await context.request.get(cartUrl);
+    if (!beforeResponse.ok()) throw new Error(`cart baseline GET ${beforeResponse.status()}`);
+    const before = (await beforeResponse.json()).cart;
+    const item = before?.items.find(value => value.variantId === fixtureId("pub2", STAMP));
+    if (!item) throw new Error("Expected the real persisted navy cart item before tenant mutation checks.");
     const bad = await context.request.post(`${BASE}/api/retail/v1/cart`, { headers: { origin: BASE }, data: { organization: `retail-e2e-other-${STAMP}`, variantId: fixtureId("pub1", STAMP), quantity: 1 } });
     if (bad.status() !== 404) throw new Error(`cross-tenant variant must be unavailable: ${bad.status()}`);
-    console.log(`  evidence B2: cross-tenant status=${bad.status()}`);
+    for (const method of ["patch", "delete"]) {
+      const response = await context.request[method](`${BASE}/api/retail/v1/cart`, {
+        headers: { origin: BASE },
+        data: { organization: `retail-e2e-other-${STAMP}`, itemId: item.id,
+          ...(method === "patch" ? { quantity: item.quantity + 1 } : {}) },
+      });
+      if (response.status() !== 404) throw new Error(`cross-tenant cart ${method} must be rejected: ${response.status()}`);
+    }
+    const afterResponse = await context.request.get(cartUrl);
+    if (!afterResponse.ok()) throw new Error(`cart verification GET ${afterResponse.status()}`);
+    const after = (await afterResponse.json()).cart;
+    const snapshot = cart => JSON.stringify(cart.items.map(value => ({
+      id: value.id, variantId: value.variantId, quantity: value.quantity,
+    })).sort((a, b) => a.id.localeCompare(b.id)));
+    if (snapshot(after) !== snapshot(before)) throw new Error("Rejected cross-tenant mutations changed the original cart.");
+    console.log("  evidence B2: cross-tenant POST/PATCH/DELETE rejected; persisted cart unchanged");
   });
 
   // D: real XLSX upload/preview/execute

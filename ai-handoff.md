@@ -1,5 +1,10 @@
 # BazarBaaz continuation
 
+Documentation integration is CLOSED after the owner-supplied chat-summary reconciliation.
+Continue practical phase-one implementation; do not restart broad source audits.
+The historical summary is `docs/hotel/damoon/DAMOON-CHAT-KNOWLEDGE-HANDOFF.md`;
+it is not original-chat access, management approval or publication authorization.
+
 Current development: `docs/hotel/damoon/PHASE1-2026-11-10.md`.
 Start content/decision continuation at `docs/hotel/damoon/DAMOON-ORG-MASTER.md`
 (the sanitized integrated Master 1.2), then its source audits and phase-one matrix.

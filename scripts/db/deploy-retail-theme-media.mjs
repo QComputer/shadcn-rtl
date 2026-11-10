@@ -9,7 +9,7 @@ import { execFileSync } from "node:child_process";
 import { resolveDatabaseRuntimeConfiguration } from "../../lib/database-runtime-config.ts";
 
 export const MIGRATION_NAME = "20261104093000_retail_theme_image_derivatives";
-export const MIGRATION_SHA256 = "0e6371f1400a5376f7b08b37105ca7c7c1917b1d1fb7052dcc9115ba5e87cf8d";
+export const MIGRATION_SHA256 = "4bdd69e53ba42b7bfdfc876d0984913b44d183873efea40ea6e18816ca112b62";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const EXPECTED_COLUMNS = [
   { table: "ProductCategory", column: "darkImage" },

@@ -1,6 +1,11 @@
 # BazarBaaz continuation
 
 Current development: `docs/hotel/damoon/PHASE1-2026-11-10.md`.
+Read `docs/hotel/damoon/SOURCE-COMPLETENESS-2026-11-10.md` before further content
+changes. Master v1.1 and the corrected questionnaire are verified in Downloads,
+but not installed at the intended repository paths. The repository is public;
+do not copy private source answers into it. Current owner scope supersedes the
+Master's older operational booking priorities. Contact approval D-010 is open.
 The owner approved PR 47's ten commits; main fast-forwarded to
 `4cc3313e25988ff3f0ed255b2821436799e27033`, and PR 47 is merged. Main-push
 TypeScript and Hotel PostgreSQL Actions passed. Runflare deployment review and

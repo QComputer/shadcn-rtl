@@ -50,6 +50,8 @@ function bodyText(page) { return page.locator("body").innerText(); }
 async function run(name, fn) {
   const browser = await chromium.launch({ headless: true, executablePath: "C:/Program Files/Google/Chrome/Application/chrome.exe", args: ["--disable-features=HttpsFirstBalancedModeAutoEnable,HttpsUpgrades"] });
   const context = await browser.newContext({ baseURL: BASE });
+  // Local development may compile a route on its first navigation.
+  context.setDefaultNavigationTimeout(90000);
   const page = await context.newPage();
   page.on("pageerror", (e) => { console.log(`  [console error] ${name}: ${e.message}`); });
   const started = Date.now();
@@ -188,6 +190,36 @@ async function run(name, fn) {
     })).sort((a, b) => a.id.localeCompare(b.id)));
     if (snapshot(after) !== snapshot(before)) throw new Error("Rejected cross-tenant mutations changed the original cart.");
     console.log("  evidence B2: cross-tenant POST/PATCH/DELETE rejected; persisted cart unchanged");
+  });
+
+  // F: another tab removes a line while this cart page still displays it.
+  await run("F: stale cart mutations refresh persisted cart", async (page, context) => {
+    await login(page, CUSTOMER, `${BASE}/fa/${SLUG}/shop/cart`);
+    for (const method of ["PATCH", "DELETE"]) {
+      const added = await context.request.post(`${BASE}/api/retail/v1/cart`, {
+        headers: { origin: BASE }, data: { organization: SLUG, variantId: fixtureId("pub1", STAMP), quantity: 1 },
+      });
+      if (added.status() !== 201) throw new Error(`stale cart fixture POST ${added.status()}`);
+      const { item } = await added.json();
+      await page.reload({ waitUntil: "networkidle" });
+      const row = page.getByRole("list", { name: "اقلام سبد خرید", exact: true }).getByRole("listitem").filter({ hasText: `PUB-BLK-40-${STAMP}` });
+      await row.waitFor({ state: "visible" });
+      const removed = await context.request.delete(`${BASE}/api/retail/v1/cart`, {
+        headers: { origin: BASE }, data: { organization: SLUG, itemId: item.id },
+      });
+      if (!removed.ok()) throw new Error(`other-tab removal ${removed.status()}`);
+      const stale = page.waitForResponse(response => new URL(response.url()).pathname === "/api/retail/v1/cart" && response.request().method() === method);
+      if (method === "PATCH") await row.getByRole("button", { name: /افزایش تعداد/ }).click();
+      else {
+        await row.locator("summary").click();
+        await row.getByRole("button", { name: "بله، حذف شود", exact: true }).click();
+      }
+      if ((await stale).status() !== 404) throw new Error(`stale cart ${method} must return 404`);
+      await row.waitFor({ state: "detached" });
+      await page.getByText("سبد خرید در جای دیگری تغییر کرده است. اقلام به‌روز را دوباره بررسی کنید.", { exact: true }).waitFor({ state: "visible" });
+      const persisted = await context.request.get(`${BASE}/api/retail/v1/cart?organization=${encodeURIComponent(SLUG)}`);
+      if (!persisted.ok() || (await persisted.json()).cart?.items.some(value => value.id === item.id)) throw new Error("stale cart recovery must not resurrect the removed item");
+    }
   });
 
   // D: real XLSX upload/preview/execute

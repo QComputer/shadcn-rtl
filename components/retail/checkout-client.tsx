@@ -23,10 +23,13 @@ function payload(org: string, d: Draft) {
   const mobile = checkoutDigits(d.recipientMobile).replace(/[\s-]/g, "");
   return { organization: org, type: d.type, ...(d.type === "DELIVERY" && d.deliveryAddress.trim().length >= 8 ? { deliveryAddress: d.deliveryAddress.trim() } : {}), ...(d.recipientName.trim().length >= 2 ? { recipientName: d.recipientName.trim() } : {}), ...(/^(?:09\d{9}|\+989\d{9})$/.test(mobile) ? { recipientMobile: mobile } : {}), ...(d.deliveryNotes.trim() ? { deliveryNotes: d.deliveryNotes.trim() } : {}), ...(d.couponCode.trim() ? { couponCode: d.couponCode.trim() } : {}), ...(d.paymentMethod ? { paymentMethod: d.paymentMethod } : {}), ...(d.paymentMethod === "CASH" && d.cashMode ? { cashMode: d.cashMode } : {}) };
 }
+class RetailRequestError extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
 export async function retailRequest<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(appPath(url), { credentials: "same-origin", cache: "no-store", ...init, headers: { accept: "application/json", ...(init?.body instanceof FormData ? {} : { "content-type": "application/json" }), ...init?.headers } });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) { if (response.status === 401) throw new Error("AUTH_REQUIRED"); throw new Error(checkoutError(body)); }
+  if (!response.ok) { if (response.status === 401) throw new Error("AUTH_REQUIRED"); throw new RetailRequestError(checkoutError(body), response.status); }
   return body as T;
 }
 export default function RetailCheckoutClient({ locale, organization, storefrontPath, checkoutPath, cartOnly = false, embedded = false, drawer = false }: { locale: string; organization: string; storefrontPath?: string; checkoutPath?: string; cartOnly?: boolean; embedded?: boolean; drawer?: boolean }) {
@@ -87,7 +90,15 @@ export default function RetailCheckoutClient({ locale, organization, storefrontP
       await retailRequest("/api/retail/v1/cart", { method: quantity === null ? "DELETE" : "PATCH", body: JSON.stringify({ organization: org, itemId: item.id, ...(quantity === null ? {} : { quantity }) }) });
       const result = await retailRequest<{ cart: CheckoutCart | null }>(`/api/retail/v1/cart?organization=${encodeURIComponent(org)}`);
       setCart(result.cart); setReviewed(false); setQuote(null); setNotice(quantity === null ? "کالا از سبد حذف شد." : "تعداد و مبلغ سبد به‌روز شد."); void context?.refreshCart();
-    } catch (e) { fail(e); } finally { lock.current = false; setBusy(false); setBusyItemId(null); }
+    } catch (e) {
+      if (e instanceof RetailRequestError && e.status === 404) {
+        setReviewed(false); setQuote(null);
+        try {
+          const result = await retailRequest<{ cart: CheckoutCart | null }>(`/api/retail/v1/cart?organization=${encodeURIComponent(org)}`);
+          setCart(result.cart); setNotice("سبد خرید در جای دیگری تغییر کرده است. اقلام به‌روز را دوباره بررسی کنید."); void context?.refreshCart();
+        } catch (refreshError) { fail(refreshError); }
+      } else { fail(e); }
+    } finally { lock.current = false; setBusy(false); setBusyItemId(null); }
   }
   async function submit(event: FormEvent) {
     event.preventDefault(); if (lock.current) return;

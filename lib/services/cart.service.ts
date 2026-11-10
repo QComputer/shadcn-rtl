@@ -350,7 +350,7 @@ export class CartService {
     });
 
     if (!cartItem) {
-      throw new Error("Cart item not found");
+      throw new ApiError(404, "Cart item not found.");
     }
 
     ensureCartOwner(cartItem.cart, customerId, sessionId);
@@ -400,7 +400,7 @@ export class CartService {
     });
 
     if (!cartItem) {
-      throw new Error("Cart item not found");
+      throw new ApiError(404, "Cart item not found.");
     }
 
     ensureCartOwner(cartItem.cart, customerId, sessionId);

@@ -65,22 +65,28 @@ try {
   run("migrations", ["node_modules/prisma/build/index.js", "migrate", "deploy"]);
   run("seed", ["--import", "tsx", "--require", "./scripts/e2e/register-server-only.cjs", "tests/e2e/retail-recovery/seed.mts"]);
   run("cafe-regression", ["--import", "tsx", "--require", "./scripts/e2e/register-server-only.cjs", "--test", "tests/integration/cafe-leo-import.local.test.ts"]);
-  const built = process.argv.includes("--built");
-  result.serverMode = built ? "built-local" : "development-local";
-  server = spawn(process.execPath, ["node_modules/next/dist/bin/next", ...(built ? ["start"] : ["dev", "--webpack"]), "--hostname", "127.0.0.1", "--port", "3107"],
-    { env: { ...env, NODE_ENV: built ? "production" : "development" }, stdio: ["ignore", serverLog, serverLog], windowsHide: true });
-  let ready = false;
-  for (let i = 0; i < 90 && server.exitCode === null; i++) {
-    try { if ((await fetch("http://127.0.0.1:3107/api/auth/csrf", { signal: AbortSignal.timeout(3000) })).ok) { ready = true; break; } } catch { /* Wait only for this owned server. */ }
-    await new Promise(resolve => setTimeout(resolve, 1000));
+  run("checkout-regression", ["--import", "tsx", "--require", "./scripts/e2e/register-server-only.cjs", "--test", "tests/integration/retail-recovery-checkout.local.test.ts"]);
+  const servicesOnly = process.argv.includes("--services-only");
+  if (servicesOnly) {
+    result.serverMode = "services-only";
+  } else {
+    const built = process.argv.includes("--built");
+    result.serverMode = built ? "built-local" : "development-local";
+    server = spawn(process.execPath, ["node_modules/next/dist/bin/next", ...(built ? ["start"] : ["dev", "--webpack"]), "--hostname", "127.0.0.1", "--port", "3107"],
+      { env: { ...env, NODE_ENV: built ? "production" : "development" }, stdio: ["ignore", serverLog, serverLog], windowsHide: true });
+    let ready = false;
+    for (let i = 0; i < 90 && server.exitCode === null; i++) {
+      try { if ((await fetch("http://127.0.0.1:3107/api/auth/csrf", { signal: AbortSignal.timeout(3000) })).ok) { ready = true; break; } } catch { /* Wait only for this owned server. */ }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    if (!ready) throw new Error("Isolated server readiness failed; inspect server.log.");
+    run("browser", ["tests/e2e/retail-recovery/retail-ui-e2e-runner.mjs"], 900000);
+    const browserResult = JSON.parse(fs.readFileSync(`${out}/browser-results.json`, "utf8"));
+    if (browserResult.status !== "PASSED" || browserResult.exitCode !== 0 || browserResult.passed !== 7 || browserResult.failed !== 0) {
+      throw new Error("Browser acceptance result is incomplete or failed.");
+    }
+    result.browser = browserResult;
   }
-  if (!ready) throw new Error("Isolated server readiness failed; inspect server.log.");
-  run("browser", ["tests/e2e/retail-recovery/retail-ui-e2e-runner.mjs"], 900000);
-  const browserResult = JSON.parse(fs.readFileSync(`${out}/browser-results.json`, "utf8"));
-  if (browserResult.status !== "PASSED" || browserResult.exitCode !== 0 || browserResult.passed !== 6 || browserResult.failed !== 0) {
-    throw new Error("Browser acceptance result is incomplete or failed.");
-  }
-  result.browser = browserResult;
   result.status = "PASSED"; result.exitCode = 0;
 } catch (error) { console.log(error.message); }
 finally {

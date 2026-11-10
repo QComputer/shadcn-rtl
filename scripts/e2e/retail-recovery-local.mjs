@@ -47,7 +47,7 @@ try {
   const url = new URL(`postgresql://127.0.0.1:5436/${name}`);
   url.username = config.POSTGRES_USER ?? "postgres"; url.password = config.POSTGRES_PASSWORD;
   const env = { ...process.env, NODE_ENV: "test", DATABASE_URL: url.href, DIRECT_URL: url.href,
-    DATABASE_RUNTIME_ADAPTER: "postgresql", LOCAL_PRISMA_EXPECTED_PORT: "5436", LOCAL_BASELINE_BOOTSTRAP_DISPOSABLE: "true",
+    DATABASE_RUNTIME_ADAPTER: "postgresql", DATABASE_POOL_MAX: "5", LOCAL_PRISMA_EXPECTED_PORT: "5436", LOCAL_BASELINE_BOOTSTRAP_DISPOSABLE: "true",
     RETAIL_RECOVERY_DISPOSABLE: "true", E2E_DATABASE_NAME: name, E2E_STAMP: stamp, E2E_BASE_URL: "http://127.0.0.1:3107",
     E2E_OUTPUT_DIR: out, AUTH_URL: "http://127.0.0.1:3107", NEXTAUTH_URL: "http://127.0.0.1:3107",
     NEXT_PUBLIC_APP_URL: "http://127.0.0.1:3107", AUTH_TRUST_HOST: "true", NEXTAUTH_SECRET: randomBytes(32).toString("hex"),
@@ -66,6 +66,7 @@ try {
   run("seed", ["--import", "tsx", "--require", "./scripts/e2e/register-server-only.cjs", "tests/e2e/retail-recovery/seed.mts"]);
   run("cafe-regression", ["--import", "tsx", "--require", "./scripts/e2e/register-server-only.cjs", "--test", "tests/integration/cafe-leo-import.local.test.ts"]);
   run("checkout-regression", ["--import", "tsx", "--require", "./scripts/e2e/register-server-only.cjs", "--test", "tests/integration/retail-recovery-checkout.local.test.ts"]);
+  run("variant-deletion", ["--import", "tsx", "--require", "./scripts/e2e/register-server-only.cjs", "--experimental-test-module-mocks", "--test", "tests/integration/retail-variant-deletion.local.test.ts"]);
   const servicesOnly = process.argv.includes("--services-only");
   if (servicesOnly) {
     result.serverMode = "services-only";
@@ -80,12 +81,21 @@ try {
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
     if (!ready) throw new Error("Isolated server readiness failed; inspect server.log.");
-    run("browser", ["tests/e2e/retail-recovery/retail-ui-e2e-runner.mjs"], 900000);
-    const browserResult = JSON.parse(fs.readFileSync(`${out}/browser-results.json`, "utf8"));
-    if (browserResult.status !== "PASSED" || browserResult.exitCode !== 0 || browserResult.passed !== 7 || browserResult.failed !== 0) {
-      throw new Error("Browser acceptance result is incomplete or failed.");
+    result.browserSuite = process.argv.includes("--variant-deletion-browser-only") ? "variant-deletion" : "all";
+    if (result.browserSuite === "all") {
+      run("browser", ["tests/e2e/retail-recovery/retail-ui-e2e-runner.mjs"], 900000);
+      const browserResult = JSON.parse(fs.readFileSync(`${out}/browser-results.json`, "utf8"));
+      if (browserResult.status !== "PASSED" || browserResult.exitCode !== 0 || browserResult.passed !== 7 || browserResult.failed !== 0 || browserResult.skipped !== 0) {
+        throw new Error("Browser acceptance result is incomplete or failed.");
+      }
+      result.browser = browserResult;
     }
-    result.browser = browserResult;
+    run("variant-deletion-browser", ["tests/e2e/retail-recovery/variant-deletion-browser.mjs"], 900000);
+    const deletionBrowser = JSON.parse(fs.readFileSync(`${out}/variant-deletion-browser-result.json`, "utf8"));
+    if (deletionBrowser.status !== "PASSED" || deletionBrowser.exitCode !== 0 || deletionBrowser.failed !== 0 || deletionBrowser.skipped !== 0 || deletionBrowser.passed !== 6) {
+      throw new Error("Variant deletion browser acceptance is incomplete or failed.");
+    }
+    result.variantDeletionBrowser = deletionBrowser;
   }
   result.status = "PASSED"; result.exitCode = 0;
 } catch (error) { console.log(error.message); }

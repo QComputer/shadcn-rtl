@@ -132,5 +132,32 @@
       "warnings": 0,
       "log": ".tmp/damoon-phase1-20261110/build-lint.log"
     }
+  },
+  "contactSummaryCopyFollowup": {
+    "baseline": "4ffc86274b76a985bb79eef96f18d3dfcc6ddb03",
+    "status": "LOCAL_ACCEPTED",
+    "browser": {
+      "command": "node --test --test-name-pattern=\"stay summary copy\" sites/damoon/tests/phase1-browser.test.mjs",
+      "exitCode": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "coverage": "source/shared x fa/en/ar; real clipboard write/read; injected denied/unavailable fallback; unknown ages; caveat; unchanged query/hash; zero API requests/errors; mobile overflow"
+    },
+    "relatedTests": {
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    "standaloneBuildExitCode": 0,
+    "initialAttempt": "HARNESS_COMPARISON: Windows clipboard CRLF vs textarea LF; assertion normalized and browser rerun passed",
+    "productionAction": false,
+    "sharedBuildExitCode": 0,
+    "lint": {
+      "exitCode": 0,
+      "errors": 0,
+      "inheritedWarnings": 2
+    }
   }
 }

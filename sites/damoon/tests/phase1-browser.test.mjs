@@ -342,3 +342,57 @@ test("Damoon Phase 1 pages, language switching, responsive layout and date-to-co
     child.kill();
   }
 });
+
+
+test("Damoon stay summary copy supports three languages and clipboard fallback in both runtimes", { timeout: 120000 }, async () => {
+  const executablePath = process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe";
+  const port = await freePort();
+  const base = `http://127.0.0.1:${port}`;
+  const child = spawn(existsSync(node24) ? node24 : process.execPath, [join(siteRoot, "server.mjs")], {
+    cwd: siteRoot, env: { ...process.env, PORT: String(port) }, windowsHide: true, stdio: "ignore",
+  });
+  let browser, shared;
+  try {
+    await waitReady(`${base}/healthz`, child);
+    shared = await startSharedBundleServer();
+    browser = await chromium.launch({ headless: true, executablePath });
+    const checkIn = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    const checkOut = new Date(Date.now() + 9 * 86400000).toISOString().slice(0, 10);
+    for (const origin of [base, shared.base]) for (const { code, dir } of locales) {
+      const context = await browser.newContext({ permissions: ["clipboard-read", "clipboard-write"], viewport: { width: 390, height: 844 } });
+      const page = await context.newPage();
+      const requests = [], errors = [];
+      page.on("request", request => { if (new URL(request.url()).pathname.startsWith("/api/")) requests.push(request.url()); });
+      page.on("pageerror", error => errors.push(error.message));
+      const target = `${origin}${localizedPath(code, "/contact")}?checkIn=${checkIn}&checkOut=${checkOut}&adults=3&guests=3&children=2&childAges=7,&room=double&ref=copy#stay`;
+      await page.goto(target);
+      const summary = page.locator(".hospitality-stay-context");
+      await summary.locator("[data-copy-stay]").click();
+      await page.waitForFunction(() => document.querySelector("[data-copy-status]")?.textContent);
+      const copied = (await page.evaluate(() => navigator.clipboard.readText())).replaceAll("\r\n", "\n");
+      assert.ok(copied.length > 40);
+      assert.ok(copied.includes(code === "fa" ? "نامشخص" : code === "ar" ? "غير محدد" : "not specified"));
+      assert.match(copied, code === "fa" ? /رزرو قطعی نیست/ : code === "ar" ? /ليس حجزاً مؤكداً/ : /not a confirmed reservation/);
+      assert.equal(await page.locator("html").getAttribute("dir"), dir);
+      assert.equal(await summary.locator("[data-copy-manual-label]").isVisible(), false);
+      for (const mode of ["denied", "unavailable"]) {
+        await page.evaluate(mode => Object.defineProperty(navigator, "clipboard", { configurable: true, value: mode === "denied" ? { writeText: async () => { throw new DOMException("Denied", "NotAllowedError"); } } : undefined }), mode);
+        await summary.locator("[data-copy-stay]").click();
+        const manual = summary.locator("[data-copy-manual]");
+        await manual.waitFor({ state: "visible" });
+        assert.equal(await manual.inputValue(), copied);
+        assert.deepEqual(await manual.evaluate(el => [document.activeElement === el, el.selectionStart, el.selectionEnd]), [true, 0, copied.length]);
+        assert.equal(page.url(), target, "copy preserves route and stay query/hash");
+        assert.ok(await manual.getAttribute("readonly") !== null);
+      }
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), true);
+      assert.deepEqual(requests, []);
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+  } finally {
+    if (browser) await browser.close();
+    if (shared) await shared.close();
+    if (child.exitCode === null) { const exited = new Promise(resolveExit => child.once("exit", resolveExit)); child.kill(); await exited; }
+  }
+});

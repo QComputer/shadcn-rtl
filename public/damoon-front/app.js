@@ -243,7 +243,30 @@ function wireInteractions() {
       });
       const ages = children > 0 ? ` · ${ageLabel}: ${ageValues.join(', ')}` : '';
       const party = `${adultCount}${childCount ? ` · ${childCount}${ages}` : ''}`;
-      summary.innerHTML = `<h2>${safeText(heading)}</h2>${selectedRoom ? `<p>${safeText(selectedRoom.title)}</p>` : ''}<p>${safeText(dates)} · ${safeText(party)}</p><p>${safeText(hint)}</p>`;
+      const staySummary = [selectedRoom?.title, dates, party, hint].filter(Boolean).join("\n");
+      const copyLabel = locale === 'fa' ? 'کپی خلاصهٔ اقامت' : locale === 'ar' ? 'نسخ ملخص الإقامة' : 'Copy stay summary';
+      const copiedMessage = locale === 'fa' ? 'خلاصهٔ اقامت کپی شد.' : locale === 'ar' ? 'تم نسخ ملخص الإقامة.' : 'Stay summary copied.';
+      const copyFailedMessage = locale === 'fa' ? 'کپی خودکار انجام نشد. متن را انتخاب و دستی کپی کنید.' : locale === 'ar' ? 'تعذر النسخ تلقائياً. حدّد النص وانسخه يدوياً.' : 'Automatic copying failed. Select and copy the text manually.';
+      const manualLabel = locale === 'fa' ? 'خلاصهٔ اقامت برای کپی دستی' : locale === 'ar' ? 'ملخص الإقامة للنسخ اليدوي' : 'Stay summary for manual copying';
+      summary.innerHTML = `<h2>${safeText(heading)}</h2>${selectedRoom ? `<p>${safeText(selectedRoom.title)}</p>` : ''}<p>${safeText(dates)} · ${safeText(party)}</p><p>${safeText(hint)}</p><button type="button" class="button button--outline" data-copy-stay>${safeText(copyLabel)}</button><p role="status" aria-live="polite" data-copy-status></p><label data-copy-manual-label hidden>${safeText(manualLabel)}<textarea readonly data-copy-manual></textarea></label>`;
+      const copyButton = summary.querySelector('[data-copy-stay]');
+      const copyStatus = summary.querySelector('[data-copy-status]');
+      const manualLabelElement = summary.querySelector('[data-copy-manual-label]');
+      const manualText = summary.querySelector('[data-copy-manual]');
+      copyButton.addEventListener('click', async () => {
+        try {
+          if (!navigator.clipboard?.writeText) throw new Error('Clipboard API unavailable');
+          await navigator.clipboard.writeText(staySummary);
+          manualLabelElement.hidden = true;
+          copyStatus.textContent = copiedMessage;
+        } catch {
+          manualText.value = staySummary;
+          manualLabelElement.hidden = false;
+          copyStatus.textContent = copyFailedMessage;
+          manualText.focus();
+          manualText.select();
+        }
+      });
       const edit = document.createElement('a');
       edit.className = 'hospitality-text-link';
       edit.href = stayHref(selectedRoom ? `/rooms/${selectedRoom.slug}` : '/rooms');

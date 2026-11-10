@@ -1,11 +1,13 @@
 import { readFile, realpath, mkdir, writeFile, stat } from 'node:fs/promises';
 import { resolve, dirname, sep, extname, basename } from 'node:path';
 import { createHash } from 'node:crypto';
+import { homedir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const siteRoot = dirname(fileURLToPath(import.meta.url));
 const catalog = JSON.parse(await readFile(resolve(siteRoot, 'media-slots.json'), 'utf8'));
 const inside = (root, file) => file.startsWith(root + sep);
+export const mediaReviewRoot = resolve(homedir(), '.codex/recovery/damoon-media-review');
 
 // This prepares a PRIVATE review bundle. It never changes live/source assets or approvals.
 export async function prepareMedia({ manifestPath, outputPath }) {
@@ -15,9 +17,12 @@ export async function prepareMedia({ manifestPath, outputPath }) {
   const manifest = JSON.parse(manifestBytes.toString('utf8'));
   if (manifest.schemaVersion !== 1 || !Array.isArray(manifest.assets) || !manifest.assets.length) throw new Error('Expected schemaVersion 1 and nonempty assets');
   const output = resolve(outputPath);
+  await mkdir(mediaReviewRoot, { recursive: true, mode: 0o700 });
+  const controlledRoot = await realpath(mediaReviewRoot);
   // Resolve the existing parent so a symlink cannot redirect a private bundle into public assets.
   const parent = await realpath(dirname(output));
   const actualOutput = resolve(parent, basename(output));
+  if (!inside(controlledRoot, actualOutput)) throw new Error('Output must be inside the controlled review root: ' + mediaReviewRoot);
   const repoRoot = resolve(siteRoot, '../..');
   if (actualOutput === repoRoot || inside(repoRoot, actualOutput)) throw new Error('Media review output must be outside the Git repository');
   if (actualOutput === inputRoot || inside(inputRoot, actualOutput)) throw new Error('Output must be separate from original sources');
@@ -46,13 +51,14 @@ export async function prepareMedia({ manifestPath, outputPath }) {
     validated.push({ asset, bytes, sha256, outputName: `${asset.slot}${extension}` });
   }
   // Exclusive directory creation: a review never overwrites an earlier bundle or originals.
-  await mkdir(actualOutput);
-  for (const item of validated) await writeFile(resolve(actualOutput, item.outputName), item.bytes, { flag: 'wx' });
+  await mkdir(actualOutput, { mode: 0o700 });
+  for (const item of validated) await writeFile(resolve(actualOutput, item.outputName), item.bytes, { flag: 'wx', mode: 0o600 });
   const review = { schemaVersion: 1, status: 'PREPARED_NOT_PUBLISHED',
     sourceManifestSha256: createHash('sha256').update(manifestBytes).digest('hex'),
-    requiresVisualReview: true, activationPerformed: false,
+    requiresVisualReview: true, requiresMetadataReview: true,
+    metadataHandling: 'Original image metadata is preserved; inspect EXIF/IPTC/XMP before any sharing or publication. This is a local unserved review bundle.', activationPerformed: false,
     assets: validated.map(({asset,sha256,outputName}) => ({slot:asset.slot,file:outputName,sha256,subject:asset.subject,alt:asset.alt,rights:asset.rights || 'UNCONFIRMED',approval:asset.approval,currentAsset:catalog.slots[asset.slot].currentAsset})) };
-  await writeFile(resolve(actualOutput, 'review.json'), JSON.stringify(review,null,2)+'\n');
+  await writeFile(resolve(actualOutput, 'review.json'), JSON.stringify(review,null,2)+'\n', { mode: 0o600 });
   return review;
 }
 

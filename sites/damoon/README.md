@@ -36,7 +36,11 @@ The homepage uses isolated photographic/brand regions of the supplied desktop/mo
 
 Media intake: `media-slots.json` records the current concept/logo slots. Run
 `node prepare-media.mjs <private-input-manifest.json> <new-private-output-directory>`
-to prepare a private review bundle outside Git. Input: `{ "schemaVersion": 1,
+to prepare a local unserved review bundle under the current user’s
+`.codex/recovery/damoon-media-review/` directory, outside Git. The output parent
+must exist under that controlled root; arbitrary external/shared output paths
+are rejected. File modes are restricted where supported; Windows inherits the
+controlled user directory ACL. Input: `{ "schemaVersion": 1,
 "assets": [{ "slot": "single", "file": "photo.webp", "sha256": "<file SHA256>",
 "subject": "<depicted space>", "alt": {"fa":"…","en":"…","ar":"…"},
 "rights": "PUBLICATION_PERMITTED", "approval": {"status":"APPROVED",
@@ -49,3 +53,7 @@ review. It does not verify a claimed approval's authenticity, publish assets,
 replace concepts, or change captions/brand geometry. Never serve the private
 manifest or review directory. Approved replacements must later update the slot's
 actual usages, localized captions and concept status together in a reviewed PR.
+
+Original EXIF/IPTC/XMP metadata is preserved, not scrubbed; inspect it before
+sharing any review bundle or publishing media. The receipt explicitly requires
+metadata review as well as visual/content review.

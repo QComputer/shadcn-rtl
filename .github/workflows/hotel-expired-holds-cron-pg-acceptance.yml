@@ -58,5 +58,7 @@ jobs:
       - run: pnpm exec prisma generate
       - name: Run Prisma migrations
         run: pnpm exec prisma migrate deploy
+      - name: Verify expired-holds environment guard
+        run: pnpm exec tsx --test tests/unit/hotel-expired-holds-environment.test.ts
       - name: Run expired-holds cron integration tests
         run: pnpm exec tsx --require=./scripts/e2e/register-server-only.cjs --test tests/integration/hotel-expired-holds-cron.local.test.ts

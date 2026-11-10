@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db-runtime";
 import { PrismaHotelRepositories } from "@/lib/hotel/persistence/prisma-hotel-repositories";
 import { approveHotelPublication } from "@/lib/hotel/services/hotel-publication.service";
 import { GET, POST } from "@/app/api/cron/expire-holds/route";
+import { assertExpiredHoldsTestEnvironment } from "../helpers/hotel-expired-holds-environment";
 
 const EXPECTED_DB = process.env.HOTEL_EXPIRED_HOLDS_TEST_DATABASE ?? "bazarbaaz_hotel_expired_holds_verify";
 
@@ -144,11 +145,13 @@ describe("Hotel Expired Holds Cron Integration", () => {
   const futureAt = addDays(testBase, 10);
 
   before(async () => {
-    process.env.CRON_SECRET = CRON_SECRET;
-    process.env.HOTEL_CRON_SCHEDULER_ENABLED = "1";
-
+    assertExpiredHoldsTestEnvironment(process.env);
     const identity = await prisma.$queryRaw<Array<{ db: string }>>`SELECT current_database()::text AS db`;
     assert.equal(identity[0]?.db, EXPECTED_DB);
+    assert.equal(await prisma.organization.count(), 0, "Cron acceptance requires an empty disposable database; existing tenants must not be processed.");
+
+    process.env.CRON_SECRET = CRON_SECRET;
+    process.env.HOTEL_CRON_SCHEDULER_ENABLED = "1";
 
     for (const key of ["a", "b", "c"] as const) {
       const org = await prisma.organization.create({

@@ -33,3 +33,19 @@ Persian is the default. `/fa`, `/en` and `/ar` preserve the same public route st
 ## Approved-reference composition
 
 The homepage uses isolated photographic/brand regions of the supplied desktop/mobile concept references through CSS backgrounds. All controls and copy remain native HTML. `hero-reference-v2.png` is an image-generated conceptual underlay based on the reference, not a real hotel photo. `leaf-border.svg` is a code-native ornament. Lalezar is bundled for the Persian display heading with its OFL license. Keep reference dimensions stable when adjusting sprite coordinates. See `docs/hotel/damoon/DESIGN-REFERENCE-REBUILD-2026-10-28.md`.
+
+Media intake: `media-slots.json` records the current concept/logo slots. Run
+`node prepare-media.mjs <private-input-manifest.json> <new-private-output-directory>`
+to prepare a private review bundle outside Git. Input: `{ "schemaVersion": 1,
+"assets": [{ "slot": "single", "file": "photo.webp", "sha256": "<file SHA256>",
+"subject": "<depicted space>", "alt": {"fa":"…","en":"…","ar":"…"},
+"rights": "PUBLICATION_PERMITTED", "approval": {"status":"APPROVED",
+"reference":"<owner decision reference>","date":"YYYY-MM-DD"} }] }`.
+Pending files may use approval status `PENDING`; they remain unapproved. The tool
+checks local raster filenames, signature, size, SHA and all three alt texts,
+rejects unsafe paths/duplicate slots and existing output folders, and preserves
+originals. Every bundle is `PREPARED_NOT_PUBLISHED` and still needs visual/content
+review. It does not verify a claimed approval's authenticity, publish assets,
+replace concepts, or change captions/brand geometry. Never serve the private
+manifest or review directory. Approved replacements must later update the slot's
+actual usages, localized captions and concept status together in a reviewed PR.

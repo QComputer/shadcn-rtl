@@ -1,0 +1,47 @@
+name: Retail and Damoon focused regressions
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/retail-damoon-regressions.yml'
+      - 'components/retail/**'
+      - 'lib/retail/**'
+      - 'lib/services/cart.service.ts'
+      - 'sites/damoon/**'
+      - 'public/damoon-front/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NODE_ENV: test
+      DATABASE_RUNTIME_ADAPTER: postgresql
+      DATABASE_URL: postgresql://synthetic:synthetic@127.0.0.1:1/unused_test_placeholder
+      DIRECT_URL: postgresql://synthetic:synthetic@127.0.0.1:1/unused_test_placeholder
+      HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED: '0'
+      HOTEL_CRON_SCHEDULER_ENABLED: '0'
+      CUSTOMER_AUTH_SMS_WORKER_ENABLED: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma generate
+      - name: Retail cart, checkout and fulfillment units
+        run: pnpm exec node --import tsx --require ./scripts/e2e/register-server-only.cjs --experimental-test-module-mocks --test tests/unit/retail-cart-missing-items.test.ts tests/unit/retail-checkout-presentation.test.ts tests/unit/retail-checkout-quote-contract.test.ts tests/unit/retail-order-operations.test.ts
+      - name: Damoon booking helpers and standalone HTTP module graph
+        run: pnpm exec node --test tests/damoon-booking-flow.test.mjs tests/damoon-static-server.test.mjs

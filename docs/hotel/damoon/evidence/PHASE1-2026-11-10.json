@@ -1,5 +1,5 @@
 {
-  "recordedAt": "2026-11-10T15:11:30.127Z",
+  "recordedAt": "2026-11-10T15:15:07.355Z",
   "baselineMain": "4cc3313e25988ff3f0ed255b2821436799e27033",
   "applicationCommit": "419757fd0f941c900e9f1d757a4b584077326f2e",
   "testCommit": "d4807d3cd5861218946f0ca68a563635b2890c4a",
@@ -82,6 +82,10 @@
     {
       "classification": "ARTIFACT_DEFECT",
       "reason": "shared release manifest omitted existing booking-flow.js; included and hash-verified"
+    },
+    {
+      "classification": "ARTIFACT_DEFECT",
+      "reason": "Windows CRLF checkout bytes differed from committed LF hashes for four text files; scoped attributes and deterministic text build output fixed portability"
     }
   ],
   "preservation": {
@@ -109,8 +113,24 @@
     "public/damoon-front/booking.js": "dc4841923a5eb62ba0c99e164561ff5bd7dc0080fd500b7900d10c69858e204a",
     "public/damoon-front/booking-flow.js": "3f57deb9efc51752b91d4eed8106e0c44ec5faaf5ba55e31b3d5e7115044ee16",
     "public/damoon-front/content.js": "b35b5670c4691b4247d6b549a1165a79b90622e82d5a5242a54a86ce6b9f545f",
-    "public/damoon-front/translations.js": "07ae0c4edc04a7f22e0103ec6b6e5da490d7e29dc8d3ff3e49a1769fbc60deff",
-    "public/damoon-front/release-manifest.json": "4c80e9c2e71de259ac02570dacc18f4139346e0d7b84250bd3652eb0ae20181c",
-    "sites/damoon/tests/phase1-browser.test.mjs": "af21ae90cd52c8c437307f0fb9f095705cbc0d477c1de06e54cbce4b3f2cb515"
+    "public/damoon-front/translations.js": "5ffaa7c59eaddd408388aac704b19aaee42bb51389d0cd4a5dcf4178835c3cb7",
+    "public/damoon-front/release-manifest.json": "8b4a97e8df01d398a61c387005c0aead3c284932a635f85f62af7810ff13d13e",
+    "sites/damoon/tests/phase1-browser.test.mjs": "af21ae90cd52c8c437307f0fb9f095705cbc0d477c1de06e54cbce4b3f2cb515",
+    ".gitattributes": "2af77b4d04ad0c80b4019f9edd8c2d9438d1b9444fff484635f7bbd636d95f35",
+    "sites/damoon/build.mjs": "fa03b52eb332b7088f574266edc184eb05a33d771de10ac2ebf771504f32c6a5"
+  },
+  "artifactCommit": "dd893e9fade0f4a65b965c28c86f7de8a0d4ce64",
+  "artifactVerification": {
+    "publicManifestTests": 2,
+    "passed": 2,
+    "exitCode": 0,
+    "log": ".tmp/damoon-phase1-20261110/manifest-final.log",
+    "indexedFileHashes": "PASSED: every manifest hash matches the Git-index blob",
+    "lineEndings": "Public text pinned to LF; build normalizes text outputs before hashing; binary assets untouched",
+    "toolingLint": {
+      "exitCode": 0,
+      "warnings": 0,
+      "log": ".tmp/damoon-phase1-20261110/build-lint.log"
+    }
   }
 }

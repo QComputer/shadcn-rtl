@@ -10,7 +10,21 @@ Images are conceptual and labeled; this is a noindex work-in-progress release. T
 
 Contact data was cross-checked on 2026-10-27: telephone +98 38 3226 1988 is listed by [Waze](https://www.waze.com/az/live-map/directions/damoun-hotel-htl-damwn-shhrkrd?to=place.w.33358147.333319329.15567976) and a public hotel recruitment notice; Twelfth Moharram North Street / Basij Square is consistent across local Master Data and hotel directories. This is public-source corroboration, not a test call. Core amenities, breakfast, arrival14/departure12 derive from the owner questionnaire. No room counts, live rates or cancellation promises are inferred.
 
-Latest roadmap and limitations: `docs/hotel/damoon/README.md`.
+Current owner-directed scope and acceptance: `docs/hotel/damoon/PHASE1-2026-11-10.md`.
+This supersedes older sequencing and does not require VTour, PWA or final SEO.
+Approved original logo/current photography are owner-pending; concept labels
+must remain until those assets are supplied.
+
+The public stay planner defaults to coordination only. It validates dates and
+explicit child ages locally and passes the selected room, dates and occupancy
+to contact, without availability, hold or payment requests. Dates/guest counts
+and partial age entries survive language changes and navigation; unknown ages
+remain blank rather than being invented. Contact offers an edit-plan link.
+Stay details travel in the URL/current session, so sharing a link shares them.
+
+Source and shared-public files have inherited VTour/copy differences. Sync only
+reviewed changes; do not overwrite them with an unreviewed full public copy.
+The shared manifest and UI translation parity have dedicated regression tests.
 
 ## Languages
 

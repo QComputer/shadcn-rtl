@@ -92,6 +92,19 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
       } } } } },
     });
     if (!cart || cart.items.length === 0) throw new ApiError(409, "Cart is empty.");
+    // Serialize deletion with checkout even for products that do not track stock.
+    // With SERIALIZABLE isolation a pre-lock stale cart snapshot aborts instead
+    // of creating an order for a variant concurrently archived by a merchant.
+    const productIds = [...new Set(cart.items.map(line => line.variant.productId))];
+    const liveProducts = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT "id" FROM "Product" WHERE "id" IN (${Prisma.join(productIds)})
+      AND "organizationId" = ${organization.id} AND "deletedAt" IS NULL ORDER BY "id" FOR KEY SHARE`;
+    if (liveProducts.length !== productIds.length) throw new ApiError(409, "Cart contains an unavailable product.");
+    const variantIds = [...new Set(cart.items.map(line => line.variantId))];
+    const liveVariants = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT "id" FROM "ProductVariant" WHERE "id" IN (${Prisma.join(variantIds)})
+      AND "deletedAt" IS NULL ORDER BY "id" FOR UPDATE`;
+    if (liveVariants.length !== variantIds.length) throw new ApiError(409, "Cart contains an unavailable product.");
     if (input.reviewToken) {
       const fresh = await quoteInTransaction(tx, organization, customerId, input);
       if (!sameReviewToken(fresh.quote.reviewToken, input.reviewToken)) throw new ApiError(409, "Checkout details changed. Review the updated quote before placing the order.");
@@ -213,7 +226,11 @@ export async function createRetailCheckout(customerId: string, input: CheckoutIn
         const previous = await findRetailCheckoutRecovery(customerId, organization.slug, input.idempotencyKey);
         if (previous) return previous;
       }
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034" && attempt < 2) continue;
+      if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2034" ||
+          (error.code === "P2010" && ["40001", "40P01"].includes(String(error.meta?.code))))) {
+        if (attempt < 2) continue;
+        throw new ApiError(409, "Checkout is busy. Please retry.");
+      }
       throw error;
     }
   }

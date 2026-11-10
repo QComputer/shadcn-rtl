@@ -1,5 +1,5 @@
 import "server-only";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { allowsRetailFreeformColor, gallerySettingsInputSchema, isRetailSizeDefinition, MAX_RETAIL_COLOR_NAME_LENGTH, readGallerySettings, orderedImages, type GallerySettingsInput } from "@/lib/retail/product-galleries";
 
 import { Prisma, RetailAttributeScope, RetailAttributeValueType } from "@prisma/client";
@@ -89,6 +89,8 @@ export const retailProductUpdateSchema = z.object({
   attributes: z.array(assignmentSchema).max(80).optional(),
   newVariants: z.array(variantCreateSchema).max(100).optional(),
   variantUpdates: z.array(variantUpdateSchema).max(100).optional(),
+  deletedVariantIds: z.array(z.string().min(1).max(64).regex(/^[A-Za-z0-9_-]+$/)).max(100).optional(),
+  expectedVariantRevision: z.string().regex(/^[a-f0-9]{64}$/).optional(),
   isActive: z.boolean().optional(),
   trackInventory: z.boolean().optional(),
   gallerySettings: gallerySettingsInputSchema.optional(),
@@ -103,6 +105,11 @@ export const retailProductUpdateSchema = z.object({
     }
   }
   if (input.variantUpdates && new Set(input.variantUpdates.map((variant) => variant.id)).size !== input.variantUpdates.length) context.addIssue({ code: "custom", path: ["variantUpdates"], message: "A variant can be updated only once per request." });
+  if (input.deletedVariantIds?.length) {
+    if (!input.expectedVariantRevision) context.addIssue({ code: "custom", path: ["expectedVariantRevision"], message: "Reload the product before deleting variants." });
+    if (new Set(input.deletedVariantIds).size !== input.deletedVariantIds.length) context.addIssue({ code: "custom", path: ["deletedVariantIds"], message: "A variant can be deleted only once per request." });
+    if (input.variantUpdates?.some(variant => input.deletedVariantIds!.includes(variant.id))) context.addIssue({ code: "custom", path: ["deletedVariantIds"], message: "A variant cannot be updated and deleted in the same request." });
+  }
 });
 
 const retailCategoryImageInput = z.string().trim().min(1).max(64).nullable().optional();
@@ -122,7 +129,7 @@ export const merchantProductSelect = {
     definition: { select: { organizationId: true, key: true, label: true, localizedLabels: true, scope: true, valueType: true, displayUnit: true, localizedUnits: true, allowedValues: true, isFilterable: true, isActive: true } },
   } },
   variants: { where: { deletedAt: null }, orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: {
-    id: true, name: true, sku: true, price: true, inventory: true, reservedQuantity: true, allowBackOrder: true, manuallyUnavailable: true,
+    id: true, name: true, sku: true, price: true, inventory: true, reservedQuantity: true, allowBackOrder: true, manuallyUnavailable: true, updatedAt: true,
     optionValues: { select: {
       id: true, definitionId: true, valueText: true, valueNumber: true, valueBoolean: true,
       definition: { select: { organizationId: true, key: true, label: true, localizedLabels: true, scope: true, valueType: true, displayUnit: true, localizedUnits: true, allowedValues: true, isFilterable: true, isActive: true } },
@@ -132,6 +139,18 @@ export const merchantProductSelect = {
 } satisfies Prisma.ProductSelect;
 
 type MerchantProduct = Prisma.ProductGetPayload<{ select: typeof merchantProductSelect }>;
+
+/** Bound a destructive intent to the exact persisted product and option identities. */
+function variantRevision(product: MerchantProduct) {
+  return createHash("sha256").update(JSON.stringify([
+    product.id, product.updatedAt.toISOString(),
+    [...product.variants].sort((a, b) => a.id.localeCompare(b.id)).map(variant => [
+      variant.id, variant.updatedAt.toISOString(), variant.inventory, variant.reservedQuantity,
+      [...variant.optionValues].sort((a, b) => a.definitionId.localeCompare(b.definitionId)).map(option =>
+        [option.definitionId, option.valueText, option.valueNumber?.toString() ?? null, option.valueBoolean]),
+    ]),
+  ])).digest("hex");
+}
 
 function assignmentValue(value: { valueText: string | null; valueNumber: Prisma.Decimal | null; valueBoolean: boolean | null }) {
   if (value.valueText !== null) return value.valueText;
@@ -145,6 +164,7 @@ export function serializeMerchantProduct(product: MerchantProduct) {
   return {
     gallerySettings,
     id: product.id,
+    variantRevision: variantRevision(product),
     name: product.name,
     brand: product.brand,
     slug: product.slug,
@@ -531,7 +551,54 @@ export async function createMerchantRetailProduct(context: TenantContext, actorU
 export async function updateMerchantRetailProduct(context: TenantContext, actorUserId: string, productId: string, data: z.infer<typeof retailProductUpdateSchema>, transaction?: Prisma.TransactionClient) {
   try {
   const write = async (tx: Prisma.TransactionClient) => {
-     const existing = await tx.product.findFirst({ where: { id: productId, organizationId: context.organizationId, deletedAt: null }, select: { id: true, name: true, isActive: true, categoryId: true, basePrice: true, gallerySettings: true } });
+    const deletedIds = data.deletedVariantIds ?? [];
+    if (deletedIds.length) {
+      if (transaction) {
+        const [configuration] = await tx.$queryRaw<Array<{ isolation: string }>>`SELECT current_setting('transaction_isolation') AS isolation`;
+        if (configuration?.isolation !== "serializable") throw new ApiError(409, "Variant deletion requires a serializable transaction. Reload and save through the product editor.");
+      }
+      // Validate again for trusted in-process callers, not only the HTTP route.
+      if (!data.expectedVariantRevision || new Set(deletedIds).size !== deletedIds.length ||
+          data.variantUpdates?.some(variant => deletedIds.includes(variant.id))) {
+        throw new ApiError(400, "Invalid variant deletion request. Reload the product.");
+      }
+      const locked = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT "id" FROM "Product" WHERE "id" = ${productId}
+        AND "organizationId" = ${context.organizationId} AND "deletedAt" IS NULL FOR UPDATE`;
+      if (!locked.length) throw new ApiError(404, "Product not found.");
+      await tx.$queryRaw`SELECT "id" FROM "ProductVariant" WHERE "productId" = ${productId}
+        AND "deletedAt" IS NULL ORDER BY "id" FOR UPDATE`;
+      const snapshot = await tx.product.findUniqueOrThrow({ where: { id: productId }, select: merchantProductSelect });
+      if (variantRevision(snapshot) !== data.expectedVariantRevision) throw new ApiError(409, "Product variants changed. Reload the product before deleting variants.");
+      const targets = snapshot.variants.filter(variant => deletedIds.includes(variant.id));
+      if (targets.length !== deletedIds.length) throw new ApiError(400, "A variant does not belong to this product or was already removed.");
+      if (targets.some(variant => variant.reservedQuantity > 0)) throw new ApiError(409, "A variant has reserved stock. Resolve reservations or mark it unavailable instead of deleting it.");
+      const pendingOrder = await tx.orderItem.findFirst({ where: {
+        variantId: { in: deletedIds }, order: { OR: [
+          { status: { in: ["PENDING", "PLACED", "ACCEPTED", "PREPARING", "READY"] } },
+          { status: "PICKED_UP", type: "DELIVERY" },
+          { status: { notIn: ["CANCELLED", "REFUNDED"] }, paymentStatus: { notIn: ["COMPLETED", "REFUNDED"] } },
+          { status: "CANCELLED", paymentStatus: "COMPLETED" },
+          { status: "REFUNDED", paymentStatus: { not: "REFUNDED" } },
+          { status: { notIn: ["CANCELLED", "REFUNDED"] }, payment: { is: { status: "PENDING" } } },
+          { retailPaymentReports: { some: { status: "PENDING_REVIEW" } } },
+          { paymentRequests: { some: { OR: [
+            { status: { in: ["CREATED", "AWAITING_CUSTOMER", "PENDING_VERIFICATION"] } },
+            { attempts: { some: { status: { in: ["CREATED", "AWAITING_CUSTOMER", "PENDING_VERIFICATION"] } } } },
+          ] } } },
+          { ussdPaymentIntents: { some: { status: { in: ["REQUESTED", "VERIFYING", "VERIFIED"] } } } },
+          { status: { in: ["CANCELLED", "REFUNDED"] }, OR: [
+            { payment: { is: { status: "COMPLETED" } } },
+            { paymentRequests: { some: { OR: [{ status: "PAID" }, { attempts: { some: { status: "VERIFIED" } } }] } } },
+            { ussdPaymentIntents: { some: { status: "SETTLED" } } },
+          ] },
+        ] },
+      }, select: { id: true } });
+      if (pendingOrder) throw new ApiError(409, "A variant has an order or payment still in progress. Resolve it or mark the variant unavailable instead.");
+      const deleted = await tx.productVariant.updateMany({ where: { id: { in: deletedIds }, productId, deletedAt: null, reservedQuantity: 0 }, data: { deletedAt: new Date() } });
+      if (deleted.count !== deletedIds.length) throw new ApiError(409, "Product variants changed. Reload the product before deleting variants.");
+    }
+     const existing = await tx.product.findFirst({ where: { id: productId, organizationId: context.organizationId, deletedAt: null }, select: { id: true, name: true, isActive: true, trackInventory: true, categoryId: true, basePrice: true, gallerySettings: true } });
     if (!existing) throw new ApiError(404, "Product not found.");
     if (data.categoryId) await requireOwnedCategory(tx, context.organizationId, data.categoryId);
     const images = data.imageIds === undefined ? undefined : await requireOwnedImages(tx, context.organizationId, data.imageIds);
@@ -586,9 +653,13 @@ export async function updateMerchantRetailProduct(context: TenantContext, actorU
     if (data.categoryIds !== undefined || data.categoryId !== undefined || data.tagNames !== undefined) {
       await replaceProductTaxonomy(tx, { organizationId: context.organizationId, productId, primaryCategoryId: nextCategoryId, ...(categoryIdsToSave === undefined ? {} : { categoryIds: categoryIdsToSave }), ...(data.tagNames === undefined ? {} : { tagNames: data.tagNames }) });
     }
-     const variants = await tx.productVariant.findMany({ where: { productId, deletedAt: null }, select: { price: true, sku: true } });
+     const variants = await tx.productVariant.findMany({ where: { productId, deletedAt: null }, select: { price: true, sku: true, manuallyUnavailable: true, inventory: true, reservedQuantity: true, allowBackOrder: true } });
      const basePrice = new Prisma.Decimal(data.basePrice ?? existing.basePrice ?? 0);
      const shouldBePublished = data.isActive ?? existing.isActive;
+     if (deletedIds.length && shouldBePublished && !variants.some(variant => !variant.manuallyUnavailable &&
+         (!(data.trackInventory ?? existing.trackInventory) || variant.allowBackOrder || variant.inventory > variant.reservedQuantity))) {
+       throw new ApiError(409, "Deleting the last purchasable variant requires unpublishing the product in the same save.");
+     }
      // Legacy published products may have no structured inventory yet. Keep
      // metadata editable, but require complete inventory for an explicit publish.
      if (shouldBePublished && (data.isActive === true || variants.length > 0)) {
@@ -609,7 +680,26 @@ export async function updateMerchantRetailProduct(context: TenantContext, actorU
       ...(data.trackInventory === undefined ? {} : { trackInventory: data.trackInventory }),
       ...(data.basePrice !== undefined ? { basePrice: new Prisma.Decimal(data.basePrice) } : {}),
     }, select: merchantProductSelect });
-    if (data.gallerySettings) await saveGallerySettings(tx, context.organizationId, productId, data.gallerySettings, galleryModes);
+    let gallerySettings = data.gallerySettings;
+    if (deletedIds.length) {
+      const previous = readGallerySettings(existing.gallerySettings);
+      const source = gallerySettings ?? previous;
+      if (source) {
+        const remaining = await tx.productVariant.findMany({ where: { productId, deletedAt: null }, select: {
+          id: true, optionValues: { select: { definitionId: true, valueText: true, valueNumber: true, valueBoolean: true } },
+        } });
+        const ids = new Set(remaining.map(variant => variant.id));
+        const options = new Set(remaining.flatMap(variant => variant.optionValues.map(option => JSON.stringify([option.definitionId, String(assignmentValue(option))]))));
+        gallerySettings = {
+          version: 1, productImageIds: source.productImageIds,
+          colors: source.colors.filter(group => options.has(JSON.stringify([group.definitionId, group.value]))),
+          ...(source.appearance ? { appearance: source.appearance } : {}),
+          ...(source.appearanceGroups ? { appearanceGroups: source.appearanceGroups.filter(group => options.has(JSON.stringify([group.definitionId, group.value]))) } : {}),
+          ...(source.variantAppearances ? { variantAppearances: source.variantAppearances.filter(pair => ids.has(pair.variantId)) } : {}),
+        };
+      }
+    }
+    if (gallerySettings) await saveGallerySettings(tx, context.organizationId, productId, gallerySettings, galleryModes);
     else if (galleryModes.size) {
       const previous = readGallerySettings(existing.gallerySettings);
       // Older clients can still edit individual galleries without sending new
@@ -623,11 +713,19 @@ export async function updateMerchantRetailProduct(context: TenantContext, actorU
     }
     return tx.product.findUniqueOrThrow({ where: { id: productId }, select: merchantProductSelect });
   };
-  const product = transaction ? await write(transaction) : await prisma.$transaction(write, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  const product = transaction ? await write(transaction) : await prisma.$transaction(write, {
+    isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    ...(data.deletedVariantIds?.length ? { maxWait: 5000, timeout: 30000 } : {}),
+  });
   if (!transaction) revalidateRetailStorefront(context.organizationSlug, product.id);
   return serializeMerchantProductWithAppearanceMedia(product);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new ApiError(409, "A SKU or product identifier is already in use.");
+    if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2034" ||
+        (error.code === "P2010" && ["40001", "40P01"].includes(String(error.meta?.code))))) {
+      throw new ApiError(409, "Product variants changed concurrently. Reload the product and review the deletion again.");
+    }
+    if (data.deletedVariantIds?.length && error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2028") throw new ApiError(409, "Variant deletion is busy. Reload the product and review the deletion again.");
     throw error;
   }
 }

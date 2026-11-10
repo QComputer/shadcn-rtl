@@ -15,6 +15,16 @@ import { InventoryMovementReason } from "@prisma/client";
 import { supportedLocales } from "@/lib/i18n";
 import { canReadAiMediaEntityAttachmentColumns } from "@/lib/services/ai-media-entity-attachment-service";
 
+async function requireLegacyVariantDeletion(id: string) {
+  const variant = await prisma.productVariant.findUnique({ where: { id }, select: {
+    product: { select: { organization: { select: { type: true, capabilities: { where: { key: "SHOP" }, select: { id: true } } } } } },
+  } });
+  const organization = variant?.product.organization;
+  if (organization?.type === "SHOP" || organization?.capabilities.length) {
+    throw new ApiError(409, "Delete Retail variants through the Retail product editor so reservations, history and concurrent changes are protected.");
+  }
+}
+
 function revalidateShopProductPages(productId: string, organizationSlug: string, segments: Array<string | null | undefined> = []) {
   const uniqueSegments = Array.from(new Set([productId, ...segments].filter(Boolean)));
   for (const locale of supportedLocales) {
@@ -384,6 +394,7 @@ export class ProductService {
       throw new ApiError(403, "Forbidden");
     }
 
+    await requireLegacyVariantDeletion(id);
     await prisma.productVariant.delete({ where: { id } });
     return null;
   }
@@ -484,6 +495,7 @@ export class ProductService {
       throw new ApiError(403, "Forbidden");
     }
 
+    await requireLegacyVariantDeletion(id);
     const variant = await prisma.productVariant.findFirst({
       where: { id, deletedAt: null },
       select: { id: true, productId: true },

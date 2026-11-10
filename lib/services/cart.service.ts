@@ -356,7 +356,7 @@ export class CartService {
     ensureCartOwner(cartItem.cart, customerId, sessionId);
     if (organizationSlug && cartItem.cart.organizationSlug !== organizationSlug) throw new ApiError(404, "Cart item not found.");
 
-    if (cartItem.variant.manuallyUnavailable) {
+    if (cartItem.variant.deletedAt || cartItem.variant.product.deletedAt || !cartItem.variant.product.isActive || cartItem.variant.manuallyUnavailable) {
       throw new ApiError(409, "This variant is no longer available for purchase.");
     }
 

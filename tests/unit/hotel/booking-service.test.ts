@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { InMemoryHotelRepositories } from "../../../lib/hotel/persistence/in-memory-hotel-repositories";
-import type { PersistedInventoryNight } from "../../../lib/hotel/persistence/hotel-repositories";
+import type { PersistedInventoryNight, HotelBookingRepository } from "../../../lib/hotel/persistence/hotel-repositories";
 import {
   cancelReservation,
   confirmBookingHold,
@@ -496,6 +496,30 @@ describe("cancellation, refunds and inventory release", () => {
     });
     assert.equal(refunded.isUpdated, true);
     assert.equal(repos.cloneReservation("res_j")?.status, "REFUNDED");
+  });
+
+  it("uses the stored first night rate for a first-night cancellation penalty", async () => {
+    const { repos, deps, setNow } = await confirmedReservation();
+    setNow(new Date("2026-04-09T22:30:00.000Z"));
+    await repos.updateReservationStatus({ scope: { organizationId: ORG }, reservationId: "res_j", expectedStatus: ["CONFIRMED"], nextStatus: "CONFIRMED", now: deps.now(), patch: { cancellationPolicySnapshot: { ...policySnapshot, cancellationTiers: [{ cutoffHours: 48, penaltyBasis: "FIRST_NIGHT", retentionBasisPoints: 5000 }] } } });
+    const result = await cancelReservation(deps, { scope: { organizationId: ORG }, reservationId: "res_j", checkInAt: new Date("2026-04-10T10:30:00.000Z") });
+    assert.equal(result.isCancelled, true);
+    if (result.isCancelled) assert.equal(result.quote.retainedAmount, 1_000_000);
+  });
+
+  it("uses atomic cancellation without invoking an external inventory hook", async () => {
+    const { repos, deps } = await confirmedReservation();
+    let atomicCalls = 0;
+    const booking = Object.assign(repos, {
+      async cancelReservationAndReleaseInventory(input: Parameters<NonNullable<HotelBookingRepository["cancelReservationAndReleaseInventory"]>>[0]) {
+        atomicCalls += 1;
+        assert.deepEqual(input.expectedStatus, ["CONFIRMED"]);
+        return repos.updateReservationStatus({ ...input, nextStatus: "CANCELLED" });
+      },
+    });
+    const result = await cancelReservation({ ...deps, booking }, { scope: { organizationId: ORG }, reservationId: "res_j", checkInAt: new Date("2026-04-10T10:30:00.000Z"), releaseInventory: () => { assert.fail("atomic repositories must not call an external release hook"); } });
+    assert.equal(result.isCancelled, true);
+    assert.equal(atomicCalls, 1);
   });
 
   it("refuses a second cancellation", async () => {

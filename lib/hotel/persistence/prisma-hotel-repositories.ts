@@ -476,6 +476,28 @@ export class PrismaHotelRepositories
     const current = await this.findReservation(input.scope, input.reservationId); return current ? { isUpdated: true, reservation: current } : { isUpdated: false, reason: "NOT_FOUND" };
   }
 
+  async cancelReservationAndReleaseInventory(input: { scope: TenantScope; reservationId: string; expectedStatus: readonly Reservation["status"][]; now: Date }, transaction?: Tx): Promise<ReservationUpdateResult> {
+    return this.transact(async tx => {
+      const organizationId = input.scope.organizationId;
+      await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelReservation" WHERE "id"=${input.reservationId} AND "organizationId"=${organizationId} FOR UPDATE`);
+      const current = await tx.hotelReservation.findFirst({ where: { id: input.reservationId, organizationId }, include: { nights: true, guests: true } });
+      if (!current) return { isUpdated: false, reason: "NOT_FOUND" };
+      if ((current.status !== "PENDING_PAYMENT" && current.status !== "CONFIRMED") || !input.expectedStatus.includes(current.status)) return { isUpdated: false, reason: "STATUS_CONFLICT" };
+      const decision = decideReservationTransition({ current: current.status, transition: "CANCEL", event: { type: "CANCELLATION_REQUESTED", at: input.now.toISOString(), refundableAmount: 0 }, now: input.now.toISOString() });
+      if (!decision.isAllowed) return { isUpdated: false, reason: "STATUS_CONFLICT" };
+      const held = current.holdId ? await tx.hotelBookingHold.findFirst({ where: { id: current.holdId, organizationId, propertyId: current.propertyId, roomTypeId: current.roomTypeId, status: "CONSUMED", quantity: 1 } }) : null;
+      const nights = enumerateStayNights(dateOnly(current.checkIn), dateOnly(current.checkOut));
+      if (!held || dateOnly(held.checkIn) !== dateOnly(current.checkIn) || dateOnly(held.checkOut) !== dateOnly(current.checkOut) || nights.length !== current.nights.length || nights.some(date => !current.nights.some(row => dateOnly(row.date) === date && row.roomTypeId === current.roomTypeId))) throw new HotelReservationIntegrityError();
+      const inventory = await tx.$queryRaw<Array<{ id: string; booked: number }>>(Prisma.sql`SELECT "id","booked" FROM "HotelInventory" WHERE "organizationId"=${organizationId} AND "propertyId"=${current.propertyId} AND "roomTypeId"=${current.roomTypeId} AND "date" IN (${Prisma.join(nights.map(dateValue))}) ORDER BY "date" FOR UPDATE`);
+      if (inventory.length !== nights.length || inventory.some(row => row.booked < 1)) throw new HotelReservationIntegrityError();
+      for (const row of inventory) await tx.hotelInventory.update({ where: { id: row.id }, data: { booked: { decrement: 1 } } });
+      await tx.hotelReservationRoom.updateMany({ where: { organizationId, reservationId: current.id }, data: { roomId: null } });
+      // Financial balances and allocations are historical facts. Provider refund execution is separate.
+      const updated = await tx.hotelReservation.update({ where: { id: current.id }, data: { status: "CANCELLED", cancelledAt: input.now, version: { increment: 1 } }, include: { nights: true, guests: true } });
+      return { isUpdated: true, reservation: reservation(updated) };
+    }, transaction, { maxWait: 10000, timeout: 20000 });
+  }
+
   private paymentSubject(row: { publicId: string; organizationId: string; purpose: string; amountToman: bigint; status: PaymentSubjectRecord["status"]; paidAt: Date | null; metadata: Prisma.JsonValue }): PaymentSubjectRecord | null {
     if (!["RESERVATION_DEPOSIT", "RESERVATION_BALANCE", "RESERVATION_REFUND"].includes(row.purpose)) return null;
     const metadata = row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata) ? row.metadata : {};

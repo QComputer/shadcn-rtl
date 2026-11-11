@@ -284,7 +284,14 @@ export async function cancelReservation(
     cancelledAt: now,
     checkInAt: input.checkInAt,
     policy: reservation.cancellationPolicySnapshot,
+    firstNightAmount: reservation.nightlyRates[0],
   });
+
+  if ((reservation.status === "PENDING_PAYMENT" || reservation.status === "CONFIRMED") && deps.booking.cancelReservationAndReleaseInventory) {
+    const updated = await deps.booking.cancelReservationAndReleaseInventory({ scope: input.scope, reservationId: input.reservationId, expectedStatus: [reservation.status], now });
+    if (!updated.isUpdated) return { isCancelled: false, reason: updated.reason };
+    return { isCancelled: true, reservation: updated.reservation, quote };
+  }
 
   const updated = await deps.booking.updateReservationStatus({
     scope: input.scope,

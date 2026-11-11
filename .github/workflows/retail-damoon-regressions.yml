@@ -15,6 +15,7 @@ on:
       - 'app/**/hotel-operations/**'
       - 'app/api/organizations/**/hotels/**'
       - 'components/hotel-operations/**'
+      - 'lib/hotel/persistence/**'
       - 'lib/hotel/management/**'
       - 'lib/hotel/sandbox/**'
       - 'lib/hotel/services/**'
@@ -86,3 +87,50 @@ jobs:
           tests/unit/customer-login-callback.test.ts
           tests/unit/hotel-cms/hotel-cms-dashboard-navigation.test.ts
 
+
+  isolated-settlement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: hero_test
+          POSTGRES_PASSWORD: local_admin_fixture_only
+          POSTGRES_DB: retail_hero_test
+        ports:
+          - 55439:5432
+        options: >-
+          --health-cmd "pg_isready -U hero_test -d retail_hero_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NODE_ENV: test
+      DATABASE_RUNTIME_ADAPTER: postgresql
+      DATABASE_URL: postgresql://hero_test:local_admin_fixture_only@127.0.0.1:55439/retail_hero_test
+      DIRECT_URL: postgresql://hero_test:local_admin_fixture_only@127.0.0.1:55439/retail_hero_test
+      LOCAL_PRISMA_EXPECTED_PORT: '55439'
+      RETAIL_HERO_EXPECTED_DATABASE: retail_hero_test
+      HOTEL_VERIFIED_PAYMENT_ACCEPTANCE: '1'
+      HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED: '0'
+      HOTEL_CRON_SCHEDULER_ENABLED: '0'
+      SMS_PROVIDER: DRY_RUN
+      SMS_DRY_RUN: 'true'
+      SMS_REAL_SEND_ENABLED: 'false'
+      EMAIL_REAL_SEND_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Initialize ephemeral service schema
+        run: pnpm exec prisma db push --skip-generate
+      - run: pnpm exec prisma generate
+      - name: Reconcile trusted synthetic verification and reject tenant/payment conflicts
+        run: >-
+          pnpm exec node --import tsx --require ./scripts/e2e/register-server-only.cjs
+          --test tests/integration/hotel-verified-payment.local.test.ts

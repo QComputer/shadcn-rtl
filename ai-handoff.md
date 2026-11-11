@@ -1,11 +1,24 @@
 # BazarBaaz continuation
 
-Current development: `docs/handoffs/RETAIL-VARIANT-DELETION-2026-11-10.md`.
-This extends the six-commit phase-2 package documented in
-`docs/handoffs/DEVELOPMENT-PHASE2-2026-11-10.md`; PR 47 remains pending the
-owner's approval of the consolidated release. Do not merge/push to main.
-The owner accepted the `382d90a` Runflare deployment; its recovery/release phase
-is closed. Continue from the phase-2 source-verified priorities and validation.
+Documentation integration is CLOSED after the owner-supplied chat-summary reconciliation.
+Continue practical phase-one implementation; do not restart broad source audits.
+The historical summary is `docs/hotel/damoon/DAMOON-CHAT-KNOWLEDGE-HANDOFF.md`;
+it is not original-chat access, management approval or publication authorization.
+
+Current development: `docs/hotel/damoon/PHASE1-2026-11-10.md`.
+Start content/decision continuation at `docs/hotel/damoon/DAMOON-ORG-MASTER.md`
+(the sanitized integrated Master 1.2), then its source audits and phase-one matrix.
+Original Master 1.1 and raw questionnaire answers remain outside Git under
+`C:/Users/disso/.codex/recovery/damoon-knowledge-20261110/`; source hashes and
+question coverage are recorded in the audits. The public repository must not
+receive raw private answers/scans. Owner phase-one scope supersedes older
+operational booking priorities. Contact approval D-010 and media D-012 are OPEN.
+The owner approved PR 47's ten commits; main fast-forwarded to
+`4cc3313e25988ff3f0ed255b2821436799e27033`, and PR 47 is merged. Main-push
+TypeScript and Hotel PostgreSQL Actions passed. Runflare deployment review and
+Production acceptance of this release remain owner-operated; do not log in.
+Development continues on `codex/damoon-phase1-20261110`. Its next main release
+needs a separate owner approval.
 
 Start with `AGENTS.md`, then `docs/handoffs/MASTER-TAKEOVER-2026-11-10.md`.
 The November 10 takeover records the inspected Git baseline and supersedes
@@ -17,7 +30,10 @@ and `docs/AI_HANDOFF_VALIDATION.md` for product contracts and evidence boundarie
 `docs/AI_HANDOFF_ROADMAP.md` referenced by older documents is currently absent;
 do not infer that its described gates have passed.
 
-Continue Retail acceptance first. Preserve compact default cards, optional
-detailed mode, Persian numeric entry, cart behavior and tenant isolation.
+Damoon phase one is the absolute priority: pages/design, approved real content,
+fa/en/ar, and stay coordination. Defer new Retail features unless critical or
+blocking Damoon. VTour/PWA/final SEO/confirmed booking/payment/loyalty are outside
+this phase. The owner says original logo and approved real photos are not ready;
+preserve concept labels and do not claim that content axis complete.
 Keep Hotel operational booking, payments, SMS and Cron disabled outside explicitly
 disposable local tests. Production dashboard operations remain owner-controlled.

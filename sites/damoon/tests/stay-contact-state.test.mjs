@@ -116,7 +116,10 @@ test("standalone and shared Damoon bundles preserve localized contact party deta
         const page = await context.newPage();
         const query = new URLSearchParams({ checkIn, checkOut, guests: "2", children: "1", childAges: "7" });
         await page.goto(`${runtime.base}/${expected.locale}/rooms/single?${query}`, { waitUntil: "networkidle" });
-        await page.locator("#booking-summary-title").waitFor();
+        await page.locator("#booking-title").waitFor();
+        assert.equal(await page.locator("[data-adult-count]").inputValue(), "2");
+        assert.equal(await page.locator("[data-child-count]").inputValue(), "1");
+        assert.equal(await page.locator('[data-child-age="0"]').inputValue(), "7");
 
         const contactHref = await page.locator(".accommodation-coordination__actions .accommodation-link").getAttribute("href");
         const contactUrl = new URL(contactHref, runtime.base);
@@ -146,7 +149,7 @@ test("standalone and shared Damoon bundles preserve localized contact party deta
         const zeroChildrenPage = await context.newPage();
         const staleAgeQuery = new URLSearchParams({ checkIn, checkOut, guests: "2", children: "0", childAges: "7" });
         await zeroChildrenPage.goto(`${runtime.base}/${expected.locale}/rooms/single?${staleAgeQuery}`, { waitUntil: "networkidle" });
-        await zeroChildrenPage.locator("#booking-summary-title").waitFor();
+        await zeroChildrenPage.locator("#booking-title").waitFor();
         const zeroChildrenHref = await zeroChildrenPage.locator(".accommodation-coordination__actions .accommodation-link").getAttribute("href");
         const zeroChildrenUrl = new URL(zeroChildrenHref, runtime.base);
         assert.equal(zeroChildrenUrl.searchParams.get("children"), "0", `${runtime.name} ${expected.locale} zero children`);

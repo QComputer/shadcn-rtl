@@ -1,12 +1,30 @@
 // Pure helpers for Damoon B2/B3 booking flow (no DOM). Keeps pricing/payload logic testable.
 
+/** Carry only explicit stay selections; never send names, phone numbers or payment data. */
+export function withStaySelection(target, { range, adults, guests, children, childAges }) {
+  const url = new URL(target);
+  for (const key of ["checkIn", "checkOut", "adults", "guests", "children", "childAges"]) url.searchParams.delete(key);
+  if (range?.checkIn) url.searchParams.set("checkIn", range.checkIn);
+  if (range?.checkOut) url.searchParams.set("checkOut", range.checkOut);
+  const count = adults ?? guests ?? 2;
+  url.searchParams.set("adults", String(count));
+  url.searchParams.set("guests", String(count));
+  url.searchParams.set("children", String(children ?? 0));
+  if (children > 0 && Array.isArray(childAges) && childAges.length === children) {
+    // Empty positions remain explicitly unknown, so language/navigation never invent ages.
+    const ages = childAges.map(value => { const parsed = parseChildAges([value], 1); return parsed.ok ? String(parsed.ages[0]) : ""; });
+    url.searchParams.set("childAges", ages.join(","));
+  }
+  return url;
+}
+
 export function parseChildAges(inputs, expectedCount) {
   if (expectedCount === 0) return { ok: true, ages: [] };
   if (!Array.isArray(inputs) || inputs.length !== expectedCount) return { ok: false, ages: [] };
   const ages = [];
   for (const value of inputs) {
-    const raw = typeof value === "number" ? String(value) : String(value ?? "").trim();
-    if (raw === "") return { ok: false, ages: [] };
+    const raw = String(value ?? "").trim().replace(/[۰-۹]/g, digit => String(digit.charCodeAt(0) - 1776)).replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 1632));
+    if (!/^\d{1,2}$/.test(raw)) return { ok: false, ages: [] };
     const n = Number(raw);
     if (!Number.isInteger(n) || n < 0 || n > 17) return { ok: false, ages: [] };
     ages.push(n);

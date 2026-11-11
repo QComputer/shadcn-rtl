@@ -65,7 +65,7 @@ jobs:
           tests/unit/retail-draft-variant-generation.test.ts
           tests/unit/retail-variant-generation.test.ts
       - name: Damoon booking helpers and standalone HTTP module graph
-        run: pnpm exec node --test tests/damoon-booking-flow.test.mjs tests/damoon-static-server.test.mjs
+        run: pnpm exec node --test tests/damoon-booking-flow.test.mjs tests/damoon-static-server.test.mjs tests/damoon-phase1-translations.test.mjs tests/damoon-stay-links.test.mjs tests/damoon-public-bundle.test.mjs
       - name: Hotel operations authorization, money and management contracts
         run: >-
           pnpm exec node --import tsx --require ./scripts/e2e/register-server-only.cjs
@@ -79,3 +79,4 @@ jobs:
           tests/unit/hotel-operations-navigation.test.ts
           tests/unit/hotel-booking-sandbox-gate.test.ts
           tests/unit/hotel-cms/hotel-cms-dashboard-navigation.test.ts
+

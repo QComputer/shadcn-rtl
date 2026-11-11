@@ -83,6 +83,7 @@ jobs:
           tests/unit/hotel-management-api-adapter.test.ts
           tests/unit/hotel-operations-navigation.test.ts
           tests/unit/hotel-booking-sandbox-gate.test.ts
+          tests/unit/hotel/booking-service.test.ts
           tests/unit/hotel-stay-requests-contract.test.ts
           tests/unit/customer-login-callback.test.ts
           tests/unit/hotel-cms/hotel-cms-dashboard-navigation.test.ts
@@ -111,6 +112,7 @@ jobs:
       LOCAL_PRISMA_EXPECTED_PORT: '55439'
       RETAIL_HERO_EXPECTED_DATABASE: retail_hero_test
       HOTEL_VERIFIED_PAYMENT_ACCEPTANCE: '1'
+      HOTEL_ATOMIC_CANCELLATION_ACCEPTANCE: '1'
       HOTEL_ANONYMOUS_HOLD_OPERATIONAL_ENABLED: '0'
       HOTEL_CRON_SCHEDULER_ENABLED: '0'
       SMS_PROVIDER: DRY_RUN
@@ -133,4 +135,4 @@ jobs:
       - name: Reconcile trusted synthetic verification and reject tenant/payment conflicts
         run: >-
           pnpm exec node --import tsx --require ./scripts/e2e/register-server-only.cjs
-          --test tests/integration/hotel-verified-payment.local.test.ts
+          --test tests/integration/hotel-verified-payment.local.test.ts tests/integration/hotel-atomic-cancellation.local.test.ts

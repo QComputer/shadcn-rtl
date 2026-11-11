@@ -149,6 +149,10 @@ test("verified Hotel balance settlement is tenant-bound, atomic, and idempotent 
     await verify(simulatedEvidence, "simulated-evidence", { verificationEvidence: { fixtureOnly: true, simulated: true } });
     const unverified = await makeRequest("unverified");
     await verify(unverified, "unverified", { verifiedAt: null });
+    const mismatchedMerchant = await makeRequest("merchant-mismatch");
+    await verify(mismatchedMerchant, "merchant-mismatch", { merchantAccountKey: "fixture-other-merchant" });
+    const futureEvidence = await makeRequest("future-evidence");
+    await verify(futureEvidence, "future-evidence", { verifiedAt: new Date(now.getTime() + 60_000) });
     const wrongAmount = await makeRequest("wrong-amount", { amountToman: amount - BigInt(1) });
     await verify(wrongAmount, "wrong-amount");
     const wrongCurrency = await makeRequest("wrong-currency", { currency: "USD" });
@@ -169,7 +173,7 @@ test("verified Hotel balance settlement is tenant-bound, atomic, and idempotent 
       deps,
       { scope: { organizationId: orgA.id }, reservationId, paymentRequestPublicId: publicId, amountToman },
     );
-    for (const bad of [simulated, simulatedEvidence, unverified, wrongAmount, wrongCurrency, expired, wrongGuest]) assert.equal((await tryApply(bad.publicId)).isApplied, false, `${bad.publicId} must not settle`);
+    for (const bad of [simulated, simulatedEvidence, unverified, mismatchedMerchant, futureEvidence, wrongAmount, wrongCurrency, expired, wrongGuest]) assert.equal((await tryApply(bad.publicId)).isApplied, false, `${bad.publicId} must not settle`);
     assert.equal((await tryApply(foreignTenantPayment.publicId)).isApplied, false, "a foreign tenant payment must not settle");
     assert.equal((await tryApply(good.publicId, `foreign-reservation-${token}`)).isApplied, false, "an unrelated reservation id must not settle");
     assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: reservation.id } })).paidAmount, BigInt(0));
@@ -235,7 +239,8 @@ test("verified Hotel balance settlement is tenant-bound, atomic, and idempotent 
       await tx.$queryRaw`SELECT "id" FROM "HotelReservation" WHERE "id" = ${cancelledReservation.id} FOR UPDATE`;
       signalLockAcquired();
       await cancellationCanCommit;
-      await tx.hotelReservation.update({ where: { id: cancelledReservation.id }, data: { status: "CANCELLED", cancelledAt: now } });
+      const cancelled = await repo.cancelReservationAndReleaseInventory({ scope: { organizationId: orgA.id }, reservationId: cancelledReservation.id, expectedStatus: ["PENDING_PAYMENT"], now }, tx);
+      assert.equal(cancelled.isUpdated, true);
     });
     await lockAcquired;
     const blockedSettlement = tryApply(cancellationPayment.publicId, cancelledReservation.id);

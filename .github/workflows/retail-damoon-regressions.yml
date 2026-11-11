@@ -16,6 +16,8 @@ on:
       - 'app/api/organizations/**/hotels/**'
       - 'components/hotel-operations/**'
       - 'lib/hotel/management/**'
+      - 'lib/hotel/sandbox/**'
+      - 'app/**/hotel-sandbox/**'
       - 'lib/dashboard/navigation-policy.ts'
       - 'lib/access-control.ts'
       - 'tests/**'
@@ -75,4 +77,5 @@ jobs:
           tests/unit/hotel-management-api-b-contracts.test.ts
           tests/unit/hotel-management-api-adapter.test.ts
           tests/unit/hotel-operations-navigation.test.ts
+          tests/unit/hotel-booking-sandbox-gate.test.ts
           tests/unit/hotel-cms/hotel-cms-dashboard-navigation.test.ts

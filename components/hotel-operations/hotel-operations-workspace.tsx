@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HotelBookingSandbox } from "./hotel-booking-sandbox";
 
 type Room = { id: string; code: string; floor: string | null; isOutOfService: boolean; isActive: boolean };
 type RoomType = {
@@ -319,6 +320,8 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
       <div className="overflow-x-auto"><table className="w-full text-right text-sm"><thead><tr><th className="p-2">{text.date}</th><th className="p-2">{text.roomType}</th><th className="p-2">{text.allotment}</th><th className="p-2">{text.booked}</th><th className="p-2">{text.held}</th><th className="p-2">{text.oos}</th><th className="p-2">{text.available}</th></tr></thead><tbody>{(activeData?.inventory ?? []).map((night) => <tr key={night.id} className="border-t"><td className="p-2" dir="ltr">{night.date}</td><td className="p-2">{activeData?.roomTypes.find((item) => item.id === night.roomTypeId)?.name ?? "—"}</td><td className="p-2">{night.allotment}</td><td className="p-2">{night.booked}</td><td className="p-2">{night.held}</td><td className="p-2">{night.outOfService}</td><td className="p-2">{night.available}</td></tr>)}</tbody></table></div>
       {!activeData?.inventory.length ? <p className="text-sm text-muted-foreground">{text.none}</p> : null}
     </section>
+
+    <HotelBookingSandbox key={`${organizationId}:${propertyId}`} organizationId={organizationId} propertyId={propertyId} locale={locale} mode="reception" />
   </div>;
 }
 

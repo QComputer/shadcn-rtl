@@ -187,6 +187,10 @@ export class PrismaHotelRepositories
 {
   constructor(private readonly client: Db = defaultPrisma) {}
 
+  private transact<T>(work: (tx: Tx) => Promise<T>, transaction?: Tx, options?: { isolationLevel?: Prisma.TransactionIsolationLevel; maxWait?: number; timeout?: number }): Promise<T> {
+    return transaction ? work(transaction) : this.client.$transaction(work, options);
+  }
+
   async findAnonymousHoldReplay(input: Parameters<NonNullable<HotelBookingRepository["findAnonymousHoldReplay"]>>[0]) {
     const rows = await this.client.$queryRaw<Array<{ requestFingerprint: string; status: string; resultJson: any }>>(Prisma.sql`SELECT "requestFingerprint","status","resultJson" FROM "HotelBookingHoldIdempotency" WHERE "organizationId"=${input.scope.organizationId} AND "operationScope"='ANONYMOUS_HOLD' AND "idempotencyKey"=${input.idempotencyKey} LIMIT 1`);
     const row = rows[0];
@@ -343,10 +347,10 @@ export class PrismaHotelRepositories
     return result;
   }
 
-  async claimInventoryAndCreateHold(input: { scope: TenantScope; propertyId: string; roomTypeId: string; nights: readonly StayDate[]; quantity: number; hold: Omit<HoldRecord, "id"> & { id: string }; now: Date }): Promise<InventoryClaimResult & { hold?: HoldRecord }> {
+  async claimInventoryAndCreateHold(input: { scope: TenantScope; propertyId: string; roomTypeId: string; nights: readonly StayDate[]; quantity: number; hold: Omit<HoldRecord, "id"> & { id: string }; now: Date }, transaction?: Tx): Promise<InventoryClaimResult & { hold?: HoldRecord }> {
     if (!input.nights.length || input.quantity < 1) return { isClaimed: false, reason: "NO_INVENTORY", failedDates: [...input.nights] };
     try {
-      return await this.client.$transaction(async (tx) => {
+      return await this.transact(async (tx) => {
         if (!(await this.ownedProperty(tx, input.scope, input.propertyId))) return { isClaimed: false as const, reason: "TENANT_MISMATCH" as const, failedDates: [...input.nights] };
         const roomType = await tx.hotelRoomType.findFirst({ where: { id: input.roomTypeId, propertyId: input.propertyId, organizationId: input.scope.organizationId } });
         if (!roomType) return { isClaimed: false as const, reason: "TENANT_MISMATCH" as const, failedDates: [...input.nights] };
@@ -358,7 +362,7 @@ export class PrismaHotelRepositories
         for (const date of dates) await tx.hotelInventory.update({ where: { id: byDate.get(date).id }, data: { held: { increment: input.quantity } } });
         const saved = await tx.hotelBookingHold.create({ data: { id: input.hold.id, organizationId: input.scope.organizationId, propertyId: input.propertyId, roomTypeId: input.roomTypeId, reference: input.hold.reference, quantity: input.quantity, checkIn: dateValue(input.hold.checkIn), checkOut: dateValue(input.hold.checkOut), expiresAt: input.hold.expiresAt, status: "ACTIVE", createdAt: input.hold.createdAt } });
         return { isClaimed: true as const, claims: dates.map((date) => ({ date, roomTypeId: input.roomTypeId })), hold: hold(saved) };
-      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 5000, timeout: 10000 });
+      }, transaction, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 5000, timeout: 10000 });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if ((error as { code?: string }).code === "P2034" || (error as { code?: string }).code === "40P01" || /serialize access|deadlock detected/i.test(message)) return { isClaimed: false, reason: "CONFLICT", failedDates: [...input.nights] };
@@ -400,7 +404,7 @@ export class PrismaHotelRepositories
     }
   }
 
-  async createReservation(record: ReservationRecord): Promise<ReservationRecord> {
+  async createReservation(record: ReservationRecord, transaction?: Tx): Promise<ReservationRecord> {
     const key = record.idempotencyKey ?? record.reference;
     const invalid = () => new HotelReservationIntegrityError();
     let nights: StayDate[] = [];
@@ -426,7 +430,7 @@ export class PrismaHotelRepositories
       isDeepStrictEqual(normalizeGuests(existing.guests), normalizeGuests(record.guests)) &&
       isDeepStrictEqual(existing.cancellationPolicySnapshot ?? {}, record.cancellationPolicySnapshot ?? {});
 
-    return this.client.$transaction(async tx => {
+    return this.transact(async tx => {
       if (record.holdId) await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelBookingHold" WHERE "id"=${record.holdId} AND "organizationId"=${record.organizationId} FOR UPDATE`);
       // Serialize even different hold IDs using the same tenant retry key.
       await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify([record.organizationId, key])}, 0))`);
@@ -461,7 +465,7 @@ export class PrismaHotelRepositories
         guests: { create: record.guests.map(guest => ({ fullName: guest.fullName, isPrimary: guest.isPrimary, isChild: guest.isChild ?? false, age: guest.age })) },
       }, include: { nights: true, guests: true } });
       return reservation(row);
-    }, { maxWait: 5000, timeout: 10000 });
+    }, transaction, { maxWait: 5000, timeout: 10000 });
   }
   async findReservationByReference(scope: TenantScope, reference: string): Promise<ReservationRecord | null> { const row = await this.client.hotelReservation.findFirst({ where: { organizationId: scope.organizationId, reference }, include: { nights: true, guests: true } }); return row ? reservation(row) : null; }
   async findReservation(scope: TenantScope, reservationId: string): Promise<ReservationRecord | null> { const row = await this.client.hotelReservation.findFirst({ where: { id: reservationId, organizationId: scope.organizationId }, include: { nights: true, guests: true } }); return row ? reservation(row) : null; }

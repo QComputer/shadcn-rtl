@@ -4,13 +4,15 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { signIn } from "next-auth/react";
 import { appPath } from "@/lib/app-base-path";
+import { resolveCustomerLoginCallback } from "@/lib/customer-auth/login-callback";
 
 type Props = {
   organization: { slug: string; name: string; logo: string | null } | null;
   locale: string;
+  callbackUrl?: string;
 };
 
-export function CustomerPhoneLogin({ organization, locale }: Props) {
+export function CustomerPhoneLogin({ organization, locale, callbackUrl }: Props) {
   const router = useRouter();
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState(["", "", "", ""]);
@@ -35,6 +37,7 @@ export function CustomerPhoneLogin({ organization, locale }: Props) {
 
   const orgName = organization?.name ?? "";
   const orgSlug = organization?.slug ?? "";
+  const safeCallback = resolveCustomerLoginCallback(callbackUrl, locale);
 
   const requestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +77,7 @@ export function CustomerPhoneLogin({ organization, locale }: Props) {
       setOtp(["", "", "", ""]);
       inputs.current[0]?.focus();
     } else {
-      router.push(appPath(`/${locale}`));
+      router.push(appPath(safeCallback));
       router.refresh();
     }
     setLoading(false);

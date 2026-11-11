@@ -5,7 +5,7 @@ import { validateStayRange, todayLocalISO, jalaliAccessibleDay } from "./calenda
 import translations from "./translations.js";
 import { palettes, readPalette, applyPalette } from "./themes.js";
 import { mountBooking, readStaySelection } from "./booking.js";
-import { parseChildAges, withStaySelection } from "./booking-flow.js";
+import { guestPortalHref, parseChildAges, withStaySelection } from "./booking-flow.js";
 
 const root = document.querySelector("#app");
 if (!root) throw new Error("Damoon app mount #app was not found");
@@ -53,7 +53,7 @@ function setTheme(theme) {
   }
 }
 
-function languageSwitcher(path) {
+function languageSwitcher() {
   const choices = [["fa", "فارسی"], ["en", "English"], ["ar", "العربية"]];
   const current = choices.find(([code]) => code === locale) || choices[0];
   return `<details class="language-switcher"><summary aria-label="${safeText(locale === "en" ? "Language" : locale === "ar" ? "اللغة" : "زبان سایت")}"><span>${current[0].toUpperCase()}</span><span aria-hidden="true">⌄</span></summary><div class="language-switcher__options">${choices.map(([code, label]) => `<a href="${safeText(languageHref(code))}" lang="${code}" hreflang="${code}"${locale === code ? ' aria-current="page"' : ""}>${label}</a>`).join("")}</div></details>`;
@@ -81,7 +81,7 @@ function header(path) {
         </a>
         <nav class="site-nav" aria-label="${safeText(ui.mainMenu)}">${nav}</nav>
         <div class="site-header__actions">
-          ${languageSwitcher(path)}
+          ${languageSwitcher()}
           <div class="theme-controls" id="theme-controls" role="group" aria-label="${safeText(ui.appearanceSettings)}">
             <div class="palette-switcher" role="group" aria-label="${safeText(ui.choosePalette)}">
               ${palettes.map(p => `<button class="palette-choice" type="button" data-palette="${p.id}" aria-label="${safeText(`${ui.colorPalette}: ${paletteNames[p.id] || p.label}`)}" aria-pressed="false"><span></span></button>`).join("")}
@@ -298,6 +298,19 @@ function wireInteractions() {
       edit.textContent = locale === 'fa' ? 'ویرایش برنامهٔ اقامت' : locale === 'ar' ? 'تعديل خطة الإقامة' : 'Edit stay plans';
       summary.append(edit);
       root.querySelector('.hospitality-contact-details')?.after(summary);
+      fetch('/api/hotel/v1/guest-portal', { method: 'GET', credentials: 'same-origin', cache: 'no-store', redirect: 'error', referrerPolicy: 'no-referrer' })
+        .then(async response => {
+          if (!response.ok || new URL(response.url, window.location.href).origin !== window.location.origin) return;
+          const mapping = await response.json();
+          const href = guestPortalHref(window.location.href, locale, mapping, { range, adults: guests, children, childAges });
+          if (!href || !summary.isConnected) return;
+          const portalLink = document.createElement('a');
+          portalLink.className = 'hospitality-text-link';
+          portalLink.href = href;
+          portalLink.textContent = locale === 'fa' ? 'ادامه در درگاه مهمان' : locale === 'ar' ? 'المتابعة إلى بوابة الضيوف' : 'Continue in guest portal';
+          summary.append(portalLink);
+        })
+        .catch(() => {});
     }
   }
   document.querySelector("[data-theme-toggle]")?.addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));

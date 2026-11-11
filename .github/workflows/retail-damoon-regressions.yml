@@ -17,6 +17,10 @@ on:
       - 'components/hotel-operations/**'
       - 'lib/hotel/management/**'
       - 'lib/hotel/sandbox/**'
+      - 'lib/hotel/services/**'
+      - 'lib/customer-auth/**'
+      - 'app/**/hotel/**'
+      - 'app/api/hotel/**'
       - 'app/**/hotel-sandbox/**'
       - 'lib/dashboard/navigation-policy.ts'
       - 'lib/access-control.ts'
@@ -65,7 +69,7 @@ jobs:
           tests/unit/retail-draft-variant-generation.test.ts
           tests/unit/retail-variant-generation.test.ts
       - name: Damoon booking helpers and standalone HTTP module graph
-        run: pnpm exec node --test tests/damoon-booking-flow.test.mjs tests/damoon-static-server.test.mjs tests/damoon-phase1-translations.test.mjs tests/damoon-stay-links.test.mjs tests/damoon-public-bundle.test.mjs
+        run: pnpm exec node --test tests/damoon-booking-flow.test.mjs tests/damoon-static-server.test.mjs tests/damoon-phase1-translations.test.mjs tests/damoon-stay-links.test.mjs tests/damoon-public-bundle.test.mjs tests/damoon-guest-portal.test.mjs
       - name: Hotel operations authorization, money and management contracts
         run: >-
           pnpm exec node --import tsx --require ./scripts/e2e/register-server-only.cjs
@@ -78,5 +82,7 @@ jobs:
           tests/unit/hotel-management-api-adapter.test.ts
           tests/unit/hotel-operations-navigation.test.ts
           tests/unit/hotel-booking-sandbox-gate.test.ts
+          tests/unit/hotel-stay-requests-contract.test.ts
+          tests/unit/customer-login-callback.test.ts
           tests/unit/hotel-cms/hotel-cms-dashboard-navigation.test.ts
 

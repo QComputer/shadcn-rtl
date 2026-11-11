@@ -4,6 +4,7 @@ import { prisma as defaultPrisma } from "@/lib/db-runtime";
 import { enumerateStayNights, stayNightCount } from "@/lib/hotel/domain/stay-dates";
 import { resolveNightlyRatesForWindow } from "@/lib/hotel/domain/rate";
 import { resourceRevision } from "@/lib/hotel/services/hotel-publication.service";
+import { decideReservationTransition } from "@/lib/hotel/domain/booking-state";
 import type {
   CancellationPolicySet,
   HotelProperty,
@@ -475,9 +476,63 @@ export class PrismaHotelRepositories
     const current = await this.findReservation(input.scope, input.reservationId); return current ? { isUpdated: true, reservation: current } : { isUpdated: false, reason: "NOT_FOUND" };
   }
 
-  async findByPublicId(_scope: TenantScope, _publicId: string): Promise<PaymentSubjectRecord | null> { return null; }
-  async listForReservation(_scope: TenantScope, _reservationId: string): Promise<readonly PaymentSubjectRecord[]> { return []; }
-  async applyVerifiedPayment(_input: { scope: TenantScope; reservationId: string; paymentRequestPublicId: string; paidAt: Date; amountToman: bigint; now: Date }): Promise<PaymentApplicationResult> { return { isApplied: false, reason: "NOT_FOUND" }; }
+  private paymentSubject(row: { publicId: string; organizationId: string; purpose: string; amountToman: bigint; status: PaymentSubjectRecord["status"]; paidAt: Date | null; metadata: Prisma.JsonValue }): PaymentSubjectRecord | null {
+    if (!["RESERVATION_DEPOSIT", "RESERVATION_BALANCE", "RESERVATION_REFUND"].includes(row.purpose)) return null;
+    const metadata = row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata) ? row.metadata : {};
+    if (typeof metadata.hotelReservationId !== "string" || typeof metadata.hotelPropertyId !== "string") return null;
+    return { paymentRequestPublicId: row.publicId, organizationId: row.organizationId, purpose: row.purpose as PaymentSubjectRecord["purpose"], amountToman: row.amountToman, status: row.status, reservationId: metadata.hotelReservationId, ...(row.paidAt ? { paidAt: row.paidAt } : {}) };
+  }
+  async findByPublicId(scope: TenantScope, publicId: string): Promise<PaymentSubjectRecord | null> {
+    const payment = await this.client.paymentRequest.findFirst({ where: { publicId, organizationId: scope.organizationId, orderId: null, appointmentId: null } });
+    const subject = payment ? this.paymentSubject(payment) : null;
+    const metadata = payment?.metadata as { hotelPropertyId?: string } | null;
+    if (!subject || !await this.client.hotelReservation.findFirst({ where: { id: subject.reservationId, organizationId: scope.organizationId, propertyId: metadata?.hotelPropertyId }, select: { id: true } })) return null;
+    return subject;
+  }
+  async listForReservation(scope: TenantScope, reservationId: string): Promise<readonly PaymentSubjectRecord[]> {
+    const booking = await this.client.hotelReservation.findFirst({ where: { id: reservationId, organizationId: scope.organizationId }, select: { propertyId: true } });
+    if (!booking) return [];
+    const payments = await this.client.paymentRequest.findMany({ where: { organizationId: scope.organizationId, orderId: null, appointmentId: null, metadata: { path: ["hotelReservationId"], equals: reservationId } }, orderBy: { createdAt: "asc" } });
+    return payments.flatMap(row => { const subject = this.paymentSubject(row); const metadata = row.metadata as { hotelPropertyId?: string } | null; return subject && metadata?.hotelPropertyId === booking.propertyId ? [subject] : []; });
+  }
+  /** Consumes existing server verification; this method never verifies a browser outcome or marks a payment PAID. */
+  async applyVerifiedPayment(input: { scope: TenantScope; reservationId: string; paymentRequestPublicId: string; paidAt: Date; amountToman: bigint; now: Date }, transaction?: Tx): Promise<PaymentApplicationResult> {
+    return this.transact(async tx => {
+      const organizationId = input.scope.organizationId;
+      await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelReservation" WHERE "id"=${input.reservationId} AND "organizationId"=${organizationId} FOR UPDATE`);
+      let current = await tx.hotelReservation.findFirst({ where: { id: input.reservationId, organizationId }, include: { nights: true, guests: true } });
+      if (!current) return { isApplied: false, reason: "NOT_FOUND" };
+      await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "PaymentRequest" WHERE "publicId"=${input.paymentRequestPublicId} AND "organizationId"=${organizationId} FOR UPDATE`);
+      const payment = await tx.paymentRequest.findFirst({ where: { publicId: input.paymentRequestPublicId, organizationId } });
+      if (!payment) return { isApplied: false, reason: "NOT_FOUND" };
+      const metadata = payment.metadata && typeof payment.metadata === "object" && !Array.isArray(payment.metadata) ? payment.metadata : {};
+      if (metadata.hotelReservationId !== current.id || metadata.hotelPropertyId !== current.propertyId || payment.purpose !== "RESERVATION_BALANCE" || payment.orderId || payment.appointmentId || payment.guestCustomerId !== current.guestCustomerId) return { isApplied: false, reason: "TENANT_MISMATCH" };
+      if (payment.amountToman <= BigInt(0) || payment.amountToman !== input.amountToman || payment.amountToman !== current.totalAmount || payment.currency !== "TOMAN" || payment.currency !== current.currency) return { isApplied: false, reason: "AMOUNT_MISMATCH" };
+      if (payment.status !== "PAID" || !payment.paidAt || !payment.providerIntegrationId || !payment.merchantAccountKey || !payment.credentialProfileKeySnapshot || (metadata.simulated !== undefined && metadata.simulated !== false)) return { isApplied: false, reason: "STATUS_CONFLICT" };
+      const integration = await tx.organizationIntegration.findFirst({ where: { id: payment.providerIntegrationId, organizationId, status: "ACTIVE", disabledAt: null, revokedAt: null }, select: { provider: true } });
+      if (!integration) return { isApplied: false, reason: "STATUS_CONFLICT" };
+      const attempts = await tx.paymentProviderAttempt.findMany({ where: { organizationId, paymentRequestId: payment.id, providerIntegrationId: payment.providerIntegrationId, provider: integration.provider, status: "VERIFIED", verifiedAt: { not: null }, amountToman: payment.amountToman, merchantAccountKey: payment.merchantAccountKey, credentialProfileKeySnapshot: payment.credentialProfileKeySnapshot }, orderBy: { verifiedAt: "asc" } });
+      const verified = attempts.find(attempt => {
+        const evidence = attempt.verificationEvidence && typeof attempt.verificationEvidence === "object" && !Array.isArray(attempt.verificationEvidence) ? attempt.verificationEvidence : {};
+        return attempt.verifiedAt! <= input.now && (evidence.simulated === undefined || evidence.simulated === false);
+      });
+      if (!verified || payment.paidAt > input.now) return { isApplied: false, reason: "STATUS_CONFLICT" };
+      const allocation = await tx.hotelPaymentAllocation.findUnique({ where: { paymentRequestPublicId: payment.publicId } });
+      if (allocation) {
+        if (allocation.organizationId !== organizationId || allocation.hotelReservationId !== current.id || allocation.kind !== "BALANCE" || allocation.amountToman !== payment.amountToman || current.paidAmount < allocation.amountToman) return { isApplied: false, reason: "AMOUNT_MISMATCH" };
+        return { isApplied: true, isIdempotentReplay: true, reservation: { ...reservation(current), paymentRequestPublicId: payment.publicId } };
+      }
+      if (current.paidAmount !== BigInt(0) || current.refundedAmount !== BigInt(0)) return { isApplied: false, reason: "STATUS_CONFLICT" };
+      const held = current.holdId ? await tx.hotelBookingHold.findFirst({ where: { id: current.holdId, organizationId, propertyId: current.propertyId, status: "CONSUMED" } }) : null;
+      if (!held || payment.paidAt > held.expiresAt || verified.verifiedAt! > held.expiresAt || (payment.expiresAt && payment.paidAt > payment.expiresAt)) return { isApplied: false, reason: "STATUS_CONFLICT" };
+      if (current.status !== "PENDING_PAYMENT") return { isApplied: false, reason: "STATUS_CONFLICT" };
+      const decision = decideReservationTransition({ current: current.status, transition: "CONFIRM", event: { type: "PAYMENT_VERIFIED", paymentRequestPublicId: payment.publicId }, now: input.now.toISOString() });
+      if (!decision.isAllowed) return { isApplied: false, reason: "STATUS_CONFLICT" };
+      await tx.hotelPaymentAllocation.create({ data: { organizationId, hotelReservationId: current.id, paymentRequestPublicId: payment.publicId, kind: "BALANCE", amountToman: payment.amountToman } });
+      current = await tx.hotelReservation.update({ where: { id: current.id }, data: { status: "CONFIRMED", paidAmount: payment.amountToman, confirmedAt: input.now, version: { increment: 1 } }, include: { nights: true, guests: true } });
+      return { isApplied: true, isIdempotentReplay: false, reservation: { ...reservation(current), paymentRequestPublicId: payment.publicId } };
+    }, transaction, { maxWait: 10000, timeout: 20000 });
+  }
 }
 
 export function createPrismaHotelRepositories(client: Db = defaultPrisma): PrismaHotelRepositories { return new PrismaHotelRepositories(client); }

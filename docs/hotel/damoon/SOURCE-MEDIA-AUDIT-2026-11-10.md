@@ -1,0 +1,33 @@
+# Damoon source-media inventory — 2026-11-10
+
+This is a bounded, read-only inventory of the named repository assets and local handoff packages. ZIP directories were inspected in place; six original questionnaire JPEGs were subsequently copied into an ignored temporary directory for visual review. Original archives were unchanged. “Found locally” does not establish ownership, currentness, or permission to publish. The owner confirmed on 2026-11-10 that the original logo and approved current hotel photos are not ready.
+
+## Design references and current site assets
+
+| Item | Location / identity | Evidence and status |
+| --- | --- | --- |
+| Approved desktop composition | `docs/hotel/damoon/references/desktop-approved-reference.png` (also `sites/damoon/assets/desktop-reference.png`, `public/damoon-front/assets/desktop-reference.png`) | 1774×887; SHA-256 `A5902719F7B0E6927816227319122F7978393D0BB6A690F795ED5FC502DB4BA6`. Copies are byte-identical. Layout reference only; not a source of factual copy or separable approved photos/logo. |
+| Approved mobile composition | `docs/hotel/damoon/references/mobile-approved-reference.png` (also corresponding `sites/damoon/assets/` and `public/damoon-front/assets/` copies) | 941×1672; SHA-256 `66052885F64EC1F07E65C44687A271BA133FA75B7C71F46079CA1F4F6262766B`. Copies are byte-identical. Layout reference only. |
+| Approved-light handoff reference | `C:/Users/disso/Downloads/damoon-approved-light-theme-handoff.zip` and `(1).zip`, entry `damoon-light-theme-handoff/damoon-approved-light-reference.png` | Both ZIPs have SHA-256 `4FB8D0826AEEFD69CFFD08176B97E7D4DFFECEBD9F6D4B442461B2A748A10266`; 5 entries, no standalone logo or hotel media. Reference PNG: 2048×1103; SHA-256 `C2CA60322778C046E80DF24C2663FE50AE6E36E72CED4F7F4C2C84CCBA5ABC84`. The included handoff text says the mockup is not a source of factual inventory or publication photos. |
+| Current site imagery | `sites/damoon/assets/` and `public/damoon-front/assets/` | `architecture-concept.webp`, `lobby-concept.webp`, `room-concept-1/2/3.webp`, `gallery-concept-1/2/3.webp` are explicitly concept imagery. The two reference PNGs above are layout references. `hero-reference-v2.png` (2243×701; SHA-256 `78D7C4CD94E0B644B15CCB617454EFE059264E72A4D7335B4AC5093D8BC08D62`) is a generated conceptual underlay, not a hotel photograph. Relevant image copies match between source and public. |
+
+The site uses a text monogram rather than an original standalone logo file. Bounded searches of the repository, named Damoon preview workspace, and relevant Downloads/Desktop/Documents filenames and inspected package entries found no standalone official Damoon logo. A logo visible inside a design screenshot remains part of that reference image and is not an approved extracted logo asset.
+
+## Local photographic candidates
+
+| Candidate | Location / evidence | Classification |
+| --- | --- | --- |
+| Six unique questionnaire JPEGs | `C:/Users/disso/Downloads/Telegram Desktop/damoon-hotel.zip`; 10 entries, archive SHA-256 `286E9AB3B8F1E41CABD9C0A4D082FAFBE24B029C256963D18088021B1D430CEB` | Root visually reviewed all six unique 4000×3000 images from original ZIP bytes: `IMG_20261003_131818.jpg` is the cover/page 1; `131830` page 2 (Q1–14); `131846` page 3 (Q15–24); `131858` page 4 (Q25–33); `131907` page 5 (Q34–42); and `131919` page 6 (Q43–54). The ZIP's four additional entries are byte-identical duplicates. **All six are questionnaire pages, not property photographs.** The cover contains private respondent details; do not transcribe or publish identifying or handwritten personal information. |
+| Four small third-party image candidates | `C:/Users/disso/Project/damoon-preview/asset-research/damoon/damoon-{13,14,20,22}.jpg`; each 390×312 | The adjacent `owner-review-v3/ASSET-MANIFEST.json` identifies Eghamat24 source material and records `PENDING_RIGHTS_AND_OWNER_APPROVAL`. The manifest associates the images with exterior/signage, lobby/reception, and dining/service subjects; it flags currentness and service-description confirmation. Reference-only until rights and owner approval are resolved; do not publish as current hotel imagery. |
+| Room-showcase package | `C:/Users/disso/Downloads/damoon-room-showcase-v1.zip`; SHA-256 `A1B76183E44287456D588E076E1AC99E7A03E9A44D5C037EBB8F0267E4171B95` | 10 code/document/test entries; no logo or photo media. |
+| Jalali-calendar packages | `C:/Users/disso/Downloads/damoon-jalali-booking-calendar-v1.zip` and `(1)`, `(2)`; all SHA-256 `9FCCB97834090C1548E8D418D8E9FADC0FB3FCB71CC98C599BD8B57486F047DB` | 9 source/document/test entries each; no visual identity or photo media. |
+
+## VTour inventory
+
+Named local VTour panorama outputs include `VTour_damoon-000_Preview_4096x2048.jpg` (4096×2048; SHA-256 `2ADC0E77B96617F59ADABA99F35220026C86B1298A24EE2292CA71AB5F765FBA`), `VTour_damoon-000_QA_12_views.jpg` (1920×1440 QA sheet; SHA-256 `D68A47078C4AB303C2FFCC4E408A69659FF7F15CD9BAAB4CDFFEA6D48F6847A5`), a v5 2048×1024 output (SHA-256 `B14CAB67E79A503127FD59CCB88257DB27AC28E19280DA44DFA5D2CEEA7F1D98`), a v8 8192×4096 output (SHA-256 `27EC1613A3DB7959F1DF7BBFC8A28F33CD5FD2D87A0B3DC5E18A4922A3A0D91`), and VIP3 8192×4096 final/v2/v4 outputs (respectively `08E62F215FDCEED52FD651D402327F3C0AEBDF46A9E71D9A8EF83E06796145CD`, `C51727184B803B9BA5C84817E94DCE7496B3899111AD51A3EED382CD933A159A`, `17608BFAE5F419B57C23D360B850F0104B9EDA9E58A884E5E1290596FB25313C`). The repeated preview, v8, and v2 filenames are byte-identical copies.
+
+The local VTour export collection also contains 33 named original-quality photo-edit ZIP bundles (about 869 MB total); they were not extracted or bulk-hashed. Names and panorama dimensions identify candidate VTour outputs, not a verified public tour, current hotel conditions, mapped rooms, or publication permission. A previously referenced 72-image source-folder location and matching capture-name pattern were absent in this bounded check. No VTour files were integrated into the website. Continue to treat the tour as not ready for public integration until the owner confirms the canonical tour/source, depicted spaces and currentness, and rights.
+
+## Handoff
+
+Already on disk are questionnaire source pages in `damoon-hotel.zip`, four third-party reference candidates with explicitly pending rights, and multiple VTour outputs/export bundles. Visual review confirms that none of the six unique Telegram ZIP images is a hotel photo. No approved current website photos or standalone original logo were found. Keep the explicitly labeled site concepts in place until the owner supplies or approves the original logo and current photos. Do not request the already-present questionnaire package again.

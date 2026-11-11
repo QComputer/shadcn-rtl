@@ -1,0 +1,278 @@
+{
+  "recordedAt": "2026-11-10T15:15:07.355Z",
+  "baselineMain": "4cc3313e25988ff3f0ed255b2821436799e27033",
+  "applicationCommit": "419757fd0f941c900e9f1d757a4b584077326f2e",
+  "testCommit": "d4807d3cd5861218946f0ca68a563635b2890c4a",
+  "status": "LOCAL_TECHNICAL_ACCEPTANCE_PASSED",
+  "axes": {
+    "A": "Accepted locally; existing approved-reference composition preserved",
+    "B": "Partial: sourced brand intent and privacy copy integrated; original logo/current approved photos owner-confirmed not ready; uncertain operational facts not invented",
+    "C": "fa/en/ar accepted on source and shared bundle",
+    "D": "Coordination-only accepted; dates/occupancy/partial ages/room retained, invalid selections blocked locally, zero hotel API requests"
+  },
+  "builds": {
+    "standalone": {
+      "exitCode": 0,
+      "log": ".tmp/damoon-phase1-20261110/build-standalone-final.log"
+    },
+    "shared": {
+      "exitCode": 0,
+      "log": ".tmp/damoon-phase1-20261110/build-shared-final.log"
+    },
+    "note": "Frontend-only build; full Next.js build not repeated because Next/server/TypeScript application code is unchanged."
+  },
+  "focused": {
+    "tests": 18,
+    "passed": 18,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0,
+    "log": ".tmp/damoon-phase1-20261110/focused-accepted.log"
+  },
+  "browser": {
+    "tests": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0,
+    "runtimes": [
+      "standalone source",
+      "shared public bundle"
+    ],
+    "routes": 13,
+    "locales": [
+      "fa",
+      "en",
+      "ar"
+    ],
+    "pageLocaleRuntimeCombinations": 78,
+    "durationMs": 86819.659,
+    "log": ".tmp/damoon-phase1-20261110/phase1-browser-final.log",
+    "checks": [
+      "main content, locale and direction",
+      "mobile overflow and theme/gallery controls",
+      "browser exceptions and local asset failures",
+      "language switch preserves route/query/hash and current party",
+      "partial ages remain explicit through contact and edit link",
+      "invalid dates and incomplete ages retain valid choices",
+      "valid room/contact selection rehydrates in fresh sessions",
+      "no hotel availability/hold/payment API requests"
+    ]
+  },
+  "lint": {
+    "exitCode": 0,
+    "errors": 0,
+    "inheritedWarnings": 2,
+    "note": "Unused languageSwitcher path parameter in source/public app.js, present before this phase",
+    "log": ".tmp/damoon-phase1-20261110/lint-final.log"
+  },
+  "rejectedAttempts": [
+    {
+      "classification": "APPLICATION_DEFECT",
+      "reason": "incomplete child-age validation erased an already entered age; fixed with draft persistence"
+    },
+    {
+      "classification": "HARNESS_DEFECT",
+      "reason": "exact URL selectors did not allow canonical stay query parameters; corrected"
+    },
+    {
+      "classification": "APPLICATION_DEFECT",
+      "reason": "shared public EN/AR UI lacked 27 source translation keys and fell back to Persian; restored and guarded by CI test"
+    },
+    {
+      "classification": "ARTIFACT_DEFECT",
+      "reason": "shared release manifest omitted existing booking-flow.js; included and hash-verified"
+    },
+    {
+      "classification": "ARTIFACT_DEFECT",
+      "reason": "Windows CRLF checkout bytes differed from committed LF hashes for four text files; scoped attributes and deterministic text build output fixed portability"
+    }
+  ],
+  "preservation": {
+    "worktrees": 1,
+    "inheritedTrackedEdits": 9,
+    "inheritedUntrackedFiles": [
+      "test-runner.sh",
+      "typecheck.log"
+    ],
+    "retailArchiveSha256": "8ABA7A714E8533A95C5CDB5BE6898A7A9ADC006BDFF056D35040754AE88DDD1C"
+  },
+  "production": {
+    "published": false,
+    "main": "4cc3313e25988ff3f0ed255b2821436799e27033",
+    "dashboardAccessed": false,
+    "operationalSettingsChanged": false
+  },
+  "sourceSha256": {
+    "sites/damoon/app.js": "5b45b6d5d9be345fa6dfe41d347eeb82330b99e378eaa91726b5824e8298dd77",
+    "sites/damoon/booking.js": "dc4841923a5eb62ba0c99e164561ff5bd7dc0080fd500b7900d10c69858e204a",
+    "sites/damoon/booking-flow.js": "3f57deb9efc51752b91d4eed8106e0c44ec5faaf5ba55e31b3d5e7115044ee16",
+    "sites/damoon/content.js": "084a981742f8c9d74b24d88c7e6d6a55b6bd702d50e7a0af00483956c301f59c",
+    "sites/damoon/translations.js": "35787d7b17e58bb105b9308d4c728923a30e8805b3602674841de566e3a4cb3f",
+    "public/damoon-front/app.js": "1dcbd0f86b86d393310e301982ff90a65db15cc8fff5bf2cb4caa0b302d7e84b",
+    "public/damoon-front/booking.js": "dc4841923a5eb62ba0c99e164561ff5bd7dc0080fd500b7900d10c69858e204a",
+    "public/damoon-front/booking-flow.js": "3f57deb9efc51752b91d4eed8106e0c44ec5faaf5ba55e31b3d5e7115044ee16",
+    "public/damoon-front/content.js": "b35b5670c4691b4247d6b549a1165a79b90622e82d5a5242a54a86ce6b9f545f",
+    "public/damoon-front/translations.js": "5ffaa7c59eaddd408388aac704b19aaee42bb51389d0cd4a5dcf4178835c3cb7",
+    "public/damoon-front/release-manifest.json": "8b4a97e8df01d398a61c387005c0aead3c284932a635f85f62af7810ff13d13e",
+    "sites/damoon/tests/phase1-browser.test.mjs": "af21ae90cd52c8c437307f0fb9f095705cbc0d477c1de06e54cbce4b3f2cb515",
+    ".gitattributes": "2af77b4d04ad0c80b4019f9edd8c2d9438d1b9444fff484635f7bbd636d95f35",
+    "sites/damoon/build.mjs": "fa03b52eb332b7088f574266edc184eb05a33d771de10ac2ebf771504f32c6a5"
+  },
+  "artifactCommit": "dd893e9fade0f4a65b965c28c86f7de8a0d4ce64",
+  "artifactVerification": {
+    "publicManifestTests": 2,
+    "passed": 2,
+    "exitCode": 0,
+    "log": ".tmp/damoon-phase1-20261110/manifest-final.log",
+    "indexedFileHashes": "PASSED: every manifest hash matches the Git-index blob",
+    "lineEndings": "Public text pinned to LF; build normalizes text outputs before hashing; binary assets untouched",
+    "toolingLint": {
+      "exitCode": 0,
+      "warnings": 0,
+      "log": ".tmp/damoon-phase1-20261110/build-lint.log"
+    }
+  },
+  "contactSummaryCopyFollowup": {
+    "baseline": "4ffc86274b76a985bb79eef96f18d3dfcc6ddb03",
+    "status": "LOCAL_ACCEPTED",
+    "browser": {
+      "command": "node --test --test-name-pattern=\"stay summary copy\" sites/damoon/tests/phase1-browser.test.mjs",
+      "exitCode": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "coverage": "source/shared x fa/en/ar; real clipboard write/read; injected denied/unavailable fallback; unknown ages; caveat; unchanged query/hash; zero API requests/errors; mobile overflow"
+    },
+    "relatedTests": {
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    "standaloneBuildExitCode": 0,
+    "initialAttempt": "HARNESS_COMPARISON: Windows clipboard CRLF vs textarea LF; assertion normalized and browser rerun passed",
+    "productionAction": false,
+    "sharedBuildExitCode": 0,
+    "lint": {
+      "exitCode": 0,
+      "errors": 0,
+      "inheritedWarnings": 2
+    }
+  },
+  "completionFollowup": {
+    "baseline": "54226173b8b875b6342f38d21dbc843076f40e11",
+    "priorCI": "Both requested SHA5422617 workflows SUCCESS",
+    "status": "IMPLEMENTED_AND_TESTED_WITH_OWNER_INPUT_PENDING",
+    "axes": {
+      "A": {
+        "implementation": "IMPLEMENTED",
+        "validation": "TESTED",
+        "acceptance": "Ready for owner delivery review; no redesign"
+      },
+      "B": {
+        "implementation": "Private guarded media intake and truthful provisional copy implemented",
+        "validation": "TESTED",
+        "acceptance": "OWNER_INPUT_PENDING: original logo/licensed current photos and management-approved public copy"
+      },
+      "C": {
+        "implementation": "IMPLEMENTED: localized copy/RTL-LTR and mixed-language fix",
+        "validation": "TESTED",
+        "acceptance": "Final factual/translation signoff OWNER_INPUT_PENDING"
+      },
+      "D": {
+        "implementation": "IMPLEMENTED: coordination and explicit-user-action copy only",
+        "validation": "TESTED",
+        "acceptance": "Transfer mechanics locally accepted; official contact confirmation OWNER_INPUT_PENDING"
+      }
+    },
+    "browser": {
+      "status": "PASSED",
+      "exitCode": 0,
+      "cleanup": "PASSED",
+      "suite": "Damoon Phase 1 focused browser acceptance",
+      "runtimes": [
+        "standalone source",
+        "shared public bundle"
+      ],
+      "locales": [
+        "fa",
+        "en",
+        "ar"
+      ],
+      "viewports": [
+        "mobile 390x844",
+        "desktop 1440x1000"
+      ],
+      "verified": [
+        "localized key-page rendering and overflow",
+        "contact pending-management-confirmation notice",
+        "absence of unconfirmed service guarantees and fixed check-in/out times",
+        "room-list to visible date selection to party and child ages to contact to clipboard journey",
+        "stay-summary copy and clipboard fallback"
+      ],
+      "intendedCoverage": [
+        "localized key-page rendering and overflow",
+        "contact pending-management-confirmation notice",
+        "absence of unconfirmed service guarantees and fixed check-in/out times",
+        "room-list to visible date selection to party and child ages to contact to clipboard journey",
+        "stay-summary copy and clipboard fallback"
+      ],
+      "boundaries": [
+        "local static/runtime acceptance only",
+        "no booking provider or payment API traffic"
+      ],
+      "recordedAtUtc": "2026-11-10T20:20:47.2952266Z",
+      "attemptHistory": [
+        {
+          "summary": "Localized journey attempted the next date field while the picker remained open.",
+          "classification": "HARNESS_DEFECT"
+        },
+        {
+          "summary": "Fixed close click raced with the picker auto-closing after selection.",
+          "classification": "HARNESS_DEFECT"
+        },
+        {
+          "summary": "Copied child-age assertion expected Western digits for Persian text.",
+          "classification": "HARNESS_DEFECT"
+        }
+      ],
+      "passCount": 2,
+      "failCount": 0,
+      "cleanupDetails": "Owned source server and shared bundle server closed; test runner returned after browser contexts closed."
+    },
+    "pageReview": {
+      "sourceDesktopRoutes": 39,
+      "sameOriginLinksChecked": 1314,
+      "mobileRoomDetailRoutes": 12,
+      "status": "PASSED",
+      "scope": "Current local source plus dirty candidate files, not Production"
+    },
+    "focusedTests": {
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    "mediaHardeningTest": {
+      "passed": 1,
+      "exitCode": 0
+    },
+    "builds": {
+      "standaloneExitCode": 0,
+      "sharedExitCode": 0
+    },
+    "lint": {
+      "exitCode": 0,
+      "errors": 0,
+      "inheritedWarnings": 2
+    },
+    "evidenceHashes": {
+      "result.json": "793abcb07b519b8b1d8fb396b1b0c1456f47d3d492de41784693fbe6bbbd80a0",
+      "page-review.json": "b4076bdf9a03db9756bb8ad6605aa64958405c97d103789431cd56431e77fb98"
+    },
+    "productionAction": false,
+    "publicHostnameCheck": "Web access tool could not retrieve https://damoon-hotel.ir; no live acceptance inferred",
+    "mediaLimitation": "Review bundles retain original metadata and require metadata/visual review; no original photo/logo activated"
+  }
+}

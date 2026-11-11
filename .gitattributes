@@ -1,6 +1,15 @@
 # Prisma records checksums of migration.sql checkout bytes. Pin them on every OS.
 prisma/migrations/*/migration.sql text eol=lf
 
+# Damoon's release manifest hashes the served bytes consistently on Windows/Linux.
+public/damoon-front/*.js text eol=lf
+public/damoon-front/*.css text eol=lf
+public/damoon-front/*.json text eol=lf
+public/damoon-front/*.txt text eol=lf
+public/damoon-front/**/*.html text eol=lf
+public/damoon-front/assets/*.svg text eol=lf
+public/damoon-front/assets/*.txt text eol=lf
+
 # Production recorded these historical migrations with CRLF bytes.
 # Preserve those checksums without editing their committed SQL content.
 prisma/migrations/20260815000500_organization_integration_foundation/migration.sql text eol=crlf

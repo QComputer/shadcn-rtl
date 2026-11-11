@@ -5,7 +5,7 @@ import { validateStayRange, todayLocalISO, jalaliAccessibleDay } from "./calenda
 import translations from "./translations.js";
 import { palettes, readPalette, applyPalette } from "./themes.js";
 import { mountBooking, readStaySelection } from "./booking.js";
-import { parseChildAges } from "./booking-flow.js";
+import { parseChildAges, withStaySelection } from "./booking-flow.js";
 
 const root = document.querySelector("#app");
 if (!root) throw new Error("Damoon app mount #app was not found");
@@ -25,23 +25,17 @@ function prefixFor(localeCode = locale) {
 }
 const routeHref = (href) => `${prefixFor()}${href === "/" ? "/" : href}`;
 function stayHref(href) {
-  const target = new URL(routeHref(href), window.location.origin);
-  const { range, guests, children, childAges } = readStaySelection();
-  for (const key of ['checkIn', 'checkOut', 'guests', 'children', 'childAges']) target.searchParams.delete(key);
-  if (range.checkIn) target.searchParams.set('checkIn', range.checkIn);
-  if (range.checkOut) target.searchParams.set('checkOut', range.checkOut);
-  target.searchParams.set('guests', String(guests));
-  target.searchParams.set('children', String(children));
-  const parsedAges = parseChildAges(childAges, children);
-  if (children > 0 && parsedAges.ok) target.searchParams.set('childAges', parsedAges.ages.join(','));
+  const target = withStaySelection(new URL(routeHref(href), window.location.origin), readStaySelection());
+  const room = normalizePath(window.location.pathname).match(/^\/rooms\/(single|double|suite-3-bed|suite-4-5-bed)$/)?.[1];
+  if (room && normalizePath(target.pathname) === '/contact' && !target.searchParams.has('room')) target.searchParams.set('room', room);
   return target.pathname + target.search + target.hash;
 }
 const link = (href, label, className = "") => `<a class="${className}" href="${routeHref(href)}">${safeText(label)}</a>`;
 function languageHref(code) {
   const path = normalizePath(window.location.pathname);
   const prefix = code === "fa" ? "" : `/${code}`;
-  const url = `${prefix}${path === "/" ? "/" : path}${window.location.search}${window.location.hash}`;
-  return url || "/";
+  const url = withStaySelection(new URL(`${prefix}${path === "/" ? "/" : path}${window.location.search}${window.location.hash}`, window.location.origin), readStaySelection());
+  return url.pathname + url.search + url.hash;
 }
 
 function readTheme() {
@@ -104,7 +98,7 @@ function header(path) {
 
 function footer() {
   const footerLinks = [["/rooms", ui.rooms], ["/restaurant", ui.restaurant], ["/cafe", ui.cafe], ["/facilities", ui.facilities], ["/gallery", ui.gallery], ["/about", ui.aboutDamoon], ["/contact", ui.contact], ["/policies", ui.policies], ["/virtual-tour", ui.virtualTour]];
-  const alwaysOpen = locale === "fa" ? "پذیرش شبانه‌روزی" : locale === "ar" ? "الاستقبال على مدار الساعة" : "24-hour reception";
+  const alwaysOpen = locale === "fa" ? "هماهنگی با پذیرش" : locale === "ar" ? "التنسيق مع الاستقبال" : "Coordinate with reception";
   return `<footer class="site-footer"><div class="site-footer__main"><div class="site-footer__brand"><span class="brand__mark" aria-hidden="true">${locale === "fa" ? "د" : "D"}</span><div><strong>${safeText(site.name)}</strong><p>${safeText(site.city)}</p></div></div><p class="site-footer__note">${safeText(site.address)} · ${alwaysOpen}</p><nav class="footer-links" aria-label="${safeText(ui.footerLinks)}">${footerLinks.map(([href, label]) => link(href, label)).join("")}</nav></div><div class="site-footer__bottom"><span>© ${new Date().getFullYear()} ${safeText(site.name)}</span><a href="tel:${site.phone}">${safeText(ui.reception)}: <bdi>${safeText(site.phoneDisplay)}</bdi></a></div></footer>`;
 }
 
@@ -122,7 +116,7 @@ function hero(page, path) {
   const homeSubtitle = locale === "fa" ? "تالار و رستوران" : safeText(ui.homeSubtitle);
   const homeLead = locale === "fa" ? "ترکیبی از آرامش، مهمان‌نوازی<br>و دسترسی عالی در شهرکرد" : safeText(ui.homeLead);
   return `<section class="page-hero${isHome ? " page-hero--home" : ""}" aria-labelledby="page-title">
-    <div class="page-hero__copy">${breadcrumb(path, page.title)}<p class="eyebrow">${isHome ? homeEyebrow : safeText(site.eyebrow)}</p>${page.badge ? `<p class="status-badge">${safeText(page.badge)}</p>` : ""}<h1 id="page-title">${safeText(isHome ? site.name : page.intro || page.title)}</h1>${isHome ? `<p class="home-subtitle">${homeSubtitle}</p>` : ""}<p class="page-hero__lead">${isHome ? homeLead : safeText(page.text || "")}</p><div class="page-hero__actions">${isHome ? link("/rooms", locale === "fa" ? "رزرو اقامت" : locale === "ar" ? "احجز إقامتك" : "Book your stay", "button button--primary") : actions || link("/contact", ui.coordinateWithHotel, "button button--primary")}</div></div>
+    <div class="page-hero__copy">${breadcrumb(path, page.title)}<p class="eyebrow">${isHome ? homeEyebrow : safeText(site.eyebrow)}</p>${page.badge ? `<p class="status-badge">${safeText(page.badge)}</p>` : ""}<h1 id="page-title">${safeText(isHome ? site.name : page.intro || page.title)}</h1>${isHome ? `<p class="home-subtitle">${homeSubtitle}</p>` : ""}<p class="page-hero__lead">${isHome ? homeLead : safeText(page.text || "")}</p><div class="page-hero__actions">${isHome ? link("/rooms", locale === "fa" ? "برنامه‌ریزی اقامت" : locale === "ar" ? "خطط لإقامتك" : "Plan your stay", "button button--primary") : actions || link("/contact", ui.coordinateWithHotel, "button button--primary")}</div></div>
     <figure class="page-hero__visual"><img src="${safeText(src)}" alt="${safeText(note)}" fetchpriority="high"><figcaption>${safeText(note)}</figcaption></figure>
   </section>`;
 }
@@ -140,7 +134,7 @@ function homeContent() {
   ];
   const slides = gallery.slice(0, 4);
   return `<section class="home-intro" aria-label="${safeText(ui.homeIntro)}"><div class="home-intro__copy"><p class="eyebrow">${safeText(locale === "fa" ? "درباره هتل دامون" : ui.aboutMore)}</p><h2 id="home-intro-title">${safeText(locale === "fa" ? "جایی متعادل برای سفر و آرامش" : ui.calmStay)}</h2><p>${safeText(ui.homeIntro)}</p><a class="text-link" href="${routeHref("/about")}">${safeText(ui.aboutMore)} ←</a></div><div class="home-lobby" aria-label="${safeText(ui.gallery)}"><img data-home-slide src="/damoon-front/assets/lobby-concept.webp" alt="${safeText(ui.imageNotActual)}" loading="lazy"><button type="button" data-home-prev aria-label="${safeText(ui.previousImage)}">‹</button><button type="button" data-home-next aria-label="${safeText(ui.nextImage)}">›</button><div class="home-lobby__dots">${slides.map((_, i) => `<button type="button" data-home-dot="${i}" aria-label="${safeText(ui.gallery)} ${i + 1}"${i === 0 ? ' aria-current="true"' : ""}></button>`).join("")}</div></div><div class="home-side"><div class="home-room-list"><h2>${safeText(locale === "fa" ? "اتاق‌ها و سوئیت‌ها" : ui.rooms)}</h2><div class="home-room-list__grid">${roomTiles.map((room, index) => `<a href="${routeHref(room.href)}" data-room-sprite="${index}"><img src="${room.image}" alt="${safeText(ui.imageNotActual)}" loading="lazy"><strong>${safeText(room.title)}<small>${safeText(ui.viewSpaces)}</small></strong></a>`).join("")}</div></div><div class="home-gallery-list"><h2>${safeText(locale === "fa" ? "تصاویر هتل" : ui.gallery)}</h2><div>${slides.map((image, i) => `<a href="${routeHref("/gallery")}" data-gallery-sprite="${i}"><img src="${safeText(image.src)}" alt="${safeText(image.alt)}" loading="lazy"></a>`).join("")}</div></div></div></section>
-    <div class="home-features"><span><svg viewBox="0 0 32 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16 38C11 30 2 20 2 14a14 14 0 1 1 28 0c0 6-9 16-14 24Z"/><circle cx="16" cy="14" r="5"/></svg><strong>${safeText(ui.facilities)}</strong><small>${safeText(site.city)}</small></span><span><svg viewBox="0 0 40 36" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 29h34M6 25a14 14 0 0 1 28 0H6Zm14-17V4m-5 0h10M2 33h36"/></svg><strong>${safeText(ui.cafe)} و ${safeText(ui.restaurant)}</strong><small>${safeText(ui.hotelSpaces)}</small></span><span><svg viewBox="0 0 32 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 38V2h22v36M1 38h30M12 38V28h8v10M10 8h3m6 0h3M10 14h3m6 0h3M10 20h3m6 0h3"/></svg><strong>${safeText(ui.rooms)}</strong><small>${safeText(ui.viewSpaces)}</small></span></div>`;
+    <div class="home-features"><span><svg viewBox="0 0 32 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16 38C11 30 2 20 2 14a14 14 0 1 1 28 0c0 6-9 16-14 24Z"/><circle cx="16" cy="14" r="5"/></svg><strong>${safeText(ui.facilities)}</strong><small>${safeText(site.city)}</small></span><span><svg viewBox="0 0 40 36" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 29h34M6 25a14 14 0 0 1 28 0H6Zm14-17V4m-5 0h10M2 33h36"/></svg><strong>${safeText(ui.cafe)} ${locale === "en" ? "and" : "و"} ${safeText(ui.restaurant)}</strong><small>${safeText(ui.hotelSpaces)}</small></span><span><svg viewBox="0 0 32 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 38V2h22v36M1 38h30M12 38V28h8v10M10 8h3m6 0h3M10 14h3m6 0h3M10 20h3m6 0h3"/></svg><strong>${safeText(ui.rooms)}</strong><small>${safeText(ui.viewSpaces)}</small></span></div>`;
 }
 
 function galleryGrid() {
@@ -180,11 +174,14 @@ function render() {
 
 function wireInteractions() {
   wireAccommodation(root);
-  const stayLinks = [...root.querySelectorAll('.accommodation-page a[href]')].filter(a => a.origin === window.location.origin);
-  const syncStayLinks = () => stayLinks.forEach(a => {
-    if (!a.dataset.stayPath) a.dataset.stayPath = normalizePath(a.pathname) + a.search + a.hash;
-    a.href = stayHref(a.dataset.stayPath);
-  });
+  const stayLinks = [...root.querySelectorAll('a[href]')].filter(a => a.origin === window.location.origin && !a.closest('.language-switcher') && !a.getAttribute('href').startsWith('#'));
+  const syncStayLinks = () => {
+    stayLinks.forEach(a => {
+      if (!a.dataset.stayPath) a.dataset.stayPath = normalizePath(a.pathname) + a.search + a.hash;
+      a.href = stayHref(a.dataset.stayPath);
+    });
+    root.querySelectorAll('.language-switcher a[hreflang]').forEach(a => { a.href = languageHref(a.hreflang); });
+  };
   document.addEventListener('damoon:stay-change', syncStayLinks);
   syncStayLinks();
   const languageControl = document.querySelector('.language-switcher');
@@ -226,6 +223,15 @@ function wireInteractions() {
     document.querySelector("main").append(contact);
   }
   if (normalizePath(window.location.pathname) === '/contact') {
+    const contactNotice = document.createElement('p');
+    contactNotice.className = 'hospitality-note';
+    contactNotice.dataset.contactApproval = 'pending';
+    contactNotice.textContent = locale === 'fa'
+      ? 'شماره و نشانی از منابع عمومی گردآوری شده‌اند و تأیید نهایی مدیریت هتل در انتظار است. هنگام تماس، صحت مقصد را بررسی کنید.'
+      : locale === 'ar'
+        ? 'جُمعت بيانات الهاتف والعنوان من مصادر عامة، ولا يزال تأكيد إدارة الفندق قيد الانتظار. تحقّق من الجهة عند الاتصال.'
+        : 'The phone and address come from public sources and await hotel management confirmation. Verify the destination when calling.';
+    root.querySelector('.hospitality-contact-details')?.append(contactNotice);
     const { range, guests, children, childAges } = readStaySelection();
     const selectedRoom = roomForLocale(new URLSearchParams(location.search).get('room'), locale);
     if (selectedRoom || validateStayRange(range, todayLocalISO()) === 'OK') {
@@ -239,9 +245,42 @@ function wireInteractions() {
       const childCount = children > 0 ? locale === 'fa' ? `${number(children)} کودک` : locale === 'ar' ? `${number(children)} ${children === 1 ? 'طفل' : 'أطفال'}` : `${number(children)} ${children === 1 ? 'child' : 'children'}` : '';
       const parsedAges = parseChildAges(childAges, children);
       const ageLabel = locale === 'fa' ? 'سن کودکان' : locale === 'ar' ? 'أعمار الأطفال' : 'Child ages';
-      const ages = children > 0 && parsedAges.ok ? ` · ${ageLabel}: ${parsedAges.ages.map(number).join(', ')}` : '';
+      const unknownAge = locale === 'fa' ? 'نامشخص' : locale === 'ar' ? 'غير محدد' : 'not specified';
+      const ageValues = parsedAges.ok ? parsedAges.ages.map(number) : Array.from({ length: children }, (_, index) => {
+        const age = parseChildAges([childAges?.[index]], 1);
+        return age.ok ? number(age.ages[0]) : unknownAge;
+      });
+      const ages = children > 0 ? ` · ${ageLabel}: ${ageValues.join(', ')}` : '';
       const party = `${adultCount}${childCount ? ` · ${childCount}${ages}` : ''}`;
-      summary.innerHTML = `<h2>${safeText(heading)}</h2>${selectedRoom ? `<p>${safeText(selectedRoom.title)}</p>` : ''}<p>${safeText(dates)} · ${safeText(party)}</p><p>${safeText(hint)}</p>`;
+      const staySummary = [selectedRoom?.title, dates, party, hint].filter(Boolean).join("\n");
+      const copyLabel = locale === 'fa' ? 'کپی خلاصهٔ اقامت' : locale === 'ar' ? 'نسخ ملخص الإقامة' : 'Copy stay summary';
+      const copiedMessage = locale === 'fa' ? 'خلاصهٔ اقامت کپی شد.' : locale === 'ar' ? 'تم نسخ ملخص الإقامة.' : 'Stay summary copied.';
+      const copyFailedMessage = locale === 'fa' ? 'کپی خودکار انجام نشد. متن را انتخاب و دستی کپی کنید.' : locale === 'ar' ? 'تعذر النسخ تلقائياً. حدّد النص وانسخه يدوياً.' : 'Automatic copying failed. Select and copy the text manually.';
+      const manualLabel = locale === 'fa' ? 'خلاصهٔ اقامت برای کپی دستی' : locale === 'ar' ? 'ملخص الإقامة للنسخ اليدوي' : 'Stay summary for manual copying';
+      summary.innerHTML = `<h2>${safeText(heading)}</h2>${selectedRoom ? `<p>${safeText(selectedRoom.title)}</p>` : ''}<p>${safeText(dates)} · ${safeText(party)}</p><p>${safeText(hint)}</p><button type="button" class="button button--outline" data-copy-stay>${safeText(copyLabel)}</button><p role="status" aria-live="polite" data-copy-status></p><label data-copy-manual-label hidden>${safeText(manualLabel)}<textarea readonly data-copy-manual></textarea></label>`;
+      const copyButton = summary.querySelector('[data-copy-stay]');
+      const copyStatus = summary.querySelector('[data-copy-status]');
+      const manualLabelElement = summary.querySelector('[data-copy-manual-label]');
+      const manualText = summary.querySelector('[data-copy-manual]');
+      copyButton.addEventListener('click', async () => {
+        try {
+          if (!navigator.clipboard?.writeText) throw new Error('Clipboard API unavailable');
+          await navigator.clipboard.writeText(staySummary);
+          manualLabelElement.hidden = true;
+          copyStatus.textContent = copiedMessage;
+        } catch {
+          manualText.value = staySummary;
+          manualLabelElement.hidden = false;
+          copyStatus.textContent = copyFailedMessage;
+          manualText.focus();
+          manualText.select();
+        }
+      });
+      const edit = document.createElement('a');
+      edit.className = 'hospitality-text-link';
+      edit.href = stayHref(selectedRoom ? `/rooms/${selectedRoom.slug}` : '/rooms');
+      edit.textContent = locale === 'fa' ? 'ویرایش برنامهٔ اقامت' : locale === 'ar' ? 'تعديل خطة الإقامة' : 'Edit stay plans';
+      summary.append(edit);
       root.querySelector('.hospitality-contact-details')?.after(summary);
     }
   }

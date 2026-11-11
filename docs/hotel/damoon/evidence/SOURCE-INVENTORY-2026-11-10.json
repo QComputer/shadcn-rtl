@@ -1,0 +1,425 @@
+{
+  "recordedAt": "2026-11-10T17:03:33.989Z",
+  "purpose": "Damoon source completeness audit; original files untouched",
+  "scope": [
+    "repository docs/hotel/damoon",
+    "Downloads including Telegram Desktop",
+    "selected local source packages documented by separate media audit"
+  ],
+  "master": {
+    "downloadPath": "C:/Users/disso/Downloads/DAMOON_ORG_MASTER_FA_v1_1.md",
+    "expectedSha256": "424f1aaeb96c889fe54d29f1d463b99bae1beb6f8392989b94ba2f0ebc6fe25c",
+    "canonicalRepositoryPath": "docs/hotel/damoon/DAMOON-ORG-MASTER.md",
+    "installed": false
+  },
+  "questionnaire": {
+    "downloadPath": "C:/Users/disso/Downloads/Damoon-Questionnaire-Typed-Updated-2026-10-10.md",
+    "expectedSha256": "c8eac14c2b3bc5c33fe43883664a37f563ddefec5e50818597077eb16d862d3d",
+    "repositorySourceInstalled": false
+  },
+  "files": [
+    {
+      "path": "C:/Users/disso/Downloads/damoon-approved-light-theme-handoff (1).zip",
+      "bytes": 4136973,
+      "sha256": "4fb8d0826aeefd69cffd08176b97e7d4dffecebd9f6d4b442461b2a748a10266",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "INTERNAL_PROJECT",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/damoon-approved-light-theme-handoff.zip",
+      "bytes": 4136973,
+      "sha256": "4fb8d0826aeefd69cffd08176b97e7d4dffecebd9f6d4b442461b2a748a10266",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "INTERNAL_PROJECT",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/damoon-hotel-brand-seo-questionnaire-fa.pdf",
+      "bytes": 108519,
+      "sha256": "85d7e14d4fe17ccc3077f1cf2b8aacd8110ebf38deab457508cfd8740af53c39",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "RESTRICTED_OWNER_SOURCE",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/damoon-jalali-booking-calendar-v1 (1).zip",
+      "bytes": 18628,
+      "sha256": "9fccb97834090c1548e8d418d8e9fadc0fb3fcb71cc98c599bd8b57486f047db",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "INTERNAL_PROJECT",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/damoon-jalali-booking-calendar-v1 (2).zip",
+      "bytes": 18628,
+      "sha256": "9fccb97834090c1548e8d418d8e9fadc0fb3fcb71cc98c599bd8b57486f047db",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "INTERNAL_PROJECT",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/damoon-jalali-booking-calendar-v1.zip",
+      "bytes": 18628,
+      "sha256": "9fccb97834090c1548e8d418d8e9fadc0fb3fcb71cc98c599bd8b57486f047db",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "INTERNAL_PROJECT",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/damoon-questionnaire-filled-fa (1).pdf",
+      "bytes": 190184,
+      "sha256": "fa19ac8259f9f915727aaad695624ed7ac10a1883d67001df3963efb805d26d9",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "RESTRICTED_OWNER_SOURCE",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/damoon-questionnaire-filled-fa.pdf",
+      "bytes": 190184,
+      "sha256": "fa19ac8259f9f915727aaad695624ed7ac10a1883d67001df3963efb805d26d9",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "RESTRICTED_OWNER_SOURCE",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/Damoon-Questionnaire-Typed-Updated-2026-10-10 (1).md",
+      "bytes": 25413,
+      "sha256": "c8eac14c2b3bc5c33fe43883664a37f563ddefec5e50818597077eb16d862d3d",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "RESTRICTED_OWNER_SOURCE",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/Damoon-Questionnaire-Typed-Updated-2026-10-10 (1).pdf",
+      "bytes": 214378,
+      "sha256": "024466d7a5fa9b15e95c5202c4e89754170fb614a9d20e54c04c4e95f334f964",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "RESTRICTED_OWNER_SOURCE",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/Damoon-Questionnaire-Typed-Updated-2026-10-10.md",
+      "bytes": 25413,
+      "sha256": "c8eac14c2b3bc5c33fe43883664a37f563ddefec5e50818597077eb16d862d3d",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "RESTRICTED_OWNER_SOURCE",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/Damoon-Questionnaire-Typed-Updated-2026-10-10.pdf",
+      "bytes": 214378,
+      "sha256": "024466d7a5fa9b15e95c5202c4e89754170fb614a9d20e54c04c4e95f334f964",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "RESTRICTED_OWNER_SOURCE",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/damoon-room-showcase-v1.zip",
+      "bytes": 21460,
+      "sha256": "a1b76183e44287456d588e076e1ac99e7a03e9a44d5c037ebb8f0267e4171b95",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "INTERNAL_PROJECT",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/Damoon_Hotel_Completed_Questionnaire_FA (1).pdf",
+      "bytes": 4298878,
+      "sha256": "642d649ed2569e2a4610cb1735ed310527c900856d9b95fc32cb0805f34f66e3",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "RESTRICTED_OWNER_SOURCE",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/Damoon_Hotel_Completed_Questionnaire_FA.pdf",
+      "bytes": 4298878,
+      "sha256": "642d649ed2569e2a4610cb1735ed310527c900856d9b95fc32cb0805f34f66e3",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "RESTRICTED_OWNER_SOURCE",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/Damoon_Hotel_Management_Questionnaire_v2.pdf",
+      "bytes": 223667,
+      "sha256": "3f234e471e6f217daaa2b38b43fc09aea2d4bd7af08a1913b78696034a8f893a",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "RESTRICTED_OWNER_SOURCE",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/Damoon_Hotel_Master_Data_v2.pdf",
+      "bytes": 441764,
+      "sha256": "0e262bd77473a0618a51456731554828b21a40a1e882bc8e015ce13a3954f729",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "RESTRICTED_OWNER_SOURCE",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/DAMOON_ORG_MASTER_FA_v1_0.md",
+      "bytes": 85853,
+      "sha256": "f4f0bd7ab3a6450d6566b5c6a68b3fbb73cc23e60dfd2d0741dc2d694dd34f62",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "RESTRICTED_OWNER_SOURCE",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/DAMOON_ORG_MASTER_FA_v1_1.md",
+      "bytes": 94720,
+      "sha256": "424f1aaeb96c889fe54d29f1d463b99bae1beb6f8392989b94ba2f0ebc6fe25c",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "RESTRICTED_OWNER_SOURCE",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/Damoon_Parallel_Audit_2026-11-07.md",
+      "bytes": 14979,
+      "sha256": "9f237da1e123568e6c120d1343de0da28b3f506dbbb64b4dfa1660493c31d896",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "INTERNAL_PROJECT",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/KILO_DAMOON_MASTER_INSTALL_v1_1.md",
+      "bytes": 5179,
+      "sha256": "3ed82d9441fcd9aeae8ac13514d6a544c90be019e71504f0c3242b79eb3220a6",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "INTERNAL_PROJECT",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/photo_2026-10-27_17-52-46.jpg",
+      "bytes": 124339,
+      "sha256": "72de50f50ceb3a3cff7af2574d81aa0552f307f9816188eb46e3bf639d4fe69f",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "RESTRICTED_OWNER_SOURCE",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/photo_2026-10-27_17-52-56.jpg",
+      "bytes": 143588,
+      "sha256": "6e2f12a6bcb46590e935f3dcc6e46a6b418983acd01e9289c0fa6282444b583e",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "RESTRICTED_OWNER_SOURCE",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/Telegram Desktop/قوانین کنسلی هتل.pdf",
+      "bytes": 137273,
+      "sha256": "be2f9412323767b65c07d7a93f7cd10541a87889778c4f35f952ec9df82dc38f",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "RESTRICTED_OWNER_SOURCE",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Downloads/Telegram Desktop/damoon-hotel.zip",
+      "bytes": 45261735,
+      "sha256": "286e9ab3b8f1e41cabd9c0a4d082fafbe24b029c256963d18088021b1d430ceb",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "RESTRICTED_OWNER_SOURCE",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Project/shadcn-rtl/docs/hotel/damoon/README.md",
+      "bytes": 2554,
+      "sha256": "b649da29d53b0dfb2aad2adc22ef44cb23634de9d7bba4f8830b54f8ba395685",
+      "verification": "CURRENT_INTEGRATION_CONTENT; historical audit hash retained as baselineSha256",
+      "confidentiality": "INTERNAL_PROJECT",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE",
+      "baselineSha256": "9f0ad99e17450fcc3970bc61529e205e7f23b8d1e6573c94d1ac62872fe65e92",
+      "baselineBytes": 1868
+    },
+    {
+      "path": "C:/Users/disso/Project/shadcn-rtl/docs/hotel/damoon/STATUS-AND-DECISIONS.md",
+      "bytes": 11735,
+      "sha256": "5c39474af3d1581f6b09ef34a4825f74c41ca4163c2420b981758d79d4967476",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "INTERNAL_PROJECT",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Project/shadcn-rtl/docs/hotel/damoon/ROADMAP.md",
+      "bytes": 11906,
+      "sha256": "1e6e72206afdfcf7481cdcfed5f955f457270c02cdd5863f7a592c204110530a",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "INTERNAL_PROJECT",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Project/shadcn-rtl/docs/hotel/damoon/DESIGN-REFERENCE-REBUILD-2026-10-28.md",
+      "bytes": 2956,
+      "sha256": "b69daff72bd83fc641de9964af0f672c358af1a1f39b8360634c346b5163e791",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "INTERNAL_PROJECT",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Project/shadcn-rtl/docs/hotel/damoon/DELIVERY-2026-10-28.md",
+      "bytes": 9090,
+      "sha256": "8083656f8ebc96f6726c0b75852ef48e10a0bcc9481c891614ee4180fab55a77",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "INTERNAL_PROJECT",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Project/shadcn-rtl/docs/hotel/damoon/DELIVERY-2026-10-29.md",
+      "bytes": 3030,
+      "sha256": "1bb8eb1ad699342bc9fcce3ba86cf457a3e225540d81e37f3875afedc8c74da0",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "INTERNAL_PROJECT",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Project/shadcn-rtl/docs/hotel/damoon/PHASE1-2026-11-10.md",
+      "bytes": 10178,
+      "sha256": "5490c4ffb1d2d5feb8a803a6e1efb8e2eb2936ea9b606f3aa9c227dd935cfa59",
+      "verification": "CURRENT_INTEGRATION_CONTENT; historical audit hash retained as baselineSha256",
+      "confidentiality": "INTERNAL_PROJECT",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE",
+      "baselineSha256": "f955a132ce05bc6093b401dc53c4fe77bff0f529ee6a032668f4a11bf2816138",
+      "baselineBytes": 5899
+    },
+    {
+      "path": "C:/Users/disso/Project/shadcn-rtl/docs/hotel/damoon/PHASE1-CONTENT-INPUTS-2026-11-10.md",
+      "bytes": 17689,
+      "sha256": "56965089ef2a77c6d1aad5219fc270a0fb0bb22198583101f13159645148effc",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "INTERNAL_PROJECT",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Project/shadcn-rtl/docs/hotel/damoon/references/desktop-approved-reference.png",
+      "bytes": 2247903,
+      "sha256": "a5902719f7b0e6927816227319122f7978393d0bb6a690f795ed5fc502db4ba6",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "INTERNAL_PROJECT",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    },
+    {
+      "path": "C:/Users/disso/Project/shadcn-rtl/docs/hotel/damoon/references/mobile-approved-reference.png",
+      "bytes": 1814707,
+      "sha256": "66052885f64ec1f07e65c44687a271ba133fa75b7c71f46079ca1f4f6262766b",
+      "verification": "FILE_READ_AND_SHA256_CALCULATED; content-readability and approval are classified separately in audit reports",
+      "confidentiality": "INTERNAL_PROJECT",
+      "publicationApproval": "NOT_ESTABLISHED_BY_FILE_PRESENCE"
+    }
+  ],
+  "byteIdenticalGroups": [
+    {
+      "sha256": "4fb8d0826aeefd69cffd08176b97e7d4dffecebd9f6d4b442461b2a748a10266",
+      "paths": [
+        "C:/Users/disso/Downloads/damoon-approved-light-theme-handoff (1).zip",
+        "C:/Users/disso/Downloads/damoon-approved-light-theme-handoff.zip"
+      ]
+    },
+    {
+      "sha256": "9fccb97834090c1548e8d418d8e9fadc0fb3fcb71cc98c599bd8b57486f047db",
+      "paths": [
+        "C:/Users/disso/Downloads/damoon-jalali-booking-calendar-v1 (1).zip",
+        "C:/Users/disso/Downloads/damoon-jalali-booking-calendar-v1 (2).zip",
+        "C:/Users/disso/Downloads/damoon-jalali-booking-calendar-v1.zip"
+      ]
+    },
+    {
+      "sha256": "fa19ac8259f9f915727aaad695624ed7ac10a1883d67001df3963efb805d26d9",
+      "paths": [
+        "C:/Users/disso/Downloads/damoon-questionnaire-filled-fa (1).pdf",
+        "C:/Users/disso/Downloads/damoon-questionnaire-filled-fa.pdf"
+      ]
+    },
+    {
+      "sha256": "c8eac14c2b3bc5c33fe43883664a37f563ddefec5e50818597077eb16d862d3d",
+      "paths": [
+        "C:/Users/disso/Downloads/Damoon-Questionnaire-Typed-Updated-2026-10-10 (1).md",
+        "C:/Users/disso/Downloads/Damoon-Questionnaire-Typed-Updated-2026-10-10.md"
+      ]
+    },
+    {
+      "sha256": "024466d7a5fa9b15e95c5202c4e89754170fb614a9d20e54c04c4e95f334f964",
+      "paths": [
+        "C:/Users/disso/Downloads/Damoon-Questionnaire-Typed-Updated-2026-10-10 (1).pdf",
+        "C:/Users/disso/Downloads/Damoon-Questionnaire-Typed-Updated-2026-10-10.pdf"
+      ]
+    },
+    {
+      "sha256": "642d649ed2569e2a4610cb1735ed310527c900856d9b95fc32cb0805f34f66e3",
+      "paths": [
+        "C:/Users/disso/Downloads/Damoon_Hotel_Completed_Questionnaire_FA (1).pdf",
+        "C:/Users/disso/Downloads/Damoon_Hotel_Completed_Questionnaire_FA.pdf"
+      ]
+    }
+  ],
+  "chatEvidence": {
+    "priorChatGPTConversationsRead": false,
+    "standardExportFoundInScopedSearch": false,
+    "note": "Current chat messages and local supplied documents are available. No live prior ChatGPT conversation content or full export was accessed."
+  },
+  "questionnaireOriginalImages": {
+    "archivePath": "C:/Users/disso/Downloads/Telegram Desktop/damoon-hotel.zip",
+    "verification": "All six unique JPEGs visually inspected; questionnaire pages, not property photos",
+    "uniqueImages": 6,
+    "duplicateEntries": 4,
+    "pages": [
+      {
+        "file": "IMG_20261003_131818.jpg",
+        "page": 1,
+        "coverage": "Cover; private identifiers excluded"
+      },
+      {
+        "file": "IMG_20261003_131830.jpg",
+        "page": 2,
+        "coverage": "Q1-Q14"
+      },
+      {
+        "file": "IMG_20261003_131846.jpg",
+        "page": 3,
+        "coverage": "Q15-Q24"
+      },
+      {
+        "file": "IMG_20261003_131858.jpg",
+        "page": 4,
+        "coverage": "Q25-Q33"
+      },
+      {
+        "file": "IMG_20261003_131907.jpg",
+        "page": 5,
+        "coverage": "Q34-Q42"
+      },
+      {
+        "file": "IMG_20261003_131919.jpg",
+        "page": 6,
+        "coverage": "Q43-Q54"
+      }
+    ]
+  },
+  "integration": {
+    "canonicalMaster": "docs/hotel/damoon/DAMOON-ORG-MASTER.md",
+    "version": "1.2.0",
+    "originalMasterPreserved": true,
+    "restrictedRoot": "C:/Users/disso/.codex/recovery/damoon-knowledge-20261110/",
+    "rawQuestionnaireInGit": false,
+    "approvalRule": "Only explicit owner/management scope can assign PUBLIC_APPROVED; layout reference approval does not approve embedded images or factual copy.",
+    "preservationManifest": {
+      "path": "C:\\Users\\disso\\.codex\\recovery\\damoon-knowledge-20261110\\original-preservation-manifest.json",
+      "sha256": "1aee1cb55412153cb8c0bcdd92a2cea481da8bedf67337d259846cf6491a0446",
+      "records": 17
+    },
+    "privateArtifacts": [
+      {
+        "file": "questionnaire-q01-q90-private.json",
+        "sha256": "0435a743d022af3414a9dc892b6f4b695ee353c4946c9bd53c9acc4e4eb97617"
+      },
+      {
+        "file": "questionnaire-source-manifest-private.json",
+        "sha256": "9c8f06052707365e041d3c137fb2b48bab81245ea32ecfba1ba2f89038d907bb"
+      },
+      {
+        "file": "pdf-source-extractions-private.json",
+        "sha256": "c940e2a5b803373140b95a30fc42aaaeac8ca3101ca9638cdc10a652af32f14c"
+      },
+      {
+        "file": "master-v1_1-to-v1_2-private.diff",
+        "sha256": "bb77c549bf3ed94293a29ce94138d54d35f76760e497615d438d313dac4817cc"
+      }
+    ]
+  }
+}

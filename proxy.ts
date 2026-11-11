@@ -440,7 +440,7 @@ export async function proxy(request: NextRequest) {
     const sandboxPath = pathname.match(/^\/(fa|en|ar)\/hotel-sandbox\/([^/]+)\/([^/]+)\/?$/);
     if (process.env.NODE_ENV !== "production" && process.env.HOTEL_BOOKING_SANDBOX_ENABLED === "1"
       && tenant.vertical === "HOTEL" && sandboxPath?.[2] === tenant.organizationId) {
-      const requestHeaders = buildTenantRewriteHeaders(request, normalizedHost, tenant, sandboxPath[1], pathname);
+      const requestHeaders = buildTenantRewriteHeaders(request, normalizedHost, tenant, sandboxPath[1] as "fa" | "en" | "ar", pathname);
       requestHeaders.set("x-bazar-public-footer-context", "none");
       return withSecurityHeaders(NextResponse.next({ request: { headers: requestHeaders } }));
     }

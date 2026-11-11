@@ -73,12 +73,20 @@ test("Hotel booking sandbox persists isolated quotes, reservations and simulated
       roomTypeIds.push(roomType.id);
       const ratePlan = await db.hotelRatePlan.create({ data: { organizationId: org.id, propertyId: property.id, roomTypeId: roomType.id, code: `flex-${label}-${token}`, name: "Synthetic flexible", baseNightlyRate: BigInt(125000), cancellationPolicyId: policy.id } });
       ratePlanIds.push(ratePlan.id);
-      await db.hotelInventory.createMany({ data: ["2027-12-10", "2027-12-11"].map((date) => ({ organizationId: org.id, propertyId: property.id, roomTypeId: roomType.id, date: day(date), allotment: 8 })) });
+      const physicalRoom = await db.hotelRoom.create({ data: { organizationId: org.id, propertyId: property.id, roomTypeId: roomType.id, code: `101-${label}-${token}` } });
+      const concurrentRoom = await db.hotelRoom.create({ data: { organizationId: org.id, propertyId: property.id, roomTypeId: roomType.id, code: `102-${label}-${token}` } });
+      const outOfServiceRoom = await db.hotelRoom.create({ data: { organizationId: org.id, propertyId: property.id, roomTypeId: roomType.id, code: `103-${label}-${token}`, isOutOfService: true } });
+      const inactiveRoom = await db.hotelRoom.create({ data: { organizationId: org.id, propertyId: property.id, roomTypeId: roomType.id, code: `104-${label}-${token}`, isActive: false } });
+      await db.hotelInventory.createMany({ data: ["2027-12-10", "2027-12-11", "2027-12-12", "2027-12-13"].map((date) => ({ organizationId: org.id, propertyId: property.id, roomTypeId: roomType.id, date: day(date), allotment: 8 })) });
       return {
         orgId: org.id,
         propertyId: property.id,
         roomTypeId: roomType.id,
         ratePlanId: ratePlan.id,
+        physicalRoomId: physicalRoom.id,
+        concurrentRoomId: concurrentRoom.id,
+        outOfServiceRoomId: outOfServiceRoom.id,
+        inactiveRoomId: inactiveRoom.id,
         policyId: policy.id,
         admin: { userId: adminUser.id, role: "ADMIN" as const, organizationId: org.id },
         staff: { userId: staffUser.id, role: "STAFF" as const, organizationId: org.id },
@@ -90,10 +98,21 @@ test("Hotel booking sandbox persists isolated quotes, reservations and simulated
     const tenantA = await makeTenant("a");
     const tenantB = await makeTenant("b");
     const service = new HotelBookingSandboxService(db);
-    const quoteFor = async (tenant: typeof tenantA, actor = tenant.customer) => {
-      const result = await service.execute(actor, tenant.orgId, tenant.propertyId, { action: "quote", roomTypeId: tenant.roomTypeId, ratePlanId: tenant.ratePlanId, ...stay }, `quote-${randomUUID()}`);
+    const quoteFor = async (tenant: typeof tenantA, actor = tenant.customer, window = stay) => {
+      const result = await service.execute(actor, tenant.orgId, tenant.propertyId, { action: "quote", roomTypeId: tenant.roomTypeId, ratePlanId: tenant.ratePlanId, ...window }, `quote-${randomUUID()}`);
       assert.ok(result.quote?.id);
       return result.quote as { id: string; totalAmount: string; currency: string; policyVersion: number; expiresAt: string };
+    };
+    const confirmedBooking = async (label: string, window = stay) => {
+      const quote = await quoteFor(tenantA, tenantA.customer, window);
+      const hold = await service.execute(tenantA.customer, tenantA.orgId, tenantA.propertyId, { action: "hold", quoteId: quote.id }, `hold-${label}-${token}`);
+      assert.ok(hold.hold?.id);
+      const reservation = await service.execute(tenantA.customer, tenantA.orgId, tenantA.propertyId, { action: "reserve", quoteId: quote.id, holdId: hold.hold.id, guests: [{ fullName: `Room guest ${label} ${token}`, isPrimary: true }] }, `reserve-${label}-${token}`);
+      assert.ok(reservation.reservation?.id);
+      const id = reservation.reservation.id;
+      const payment = await service.execute(tenantA.customer, tenantA.orgId, tenantA.propertyId, { action: "pay", reservationId: id, outcome: "SUCCESS" }, `pay-${label}-${token}`);
+      assert.equal(payment.payment?.status, "SUCCESS");
+      return id;
     };
     const quote = await quoteFor(tenantA);
     assert.equal(quote.currency, "TOMAN");
@@ -149,7 +168,8 @@ test("Hotel booking sandbox persists isolated quotes, reservations and simulated
     assert.equal(differentKeyReplay.reservation?.status, "CONFIRMED");
     assert.equal(await db.paymentRequest.count({ where: { organizationId: tenantA.orgId, customerIdentityId: boundIdentity.id } }), 0, "sandbox must not create a real payment request");
 
-    const inventoryBeforeCancel = await db.hotelInventory.findMany({ where: { organizationId: tenantA.orgId, roomTypeId: tenantA.roomTypeId }, orderBy: { date: "asc" } });
+    const stayInventoryWhere = { organizationId: tenantA.orgId, roomTypeId: tenantA.roomTypeId, date: { in: [day(stay.checkIn), day("2027-12-11")] } };
+    const inventoryBeforeCancel = await db.hotelInventory.findMany({ where: stayInventoryWhere, orderBy: { date: "asc" } });
     const cancelled = await service.execute(tenantA.admin, tenantA.orgId, tenantA.propertyId, { action: "cancel", reservationId }, `cancel-${token}`);
     assert.ok(cancelled.cancellation);
     assert.equal(cancelled.reservation?.status, "CANCELLED");
@@ -157,7 +177,7 @@ test("Hotel booking sandbox persists isolated quotes, reservations and simulated
     assert.equal(cancelled.cancellation?.retainedAmount, 0);
     const cancelReplay = await service.execute(tenantA.admin, tenantA.orgId, tenantA.propertyId, { action: "cancel", reservationId }, `cancel-${token}`);
     assert.deepEqual(cancelReplay, cancelled);
-    const inventoryAfterCancel = await db.hotelInventory.findMany({ where: { organizationId: tenantA.orgId, roomTypeId: tenantA.roomTypeId }, orderBy: { date: "asc" } });
+    const inventoryAfterCancel = await db.hotelInventory.findMany({ where: stayInventoryWhere, orderBy: { date: "asc" } });
     assert.deepEqual(inventoryAfterCancel.map((row) => row.booked), inventoryBeforeCancel.map((row) => row.booked - 1), "cancellation atomically releases the confirmed reservation capacity");
 
     const staffView = await service.get(tenantA.staff, tenantA.orgId, tenantA.propertyId);
@@ -171,9 +191,48 @@ test("Hotel booking sandbox persists isolated quotes, reservations and simulated
     const receptionReservationId = receptionReservation.reservation.id as string;
     const receptionPay = await service.execute(tenantA.customer, tenantA.orgId, tenantA.propertyId, { action: "pay", reservationId: receptionReservationId, outcome: "SUCCESS" }, `pay-reception-${token}`);
     assert.equal(receptionPay.payment?.simulated, true);
-    const checkedIn = await service.execute(tenantA.staff, tenantA.orgId, tenantA.propertyId, { action: "check-in", reservationId: receptionReservationId }, `checkin-${token}`);
+    await assert.rejects(() => service.execute(tenantA.staff, tenantA.orgId, tenantA.propertyId, { action: "check-in", reservationId: receptionReservationId }, `checkin-unassigned-${token}`), /room|assignment/i);
+    const receptionDesk = await service.get(tenantA.staff, tenantA.orgId, tenantA.propertyId) as typeof staffView & { rooms: Array<{ id: string }> };
+    assert.ok(receptionDesk.rooms.some((room) => room.id === tenantA.physicalRoomId), "reception view lists active physical rooms");
+    const customerDesk = await service.get(tenantA.customer, tenantA.orgId, tenantA.propertyId) as { rooms?: unknown[] };
+    assert.deepEqual(customerDesk.rooms ?? [], [], "customer view does not expose staff physical-room inventory");
+    await assert.rejects(() => service.execute(tenantA.customer, tenantA.orgId, tenantA.propertyId, { action: "assign-room", reservationId: receptionReservationId, roomId: tenantA.physicalRoomId }, `assign-customer-${token}`), (error: unknown) => error instanceof Error && "status" in error && error.status === 403);
+    await assert.rejects(() => service.execute(tenantA.staff, tenantA.orgId, tenantA.propertyId, { action: "assign-room", reservationId: receptionReservationId, roomId: tenantB.physicalRoomId }, `assign-foreign-room-${token}`));
+    await assert.rejects(() => service.execute(tenantA.staff, tenantA.orgId, tenantA.propertyId, { action: "assign-room", reservationId: receptionReservationId, roomId: tenantA.outOfServiceRoomId }, `assign-oos-room-${token}`));
+    await assert.rejects(() => service.execute(tenantA.staff, tenantA.orgId, tenantA.propertyId, { action: "assign-room", reservationId: receptionReservationId, roomId: tenantA.inactiveRoomId }, `assign-inactive-room-${token}`));
+    const assignKey = `assign-reception-${token}`;
+    const assignment = await service.execute(tenantA.staff, tenantA.orgId, tenantA.propertyId, { action: "assign-room", reservationId: receptionReservationId, roomId: tenantA.physicalRoomId }, assignKey);
+    const assignmentReplay = await service.execute(tenantA.staff, tenantA.orgId, tenantA.propertyId, { action: "assign-room", reservationId: receptionReservationId, roomId: tenantA.physicalRoomId }, assignKey);
+    assert.deepEqual(assignmentReplay, assignment, "physical room assignment is idempotent");
+    const assignedNights = await db.hotelReservationRoom.findMany({ where: { organizationId: tenantA.orgId, reservationId: receptionReservationId }, orderBy: { date: "asc" } });
+    assert.deepEqual(assignedNights.map((night) => [night.date.toISOString().slice(0, 10), night.roomId]), [["2027-12-10", tenantA.physicalRoomId], ["2027-12-11", tenantA.physicalRoomId]], "assignment covers every occupied night");
+
+    const overlapReservationId = await confirmedBooking("overlap");
+    await assert.rejects(() => service.execute(tenantA.staff, tenantA.orgId, tenantA.propertyId, { action: "assign-room", reservationId: overlapReservationId, roomId: tenantA.physicalRoomId }, `assign-overlap-${token}`), /overlap|occupied|available|room/i);
+    const assignedPrices = assignedNights.map((night) => night.rate);
+    await service.execute(tenantA.admin, tenantA.orgId, tenantA.propertyId, { action: "cancel", reservationId: receptionReservationId }, `cancel-assigned-${token}`);
+    const cancelledNights = await db.hotelReservationRoom.findMany({ where: { organizationId: tenantA.orgId, reservationId: receptionReservationId }, orderBy: { date: "asc" } });
+    assert.deepEqual(cancelledNights.map((night) => night.roomId), [null, null], "cancellation clears physical allocations");
+    assert.deepEqual(cancelledNights.map((night) => night.rate), assignedPrices, "cancellation retains immutable nightly price snapshots");
+    const reused = await service.execute(tenantA.staff, tenantA.orgId, tenantA.propertyId, { action: "assign-room", reservationId: overlapReservationId, roomId: tenantA.physicalRoomId }, `assign-reuse-${token}`);
+    assert.equal(reused.reservation?.id, overlapReservationId);
+    const adjacentReservationId = await confirmedBooking("adjacent", { checkIn: "2027-12-12", checkOut: "2027-12-14", adults: 1, childAges: [] });
+    const adjacentAssignment = await service.execute(tenantA.staff, tenantA.orgId, tenantA.propertyId, { action: "assign-room", reservationId: adjacentReservationId, roomId: tenantA.physicalRoomId }, `assign-adjacent-${token}`);
+    assert.equal(adjacentAssignment.reservation?.id, adjacentReservationId, "checkout/check-in boundary is not an occupied-night overlap");
+    const adjacentNights = await db.hotelReservationRoom.findMany({ where: { organizationId: tenantA.orgId, reservationId: adjacentReservationId }, orderBy: { date: "asc" } });
+    assert.deepEqual(adjacentNights.map((night) => night.date.toISOString().slice(0, 10)), ["2027-12-12", "2027-12-13"]);
+
+    const racedReservationIds = await Promise.all([confirmedBooking("room-race-a"), confirmedBooking("room-race-b")]);
+    const physicalRoomRace = await Promise.allSettled(racedReservationIds.map((id, index) => service.execute(tenantA.staff, tenantA.orgId, tenantA.propertyId, { action: "assign-room", reservationId: id, roomId: tenantA.concurrentRoomId }, `assign-room-race-${index}-${token}`)));
+    assert.equal(physicalRoomRace.filter((result) => result.status === "fulfilled").length, 1, "only one concurrent reservation can claim the physical room");
+    assert.equal(physicalRoomRace.filter((result) => result.status === "rejected").length, 1);
+    const raceAllocations = await db.hotelReservationRoom.findMany({ where: { organizationId: tenantA.orgId, roomId: tenantA.concurrentRoomId }, orderBy: [{ date: "asc" }, { reservationId: "asc" }] });
+    assert.equal(raceAllocations.length, 2, "the winning assignment contains every occupied night");
+    assert.equal(new Set(raceAllocations.map((night) => night.reservationId)).size, 1, "a losing concurrent assignment leaves no partial night allocations");
+
+    const checkedIn = await service.execute(tenantA.staff, tenantA.orgId, tenantA.propertyId, { action: "check-in", reservationId: overlapReservationId }, `checkin-${token}`);
     assert.equal(checkedIn.reservation?.status, "CHECKED_IN");
-    const checkedOut = await service.execute(tenantA.staff, tenantA.orgId, tenantA.propertyId, { action: "check-out", reservationId: receptionReservationId }, `checkout-${token}`);
+    const checkedOut = await service.execute(tenantA.staff, tenantA.orgId, tenantA.propertyId, { action: "check-out", reservationId: overlapReservationId }, `checkout-${token}`);
     assert.equal(checkedOut.reservation?.status, "CHECKED_OUT");
 
     const foreignView = await service.get(tenantB.admin, tenantB.orgId, tenantB.propertyId);
@@ -204,7 +263,7 @@ test("Hotel booking sandbox persists isolated quotes, reservations and simulated
     const raceQuote = await quoteFor(tenantA);
     const raceHold = await service.execute(tenantA.customer, tenantA.orgId, tenantA.propertyId, { action: "hold", quoteId: raceQuote.id }, `hold-race-${token}`);
     assert.ok(raceHold.hold?.id);
-    const inventoryBeforeRace = await db.hotelInventory.findMany({ where: { organizationId: tenantA.orgId, roomTypeId: tenantA.roomTypeId }, orderBy: { date: "asc" } });
+    const inventoryBeforeRace = await db.hotelInventory.findMany({ where: stayInventoryWhere, orderBy: { date: "asc" } });
     const raceReservationResult = await service.execute(tenantA.customer, tenantA.orgId, tenantA.propertyId, { action: "reserve", quoteId: raceQuote.id, holdId: raceHold.hold.id, guests: [{ fullName: `Race guest ${token}`, isPrimary: true }] }, `reserve-race-${token}`);
     assert.ok(raceReservationResult.reservation?.id);
     const raceReservationId = raceReservationResult.reservation.id;
@@ -217,7 +276,7 @@ test("Hotel booking sandbox persists isolated quotes, reservations and simulated
     assert.equal(raceReservation.status, "CANCELLED");
     assert.equal(raceReservation.refundedAmount, raceReservation.paidAmount, "any settled amount is fully refunded under the fixture's free-cancellation window");
     if (raceReservation.paidAmount > BigInt(0)) assert.equal(raceReservation.paidAmount, raceReservation.totalAmount);
-    const inventoryAfterRace = await db.hotelInventory.findMany({ where: { organizationId: tenantA.orgId, roomTypeId: tenantA.roomTypeId }, orderBy: { date: "asc" } });
+    const inventoryAfterRace = await db.hotelInventory.findMany({ where: stayInventoryWhere, orderBy: { date: "asc" } });
     assert.deepEqual(inventoryAfterRace.map((row) => row.booked), inventoryBeforeRace.map((row) => row.booked), "the race leaves no booked inventory after cancellation");
 
     // Searching/quoting is the request-driven hold expiry trigger. Repeating
@@ -230,10 +289,10 @@ test("Hotel booking sandbox persists isolated quotes, reservations and simulated
     const firstSweep = await service.execute(tenantA.customer, tenantA.orgId, tenantA.propertyId, searchCommand, `search-sweep-a-${token}`);
     assert.equal(firstSweep.available, true);
     assert.equal((await db.hotelBookingHold.findUniqueOrThrow({ where: { id: sweepHold.hold.id } })).status, "EXPIRED");
-    const afterFirstSweep = await db.hotelInventory.findMany({ where: { organizationId: tenantA.orgId, roomTypeId: tenantA.roomTypeId }, orderBy: { date: "asc" } });
+    const afterFirstSweep = await db.hotelInventory.findMany({ where: stayInventoryWhere, orderBy: { date: "asc" } });
     assert.deepEqual(afterFirstSweep.map((row) => row.held), [0, 0]);
     await service.execute(tenantA.customer, tenantA.orgId, tenantA.propertyId, searchCommand, `search-sweep-b-${token}`);
-    assert.deepEqual((await db.hotelInventory.findMany({ where: { organizationId: tenantA.orgId, roomTypeId: tenantA.roomTypeId }, orderBy: { date: "asc" } })).map((row) => row.held), [0, 0], "repeated sweep releases the hold exactly once");
+    assert.deepEqual((await db.hotelInventory.findMany({ where: stayInventoryWhere, orderBy: { date: "asc" } })).map((row) => row.held), [0, 0], "repeated sweep releases the hold exactly once");
 
     // An already-created reservation cannot be settled after its source hold expires.
     const delayedQuote = await quoteFor(tenantA);
@@ -298,6 +357,10 @@ test("Hotel booking sandbox persists isolated quotes, reservations and simulated
     assert.ok(sandboxRows.every((row) => row.status === "COMPLETED" && row.resultJson !== null));
     assert.equal(await db.hotelPaymentAllocation.count({ where: { organizationId: tenantA.orgId } }), 0, "sandbox outcomes do not allocate real payment requests");
     passed = true;
+  } catch (error) {
+    const failure = error instanceof Error ? error : new Error(String(error));
+    console.error(`HOTEL_BOOKING_SANDBOX_FAILURE=${failure.name}: ${failure.message}`);
+    throw error;
   } finally {
     try {
       if (orgIds.length) {
@@ -311,6 +374,7 @@ test("Hotel booking sandbox persists isolated quotes, reservations and simulated
         await db.hotelNightlyRate.deleteMany({ where: { organizationId: { in: orgIds } } });
         await db.hotelRatePlan.deleteMany({ where: { id: { in: ratePlanIds } } });
         await db.hotelCancellationPolicy.deleteMany({ where: { id: { in: policyIds } } });
+        await db.hotelRoom.deleteMany({ where: { organizationId: { in: orgIds } } });
         await db.hotelRoomType.deleteMany({ where: { id: { in: roomTypeIds } } });
         await db.hotelProperty.deleteMany({ where: { id: { in: propertyIds } } });
         await db.paymentRequest.deleteMany({ where: { organizationId: { in: orgIds } } });

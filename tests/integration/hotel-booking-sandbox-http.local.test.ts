@@ -235,7 +235,7 @@ async function fillSandboxDates(page: Page | Locator, guestCount: number) {
   await page.getByLabel("Adults").fill(String(guestCount));
 }
 
-async function createHttpReservation(cookie: string, outcome: "FAILED" | "EXPIRED", keyPrefix: string) {
+async function createHttpReservation(cookie: string, outcome: "SUCCESS" | "FAILED" | "EXPIRED", keyPrefix: string) {
   const endpoint = `/api/organizations/${orgA.id}/hotels/${propertyAId}/sandbox-booking`;
   const command = { action: "quote", roomTypeId, ratePlanId, checkIn: "2027-12-10", checkOut: "2027-12-12", adults: 1, childAges: [] };
   const quoteResult = await apiJson<{ quote: { id: string } }>(endpoint, hostA, originA, cookie, "POST", command, `${keyPrefix}-quote-${suffix}`);
@@ -262,7 +262,7 @@ async function createHttpReservation(cookie: string, outcome: "FAILED" | "EXPIRE
   assert.deepEqual(replay.data, first.data, `${outcome} callback replay must be idempotent`);
   assert.equal(first.data?.payment.simulated, true);
   assert.equal(first.data?.payment.status, outcome);
-  assert.equal(first.data?.reservation.status, outcome === "FAILED" ? "CANCELLED" : "EXPIRED");
+  assert.equal(first.data?.reservation.status, outcome === "SUCCESS" ? "CONFIRMED" : outcome === "FAILED" ? "CANCELLED" : "EXPIRED");
   return reservationId;
 }
 
@@ -537,9 +537,31 @@ it("completes tenant-bound Hotel sandbox bookings through Chrome and replays loc
   await adminPage.getByRole("heading", { name: "Hotel operations" }).waitFor({ state: "visible", timeout: 30_000 });
   const reception = adminPage.getByRole("region", { name: "Hotel booking sandbox" });
   await reception.getByText(`${customerReservation.reference} · CONFIRMED`, { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+  const physicalRoom = await db.hotelRoom.findFirstOrThrow({ where: { organizationId: orgA.id, propertyId: propertyAId, roomTypeId } });
+  const customerAssignment = await apiJson(endpointA, hostA, originA, customerCookieA, "POST", { action: "assign-room", reservationId: customerReservation.id, roomId: physicalRoom.id }, `customer-assignment-denied-${suffix}`);
+  assert.equal(customerAssignment.response.status, 403);
+  await reception.getByLabel("Physical room").selectOption(physicalRoom.id);
+  await reception.getByRole("button", { name: "Assign room", exact: true }).click();
+  await reception.getByRole("button", { name: "Check in", exact: true }).waitFor({ state: "visible" });
+  await adminPage.waitForFunction(() => [...document.querySelectorAll("button")].some(button => button.textContent === "Check in" && !button.disabled));
+  assert.ok((await db.hotelReservationRoom.findMany({ where: { reservationId: customerReservation.id } })).every(night => night.roomId === physicalRoom.id));
   await reception.getByRole("button", { name: "Cancel reservation" }).first().click();
   await reception.getByText(`${customerReservation.reference} · CANCELLED`, { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
   assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: customerReservation.id } })).status, "CANCELLED");
+  assert.ok((await db.hotelReservationRoom.findMany({ where: { reservationId: customerReservation.id } })).every(night => night.roomId === null));
+
+  stage = "reception-room-reuse-check-in-and-check-out";
+  const arrivalId = await createHttpReservation(customerCookieA, "SUCCESS", "arrival");
+  const arrival = await db.hotelReservation.findUniqueOrThrow({ where: { id: arrivalId } });
+  await adminPage.reload({ waitUntil: "networkidle" });
+  const arrivalRow = reception.locator("li").filter({ hasText: arrival.reference });
+  await arrivalRow.getByLabel("Physical room").selectOption(physicalRoom.id);
+  await arrivalRow.getByRole("button", { name: "Assign room", exact: true }).click();
+  await arrivalRow.getByRole("button", { name: "Check in", exact: true }).click();
+  await arrivalRow.getByText(`${arrival.reference} · CHECKED_IN`, { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+  await arrivalRow.getByRole("button", { name: "Check out", exact: true }).click();
+  await arrivalRow.getByText(`${arrival.reference} · CHECKED_OUT`, { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+  assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: arrivalId } })).status, "CHECKED_OUT");
 
   stage = "http-failed-expired-bookings-and-callback-replays";
   const failedReservationId = await createHttpReservation(customerCookieA, "FAILED", "failed");

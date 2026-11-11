@@ -6,24 +6,25 @@ import { Input } from "@/components/ui/input";
 
 type RoomType = { id: string; name: string };
 type RatePlan = { id: string; roomTypeId: string; name: string };
-type Reservation = { id: string; reference: string; status: string; checkIn: string; checkOut: string; totalAmount: string; currency: string; simulated: true };
+type PhysicalRoom = { id: string; roomTypeId: string; code: string };
+type Reservation = { id: string; reference: string; status: string; checkIn: string; checkOut: string; totalAmount: string; currency: string; roomTypeId: string; assignedRoomId: string | null; simulated: true };
 type Quote = { id: string; checkIn: string; checkOut: string; totalAmount: string; currency: string; expiresAt: string; policyVersion: number };
 type Hold = { id: string; reference: string; expiresAt: string };
-type Snapshot = { enabled: boolean; roomTypes: RoomType[]; ratePlans: RatePlan[]; reservations: Reservation[] };
+type Snapshot = { enabled: boolean; roomTypes: RoomType[]; ratePlans: RatePlan[]; reservations: Reservation[]; rooms?: PhysicalRoom[] };
 type Guest = { fullName: string; isPrimary: boolean; isChild?: boolean; age?: number };
 
 const copy = {
   fa: {
     title: "رزرو آزمایشی هتل", badge: "محیط شبیه‌سازی؛ بدون پرداخت واقعی", loading: "در حال بررسی دسترسی رزرو…", disabled: "",
-    dates: "تاریخ ورود", departure: "تاریخ خروج", room: "نوع اتاق", plan: "طرح نرخ", adults: "بزرگسالان", children: "کودکان", childAge: "سن کودک", search: "بررسی ظرفیت", quote: "محاسبه قیمت", hold: "ایجاد نگه‌داری موقت", guests: "نام مهمانان", guestName: "نام کامل مهمان", reserve: "ثبت رزرو آزمایشی", pay: "شبیه‌سازی پرداخت", success: "موفق", failed: "ناموفق", expired: "منقضی", bookings: "رزروها", noBookings: "رزروی ثبت نشده است.", cancel: "لغو رزرو", checkIn: "پذیرش ورود", checkOut: "ثبت خروج", available: "ظرفیت موجود است", unavailable: "ظرفیت موجود نیست", remaining: "اتاق باقی‌مانده", total: "مبلغ نمایشی", expires: "انقضا", status: "وضعیت", reference: "کد پیگیری", refresh: "بارگذاری دوباره", working: "در حال انجام…", error: "عملیات انجام نشد.", childrenAgeHelp: "برای هر کودک سن وارد کنید.", guestRequired: "نام همه مهمانان را وارد کنید.", simulated: "شبیه‌سازی‌شده", refundable: "مبلغ قابل بازگشت", retained: "مبلغ کسرشده", cancelReason: "دلیل", policy: "نسخه شرایط", searchFirst: "ابتدا ظرفیت را بررسی کنید.", holdRequired: "برای رزرو، نگه‌داری موقت فعال لازم است.",
+    dates: "تاریخ ورود", departure: "تاریخ خروج", room: "نوع اتاق", plan: "طرح نرخ", adults: "بزرگسالان", children: "کودکان", childAge: "سن کودک", search: "بررسی ظرفیت", quote: "محاسبه قیمت", hold: "ایجاد نگه‌داری موقت", guests: "نام مهمانان", guestName: "نام کامل مهمان", reserve: "ثبت رزرو آزمایشی", pay: "شبیه‌سازی پرداخت", success: "موفق", failed: "ناموفق", expired: "منقضی", bookings: "رزروها", noBookings: "رزروی ثبت نشده است.", cancel: "لغو رزرو", checkIn: "پذیرش ورود", checkOut: "ثبت خروج", assignRoom: "تخصیص اتاق", physicalRoom: "اتاق فیزیکی", selectPhysicalRoom: "انتخاب اتاق", available: "ظرفیت موجود است", unavailable: "ظرفیت موجود نیست", remaining: "اتاق باقی‌مانده", total: "مبلغ نمایشی", expires: "انقضا", status: "وضعیت", reference: "کد پیگیری", refresh: "بارگذاری دوباره", working: "در حال انجام…", error: "عملیات انجام نشد.", childrenAgeHelp: "برای هر کودک سن وارد کنید.", guestRequired: "نام همه مهمانان را وارد کنید.", simulated: "شبیه‌سازی‌شده", refundable: "مبلغ قابل بازگشت", retained: "مبلغ کسرشده", cancelReason: "دلیل", policy: "نسخه شرایط", searchFirst: "ابتدا ظرفیت را بررسی کنید.", holdRequired: "برای رزرو، نگه‌داری موقت فعال لازم است.",
   },
   en: {
     title: "Hotel booking sandbox", badge: "Simulation only · no real payment", loading: "Checking booking access…", disabled: "",
-    dates: "Check-in", departure: "Check-out", room: "Room type", plan: "Rate plan", adults: "Adults", children: "Children", childAge: "Child age", search: "Search availability", quote: "Get quote", hold: "Create temporary hold", guests: "Guest names", guestName: "Guest full name", reserve: "Create simulated reservation", pay: "Simulate payment", success: "Success", failed: "Failed", expired: "Expired", bookings: "Reservations", noBookings: "No reservations yet.", cancel: "Cancel reservation", checkIn: "Check in", checkOut: "Check out", available: "Available", unavailable: "Unavailable", remaining: "Rooms remaining", total: "Display total", expires: "Expires", status: "Status", reference: "Reference", refresh: "Reload", working: "Working…", error: "Operation failed.", childrenAgeHelp: "Enter one age for each child.", guestRequired: "Enter every guest name.", simulated: "Simulated", refundable: "Refundable amount", retained: "Retained amount", cancelReason: "Reason", policy: "Policy version", searchFirst: "Search availability first.", holdRequired: "An active temporary hold is required.",
+    dates: "Check-in", departure: "Check-out", room: "Room type", plan: "Rate plan", adults: "Adults", children: "Children", childAge: "Child age", search: "Search availability", quote: "Get quote", hold: "Create temporary hold", guests: "Guest names", guestName: "Guest full name", reserve: "Create simulated reservation", pay: "Simulate payment", success: "Success", failed: "Failed", expired: "Expired", bookings: "Reservations", noBookings: "No reservations yet.", cancel: "Cancel reservation", checkIn: "Check in", checkOut: "Check out", assignRoom: "Assign room", physicalRoom: "Physical room", selectPhysicalRoom: "Select a room", available: "Available", unavailable: "Unavailable", remaining: "Rooms remaining", total: "Display total", expires: "Expires", status: "Status", reference: "Reference", refresh: "Reload", working: "Working…", error: "Operation failed.", childrenAgeHelp: "Enter one age for each child.", guestRequired: "Enter every guest name.", simulated: "Simulated", refundable: "Refundable amount", retained: "Retained amount", cancelReason: "Reason", policy: "Policy version", searchFirst: "Search availability first.", holdRequired: "An active temporary hold is required.",
   },
   ar: {
     title: "حجز فندقي تجريبي", badge: "محاكاة فقط · دون دفع حقيقي", loading: "جارٍ التحقق من صلاحية الحجز…", disabled: "",
-    dates: "تاريخ الوصول", departure: "تاريخ المغادرة", room: "نوع الغرفة", plan: "خطة السعر", adults: "البالغون", children: "الأطفال", childAge: "عمر الطفل", search: "البحث عن التوفر", quote: "عرض السعر", hold: "إنشاء حجز مؤقت", guests: "أسماء الضيوف", guestName: "الاسم الكامل للضيف", reserve: "إنشاء حجز تجريبي", pay: "محاكاة الدفع", success: "ناجح", failed: "فاشل", expired: "منتهي", bookings: "الحجوزات", noBookings: "لا توجد حجوزات بعد.", cancel: "إلغاء الحجز", checkIn: "تسجيل الوصول", checkOut: "تسجيل المغادرة", available: "متاح", unavailable: "غير متاح", remaining: "الغرف المتبقية", total: "الإجمالي المعروض", expires: "ينتهي", status: "الحالة", reference: "المرجع", refresh: "إعادة التحميل", working: "جارٍ التنفيذ…", error: "فشلت العملية.", childrenAgeHelp: "أدخل عمرًا لكل طفل.", guestRequired: "أدخل أسماء جميع الضيوف.", simulated: "محاكاة", refundable: "المبلغ المسترد", retained: "المبلغ المحتفظ به", cancelReason: "السبب", policy: "إصدار السياسة", searchFirst: "ابحث عن التوفر أولاً.", holdRequired: "يلزم وجود حجز مؤقت نشط.",
+    dates: "تاريخ الوصول", departure: "تاريخ المغادرة", room: "نوع الغرفة", plan: "خطة السعر", adults: "البالغون", children: "الأطفال", childAge: "عمر الطفل", search: "البحث عن التوفر", quote: "عرض السعر", hold: "إنشاء حجز مؤقت", guests: "أسماء الضيوف", guestName: "الاسم الكامل للضيف", reserve: "إنشاء حجز تجريبي", pay: "محاكاة الدفع", success: "ناجح", failed: "فاشل", expired: "منتهي", bookings: "الحجوزات", noBookings: "لا توجد حجوزات بعد.", cancel: "إلغاء الحجز", checkIn: "تسجيل الوصول", checkOut: "تسجيل المغادرة", assignRoom: "تخصيص الغرفة", physicalRoom: "الغرفة الفعلية", selectPhysicalRoom: "اختر غرفة", available: "متاح", unavailable: "غير متاح", remaining: "الغرف المتبقية", total: "الإجمالي المعروض", expires: "ينتهي", status: "الحالة", reference: "المرجع", refresh: "إعادة التحميل", working: "جارٍ التنفيذ…", error: "فشلت العملية.", childrenAgeHelp: "أدخل عمرًا لكل طفل.", guestRequired: "أدخل أسماء جميع الضيوف.", simulated: "محاكاة", refundable: "المبلغ المسترد", retained: "المبلغ المحتفظ به", cancelReason: "السبب", policy: "إصدار السياسة", searchFirst: "ابحث عن التوفر أولاً.", holdRequired: "يلزم وجود حجز مؤقت نشط.",
   },
 } as const;
 
@@ -51,6 +52,7 @@ export function HotelBookingSandbox({ organizationId, propertyId, locale, mode =
   const [quote, setQuote] = useState<Quote | null>(null);
   const [hold, setHold] = useState<Hold | null>(null);
   const [guestNames, setGuestNames] = useState<string[]>([""]);
+  const [selectedRoomIds, setSelectedRoomIds] = useState<Record<string, string>>({});
   const pendingKeys = useRef(new Map<string, string>());
   const plans = (snapshot?.ratePlans ?? []).filter((item) => item.roomTypeId === roomTypeId);
   const effectiveRatePlanId = plans.some((item) => item.id === ratePlanId) ? ratePlanId : (plans[0]?.id ?? "");
@@ -144,6 +146,14 @@ export function HotelBookingSandbox({ organizationId, propertyId, locale, mode =
     });
   }
 
+  async function assignRoom(reservationId: string, roomId: string) {
+    if (!roomId) return;
+    await run(() => mutate({ action: "assign-room", reservationId, roomId }), async () => {
+      setSelectedRoomIds((current) => ({ ...current, [reservationId]: roomId }));
+      await load();
+    });
+  }
+
   if (checking) return null;
   if (error && !snapshot?.enabled) return <p role="alert" className="text-sm text-destructive">{error}</p>;
   if (!snapshot?.enabled) return null;
@@ -171,6 +181,43 @@ export function HotelBookingSandbox({ organizationId, propertyId, locale, mode =
       {hold ? <div className="space-y-3 border-t pt-3"><p className="text-sm">{t.reference}: <bdi dir="ltr">{hold.reference}</bdi> · {t.expires}: <bdi dir="ltr">{hold.expiresAt}</bdi></p><h3 className="font-medium">{t.guests}</h3><div className="grid gap-2 sm:grid-cols-2">{Array.from({ length: guestCount }, (_, index) => <label key={`guest-${index}`} className="space-y-1 text-sm"><span>{t.guestName} {index + 1}</span><Input autoComplete={index === 0 ? "name" : "off"} value={guestNames[index] ?? ""} onChange={(event) => setGuestNames((current) => Array.from({ length: guestCount }, (_, guestIndex) => guestIndex === index ? event.target.value : current[guestIndex] ?? ""))} aria-invalid={guestError} /></label>)}</div><Button type="button" disabled={busy || guestNames.slice(0, guestCount).length !== guestCount || guestNames.slice(0, guestCount).some((name) => !name.trim())} onClick={() => void reserve()}>{t.reserve}</Button></div> : null}
     </div> : null}
 
-    <div className="space-y-2"><h3 className="font-semibold">{t.bookings}</h3>{snapshot.reservations.length === 0 ? <p className="text-sm text-muted-foreground">{t.noBookings}</p> : <ul className="space-y-2">{snapshot.reservations.map((item) => <li key={item.id} className="space-y-2 rounded-lg border p-3"><div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium"><bdi dir="ltr">{item.reference}</bdi> · {item.status}</span><span className="text-sm"><bdi dir="ltr">{item.checkIn} – {item.checkOut}</bdi> · <bdi dir="ltr">{item.totalAmount} {item.currency}</bdi></span></div><span className="block text-xs text-muted-foreground">{t.simulated}</span><div className="flex flex-wrap gap-2">{item.status === "PENDING_PAYMENT" ? <><Button type="button" size="sm" disabled={busy} onClick={() => void pay(item.id, "SUCCESS")}>{t.pay}: {t.success}</Button><Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void pay(item.id, "FAILED")}>{t.failed}</Button><Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void pay(item.id, "EXPIRED")}>{t.expired}</Button></> : null}{["CONFIRMED", "PENDING_PAYMENT"].includes(item.status) ? <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void reservationAction("cancel", item.id)}>{t.cancel}</Button> : null}{mode === "reception" && item.status === "CONFIRMED" ? <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void reservationAction("check-in", item.id)}>{t.checkIn}</Button> : null}{mode === "reception" && item.status === "CHECKED_IN" ? <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void reservationAction("check-out", item.id)}>{t.checkOut}</Button> : null}</div></li>)}</ul>}</div>
+    <div className="space-y-2">
+      <h3 className="font-semibold">{t.bookings}</h3>
+      {snapshot.reservations.length === 0 ? <p className="text-sm text-muted-foreground">{t.noBookings}</p> : <ul className="space-y-2">
+        {snapshot.reservations.map((item) => {
+          const rooms = mode === "reception" ? (snapshot.rooms ?? []).filter((room) => room.roomTypeId === item.roomTypeId) : [];
+          const selectedRoomId = selectedRoomIds[item.id] ?? item.assignedRoomId ?? "";
+          const assignedRoom = rooms.find((room) => room.id === item.assignedRoomId);
+          return <li key={item.id} className="space-y-2 rounded-lg border p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-medium"><bdi dir="ltr">{item.reference}</bdi> · {item.status}</span>
+              <span className="text-sm"><bdi dir="ltr">{item.checkIn} – {item.checkOut}</bdi> · <bdi dir="ltr">{item.totalAmount} {item.currency}</bdi></span>
+            </div>
+            <span className="block text-xs text-muted-foreground">{t.simulated}</span>
+            {mode === "reception" && item.assignedRoomId ? <p className="text-sm">{t.physicalRoom}: <bdi dir="ltr">{assignedRoom?.code ?? item.assignedRoomId}</bdi></p> : null}
+            <div className="flex flex-wrap gap-2">
+              {item.status === "PENDING_PAYMENT" ? <>
+                <Button type="button" size="sm" disabled={busy} onClick={() => void pay(item.id, "SUCCESS")}>{t.pay}: {t.success}</Button>
+                <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void pay(item.id, "FAILED")}>{t.failed}</Button>
+                <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void pay(item.id, "EXPIRED")}>{t.expired}</Button>
+              </> : null}
+              {["CONFIRMED", "PENDING_PAYMENT"].includes(item.status) ? <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void reservationAction("cancel", item.id)}>{t.cancel}</Button> : null}
+              {mode === "reception" && item.status === "CONFIRMED" ? <>
+                <label className="flex items-center gap-2 text-sm">
+                  <span>{t.physicalRoom}</span>
+                  <select className="h-9 rounded-md border bg-background px-2" value={selectedRoomId} onChange={(event) => setSelectedRoomIds((current) => ({ ...current, [item.id]: event.target.value }))}>
+                    <option value="">{t.selectPhysicalRoom}</option>
+                    {rooms.map((room) => <option key={room.id} value={room.id}>{room.code}</option>)}
+                  </select>
+                </label>
+                <Button type="button" size="sm" variant="outline" disabled={busy || !selectedRoomId || selectedRoomId === item.assignedRoomId} onClick={() => void assignRoom(item.id, selectedRoomId)}>{t.assignRoom}</Button>
+                <Button type="button" size="sm" variant="outline" disabled={busy || !item.assignedRoomId} onClick={() => void reservationAction("check-in", item.id)}>{t.checkIn}</Button>
+              </> : null}
+              {mode === "reception" && item.status === "CHECKED_IN" ? <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void reservationAction("check-out", item.id)}>{t.checkOut}</Button> : null}
+            </div>
+          </li>;
+        })}
+      </ul>}
+    </div>
   </section>;
 }

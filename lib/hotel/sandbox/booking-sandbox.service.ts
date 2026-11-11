@@ -24,6 +24,7 @@ export const hotelSandboxCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("cancel"), reservationId: identifier }).strict(),
   z.object({ action: z.literal("check-in"), reservationId: identifier }).strict(),
   z.object({ action: z.literal("check-out"), reservationId: identifier }).strict(),
+  z.object({ action: z.literal("assign-room"), reservationId: identifier, roomId: identifier }).strict(),
 ]);
 type Quote = { id: string; actorUserId: string; propertyId: string; roomTypeId: string; ratePlanId: string; checkIn: string; checkOut: string; adults: number; childAges: number[]; nightlyRates: number[]; totalAmount: string; currency: string; expiresAt: string; policyVersion: number; policy: ReservationCancellationPolicySnapshot; holdId?: string; reservationId?: string };
 type JsonResult = Record<string, unknown>;
@@ -87,8 +88,9 @@ export class HotelBookingSandboxService {
     ]);
     const ids = quotes.map(row => row.resultJson as unknown as Quote).filter(quote => quote.propertyId === propertyId && (actor.role !== "CUSTOMER" || quote.actorUserId === actor.userId)).flatMap(quote => quote.reservationId ? [quote.reservationId] : []);
     const reservations = await this.db.hotelReservation.findMany({ where: { organizationId, propertyId, id: { in: ids } }, orderBy: { createdAt: "desc" }, take: 100,
-      select: { id: true, reference: true, status: true, checkIn: true, checkOut: true, totalAmount: true, currency: true } });
-    return { enabled: true, roomTypes, ratePlans, reservations: reservations.map(row => ({ ...row, checkIn: dateOnly(row.checkIn), checkOut: dateOnly(row.checkOut), totalAmount: row.totalAmount.toString(), simulated: true })) };
+      select: { id: true, reference: true, roomTypeId: true, status: true, checkIn: true, checkOut: true, totalAmount: true, currency: true, nights: { select: { roomId: true } } } });
+    const rooms = actor.role === "CUSTOMER" ? undefined : await this.db.hotelRoom.findMany({ where: { organizationId, propertyId, isActive: true, isOutOfService: false, deletedAt: null }, select: { id: true, roomTypeId: true, code: true }, orderBy: { code: "asc" } });
+    return { enabled: true, roomTypes, ratePlans, ...(rooms ? { rooms } : {}), reservations: reservations.map(({ nights, ...row }) => ({ ...row, assignedRoomId: nights.length && nights[0].roomId && nights.every(night => night.roomId === nights[0].roomId) ? nights[0].roomId : null, checkIn: dateOnly(row.checkIn), checkOut: dateOnly(row.checkOut), totalAmount: row.totalAmount.toString(), simulated: true })) };
   }
 
   async execute(actor: HotelSandboxActor, organizationId: string, propertyId: string, input: unknown, idempotencyKey: string): Promise<SandboxResult> {
@@ -223,9 +225,26 @@ export class HotelBookingSandboxService {
             if (paid > BigInt(0)) reservation = await tx.hotelReservation.update({ where: { id: reservation!.id }, data: { refundedAmount: BigInt(cancellation.refundableAmount) }, include: { nights: true } });
             result = { reservation: this.reservationJson(reservation!), cancellation: { ...cancellation, refundableAmount: paid > BigInt(0) ? cancellation.refundableAmount : 0 }, simulated: true };
           }
+        } else if (command.action === "assign-room") {
+          if (actor.role === "CUSTOMER") fail("Reception role required", 403);
+          if (reservation!.status !== "CONFIRMED") fail("Only confirmed reservations can receive a room");
+          await this.lockAssignableRoom(tx, organizationId, propertyId, reservation!.roomTypeId, command.roomId);
+          const expectedNights = enumerateStayNights(quote.checkIn, quote.checkOut);
+          if (reservation!.nights.length !== expectedNights.length || expectedNights.some(night => !reservation!.nights.some(row => dateOnly(row.date) === night))) fail("Reservation night integrity conflict");
+          const occupied = await tx.hotelReservationRoom.findFirst({ where: { organizationId, roomId: command.roomId, date: { in: reservation!.nights.map(night => night.date) }, reservationId: { not: reservation!.id } }, select: { id: true } });
+          if (occupied) fail("Room is already assigned for this stay");
+          await tx.hotelReservationRoom.updateMany({ where: { organizationId, reservationId: reservation!.id }, data: { roomId: command.roomId } });
+          await tx.hotelReservation.update({ where: { id: reservation!.id }, data: { version: { increment: 1 } } });
+          result = { reservation: { ...this.reservationJson(reservation!), assignedRoomId: command.roomId } };
         } else {
           if (actor.role === "CUSTOMER") fail("Reception role required", 403);
           const checkingIn = command.action === "check-in";
+          if (checkingIn) {
+            const roomId = reservation!.nights[0]?.roomId;
+            const expectedNights = enumerateStayNights(quote.checkIn, quote.checkOut);
+            if (!roomId || reservation!.nights.length !== expectedNights.length || reservation!.nights.some(night => night.roomId !== roomId) || expectedNights.some(night => !reservation!.nights.some(row => dateOnly(row.date) === night))) fail("Assign a room before check-in");
+            await this.lockAssignableRoom(tx, organizationId, propertyId, reservation!.roomTypeId, roomId);
+          }
           const decision = decideReservationTransition({ current: reservation!.status as ReservationStatus, transition: checkingIn ? "CHECK_IN" : "CHECK_OUT", event: { type: checkingIn ? "GUEST_CHECKED_IN" : "GUEST_CHECKED_OUT", at: now.toISOString() }, now: now.toISOString() });
           if (!decision.isAllowed) fail(decision.reason ?? "Reception transition rejected");
           reservation = await tx.hotelReservation.update({ where: { id: reservation!.id }, data: { status: checkingIn ? "CHECKED_IN" : "CHECKED_OUT", ...(checkingIn ? { checkedInAt: now } : { checkedOutAt: now }), version: { increment: 1 } }, include: { nights: true } });
@@ -241,6 +260,11 @@ export class HotelBookingSandboxService {
   private reservationJson(row: { id: string; reference: string; status: string; totalAmount: number | bigint; currency: string }) {
     return { id: row.id, reference: row.reference, status: row.status, totalAmount: row.totalAmount.toString(), currency: row.currency, simulated: true };
   }
+  private async lockAssignableRoom(tx: Tx, organizationId: string, propertyId: string, roomTypeId: string, roomId: string) {
+    await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelRoom" WHERE "id"=${roomId} AND "organizationId"=${organizationId} AND "propertyId"=${propertyId} FOR UPDATE`);
+    const room = await tx.hotelRoom.findFirst({ where: { id: roomId, organizationId, propertyId, roomTypeId, isActive: true, isOutOfService: false, deletedAt: null } });
+    if (!room) fail("Room is not available for this reservation", 409);
+  }
   private async lockQuote(tx: Tx, organizationId: string, propertyId: string, actor: HotelSandboxActor, quoteId: string): Promise<Quote> {
     await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelInventoryIdempotency" WHERE "id"=${quoteId} AND "organizationId"=${organizationId} AND "operationScope"=${QUOTES} FOR UPDATE`);
     const row = await tx.hotelInventoryIdempotency.findFirst({ where: { id: quoteId, organizationId, operationScope: QUOTES } });
@@ -255,7 +279,8 @@ export class HotelBookingSandboxService {
       const updated = await tx.hotelInventory.updateMany({ where: { organizationId: reservation.organizationId, propertyId: reservation.propertyId, roomTypeId: reservation.roomTypeId, date: night.date, booked: { gte: 1 } }, data: { booked: { decrement: 1 } } });
       if (updated.count !== 1) fail("Inventory integrity conflict");
     }
-    // Historical night rows remain as the immutable price snapshot; no physical room has been assigned by this sandbox.
+    // Preserve historical nightly prices, but relinquish physical room claims.
+    await tx.hotelReservationRoom.updateMany({ where: { organizationId: reservation.organizationId, reservationId: reservation.id }, data: { roomId: null } });
     return tx.hotelReservation.update({ where: { id: reservation.id }, data: { status, cancelledAt: now, version: { increment: 1 } }, include: { nights: true } });
   }
 }

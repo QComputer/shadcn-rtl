@@ -33,6 +33,7 @@ export default async function HotelOperationsPropertyPage({
       propertyName={`${organization.name} · ${property.name}`}
       propertyTimezone={property.timezone}
       locale={locale}
+      operationalReservationsEnabled={process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED === "1" && process.env.HOTEL_GUEST_PORTAL_ENABLED === "1"}
       guestPortalEnabled={process.env.HOTEL_GUEST_PORTAL_ENABLED === "1"}
       canConfigureGuestPortal={organization.role === "ADMIN" || organization.role === "SUPER_ADMIN"}
     />

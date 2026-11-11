@@ -24,7 +24,7 @@ export function guestPortalHref(currentUrl, locale, mapping, selection) {
   if (!/^https?:$/.test(current.protocol) || current.username || current.password) return null;
   if (!mapping || mapping.enabled !== true || !/^[A-Za-z0-9_-]{1,128}$/.test(mapping.organizationId || "") || !/^[A-Za-z0-9_-]{1,128}$/.test(mapping.propertyId || "")) return null;
   if (!new Set(["fa", "en", "ar"]).has(locale)) return null;
-  const target = new URL(`/${locale}/hotel/${encodeURIComponent(mapping.organizationId)}/${encodeURIComponent(mapping.propertyId)}`, current.origin);
+  const target = new URL(`/${locale}/${mapping.mode === "RESERVATION" ? "hotel-reservations" : "hotel"}/${encodeURIComponent(mapping.organizationId)}/${encodeURIComponent(mapping.propertyId)}`, current.origin);
   const link = withStaySelection(target, selection);
   return link.pathname + link.search;
 }

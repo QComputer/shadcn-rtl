@@ -29,3 +29,10 @@ test("guest portal link refuses external bases, disabled or malformed tenant map
   assert.equal(guestPortalHref("https://damoon.example", "fa", { ...mapping, propertyId: "x?y=1" }, stay), null);
   assert.equal(guestPortalHref("https://damoon.example", "de", mapping, stay), null);
 });
+
+test("operational mapping selects the reservation portal without changing request-only links", () => {
+  const mapping = { enabled: true, organizationId: "org1", propertyId: "property1" };
+  const stay = { range: {}, adults: 2, children: 0, childAges: [] };
+  assert.ok(guestPortalHref("https://damoon.example", "ar", {...mapping, mode: "RESERVATION"}, stay).startsWith("/ar/hotel-reservations/org1/property1?"));
+  assert.ok(guestPortalHref("https://damoon.example", "fa", {...mapping, mode: "REQUEST_ONLY"}, stay).startsWith("/fa/hotel/org1/property1?"));
+});

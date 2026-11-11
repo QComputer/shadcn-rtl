@@ -1,6 +1,7 @@
+import { isDeepStrictEqual } from "node:util";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { prisma as defaultPrisma } from "@/lib/db-runtime";
-import { enumerateStayNights } from "@/lib/hotel/domain/stay-dates";
+import { enumerateStayNights, stayNightCount } from "@/lib/hotel/domain/stay-dates";
 import { resolveNightlyRatesForWindow } from "@/lib/hotel/domain/rate";
 import { resourceRevision } from "@/lib/hotel/services/hotel-publication.service";
 import type {
@@ -33,6 +34,11 @@ import type {
 
 type Db = PrismaClient;
 type Tx = Prisma.TransactionClient;
+
+export class HotelReservationIntegrityError extends Error {
+  readonly code = "HOTEL_RESERVATION_INTEGRITY";
+  constructor() { super("Reservation does not match an active held inventory allocation."); this.name = "HotelReservationIntegrityError"; }
+}
 
 export class HotelIdempotencyConflictError extends Error {
   readonly code = "HOTEL_IDEMPOTENCY_CONFLICT";
@@ -395,23 +401,67 @@ export class PrismaHotelRepositories
   }
 
   async createReservation(record: ReservationRecord): Promise<ReservationRecord> {
+    const key = record.idempotencyKey ?? record.reference;
+    const invalid = () => new HotelReservationIntegrityError();
+    let nights: StayDate[] = [];
     try {
-      const row = await this.client.hotelReservation.create({ data: { id: record.id, organizationId: record.organizationId, propertyId: record.propertyId, roomTypeId: record.roomTypeId, ratePlanId: record.ratePlanId, reference: record.reference, status: record.status, checkIn: dateValue(record.checkIn), checkOut: dateValue(record.checkOut), currency: record.currency, totalAmount: BigInt(record.totalAmount), cancellationPolicyKey: record.cancellationPolicySnapshot?.key ?? "PENDING_OWNER_INPUT", cancellationPolicySnapshot: record.cancellationPolicySnapshot ?? {}, holdId: record.holdId, idempotencyKey: record.idempotencyKey ?? record.reference, nights: { create: record.nights.map((date, index) => ({ date: dateValue(date), roomTypeId: record.roomTypeId, rate: BigInt(record.nightlyRates[index] ?? 0) })) }, guests: { create: record.guests.map((guest) => ({ fullName: guest.fullName, isPrimary: guest.isPrimary, isChild: guest.isChild ?? false, age: guest.age })) } } }); return reservation(row);
-    } catch (error) {
-      if ((error as { code?: string }).code !== "P2002") throw error;
-      const replay = await this.client.hotelReservation.findFirst({ where: { organizationId: record.organizationId, idempotencyKey: record.idempotencyKey ?? record.reference }, include: { nights: true, guests: true } });
-      if (!replay) throw error;
-      const existing = reservation(replay);
-      const requestedKey = record.idempotencyKey ?? record.reference;
-      const sameRequest = existing.idempotencyKey === requestedKey
-        && existing.propertyId === record.propertyId
-        && existing.roomTypeId === record.roomTypeId
-        && existing.checkIn === record.checkIn
-        && existing.checkOut === record.checkOut
-        && existing.totalAmount === record.totalAmount;
-      if (!sameRequest) throw new HotelIdempotencyConflictError();
-      return existing;
-    }
+      const count = stayNightCount(record.checkIn, record.checkOut);
+      if (count > 0 && count === record.nights.length) nights = enumerateStayNights(record.checkIn, record.checkOut);
+    } catch { /* Invalid calendar windows fail below. */ }
+    const validRecord = Boolean(key && key.length <= 200) && nights.length > 0 &&
+      isDeepStrictEqual(nights, [...record.nights]) && record.nightlyRates.length === nights.length &&
+      record.nightlyRates.every(rate => Number.isSafeInteger(rate) && rate >= 0) &&
+      Number.isSafeInteger(record.totalAmount) && record.totalAmount >= 0 &&
+      record.nightlyRates.reduce((sum, rate) => sum + rate, 0) === record.totalAmount &&
+      Number.isFinite(record.createdAt.getTime());
+    const normalizeGuests = (guests: readonly ReservationGuest[]) => guests.map(guest => ({
+      fullName: guest.fullName, isPrimary: guest.isPrimary, isChild: guest.isChild ?? false, age: guest.age ?? null,
+    })).sort((left, right) => left.fullName.localeCompare(right.fullName));
+    const sameRequest = (existing: ReservationRecord) => existing.idempotencyKey === key &&
+      existing.propertyId === record.propertyId && existing.roomTypeId === record.roomTypeId &&
+      existing.ratePlanId === record.ratePlanId && existing.reference === record.reference &&
+      existing.holdId === record.holdId && existing.checkIn === record.checkIn && existing.checkOut === record.checkOut &&
+      existing.totalAmount === record.totalAmount && existing.currency === record.currency &&
+      isDeepStrictEqual(existing.nights, record.nights) && isDeepStrictEqual(existing.nightlyRates, record.nightlyRates) &&
+      isDeepStrictEqual(normalizeGuests(existing.guests), normalizeGuests(record.guests)) &&
+      isDeepStrictEqual(existing.cancellationPolicySnapshot ?? {}, record.cancellationPolicySnapshot ?? {});
+
+    return this.client.$transaction(async tx => {
+      if (record.holdId) await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "HotelBookingHold" WHERE "id"=${record.holdId} AND "organizationId"=${record.organizationId} FOR UPDATE`);
+      // Serialize even different hold IDs using the same tenant retry key.
+      await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify([record.organizationId, key])}, 0))`);
+      const replay = await tx.hotelReservation.findFirst({ where: { organizationId: record.organizationId, idempotencyKey: key }, include: { nights: true, guests: true } });
+      if (replay) {
+        const existing = reservation(replay);
+        if (!sameRequest(existing)) throw new HotelIdempotencyConflictError();
+        return existing;
+      }
+      if (!validRecord) throw invalid();
+      const plan = await tx.hotelRatePlan.findFirst({ where: { id: record.ratePlanId, organizationId: record.organizationId, propertyId: record.propertyId, roomTypeId: record.roomTypeId, ...(record.holdId ? { isActive: true } : {}) }, select: { id: true, currency: true } });
+      if (!plan || plan.currency !== record.currency) throw invalid();
+      if (record.holdId) {
+        const held = await tx.hotelBookingHold.findFirst({ where: { id: record.holdId, organizationId: record.organizationId } });
+        if (!held || held.status !== "ACTIVE" || held.expiresAt <= record.createdAt || held.quantity !== 1 ||
+          held.propertyId !== record.propertyId || held.roomTypeId !== record.roomTypeId || held.reference !== record.reference ||
+          dateOnly(held.checkIn) !== record.checkIn || dateOnly(held.checkOut) !== record.checkOut || record.status !== "PENDING_PAYMENT") throw invalid();
+        const activeType = await tx.hotelRoomType.findFirst({ where: { id: record.roomTypeId, propertyId: record.propertyId, organizationId: record.organizationId, isActive: true, deletedAt: null, property: { isActive: true, deletedAt: null, organization: { isActive: true, deletedAt: null } } }, select: { id: true } });
+        if (!activeType) throw invalid();
+        const inventory = await tx.$queryRaw<Array<{ id: string; date: Date; held: number }>>(Prisma.sql`SELECT "id","date","held" FROM "HotelInventory" WHERE "organizationId"=${record.organizationId} AND "propertyId"=${record.propertyId} AND "roomTypeId"=${record.roomTypeId} AND "date" IN (${Prisma.join(nights.map(dateValue))}) ORDER BY "date" FOR UPDATE`);
+        if (inventory.length !== nights.length || inventory.some(night => night.held < held.quantity)) throw invalid();
+        for (const night of inventory) await tx.hotelInventory.update({ where: { id: night.id }, data: { held: { decrement: held.quantity }, booked: { increment: held.quantity } } });
+        await tx.hotelBookingHold.update({ where: { id: held.id }, data: { status: "CONSUMED" } });
+      }
+      const row = await tx.hotelReservation.create({ data: {
+        id: record.id, organizationId: record.organizationId, propertyId: record.propertyId,
+        roomTypeId: record.roomTypeId, ratePlanId: record.ratePlanId, reference: record.reference, status: record.status,
+        checkIn: dateValue(record.checkIn), checkOut: dateValue(record.checkOut), currency: record.currency,
+        totalAmount: BigInt(record.totalAmount), cancellationPolicyKey: record.cancellationPolicySnapshot?.key ?? "PENDING_OWNER_INPUT",
+        cancellationPolicySnapshot: record.cancellationPolicySnapshot ?? {}, holdId: record.holdId, idempotencyKey: key,
+        nights: { create: nights.map((date, index) => ({ date: dateValue(date), roomTypeId: record.roomTypeId, rate: BigInt(record.nightlyRates[index]) })) },
+        guests: { create: record.guests.map(guest => ({ fullName: guest.fullName, isPrimary: guest.isPrimary, isChild: guest.isChild ?? false, age: guest.age })) },
+      }, include: { nights: true, guests: true } });
+      return reservation(row);
+    }, { maxWait: 5000, timeout: 10000 });
   }
   async findReservationByReference(scope: TenantScope, reference: string): Promise<ReservationRecord | null> { const row = await this.client.hotelReservation.findFirst({ where: { organizationId: scope.organizationId, reference }, include: { nights: true, guests: true } }); return row ? reservation(row) : null; }
   async findReservation(scope: TenantScope, reservationId: string): Promise<ReservationRecord | null> { const row = await this.client.hotelReservation.findFirst({ where: { id: reservationId, organizationId: scope.organizationId }, include: { nights: true, guests: true } }); return row ? reservation(row) : null; }

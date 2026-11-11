@@ -49,7 +49,7 @@ export class HotelStayRequestService {
       this.db.hotelStayRequest.findMany({ where: { organizationId, propertyId, ...(actor.role === "CUSTOMER" ? { userId: actor.userId } : {}) }, orderBy: { createdAt: "desc" }, take: 100,
         select: { id: true, status: true, guestName: true, message: true, snapshot: true, createdAt: true } }),
     ]);
-    return { enabled: true, mode: property.operationalMode, view: actor.role === "CUSTOMER" ? "guest" : "reception", roomTypes, ratePlans, requests };
+    return { enabled: true, mode: property.operationalMode === "RESERVATION" && process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED !== "1" ? "REQUEST_ONLY" : property.operationalMode, view: actor.role === "CUSTOMER" ? "guest" : "reception", roomTypes, ratePlans, requests };
   }
 
   async execute(actor: HotelBookingActor, organizationId: string, propertyId: string, input: unknown, idempotencyKey: string): Promise<HotelStayRequestResult> {

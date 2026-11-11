@@ -44,13 +44,13 @@ export async function GET(request: Request) {
         deletedAt: null,
         operationalMode: { not: "DISABLED" },
       },
-      select: { id: true },
+      select: { id: true, operationalMode: true },
       orderBy: { id: "asc" },
       take: 2,
     });
     if (properties.length !== 1) return disabled();
 
-    return Response.json({ enabled: true, organizationId: tenant.organizationId, propertyId: properties[0].id }, {
+    return Response.json({ enabled: true, organizationId: tenant.organizationId, propertyId: properties[0].id, mode: properties[0].operationalMode === "RESERVATION" && process.env.HOTEL_OPERATIONAL_RESERVATIONS_ENABLED === "1" ? "RESERVATION" : "REQUEST_ONLY" }, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch {

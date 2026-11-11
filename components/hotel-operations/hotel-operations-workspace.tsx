@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { HotelBookingSandbox } from "./hotel-booking-sandbox";
+import { HotelOperationalReception } from "./hotel-operational-reception";
 import { HotelRequestReception } from "./hotel-request-reception";
 
 type Room = { id: string; code: string; floor: string | null; isOutOfService: boolean; isActive: boolean };
@@ -86,8 +87,8 @@ function idempotencyKey() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function HotelOperationsWorkspace({ organizationId, propertyId, propertyName, propertyTimezone, locale, guestPortalEnabled = false, canConfigureGuestPortal = false }: {
-  organizationId: string; propertyId: string; propertyName: string; propertyTimezone: string; locale: string; guestPortalEnabled?: boolean; canConfigureGuestPortal?: boolean;
+export function HotelOperationsWorkspace({ organizationId, propertyId, propertyName, propertyTimezone, locale, operationalReservationsEnabled = false, guestPortalEnabled = false, canConfigureGuestPortal = false }: {
+  organizationId: string; propertyId: string; propertyName: string; propertyTimezone: string; locale: string; operationalReservationsEnabled?: boolean; guestPortalEnabled?: boolean; canConfigureGuestPortal?: boolean;
 }) {
   const text = labels[locale as keyof typeof labels] ?? labels.fa;
   const baseUrl = useMemo(() => `/api/organizations/${encodeURIComponent(organizationId)}/hotels/${encodeURIComponent(propertyId)}`, [organizationId, propertyId]);
@@ -323,6 +324,7 @@ export function HotelOperationsWorkspace({ organizationId, propertyId, propertyN
     </section>
 
     <HotelBookingSandbox key={`${organizationId}:${propertyId}`} organizationId={organizationId} propertyId={propertyId} locale={locale} mode="reception" />
+    {operationalReservationsEnabled ? <HotelOperationalReception organizationId={organizationId} propertyId={propertyId} locale={locale} canConfigure={canConfigureGuestPortal} /> : null}
     {guestPortalEnabled ? <HotelRequestReception organizationId={organizationId} propertyId={propertyId} locale={locale} canConfigure={canConfigureGuestPortal} /> : null}
   </div>;
 }

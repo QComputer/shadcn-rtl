@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -102,6 +103,7 @@ export function HotelStayRequests({ organizationId, propertyId, locale, initialS
     <div className="space-y-2"><h3 className="font-semibold">{t.requests}</h3>{!snapshot?.requests.length ? <p className="text-sm text-muted-foreground">{t.none}</p> : <ul className="space-y-2">{snapshot.requests.map((request) => <li key={request.id} className="space-y-2 rounded-lg border p-3">
       <div className="flex flex-wrap items-center justify-between gap-2"><strong>{request.guestName} · {request.status}</strong><span className="text-xs text-muted-foreground">{t.created}: <bdi dir="ltr">{request.createdAt}</bdi></span></div>
       <p className="text-sm"><bdi dir="ltr">{request.snapshot.checkIn} – {request.snapshot.checkOut}</bdi> · {request.snapshot.adults} {t.adults}{request.snapshot.childAges.length ? ` · ${t.children}: ${request.snapshot.childAges.join(", ")}` : ""} · <bdi dir="ltr">{request.snapshot.totalAmount} {request.snapshot.currency}</bdi></p>
+      {isGuest && snapshot.mode === "RESERVATION" && !["CANCELLED", "DECLINED"].includes(request.status) ? <Link className="inline-block underline" href={"/" + locale + "/hotel-reservations/" + encodeURIComponent(organizationId) + "/" + encodeURIComponent(propertyId) + "?requestId=" + encodeURIComponent(request.id)}>{locale === "en" ? "Review current price and reserve" : locale === "ar" ? "مراجعة السعر الحالي والحجز" : "بررسی قیمت روز و ادامه رزرو"}</Link> : null}
       {request.message ? <p className="text-sm">{request.message}</p> : null}
       <span className="block text-xs text-muted-foreground">{t.simulation}</span>
       <div className="flex flex-wrap gap-2">{isGuest ? <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void run(() => mutate({ action: "cancel-request", requestId: request.id }))}>{t.cancel}</Button> : <><Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void run(() => mutate({ action: "review-request", requestId: request.id, status: "CONTACTED" }))}>{t.contacted}</Button><Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void run(() => mutate({ action: "review-request", requestId: request.id, status: "DECLINED" }))}>{t.decline}</Button></>}</div>

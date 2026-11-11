@@ -1,15 +1,17 @@
 import "server-only";
 import { createHash, randomUUID } from "node:crypto";
-import { Prisma, type PrismaClient, type UserRole } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/db-runtime";
 import { ApiError } from "@/lib/api-guards";
 import { PrismaHotelRepositories } from "@/lib/hotel/persistence/prisma-hotel-repositories";
-import { enumerateStayNights, resolvePropertyInstant, validateOccupancyFitsRoom } from "@/lib/hotel/domain/stay-dates";
-import { resolveNightlyRatesForWindow, quoteCancellation } from "@/lib/hotel/domain/rate";
+import { enumerateStayNights, resolvePropertyInstant } from "@/lib/hotel/domain/stay-dates";
+import { quoteCancellation } from "@/lib/hotel/domain/rate";
 import { decideReservationTransition } from "@/lib/hotel/domain/booking-state";
-import type { BedConfiguration, CancellationTier, ReservationCancellationPolicySnapshot, ReservationStatus } from "@/lib/hotel/domain/types";
-import { BED_CAPACITY } from "@/lib/hotel/domain/types";
+import type { ReservationStatus } from "@/lib/hotel/domain/types";
+import { priceHotelStay, type HotelPricedQuote } from "@/lib/hotel/services/booking-quote";
+
+import { authorizeHotelBookingActor } from "@/lib/hotel/services/booking-context";
 
 type Tx = Prisma.TransactionClient;
 export type HotelSandboxActor = { userId: string; role: string; organizationId?: string | null; customerContextVerified?: boolean };
@@ -26,7 +28,7 @@ export const hotelSandboxCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("check-out"), reservationId: identifier }).strict(),
   z.object({ action: z.literal("assign-room"), reservationId: identifier, roomId: identifier }).strict(),
 ]);
-type Quote = { id: string; actorUserId: string; propertyId: string; roomTypeId: string; ratePlanId: string; checkIn: string; checkOut: string; adults: number; childAges: number[]; nightlyRates: number[]; totalAmount: string; currency: string; expiresAt: string; policyVersion: number; policy: ReservationCancellationPolicySnapshot; holdId?: string; reservationId?: string };
+type Quote = HotelPricedQuote;
 type JsonResult = Record<string, unknown>;
 export type SandboxResult = {
   quote?: Quote;
@@ -39,7 +41,6 @@ export type SandboxResult = {
 const QUOTES = "HOTEL_SANDBOX_QUOTE";
 const ACTIONS = "HOTEL_SANDBOX_ACTION";
 const PAYMENTS = "HOTEL_SANDBOX_PAYMENT";
-const date = (value: string) => new Date(`${value}T00:00:00.000Z`);
 const dateOnly = (value: Date) => value.toISOString().slice(0, 10);
 const json = (value: unknown) => JSON.parse(JSON.stringify(value, (_key, item) => typeof item === "bigint" ? item.toString() : item)) as Prisma.InputJsonValue;
 const fail = (message: string, status = 409): never => { throw new ApiError(status, message); };
@@ -68,15 +69,7 @@ export class HotelBookingSandboxService {
     if (!hotelBookingSandboxEnabled()) fail("Hotel booking sandbox is disabled", 403);
     const identity = await this.db.$queryRaw<Array<{ database: string; role: string }>>`SELECT current_database()::text AS database,current_user::text AS role`;
     if (identity[0]?.database !== "retail_hero_test" || identity[0]?.role !== "hero_test") fail("Fixture database required", 403);
-    const user = await this.db.user.findFirst({ where: { id: actor.userId, role: actor.role as UserRole, isActive: true, deletedAt: null }, select: { id: true } });
-    const property = await this.db.hotelProperty.findFirst({ where: { id: propertyId, organizationId, isActive: true, deletedAt: null,
-      organization: { isActive: true, deletedAt: null, vertical: "HOTEL", capabilities: { some: { key: "HOTEL_BOOKING", status: "ACTIVE", enabledAt: { not: null } } } } } });
-    if (!user || !property || !["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF", "CUSTOMER"].includes(actor.role)) fail("Forbidden", 403);
-    if (actor.role !== "SUPER_ADMIN" && actor.organizationId !== organizationId) fail("Forbidden", 403);
-    if (actor.role === "CUSTOMER") {
-      if (!actor.customerContextVerified || !await this.db.customerClubMembership.findFirst({ where: { organizationId, customerId: actor.userId, status: "ACTIVE" } })) fail("Customer context required", 403);
-    } else if (actor.role !== "SUPER_ADMIN" && !await this.db.organizationMember.findFirst({ where: { organizationId, userId: actor.userId, isActive: true, role: { in: ["ADMIN", "MANAGER", "STAFF"] } } })) fail("Forbidden", 403);
-    return property!;
+    return authorizeHotelBookingActor(this.db, actor, organizationId, propertyId);
   }
 
   async get(actor: HotelSandboxActor, organizationId: string, propertyId: string) {
@@ -118,40 +111,12 @@ export class HotelBookingSandboxService {
       let now = this.now();
       let result: JsonResult;
       if (command.action === "search" || command.action === "quote") {
-        const count = (date(command.checkOut).getTime() - date(command.checkIn).getTime()) / 86_400_000;
-        if (!Number.isInteger(count) || count < 1 || count > 31) fail("Stay must be 1 to 31 nights", 422);
-        const room = await tx.hotelRoomType.findFirst({ where: { id: command.roomTypeId, organizationId, propertyId, isActive: true, deletedAt: null } });
-        const plan = await tx.hotelRatePlan.findFirst({ where: { id: command.ratePlanId, organizationId, propertyId, roomTypeId: command.roomTypeId, isActive: true }, include: { nightlyRates: true, cancellationPolicy: true } });
-        if (!room || !plan || plan.currency !== property.currency || plan.currency !== "TOMAN") fail("Room, rate plan or currency not available", 422);
-        if (!Array.isArray(room!.beds) || !room!.beds.length || room!.beds.some(bed => !bed || typeof bed !== "object" ||
-          !Object.hasOwn(BED_CAPACITY, String((bed as { kind?: unknown }).kind)) ||
-          !Number.isSafeInteger((bed as { count?: number }).count) || Number((bed as { count?: number }).count) < 1)) fail("Room bed configuration is invalid", 422);
-        const fits = validateOccupancyFitsRoom({ adults: command.adults, children: command.childAges.length, childAges: command.childAges }, room!, room!.beds as unknown as BedConfiguration[]);
-        if (!fits.isValid) fail(fits.reason, 422);
-        const safeMoney = (value: bigint) => { const amount = Number(value); if (!Number.isSafeInteger(amount) || amount < 0) fail("Unsupported amount", 422); return amount; };
-        const resolution = resolveNightlyRatesForWindow({ property: { ...property, policies: {} } as never,
-          ratePlan: { ...plan!, baseNightlyRate: safeMoney(plan!.baseNightlyRate), validFrom: plan!.validFrom ? dateOnly(plan!.validFrom) : undefined, validTo: plan!.validTo ? dateOnly(plan!.validTo) : undefined } as never,
-          seasonalRates: plan!.nightlyRates.map(rate => ({ ...rate, from: dateOnly(rate.from), to: dateOnly(new Date(rate.to.getTime() - 86_400_000)), nightlyRate: rate.nightlyRate === null ? undefined : safeMoney(rate.nightlyRate) })), checkIn: command.checkIn, checkOut: command.checkOut });
-        if (!resolution.isResolved || !Number.isSafeInteger(resolution.total)) fail(resolution.reason ?? "Unsupported total", 422);
-        const nights = enumerateStayNights(command.checkIn, command.checkOut);
-        const inventory = await tx.hotelInventory.findMany({ where: { organizationId, propertyId, roomTypeId: room!.id, date: { in: nights.map(date) } } });
-        const remaining = inventory.length === nights.length ? Math.max(0, Math.min(...inventory.map(row => row.closedToArrival || row.closedToDeparture ? 0 : row.allotment - row.booked - row.held - row.outOfService))) : 0;
-        if (command.action === "search") result = { available: remaining > 0, remaining, simulated: true };
-        else {
-          if (!remaining) fail("No inventory");
-          const policy = plan!.cancellationPolicy;
-          if (!policy || !policy.isActive || policy.organizationId !== organizationId || policy.propertyId !== propertyId) fail("A configured cancellation policy is required");
-          if (policy!.cancellationTiers !== null && (!Array.isArray(policy!.cancellationTiers) || policy!.cancellationTiers.some(tier => !tier || typeof tier !== "object"))) fail("Invalid cancellation policy", 422);
-          const quote: Quote = { id: randomUUID(), actorUserId: actor.userId, propertyId, roomTypeId: room!.id, ratePlanId: plan!.id,
-            checkIn: command.checkIn, checkOut: command.checkOut, adults: command.adults, childAges: command.childAges,
-            totalAmount: String(resolution.total), nightlyRates: resolution.nights!.map(night => night.amount), currency: plan!.currency,
-            expiresAt: new Date(now.getTime() + 10 * 60_000).toISOString(), policyVersion: policy!.version,
-            policy: { id: policy!.id, key: policy!.key, name: policy!.name, description: policy!.description ?? "", freeCancellationCutoffHours: policy!.freeCancellationCutoffHours, fullCancellationRetention: policy!.fullCancellationRetention / 10000, cancellationTiers: Array.isArray(policy!.cancellationTiers) ? policy!.cancellationTiers as CancellationTier[] : undefined, organizationId, version: policy!.version, policyVersion: policy!.version, capturedAt: now.toISOString() } };
-          const policyCheck = quoteCancellation({ totalAmount: Number(quote.totalAmount), cancelledAt: now, checkInAt: date(quote.checkIn), firstNightAmount: quote.nightlyRates[0], policy: quote.policy });
-          if (policyCheck.reason === "INVALID_POLICY") fail("Invalid cancellation policy", 422);
+        const priced = await priceHotelStay(tx, property, actor.userId, command, now);
+        if (priced.quote) {
+          const quote = priced.quote;
           await tx.hotelInventoryIdempotency.create({ data: { id: quote.id, organizationId, operationScope: QUOTES, idempotencyKey: quote.id, requestFingerprint: fingerprint, status: "COMPLETED", resultJson: json(quote), completedAt: now } });
-          result = { quote };
         }
+        result = { ...priced, simulated: true };
       } else if (command.action === "hold" || command.action === "reserve") {
         const quote = await this.lockQuote(tx, organizationId, propertyId, actor, command.quoteId);
         now = this.now();

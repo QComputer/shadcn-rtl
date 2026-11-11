@@ -18,6 +18,17 @@ export function withStaySelection(target, { range, adults, guests, children, chi
   return url;
 }
 
+export function guestPortalHref(currentUrl, locale, mapping, selection) {
+  let current;
+  try { current = new URL(currentUrl); } catch { return null; }
+  if (!/^https?:$/.test(current.protocol) || current.username || current.password) return null;
+  if (!mapping || mapping.enabled !== true || !/^[A-Za-z0-9_-]{1,128}$/.test(mapping.organizationId || "") || !/^[A-Za-z0-9_-]{1,128}$/.test(mapping.propertyId || "")) return null;
+  if (!new Set(["fa", "en", "ar"]).has(locale)) return null;
+  const target = new URL(`/${locale}/hotel/${encodeURIComponent(mapping.organizationId)}/${encodeURIComponent(mapping.propertyId)}`, current.origin);
+  const link = withStaySelection(target, selection);
+  return link.pathname + link.search;
+}
+
 export function parseChildAges(inputs, expectedCount) {
   if (expectedCount === 0) return { ok: true, ages: [] };
   if (!Array.isArray(inputs) || inputs.length !== expectedCount) return { ok: false, ages: [] };

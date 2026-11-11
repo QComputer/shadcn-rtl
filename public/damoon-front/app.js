@@ -5,7 +5,7 @@ import { validateStayRange, todayLocalISO, jalaliAccessibleDay } from "./calenda
 import translations from "./translations.js";
 import { palettes, readPalette, applyPalette } from "./themes.js";
 import { mountBooking, readStaySelection } from "./booking.js";
-import { parseChildAges, withStaySelection } from "./booking-flow.js";
+import { guestPortalHref, parseChildAges, withStaySelection } from "./booking-flow.js";
 
 const root = document.querySelector("#app");
 if (!root) throw new Error("Damoon app mount #app was not found");
@@ -282,6 +282,19 @@ function wireInteractions() {
       edit.textContent = locale === 'fa' ? 'ویرایش برنامهٔ اقامت' : locale === 'ar' ? 'تعديل خطة الإقامة' : 'Edit stay plans';
       summary.append(edit);
       root.querySelector('.hospitality-contact-details')?.after(summary);
+      fetch('/api/hotel/v1/guest-portal', { method: 'GET', credentials: 'same-origin', cache: 'no-store', redirect: 'error', referrerPolicy: 'no-referrer' })
+        .then(async response => {
+          if (!response.ok || new URL(response.url, window.location.href).origin !== window.location.origin) return;
+          const mapping = await response.json();
+          const href = guestPortalHref(window.location.href, locale, mapping, { range, adults: guests, children, childAges });
+          if (!href || !summary.isConnected) return;
+          const portalLink = document.createElement('a');
+          portalLink.className = 'hospitality-text-link';
+          portalLink.href = href;
+          portalLink.textContent = locale === 'fa' ? 'ادامه در درگاه مهمان' : locale === 'ar' ? 'المتابعة إلى بوابة الضيوف' : 'Continue in guest portal';
+          summary.append(portalLink);
+        })
+        .catch(() => {});
     }
   }
   document.querySelector("[data-theme-toggle]")?.addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));

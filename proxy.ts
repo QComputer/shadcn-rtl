@@ -435,6 +435,13 @@ export async function proxy(request: NextRequest) {
       return withSecurityHeaders(NextResponse.rewrite(notConfiguredUrl));
     }
 
+    const guestPortalPath = pathname.match(/^\/(fa|en|ar)\/hotel\/([^/]+)\/([^/]+)\/?$/);
+    if (process.env.HOTEL_GUEST_PORTAL_ENABLED === "1" && tenant.vertical === "HOTEL" && guestPortalPath?.[2] === tenant.organizationId) {
+      const requestHeaders = buildTenantRewriteHeaders(request, normalizedHost, tenant, guestPortalPath[1] as "fa" | "en" | "ar", pathname);
+      requestHeaders.set("x-bazar-public-footer-context", "none");
+      return withSecurityHeaders(NextResponse.next({ request: { headers: requestHeaders } }));
+    }
+
     // Local fixture-only guest portal. The verified host, never the URL alone,
     // owns the organization; the API independently checks session and ownership.
     const sandboxPath = pathname.match(/^\/(fa|en|ar)\/hotel-sandbox\/([^/]+)\/([^/]+)\/?$/);

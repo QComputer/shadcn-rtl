@@ -28,5 +28,5 @@ export default async function CustomerPhoneLoginPage({ params, searchParams }: P
     });
   }
 
-  return <CustomerPhoneLogin locale={locale} organization={organization} />;
+  return <CustomerPhoneLogin locale={locale} organization={organization} callbackUrl={callbackUrl} />;
 }

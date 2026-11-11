@@ -435,6 +435,16 @@ export async function proxy(request: NextRequest) {
       return withSecurityHeaders(NextResponse.rewrite(notConfiguredUrl));
     }
 
+    // Local fixture-only guest portal. The verified host, never the URL alone,
+    // owns the organization; the API independently checks session and ownership.
+    const sandboxPath = pathname.match(/^\/(fa|en|ar)\/hotel-sandbox\/([^/]+)\/([^/]+)\/?$/);
+    if (process.env.NODE_ENV !== "production" && process.env.HOTEL_BOOKING_SANDBOX_ENABLED === "1"
+      && tenant.vertical === "HOTEL" && sandboxPath?.[2] === tenant.organizationId) {
+      const requestHeaders = buildTenantRewriteHeaders(request, normalizedHost, tenant, sandboxPath[1], pathname);
+      requestHeaders.set("x-bazar-public-footer-context", "none");
+      return withSecurityHeaders(NextResponse.next({ request: { headers: requestHeaders } }));
+    }
+
     // A verified OrganizationDomain can route more than a public experience.
     // The explicit APP endpoint owns the operational build when both host and
     // compile-time path prefix match, so it must bypass public-root rewrites.

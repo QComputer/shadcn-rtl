@@ -8,7 +8,9 @@ const enabled = process.env.RETAIL_HERO_PG_ACCEPTANCE === "1";
 
 function assertGuardedDatabase() {
   assert.equal(process.env.DATABASE_URL, process.env.DIRECT_URL, "both Prisma URLs must point to the same disposable local database");
-  const expected = new URL("postgresql://hero_test@127.0.0.1:55439/retail_hero_test");
+  // Dedicated PR59 database only. Never accept the Hotel/Kilo fixture identity
+  // or arbitrary developer, hosted, or Production database coordinates.
+  const expected = new URL("postgresql://website_studio_hero_test@127.0.0.1:55443/website_studio_hero_test");
   for (const key of ["DATABASE_URL", "DIRECT_URL"]) {
     const url = new URL(process.env[key] ?? "");
     assert.equal(url.protocol, expected.protocol);
@@ -34,7 +36,7 @@ test("Retail hero save, publication, isolation, rollback, media revocation, and 
 
   const identity = await db.$queryRaw<Array<{ database: string; version_num: number; current_user: string }>>`
     SELECT current_database() AS database, current_setting('server_version_num')::int AS version_num, current_user`;
-  assert.equal(identity[0]?.database, "retail_hero_test");
+  assert.equal(identity[0]?.database, "website_studio_hero_test");
   assert.ok((identity[0]?.version_num ?? 0) >= 170000 && (identity[0]?.version_num ?? 0) < 180000, "fixture must be PostgreSQL 17");
   assert.equal(identity[0]?.current_user, decodeURIComponent(new URL(process.env.DATABASE_URL!).username));
 
@@ -68,7 +70,7 @@ test("Retail hero save, publication, isolation, rollback, media revocation, and 
     ] });
     await db.organizationCapability.createMany({ data: [org, otherOrg].map(item => ({ organizationId: item.id, key: "SHOP" as const, status: "ACTIVE" as const, enabledAt: new Date() })) });
 
-    const imageUrl = `https://hero-fixtures.public.blob.vercel-storage.com/${slug}.webp`;
+    const imageUrl = `/api/media/${org.id}/tenants/${org.id}/uploads/${slug}.webp`;
     const image = await db.image.create({ data: { url: imageUrl, filename: `${slug}.webp`, mimeType: "image/webp", purpose: "retail-hero-fixture", access: "PUBLIC", organizationId: org.id } });
     const otherImage = await db.image.create({ data: { url: `https://hero-fixtures.public.blob.vercel-storage.com/${otherSlug}.webp`, filename: `${otherSlug}.webp`, mimeType: "image/webp", purpose: "retail-hero-fixture", access: "PUBLIC", organizationId: otherOrg.id } });
     imageIds.push(image.id, otherImage.id);
@@ -76,7 +78,7 @@ test("Retail hero save, publication, isolation, rollback, media revocation, and 
     const baseContent = initialRetailContent(org);
     const firstContent = {
       ...baseContent,
-      hero: { enabled: true, mode: "CAMPAIGN" as const, heading: "First published heading", description: "Published copy", ctaLabel: "Browse", ctaHref: "", desktopImageId: image.id, mobileImageId: "", imageAlt: "First campaign", imageFit: "cover" as const, focalX: 50, focalY: 50, productIds: [], autoplay: false },
+      hero: { enabled: true, mode: "CAMPAIGN" as const, heading: "First published heading", description: "Published copy", ctaLabel: "Browse", ctaHref: "", desktopImageId: image.id, mobileImageId: "", darkDesktopImageId: "", darkMobileImageId: "", imageAlt: "First campaign", imageFit: "cover" as const, focalX: 50, focalY: 50, productIds: [], autoplay: false },
     };
     const firstPrincipal = { userId: manager.id, role: "ADMIN" as const, organizationId: org.id };
     const otherPrincipal = { userId: otherManager.id, role: "ADMIN" as const, organizationId: otherOrg.id };
@@ -86,6 +88,9 @@ test("Retail hero save, publication, isolation, rollback, media revocation, and 
     const reopened = await new RetailWebsiteService(db).load(firstPrincipal, org.id, first.id);
     assert.equal(reopened.revision?.id, first.id, "saved draft reopens by its immutable revision id");
     assert.deepEqual(reopened.content.hero, firstContent.hero, "reopened hero input matches the saved configuration");
+
+    const authorizedImages = await db.image.findMany({ where: { id: image.id, organizationId: org.id, access: "PUBLIC" } });
+    assert.equal(authorizedImages[0]?.url, imageUrl, "fixture uses the tenant persistent-disk upload URL shape");
 
     await assert.rejects(
       () => service!.save(firstPrincipal, org.id, { content: { ...firstContent, hero: { ...firstContent.hero!, desktopImageId: otherImage.id } }, baseRevisionId: first.id, requestId: randomUUID() }),
@@ -101,6 +106,7 @@ test("Retail hero save, publication, isolation, rollback, media revocation, and 
       retailHeroPublication: { revisionId: first.id, previousRevisionId: null, publishedAt: firstPublication.publishedAt },
     }, "atomic publication preserves neighboring JSON settings keys");
     assert.equal((await getPublishedRetailHero(slug))?.hero.heading, "First published heading");
+    assert.equal((await getPublishedRetailHero(slug))?.hero.desktopImage, imageUrl, "published Hero resolves its tenant PUBLIC persistent-disk image");
 
     const secondContent = { ...firstContent, hero: { ...firstContent.hero, heading: "Second draft heading" } };
     const second = await service.save(firstPrincipal, org.id, { content: secondContent, baseRevisionId: first.id, requestId: randomUUID() });
@@ -124,6 +130,7 @@ test("Retail hero save, publication, isolation, rollback, media revocation, and 
     assert.equal(rollback.revisionId, first.id);
     assert.equal(rollback.previousRevisionId, second.id);
     assert.equal((await getPublishedRetailHero(slug))?.hero.heading, "First published heading");
+    assert.equal((await getPublishedRetailHero(slug))?.hero.desktopImage, imageUrl, "rollback restores the preceding disk-backed Hero image");
 
     await db.image.update({ where: { id: image.id }, data: { access: "PRIVATE" } });
     assert.equal(await getPublishedRetailHero(slug), null, "revoking campaign media removes the published hero from public resolution");

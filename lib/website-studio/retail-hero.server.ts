@@ -38,7 +38,7 @@ export async function getPublishedRetailHero(slug: string) {
   const row = await prisma.tenantWebsiteRevision.findFirst({ where: { id: pointer.revisionId, organizationId: org.id }, select: { content: true } });
   const parsed = retailContentSchema.safeParse(row?.content);
   if (!parsed.success) return null;
-  const images = await prisma.image.findMany({ where: { organizationId: org.id, access: "PUBLIC" }, select: { id: true, url: true, filename: true, mimeType: true } });
+  const images = await prisma.image.findMany({ where: { organizationId: org.id, access: "PUBLIC" }, select: { id: true, url: true, filename: true, mimeType: true, organizationId: true, access: true } });
   const hero = resolveRetailHero(parsed.data, retailWebsiteMedia(org.slug, images));
   if (!hero) return null;
   return { hero, products: hero.mode === "PRODUCTS" ? await retailHeroProducts(slug, hero.productIds) : [] };

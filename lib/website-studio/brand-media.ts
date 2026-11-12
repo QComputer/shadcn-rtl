@@ -1,6 +1,6 @@
 import "server-only";
 import { resolveOrganizationHomeContent } from "@/lib/organization-home-content";
-import { isEligibleWebsiteImage } from "./core";
+import { isEligibleWebsiteImage, isTenantDiskWebsiteImage } from "./core";
 import type { WebsiteMedia } from "./retail-contract";
 
 /** Stable tenant-scoped id for one approved, file-backed brand image. */
@@ -36,6 +36,7 @@ export function tenantBrandWebsiteMedia(organizationSlug: string): WebsiteMedia[
 
 /** Merge approved brand media with public uploads that can be delivered here. */
 export function retailWebsiteMedia(organizationSlug: string, images: WebsiteMedia[], hasBlobReadWriteToken = Boolean(process.env.BLOB_READ_WRITE_TOKEN)) {
-  const uploadImages = images.filter(isEligibleWebsiteImage).filter((image) => hasBlobReadWriteToken || !image.url.startsWith("/uploads/"));
+  const uploadImages = images.filter((image) => isEligibleWebsiteImage(image) || isTenantDiskWebsiteImage(image))
+    .filter((image) => hasBlobReadWriteToken || !image.url.startsWith("/uploads/"));
   return [...tenantBrandWebsiteMedia(organizationSlug), ...uploadImages];
 }

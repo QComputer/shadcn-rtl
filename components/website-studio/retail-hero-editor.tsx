@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
-import { ArrowDown, ArrowUp, ImagePlus, Sparkles, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { ArrowDown, ArrowUp, ImagePlus, LoaderCircle, Sparkles, Trash2, Upload } from "lucide-react";
 import { isEligibleRetailWebsiteMedia, type WebsiteMedia } from "@/lib/website-studio/retail-contract";
 import type { PublicCatalogProduct } from "@/lib/public-catalog/contracts";
 import type { RetailHeroConfig } from "@/lib/website-studio/retail-hero-contract";
@@ -14,12 +14,16 @@ type Props = {
   media: WebsiteMedia[];
   products: PublicCatalogProduct[];
   disabled: boolean;
+  onUpload: (file: File, field: "desktopImageId" | "mobileImageId" | "darkDesktopImageId" | "darkMobileImageId") => Promise<void>;
 };
 
 const money = new Intl.NumberFormat("fa-IR");
 
-export function RetailHeroEditor({ value, onChange, media, products, disabled }: Props) {
+export function RetailHeroEditor({ value, onChange, media, products, disabled, onUpload }: Props) {
   const [productSearch, setProductSearch] = useState("");
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState("");
+  const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
   const availableMedia = media.filter(isEligibleRetailWebsiteMedia);
   const selectedProducts = value.productIds.map((id, index) => ({
     id,
@@ -43,17 +47,30 @@ export function RetailHeroEditor({ value, onChange, media, products, disabled }:
 
   const renderImagePicker = (label: string, selectedId: string, field: "desktopImageId" | "mobileImageId" | "darkDesktopImageId" | "darkMobileImageId") => {
     const selected = availableMedia.find((item) => item.id === selectedId);
-    return <label className={styles.field}>
+    return <div className={styles.field}>
       <span>{label}</span>
-      <select value={selectedId} disabled={disabled} onChange={(event) => update({ [field]: event.target.value })}>
-        <option value="">انتخاب از رسانه‌های تأییدشده</option>
+      <select aria-label={label} value={selectedId} disabled={disabled || Boolean(uploading)} onChange={(event) => update({ [field]: event.target.value })}>
+        <option value="">انتخاب از تصاویر سازمان</option>
         {availableMedia.map((item) => <option key={item.id} value={item.id}>{item.alt || item.filename || "تصویر فروشگاه"}</option>)}
       </select>
       {selected ? <div className={styles.imagePreview}>
         <Image src={selected.url} alt={selected.alt || selected.filename || `پیش‌نمایش ${label}`} width={720} height={420} unoptimized />
         <span>{selected.filename || "تصویر انتخاب‌شده"}</span>
-      </div> : <span className={styles.hint}>تصویر را از مدیریت رسانه‌های فروشگاه اضافه و سپس از این فهرست انتخاب کنید.</span>}
-    </label>;
+      </div> : <span className={styles.hint}>برای این حالت تصویری انتخاب نشده است.</span>}
+      <div className={styles.imageActions}>
+        <input ref={(node) => { fileInputs.current[field] = node; }} type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={disabled || Boolean(uploading)} aria-label={`بارگذاری ${label}`} onChange={async (event) => {
+          const file = event.target.files?.[0]; event.target.value = ""; if (!file) return;
+          if (!/[.](jpe?g|png|webp)$/i.test(file.name) || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) { setUploadError("فقط فایل JPEG، PNG یا WebP انتخاب کنید."); return; }
+          if (file.size > 5 * 1024 * 1024) { setUploadError("حجم تصویر باید حداکثر ۵ مگابایت باشد."); return; }
+          setUploading(field); setUploadError("");
+          try { await onUpload(file, field); } catch (cause) { setUploadError(cause instanceof Error ? cause.message : "بارگذاری تصویر انجام نشد."); } finally { setUploading(null); }
+        }} />
+        <button type="button" disabled={disabled || Boolean(uploading)} onClick={() => fileInputs.current[field]?.click()}>{uploading === field ? <LoaderCircle className={styles.spinner} size={15} /> : <Upload size={15} />} بارگذاری تصویر</button>
+        {selected && <button type="button" disabled={disabled || Boolean(uploading)} onClick={() => update({ [field]: "" })}><Trash2 size={15} /> پاک‌کردن</button>}
+      </div>
+      {uploading === field && <span role="status" className={styles.hint}>تصویر در حال بارگذاری است…</span>}
+      {uploadError && <span role="alert" className={styles.uploadError}>{uploadError}</span>}
+    </div>;
   };
 
   return <section className={styles.editor} aria-labelledby="retail-hero-title" dir="rtl">

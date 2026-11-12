@@ -39,6 +39,12 @@
 .imagePreview { display: flex; align-items: center; gap: .65rem; min-width: 0; padding: .4rem; border: 1px solid var(--line); border-radius: .7rem; background: var(--soft); color: var(--muted); font-size: .76rem; font-weight: 500; }
 .imagePreview img { width: 6.3rem; height: 3.8rem; object-fit: cover; border-radius: .42rem; background: #eef1ef; }
 .imagePreview span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.imageActions { display: flex; flex-wrap: wrap; gap: .45rem; }
+.imageActions button { display: inline-flex; align-items: center; gap: .35rem; padding: .42rem .65rem; border: 1px solid #d7e0db; border-radius: .6rem; background: #fff; color: #45594f; font: inherit; font-size: .76rem; cursor: pointer; }
+.imageActions button:disabled { opacity: .5; cursor: wait; }
+.uploadError { color: #a03d35; font-size: .75rem; font-weight: 500; }
+.spinner { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .focalPanel,.productPanel,.ctaPanel { border: 1px solid var(--line); border-radius: .85rem; padding: .85rem; background: #fbfcfb; }
 .focalPanel h3,.productPanel h3,.ctaPanel h3 { margin: 0; color: #3d5148; font-size: .91rem; }
 .focalPanel p,.subheading p { margin: .2rem 0 .75rem; color: var(--muted); font-size: .77rem; line-height: 1.7; }

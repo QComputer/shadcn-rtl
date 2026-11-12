@@ -19,3 +19,21 @@ export function isEligibleWebsiteImage(image: { filename: string | null; url: st
     return url.protocol === "https:" && url.hostname.endsWith(".public.blob.vercel-storage.com") && url.pathname.split("/").at(-1) === image.filename;
   } catch { return false; }
 }
+
+/** Persistent disk URLs are eligible only when matched to an authorized Image record. */
+export function isTenantDiskWebsiteImage(image: { filename: string | null; url: string; mimeType: string | null; id?: string; organizationId?: string | null; access?: string }) {
+  if (image.access !== "PUBLIC" || !image.organizationId || !image.filename || !image.id || !image.mimeType
+    || !["image/jpeg", "image/png", "image/webp"].includes(image.mimeType)
+    || !/^[A-Za-z0-9_-]+$/.test(image.organizationId)
+    || !/^[A-Za-z0-9_.-]+$/.test(image.filename)) return false;
+  try {
+    const url = new URL(image.url, "https://bazarbaaz.invalid");
+    if (/%2f|%5c/i.test(url.pathname)) return false;
+    const rawParts = url.pathname.split("/").filter(Boolean);
+    const parts = rawParts.map(decodeURIComponent);
+    return url.origin === "https://bazarbaaz.invalid" && parts.length === 7 && parts[0] === "api" && parts[1] === "media"
+      && parts[2] === image.organizationId && parts[3] === "tenants" && parts[4] === image.organizationId
+      && parts[5] === "uploads" && parts[6] === image.filename
+      && url.search === "" && url.hash === "";
+  } catch { return false; }
+}

@@ -156,7 +156,7 @@ export function RetailStudio({ organizationId, locale }: Props) {
     <header className={styles.header}><div><p className={styles.eyebrow}>استودیوی وب‌سایت فروشگاه</p><h1>{payload?.organization.name ?? "مدیریت وب‌سایت"}</h1><p>محتوای صفحه فروشگاه را ویرایش و پیش‌نمایش خصوصی آن را بررسی کنید.</p></div><div className={styles.headerButtons}><span className={styles.privateBadge}>پیش‌نویس خصوصی</span><button type="button" disabled={busy || loading} onClick={() => void refresh()}><RefreshCw size={16} /> بازخوانی</button></div></header>
     <RetailBrandColorEditor key={organizationId} organizationId={organizationId} product={payload?.products[0]} storeName={payload?.organization.name} />
     {error && <div role="alert" className={styles.alert}>{error}<button type="button" disabled={busy} onClick={() => void refresh()}>تلاش دوباره</button></div>}
-    {missingMedia.length > 0 && <div role="status" className={styles.alert}>بعضی تصاویر نسخه ذخیره‌شده در این محیط در دسترس نیستند. برای ذخیره نسخه بعدی، تصویر جایگزین را از رسانه‌های تأییدشده انتخاب کنید.</div>}
+    {missingMedia.length > 0 && <div role="status" className={styles.alert}>بعضی تصاویر نسخه ذخیره‌شده در این محیط در دسترس نیستند. برای ذخیره نسخه بعدی، تصویر جایگزین را از رسانه‌های عمومی سازمان انتخاب کنید.</div>}
     {notice && <div role="status" className={styles.success}><Check size={17} />{notice}</div>}
     <div className={styles.workspace}>
       <nav className={styles.tabs} aria-label="نمای استودیو"><button type="button" aria-pressed={view === "edit"} onClick={() => setView("edit")}>ویرایش محتوا</button><button type="button" disabled={!payload?.revision} onClick={() => openPreview()} aria-pressed={view === "preview"}><Eye size={16} /> پیش‌نمایش ذخیره‌شده</button></nav>

@@ -31,8 +31,9 @@ export function isTenantDiskWebsiteImage(image: { filename: string | null; url: 
     if (/%2f|%5c/i.test(url.pathname)) return false;
     const rawParts = url.pathname.split("/").filter(Boolean);
     const parts = rawParts.map(decodeURIComponent);
-    return url.origin === "https://bazarbaaz.invalid" && parts.length === 5 && parts[0] === "api" && parts[1] === "media"
-      && parts[2] === image.organizationId && parts[3] === "tenants" && parts[4] === image.filename
+    return url.origin === "https://bazarbaaz.invalid" && parts.length === 7 && parts[0] === "api" && parts[1] === "media"
+      && parts[2] === image.organizationId && parts[3] === "tenants" && parts[4] === image.organizationId
+      && parts[5] === "uploads" && parts[6] === image.filename
       && url.search === "" && url.hash === "";
   } catch { return false; }
 }

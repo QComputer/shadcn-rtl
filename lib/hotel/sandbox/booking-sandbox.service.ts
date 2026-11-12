@@ -46,12 +46,17 @@ const json = (value: unknown) => JSON.parse(JSON.stringify(value, (_key, item) =
 const fail = (message: string, status = 409): never => { throw new ApiError(status, message); };
 
 /** Impossible to enable in a production process or against a non-fixture database. */
-export function hotelBookingSandboxEnabled(env: { DATABASE_URL?: string; NODE_ENV?: string; HOTEL_BOOKING_SANDBOX_ENABLED?: string } = process.env) {
+export function hotelBookingSandboxEnabled(env: { DATABASE_URL?: string; NODE_ENV?: string; VERCEL_ENV?: string; HOTEL_BOOKING_SANDBOX_ENABLED?: string; HOTEL_PAYMENT_SIMULATOR_DISPOSABLE_FIXTURE?: string; LOCAL_PRISMA_EXPECTED_PORT?: string; RETAIL_HERO_EXPECTED_DATABASE?: string; HOTEL_LOCAL_EXPECTED_ROLE?: string } = process.env) {
   try {
     const url = new URL(env.DATABASE_URL ?? "");
-    return env.NODE_ENV !== "production" && env.HOTEL_BOOKING_SANDBOX_ENABLED === "1" &&
-      ["postgres:", "postgresql:"].includes(url.protocol) && url.hostname === "127.0.0.1" && url.port === "55439" &&
-      url.pathname === "/retail_hero_test" && url.username === "hero_test" && !url.search && !url.hash;
+    const common = env.NODE_ENV !== "production" && env.VERCEL_ENV !== "production" && env.HOTEL_BOOKING_SANDBOX_ENABLED === "1" &&
+      ["postgres:", "postgresql:"].includes(url.protocol) && url.hostname === "127.0.0.1" && !url.search && !url.hash;
+    const existingGuardedFixture = common && url.port === "55439" && url.pathname === "/retail_hero_test" && url.username === "hero_test";
+    const disposableFixture = common && env.HOTEL_PAYMENT_SIMULATOR_DISPOSABLE_FIXTURE === "1" &&
+      env.LOCAL_PRISMA_EXPECTED_PORT === url.port && /^\d{1,5}$/.test(url.port) && Number(url.port) > 1024 &&
+      env.RETAIL_HERO_EXPECTED_DATABASE === decodeURIComponent(url.pathname.slice(1)) && /^hotel_payment_smoke_[a-z0-9_]+$/.test(url.pathname.slice(1)) &&
+      env.HOTEL_LOCAL_EXPECTED_ROLE === decodeURIComponent(url.username) && /^hotel_payment_smoke_[a-z0-9_]+$/.test(url.username);
+    return Boolean(existingGuardedFixture || disposableFixture);
   } catch { return false; }
 }
 
@@ -68,7 +73,15 @@ export class HotelBookingSandboxService {
   private async authorize(actor: HotelSandboxActor, organizationId: string, propertyId: string) {
     if (!hotelBookingSandboxEnabled()) fail("Hotel booking sandbox is disabled", 403);
     const identity = await this.db.$queryRaw<Array<{ database: string; role: string }>>`SELECT current_database()::text AS database,current_user::text AS role`;
-    if (identity[0]?.database !== "retail_hero_test" || identity[0]?.role !== "hero_test") fail("Fixture database required", 403);
+    const expectedDatabase = process.env.RETAIL_HERO_EXPECTED_DATABASE;
+    const expectedRole = process.env.HOTEL_LOCAL_EXPECTED_ROLE;
+    const disposableFixture = process.env.HOTEL_PAYMENT_SIMULATOR_DISPOSABLE_FIXTURE === "1" &&
+      /^hotel_payment_smoke_[a-z0-9_]+$/.test(expectedDatabase ?? "") &&
+      /^hotel_payment_smoke_[a-z0-9_]+$/.test(expectedRole ?? "");
+    const validIdentity = disposableFixture
+      ? identity[0]?.database === expectedDatabase && identity[0]?.role === expectedRole
+      : identity[0]?.database === "retail_hero_test" && identity[0]?.role === "hero_test";
+    if (!validIdentity) fail("Fixture database required", 403);
     return authorizeHotelBookingActor(this.db, actor, organizationId, propertyId);
   }
 

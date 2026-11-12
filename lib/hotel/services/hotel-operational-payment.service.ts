@@ -52,15 +52,40 @@ function jsonObject(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
-async function simulatorAllowed(db: PaymentDb) {
-  if (process.env.HOTEL_OPERATIONAL_PAYMENT_SIMULATOR_ENABLED !== "1" || !hotelBookingSandboxEnabled()) return false;
-  if (!process.env.DATABASE_URL) return false;
+export async function hotelPaymentSimulatorGuardDiagnostics(db: PaymentDb) {
+  const diagnostics: Record<string, boolean> = {
+    simulatorFlag: process.env.HOTEL_OPERATIONAL_PAYMENT_SIMULATOR_ENABLED === "1",
+    sandboxFlag: hotelBookingSandboxEnabled(),
+    nonProduction: process.env.NODE_ENV !== "production" && process.env.VERCEL_ENV !== "production",
+    fixtureMarker: process.env.HOTEL_PAYMENT_SIMULATOR_DISPOSABLE_FIXTURE === "1" ||
+      (process.env.LOCAL_PRISMA_EXPECTED_PORT === "55439" && process.env.RETAIL_HERO_EXPECTED_DATABASE === "retail_hero_test" && process.env.HOTEL_LOCAL_EXPECTED_ROLE === "hero_test"),
+    urlMatch: false,
+    databaseNameMatches: false,
+    roleNameMatches: false,
+  };
+  if (!process.env.DATABASE_URL) return diagnostics;
   try {
     const url = new URL(process.env.DATABASE_URL);
-    if (!["127.0.0.1", "localhost", "::1"].includes(url.hostname) || url.port !== "55439" || url.pathname !== "/retail_hero_test" || process.env.RETAIL_HERO_EXPECTED_DATABASE !== "retail_hero_test" || process.env.DATABASE_URL !== process.env.DIRECT_URL) return false;
-    const rows = await db.$queryRaw<Array<{ databaseName: string; roleName: string }>>`SELECT current_database() AS "databaseName", current_user AS "roleName"`;
-    return rows[0]?.databaseName === "retail_hero_test" && rows[0]?.roleName === "hero_test";
-  } catch { return false; }
+    const expectedPort = process.env.LOCAL_PRISMA_EXPECTED_PORT;
+    const expectedDatabase = process.env.RETAIL_HERO_EXPECTED_DATABASE;
+    const expectedRole = process.env.HOTEL_LOCAL_EXPECTED_ROLE;
+    const disposableFixture = process.env.HOTEL_PAYMENT_SIMULATOR_DISPOSABLE_FIXTURE === "1" &&
+      /^\d{1,5}$/.test(expectedPort ?? "") && Number(expectedPort) > 1024 &&
+      /^hotel_payment_smoke_[a-z0-9_]+$/.test(expectedDatabase ?? "") && /^hotel_payment_smoke_[a-z0-9_]+$/.test(expectedRole ?? "");
+    const existingGuardedFixture = expectedPort === "55439" && expectedDatabase === "retail_hero_test" && expectedRole === "hero_test";
+    diagnostics.urlMatch = url.protocol === "postgresql:" && url.hostname === "127.0.0.1" && url.port === expectedPort &&
+      url.pathname === `/${expectedDatabase}` && url.username === expectedRole && process.env.DATABASE_URL === process.env.DIRECT_URL &&
+      !(url.search || url.hash) && (disposableFixture || existingGuardedFixture);
+    const rows = await db.$queryRaw<Array<{ database: string; role: string }>>`SELECT current_database()::text AS database,current_user::text AS role`;
+    diagnostics.databaseNameMatches = rows[0]?.database === expectedDatabase;
+    diagnostics.roleNameMatches = rows[0]?.role === expectedRole;
+    return diagnostics;
+  } catch { return diagnostics; }
+}
+
+async function simulatorAllowed(db: PaymentDb) {
+  const diagnostics = await hotelPaymentSimulatorGuardDiagnostics(db);
+  return Object.values(diagnostics).every(Boolean);
 }
 
 /** Server-side payment intent/reconciliation boundary for hotel reservations. */

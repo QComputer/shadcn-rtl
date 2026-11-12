@@ -55,9 +55,9 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma generate
       - name: TypeScript validation
         run: pnpm run typecheck
-      - run: pnpm exec prisma generate
       - name: Retail cart, checkout and fulfillment units
         run: >-
           pnpm exec node --import tsx --require ./scripts/e2e/register-server-only.cjs

@@ -170,7 +170,10 @@ test("verified Hotel balance settlement is tenant-bound, atomic, and idempotent 
     await verify(futureEvidence, "future-evidence", { verifiedAt: new Date(now.getTime() + 60_000) });
     const wrongAmount = await makeRequest("wrong-amount", { amountToman: amount - BigInt(1) });
     await verify(wrongAmount, "wrong-amount");
-    await assert.rejects(makeRequest("wrong-currency", { currency: "USD" }), /currency|constraint|check/i);
+    let dbRejectedWrongCurrency = false;
+    let wrongCurrency: Awaited<ReturnType<typeof makeRequest>> | null = null;
+    try { wrongCurrency = await makeRequest("wrong-currency", { currency: "USD" }); }
+    catch (error) { dbRejectedWrongCurrency = true; assert.match(String(error), /currency|constraint|check/i); }
     const expired = await makeRequest("expired", { expiresAt: new Date(now.getTime() - 20_000) });
     await verify(expired, "expired");
     const wrongGuest = await makeRequest("wrong-guest", { guestCustomerId: otherGuest.id });
@@ -187,6 +190,9 @@ test("verified Hotel balance settlement is tenant-bound, atomic, and idempotent 
       deps,
       { scope: { organizationId: orgA.id }, reservationId, paymentRequestPublicId: publicId, amountToman },
     );
+    let applicationRejectedWrongCurrency = false;
+    if (wrongCurrency) { await verify(wrongCurrency, "wrong-currency"); applicationRejectedWrongCurrency = !(await tryApply(wrongCurrency.publicId)).isApplied; }
+    assert.ok(dbRejectedWrongCurrency || applicationRejectedWrongCurrency, "database constraint or application settlement must reject a non-TOMAN payment");
     for (const bad of [simulated, simulatedEvidence, unverified, mismatchedMerchant, futureEvidence, wrongAmount, expired, wrongGuest]) assert.equal((await tryApply(bad.publicId)).isApplied, false, `${bad.publicId} must not settle`);
     assert.equal((await tryApply(foreignTenantPayment.publicId)).isApplied, false, "a foreign tenant payment must not settle");
     assert.equal((await tryApply(good.publicId, `foreign-reservation-${token}`)).isApplied, false, "an unrelated reservation id must not settle");

@@ -12,6 +12,7 @@ import {
 } from "@/lib/seo";
 import { getShopTenantSeoContext } from "@/lib/custom-domain-seo";
 import { buildOrganizationPublicPath } from "@/lib/custom-domain-routing";
+import { encodePublicRouteSegment } from "@/lib/shop-public-paths";
 import { hasModernRetailProductExperience } from "@/lib/retail/shop-experience";
 import { getPublicCatalogProduct } from "@/lib/public-catalog/service.server";
 import { verifiedRetailProductJsonLd } from "@/lib/retail/product-detail";
@@ -76,7 +77,7 @@ export async function generateMetadata({ params }: ProductDetailLayoutProps): Pr
   }
 
   const productSegment = product.slug || product.id;
-  const seoContext = await getShopTenantSeoContext({ locale, slug, subPath: `/product/${productSegment}` });
+  const seoContext = await getShopTenantSeoContext({ locale, slug, subPath: `/product/${encodePublicRouteSegment(productSegment)}` });
   const productUploadedShareImage = product.image || product.organization.coverImage || product.organization.logo;
 
   return buildPublicMetadata({
@@ -105,11 +106,11 @@ export default async function ProductDetailLayout({ children, params }: ProductD
 
   const productSegment = product.slug || product.id;
   if (product.slug && productId !== product.slug) {
-    const redirectContext = await getShopTenantSeoContext({ locale, slug, subPath: `/product/${product.slug}` });
+    const redirectContext = await getShopTenantSeoContext({ locale, slug, subPath: `/product/${encodePublicRouteSegment(product.slug)}` });
     redirect(redirectContext.path);
   }
 
-  const seoContext = await getShopTenantSeoContext({ locale, slug, subPath: `/product/${productSegment}` });
+  const seoContext = await getShopTenantSeoContext({ locale, slug, subPath: `/product/${encodePublicRouteSegment(productSegment)}` });
   const path = seoContext.path;
   const productUploadedShareImage = product.image || product.organization.coverImage || product.organization.logo;
   const modern = hasModernRetailProductExperience(product.organization.settings?.settings, product.organization.branding ?? {});

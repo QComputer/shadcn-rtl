@@ -33,6 +33,7 @@ import { damoonPublicHomeUrl, resolveDamoonPublicRoute, type DamoonPublicRoute }
 import { getPublicFooterContextForPathname, type PublicFooterContext } from "@/lib/public-footer-context";
 import { appCookiePath, appPath, resolveAppBasePath } from "@/lib/app-base-path";
 import { getActivePrimaryOrganizationDomain } from "@/lib/domains/primary-domain.server";
+import { authorizedProductRouteTraceId, logProductRouteDiagnostic, productRouteTraceId } from "@/lib/product-route-diagnostics";
 import {
   extractProxyCredential,
   resolveTrustedForwardedAppTenant,
@@ -150,9 +151,13 @@ export function sanitizedProxyBoundaryHeaders(request: NextRequest) {
     "x-url-pathname",
     "x-bazar-dashboard-return-to",
     "x-forwarded-host",
+    "x-bazar-product-route-diagnostic-key",
+    "x-bazar-product-route-trace-id",
   ]) {
     requestHeaders.delete(name);
   }
+  const productTraceId = authorizedProductRouteTraceId(request.headers, request.nextUrl.pathname);
+  if (productTraceId) requestHeaders.set("x-bazar-product-route-trace-id", productTraceId);
   return requestHeaders;
 }
 
@@ -322,6 +327,8 @@ function getRequestOrigin(request: NextRequest) {
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const productTraceId = authorizedProductRouteTraceId(request.headers, pathname);
+  logProductRouteDiagnostic(productTraceId, "proxy.received");
   const hostHeader = request.headers.get("host") || request.nextUrl.host;
   const normalizedHost = normalizeDomainHost(hostHeader);
 
@@ -654,6 +661,11 @@ export async function proxy(request: NextRequest) {
       rewrittenUrl.pathname = capabilityPath.surface === "shop"
         ? buildShopPlatformPath({ locale, slug: tenant.slug, publicPathname: capabilityPath.subPath })
         : buildAppointmentPlatformPath({ locale, slug: tenant.slug, publicPathname: capabilityPath.subPath });
+      logProductRouteDiagnostic(productRouteTraceId(requestHeaders), "proxy.custom-domain-rewrite", {
+        surface: capabilityPath.surface,
+        locale,
+        tenantResolved: true,
+      });
       return withSecurityHeaders(NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } }));
     }
 

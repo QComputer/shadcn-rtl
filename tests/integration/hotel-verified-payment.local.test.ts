@@ -74,7 +74,7 @@ test("verified Hotel balance settlement is tenant-bound, atomic, and idempotent 
     } }); integrationIds.push(integration.id);
     const foreignIntegration = await db.organizationIntegration.create({ data: {
       organizationId: orgB.id, provider: "PAYMENT", type: "USSD", status: "ACTIVE",
-      codeName: `fixture-foreign-payment-${token}`, displayName: "Disposable foreign integration",
+    codeName: `foreign-${token}`, displayName: "Disposable foreign integration",
       credentialProfileKey: `fixture-foreign-credential-${token}`, configuration: { fixtureOnly: true },
     } }); integrationIds.push(foreignIntegration.id);
 
@@ -155,8 +155,7 @@ test("verified Hotel balance settlement is tenant-bound, atomic, and idempotent 
     await verify(futureEvidence, "future-evidence", { verifiedAt: new Date(now.getTime() + 60_000) });
     const wrongAmount = await makeRequest("wrong-amount", { amountToman: amount - BigInt(1) });
     await verify(wrongAmount, "wrong-amount");
-    const wrongCurrency = await makeRequest("wrong-currency", { currency: "USD" });
-    await verify(wrongCurrency, "wrong-currency");
+    await assert.rejects(makeRequest("wrong-currency", { currency: "USD" }), /currency|constraint|check/i);
     const expired = await makeRequest("expired", { expiresAt: new Date(now.getTime() - 20_000) });
     await verify(expired, "expired");
     const wrongGuest = await makeRequest("wrong-guest", { guestCustomerId: otherGuest.id });
@@ -173,7 +172,7 @@ test("verified Hotel balance settlement is tenant-bound, atomic, and idempotent 
       deps,
       { scope: { organizationId: orgA.id }, reservationId, paymentRequestPublicId: publicId, amountToman },
     );
-    for (const bad of [simulated, simulatedEvidence, unverified, mismatchedMerchant, futureEvidence, wrongAmount, wrongCurrency, expired, wrongGuest]) assert.equal((await tryApply(bad.publicId)).isApplied, false, `${bad.publicId} must not settle`);
+    for (const bad of [simulated, simulatedEvidence, unverified, mismatchedMerchant, futureEvidence, wrongAmount, expired, wrongGuest]) assert.equal((await tryApply(bad.publicId)).isApplied, false, `${bad.publicId} must not settle`);
     assert.equal((await tryApply(foreignTenantPayment.publicId)).isApplied, false, "a foreign tenant payment must not settle");
     assert.equal((await tryApply(good.publicId, `foreign-reservation-${token}`)).isApplied, false, "an unrelated reservation id must not settle");
     assert.equal((await db.hotelReservation.findUniqueOrThrow({ where: { id: reservation.id } })).paidAmount, BigInt(0));

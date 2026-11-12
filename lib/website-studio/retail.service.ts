@@ -4,7 +4,7 @@ import { Prisma, type PrismaClient, type UserRole } from "@prisma/client";
 import { prisma } from "@/lib/db-runtime";
 import { ApiError } from "@/lib/api-guards";
 import { retailWebsiteMedia } from "./brand-media";
-import { initialRetailContent, referencedWebsiteImages, retailContentSchema, saveRetailDraftSchema, type WebsiteRevision } from "./retail-contract";
+import { initialRetailContent, referencedWebsiteImages, retailContentSchema, saveRetailDraftSchema, type RetailWebsiteImageRecord, type WebsiteMedia, type WebsiteRevision } from "./retail-contract";
 import { changeRetailHeroPublicationSchema, readRetailHeroPublication } from "./retail-hero-contract";
 
 export type StudioPrincipal = { userId: string; role: UserRole; organizationId?: string | null };
@@ -40,8 +40,8 @@ export class RetailWebsiteService {
   }
 
   private async media(tx: Tx, organizationId: string, organizationSlug: string) {
-    const images = await tx.image.findMany({ where: { organizationId, access: "PUBLIC" }, select: { id: true, url: true, filename: true, mimeType: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }] });
-    return retailWebsiteMedia(organizationSlug, images);
+    const images = await tx.image.findMany({ where: { organizationId, access: "PUBLIC" }, select: { id: true, url: true, filename: true, mimeType: true, organizationId: true, access: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }] });
+    return retailWebsiteMedia(organizationSlug, images as RetailWebsiteImageRecord[]);
   }
 
   async load(principal: StudioPrincipal, organizationId: string, revisionId?: string) {

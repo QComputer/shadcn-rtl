@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isEligibleWebsiteImage } from "./core";
+import { isEligibleWebsiteImage, isTenantDiskWebsiteImage } from "./core";
 import { retailHeroSchema } from "./retail-hero-contract";
 
 const text = z.string().trim().max(5000);
@@ -27,12 +27,14 @@ export const retailContentSchema = z.object({
 });
 export type RetailContent = z.infer<typeof retailContentSchema>;
 export type RetailSection = RetailContent["sections"][number];
-export type WebsiteMedia = { id: string; url: string; filename: string | null; mimeType: string | null; source?: "TENANT_BRAND"; alt?: string };
+export type WebsiteMedia = { id: string; url: string; filename: string | null; mimeType: string | null; source?: "TENANT_BRAND"; alt?: string; organizationId?: string | null; access?: string };
+export type RetailWebsiteImageRecord = WebsiteMedia & { organizationId: string; access: "PUBLIC" };
 export type WebsiteRevision = { id: string; content: RetailContent; createdAt: string };
 export const saveRetailDraftSchema = z.object({ content: retailContentSchema, baseRevisionId: z.string().max(128).nullable(), requestId: z.string().uuid() }).strict();
 
 const tenantBrandPath = /^\/brand\/tenants\/([a-z0-9-]+)\/home\/(?:[a-z0-9-]+\/)*[a-z0-9-]+\.webp$/;
 export function isEligibleRetailWebsiteMedia(image: WebsiteMedia): boolean {
+  if (isTenantDiskWebsiteImage(image)) return true;
   if (image.source !== "TENANT_BRAND") return isEligibleWebsiteImage(image);
   const match = tenantBrandPath.exec(image.url);
   if (!match || image.id !== `brand:${match[1]}:${image.url}`) return false;

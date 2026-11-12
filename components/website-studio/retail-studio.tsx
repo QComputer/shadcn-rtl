@@ -165,7 +165,15 @@ export function RetailStudio({ organizationId, locale }: Props) {
           <div className={styles.intro}><strong>نسخه خصوصی وب‌سایت</strong><span>ذخیره، نسخه تازه‌ای می‌سازد و هیچ محتوایی را منتشر نمی‌کند.</span></div>
           <div className={styles.publicNote} role="note">فروشگاه عمومی بدون تغییر می‌ماند؛ ذخیره این پیش‌نویس فقط یک نسخه خصوصی ایجاد می‌کند.</div>
           <article className={styles.card}>
-            {content.hero ? <RetailHeroEditor value={content.hero} onChange={hero => update(current => ({ ...current, hero }))} media={usableMedia} products={payload?.products ?? []} disabled={busy} /> : <div className={styles.intro}><strong>هیروی صفحهٔ فروشگاه</strong><p>تصویر، متن و محصولات منتخب ویترین را از اینجا مدیریت کنید.</p><button type="button" onClick={prepareHero}>آماده‌سازی هیرو</button></div>}
+            {content.hero ? <RetailHeroEditor value={content.hero} onChange={hero => update(current => ({ ...current, hero }))} media={usableMedia} products={payload?.products ?? []} disabled={busy} onUpload={async (file, field) => {
+              const form = new FormData(); form.set("file", file);
+              const response = await fetch(`${endpoint}/media`, { method: "POST", credentials: "same-origin", body: form });
+              const data = await response.json().catch(() => ({}));
+              if (!response.ok || !data.image?.id) throw new Error(responseError(data, "بارگذاری تصویر انجام نشد."));
+              setPayload(current => current ? { ...current, media: [...current.media.filter(image => image.id !== data.image.id), data.image as WebsiteMedia] } : current);
+              setContent(current => current ? { ...current, hero: current.hero ? { ...current.hero, [field]: data.image.id } : current.hero } : current);
+              setDirty(true); setNotice("تصویر بارگذاری و انتخاب شد. برای ثبت تغییرات، پیش‌نویس را ذخیره کنید."); setError("");
+            }} /> : <div className={styles.intro}><strong>هیروی صفحهٔ فروشگاه</strong><p>تصویر، متن و محصولات منتخب ویترین را از اینجا مدیریت کنید.</p><button type="button" onClick={prepareHero}>آماده‌سازی هیرو</button></div>}
           </article>
           {content.hero && <article className={styles.card} aria-label="انتشار هیرو">
             <h2 className={styles.sectionTitle}>انتشار هیرو</h2>

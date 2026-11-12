@@ -58,6 +58,20 @@ test("Retail Studio admits only validated tenant brand assets in addition to pub
   assert.equal(isEligibleRetailWebsiteMedia({ id: "upload-1", filename: "public.webp", url: "/uploads/public.webp", mimeType: "image/webp" }), true);
 });
 
+test("persistent disk URLs require a public matching organization Image record", () => {
+  const valid = { id: "img-1", url: "/api/media/org-1/tenants/org-1/uploads/hero.webp", filename: "hero.webp", mimeType: "image/webp", organizationId: "org-1", access: "PUBLIC" };
+  assert.equal(isEligibleRetailWebsiteMedia(valid), true);
+  for (const invalid of [
+    { ...valid, access: "PRIVATE" },
+    { ...valid, organizationId: "org-2" },
+    { ...valid, url: "/api/media/org-2/tenants/org-2/uploads/hero.webp" },
+    { ...valid, url: "/api/media/org-1/tenants/org-2/uploads/hero.webp" },
+    { ...valid, url: "/api/media/org-1/../../private/hero.webp" },
+    { ...valid, url: "/api/media/org-1/tenants/org-1/uploads/hero.webp?download=1" },
+    { ...valid, mimeType: "image/gif" },
+  ]) assert.equal(isEligibleRetailWebsiteMedia(invalid), false, JSON.stringify(invalid));
+});
+
 test("moving a section swaps adjacent order and preserves content at the boundaries", () => {
   const content = initialRetailContent(organization);
   const moved = moveWebsiteSection(content, "about", 1);

@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { once } from "node:events";
 import { createServer } from "node:net";
+import { createConnection } from "node:net";
 import { request as httpRequest } from "node:http";
 import { spawn, type ChildProcess } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
@@ -12,6 +13,7 @@ import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { chromium, type Page } from "playwright";
+import { hotelPaymentSimulatorGuardDiagnostics } from "@/lib/hotel/services/hotel-operational-payment.service";
 
 const enabled = process.env.HOTEL_OPERATIONAL_RESERVATIONS_HTTP_ACCEPTANCE === "1";
 const loopback = "127.0.0.1";
@@ -28,6 +30,9 @@ const customerPassword = `Fixture-${randomUUID()}-${randomUUID()}`;
 const resultDirectory = join(process.cwd(), ".tmp", "hotel-operational-reservations");
 const resultPath = join(resultDirectory, "http.result.json");
 const browserFailureDirectory = join(resultDirectory, "browser-failure");
+const expectedPort = process.env.LOCAL_PRISMA_EXPECTED_PORT ?? "";
+const expectedDatabase = process.env.RETAIL_HERO_EXPECTED_DATABASE ?? "";
+const expectedRole = process.env.HOTEL_LOCAL_EXPECTED_ROLE ?? "";
 
 let stage = "not-started";
 let passed = false;
@@ -36,6 +41,7 @@ let serverStopped = true;
 let browserStopped = true;
 let browserPassed = false;
 let bufferedServerLog = "";
+let readinessEvidence: { runtime: string; tcp: "PASS" | "FAIL"; http: "PASS" | "FAIL"; middleware: "PASS" | "FAIL" | "UNKNOWN"; authInitialization: "PASS" | "FAIL" | "UNKNOWN"; database: "PASS" | "FAIL" | "PENDING"; endpoint: string; failure?: string } | null = null;
 let browserFailureEvidence: { urlPath: string; title: string; bodyText: string; screenshot: string; serverErrorCategories: Record<string, number> } | null = null;
 
 if (enabled) process.on("exit", () => {
@@ -48,8 +54,9 @@ if (enabled) process.on("exit", () => {
       status: ok ? "PASSED" : "FAILED",
       exitCode,
       stage,
-      database: { host: loopback, port: 55439, database: "retail_hero_test", role: "hero_test" },
+      database: { host: loopback, port: Number(expectedPort), database: expectedDatabase, role: expectedRole },
       server: { port, stopped: serverStopped, logCapturedChars: bufferedServerLog.length },
+      readiness: readinessEvidence,
       browser: { channel: "chrome", status: browserPassed ? "PASSED" : "FAILED", stopped: browserStopped },
       browserFailureEvidence,
       cleanup: cleanupPassed && serverStopped && browserStopped ? "PASSED" : "FAILED",
@@ -64,15 +71,19 @@ function guardedConnection() {
   assert.equal(process.env.HOTEL_GUEST_PORTAL_ENABLED, "1");
   assert.notEqual(process.env.HOTEL_CRON_SCHEDULER_ENABLED, "1");
   assert.equal(process.env.DATABASE_RUNTIME_ADAPTER, "postgresql");
-  assert.equal(process.env.LOCAL_PRISMA_EXPECTED_PORT, "55439");
-  assert.equal(process.env.RETAIL_HERO_EXPECTED_DATABASE, "retail_hero_test");
+  assert.equal(process.env.HOTEL_PAYMENT_SIMULATOR_DISPOSABLE_FIXTURE, "1");
+  assert.equal(process.env.HOTEL_BOOKING_SANDBOX_ENABLED, "1");
+  assert.equal(process.env.HOTEL_OPERATIONAL_PAYMENT_SIMULATOR_ENABLED, "1");
+  assert.match(expectedPort, /^\d{1,5}$/);
+  assert.ok(Number(expectedPort) > 1024);
+  assert.match(expectedDatabase, /^hotel_payment_smoke_[a-z0-9_]+$/);
+  assert.match(expectedRole, /^hotel_payment_smoke_[a-z0-9_]+$/);
   const url = new URL(process.env.DATABASE_URL ?? "https://missing.invalid");
   assert.ok(["postgres:", "postgresql:"].includes(url.protocol));
   assert.equal(url.hostname, loopback);
-  assert.equal(url.port, "55439");
-  assert.equal(url.pathname, "/retail_hero_test");
-  assert.equal(decodeURIComponent(url.username), "hero_test");
-  assert.equal(decodeURIComponent(url.password), "local_admin_fixture_only");
+  assert.equal(url.port, expectedPort);
+  assert.equal(url.pathname, `/${expectedDatabase}`);
+  assert.equal(decodeURIComponent(url.username), expectedRole);
   assert.equal(url.search, "");
   assert.equal(url.hash, "");
   assert.equal(process.env.DIRECT_URL, url.toString());
@@ -86,8 +97,9 @@ function isolatedServerEnv(databaseUrl: string): NodeJS.ProcessEnv {
   Object.assign(env, {
     DATABASE_URL: databaseUrl,
     DIRECT_URL: databaseUrl,
-    LOCAL_PRISMA_EXPECTED_PORT: "55439",
-    RETAIL_HERO_EXPECTED_DATABASE: "retail_hero_test",
+    LOCAL_PRISMA_EXPECTED_PORT: expectedPort,
+    RETAIL_HERO_EXPECTED_DATABASE: expectedDatabase,
+    HOTEL_LOCAL_EXPECTED_ROLE: expectedRole,
     DATABASE_RUNTIME_ADAPTER: "postgresql",
     NODE_ENV: "development",
     NEXT_TELEMETRY_DISABLED: "1",
@@ -99,6 +111,9 @@ function isolatedServerEnv(databaseUrl: string): NodeJS.ProcessEnv {
     HOTEL_GUEST_PORTAL_ENABLED: "1",
     HOTEL_OPERATIONAL_RESERVATIONS_ENABLED: "1",
     HOTEL_BOOKING_OPERATIONAL_ENABLED: "0",
+    HOTEL_BOOKING_SANDBOX_ENABLED: "1",
+    HOTEL_OPERATIONAL_PAYMENT_SIMULATOR_ENABLED: "1",
+    HOTEL_PAYMENT_SIMULATOR_DISPOSABLE_FIXTURE: "1",
     HOTEL_CRON_SCHEDULER_ENABLED: "0",
     AUTH_TRUST_HOST: "true",
     NEXT_PUBLIC_APP_URL: baseUrl,
@@ -134,22 +149,31 @@ async function assertPortFree() {
   });
 }
 
-async function request(path: string, host: string, origin?: string, init: RequestInit = {}) {
+async function request(path: string, host: string, origin?: string, init: RequestInit = {}, timeoutMs = 30_000) {
   const headers = new Headers(init.headers);
   headers.set("host", `${host}:${port}`);
   if (origin) headers.set("origin", origin);
   return new Promise<Response>((resolve, reject) => {
-    const outgoing = httpRequest({ hostname: loopback, port, path, method: init.method ?? "GET", headers: Object.fromEntries(headers) }, incoming => {
+    let settled = false;
+    const outgoing = httpRequest({ hostname: loopback, port, path, method: init.method ?? "GET", headers: Object.fromEntries(headers) });
+    const timer = setTimeout(() => {
+      const error = new Error(`HTTP request timed out after ${timeoutMs}ms: ${path}`);
+      (error as Error & { code: string }).code = "HTTP_REQUEST_TIMEOUT";
+      outgoing.destroy(error);
+      finish(() => reject(error));
+    }, timeoutMs);
+    const finish = (callback: () => void) => { if (settled) return; settled = true; clearTimeout(timer); callback(); };
+    outgoing.on("response", incoming => {
       const chunks: Buffer[] = [];
       incoming.on("data", chunk => chunks.push(Buffer.from(chunk)));
       incoming.on("end", () => {
         const responseHeaders = new Headers();
         for (let index = 0; index < incoming.rawHeaders.length; index += 2) responseHeaders.append(incoming.rawHeaders[index]!, incoming.rawHeaders[index + 1]!);
-        resolve(new Response(Buffer.concat(chunks), { status: incoming.statusCode, headers: responseHeaders }));
+        finish(() => resolve(new Response(Buffer.concat(chunks), { status: incoming.statusCode, headers: responseHeaders })));
       });
-      incoming.on("error", reject);
+      incoming.on("error", error => finish(() => reject(error)));
     });
-    outgoing.on("error", reject);
+    outgoing.on("error", error => finish(() => reject(error)));
     if (init.body !== undefined && init.body !== null) outgoing.write(String(init.body));
     outgoing.end();
   });
@@ -204,14 +228,41 @@ function browserCookies(cookies: string[], origin: string) {
 }
 
 async function waitForServer(server: ChildProcess) {
+  readinessEvidence = { runtime: `${process.version} (${process.execPath.split(/[\\/]/).pop()})`, tcp: "FAIL", http: "FAIL", middleware: "UNKNOWN", authInitialization: "UNKNOWN", database: "PENDING", endpoint: "/api/auth/csrf" };
+  assert.equal(Number(process.versions.node.split(".")[0]), 24, "project requires Node 24.x for both test and Next child");
   const deadline = Date.now() + 120_000;
   while (Date.now() < deadline) {
     if (server.exitCode !== null) throw new Error("isolated Next server exited before readiness");
-    try { if ((await request("/api/auth/csrf", hostA)).status === 200) return; }
-    catch { /* waiting for the isolated Next server */ }
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const socket = createConnection({ host: loopback, port });
+        const timer = setTimeout(() => { socket.destroy(); reject(new Error("TCP connect timeout")); }, 1_000);
+        socket.once("connect", () => { clearTimeout(timer); socket.destroy(); resolve(); });
+        socket.once("error", error => { clearTimeout(timer); reject(error); });
+      });
+      readinessEvidence!.tcp = "PASS";
+      const response = await request("/api/auth/csrf", hostA, undefined, {}, 4_000);
+      readinessEvidence!.http = "PASS";
+      readinessEvidence!.middleware = response.headers.has("x-content-type-options") ? "PASS" : "UNKNOWN";
+      readinessEvidence!.authInitialization = response.status === 200 ? "PASS" : "FAIL";
+      if (response.status === 200) {
+        const body = await response.json() as { csrfToken?: unknown };
+        if (typeof body.csrfToken === "string" && body.csrfToken.length > 0) {
+          readinessEvidence!.failure = undefined;
+          return;
+        }
+        readinessEvidence!.authInitialization = "FAIL";
+        readinessEvidence!.failure = "CSRF endpoint returned 200 without a token";
+      } else readinessEvidence!.failure = `HTTP ${response.status} from /api/auth/csrf`;
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException;
+      readinessEvidence!.failure = err.code === "HTTP_REQUEST_TIMEOUT" ? `${err.message}; TCP=PASS, HTTP=NO_RESPONSE` : `${err.code ?? err.name}: ${err.code === "ECONNREFUSED" ? "connection refused" : err.message}`;
+    }
     await delay(500);
   }
-  throw new Error("isolated Next server did not become ready in 120 seconds");
+  const log = bufferedServerLog;
+  const errorLines = log.split(/\r?\n/).filter(line => /error|failed|compile|exception|database|prisma/i.test(line)).slice(-12).map(scrubVisibleText);
+  throw new Error(`isolated Next readiness failed at ${readinessEvidence?.endpoint}; evidence=${JSON.stringify(readinessEvidence)}; serverErrors=${JSON.stringify(errorLines)}`);
 }
 
 async function stopServer(server?: ChildProcess) {
@@ -250,6 +301,7 @@ test("operational Hotel reservation UI creates a pending-payment booking and iso
   const orgIds: string[] = [];
   const domainOrgIds: string[] = [];
   const userIds: string[] = [];
+  const integrationIds: string[] = [];
   const propertyIds: string[] = [];
   const policyIds: string[] = [];
   const roomTypeIds: string[] = [];
@@ -264,11 +316,15 @@ test("operational Hotel reservation UI creates a pending-payment booking and iso
   try {
     stage = "database-identity-guard";
     const identity = await db.$queryRaw<Array<{ database: string; role: string; port: number }>>`SELECT current_database()::text AS database,current_user::text AS role,inet_server_port() AS port`;
-    assert.deepEqual(identity, [{ database: "retail_hero_test", role: "hero_test", port: 5432 }]);
+    assert.deepEqual(identity, [{ database: expectedDatabase, role: expectedRole, port: 5432 }]);
+    const simulatorGuards = await hotelPaymentSimulatorGuardDiagnostics(db);
+    assert.ok(Object.values(simulatorGuards).every(Boolean), `simulator guard mismatch: ${JSON.stringify(simulatorGuards)}`);
 
     stage = "tenant-fixtures";
     const orgA = await db.organization.create({ data: { type: "SHOP", vertical: "HOTEL", name: `${prefix}-a`, slug: `${prefix}-a`, locale: "en", capabilitiesInitializedAt: new Date() } });
     orgIds.push(orgA.id);
+    const integration = await db.organizationIntegration.create({ data: { organizationId: orgA.id, provider: "INOTI_USSD", type: "USSD", status: "ACTIVE", codeName: `fixture-${suffix}`, credentialProfileKey: `fixture-${suffix}`, configuration: { paymentEnabled: true, fixtureOnly: true } } });
+    integrationIds.push(integration.id);
     const orgB = await db.organization.create({ data: { type: "SHOP", vertical: "HOTEL", name: `${prefix}-b`, slug: `${prefix}-b`, locale: "en", capabilitiesInitializedAt: new Date() } });
     orgIds.push(orgB.id);
     await db.organizationCapability.createMany({ data: [orgA, orgB].map(org => ({ organizationId: org.id, key: "HOTEL_BOOKING", status: "ACTIVE" as const, enabledAt: new Date() })) });
@@ -320,6 +376,7 @@ test("operational Hotel reservation UI creates a pending-payment booking and iso
 
     stage = "same-user-two-tenant-password-login";
     const loginA = await passwordLogin(hostA, originA, customerName, customerPassword);
+    readinessEvidence!.database = loginA.session.user?.id === userIds[0] ? "PASS" : "FAIL";
     const loginB = await passwordLogin(hostB, originB, customerName, customerPassword);
     assert.ok([200, 302].includes(loginA.callback.status));
     assert.ok([200, 302].includes(loginB.callback.status));
@@ -370,6 +427,25 @@ test("operational Hotel reservation UI creates a pending-payment booking and iso
     ownedReservationIds.push(created.id);
     assert.equal(created.status, "PENDING_PAYMENT");
 
+    stage = "guest-simulated-payment-intent";
+    const paymentsEndpoint = `/api/organizations/${orgA.id}/hotels/${propertyA.id}/reservations/${created.id}/payments`;
+    const paymentResponsePromise = page.waitForResponse(response => response.request().method() === "POST" && response.url().includes(`/reservations/${created.id}/payments`));
+    await reservationsUi.getByRole("button", { name: "Request Payment" }).waitFor({ state: "visible", timeout: 30_000 });
+    await reservationsUi.getByRole("button", { name: "Request Payment" }).click();
+    const paymentResponse = await paymentResponsePromise;
+    assert.equal(paymentResponse.status(), 200);
+    const paymentIntentResult = await paymentResponse.json() as { paymentRequestPublicId: string; status: string; amountToman: string; providerAvailable: boolean; simulated: boolean };
+    assert.equal(paymentIntentResult.providerAvailable, false, "the unavailable adapter means no real provider was contacted");
+    assert.equal(paymentIntentResult.simulated, true);
+    const paymentRequest = await db.paymentRequest.findFirstOrThrow({ where: { publicId: paymentIntentResult.paymentRequestPublicId, organizationId: orgA.id }, include: { attempts: true } });
+    assert.equal(paymentRequest.status, "AWAITING_CUSTOMER");
+    assert.equal(paymentRequest.amountToman, created.totalAmount);
+    assert.equal(paymentRequest.attempts.length, 1, "payment intent has one durable provider attempt");
+    assert.equal(paymentRequest.attempts[0].status, "AWAITING_CUSTOMER");
+    assert.deepEqual(paymentRequest.attempts[0].verificationEvidence, { simulated: true, fixture: true });
+    assert.equal((paymentRequest.metadata as { simulated?: boolean }).simulated, true);
+    await reservationsUi.getByText("SIMULATED", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+
     stage = "guest-own-history-and-foreign-read-denial";
     const ownHistory = await apiJson<{ view: string; reservations: Array<{ id: string; status: string }> }>(endpointA, hostA, undefined, cookieA);
     assert.equal(ownHistory.response.status, 200);
@@ -381,17 +457,42 @@ test("operational Hotel reservation UI creates a pending-payment booking and iso
     assert.equal(tenantBHistory.response.status, 200);
     assert.equal(tenantBHistory.data?.view, "guest");
     assert.deepEqual(tenantBHistory.data?.reservations, [], "the same account has separate reservation history per tenant");
-    stage = "browser-reception-assignment-checkin-checkout";
-    // Synthetic confirmed state exercises reception only; this is not payment/provider acceptance.
-    await db.hotelReservation.update({ where: { id: created.id }, data: { status: "CONFIRMED", confirmedAt: new Date() } });
-    const physical = await db.hotelRoom.create({ data: { organizationId: orgA.id, propertyId: propertyA.id, roomTypeId: roomA.id, code: "101-fixture" } });
+
+    stage = "payment-tenant-isolation";
+    const foreignPaymentRead = await apiJson(paymentsEndpoint, hostA, undefined, cookieB);
+    assert.equal(foreignPaymentRead.response.status, 403, "tenant B cannot read tenant A payment state");
+
+    stage = "simulated-payment-reconciliation-and-replay";
     const adminLogin = await passwordLogin(hostA, originA, adminName, adminPassword);
     assert.equal(adminLogin.session.user?.role, "ADMIN");
+    const simulationCommand = { action: "simulate-payment", reservationId: created.id, paymentRequestPublicId: paymentRequest.publicId, outcome: "SUCCESS" };
+    const simulationKey = `${prefix}-simulate-success-01`;
+    const adminCookie = cookieHeader(adminLogin.cookies);
+    const simulation = await apiJson<{ status: string; simulated: boolean; paymentRequestPublicId: string; attemptId: string }>(paymentsEndpoint, hostA, originA, adminCookie, "POST", simulationCommand, simulationKey);
+    assert.equal(simulation.response.status, 200);
+    assert.equal(simulation.data?.status, "PAID");
+    assert.equal(simulation.data?.simulated, true);
+    assert.equal(simulation.data?.paymentRequestPublicId, paymentRequest.publicId);
+    const replay = await apiJson(paymentsEndpoint, hostA, originA, adminCookie, "POST", simulationCommand, simulationKey);
+    assert.equal(replay.response.status, 200);
+    assert.deepEqual(replay.data, simulation.data, "idempotent replay returns the same simulation result");
+    const persisted = await db.hotelReservation.findUniqueOrThrow({ where: { id: created.id } });
+    assert.equal(persisted.status, "CONFIRMED");
+    assert.equal(persisted.paidAmount, created.totalAmount);
+    assert.equal(await db.hotelPaymentAllocation.count({ where: { organizationId: orgA.id, hotelReservationId: created.id, kind: "BALANCE" } }), 1);
+    assert.equal(await db.paymentProviderAttempt.count({ where: { organizationId: orgA.id, paymentRequestId: paymentRequest.id } }), 2);
+    assert.equal((await db.paymentRequest.findUniqueOrThrow({ where: { id: paymentRequest.id } })).status, "PAID");
+
+    stage = "browser-reception-simulated-payment-assignment-checkin-checkout";
+    const physical = await db.hotelRoom.create({ data: { organizationId: orgA.id, propertyId: propertyA.id, roomTypeId: roomA.id, code: "101-fixture" } });
     const receptionContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     await receptionContext.addCookies(browserCookies(adminLogin.cookies, originA));
     const receptionPage = await receptionContext.newPage();
     await receptionPage.goto(originA + "/en/hotel-reservations/" + orgA.id + "/" + propertyA.id, { waitUntil: "networkidle", timeout: 120_000 });
     const row = receptionPage.getByRole("listitem").filter({ hasText: created.reference });
+    await row.getByText("SIMULATED", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+    assert.match(await row.innerText(), /Paid:\s*250000/);
+    assert.match(await row.innerText(), /Outstanding:\s*0 TOMAN/);
     await row.getByLabel("Physical room").selectOption(physical.id);
     await row.getByRole("button", { name: "Assign room", exact: true }).click();
     await row.getByRole("button", { name: "Check in", exact: true }).waitFor({ state: "visible", timeout: 30_000 });
@@ -402,7 +503,7 @@ test("operational Hotel reservation UI creates a pending-payment booking and iso
     const checkedOut = await db.hotelReservation.findUniqueOrThrow({ where: { id: created.id } });
     assert.equal(checkedOut.status, "CHECKED_OUT");
     assert.ok(checkedOut.checkedInAt && checkedOut.checkedOutAt);
-    assert.equal(checkedOut.paidAmount, BigInt(0), "reception fixture does not manufacture received money");
+    assert.equal(checkedOut.paidAmount, created.totalAmount, "reception shows only the explicitly simulated payment persisted earlier in this flow");
     await receptionContext.close();
     assert.deepEqual(browserErrors, [], "guest reservations page has no browser runtime errors");
     await context.close();
@@ -431,10 +532,12 @@ test("operational Hotel reservation UI creates a pending-payment booking and iso
     serverStopped = await stopServer(server);
     try {
       if (orgIds.length) {
-        await db.hotelInventoryIdempotency.deleteMany({ where: { organizationId: { in: orgIds }, operationScope: { in: ["HOTEL_OPERATIONAL_ACTION", "HOTEL_OPERATIONAL_QUOTE"] } } });
+        await db.hotelInventoryIdempotency.deleteMany({ where: { organizationId: { in: orgIds }, operationScope: { in: ["HOTEL_OPERATIONAL_ACTION", "HOTEL_OPERATIONAL_QUOTE", "HOTEL_OPERATIONAL_PAYMENT_ACTION"] } } });
         await db.hotelReservationGuest.deleteMany({ where: { reservation: { organizationId: { in: orgIds } } } });
         await db.hotelReservationRoom.deleteMany({ where: { reservation: { organizationId: { in: orgIds } } } });
         await db.hotelPaymentAllocation.deleteMany({ where: { organizationId: { in: orgIds } } });
+        await db.paymentProviderAttempt.deleteMany({ where: { organizationId: { in: orgIds } } });
+        await db.paymentRequest.deleteMany({ where: { organizationId: { in: orgIds } } });
         await db.hotelReservation.deleteMany({ where: { organizationId: { in: orgIds } } });
         await db.hotelBookingHold.deleteMany({ where: { organizationId: { in: orgIds } } });
         await db.hotelStayQuote.deleteMany({ where: { organizationId: { in: orgIds } } });
@@ -449,6 +552,7 @@ test("operational Hotel reservation UI creates a pending-payment booking and iso
         await db.guestCustomer.deleteMany({ where: { sessionId: { in: orgIds.map(id => `hotel-operational:${id}:${userIds[0] ?? "missing"}`) } } });
         await db.customerClubMembership.deleteMany({ where: { organizationId: { in: orgIds }, customerId: { in: userIds } } });
         await db.organizationMember.deleteMany({ where: { organizationId: { in: orgIds }, userId: { in: userIds } } });
+        await db.organizationIntegration.deleteMany({ where: { id: { in: integrationIds } } });
         await db.organizationDomain.deleteMany({ where: { organizationId: { in: domainOrgIds } } });
         await db.organizationCapability.deleteMany({ where: { organizationId: { in: orgIds } } });
         await db.organization.deleteMany({ where: { id: { in: orgIds } } });
